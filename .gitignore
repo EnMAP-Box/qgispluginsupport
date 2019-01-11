@@ -1,0 +1,21 @@
+# Untracked directories
+.idea/
+deploy/
+build/
+tmp/
+doc/build/
+
+qgisresources
+qgisresources/
+enmapboxtestdata/
+testdata/
+
+# Untrack compiled files
+*.pyc 
+*.pyd
+
+#are changed all the time, should be commited explicitely
+*.aux.xml
+*bsq.aux.xml
+*.cache/
+*.cache/*

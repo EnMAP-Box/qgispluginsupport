@@ -27,9 +27,8 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 import numpy as np
 from osgeo import gdal
-from enmapbox.gui.utils import gdalDataset, nextColor, loadUIFormClass
+from qps.utils import gdalDataset, nextColor, loadUIFormClass, findMapLayer, registeredMapLayers
 
-from itertools import cycle
 
 loadClassificationUI = lambda name: loadUIFormClass(os.path.join(os.path.dirname(__file__), name))
 
@@ -41,22 +40,19 @@ MIMEDATA_KEY_TEXT = 'text/plain'
 MIMEDATA_INTERNAL_IDs = 'classinfo_ids'
 
 
-def findMapLayerWithClassInfo()->list:
+def findMapLayersWithClassInfo()->list:
     """
     Returns QgsMapLayers from which a ClassificationScheme can be derived.
     Searches in all QgsMapLayerStores known to classification.MAP_LAYER_STORES
     :return: [list-of-QgsMapLayer]
     """
-    from . import MAP_LAYER_STORES
-    results = []
-    for store in MAP_LAYER_STORES:
-        assert isinstance(store, (QgsProject, QgsMapLayerStore))
-        for lyr in store.mapLayers().values():
-            if isinstance(lyr, QgsVectorLayer) and isinstance(lyr.renderer(), QgsCategorizedSymbolRenderer):
-                results.append(lyr)
-            elif isinstance(lyr, QgsRasterLayer) and isinstance(lyr.renderer(), QgsPalettedRasterRenderer):
-                results.append(lyr)
 
+    results = []
+    for lyr in registeredMapLayers():
+        if isinstance(lyr, QgsVectorLayer) and isinstance(lyr.renderer(), QgsCategorizedSymbolRenderer):
+            results.append(lyr)
+        elif isinstance(lyr, QgsRasterLayer) and isinstance(lyr.renderer(), QgsPalettedRasterRenderer):
+            results.append(lyr)
     return results
 
 
@@ -239,11 +235,14 @@ class ClassificationScheme(QAbstractTableModel):
     sigClassesAdded = pyqtSignal(list)
     sigNameChanged = pyqtSignal(str)
 
-    def __init__(self, name:str='Classification'):
+    def __init__(self, name : str = None):
         super(ClassificationScheme, self).__init__()
         self.mClasses = []
         self.mName = name
         self.mIsEditable = True
+
+        if name is None:
+            name = 'Classification'
 
         self.mColColor = 'Color'
         self.mColName = 'Name'
@@ -1259,13 +1258,13 @@ class ClassificationSchemeWidget(QWidget, loadClassificationUI('classificationsc
 
 
         assert isinstance(self.tableClassificationScheme, QTableView)
-        self.tableClassificationScheme.horizontalHeader().setResizeMode(QHeaderView.ResizeToContents)
+        #self.tableClassificationScheme.horizontalHeader().setResizeMode(QHeaderView.ResizeToContents)
         self.tableClassificationScheme.setModel(self.mScheme)
         self.tableClassificationScheme.doubleClicked.connect(self.onTableDoubleClick)
         self.tableClassificationScheme.resizeColumnsToContents()
         self.selectionModel = QItemSelectionModel(self.mScheme)
         self.selectionModel.selectionChanged.connect(self.onSelectionChanged)
-        self.onSelectionChanged()  # enable/disabel widgets depending on a selection
+        self.onSelectionChanged()  # enable/disable widgets depending on a selection
         self.tableClassificationScheme.setSelectionModel(self.selectionModel)
 
         self.initActions()
@@ -1336,7 +1335,7 @@ class ClassificationSchemeWidget(QWidget, loadClassificationUI('classificationsc
 
 
         if mode == 'layer':
-            possibleLayers = findMapLayerWithClassInfo()
+            possibleLayers = findMapLayersWithClassInfo()
             if len(possibleLayers) == 0:
                 QMessageBox.information(self, 'Load classes from layer', 'No layers with categorical render styles available.')
             else:
@@ -1698,10 +1697,10 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
             return 0
         field = vl.fields().at(fieldIdx)
         assert isinstance(field, QgsField)
-        if field.type() in [QVariant.String, QVariant.Int] and re.search(r'.*(class|label).*', field.name(), re.I):
+        if field.type() in [QVariant.String, QVariant.Int, QVariant.Double]:
             return 20
         else:
-            return 0 #no support
+            return 0 # no support
 
     def supportsField(self, vl:QgsVectorLayer, idx:int):
         field = vl.fields().at(idx)

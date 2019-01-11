@@ -9,14 +9,14 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 import unittest
 import tempfile
 import enmapboxtestdata
-from enmapboxtesting import initQgisApplication, TestObjects
+
+from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()
 
+from qps.utils import *
+from qps.classification.classificationscheme import *
 
-from enmapbox.gui.utils import *
-from .classificationscheme import *
-
-SHOW_GUIS = True
+SHOW_GUI = False
 
 
 
@@ -28,6 +28,7 @@ class TestsClassificationScheme(TestCase):
 
         self.nameL1 = 'Level 1 (int)'
         self.nameL2 = 'Level 2 (str)'
+
     def createClassSchemeA(self)->ClassificationScheme:
 
         cs = ClassificationScheme()
@@ -181,7 +182,7 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(w.currentClassInfo(), ClassInfo)
         self.assertEqual(w.currentClassInfo(), scheme[2])
 
-        if SHOW_GUIS:
+        if SHOW_GUI:
             QGIS_APP.exec_()
 
 
@@ -225,7 +226,7 @@ class TestsClassificationScheme(TestCase):
         w.layout().addWidget(cb)
         vl.startEditing()
         w.show()
-        w.resize(QSize(300,250))
+        w.resize(QSize(300, 250))
         print(vl.fields().names())
         look = vl.fields().lookupField
 
@@ -245,8 +246,7 @@ class TestsClassificationScheme(TestCase):
 
         eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
-
-        if SHOW_GUIS:
+        if SHOW_GUI:
             QGIS_APP.exec_()
 
 
@@ -266,30 +266,27 @@ class TestsClassificationScheme(TestCase):
         rl.setRenderer(rr)
 
         store = QgsMapLayerStore()
-        from . import MAP_LAYER_STORES as ML_STORE
-        ML_STORE.add(store)
 
-        lyrs = findMapLayerWithClassInfo()
+        lyrs = findMapLayersWithClassInfo()
         self.assertIsInstance(lyrs, list)
         self.assertTrue(len(lyrs) == 0)
 
+        registerMapLayerStore(store)
         store.addMapLayers([vl, rl])
 
-        lyrs = findMapLayerWithClassInfo()
+        lyrs = findMapLayersWithClassInfo()
         self.assertIsInstance(lyrs, list)
         self.assertTrue(len(lyrs) == 2)
         self.assertTrue(vl in lyrs)
         self.assertTrue(rl in lyrs)
 
-        if SHOW_GUIS:
+        if SHOW_GUI:
             w = ClassificationSchemeWidget()
             w.show()
             w.onLoadClasses('layer')
             QGIS_APP.exec_()
 
     def test_ClassificationSchemeWidget(self):
-
-        from . import MAP_LAYER_STORES as ML
 
         w = ClassificationSchemeWidget()
         self.assertIsInstance(w.classificationScheme(), ClassificationScheme)
@@ -304,7 +301,7 @@ class TestsClassificationScheme(TestCase):
 
 
 
-        if SHOW_GUIS:
+        if SHOW_GUI:
             QGIS_APP.exec_()
 
 
@@ -342,7 +339,7 @@ class TestsClassificationScheme(TestCase):
 
 
 
-        if SHOW_GUIS:
+        if SHOW_GUI:
             QGIS_APP.exec_()
 
 
@@ -414,14 +411,9 @@ class TestsClassificationScheme(TestCase):
 
 
 
-    def test_showcase(self):
-        oass
-
-        s = ""
-
 if __name__ == "__main__":
 
-    SHOW_GUIS = False
+    SHOW_GUI = False
     unittest.main()
 
 
