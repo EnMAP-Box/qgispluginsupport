@@ -27,7 +27,8 @@
 *                                                                         *
 ***************************************************************************
 """
-import os, csv
+import os, csv, tempfile
+from osgeo import gdal, gdal_array
 from .spectrallibraries import *
 
 #lookup GDAL Data Type and its size in bytes

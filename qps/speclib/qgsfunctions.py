@@ -32,7 +32,7 @@ import pickle
 from qgis.core import *
 
 from .spectrallibraries import FIELD_STYLE, FIELD_VALUES, decodeProfileValueDict
-from enmapbox.gui.plotstyling import PlotStyle, MARKERSYMBOLS2QGIS_SYMBOLS
+from qps.plotstyling.plotstyling import PlotStyle, MARKERSYMBOLS2QGIS_SYMBOLS
 
 QGS_FUNCTION_GROUP = "Spectral Libraries"
 

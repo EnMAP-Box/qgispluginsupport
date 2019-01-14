@@ -30,32 +30,17 @@
 """
 
 #see http://python-future.org/str_literals.html for str issue discussion
-import os, sys, pathlib, re, tempfile, pickle, copy, shutil, locale, uuid, io, json
+import json
 
-import weakref
-from collections import OrderedDict
-from qgis.core import *
-from qgis.gui import *
-from qgis.utils import qgsfunction
-from qgis.PyQt.QtCore import NULL
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-from qgis.core import QgsField, QgsFields, QgsFeature, QgsMapLayer, QgsVectorLayer, QgsConditionalStyle
-from qgis.gui import QgsMapCanvas, QgsDockWidget
 from pyqtgraph.graphicsItems.PlotItem import PlotItem
-from pyqtgraph.graphicsItems.GraphicsObject import GraphicsObject
 
-
-import pyqtgraph.functions as fn
-import numpy as np
-from osgeo import gdal, gdal_array, ogr
+from osgeo import ogr
 import collections
-from enmapbox.gui.utils import *
+from qps.utils import *
 from . import speclibSettings
-from vrtbuilder.virtualrasters import describeRawFile
-from enmapbox.gui.widgets.models import *
-from enmapbox.gui.plotstyling import PlotStyle, PlotStyleDialog, MARKERSYMBOLS2QGIS_SYMBOLS, createSetPlotStyleAction
-from enmapbox.gui.plotstyling import EDITOR_WIDGET_REGISTRY_KEY as PlotSettingsEditorWidgetKey
+from qps.models import *
+from qps.plotstyling.plotstyling import PlotStyle, createSetPlotStyleAction
+from qps.plotstyling.plotstyling import EDITOR_WIDGET_REGISTRY_KEY as PlotSettingsEditorWidgetKey
 
 
 #MODULE_IMPORT_PATH = 'enmapbox.gui.speclib.spectrallibraries'
@@ -114,11 +99,14 @@ FIELD_FID = 'fid'
 
 VSI_DIR = r'/vsimem/speclibs/'
 
-gdal.Mkdir(VSI_DIR, 0)
+try:
+    gdal.Mkdir(VSI_DIR, 0)
+except:
+    pass
 
 
-X_UNITS = ['Index','Micrometers','Nanometers','Millimeters', 'Centimeters', 'Meters', 'Wavenumber','Angstroms', 'GHz','MHz', '']
-Y_UNITS = ['DN','Reflectance', 'Radiance', '']
+X_UNITS = ['Index', 'Micrometers', 'Nanometers', 'Millimeters', 'Centimeters', 'Meters', 'Wavenumber', 'Angstroms', 'GHz', 'MHz', '']
+Y_UNITS = ['DN', 'Reflectance', 'Radiance', '']
 
 loadSpeclibUI = lambda name: loadUIFormClass(os.path.join(os.path.dirname(__file__), name))
 
@@ -136,7 +124,6 @@ def vsiSpeclibs()->list:
         stats = gdal.VSIStatL(p)
         if isinstance(stats, gdal.StatBuf) and not stats.IsDirectory():
             visSpeclibs.append(p)
-
     return visSpeclibs
 
 #CURRENT_SPECTRUM_STYLE.linePenplo
@@ -655,7 +642,6 @@ class SpectralProfile(QgsFeature):
         :return: {'x':list,'y':list,'xUnit':str,'yUnit':str}
         """
         if self.mValueCache is None:
-
             jsonStr = self.attribute(self.fields().indexFromName(FIELD_VALUES))
             d = decodeProfileValueDict(jsonStr)
             self.mValueCache = d
@@ -705,8 +691,11 @@ class SpectralProfile(QgsFeature):
         """
         values = self.values()
         xValues = values['x']
-        if xValues is None and values['y'] is not None:
-            return list(range(len(values['y'])))
+        if xValues is None:
+            if values['y'] is not None:
+                return list(range(len(values['y'])))
+            else:
+                s = ""
         return None
 
 
@@ -969,12 +958,18 @@ class SpectralLibrary(QgsVectorLayer):
     __refs__ = []
     @classmethod
     def instances(cls)->list:
-        #clean refs
-        SpectralLibrary.__refs__ = [r for r in SpectralLibrary.__refs__ if r() is not None]
+
+        refs = []
+        instances = []
+
         for r in SpectralLibrary.__refs__:
             if r is not None:
-                yield r()
-
+                instance = r()
+                if isinstance(instance, SpectralLibrary):
+                    refs.append(r)
+                    instances.append(instance)
+        SpectralLibrary.__refs__ = refs
+        return instances
 
     sigProgressInfo = pyqtSignal(int, int, str)
 
@@ -994,7 +989,7 @@ class SpectralLibrary(QgsVectorLayer):
             uri = pathlib.PurePosixPath(VSI_DIR) / '{}.gpkg'.format(name)
             while uri.as_posix() in existing_vsi_files:
                 i += 1
-                uri = pathlib.PurePosixPath(VSI_DIR) /'{}{:03}.gpkg'.format(name, i)
+                uri = pathlib.PurePosixPath(VSI_DIR) / '{}{:03}.gpkg'.format(name, i)
             uri = uri.as_posix()
             drv = ogr.GetDriverByName('GPKG')
             assert isinstance(drv, ogr.Driver)
@@ -1007,7 +1002,9 @@ class SpectralLibrary(QgsVectorLayer):
                   'GEOMETRY_NULLABLE=YES',
                   'FID=fid'
                   ]
-            lyr =dsSrc.CreateLayer(name, srs = srs, geom_type=ogr.wkbPoint, options=co)
+
+            lyr = dsSrc.CreateLayer(name, srs=srs, geom_type=ogr.wkbPoint, options=co)
+
             assert isinstance(lyr, ogr.Layer)
             ldefn = lyr.GetLayerDefn()
             assert isinstance(ldefn, ogr.FeatureDefn)
@@ -1021,7 +1018,8 @@ class SpectralLibrary(QgsVectorLayer):
             i = names.index(name)
             lyr = dsSrc.GetLayer(i)
             srs = lyr.GetSpatialRef()
-        #consistency check
+
+        # consistency check
         uri2 = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
         assert QgsVectorLayer(uri2).isValid()
         super(SpectralLibrary, self).__init__(uri2, name, 'ogr', lyrOptions)
@@ -1029,7 +1027,7 @@ class SpectralLibrary(QgsVectorLayer):
             crs = self.crs()
             crs.fromWkt(srs.ExportToWkt())
             self.setCrs(crs)
-        self.__refs__.append(weakref.ref(self))
+        SpectralLibrary.__refs__.append(weakref.ref(self))
 
         self.initTableConfig()
 
@@ -1061,18 +1059,6 @@ class SpectralLibrary(QgsVectorLayer):
         self.setEditorWidgetSetup(self.fields().lookupField(FIELD_VALUES), QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
 
-    def __del__(self):
-
-        uri = self.source()
-
-        vsiUris = vsiSpeclibs()
-        if uri in vsiUris:
-            others = [sl for sl in SpectralLibrary.instances() if sl != self and sl.source() == uri]
-            if len(others) == 0:
-                #unlink VSIMem data space
-                gdal.Unlink(self.source())
-                pass
-
     def mimeData(self, formats:list=None)->QMimeData:
         """
         Wraps this Speclib into a QMimeData object
@@ -1094,8 +1080,9 @@ class SpectralLibrary(QgsVectorLayer):
             elif format == MIMEDATA_URL:
                 mimeData.setUrls([QUrl(self.source())])
             elif format == MIMEDATA_TEXT:
-                txt = self.asString(self)
-                mimeData.setText(txt)
+                pass
+                #txt = self.asString(self)
+                #mimeData.setText(txt)
 
         return mimeData
 
@@ -1297,7 +1284,7 @@ class SpectralLibrary(QgsVectorLayer):
         for p in self.profiles():
             assert isinstance(p, SpectralProfile)
             d = p.values()
-            if excludeEmptyProfiles and d['y'] is None:
+            if excludeEmptyProfiles and d['y'] is None or len(d['y']) == 0:
                 continue
             key = (tuple(d['x']), d['xUnit'], d['yUnit'])
             if key not in results.keys():
@@ -1308,20 +1295,21 @@ class SpectralLibrary(QgsVectorLayer):
     def asPickleDump(self):
         return pickle.dumps(self)
 
-    def exportProfiles(self, path=None, parent=None):
+    def exportProfiles(self, path, **kwds):
+
 
         if path is None:
+            path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'), caption="Save Spectral Library", filter=FILTERS)
 
-            path, filter = QFileDialog.getSaveFileName(parent=parent, caption="Save Spectral Library", filter=FILTERS)
-            s = ""
         if len(path) > 0:
             ext = os.path.splitext(path)[-1].lower()
-            if ext in ['.sli','.esl']:
+            if ext in ['.sli', '.esl']:
                 from .envi import EnviSpectralLibraryIO
                 return EnviSpectralLibraryIO.write(self, path)
 
             if ext in ['.csv']:
-                pass
+                from .csvdata import CSVSpectralLibraryIO
+                return CSVSpectralLibraryIO.write(self, path, dialect=kwds.get('dialect'))
                 #return CSVSpectralLibraryIO.write(self, path)
 
 

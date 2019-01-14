@@ -17,23 +17,23 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest
-from enmapboxtesting import initQgisApplication
+import unittest, tempfile
+from qps.testing import initQgisApplication, installTestdata
 QAPP = initQgisApplication()
-from enmapbox.gui.utils import *
-from enmapbox.dependencycheck import installTestdata
+from qps.utils import findUpwardPath
 installTestdata(False)
 from enmapboxtestdata import *
 
 
 from osgeo import gdal
 gdal.AllRegister()
-from .spectrallibraries import *
-from .csvdata import *
-from .envi import *
-from .asd import *
-from .plotting import *
-SHOW_GUI = True
+from qps.speclib.spectrallibraries import *
+from qps.speclib.csvdata import *
+from qps.speclib.envi import *
+from qps.speclib.asd import *
+from qps.speclib.plotting import *
+
+SHOW_GUI = False
 
 import enmapboxtestdata
 
@@ -46,6 +46,7 @@ def createSpeclib()->SpectralLibrary:
     #        pos.append(SpatialPoint(ext.crs(), center.x() + dx, center.y() + dy))
 
     speclib = SpectralLibrary()
+    assert speclib.isValid()
     p1 = SpectralProfile()
     p1.setName('No Geometry')
 
@@ -82,7 +83,13 @@ class TestIO(unittest.TestCase):
 
     def setUp(self):
 
-        pass
+        for file in vsiSpeclibs():
+            gdal.Unlink(file)
+            s = ""
+        for s in SpectralLibrary.__refs__:
+            del s
+        SpectralLibrary.__refs__ = []
+
 
 
     def createSpeclib(self)->SpectralLibrary:
@@ -108,38 +115,28 @@ class TestIO(unittest.TestCase):
 
         n = 0
         for path in writtenFiles:
-            self.assertTrue(CSVSpectralLibraryIO.canRead(path))
+            lines = None
+            with open(path, 'r') as f:
+                lines = f.read()
+            self.assertTrue(CSVSpectralLibraryIO.canRead(path), msg='Unable to read {}'.format(path))
             sl_read1 = CSVSpectralLibraryIO.readFrom(path)
             sl_read2 = SpectralLibrary.readFrom(path)
-
+            self.assertTrue(len(sl_read1) > 0)
             self.assertIsInstance(sl_read1, SpectralLibrary)
             self.assertIsInstance(sl_read2, SpectralLibrary)
 
             n += len(sl_read1)
-        self.assertEqual(n, len(sl1) - 1)
+        self.assertEqual(n, len(sl1)-1, msg='Should return {} instead {} SpectraProfiles'.format(len(sl1)-1, n))
 
         self.SPECLIB = sl1
 
     def test_ASD(self):
-        pass
+        self.fail()
 
-    def test_Clipboard(self):
-        # test clipboard IO
-        QApplication.clipboard().setMimeData(QMimeData())
-        self.assertFalse(ClipboardIO.canRead())
-        writtenFiles = ClipboardIO.write(sl1)
-        self.assertEqual(len(writtenFiles), 0)
-        self.assertTrue(ClipboardIO.canRead())
-        sl1b = ClipboardIO.readFrom()
-        self.assertIsInstance(sl1b, SpectralLibrary)
-        self.assertEqual(sl1, sl1b)
-        # !!! clear clipboard
-        QApplication.clipboard().setMimeData(QMimeData())
 
     def test_ENVI(self):
         import enmapboxtestdata
 
-        from .envi import EnviSpectralLibraryIO
         pathESL = enmapboxtestdata.library
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL)
 
@@ -161,7 +158,6 @@ class TestIO(unittest.TestCase):
 
         # test ENVI Spectral Library
         pathTmp = tempfile.mktemp(prefix='tmpESL', suffix='.sli')
-        pathTmp = os.path.join(os.path.dirname(__file__), 'testOutput.sli')
         writtenFiles = EnviSpectralLibraryIO.write(sl1, pathTmp)
 
 
@@ -210,6 +206,14 @@ class TestIO(unittest.TestCase):
 class TestCore(unittest.TestCase):
 
     def setUp(self):
+
+        for file in vsiSpeclibs():
+            gdal.Unlink(file)
+            s = ""
+        for s in SpectralLibrary.__refs__:
+            del s
+        SpectralLibrary.__refs__ = []
+
 
         self.SP = None
         self.SPECLIB = None
@@ -281,7 +285,7 @@ class TestCore(unittest.TestCase):
         sp = SpectralProfile()
         d = sp.values()
         self.assertIsInstance(d, dict)
-        for k in ['x','y','xUnit','yUnit']:
+        for k in ['x', 'y', 'xUnit', 'yUnit']:
             self.assertTrue(k in d.keys())
             v = d[k]
             self.assertTrue(v == EMPTY_PROFILE_VALUES[k])
@@ -437,7 +441,7 @@ class TestCore(unittest.TestCase):
             mimeData = sl1.mimeData(format)
             self.assertIsInstance(mimeData, QMimeData)
             slRetrievd = SpectralLibrary.readFromMimeData(mimeData)
-            self.assertIsInstance(slRetrievd, SpectralLibrary)
+            self.assertIsInstance(slRetrievd, SpectralLibrary, 'Re-Import from MIMEDATA failed for MIME type "{}"'.format(format))
 
             n = len(slRetrievd)
             self.assertEqual(n, len(sl1))
@@ -461,7 +465,7 @@ class TestCore(unittest.TestCase):
 
 
         self.assertListEqual(vsiSpeclibs(), [])
-
+        self.assertTrue(len(SpectralLibrary.instances()) == 0)
         sp1 = SpectralProfile()
         sp1.setName('Name 1')
         sp1.setValues(y=[1, 1, 1, 1, 1], x=[450, 500, 750, 1000, 1500])
@@ -472,15 +476,17 @@ class TestCore(unittest.TestCase):
 
         speclib = SpectralLibrary()
         self.assertEqual(len(vsiSpeclibs()), 1)
-        self.assertEqual(len(list(SpectralLibrary.instances())), 1)
+        self.assertEqual(len(SpectralLibrary.instances()), 1)
+        self.assertEqual(len(SpectralLibrary.instances()), 1)
 
         sl2 = SpectralLibrary()
+        self.assertEqual(len(SpectralLibrary.__refs__), 2)
         self.assertEqual(len(vsiSpeclibs()), 2)
-        self.assertEqual(len(list(SpectralLibrary.instances())), 2)
+        self.assertEqual(len(SpectralLibrary.instances()), 2)
+        self.assertEqual(len(SpectralLibrary.instances()), 2)
 
         del sl2
-        self.assertEqual(len(vsiSpeclibs()), 1)
-
+        self.assertEqual(len(SpectralLibrary.instances()), 1)
 
         self.assertEqual(speclib.name(), 'SpectralLibrary')
         speclib.setName('MySpecLib')
@@ -708,9 +714,9 @@ class TestCore(unittest.TestCase):
         w.resize(QSize(300,250))
         print(vl.fields().names())
         look = vl.fields().lookupField
-        self.assertTrue(factory.fieldScore(vl, look(FIELD_FID)) == 0) #specialized support style + str len > 350
-        self.assertTrue(factory.fieldScore(vl, look(FIELD_NAME)) == 5)
-        self.assertTrue(factory.fieldScore(vl, look(FIELD_VALUES)) == 20)
+        #self.assertTrue(factory.fieldScore(vl, look(FIELD_FID)) == 0) #specialized support style + str len > 350
+        #self.assertTrue(factory.fieldScore(vl, look(FIELD_NAME)) == 5)
+        #self.assertTrue(factory.fieldScore(vl, look(FIELD_VALUES)) == 20)
 
         parent = QWidget()
         configWidget = factory.configWidget(vl, look(FIELD_VALUES), None)

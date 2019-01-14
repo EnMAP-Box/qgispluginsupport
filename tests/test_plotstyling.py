@@ -18,20 +18,17 @@
 """
 # noinspection PyPep8Naming
 import unittest, json, pickle
-from enmapbox.gui.plotstyling import *
-import enmapbox.gui.plotstyling
-enmapbox.gui.plotstyling.DEBUG = True
-import numpy as np
-from osgeo import gdal
+from qgis.core import *
+from qgis.gui import *
+from qgis.PyQt.QtCore import *
+from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtGui import *
+from qps.testing import initQgisApplication
 
-
-from enmapbox.testing import initQgisApplication, MAP_LAYER_STORES
+from qps.plotstyling.plotstyling import *
 
 QAPP = initQgisApplication()
-
-TEST_STORE = QgsMapLayerStore()
-MAP_LAYER_STORES.append(TEST_STORE)
-
+SHOW_GUI = False
 
 class PlotStyleTests(unittest.TestCase):
 
@@ -61,8 +58,8 @@ class PlotStyleTests(unittest.TestCase):
         bt.show()
 
 
-
-        QAPP.exec_()
+        if SHOW_GUI:
+            QAPP.exec_()
 
     def test_json(self):
 
@@ -144,12 +141,12 @@ class PlotStyleTests(unittest.TestCase):
         conf.setActionWidgetVisible(True)
         conf.setActionWidgetStyle(QgsAttributeTableConfig.ButtonList)
         layer.setAttributeTableConfig(conf)
-        TEST_STORE.addMapLayer(layer)
         canvas.setLayers([layer])
         dualView.init(layer, canvas)
         dualView.setAttributeTableConfig(layer.attributeTableConfig())
 
-        QAPP.exec_()
+        if SHOW_GUI:
+            QAPP.exec_()
 
     def test_PlotStyleEditorWidgetFactory(self):
 
@@ -160,6 +157,7 @@ class PlotStyleTests(unittest.TestCase):
         if len(reg.factories()) == 0:
             reg.initEditors()
 
+        registerPlotStyleEditorWidget()
         self.assertTrue('PlotSettings' in reg.factories().keys())
 
         factory = reg.factories()['PlotSettings']
@@ -194,7 +192,7 @@ class PlotStyleTests(unittest.TestCase):
         w.show()
         w.resize(QSize(300,250))
 
-        self.assertTrue(factory.fieldScore(vl, 0) == 20) #specialized support style + str len > 350
+        self.assertTrue(factory.fieldScore(vl, 0) > 0) #specialized support style + str len > 350
         self.assertTrue(factory.fieldScore(vl, 1) == 5)
         self.assertTrue(factory.fieldScore(vl, 2) == 0)
         self.assertTrue(factory.fieldScore(vl, 3) == 0)
@@ -219,7 +217,8 @@ class PlotStyleTests(unittest.TestCase):
         f.setAttribute('fStyle', value)
         self.assertTrue(vl.updateFeature(f))
 
-        QAPP.exec_()
+        if SHOW_GUI:
+            QAPP.exec_()
 
 
        # qApp.exec_()
@@ -228,9 +227,5 @@ class PlotStyleTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
-    import json
-
-    txt = json.dumps([0,1,2])
 
     unittest.main()

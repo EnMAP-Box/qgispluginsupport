@@ -39,8 +39,8 @@ for name, module in sys.modules.items():
         break
 
 
-from .utils import *
-from .models import OptionListModel, Option, currentComboBoxValue, setCurrentComboBoxValue
+from qps.utils import *
+from qps.models import OptionListModel, Option, currentComboBoxValue, setCurrentComboBoxValue
 import pyqtgraph as pg
 
 

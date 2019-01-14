@@ -11,22 +11,17 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
-from qgis.core import *
-from qgis.gui import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtCore import *
 from enmapboxtestdata import enmap
 from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()
 SHOW_GUI = False
-from qps.crosshair import *
+from qps.crosshair.crosshair import *
 
 
 
 class CrosshairTests(unittest.TestCase):
 
     def test_crosshair(self):
-        import site, sys
         # add site-packages to sys.path as done by enmapboxplugin.py
 
         TestObjects.createVectorDataSet()

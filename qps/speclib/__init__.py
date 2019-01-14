@@ -30,7 +30,6 @@
 import sys
 from qgis.core import *
 from qgis.gui import *
-from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtCore import QSettings
 
 
@@ -45,23 +44,20 @@ reg = QgsGui.editorWidgetRegistry()
 if len(reg.factories()) == 0:
     reg.initEditors()
 
-
 def speclibSettings()->QSettings:
     """
-    Returns SPECLIB relevant QSettings
+    Returns SpectralLibrary relevant QSettings
     :return: QSettings
     """
-    from enmapbox import enmapboxSettings
-    return enmapboxSettings()
+    return QgsSettings('HUB', 'speclib')
 
-
-from enmapbox.gui.plotstyling import registerPlotStyleEditorWidget
+from qps.plotstyling.plotstyling import registerPlotStyleEditorWidget
 registerPlotStyleEditorWidget()
 
-from .spectrallibraries import registerSpectralProfileEditorWidget
+from qps.speclib.spectrallibraries import registerSpectralProfileEditorWidget
 registerSpectralProfileEditorWidget()
 
-from .qgsfunctions import registerQgsExpressionFunctions
+from qps.speclib.qgsfunctions import registerQgsExpressionFunctions
 registerQgsExpressionFunctions()
 
 try:

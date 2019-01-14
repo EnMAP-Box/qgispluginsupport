@@ -32,12 +32,23 @@ import os, sys, re, pathlib
 import csv as pycsv
 from .spectrallibraries import *
 
+
+def isHeaderLine(line:str)->bool:
+    """
+    Returns True if str ``line`` could be a CSV header
+    :param line: str
+    :return: bool
+    """
+    fieldNames = [n.lower() for n in pycsv.DictReader([line]).fieldnames]
+    missing = [n for n in CSVSpectralLibraryIO.STD_NAMES if not n.lower() in fieldNames]
+    return len(missing) == 0
+
 class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
     """
     SpectralLibrary IO with CSV files.
     """
     STD_NAMES = ['WKT']+[n for n in createStandardFields().names()]
-    REGEX_HEADERLINE = re.compile('^'+'\\t'.join(STD_NAMES)+'\\t.*')
+    REGEX_HEADERLINE = re.compile('^'+'[\t;,]'.join(STD_NAMES)+'\\t.*')
     REGEX_BANDVALUE_COLUMN = re.compile(r'^(?P<bandprefix>\D+)?(?P<band>\d+)[ _]*(?P<xvalue>-?\d+\.?\d*)?[ _]*(?P<xunit>\D+)?', re.IGNORECASE)
 
     @staticmethod
@@ -45,16 +56,23 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         if not isinstance(path, str):
             return False
 
-        found = False
+        if not os.path.isfile(path):
+            return False
+
+        mbytes = os.path.getsize(path) / 1000 **2
+        if mbytes > 5:
+            return False
+
         try:
+
             with open(path, 'r', encoding='utf-8') as f:
                 for line in f:
-                    if CSVSpectralLibraryIO.REGEX_HEADERLINE.search(line):
-                        found = True
-                        break
+                    if len(line) > 0:
+                        return isHeaderLine(line)
         except Exception as ex:
             return False
-        return found
+
+
 
     @staticmethod
     def write(speclib, path, dialect=pycsv.excel_tab):
@@ -76,21 +94,31 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
 
     @staticmethod
     def fromString(text:str, dialect=pycsv.excel_tab):
+        """
+        Reads oneCSV
+        :param text:
+        :param dialect:
+        :return:
+        """
         # divide the text into blocks of CSV rows with same columns structure
         lines = text.splitlines(keepends=True)
+        lines = [l.strip() for l in lines]
+        lines = [l for l in lines if len(l) > 0 and not l.startswith('#')]
         blocks = []
         currentBlock = ''
         for line in lines:
             assert isinstance(line, str)
             if len(line.strip()) == 0:
                 continue
-            if CSVSpectralLibraryIO.REGEX_HEADERLINE.search(line):
+            if isHeaderLine(line):
                 if len(currentBlock) > 1:
                     blocks.append(currentBlock)
 
                 #start new block
                 currentBlock = line
             else:
+                if not currentBlock.endswith('\n'):
+                    currentBlock += '\n'
                 currentBlock += line
         if len(currentBlock) > 1:
             blocks.append(currentBlock)
@@ -103,7 +131,6 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         #read and add CSV blocks
         for block in blocks:
             R = pycsv.DictReader(block.splitlines(), dialect=dialect)
-
             #read entire CSV table
             columnVectors = {}
             for n in R.fieldnames:
@@ -138,22 +165,22 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
                         x.append(toType(t, xValue))
 
 
-
             if len(x) > 0 and not len(x) == len(bandValueColumnNames):
-                print('Inconsistant band value column names. Unable to extract xValues (e.g. wavelength)', file=sys.stderr)
+                print('Inconsistent band value column names. Unable to extract xValues (e.g. wavelength)',
+                      file=sys.stderr)
                 x = None
             elif len(x) == 0:
                 x = None
             missingQgsFields = []
 
-            #find data type of missing fields
+            # find data type of missing fields
             for n in R.fieldnames:
                 assert isinstance(n, str)
                 if n in specialHandlingColumns:
                     continue
 
-                #find a none-empty string which describes a
-                #data value, get the type for and convert all str values into
+                # find a none-empty string which describes a
+                # data value, get the type for and convert all str values into
                 values = columnVectors[n]
 
                 t = str
@@ -171,12 +198,12 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
                 columnVectors[n] = toType(t, values, empty2None=True)
                 missingQgsFields.append(qgsField)
 
-            #add missing fields
+            # add missing fields
             if len(missingQgsFields) > 0:
                 SLIB.addMissingFields(missingQgsFields)
 
 
-            #create a feature for each row
+            # create a feature for each row
             yValueType = None
             for i in range(nProfiles):
                 p = SpectralProfile(fields=SLIB.fields())
@@ -192,7 +219,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
                     y = toType(yValueType, y, True)
                     p.setValues(y=y, x=x, xUnit=xUnit)
 
-                #add other attributes
+                # add other attributes
                 for n in [n for n in p.fieldNames() if n in list(columnVectors.keys())]:
 
                     p.setAttribute(n, columnVectors[n][i])
@@ -212,41 +239,40 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         attributeNames = [n for n in speclib.fieldNames()]
 
         stream = io.StringIO()
-        for i, item in enumerate(speclib.groupBySpectralProperties().items()):
-
+        for i, item in enumerate(speclib.groupBySpectralProperties(excludeEmptyProfiles=False).items()):
             xvalues, xunit, yunit = item[0]
             profiles = item[1]
             assert isinstance(profiles, list)
             attributeNames = attributeNames[:]
 
             valueNames = []
-            for b, xvalue in enumerate(xvalues):
+            if len(xvalues) == 0:
+                xvalues = list(range(len(profiles[0].yValues())))
 
+            for b, xvalue in enumerate(xvalues):
                 name = 'b{}'.format(b+1)
 
                 suffix = ''
                 if xunit is not None:
-                    suffix+=str(xvalue)
+                    suffix += str(xvalue)
                     suffix += xunit
                 elif xvalue != b:
                     suffix += str(xvalue)
 
-                if len(suffix)>0:
+                if len(suffix) > 0:
                     name += '_'+suffix
                 valueNames.append(name)
 
-            fieldnames = []
-            if not skipGeometry:
-                fieldnames += ['WKT']
-            fieldnames += attributeNames
-            if not skipGeometry:
-                fieldnames += valueNames
+            fieldnames = CSVSpectralLibraryIO.STD_NAMES[:]
+            if skipGeometry:
+                fieldnames.remove('WKT')
+            for n in attributeNames + valueNames:
+                if n not in fieldnames:
+                    fieldnames.append(n)
+
 
             W = pycsv.DictWriter(stream, fieldnames=fieldnames, dialect=dialect)
-
-
             W.writeheader()
-
             for p in profiles:
                 assert isinstance(p, SpectralProfile)
                 D = dict()
@@ -255,16 +281,16 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
                     D['WKT'] = p.geometry().asWkt()
 
                 for n in attributeNames:
-                    D[n] = value2str(p.attribute(n))
+                    D[n] = value2str(p.attribute(n)).replace('\n', '')
 
                 if not skipValues:
-                    for i, yValue in enumerate(p.yValues()):
-                        D[valueNames[i]] = yValue
+
+                    for iValue, yValue in enumerate(p.yValues()):
+                        D[valueNames[iValue]] = yValue
 
                 W.writerow(D)
-            W.writerow({}) #append empty row
 
-
+            stream.write('\n')
         return stream.getvalue()
 
 

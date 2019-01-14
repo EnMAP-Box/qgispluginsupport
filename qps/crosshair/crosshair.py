@@ -12,7 +12,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 import numpy as np
 
-from .utils import *
+from qps.utils import *
 
 class CrosshairStyle(object):
     """

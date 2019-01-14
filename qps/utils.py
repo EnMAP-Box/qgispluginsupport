@@ -26,17 +26,56 @@ dn = os.path.dirname
 
 # for python development only. try to find a qgisresources directory
 DIR_QGISRESOURCES = None
-
-tmp = pathlib.Path(dn(__file__))
-while tmp != pathlib.Path(tmp.anchor):
-    if os.path.isdir(tmp / 'qgisresources'):
-        DIR_QGISRESOURCES = tmp / 'qgisresources'
-        break
-    else:
-        tmp = tmp.parent
-del tmp
-
 MAP_LAYER_STORES = [QgsProject.instance()]
+
+
+def findUpwardPath(basepath, name, isDirectory=True):
+    tmp = pathlib.Path(basepath)
+    while tmp != pathlib.Path(tmp.anchor):
+        if (isDirectory and os.path.isdir(tmp / name)) or \
+            os.path.isfile(tmp / name):
+            return str(tmp / name)
+        else:
+            tmp = tmp.parent
+    return None
+
+DIR_QGISRESOURCES = findUpwardPath(__file__, 'qgisresources')
+
+
+
+def file_search(rootdir, pattern, recursive=False, ignoreCase=False):
+    assert os.path.isdir(rootdir), "Path is not a directory:{}".format(rootdir)
+    regType = type(re.compile('.*'))
+    results = []
+
+    for root, dirs, files in os.walk(rootdir):
+        for file in files:
+            if isinstance(pattern, regType):
+                if pattern.search(file):
+                    path = os.path.join(root, file)
+                    results.append(path)
+
+            elif (ignoreCase and fnmatch.fnmatch(file.lower(), pattern.lower())) \
+                    or fnmatch.fnmatch(file, pattern):
+
+                path = os.path.join(root, file)
+                results.append(path)
+        if not recursive:
+            break
+            pass
+
+    return results
+
+
+
+UI_DIRECTORIES = []
+if os.path.isdir(jp(dn(__file__), 'ui')):
+    UI_DIRECTORIES.append(jp(dn(__file__), 'ui'))
+for f in file_search(os.path.dirname(__file__), '*.ui', recursive=True):
+    dn = os.path.dirname(f)
+    if dn not in UI_DIRECTORIES:
+        UI_DIRECTORIES.append(dn)
+
 
 def registerMapLayerStore(store):
     """
@@ -59,10 +98,6 @@ def registeredMapLayers()->list:
             if layer not in layers:
                 layers.append(layer)
     return layers
-
-UI_DIRECTORIES = []
-if os.path.isdir(jp(dn(__file__), 'ui')):
-    UI_DIRECTORIES.append(jp(dn(__file__), 'ui'))
 
 
 ######### Lookup tables
@@ -260,30 +295,6 @@ def showMessage(message:str, title:str, level):
     v.showMessage(True)
 
 
-def file_search(rootdir, pattern, recursive=False, ignoreCase=False):
-    assert os.path.isdir(rootdir), "Path is not a directory:{}".format(rootdir)
-    regType = type(re.compile('.*'))
-    results = []
-
-    for root, dirs, files in os.walk(rootdir):
-        for file in files:
-            if isinstance(pattern, regType):
-                if pattern.search(file):
-                    path = os.path.join(root, file)
-                    results.append(path)
-
-            elif (ignoreCase and fnmatch.fnmatch(file.lower(), pattern.lower())) \
-                    or fnmatch.fnmatch(file, pattern):
-
-                path = os.path.join(root, file)
-                results.append(path)
-        if not recursive:
-            break
-            pass
-
-    return results
-
-
 def gdalDataset(pathOrDataset, eAccess=gdal.GA_ReadOnly):
     """
     Returns a gdal.Dataset
@@ -296,7 +307,7 @@ def gdalDataset(pathOrDataset, eAccess=gdal.GA_ReadOnly):
     return pathOrDataset
 
 
-def loadUI(basename:str):
+def loadUI(basename: str):
     """
     Loads a UI using the basename ("file.ui") only.
     Will search all directories specified in UI_DIRECTORIES
@@ -308,7 +319,8 @@ def loadUI(basename:str):
         assert isinstance(pathDir, str)
         if os.path.isdir(pathDir):
             pathUi = jp(pathDir, basename)
-            return loadUIFormClass(pathUi)
+            if os.path.isfile(pathUi):
+                return loadUIFormClass(pathUi)
     raise Exception('Unable to find full path for "{}". Make its directory known to UI_DIRECTORIES'.format(basename))
 
 # dictionary to store form classes and avoid multiple calls to read <myui>.ui

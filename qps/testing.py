@@ -1,5 +1,5 @@
 
-import os, sys, re, io, importlib, uuid, warnings
+import os, sys, re, io, importlib, uuid, warnings, pathlib, time
 import sip
 from qgis.core import *
 from qgis.gui import *
@@ -11,20 +11,131 @@ import qgis.utils
 import numpy as np
 from osgeo import gdal, ogr, osr
 
-from .utils import file_search
+from qps.utils import file_search, dn, jp, findUpwardPath
 
 
-
-DIR_TESTDATA = None
-try:
-    import enmapboxtestdata
-    DIR_TESTDATA = os.path.dirname(enmapboxtestdata.__file__)
-
-except Exception as ex:
-    pass
+URL_TESTDATA = r'https://bitbucket.org/hu-geomatics/enmap-box-testdata/get/master.zip'
+DIR_TESTDATA = findUpwardPath(__file__, 'enmapboxtestdata')
+if DIR_TESTDATA is None:
+    try:
+        import enmapboxtestdata
+        DIR_TESTDATA = dn(enmapboxtestdata.__file__)
+    except:
+        root = dn(findUpwardPath(__file__, '.git'))
+        DIR_TESTDATA = jp(root, 'enmapboxtestdata')
 
 
 SHOW_GUI = True
+
+
+
+def missingTestdata()->bool:
+    """
+    Returns (True, message:str) if testdata can not be loaded,
+     (False, None) else
+    :return: (bool, str)
+    """
+    try:
+        import enmapboxtestdata
+        assert os.path.isfile(enmapboxtestdata.enmap)
+        return False
+    except Exception as ex:
+        print(ex, file=sys.stderr)
+        return True
+
+
+def installTestdata(overwrite_existing=False):
+    """
+    Downloads and installs the EnMAP-Box Example Data
+    """
+    if not missingTestdata() and not overwrite_existing:
+        print('Testdata already installed and up to date.')
+        return
+
+    btn = QMessageBox.question(None, 'Testdata is missing or outdated', 'Download testdata from \n{}\n?'.format(URL_TESTDATA))
+    if btn != QMessageBox.Yes:
+        print('Canceled')
+        return
+
+    if DIR_TESTDATA is None:
+        s = ""
+
+    pathLocalZip = os.path.join(os.path.dirname(DIR_TESTDATA), 'enmapboxtestdata.zip')
+    url = QUrl(URL_TESTDATA)
+    dialog = QgsFileDownloaderDialog(url, pathLocalZip, 'Download {}'.format(os.path.basename(URL_TESTDATA)))
+
+    def onCanceled():
+        print('Download canceled')
+        return
+
+    def onCompleted():
+        print('Download completed')
+        print('Unzip {}...'.format(pathLocalZip))
+
+        targetDir = DIR_TESTDATA
+        os.makedirs(targetDir, exist_ok=True)
+        import zipfile
+        zf = zipfile.ZipFile(pathLocalZip)
+
+
+        names = zf.namelist()
+        names = [n for n in names if re.search(r'[^/]/enmapboxtestdata/..*', n) and not n.endswith('/')]
+        for name in names:
+            # create directory if doesn't exist
+
+            pathRel = re.search(r'[^/]+/enmapboxtestdata/(.*)$',name).group(1)
+            subDir, baseName = os.path.split(pathRel)
+            fullDir = os.path.normpath(os.path.join(targetDir, subDir))
+            os.makedirs(fullDir, exist_ok=True)
+
+            if not name.endswith('/'):
+                fullPath = os.path.normpath(os.path.join(targetDir, pathRel))
+                with open(fullPath, 'wb') as outfile:
+                    outfile.write(zf.read(name))
+                    outfile.flush()
+
+        zf.close()
+        del zf
+
+        print('Testdata installed.')
+        spec = importlib.util.spec_from_file_location('enmapboxtestdata', os.path.join(targetDir, '__init__.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sys.modules['enmapboxtestdata'] = module
+
+
+    def onDownloadError(messages):
+        raise Exception('\n'.join(messages))
+
+    def deleteFileDownloadedFile():
+
+        pass
+        # dirty patch for Issue #167
+        #
+        #print('Remove {}...'.format(pathLocalZip))
+        #os.remove(pathLocalZip)
+
+    def onDownLoadExited():
+
+        from qgis.PyQt.QtCore import QTimer
+        QTimer.singleShot(5000, deleteFileDownloadedFile)
+
+
+
+    def onDownloadProgress(received, total):
+        print('\r{:0.2f} %'.format(100.*received/total), end=' ', flush=True)
+        time.sleep(0.1)
+
+    dialog.downloadCanceled.connect(onCanceled)
+    dialog.downloadCompleted.connect(onCompleted)
+    dialog.downloadError.connect(onDownloadError)
+    dialog.downloadExited.connect(onDownLoadExited)
+    dialog.downloadProgress.connect(onDownloadProgress)
+
+    dialog.open()
+    dialog.exec_()
+
+
 
 def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication:
     """
