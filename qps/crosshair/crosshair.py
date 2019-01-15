@@ -120,6 +120,13 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         self.mPosition = point
         self.mCanvas.update()
 
+    def crosshairStyle(self)->CrosshairStyle:
+        """
+        Returns the crosshair style
+        :return: CrosshairStyle
+        """
+        return self.mCrosshairStyle
+
     def setVisibility(self, b:bool):
         """
         Sets the visibility of a Crosshair
