@@ -14,6 +14,24 @@ SHOW_GUI = False
 
 class ModelTests(unittest.TestCase):
 
+    def test_treeNode(self):
+
+        node = TreeNode(None)
+        self.assertIsInstance(node, TreeNode)
+
+        argList = list()
+        kwdList = list()
+        def onSignal(*args, **kwargs):
+            nonlocal argList, kwdList
+            argList.append(args)
+            kwdList.append(kwargs)
+
+
+        node.sigAddedChildren.connect(onSignal)
+        n2 = TreeNode(node)
+        QApplication.processEvents()
+        self.assertTrue(len(argList) > 0)
+
     def test_treeModel(self):
 
         TM = TreeModel()
