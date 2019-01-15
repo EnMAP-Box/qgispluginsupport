@@ -230,7 +230,7 @@ class TreeNode(QObject):
     sigRemovedChildren = pyqtSignal(QObject, int, int)
     sigUpdated = pyqtSignal(QObject)
 
-    def __init__(self, parentNode, name=None, values=None):
+    def __init__(self, parentNode, name=None, values=None, toolTip:str=None, statusTip:str=None):
         super(TreeNode, self).__init__()
         QObject.__init__(self)
 
@@ -247,6 +247,12 @@ class TreeNode(QObject):
         self.mStatusTip = ''
         if name:
             self.setName(name)
+
+        if toolTip:
+            self.setToolTip(toolTip)
+
+        if statusTip:
+            self.setStatusTip(statusTip)
 
         if values:
             self.setValues(values)
