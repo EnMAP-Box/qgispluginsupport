@@ -100,14 +100,14 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         assert isinstance(mapCanvas, QgsMapCanvas)
         super(CrosshairMapCanvasItem, self).__init__(mapCanvas)
 
-        self.canvas = mapCanvas
-        self.rasterGridLayer = None
-        self.sizePixelBox = 0
-        self.sizePixelBox = 1
+        self.mCanvas = mapCanvas
+        self.mRasterGridLayer = None
+        self.mSizePixelBox = 0
+        self.mSizePixelBox = 1
         self.mShow = False
-        self.crosshairStyle = CrosshairStyle()
-        self.crosshairStyle.setVisibility(False)
-        self.setCrosshairStyle(self.crosshairStyle)
+        self.mCrosshairStyle = CrosshairStyle()
+        self.mCrosshairStyle.setVisibility(False)
+        self.setCrosshairStyle(self.mCrosshairStyle)
         self.mPosition = None
 
 
@@ -118,7 +118,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         """
         #print('set position')
         self.mPosition = point
-        self.canvas.update()
+        self.mCanvas.update()
 
     def setVisibility(self, b:bool):
         """
@@ -129,9 +129,9 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         assert isinstance(b, bool)
         old = self.mShow
         self.mShow = b
-        self.crosshairStyle.setVisibility(b)
+        self.mCrosshairStyle.setVisibility(b)
         if old != b:
-            self.canvas.update()
+            self.mCanvas.update()
 
     def visibility(self)->bool:
         """Returns the Crosshair visibility"""
@@ -141,14 +141,14 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
     def connectRasterGrid(self, qgsRasterLayer):
 
         if isinstance(qgsRasterLayer):
-            self.rasterGridLayer = qgsRasterLayer
+            self.mRasterGridLayer = qgsRasterLayer
         else:
-            self.rasterGridLayer = None
+            self.mRasterGridLayer = None
 
     def setPixelBox(self, nPx:int):
         assert nPx >= 0
         assert nPx == 1 or nPx % 3 == 0, 'Size of pixel box must be an odd integer value (1,3,5...)'
-        self.sizePixelBox = nPx
+        self.mSizePixelBox = nPx
 
 
     def setCrosshairStyle(self, crosshairStyle:CrosshairStyle):
@@ -158,31 +158,31 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :return:
         """
         assert isinstance(crosshairStyle, CrosshairStyle)
-        self.crosshairStyle = crosshairStyle
+        self.mCrosshairStyle = crosshairStyle
 
         #apply style
-        self.canvas.update()
+        self.mCanvas.update()
         #self.updateCanvas()
 
     def paint(self, painter, QStyleOptionGraphicsItem=None, QWidget_widget=None):
-        if isinstance(self.mPosition, QgsPointXY) and self.mShow and self.crosshairStyle.mShow:
+        if isinstance(self.mPosition, QgsPointXY) and self.mShow and self.mCrosshairStyle.mShow:
            #paint the crosshair
-            size = self.canvas.size()
-            m2p = self.canvas.mapSettings().mapToPixel()
+            size = self.mCanvas.size()
+            m2p = self.mCanvas.mapSettings().mapToPixel()
             centerGeo = self.mPosition
 
-            if not self.canvas.extent().contains(centerGeo):
+            if not self.mCanvas.extent().contains(centerGeo):
                 return
 
             centerPx = self.toCanvasCoordinates(centerGeo)
 
-            x0 = centerPx.x() * (1.0 - self.crosshairStyle.mSize)
-            y0 = centerPx.y() * (1.0 - self.crosshairStyle.mSize)
+            x0 = centerPx.x() * (1.0 - self.mCrosshairStyle.mSize)
+            y0 = centerPx.y() * (1.0 - self.mCrosshairStyle.mSize)
             x1 = size.width() - x0
             y1 = size.height() - y0
-            gap = min([centerPx.x(), centerPx.y()]) * self.crosshairStyle.mGap
+            gap = min([centerPx.x(), centerPx.y()]) * self.mCrosshairStyle.mGap
             ml = 5  # marker length in pixel, measured from crosshair line
-            md = int(round(max([1, self.crosshairStyle.mDotSize * 0.5])))
+            md = int(round(max([1, self.mCrosshairStyle.mDotSize * 0.5])))
             #this is what we want to draw
             lines = []
             polygons = []
@@ -192,10 +192,10 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
             lines.append(QLineF(centerPx.x(), y0, centerPx.x(), centerPx.y() - gap))
             lines.append(QLineF(centerPx.x(), y1, centerPx.x(), centerPx.y() + gap))
 
-            if self.crosshairStyle.mShowDistanceMarker:
+            if self.mCrosshairStyle.mShowDistanceMarker:
 
 
-                extent = self.canvas.extent()
+                extent = self.mCanvas.extent()
                 maxD = 0.5 * min([extent.width(), extent.height()])
 
                 pred = nicePredecessor(maxD)
@@ -211,13 +211,13 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                 lines.append(line)
                 #todo: add more markers
 
-                if self.crosshairStyle.mShowDistanceLabel:
+                if self.mCrosshairStyle.mShowDistanceLabel:
 
                     painter.setFont(QFont('Courier', pointSize=10))
                     font = painter.font()
                     ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))
 
-                    distUnit = self.canvas.mapSettings().destinationCrs().mapUnits()
+                    distUnit = self.mCanvas.mapSettings().destinationCrs().mapUnits()
                     unitString = str(QgsUnitTypes.encodeUnit(distUnit))
 
                     if unitString == 'meters':
@@ -226,10 +226,10 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         labelText = '{}{}'.format(pred, unitString)
 
                     pen = QPen(Qt.SolidLine)
-                    pen.setWidth(self.crosshairStyle.mThickness)
-                    pen.setColor(self.crosshairStyle.mColor)
+                    pen.setWidth(self.mCrosshairStyle.mThickness)
+                    pen.setColor(self.mCrosshairStyle.mColor)
 
-                    brush = self.canvas.backgroundBrush()
+                    brush = self.mCanvas.backgroundBrush()
                     c = brush.color()
                     c.setAlpha(170)
                     brush.setColor(c)
@@ -244,7 +244,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     painter.setPen(pen)
                     painter.drawText(ptLabel, labelText)
 
-            if self.crosshairStyle.mShowDot:
+            if self.mCrosshairStyle.mShowDot:
                 p = QRectF()
 
 
@@ -257,8 +257,8 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                 polygons.append(p)
 
 
-            if self.crosshairStyle.mShowPixelBorder:
-                rasterLayers = [l for l in self.canvas.layers() if isinstance(l, QgsRasterLayer)
+            if self.mCrosshairStyle.mShowPixelBorder:
+                rasterLayers = [l for l in self.mCanvas.layers() if isinstance(l, QgsRasterLayer)
                                 and l.isValid()]
 
                 if len(rasterLayers) > 0:
@@ -271,7 +271,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     xres = lyr.rasterUnitsPerPixelX()
                     yres = lyr.rasterUnitsPerPixelY()
 
-                    ms = self.canvas.mapSettings()
+                    ms = self.mCanvas.mapSettings()
                     centerPxLyr = ms.mapToLayerCoordinates(lyr, centerGeo)
 
 
@@ -309,21 +309,21 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         pixelBorder.append(ul)
 
                         pen = QPen(Qt.SolidLine)
-                        pen.setWidth(self.crosshairStyle.mSizePixelBorder)
-                        pen.setColor(self.crosshairStyle.mColor)
-                        pen.setBrush(self.crosshairStyle.mColor)
+                        pen.setWidth(self.mCrosshairStyle.mSizePixelBorder)
+                        pen.setColor(self.mCrosshairStyle.mColor)
+                        pen.setBrush(self.mCrosshairStyle.mColor)
                         brush = QBrush(Qt.NoBrush)
-                        brush.setColor(self.crosshairStyle.mColor)
+                        brush.setColor(self.mCrosshairStyle.mColor)
                         painter.setBrush(brush)
                         painter.setPen(pen)
                         painter.drawPolygon(pixelBorder)
 
             pen = QPen(Qt.SolidLine)
-            pen.setWidth(self.crosshairStyle.mThickness)
-            pen.setColor(self.crosshairStyle.mColor)
-            pen.setBrush(self.crosshairStyle.mColor)
+            pen.setWidth(self.mCrosshairStyle.mThickness)
+            pen.setColor(self.mCrosshairStyle.mColor)
+            pen.setBrush(self.mCrosshairStyle.mColor)
             brush = QBrush(Qt.NoBrush)
-            brush.setColor(self.crosshairStyle.mColor)
+            brush.setColor(self.mCrosshairStyle.mColor)
             painter.setBrush(brush)
             painter.setPen(pen)
             for p in polygons:

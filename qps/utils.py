@@ -256,29 +256,6 @@ def setQgsFieldValue(feature:QgsFeature, field, value):
     feature.setAttribute(field.name(), value)
 
 
-
-def guessDataProvider(src:str)->str:
-    """
-    Get an uri and guesses the QgsDataProvider for
-    :param uri: str
-    :return: str, provider key like 'gdal', 'ogr' or None
-    """
-    if re.search(r'\.(bsq|tiff?|jp2|jp2000|j2k|png)', src, re.I):
-        return 'gdal'
-    elif re.search(r'\.(sli|esl)$', src, re.I):  # probably a spectral library
-        return 'enmapbox_speclib'
-    elif re.search(r'\.(shp|gpkg|kml)$', src, re.I):  # probably a vector file
-        return 'ogr'
-    elif re.search(r'\.(txt|csv)$', src, re.I):  # probably normal text file
-        return 'enmapbox_textfile'
-    elif re.search(r'\.pkl$', src, re.I):
-        return 'enmapbox_pkl'
-    elif re.search(r'url=https?.*wfs', src, re.I):
-        return 'WFS'
-    return None
-
-
-
 def showMessage(message:str, title:str, level):
     """
     Shows a message using the QgsMessageViewer
@@ -553,22 +530,6 @@ def allSubclasses(cls):
     """
     return cls.__subclasses__() + [g for s in cls.__subclasses__()
                                    for g in allSubclasses(s)]
-
-
-class PanelWidgetBase(QgsDockWidget):
-    def __init__(self, parent):
-        super(PanelWidgetBase, self).__init__(parent)
-        self.setupUi(self)
-
-    def _blockSignals(self, widgets, block=True):
-        states = dict()
-        if isinstance(widgets, dict):
-            for w, block in widgets.items():
-                states[w] = w.blockSignals(block)
-        else:
-            for w in widgets:
-                states[w] = w.blockSignals(block)
-        return states
 
 
 def check_package(name, package=None, stop_on_error=False):
