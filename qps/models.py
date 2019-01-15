@@ -224,13 +224,14 @@ class OptionListModel(QAbstractListModel):
 
 
 class TreeNode(QObject):
+
     sigWillAddChildren = pyqtSignal(QObject, int, int)
     sigAddedChildren = pyqtSignal(QObject, int, int)
     sigWillRemoveChildren = pyqtSignal(QObject, int, int)
     sigRemovedChildren = pyqtSignal(QObject, int, int)
     sigUpdated = pyqtSignal(QObject)
 
-    def __init__(self, parentNode, name=None, values=None, toolTip:str=None, statusTip:str=None):
+    def __init__(self, parentNode, name=None, value=None, values=None, icon=None, toolTip:str=None, statusTip:str=None):
         super(TreeNode, self).__init__()
         QObject.__init__(self)
 
@@ -243,11 +244,14 @@ class TreeNode(QObject):
         self.mToolTip = None
         self.mCheckState = Qt.Unchecked
         self.mCheckable = False
-
         self.mStatusTip = ''
+
         if name:
             self.setName(name)
-
+        if value:
+            self.setValue(value)
+        if icon:
+            self.setIcon(icon)
         if toolTip:
             self.setToolTip(toolTip)
 
