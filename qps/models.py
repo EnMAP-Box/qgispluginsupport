@@ -24,7 +24,7 @@ def currentComboBoxValue(comboBox):
         assert isinstance(o, Option)
         return o.mValue
     else:
-        return cb.currentData()
+        return comboBox.currentData()
 
 def setCurrentComboBoxValue(comboBox, value):
     """
