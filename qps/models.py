@@ -416,6 +416,9 @@ class TreeNode(QObject):
     def contextMenu(self):
         return None
 
+    def setValue(self, value):
+        self.setValues([value])
+
     def setValues(self, listOfValues):
         if not isinstance(listOfValues, list):
             listOfValues = [listOfValues]
@@ -423,6 +426,12 @@ class TreeNode(QObject):
 
     def values(self):
         return self.mValues[:]
+
+    def value(self):
+        if len(self.mValues) > 0:
+            return self.mValues[0]
+        else:
+            return None
 
     def childCount(self):
         return len(self.mChildren)
