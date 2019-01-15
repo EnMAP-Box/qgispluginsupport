@@ -230,6 +230,7 @@ class TreeNode(QObject):
     sigWillRemoveChildren = pyqtSignal(QObject, int, int)
     sigRemovedChildren = pyqtSignal(QObject, int, int)
     sigUpdated = pyqtSignal(QObject)
+    sigExpandedChanged = pyqtSignal(QObject, bool)
 
     def __init__(self, parentNode, name=None, value=None, values=None, icon=None, toolTip:str=None, statusTip:str=None):
         super(TreeNode, self).__init__()
@@ -245,6 +246,7 @@ class TreeNode(QObject):
         self.mCheckState = Qt.Unchecked
         self.mCheckable = False
         self.mStatusTip = ''
+        self.mExpanded = False
 
         if name:
             self.setName(name)
@@ -266,6 +268,16 @@ class TreeNode(QObject):
 
         s = ""
 
+    def setExpanded(self, expanded:bool):
+        assert isinstance(expanded, bool)
+        b = self.mExpanded != expanded
+        self.mExpanded = expanded
+
+        if b:
+            self.sigExpandedChanged.emit(self, self.mExpanded)
+
+    def expanded(self)->bool:
+        return self.mExpanded == True
 
     def setStatusTip(self, statusTip:str):
         """
