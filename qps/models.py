@@ -236,7 +236,7 @@ class TreeNode(QObject):
         super(TreeNode, self).__init__()
         QObject.__init__(self)
 
-        self.mParent = parentNode
+        self.mParentNode = parentNode
 
         self.mChildren = []
         self.mName = name
@@ -250,7 +250,7 @@ class TreeNode(QObject):
 
         if name:
             self.setName(name)
-        if value:
+        if value is not None:
             self.setValue(value)
         if icon:
             self.setIcon(icon)
@@ -260,13 +260,21 @@ class TreeNode(QObject):
         if statusTip:
             self.setStatusTip(statusTip)
 
-        if values:
+        if values is not None:
             self.setValues(values)
 
         if isinstance(parentNode, TreeNode):
             parentNode.appendChildNodes([self])
 
         s = ""
+
+
+    def __iter__(self):
+        return iter(self.mChildren)
+
+    def __len__(self):
+        return len(self.mChildren)
+
 
     def setExpanded(self, expanded:bool):
         assert isinstance(expanded, bool)
@@ -328,19 +336,19 @@ class TreeNode(QObject):
 
 
     def nodeIndex(self):
-        return self.mParent.mChildren.index(self)
+        return self.mParentNode.mChildren.index(self)
 
     def next(self):
         i = self.nodeIndex()
         if i < len(self.mChildren.mChildren):
-            return self.mParent.mChildren[i + 1]
+            return self.mParentNode.mChildren[i + 1]
         else:
             return None
 
     def previous(self):
         i = self.nodeIndex()
         if i > 0:
-            return self.mParent.mChildren[i - 1]
+            return self.mParentNode.mChildren[i - 1]
         else:
             return None
 
@@ -349,8 +357,8 @@ class TreeNode(QObject):
         Detaches this TreeNode from its parent TreeNode
         :return:
         """
-        if isinstance(self.mParent, TreeNode):
-            self.mParent.mChildren.remove(self)
+        if isinstance(self.mParentNode, TreeNode):
+            self.mParentNode.mChildren.remove(self)
             self.setParentNode(None)
 
     def appendChildNodes(self, listOfChildNodes):
@@ -368,7 +376,7 @@ class TreeNode(QObject):
         self.sigWillAddChildren.emit(self, index, idxLast)
         for i, node in enumerate(listOfChildNodes):
             assert isinstance(node, TreeNode)
-            node.mParent = self
+            node.mParentNode = self
             # connect node signals
             node.sigWillAddChildren.connect(self.sigWillAddChildren)
             node.sigAddedChildren.connect(self.sigAddedChildren)
@@ -411,11 +419,11 @@ class TreeNode(QObject):
         return self.mToolTip
 
     def parentNode(self):
-        return self.mParent
+        return self.mParentNode
 
     def setParentNode(self, treeNode):
         assert isinstance(treeNode, TreeNode)
-        self.mParent = treeNode
+        self.mParentNode = treeNode
 
     def setIcon(self, icon):
         self.mIcon = icon
@@ -482,7 +490,11 @@ class TreeModel(QAbstractItemModel):
             self.connectTreeView(parent)
         s = ""
 
-    def rootNode(self):
+    def rootNode(self)->TreeNode:
+        """
+        Returns the (invisible) root node
+        :return: TreeNode
+        """
         return self.mRootNode
 
 
@@ -520,7 +532,9 @@ class TreeModel(QAbstractItemModel):
         else:
             return None
 
-    def parent(self, index):
+
+
+    def parent(self, index)->QModelIndex:
         if not index.isValid():
             return QModelIndex()
         node = self.idx2node(index)
@@ -538,7 +552,9 @@ class TreeModel(QAbstractItemModel):
         row = parentNode.mChildren.index(node)
         return self.createIndex(row, 0, parentNode)
 
-    def rowCount(self, index):
+    def rowCount(self, index:QModelIndex):
+        if index is None:
+            return len(self.rootNode().mChildren)
 
         node = self.idx2node(index)
         return len(node.mChildren) if isinstance(node, TreeNode) else 0
@@ -586,7 +602,13 @@ class TreeModel(QAbstractItemModel):
         else:
             return QModelIndex()
 
-    def findParentNode(self, node, parentNodeType):
+    def findParentNode(self, node, parentNodeType)->TreeNode:
+        """
+        finds the next parent TreeNode of type `parentNodeType`
+        :param node: TreeNode
+        :param parentNodeType: cls
+        :return: TreeNode instance
+        """
         assert isinstance(node, TreeNode)
         while True:
             if isinstance(node, parentNodeType):
