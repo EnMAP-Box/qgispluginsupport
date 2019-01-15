@@ -223,17 +223,16 @@ class OptionListModel(QAbstractListModel):
 
 
 
-class TreeNode(QObject, QStandardItem):
-    sigWillAddChildren = pyqtSignal(object, int, int)
-    sigAddedChildren = pyqtSignal(object, int, int)
-    sigWillRemoveChildren = pyqtSignal(object, int, int)
-    sigRemovedChildren = pyqtSignal(object, int, int)
-    sigUpdated = pyqtSignal(object)
+class TreeNode(QObject):
+    sigWillAddChildren = pyqtSignal(QObject, int, int)
+    sigAddedChildren = pyqtSignal(QObject, int, int)
+    sigWillRemoveChildren = pyqtSignal(QObject, int, int)
+    sigRemovedChildren = pyqtSignal(QObject, int, int)
+    sigUpdated = pyqtSignal(QObject)
 
     def __init__(self, parentNode, name=None, values=None):
         super(TreeNode, self).__init__()
         QObject.__init__(self)
-        QStandardItem.__init__(self)
 
         self.mParent = parentNode
 
@@ -244,6 +243,8 @@ class TreeNode(QObject, QStandardItem):
         self.mToolTip = None
         self.mCheckState = Qt.Unchecked
         self.mCheckable = False
+
+        self.mStatusTip = ''
         if name:
             self.setName(name)
 
@@ -255,6 +256,38 @@ class TreeNode(QObject, QStandardItem):
 
         s = ""
 
+
+    def setStatusTip(self, statusTip:str):
+        """
+        Sets the nodes's status tip to the string specified by statusTip.
+        :param statusTip: str
+        """
+        assert isinstance(statusTip, str)
+        self.mStatusTip = statusTip
+
+    def statusTip(self)->str:
+        """
+        Returns the nodes's status tip.
+        :return: str
+        """
+        return self.mStatusTip
+
+    def setCheckState(self, checkState):
+        assert isinstance(checkState, Qt.CheckState)
+        self.mCheckState = checkState
+
+    def checkState(self)->Qt.CheckState:
+        return self.mCheckState
+
+    def checked(self)->bool:
+        return self.isCheckable() and self.mCheckState == Qt.Checked
+
+    def isCheckable(self)->bool:
+        return self.mCheckable == True
+
+    def setCheckable(self, b:bool):
+        assert isinstance(b, bool)
+        self.mCheckable = b
 
 
     def clone(self, parent=None):

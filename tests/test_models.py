@@ -29,8 +29,19 @@ class ModelTests(unittest.TestCase):
 
         node.sigAddedChildren.connect(onSignal)
         n2 = TreeNode(node)
+        self.assertIsInstance(n2, TreeNode)
+        self.assertEqual(n2.parentNode(), node)
         QApplication.processEvents()
         self.assertTrue(len(argList) > 0)
+
+        t = 'test'
+        n2.setToolTip(t)
+        assert n2.toolTip() == t
+
+        n2.setStatusTip(t)
+        assert n2.statusTip() == t
+
+
 
     def test_treeModel(self):
 
