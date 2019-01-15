@@ -110,13 +110,13 @@ class ModelTests(unittest.TestCase):
 
 
         nA = TestNodeA(TM.rootNode(), name='TestNodeA')
-        nB = TestNodeB(TreeNode(nA), name='TestNodeB')
+        nB = TestNodeB(TreeNode(nA, name='SubA'), name='TestNodeB')
         nLast = TreeNode(TreeNode(nB))
 
         self.assertEqual(TM.findParentNode(nLast, TestNodeA), nA)
         self.assertEqual(TM.findParentNode(nLast, TestNodeB), nB)
 
-
+        nB.parentNode().removeChildNode(nB)
 
         if SHOW_GUI:
             QAPP.exec_()

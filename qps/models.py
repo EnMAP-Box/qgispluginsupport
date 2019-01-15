@@ -479,11 +479,11 @@ class TreeModel(QAbstractItemModel):
 
         self.mColumnNames = ['Node', 'Value']
         self.mRootNode = rootNode if isinstance(rootNode, TreeNode) else TreeNode(None)
-        self.mRootNode.sigWillAddChildren.connect(self.nodeWillAddChildren)
-        self.mRootNode.sigAddedChildren.connect(self.nodeAddedChildren)
-        self.mRootNode.sigWillRemoveChildren.connect(self.nodeWillRemoveChildren)
-        self.mRootNode.sigRemovedChildren.connect(self.nodeRemovedChildren)
-        self.mRootNode.sigUpdated.connect(self.nodeUpdated)
+        self.mRootNode.sigWillAddChildren.connect(self.onNodeWillAddChildren)
+        self.mRootNode.sigAddedChildren.connect(self.onNodeAddedChildren)
+        self.mRootNode.sigWillRemoveChildren.connect(self.onNodeWillRemoveChildren)
+        self.mRootNode.sigRemovedChildren.connect(self.onNodeRemovedChildren)
+        self.mRootNode.sigUpdated.connect(self.onNodeUpdated)
 
         self.mTreeView = None
         if isinstance(parent, QTreeView):
@@ -498,23 +498,23 @@ class TreeModel(QAbstractItemModel):
         return self.mRootNode
 
 
-    def nodeWillAddChildren(self, node, idx1, idxL):
+    def onNodeWillAddChildren(self, node, idx1, idxL):
         idxNode = self.node2idx(node)
         self.beginInsertRows(idxNode, idx1, idxL)
 
-    def nodeAddedChildren(self, *args):
+    def onNodeAddedChildren(self, *args):
         self.endInsertRows()
         # for i in range(idx1, idxL+1):
 
 
-    def nodeWillRemoveChildren(self, node, idx1, idxL):
+    def onNodeWillRemoveChildren(self, node, idx1, idxL):
         idxNode = self.node2idx(node)
         self.beginRemoveRows(idxNode, idx1, idxL)
 
-    def nodeRemovedChildren(self, node, idx1, idxL):
+    def onNodeRemovedChildren(self, node, idx1, idxL):
         self.endRemoveRows()
 
-    def nodeUpdated(self, node):
+    def onNodeUpdated(self, node):
         idxNode = self.node2idx(node)
         self.dataChanged.emit(idxNode, idxNode)
         self.setColumnSpan(node)
