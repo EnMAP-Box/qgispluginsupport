@@ -492,6 +492,9 @@ class TreeNode(QObject):
 
 
 class TreeModel(QAbstractItemModel):
+    """
+    A QAbstractItemModel implementation to be used in QTreeViews
+    """
     def __init__(self, parent=None, rootNode=None):
         super(TreeModel, self).__init__(parent)
 
@@ -550,9 +553,12 @@ class TreeModel(QAbstractItemModel):
         else:
             return None
 
-
-
-    def parent(self, index)->QModelIndex:
+    def parent(self, index:QModelIndex)->QModelIndex:
+        """
+        Returns the parent index of a QModelIndex `index`
+        :param index: QModelIndex
+        :return: QModelIndex
+        """
         if not index.isValid():
             return QModelIndex()
         node = self.idx2node(index)
@@ -570,19 +576,45 @@ class TreeModel(QAbstractItemModel):
         row = parentNode.mChildren.index(node)
         return self.createIndex(row, 0, parentNode)
 
-    def rowCount(self, index:QModelIndex):
+    def rowCount(self, index:QModelIndex)->int:
+        """
+        Return the row-count, i.e. number of child node for a TreeNode as index `index`.
+        :param index: QModelIndex
+        :return: int
+        """
         if index is None:
             return len(self.rootNode().mChildren)
 
         node = self.idx2node(index)
         return len(node.mChildren) if isinstance(node, TreeNode) else 0
 
-    def hasChildren(self, index=QModelIndex()):
+    def hasChildren(self, index=QModelIndex())->bool:
+        """
+        Returns True if a TreeNode at index `index` has child nodes.
+        :param index: QModelIndex
+        :return: bool
+        """
         node = self.idx2node(index)
         return isinstance(node, TreeNode) and len(node.mChildren) > 0
 
-    def columnNames(self):
-        return self.mColumnNames
+    def columnNames(self)->list:
+        """
+        Returns the column names
+        :return: [list-of-string]
+        """
+        return self.mColumnNames[:]
+
+    def idx2columnName(self, index:QModelIndex)->str:
+        """
+        Returns the column name related to a QModelIndex
+        :param index: QModelIndex
+        :return: str, column name
+        """
+        if not index.isValid():
+            return None
+        else:
+            return self.mColumnNames[index.column()]
+
 
     def columnCount(self, index= QModelIndex()):
 
@@ -603,8 +635,14 @@ class TreeModel(QAbstractItemModel):
             for n in node.childNodes():
                 self.setColumnSpan(n)
 
-    def index(self, row, column, parentIndex=None):
-
+    def index(self, row, column, parentIndex=None)->QModelIndex:
+        """
+        Returns the QModelIndex
+        :param row: int
+        :param column: int
+        :param parentIndex: QModelIndex
+        :return: QModelIndex
+        """
         if parentIndex is None:
             parentNode = self.mRootNode
         else:
@@ -635,7 +673,12 @@ class TreeModel(QAbstractItemModel):
                 return None
             node = node.parentNode()
 
-    def indexes2nodes(self, indexes):
+    def indexes2nodes(self, indexes:list):
+        """
+        Returns the TreeNodes related to a list of QModelIndexes
+        :param indexes: [list-of-QModelIndex]
+        :return: [list-of-TreeNodes]
+        """
         assert isinstance(indexes, list)
         nodes = []
         for idx in indexes:
@@ -643,6 +686,16 @@ class TreeModel(QAbstractItemModel):
             if n not in nodes:
                 nodes.append(n)
         return nodes
+
+    def nodes2indexes(self, nodes:list):
+        """
+        Converts a list of TreeNodes into the corresponding list of QModelIndexes
+        Set indexes2nodes
+        :param nodes: [list-of-TreeNodes]
+        :return: [list-of-QModelIndex]
+        """
+        return [self.node2idx(n) for n in nodes]
+
 
     def expandNode(self, node, expand=True, recursive=True):
         assert isinstance(node, TreeNode)
@@ -654,16 +707,24 @@ class TreeModel(QAbstractItemModel):
                 for n in node.childNodes():
                     self.expandNode(n, expand=expand, recursive=recursive)
 
-    def nodes2indexes(self, nodes):
-        return [self.node2idx(n) for n in nodes]
 
-    def idx2node(self, index):
+    def idx2node(self, index:QModelIndex)->TreeNode:
+        """
+        Returns the TreeNode related to an QModelIndex `index`.
+        :param index: QModelIndex
+        :return: TreeNode
+        """
         if not index.isValid():
             return self.mRootNode
         else:
             return index.internalPointer()
 
-    def node2idx(self, node):
+    def node2idx(self, node:TreeNode)->QModelIndex:
+        """
+        Returns a TreeNode's QModelIndex
+        :param node: TreeNode
+        :return: QModelIndex
+        """
         assert isinstance(node, TreeNode)
         if node == self.mRootNode:
             return QModelIndex()
@@ -676,6 +737,12 @@ class TreeModel(QAbstractItemModel):
             return self.createIndex(r, 0, node)
 
     def data(self, index, role):
+        """
+
+        :param index: QModelIndex
+        :param role: Qt.ItemRole
+        :return: object
+        """
         node = self.idx2node(index)
         col = index.column()
         if role == Qt.UserRole:

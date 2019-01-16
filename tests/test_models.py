@@ -58,13 +58,15 @@ class ModelTests(unittest.TestCase):
             n = TreeNode(parent, 'Node {}'.format(i+1))
             self.assertTrue(n.parentNode() == parent)
             nodes.append(n)
+
+
             parent = n
 
         for node in nodes:
             idx = TM.node2idx(node)
             self.assertIsInstance(idx, QModelIndex)
             self.assertTrue(idx.internalPointer() == node)
-
+            self.assertTrue(TM.idx2columnName(idx), 'Node')
         self.assertTrue(TM.rowCount(None), 1)
 
     def test_treeView(self):
