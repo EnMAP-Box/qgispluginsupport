@@ -43,13 +43,14 @@ class CursorLocationTest(unittest.TestCase):
 
     def test_layertest(self):
 
-        canvas  = QgsMapCanvas()
+        canvas = QgsMapCanvas()
         layers = self.webLayers()
         center = SpatialPoint.fromMapLayerCenter(layers[0])
         store = QgsMapLayerStore()
         store.addMapLayers(layers)
         canvas.setLayers(layers)
         cldock = CursorLocationInfoDock()
+        self.assertIsInstance(cldock, CursorLocationInfoDock)
         cldock.show()
         cldock.loadCursorLocation(center, canvas)
         crs, point = cldock.cursorLocation()
@@ -58,10 +59,10 @@ class CursorLocationTest(unittest.TestCase):
 
         if SHOW_GUI:
             QGIS_APP.exec_()
-        self.assertIsInstance(cldock, CursorLocationInfoDock)
+
 
 if __name__ == "__main__":
-
+    SHOW_GUI = False
     #exampleMapLinking()
     unittest.main()
 

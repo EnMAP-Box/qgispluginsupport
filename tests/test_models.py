@@ -10,7 +10,7 @@ from qps.testing import initQgisApplication
 from qps.models import *
 
 QAPP = initQgisApplication()
-SHOW_GUI = True
+SHOW_GUI = False
 
 class ModelTests(unittest.TestCase):
 
@@ -152,5 +152,5 @@ class ModelTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
+    SHOW_GUI = False
     unittest.main()

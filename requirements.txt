@@ -1,0 +1,18 @@
+# depending on your system it might be necessary to install required package with package installers others than pip
+# see https://pip.pypa.io/en/stable/reference/pip_install/#requirements-file-format
+# see https://www.python.org/dev/peps/pep-0440/#version-specifiers
+###### Requirements ######
+
+gdal
+numpy>=1.15
+scipy>=1.1
+scikit-learn>=0.19.2
+
+#will be replaces with stable 0.11
+#pyqtgraph>=0.11
+https://bitbucket.org/hu-geomatics/enmap-box/downloads/pyqtgraph-0.11.0.dev0.zip
+
+matplotlib>=3.0
+
+# git+https://github.com/pyqtgraph/pyqtgraph
+

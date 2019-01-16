@@ -72,9 +72,9 @@ UI_DIRECTORIES = []
 if os.path.isdir(jp(dn(__file__), 'ui')):
     UI_DIRECTORIES.append(jp(dn(__file__), 'ui'))
 for f in file_search(os.path.dirname(__file__), '*.ui', recursive=True):
-    dn = os.path.dirname(f)
-    if dn not in UI_DIRECTORIES:
-        UI_DIRECTORIES.append(dn)
+    path = os.path.dirname(f)
+    if path not in UI_DIRECTORIES:
+        UI_DIRECTORIES.append(path)
 
 
 def registerMapLayerStore(store):

@@ -1,5 +1,5 @@
 
-import os, sys, re, io, importlib, uuid, warnings, pathlib, time
+import os, sys, re, io, importlib, uuid, warnings, pathlib, time, site
 import sip
 from qgis.core import *
 from qgis.gui import *
@@ -194,6 +194,10 @@ def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication
                                                    *['python', 'plugins'])
 
         # initiate the QGIS processing framework
+        qgisCorePythonPluginDir = os.path.join(QgsApplication.pkgDataPath(),*['python', 'plugins'])
+        assert os.path.isdir(qgisCorePythonPluginDir)
+        if not qgisCorePythonPluginDir in sys.path:
+            sys.path.append(qgisCorePythonPluginDir)
 
         from processing.core.Processing import Processing
         Processing.initialize()

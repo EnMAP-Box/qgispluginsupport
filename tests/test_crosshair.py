@@ -33,9 +33,13 @@ class CrosshairTests(unittest.TestCase):
         refCanvas.setDestinationCrs(lyr.crs())
         refCanvas.show()
 
-        style = CrosshairDialog.getCrosshairStyle(mapCanvas=refCanvas)
-        if style is not None:
-            self.assertIsInstance(style, CrosshairStyle)
+        style = CrosshairStyle()
+        self.assertIsInstance(style, CrosshairStyle)
+
+        if SHOW_GUI:
+            style = CrosshairDialog.getCrosshairStyle(mapCanvas=refCanvas)
+            if style is not None:
+                self.assertIsInstance(style, CrosshairStyle)
 
         if SHOW_GUI:
             QGIS_APP.exec_()

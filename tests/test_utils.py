@@ -19,10 +19,11 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
-from enmapbox.testing import initQgisApplication
+from qps.testing import initQgisApplication
+SHOW_GUI = False
 QGIS_APP = initQgisApplication()
+from qps.utils import *
 
-from enmapbox.gui.utils import *
 from enmapboxtestdata import enmap
 
 
@@ -44,22 +45,21 @@ class testClassUtils(unittest.TestCase):
         self.w.close()
 
 
-    def test_loadformClass(self):
+    def test_loadformClasses(self):
         #from enmapbox import EnMAPBox
         #EB = EnMAPBox()
         #import qgisresources.images
         #qgisresources.images.qInitResources()
         pathUi = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapbox\coreapps\enmapboxapplications\imagemathapp\ui\main.ui'
+        import qps
+        for pathUi in file_search(dn(qps.__file__), '*.ui', recursive=True):
 
-        pathChangedUI = os.path.join(os.path.dirname(__file__), 'modified.ui')
-        self.assertTrue(os.path.isfile(pathUi))
-        t = loadUIFormClass(pathUi, _modifiedui=pathChangedUI)
-        self.assertTrue(os.path.isfile(pathChangedUI))
+            t = loadUIFormClass(pathUi)
+            self.assertIsInstance(t, object)
         s = ""
 
 
     def test_spatialObjects(self):
-        from enmapbox.gui.utils import SpatialPoint, SpatialExtent
 
         pt1 = SpatialPoint('EPSG:4326', 300,300)
         self.assertIsInstance(pt1, SpatialPoint)
@@ -67,7 +67,7 @@ class testClassUtils(unittest.TestCase):
         pt2 = pickle.loads(d)
 
 
-        self.assertEquals(pt1, pt2)
+        self.assertEqual(pt1, pt2)
 
 
     def test_gdalDataset(self):
@@ -93,7 +93,7 @@ class testClassUtils(unittest.TestCase):
         ds = gdalDataset(enmap)
         lyr = QgsRasterLayer(enmap)
 
-        self.assertEquals(ds.GetGeoTransform(), layerGeoTransform(lyr))
+        self.assertEqual(ds.GetGeoTransform(), layerGeoTransform(lyr))
 
         self.assertIsInstance(ds, gdal.Dataset)
         self.assertIsInstance(lyr, QgsRasterLayer)
@@ -119,14 +119,7 @@ class testClassUtils(unittest.TestCase):
 
 
 
-
-
-
-
-
-
     def test_appendItemsToMenu(self):
-        from enmapbox.gui.utils import appendItemsToMenu
 
         B = QMenu()
         action = B.addAction('Do something')
@@ -137,7 +130,7 @@ class testClassUtils(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
+    SHOW_GUI = False
     unittest.main()
 
 
