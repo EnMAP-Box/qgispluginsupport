@@ -55,26 +55,44 @@ def setCurrentComboBoxValue(comboBox, value):
 
 
 class Option(object):
+    """
+    Represents an option
+    """
 
-    def __init__(self, value, name=None, tooltip='', icon=QIcon()):
-
+    def __init__(self, value, name=None, toolTip='', icon=QIcon()):
         self.mValue = value
         if name is None:
             name = str(value)
         self.mName = name
-        self.mTooltip = tooltip
-        self.mIcon = None
+        self.mTooltip = toolTip
+        self.mIcon = icon
 
-    def value(self):
+    def value(self)->object:
+        """
+        Returns the option value
+        :return: object
+        """
         return self.mValue
 
-    def name(self):
+    def name(self)->str:
+        """
+        Returns the option name
+        :return: str
+        """
         return self.mName
 
-    def tooltip(self):
+    def toolTip(self)->str:
+        """
+        Returns the option tooltip.
+        :return: str
+        """
         return self.mTooltip
 
-    def icon(self):
+    def icon(self)->QIcon:
+        """
+        Returns an option icon
+        :return: QIcon
+        """
         return self.mIcon
 
     def __eq__(self, other):

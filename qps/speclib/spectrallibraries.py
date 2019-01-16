@@ -1527,7 +1527,7 @@ class AddAttributeDialog(QDialog):
 
         for ntype in self.mLayer.dataProvider().nativeTypes():
             assert isinstance(ntype, QgsVectorDataProvider.NativeType)
-            o = Option(ntype,name=ntype.mTypeName, tooltip=ntype.mTypeDesc)
+            o = Option(ntype, name=ntype.mTypeName, toolTip=ntype.mTypeDesc)
             self.typeModel.addOption(o)
         self.cbType.setModel(self.typeModel)
         self.cbType.currentIndexChanged.connect(self.onTypeChanged)

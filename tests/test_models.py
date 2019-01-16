@@ -127,7 +127,7 @@ class ModelTests(unittest.TestCase):
         cbModel = OptionListModel()
         for k in sorted(os.environ.keys()):
             v = os.environ[k]
-            cbModel.addOption(Option(v, k, tooltip=v))
+            cbModel.addOption(Option(v, k, toolTip=v))
 
         cb = QComboBox()
         cb.setModel(cbModel)
