@@ -146,8 +146,8 @@ def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication
         return QgsApplication.instance()
     else:
 
-        if not 'QGIS_PREFIX_PATH' in os.environ.keys():
-            raise Exception('env variable QGIS_PREFIX_PATH not set')
+        #if not 'QGIS_PREFIX_PATH' in os.environ.keys():
+        #    raise Exception('env variable QGIS_PREFIX_PATH not set')
 
         if sys.platform == 'darwin':
             # add location of Qt Libraries
