@@ -10,6 +10,8 @@ pipelines:
     - step:
         script: # Modify the commands below to build your repository.
           - python -m pip install -r requirements.txt
+          - xvfb-run
           - python -m unittest discover tests "test_*.py"
+
           #- python -m pip install pytest-cov
           #- py.test --cov enmapbox --cov-report term-missing enmapboxtesting
