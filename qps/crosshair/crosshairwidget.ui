@@ -13,6 +13,10 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="../qpsresources.qrc">
+    <normaloff>:/qps/ui/icons/crosshair.svg</normaloff>:/qps/ui/icons/crosshair.svg</iconset>
+  </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="8" column="0">
     <spacer name="verticalSpacer">
@@ -235,7 +239,7 @@
  <customwidgets>
   <customwidget>
    <class>QgsColorButton</class>
-   <extends>QPushButton</extends>
+   <extends>QToolButton</extends>
    <header>qgscolorbutton.h</header>
   </customwidget>
   <customwidget>
@@ -244,6 +248,8 @@
    <header>qgis.gui</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../qpsresources.qrc"/>
+ </resources>
  <connections/>
 </ui>

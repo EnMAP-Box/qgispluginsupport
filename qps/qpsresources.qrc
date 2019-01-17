@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="qps">
+    <file>ui/icons/crosshair.svg</file>
     <file>ui/icons/refresh_green.svg</file>
     <file>ui/icons/refresh_orange.svg</file>
     <file>ui/icons/undo_green.svg</file>
