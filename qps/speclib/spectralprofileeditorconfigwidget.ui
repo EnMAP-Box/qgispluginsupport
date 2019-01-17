@@ -74,8 +74,6 @@
    </property>
   </action>
  </widget>
- <resources>
-  <include location="../../../../../QGIS/images/images.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

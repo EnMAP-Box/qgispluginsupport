@@ -906,7 +906,7 @@ class TestCore(unittest.TestCase):
             slw.setCurrentSpectra(cs)
             self.assertTrue(len(slw.currentSpectra()) == 3)
 
-        if True:
+        if False:
             sl2 = self.createSpeclib()
             slw.addSpeclib(sl2)
 
