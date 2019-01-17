@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Frame</string>
+   <string>Spectral Library</string>
   </property>
   <property name="windowIcon">
    <iconset resource="../qpsresources.qrc">
@@ -90,7 +90,7 @@
       </property>
       <property name="minimumSize">
        <size>
-        <width>0</width>
+        <width>50</width>
         <height>0</height>
        </size>
       </property>
@@ -325,7 +325,7 @@
   <action name="actionSelectProfilesFromMap">
    <property name="icon">
     <iconset resource="../qpsresources.qrc">
-     <normaloff>:/qps/ui/icons/pickrasterspectrum.svg</normaloff>:/qps/ui/icons/pickrasterspectrum.svg</iconset>
+     <normaloff>:/qps/ui/icons/profile_identify.svg</normaloff>:/qps/ui/icons/profile_identify.svg</iconset>
    </property>
    <property name="text">
     <string>Select Profiles from Map</string>
