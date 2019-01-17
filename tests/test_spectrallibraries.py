@@ -33,7 +33,7 @@ from qps.speclib.envi import *
 from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
-SHOW_GUI = False
+SHOW_GUI = True
 
 import enmapboxtestdata
 
@@ -883,11 +883,26 @@ class TestCore(unittest.TestCase):
         if True:
             #self.assertIsInstance(p.mModel, SpectralLibraryTableModel)
             #self.assertTrue(p.mModel.headerData(0, Qt.Horizontal) == fieldNames[0])
+
+            for mode in list(SpectralLibraryWidget.CurrentProfilesMode):
+                assert isinstance(mode, SpectralLibraryWidget.CurrentProfilesMode)
+                slw.setCurrentProfilesMode(mode)
+                assert slw.currentProfilesMode() == mode
+
             cs = [speclib[0], speclib[3], speclib[-1]]
             l = len(speclib)
             self.assertTrue(slw.speclib() == speclib)
-            slw.setAddCurrentSpectraToSpeclibMode(False)
+
             self.assertTrue(len(slw.currentSpectra()) == 0)
+            slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.block)
+            slw.setCurrentSpectra(cs)
+            self.assertTrue(len(slw.currentSpectra()) == 0)
+
+            slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.automatically)
+            slw.setCurrentSpectra(cs)
+            self.assertTrue(len(slw.currentSpectra()) == 0)
+
+            slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.normal)
             slw.setCurrentSpectra(cs)
             self.assertTrue(len(slw.currentSpectra()) == 3)
 
@@ -915,6 +930,26 @@ class TestCore(unittest.TestCase):
             QAPP.exec_()
 
 
+    def test_toolbarStackedActions(self):
+
+        tb = QToolBar()
+        a1 = tb.addAction('Action1')
+        a2 = tb.addAction('ActionA2')
+
+        a21 = QAction('A2.1')
+        a22 = QAction('A2.2')
+        a22.setCheckable(True)
+
+        setToolButtonDefaultActionMenu(a2, [a21, a22])
+
+
+        btn2 = tb.findChildren(QToolButton)[2]
+        self.assertIsInstance(btn2, QToolButton)
+
+        tb.show()
+
+        if SHOW_GUI:
+            QAPP.exec_()
 
 if __name__ == '__main__':
 

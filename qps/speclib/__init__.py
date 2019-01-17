@@ -33,11 +33,6 @@ from qgis.gui import *
 from qgis.PyQt.QtCore import QSettings
 
 
-from . import speclibresources
-speclibresources.qInitResources()
-print('DEGUB: init resources')
-if not 'speclibresources' in list(sys.modules.keys()):
-    sys.modules['speclibresources'] = speclibresources
 
 #register Editor widgets, if not done before
 reg = QgsGui.editorWidgetRegistry()

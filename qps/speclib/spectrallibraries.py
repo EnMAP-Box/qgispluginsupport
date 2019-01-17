@@ -30,7 +30,7 @@
 """
 
 #see http://python-future.org/str_literals.html for str issue discussion
-import json
+import json, enum
 
 from pyqtgraph.graphicsItems.PlotItem import PlotItem
 
@@ -2045,9 +2045,23 @@ class UnitComboBoxItemModel(OptionListModel):
 class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
     sigLoadFromMapRequest = pyqtSignal()
 
+    class CurrentProfilesMode(enum.Enum):
+        normal = 0
+        automatically = 1
+        block = 2
+
+
+
     def __init__(self, parent=None, speclib:SpectralLibrary=None):
         super(SpectralLibraryWidget, self).__init__(parent)
         self.setupUi(self)
+
+        #set the menu
+        self.btnCurrentProfilesMode = [btn for btn in self.mToolbar.findChildren(QToolButton)
+               if btn.defaultAction() == self.actionBlockProfiles][0]
+
+        setToolButtonDefaultActionMenu(self.btnCurrentProfilesMode, [self.actionSaveProfiles, self.actionSaveProfilesAutomatically, self.actionBlockProfiles])
+
 
         self.mColorCurrentSpectra = COLOR_SELECTED_SPECTRA
         self.mColorSelectedSpectra = COLOR_SELECTED_SPECTRA
@@ -2061,19 +2075,13 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         self.mSelectionModel = None
 
-
         if not isinstance(speclib, SpectralLibrary):
             speclib = SpectralLibrary()
+
         assert isinstance(speclib, SpectralLibrary)
         self.mSpeclib = speclib
 
         MAP_LAYER_STORES[0].addMapLayer(speclib)
-
-        fields = self.mSpeclib.fields()
-
-
-        #self.mSpeclib.setEditorWidgetSetup(fields.lookupField('style'), QgsEditorWidgetSetup('PlotSettings',{}))
-        #self.mSpeclib.setEditorWidgetSetup(fields.lookupField('values'), QgsEditorWidgetSetup('SpectralProfile', {}))
 
         self.mSpeclib.editingStarted.connect(self.onEditingToggled)
         self.mSpeclib.editingStopped.connect(self.onEditingToggled)
@@ -2104,6 +2112,42 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.mMapInteraction = False
         self.setMapInteraction(False)
 
+        self.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.normal)
+
+    def currentProfilesMode(self)->CurrentProfilesMode:
+        """
+        Returns the mode how incoming profiles are handled
+        :return: CurrentProfilesMode
+        """
+        assert isinstance(self.btnCurrentProfilesMode, QToolButton)
+        defAction = self.btnCurrentProfilesMode.defaultAction()
+
+        if defAction == self.actionBlockProfiles:
+            return SpectralLibraryWidget.CurrentProfilesMode.block
+        elif defAction == self.actionSaveProfiles:
+            return SpectralLibraryWidget.CurrentProfilesMode.normal
+        elif defAction == self.actionSaveProfilesAutomatically:
+            return SpectralLibraryWidget.CurrentProfilesMode.automatically
+        raise Exception('Unknown default action: {}'.format(defAction))
+
+    def setCurrentProfilesMode(self, mode:CurrentProfilesMode):
+        """
+        Sets the way how incomming profiles are handles
+        :param mode: CurrentProfilesMode
+        """
+        assert isinstance(mode, SpectralLibraryWidget.CurrentProfilesMode)
+        assert isinstance(self.btnCurrentProfilesMode, QToolButton)
+        if mode == SpectralLibraryWidget.CurrentProfilesMode.normal:
+            self.btnCurrentProfilesMode.setDefaultAction(self.actionSaveProfiles)
+        elif mode == SpectralLibraryWidget.CurrentProfilesMode.automatically:
+            self.btnCurrentProfilesMode.setDefaultAction(self.actionSaveProfilesAutomatically)
+        elif mode == SpectralLibraryWidget.CurrentProfilesMode.block:
+            self.btnCurrentProfilesMode.setDefaultAction(self.actionBlockProfiles)
+            self.setCurrentProfiles([])
+        else:
+            raise Exception('Unknown mode: {}'.format(mode))
+
+
     def dropEvent(self, event):
         assert isinstance(event, QDropEvent)
         #log('dropEvent')
@@ -2115,12 +2159,11 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
             self.addSpeclib(speclib)
 
 
+
     def initActions(self):
 
-
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
-        self.actionSaveCurrentProfiles.triggered.connect(self.addCurrentSpectraToSpeclib)
-        self.actionAddCurrentProfilesAutomatically.toggled.connect(self.actionSaveCurrentProfiles.setDisabled)
+        self.actionSaveProfiles.triggered.connect(self.addCurrentSpectraToSpeclib)
 
         #self.actionSaveCurrentProfiles.event = onEvent
 
@@ -2273,8 +2316,6 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
             self.setCurrentSpectra([])
         self.mMapInteraction = b
         self.actionSelectProfilesFromMap.setVisible(b)
-        self.actionSaveCurrentProfiles.setVisible(b)
-        self.actionAddCurrentProfilesAutomatically.setVisible(b)
         self.actionPanMapToSelectedRows.setVisible(b)
         self.actionZoomMapToSelectedRows.setVisible(b)
 
@@ -2379,13 +2420,6 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
             QTimer.singleShot(500, onReset)
 
-    def setAddCurrentSpectraToSpeclibMode(self, b:bool):
-        """
-        Set if spectral profiles are added to the SpectraLibrary immediately.
-        :param b: bool
-        """
-        self.actionAddCurrentProfilesAutomatically.setChecked(b)
-
     def addCurrentSpectraToSpeclib(self, *args):
         """
         Adds all current spectral profiles to the "persistant" SpectralLibrary
@@ -2400,9 +2434,14 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
             self.speclib().commitChanges()
 
     sigCurrentSpectraChanged = pyqtSignal(list)
-    def setCurrentSpectra(self, profiles:list):
+
+    def setCurrentSpectra(self, profiles: list):
+        self.setCurrentProfiles(profiles)
+
+    def setCurrentProfiles(self, profiles:list):
         from .plotting import SpectralProfilePlotDataItem
         assert isinstance(profiles, list)
+        self.mCurrentProfiles.clear()
 
         for i in range(len(profiles)):
             p = profiles[i]
@@ -2411,27 +2450,28 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
                 p = SpectralProfile.fromSpecLibFeature(p)
                 profiles[i] = p
 
+        mode = self.currentProfilesMode()
+        if mode == SpectralLibraryWidget.CurrentProfilesMode.block:
+            pass
 
-        if self.actionAddCurrentProfilesAutomatically.isChecked():
-            #add SpectralProfiles into the SpectralLibrary
+        elif mode  == SpectralLibraryWidget.CurrentProfilesMode.automatically:
+            # add SpectralProfiles into the SpectralLibrary
             b = self.mSpeclib.isEditable()
             self.mSpeclib.startEditing()
             self.mSpeclib.addProfiles(profiles)
             if not b:
                 self.mSpeclib.commitChanges()
-        else:
-            #do not add, but show SpectralProfiles
 
+        elif mode ==  SpectralLibraryWidget.CurrentProfilesMode.normal:
             newCurrent = collections.OrderedDict()
             for i, p in enumerate(profiles):
                 pdi = SpectralProfilePlotDataItem(p)
                 pdi.setStyle(CURRENT_SPECTRUM_STYLE)
                 newCurrent[p] = pdi
-            self.plotWidget.setPlotOverlayItems(list(newCurrent.values()))
-            self.mCurrentProfiles.clear()
             self.mCurrentProfiles.update(newCurrent)
 
-        return
+        self.plotWidget.setPlotOverlayItems(list(self.mCurrentProfiles.values()))
+
 
     def currentSpectra(self)->list:
         """

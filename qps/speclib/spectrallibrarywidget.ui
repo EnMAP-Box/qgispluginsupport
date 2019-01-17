@@ -23,7 +23,7 @@
   <property name="frameShadow">
    <enum>QFrame::Raised</enum>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
    <property name="spacing">
     <number>2</number>
    </property>
@@ -53,11 +53,8 @@
      <property name="floatable">
       <bool>false</bool>
      </property>
+     <addaction name="actionBlockProfiles"/>
      <addaction name="actionSelectProfilesFromMap"/>
-     <addaction name="separator"/>
-     <addaction name="actionX"/>
-     <addaction name="actionSaveCurrentProfiles"/>
-     <addaction name="actionAddCurrentProfilesAutomatically"/>
      <addaction name="separator"/>
      <addaction name="actionImportSpeclib"/>
      <addaction name="actionSaveSpeclib"/>
@@ -67,9 +64,9 @@
      <addaction name="actionSaveEdits"/>
      <addaction name="actionDeleteSelected"/>
      <addaction name="actionCutSelectedRows"/>
-     <addaction name="actionCopySelectedRows"/>
      <addaction name="actionPasteFeatures"/>
      <addaction name="separator"/>
+     <addaction name="actionCopySelectedRows"/>
      <addaction name="actionSelectAll"/>
      <addaction name="actionInvertSelection"/>
      <addaction name="actionRemoveSelection"/>
@@ -82,6 +79,12 @@
    </item>
    <item>
     <widget class="QSplitter" name="splitter">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>2</verstretch>
+      </sizepolicy>
+     </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
@@ -182,95 +185,105 @@
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QFrame" name="btnBarDualViewOptions">
-         <property name="frameShape">
-          <enum>QFrame::StyledPanel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Raised</enum>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
-          <property name="spacing">
-           <number>2</number>
-          </property>
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QProgressBar" name="mProgressBar">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="value">
-             <number>0</number>
-            </property>
-            <property name="textVisible">
-             <bool>false</bool>
-            </property>
-            <property name="invertedAppearance">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="mInfoLabel">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer_4">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QToolButton" name="btnFormView">
-            <property name="text">
-             <string>F</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QToolButton" name="btnTableView">
-            <property name="text">
-             <string>T</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
       </layout>
      </widget>
     </widget>
    </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="mInfoLabel">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QProgressBar" name="mProgressBar">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="value">
+        <number>0</number>
+       </property>
+       <property name="textVisible">
+        <bool>false</bool>
+       </property>
+       <property name="invertedAppearance">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QFrame" name="btnBarDualViewOptions">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <property name="spacing">
+         <number>2</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QToolButton" name="btnFormView">
+          <property name="text">
+           <string>F</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnTableView">
+          <property name="text">
+           <string>T</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
   </layout>
   <action name="actionImportSpeclib">
    <property name="icon">
-    <iconset resource="speclibresources.qrc">
-     <normaloff>:/speclibimages/icons/speclib_add.svg</normaloff>:/speclibimages/icons/speclib_add.svg</iconset>
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/speclib_add.svg</normaloff>:/qps/ui/icons/speclib_add.svg</iconset>
    </property>
    <property name="text">
     <string>importSpeclib</string>
@@ -281,8 +294,8 @@
   </action>
   <action name="actionSaveSpeclib">
    <property name="icon">
-    <iconset resource="speclibresources.qrc">
-     <normaloff>:/speclibimages/icons/speclib_save.svg</normaloff>:/speclibimages/icons/speclib_save.svg</iconset>
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/speclib_save.svg</normaloff>:/qps/ui/icons/speclib_save.svg</iconset>
    </property>
    <property name="text">
     <string>Save Spectral Library</string>
@@ -386,32 +399,14 @@
   </action>
   <action name="actionSelectProfilesFromMap">
    <property name="icon">
-    <iconset resource="speclibresources.qrc">
-     <normaloff>:/speclibimages/icons/pickrasterspectrum.svg</normaloff>:/speclibimages/icons/pickrasterspectrum.svg</iconset>
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/pickrasterspectrum.svg</normaloff>:/qps/ui/icons/pickrasterspectrum.svg</iconset>
    </property>
    <property name="text">
     <string>Select Profiles from Map</string>
    </property>
    <property name="toolTip">
     <string>Select new profile from map</string>
-   </property>
-  </action>
-  <action name="actionSaveCurrentProfiles">
-   <property name="checked">
-    <bool>false</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="speclibresources.qrc">
-     <normaloff>:/speclibimages/icons/profile2speclib.svg</normaloff>:/speclibimages/icons/profile2speclib.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Save current profiles</string>
-   </property>
-   <property name="toolTip">
-    <string>Add current profile(s) to spectral library</string>
-   </property>
-   <property name="iconVisibleInMenu">
-    <bool>false</bool>
    </property>
   </action>
   <action name="actionReload">
@@ -546,19 +541,16 @@
     <string>Ctrl+C</string>
    </property>
   </action>
-  <action name="actionAddCurrentProfilesAutomatically">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
+  <action name="actionSaveProfilesAutomatically">
    <property name="checked">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="speclibresources.qrc">
-     <normaloff>:/speclibimages/icons/profile2speclib_auto.svg</normaloff>:/speclibimages/icons/profile2speclib_auto.svg</iconset>
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/profile_save_auto.svg</normaloff>:/qps/ui/icons/profile_save_auto.svg</iconset>
    </property>
    <property name="text">
-    <string>AddCurrentProfilesAutomatically</string>
+    <string>Save Automatically</string>
    </property>
    <property name="toolTip">
     <string>Add new profiles automatically to opened Spectral Library</string>
@@ -588,12 +580,28 @@
     <string>Switch to table view</string>
    </property>
   </action>
-  <action name="actionX">
-   <property name="checkable">
-    <bool>true</bool>
+  <action name="actionBlockProfiles">
+   <property name="icon">
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/profile_dontreceive.svg</normaloff>:/qps/ui/icons/profile_dontreceive.svg</iconset>
    </property>
    <property name="text">
-    <string>X</string>
+    <string>Dont add new profiles</string>
+   </property>
+   <property name="toolTip">
+    <string>Block new profiles from being shown and added in this spectral library</string>
+   </property>
+  </action>
+  <action name="actionSaveProfiles">
+   <property name="icon">
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/profile_save.svg</normaloff>:/qps/ui/icons/profile_save.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Save Profile(s)</string>
+   </property>
+   <property name="toolTip">
+    <string>Saves curently overlaid profiles to the spectral library</string>
    </property>
   </action>
  </widget>
@@ -606,8 +614,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="speclibresources.qrc"/>
-  <include location="../../../../../QGIS/images/images.qrc"/>
+  <include location="../qpsresources.qrc"/>
  </resources>
  <connections/>
 </ui>
