@@ -10,7 +10,7 @@ pipelines:
     - step:
         script: # Modify the commands below to build your repository.
           - python -m pip install -r requirements.txt
-          - Xvfb :1
+          #- Xvfb :1
           #- xvfb-run
           - python -m unittest discover tests "test_*.py"
 

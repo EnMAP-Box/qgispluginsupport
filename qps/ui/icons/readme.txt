@@ -1,0 +1,1 @@
+icons should be defined as 128 x 129 px SVG file
