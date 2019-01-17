@@ -853,8 +853,14 @@ class SpectralProfile(QgsFeature):
 
 class SpectralLibrary(QgsVectorLayer):
     _instances = []
+
     @staticmethod
     def readFromMimeData(mimeData:QMimeData):
+        """
+        Reads a SpectraLibrary from mime data.
+        :param mimeData: QMimeData
+        :return: SpectralLibrary
+        """
         if MIMEDATA_SPECLIB_LINK in mimeData.formats():
             #extract from link
             id = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
@@ -876,6 +882,11 @@ class SpectralLibrary(QgsVectorLayer):
 
     @staticmethod
     def readFromPickleDump(data):
+        """
+        Reads a SpectralLibrary from a pickle.dump()-generate bytes object.
+        :param data: bytes
+        :return: SpectralLibrary
+        """
         return pickle.loads(data)
 
     @staticmethod
@@ -910,10 +921,16 @@ class SpectralLibrary(QgsVectorLayer):
 
     @staticmethod
     def readFromRasterPositions(pathRaster, positions):
-        #todo: handle vector file input & geometries
+        """
+        Reads a SpectralLibrary from a set of positions
+        :param pathRaster:
+        :param positions:
+        :return:
+        """
         if not isinstance(positions, list):
             positions = [positions]
         profiles = []
+
         source = gdal.Open(pathRaster)
         i = 0
         for position in positions:
@@ -976,10 +993,7 @@ class SpectralLibrary(QgsVectorLayer):
     def __init__(self, name='SpectralLibrary', fields:QgsFields=None, uri=None):
 
 
-        #crs = SpectralProfile.crs
-        #uri = 'Point?crs={}'.format(crs.authid())
         lyrOptions = QgsVectorLayer.LayerOptions(loadDefaultStyle=False, readExtentFromXml=False)
-        #super(SpectralLibrary, self).__init__(uri, name, 'memory', lyrOptions)
 
         if uri is None:
             #create a new, empty backend
@@ -1035,7 +1049,6 @@ class SpectralLibrary(QgsVectorLayer):
         """
         Initializes the QgsAttributeTableConfig
         """
-
         mgr = self.actions()
         assert isinstance(mgr, QgsActionManager)
         actionSetStyle = createSetPlotStyleAction(self.fields().at(self.fields().lookupField(FIELD_STYLE)))
@@ -1047,11 +1060,23 @@ class SpectralLibrary(QgsVectorLayer):
         mgr.addAction(actionRemoveSpectrum)
 
         columns = self.attributeTableConfig().columns()
-        columns = [columns[-1]] + columns[:-1]
+        visibleColumns = ['name']
+        for column in columns:
+            assert isinstance(column, QgsAttributeTableConfig.ColumnConfig)
+
+            column.hidden = column.name not in visibleColumns and column.type != QgsAttributeTableConfig.Action
+
+        #action column as first column
+        ac = [c for c in columns if c.type == QgsAttributeTableConfig.Action][0]
+        nc = [c for c in columns if c.name == FIELD_NAME][0]
+        firstCols = [ac, nc]
+        columns = [ac, nc] + [c for c in columns if c not in firstCols]
+
         conf = QgsAttributeTableConfig()
         conf.setColumns(columns)
         conf.setActionWidgetVisible(True)
         conf.setActionWidgetStyle(QgsAttributeTableConfig.ButtonList)
+
         self.setAttributeTableConfig(conf)
 
 

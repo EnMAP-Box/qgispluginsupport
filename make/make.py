@@ -7,6 +7,9 @@ app = initQgisApplication()
 from qps.utils import *
 from osgeo import gdal, ogr, osr
 
+DIR_QGIS_REPO = r'C:\Users\geo_beja\Repositories\QGIS'
+DIR_REPO = dn(findUpwardPath(__file__, '.git'))
+
 
 def rasterize_vector_labels(pathRef, pathDst, pathShp, label_field, band_ref=1, label_layer=0):
     drvMemory = ogr.GetDriverByName('Memory')
@@ -147,9 +150,15 @@ def getDOMAttributes(elem):
     return values
 
 
-def compile_rc_files(ROOT, targetDir=None):
+def compileResourceFiles(dirRoot:str, targetDir:str=None):
+    """
+
+    :param dirRoot: str, root directory, in which to search for *.qrc files
+    :param targetDir: str, output directory to write the compiled *.py files to.
+           Defaults to the *.qrc's directory
+    """
     #find ui files
-    ui_files = file_search(ROOT, '*.ui', recursive=True)
+    ui_files = file_search(dirRoot, '*.ui', recursive=True)
     qrcs = set()
 
     doc = QDomDocument()
@@ -170,10 +179,8 @@ def compile_rc_files(ROOT, targetDir=None):
     resourcefiles = list(qrcs)
     assert len(resourcefiles) > 0
 
-    shell_cmds = []
-    subprocess_args = []
     for root_dir, f in resourcefiles:
-        #dn = os.path.dirname(f)
+
         pathQrc = os.path.normpath(jp(root_dir, f))
         if not os.path.exists(pathQrc):
             print('Resource file does not exist: {}'.format(pathQrc))
@@ -181,6 +188,7 @@ def compile_rc_files(ROOT, targetDir=None):
         bn = os.path.basename(pathQrc)
 
         if isinstance(targetDir, str):
+            os.makedirs(targetDir, exist_ok=True)
             dn = targetDir
         else:
             dn = os.path.dirname(pathQrc)
@@ -336,12 +344,32 @@ def createFilePackage(dirData):
     print('Created '+pathInit)
 
 
+def compileQGISResourceFiles(pathQGISRepo:str):
+    """
+    Searches for *qrc file in QGIS repository, compile them into <DIR_REPO>/qgisresources
+    :param pathQGISRepo: str, path to local QGIS repository
+    """
+    assert os.path.isdir(pathQGISRepo)
+    target = jp(DIR_REPO, 'qgisresources')
+    compileResourceFiles(pathQGISRepo, targetDir=target)
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
-    pathGit = findUpwardPath(__file__, '.git')
-    DIR_ROOT = dn(pathGit)
+
+
+    if False:
+        compileResourceFiles(DIR_REPO)
 
     if True:
-        compile_rc_files(DIR_ROOT)
+        compileQGISResourceFiles(DIR_QGIS_REPO)
+
+
     print('Done')
 

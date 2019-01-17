@@ -51,7 +51,7 @@
   </layout>
   <action name="actionResetY">
    <property name="icon">
-    <iconset resource="../../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionUndo.svg</normaloff>:/images/themes/default/mActionUndo.svg</iconset>
    </property>
    <property name="text">
@@ -63,7 +63,7 @@
   </action>
   <action name="actionResetX">
    <property name="icon">
-    <iconset resource="../../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionUndo.svg</normaloff>:/images/themes/default/mActionUndo.svg</iconset>
    </property>
    <property name="text">

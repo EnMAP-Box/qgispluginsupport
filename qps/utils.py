@@ -1200,3 +1200,25 @@ class SpatialExtent(QgsRectangle):
 
         return '{} {} {}'.format(self.upperLeft(), self.lowerRight(), self.crs().authid())
 
+
+def setToolButtonDefaultActionMenu(toolButton:QToolButton, actions:list):
+
+    if isinstance(toolButton, QAction):
+        for btn in toolButton.parent().findChildren(QToolButton):
+            assert isinstance(btn, QToolButton)
+            if btn.defaultAction() == toolButton:
+                toolButton = btn
+                break
+
+    assert isinstance(toolButton, QToolButton)
+    toolButton.setPopupMode(QToolButton.MenuButtonPopup)
+    menu = QMenu(toolButton)
+    for i, a in enumerate(actions):
+        assert isinstance(a, QAction)
+        a.setParent(menu)
+        menu.addAction(a)
+        if i == 0:
+            toolButton.setDefaultAction(a)
+
+    menu.triggered.connect(toolButton.setDefaultAction)
+    toolButton.setMenu(menu)
