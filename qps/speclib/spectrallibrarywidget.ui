@@ -29,35 +29,44 @@
      <property name="styleSheet">
       <string notr="true"/>
      </property>
+     <property name="movable">
+      <bool>false</bool>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
      <property name="iconSize">
       <size>
        <width>18</width>
        <height>18</height>
       </size>
      </property>
+     <property name="toolButtonStyle">
+      <enum>Qt::ToolButtonIconOnly</enum>
+     </property>
      <property name="floatable">
       <bool>false</bool>
      </property>
-     <addaction name="actionBlockProfiles"/>
      <addaction name="actionSelectProfilesFromMap"/>
+     <addaction name="actionBlockProfiles"/>
+     <addaction name="actionAddProfiles"/>
+     <addaction name="actionAddProfilesAutomatically"/>
      <addaction name="separator"/>
      <addaction name="actionImportSpeclib"/>
      <addaction name="actionSaveSpeclib"/>
-     <addaction name="actionReload"/>
      <addaction name="separator"/>
-     <addaction name="actionToggleEditing"/>
-     <addaction name="actionSaveEdits"/>
-     <addaction name="actionDeleteSelected"/>
-     <addaction name="actionCutSelectedRows"/>
-     <addaction name="actionPasteFeatures"/>
-     <addaction name="separator"/>
-     <addaction name="actionCopySelectedRows"/>
      <addaction name="actionSelectAll"/>
      <addaction name="actionInvertSelection"/>
      <addaction name="actionRemoveSelection"/>
      <addaction name="actionPanMapToSelectedRows"/>
      <addaction name="actionZoomMapToSelectedRows"/>
-     <addaction name="separator"/>
+     <addaction name="actionReload"/>
+     <addaction name="actionToggleEditing"/>
+     <addaction name="actionCutSelectedRows"/>
+     <addaction name="actionCopySelectedRows"/>
+     <addaction name="actionPasteFeatures"/>
+     <addaction name="actionDeleteSelected"/>
+     <addaction name="actionSaveEdits"/>
      <addaction name="actionAddAttribute"/>
      <addaction name="actionRemoveAttribute"/>
     </widget>
@@ -117,19 +126,6 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QLabel" name="mInfoLabel">
-       <property name="minimumSize">
-        <size>
-         <width>150</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QProgressBar" name="mProgressBar">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -145,6 +141,19 @@
        </property>
        <property name="invertedAppearance">
         <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="mInfoLabel">
+       <property name="minimumSize">
+        <size>
+         <width>150</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="text">
+        <string/>
        </property>
       </widget>
      </item>
@@ -190,12 +199,20 @@
           <property name="text">
            <string>F</string>
           </property>
+          <property name="icon">
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
+          </property>
          </widget>
         </item>
         <item>
          <widget class="QToolButton" name="btnTableView">
           <property name="text">
            <string>T</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
           </property>
          </widget>
         </item>
@@ -229,24 +246,9 @@
     <string>Save Profiles in Spectral Library</string>
    </property>
   </action>
-  <action name="mActionCopySelectedRows">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mActionEditCopy.svg</normaloff>:/images/themes/default/mActionEditCopy.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Copy selected rows to clipboard</string>
-   </property>
-   <property name="toolTip">
-    <string>Copy selected rows to clipboard (Ctrl+C)</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+C</string>
-   </property>
-  </action>
   <action name="actionAddAttribute">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionNewAttribute.svg</normaloff>:/images/themes/default/mActionNewAttribute.svg</iconset>
    </property>
    <property name="text">
@@ -261,7 +263,7 @@
   </action>
   <action name="actionPasteFeatures">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionEditPaste.svg</normaloff>:/images/themes/default/mActionEditPaste.svg</iconset>
    </property>
    <property name="text">
@@ -276,7 +278,7 @@
   </action>
   <action name="actionRemoveAttribute">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionDeleteAttribute.svg</normaloff>:/images/themes/default/mActionDeleteAttribute.svg</iconset>
    </property>
    <property name="text">
@@ -291,7 +293,7 @@
   </action>
   <action name="actionSaveEdits">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionSaveAllEdits.svg</normaloff>:/images/themes/default/mActionSaveAllEdits.svg</iconset>
    </property>
    <property name="text">
@@ -309,7 +311,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionToggleEditing.svg</normaloff>:/images/themes/default/mActionToggleEditing.svg</iconset>
    </property>
    <property name="text">
@@ -336,7 +338,7 @@
   </action>
   <action name="actionReload">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionReload.svg</normaloff>:/images/themes/default/mActionReload.svg</iconset>
    </property>
    <property name="text">
@@ -348,7 +350,7 @@
   </action>
   <action name="actionSelectAll">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionSelectAll.svg</normaloff>:/images/themes/default/mActionSelectAll.svg</iconset>
    </property>
    <property name="text">
@@ -363,7 +365,7 @@
   </action>
   <action name="actionInvertSelection">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionInvertSelection.svg</normaloff>:/images/themes/default/mActionInvertSelection.svg</iconset>
    </property>
    <property name="text">
@@ -378,7 +380,7 @@
   </action>
   <action name="actionRemoveSelection">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionDeselectAll.svg</normaloff>:/images/themes/default/mActionDeselectAll.svg</iconset>
    </property>
    <property name="text">
@@ -393,7 +395,7 @@
   </action>
   <action name="actionPanMapToSelectedRows">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionPanToSelected.svg</normaloff>:/images/themes/default/mActionPanToSelected.svg</iconset>
    </property>
    <property name="text">
@@ -408,7 +410,7 @@
   </action>
   <action name="actionZoomMapToSelectedRows">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionZoomToSelected.svg</normaloff>:/images/themes/default/mActionZoomToSelected.svg</iconset>
    </property>
    <property name="text">
@@ -423,7 +425,7 @@
   </action>
   <action name="actionDeleteSelected">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionDeleteSelected.svg</normaloff>:/images/themes/default/mActionDeleteSelected.svg</iconset>
    </property>
    <property name="text">
@@ -438,7 +440,7 @@
   </action>
   <action name="actionCutSelectedRows">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionEditCut.svg</normaloff>:/images/themes/default/mActionEditCut.svg</iconset>
    </property>
    <property name="text">
@@ -453,7 +455,7 @@
   </action>
   <action name="actionCopySelectedRows">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionEditCopy.svg</normaloff>:/images/themes/default/mActionEditCopy.svg</iconset>
    </property>
    <property name="text">
@@ -466,24 +468,27 @@
     <string>Ctrl+C</string>
    </property>
   </action>
-  <action name="actionSaveProfilesAutomatically">
+  <action name="actionAddProfilesAutomatically">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="checked">
     <bool>false</bool>
    </property>
    <property name="icon">
     <iconset resource="../qpsresources.qrc">
-     <normaloff>:/qps/ui/icons/profile_save_auto.svg</normaloff>:/qps/ui/icons/profile_save_auto.svg</iconset>
+     <normaloff>:/qps/ui/icons/profile_add_auto.svg</normaloff>:/qps/ui/icons/profile_add_auto.svg</iconset>
    </property>
    <property name="text">
-    <string>Save Automatically</string>
+    <string>Add profiles automatically</string>
    </property>
    <property name="toolTip">
-    <string>Add new profiles automatically to opened Spectral Library</string>
+    <string>Activate to add profiles automatically into the spectral library</string>
    </property>
   </action>
   <action name="actionFormView">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
    </property>
    <property name="text">
@@ -495,7 +500,7 @@
   </action>
   <action name="actionTableView">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
    </property>
    <property name="text">
@@ -505,28 +510,36 @@
     <string>Switch to table view</string>
    </property>
   </action>
+  <action name="actionAddProfiles">
+   <property name="icon">
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/plus_green.svg</normaloff>:/qps/ui/icons/plus_green.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Add Profile(s)</string>
+   </property>
+   <property name="toolTip">
+    <string>Adds curently overlaid profiles to the spectral library</string>
+   </property>
+  </action>
+  <action name="actionDummy">
+   <property name="text">
+    <string>X</string>
+   </property>
+  </action>
   <action name="actionBlockProfiles">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="../qpsresources.qrc">
      <normaloff>:/qps/ui/icons/profile_dontreceive.svg</normaloff>:/qps/ui/icons/profile_dontreceive.svg</iconset>
    </property>
    <property name="text">
-    <string>Dont add new profiles</string>
+    <string>Don't add new profiles</string>
    </property>
    <property name="toolTip">
     <string>Block new profiles from being shown and added in this spectral library</string>
-   </property>
-  </action>
-  <action name="actionSaveProfiles">
-   <property name="icon">
-    <iconset resource="../qpsresources.qrc">
-     <normaloff>:/qps/ui/icons/profile_save.svg</normaloff>:/qps/ui/icons/profile_save.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Save Profile(s)</string>
-   </property>
-   <property name="toolTip">
-    <string>Saves curently overlaid profiles to the spectral library</string>
    </property>
   </action>
  </widget>
@@ -545,6 +558,7 @@
  </customwidgets>
  <resources>
   <include location="../qpsresources.qrc"/>
+  <include location="../../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>
 </ui>

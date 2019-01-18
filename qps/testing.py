@@ -193,7 +193,7 @@ def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication
         qgis.utils.home_plugin_path = os.path.join(QgsApplication.instance().qgisSettingsDirPath(),
                                                    *['python', 'plugins'])
 
-        # initiate the QGIS processing framework
+        # initialize the QGIS processing framework
         qgisCorePythonPluginDir = os.path.join(QgsApplication.pkgDataPath(),*['python', 'plugins'])
         assert os.path.isdir(qgisCorePythonPluginDir)
         if not qgisCorePythonPluginDir in sys.path:
@@ -261,6 +261,38 @@ class QgisMockup(QgisInterface):
         self.ui.setCentralWidget(mainFrame)
         self.lyrs = []
         self.createActions()
+
+        self.mClipBoard = QgsClipboardMockup()
+
+    def activeLayer(self):
+        return None
+
+    def cutSelectionToClipboard(self, mapLayer:QgsMapLayer):
+        if isinstance(mapLayer, QgsVectorLayer):
+            self.mClipBoard.replaceWithCopyOf(mapLayer)
+            mapLayer.beginEditCommand('Features cut')
+            mapLayer.deleteSelectedFeatures()
+            mapLayer.endEditCommand()
+
+    def copySelectionToClipboard(self, mapLayer:QgsMapLayer):
+        if isinstance(mapLayer, QgsVectorLayer):
+            self.mClipBoard.replaceWithCopyOf(mapLayer)
+
+    def pasteFromClipboard(self, pasteVectorLayer:QgsMapLayer):
+        if not isinstance(pasteVectorLayer, QgsVectorLayer):
+            return
+
+        return
+        # todo: implement
+        pasteVectorLayer.beginEditCommand('Features pasted')
+        features = self.mClipBoard.transformedCopyOf(pasteVectorLayer.crs(), pasteVectorLayer.fields())
+        nTotalFeatures = features.count()
+        context = pasteVectorLayer.createExpressionContext()
+        compatibleFeatures = QgsVectorLayerUtils.makeFeatureCompatible(features, pasteVectorLayer)
+        newFeatures
+
+
+
 
     def iconSize(self, dockedToolbar=False):
         return QSize(30,30)
@@ -605,6 +637,63 @@ class QgsPluginManagerMockup(QgsPluginManagerInterface):
     def timerEvent(self, *args, **kwargs):
         super().timerEvent(*args, **kwargs)
 
+
+
+class QgsClipboardMockup(QObject):
+
+    changed = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super(QgsClipboardMockup, self).__init__(parent)
+
+        self.mFeatureFields = None
+        self.mFeatureClipboard = None
+        self.mCRS = None
+        self.mSrcLayer = None
+        self.mUseSystemClipboard = False
+        QApplication.clipboard().dataChanged.connect(self.systemClipboardChanged)
+
+    def replaceWithCopyOf(self, src):
+        if isinstance(src, QgsVectorLayer):
+            self.mFeatureFields = src.fields()
+            self.mFeatureClipboard = src.selectedFeatures()
+            self.mCRS = src.crs()
+            self.mSrcLayer = src
+
+            return
+
+            self.setSystemClipBoard()
+            self.mUseSystemClipboard = False
+            self.changed.emit()
+
+        elif isinstance(src, QgsFeatureStore):
+            raise NotImplementedError()
+
+
+    def setSystemClipBoard(self):
+
+        raise NotImplementedError()
+        cb = QApplication.clipboard()
+        textCopy = self.generateClipboardText()
+
+        m = QMimeData()
+        m.setText(textCopy)
+
+        #todo: set HTML
+
+    def generateClipboardText(self):
+
+        raise NotImplementedError()
+        pass
+        textFields = ['wkt_geom'] + [n for n in self.mFeatureFields]
+
+        textLines = '\t'.join(textFields)
+        textFields.clear()
+
+
+
+    def systemClipboardChanged(self):
+        pass
 
 class PythonRunnerImpl(QgsPythonRunner):
     """
