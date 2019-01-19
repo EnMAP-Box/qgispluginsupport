@@ -321,7 +321,7 @@ class PlotStyle(QObject):
 
     def copyFrom(self, plotStyle):
         """
-        Copyis the plot settings of another plot style
+        Copy plot settings from another plot style
         :param plotStyle: PlotStyle
         """
         # log('copyFrom')

@@ -654,7 +654,10 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                 self.setLineWidth(self.mDefaultStyle.linePen.width())
 
     def setStyle(self, style:PlotStyle):
-        assert isinstance(style, PlotStyle)
+        if not isinstance(style, PlotStyle):
+            from qps.speclib.spectrallibraries import DEFAULT_SPECTRUM_STYLE
+            style = PlotStyle()
+            style.copyFrom(DEFAULT_SPECTRUM_STYLE)
         self.mDefaultStyle = style
 
         self.setVisible(style.isVisible())

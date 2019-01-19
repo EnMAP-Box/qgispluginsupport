@@ -32,6 +32,7 @@
 #see http://python-future.org/str_literals.html for str issue discussion
 import json, enum
 from qgis.utils import iface
+from qgis.gui import Targets, QgsMapLayerAction
 from pyqtgraph.graphicsItems.PlotItem import PlotItem
 
 from osgeo import ogr
@@ -90,7 +91,7 @@ DEFAULT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
 DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.white)
 
 EMPTY_VALUES = [None, NULL, QVariant(), '']
-EMPTY_PROFILE_VALUES = {'x':[], 'y':[], 'xUnit':None, 'yUnit':None}
+EMPTY_PROFILE_VALUES = {'x': [], 'y': [], 'xUnit': None, 'yUnit': None}
 
 FIELD_VALUES = 'values'
 FIELD_STYLE = 'style'
@@ -179,6 +180,7 @@ def runRemoveFeatureActionRoutine(layerID, id:int):
 
     else:
         raise Exception('unable to find layer "{}"'.format(layerID))
+
 
 def createRemoveFeatureAction():
     """
@@ -1058,6 +1060,10 @@ class SpectralLibrary(QgsVectorLayer):
         actionRemoveSpectrum = createRemoveFeatureAction()
         assert isinstance(actionRemoveSpectrum, QgsAction)
         mgr.addAction(actionRemoveSpectrum)
+        #icon = QIcon(':/images/themes/default/mActionDeleteSelected.svg')
+        #self._actionRemove = QgsMapLayerAction('action1', None, self, icon=icon,
+        #                                      targets=QgsMapLayerAction.MultipleFeatures, flags=QgsMapLayerAction.EnabledOnlyWhenEditable)
+        #QgsGui.mapLayerActionRegistry().addMapLayerAction(self._actionRemove)
 
         columns = self.attributeTableConfig().columns()
         visibleColumns = ['name']
@@ -2320,7 +2326,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         empty = QWidget(self.mToolbar)
         empty.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        self.mToolbar.insertWidget(self.actionZoomMapToSelectedRows, empty)
+        self.mToolbar.insertWidget(self.actionReload, empty)
 
         self.mColorCurrentSpectra = COLOR_SELECTED_SPECTRA
         self.mColorSelectedSpectra = COLOR_SELECTED_SPECTRA
@@ -2342,8 +2348,8 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         MAP_LAYER_STORES[0].addMapLayer(speclib)
 
-        self.mSpeclib.editingStarted.connect(self.onEditingToggled)
-        self.mSpeclib.editingStopped.connect(self.onEditingToggled)
+        self.mSpeclib.editingStarted.connect(self.updateActionAvailability)
+        self.mSpeclib.editingStopped.connect(self.updateActionAvailability)
         self.mSpeclib.selectionChanged.connect(self.onSelectionChanged)
 
 
@@ -2360,6 +2366,10 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.mDualView.init(self.mSpeclib, self.mCanvas)#, context=self.mAttributeEditorContext)
         self.mDualView.setView(QgsDualView.AttributeTable)
         self.mDualView.setAttributeTableConfig(self.mSpeclib.attributeTableConfig())
+
+        self.mTableView = self.mDualView.tableView()
+        assert isinstance(self.mTableView, QgsAttributeTableView)
+        self.mTableView.willShowContextMenu.connect(self.onWillShowContextMenu)
 
         # change selected row color: keep color also when attribtue table looses focus
         pal = self.mDualView.tableView().palette()
@@ -2384,6 +2394,27 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         self.mMapInteraction = True
         self.setMapInteraction(self.mMapInteraction)
+
+    def onWillShowContextMenu(self, menu:QMenu, atIndex:QModelIndex):
+        """
+        Create the QMenu for the AttributeTable
+        :param menu:
+        :param atIndex:
+        :return:
+        """
+        menu.addSeparator()
+        menu.addAction(self.actionSelectAll)
+        menu.addAction(self.actionInvertSelection)
+        menu.addAction(self.actionRemoveSelection)
+        menu.addAction(self.actionPanMapToSelectedRows)
+        menu.addAction(self.actionZoomMapToSelectedRows)
+        menu.addSeparator()
+        menu.addAction(self.actionDeleteSelected)
+        menu.addAction(self.actionCutSelectedRows)
+        menu.addAction(self.actionCopySelectedRows)
+        menu.addAction(self.actionPasteFeatures)
+
+
 
     def currentProfilesMode(self)->CurrentProfilesMode:
         """
@@ -2496,7 +2527,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         #self.actionPasteFeatures.setVisible(False)
 
 
-        self.onEditingToggled()
+        self.updateActionAvailability()
 
 
     def importSpeclib(self, path=None):
@@ -2530,6 +2561,33 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
             if b:
                 self.mSpeclib.startEditing()
 
+    def onSelectionChanged(self, selected, deselected, clearAndSelect):
+
+        hasSelected = len(selected) > 0
+        self.actionCopySelectedRows.setEnabled(hasSelected)
+        self.actionCutSelectedRows.setEnabled(self.mSpeclib.isEditable() and hasSelected)
+        self.actionDeleteSelected.setEnabled(self.mSpeclib.isEditable() and hasSelected)
+
+    def updateActionAvailability(self, *args):
+        speclib = self.speclib()
+
+        hasSelectedFeatures = speclib.selectedFeatureCount() > 0
+        isEditable = speclib.isEditable()
+        self.actionToggleEditing.blockSignals(True)
+        self.actionToggleEditing.setChecked(isEditable)
+        self.actionSaveEdits.setEnabled(isEditable)
+        self.actionReload.setEnabled(not isEditable)
+        self.actionToggleEditing.blockSignals(False)
+
+        self.actionAddAttribute.setEnabled(isEditable)
+        self.actionPasteFeatures.setEnabled(isEditable)
+        self.actionCopySelectedRows.setEnabled(hasSelectedFeatures)
+        self.actionDeleteSelected.setEnabled(isEditable and hasSelectedFeatures)
+        self.actionCutSelectedRows.setEnabled(isEditable and hasSelectedFeatures)
+        self.actionToggleEditing.setEnabled(not speclib.readOnly())
+
+        self.actionRemoveAttribute.setEnabled(isEditable and len(speclib.optionalFieldNames()) > 0)
+
     def onToggleEditing(self, b:bool):
 
         if b == False:
@@ -2554,31 +2612,6 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
 
 
-    def onSelectionChanged(self, selected, deselected, clearAndSelect):
-
-        hasSelected = len(selected) > 0
-        self.actionCopySelectedRows.setEnabled(hasSelected)
-        self.actionCutSelectedRows.setEnabled(self.mSpeclib.isEditable() and hasSelected)
-        self.actionDeleteSelected.setEnabled(self.mSpeclib.isEditable() and hasSelected)
-
-    def onEditingToggled(self, *args):
-        speclib = self.speclib()
-
-        hasSelectedFeatures = speclib.selectedFeatureCount() > 0
-        isEditable = speclib.isEditable()
-        self.actionToggleEditing.blockSignals(True)
-        self.actionToggleEditing.setChecked(isEditable)
-        self.actionSaveEdits.setEnabled(isEditable)
-        self.actionReload.setEnabled(not isEditable)
-        self.actionToggleEditing.blockSignals(False)
-
-
-        self.actionAddAttribute.setEnabled(isEditable)
-        self.actionDeleteSelected.setEnabled(isEditable and hasSelectedFeatures)
-        self.actionPasteFeatures.setEnabled(isEditable)
-        self.actionToggleEditing.setEnabled(not speclib.readOnly())
-
-        self.actionRemoveAttribute.setEnabled(isEditable and len(speclib.optionalFieldNames()) > 0)
 
     def onAddAttribute(self):
         """

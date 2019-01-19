@@ -1,7 +1,18 @@
 import sys
-sys.path.append(r'C:\Users\geo_beja\Repositories\QGIS_Plugins\qgispluginsupport\tests')
 sys.path.append(r'C:\Users\geo_beja\Repositories\QGIS_Plugins\qgispluginsupport')
-import test_spectrallibraries
+from enmapboxtestdata import library
+from qps.speclib.spectrallibraries import SpectralLibraryWidget, SpectralLibrary
+w1 = SpectralLibraryWidget()
+w1.show()
+w1.importSpeclib(library)
+w2 = SpectralLibraryWidget()
+w2.show()
+
+
+
 test_spectrallibraries.SHOW_GUI = True
 TCore = test_spectrallibraries.TestCore()
 TCore.test_SpectralLibraryWidget()
+TCore.test_SpectralLibraryWidget()
+
+
