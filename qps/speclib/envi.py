@@ -323,7 +323,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         profiles = []
         for i in range(nSpectra):
             p = SpectralProfile(fields=speclibFields)
-            p.setValues(x=xValues, y=data[i,:].tolist(), xUnit=xUnit, yUnit=yUnit)
+            p.setValues(x=xValues, y=data[i, :].tolist(), xUnit=xUnit, yUnit=yUnit)
             name = spectraNames[i]
             p.setName(name)
             profiles.append(p)

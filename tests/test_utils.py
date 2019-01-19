@@ -118,6 +118,15 @@ class testClassUtils(unittest.TestCase):
         self.assertAlmostEqual(px2geo(pxCoordinate, gt), geoCoordinate)
 
 
+    def test_convertMetricUnits(self):
+
+        self.assertEqual(convertMetricUnit(100, 'm', 'km'), 0.1)
+        self.assertEqual(convertMetricUnit(0.1, 'km', 'm'), 100)
+
+        self.assertEqual(convertMetricUnit(400, 'nm', 'μm'), 0.4)
+        self.assertEqual(convertMetricUnit(0.4, 'μm', 'nm'), 400)
+
+        self.assertEqual(convertMetricUnit(400, 'nm', 'km'), 4e-10)
 
     def test_appendItemsToMenu(self):
 

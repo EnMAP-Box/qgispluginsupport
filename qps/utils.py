@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings
+import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy
 
 from qgis.core import *
 from qgis.core import QgsFeature, QgsPointXY, QgsRectangle
@@ -100,19 +100,21 @@ def registeredMapLayers()->list:
     return layers
 
 
-######### Lookup tables
+# Lookup tables
 METRIC_EXPONENTS = {
     "nm": -9, "um": -6, u"µm": -6, "mm": -3, "cm": -2, "dm": -1, "m": 0, "hm": 2, "km": 3
 }
 # add synonyms
 METRIC_EXPONENTS['nanometers'] = METRIC_EXPONENTS['nm']
-METRIC_EXPONENTS['micrometers'] = METRIC_EXPONENTS['um']
+METRIC_EXPONENTS['micrometers'] = METRIC_EXPONENTS['μm'] = METRIC_EXPONENTS['um']
 METRIC_EXPONENTS['millimeters'] = METRIC_EXPONENTS['mm']
 METRIC_EXPONENTS['centimeters'] = METRIC_EXPONENTS['cm']
 METRIC_EXPONENTS['decimeters'] = METRIC_EXPONENTS['dm']
 METRIC_EXPONENTS['meters'] = METRIC_EXPONENTS['m']
 METRIC_EXPONENTS['hectometers'] = METRIC_EXPONENTS['hm']
 METRIC_EXPONENTS['kilometers'] = METRIC_EXPONENTS['km']
+
+
 
 LUT_WAVELENGTH = dict({'B': 480,
                        'G': 570,
@@ -569,15 +571,34 @@ def zipdir(pathDir, pathZip):
                     zip.write(filename, arcname)
 
 
-def convertMetricUnit(value, u1, u2):
-    """converts value, given in unit u1, to u2"""
-    assert u1 in METRIC_EXPONENTS.keys()
-    assert u2 in METRIC_EXPONENTS.keys()
+def convertMetricUnit(value:float, u1:str, u2:str)->float:
+    """
+    Converts value `value` from unit `u1` into unit `u2`
+    :param value: float | int | might work with numpy.arrays as well
+    :param u1: str, identifier of unit 1
+    :param u2: str, identifier of unit 2
+    :return: float | numpy.array, converted values
+             or None in case conversion is not possible
+    """
 
-    e1 = METRIC_EXPONENTS[u1]
-    e2 = METRIC_EXPONENTS[u2]
+    assert isinstance(u1, str)
+    assert isinstance(u2, str)
 
-    return value * 10 ** (e1 - e2)
+    u1 = u1.lower()
+    u2 = u2.lower()
+
+    e1 = METRIC_EXPONENTS.get(u1)
+    e2 = METRIC_EXPONENTS.get(u2)
+
+    if all([arg is not None for arg in [value, e1, e2]]):
+        if e1 == e2:
+            return copy.copy(value)
+        elif isinstance(value, list):
+            return [v * 10 ** (e1-e2) for v in value]
+        else:
+            return value * 10 ** (e1 - e2)
+    else:
+        return None
 
 
 def displayBandNames(rasterSource, bands=None, leadingBandNumber=True):

@@ -55,7 +55,7 @@ def createSpeclib()->SpectralLibrary:
     p1 = SpectralProfile()
     p1.setName('No Geometry')
 
-    p1.setValues(x=[0.2, 0.3, 0.2, 0.5, 0.7], y=[1, 2, 3, 4, 5])
+    p1.setValues(x=[0.2, 0.3, 0.2, 0.5, 0.7], y=[1, 2, 3, 4, 5], xUnit='um')
     p2 = SpectralProfile()
     p2.setName('No Geom & NoData')
 
@@ -160,6 +160,10 @@ class TestIO(unittest.TestCase):
         sl2 = SpectralLibrary.readFrom(pathESL)
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertEqual(sl1, sl2)
+        p1 = sl2[0]
+        self.assertIsInstance(p1, SpectralProfile)
+        self.assertIsInstance(p1.xValues(), list)
+
 
         # test ENVI Spectral Library
         pathTmp = tempfile.mktemp(prefix='tmpESL', suffix='.sli')
@@ -236,7 +240,7 @@ class TestCore(unittest.TestCase):
 
         f1 = createQgsField('foo', 9999)
 
-        self.assertEqual(f1.name(),'foo')
+        self.assertEqual(f1.name(), 'foo')
         self.assertEqual(f1.type(), QVariant.Int)
         self.assertEqual(f1.typeName(), 'int')
 
@@ -337,6 +341,10 @@ class TestCore(unittest.TestCase):
         xVal = [300,400, 600, 1200, 2500]
         sp1 = SpectralProfile()
         sp1.setValues(x=xVal, y=yVal)
+
+
+        self.assertEqual(xVal, sp1.xValues())
+        self.assertEqual(yVal, sp1.yValues())
 
         name = 'missingAttribute'
         sp1.setMetadata(name, 'myvalue')
@@ -816,6 +824,9 @@ class TestCore(unittest.TestCase):
             pdis =  pw._spectralProfilePDIs()
             self.assertTrue(len(pdis) == len(speclib))
             self.assertTrue(len(pdis) == n+1)
+
+        pw.setXUnit('nm')
+
 
         if SHOW_GUI:
             QAPP.exec_()

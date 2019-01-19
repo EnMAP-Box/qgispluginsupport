@@ -659,9 +659,6 @@ class SpectralProfile(QgsFeature):
         if isinstance(y, np.ndarray):
             y = y.tolist()
 
-
-
-
         if x is not None:
             d['x'] = x
         if y is not None:
@@ -698,7 +695,7 @@ class SpectralProfile(QgsFeature):
                 return list(range(len(values['y'])))
             else:
                 s = ""
-        return None
+        return xValues
 
 
     def yValues(self)->list:
@@ -2259,8 +2256,8 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
             conf = self.mConfigurations[key]
         else:
             #return the very default configuration
-            conf = {'xUnitList':X_UNITS[:],
-                    'yUnitList':Y_UNITS[:]
+            conf = {'xUnitList' : X_UNITS[:],
+                    'yUnitList' : Y_UNITS[:]
             }
         print('Read config')
         print((key, conf))

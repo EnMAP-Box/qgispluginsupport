@@ -410,14 +410,14 @@ def compileQGISResourceFiles(pathQGISRepo:str):
 if __name__ == '__main__':
 
 
-    if False:
+    if True:
         compileResourceFiles(DIR_REPO)
 
-    if True:
+    if False:
         qrcFiles = file_search(DIR_REPO, '*.qrc', recursive=True)
         providerFile = jp(DIR_REPO, *['qps', 'iconprovider.py'])
         createIconProvider(qrcFiles, providerFile)
-    if True:
+    if False:
         compileQGISResourceFiles(DIR_QGIS_REPO)
 
 
