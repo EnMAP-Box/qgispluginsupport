@@ -1,0 +1,7 @@
+import sys
+sys.path.append(r'C:\Users\geo_beja\Repositories\QGIS_Plugins\qgispluginsupport\tests')
+sys.path.append(r'C:\Users\geo_beja\Repositories\QGIS_Plugins\qgispluginsupport')
+import test_spectrallibraries
+test_spectrallibraries.SHOW_GUI = True
+TCore = test_spectrallibraries.TestCore()
+TCore.test_SpectralLibraryWidget()

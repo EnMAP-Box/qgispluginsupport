@@ -38,6 +38,11 @@ SHOW_GUI = True
 import enmapboxtestdata
 
 
+
+
+
+
+
 def createSpeclib()->SpectralLibrary:
     from enmapboxtestdata import hires
 
@@ -880,31 +885,40 @@ class TestCore(unittest.TestCase):
         fieldNames = slw.speclib().fieldNames()
         self.assertIsInstance(fieldNames, list)
 
-        if True:
-            #self.assertIsInstance(p.mModel, SpectralLibraryTableModel)
-            #self.assertTrue(p.mModel.headerData(0, Qt.Horizontal) == fieldNames[0])
+        for mode in list(SpectralLibraryWidget.CurrentProfilesMode):
+            assert isinstance(mode, SpectralLibraryWidget.CurrentProfilesMode)
+            slw.setCurrentProfilesMode(mode)
+            assert slw.currentProfilesMode() == mode
 
-            for mode in list(SpectralLibraryWidget.CurrentProfilesMode):
-                assert isinstance(mode, SpectralLibraryWidget.CurrentProfilesMode)
-                slw.setCurrentProfilesMode(mode)
-                assert slw.currentProfilesMode() == mode
+        cs = [speclib[0], speclib[3], speclib[-1]]
+        l = len(speclib)
+        self.assertTrue(slw.speclib() == speclib)
 
-            cs = [speclib[0], speclib[3], speclib[-1]]
-            l = len(speclib)
-            self.assertTrue(slw.speclib() == speclib)
+        self.assertTrue(len(slw.currentSpectra()) == 0)
+        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.block)
+        slw.setCurrentSpectra(cs)
+        self.assertTrue(len(slw.currentSpectra()) == 0)
 
-            self.assertTrue(len(slw.currentSpectra()) == 0)
-            slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.block)
-            slw.setCurrentSpectra(cs)
-            self.assertTrue(len(slw.currentSpectra()) == 0)
+        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.automatically)
+        slw.setCurrentSpectra(cs)
+        self.assertTrue(len(slw.currentSpectra()) == 0)
 
-            slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.automatically)
-            slw.setCurrentSpectra(cs)
-            self.assertTrue(len(slw.currentSpectra()) == 0)
+        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.normal)
+        slw.setCurrentSpectra(cs)
+        self.assertTrue(len(slw.currentSpectra()) == 3)
 
-            slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.normal)
-            slw.setCurrentSpectra(cs)
-            self.assertTrue(len(slw.currentSpectra()) == 3)
+        speclib.selectByIds([1, 2, 3])
+
+        n = len(speclib)
+        sids = speclib.selectedFeatureIds()
+
+        self.assertTrue(len(sids) > 0)
+        slw.copySelectedFeatures()
+        slw.cutSelectedFeatures()
+        slw.pasteFeatures()
+
+        self.assertEqual(n, len(speclib))
+
 
         if False:
             sl2 = self.createSpeclib()

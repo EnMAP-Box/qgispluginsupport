@@ -777,7 +777,6 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-
 def qgisAppQgisInterface()->QgisInterface:
     """
     Returns the QgisInterface of the QgisApp in case everything was started from within the QGIS Main Application

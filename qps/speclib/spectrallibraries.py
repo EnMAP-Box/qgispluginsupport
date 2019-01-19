@@ -2633,16 +2633,23 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         return self.mMapInteraction
 
     def cutSelectedFeatures(self):
+        """
 
-        if isinstance(iface, QgisInterface):
-            iface.cutSelectionToClipboard(self.mSpeclib)
+        :return:
+        """
+        self.copySelectedFeatures()
+        iface = qgisAppQgisInterface()
+        self.speclib().beginEditCommand('Features cut')
+        self.speclib().deleteSelectedFeatures()
+        self.speclib().endEditCommand()
 
     def pasteFeatures(self):
-
+        iface = qgisAppQgisInterface()
         if isinstance(iface, QgisInterface):
             iface.pasteFromClipboard(self.mSpeclib)
 
     def copySelectedFeatures(self):
+        iface = qgisAppQgisInterface()
         if isinstance(iface, QgisInterface):
             iface.copySelectionToClipboard(self.mSpeclib)
 
