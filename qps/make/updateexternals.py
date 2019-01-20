@@ -29,11 +29,22 @@
 
 import os, sys, re, shutil, zipfile, datetime
 import git # install with: pip install gitpython
-DIR_REPO = None
-
-REPO = git.Repo(DIR_REPO)
-
 REMOTEINFOS = dict()
+
+DIR_REPO = None
+REPO = None
+
+def setProjectRepository(path):
+    """
+    Sets the project root directory which contains the `.git` folder
+    :param path: str
+    """
+    assert os.path.isdir(path)
+    global DIR_REPO, REPO
+    DIR_REPO = path
+    REPO = git.Repo(DIR_REPO)
+
+
 
 
 class RemoteInfo(object):
@@ -93,7 +104,11 @@ def updateRemote(remoteInfo:RemoteInfo):
     """
     if isinstance(remoteInfo, str):
         remoteInfos = REMOTEINFOS[remoteInfo]
-    assert isinstance(remoteInfo, RemoteInfo)
+    assert isinstance(remoteInfos, list)
+
+    for info in remoteInfos:
+        assert isinstance(info, RemoteInfo)
+
     # see https://stackoverflow.com/questions/23937436/add-subdirectory-of-remote-repo-with-git-subtree
     # see https://blisqu.wordpress.com/2012/09/08/merge-subdirectory-from-another-git-repository/
     for remoteInfo in remoteInfos:
