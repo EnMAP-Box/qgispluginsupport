@@ -160,8 +160,7 @@ def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication
 
         # initialize things not done by qgis.test.start_app()...
         if not isinstance(qgisResourceDir, str):
-            parentDir = os.path.dirname(os.path.dirname(__file__))
-            resourceDir = os.path.join(parentDir, 'qgisresources')
+            resourceDir = findUpwardPath(__file__, 'qgisresources')
             if os.path.exists(resourceDir):
                 qgisResourceDir = resourceDir
 
