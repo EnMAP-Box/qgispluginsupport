@@ -2,10 +2,11 @@
 """
 /***************************************************************************
                               maptools.py
+
                               -------------------
-        begin                : 2015-08-20
+        begin                : 2019-01-20
         git sha              : $Format:%H$
-        copyright            : (C) 2017 by HU-Berlin
+        copyright            : (C) 2019 by benjamin jakimow
         email                : benjamin.jakimow@geo.hu-berlin.de
  ***************************************************************************/
 
@@ -33,7 +34,7 @@ from qps.utils import *
 
 class MapTools(object):
     """
-    Static class to support handling of nQgsMapTools.
+    Static class to support handling of QgsMapTools.
     """
     def __init__(self):
         raise Exception('This class is not for any instantiation')
@@ -48,122 +49,75 @@ class MapTools(object):
     MoveToCenter = 'MOVE_CENTER'
 
     @staticmethod
-    def copy(mapTool):
-        assert isinstance(mapTool, QgsMapTool)
-        s = ""
-
-
-    @staticmethod
-    def create(mapToolKey, canvas, *args, **kwds):
-        assert mapToolKey in MapTools.mapToolKeys()
-
+    def create(mapToolKey:str, canvas, *args, activate=True, **kwds)->QgsMapTool:
+        """
+        Creates
+        :param mapToolKey: str, identifies the requested QgsMapTool, e.g. 'ZOOM_IN'
+        :param canvas: QgsMapCanvas to set the QgsMapTool on
+        :param activate: bool, set True (default) to set the QgsMapTool to the QgsMapCanvas `canvas`
+        :param args: optional arguments
+        :param kwds: optional keywords
+        :return: QgsMapTool
+        """
+        assert isinstance(mapToolKey, str)
+        mapToolKey = mapToolKey.upper()
+        assert mapToolKey in MapTools.mapToolKeys(), 'Unknown MapTool key "{}"'.format(mapToolKey)
         assert isinstance(canvas, QgsMapCanvas)
 
+        mapTool = None
         if mapToolKey == MapTools.ZoomIn:
-            return QgsMapToolZoom(canvas, False)
-        if mapToolKey == MapTools.ZoomOut:
-            return QgsMapToolZoom(canvas, True)
-        if mapToolKey == MapTools.Pan:
-            return QgsMapToolPan(canvas)
-        if mapToolKey == MapTools.ZoomPixelScale:
-            return PixelScaleExtentMapTool(canvas)
-        if mapToolKey == MapTools.ZoomFull:
-            return FullExtentMapTool(canvas)
-        if mapToolKey == MapTools.CursorLocation:
-            return CursorLocationMapTool(canvas, *args, **kwds)
-        if mapToolKey == MapTools.MoveToCenter:
-            tool = CursorLocationMapTool(canvas, *args, **kwds)
-            tool.sigLocationRequest.connect(canvas.setCenter)
-            return tool
-        if mapToolKey == MapTools.SpectralProfile:
-            return SpectralProfileMapTool(canvas, *args, **kwds)
-        if mapToolKey == MapTools.TemporalProfile:
-            return TemporalProfileMapTool(canvas, *args, **kwds)
+            mapTool = QgsMapToolZoom(canvas, False)
+        elif mapToolKey == MapTools.ZoomOut:
+            mapTool = QgsMapToolZoom(canvas, True)
+        elif mapToolKey == MapTools.Pan:
+            mapTool = QgsMapToolPan(canvas)
+        elif mapToolKey == MapTools.ZoomPixelScale:
+            mapTool = PixelScaleExtentMapTool(canvas)
+        elif mapToolKey == MapTools.ZoomFull:
+            mapTool = FullExtentMapTool(canvas)
+        elif mapToolKey == MapTools.CursorLocation:
+            mapTool = CursorLocationMapTool(canvas, *args, **kwds)
+        elif mapToolKey == MapTools.MoveToCenter:
+            mapTool = CursorLocationMapTool(canvas, *args, **kwds)
+            mapTool.sigLocationRequest.connect(canvas.setCenter)
+        elif mapToolKey == MapTools.SpectralProfile:
+            mapTool = SpectralProfileMapTool(canvas, *args, **kwds)
+        elif mapToolKey == MapTools.TemporalProfile:
+            mapTool = TemporalProfileMapTool(canvas, *args, **kwds)
+        else:
+            raise NotImplementedError('mapToolKey {}'.format(mapToolKey))
 
-        raise Exception('Unknown mapToolKey {}'.format(mapToolKey))
+        if activate:
+            canvas.setMapTool(mapTool)
 
+        return mapTool
 
     @staticmethod
-    def mapToolKeys():
-        return [MapTools.__dict__[k] for k in MapTools.__dict__.keys() if not k.startswith('_')]
-
-"""
-class CursorLocationMapTool(QgsMapToolEmitPoint):
-
-    sigLocationRequest = pyqtSignal([SpatialPoint],[SpatialPoint, QgsMapCanvas])
-
-    def __init__(self, canvas, showCrosshair=True, purpose=None):
-        self.mShowCrosshair = showCrosshair
-        self.mCanvas = canvas
-        self.mPurpose = purpose
-        QgsMapToolEmitPoint.__init__(self, self.mCanvas)
-
-        self.mMarker = QgsVertexMarker(self.mCanvas)
-        self.mRubberband = QgsRubberBand(self.mCanvas, QGis.Polygon)
-
-        color = QColor('red')
-
-        self.mRubberband.setLineStyle(Qt.SolidLine)
-        self.mRubberband.setColor(color)
-        self.mRubberband.setWidth(2)
-
-        self.mMarker.setColor(color)
-        self.mMarker.setPenWidth(3)
-        self.mMarker.setIconSize(5)
-        self.mMarker.setIconType(QgsVertexMarker.ICON_CROSS)  # or ICON_CROSS, ICON_X
-
-    def canvasPressEvent(self, e):
-        geoPoint = self.toMapCoordinates(e.pos())
-        self.mMarker.setCenter(geoPoint)
-
-    def setStyle(self, color=None, brushStyle=None, fillColor=None, lineStyle=None):
-        if color:
-            self.mRubberband.setColor(color)
-        if brushStyle:
-            self.mRubberband.setBrushStyle(brushStyle)
-        if fillColor:
-            self.mRubberband.setFillColor(fillColor)
-        if lineStyle:
-            self.mRubberband.setLineStyle(lineStyle)
-
-    def canvasReleaseEvent(self, e):
-
-
-        pixelPoint = e.pixelPoint()
-
-        crs = self.mCanvas.mapSettings().destinationCrs()
-        self.mMarker.hide()
-        geoPoint = self.toMapCoordinates(pixelPoint)
-        if self.mShowCrosshair:
-            #show a temporary crosshair
-            ext = SpatialExtent.fromMapCanvas(self.mCanvas)
-            cen = geoPoint
-            geom = QgsGeometry()
-            geom.addPart([QgsPoint(ext.upperLeftPt().x(),cen.y()), QgsPoint(ext.lowerRightPt().x(), cen.y())],
-                          QGis.Line)
-            geom.addPart([QgsPoint(cen.x(), ext.upperLeftPt().y()), QgsPoint(cen.x(), ext.lowerRightPt().y())],
-                          QGis.Line)
-            self.mRubberband.addGeometry(geom, None)
-            self.mRubberband.show()
-            #remove crosshair after 0.25 sec
-            QTimer.singleShot(250, self.hideRubberband)
-
-        pt = SpatialPoint(crs, geoPoint)
-        self.sigLocationRequest[SpatialPoint].emit(pt)
-        self.sigLocationRequest[SpatialPoint, QgsMapCanvas].emit(pt, self.canvas())
-
-    def hideRubberband(self):
-        self.mRubberband.reset()
-"""
-
+    def mapToolKeys()->list:
+        """
+        Returns all keys which can be used to return a QgsMapTool with `MapTools.create(key:str, canvas:QgsMapCanvas, *args, **kwds)`.
+        :return: [list-of-str]
+        """
+        return [MapTools.__dict__[k] for k in MapTools.__dict__.keys()
+                if isinstance(MapTools.__dict__[k], str) and not k.startswith('_')]
 
 
 class CursorLocationMapTool(QgsMapToolEmitPoint):
+    """
+    A QgsMapTool to collect SpatialPoints
+    """
+    sigLocationRequest = pyqtSignal([SpatialPoint], [SpatialPoint, QgsMapCanvas])
 
-    sigLocationRequest = pyqtSignal([SpatialPoint],[SpatialPoint, QgsMapCanvas])
-
-    def __init__(self, canvas, showCrosshair=True):
+    def __init__(self, canvas:QgsMapCanvas, showCrosshair:bool=True):
+        """
+        :param canvas: QgsMapCanvas
+        :param showCrosshair: bool, if True (default), a crosshair appears for some milliseconds to highlight
+            the selected location
+        """
         self.mShowCrosshair = showCrosshair
+
+        self.mCrosshairTime = 250
+
         QgsMapToolEmitPoint.__init__(self, canvas)
         self.marker = QgsVertexMarker(self.canvas())
         self.rubberband = QgsRubberBand(self.canvas(), QgsWkbTypes.PolygonGeometry)
@@ -191,9 +145,16 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
         if e.button() in self.mButtons:
             geoPoint = self.toMapCoordinates(e.pos())
             self.marker.setCenter(geoPoint)
-        #self.marker.show()
 
     def setStyle(self, color=None, brushStyle=None, fillColor=None, lineStyle=None):
+        """
+        Sets the Croshsair style
+        :param color:
+        :param brushStyle:
+        :param fillColor:
+        :param lineStyle:
+        :return:
+        """
         if color:
             self.rubberband.setColor(color)
         if brushStyle:
@@ -202,11 +163,13 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
             self.rubberband.setFillColor(fillColor)
         if lineStyle:
             self.rubberband.setLineStyle(lineStyle)
+
+
     def canvasReleaseEvent(self, e):
+
         if e.button() in self.mButtons:
 
             pixelPoint = e.pixelPoint()
-
             crs = self.canvas().mapSettings().destinationCrs()
             self.marker.hide()
             geoPoint = self.toMapCoordinates(pixelPoint)
@@ -223,21 +186,22 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
                 self.rubberband.addGeometry(geom, None)
                 self.rubberband.show()
                 #remove crosshair after 0.25 sec
-                QTimer.singleShot(250, self.hideRubberband)
+                QTimer.singleShot(self.mShowCrosshairTime, self.hideRubberband)
 
             pt = SpatialPoint(crs, geoPoint)
             self.sigLocationRequest[SpatialPoint].emit(pt)
             self.sigLocationRequest[SpatialPoint, QgsMapCanvas].emit(pt, self.canvas())
+
     def hideRubberband(self):
+        """
+        Hides the rubberband
+        """
         self.rubberband.reset()
 
-
-class SpectralProfileMapTool(CursorLocationMapTool):
-
-    def __init__(self, *args, **kwds):
-        super(SpectralProfileMapTool, self).__init__(*args, **kwds)
-
 class PixelScaleExtentMapTool(QgsMapTool):
+    """
+    A QgsMapTool to scale the QgsMapCanvas to the pixel resolution of a selected QgsRasterLayer pixel.
+    """
     def __init__(self, canvas):
         super(PixelScaleExtentMapTool, self).__init__(canvas)
         self.canvas = canvas
@@ -245,9 +209,7 @@ class PixelScaleExtentMapTool(QgsMapTool):
     def flags(self):
         return QgsMapTool.Transient
 
-
     def canvasReleaseEvent(self, mouseEvent):
-        layers = self.canvas.layers()
 
         unitsPxX = []
         unitsPxY = []
@@ -271,15 +233,16 @@ class PixelScaleExtentMapTool(QgsMapTool):
             width = f * self.canvas.size().width() * unitsPxX #width in map units
             height = f * self.canvas.size().height() * unitsPxY #height in map units
 
-
             center = SpatialPoint.fromMapCanvasCenter(self.canvas)
             extent = SpatialExtent(center.crs(), 0, 0, width, height)
             extent.setCenter(center, center.crs())
             self.canvas.setExtent(extent)
-        s = ""
 
 
 class FullExtentMapTool(QgsMapTool):
+    """
+    A QgsMapTool to scale a QgsMapCanvas to the full extent of all available QgsMapLayers.
+    """
     def __init__(self, canvas):
         super(FullExtentMapTool, self).__init__(canvas)
         self.canvas = canvas
@@ -290,6 +253,7 @@ class FullExtentMapTool(QgsMapTool):
     def flags(self):
         return QgsMapTool.Transient
 
+
 class PointLayersMapTool(CursorLocationMapTool):
 
     def __init__(self, canvas):
@@ -299,21 +263,31 @@ class PointLayersMapTool(CursorLocationMapTool):
         QgsMapToolIdentify.__init__(self, canvas)
 
 class SpatialExtentMapTool(QgsMapToolEmitPoint):
+    """
+    A QgsMapTool to select a SpatialExtent
+    """
     sigSpatialExtentSelected = pyqtSignal(SpatialExtent)
 
-
-    def __init__(self, canvas):
+    def __init__(self, canvas:QgsMapCanvas):
         self.canvas = canvas
         QgsMapToolEmitPoint.__init__(self, self.canvas)
         self.rubberBand = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.setStyle(Qt.red, 1)
         self.reset()
 
-    def setStyle(self, color, width):
+    def setStyle(self, color:QColor, width:int):
+        """
+        Sets the style of the rectangle shows when selecting the SpatialExtent
+        :param color: QColor
+        :param width: int
+        """
         self.rubberBand.setColor(color)
         self.rubberBand.setWidth(width)
 
     def reset(self):
+        """
+        Removes the drawn rectangle
+        """
         self.startPoint = self.endPoint = None
         self.isEmittingPoint = False
         self.rubberBand.reset(QgsWkbTypes.PolygonGeometry)
@@ -338,7 +312,6 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
 
 
     def canvasMoveEvent(self, e):
-
         if not self.isEmittingPoint:
             return
 
@@ -365,14 +338,8 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
         if self.startPoint is None or self.endPoint is None:
             return None
         elif self.startPoint.x() == self.endPoint.x() or self.startPoint.y() == self.endPoint.y():
-
             return None
-
         return QgsRectangle(self.startPoint, self.endPoint)
-
-    #def deactivate(self):
-    #   super(RectangleMapTool, self).deactivate()
-    #self.deactivated.emit()
 
 
 class RectangleMapTool(QgsMapToolEmitPoint):
@@ -444,14 +411,12 @@ class RectangleMapTool(QgsMapToolEmitPoint):
 
         return QgsRectangle(self.startPoint, self.endPoint)
 
-    #def deactivate(self):
-    #   super(RectangleMapTool, self).deactivate()
-    #self.deactivated.emit()
-
-
 
 class TemporalProfileMapTool(CursorLocationMapTool):
-
     def __init__(self, *args, **kwds):
         super(TemporalProfileMapTool, self).__init__(*args, **kwds)
 
+
+class SpectralProfileMapTool(CursorLocationMapTool):
+    def __init__(self, *args, **kwds):
+        super(SpectralProfileMapTool, self).__init__(*args, **kwds)

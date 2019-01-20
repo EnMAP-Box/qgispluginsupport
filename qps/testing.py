@@ -505,6 +505,7 @@ class TestObjects():
         assert isinstance(drv, ogr.Driver)
         dsDst = drv.CopyDataSource(dsSrc, path)
         assert isinstance(dsDst, ogr.DataSource)
+        dsDst.FlushCache()
         return dsDst
 
     @staticmethod
@@ -520,9 +521,11 @@ class TestObjects():
         assert isinstance(lyr, ogr.Layer)
         assert lyr.GetFeatureCount() > 0
         uri = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
+
         # dsSrc = None
         vl = QgsVectorLayer(uri, 'testlayer', 'ogr', lyrOptions)
         assert isinstance(vl, QgsVectorLayer)
+        assert vl.isValid()
         assert vl.featureCount() == lyr.GetFeatureCount()
         return vl
 
