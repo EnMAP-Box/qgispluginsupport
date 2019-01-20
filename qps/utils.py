@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy
+import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy, shutil
 
 from qgis.core import *
 from qgis.core import QgsFeature, QgsPointXY, QgsRectangle
@@ -24,12 +24,53 @@ from qps import resourcemockup
 jp = os.path.join
 dn = os.path.dirname
 
+def rm(p):
+    """
+    Removes the file or directory `p`
+    :param p: path of file or directory to be removed.
+    """
+    if os.path.isfile(p):
+        os.remove(p)
+    elif os.path.isdir(p):
+        shutil.rmtree(p)
+
+
+def cleanDir(d):
+    """
+    Remove content from directory 'd'
+    :param d: directory to be cleaned.
+    """
+    assert os.path.isdir(d)
+    for root, dirs, files in os.walk(d):
+        for p in dirs + files: rm(jp(root, p))
+        break
+
+
+def mkDir(d, delete=False):
+    """
+    Make directory.
+    :param d: path of directory to be created
+    :param delete: set on True to delete the directory contents, in case the directory already existed.
+    """
+    if delete and os.path.isdir(d):
+        cleanDir(d)
+    if not os.path.isdir(d):
+        os.makedirs(d)
+
+
 # for python development only. try to find a qgisresources directory
 DIR_QGISRESOURCES = None
 MAP_LAYER_STORES = [QgsProject.instance()]
 
 
 def findUpwardPath(basepath, name, isDirectory=True):
+    """
+
+    :param basepath:
+    :param name:
+    :param isDirectory:
+    :return:
+    """
     tmp = pathlib.Path(basepath)
     while tmp != pathlib.Path(tmp.anchor):
         if (isDirectory and os.path.isdir(tmp / name)) or \
@@ -38,6 +79,7 @@ def findUpwardPath(basepath, name, isDirectory=True):
         else:
             tmp = tmp.parent
     return None
+
 
 DIR_QGISRESOURCES = findUpwardPath(__file__, 'qgisresources')
 
