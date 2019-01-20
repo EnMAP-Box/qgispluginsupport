@@ -123,11 +123,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def __init__(self, parent=None):
         super(SpectralLibraryPlotWidget, self).__init__(parent)
 
-        #self.plotItem = pg.PlotItem(
-        #    axisItems={'bottom': SpectralXAxis(orientation='bottom')}
-        #    , viewBox=SpectralViewBox()
-        #)
-
         self.mViewBox = SpectralViewBox()
         self.plotItem = SpectralLibraryPlotItem(
             axisItems={'bottom': SpectralXAxis(orientation='bottom')}
@@ -145,8 +140,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # describe function to convert length units from unit a to unit b
         self.mLUT_UnitConversions = dict()
-        returnNone = lambda x: None
-        returnSame = lambda x: x
+        returnNone = lambda v, *args: None
+        returnSame = lambda v, *args: v
         self.mLUT_UnitConversions[(None, None)] = returnSame
         keys = list(METRIC_EXPONENTS.keys())
         exponents = list(METRIC_EXPONENTS.values())
@@ -357,17 +352,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def syncLibrary(self):
         profiles = self.speclib().profiles()
         self.updateProfileStyles(profiles)
-        s  =""
         self.updatePlot()
-        s = ""
 
-
-    def createUnitConversionFunction(self, unitSrc, unitDst):
+    def unitConversionFunction(self, unitSrc, unitDst):
         """
         Returns a function to convert a numeric value from unitSrc to unitDst.
-        :param unitSrc: str
-        :param unitDst: str
-        :return: function
+        :param unitSrc: str, e.g. `micrometers` or `um`
+        :param unitDst: str, e.g. `nanometers` or `nm`
+        :return: callable, a function of pattern `mappedValues = func(value:list, pdi:SpectralProfilePlotDataItem)`
         """
         key = (unitSrc, unitDst)
         func = self.mLUT_UnitConversions.get(key)
@@ -380,16 +372,28 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 func = lambda x: None
 
             self.mLUT_UnitConversions[key] = func
+
             return self.mLUT_UnitConversions[key]
 
+
+
     def setXUnit(self, unit:str):
+        """
+        Sets the unit or mapping function to be shown on x-axis.
+        :param unit: str, e.g. `nanometers`
+        """
         old = self.xUnit()
         if old != unit:
             self.mViewBox.setXAxisUnit(unit)
             self.updateXUnit()
 
     def xUnit(self)->str:
+        """
+        Returns the unit to be shown on x-axis
+        :return: str
+        """
         return self.mViewBox.xAxisUnit()
+
 
     def updateXUnit(self):
         unit = self.xUnit()
@@ -398,18 +402,16 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.setXLabel(unit)
 
         # update x values
+        pdis = [pdi for pdi in list(self.mPlotDataItems.values()) + self.mPlotOverlayItems if isinstance(pdi, SpectralProfilePlotDataItem)]
         if unit == BAND_INDEX:
-            func = lambda x:x
-            for pdi in self.mPlotDataItems.values():
-                if isinstance(pdi, SpectralProfilePlotDataItem):
-                    pdi.setXValueConversionFunction(func)
-                    pdi.applyValueConversion()
+            func = lambda x, *args: list(range(len(x)))
+            for pdi in pdis:
+                pdi.setMapFunctionX(func)
+                pdi.applyMapFunctions()
         else:
-            for pdi in self.mPlotDataItems.values():
-                if isinstance(pdi, SpectralProfilePlotDataItem):
-                    key = (pdi.mInitialUnitX, unit)
-                    pdi.setXValueConversionFunction(self.createUnitConversionFunction(pdi.mInitialUnitX, unit))
-                    pdi.applyValueConversion()
+            for pdi in pdis:
+                pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, unit))
+                pdi.applyMapFunctions()
 
     def updatePlot(self):
         i = 0
@@ -760,6 +762,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         assert len(x) == len(y)
 
+        self.mProfile = spectralProfile
         self.mInitialDataX = x
         self.mInitialDataY = y
         self.mInitialUnitX = spectralProfile.xUnit()
@@ -768,37 +771,60 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.mDefaultStyle = None
         self.setStyle(spectralProfile.style())
 
-        self.mXValueConversionFunction = lambda x: x
-        self.mYValueConversionFunction = lambda y: y
+        self.mXValueConversionFunction = lambda v, *args: v
+        self.mYValueConversionFunction = lambda v, *args: v
 
-        self.applyValueConversion()
+        self.applyMapFunctions()
 
-    def setXValueConversionFunction(self, func):
+    def setMapFunctionX(self, func):
+        """
+        Sets the function `func` to get the values to be plotted on x-axis.
+        The function must have the pattern mappedXValues = func(originalXValues, SpectralProfilePlotDataItem),
+        The default function `func = lambda v, *args : v` returns the unchanged x-values in `v`
+        :param func: callable, mapping function
+        """
         assert callable(func)
         self.mXValueConversionFunction = func
 
-    def setYValueConversionFunction(self, func):
+    def setMapFunctionY(self, func):
+        """
+        Sets the function `func` to get the values to be plotted on y-axis.
+        The function must follow the pattern mappedYValues = func(originalYValues, plotDataItem),
+        The default function `func = lambda v, *args : v` returns the unchanged y-values in `v`
+        The second argument `plotDataItem` provides a handle to SpectralProfilePlotDataItem instance which uses this
+        function when running its `.applyMapFunctions()`.
+        :param func: callable, mapping function
+        """
         assert callable(func)
         self.mYValueConversionFunction = func
 
-    def applyValueConversion(self):
+    def applyMapFunctions(self)->bool:
+        """
+        Applies the two functions defined with `.setMapFunctionX` and `.setMapFunctionY`.
+        :return: bool, True in case of success
+        """
+        success = False
+        if len(self.mInitialDataX) > 0 and len(self.mInitialDataY) > 0:
+            x = None
+            y = None
 
-        if len(self.mInitialDataX) > 0  and len(self.mInitialDataY) > 0 and \
-        callable(self.mXValueConversionFunction) and callable(self.mYValueConversionFunction):
-            x = self.mXValueConversionFunction(self.mInitialDataX)
-            y = self.mYValueConversionFunction(self.mInitialDataY)
+            try:
+                x = self.mXValueConversionFunction(self.mInitialDataX, self.mInitialDataY, self)
+                y = self.mYValueConversionFunction(self.mInitialDataY)
+                if isinstance(x, list) and isinstance(y, list):
+                    success = True
+            except Exception as ex:
+                print(ex)
+                pass
 
-            if isinstance(x, list) and isinstance(y, list):
-                self.setData(x=x, y=y)
-                self.setVisible(True)
-            else:
-                if x is None or len(x) != len(y):
-                    s = ""
-                    self.mXValueConversionFunction(self.mInitialDataX)
-                    s = ""
-                self.setVisible(False)
+        if success:
+            self.setData(x=x, y=y)
+            self.setVisible(True)
+        else:
+            self.setData(x=[], y=[])
+            self.setVisible(False)
 
-
+        return success
 
     def id(self)->int:
         """

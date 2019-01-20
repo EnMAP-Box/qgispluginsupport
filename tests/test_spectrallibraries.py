@@ -39,10 +39,6 @@ import enmapboxtestdata
 
 
 
-
-
-
-
 def createSpeclib()->SpectralLibrary:
     from enmapboxtestdata import hires
 
@@ -882,7 +878,7 @@ class TestCore(unittest.TestCase):
         import enmapboxtestdata
         speclib = self.createSpeclib()
 
-        #speclib = SpectralLibrary.readFrom(enmapboxtestdata.speclib)
+        speclib = SpectralLibrary.readFrom(enmapboxtestdata.library)
         slw = SpectralLibraryWidget(speclib=speclib)
 
         #slw.mSpeclib.startEditing()
