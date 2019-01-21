@@ -131,12 +131,12 @@ def readCSVMetadata(pathESL):
         return None
 
     hasSpectrumNames = False
-    match = re.search('spectra names[ ]*([;\t,])', lines[0])
+    match = re.search(r'spectra names[ ]*([;\t,])', lines[0])
     if match:
         sep = match.group(1)
     else:
         print('Unable to find column name "spectra names" in {}.'.format(pathCSV), file=sys.stderr)
-        match = re.search('name[ ]*([;\t,])', lines[0], re.I)
+        match = re.search(r'name[ ]*([;\t,])', lines[0], re.I)
         if match:
             sep = match.group(1)
         else:
@@ -459,7 +459,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             hdr = file.readlines()
             file.close()
             for iLine in range(len(hdr)):
-                if re.search('file type =', hdr[iLine]):
+                if re.search(r'file type =', hdr[iLine]):
                     hdr[iLine] = 'file type = ENVI Spectral Library\n'
                     break
 
@@ -546,7 +546,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         hdr = [''.join(re.split('\n[ ]*', line)).strip() for line in hdr]
         # keep lines with <tag>=<value> structure only
-        hdr = [line for line in hdr if re.search('^[^=]+=', line)]
+        hdr = [line for line in hdr if re.search(r'^[^=]+=', line)]
 
         # restructure into dictionary of type
         # md[key] = single value or

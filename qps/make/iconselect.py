@@ -181,7 +181,7 @@ class AvailableIcons(QWidget):
                 files.append(r.fileName())
 
         for file in sorted(files, key=lambda f:os.path.basename(f)):
-                if re.search('(svg|png|jpg|ico)$', file, re.I):
+                if re.search(r'(svg|png|jpg|ico)$', file, re.I):
                     icon = QIcon(file)
                     if not icon.isNull():
                         btn = QPushButton(self)

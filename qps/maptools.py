@@ -45,7 +45,8 @@ def createCursor(resourcePath:str):
     assert not icon.isNull()
     scale = Qgis.UI_SCALE_FACTOR * app.fontMetrics().height() / 32.
     size = QSize(scale * 32, scale * 32)
-    return QCursor(icon.pixmap(size), scale * activeX, scale * activeY)
+    cursor = QCursor(icon.pixmap(size), scale * activeX, scale * activeY)
+    return cursor
 
 
 class MapTools(object):
@@ -221,10 +222,10 @@ class PixelScaleExtentMapTool(QgsMapTool):
     """
     def __init__(self, canvas):
         super(PixelScaleExtentMapTool, self).__init__(canvas)
-        self.canvas = canvas
         #see defintion getThemePixmap(const QString &):QPixmap in qgsapplication.cpp
-
-        self.setCursor(createCursor(':/qps/ui/icons/cursor_zoom_pixelscale.svg'))
+        self.mCursor = createCursor(':/qps/ui/icons/cursor_zoom_pixelscale.svg')
+        self.setCursor(self.mCursor)
+        canvas.setCursor(self.mCursor)
 
     def flags(self):
         return QgsMapTool.Transient
@@ -233,7 +234,7 @@ class PixelScaleExtentMapTool(QgsMapTool):
 
         unitsPxX = []
         unitsPxY = []
-        for lyr in self.canvas.layers():
+        for lyr in self.canvas().layers():
             if isinstance(lyr, QgsRasterLayer):
                 unitsPxX.append(lyr.rasterUnitsPerPixelX())
                 unitsPxY.append(lyr.rasterUnitsPerPixelY())
@@ -250,13 +251,13 @@ class PixelScaleExtentMapTool(QgsMapTool):
             unitsPxX = unitsPxX[i]
             unitsPxY = unitsPxY[i]
             f = 0.2
-            width = f * self.canvas.size().width() * unitsPxX #width in map units
-            height = f * self.canvas.size().height() * unitsPxY #height in map units
+            width = f * self.canvas().size().width() * unitsPxX #width in map units
+            height = f * self.canvas().size().height() * unitsPxY #height in map units
 
-            center = SpatialPoint.fromMapCanvasCenter(self.canvas)
+            center = SpatialPoint.fromMapCanvasCenter(self.canvas())
             extent = SpatialExtent(center.crs(), 0, 0, width, height)
             extent.setCenter(center, center.crs())
-            self.canvas.setExtent(extent)
+            self.canvas().setExtent(extent)
 
 
 class FullExtentMapTool(QgsMapTool):
@@ -265,11 +266,12 @@ class FullExtentMapTool(QgsMapTool):
     """
     def __init__(self, canvas):
         super(FullExtentMapTool, self).__init__(canvas)
-        self.canvas = canvas
-        self.setCursor(createCursor(':/qps/ui/icons/cursor_zoom_fullextent.svg'))
+        self.mCursor = createCursor(':/qps/ui/icons/cursor_zoom_fullextent.svg')
+        self.setCursor(self.mCursor)
+        canvas.setCursor(self.mCursor)
 
     def canvasReleaseEvent(self, mouseEvent):
-        self.canvas.zoomToFullExtent()
+        self.canvas().zoomToFullExtent()
 
     def flags(self):
         return QgsMapTool.Transient
@@ -290,9 +292,8 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
     sigSpatialExtentSelected = pyqtSignal(SpatialExtent)
 
     def __init__(self, canvas:QgsMapCanvas):
-        self.canvas = canvas
         QgsMapToolEmitPoint.__init__(self, self.canvas)
-        self.rubberBand = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.rubberBand = QgsRubberBand(self.canvas(), QgsWkbTypes.PolygonGeometry)
         self.setStyle(Qt.red, 1)
         self.reset()
 
@@ -322,7 +323,7 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
     def canvasReleaseEvent(self, e):
         self.isEmittingPoint = False
 
-        crs = self.canvas.mapSettings().destinationCrs()
+        crs = self.canvas().mapSettings().destinationCrs()
         rect = self.rectangle()
 
         self.reset()
@@ -369,9 +370,9 @@ class RectangleMapTool(QgsMapToolEmitPoint):
 
 
     def __init__(self, canvas):
-        self.canvas = canvas
-        QgsMapToolEmitPoint.__init__(self, self.canvas)
-        self.rubberBand = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        QgsMapToolEmitPoint.__init__(self, canvas)
+        self.rubberBand = QgsRubberBand(self.canvas(), QgsWkbTypes.PolygonGeometry)
         self.rubberBand.setColor(Qt.red)
         self.rubberBand.setWidth(1)
         self.reset()
@@ -391,7 +392,7 @@ class RectangleMapTool(QgsMapToolEmitPoint):
         self.isEmittingPoint = False
 
 
-        wkt = self.canvas.mapSettings().destinationCrs().toWkt()
+        wkt = self.canvas().mapSettings().destinationCrs().toWkt()
         r = self.rectangle()
         self.reset()
 

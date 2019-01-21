@@ -255,7 +255,7 @@ def createResourceIconPackage(dirIcons, pathResourceFile):
                 code.append('# ' + comment)
             for f in files:
                 an, ext = os.path.splitext(os.path.basename(f))
-                if re.search('^\d', an):
+                if re.search(r'^\d', an):
                     an = numberPrefix + an
                 an = re.sub(r'[-.]', '_', an)
 
@@ -265,8 +265,8 @@ def createResourceIconPackage(dirIcons, pathResourceFile):
                 filePathAttributes.add(an)
             code.append('\n')
 
-    raster = [f for f in files if re.search('.*\.(bsq|bip|bil|tif|tiff)$', f)]
-    vector = [f for f in files if re.search('.*\.(shp|kml|kmz)$', f)]
+    raster = [f for f in files if re.search(r'.*\.(bsq|bip|bil|tif|tiff)$', f)]
+    vector = [f for f in files if re.search(r'.*\.(shp|kml|kmz)$', f)]
 
     addFiles(raster, 'Raster files:', numberPrefix='Img_')
     addFiles(vector, 'Vector files:', numberPrefix='Shp_')
@@ -361,7 +361,7 @@ def createFilePackage(dirData):
             for f in files:
                 attributeName, ext = os.path.splitext(os.path.basename(f))
                 #take care of leading numbers
-                if re.search('^\d', attributeName):
+                if re.search(r'^\d', attributeName):
                     attributeName = numberPrefix+attributeName
                 # append extension
                 attributeName += ext
@@ -376,8 +376,8 @@ def createFilePackage(dirData):
                 filePathAttributes.add(attributeName)
             code.append('\n')
 
-    raster = [f for f in files if re.search('.*\.(bsq|bip|bil|tif|tiff)$', f)]
-    vector = [f for f in files if re.search('.*\.(shp|kml|kmz)$', f)]
+    raster = [f for f in files if re.search(r'.*\.(bsq|bip|bil|tif|tiff)$', f)]
+    vector = [f for f in files if re.search(r'.*\.(shp|kml|kmz)$', f)]
 
     addFiles(raster, 'Raster files:', numberPrefix='Img_')
     addFiles(vector, 'Vector files:', numberPrefix='Shp_')

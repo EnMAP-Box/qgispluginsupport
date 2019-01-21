@@ -804,23 +804,23 @@ def parseWavelength(dataset):
                         wl = np.asarray([float(w) for w in tmp])
 
                 if re.search(r'wavelength.units?', key):
-                    if re.search('(Micrometers?|um)', values, re.I):
+                    if re.search(r'(Micrometers?|um)', values, re.I):
                         wlu = 'um'  # fix with python 3 UTF
-                    elif re.search('(Nanometers?|nm)', values, re.I):
+                    elif re.search(r'(Nanometers?|nm)', values, re.I):
                         wlu = 'nm'
-                    elif re.search('(Millimeters?|mm)', values, re.I):
+                    elif re.search(r'(Millimeters?|mm)', values, re.I):
                         wlu = 'nm'
-                    elif re.search('(Centimeters?|cm)', values, re.I):
+                    elif re.search(r'(Centimeters?|cm)', values, re.I):
                         wlu = 'nm'
-                    elif re.search('(Meters?|m)', values, re.I):
+                    elif re.search(r'(Meters?|m)', values, re.I):
                         wlu = 'nm'
-                    elif re.search('Wavenumber', values, re.I):
+                    elif re.search(r'Wavenumber', values, re.I):
                         wlu = '-'
-                    elif re.search('GHz', values, re.I):
+                    elif re.search(r'GHz', values, re.I):
                         wlu = 'GHz'
-                    elif re.search('MHz', values, re.I):
+                    elif re.search(r'MHz', values, re.I):
                         wlu = 'MHz'
-                    elif re.search('Index', values, re.I):
+                    elif re.search(r'Index', values, re.I):
                         wlu = '-'
                     else:
                         wlu = '-'

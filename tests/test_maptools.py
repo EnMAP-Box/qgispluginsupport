@@ -62,6 +62,15 @@ class TestMapTools(unittest.TestCase):
             mapTool.canvasPressEvent(qgsMouseEvent)
             mapTool.canvasReleaseEvent(qgsMouseEvent)
 
+        mt = PixelScaleExtentMapTool(self.canvas)
+        self.assertIsInstance(mt, PixelScaleExtentMapTool)
+        self.assertFalse(mt.canvas().cursor().pixmap().isNull())
+
+        mt = FullExtentMapTool(self.canvas)
+        self.assertIsInstance(mt, FullExtentMapTool)
+        self.assertFalse(mt.canvas().cursor().pixmap().isNull())
+
+
 
 
 if __name__ == "__main__":

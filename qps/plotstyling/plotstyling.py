@@ -495,7 +495,7 @@ class PlotStyleWidget(QWidget, loadUI('plotstylewidget.ui')):
         :param widgets: [list-of-QWidgets]
         """
         text = cb.currentText()
-        enabled = re.search('No (Pen|Symbol)', text) is None
+        enabled = re.search(r'No (Pen|Symbol)', text) is None
         for w in widgets:
             assert isinstance(w, QWidget)
             w.setEnabled(enabled)
