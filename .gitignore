@@ -10,6 +10,8 @@ qgisresources/
 enmapboxtestdata/
 testdata/
 
+qps/qpsresources.py
+
 # Untrack compiled files
 *.pyc 
 *.pyd
