@@ -44,10 +44,23 @@ class TestMapTools(unittest.TestCase):
         self.assertTrue(len(keys) > 0)
 
         for key in keys:
+            print('Test MapTool {}...'.format(key))
             mapTool = MapTools.create(key, self.canvas)
             self.assertIsInstance(mapTool, QgsMapTool)
             self.assertEqual(mapTool, self.canvas.mapTool())
 
+            size = self.canvas.size()
+
+            mouseEvent = QMouseEvent(
+                            QEvent.MouseButtonPress,
+                            QPointF(0.5 * size.width(), 0.5 * size.height()),
+                            Qt.LeftButton,
+                            Qt.LeftButton,
+                            Qt.NoModifier)
+
+            qgsMouseEvent = QgsMapMouseEvent(self.canvas, mouseEvent)
+            mapTool.canvasPressEvent(qgsMouseEvent)
+            mapTool.canvasReleaseEvent(qgsMouseEvent)
 
 
 

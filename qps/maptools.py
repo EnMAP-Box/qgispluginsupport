@@ -185,8 +185,9 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
                 geom.addPart(lineV, QgsWkbTypes.LineGeometry)
                 self.rubberband.addGeometry(geom, None)
                 self.rubberband.show()
-                #remove crosshair after 0.25 sec
-                QTimer.singleShot(self.mShowCrosshairTime, self.hideRubberband)
+
+                # remove crosshair after a short while
+                QTimer.singleShot(self.mCrosshairTime, self.hideRubberband)
 
             pt = SpatialPoint(crs, geoPoint)
             self.sigLocationRequest[SpatialPoint].emit(pt)
