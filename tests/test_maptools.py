@@ -31,6 +31,14 @@ class TestMapTools(unittest.TestCase):
         self.lyr = TestObjects.createVectorLayer()
         QgsProject.instance().addMapLayer(self.lyr)
 
+    def createCanvas(self)->QgsMapCanvas:
+        canvas = QgsMapCanvas()
+        lyr = TestObjects.createVectorLayer()
+        QgsProject.instance().addMapLayer(lyr)
+        canvas.setLayers([lyr])
+        canvas.setExtent(lyr.extent())
+        return canvas
+
     def tearDown(self):
         self.canvas.close()
         QgsProject.instance().removeMapLayer(self.lyr)
@@ -42,6 +50,9 @@ class TestMapTools(unittest.TestCase):
             self.assertIsInstance(k, str)
         self.assertIsInstance(keys, list)
         self.assertTrue(len(keys) > 0)
+
+        if SHOW_GUI:
+            self.canvas.show()
 
         for key in keys:
             print('Test MapTool {}...'.format(key))
@@ -59,8 +70,30 @@ class TestMapTools(unittest.TestCase):
                             Qt.NoModifier)
 
             qgsMouseEvent = QgsMapMouseEvent(self.canvas, mouseEvent)
+
+
             mapTool.canvasPressEvent(qgsMouseEvent)
             mapTool.canvasReleaseEvent(qgsMouseEvent)
+
+            if SHOW_GUI:
+                d = QDialog(None)
+                d.setWindowTitle('Cursor "{}"'.format(mapTool.__class__.__name__))
+                d.setLayout(QVBoxLayout())
+                canvas = self.createCanvas()
+                mapTool = MapTools.create(key, canvas)
+                d.layout().addWidget(canvas)
+                self.assertEqual(mapTool, canvas.mapTool())
+                btn1 = QPushButton('Ok', d)
+                btn2 = QPushButton('Failed', d)
+
+                btn1.clicked.connect(d.accept)
+                btn2.clicked.connect(d.reject)
+                d.layout().addWidget(btn1)
+                d.layout().addWidget(btn2)
+
+                if d.exec_() == QDialog.Rejected:
+                    self.fail('Wrong/none cursor for maptool {}'.format(mapTool.__class__.__name__))
+
 
         mt = PixelScaleExtentMapTool(self.canvas)
         self.assertIsInstance(mt, PixelScaleExtentMapTool)
