@@ -2328,12 +2328,8 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.mColorCurrentSpectra = COLOR_SELECTED_SPECTRA
         self.mColorSelectedSpectra = COLOR_SELECTED_SPECTRA
 
-        self.m_plot_max = 500
-        self.mPlotXUnitModel = UnitComboBoxItemModel()
-        self.mPlotXUnitModel.addUnit('Index')
 
-        self.mPlotXUnitModel = OptionListModel()
-        self.mPlotXUnitModel.addOption(Option('Index'))
+        self.m_plot_max = 500
 
         self.mSelectionModel = None
 

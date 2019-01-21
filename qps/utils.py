@@ -146,7 +146,7 @@ def registeredMapLayers()->list:
 METRIC_EXPONENTS = {
     "nm": -9, "um": -6, u"µm": -6, "mm": -3, "cm": -2, "dm": -1, "m": 0, "hm": 2, "km": 3
 }
-# add synonyms
+# add synonyms (lower-case)
 METRIC_EXPONENTS['nanometers'] = METRIC_EXPONENTS['nm']
 METRIC_EXPONENTS['micrometers'] = METRIC_EXPONENTS['μm'] = METRIC_EXPONENTS['um']
 METRIC_EXPONENTS['millimeters'] = METRIC_EXPONENTS['mm']
@@ -613,7 +613,7 @@ def zipdir(pathDir, pathZip):
                     zip.write(filename, arcname)
 
 
-def convertMetricUnit(value:float, u1:str, u2:str)->float:
+def convertMetricUnit(value: float, u1: str, u2: str)->float:
     """
     Converts value `value` from unit `u1` into unit `u2`
     :param value: float | int | might work with numpy.arrays as well

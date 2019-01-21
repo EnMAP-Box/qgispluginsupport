@@ -138,6 +138,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         self.mUpdatesBlocked = False
 
+        self.mXUnitInitialized = False
+        self.mXUnit = BAND_INDEX
+        self.mYUnit = None
+
         # describe function to convert length units from unit a to unit b
         self.mLUT_UnitConversions = dict()
         returnNone = lambda v, *args: None
@@ -158,9 +162,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 if e1 == e2:
                     self.mLUT_UnitConversions[(key1, key2)] = returnSame
 
-
         self.mViewBox.sigXUnitChanged.connect(self.setXUnit)
-
 
         self.mPlotDataItems = dict()
         self.setAntialiasing(True)
@@ -322,6 +324,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         self.onProfilesAdded(self.speclib().allFeatureIds())
 
+
         self.updatePlot()
 
     def onAttributeChanged(self, fid, idx, value):
@@ -357,19 +360,19 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def unitConversionFunction(self, unitSrc, unitDst):
         """
         Returns a function to convert a numeric value from unitSrc to unitDst.
-        :param unitSrc: str, e.g. `micrometers` or `um`
-        :param unitDst: str, e.g. `nanometers` or `nm`
+        :param unitSrc: str, e.g. `micrometers` or `um` (case insensitive)
+        :param unitDst: str, e.g. `nanometers` or `nm` (case insensitive)
         :return: callable, a function of pattern `mappedValues = func(value:list, pdi:SpectralProfilePlotDataItem)`
         """
-        key = (unitSrc, unitDst)
+        key = (unitSrc.lower(), unitDst.lower())
         func = self.mLUT_UnitConversions.get(key)
         if callable(func):
             return func
         else:
             if isinstance(unitSrc, str) and isinstance(unitDst, str) and convertMetricUnit(1, unitSrc, unitDst) is not None:
-                func = lambda x, a=unitSrc, b=unitDst : convertMetricUnit(x, a, b)
+                func = lambda values, pdi, a=unitSrc, b=unitDst: convertMetricUnit(values, a, b)
             else:
-                func = lambda x: None
+                func = lambda values, pdi: None
 
             self.mLUT_UnitConversions[key] = func
 
@@ -382,18 +385,35 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Sets the unit or mapping function to be shown on x-axis.
         :param unit: str, e.g. `nanometers`
         """
-        old = self.xUnit()
-        if old != unit:
+
+        if self.mXUnit != unit:
             self.mViewBox.setXAxisUnit(unit)
+            self.mXUnit = unit
             self.updateXUnit()
+
+
+            self.getPlotItem().update()
 
     def xUnit(self)->str:
         """
         Returns the unit to be shown on x-axis
         :return: str
         """
-        return self.mViewBox.xAxisUnit()
+        return self.mXUnit
 
+    def allPlotDataItems(self)->list:
+        """
+        Returns all PlotDataItems (not only SpectralProfilePlotDataItems)
+        :return: [list-of-PlotDataItems]
+        """
+        return list(self.mPlotDataItems.values()) + self.mPlotOverlayItems
+
+    def allSpectralProfilePlotDataItems(self):
+        """
+        Returns alls SpectralProfilePlotDataItem, including those used as temporary overlays.
+        :return: [list-of-SpectralProfilePlotDataItem]
+        """
+        return [pdi for pdi in self.allPlotDataItems() if isinstance(pdi, SpectralProfilePlotDataItem)]
 
     def updateXUnit(self):
         unit = self.xUnit()
@@ -402,7 +422,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.setXLabel(unit)
 
         # update x values
-        pdis = [pdi for pdi in list(self.mPlotDataItems.values()) + self.mPlotOverlayItems if isinstance(pdi, SpectralProfilePlotDataItem)]
+        pdis = self.allSpectralProfilePlotDataItems()
         if unit == BAND_INDEX:
             func = lambda x, *args: list(range(len(x)))
             for pdi in pdis:
@@ -413,6 +433,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, unit))
                 pdi.applyMapFunctions()
 
+        s = ""
     def updatePlot(self):
         i = 0
 
@@ -434,8 +455,15 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Updates the styles for a set of SpectralProfilePlotDataItems
         :param listOfProfiles: [list-of-SpectralProfiles]
         """
+
+        xUnit = None
         for profile in listOfProfiles:
             assert isinstance(profile, SpectralProfile)
+
+            if not self.mXUnitInitialized and isinstance(profile.xUnit(), str):
+                xUnit = profile.xUnit()
+
+
             id = profile.id()
             if id in self.mPlotDataItems.keys():
                 pdi = self.mPlotDataItems[id]
@@ -445,6 +473,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setClickable(True)
                 pdi.sigClicked.connect(self.onProfileClicked)
                 self.mPlotDataItems[profile.id()] = pdi
+
+        if isinstance(xUnit, str):
+            self.setXUnit(xUnit)
+            self.mXUnitInitialized = True
 
     def onProfileClicked(self, pdi):
         if self.mUpdatesBlocked:
@@ -499,7 +531,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def onProfilesAdded(self, fids):
         if self.mUpdatesBlocked:
             return
-
         profiles = self.speclib().profiles(fids=fids)
         self.updateProfileStyles(profiles)
         self.updatePlot()
@@ -517,6 +548,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         to_remove = [pdi for pdi in self._spectralProfilePDIs() if pdi.id() in fids]
         self._removeSpectralProfilePDIs(to_remove)
 
+
+
     def dragEnterEvent(self, event):
         assert isinstance(event, QDragEnterEvent)
         if MIMEDATA_SPECLIB_LINK in event.mimeData().formats():
@@ -527,23 +560,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if MIMEDATA_SPECLIB_LINK in event.mimeData().formats():
             event.accept()
 
-    #if containsSpeclib(event.mimeData()):
-        #    event.accept()
 
-
-    def addProfiles(self, profiles, n_total:int):
-        """
-        Adds profiles and shows a progress bar
-        :param profiles: list of profiles
-        """
-        i = 0
-        self.mProgressBar.setRange(0, n_total)
-        self.mProgressBar.setValue(0)
-        for p in profiles:
-            i += 1
-            self.mProgressBar.setValue(i)
-        
-        QTimer.singleShot(500, lambda : self.mProgressBar.setValue(0))
 
 
 
@@ -635,7 +652,8 @@ class SpectralViewBox(pg.ViewBox):
         self.mCBXAxisUnit.addItem(BAND_INDEX, userData='')
         for item in items:
             name, exponent = item
-            self.mCBXAxisUnit.addItem(name, userData=name)
+            title = name if len(name) <= 3 else name.title()
+            self.mCBXAxisUnit.addItem(title, userData=name)
         self.mCBXAxisUnit.setCurrentIndex(0)
 
         self.mCBXAxisUnit.currentIndexChanged.connect(lambda : self.sigXUnitChanged.emit(self.mCBXAxisUnit.currentText()))
@@ -809,8 +827,8 @@ class SpectralProfilePlotDataItem(PlotDataItem):
             y = None
 
             try:
-                x = self.mXValueConversionFunction(self.mInitialDataX, self.mInitialDataY, self)
-                y = self.mYValueConversionFunction(self.mInitialDataY)
+                x = self.mXValueConversionFunction(self.mInitialDataX, self)
+                y = self.mYValueConversionFunction(self.mInitialDataY, self)
                 if isinstance(x, list) and isinstance(y, list):
                     success = True
             except Exception as ex:

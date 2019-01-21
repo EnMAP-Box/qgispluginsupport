@@ -34,7 +34,7 @@ class TestQgsFeature(unittest.TestCase):
         qgsMouseEvent2 = QgsMapMouseEvent(
             canvas,
             QEvent.MouseButtonPress,
-            QPointF(0.5 * canvas.width(), 0.5 * canvas.height()),
+            QPointF(0.5 * canvas.width(), 0.5 * canvas.height()).toPoint(),
             Qt.LeftButton,
             Qt.LeftButton,
             Qt.NoModifier)

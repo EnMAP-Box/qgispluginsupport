@@ -33,7 +33,7 @@ from qps.speclib.envi import *
 from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
-SHOW_GUI = True
+SHOW_GUI = False
 
 import enmapboxtestdata
 
@@ -766,8 +766,23 @@ class TestCore(unittest.TestCase):
 
     def test_SpectralLibraryPlotWidget(self):
 
-        #speclib = SpectralLibrary.readFrom(enmapboxtestdata.library)
-        speclib = self.createSpeclib()
+        speclib = SpectralLibrary.readFrom(enmapboxtestdata.library)
+        #speclib = self.createSpeclib()
+
+
+        pw = SpectralLibraryPlotWidget()
+        self.assertIsInstance(pw, SpectralLibraryPlotWidget)
+        self.assertTrue(pw.xUnit(), BAND_INDEX)
+
+        p = speclib[0]
+        sl = SpectralLibrary()
+        sl.startEditing()
+        pw.setSpeclib(sl)
+
+        sl.addProfiles([p])
+        self.assertTrue(pw.xUnit(), p.xUnit())
+
+
         w = QWidget()
         w.setLayout(QVBoxLayout())
         pw = SpectralLibraryPlotWidget()
@@ -793,7 +808,7 @@ class TestCore(unittest.TestCase):
 
         if True:
 
-            ids = [1,2,3,4,5]
+            ids = [1, 2, 3, 4, 5]
             speclib.selectByIds(ids)
 
             n = 0
@@ -817,7 +832,7 @@ class TestCore(unittest.TestCase):
             n = len(speclib)
             p2 = speclib[0]
             speclib.addProfiles([p2])
-            pdis =  pw._spectralProfilePDIs()
+            pdis = pw._spectralProfilePDIs()
             self.assertTrue(len(pdis) == len(speclib))
             self.assertTrue(len(pdis) == n+1)
 
