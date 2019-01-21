@@ -2380,14 +2380,12 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         self.splitter.setSizes([800, 300])
 
-        # stores plotDataItems
+        self.plotWidget.setAcceptDrops(True)
+        self.plotWidget.dragEnterEvent = self.dragEnterEvent
+        self.plotWidget.dropEvent = self.dropEvent
+
+
         self.mCurrentProfiles = collections.OrderedDict()
-
-        pi = self.plotItem()
-        pi.setAcceptDrops(True)
-        pi.dropEvent = self.dropEvent
-
-
         self.mCurrentProfilesMode = SpectralLibraryWidget.CurrentProfilesMode.normal
         self.setCurrentProfilesMode(self.mCurrentProfilesMode)
 
