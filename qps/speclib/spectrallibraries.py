@@ -60,6 +60,9 @@ MIMEDATA_XQT_WINDOWS_CSV = 'application/x-qt-windows-mime;value="Csv"'
 MIMEDATA_TEXT = 'text/plain'
 MIMEDATA_URL = 'text/url'
 
+
+SPECLIB_CLIPBOARD = weakref.WeakValueDictionary()
+
 COLOR_CURRENT_SPECTRA = QColor('green')
 COLOR_SELECTED_SPECTRA = QColor('yellow')
 COLOR_BACKGROUND = QColor('black')
@@ -862,12 +865,13 @@ class SpectralLibrary(QgsVectorLayer):
         """
         if MIMEDATA_SPECLIB_LINK in mimeData.formats():
             #extract from link
-            id = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
-            for sl in SpectralLibrary.instances():
-                assert isinstance(sl, SpectralLibrary)
-                if sl.id() == id:
-                    return sl
-            pass
+            sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
+            global SPECLIB_CLIPBOARD
+            sl = SPECLIB_CLIPBOARD.get(sid)
+            if isinstance(sl, SpectralLibrary) and id(sl) == sid:
+                return sl
+            else:
+                return None
         elif MIMEDATA_SPECLIB in mimeData.formats():
             #unpickle
             return SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
@@ -1102,7 +1106,11 @@ class SpectralLibrary(QgsVectorLayer):
         for format in formats:
             assert format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_TEXT, MIMEDATA_URL]
             if format == MIMEDATA_SPECLIB_LINK:
-                mimeData.setData(MIMEDATA_SPECLIB_LINK, pickle.dumps(self.id()))
+                global SPECLIB_CLIPBOARD
+                thisID = id(self)
+                SPECLIB_CLIPBOARD[thisID] = self
+
+                mimeData.setData(MIMEDATA_SPECLIB_LINK, pickle.dumps(thisID))
             elif format == MIMEDATA_SPECLIB:
                 mimeData.setData(MIMEDATA_SPECLIB, pickle.dumps(self))
             elif format == MIMEDATA_URL:
@@ -2449,6 +2457,13 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         if isinstance(speclib, SpectralLibrary) and len(speclib) > 0:
             event.setAccepted(True)
             self.addSpeclib(speclib)
+
+    def dragEnterEvent(self, dragEnterEvent:QDragEnterEvent):
+
+        mimeData = dragEnterEvent.mimeData()
+        assert isinstance(mimeData, QMimeData)
+        if containsSpeclib(mimeData):
+            dragEnterEvent.accept()
 
 
 

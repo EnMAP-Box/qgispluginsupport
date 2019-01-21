@@ -10,6 +10,9 @@
     <height>360</height>
    </rect>
   </property>
+  <property name="acceptDrops">
+   <bool>true</bool>
+  </property>
   <property name="windowTitle">
    <string>Spectral Library</string>
   </property>
@@ -105,6 +108,9 @@
         <width>50</width>
         <height>0</height>
        </size>
+      </property>
+      <property name="acceptDrops">
+       <bool>true</bool>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <property name="spacing">

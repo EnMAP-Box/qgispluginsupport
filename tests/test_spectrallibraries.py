@@ -445,6 +445,14 @@ class TestCore(unittest.TestCase):
         sl1.addProfiles([sp1, sp2])
         sl1.commitChanges()
 
+
+        #test link
+        mimeData = sl1.mimeData(MIMEDATA_SPECLIB_LINK)
+
+        slRetrievd = SpectralLibrary.readFromMimeData(mimeData)
+        self.assertEqual(slRetrievd, sl1)
+
+
         for format in [MIMEDATA_TEXT, MIMEDATA_SPECLIB, MIMEDATA_SPECLIB_LINK]:
             print('Test MimeData I/O "{}"'.format(format))
             mimeData = sl1.mimeData(format)

@@ -468,7 +468,8 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
             raise ex
 
         for mockupModule in FORM_CLASS_MOCKUP_MODULES:
-            sys.modules.pop(mockupModule)
+            if mockupModule in sys.modules.keys():
+                sys.modules.pop(mockupModule)
 
 
         buffer.close()
