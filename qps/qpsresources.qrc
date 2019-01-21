@@ -1,6 +1,8 @@
 <RCC>
   <qresource prefix="qps">
     <file>ui/icons/center_map.svg</file>
+    <file>ui/icons/cursor_zoom_fullextent.svg</file>
+    <file>ui/icons/cursor_zoom_pixelscale.svg</file>
     <file>ui/icons/classinfo.svg</file>
     <file>ui/icons/classinfo_add.svg</file>
     <file>ui/icons/classinfo_remove.svg</file>

@@ -32,6 +32,22 @@ from qgis.PyQt.QtWidgets import *
 import numpy as np
 from qps.utils import *
 
+
+def createCursor(resourcePath:str):
+    """
+    Creates a QCursor from a icon path
+    :param resourcePath: str
+    :return: QCursor
+    """
+    icon = QIcon(resourcePath)
+    app = QgsApplication.instance()
+    activeX = activeY = 13
+    assert not icon.isNull()
+    scale = Qgis.UI_SCALE_FACTOR * app.fontMetrics().height() / 32.
+    size = QSize(scale * 32, scale * 32)
+    return QCursor(icon.pixmap(size), scale * activeX, scale * activeY)
+
+
 class MapTools(object):
     """
     Static class to support handling of QgsMapTools.
@@ -206,6 +222,9 @@ class PixelScaleExtentMapTool(QgsMapTool):
     def __init__(self, canvas):
         super(PixelScaleExtentMapTool, self).__init__(canvas)
         self.canvas = canvas
+        #see defintion getThemePixmap(const QString &):QPixmap in qgsapplication.cpp
+
+        self.setCursor(createCursor(':/qps/ui/icons/cursor_zoom_pixelscale.svg'))
 
     def flags(self):
         return QgsMapTool.Transient
@@ -247,6 +266,7 @@ class FullExtentMapTool(QgsMapTool):
     def __init__(self, canvas):
         super(FullExtentMapTool, self).__init__(canvas)
         self.canvas = canvas
+        self.setCursor(createCursor(':/qps/ui/icons/cursor_zoom_fullextent.svg'))
 
     def canvasReleaseEvent(self, mouseEvent):
         self.canvas.zoomToFullExtent()
@@ -421,3 +441,5 @@ class TemporalProfileMapTool(CursorLocationMapTool):
 class SpectralProfileMapTool(CursorLocationMapTool):
     def __init__(self, *args, **kwds):
         super(SpectralProfileMapTool, self).__init__(*args, **kwds)
+
+

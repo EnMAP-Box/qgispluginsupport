@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>352</width>
-    <height>342</height>
+    <height>344</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -46,8 +46,8 @@
         <string>Load</string>
        </property>
        <property name="icon">
-        <iconset>
-         <normaloff>:/enmapbox/icons/mActionAdd.svg</normaloff>:/enmapbox/icons/mActionAdd.svg</iconset>
+        <iconset resource="../../../../QGIS/images/images.qrc">
+         <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
        </property>
        <property name="popupMode">
         <enum>QToolButton::MenuButtonPopup</enum>
@@ -63,8 +63,8 @@
         <string>Save</string>
        </property>
        <property name="icon">
-        <iconset>
-         <normaloff>:/enmapbox/icons/mActionFileSaveAs.svg</normaloff>:/enmapbox/icons/mActionFileSaveAs.svg</iconset>
+        <iconset resource="../../../../QGIS/images/images.qrc">
+         <normaloff>:/images/themes/default/mActionFileSaveAs.svg</normaloff>:/images/themes/default/mActionFileSaveAs.svg</iconset>
        </property>
        <property name="autoRaise">
         <bool>true</bool>
@@ -80,8 +80,8 @@
         <string>Add</string>
        </property>
        <property name="icon">
-        <iconset>
-         <normaloff>:/enmapbox/icons/copyright_label.svg</normaloff>:/enmapbox/icons/copyright_label.svg</iconset>
+        <iconset resource="../qpsresources.qrc">
+         <normaloff>:/qps/ui/icons/classinfo_add.svg</normaloff>:/qps/ui/icons/classinfo_add.svg</iconset>
        </property>
        <property name="autoRaise">
         <bool>true</bool>
@@ -97,8 +97,8 @@
         <string>Remove</string>
        </property>
        <property name="icon">
-        <iconset>
-         <normaloff>:/enmapbox/icons/remove_class.svg</normaloff>:/enmapbox/icons/remove_class.svg</iconset>
+        <iconset resource="../qpsresources.qrc">
+         <normaloff>:/qps/ui/icons/classinfo_remove.svg</normaloff>:/qps/ui/icons/classinfo_remove.svg</iconset>
        </property>
        <property name="autoRaise">
         <bool>true</bool>
@@ -111,8 +111,8 @@
         <string>Copy</string>
        </property>
        <property name="icon">
-        <iconset>
-         <normaloff>:/enmapbox/icons/mActionEditCopy.svg</normaloff>:/enmapbox/icons/mActionEditCopy.svg</iconset>
+        <iconset resource="../../../../QGIS/images/images.qrc">
+         <normaloff>:/images/themes/default/mActionEditCopy.svg</normaloff>:/images/themes/default/mActionEditCopy.svg</iconset>
        </property>
        <property name="autoRaise">
         <bool>true</bool>
@@ -125,8 +125,8 @@
         <string>Paste</string>
        </property>
        <property name="icon">
-        <iconset>
-         <normaloff>:/enmapbox/icons/mActionEditPaste.svg</normaloff>:/enmapbox/icons/mActionEditPaste.svg</iconset>
+        <iconset resource="../../../../QGIS/images/images.qrc">
+         <normaloff>:/images/themes/default/mActionEditPaste.svg</normaloff>:/images/themes/default/mActionEditPaste.svg</iconset>
        </property>
        <property name="autoRaise">
         <bool>true</bool>
@@ -176,8 +176,8 @@
   </layout>
   <action name="actionAddClasses">
    <property name="icon">
-    <iconset resource="classification_resources.qrc">
-     <normaloff>:/classificationimages/add_class.svg</normaloff>:/classificationimages/add_class.svg</iconset>
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/classinfo_add.svg</normaloff>:/qps/ui/icons/classinfo_add.svg</iconset>
    </property>
    <property name="text">
     <string>Add Class</string>
@@ -185,8 +185,8 @@
   </action>
   <action name="actionRemoveClasses">
    <property name="icon">
-    <iconset resource="classification_resources.qrc">
-     <normaloff>:/classificationimages/remove_class.svg</normaloff>:/classificationimages/remove_class.svg</iconset>
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/classinfo_remove.svg</normaloff>:/qps/ui/icons/classinfo_remove.svg</iconset>
    </property>
    <property name="text">
     <string>Remove Classes</string>
@@ -194,8 +194,8 @@
   </action>
   <action name="actionCopyClasses">
    <property name="icon">
-    <iconset>
-     <normaloff>:/enmapbox/icons/mActionEditCopy.svg</normaloff>:/enmapbox/icons/mActionEditCopy.svg</iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionEditCopy.svg</normaloff>:/images/themes/default/mActionEditCopy.svg</iconset>
    </property>
    <property name="text">
     <string>Copy Classes</string>
@@ -203,8 +203,8 @@
   </action>
   <action name="actionPasteClasses">
    <property name="icon">
-    <iconset>
-     <normaloff>:/enmapbox/icons/mActionEditPaste.svg</normaloff>:/enmapbox/icons/mActionEditPaste.svg</iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionEditPaste.svg</normaloff>:/images/themes/default/mActionEditPaste.svg</iconset>
    </property>
    <property name="text">
     <string>Paste Classes</string>
@@ -212,8 +212,8 @@
   </action>
   <action name="actionSaveClasses">
    <property name="icon">
-    <iconset>
-     <normaloff>:/enmapbox/icons/mActionFileSaveAs.svg</normaloff>:/enmapbox/icons/mActionFileSaveAs.svg</iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionFileSaveAs.svg</normaloff>:/images/themes/default/mActionFileSaveAs.svg</iconset>
    </property>
    <property name="text">
     <string>Save classes</string>
@@ -221,7 +221,8 @@
   </action>
  </widget>
  <resources>
-  <include location="classification_resources.qrc"/>
+  <include location="../qpsresources.qrc"/>
+  <include location="../../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>
 </ui>
