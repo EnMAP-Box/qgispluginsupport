@@ -152,15 +152,17 @@ def getDOMAttributes(elem):
     return values
 
 
-def compileResourceFiles(dirRoot:str, targetDir:str=None):
+def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None):
     """
-
-    :param dirRoot: str, root directory, in which to search for *.qrc files
+    Searches for *.ui files and compiles the *.qrc files they use.
+    :param dirRoot: str, root directory, in which to search for *.qrc files or a list of *.ui file paths.
     :param targetDir: str, output directory to write the compiled *.py files to.
            Defaults to the *.qrc's directory
     """
     #find ui files
+    assert os.path.isdir(dirRoot)
     ui_files = file_search(dirRoot, '*.ui', recursive=True)
+
     qrcs = set()
 
     doc = QDomDocument()
@@ -187,18 +189,29 @@ def compileResourceFiles(dirRoot:str, targetDir:str=None):
         if not os.path.exists(pathQrc):
             print('Resource file does not exist: {}'.format(pathQrc))
             continue
-        bn = os.path.basename(pathQrc)
+        compileResourceFile(pathQrc, targetDir=targetDir)
 
-        if isinstance(targetDir, str):
-            os.makedirs(targetDir, exist_ok=True)
-            dn = targetDir
-        else:
-            dn = os.path.dirname(pathQrc)
 
-        bn = os.path.splitext(bn)[0]
-        pathPy = os.path.join(dn, bn+'.py' )
-        os.system('pyrcc5 -o {} {}'.format(pathPy, pathQrc))
+def compileResourceFile(pathQrc:str, targetDir:str=None):
+    """
+    Compiles a *.qrc file
+    :param pathQrc:
+    :return:
+    """
+    assert isinstance(pathQrc, str)
+    assert os.path.isfile(pathQrc)
+    assert pathQrc.endswith('.qrc')
 
+    bn = os.path.basename(pathQrc)
+    if isinstance(targetDir, str):
+        os.makedirs(targetDir, exist_ok=True)
+        dn = targetDir
+    else:
+        dn = os.path.dirname(pathQrc)
+
+    bn = os.path.splitext(bn)[0]
+    pathPy = os.path.join(dn, bn + '.py')
+    os.system('pyrcc5 -o {} {}'.format(pathPy, pathQrc))
 
 def fileNeedsUpdate(file1, file2):
     """
@@ -397,7 +410,7 @@ def compileQGISResourceFiles(pathQGISRepo:str):
     """
     assert os.path.isdir(pathQGISRepo)
     target = jp(DIR_REPO, 'qgisresources')
-    compileResourceFiles(pathQGISRepo, targetDir=target)
+    searchAndCompileResourceFiles(pathQGISRepo, targetDir=target)
 
 
 
@@ -411,14 +424,14 @@ if __name__ == '__main__':
 
 
     if True:
-        compileResourceFiles(DIR_REPO)
+        searchAndCompileResourceFiles(DIR_REPO)
 
     if False:
         qrcFiles = file_search(DIR_REPO, '*.qrc', recursive=True)
         providerFile = jp(DIR_REPO, *['qps', 'iconprovider.py'])
         createIconProvider(qrcFiles, providerFile)
     if False:
-        compileQGISResourceFiles(DIR_QGIS_REPO)
+        searchAndCompileResourceFiles(DIR_QGIS_REPO)
 
 
     print('Done')
