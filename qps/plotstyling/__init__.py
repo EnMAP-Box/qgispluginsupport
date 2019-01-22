@@ -2,8 +2,8 @@
 
 #see https://github.com/pyqtgraph/pyqtgraph/issues/774
 WORKAROUND_PYTGRAPH_ISSUE_774 = True
-from qgis.PyQt.Qt import QVariant
-from qgis.PyQt.Qt import QGraphicsItem
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QGraphicsItem
 
 #from pyqtgraph.graphicsItems.GraphicsObject import GraphicsObject
 #go = GraphicsObject()
