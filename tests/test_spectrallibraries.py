@@ -510,6 +510,25 @@ class TestCore(unittest.TestCase):
 
             self.assertEqual(sl1, slRetrievd)
 
+    def test_SpeclibWidgetCurrentProfilOverlayerXUnit(self):
+
+        sw = SpectralLibraryWidget()
+        self.assertIsInstance(sw, SpectralLibraryWidget)
+        pw = sw.plotWidget()
+        self.assertIsInstance(pw, SpectralLibraryPlotWidget)
+        slib = self.createSpeclib()
+        self.assertEqual(pw.xUnit(), BAND_INDEX)
+
+        sw = SpectralLibraryWidget(speclib=slib)
+        self.assertEqual(sw.speclib(), slib)
+        self.assertNotEqual(sw.plotWidget().xUnit(), BAND_INDEX)
+
+        sw = SpectralLibraryWidget()
+        sp = slib[0]
+        sw.setCurrentProfiles([sp])
+        self.assertEqual(sw.plotWidget().xUnit(), sp.xUnit())
+
+
 
 
     def test_SpectralLibrary(self):

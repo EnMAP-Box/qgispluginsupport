@@ -2357,21 +2357,20 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         automatically = 1
         block = 2
 
-
-
     def __init__(self, parent=None, speclib:SpectralLibrary=None):
+
         super(SpectralLibraryWidget, self).__init__(parent)
         self.setupUi(self)
 
         #set spacer into menu
         empty = QWidget(self.mToolbar)
         empty.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-
+        from .plotting import SpectralLibraryPlotWidget
+        assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mToolbar.insertWidget(self.actionReload, empty)
 
         self.mColorCurrentSpectra = COLOR_SELECTED_SPECTRA
         self.mColorSelectedSpectra = COLOR_SELECTED_SPECTRA
-
 
         self.m_plot_max = 500
 
@@ -2391,9 +2390,9 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
 
         from qps.speclib.plotting import SpectralLibraryPlotWidget
-        assert isinstance(self.plotWidget, SpectralLibraryPlotWidget)
-        self.plotWidget.setSpeclib(self.mSpeclib)
-        self.plotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)
+        assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
+        self.mPlotWidget.setSpeclib(self.mSpeclib)
+        self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)
         self.mCanvas = QgsMapCanvas(self)
         self.mCanvas.setVisible(False)
 
@@ -2417,9 +2416,9 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         self.splitter.setSizes([800, 300])
 
-        self.plotWidget.setAcceptDrops(True)
-        self.plotWidget.dragEnterEvent = self.dragEnterEvent
-        self.plotWidget.dropEvent = self.dropEvent
+        self.mPlotWidget.setAcceptDrops(True)
+        self.mPlotWidget.dragEnterEvent = self.dragEnterEvent
+        self.mPlotWidget.dropEvent = self.dropEvent
 
 
         self.mCurrentProfiles = collections.OrderedDict()
@@ -2530,7 +2529,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.actionImportSpeclib.triggered.connect(lambda :self.importSpeclib())
         self.actionSaveSpeclib.triggered.connect(lambda :self.speclib().exportProfiles(parent=self))
 
-        self.actionReload.triggered.connect(lambda : self.plotWidget.updatePlot())
+        self.actionReload.triggered.connect(lambda : self.mPlotWidget.updatePlot())
         self.actionToggleEditing.toggled.connect(self.onToggleEditing)
         self.actionSaveEdits.triggered.connect(self.onSaveEdits)
         self.actionDeleteSelected.triggered.connect(lambda : deleteSelected(self.speclib()))
@@ -2737,37 +2736,19 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         if len(name) > 0 and name not in self.mSpeclib.metadataAttributes():
             self.mModel.addAttribute(name)
 
-    def setPlotXUnit(self, unit):
-        from .plotting import SpectralProfilePlotDataItem
-        unit = str(unit)
-
-        pi = self.plotItem()
-        if unit == 'Index':
-            for pdi in pi.dataItems:
-
-                assert isinstance(pdi, SpectralProfilePlotDataItem)
-                p = pdi.mProfile
-                assert isinstance(p, SpectralProfile)
-                pdi.setData(y=pdi.yData, x= p.xValues())
-                pdi.setVisible(True)
-        else:
-            #hide items that can not be presented in unit "unit"
-            for pdi in pi.dataItems[:]:
-                p = pdi.mProfile
-                assert isinstance(p, SpectralProfile)
-                if p.xUnit() != unit:
-                    pdi.setVisible(False)
-                else:
-                    pdi.setData(y=p.yValues(), x=p.xValues())
-                    pdi.setVisible(True)
-        pi.replot()
+    def plotWidget(self):
+        """
+        Returns the plotwidget
+        :return: SpectralLibraryPlotWidget
+        """
+        return self.mPlotWidget
 
     def plotItem(self)->PlotItem:
         """
         Returns the pyqtgraph/graphicsItems/PlotItem/PlotItem
         :return: PlotItem
         """
-        pi = self.plotWidget.getPlotItem()
+        pi = self.mPlotWidget.getPlotItem()
         assert isinstance(pi, PlotItem)
         return pi
 
@@ -2782,10 +2763,10 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         if isinstance(speclib, SpectralLibrary):
             sl = self.speclib()
 
-            b = self.plotWidget.signalsBlocked()
+            b = self.mPlotWidget.signalsBlocked()
 
             try:
-                self.plotWidget.blockUpdates(True)
+                self.mPlotWidget.blockUpdates(True)
                 b = sl.isEditable()
                 sl.startEditing()
 
@@ -2820,8 +2801,8 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
             def onReset(*args):
                 self.mProgressBar.setValue(0)
                 self.mInfoLabel.setText('')
-                self.plotWidget.blockUpdates(False)
-                self.plotWidget.syncLibrary()
+                self.mPlotWidget.blockUpdates(False)
+                self.mPlotWidget.syncLibrary()
 
             QTimer.singleShot(500, onReset)
 
@@ -2884,7 +2865,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
             self.mCurrentProfiles.update(newCurrent)
             self.actionAddProfiles.setEnabled(len(profiles) > 0)
-        self.plotWidget.setPlotOverlayItems(list(self.mCurrentProfiles.values()))
+        self.mPlotWidget.setPlotOverlayItems(list(self.mCurrentProfiles.values()))
 
     def currentSpectra(self) -> list:
         return self.currentProfiles()

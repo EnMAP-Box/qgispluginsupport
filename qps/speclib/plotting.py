@@ -287,6 +287,21 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         for item in items:
             self.plotItem.addItem(item)
 
+        if not self.mXUnitInitialized:
+
+            xUnit = None
+            for item in self.mPlotOverlayItems:
+                if isinstance(item, SpectralProfilePlotDataItem):
+                    if item.mInitialUnitX != self.mXUnit:
+                        xUnit = item.mInitialUnitX
+
+            if xUnit is not None:
+                self.setXUnit(xUnit)
+                self.mXUnitInitialized = True
+
+
+
+
 
 
     def _spectralProfilePDIs(self)->list:
@@ -467,7 +482,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
             if not self.mXUnitInitialized and isinstance(profile.xUnit(), str):
                 xUnit = profile.xUnit()
-
 
             id = profile.id()
             if id in self.mPlotDataItems.keys():
@@ -785,6 +799,13 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.mYValueConversionFunction = lambda v, *args: v
 
         self.applyMapFunctions()
+
+    def spectralProfile(self)->SpectralProfile:
+        """
+        Returns the SpectralProfile
+        :return: SpectralPrrofile
+        """
+        return self.mProfile
 
     def setMapFunctionX(self, func):
         """
