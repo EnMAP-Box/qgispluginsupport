@@ -364,6 +364,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :param unitDst: str, e.g. `nanometers` or `nm` (case insensitive)
         :return: callable, a function of pattern `mappedValues = func(value:list, pdi:SpectralProfilePlotDataItem)`
         """
+        if isinstance(unitSrc, str):
+            unitSrc = unitSrc.lower()
+        if isinstance(unitDst, str):
+            unitDst = unitDst.lower()
+
         key = (unitSrc.lower(), unitDst.lower())
         func = self.mLUT_UnitConversions.get(key)
         if callable(func):
