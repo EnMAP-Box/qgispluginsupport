@@ -66,12 +66,15 @@ def hasClassification(pathOrDataset):
     :return: True | False
     """
     ds = None
-    if isinstance(pathOrDataset, gdal.Dataset):
-        ds = pathOrDataset
-    elif isinstance(pathOrDataset, str) and os.path.exists(pathOrDataset):
-        ds = gdal.Open(pathOrDataset)
-    elif isinstance(ds, QgsRasterLayer):
-        ds = gdal.Open(ds.source())
+    try:
+        if isinstance(pathOrDataset, gdal.Dataset):
+            ds = pathOrDataset
+        elif isinstance(pathOrDataset, str):
+            ds = gdal.Open(pathOrDataset)
+        elif isinstance(ds, QgsRasterLayer):
+            ds = gdal.Open(ds.source())
+    except Exception as ex:
+        pass
 
     if not isinstance(ds, gdal.Dataset):
         return False
