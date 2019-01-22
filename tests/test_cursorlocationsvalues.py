@@ -51,13 +51,14 @@ class CursorLocationTest(unittest.TestCase):
         canvas.setLayers(layers)
         cldock = CursorLocationInfoDock()
         self.assertIsInstance(cldock, CursorLocationInfoDock)
-        cldock.show()
+
         cldock.loadCursorLocation(center, canvas)
         crs, point = cldock.cursorLocation()
         self.assertIsInstance(point, QgsPointXY)
         self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
 
         if SHOW_GUI:
+            cldock.show()
             QGIS_APP.exec_()
 
 

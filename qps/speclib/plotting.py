@@ -345,9 +345,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         for pdi in self.plotItem.items:
             if isinstance(pdi, SpectralProfilePlotDataItem):
                 w = pdi.pen().width()
-                if pdi.mID in selected:
+                if pdi.id() in selected:
                     pdi.setSelected(True)
-                elif pdi.mID in deselected:
+                elif pdi.id() in deselected:
                     pdi.setSelected(False)
         s = ""
 
@@ -763,28 +763,15 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         assert isinstance(spectralProfile, SpectralProfile)
         super(SpectralProfilePlotDataItem, self).__init__()
 
-        self.mID = spectralProfile.id()
-        x = spectralProfile.xValues()
-        y = spectralProfile.yValues()
-        if isinstance(y, list):
-            y = y[:]
-        else:
-            y = []
-        if isinstance(x, list) and len(x) > 0:
-            x = x[:]
-        else:
-            x = list(range(len(y)))
-
-        if not len(x) == len(y):
-            s = ""
-
-        assert len(x) == len(y)
-
         self.mProfile = spectralProfile
-        self.mInitialDataX = x
-        self.mInitialDataY = y
+
+        self.mInitialDataX = spectralProfile.xValues()
+        self.mInitialDataY = spectralProfile.yValues()
         self.mInitialUnitX = spectralProfile.xUnit()
         self.mInitialUnitY = spectralProfile.yUnit()
+
+        for v in [self.mInitialDataX, self.mInitialDataY]:
+            assert isinstance(v, list)
 
         self.mDefaultStyle = None
         self.setStyle(spectralProfile.style())
@@ -829,7 +816,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
             try:
                 x = self.mXValueConversionFunction(self.mInitialDataX, self)
                 y = self.mYValueConversionFunction(self.mInitialDataY, self)
-                if isinstance(x, list) and isinstance(y, list):
+                if isinstance(x, list) and isinstance(y, list) and len(x) > 0 and len(y) > 0:
                     success = True
             except Exception as ex:
                 print(ex)
@@ -839,7 +826,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
             self.setData(x=x, y=y)
             self.setVisible(True)
         else:
-            self.setData(x=[], y=[])
+            #self.setData(x=[], y=[])
             self.setVisible(False)
 
         return success
@@ -849,7 +836,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         Returns the profile id
         :return: int
         """
-        return self.mID
+        return self.mProfile.id()
 
     def setClickable(self, b:bool, width=None):
         """

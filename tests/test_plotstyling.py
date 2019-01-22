@@ -55,10 +55,11 @@ class PlotStyleTests(unittest.TestCase):
             print(args)
 
         bt.sigPlotStyleChanged.connect(onChanged)
-        bt.show()
+
 
 
         if SHOW_GUI:
+            bt.show()
             QAPP.exec_()
 
     def test_json(self):
@@ -128,7 +129,6 @@ class PlotStyleTests(unittest.TestCase):
         checkBox.clicked.connect(onClicked)
         myWidget.layout().addWidget(dualView)
         myWidget.layout().addWidget(checkBox)
-        myWidget.show()
         myWidget.resize(QSize(300, 250))
 
 
@@ -146,6 +146,7 @@ class PlotStyleTests(unittest.TestCase):
         dualView.setAttributeTableConfig(layer.attributeTableConfig())
 
         if SHOW_GUI:
+            myWidget.show()
             QAPP.exec_()
 
     def test_PlotStyleEditorWidgetFactory(self):
@@ -189,7 +190,7 @@ class PlotStyleTests(unittest.TestCase):
         cb.clicked.connect(onClicked)
         w.layout().addWidget(dv)
         w.layout().addWidget(cb)
-        w.show()
+
         w.resize(QSize(300,250))
 
         self.assertTrue(factory.fieldScore(vl, 0) > 0) #specialized support style + str len > 350
@@ -218,6 +219,7 @@ class PlotStyleTests(unittest.TestCase):
         self.assertTrue(vl.updateFeature(f))
 
         if SHOW_GUI:
+            w.show()
             QAPP.exec_()
 
 

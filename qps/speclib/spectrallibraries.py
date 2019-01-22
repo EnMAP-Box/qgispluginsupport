@@ -94,7 +94,7 @@ DEFAULT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
 DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.white)
 
 EMPTY_VALUES = [None, NULL, QVariant(), '']
-EMPTY_PROFILE_VALUES = {'x': [], 'y': [], 'xUnit': None, 'yUnit': None}
+EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None}
 
 FIELD_VALUES = 'values'
 FIELD_STYLE = 'style'
@@ -269,7 +269,8 @@ def toType(t, arg, empty2None=True):
 
 def encodeProfileValueDict(d:dict)->str:
     """
-    Converts a SpectralProfile value dictionary into a JSON string.
+    Converts a SpectralProfile value dictionary into a compact JSON string, which can be
+    extracted with `decodeProfileValueDict`.
     :param d: dict
     :return: str
     """
@@ -277,7 +278,9 @@ def encodeProfileValueDict(d:dict)->str:
         return None
     d2 = {}
     for k in EMPTY_PROFILE_VALUES.keys():
-        v  = d.get(k)
+        v = d.get(k)
+
+        # save keys with information only
         if v is not None:
             d2[k] = v
     return json.dumps(d2, sort_keys=True, separators=(',', ':'))
@@ -649,7 +652,10 @@ class SpectralProfile(QgsFeature):
         if self.mValueCache is None:
             jsonStr = self.attribute(self.fields().indexFromName(FIELD_VALUES))
             d = decodeProfileValueDict(jsonStr)
+
+            # save a reference to the decoded dictionary
             self.mValueCache = d
+
         return self.mValueCache
 
     def setValues(self, x=None, y=None, xUnit=None, yUnit=None):
@@ -662,24 +668,28 @@ class SpectralProfile(QgsFeature):
         if isinstance(y, np.ndarray):
             y = y.tolist()
 
-        if x is not None:
+        if isinstance(x, list):
             d['x'] = x
-        if y is not None:
+
+        if isinstance(y, list):
             d['y'] = y
 
-        if xUnit is not None:
-            assert isinstance(xUnit, str)
+        # ensure x/y are list or None
+        assert d['x'] is None or isinstance(d['x'], list)
+        assert d['y'] is None or isinstance(d['y'], list)
+
+
+        # ensure same length
+        if isinstance(d['x'], list):
+            assert isinstance(d['y'], list), 'y values need to be specified'
+
+            assert len(d['x']) == len(d['y']), \
+                'x and y need to have the same number of values ({} != {})'.format(len(d['x']), len(d['y']))
+
+        if isinstance(xUnit, str):
             d['xUnit'] = xUnit
-        if yUnit is not None:
-            assert isinstance(yUnit, str)
+        if isinstance(yUnit, str):
             d['yUnit'] = yUnit
-
-        if d['x'] is not None and len(d['x']) > 0:
-            assert d['y'] != None
-            assert len(d['x']) == len(d['y'])
-
-        #todo: clean empty values to keep json string short
-
 
         self.setAttribute(FIELD_VALUES, encodeProfileValueDict(d))
         self.mValueCache = d
@@ -691,22 +701,27 @@ class SpectralProfile(QgsFeature):
         If wavelength information is not undefined it will return a list of band indices [0, ..., n-1]
         :return: [list-of-numbers]
         """
-        values = self.values()
-        xValues = values['x']
-        if xValues is None:
-            if values['y'] is not None:
-                return list(range(len(values['y'])))
-            else:
-                s = ""
-        return xValues
+        x = self.values()['x']
+
+        if not isinstance(x, list):
+            return list(range(len(self.yValues())))
+        else:
+            return x
+
 
 
     def yValues(self)->list:
         """
-        Returns the x Values / DN / spectral profile values
+        Returns the x Values / DN / spectral profile values.
+        List is empty if not numbers are stored
         :return: [list-of-numbers]
         """
-        return self.values()['y']
+        y = self.values()['y']
+        if not isinstance(y, list):
+            return []
+        else:
+            return y
+
 
     def setXUnit(self, unit : str):
         d = self.values()
@@ -1772,12 +1787,12 @@ class SpectralProfileValueTableModel(QAbstractTableModel):
         for k in EMPTY_PROFILE_VALUES.keys():
             assert k in values.keys()
 
-        for i, k in enumerate(['y','x']):
+        for i, k in enumerate(['y', 'x']):
             if values[k] and len(values[k]) > 0:
                 self.setColumnDataType(i, type(values[k][0]))
             else:
                 self.setColumnDataType(i, float)
-        self.setColumnValueUnit('y',values.get('yUnit', '') )
+        self.setColumnValueUnit('y', values.get('yUnit', '') )
         self.setColumnValueUnit('x', values.get('xUnit', ''))
 
         self.beginResetModel()
@@ -1898,7 +1913,7 @@ class SpectralProfileValueTableModel(QAbstractTableModel):
             elif index == 1:
                 self.mValues['x'] = [dataType(v) for v in self.mValues['x']]
 
-            self.dataChanged.emit(self.createIndex(0, index),self.createIndex(self.rowCount(), index))
+            self.dataChanged.emit(self.createIndex(0, index), self.createIndex(self.rowCount(), index))
             self.sigColumnDataTypeChanged.emit(index, dataType)
 
     sigColumnDataTypeChanged = pyqtSignal(int, type)

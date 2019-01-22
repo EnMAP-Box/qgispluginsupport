@@ -274,9 +274,10 @@ class TestCore(unittest.TestCase):
         d = AddAttributeDialog(speclib)
 
         if SHOW_GUI:
-            d.exec_()
-        else:
             d.show()
+            d.exec_()
+
+
 
         if d.result() == QDialog.Accepted:
             field = d.field()
@@ -287,6 +288,7 @@ class TestCore(unittest.TestCase):
 
     def test_SpectralProfile(self):
 
+        # empty profile
         sp = SpectralProfile()
         d = sp.values()
         self.assertIsInstance(d, dict)
@@ -294,21 +296,33 @@ class TestCore(unittest.TestCase):
             self.assertTrue(k in d.keys())
             v = d[k]
             self.assertTrue(v == EMPTY_PROFILE_VALUES[k])
+        self.assertEqual(sp.xValues(), [])
+        self.assertEqual(sp.yValues(), [])
 
 
         y = [0.23, 0.4, 0.3, 0.8, 0.7]
         x = [300, 400, 600, 1200, 2500]
-        sp.setValues(y=y)
+        with self.assertRaises(Exception):
+            # we need y values
+            sp.setValues(x=x)
+
         d = sp.values()
         self.assertIsInstance(d, dict)
-        self.assertListEqual(d['y'], y)
+        self.assertEqual(d['y'], EMPTY_PROFILE_VALUES['y'])
         self.assertEqual(d['x'], EMPTY_PROFILE_VALUES['x'])
         self.assertEqual(d['xUnit'], EMPTY_PROFILE_VALUES['xUnit'])
         self.assertEqual(d['yUnit'], EMPTY_PROFILE_VALUES['yUnit'])
+
+
+        sp.setValues(y=y)
+        self.assertListEqual(sp.xValues(), list(range(len(y))))
+
         sp.setValues(x=x)
+        self.assertListEqual(sp.xValues(), x)
         d = sp.values()
+        self.assertListEqual(d['y'], y)
         self.assertListEqual(d['x'], x)
-        #todo: implement must fail cases
+
 
 
         sClone = sp.clone()
@@ -659,11 +673,9 @@ class TestCore(unittest.TestCase):
         w = SpectralProfileEditorWidget()
         p = speclib[-1]
         w.setProfileValues(p)
-        w.show()
-
-
 
         if SHOW_GUI:
+            w.show()
             QAPP.exec_()
 
 
@@ -727,7 +739,7 @@ class TestCore(unittest.TestCase):
         cb.clicked.connect(onClicked)
         w.layout().addWidget(dv)
         w.layout().addWidget(cb)
-        w.show()
+
         w.resize(QSize(300,250))
         print(vl.fields().names())
         look = vl.fields().lookupField
@@ -738,7 +750,6 @@ class TestCore(unittest.TestCase):
         parent = QWidget()
         configWidget = factory.configWidget(vl, look(FIELD_VALUES), None)
         self.assertIsInstance(configWidget, SpectralProfileEditorConfigWidget)
-        configWidget.show()
 
         self.assertIsInstance(factory.createSearchWidget(vl, 0, dv), QgsSearchWidgetWrapper)
 
@@ -757,6 +768,9 @@ class TestCore(unittest.TestCase):
         self.assertTrue(vl.updateFeature(f))
 
         if SHOW_GUI:
+            w.show()
+            configWidget.show()
+
             QAPP.exec_()
 
     def test_PyQtGraphPlot(self):
@@ -764,12 +778,13 @@ class TestCore(unittest.TestCase):
         pg.systemInfo()
 
         plotWidget = pg.plot(title="Three plot curves")
-        plotWidget.show()
+
         item1 = pg.PlotItem(x=[1,2,3],   y=[2, 3, 4])
         plotWidget.plotItem.addItem(item1)
         plotWidget.plotItem.removeItem(item1)
         self.assertIsInstance(plotWidget, pg.PlotWidget)
         if SHOW_GUI:
+            plotWidget.show()
             QAPP.exec_()
 
     def test_SpectralLibraryPlotWidget(self):
@@ -799,7 +814,7 @@ class TestCore(unittest.TestCase):
         btn.clicked.connect(lambda : pw.setSpeclib(speclib))
         w.layout().addWidget(pw)
         w.layout().addWidget(btn)
-        w.show()
+
 
         self.assertIsInstance(pw.plotItem, pg.PlotItem)
         self.assertIsInstance(pw.plotItem.getViewBox(), SpectralViewBox)
@@ -825,7 +840,7 @@ class TestCore(unittest.TestCase):
                 if isinstance(pdi, SpectralProfilePlotDataItem):
                     #print(pdi.mID)
                     width = pdi.pen().width()
-                    if pdi.mID in ids:
+                    if pdi.id() in ids:
                         self.assertTrue(width > defaultWidth)
                     else:
                         self.assertTrue(width == defaultWidth)
@@ -848,6 +863,7 @@ class TestCore(unittest.TestCase):
 
 
         if SHOW_GUI:
+            w.show()
             QAPP.exec_()
 
     def test_largeLibs(self):
@@ -871,7 +887,7 @@ class TestCore(unittest.TestCase):
 
 
             slw = SpectralLibraryWidget()
-            slw.show()
+
 
             QgsApplication.processEvents()
 
@@ -886,6 +902,7 @@ class TestCore(unittest.TestCase):
             QgsApplication.processEvents()
 
             if SHOW_GUI:
+                slw.show()
                 QAPP.exec_()
             else:
                 self.assertTrue(pps > 5*60,
@@ -907,7 +924,7 @@ class TestCore(unittest.TestCase):
         #slw.mSpeclib.startEditing()
         #slw.addSpeclib(speclib)
         #slw.mSpeclib.commitChanges()
-        slw.show()
+
         QgsProject.instance().addMapLayer(slw.speclib())
 
         self.assertEqual(slw.speclib(), speclib)
@@ -955,6 +972,7 @@ class TestCore(unittest.TestCase):
             slw.addSpeclib(sl2)
 
         if SHOW_GUI:
+            slw.show()
             QAPP.exec_()
 
 
@@ -966,11 +984,12 @@ class TestCore(unittest.TestCase):
         slw = SpectralLibraryWidget()
         slw.speclib().startEditing()
         slw.speclib().addSpeclib(slib)
-        slw.show()
+
         slw.actionToggleEditing.setChecked(True)
 
         #self.assertTrue()
         if SHOW_GUI:
+            slw.show()
             QAPP.exec_()
 
 
@@ -990,9 +1009,10 @@ class TestCore(unittest.TestCase):
         btn2 = tb.findChildren(QToolButton)[2]
         self.assertIsInstance(btn2, QToolButton)
 
-        tb.show()
+
 
         if SHOW_GUI:
+            tb.show()
             QAPP.exec_()
 
 if __name__ == '__main__':

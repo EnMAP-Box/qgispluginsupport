@@ -175,7 +175,7 @@ class TestsClassificationScheme(TestCase):
 
 
         w = ClassificationSchemeComboBox()
-        w.show()
+
         w.setClassificationScheme(scheme)
         self.assertIsInstance(w.classificationScheme(), ClassificationScheme)
         w.setCurrentIndex(2)
@@ -183,6 +183,7 @@ class TestsClassificationScheme(TestCase):
         self.assertEqual(w.currentClassInfo(), scheme[2])
 
         if SHOW_GUI:
+            w.show()
             QGIS_APP.exec_()
 
 
@@ -213,7 +214,7 @@ class TestsClassificationScheme(TestCase):
         dv.init(vl, c)
         dv.setView(QgsDualView.AttributeTable)
         dv.setAttributeTableConfig(vl.attributeTableConfig())
-        dv.show()
+
         cb = QCheckBox()
         cb.setText('Show Editor')
         def onClicked(b:bool):
@@ -225,7 +226,7 @@ class TestsClassificationScheme(TestCase):
         w.layout().addWidget(dv)
         w.layout().addWidget(cb)
         vl.startEditing()
-        w.show()
+
         w.resize(QSize(300, 250))
         print(vl.fields().names())
         look = vl.fields().lookupField
@@ -236,7 +237,7 @@ class TestsClassificationScheme(TestCase):
         parent = QWidget()
         configWidget = factory.configWidget(vl, look(self.nameL1), None)
         self.assertIsInstance(configWidget, ClassificationSchemeEditorConfigWidget)
-        configWidget.show()
+
 
         self.assertIsInstance(factory.createSearchWidget(vl, 0, dv), QgsSearchWidgetWrapper)
 
@@ -247,6 +248,9 @@ class TestsClassificationScheme(TestCase):
         eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
         if SHOW_GUI:
+            configWidget.show()
+            dv.show()
+            w.show()
             QGIS_APP.exec_()
 
 
@@ -290,9 +294,6 @@ class TestsClassificationScheme(TestCase):
 
         w = ClassificationSchemeWidget()
         self.assertIsInstance(w.classificationScheme(), ClassificationScheme)
-        w.show()
-
-
 
         w.btnAddClasses.click()
         w.btnAddClasses.click()
@@ -302,6 +303,7 @@ class TestsClassificationScheme(TestCase):
 
 
         if SHOW_GUI:
+            w.show()
             QGIS_APP.exec_()
 
 
@@ -310,7 +312,7 @@ class TestsClassificationScheme(TestCase):
         cs = self.createClassSchemeA()
 
         w = ClassificationSchemeComboBox(classification=cs)
-        w.show()
+
 
         self.assertTrue(len(w.classificationScheme()) == 3)
         self.assertTrue(w.count() == 3)
@@ -340,6 +342,7 @@ class TestsClassificationScheme(TestCase):
 
 
         if SHOW_GUI:
+            w.show()
             QGIS_APP.exec_()
 
 

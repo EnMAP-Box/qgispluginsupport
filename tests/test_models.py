@@ -75,7 +75,7 @@ class ModelTests(unittest.TestCase):
         self.assertIsInstance(TV, TreeView)
         TM = TreeModel()
         TV.setModel(TM)
-        TV.show()
+
 
         self.assertEqual(TV.model(), TM)
 
@@ -121,6 +121,7 @@ class ModelTests(unittest.TestCase):
         nB.parentNode().removeChildNode(nB)
 
         if SHOW_GUI:
+            TV.show()
             QAPP.exec_()
 
     def test_modelview(self):
@@ -133,10 +134,10 @@ class ModelTests(unittest.TestCase):
 
         cb = QComboBox()
         cb.setModel(cbModel)
-        cb.show()
+
 
         tv = QTreeView(None)
-        tv.show()
+
         tv.setModel(treeModel)
 
         rn = treeModel.rootNode()
@@ -149,7 +150,10 @@ class ModelTests(unittest.TestCase):
         n1.appendChildNodes(n4)
 
         print('DONE')
-
+        if SHOW_GUI:
+            cb.show()
+            tv.show()
+            QAPP.exec_()
 
 if __name__ == '__main__':
     SHOW_GUI = False
