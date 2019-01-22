@@ -79,7 +79,7 @@ def containsSpeclib(mimeData:QMimeData)->bool:
 
     return False
 
-FILTERS = 'ENVI Spectral Library (*.esl *.sli);;CSV Table (*.csv);;Geopackage (*.gpkg)'
+FILTERS = 'ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;Geopackage (*.gpkg)'
 
 PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 CURRENT_SPECTRUM_STYLE = PlotStyle()
@@ -1083,6 +1083,8 @@ class SpectralLibrary(QgsVectorLayer):
         """
         mgr = self.actions()
         assert isinstance(mgr, QgsActionManager)
+        mgr.clearActions()
+
         actionSetStyle = createSetPlotStyleAction(self.fields().at(self.fields().lookupField(FIELD_STYLE)))
         assert isinstance(actionSetStyle, QgsAction)
         mgr.addAction(actionSetStyle)
@@ -1090,10 +1092,6 @@ class SpectralLibrary(QgsVectorLayer):
         actionRemoveSpectrum = createRemoveFeatureAction()
         assert isinstance(actionRemoveSpectrum, QgsAction)
         mgr.addAction(actionRemoveSpectrum)
-        #icon = QIcon(':/images/themes/default/mActionDeleteSelected.svg')
-        #self._actionRemove = QgsMapLayerAction('action1', None, self, icon=icon,
-        #                                      targets=QgsMapLayerAction.MultipleFeatures, flags=QgsMapLayerAction.EnabledOnlyWhenEditable)
-        #QgsGui.mapLayerActionRegistry().addMapLayerAction(self._actionRemove)
 
         columns = self.attributeTableConfig().columns()
         visibleColumns = ['name']
@@ -1363,11 +1361,15 @@ class SpectralLibrary(QgsVectorLayer):
     def asPickleDump(self):
         return pickle.dumps(self)
 
-    def exportProfiles(self, path, **kwds):
-
+    def exportProfiles(self, path:str, **kwds):
+        """
+        Exports profiles to a file
+        :param path: str, filepath
+        :param kwds: keywords to be used in specific `AbstractSpectralLibraryIO.write(...)` methods.
+        """
 
         if path is None:
-            path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'), caption="Save Spectral Library", filter=FILTERS)
+            path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'), caption='Save Spectral Library', directory= 'speclib', filter=FILTERS)
 
         if len(path) > 0:
             ext = os.path.splitext(path)[-1].lower()
@@ -1378,7 +1380,7 @@ class SpectralLibrary(QgsVectorLayer):
             if ext in ['.csv']:
                 from .csvdata import CSVSpectralLibraryIO
                 return CSVSpectralLibraryIO.write(self, path, dialect=kwds.get('dialect'))
-                #return CSVSpectralLibraryIO.write(self, path)
+
 
 
         return []
@@ -2526,8 +2528,8 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         #self.actionSaveCurrentProfiles.event = onEvent
 
-        self.actionImportSpeclib.triggered.connect(lambda :self.importSpeclib())
-        self.actionSaveSpeclib.triggered.connect(lambda :self.speclib().exportProfiles(parent=self))
+        self.actionImportSpeclib.triggered.connect(lambda: self.importSpeclib())
+        self.actionSaveSpeclib.triggered.connect(self.onExportSpectra)
 
         self.actionReload.triggered.connect(lambda : self.mPlotWidget.updatePlot())
         self.actionToggleEditing.toggled.connect(self.onToggleEditing)
@@ -2567,10 +2569,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         #self.actionCutSelectedRows.setVisible(False) #todo
         #self.actionCopySelectedRows.setVisible(False) #todo
         #self.actionPasteFeatures.setVisible(False)
-
-
         self.updateActionAvailability()
-
 
     def importSpeclib(self, path=None):
         """
@@ -2583,7 +2582,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         else:
             slib = SpectralLibrary.readFrom(path)
 
-        if isinstance(slib, SpectralLibrary):
+        if isinstance(slib, SpectralLibrary) and len(slib) > 0:
             self.addSpeclib(slib)
 
 
@@ -2753,7 +2752,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         return pi
 
     def onExportSpectra(self, *args):
-        self.mSpeclib.exportProfiles()
+        self.mSpeclib.exportProfiles(None)
 
     def addSpeclib(self, speclib:SpectralLibrary):
         """

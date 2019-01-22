@@ -33,7 +33,7 @@ from qps.speclib.envi import *
 from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
-SHOW_GUI = False
+SHOW_GUI = True
 
 import enmapboxtestdata
 
