@@ -1155,6 +1155,26 @@ class ClassificationScheme(QAbstractTableModel):
         raise NotImplementedError()
 
 
+class ClassificationSourceComboBox(QgsMapLayerComboBox):
+
+    def __init__(self, parent):
+        super(ClassificationSourceComboBox, self).__init__(parent)
+
+
+    def addClassificationSource(self, source):
+
+        if hasClassification(source):
+            pass
+
+    def currentClassificationScheme(self)->ClassificationScheme:
+
+        raise NotImplementedError()
+
+    def currentClassificationSource(self)->str:
+
+        raise NotImplementedError()
+
+
 class ClassificationSchemeComboBox(QComboBox):
 
     def __init__(self, parent=None, classification:ClassificationScheme=None):
@@ -1189,7 +1209,7 @@ class ClassificationSchemeComboBox(QComboBox):
         s = ""
 
     def _updateClassInfo(self, i:int, classInfo:ClassInfo, roles:list=None):
-        if roles is None:
+        if roles is None or roles == [Qt.EditRole]:
             roles = [Qt.DisplayRole, Qt.DecorationRole, Qt.ToolTipRole, Qt.UserRole]
 
         for role in roles:
@@ -1207,6 +1227,8 @@ class ClassificationSchemeComboBox(QComboBox):
                 self.setItemData(i, toolTip, role)
             elif role == Qt.UserRole:
                 self.setItemData(i, classInfo, role)
+
+
 
     def onRowsInserted(self, parent:QModelIndex, first:int, last:int):
         for i in range(first, last+1):

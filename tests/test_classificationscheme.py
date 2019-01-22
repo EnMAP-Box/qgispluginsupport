@@ -16,7 +16,7 @@ QGIS_APP = initQgisApplication()
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
-SHOW_GUI = False
+SHOW_GUI = True
 
 
 
@@ -339,10 +339,36 @@ class TestsClassificationScheme(TestCase):
         self.assertTrue(w.count() == 4+2)
         self.assertTrue(w.itemData(3, Qt.UserRole) == newClasses2[0])
 
+        w2 = QWidget()
+        cs = ClassificationScheme.create(5)
+
+
+        csw = ClassificationSchemeWidget()
+        csw.setClassificationScheme(cs)
+
+        cbox = ClassificationSchemeComboBox()
+        cs = csw.classificationScheme()
+        cbox.setClassificationScheme(cs)
+        w2.setLayout(QVBoxLayout())
+        w2.layout().addWidget(csw)
+        w2.layout().addWidget(cbox)
+
+        self.assertEqual(cs, cbox.classificationScheme())
+        self.assertEqual(id(cs), id(cbox.classificationScheme()))
+
+        classInfo = cs[0]
+        self.assertIsInstance(classInfo, ClassInfo)
+        classInfo.setColor(QColor('green'))
+
+        ci = cbox.currentClassInfo()
+        self.assertIsInstance(ci, ClassInfo)
+        self.assertEqual(ci.name(), classInfo.name())
+        self.assertEqual(ci.color(), classInfo.color())
 
 
         if SHOW_GUI:
             w.show()
+            w2.show()
             QGIS_APP.exec_()
 
 
@@ -411,7 +437,6 @@ class TestsClassificationScheme(TestCase):
             classScheme2 = ClassificationScheme.fromQml(pathTmp)
             self.assertIsInstance(classScheme2, ClassificationScheme)
             self.assertEqual(classScheme, classScheme2)
-
 
 
 if __name__ == "__main__":
