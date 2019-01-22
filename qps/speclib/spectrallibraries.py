@@ -1335,8 +1335,11 @@ class SpectralLibrary(QgsVectorLayer):
         for p in self.profiles():
             assert isinstance(p, SpectralProfile)
             d = p.values()
-            if excludeEmptyProfiles and d['y'] is None or len(d['y']) == 0:
-                continue
+            if excludeEmptyProfiles:
+                if not isinstance(d['y'], list):
+                    continue
+                if not len(d['y']) > 0:
+                    continue
             key = (tuple(d['x']), d['xUnit'], d['yUnit'])
             if key not in results.keys():
                 results[key] = []
@@ -1909,9 +1912,13 @@ class SpectralProfileValueTableModel(QAbstractTableModel):
             self.mColumnDataTypes[index] = dataType
 
             if index == 0:
-                self.mValues['y'] = [dataType(v) for v  in self.mValues['y']]
+                y = self.mValues.get('y')
+                if isinstance(y, list) and len(y) > 0:
+                    self.mValues['y'] = [dataType(v) for v  in self.mValues['y']]
             elif index == 1:
-                self.mValues['x'] = [dataType(v) for v in self.mValues['x']]
+                x = self.mValues.get('x')
+                if isinstance(x, list) and len(x) > 0:
+                    self.mValues['x'] = [dataType(v) for v in self.mValues['x']]
 
             self.dataChanged.emit(self.createIndex(0, index), self.createIndex(self.rowCount(), index))
             self.sigColumnDataTypeChanged.emit(index, dataType)
@@ -2388,6 +2395,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.mTableView.willShowContextMenu.connect(self.onWillShowContextMenu)
 
         # change selected row color: keep color also when attribtue table looses focus
+
         pal = self.mDualView.tableView().palette()
         cSelected = pal.color(QPalette.Active, QPalette.Highlight)
         pal.setColor(QPalette.Inactive, QPalette.Highlight, cSelected)
