@@ -777,3 +777,29 @@ class TreeView(QTreeView):
 
 
 
+    def selectedNode(self)->TreeNode:
+        """
+        Returns the first of all selected TreeNodes
+        :return: TreeNode
+        """
+        for i in self.selectedIndexes():
+            node = self.model().data(i, Qt.UserRole)
+            if isinstance(node, TreeNode):
+                return node
+
+        return None
+
+
+
+    def selectedNodes(self)->list:
+        """
+        Returns all selected TreeNodes
+        :return: [list-of-TreeNodes]
+        """
+        nodes = []
+        for i in self.selectedIndexes():
+            node = self.model().data(i, Qt.UserRole)
+            if isinstance(node, TreeNode) and node not in nodes:
+                nodes.append(node)
+        return nodes
+
