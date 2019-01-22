@@ -369,7 +369,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if isinstance(unitDst, str):
             unitDst = unitDst.lower()
 
-        key = (unitSrc.lower(), unitDst.lower())
+        key = (unitSrc, unitDst)
         func = self.mLUT_UnitConversions.get(key)
         if callable(func):
             return func
