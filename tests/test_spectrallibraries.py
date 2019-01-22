@@ -18,7 +18,7 @@
 """
 # noinspection PyPep8Naming
 import unittest, tempfile
-from qps.testing import initQgisApplication, installTestdata
+from qps.testing import initQgisApplication, installTestdata, TestObjects
 QAPP = initQgisApplication()
 from qps.utils import findUpwardPath
 installTestdata(False)
@@ -438,6 +438,26 @@ class TestCore(unittest.TestCase):
         self.assertEqual(sp2.geometry().asWkt(), r2.geometry().asWkt())
 
 
+    def test_SpectralProfileReading(self):
+
+        lyr = TestObjects.createRasterLayer()
+        self.assertIsInstance(lyr, QgsRasterLayer)
+
+        center = SpatialPoint.fromMapLayerCenter(lyr)
+        extent = SpatialExtent.fromLayer(lyr)
+        x,y = extent.upperLeft()
+
+        outOfImage = SpatialPoint(center.crs(), x - 10, y + 10)
+
+        sp = SpectralProfile.fromRasterLayer(lyr, center)
+        self.assertIsInstance(sp, SpectralProfile)
+        self.assertIsInstance(sp.xValues(), list)
+        self.assertIsInstance(sp.yValues(), list)
+        self.assertEqual(len(sp.xValues()), lyr.bandCount())
+        self.assertEqual(len(sp.yValues()), lyr.bandCount())
+
+        sp = SpectralProfile.fromRasterLayer(lyr, outOfImage)
+        self.assertTrue(sp == None)
 
     def test_speclib_mimedata(self):
 

@@ -1192,7 +1192,12 @@ class SpatialExtent(QgsRectangle):
         return self
 
     def setCenter(self, centerPoint, crs=None):
-
+        """
+        Shift the center of this rectange
+        :param centerPoint:
+        :param crs:
+        :return:
+        """
         if crs and crs != self.crs():
             trans = QgsCoordinateTransform(crs, self.crs())
             centerPoint = trans.transform(centerPoint)
@@ -1206,36 +1211,74 @@ class SpatialExtent(QgsRectangle):
         return self
 
     def __cmp__(self, other):
-        if other is None: return 1
+        if other is None:
+            return 1
         s = ""
 
-    def upperRightPt(self):
+    def upperRightPt(self)->QgsPointXY:
+        """
+        Returns the upper-right coordinate as QgsPointXY.
+        :return: QgsPointXY
+        """
         return QgsPointXY(*self.upperRight())
 
-    def upperLeftPt(self):
+    def upperLeftPt(self)->QgsPointXY:
+        """
+        Returns the upper-left coordinate as QgsPointXY.
+        :return: QgsPointXY
+        """
         return QgsPointXY(*self.upperLeft())
 
-    def lowerRightPt(self):
+    def lowerRightPt(self)->QgsPointXY:
+        """
+        Returns the lower-left coordinate as QgsPointXY.
+        :return: QgsPointXY
+        """
         return QgsPointXY(*self.lowerRight())
 
-    def lowerLeftPt(self):
+    def lowerLeftPt(self)->QgsPointXY:
+        """
+        Returns the lower-left coordinate as QgsPointXY.
+        :return: QgsPointXY
+        """
         return QgsPointXY(*self.lowerLeft())
 
 
-    def upperRight(self):
+    def upperRight(self)->tuple:
+        """
+        Returns the upper-right coordinate as tuple (x,y)
+        :return: tuple (x,y)
+        """
         return self.xMaximum(), self.yMaximum()
 
-    def upperLeft(self):
+    def upperLeft(self)->tuple:
+        """
+        Returns the upper-left coordinate as tuple (x,y)
+        :return: tuple (x,y)
+        """
         return self.xMinimum(), self.yMaximum()
 
-    def lowerRight(self):
+    def lowerRight(self)->tuple:
+        """
+        Returns the lower-right coordinate as tuple (x,y)
+        :return: tuple (x,y)
+        """
         return self.xMaximum(), self.yMinimum()
 
-    def lowerLeft(self):
+    def lowerLeft(self)->tuple:
+        """
+        Returns the lower-left coordinate as tuple (x,y)
+        :return: tuple (x,y)
+        """
         return self.xMinimum(), self.yMinimum()
 
 
-    def __eq__(self, other):
+    def __eq__(self, other)->bool:
+        """
+        Checks for equality
+        :param other: SpatialExtent
+        :return: bool
+        """
         return self.toString() == other.toString()
 
     def __sub__(self, other):
@@ -1259,7 +1302,11 @@ class SpatialExtent(QgsRectangle):
     def __str__(self):
         return self.__repr__()
 
-    def __repr__(self):
+    def __repr__(self)->str:
+        """
+        Returns a representation string
+        :return: str
+        """
 
         return '{} {} {}'.format(self.upperLeft(), self.lowerRight(), self.crs().authid())
 

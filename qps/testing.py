@@ -473,10 +473,10 @@ class TestObjects():
                 band.SetCategoryNames(scheme.classNames())
                 band.SetColorTable(scheme.gdalColorTable())
             else:
-                #create random data
+                # create random data
                 array = np.random.random((nl, ns))
                 if eType == gdal.GDT_Byte:
-                    array = array *256
+                    array = array * 256
                     array = array.astype(np.byte)
                 elif eType == gdal.GDT_Int16:
                     array = array * 2**16
@@ -488,6 +488,22 @@ class TestObjects():
             band.WriteArray(array)
         ds.FlushCache()
         return ds
+
+
+    @staticmethod
+    def createRasterLayer(*args, **kwds)->QgsRasterLayer:
+        """
+        Creates an in-memory raster layer.
+        See arguments & keyword for `inMemoryImage()`
+        :return: QgsRasterLayer
+        """
+        ds = TestObjects.inMemoryImage(*args, **kwds)
+        assert isinstance(ds, gdal.Dataset)
+        path = ds.GetDescription()
+
+        lyr = QgsRasterLayer(path, os.path.basename(path), 'gdal')
+        assert lyr.isValid()
+        return lyr
 
     @staticmethod
     def createVectorDataSet()->ogr.DataSource:

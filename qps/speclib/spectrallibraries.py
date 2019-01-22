@@ -402,20 +402,20 @@ class SpectralProfile(QgsFeature):
     def fromMapCanvas(mapCanvas, position)->list:
         """
         Returns a list of Spectral Profiles the raster layers in QgsMapCanvas mapCanvas.
-        :param mapCanvas:
-        :param position:
+        :param mapCanvas: QgsMapCanvas
+        :param position: SpatialPoint
         """
         assert isinstance(mapCanvas, QgsMapCanvas)
         profiles = [SpectralProfile.fromRasterLayer(lyr, position) for lyr in mapCanvas.layers() if isinstance(lyr, QgsRasterLayer)]
-        return  [p for p in profiles if isinstance(p, SpectralProfile)]
+        return [p for p in profiles if isinstance(p, SpectralProfile)]
 
     @staticmethod
-    def fromRasterSources(sources, position)->list:
+    def fromRasterSources(sources:list, position:SpatialPoint)->list:
         """
         Returns a list of Spectral Profiles
         :param sources: list-of-raster-sources, e.g. file paths, gdal.Datasets, QgsRasterLayers
-        :param position:
-        :return:
+        :param position: SpatialPoint
+        :return: [list-of-SpectralProfiles]
         """
         profiles = [SpectralProfile.fromRasterSource(s, position) for s in sources]
         return [p for p in profiles if isinstance(p, SpectralProfile)]
@@ -424,12 +424,26 @@ class SpectralProfile(QgsFeature):
 
     @staticmethod
     def fromRasterLayer(layer:QgsRasterLayer, position:SpatialPoint):
+        """
+        Reads a SpectralProfile from a QgsRasterLayer
+        :param layer: QgsRasterLayer
+        :param position: SpatialPoint
+        :return: SpectralProfile
+        """
+
         position = position.toCrs(layer.crs())
         results = layer.dataProvider().identify(position, QgsRaster.IdentifyFormatValue).results()
         wl, wlu = parseWavelength(layer)
+
+        y = list(results.values())
+        for v in y:
+            if not isinstance(v, (float, int)):
+                return None
+
         profile = SpectralProfile()
         profile.setName('{} {}'.format(layer.name(), position))
-        profile.setValues(x=wl, y=list(results.values()), xUnit=wlu)
+
+        profile.setValues(x=wl, y=y, xUnit=wlu)
 
         profile.setCoordinates(position)
         profile.setSource('{}'.format(layer.source()))
@@ -463,7 +477,7 @@ class SpectralProfile(QgsFeature):
             px = geo2px(position, ds.GetGeoTransform())
         else:
             raise Exception('Unsupported type of argument "position" {}'.format('{}'.format(position)))
-        #check out-of-raster
+        # check out-of-raster
         if px.x() < 0 or px.y() < 0: return None
         if px.x() > ds.RasterXSize - 1 or px.y() > ds.RasterYSize - 1: return None
 
