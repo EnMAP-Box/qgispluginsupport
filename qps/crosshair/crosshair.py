@@ -32,7 +32,12 @@ class CrosshairStyle(object):
         self.mShowDistanceMarker = True
         self.mShowDistanceLabel = True
 
-    def setColor(self, color):
+    def setColor(self, color:QColor):
+        """
+        Sets the crosshair color
+        :param color: QCoolor
+        :return:
+        """
         assert isinstance(color, QColor)
         self.mColor = color
 
@@ -188,9 +193,11 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
             x1 = size.width() - x0
             y1 = size.height() - y0
             gap = min([centerPx.x(), centerPx.y()]) * self.mCrosshairStyle.mGap
+
             ml = 5  # marker length in pixel, measured from crosshair line
             md = int(round(max([1, self.mCrosshairStyle.mDotSize * 0.5])))
-            #this is what we want to draw
+
+            # this is what we want to draw
             lines = []
             polygons = []
 
@@ -201,21 +208,17 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
 
             if self.mCrosshairStyle.mShowDistanceMarker:
 
-
                 extent = self.mCanvas.extent()
                 maxD = 0.5 * min([extent.width(), extent.height()])
 
                 pred = nicePredecessor(maxD)
 
-                #exp = int(np.log10(maxD))
-                #md = 10**exp #marker distance = distance to crosshair center
-
-
-                pt = m2p.transform(QgsPointXY(centerGeo.x()- pred, centerGeo.y()))
+                pt = m2p.transform(QgsPointXY(centerGeo.x() - pred, centerGeo.y()))
 
                 line = QLineF((pt + QgsVector(0, ml)).toQPointF(),
                               (pt - QgsVector(0, ml)).toQPointF())
                 lines.append(line)
+
                 #todo: add more markers
 
                 if self.mCrosshairStyle.mShowDistanceLabel:
@@ -224,13 +227,16 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     font = painter.font()
                     ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))
 
-                    distUnit = self.mCanvas.mapSettings().destinationCrs().mapUnits()
-                    unitString = str(QgsUnitTypes.encodeUnit(distUnit))
-
-                    if unitString == 'meters':
-                        labelText = scaledUnitString(pred, suffix='m')
+                    crs = self.mCanvas.mapSettings().destinationCrs()
+                    assert isinstance(crs, QgsCoordinateReferenceSystem)
+                    if crs.description() == '':
+                        labelText = 'CRS unspecified'
                     else:
-                        labelText = '{}{}'.format(pred, unitString)
+                        unitString = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
+                        if unitString == 'meters':
+                            labelText = scaledUnitString(pred, suffix='m')
+                        else:
+                            labelText = '{}{}'.format(pred, unitString)
 
                     pen = QPen(Qt.SolidLine)
                     pen.setWidth(self.mCrosshairStyle.mThickness)
@@ -244,7 +250,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     painter.setPen(Qt.NoPen)
                     fm = QFontMetrics(font)
                     backGroundSize = QSizeF(fm.size(Qt.TextSingleLine, labelText))
-                    backGroundSize = QSizeF(backGroundSize.width()+3,-1*(backGroundSize.height()+3))
+                    backGroundSize = QSizeF(backGroundSize.width()+3, -1*(backGroundSize.height()+3))
                     backGroundPos = QPointF(ptLabel.x()-3, ptLabel.y()+3)
                     background = QPolygonF(QRectF(backGroundPos, backGroundSize))
                     painter.drawPolygon(background)
@@ -297,6 +303,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                                                  px2LayerGeo(x, y)))
                     if pxX >= 0 and pxY >= 0 and \
                        pxX < ns and pxY < nl:
+
                         #get pixel edges in map canvas coordinates
 
                         lyrGeo = px2LayerGeo(pxX, pxY)

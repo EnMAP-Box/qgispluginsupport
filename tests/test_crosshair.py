@@ -44,6 +44,37 @@ class CrosshairTests(unittest.TestCase):
             refCanvas.show()
             QGIS_APP.exec_()
 
+    def test_noCRS(self):
+
+        refCanvas = QgsMapCanvas()
+        refCanvas.setExtent(QgsRectangle(-1,-1,1,1))
+        style = CrosshairStyle()
+        self.assertIsInstance(style, CrosshairStyle)
+        item = CrosshairMapCanvasItem(refCanvas)
+        self.assertIsInstance(item, CrosshairMapCanvasItem)
+        item.setCrosshairStyle(style)
+        item.setPosition(refCanvas.center())
+
+        if SHOW_GUI:
+            refCanvas.show()
+            QGIS_APP.exec_()
+
+    def test_CRS(self):
+
+        refCanvas = QgsMapCanvas()
+        refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
+        style = CrosshairStyle()
+        self.assertIsInstance(style, CrosshairStyle)
+        item = CrosshairMapCanvasItem(refCanvas)
+        self.assertIsInstance(item, CrosshairMapCanvasItem)
+        item.setCrosshairStyle(style)
+        item.setPosition(refCanvas.center())
+
+        if SHOW_GUI:
+            refCanvas.show()
+            QGIS_APP.exec_()
+
+
 if __name__ == "__main__":
     SHOW_GUI = False
     unittest.main()
