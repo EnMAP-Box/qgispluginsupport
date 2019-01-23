@@ -1381,8 +1381,6 @@ class SpectralLibrary(QgsVectorLayer):
                 from .csvdata import CSVSpectralLibraryIO
                 return CSVSpectralLibraryIO.write(self, path, dialect=kwds.get('dialect'))
 
-
-
         return []
 
 

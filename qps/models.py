@@ -461,10 +461,20 @@ class TreeNode(QObject):
     def setValue(self, value):
         self.setValues([value])
 
-    def setValues(self, listOfValues):
-        if not isinstance(listOfValues, list):
-            listOfValues = [listOfValues]
-        self.mValues = listOfValues[:]
+    def setValues(self, listOfValues:list):
+        """
+        Sets the values show by this TreeNode
+        :param listOfValues: [list-of-values]
+        """
+        old = self.mValues
+        if listOfValues is None:
+            self.mValues = []
+        else:
+            if not isinstance(listOfValues, list):
+                listOfValues = [listOfValues]
+            self.mValues = listOfValues[:]
+        if self.mValues != old:
+            self.sigUpdated.emit(self)
 
     def values(self):
         return self.mValues[:]
@@ -538,7 +548,7 @@ class TreeModel(QAbstractItemModel):
     def onNodeUpdated(self, node):
         idxNode = self.node2idx(node)
         self.dataChanged.emit(idxNode, idxNode)
-        self.setColumnSpan(node)
+
 
     def headerData(self, section, orientation, role):
         assert isinstance(section, int)
@@ -623,17 +633,7 @@ class TreeModel(QAbstractItemModel):
     def connectTreeView(self, treeView):
         self.mTreeView = treeView
 
-    def setColumnSpan(self, node, span=None):
-        if isinstance(self.mTreeView, QTreeView) \
-                and isinstance(node, TreeNode) \
-                and isinstance(node.parentNode(), TreeNode):
-            idxNode = self.node2idx(node)
-            idxParent = self.node2idx(node.parentNode())
-            if not isinstance(span, bool):
-                span = len(node.values()) == 0
-            self.mTreeView.setFirstColumnSpanned(idxNode.row(), idxParent, span)
-            for n in node.childNodes():
-                self.setColumnSpan(n)
+
 
     def index(self, row, column, parentIndex=None)->QModelIndex:
         """
@@ -773,8 +773,37 @@ class TreeView(QTreeView):
     def __init__(self, *args, **kwds):
         super(TreeView, self).__init__(*args, **kwds)
 
+        self.mModel = None
+
+    def setModel(self, model:QAbstractItemModel):
+
+        super(TreeView, self).setModel(model)
+
+        self.mModel = model
+        if isinstance(self.mModel, QAbstractItemModel):
 
 
+            self.mModel.dataChanged.connect(self.onDataChanged)
+            self.mModel.rowsInserted.connect(self.onRowsInserted)
+
+    def onRowsInserted(self, parent:QModelIndex, first:int, last:int):
+
+        for row in range(first, last+1):
+            idx = self.model().index(0, row, parent)
+            self.setColumnSpan(idx)
+
+    def onDataChanged(self, tl, br, roles):
+
+        s = ""
+
+    def setColumnSpan(self, idx:QModelIndex):
+        if not idx.isValid():
+            return
+
+        node = idx.internalPointer()
+        if isinstance(node, TreeNode):
+            span = len(node.values()) == 0
+            self.setFirstColumnSpanned(idx.row(), idx.parent(), span)
 
 
     def selectedNode(self)->TreeNode:

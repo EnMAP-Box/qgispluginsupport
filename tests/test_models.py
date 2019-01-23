@@ -124,6 +124,32 @@ class ModelTests(unittest.TestCase):
             TV.show()
             QAPP.exec_()
 
+
+    def test_nodeColumnSpan(self):
+
+        TV = TreeView()
+        self.assertIsInstance(TV, TreeView)
+        TM = TreeModel()
+        TV.setModel(TM)
+
+        TM.rootNode()
+        n1 = TreeNode(TM.rootNode(), name='Node1 looooong text')
+        n11 = TreeNode(n1, name='Node1.1 looooong text')
+        n12 = TreeNode(n1, name='Node1.2', value = 1)
+        n13 = TreeNode(n1, name='Node1.3', values = [1,2])
+
+        n2 = TreeNode(TM.rootNode(), name='Modiefied', value = 1)
+        n21 = TreeNode(n2, name='Values added')
+        n21.setValue('block')
+
+        n21 = TreeNode(n2, name='Values removed', value='do not show')
+        n21.setValues(None)
+
+        # todo: test if columns are spanned / not
+        if SHOW_GUI:
+            TV.show()
+            QAPP.exec_()
+
     def test_modelview(self):
 
         treeModel = TreeModel()
