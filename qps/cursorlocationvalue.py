@@ -30,12 +30,11 @@ from qps.models import *
 
 
 class SourceValueSet(object):
-    def __init__(self, source, crs, geoCoordinate):
-        assert isinstance(geoCoordinate, QgsPointXY)
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
+    def __init__(self, source, point:SpatialPoint):
+        assert isinstance(point, SpatialPoint)
         self.source = source
-        self.point = geoCoordinate
-        self.wktCrs = crs.toWkt()
+        self.point = point
+
 
     def baseName(self):
         return os.path.basename(self.source)
@@ -59,9 +58,9 @@ class RasterValueSet(SourceValueSet):
             self.bandName = bandName
 
 
-    def __init__(self, source, crs, geoCoordinate, pxPosition):
+    def __init__(self, source, point, pxPosition):
         assert isinstance(pxPosition, QPoint)
-        super(RasterValueSet, self).__init__(source, crs, geoCoordinate)
+        super(RasterValueSet, self).__init__(source, point)
         self.pxPosition = pxPosition
         self.noDataValue = None
         self.bandValues = []
@@ -73,8 +72,8 @@ class VectorValueSet(SourceValueSet):
             self.fid = fid
             self.attributes = collections.OrderedDict()
 
-    def __init__(self, source, geoCoordinate, crs):
-        super(VectorValueSet, self).__init__(source, geoCoordinate, crs)
+    def __init__(self, source, point:SpatialPoint):
+        super(VectorValueSet, self).__init__(source, point)
         self.features = []
 
     def addFeatureInfo(self, featureInfo):
@@ -152,8 +151,7 @@ class CursorLocationInfoModel(TreeModel):
 
         if isinstance(sourceValueSet, RasterValueSet):
             root = gocn(self.mRootNode, name=bn)
-            self.setColumnSpan(root, True)
-            root.setIcon(QIcon(':/enmapbox/icons/mIconRasterLayer.svg'))
+            root.setIcon(QIcon(':/qps/ui/icons/raster.svg'))
 
             # add subnodes
             n = gocn(root, 'Pixel')
@@ -174,14 +172,16 @@ class CursorLocationInfoModel(TreeModel):
             if len(sourceValueSet.features) == 0:
                 return
             root = gocn(self.mRootNode, name=bn)
-            self.setColumnSpan(root, True)
             refFeature = sourceValueSet.features[0]
             assert isinstance(refFeature, QgsFeature)
             typeName = QgsWkbTypes.displayString(refFeature.geometry().wkbType()).lower()
-            if 'polygon' in typeName: path = ':/enmapbox/icons/mIconPolygonLayer.svg'
-            if 'line' in typeName: path = ':/enmapbox/icons/mIconLineLayer.svg'
-            if 'point' in typeName: path = ':/enmapbox/icons/mIconLineLayer.svg'
-            root.setIcon(QIcon(path))
+            if 'polygon' in typeName:
+                root.setIcon(QIcon(r':/images/themes/default/mIconPolygonLayer.svg'))
+            elif 'line' in typeName:
+                root.setIcon(QIcon(r':/images/themes/default/mIconLineLayer.svg'))
+            if 'point' in typeName:
+                root.setIcon(QIcon(r':/images/themes/default/mIconPointLayer.svg'))
+
 
             for field in refFeature.fields():
                 assert isinstance(field, QgsField)
@@ -329,20 +329,27 @@ class CursorLocationInfoDock(QDockWidget,
 
         return (layerMode, layerType, rasterBands)
 
-    def loadCursorLocation(self, point, canvas):
-
+    def loadCursorLocation(self, point:SpatialPoint, canvas:QgsMapCanvas):
+        """
+        :param point:
+        :param canvas:
+        :return:
+        """
         assert isinstance(canvas, QgsMapCanvas)
-
+        assert isinstance(point, SpatialPoint)
         crs = canvas.mapSettings().destinationCrs()
-        self.setCursorLocation(crs, point)
+        self.setCursorLocation(point)
         self.setCanvas(canvas)
         self.reloadCursorLocation()
 
     def reloadCursorLocation(self):
+        """
+        Call to load / re-load the data for the specifed cursor location
+        """
 
-        crsInfo, ptInfo = self.cursorLocation()
+        ptInfo = self.cursorLocation()
 
-        if ptInfo is None or len(self.mCanvases) == 0:
+        if not isinstance(ptInfo, SpatialPoint) or len(self.mCanvases) == 0:
             return
 
         mode, type, rasterbands = self.options()
@@ -361,63 +368,74 @@ class CursorLocationInfoDock(QDockWidget,
         for c in self.mCanvases:
             lyrs.extend(layerFilter(c))
 
-        # convert location of interest into WGS-84 GCS
-        crsWorld = QgsCoordinateReferenceSystem('EPSG:4326')
-
-        info2World = createCRSTransform(crsInfo, crsWorld)
-        pointWorld = info2World.transform(ptInfo)
-
         self.mLocationInfoModel.setExpandedNodeRemainder()
-
         self.mLocationInfoModel.clear()
 
         for l in lyrs:
-            if mode == 'TOP_LAYER' and  self.mLocationInfoModel.mRootNode.childCount() > 0:
+            assert isinstance(l, QgsMapLayer)
+            if mode == 'TOP_LAYER' and self.mLocationInfoModel.mRootNode.childCount() > 0:
                 s = ""
                 break
-
-
             assert isinstance(l, QgsMapLayer)
-            lyr2World = createCRSTransform(l.crs(), crsWorld)
-            world2lyr = createCRSTransform(crsWorld, l.crs())
 
             # check in GCS WGS-84 if the point-of-interest intersects with layer
-            lyrExt = lyr2World.transformBoundingBox(l.extent())
-            assert isinstance(lyrExt, QgsRectangle)
-            if not lyrExt.contains(pointWorld):
-                continue
 
-            # transform requested location into layer CRS coordinates
-            pointLyr = world2lyr.transform(pointWorld)
+            pointLyr = ptInfo.toCrs(l.crs())
+            if not isinstance(pointLyr, SpatialPoint) or not l.extent().contains(pointLyr):
+                continue
 
             if isinstance(l, QgsRasterLayer):
                 renderer = l.renderer()
                 px = geo2px(pointLyr, l)
-                v = RasterValueSet(l.name(), crsInfo, ptInfo, px)
+                v = RasterValueSet(l.name(), pointLyr, px)
 
                 # !Note: b is not zero-based -> 1st band means b == 1
                 if rasterbands == 'VISIBLE':
                     bandNumbers = renderer.usesBands()
                 elif rasterbands == 'ALL':
-                    bandNumbers = range(1, l.bandCount()+1)
+                    bandNumbers = list(range(1, l.bandCount()+1))
                 else:
                     bandNumbers = [1]
 
-                results = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
-                if len(results) == 0:
-                    #fallback: get the colors
-                    pt2 = QgsPointXY(pointLyr.x() + l.rasterUnitsPerPixelX() * 3,
-                                     pointLyr.y() - l.rasterUnitsPerPixelY() * 3)
-                    ext2Px = QgsRectangle(pointLyr.x(), pt2.y(), pt2.x(), pointLyr.y())
+                pt2 = QgsPointXY(pointLyr.x() + l.rasterUnitsPerPixelX() * 3,
+                                 pointLyr.y() - l.rasterUnitsPerPixelY() * 3)
+                ext2Px = QgsRectangle(pointLyr.x(), pt2.y(), pt2.x(), pointLyr.y())
 
-                    block = l.renderer().block(1, ext2Px, 3, 3)
-                    color = QColor(block.color(0,0))
-                    v.bandValues.append(color)
-
+                if l.dataProvider().name() in ['wms']:
+                    for b in bandNumbers:
+                        block = l.renderer().block(b, ext2Px, 3, 3)
+                        assert isinstance(block, QgsRasterBlock)
+                        v.bandValues.append(QColor(block.color(0, 0)))
                 else:
-                    wl, wlu = parseWavelength(l)
-                    for band, value in results.items():
-                        v.bandValues.append(RasterValueSet.BandInfo(band-1, value, l.bandName(band)))
+                    results = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
+                    for b in bandNumbers:
+
+                        info = RasterValueSet.BandInfo(b - 1, results[b], l.bandName(b))
+                        v.bandValues.append(info)
+
+                if False:
+                    results = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
+
+
+                    #x, y  = pointLyr.x(), pointLyr.y()
+                    #dx = 0.5 * l.rasterUnitsPerPixelX()
+                    #dy = 0.5 * l.rasterUnitsPerPixelY()
+                    #bb = QgsRectangle(x-dx, y-dy, x+dx, y+dy)
+                    #results2 = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue, boundingBox=bb, width=1, height=1).results()
+                    if len(results) == 0:
+                        # fallback: get the colors, e.g. in case of WMS
+                        pt2 = QgsPointXY(pointLyr.x() + l.rasterUnitsPerPixelX() * 3,
+                                         pointLyr.y() - l.rasterUnitsPerPixelY() * 3)
+                        ext2Px = QgsRectangle(pointLyr.x(), pt2.y(), pt2.x(), pointLyr.y())
+
+                        block = l.renderer().block(1, ext2Px, 3, 3)
+                        color = QColor(block.color(0, 0))
+                        v.bandValues.append(color)
+
+                    else:
+                        wl, wlu = parseWavelength(l)
+                        for band, value in results.items():
+                            v.bandValues.append(RasterValueSet.BandInfo(band-1, value, l.bandName(band)))
 
                 self.mLocationInfoModel.addSourceValues(v)
                 s = ""
@@ -441,7 +459,7 @@ class CursorLocationInfoDock(QDockWidget,
                                          .setFilterRect(searchRect) \
                                          .setFlags(flags))
                 feature = QgsFeature()
-                s = VectorValueSet(l.source(), crsInfo, pointLyr)
+                s = VectorValueSet(l.source(), pointLyr)
                 while features.nextFeature(feature):
                     s.features.append(QgsFeature(feature))
 
@@ -450,31 +468,26 @@ class CursorLocationInfoDock(QDockWidget,
 
                 pass
 
-    def setCursorLocation(self, crs, point):
+    def setCursorLocation(self, spatialPoint:SpatialPoint):
         """
-        :param crs:
-        :param point:
-        :return:
+        Set the cursor lcation to be loaded.
+        :param crs: QgsCoordinateReferenceSystem
+        :param point: QgsPointXY
         """
-        assert isinstance(point, QgsPointXY)
-        assert isinstance(crs, QgsCoordinateReferenceSystem)
-        self.mLocationHistory.insert(0, (crs, point))
+        assert isinstance(spatialPoint, SpatialPoint)
+        self.mLocationHistory.insert(0, spatialPoint)
         if len(self.mLocationHistory) > self.mMaxPoints:
             del self.mLocationHistory[self.mMaxPoints:]
 
         if self.mCrs is None:
-            self.setCrs(crs)
+            self.setCrs(spatialPoint.crs())
+        self.updateCursorLocationInfo()
 
-        self.setCursorLocationInfo()
-
-    def setCursorLocationInfo(self):
+    def updateCursorLocationInfo(self):
         # transform this point to targeted CRS
-        crs, pt = self.cursorLocation()
-        if isinstance(pt, QgsPointXY):
-            if crs != self.mCrs:
-                trans = createCRSTransform(crs, self.mCrs)
-                pt = trans.transform(pt)
-
+        pt = self.cursorLocation()
+        if isinstance(pt, SpatialPoint):
+            pt = pt.toCrs(self.mCrs)
             self.tbX.setText('{}'.format(pt.x()))
             self.tbY.setText('{}'.format(pt.y()))
 
@@ -507,9 +520,9 @@ class CursorLocationInfoDock(QDockWidget,
         if crs != self.mCrs:
             self.mCrs = crs
             self.btnCrs.setCrs(crs)
-        self.setCursorLocationInfo()
+        self.updateCursorLocationInfo()
 
-    def cursorLocation(self):
+    def cursorLocation(self)->SpatialPoint:
         """
         Returns the last location that was set.
         """

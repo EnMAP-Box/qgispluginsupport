@@ -1075,7 +1075,13 @@ def findParent(qObject, parentType, checkInstance=False):
     return parent
 
 
-def createCRSTransform(src, dst):
+def createCRSTransform(src:QgsCoordinateReferenceSystem, dst:QgsCoordinateReferenceSystem):
+    """
+
+    :param src:
+    :param dst:
+    :return:
+    """
     assert isinstance(src, QgsCoordinateReferenceSystem)
     assert isinstance(dst, QgsCoordinateReferenceSystem)
     t = QgsCoordinateTransform()
@@ -1084,6 +1090,13 @@ def createCRSTransform(src, dst):
     return t
 
 def saveTransform(geom, crs1, crs2):
+    """
+
+    :param geom:
+    :param crs1:
+    :param crs2:
+    :return:
+    """
     assert isinstance(crs1, QgsCoordinateReferenceSystem)
     assert isinstance(crs2, QgsCoordinateReferenceSystem)
 

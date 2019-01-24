@@ -333,25 +333,7 @@ class QgisMockup(QgisInterface):
         self.lyrs.append(l)
         QgsProject.instance().addMapLayer(l, True)
         self.mRootNode.addLayer(l)
-        self.mLayerTreeMapCanvasBridge.setCanvasLayers()
-        return
-
-        cnt = len(self.canvas.layers())
-
-        self.canvas.setLayerSet([QgsMapCanvasLayer(l)])
-        l.dataProvider()
-        if cnt == 0:
-            self.canvas.mapSettings().setDestinationCrs(l.crs())
-            self.canvas.setExtent(l.extent())
-
-            spatialExtent = SpatialExtent.fromMapLayer(l)
-            # self.canvas.blockSignals(True)
-            self.canvas.setDestinationCrs(spatialExtent.crs())
-            self.canvas.setExtent(spatialExtent)
-            # self.blockSignals(False)
-            self.canvas.refresh()
-
-        self.canvas.refresh()
+        self.mCanvas.setLayers(self.mCanvas.layers() + l)
 
     def createActions(self):
         m = self.ui.menuBar().addAction('Add Vector')

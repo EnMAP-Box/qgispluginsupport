@@ -46,16 +46,18 @@ class CursorLocationTest(unittest.TestCase):
         canvas = QgsMapCanvas()
 
         layers = [TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
-        center = SpatialPoint.fromMapLayerCenter(layers[0])
-        store = QgsMapLayerStore()
-        store.addMapLayers(layers)
-        canvas.setLayers(layers)
-        cldock = CursorLocationInfoDock()
-        self.assertIsInstance(cldock, CursorLocationInfoDock)
-        cldock.cursorLocation() == center
-        cldock.loadCursorLocation(center, canvas)
-        point = cldock.cursorLocation()
-        self.assertIsInstance(point, SpatialPoint)
+        for lyr in layers:
+            assert isinstance(lyr, QgsMapLayer)
+            center = SpatialPoint.fromMapLayerCenter(lyr)
+            store = QgsMapLayerStore()
+            store.addMapLayer(lyr)
+            canvas.setLayers([lyr])
+            cldock = CursorLocationInfoDock()
+            self.assertIsInstance(cldock, CursorLocationInfoDock)
+            cldock.cursorLocation() == center
+            cldock.loadCursorLocation(center, canvas)
+            point = cldock.cursorLocation()
+            self.assertIsInstance(point, SpatialPoint)
 
 
         if SHOW_GUI:
