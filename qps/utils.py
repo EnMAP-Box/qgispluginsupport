@@ -572,7 +572,7 @@ def appendItemsToMenu(menu, itemsToAdd):
     """
     assert isinstance(menu, QMenu)
     if isinstance(itemsToAdd, QMenu):
-        itemsToAdd = itemsToAdd.children()
+        itemsToAdd = itemsToAdd.children()[1:]
     if not isinstance(itemsToAdd, list):
         itemsToAdd = [itemsToAdd]
 
