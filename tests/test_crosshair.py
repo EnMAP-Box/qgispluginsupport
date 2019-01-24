@@ -11,10 +11,10 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
-from enmapboxtestdata import enmap
+from enmapboxtestdata import enmap, hires
 from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()
-SHOW_GUI = False
+SHOW_GUI = True
 from qps.crosshair.crosshair import *
 
 
@@ -26,22 +26,33 @@ class CrosshairTests(unittest.TestCase):
 
         TestObjects.createVectorDataSet()
         lyr = QgsRasterLayer(enmap)
-        QgsProject.instance().addMapLayer(lyr)
+        lyr2 = QgsRasterLayer(hires)
+        layers = [lyr, lyr2]
+        QgsProject.instance().addMapLayers(layers)
         refCanvas = QgsMapCanvas()
-        refCanvas.setLayers([lyr])
-        refCanvas.setExtent(lyr.extent())
+        refCanvas.setLayers([lyr2])
         refCanvas.setDestinationCrs(lyr.crs())
+        refCanvas.setExtent(refCanvas.fullExtent())
+        item = CrosshairMapCanvasItem(refCanvas)
 
-
+        self.assertIsInstance(item, CrosshairMapCanvasItem)
+        item.setRasterGridLayer(lyr)
+        item.setPosition(SpatialPoint.fromMapLayerCenter(lyr2))
+        item.setVisibility(True)
         style = CrosshairStyle()
         self.assertIsInstance(style, CrosshairStyle)
 
+        style.setVisibility(True)
+        style.setShowPixelBorder(True)
+        item.setCrosshairStyle(style)
+
         if SHOW_GUI:
-            style = CrosshairDialog.getCrosshairStyle(mapCanvas=refCanvas)
-            if style is not None:
-                self.assertIsInstance(style, CrosshairStyle)
+            #style = CrosshairDialog.getCrosshairStyle(mapCanvas=refCanvas)
+            #if style is not None:
+            #    self.assertIsInstance(style, CrosshairStyle)
 
             refCanvas.show()
+
             QGIS_APP.exec_()
 
     def test_noCRS(self):

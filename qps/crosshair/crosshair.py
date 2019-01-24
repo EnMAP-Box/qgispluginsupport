@@ -150,14 +150,29 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         return self.mShow
 
 
-    def connectRasterGrid(self, qgsRasterLayer):
-
-        if isinstance(qgsRasterLayer):
+    def setRasterGridLayer(self, qgsRasterLayer:QgsRasterLayer):
+        """
+        Sets the QgsRasterLayer with the raster grid to show
+        :param qgsRasterLayer:
+        :return:
+        """
+        if isinstance(qgsRasterLayer, QgsRasterLayer):
             self.mRasterGridLayer = qgsRasterLayer
         else:
             self.mRasterGridLayer = None
 
+    def rasterGridLayer(self)->QgsRasterLayer:
+        """
+        Returns the raster grid layer
+        :return: QgsRasterLayer
+        """
+        return self.mRasterGridLayer
+
     def setPixelBox(self, nPx:int):
+        """
+        Sets the box size of the center box
+        :param nPx: number of pixel arount, need to an odd integer number 1,3,..
+        """
         assert nPx >= 0
         assert nPx == 1 or nPx % 3 == 0, 'Size of pixel box must be an odd integer value (1,3,5...)'
         self.mSizePixelBox = nPx
@@ -177,7 +192,14 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         #self.updateCanvas()
 
     def paint(self, painter, QStyleOptionGraphicsItem=None, QWidget_widget=None):
-        if isinstance(self.mPosition, QgsPointXY) and self.mShow and self.mCrosshairStyle.mShow:
+        """
+        Paints the crosshair
+        :param painter:
+        :param QStyleOptionGraphicsItem:
+        :param QWidget_widget:
+        :return:
+        """
+        if isinstance(self.mPosition, SpatialPoint) and self.mShow and self.mCrosshairStyle.mShow:
            #paint the crosshair
             size = self.mCanvas.size()
             m2p = self.mCanvas.mapSettings().mapToPixel()
@@ -271,12 +293,9 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
 
 
             if self.mCrosshairStyle.mShowPixelBorder:
-                rasterLayers = [l for l in self.mCanvas.layers() if isinstance(l, QgsRasterLayer)
-                                and l.isValid()]
+                lyr = self.rasterGridLayer()
 
-                if len(rasterLayers) > 0:
-
-                    lyr = rasterLayers[0]
+                if  isinstance(lyr, QgsRasterLayer):
 
                     ns = lyr.width()  # ns = number of samples = number of image columns
                     nl = lyr.height()  # nl = number of lines
