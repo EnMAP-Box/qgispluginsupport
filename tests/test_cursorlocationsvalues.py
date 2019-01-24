@@ -20,12 +20,12 @@ from qgis.core import *
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
-from qps.testing import initQgisApplication
+from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()
 from qps.utils import *
 from qps.cursorlocationvalue import *
 
-SHOW_GUI = False
+SHOW_GUI = True
 
 class CursorLocationTest(unittest.TestCase):
 
@@ -35,15 +35,37 @@ class CursorLocationTest(unittest.TestCase):
         self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
 
     def webLayers(self)->list:
-        layers = [QgsRasterLayer(self.wmsUri1, 'XYZ', 'wms'), QgsRasterLayer(self.wmsUri2, 'OSM', 'wms'), QgsVectorLayer(self.wfsUri, 'Berlin', 'WFS')]
+        layers = [QgsRasterLayer(self.wmsUri1, 'XYZ Web Map Service Raster Layer', 'wms'), QgsRasterLayer(self.wmsUri2, 'OSM', 'wms'), QgsVectorLayer(self.wfsUri, 'Berlin', 'WFS')]
         for l in layers:
             self.assertIsInstance(l, QgsMapLayer)
             self.assertTrue(l.isValid())
         return layers
 
-    def test_layertest(self):
+    def test_locallayers(self):
 
         canvas = QgsMapCanvas()
+
+        layers = [TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
+        center = SpatialPoint.fromMapLayerCenter(layers[0])
+        store = QgsMapLayerStore()
+        store.addMapLayers(layers)
+        canvas.setLayers(layers)
+        cldock = CursorLocationInfoDock()
+        self.assertIsInstance(cldock, CursorLocationInfoDock)
+        cldock.cursorLocation() == center
+        cldock.loadCursorLocation(center, canvas)
+        point = cldock.cursorLocation()
+        self.assertIsInstance(point, SpatialPoint)
+
+
+        if SHOW_GUI:
+            cldock.show()
+            QGIS_APP.exec_()
+
+    def test_weblayertest(self):
+
+        canvas = QgsMapCanvas()
+
         layers = self.webLayers()
         center = SpatialPoint.fromMapLayerCenter(layers[0])
         store = QgsMapLayerStore()
