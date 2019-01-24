@@ -430,36 +430,71 @@ class TreeNode(QObject):
 
         self.sigRemovedChildren.emit(self, row, rowLast)
 
-    def setToolTip(self, toolTip):
+    def setToolTip(self, toolTip:str):
+        """
+        Sets the tooltip
+        :param toolTip: str
+        """
         self.mToolTip = toolTip
 
-    def toolTip(self):
+    def toolTip(self)->str:
+        """
+        Returns a tooltip
+        :return: str
+        """
         return self.mToolTip
 
     def parentNode(self):
         return self.mParentNode
 
     def setParentNode(self, treeNode):
+        """
+        :param treeNode:
+        :return:
+        """
         assert isinstance(treeNode, TreeNode)
         self.mParentNode = treeNode
 
-    def setIcon(self, icon):
+    def setIcon(self, icon:QIcon):
+        """
+        Sets the TreeNode icon
+        :param icon: QIcon
+        """
         self.mIcon = icon
 
-    def icon(self):
+    def icon(self)->QIcon:
+        """
+        Returns the TreeNode icon
+        :return: QIcon
+        """
         return self.mIcon
 
-    def setName(self, name):
+    def setName(self, name:str):
+        """
+        Sets the TreeNodes name
+        :param name: str
+        """
         self.mName = name
 
-    def name(self):
+    def name(self)->str:
+        """
+        Returns the TreeNodes name
+        :return: str
+        """
         return self.mName
 
     def contextMenu(self):
         return None
 
     def setValue(self, value):
-        self.setValues([value])
+        """
+        Same as setValues([value])
+        :param value: any
+        """
+        if value == None:
+            self.setValues(None)
+        else:
+            self.setValues([value])
 
     def setValues(self, listOfValues:list):
         """
@@ -770,33 +805,47 @@ class TreeModel(QAbstractItemModel):
 
 
 class TreeView(QTreeView):
+    """
+    A basic QAbstractItemView implementation to realize TreeModels.
+    """
     def __init__(self, *args, **kwds):
         super(TreeView, self).__init__(*args, **kwds)
 
         self.mModel = None
 
     def setModel(self, model:QAbstractItemModel):
-
+        """
+        Sets the TreeModel
+        :param model: TreeModel
+        """
         super(TreeView, self).setModel(model)
 
         self.mModel = model
         if isinstance(self.mModel, QAbstractItemModel):
-
-
             self.mModel.dataChanged.connect(self.onDataChanged)
             self.mModel.rowsInserted.connect(self.onRowsInserted)
 
     def onRowsInserted(self, parent:QModelIndex, first:int, last:int):
 
         for row in range(first, last+1):
-            idx = self.model().index(0, row, parent)
+            idx = self.model().index(row, 0, parent)
             self.setColumnSpan(idx)
 
-    def onDataChanged(self, tl, br, roles):
+    def onDataChanged(self, tl:QModelIndex, br:QModelIndex, roles):
 
+
+        parent = tl.parent()
+        for row in range(tl.row(), br.row() + 1):
+            idx = self.model().index(row, 0, parent)
+            self.setColumnSpan(idx)
         s = ""
 
     def setColumnSpan(self, idx:QModelIndex):
+        """
+        Sets the column span for index `idx` and all child widgets
+        :param idx:
+        :return:
+        """
         if not idx.isValid():
             return
 
@@ -805,6 +854,9 @@ class TreeView(QTreeView):
             span = len(node.values()) == 0
             self.setFirstColumnSpanned(idx.row(), idx.parent(), span)
 
+            for row in range(self.model().rowCount(idx)):
+                idx2 = self.model().createIndex(row, 0, idx)
+                self.setColumnSpan(idx2)
 
     def selectedNode(self)->TreeNode:
         """

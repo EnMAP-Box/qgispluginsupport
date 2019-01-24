@@ -46,17 +46,14 @@ class testClassUtils(unittest.TestCase):
 
 
     def test_loadformClasses(self):
-        #from enmapbox import EnMAPBox
-        #EB = EnMAPBox()
-        #import qgisresources.images
-        #qgisresources.images.qInitResources()
-        pathUi = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapbox\coreapps\enmapboxapplications\imagemathapp\ui\main.ui'
-        import qps
-        for pathUi in file_search(dn(qps.__file__), '*.ui', recursive=True):
 
+        import qps
+        sources = list(file_search(dn(qps.__file__), '*.ui', recursive=True))
+        for pathUi in sources[4:5]:
+            print('Test "{}"'.format(pathUi))
             t = loadUIFormClass(pathUi)
             self.assertIsInstance(t, object)
-        s = ""
+
 
 
     def test_spatialObjects(self):

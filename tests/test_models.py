@@ -10,7 +10,7 @@ from qps.testing import initQgisApplication
 from qps.models import *
 
 QAPP = initQgisApplication()
-SHOW_GUI = False
+SHOW_GUI = True
 
 class ModelTests(unittest.TestCase):
 
@@ -134,15 +134,24 @@ class ModelTests(unittest.TestCase):
 
         TM.rootNode()
         n1 = TreeNode(TM.rootNode(), name='Node1 looooong text')
-        n11 = TreeNode(n1, name='Node1.1 looooong text')
-        n12 = TreeNode(n1, name='Node1.2', value = 1)
-        n13 = TreeNode(n1, name='Node1.3', values = [1,2])
+        n11 = TreeNode(n1, name='spanned')
+        n12 = TreeNode(n1, name='value', value = 1)
+        n13 = TreeNode(n1, name='value', values = [1,2])
 
-        n2 = TreeNode(TM.rootNode(), name='Modiefied', value = 1)
-        n21 = TreeNode(n2, name='Values added')
+        n2 = TreeNode(None, name='ins. spanned')
+        n21 = TreeNode(n2, name='ins. value', value=[1])
+        n22 = TreeNode(n21, name='ins. spanned')
+        n23 = TreeNode(n22, name='ins. value', value=[1])
+        b24 = TreeNode(n23, name='ins. spanned')
+
+        TM.rootNode().appendChildNodes([n2])
+
+        n2 = TreeNode(TM.rootNode(), name='mod. spanned', value = 1)
+        n2.setValue(None)
+        n21 = TreeNode(n2, name='mod. value')
         n21.setValue('block')
 
-        n21 = TreeNode(n2, name='Values removed', value='do not show')
+        n21 = TreeNode(n2, name='mod. spanned', value='do not show')
         n21.setValues(None)
 
         # todo: test if columns are spanned / not

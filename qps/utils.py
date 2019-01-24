@@ -358,10 +358,10 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
     :return: the form class, e.g. to be used in a class definition like MyClassUI(QFrame, loadUi('myclassui.ui'))
     """
 
-    RC_SUFFIX =  resourceSuffix
+    RC_SUFFIX = resourceSuffix
     assert os.path.isfile(pathUi), '*.ui file does not exist: {}'.format(pathUi)
 
-
+    global FORM_CLASSES
     if pathUi not in FORM_CLASSES.keys():
         #parse *.ui xml and replace *.h by qgis.gui
 
@@ -389,12 +389,33 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
         if match:
             txt = txt.replace(match.group(), 'resource=":/images/images.qrc"')
 
+
+
         if len(missing) > 0:
-            print('None-existing resource file(s) in: {}'.format(pathUi))
+
+            missingQrc = []
+            missingQgs = []
+
             for t in missing:
                 line, path = t
-                print('\t{}'.format(line), file=sys.stderr)
-            #print(txt)
+                if re.search(r'.*(?i:qgis)/images/images\.qrc.*', line):
+                    missingQgs.append(m)
+                else:
+                    missingQrc.append(m)
+
+            if len(missingQrc) > 0:
+                print('{}\nrefers to {} none-existing resource (*.qrc) file(s):'.format(pathUi, len(missingQrc)))
+                for i, t in enumerate(missingQrc):
+                    line, path = t
+                    print('{}: "{}"'.format(i+1, path), file=sys.stderr)
+
+            if len(missingQgs) > 0 and not isinstance(qgisAppQgisInterface(), QgisInterface):
+                print('{}\nrefers to {} none-existing resource (*.qrc) file(s) '.format(pathUi, len(missingQgs)) +
+                      'which are likely available when started from QGIS Desktop:')
+                for i, t in enumerate(missingQgs):
+                    line, path = t
+                    print('{}: "{}"'.format(i+1, path))
+
 
         doc = QDomDocument()
         doc.setContent(txt)
@@ -408,7 +429,7 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
                 cHeader.setNodeValue('qgis.gui')
 
 
-        #collect resource file locations
+        # collect resource file locations
         elems = doc.elementsByTagName('include')
         qrcPaths = []
         for i in range(elems.count()):
@@ -449,6 +470,7 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
             sys.path.extend(tmpDirs)
 
         #create requried mockups
+
         if True:
             FORM_CLASS_MOCKUP_MODULES = [os.path.splitext(os.path.basename(p))[0] for p in qrcPaths]
             FORM_CLASS_MOCKUP_MODULES = [m for m in FORM_CLASS_MOCKUP_MODULES if m not in sys.modules.keys()]
@@ -479,6 +501,9 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
         #remove temporary added directories from python path
         for d in tmpDirs:
             sys.path.remove(d)
+    if pathUi.endswith('spectrallibrarywidget.ui'):
+        s =""
+
 
     return FORM_CLASSES[pathUi]
 
