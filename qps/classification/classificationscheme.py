@@ -373,7 +373,6 @@ class ClassificationScheme(QAbstractTableModel):
             if col == self.mColColor:
                 return QBrush(getTextColorWithContrast(classInfo.color()))
 
-
         if role == Qt.BackgroundColorRole:
             if col == 2:
                 return QBrush(classInfo.color())
@@ -748,6 +747,8 @@ class ClassificationScheme(QAbstractTableModel):
             self.endRemoveRows()
         self._updateLabels()
         self.sigClassesRemoved.emit(removedClasses)
+
+
 
     def createClasses(self, n:int):
         """
@@ -1155,6 +1156,108 @@ class ClassificationScheme(QAbstractTableModel):
         raise NotImplementedError()
 
 
+class ClassificationSchemeComboBoxModel(QAbstractListModel):
+
+    def __init__(self):
+        super(ClassificationSchemeComboBoxModel, self).__init__()
+
+        self.mClassScheme = None
+        self.mAllowEmptyField = False
+
+    def setAllowEmptyField(self, b:bool):
+        assert isinstance(b, bool)
+        changed = self.mAllowEmptyField != b
+
+        if changed:
+            if b:
+                self.beginInsertRows(QModelIndex(), 0, 0)
+                self.mAllowEmptyField = b
+                self.endInsertRows()
+            else:
+                self.beginRemoveRows(QModelIndex(), 0, 0)
+                self.mAllowEmptyField = b
+                self.endRemoveRows()
+
+
+
+    def allowEmptyField(self)->bool:
+        return self.mAllowEmptyField
+
+    def setClassificationScheme(self, classScheme:ClassificationScheme):
+        assert isinstance(classScheme, ClassificationScheme)
+        self.beginResetModel()
+        self.mClassScheme = classScheme
+        self.endResetModel()
+
+    def classificationScheme(self)->ClassificationScheme:
+        return self.mClassScheme
+
+    def rowCount(self, parent)->int:
+        if not isinstance(self.mClassScheme, ClassificationScheme):
+            return 0
+
+        n = len(self.mClassScheme)
+        if self.allowEmptyField():
+            n += 1
+        return n
+
+    def columnCount(self, parent: QModelIndex):
+        return 1
+
+    def idx2csIdx(self, index:QModelIndex):
+
+        if not isinstance(self.mClassScheme, ClassificationScheme):
+            return QModelIndex()
+
+        if self.allowEmptyField():
+            return self.mClassScheme.createIndex(index.row() - 1, index.column())
+        else:
+            return self.mClassScheme.createIndex(index.row(), index.column())
+
+    def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
+
+        if not index.isValid():
+            return None
+
+        if self.allowEmptyField() and index.row() == 0:
+            if role == Qt.DisplayRole:
+                return ''
+
+        idxCs = self.idx2csIdx(index)
+        if not idxCs.isValid():
+            return None
+        else:
+
+            classInfo = self.mClassScheme.data(idxCs, role=Qt.UserRole)
+            assert isinstance(classInfo, ClassInfo)
+            if role == Qt.UserRole:
+                return classInfo
+            assert isinstance(classInfo, ClassInfo)
+            nCols = self.mClassScheme.columnCount(idxCs)
+            if role in [Qt.DisplayRole, Qt.ToolTipRole, Qt.WhatsThisRole]:
+                infos = []
+                for col in range(nCols):
+                    idx = self.mClassScheme.createIndex(idxCs.row(), col)
+                    infos.append(str(self.mClassScheme.data(idx, role=role)))
+                if role == Qt.DisplayRole:
+                    return ' '.join(infos[0:2])
+                if role == Qt.ToolTipRole:
+                    return '\n'.join(infos)
+                if role == Qt.WhatsThisRole:
+                    return '\n'.join(infos)
+
+            elif role == Qt.DecorationRole:
+                return classInfo.icon()
+
+
+        return None
+
+    def flags(self, index: QModelIndex):
+        if not index.isValid():
+            return None
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
+
 class ClassificationSourceComboBox(QgsMapLayerComboBox):
 
     def __init__(self, parent):
@@ -1182,79 +1285,33 @@ class ClassificationSchemeComboBox(QComboBox):
         if not isinstance(classification, ClassificationScheme):
             classification = ClassificationScheme()
         self.view().setMinimumWidth(200)
-        self.mSchema = None
-        self.setClassificationScheme(classification)
+        model = ClassificationSchemeComboBoxModel()
+        model.setClassificationScheme(classification)
+        self.setModel(model)
 
 
-    def setClassificationScheme(self, classScheme):
-        self.clear()
-        self.mSchema = None
-
-
-        if isinstance(classScheme, ClassificationScheme):
-            self.mSchema = classScheme
-            assert isinstance(self.mSchema, ClassificationScheme)
-            for i, classInfo in enumerate(self.mSchema):
-                self._insertClassInfo(i, classInfo)
-
-            self.mSchema.rowsInserted.connect(self.onRowsInserted)
-            self.mSchema.rowsRemoved.connect(self.onRowsRemoved)
-            self.mSchema.dataChanged.connect(self.onDataChanged)
-
-    def _insertClassInfo(self, i:int, classInfo:ClassInfo):
-        assert isinstance(classInfo, ClassInfo)
-        self.insertItem(i, 'dummy', classInfo)
-        self._updateClassInfo(i, classInfo, roles=[Qt.DisplayRole, Qt.ToolTipRole, Qt.DecorationRole])
-
-        s = ""
-
-    def _updateClassInfo(self, i:int, classInfo:ClassInfo, roles:list=None):
-        if roles is None or roles == [Qt.EditRole]:
-            roles = [Qt.DisplayRole, Qt.DecorationRole, Qt.ToolTipRole, Qt.UserRole]
-
-        for role in roles:
-
-            if role == Qt.DecorationRole:
-                icon = classInfo.icon(QSize(20, 20))
-                self.setItemData(i, icon, role)
-            elif role == Qt.DisplayRole:
-                text = '{} {}'.format(classInfo.label(), classInfo.name())
-                self.setItemData(i, text, role)
-            elif role == Qt.ToolTipRole:
-                toolTip = 'Label:{} Name:"{}" Color:{}'.format(classInfo.label(),
-                                                               classInfo.name(),
-                                                               classInfo.color().name())
-                self.setItemData(i, toolTip, role)
-            elif role == Qt.UserRole:
-                self.setItemData(i, classInfo, role)
-
-
-
-    def onRowsInserted(self, parent:QModelIndex, first:int, last:int):
-        for i in range(first, last+1):
-            self._insertClassInfo(i, self.mSchema[i])
-
-
-
-    def onRowsRemoved(self, parent:QModelIndex, first:int, last:int):
-        for i in reversed(range(first, last+1)):
-            self.removeItem(i)
-
-    def onDataChanged(self, tl:QModelIndex, br:QModelIndex, roles:list):
-        #print('{} rows changed'.format(br.row()-tl.row()+1))
-        for i in range(tl.row(), len(self.mSchema)):
-            classInfo = self.mSchema[i]
-            self._updateClassInfo(i, classInfo, roles)
-
-
+    def setModel(self, model: ClassificationSchemeComboBoxModel):
+        """
+        Sets the combobox model. Must be of type `ClassificationSchemeComboBoxModel`.
+        :param model: ClassificationSchemeComboBoxModel
+        """
+        assert isinstance(model, ClassificationSchemeComboBoxModel)
+        super(ClassificationSchemeComboBox, self).setModel(model)
+        self.mModel = model
 
     def classificationScheme(self)->ClassificationScheme:
         """
         Returns the ClassificationScheme
         :return: ClassificationScheme
         """
-        return self.mSchema
+        return self.mModel.classificationScheme()
 
+    def setClassificationScheme(self, classificationScheme:ClassificationScheme):
+        """
+        Specifies the ClassificationScheme which is represented by this mode.
+        :param classificationScheme: ClassificationScheme
+        """
+        self.mModel.setClassificationScheme(classificationScheme)
 
     def currentClassInfo(self)->ClassInfo:
         """

@@ -16,7 +16,7 @@ QGIS_APP = initQgisApplication()
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
-SHOW_GUI = True
+SHOW_GUI = False
 
 
 
@@ -306,8 +306,39 @@ class TestsClassificationScheme(TestCase):
             w.show()
             QGIS_APP.exec_()
 
-
     def test_ClassificationSchemeComboBox(self):
+
+        cs = self.createClassSchemeA()
+        comboBox = ClassificationSchemeComboBox(classification=cs)
+        self.assertIsInstance(comboBox, ClassificationSchemeComboBox)
+
+        model = ClassificationSchemeComboBoxModel()
+        self.assertIsInstance(model, ClassificationSchemeComboBoxModel)
+        comboBox.setModel(model)
+        model.setClassificationScheme(cs)
+
+        n = len(cs)
+        self.assertEqual(model.rowCount(QModelIndex()), n)
+        self.assertEqual(comboBox.count(), n)
+
+
+        model.setAllowEmptyField(True)
+        self.assertEqual(model.rowCount(QModelIndex()), n+1)
+        self.assertEqual(comboBox.count(), n+1)
+        self.assertEqual(model.columnCount(QModelIndex()), 1)
+
+        model.setAllowEmptyField(False)
+        self.assertEqual(model.rowCount(QModelIndex()), n)
+        self.assertEqual(comboBox.count(), n)
+
+
+
+        newClass = ClassInfo(name='LastClass')
+        model.setAllowEmptyField(True)
+        cs.insertClass(newClass)
+        self.assertEqual(model.rowCount(QModelIndex()), n+2)
+        self.assertEqual(comboBox.count(), n+2)
+
 
         cs = self.createClassSchemeA()
 
@@ -360,11 +391,16 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(classInfo, ClassInfo)
         classInfo.setColor(QColor('green'))
 
+        cbox.setCurrentIndex(0)
         ci = cbox.currentClassInfo()
         self.assertIsInstance(ci, ClassInfo)
         self.assertEqual(ci.name(), classInfo.name())
         self.assertEqual(ci.color(), classInfo.color())
 
+        cbox.model().setAllowEmptyField(True)
+        cbox.setCurrentIndex(0)
+        ci = cbox.currentClassInfo()
+        self.assertEqual(ci, None)
 
         if SHOW_GUI:
             w.show()
