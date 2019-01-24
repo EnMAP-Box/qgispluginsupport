@@ -2601,8 +2601,13 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
                 self.mSpeclib.startEditing()
 
     def onSelectionChanged(self, selected, deselected, clearAndSelect):
-
-        hasSelected = len(selected) > 0
+        """
+        :param selected:
+        :param deselected:
+        :param clearAndSelect:
+        :return:
+        """
+        hasSelected = self.speclib().selectedFeatureCount() > 0
         self.actionCopySelectedRows.setEnabled(hasSelected)
         self.actionCutSelectedRows.setEnabled(self.mSpeclib.isEditable() and hasSelected)
         self.actionDeleteSelected.setEnabled(self.mSpeclib.isEditable() and hasSelected)
