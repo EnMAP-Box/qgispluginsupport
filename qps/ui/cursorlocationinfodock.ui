@@ -11,8 +11,8 @@
    </rect>
   </property>
   <property name="windowIcon">
-   <iconset>
-    <normaloff>:/enmapbox/icons/mActionIdentify.png</normaloff>:/enmapbox/icons/mActionIdentify.png</iconset>
+   <iconset resource="../qpsresources.qrc">
+    <normaloff>:/qps/ui/icons/cursorlocationinfo.svg</normaloff>:/qps/ui/icons/cursorlocationinfo.svg</iconset>
   </property>
   <property name="windowTitle">
    <string>Cursor Location Values</string>

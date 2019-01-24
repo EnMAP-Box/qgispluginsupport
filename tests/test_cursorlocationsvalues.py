@@ -48,7 +48,16 @@ class CursorLocationTest(unittest.TestCase):
         layers = [TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
         for lyr in layers:
             assert isinstance(lyr, QgsMapLayer)
-            center = SpatialPoint.fromMapLayerCenter(lyr)
+            if isinstance(lyr, QgsRasterLayer):
+                center = SpatialPoint.fromMapLayerCenter(lyr)
+            elif isinstance(lyr, QgsVectorLayer):
+                for feature in lyr.getFeatures():
+                    assert isinstance(feature, QgsFeature)
+                    center = feature.geometry().centroid().asPoint()
+                    center = SpatialPoint(lyr.crs(), center)
+                    break
+
+
             store = QgsMapLayerStore()
             store.addMapLayer(lyr)
             canvas.setLayers([lyr])

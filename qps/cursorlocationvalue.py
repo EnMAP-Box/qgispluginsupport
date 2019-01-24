@@ -128,7 +128,7 @@ class CursorLocationInfoModel(TreeModel):
             return
 
         # get-or-create node
-        def gocn(root, name):
+        def gocn(root, name)->TreeNode:
             assert isinstance(root, TreeNode)
             n = TreeNode(root, name)
             weakId = self.weakNodeId(n)
@@ -187,6 +187,7 @@ class CursorLocationInfoModel(TreeModel):
                 assert isinstance(field, QgsField)
 
                 fieldNode = gocn(root, name=field.name())
+
 
                 for i, feature in enumerate(sourceValueSet.features):
                     assert isinstance(feature, QgsFeature)
@@ -377,8 +378,6 @@ class CursorLocationInfoDock(QDockWidget,
                 s = ""
                 break
             assert isinstance(l, QgsMapLayer)
-
-            # check in GCS WGS-84 if the point-of-interest intersects with layer
 
             pointLyr = ptInfo.toCrs(l.crs())
             if not isinstance(pointLyr, SpatialPoint) or not l.extent().contains(pointLyr):
