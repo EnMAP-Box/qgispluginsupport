@@ -403,13 +403,16 @@ def createFilePackage(dirData):
     print('Created '+pathInit)
 
 
-def compileQGISResourceFiles(pathQGISRepo:str):
+def compileQGISResourceFiles(pathQGISRepo:str, target:str=None):
     """
     Searches for *qrc file in QGIS repository, compile them into <DIR_REPO>/qgisresources
     :param pathQGISRepo: str, path to local QGIS repository
+    :param target: str, path to directory that contains the compiled QGIS resources. By default it will be
+            `<REPOSITORY_ROOT>/qgisresources`
     """
     assert os.path.isdir(pathQGISRepo)
-    target = jp(DIR_REPO, 'qgisresources')
+    if not isinstance(target, str):
+        target = jp(DIR_REPO, 'qgisresources')
     searchAndCompileResourceFiles(pathQGISRepo, targetDir=target)
 
 
