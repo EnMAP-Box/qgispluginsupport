@@ -1299,12 +1299,15 @@ class VectorLayerProperties(QgsOptionsDialogBase, loadUI('vectorlayerpropertiesd
 
         self.pbnQueryBuilder.clicked.connect(self.on_pbnQueryBuilder_clicked)
         self.accepted.connect(self.syncToLayer)
-
         self.rejected.connect(self.onCancel)
+
+        self.buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.syncToLayer)
+        self.buttonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.onCancel)
         self.syncFromLayer()
 
     def onCancel(self):
-        pass
+        # todo: restore anything else?
+        self.setResult(QDialog.Rejected)
 
     def syncFromLayer(self):
         lyr = self.mLayer
