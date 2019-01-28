@@ -11,7 +11,7 @@
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
 *   it under the terms of the GNU General Public License as published by  *
-*   the Free Software Foundation; either version 2 of the License, or     *
+*   the Free Software Foundation; either version 3 of the License, or     *
 *   (at your option) any later version.                                   *
 *                                                                         *
 ***************************************************************************
@@ -862,7 +862,17 @@ class RasterLayerProperties(QgsOptionsDialogBase, loadUI('rasterlayerpropertiesd
 
     def initOptsTransparency(self):
 
-        s = ""
+        r = self.mRasterLayer.renderer()
+        if isinstance(r, QgsRasterRenderer):
+            self.sliderOpacity.setValue(r.opacity()*100)
+
+
+        def updateOpactiyText():
+            self.lblTransparencyPercent.setText(r'{}%'.format(self.sliderOpacity.value()))
+
+        self.sliderOpacity.valueChanged.connect(updateOpactiyText)
+        updateOpactiyText()
+
     def initOptsMetadata(self):
 
         s = ""
@@ -883,10 +893,13 @@ class RasterLayerProperties(QgsOptionsDialogBase, loadUI('rasterlayerpropertiesd
         mRendererWidget = self.mRendererStackedWidget.currentWidget()
         if isinstance(mRendererWidget, QgsRasterRendererWidget):
             mRendererWidget.doComputations()
-            self.mRasterLayer.setRenderer(mRendererWidget.renderer())
+            renderer = mRendererWidget.renderer()
+            assert isinstance(renderer, QgsRasterRenderer)
+            renderer.setOpacity(self.sliderOpacity.value() / 100.)
+            self.mRasterLayer.setRenderer(renderer)
             self.mRasterLayer.triggerRepaint()
             self.setResult(QDialog.Accepted)
-
+        s  =""
 
 
 

@@ -3,7 +3,7 @@
 
 .. note:: This program is free software; you can redistribute it and/or modify
      it under the terms of the GNU General Public License as published by
-     the Free Software Foundation; either version 2 of the License, or
+     the Free Software Foundation; either version 3 of the License, or
      (at your option) any later version.
 
 """
@@ -54,6 +54,22 @@ class LayerRendererTests(unittest.TestCase):
 
     def test_rasterLayerPropertiesWidget(self):
 
+        lyr = TestObjects.createRasterLayer(nb=3)
+        QgsProject.instance().addMapLayer(lyr)
+        canvas = QgsMapCanvas()
+        canvas.setLayers([lyr])
+        canvas.setExtent(canvas.fullExtent())
+        w = RasterLayerProperties(lyr, canvas)
+        self.assertIsInstance(w, RasterLayerProperties)
+
+        if SHOW_GUI:
+            canvas.show()
+            w.show()
+            QGIS_APP.exec_()
+
+
+    def test_vectorLayerPropertiesWidget(self):
+
         lyr = TestObjects.createRasterLayer()
 
         w = RasterLayerProperties(lyr, None)
@@ -62,6 +78,8 @@ class LayerRendererTests(unittest.TestCase):
         if SHOW_GUI:
             w.show()
             QGIS_APP.exec_()
+
+
 
 if __name__ == "__main__":
     unittest.main()

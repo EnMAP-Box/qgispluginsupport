@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>700</width>
-    <height>480</height>
+    <height>481</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -171,7 +171,7 @@
           </sizepolicy>
          </property>
          <property name="currentIndex">
-          <number>1</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="mOptsGeneral">
           <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -686,7 +686,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>527</width>
-                <height>433</height>
+                <height>434</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -1194,7 +1194,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>525</width>
-                <height>431</height>
+                <height>432</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_8">
@@ -1203,14 +1203,14 @@
                  <item>
                   <widget class="QgsCollapsibleGroupBox" name="gboxGlobalTransp">
                    <property name="title">
-                    <string>Global transparency</string>
+                    <string>Global Opacity</string>
                    </property>
                    <property name="syncGroup">
                     <string notr="true">rastertransp</string>
                    </property>
                    <layout class="QGridLayout" name="_3">
                     <item row="0" column="0" colspan="5">
-                     <widget class="QSlider" name="sliderTransparency">
+                     <widget class="QSlider" name="sliderOpacity">
                       <property name="sizePolicy">
                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                         <horstretch>0</horstretch>
@@ -1218,7 +1218,7 @@
                        </sizepolicy>
                       </property>
                       <property name="maximum">
-                       <number>255</number>
+                       <number>100</number>
                       </property>
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
@@ -1601,7 +1601,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>525</width>
-                <height>431</height>
+                <height>432</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_12">
