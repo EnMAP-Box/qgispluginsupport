@@ -1222,6 +1222,7 @@ class RasterLayerProperties(QgsOptionsDialogBase, loadUI('rasterlayerpropertiesd
             minMaxWidget = w.minMaxWidget()
             if isinstance(minMaxWidget, QgsRasterMinMaxWidget):
                 minMaxWidget.setCollapsed(False)
+            w.setParent(self.mRendererStackedWidget)
             w.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
             self.mRendererStackedWidget.addWidget(w)
             f2 = getattr(w, 'setFromRenderer', None)
@@ -1393,7 +1394,7 @@ def showLayerPropertiesDialog(layer, canvas, parent=None, modal=True):
 
 RASTERRENDERER_CREATE_FUNCTIONSV2 = OptionListModel()
 RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(MultiBandColorRendererWidget.create, name='multibandcolor'))
-RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsMultiBandColorRendererWidget.create, name='multibandcolor (QGIS)'))
+#RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsMultiBandColorRendererWidget.create, name='multibandcolor (QGIS)'))
 RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsPalettedRendererWidget.create, name='paletted'))
 RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(SingleBandGrayRendererWidget.create, name='singlegray'))
 #RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsSingleBandGrayRendererWidget.create, name='singlegray (QGIS)'))
