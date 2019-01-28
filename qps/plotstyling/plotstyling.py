@@ -827,7 +827,7 @@ class PlotStyleEditorWidgetFactory(QgsEditorWidgetFactory):
         s = ""
 
     def configWidget(self, vl: QgsVectorLayer, fieldIdx: int, parent=QWidget) -> QgsEditorConfigWidget:
-        print('configWidget()')
+        #print('configWidget()')
         w = PlotStyleEditorConfigWidget(vl, fieldIdx, parent)
         self._wrappers.append(w)
         return w

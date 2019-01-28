@@ -766,13 +766,14 @@ class ClassificationScheme(QAbstractTableModel):
             nextCol = DEFAULT_FIRST_COLOR
 
         for i in range(n):
-            if i == 0 and len(self) == 0:
+            j = len(self) + i
+            if j == 0:
                 color = QColor('black')
                 name = 'Unclassified'
             else:
                 color = QColor(nextCol)
                 nextCol = nextColor(nextCol)
-                name = 'Class {}'.format(i)
+                name = 'Class {}'.format(j)
             classes.append(ClassInfo(name=name, color=color))
         self.insertClasses(classes)
 
@@ -1289,6 +1290,18 @@ class ClassificationSchemeComboBox(QComboBox):
         model.setClassificationScheme(classification)
         self.setModel(model)
 
+    def classIndexFromValue(self, value)->int:
+        """
+        Returns the index
+        :param value:
+        :return:
+        """
+        cs = self.classificationScheme()
+        i = cs.classIndexFromValue(value)
+
+        if isinstance(self.mModel, ClassificationSchemeComboBoxModel) and self.mModel.allowEmptyField():
+            i += 1
+        return i
 
     def setModel(self, model: ClassificationSchemeComboBoxModel):
         """
@@ -1528,13 +1541,11 @@ class ClassificationSchemeWidget(QWidget, loadClassificationUI('classificationsc
             self.mScheme.removeClasses(classes)
 
     def loadClasses(self, *args):
-        from enmapbox import enmapboxSettings
-        settings = enmapboxSettings()
-        settingsKey = 'DEF_DIR_ClassificationSchemeWidget.loadClasses'
-        defDir = settings.value(settingsKey, None)
+
+        defDir = None
         path, _ = QFileDialog.getOpenFileName(self, 'Select Raster File', directory=defDir)
         if os.path.exists(path):
-            settings.setValue(settingsKey, os.path.dirname(path))
+
             try:
                 scheme = ClassificationScheme.fromRasterImage(path)
                 if scheme is not None:
@@ -1611,6 +1622,7 @@ class ClassificationSchemeEditorWidgetWrapper(QgsEditorWidgetWrapper):
     def createWidget(self, parent: QWidget):
         #log('createWidget')
         w = ClassificationSchemeComboBox(parent)
+        w.model().setAllowEmptyField(True)
         w.setVisible(True)
         return w
 
@@ -1635,16 +1647,20 @@ class ClassificationSchemeEditorWidgetWrapper(QgsEditorWidgetWrapper):
 
     def value(self, *args, **kwargs):
 
+        value = None
         if isinstance(self.mComboBox, ClassificationSchemeComboBox):
             classInfo = self.mComboBox.currentClassInfo()
             if isinstance(classInfo, ClassInfo):
+                print(classInfo)
                 typeCode = self.field().type()
                 if typeCode == QVariant.String:
-                    return classInfo.name()
-                if typeCode in [QVariant.Int, QVariant.Double]:
-                    return classInfo.label()
+                    value =  classInfo.name()
+                elif typeCode in [QVariant.Int, QVariant.Double]:
+                    value = classInfo.label()
+                else:
+                    s = ""
 
-        return None
+        return value
 
 
     def setEnabled(self, enabled:bool):
@@ -1656,10 +1672,8 @@ class ClassificationSchemeEditorWidgetWrapper(QgsEditorWidgetWrapper):
     def setValue(self, value):
 
         if isinstance(self.mComboBox, ClassificationSchemeComboBox):
-            cs = self.mComboBox.classificationScheme()
-            if isinstance(cs, ClassificationScheme) and len(cs) > 0:
-                i = cs.classIndexFromValue(value)
-                self.mComboBox.setCurrentIndex(max(i,0))
+            i = self.mComboBox.classIndexFromValue(value)
+            self.mComboBox.setCurrentIndex(i)
 
 
 class ClassificationSchemeEditorConfigWidget(QgsEditorConfigWidget):
@@ -1779,8 +1793,11 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
             return 0
         field = vl.fields().at(fieldIdx)
         assert isinstance(field, QgsField)
-        if field.type() in [QVariant.String, QVariant.Int, QVariant.Double]:
-            return 20
+        if re.search('(int|float|double|text|string)', field.typeName(), re.I):
+            if re.search('class', field.name(), re.I):
+                return 10
+            else:
+                return 5
         else:
             return 0 # no support
 

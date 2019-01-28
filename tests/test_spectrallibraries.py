@@ -1032,6 +1032,23 @@ class TestCore(unittest.TestCase):
             QAPP.exec_()
 
 
+    def test_speclibAttributeWidgets(self):
+
+        import qps
+        qps.registerEditorWidgets()
+        speclib = createSpeclib()
+
+        slw = SpectralLibraryWidget(speclib=speclib)
+
+        import qps.layerproperties
+        properties = qps.layerproperties.VectorLayerProperties(speclib, None)
+        if SHOW_GUI:
+            slw.show()
+            properties.show()
+            QAPP.exec_()
+
+
+
     def test_toolbarStackedActions(self):
 
         tb = QToolBar()

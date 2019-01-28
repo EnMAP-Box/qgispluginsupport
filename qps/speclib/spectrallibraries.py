@@ -2226,7 +2226,7 @@ class SpectralProfileEditorConfigWidget(QgsEditorConfigWidget, loadSpeclibUI('sp
             self.setUnits('y', config['yUnitList'])
 
         self.mLastConfig = config
-        print('setConfig')
+        #print('setConfig')
 
     def resetUnits(self, dim: str):
 
@@ -2288,8 +2288,8 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         :param config: dict with config values
         """
         self.mConfigurations[key] = config
-        print('Save config')
-        print(config)
+        #print('Save config')
+        #print(config)
 
     def readConfig(self, key:tuple):
         """
@@ -2303,8 +2303,8 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
             conf = {'xUnitList' : X_UNITS[:],
                     'yUnitList' : Y_UNITS[:]
             }
-        print('Read config')
-        print((key, conf))
+        #print('Read config')
+        #print((key, conf))
         return conf
 
     def fieldScore(self, vl:QgsVectorLayer, fieldIdx:int)->int:
@@ -2326,7 +2326,7 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         elif field.type() == QVariant.String:
             return 0
         else:
-            return 0 #no support
+            return 0
 
 
 
@@ -2554,8 +2554,10 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         self.actionFormView.triggered.connect(lambda : self.mDualView.setView(QgsDualView.AttributeEditor))
         self.actionTableView.triggered.connect(lambda : self.mDualView.setView(QgsDualView.AttributeTable))
+        self.actionProperties.triggered.connect(self.showProperties)
         self.btnFormView.setDefaultAction(self.actionFormView)
         self.btnTableView.setDefaultAction(self.actionTableView)
+        self.btnSpeclibProperties.setDefaultAction(self.actionProperties)
 
         self.actionCutSelectedRows.triggered.connect(self.cutSelectedFeatures)
         self.actionCopySelectedRows.triggered.connect(self.copySelectedFeatures)
@@ -2568,6 +2570,15 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         #self.actionCopySelectedRows.setVisible(False) #todo
         #self.actionPasteFeatures.setVisible(False)
         self.updateActionAvailability()
+
+    def showProperties(self, *args):
+
+        from qps.layerproperties import VectorLayerProperties
+
+
+        w = VectorLayerProperties(self.speclib(), None, parent=self)
+        w.exec_()
+        s = ""
 
     def importSpeclib(self, path=None):
         """
