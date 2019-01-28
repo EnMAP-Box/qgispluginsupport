@@ -20,7 +20,7 @@
    <string>Layer Properties</string>
   </property>
   <property name="windowIcon">
-   <iconset>
+   <iconset resource="../../../../QGIS/images/images.qrc">
     <normaloff>:/images/icons/qgis-icon-16x16.png</normaloff>:/images/icons/qgis-icon-16x16.png</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -101,7 +101,7 @@
            <string>General</string>
           </property>
           <property name="icon">
-           <iconset>
+           <iconset resource="../../../../QGIS/images/images.qrc">
             <normaloff>:/images/themes/default/propertyicons/general.svg</normaloff>:/images/themes/default/propertyicons/general.svg</iconset>
           </property>
          </item>
@@ -113,32 +113,32 @@
            <string>Symbology</string>
           </property>
           <property name="icon">
-           <iconset>
+           <iconset resource="../../../../QGIS/images/images.qrc">
             <normaloff>:/images/themes/default/propertyicons/symbology.svg</normaloff>:/images/themes/default/propertyicons/symbology.svg</iconset>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Labels</string>
+           <string>Fields</string>
           </property>
           <property name="toolTip">
-           <string>Labels</string>
+           <string>Fields</string>
           </property>
           <property name="icon">
-           <iconset>
-            <normaloff>:/images/themes/default/propertyicons/labels.svg</normaloff>:/images/themes/default/propertyicons/labels.svg</iconset>
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mSourceFields.svg</normaloff>:/images/themes/default/mSourceFields.svg</iconset>
+          </property>
+          <property name="flags">
+           <set>ItemIsSelectable|ItemIsDragEnabled|ItemIsUserCheckable</set>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Fields</string>
-          </property>
-          <property name="toolTip">
-           <string>Fields</string>
+           <string>Forms</string>
           </property>
           <property name="icon">
-           <iconset>
-            <normaloff>:/images/themes/default/propertyicons/attributes.png</normaloff>:/images/themes/default/propertyicons/attributes.png</iconset>
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
           </property>
          </item>
         </widget>
@@ -180,7 +180,7 @@
           </sizepolicy>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>3</number>
          </property>
          <widget class="QWidget" name="mOptsPage_General">
           <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -209,8 +209,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>652</width>
-                <height>541</height>
+                <width>362</width>
+                <height>323</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -478,8 +478,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>652</width>
-                <height>541</height>
+                <width>100</width>
+                <height>30</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_18">
@@ -516,38 +516,6 @@
                </item>
               </layout>
              </widget>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-         <widget class="QWidget" name="mOptsPage_Labels">
-          <layout class="QVBoxLayout" name="verticalLayout_12">
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QFrame" name="labelingFrame">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="frameShape">
-              <enum>QFrame::NoFrame</enum>
-             </property>
-             <property name="frameShadow">
-              <enum>QFrame::Plain</enum>
-             </property>
             </widget>
            </item>
           </layout>
@@ -612,6 +580,28 @@
            </item>
           </layout>
          </widget>
+         <widget class="QWidget" name="mOptsPage_Forms">
+          <layout class="QVBoxLayout" name="verticalLayout_4" stretch="0">
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <property name="leftMargin">
+            <number>2</number>
+           </property>
+           <property name="topMargin">
+            <number>2</number>
+           </property>
+           <property name="rightMargin">
+            <number>2</number>
+           </property>
+           <property name="bottomMargin">
+            <number>2</number>
+           </property>
+           <item>
+            <widget class="LayerFieldConfigEditorWidget" name="mLayerFieldConfigEditorWidget" native="true"/>
+           </item>
+          </layout>
+         </widget>
         </widget>
        </item>
       </layout>
@@ -673,6 +663,12 @@
    <header>qgsprojectionselectionwidget.h</header>
    <container>1</container>
   </customwidget>
+  <customwidget>
+   <class>LayerFieldConfigEditorWidget</class>
+   <extends>QWidget</extends>
+   <header>qps.layerproperties</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>mOptionsListWidget</tabstop>
@@ -685,7 +681,10 @@
   <tabstop>scrollArea_3</tabstop>
   <tabstop>scrollArea_5</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="../../../../QGIS/images/images.qrc"/>
+  <include location="../qpsresources.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>mOptionsListWidget</sender>

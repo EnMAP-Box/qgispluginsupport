@@ -19,6 +19,7 @@ from osgeo import gdal, ogr, osr
 from qps.testing import initQgisApplication, TestObjects
 from qps.layerproperties import *
 QGIS_APP = initQgisApplication()
+
 SHOW_GUI = True
 
 class LayerRendererTests(unittest.TestCase):
@@ -70,10 +71,12 @@ class LayerRendererTests(unittest.TestCase):
 
     def test_vectorLayerPropertiesWidget(self):
 
-        lyr = TestObjects.createRasterLayer()
+        lyr = TestObjects.createVectorLayer()
 
-        w = RasterLayerProperties(lyr, None)
-        self.assertIsInstance(w, RasterLayerProperties)
+        import qps
+        qps.registerEditorWidgets()
+        w = VectorLayerProperties(lyr, None)
+        self.assertIsInstance(w, VectorLayerProperties)
 
         if SHOW_GUI:
             w.show()
