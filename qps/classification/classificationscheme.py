@@ -1808,7 +1808,7 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
         return False
 
 
-EDITOR_WIDGET_REGISTRY_KEY = 'RasterClassification'
+EDITOR_WIDGET_REGISTRY_KEY = 'Raster Classification'
 classificationSchemeEditorWidgetFactory = None
 def registerClassificationSchemeEditorWidget():
     reg = QgsGui.editorWidgetRegistry()
