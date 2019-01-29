@@ -208,7 +208,7 @@ def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication
         providers = QgsProviderRegistry.instance().providerList()
         for p in ['DB2', 'WFS', 'arcgisfeatureserver', 'arcgismapserver', 'delimitedtext', 'gdal', 'geonode', 'gpx', 'mdal', 'memory', 'mesh_memory', 'mssql', 'ogr', 'oracle', 'ows', 'postgres', 'spatialite', 'virtual', 'wcs', 'wms']:
             if p not in providers:
-                warnings.warn('Missing QGIS provider "{}"'.format(p), Exception)
+                warnings.warn('Missing QGIS provider "{}"'.format(p))
 
 
         return qgsApp
