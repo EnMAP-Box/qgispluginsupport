@@ -2891,7 +2891,4 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         return list(self.mCurrentProfiles.keys())
 
 
-
-
-registerSpectralProfileEditorWidget()
 registerAbstractLibraryIOs()
