@@ -139,8 +139,9 @@ def runPlotStyleActionRoutine(layerID, styleField: str, id: int):
 
     layer = findMapLayer(layerID)
     if isinstance(layer, QgsVectorLayer):
-        if layer.selectedFeatureCount():
-            ids = layer.selectedFeatureIds()
+        selectedFIDs = layer.selectedFeatureIds()
+        if id in selectedFIDs:
+            ids = selectedFIDs
         else:
             ids = [id]
         if len(ids) == 0:

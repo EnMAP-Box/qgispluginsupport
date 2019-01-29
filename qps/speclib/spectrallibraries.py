@@ -160,8 +160,9 @@ def runRemoveFeatureActionRoutine(layerID, id:int):
     layer = findMapLayer(layerID)
 
     if isinstance(layer, QgsVectorLayer):
-        if layer.selectedFeatureCount():
-            ids = layer.selectedFeatureIds()
+        selectedIDs = layer.selectedFeatureIds()
+        if id in selectedIDs:
+            ids = selectedIDs
         else:
             ids = [id]
         if len(ids) == 0:
@@ -2362,7 +2363,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         super(SpectralLibraryWidget, self).__init__(parent)
         self.setupUi(self)
 
-        #set spacer into menu
+        # set spacer into menu
         empty = QWidget(self.mToolbar)
         empty.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         from .plotting import SpectralLibraryPlotWidget
