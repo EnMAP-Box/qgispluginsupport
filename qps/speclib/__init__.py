@@ -33,12 +33,6 @@ from qgis.gui import *
 from qgis.PyQt.QtCore import QSettings
 
 
-
-# register Editor widgets, if not done before
-reg = QgsGui.editorWidgetRegistry()
-if len(reg.factories()) == 0:
-    reg.initEditors()
-
 def speclibSettings()->QSettings:
     """
     Returns SpectralLibrary relevant QSettings
