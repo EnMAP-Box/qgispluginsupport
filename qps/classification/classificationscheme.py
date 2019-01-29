@@ -19,7 +19,7 @@
 ***************************************************************************
 """
 
-import os, json, pickle, warnings, csv, re
+import os, json, pickle, warnings, csv, re, sys
 from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtCore import *
@@ -516,7 +516,7 @@ class ClassificationScheme(QAbstractTableModel):
                     return ClassificationScheme.fromJson(jsonStr)
 
         except Exception as ex:
-            print(ex)
+            print(ex, file=sys.stderr)
         return None
 
     @staticmethod
@@ -533,7 +533,7 @@ class ClassificationScheme(QAbstractTableModel):
             cs.insertClasses(classes)
             return cs
         except Exception as ex:
-            print(ex)
+            print(ex, file=sys.stderr)
             return None
 
 
@@ -1651,7 +1651,7 @@ class ClassificationSchemeEditorWidgetWrapper(QgsEditorWidgetWrapper):
         if isinstance(self.mComboBox, ClassificationSchemeComboBox):
             classInfo = self.mComboBox.currentClassInfo()
             if isinstance(classInfo, ClassInfo):
-                print(classInfo)
+
                 typeCode = self.field().type()
                 if typeCode == QVariant.String:
                     value =  classInfo.name()
@@ -1732,7 +1732,11 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
         """
 
         w = ClassificationSchemeEditorConfigWidget(layer, fieldIdx, parent)
+
         key = self.configKey(layer, fieldIdx)
+
+        initialConfig = layer.editorWidgetSetup(fieldIdx).config()
+        self.writeConfig(key, initialConfig)
         w.setConfig(self.readConfig(key))
         w.changed.connect(lambda : self.writeConfig(key, w.config()))
         return w
@@ -1773,7 +1777,7 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
         if key in self.mConfigurations.keys():
             conf = self.mConfigurations[key]
         else:
-            #return the very default configuration
+            # return the very default "empty" configuration
             conf = {}
         return conf
 
@@ -1803,7 +1807,7 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
 
     def supportsField(self, vl:QgsVectorLayer, idx:int):
         field = vl.fields().at(idx)
-        if isinstance(field, QgsField) and field.type() in [QVariant.Int, QVariant.String]:
+        if isinstance(field, QgsField) and re.search('(int|float|double|text|string)', field.typeName(), re.I):
             return True
         return False
 
