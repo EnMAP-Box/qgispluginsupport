@@ -34,7 +34,7 @@ from qgis.PyQt.QtCore import QSettings
 
 
 
-#register Editor widgets, if not done before
+# register Editor widgets, if not done before
 reg = QgsGui.editorWidgetRegistry()
 if len(reg.factories()) == 0:
     reg.initEditors()
@@ -45,15 +45,6 @@ def speclibSettings()->QSettings:
     :return: QSettings
     """
     return QgsSettings('HUB', 'speclib')
-
-from qps.plotstyling.plotstyling import registerPlotStyleEditorWidget
-registerPlotStyleEditorWidget()
-
-from qps.speclib.spectrallibraries import registerSpectralProfileEditorWidget
-registerSpectralProfileEditorWidget()
-
-from qps.speclib.qgsfunctions import registerQgsExpressionFunctions
-registerQgsExpressionFunctions()
 
 try:
     from .envi import EnviSpectralLibraryIO

@@ -8,6 +8,7 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest, pickle
 from qgis import *
 from qgis.core import *
+from qgis.gui import *
 from PyQt5.QtCore import *
 
 from qps.testing import initQgisApplication
@@ -27,12 +28,13 @@ class testClassTesting(unittest.TestCase):
 
         self.assertTrue(len(qgis_app.processingRegistry().providers()) > 0)
 
-        qgis_app.processingRegistry()
+        self.assertIsInstance(qgis_app.processingRegistry(), QgsProcessingRegistry)
+        self.assertTrue(len(len(qgis_app.processingRegistry().algorithms())) > 0)
+
+        self.assertIsInstance(QgsGui.instance(), QgsGui)
+        self.assertTrue(len(QgsGui.instance().editorWidgetRegistry().factories()) > 0, msg='Standard QgsEditorWidgetWrapper not initialized')
 
 
-    def test_initQgsResources(self):
-
-        import qps.testing
 
 
 

@@ -180,7 +180,7 @@ def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication
         from qgis.analysis import QgsNativeAlgorithms
         QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 
-        # init EditorWidgets
+        # init standard EditorWidgets
         QgsGui.editorWidgetRegistry().initEditors()
 
         # import processing
