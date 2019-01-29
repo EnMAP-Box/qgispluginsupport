@@ -2331,10 +2331,11 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
 
 
 
-EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
+EDITOR_WIDGET_REGISTRY_KEY = 'Spectral Profile'
 spectralProfileEditorWidgetFactory = None
 def registerSpectralProfileEditorWidget():
     reg = QgsGui.editorWidgetRegistry()
+    global spectralProfileEditorWidgetFactory
     if not EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys():
         spectralProfileEditorWidgetFactory = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
         reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, spectralProfileEditorWidgetFactory)

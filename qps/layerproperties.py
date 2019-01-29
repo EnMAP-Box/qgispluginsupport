@@ -477,7 +477,7 @@ class FieldConfigEditorWidget(QWidget):
 
 
         currentSetup = self.mLayer.editorWidgetSetup(self.mFieldIndex)
-        self.mInitialConf = currentSetup.config()
+        #self.mInitialConf = currentSetup.config()
         refkey = currentSetup.type()
         if refkey == '':
             refkey = QgsGui.editorWidgetRegistry().findBest(self.mLayer, self.mField.name()).type()
@@ -494,7 +494,7 @@ class FieldConfigEditorWidget(QWidget):
             configWidget = fac.configWidget(self.mLayer, self.mFieldIndex, self.stackedWidget)
 
             if isinstance(configWidget, QgsEditorConfigWidget):
-                configWidget.changed.connect(lambda :self.sigChanged.emit(self))
+                configWidget.changed.connect(lambda: self.sigChanged.emit(self))
                 self.stackedWidget.addWidget(configWidget)
                 confItem = FieldConfigEditorWidget.ConfigInfo(key, fac, configWidget)
                 if key == refkey:
@@ -514,9 +514,11 @@ class FieldConfigEditorWidget(QWidget):
 
 
         conf = self.currentFieldConfig()
-        self.mInitialFactoryKey = conf.factoryKey()
-        self.mInitialConf = conf.config()
-
+        if isinstance(conf, FieldConfigEditorWidget.ConfigInfo):
+            self.mInitialFactoryKey = conf.factoryKey()
+            self.mInitialConf = conf.config()
+        else:
+            s = ""
 
 
     def setFactory(self, factoryKey:str):
@@ -581,9 +583,9 @@ class FieldConfigEditorWidget(QWidget):
     def updateConfigWidget(self, index):
         self.stackedWidget.setCurrentIndex(index)
         fieldConfig = self.currentFieldConfig()
-        assert isinstance(fieldConfig, FieldConfigEditorWidget.ConfigInfo)
+        if isinstance(fieldConfig, FieldConfigEditorWidget.ConfigInfo):
 
-        self.sigChanged.emit(self)
+            self.sigChanged.emit(self)
 
 
 class LayerFieldConfigEditorWidget(QWidget, loadUI('layerfieldconfigeditorwidget.ui')):

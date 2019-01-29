@@ -881,6 +881,7 @@ plotStyleEditorWidgetFactory = None
 
 def registerPlotStyleEditorWidget():
     reg = QgsGui.editorWidgetRegistry()
+    global plotStyleEditorWidgetFactory
     if not EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys():
         plotStyleEditorWidgetFactory = PlotStyleEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
         reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, plotStyleEditorWidgetFactory)

@@ -20,13 +20,16 @@
 import unittest, tempfile
 from qps.testing import initQgisApplication, installTestdata, TestObjects
 QAPP = initQgisApplication()
-from qps.utils import findUpwardPath
+
 installTestdata(False)
+
 from enmapboxtestdata import *
 
 
 from osgeo import gdal
 gdal.AllRegister()
+import qps
+qps.registerEditorWidgets()
 from qps.speclib.spectrallibraries import *
 from qps.speclib.csvdata import *
 from qps.speclib.envi import *
@@ -779,7 +782,7 @@ class TestCore(unittest.TestCase):
         w.layout().addWidget(dv)
         w.layout().addWidget(cb)
 
-        w.resize(QSize(300,250))
+        w.resize(QSize(300, 250))
         print(vl.fields().names())
         look = vl.fields().lookupField
         #self.assertTrue(factory.fieldScore(vl, look(FIELD_FID)) == 0) #specialized support style + str len > 350

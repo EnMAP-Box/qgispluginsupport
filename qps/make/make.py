@@ -1,9 +1,5 @@
-import os, sys, fnmatch, six, subprocess, re, xml.etree
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
 
-from qgis.core import *
-from qgis.gui import *
+import xml.etree.ElementTree as ET
 from qps.testing import initQgisApplication
 app = initQgisApplication()
 from qps.utils import *
