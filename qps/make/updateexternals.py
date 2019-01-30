@@ -123,8 +123,11 @@ def updateRemote(remoteInfo:RemoteInfo):
 
             p = os.path.join(DIR_REPO, remoteInfo.prefixLocal)
             if os.path.exists(p):
-                info = ''.join([i for i in REPO.git.rm(remoteInfo.prefixLocal, r=True, f=True)])
-                print(info)
+                try:
+                    info = ''.join([i for i in REPO.git.rm(remoteInfo.prefixLocal, r=True, f=True)])
+                    print(info)
+                except Exception as ex:
+                    print(ex, file=sys.stderr)
 
 
         info = ''.join([i for i in REPO.git.read_tree(prefix=remoteInfo.prefixLocal, u='{key}/{path}'.format(
@@ -134,8 +137,11 @@ def updateRemote(remoteInfo:RemoteInfo):
 
         # remove excluded files
         for e in remoteInfo.excluded:
-            info = ''.join([i for i in REPO.git.rm(remoteInfo.prefixLocal + '/' + e, r=True, f=True)])
-            print(info)
+            try:
+                info = ''.join([i for i in REPO.git.rm(remoteInfo.prefixLocal + '/' + e, r=True, f=True)])
+                print(info)
+            except Exception as ex:
+                print(ex, file=sys.stderr)
 
         print('Update {} done'.format(remoteInfo.key))
 

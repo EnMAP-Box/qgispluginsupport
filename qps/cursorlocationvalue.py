@@ -212,7 +212,7 @@ class ComboBoxOption(object):
 LUT_GEOMETRY_ICONS = {}
 
 RASTERBANDS = [
-    ComboBoxOption('VISIBLE', 'RGB', 'Visible bands only.'),
+    ComboBoxOption('VISIBLE', 'Visible', 'Visible bands only.'),
     ComboBoxOption('ALL', 'All', 'All raster bands.'),
 
 ]
@@ -380,7 +380,7 @@ class CursorLocationInfoDock(QDockWidget,
             assert isinstance(l, QgsMapLayer)
 
             pointLyr = ptInfo.toCrs(l.crs())
-            if not isinstance(pointLyr, SpatialPoint) or not l.extent().contains(pointLyr):
+            if not (isinstance(pointLyr, SpatialPoint) and l.extent().contains(pointLyr)):
                 continue
 
             if isinstance(l, QgsRasterLayer):
@@ -390,7 +390,11 @@ class CursorLocationInfoDock(QDockWidget,
 
                 # !Note: b is not zero-based -> 1st band means b == 1
                 if rasterbands == 'VISIBLE':
-                    bandNumbers = renderer.usesBands()
+                    if isinstance(renderer, QgsPalettedRasterRenderer):
+                        bandNumbers = renderer.usesBands()
+                    else:
+                        bandNumbers = renderer.usesBands()
+
                 elif rasterbands == 'ALL':
                     bandNumbers = list(range(1, l.bandCount()+1))
                 else:
@@ -411,30 +415,6 @@ class CursorLocationInfoDock(QDockWidget,
                         if b in results.keys():
                             info = RasterValueSet.BandInfo(b - 1, results[b], l.bandName(b))
                             v.bandValues.append(info)
-
-                if False:
-                    results = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
-
-
-                    #x, y  = pointLyr.x(), pointLyr.y()
-                    #dx = 0.5 * l.rasterUnitsPerPixelX()
-                    #dy = 0.5 * l.rasterUnitsPerPixelY()
-                    #bb = QgsRectangle(x-dx, y-dy, x+dx, y+dy)
-                    #results2 = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue, boundingBox=bb, width=1, height=1).results()
-                    if len(results) == 0:
-                        # fallback: get the colors, e.g. in case of WMS
-                        pt2 = QgsPointXY(pointLyr.x() + l.rasterUnitsPerPixelX() * 3,
-                                         pointLyr.y() - l.rasterUnitsPerPixelY() * 3)
-                        ext2Px = QgsRectangle(pointLyr.x(), pt2.y(), pt2.x(), pointLyr.y())
-
-                        block = l.renderer().block(1, ext2Px, 3, 3)
-                        color = QColor(block.color(0, 0))
-                        v.bandValues.append(color)
-
-                    else:
-                        wl, wlu = parseWavelength(l)
-                        for band, value in results.items():
-                            v.bandValues.append(RasterValueSet.BandInfo(band-1, value, l.bandName(band)))
 
                 self.mLocationInfoModel.addSourceValues(v)
                 s = ""

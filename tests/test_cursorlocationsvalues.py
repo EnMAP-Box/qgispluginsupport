@@ -50,6 +50,7 @@ class CursorLocationTest(unittest.TestCase):
         canvas = QgsMapCanvas()
 
         layers = [TestObjects.createRasterLayer(nc=3), TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
+
         for lyr in layers:
             assert isinstance(lyr, QgsMapLayer)
             if isinstance(lyr, QgsRasterLayer):
