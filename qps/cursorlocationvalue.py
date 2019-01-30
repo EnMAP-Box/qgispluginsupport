@@ -345,7 +345,7 @@ class CursorLocationInfoDock(QDockWidget,
 
     def reloadCursorLocation(self):
         """
-        Call to load / re-load the data for the specifed cursor location
+        Call to load / re-load the data for the cursor location
         """
 
         ptInfo = self.cursorLocation()
@@ -408,9 +408,9 @@ class CursorLocationInfoDock(QDockWidget,
                 else:
                     results = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
                     for b in bandNumbers:
-
-                        info = RasterValueSet.BandInfo(b - 1, results[b], l.bandName(b))
-                        v.bandValues.append(info)
+                        if b in results.keys():
+                            info = RasterValueSet.BandInfo(b - 1, results[b], l.bandName(b))
+                            v.bandValues.append(info)
 
                 if False:
                     results = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue).results()

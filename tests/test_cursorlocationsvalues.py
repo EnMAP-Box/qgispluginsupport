@@ -41,11 +41,15 @@ class CursorLocationTest(unittest.TestCase):
             self.assertTrue(l.isValid())
         return layers
 
+
+
+
+
     def test_locallayers(self):
 
         canvas = QgsMapCanvas()
 
-        layers = [TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
+        layers = [TestObjects.createRasterLayer(nc=3), TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
         for lyr in layers:
             assert isinstance(lyr, QgsMapLayer)
             if isinstance(lyr, QgsRasterLayer):
