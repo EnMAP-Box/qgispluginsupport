@@ -162,10 +162,12 @@ class CursorLocationInfoModel(TreeModel):
                 if isinstance(bv, RasterValueSet.BandInfo):
                     n = gocn(root, 'Band {}'.format(bv.bandIndex + 1))
                     n.setToolTip('Band {} {}'.format(bv.bandIndex + 1, bv.bandName).strip())
-                    values = [bv.bandValue, bv.bandName]
+                    n.setValues([bv.bandValue, bv.bandName])
+
                     if isinstance(bv.classInfo, ClassInfo):
-                        values.append(bv.classInfo.name())
-                    n.setValues(values)
+                        nc = gocn(root, 'Class')
+                        nc.setValues(bv.classInfo.name())
+                        nc.setIcon(bv.classInfo.icon())
 
 
                 elif isinstance(bv, QColor):
