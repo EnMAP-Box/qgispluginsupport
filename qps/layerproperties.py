@@ -161,7 +161,7 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None)->QgsRaste
     classes = ClassificationScheme.fromMapLayer(layer)
 
     if isinstance(classes, ClassificationScheme):
-        r = classes.rasterRenderer(band=bandIndices[0])
+        r = classes.rasterRenderer(band=bandIndices[0] + 1)
         r.setInput(layer.dataProvider())
         return r
 

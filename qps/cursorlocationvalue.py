@@ -27,7 +27,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qps.utils import *
 from qps.models import *
-
+from qps.classification.classificationscheme import ClassInfo, ClassificationScheme
 
 class SourceValueSet(object):
     def __init__(self, source, point:SpatialPoint):
@@ -46,7 +46,7 @@ class SourceValueSet(object):
 class RasterValueSet(SourceValueSet):
 
     class BandInfo(object):
-        def __init__(self, bandIndex, bandValue, bandName):
+        def __init__(self, bandIndex, bandValue, bandName, classInfo=None):
             assert bandIndex >= 0
             if bandValue is not None:
                 assert type(bandValue) in [float, int]
@@ -56,6 +56,7 @@ class RasterValueSet(SourceValueSet):
             self.bandIndex = bandIndex
             self.bandValue = bandValue
             self.bandName = bandName
+            self.classInfo = classInfo
 
 
     def __init__(self, source, point, pxPosition):
@@ -161,7 +162,12 @@ class CursorLocationInfoModel(TreeModel):
                 if isinstance(bv, RasterValueSet.BandInfo):
                     n = gocn(root, 'Band {}'.format(bv.bandIndex + 1))
                     n.setToolTip('Band {} {}'.format(bv.bandIndex + 1, bv.bandName).strip())
-                    n.setValues([bv.bandValue, bv.bandName])
+                    values = [bv.bandValue, bv.bandName]
+                    if isinstance(bv.classInfo, ClassInfo):
+                        values.append(bv.classInfo.name())
+                    n.setValues(values)
+
+
                 elif isinstance(bv, QColor):
                     n = gocn(root, 'Color')
                     n.setToolTip('Color selected from screen pixel')
@@ -392,6 +398,10 @@ class CursorLocationInfoDock(QDockWidget,
                 if rasterbands == 'VISIBLE':
                     if isinstance(renderer, QgsPalettedRasterRenderer):
                         bandNumbers = renderer.usesBands()
+                        # sometime the rendere is set to band 0 (which does not exist)
+                        # QGIS bug
+                        if bandNumbers == [0] and l.bandCount() > 0:
+                            bandNumbers = [1]
                     else:
                         bandNumbers = renderer.usesBands()
 
@@ -411,9 +421,18 @@ class CursorLocationInfoDock(QDockWidget,
                         v.bandValues.append(QColor(block.color(0, 0)))
                 else:
                     results = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
+                    classScheme = None
+                    if isinstance(l.renderer(), QgsPalettedRasterRenderer):
+                        classScheme = ClassificationScheme.fromRasterRenderer(l.renderer())
                     for b in bandNumbers:
                         if b in results.keys():
-                            info = RasterValueSet.BandInfo(b - 1, results[b], l.bandName(b))
+                            bandValue = results[b]
+                            classInfo = None
+                            if isinstance(classScheme, ClassificationScheme) \
+                                and bandValue >= 0 \
+                                and bandValue < len(classScheme):
+                                classInfo = classScheme[int(bandValue)]
+                            info = RasterValueSet.BandInfo(b - 1, bandValue, l.bandName(b), classInfo=classInfo)
                             v.bandValues.append(info)
 
                 self.mLocationInfoModel.addSourceValues(v)
