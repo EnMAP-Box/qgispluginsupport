@@ -1813,7 +1813,7 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
 
 
 EDITOR_WIDGET_REGISTRY_KEY = 'Raster Classification'
-CLASS_SCHEME_EDITOR_WIDGET_FACTORY = None
+
 def registerClassificationSchemeEditorWidget():
     reg = QgsGui.editorWidgetRegistry()
 
@@ -1822,6 +1822,3 @@ def registerClassificationSchemeEditorWidget():
         factory = ClassificationSchemeWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
         reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, factory)
         CLASS_SCHEME_EDITOR_WIDGET_FACTORY = factory
-    else:
-        global CLASS_SCHEME_EDITOR_WIDGET_FACTORY
-        CLASS_SCHEME_EDITOR_WIDGET_FACTORY = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
