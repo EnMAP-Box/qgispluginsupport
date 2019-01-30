@@ -429,8 +429,10 @@ class CursorLocationInfoDock(QDockWidget,
                     for b in bandNumbers:
                         if b in results.keys():
                             bandValue = results[b]
+
                             classInfo = None
-                            if isinstance(classScheme, ClassificationScheme) \
+                            if isinstance(bandValue, (int, float)) \
+                                and isinstance(classScheme, ClassificationScheme) \
                                 and bandValue >= 0 \
                                 and bandValue < len(classScheme):
                                 classInfo = classScheme[int(bandValue)]
