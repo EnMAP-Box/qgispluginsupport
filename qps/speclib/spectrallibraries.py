@@ -2462,15 +2462,17 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
 
 
 EDITOR_WIDGET_REGISTRY_KEY = 'Spectral Profile'
-spectralProfileEditorWidgetFactory = None
+SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = None
 def registerSpectralProfileEditorWidget():
     reg = QgsGui.editorWidgetRegistry()
-    global spectralProfileEditorWidgetFactory
+
     if not EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys():
-        spectralProfileEditorWidgetFactory = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
-        reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, spectralProfileEditorWidgetFactory)
+        global SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY
+        SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
+        reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
     else:
-        spectralProfileEditorWidgetFactory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
+        global SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY
+        SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
 
 
 def registerAbstractLibraryIOs():
