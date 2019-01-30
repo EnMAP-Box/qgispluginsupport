@@ -2706,9 +2706,10 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         from qps.layerproperties import VectorLayerProperties
 
-
-        w = VectorLayerProperties(self.speclib(), None, parent=self)
-        w.exec_()
+        self._propDialog = VectorLayerProperties(self.speclib(), None, parent=None)
+        self._propDialog.exec_()
+        self._propDialog.setParent(None)
+        del self._propDialog
         s = ""
 
     def importSpeclib(self, path=None):

@@ -599,15 +599,24 @@ class LayerFieldConfigEditorWidget(QWidget, loadUI('layerfieldconfigeditorwidget
         self.scrollArea.resizeEvent = self.onScrollAreaResize
         self.mFieldModel = LabelFieldModel(self)
         self.treeView.setModel(self.mFieldModel)
-        self.treeView.selectionModel().currentRowChanged.connect(
-            lambda current, _ : self.stackedWidget.setCurrentIndex(current.row())
-        )
+        self.treeView.selectionModel().currentRowChanged.connect(self.onSelectedFieldChanged)
 
         self.btnApply = self.buttonBox.button(QDialogButtonBox.Apply)
         self.btnReset = self.buttonBox.button(QDialogButtonBox.Reset)
         self.btnApply.clicked.connect(self.onApply)
         self.btnReset.clicked.connect(self.onReset)
 
+    def onSelectedFieldChanged(self, index1:QModelIndex, index2:QModelIndex):
+        """
+        Shows the widget for the selected QgsField
+        :param index1:
+        :param index2:
+        """
+        if isinstance(index1, QModelIndex) and index1.isValid():
+            r = index1.row()
+            if r < 0 or r >= self.stackedWidget.count():
+                s = ""
+            self.stackedWidget.setCurrentIndex(r)
 
     def onScrollAreaResize(self, resizeEvent:QResizeEvent):
         """
@@ -1283,7 +1292,7 @@ class VectorLayerProperties(QgsOptionsDialogBase, loadUI('vectorlayerpropertiesd
     def __init__(self, lyr:QgsVectorLayer, canvas:QgsMapCanvas, parent=None, fl=Qt.Widget):
         super(VectorLayerProperties, self).__init__("VectorLayerProperties", parent, fl)
         title = "Layer Properties - {}".format(lyr.name())
-        self.restoreOptionsBaseUi(title)
+        #self.restoreOptionsBaseUi(title)
         self.setupUi(self)
         self.initOptionsBase(False, title)
         self.mRendererDialog = None
