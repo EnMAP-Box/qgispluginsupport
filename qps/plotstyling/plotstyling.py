@@ -875,7 +875,7 @@ class PlotStyleEditorWidgetFactory(QgsEditorWidgetFactory):
         return d
 
 
-EDITOR_WIDGET_REGISTRY_KEY = 'PlotSettings'
+EDITOR_WIDGET_REGISTRY_KEY = 'Plot Settings'
 plotStyleEditorWidgetFactory = None
 
 
