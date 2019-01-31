@@ -115,22 +115,22 @@ def rendererFromXml(xml):
                 s =""
     return None
 
-def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None)->QgsRasterRenderer:
+def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSize:int=256)->QgsRasterRenderer:
     """
     Returns a default Raster Renderer.
     See https://bitbucket.org/hu-geomatics/enmap-box/issues/166/default-raster-visualization
     :param layer: QgsRasterLayer
     :return: QgsRasterRenderer
     """
-
+    assert isinstance(sampleSize, int) and sampleSize > 0
     renderer = None
-    defaultRenderer = layer.renderer()
+
     if not isinstance(layer, QgsRasterLayer):
         return None
 
+    defaultRenderer = layer.renderer()
 
     nb = layer.bandCount()
-
 
     if isinstance(bandIndices, list):
         bandIndices = [b for b in bandIndices if b >=0 and b < nb]
@@ -147,25 +147,27 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None)->QgsRaste
             if isinstance(defaultRenderer, QgsMultiBandColorRenderer):
                 bandIndices = [defaultRenderer.redBand()-1, defaultRenderer.greenBand()-1, defaultRenderer.blueBand()-1]
             else:
-                bandIndices = [2,1,0]
+                bandIndices = [2, 1, 0]
         else:
             bandIndices = [0]
 
     assert isinstance(bandIndices, list)
 
-    bandStats = [layer.dataProvider().bandStatistics(b + 1, sampleSize=256) for b in bandIndices]
+    # get band stats
+    bandStats = [layer.dataProvider().bandStatistics(b + 1,
+                                                     stats=QgsRasterBandStats.All,
+                                                     sampleSize=256) for b in bandIndices]
     dp = layer.dataProvider()
     assert isinstance(dp, QgsRasterDataProvider)
 
-    #classification ? -> QgsPalettedRasterRenderer
+    # classification ? -> QgsPalettedRasterRenderer
     classes = ClassificationScheme.fromMapLayer(layer)
-
     if isinstance(classes, ClassificationScheme):
         r = classes.rasterRenderer(band=bandIndices[0] + 1)
         r.setInput(layer.dataProvider())
         return r
 
-    #single-band / two bands -> QgsSingleBandGrayRenderer
+    # single-band / two bands -> QgsSingleBandGrayRenderer
     if len(bandStats) < 3:
         b = bandIndices[0]+1
         stats = bandStats[0]
@@ -178,7 +180,7 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None)->QgsRaste
 
         if dt == Qgis.Byte:
             if stats.minimumValue == 0 and stats.maximumValue == 1:
-                #handle mask, strecht them over larger range
+                # handle mask, stretch over larger range
                 ce.setMinimumValue(stats.minimumValue)
                 ce.setMaximumValue(stats.maximumValue)
             else:
@@ -886,6 +888,7 @@ class SingleBandGrayRendererWidget(QgsSingleBandGrayRendererWidget, RendererWidg
 
 
             def addBtnAction(action):
+
                 btn = QToolButton()
                 btn.setDefaultAction(action)
                 self.mBtnBar.layout().addWidget(btn)
@@ -1135,7 +1138,7 @@ class RasterLayerProperties(QgsOptionsDialogBase, loadUI('rasterlayerpropertiesd
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
-        self.initOptionsBase(False, title)
+
         #self.restoreOptionsBaseUi('TITLE')
         self.mRasterLayer = lyr
         self.mRendererWidget = None
@@ -1154,7 +1157,7 @@ class RasterLayerProperties(QgsOptionsDialogBase, loadUI('rasterlayerpropertiesd
         self.rejected.connect(self.onCancel)
         self.buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.apply)
         #connect controls
-
+        self.initOptionsBase(False, title)
         self.initOptsGeneral()
         self.initOptsStyle()
         self.initOptsTransparency()
@@ -1388,7 +1391,7 @@ def showLayerPropertiesDialog(layer, canvas, parent=None, modal=True):
     dialog = None
 
     if isinstance(layer, QgsRasterLayer):
-        dialog = RasterLayerProperties(layer, canvas,parent=parent)
+        dialog = RasterLayerProperties(layer, canvas, parent=parent)
         #d.setSettings(QSettings())
     elif isinstance(layer, QgsVectorLayer):
         dialog = VectorLayerProperties(layer, canvas, parent=parent)
@@ -1404,11 +1407,11 @@ def showLayerPropertiesDialog(layer, canvas, parent=None, modal=True):
     return result
 
 RASTERRENDERER_CREATE_FUNCTIONSV2 = OptionListModel()
-RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(MultiBandColorRendererWidget.create, name='multibandcolor'))
-#RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsMultiBandColorRendererWidget.create, name='multibandcolor (QGIS)'))
+#RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(MultiBandColorRendererWidget.create, name='multibandcolor'))
+RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsMultiBandColorRendererWidget.create, name='multibandcolor (QGIS)'))
 RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsPalettedRendererWidget.create, name='paletted'))
-RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(SingleBandGrayRendererWidget.create, name='singlegray'))
-#RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsSingleBandGrayRendererWidget.create, name='singlegray (QGIS)'))
-RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(SingleBandPseudoColorRendererWidget.create, name='singlebandpseudocolor'))
-#RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsSingleBandPseudoColorRendererWidget.create, name='singlebandpseudocolor (QGIS)'))
+#RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(SingleBandGrayRendererWidget.create, name='singlegray'))
+RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsSingleBandGrayRendererWidget.create, name='singlegray (QGIS)'))
+#RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(SingleBandPseudoColorRendererWidget.create, name='singlebandpseudocolor'))
+RASTERRENDERER_CREATE_FUNCTIONSV2.addOption(Option(QgsSingleBandPseudoColorRendererWidget.create, name='singlebandpseudocolor (QGIS)'))
 
