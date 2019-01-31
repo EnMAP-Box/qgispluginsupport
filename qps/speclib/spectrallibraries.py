@@ -1492,11 +1492,12 @@ class SpectralLibrary(QgsVectorLayer):
     def asPickleDump(self):
         return pickle.dumps(self)
 
-    def exportProfiles(self, path:str, **kwds):
+    def exportProfiles(self, path:str, **kwds)->list:
         """
         Exports profiles to a file
         :param path: str, filepath
         :param kwds: keywords to be used in specific `AbstractSpectralLibraryIO.write(...)` methods.
+        :return: list of written files
         """
 
         if path is None:
@@ -2482,6 +2483,7 @@ def registerAbstractLibraryIOs():
 
 class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
     sigLoadFromMapRequest = pyqtSignal()
+    sigFilesCreated = pyqtSignal(list)
 
     class CurrentProfilesMode(enum.Enum):
         normal = 0
@@ -2898,7 +2900,10 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         return pi
 
     def onExportSpectra(self, *args):
-        self.mSpeclib.exportProfiles(None)
+        files = self.mSpeclib.exportProfiles(None)
+        if len(files) > 0:
+            self.sigFilesCreated.emit(files)
+
 
     def addSpeclib(self, speclib:SpectralLibrary):
         """
