@@ -1483,7 +1483,8 @@ class SpectralLibrary(QgsVectorLayer):
                     continue
                 if not len(d['y']) > 0:
                     continue
-            key = (tuple(d['x']), d['xUnit'], d['yUnit'])
+            x = None if d['x'] is None else tuple(d['x'])
+            key = (x, d['xUnit'], d['yUnit'])
             if key not in results.keys():
                 results[key] = []
             results[key].append(p)
