@@ -860,10 +860,6 @@ class TreeView(QTreeView):
 
         node = self.model().data(idx, role=Qt.UserRole)
         if isinstance(node, TreeNode):
-            print(node.name())
-            if node.name() == 'ins. spanned2':
-
-                s = ""
             span = len(node.values()) == 0
             self.setFirstColumnSpanned(idx.row(), idx.parent(), span)
 
