@@ -749,10 +749,13 @@ class TreeModel(QAbstractItemModel):
         :param index: QModelIndex
         :return: TreeNode
         """
+
         if not index.isValid():
             return self.mRootNode
         else:
-            return index.internalPointer()
+            node = index.internalPointer()
+            assert isinstance(node, TreeNode)
+            return node
 
     def node2idx(self, node:TreeNode)->QModelIndex:
         """
@@ -778,7 +781,12 @@ class TreeModel(QAbstractItemModel):
         :param role: Qt.ItemRole
         :return: object
         """
+        assert isinstance(index, QModelIndex)
+        if not index.isValid():
+            return None
+
         node = self.idx2node(index)
+        assert isinstance(node, TreeNode)
         col = index.column()
         if role == Qt.UserRole:
             return node
@@ -846,16 +854,21 @@ class TreeView(QTreeView):
         :param idx:
         :return:
         """
+        assert isinstance(idx, QModelIndex)
         if not idx.isValid():
             return
 
-        node = idx.internalPointer()
+        node = self.model().data(idx, role=Qt.UserRole)
         if isinstance(node, TreeNode):
+            print(node.name())
+            if node.name() == 'ins. spanned2':
+
+                s = ""
             span = len(node.values()) == 0
             self.setFirstColumnSpanned(idx.row(), idx.parent(), span)
 
             for row in range(self.model().rowCount(idx)):
-                idx2 = self.model().createIndex(row, 0, idx)
+                idx2 = self.model().index(row, 0, idx)
                 self.setColumnSpan(idx2)
 
     def selectedNode(self)->TreeNode:
