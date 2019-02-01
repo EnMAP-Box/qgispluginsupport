@@ -670,18 +670,18 @@ class TreeModel(QAbstractItemModel):
 
 
 
-    def index(self, row, column, parentIndex=None)->QModelIndex:
+    def index(self, row:int, column:int, parent:QModelIndex=None)->QModelIndex:
         """
         Returns the QModelIndex
         :param row: int
         :param column: int
-        :param parentIndex: QModelIndex
+        :param parent: QModelIndex
         :return: QModelIndex
         """
-        if parentIndex is None:
+        if parent is None:
             parentNode = self.mRootNode
         else:
-            parentNode = self.idx2node(parentIndex)
+            parentNode = self.idx2node(parent)
 
         if row < 0 or row >= parentNode.childCount():
             return QModelIndex()
