@@ -236,7 +236,8 @@ def qgisLayerTreeLayers() -> list:
     """
     iface = qgisAppQgisInterface()
     if isinstance(iface, QgisInterface):
-        return [ln.layer() for  ln in iface.layerTreeView().model().rootGroup().findLayers()]
+        return [ln.layer() for ln in iface.layerTreeView().model().rootGroup().findLayers()
+                if isinstance(ln.layer(), QgsMapLayer)]
     else:
         return []
 

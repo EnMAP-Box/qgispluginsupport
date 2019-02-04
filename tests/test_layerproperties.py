@@ -10,7 +10,7 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest
+import unittest, time
 from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtGui import *
@@ -67,6 +67,46 @@ class LayerRendererTests(unittest.TestCase):
             canvas.show()
             w.show()
             QGIS_APP.exec_()
+
+
+    def test_rasterLayerPropertiesWidgetRepeated(self):
+
+        lyr = TestObjects.createRasterLayer(nb=3)
+        QgsProject.instance().addMapLayer(lyr)
+        canvas = QgsMapCanvas()
+        canvas.setLayers([lyr])
+        canvas.setExtent(canvas.fullExtent())
+        for i in range(100):
+            print('open {}'.format(i))
+            w = RasterLayerProperties(lyr, canvas)
+            self.assertIsInstance(w, RasterLayerProperties)
+            w.show()
+            QApplication.processEvents()
+            time.sleep(1)
+
+        print('Done')
+
+    def test_vectorLayerPropertiesWidgetRepeated(self):
+
+        lyr = TestObjects.createVectorLayer()
+
+        import qps
+        qps.registerEditorWidgets()
+        w = VectorLayerProperties(lyr, None)
+        self.assertIsInstance(w, VectorLayerProperties)
+        canvas = QgsMapCanvas()
+        canvas.setLayers([lyr])
+        canvas.setExtent(canvas.fullExtent())
+
+        for i in range(100):
+            print('open {}'.format(i))
+            w = VectorLayerProperties(lyr, canvas)
+            self.assertIsInstance(w, VectorLayerProperties)
+            w.show()
+            QApplication.processEvents()
+            time.sleep(1)
+
+        print('Done')
 
 
     def test_vectorLayerPropertiesWidget(self):
