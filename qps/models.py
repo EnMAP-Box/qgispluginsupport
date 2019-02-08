@@ -250,7 +250,7 @@ class TreeNode(QObject):
     sigUpdated = pyqtSignal(QObject)
     sigExpandedChanged = pyqtSignal(QObject, bool)
 
-    def __init__(self, parentNode, name=None, value=None, values=None, icon=None, toolTip:str=None, statusTip:str=None):
+    def __init__(self, parentNode, name=None, value=None, values=None, icon=None, toolTip:str=None, statusTip:str=None, **kwds):
         super(TreeNode, self).__init__()
         QObject.__init__(self)
 
