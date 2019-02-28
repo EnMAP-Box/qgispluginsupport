@@ -959,17 +959,27 @@ def layerGeoTransform(rasterLayer:QgsRasterLayer)->tuple:
                 0, -1 * rasterLayer.rasterUnitsPerPixelY())
     return gt
 
-def px2geo(px, gt):
+def px2geo(px, gt, pxCenter=True):
     """
     Converts a pixel coordinate into a geo-coordinate
-    :param px:
-    :param gt:
+    :param px: QPoint() with pixel coordinates
+    :param gt: geo-transformation
+    :param pxCenter: True to return geo-coordinate of pixel center, False to return upper-left edge
     :return:
     """
+
     #see http://www.gdal.org/gdal_datamodel.html
+
     gx = gt[0] + px.x()*gt[1]+px.y()*gt[2]
     gy = gt[3] + px.x()*gt[4]+px.y()*gt[5]
-    return QgsPointXY(gx,gy)
+
+    if pxCenter:
+        p2 = px2geo(QPoint(px.x()+1, px.y()+1), gt, pxCenter=False)
+
+        gx = 0.5*(gx + p2.x())
+        gy = 0.5*(gy + p2.y())
+
+    return QgsPointXY(gx, gy)
 
 
 class SpatialPoint(QgsPointXY):

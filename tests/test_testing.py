@@ -23,13 +23,14 @@ class testClassTesting(unittest.TestCase):
 
         qgis_app = qps.testing.initQgisApplication()
 
+
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
 
         self.assertTrue(len(qgis_app.processingRegistry().providers()) > 0)
 
         self.assertIsInstance(qgis_app.processingRegistry(), QgsProcessingRegistry)
-        self.assertTrue(len(len(qgis_app.processingRegistry().algorithms())) > 0)
+        self.assertTrue(len(qgis_app.processingRegistry().algorithms()) > 0)
 
         self.assertIsInstance(QgsGui.instance(), QgsGui)
         self.assertTrue(len(QgsGui.instance().editorWidgetRegistry().factories()) > 0, msg='Standard QgsEditorWidgetWrapper not initialized')
