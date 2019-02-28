@@ -1329,7 +1329,10 @@ class SpatialExtent(QgsRectangle):
         :param other: SpatialExtent
         :return: bool
         """
-        return self.toString() == other.toString()
+        if not isinstance(other, SpatialExtent):
+            return False
+        else:
+            return self.toString() == other.toString()
 
     def __sub__(self, other):
         raise NotImplementedError()
