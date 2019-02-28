@@ -366,7 +366,7 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
     if pathUi not in FORM_CLASSES.keys():
         #parse *.ui xml and replace *.h by qgis.gui
 
-        with open(pathUi, 'r') as f:
+        with open(pathUi, 'r', encoding='utf-8') as f:
             txt = f.read()
 
         dirUi = os.path.dirname(pathUi)
