@@ -114,6 +114,9 @@ class OptionListModel(QAbstractListModel):
     def __len__(self):
         return len(self.mOptions)
 
+    def __iter__(self):
+        return iter(self.mOptions)
+
     def addOption(self, option):
         self.insertOptions([option])
 
