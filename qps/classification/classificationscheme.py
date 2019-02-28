@@ -885,7 +885,7 @@ class ClassificationScheme(QAbstractTableModel):
             cat.append(classInfo.mName)
             assert isinstance(c, QColor)
             rgba = (c.red(), c.green(), c.blue(), c.alpha())
-            ct.SetColorEntry(i, *rgba)
+            ct.SetColorEntry(i, rgba)
 
         band.SetColorTable(ct)
         band.SetCategoryNames(cat)
