@@ -35,8 +35,11 @@ class testClassTesting(unittest.TestCase):
         self.assertIsInstance(QgsGui.instance(), QgsGui)
         self.assertTrue(len(QgsGui.instance().editorWidgetRegistry().factories()) > 0, msg='Standard QgsEditorWidgetWrapper not initialized')
 
-
-
+    def test_init_minimal(self):
+        import qps.testing
+        qgis_app = qps.testing.initQgisApplication(minimal=True)
+        self.assertIsInstance(qgis_app, QgsApplication)
+        self.assertIsInstance(qgis_app.libexecPath(), str)
 
 
 

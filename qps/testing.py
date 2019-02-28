@@ -143,11 +143,31 @@ def installTestdata(overwrite_existing=False):
 
 
 
-def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication:
+def initQgisApplication(*args, qgisResourceDir:str=None,
+                        loadProcessingFramework=True,
+                        loadEditorWidgets=True,
+                        loadPythonRunner=True,
+                        minimal=False,
+                        **kwds)->QgsApplication:
     """
     Initializes a QGIS Environment
+    :param qgisResourceDir: path to folder with QGIS resource modules. default = None
+    :param loadProcessingFramework:  True, loads the QgsProcessingFramework plugins
+    :param loadEditorWidgets: True, load the Editor widgets
+    :param loadPythonRunner:  True, initializes a Python Runner
+    :param minimal: False, if set on True, will deactivate the `load*` and return only a basic QgsApplication
+    :return:
+    """
+    """
+    
     :return: QgsApplication instance of local QGIS installation
     """
+
+    if minimal:
+        loadEditorWidgets = False
+        loadProcessingFramework = False
+        loadPythonRunner = False
+
     if isinstance(QgsApplication.instance(), QgsApplication):
         return QgsApplication.instance()
     else:
@@ -180,20 +200,22 @@ def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication
                     mod.qInitResources()
 
         # initiate a PythonRunner instance if None exists
-        if not QgsPythonRunner.isValid():
+        if not QgsPythonRunner.isValid() and loadPythonRunner == True:
             r = PythonRunnerImpl()
             QgsPythonRunner.setInstance(r)
+
 
         from qgis.analysis import QgsNativeAlgorithms
         QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 
+
         # init standard EditorWidgets
-        QgsGui.editorWidgetRegistry().initEditors()
+        if loadEditorWidgets:
+            QgsGui.editorWidgetRegistry().initEditors()
 
         # import processing
         # p = processing.classFactory(iface)
         if not isinstance(qgis.utils.iface, QgisInterface):
-
             iface = QgisMockup()
             qgis.utils.initInterface(sip.unwrapinstance(iface))
             assert iface == qgis.utils.iface
@@ -203,13 +225,14 @@ def initQgisApplication(*args, qgisResourceDir:str=None, **kwds)->QgsApplication
                                                    *['python', 'plugins'])
 
         # initialize the QGIS processing framework
-        qgisCorePythonPluginDir = os.path.join(QgsApplication.pkgDataPath(),*['python', 'plugins'])
+        qgisCorePythonPluginDir = os.path.join(QgsApplication.pkgDataPath(), *['python', 'plugins'])
         assert os.path.isdir(qgisCorePythonPluginDir)
         if not qgisCorePythonPluginDir in sys.path:
             sys.path.append(qgisCorePythonPluginDir)
 
-        from processing.core.Processing import Processing
-        Processing.initialize()
+        if loadProcessingFramework:
+            from processing.core.Processing import Processing
+            Processing.initialize()
 
         #
         providers = QgsProviderRegistry.instance().providerList()
