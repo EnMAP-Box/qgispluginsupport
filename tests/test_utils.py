@@ -115,6 +115,29 @@ class testClassUtils(unittest.TestCase):
         self.assertAlmostEqual(px2geo(pxCoordinate, gt), geoCoordinate)
 
 
+    def test_createQgsField(self):
+
+        values = [1,2.3,'text',
+                  np.int8(1),
+                  np.int16(1),
+                  np.int32(1),
+                  np.int64(1),
+                  np.uint8(1),
+                  np.uint(1),
+                  np.uint16(1),
+                  np.uint32(1),
+                  np.uint64(1),
+                  np.float(1),
+                  np.float16(1),
+                  np.float32(1),
+                  np.float64(1),
+                  ]
+
+        for v in values:
+            print('Create QgsField for {}'.format(type(v)))
+            field = createQgsField('field', v)
+            self.assertIsInstance(field, QgsField)
+
     def test_convertMetricUnits(self):
 
         self.assertEqual(convertMetricUnit(100, 'm', 'km'), 0.1)
