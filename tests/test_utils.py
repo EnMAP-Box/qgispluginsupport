@@ -135,6 +135,34 @@ class testClassUtils(unittest.TestCase):
         self.assertTrue(action in self.menuA.children())
 
 
+    def test_value2string(self):
+
+        valueSet = [[1,2,3],
+                        1,
+                        '',
+                        None,
+                        np.zeros((3,3,))
+                        ]
+
+        for i, values in enumerate(valueSet):
+            print('Test {}:{}'.format(i+1, values))
+            s = value2str(values, delimiter=';')
+            self.assertIsInstance(s, str)
+
+    def test_savefilepath(self):
+
+        valueSet = ['dsdsds.png',
+                    'foo\\\\\\?<>bar',
+                    None,
+                    ]
+
+        for i, text in enumerate(valueSet):
+            s = filenameFromString(text)
+            print('Test {}:"{}"->"{}"'.format(i + 1, text, s))
+            self.assertIsInstance(s, str)
+
+
+
 if __name__ == "__main__":
     SHOW_GUI = False
     unittest.main()
