@@ -284,11 +284,19 @@ def filenameFromString(text : str):
     if text is None:
         return ''
     isInValid = re.compile(r"[\\/:?\"<>|]")
+
     isValid = re.compile(r"([-_.()]|\d|\D)", re.ASCII + re.IGNORECASE)
     import unicodedata
     cleaned = unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore')
 
-    return '_'.join(c for c in cleaned.decode() if isValid.search(c) and not isInValid.search(c))
+    chars = []
+    for c in cleaned.decode():
+        if isValid.search(c) and not isInValid.search(c):
+            chars.append(c)
+        else:
+            chars.append('_')
+
+    return ''.join(chars)
 
 
 def value2str(value, sep:str=None, delimiter:str=' '):
