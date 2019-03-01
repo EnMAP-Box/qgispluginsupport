@@ -177,6 +177,7 @@ class testClassUtils(unittest.TestCase):
         valueSet = ['dsdsds.png',
                     'foo\\\\\\?<>bar',
                     None,
+                    r"_bound method TimeSeriesDatum.date of TimeSeriesDatum(2014-01-15,_class 'timeseriesviewer.timeseries.SensorInstrument'_ LS)_.Map View 1.png"
                     ]
 
         for i, text in enumerate(valueSet):

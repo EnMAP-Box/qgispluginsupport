@@ -283,7 +283,7 @@ def filenameFromString(text : str):
     """
     if text is None:
         return ''
-    isInValid = re.compile(r"[\\/:?\"<>|]")
+    isInValid = re.compile(r"[\\/:?\"<>| ,']")
 
     isValid = re.compile(r"([-_.()]|\d|\D)", re.ASCII + re.IGNORECASE)
     import unicodedata
