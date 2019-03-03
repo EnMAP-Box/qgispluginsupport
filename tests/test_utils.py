@@ -55,6 +55,30 @@ class testClassUtils(unittest.TestCase):
             self.assertIsInstance(t, object)
 
 
+    def test_file_search(self):
+
+
+        rootQps = os.path.join(os.path.dirname(__file__), *['..','qps'])
+        self.assertTrue(os.path.isdir(rootQps))
+
+        results = list(file_search(rootQps, 'spectrallibraries.py', recursive=False))
+        self.assertIsInstance(results, list)
+        self.assertTrue(len(results) == 0)
+
+        for pattern in ['spectrallibraries.py', 'spectrallib*.py', re.compile(r'spectrallibraries\.py')]:
+
+            results = list(file_search(rootQps, pattern, recursive=True))
+            self.assertIsInstance(results, list)
+            self.assertTrue(len(results) == 1)
+            self.assertTrue(os.path.isfile(results[0]))
+
+        results = list(file_search(rootQps, 'speclib', directories=True, recursive=True))
+        self.assertIsInstance(results, list)
+        self.assertTrue(len(results) == 1)
+        self.assertTrue(os.path.isdir(results[0]))
+
+
+
 
     def test_spatialObjects(self):
 
