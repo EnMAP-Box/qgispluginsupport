@@ -456,7 +456,7 @@ class TestsClassificationScheme(TestCase):
     def test_io_QML(self):
 
         testDir = os.path.dirname(enmapboxtestdata.library)
-        qmFiles = file_search(testDir, 'LandCov_*.qml')
+        qmFiles = list(file_search(testDir, 'LandCov_*.qml'))
 
         pathTmp = tempfile.mktemp(suffix='.qml')
         for pathQML in qmFiles:
