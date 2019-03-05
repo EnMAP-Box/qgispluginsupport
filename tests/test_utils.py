@@ -78,6 +78,12 @@ class testClassUtils(unittest.TestCase):
         self.assertTrue(os.path.isdir(results[0]))
 
 
+    def test_vsimem(self):
+
+        from qps.utils import check_vsimem
+
+        b = check_vsimem()
+        self.assertIsInstance(b, bool)
 
 
     def test_spatialObjects(self):

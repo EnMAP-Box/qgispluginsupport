@@ -1,14 +1,16 @@
 import sys
-from qgis.core import QgsApplication
+from qgis.core import QgsApplication, QgsRasterLayer
 
-try:
+
+
+
+
+def initResources():
+    """
+    Initializes compiled Qt resources
+    """
     import qps.qpsresources
-    qpsresources.qInitResources()
-except Exception as ex:
-
-    print(ex, file=sys.stderr)
-    print('It might be required to compile the qps/resources.py first', file=sys.stderr)
-
+    qps.qpsresources.qInitResources()
 
 
 def registerEditorWidgets():
@@ -48,3 +50,9 @@ def registerEditorWidgets():
         print(ex, file=sys.stderr)
 
 
+try:
+    initResources()
+except Exception as ex:
+
+    print(ex, file=sys.stderr)
+    print('It might be required to compile the qps/resources.py first', file=sys.stderr)

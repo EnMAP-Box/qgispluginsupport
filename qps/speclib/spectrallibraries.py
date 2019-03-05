@@ -30,7 +30,7 @@
 """
 
 #see http://python-future.org/str_literals.html for str issue discussion
-import json, enum
+import json, enum, tempfile
 from qgis.utils import iface
 from qgis.gui import Targets, QgsMapLayerAction
 from pyqtgraph.graphicsItems.PlotItem import PlotItem
@@ -102,7 +102,10 @@ FIELD_NAME = 'name'
 FIELD_FID = 'fid'
 
 VSI_DIR = r'/vsimem/speclibs/'
+if not check_vsimem():
 
+    #VSI_DIR = tempfile.TemporaryDirectory().name
+    VSI_DIR = tempfile.gettempdir()
 try:
     gdal.Mkdir(VSI_DIR, 0)
 except:
@@ -120,14 +123,17 @@ def vsiSpeclibs()->list:
     :return: [list-of-str]
     """
     visSpeclibs = []
-    for bn in gdal.ReadDir(VSI_DIR):
-        if bn == '':
-            continue
-        p = pathlib.PurePosixPath(VSI_DIR) / bn
-        p = p.as_posix()
-        stats = gdal.VSIStatL(p)
-        if isinstance(stats, gdal.StatBuf) and not stats.IsDirectory():
-            visSpeclibs.append(p)
+    if VSIMEM_AVAILABLE:
+        for bn in gdal.ReadDir(VSI_DIR):
+            if bn == '':
+                continue
+            p = pathlib.PurePosixPath(VSI_DIR) / bn
+            p = p.as_posix()
+            stats = gdal.VSIStatL(p)
+            if isinstance(stats, gdal.StatBuf) and not stats.IsDirectory():
+                visSpeclibs.append(p)
+    else:
+        visSpeclibs.extend(list(file_search(VSI_DIR, '*.gpkg')))
     return visSpeclibs
 
 #CURRENT_SPECTRUM_STYLE.linePenplo
@@ -1159,7 +1165,7 @@ class SpectralLibrary(QgsVectorLayer):
         lyrOptions = QgsVectorLayer.LayerOptions(loadDefaultStyle=False, readExtentFromXml=False)
 
         if uri is None:
-            #create a new, empty backend
+            # create a new, empty backend
             existing_vsi_files = vsiSpeclibs()
             assert isinstance(existing_vsi_files, list)
             i = 0
@@ -1198,6 +1204,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         # consistency check
         uri2 = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
+        uri3 = '{}|layername={}'.format(dsSrc.GetName(), lyr.GetName())
         assert QgsVectorLayer(uri2).isValid()
         super(SpectralLibrary, self).__init__(uri2, name, 'ogr', lyrOptions)
         if isinstance(srs, osr.SpatialReference) and not self.crs().isValid():
