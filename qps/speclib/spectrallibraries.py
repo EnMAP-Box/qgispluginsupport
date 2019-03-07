@@ -66,7 +66,7 @@ SPECLIB_CLIPBOARD = weakref.WeakValueDictionary()
 COLOR_CURRENT_SPECTRA = QColor('green')
 COLOR_SELECTED_SPECTRA = QColor('yellow')
 COLOR_BACKGROUND = QColor('black')
-
+VSIMEM_AVAILABLE = check_vsimem()
 DEBUG = False
 def log(msg:str):
     if DEBUG:
@@ -104,8 +104,8 @@ FIELD_FID = 'fid'
 VSI_DIR = r'/vsimem/speclibs/'
 if not check_vsimem():
 
-    #VSI_DIR = tempfile.TemporaryDirectory().name
-    VSI_DIR = tempfile.gettempdir()
+    VSI_DIR = tempfile.TemporaryDirectory().name
+    #VSI_DIR = tempfile.gettempdir()
 try:
     gdal.Mkdir(VSI_DIR, 0)
 except:

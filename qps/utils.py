@@ -1080,7 +1080,7 @@ def check_vsimem()->bool:
         return False
     return result
 
-VSIMEM_AVAILABLE = check_vsimem()
+
 
 def layerGeoTransform(rasterLayer:QgsRasterLayer)->tuple:
     """
