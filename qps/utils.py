@@ -1073,14 +1073,9 @@ def check_vsimem()->bool:
         assert isinstance(layer, QgsRasterLayer)
         result = layer.isValid()
 
-        s = ""
-
-
-    except:
+    except Exception as ex:
         return False
     return result
-
-VSIMEM_AVAILABLE = check_vsimem()
 
 def layerGeoTransform(rasterLayer:QgsRasterLayer)->tuple:
     """

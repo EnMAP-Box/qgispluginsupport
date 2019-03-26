@@ -172,9 +172,7 @@ def initQgisApplication(*args, qgisResourceDir:str=None,
         return QgsApplication.instance()
     else:
 
-        #if not 'QGIS_PREFIX_PATH' in os.environ.keys():
-        #    raise Exception('env variable QGIS_PREFIX_PATH not set')
-
+        QGIS_PREFIX_PATH = os.environ.get('QGIS_PREFIX_PATH')
         if QOperatingSystemVersion.current().name() == 'macOS':
             # add location of Qt Libraries
             assert '.app' in qgis.__file__, 'Can not locate path of QGIS.app'
@@ -185,10 +183,24 @@ def initQgisApplication(*args, qgisResourceDir:str=None,
             QApplication.addLibraryPath(libraryPath1)
             qgsApp = qgis.testing.start_app()
             QgsProviderRegistry.instance().setLibraryDirectory(QDir(libraryPath2))
+
+        elif QOperatingSystemVersion.current().name() == 'Windows':
+
+            qgsApp = qgis.testing.start_app()
+            if not QgsProviderRegistry.instance().libraryDirectory().exists():
+                QgsProviderRegistry.instance().setLibraryDirectory(QDir(QApplication.instance().libraryPaths()[0]))
         else:
+
             qgsApp = qgis.testing.start_app()
 
+
+
+
         assert QgsProviderRegistry.instance().libraryDirectory().exists()
+
+
+        from qps.utils import check_vsimem
+        assert check_vsimem()
 
         # initialize things not done by qgis.test.start_app()...
         if not isinstance(qgisResourceDir, str):

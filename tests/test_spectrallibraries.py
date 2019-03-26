@@ -94,8 +94,6 @@ class TestIO(unittest.TestCase):
             del s
         SpectralLibrary.__refs__ = []
 
-
-
     def createSpeclib(self)->SpectralLibrary:
         return createSpeclib()
 

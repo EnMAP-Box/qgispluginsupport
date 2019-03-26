@@ -102,10 +102,10 @@ FIELD_NAME = 'name'
 FIELD_FID = 'fid'
 
 VSI_DIR = r'/vsimem/speclibs/'
+VSIMEM_AVAILABLE = True
 if not check_vsimem():
-
-    #VSI_DIR = tempfile.TemporaryDirectory().name
     VSI_DIR = tempfile.gettempdir()
+    VSIMEM_AVAILABLE = False
 try:
     gdal.Mkdir(VSI_DIR, 0)
 except:
