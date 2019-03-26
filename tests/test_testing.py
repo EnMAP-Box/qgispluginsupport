@@ -11,8 +11,6 @@ from qgis.core import *
 from qgis.gui import *
 from PyQt5.QtCore import *
 
-from qps.testing import initQgisApplication
-
 class testClassTesting(unittest.TestCase):
 
 
@@ -34,6 +32,12 @@ class testClassTesting(unittest.TestCase):
 
         self.assertIsInstance(QgsGui.instance(), QgsGui)
         self.assertTrue(len(QgsGui.instance().editorWidgetRegistry().factories()) > 0, msg='Standard QgsEditorWidgetWrapper not initialized')
+
+        app = QgsApplication.instance()
+        ENV = app.systemEnvVars()
+        for k in sorted(ENV.keys()): print('{}={}'.format(k, ENV[k]))
+
+
 
     def test_init_minimal(self):
         import qps.testing

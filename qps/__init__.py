@@ -1,13 +1,17 @@
-import sys, os, importlib, site
+import sys, importlib, site, os
 from qgis.core import QgsApplication
 
-try:
-    import qps.qpsresources
-    qpsresources.qInitResources()
-except Exception as ex:
 
-    print(ex, file=sys.stderr)
-    print('It might be required to compile the qps/resources.py first', file=sys.stderr)
+def initResources():
+    """
+    Initializes compiled Qt resources
+    """
+    try:
+        import qps.qpsresources
+        qpsresources.qInitResources()
+    except Exception as ex:
+        print(ex, file=sys.stderr)
+        print('It might be required to compile the qps/resources.py first', file=sys.stderr)
 
 # make required modules available in case they are not part of the core-python installation
 if importlib.util.find_spec('pyqtgraph') is None:
