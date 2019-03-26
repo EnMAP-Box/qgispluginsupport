@@ -16,6 +16,7 @@ pipelines:
           - pushd /usr/src
           - xvfb-run nose2-3
           - popd
+          - Xvfb :1 -screen 0 1024x768x16
           - python -m unittest discover tests "test_*.py"
 
           #- python -m pip install pytest-cov
