@@ -136,8 +136,8 @@ def vsiSpeclibs()->list:
         visSpeclibs.extend(list(file_search(VSI_DIR, '*.gpkg')))
     return visSpeclibs
 
-#CURRENT_SPECTRUM_STYLE.linePenplo
-#pdi.setPen(fn.mkPen(QColor('green'), width=3))
+# CURRENT_SPECTRUM_STYLE.linePenplo
+# pdi.setPen(fn.mkPen(QColor('green'), width=3))
 def gdalDataset(pathOrDataset, eAccess=gdal.GA_ReadOnly):
     """
 
@@ -551,7 +551,7 @@ class SpectralProfile(QgsFeature):
 
         assert isinstance(fields, QgsFields)
         self.mValueCache = None
-        self.setStyle(DEFAULT_SPECTRUM_STYLE)
+        #self.setStyle(DEFAULT_SPECTRUM_STYLE)
         if isinstance(values, dict):
             self.setValues(**values)
 
@@ -581,33 +581,30 @@ class SpectralProfile(QgsFeature):
         elif isinstance(pt, QgsPointXY):
             self.setGeometry(QgsGeometry.fromPointXY(pt))
 
-
     def geoCoordinate(self):
         return self.geometry()
 
+    #def style(self)->PlotStyle:
+    #    """
+    #    Returns this features's PlotStyle
+    #    :return: PlotStyle
+    #    """
+    #    styleJson = self.metadata(FIELD_STYLE)
+    #    try:
+    #        style = PlotStyle.fromJSON(styleJson)
+    #    except Exception as ex:
+    #        style = DEFAULT_SPECTRUM_STYLE
+    #    return style
 
-    def style(self)->PlotStyle:
-        """
-        Returns this features's PlotStyle
-        :return: PlotStyle
-        """
-        styleJson = self.metadata(FIELD_STYLE)
-        try:
-            style = PlotStyle.fromJSON(styleJson)
-        except Exception as ex:
-            style = DEFAULT_SPECTRUM_STYLE
-        return style
-
-
-    def setStyle(self, style:PlotStyle):
-        """
-        Sets a Spectral Profiles's plot style
-        :param style: PLotStyle
-        """
-        if isinstance(style, PlotStyle):
-            self.setMetadata(FIELD_STYLE, style.json())
-        else:
-            self.setMetadata(FIELD_STYLE, None)
+    #def setStyle(self, style:PlotStyle):
+    #    """
+    #    Sets a Spectral Profiles's plot style
+    #    :param style: PLotStyle
+    #    """
+    #    if isinstance(style, PlotStyle):
+    #        self.setMetadata(FIELD_STYLE, style.json())
+    #    else:
+    #        self.setMetadata(FIELD_STYLE, None)
 
     def updateMetadata(self, metaData):
         if isinstance(metaData, dict):
@@ -626,7 +623,6 @@ class SpectralProfile(QgsFeature):
 
     def setMetadata(self, key: str, value, addMissingFields=False):
         """
-
         :param key: Name of metadata field
         :param value: value to add. Need to be of type None, str, int or float.
         :param addMissingFields: Set on True to add missing fields (in case value is not None)
@@ -1223,9 +1219,9 @@ class SpectralLibrary(QgsVectorLayer):
         assert isinstance(mgr, QgsActionManager)
         mgr.clearActions()
 
-        actionSetStyle = createSetPlotStyleAction(self.fields().at(self.fields().lookupField(FIELD_STYLE)))
-        assert isinstance(actionSetStyle, QgsAction)
-        mgr.addAction(actionSetStyle)
+        # actionSetStyle = createSetPlotStyleAction(self.fields().at(self.fields().lookupField(FIELD_STYLE)))
+        # assert isinstance(actionSetStyle, QgsAction)
+        # mgr.addAction(actionSetStyle)
 
         actionRemoveSpectrum = createRemoveFeatureAction()
         assert isinstance(actionRemoveSpectrum, QgsAction)
@@ -1252,7 +1248,7 @@ class SpectralLibrary(QgsVectorLayer):
         self.setAttributeTableConfig(conf)
 
         # set special default editors
-        self.setEditorWidgetSetup(self.fields().lookupField(FIELD_STYLE), QgsEditorWidgetSetup(PlotSettingsEditorWidgetKey, {}))
+        # self.setEditorWidgetSetup(self.fields().lookupField(FIELD_STYLE), QgsEditorWidgetSetup(PlotSettingsEditorWidgetKey, {}))
         self.setEditorWidgetSetup(self.fields().lookupField(FIELD_VALUES), QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
 
@@ -3018,7 +3014,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
             for i, p in enumerate(profiles):
                 pdi = SpectralProfilePlotDataItem(p)
-                pdi.setStyle(CURRENT_SPECTRUM_STYLE)
+                pdi.setColor(CURRENT_SPECTRUM_STYLE.linePen.color())
                 newCurrent[p] = pdi
 
             self.mCurrentProfiles.update(newCurrent)

@@ -32,6 +32,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
 from qgis.gui import *
+from qgis.core import *
 from pyqtgraph.functions import mkPen
 import pyqtgraph as pg
 from pyqtgraph.widgets.PlotWidget import PlotWidget
@@ -335,23 +336,19 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mSpeclib.featureAdded.connect(self.onProfilesAdded)
         self.mSpeclib.featuresDeleted.connect(self.onProfilesRemoved)
         self.mSpeclib.selectionChanged.connect(self.onSelectionChanged)
-        self.mSpeclib.attributeValueChanged.connect(self.onAttributeChanged)
-
+        #self.mSpeclib.attributeValueChanged.connect(self.onAttributeChanged)
+        self.mSpeclib.rendererChanged.connect(self.onRendererChanged)
         self.onProfilesAdded(self.speclib().allFeatureIds())
 
 
         self.updatePlot()
 
-    def onAttributeChanged(self, fid, idx, value):
-        if self.mUpdatesBlocked:
-            return
 
-        name = self.mSpeclib.fields()[idx].name()
-        if name == FIELD_STYLE:
-            style = PlotStyle.fromJSON(value)
-            if isinstance(style, PlotStyle) and fid in self.mPlotDataItems:
-                pdi = self.mPlotDataItems[fid]
-                pdi.setStyle(style)
+    def onRendererChanged(self):
+
+        profiles = self.mSpeclib.profiles(fids=self.mPlotDataItems.keys())
+        self.updateProfileStyles(profiles)
+
 
     def onSelectionChanged(self, selected, deselected):
         if self.mUpdatesBlocked:
@@ -477,6 +474,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """
 
         xUnit = None
+        renderContext = QgsRenderContext()
+        renderContext.setExtent(self.mSpeclib.extent())
+        renderer = self.speclib().renderer().clone()
+        renderer.startRender(renderContext, self.mSpeclib.fields())
         for profile in listOfProfiles:
             assert isinstance(profile, SpectralProfile)
 
@@ -484,15 +485,31 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 xUnit = profile.xUnit()
 
             id = profile.id()
-            if id in self.mPlotDataItems.keys():
-                pdi = self.mPlotDataItems[id]
-                pdi.setStyle(profile.style())
-            else:
+
+            pdi = self.mPlotDataItems.get(id)
+            if not isinstance(pdi, PlotDataItem):
                 pdi = SpectralProfilePlotDataItem(profile)
                 pdi.setClickable(True)
                 pdi.sigClicked.connect(self.onProfileClicked)
                 self.mPlotDataItems[profile.id()] = pdi
 
+            if isinstance(renderer, QgsCategorizedSymbolRenderer):
+                s = ""
+
+            symbol = renderer.symbolForFeature(profile, renderContext)
+            if not isinstance(symbol, QgsSymbol):
+                symbol = renderer.sourceSymbol()
+
+            assert isinstance(symbol, QgsSymbol)
+            if isinstance(symbol, QgsMarkerSymbol):
+                pdi.setColor(symbol.color())
+
+            elif isinstance(symbol, QgsLineSymbol):
+                pdi.setColor(symbol.color())
+
+            elif isinstance(symbol, QgsFillSymbol):
+                pdi.setColor(symbol.color())
+        renderer.stopRender(renderContext)
         if isinstance(xUnit, str):
             self.setXUnit(xUnit)
             self.mXUnitInitialized = True
@@ -807,8 +824,9 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         for v in [self.mInitialDataX, self.mInitialDataY]:
             assert isinstance(v, list)
 
-        self.mDefaultStyle = None
-        self.setStyle(spectralProfile.style())
+
+
+        #self.setStyle(spectralProfile.style())
 
         self.mXValueConversionFunction = lambda v, *args: v
         self.mYValueConversionFunction = lambda v, *args: v
@@ -894,26 +912,11 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         Sets if this profile should appear as "selected"
         :param b: bool
         """
-        if isinstance(self.mDefaultStyle, PlotStyle):
-            if b:
-                self.setLineWidth(self.mDefaultStyle.linePen.width() + 3)
-            else:
-                self.setLineWidth(self.mDefaultStyle.linePen.width())
+        if b:
+            self.setLineWidth(DEFAULT_LINE_WIDTH + 3)
+        else:
+            self.setLineWidth(DEFAULT_LINE_WIDTH)
 
-    def setStyle(self, style:PlotStyle):
-        if not isinstance(style, PlotStyle):
-            from qps.speclib.spectrallibraries import DEFAULT_SPECTRUM_STYLE
-            style = PlotStyle()
-            style.copyFrom(DEFAULT_SPECTRUM_STYLE)
-        self.mDefaultStyle = style
-
-        self.setVisible(style.isVisible())
-
-        self.setSymbol(style.markerSymbol)
-        self.setSymbolBrush(style.markerBrush)
-        self.setSymbolSize(style.markerSize)
-        self.setSymbolPen(style.markerPen)
-        self.setPen(style.linePen)
 
 
     def setColor(self, color:QColor):
