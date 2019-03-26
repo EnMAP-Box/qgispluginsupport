@@ -8,6 +8,12 @@ image: qgis/qgis
 pipelines:
   default:
     - step:
+        services:
+          - docker
+          - pip
+        caches:
+          - docker
+          - pip
         script: # Modify the commands below to build your repository.
           - python -m pip install -r requirements.txt
           # - Xvfb :1
