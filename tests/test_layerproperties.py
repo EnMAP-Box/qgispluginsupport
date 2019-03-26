@@ -88,13 +88,13 @@ class LayerRendererTests(unittest.TestCase):
         canvas = QgsMapCanvas()
         canvas.setLayers([lyr])
         canvas.setExtent(canvas.fullExtent())
-        for i in range(100):
+        for i in range(50):
             print('open {}'.format(i))
             w = RasterLayerProperties(lyr, canvas)
             self.assertIsInstance(w, RasterLayerProperties)
             w.show()
             QApplication.processEvents()
-            time.sleep(1)
+
 
         print('Done')
 
@@ -110,13 +110,13 @@ class LayerRendererTests(unittest.TestCase):
         canvas.setLayers([lyr])
         canvas.setExtent(canvas.fullExtent())
 
-        for i in range(100):
+        for i in range(50):
             print('open {}'.format(i))
             w = VectorLayerProperties(lyr, canvas)
             self.assertIsInstance(w, VectorLayerProperties)
             w.show()
             QApplication.processEvents()
-            time.sleep(1)
+            # time.sleep(1)
 
         print('Done')
 

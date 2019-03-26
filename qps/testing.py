@@ -546,10 +546,13 @@ class TestObjects():
         Create an in-memory ogr.DataSource
         :return: ogr.DataSource
         """
-        path = '/vsimem/tmp' + str(uuid.uuid4()) + '.shp'
-        files = list(file_search(DIR_TESTDATA, '*.shp', recursive=True))
-        assert len(files) > 0
-        dsSrc = ogr.Open(files[0])
+        path = '/vsimem/tmp' + str(uuid.uuid4()) + '.world_map.shp'
+
+        pkgPath = QgsApplication.instance().pkgDataPath()
+        pathSrc = os.path.join(pkgPath, *['resources', 'data', 'world_map.shp'])
+        assert os.path.isfile(pathSrc), 'Unable to find QGIS "world_map.shp"'
+
+        dsSrc = ogr.Open(pathSrc)
         assert isinstance(dsSrc, ogr.DataSource)
         drv = dsSrc.GetDriver()
         assert isinstance(drv, ogr.Driver)
