@@ -159,9 +159,10 @@ class PlotStyleTests(unittest.TestCase):
             reg.initEditors()
 
         registerPlotStyleEditorWidget()
-        self.assertTrue('PlotSettings' in reg.factories().keys())
+        from qps.plotstyling.plotstyling import EDITOR_WIDGET_REGISTRY_KEY
+        self.assertTrue(EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys())
 
-        factory = reg.factories()['PlotSettings']
+        factory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
         self.assertIsInstance(factory, PlotStyleEditorWidgetFactory)
 
         vl = self.create_vectordataset()
