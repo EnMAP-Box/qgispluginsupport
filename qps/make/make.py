@@ -256,7 +256,7 @@ def createResourceIconPackage(dirIcons, pathResourceFile):
                 an = re.sub(r'[-.]', '_', an)
 
                 assert an not in filePathAttributes
-                relpath = os.path.relpath(f, dirData)
+                relpath = os.path.relpath(f, dirIcons)
                 code.append("{} = os.path.join(thisDir,r'{}')".format(an, relpath))
                 filePathAttributes.add(an)
             code.append('\n')
@@ -406,6 +406,12 @@ def compileQGISResourceFiles(pathQGISRepo:str, target:str=None):
     :param target: str, path to directory that contains the compiled QGIS resources. By default it will be
             `<REPOSITORY_ROOT>/qgisresources`
     """
+    if pathQGISRepo is None:
+        pathQGISRepo = os.environ.get('QGIS_REPOSITORY')
+        if isinstance(pathQGISRepo, str):
+            pathQGISRepo = pathQGISRepo.strip("'").strip('"')
+
+
     assert os.path.isdir(pathQGISRepo)
     if not isinstance(target, str):
         target = jp(DIR_REPO, 'qgisresources')
@@ -421,6 +427,7 @@ def compileQGISResourceFiles(pathQGISRepo:str, target:str=None):
 
 if __name__ == '__main__':
 
+    compileQGISResourceFiles(None)
 
     if True:
         searchAndCompileResourceFiles(DIR_REPO)
