@@ -63,7 +63,8 @@ class LayerRendererTests(unittest.TestCase):
         w1 = QgsRendererRasterPropertiesWidget(lyr, canvas, None)
         w1.show()
 
-        QGIS_APP.exec_()
+        if SHOW_GUI:
+            QGIS_APP.exec_()
 
     def test_rasterLayerPropertiesWidget(self):
 
