@@ -10,7 +10,7 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest
+import unittest, os
 from enmapboxtestdata import enmap, hires
 from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()

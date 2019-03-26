@@ -22,7 +22,7 @@ pipelines:
           - ps aux | grep X
           - DISPLAY=:1.0
           - export DISPLAY
-          - python -m unittest discover tests "test_*.py"
+          - python -m unittest discover tests "test_classificationscheme.py"
 
           #- python -m pip install pytest-cov
           #- py.test --cov enmapbox --cov-report term-missing enmapboxtesting
