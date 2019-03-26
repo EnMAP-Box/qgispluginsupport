@@ -33,7 +33,7 @@
 import json, enum
 from qgis.utils import iface
 from qgis.gui import Targets, QgsMapLayerAction
-from pyqtgraph.graphicsItems.PlotItem import PlotItem
+from pyqtgraph import PlotItem
 
 from osgeo import ogr
 import collections
@@ -44,7 +44,7 @@ from qps.plotstyling.plotstyling import PlotStyle, createSetPlotStyleAction
 from qps.plotstyling.plotstyling import EDITOR_WIDGET_REGISTRY_KEY as PlotSettingsEditorWidgetKey
 
 
-#MODULE_IMPORT_PATH = 'enmapbox.gui.speclib.spectrallibraries'
+#MODULE_IMPORT_PATH = 'enmapbox.gui.speclib.spec trallibraries'
 #get to now how we can import this module
 MODULE_IMPORT_PATH = None
 #'timeseriesviewer.plotstyling'
