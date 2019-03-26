@@ -93,7 +93,7 @@ DEFAULT_SPECTRUM_STYLE.markerSymbol = None
 DEFAULT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
 DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.white)
 
-EMPTY_VALUES = [None, NULL, QVariant(), '']
+EMPTY_VALUES = [None, NULL, QVariant(), '', 'None']
 EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None}
 
 FIELD_VALUES = 'values'

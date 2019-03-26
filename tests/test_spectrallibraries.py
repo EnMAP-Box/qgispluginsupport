@@ -138,6 +138,14 @@ class TestIO(unittest.TestCase):
         self.fail()
 
 
+    def test_ENVI_Floh(self):
+        path = r'F:\Temp\FlorianBeyer\speclib.sli'
+
+        sli = EnviSpectralLibraryIO.readFrom(path)
+
+        s = ""
+
+
     def test_ENVI(self):
         import enmapboxtestdata
 
