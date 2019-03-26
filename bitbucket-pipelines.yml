@@ -13,6 +13,9 @@ pipelines:
           #- Xvfb :1
           #- xvfb-run
           #- startx
+          - pushd /usr/src
+          - xvfb-run nose2-3
+          - popd
           - python -m unittest discover tests "test_*.py"
 
           #- python -m pip install pytest-cov
