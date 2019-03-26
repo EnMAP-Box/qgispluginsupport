@@ -10,7 +10,7 @@ from qps.testing import initQgisApplication
 from qps.models import *
 
 QAPP = initQgisApplication()
-SHOW_GUI = True
+SHOW_GUI = False and os.environ.get('CI') is None
 
 class ModelTests(unittest.TestCase):
 

@@ -20,7 +20,7 @@ from qps.testing import initQgisApplication, TestObjects
 from qps.layerproperties import *
 QGIS_APP = initQgisApplication()
 
-SHOW_GUI = True
+SHOW_GUI = False and os.environ.get('CI') is None
 
 class LayerRendererTests(unittest.TestCase):
 

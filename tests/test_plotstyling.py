@@ -28,7 +28,7 @@ from qps.testing import initQgisApplication
 from qps.plotstyling.plotstyling import *
 
 QAPP = initQgisApplication()
-SHOW_GUI = False
+SHOW_GUI = False and os.environ.get('CI') is None
 
 class PlotStyleTests(unittest.TestCase):
 

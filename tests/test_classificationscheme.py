@@ -16,7 +16,7 @@ QGIS_APP = initQgisApplication()
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
-SHOW_GUI = False
+SHOW_GUI = True and os.environ.get('CI') is None
 
 
 

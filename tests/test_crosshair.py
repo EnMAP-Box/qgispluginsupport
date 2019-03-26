@@ -11,10 +11,9 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest, os
-from enmapboxtestdata import enmap, hires
 from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()
-SHOW_GUI = True
+SHOW_GUI = True and os.environ.get('CI') is None
 from qps.crosshair.crosshair import *
 
 
@@ -24,9 +23,8 @@ class CrosshairTests(unittest.TestCase):
     def test_crosshair(self):
         # add site-packages to sys.path as done by enmapboxplugin.py
 
-        TestObjects.createVectorDataSet()
-        lyr = QgsRasterLayer(enmap)
-        lyr2 = QgsRasterLayer(hires)
+        lyr = TestObjects.createRasterLayer()
+        lyr2 = TestObjects.createRasterLayer(ns=2000, nl=3000, nb=3)
         layers = [lyr, lyr2]
         QgsProject.instance().addMapLayers(layers)
         refCanvas = QgsMapCanvas()

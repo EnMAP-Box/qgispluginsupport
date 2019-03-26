@@ -21,7 +21,7 @@ import unittest, tempfile
 from qps.testing import initQgisApplication, installTestdata, TestObjects
 QAPP = initQgisApplication()
 
-installTestdata(False)
+installTestdata()
 
 from enmapboxtestdata import *
 
@@ -36,7 +36,7 @@ from qps.speclib.envi import *
 from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
-SHOW_GUI = True
+SHOW_GUI = False and os.environ.get('CI') is None
 
 import enmapboxtestdata
 

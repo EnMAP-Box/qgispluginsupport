@@ -41,7 +41,6 @@ class testClassTesting(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    SHOW_GUI = False
     unittest.main()
 
 

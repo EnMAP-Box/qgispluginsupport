@@ -25,7 +25,7 @@ QGIS_APP = initQgisApplication()
 from qps.utils import *
 from qps.cursorlocationvalue import *
 
-SHOW_GUI = True
+SHOW_GUI = False and os.environ.get('CI') is None
 
 class CursorLocationTest(unittest.TestCase):
 
