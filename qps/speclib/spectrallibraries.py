@@ -82,22 +82,23 @@ def containsSpeclib(mimeData:QMimeData)->bool:
 FILTERS = 'ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;Geopackage (*.gpkg)'
 
 PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
-CURRENT_SPECTRUM_STYLE = PlotStyle()
-CURRENT_SPECTRUM_STYLE.markerSymbol = None
-CURRENT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
-CURRENT_SPECTRUM_STYLE.linePen.setColor(Qt.green)
+#CURRENT_SPECTRUM_STYLE = PlotStyle()
+#CURRENT_SPECTRUM_STYLE.markerSymbol = None
+#CURRENT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
+#CURRENT_SPECTRUM_STYLE.linePen.setColor(Qt.green)
 
+CURRENT_PROFILE_COLOR = QColor('green')
+DEFAULT_PROFILE_COLOR = QColor('white')
 
-DEFAULT_SPECTRUM_STYLE = PlotStyle()
-DEFAULT_SPECTRUM_STYLE.markerSymbol = None
-DEFAULT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
-DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.white)
+# DEFAULT_SPECTRUM_STYLE = PlotStyle()
+# DEFAULT_SPECTRUM_STYLE.markerSymbol = None
+# DEFAULT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
+# DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.white)
 
 EMPTY_VALUES = [None, NULL, QVariant(), '', 'None']
 EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None}
 
 FIELD_VALUES = 'values'
-FIELD_STYLE = 'style'
 FIELD_NAME = 'name'
 FIELD_FID = 'fid'
 
@@ -356,7 +357,7 @@ def ogrStandardFields()->list:
         #ogr.FieldDefn('y_unit', ogr.OFTString),
         ogr.FieldDefn('source', ogr.OFTString),
         ogr.FieldDefn(FIELD_VALUES, ogr.OFTString),
-        ogr.FieldDefn(FIELD_STYLE, ogr.OFTString),
+        #ogr.FieldDefn(FIELD_STYLE, ogr.OFTString),
         ]
     return fields
 
@@ -881,11 +882,14 @@ class SpectralProfile(QgsFeature):
         return not self.__eq__(other)
     """
     def __len__(self):
-        return len(self.mValues)
+        return len(self.yValues())
 
 
 
 class SpectralLibrary(QgsVectorLayer):
+    """
+    SpectralLibrary
+    """
     _instances = []
 
     @staticmethod
@@ -1127,7 +1131,7 @@ class SpectralLibrary(QgsVectorLayer):
 
 
         readers = AbstractSpectralLibraryIO.__subclasses__()
-        #readers = [r for r in readers if not r is ClipboardIO] + [ClipboardIO]
+
         for cls in sorted(readers, key=lambda r:r.score(uri)):
             if cls.canRead(uri):
                 return cls.readFrom(uri)
@@ -1155,8 +1159,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     sigProgressInfo = pyqtSignal(int, int, str)
 
-    def __init__(self, name='SpectralLibrary', fields:QgsFields=None, uri=None):
-
+    def __init__(self, name='SpectralLibrary', uri=None):
 
         lyrOptions = QgsVectorLayer.LayerOptions(loadDefaultStyle=False, readExtentFromXml=False)
 
@@ -1210,10 +1213,18 @@ class SpectralLibrary(QgsVectorLayer):
         SpectralLibrary.__refs__.append(weakref.ref(self))
 
         self.initTableConfig()
+        self.initRenderer()
+
+    def initRenderer(self):
+        """
+        Initializes the default QgsFeatureRenderer
+        """
+        self.renderer().symbol().setColor(DEFAULT_PROFILE_COLOR)
+        s = ""
 
     def initTableConfig(self):
         """
-        Initializes the QgsAttributeTableConfig
+        Initializes the QgsAttributeTableConfig and further options
         """
         mgr = self.actions()
         assert isinstance(mgr, QgsActionManager)
@@ -1249,6 +1260,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         # set special default editors
         # self.setEditorWidgetSetup(self.fields().lookupField(FIELD_STYLE), QgsEditorWidgetSetup(PlotSettingsEditorWidgetKey, {}))
+
         self.setEditorWidgetSetup(self.fields().lookupField(FIELD_VALUES), QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
 
@@ -1471,30 +1483,41 @@ class SpectralLibrary(QgsVectorLayer):
 
     def groupBySpectralProperties(self, excludeEmptyProfiles=True):
         """
-        Returns SpectralProfiles grouped by:
-            xValues, xUnit and yUnit, e.g. wavelength, wavelength unit ('nm') and y unit ('reflectance')
+        Returns SpectralProfiles grouped by key = (xValues, xUnit and yUnit):
 
-        :return: {(xValues, wlU, yUnit):[list-of-profiles]}
+            xValues: None | [list-of-xvalues with n>0 elements]
+            xUnit: None | str with len(str) > 0, e.g. a wavelength like 'nm'
+            yUnit: None | str with len(str) > 0, e.g. 'reflectance' or '-'
+
+        :return: {(xValues, xUnit, yUnit):[list-of-profiles]}
         """
 
         results = dict()
         for p in self.profiles():
             assert isinstance(p, SpectralProfile)
+
             d = p.values()
+
             if excludeEmptyProfiles:
                 if not isinstance(d['y'], list):
                     continue
                 if not len(d['y']) > 0:
                     continue
-            x = None if d['x'] is None else tuple(d['x'])
-            key = (x, d['xUnit'], d['yUnit'])
+
+            x = tuple(p.xValues())
+            if len(x) == 0:
+                x = None
+            #y = None if d['y'] in [None, []] else tuple(d['y'])
+
+            xUnit = None if d['xUnit'] in [None, ''] else d['xUnit']
+            yUnit = None if d['yUnit'] in [None, ''] else d['yUnit']
+
+            key = (x, xUnit, yUnit)
+
             if key not in results.keys():
                 results[key] = []
             results[key].append(p)
         return results
-
-    def asPickleDump(self):
-        return pickle.dumps(self)
 
     def exportProfiles(self, path:str, **kwds)->list:
         """
@@ -2688,12 +2711,15 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.actionAddAttribute.triggered.connect(self.onAddAttribute)
         self.actionRemoveAttribute.triggered.connect(self.onRemoveAttribute)
 
-
-        self.actionFormView.triggered.connect(lambda : self.mDualView.setView(QgsDualView.AttributeEditor))
-        self.actionTableView.triggered.connect(lambda : self.mDualView.setView(QgsDualView.AttributeTable))
+        self.actionFormView.triggered.connect(lambda: self.mDualView.setView(QgsDualView.AttributeEditor))
+        self.actionTableView.triggered.connect(lambda: self.mDualView.setView(QgsDualView.AttributeTable))
+        # self.actionRenderingView.triggered.connect(lambda : self.mDualView.setView)
         self.actionProperties.triggered.connect(self.showProperties)
         self.btnFormView.setDefaultAction(self.actionFormView)
         self.btnTableView.setDefaultAction(self.actionTableView)
+        self.btnRenderingView.setDefaultAction(self.actionRenderingView)
+        self.btnRenderingView.setVisible(False)
+
         self.btnSpeclibProperties.setDefaultAction(self.actionProperties)
 
         self.actionCutSelectedRows.triggered.connect(self.cutSelectedFeatures)
@@ -3014,7 +3040,7 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
             for i, p in enumerate(profiles):
                 pdi = SpectralProfilePlotDataItem(p)
-                pdi.setColor(CURRENT_SPECTRUM_STYLE.linePen.color())
+                pdi.setColor(CURRENT_PROFILE_COLOR)
                 newCurrent[p] = pdi
 
             self.mCurrentProfiles.update(newCurrent)
