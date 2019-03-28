@@ -66,5 +66,6 @@ class TestQgsFeature(unittest.TestCase):
         result = layer.isValid()
 
 
+
 if __name__ == '__main__':
     unittest.main()

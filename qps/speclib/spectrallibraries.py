@@ -909,10 +909,13 @@ class SpectralLibrary(QgsVectorLayer):
             else:
                 return None
         elif MIMEDATA_SPECLIB in mimeData.formats():
-            #unpickle
             return SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
+
         elif MIMEDATA_TEXT in mimeData.formats():
-            return None
+            txt = mimeData.text()
+            from qps.speclib.csvdata import CSVSpectralLibraryIO
+            return CSVSpectralLibraryIO.fromString(txt)
+
         elif MIMEDATA_URL in mimeData.formats():
             return SpectralLibrary.readFrom(mimeData.urls()[0])
 
@@ -1277,7 +1280,7 @@ class SpectralLibrary(QgsVectorLayer):
         mimeData = QMimeData()
 
         for format in formats:
-            assert format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_TEXT, MIMEDATA_URL]
+            assert format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_URL]
             if format == MIMEDATA_SPECLIB_LINK:
                 global SPECLIB_CLIPBOARD
                 thisID = id(self)
@@ -1289,9 +1292,9 @@ class SpectralLibrary(QgsVectorLayer):
             elif format == MIMEDATA_URL:
                 mimeData.setUrls([QUrl(self.source())])
             elif format == MIMEDATA_TEXT:
-                pass
-                #txt = self.asString(self)
-                #mimeData.setText(txt)
+                from ..speclib.csvdata import CSVSpectralLibraryIO
+                txt = CSVSpectralLibraryIO.asString(self)
+                mimeData.setText(txt)
 
         return mimeData
 
@@ -1521,7 +1524,8 @@ class SpectralLibrary(QgsVectorLayer):
 
     def exportProfiles(self, path:str, **kwds)->list:
         """
-        Exports profiles to a file
+        Exports profiles to a file. This wrapper tries to identify the required SpectralLibraryIO from the file-path suffix.
+        in `path`.
         :param path: str, filepath
         :param kwds: keywords to be used in specific `AbstractSpectralLibraryIO.write(...)` methods.
         :return: list of written files
@@ -1538,7 +1542,8 @@ class SpectralLibrary(QgsVectorLayer):
 
             if ext in ['.csv']:
                 from .csvdata import CSVSpectralLibraryIO
-                return CSVSpectralLibraryIO.write(self, path, dialect=kwds.get('dialect'))
+                from csv import excel_tab
+                return CSVSpectralLibraryIO.write(self, path, dialect=kwds.get('dialect', excel_tab))
 
         return []
 

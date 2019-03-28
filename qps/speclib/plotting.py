@@ -38,9 +38,7 @@ import pyqtgraph as pg
 from pyqtgraph.widgets.PlotWidget import PlotWidget
 from pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from qps.utils import METRIC_EXPONENTS, convertMetricUnit
-from qps.plotstyling.plotstyling import PlotStyle, PlotStyleDialog, MARKERSYMBOLS2QGIS_SYMBOLS, createSetPlotStyleAction
-from qps.plotstyling.plotstyling import EDITOR_WIDGET_REGISTRY_KEY as PlotSettingsEditorWidgetKey
-from .spectrallibraries import SpectralProfile, SpectralLibrary, FIELD_FID, FIELD_STYLE, FIELD_VALUES, FIELD_NAME, MIMEDATA_SPECLIB_LINK
+from .spectrallibraries import SpectralProfile, SpectralLibrary, MIMEDATA_SPECLIB_LINK
 
 
 BAND_INDEX = 'Band Index'
@@ -830,7 +828,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         self.mXValueConversionFunction = lambda v, *args: v
         self.mYValueConversionFunction = lambda v, *args: v
-
+        self.mLastLineWidth = self.pen().width()
         self.applyMapFunctions()
 
     def spectralProfile(self)->SpectralProfile:
@@ -912,10 +910,11 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         Sets if this profile should appear as "selected"
         :param b: bool
         """
+
         if b:
-            self.setLineWidth(DEFAULT_LINE_WIDTH + 3)
+            self.setLineWidth(self.mLastLineWidth + 3)
         else:
-            self.setLineWidth(DEFAULT_LINE_WIDTH)
+            self.setLineWidth(self.mLastLineWidth)
 
 
 
@@ -950,6 +949,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         pen = mkPen(self.opts['pen'])
         assert isinstance(pen, QPen)
         pen.setWidth(width)
+        self.mLastLineWidth = width
         self.setPen(pen)
 
     def mouseClickEvent(self, ev):

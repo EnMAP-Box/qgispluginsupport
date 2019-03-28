@@ -206,7 +206,7 @@ def writeCSVMetadata(pathCSV:str, profiles:list):
     if len(profiles) == 0:
         return
 
-    excludedNames = CSV_PROFILE_NAME_COLUMN_NAMES + [CSV_GEOMETRY_COLUMN, FIELD_FID, FIELD_VALUES, FIELD_STYLE]
+    excludedNames = CSV_PROFILE_NAME_COLUMN_NAMES + [CSV_GEOMETRY_COLUMN, FIELD_FID, FIELD_VALUES]
     fieldNames = [n for n in profiles[0].fields().names() if n not in excludedNames]
     allFieldNames = ['spectra names'] + fieldNames + [CSV_GEOMETRY_COLUMN]
 
