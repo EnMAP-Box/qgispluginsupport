@@ -63,6 +63,7 @@ class LayerRendererTests(unittest.TestCase):
         w1 = QgsRendererRasterPropertiesWidget(lyr, canvas, None)
         w1.show()
 
+        w1 = QgsRendererPropertiesDialog(lyr, )
         if SHOW_GUI:
             QGIS_APP.exec_()
 

@@ -227,6 +227,7 @@ def initQgisApplication(*args, qgisResourceDir:str=None,
 
 
         # init standard EditorWidgets
+
         if loadEditorWidgets:
             QgsGui.editorWidgetRegistry().initEditors()
 

@@ -155,7 +155,7 @@ def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None):
     :param targetDir: str, output directory to write the compiled *.py files to.
            Defaults to the *.qrc's directory
     """
-    #find ui files
+    # find ui files
     assert os.path.isdir(dirRoot)
     ui_files = list(file_search(dirRoot, '*.ui', recursive=True))
 

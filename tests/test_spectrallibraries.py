@@ -20,7 +20,8 @@
 import unittest, tempfile
 from qps.testing import initQgisApplication, installTestdata, TestObjects
 QAPP = initQgisApplication()
-
+from qps import initResources
+initResources()
 installTestdata()
 
 from enmapboxtestdata import *
@@ -107,33 +108,61 @@ class TestIO(unittest.TestCase):
         self.assertEqual(slib1, slib2)
         s = ""
 
+    def test_CSV2(self):
+        speclib = self.createSpeclib()
+        #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs2.out.csv')
+        pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+        CSVSpectralLibraryIO.write(speclib, pathCSV)
+
+        self.assertTrue(os.path.isfile(pathCSV))
+        dialect = CSVSpectralLibraryIO.canRead(pathCSV)
+        self.assertTrue(dialect is not None)
+        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect)
+        self.assertTrue(len(speclib) == len(speclib2))
+
+
     def test_CSV(self):
         # TEST CSV writing
-        sl1 = self.createSpeclib()
+        speclib = self.createSpeclib()
+
+        # txt = CSVSpectralLibraryIO.asString(speclib)
+
+
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        writtenFiles = sl1.exportProfiles(pathCSV)
+        pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs3.out.csv')
+        writtenFiles = speclib.exportProfiles(pathCSV)
         self.assertIsInstance(writtenFiles, list)
         self.assertTrue(len(writtenFiles) == 1)
 
-        n = 0
-        for path in writtenFiles:
-            lines = None
-            with open(path, 'r') as f:
-                lines = f.read()
-            self.assertTrue(CSVSpectralLibraryIO.canRead(path), msg='Unable to read {}'.format(path))
-            sl_read1 = CSVSpectralLibraryIO.readFrom(path)
-            sl_read2 = SpectralLibrary.readFrom(path)
-            self.assertTrue(len(sl_read1) > 0)
-            self.assertIsInstance(sl_read1, SpectralLibrary)
-            self.assertIsInstance(sl_read2, SpectralLibrary)
 
-            n += len(sl_read1)
-        self.assertEqual(n, len(sl1)-1, msg='Should return {} instead {} SpectraProfiles'.format(len(sl1)-1, n))
+        path = writtenFiles[0]
+        lines = None
+        with open(path, 'r') as f:
+            lines = f.read()
+        self.assertTrue(CSVSpectralLibraryIO.canRead(path), msg='Unable to read {}'.format(path))
+        sl_read1 = CSVSpectralLibraryIO.readFrom(path)
+        sl_read2 = SpectralLibrary.readFrom(path)
 
-        self.SPECLIB = sl1
+        self.assertTrue(len(sl_read1) > 0)
+        self.assertIsInstance(sl_read1, SpectralLibrary)
+        self.assertIsInstance(sl_read2, SpectralLibrary)
 
-    def test_ASD(self):
-        self.fail()
+        self.assertEqual(len(sl_read1), len(speclib), msg='Should return {} instead of {} SpectralProfiles'.format(len(speclib), len(sl_read1)))
+
+        profilesA = sorted(speclib.profiles(), key=lambda p: p.id())
+        profilesB = sorted(sl_read1.profiles(), key=lambda p: p.attribute('fid'))
+
+        for p1, p2 in zip(profilesA, profilesB):
+            self.assertIsInstance(p1, SpectralProfile)
+            self.assertIsInstance(p2, SpectralProfile)
+            self.assertEqual(p1.name(), p2.name())
+            self.assertEqual(p1.xUnit(), p2.xUnit())
+            self.assertEqual(p1.yUnit(), p2.yUnit())
+
+        self.SPECLIB = speclib
+
+    #def test_ASD(self):
+    #    self.fail()
 
 
     def test_ENVI_Floh(self):
@@ -154,8 +183,8 @@ class TestIO(unittest.TestCase):
         p0 = sl1[0]
         self.assertIsInstance(p0, SpectralProfile)
 
-        self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values', 'style', 'level_1', 'level_2', 'level_3'])
-        self.assertEqual(p0.fieldNames(), ['fid', 'name', 'source', 'values', 'style', 'level_1', 'level_2', 'level_3'])
+        self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
+        self.assertEqual(p0.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
 
         self.assertEqual(p0.attribute('name'), p0.name())
         self.assertEqual(p0.attribute('name'), 'red clay tile 1')
@@ -489,26 +518,32 @@ class TestCore(unittest.TestCase):
         sl1.commitChanges()
 
 
-        #test link
+        # test link
         mimeData = sl1.mimeData(MIMEDATA_SPECLIB_LINK)
 
-        slRetrievd = SpectralLibrary.readFromMimeData(mimeData)
-        self.assertEqual(slRetrievd, sl1)
+        slRetrieved = SpectralLibrary.readFromMimeData(mimeData)
+        self.assertEqual(slRetrieved, sl1)
 
-
+        writeOnly = []
         for format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT]:
             print('Test MimeData I/O "{}"'.format(format))
             mimeData = sl1.mimeData(format)
             self.assertIsInstance(mimeData, QMimeData)
-            slRetrievd = SpectralLibrary.readFromMimeData(mimeData)
-            self.assertIsInstance(slRetrievd, SpectralLibrary, 'Re-Import from MIMEDATA failed for MIME type "{}"'.format(format))
 
-            n = len(slRetrievd)
+            if format in writeOnly:
+                continue
+
+            slRetrieved = SpectralLibrary.readFromMimeData(mimeData)
+            self.assertIsInstance(slRetrieved, SpectralLibrary, 'Re-Import from MIMEDATA failed for MIME type "{}"'.format(format))
+
+            n = len(slRetrieved)
             self.assertEqual(n, len(sl1))
-            for p, pr in zip(sl1.profiles(), slRetrievd.profiles()):
+            for p, pr in zip(sl1.profiles(), slRetrieved.profiles()):
                 self.assertIsInstance(p, SpectralProfile)
                 self.assertIsInstance(pr, SpectralProfile)
-                self.assertEqual(p.fieldNames(),pr.fieldNames())
+                self.assertEqual(p.fieldNames(), pr.fieldNames())
+                if p.yValues() != pr.yValues():
+                    s = ""
                 self.assertEqual(p.yValues(), pr.yValues())
 
                 self.assertEqual(p.xValues(), pr.xValues())
@@ -517,7 +552,7 @@ class TestCore(unittest.TestCase):
                 self.assertEqual(p, pr)
 
 
-            self.assertEqual(sl1, slRetrievd)
+            self.assertEqual(sl1, slRetrieved)
 
     def test_SpeclibWidgetCurrentProfilOverlayerXUnit(self):
 
@@ -538,6 +573,26 @@ class TestCore(unittest.TestCase):
         self.assertEqual(sw.plotWidget().xUnit(), sp.xUnit())
 
 
+    def test_groupBySpectralProperties(self):
+
+        sl1 = self.createSpeclib()
+        groups = sl1.groupBySpectralProperties(excludeEmptyProfiles=False)
+        self.assertTrue(len(groups) > 0)
+        for key, profiles in groups.items():
+            self.assertTrue(len(key) == 3)
+            xvalues, xunit, yunit = key
+            self.assertTrue(xvalues is None or isinstance(xvalues, tuple) and len(xvalues) > 0)
+            self.assertTrue(xunit is None or isinstance(xunit, str) and len(xunit) > 0)
+            self.assertTrue(yunit is None or isinstance(yunit, str) and len(yunit) > 0)
+
+            self.assertIsInstance(profiles, list)
+            self.assertTrue(len(profiles) > 0)
+
+            l = len(profiles[0].xValues())
+
+            for p in profiles:
+                self.assertEqual(l, len(p.xValues()))
+            s = ""
 
 
     def test_SpectralLibrary(self):
@@ -591,7 +646,7 @@ class TestCore(unittest.TestCase):
 
         self.assertEqual(p.values(), sp1.values(), msg='Unequal values:\n\t{}\n\t{}'.format(str(p.values()), str(sp1.values())))
         self.assertEqual(speclib[0].values(), sp1.values())
-        self.assertEqual(speclib[0].style(), sp1.style())
+
         #self.assertNotEqual(speclib[0], sp1) #because sl1 has an FID
 
 
@@ -812,7 +867,6 @@ class TestCore(unittest.TestCase):
         vl.startEditing()
         value = eww.value()
         f = vl.getFeature(1)
-        f.setAttribute('style', value)
         self.assertTrue(vl.updateFeature(f))
 
         if SHOW_GUI:
@@ -883,15 +937,16 @@ class TestCore(unittest.TestCase):
             speclib.selectByIds(ids)
 
             n = 0
-            defaultWidth = DEFAULT_SPECTRUM_STYLE.linePen.width()
+            DEFAULT_LINE_WIDTH = 1
+
             for pdi in pw.plotItem.items:
                 if isinstance(pdi, SpectralProfilePlotDataItem):
-                    #print(pdi.mID)
+
                     width = pdi.pen().width()
                     if pdi.id() in ids:
-                        self.assertTrue(width > defaultWidth)
+                        self.assertTrue(width > DEFAULT_LINE_WIDTH)
                     else:
-                        self.assertTrue(width == defaultWidth)
+                        self.assertTrue(width == DEFAULT_LINE_WIDTH)
 
             pdis = pw._spectralProfilePDIs()
             self.assertTrue(len(pdis) == len(speclib))
@@ -962,16 +1017,12 @@ class TestCore(unittest.TestCase):
     def test_SpectralLibraryWidget(self):
 
 
-        #speclib = self.createSpeclib()
+        # speclib = self.createSpeclib()
+
         import enmapboxtestdata
-        speclib = self.createSpeclib()
 
         speclib = SpectralLibrary.readFrom(enmapboxtestdata.library)
         slw = SpectralLibraryWidget(speclib=speclib)
-
-        #slw.mSpeclib.startEditing()
-        #slw.addSpeclib(speclib)
-        #slw.mSpeclib.commitChanges()
 
         QgsProject.instance().addMapLayer(slw.speclib())
 
