@@ -63,7 +63,6 @@ class LayerRendererTests(unittest.TestCase):
         w1 = QgsRendererRasterPropertiesWidget(lyr, canvas, None)
         w1.show()
 
-        w1 = QgsRendererPropertiesDialog(lyr, )
         if SHOW_GUI:
             QGIS_APP.exec_()
 
@@ -90,7 +89,7 @@ class LayerRendererTests(unittest.TestCase):
         canvas.setLayers([lyr])
         canvas.setExtent(canvas.fullExtent())
         for i in range(50):
-            print('open {}'.format(i))
+            #print('open {}'.format(i))
             w = RasterLayerProperties(lyr, canvas)
             self.assertIsInstance(w, RasterLayerProperties)
             w.show()
@@ -112,7 +111,7 @@ class LayerRendererTests(unittest.TestCase):
         canvas.setExtent(canvas.fullExtent())
 
         for i in range(50):
-            print('open {}'.format(i))
+            #print('open {}'.format(i))
             w = VectorLayerProperties(lyr, canvas)
             self.assertIsInstance(w, VectorLayerProperties)
             w.show()
