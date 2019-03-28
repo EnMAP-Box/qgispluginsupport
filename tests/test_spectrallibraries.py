@@ -37,7 +37,7 @@ from qps.speclib.envi import *
 from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
-SHOW_GUI = False and os.environ.get('CI') is None
+SHOW_GUI = True and os.environ.get('CI') is None
 
 import enmapboxtestdata
 

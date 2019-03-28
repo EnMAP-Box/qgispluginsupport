@@ -828,7 +828,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         self.mXValueConversionFunction = lambda v, *args: v
         self.mYValueConversionFunction = lambda v, *args: v
-        self.mLastLineWidth = self.pen().width()
+        self.mDefaultLineWidth = self.pen().width()
         self.applyMapFunctions()
 
     def spectralProfile(self)->SpectralProfile:
@@ -912,9 +912,9 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         """
 
         if b:
-            self.setLineWidth(self.mLastLineWidth + 3)
+            self.setLineWidth(self.mDefaultLineWidth + 3)
         else:
-            self.setLineWidth(self.mLastLineWidth)
+            self.setLineWidth(self.mDefaultLineWidth)
 
 
 
@@ -949,7 +949,6 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         pen = mkPen(self.opts['pen'])
         assert isinstance(pen, QPen)
         pen.setWidth(width)
-        self.mLastLineWidth = width
         self.setPen(pen)
 
     def mouseClickEvent(self, ev):
