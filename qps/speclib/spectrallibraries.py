@@ -1171,11 +1171,11 @@ class SpectralLibrary(QgsVectorLayer):
             existing_vsi_files = vsiSpeclibs()
             assert isinstance(existing_vsi_files, list)
             i = 0
-            uri = pathlib.PurePosixPath(VSI_DIR) / '{}.gpkg'.format(name)
-            while uri.as_posix() in existing_vsi_files:
+            uri = (pathlib.Path(VSI_DIR) / '{}.gpkg'.format(name)).as_posix()
+            while uri in existing_vsi_files:
                 i += 1
-                uri = pathlib.PurePosixPath(VSI_DIR) / '{}{:03}.gpkg'.format(name, i)
-            uri = uri.as_posix()
+                uri = (pathlib.Path(VSI_DIR) / '{}{:03}.gpkg'.format(name, i)).as_posix()
+
             drv = ogr.GetDriverByName('GPKG')
             assert isinstance(drv, ogr.Driver)
             co = ['VERSION=AUTO']
