@@ -1014,6 +1014,15 @@ class TestCore(unittest.TestCase):
 
         self.assertTrue(True)
 
+    def test_multiinstances(self):
+
+        sl1 = SpectralLibrary(name='A')
+        sl2 = SpectralLibrary(name='B')
+
+        self.assertIsInstance(sl1, SpectralLibrary)
+        self.assertIsInstance(sl2, SpectralLibrary)
+        self.assertNotEqual(id(sl1), id(sl2))
+
     def test_SpectralLibraryWidget(self):
 
 
