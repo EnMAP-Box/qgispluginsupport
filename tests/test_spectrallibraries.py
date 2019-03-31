@@ -1025,7 +1025,6 @@ class TestCore(unittest.TestCase):
 
     def test_SpectralLibraryWidget(self):
 
-
         # speclib = self.createSpeclib()
 
         import enmapboxtestdata
