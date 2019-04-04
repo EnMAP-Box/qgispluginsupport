@@ -876,7 +876,7 @@ class TestCore(unittest.TestCase):
             QAPP.exec_()
 
     def test_PyQtGraphPlot(self):
-        import pyqtgraph as pg
+        import qps.externals.pyqtgraph as pg
         pg.systemInfo()
 
         plotWidget = pg.plot(title="Three plot curves")
@@ -1131,7 +1131,12 @@ class TestCore(unittest.TestCase):
             tb.show()
             QAPP.exec_()
 
+
+
 if __name__ == '__main__':
 
     SHOW_GUI = False
     unittest.main()
+
+
+QAPP.quit()

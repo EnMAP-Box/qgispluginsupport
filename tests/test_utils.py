@@ -19,7 +19,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
-from qps.testing import initQgisApplication
+from qps.testing import initQgisApplication, TestObjects
 SHOW_GUI = False and os.environ.get('CI') is None
 QGIS_APP = initQgisApplication()
 from qps.utils import *
@@ -117,8 +117,8 @@ class testClassUtils(unittest.TestCase):
 
     def test_coordinateTransformations(self):
 
-        ds = gdalDataset(enmap)
-        lyr = QgsRasterLayer(enmap)
+        ds = TestObjects.inMemoryImage(300, 500)
+        lyr = QgsRasterLayer(ds.GetFileList()[0])
 
         self.assertEqual(ds.GetGeoTransform(), layerGeoTransform(lyr))
 
@@ -127,27 +127,29 @@ class testClassUtils(unittest.TestCase):
         gt = ds.GetGeoTransform()
         crs = QgsCoordinateReferenceSystem(ds.GetProjection())
 
-        #self.assertTrue(crs.isValid())
+        self.assertTrue(crs.isValid())
 
-        geoCoordinate = QgsPointXY(gt[0], gt[3])
-        pxCoordinate = geo2px(geoCoordinate, gt)
-        pxCoordinate2 = geo2px(geoCoordinate, lyr)
+        geoCoordinateUL = QgsPointXY(gt[0], gt[3])
+        shiftToCenter = QgsVector(gt[1]*0.5, gt[5]*0.5)
+        geoCoordinateCenter = geoCoordinateUL + shiftToCenter
+        pxCoordinate = geo2px(geoCoordinateUL, gt)
+        pxCoordinate2 = geo2px(geoCoordinateUL, lyr)
         self.assertEqual(pxCoordinate.x(), 0)
         self.assertEqual(pxCoordinate.y(), 0)
-        self.assertAlmostEqual(px2geo(pxCoordinate, gt), geoCoordinate)
+        self.assertAlmostEqual(px2geo(pxCoordinate, gt), geoCoordinateCenter)
 
         self.assertEqual(pxCoordinate, pxCoordinate2)
 
-        spatialPoint = SpatialPoint(crs, geoCoordinate)
+        spatialPoint = SpatialPoint(crs, geoCoordinateUL)
         pxCoordinate = geo2px(spatialPoint, gt)
         self.assertEqual(pxCoordinate.x(), 0)
         self.assertEqual(pxCoordinate.y(), 0)
-        self.assertAlmostEqual(px2geo(pxCoordinate, gt), geoCoordinate)
+        self.assertAlmostEqual(px2geo(pxCoordinate, gt), geoCoordinateUL + shiftToCenter)
 
 
     def test_createQgsField(self):
 
-        values = [1,2.3,'text',
+        values = [1, 2.3, 'text',
                   np.int8(1),
                   np.int16(1),
                   np.int32(1),
@@ -223,3 +225,4 @@ if __name__ == "__main__":
 
 
 
+QGIS_APP.quit()
