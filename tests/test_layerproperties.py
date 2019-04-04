@@ -20,38 +20,51 @@ from qps.testing import initQgisApplication, TestObjects
 from qps.layerproperties import *
 QGIS_APP = initQgisApplication()
 
-SHOW_GUI = True
+SHOW_GUI = False and os.environ.get('CI') is None
 
 class LayerRendererTests(unittest.TestCase):
 
 
 
     def test_defaultRenderer(self):
+
         #1 band, byte
         ds = TestObjects.inMemoryImage(nb=1, eType=gdal.GDT_Byte)
         lyr = QgsRasterLayer(ds.GetFileList()[0])
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsSingleBandGrayRenderer)
 
-        #1 band, classification
+        # 1 band, classification
         ds = TestObjects.inMemoryImage(nc=3)
         lyr = QgsRasterLayer(ds.GetFileList()[0])
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsPalettedRasterRenderer)
 
-        #3 bands, byte
+        # 3 bands, byte
         ds = TestObjects.inMemoryImage(nb=3, eType=gdal.GDT_Byte)
         lyr = QgsRasterLayer(ds.GetFileList()[0])
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
-
-        #10 bands, int
+        # 10 bands, int
         ds = TestObjects.inMemoryImage(nb=10, eType=gdal.GDT_Int16)
         lyr = QgsRasterLayer(ds.GetFileList()[0])
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
+    def test_QgsMapLayerConfigWidget(self):
+
+        lyr = TestObjects.createRasterLayer(nb=3)
+        QgsProject.instance().addMapLayer(lyr)
+        canvas = QgsMapCanvas()
+        canvas.setLayers([lyr])
+        canvas.setExtent(canvas.fullExtent())
+
+        w1 = QgsRendererRasterPropertiesWidget(lyr, canvas, None)
+        w1.show()
+
+        if SHOW_GUI:
+            QGIS_APP.exec_()
 
     def test_rasterLayerPropertiesWidget(self):
 
@@ -68,7 +81,6 @@ class LayerRendererTests(unittest.TestCase):
             w.show()
             QGIS_APP.exec_()
 
-
     def test_rasterLayerPropertiesWidgetRepeated(self):
 
         lyr = TestObjects.createRasterLayer(nb=3)
@@ -76,13 +88,13 @@ class LayerRendererTests(unittest.TestCase):
         canvas = QgsMapCanvas()
         canvas.setLayers([lyr])
         canvas.setExtent(canvas.fullExtent())
-        for i in range(100):
-            print('open {}'.format(i))
+        for i in range(50):
+            #print('open {}'.format(i))
             w = RasterLayerProperties(lyr, canvas)
             self.assertIsInstance(w, RasterLayerProperties)
             w.show()
             QApplication.processEvents()
-            time.sleep(1)
+
 
         print('Done')
 
@@ -98,13 +110,13 @@ class LayerRendererTests(unittest.TestCase):
         canvas.setLayers([lyr])
         canvas.setExtent(canvas.fullExtent())
 
-        for i in range(100):
-            print('open {}'.format(i))
+        for i in range(50):
+            #print('open {}'.format(i))
             w = VectorLayerProperties(lyr, canvas)
             self.assertIsInstance(w, VectorLayerProperties)
             w.show()
             QApplication.processEvents()
-            time.sleep(1)
+            # time.sleep(1)
 
         print('Done')
 

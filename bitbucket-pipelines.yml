@@ -8,12 +8,36 @@ image: qgis/qgis
 pipelines:
   default:
     - step:
+        services:
+          - docker
+        caches:
+          - docker
+          - pip
         script: # Modify the commands below to build your repository.
           - python -m pip install -r requirements.txt
-          #- Xvfb :1
-          #- xvfb-run
-          #- startx
-          - python -m unittest discover tests "test_*.py"
+          # - Xvfb :1
+          # - xvfb-run
+          # - startx
+          # - pushd /usr/src
+          # - xvfb-run nose2-3
+          # - popd
 
-          #- python -m pip install pytest-cov
-          #- py.test --cov enmapbox --cov-report term-missing enmapboxtesting
+          - apt-get update
+          - apt-get install xvfb
+          - Xvfb :1 -screen 0 1024x768x16 &> xvfb.log  &
+          - ps aux | grep X
+          - DISPLAY=:1.0
+          - export DISPLAY
+          - python -m unittest discover tests "test_classificationscheme.py"
+          - python -m unittest discover tests "test_crosshair.py"
+          - python -m unittest discover tests "test_cursorlocationvalues.py"
+          - python -m unittest discover tests "test_init.py"
+          - python -m unittest discover tests "test_layerproperties.py"
+          - python -m unittest discover tests "test_maptools.py"
+          - python -m unittest discover tests "test_models.py"
+          - python -m unittest discover tests "test_plotstyling.py"
+          - python -m unittest discover tests "test_spectrallibraries.py"
+          - python -m unittest discover tests "test_testing.py"
+          - python -m unittest discover tests "test_utils.py"
+          # - python -m pip install pytest-cov
+          # - py.test --cov enmapbox --cov-report term-missing enmapboxtesting

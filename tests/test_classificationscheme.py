@@ -8,7 +8,7 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import unittest
 import tempfile
-import enmapboxtestdata
+
 
 from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()
@@ -16,7 +16,7 @@ QGIS_APP = initQgisApplication()
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
-SHOW_GUI = True
+SHOW_GUI = True and os.environ.get('CI') is None
 
 
 
@@ -52,7 +52,9 @@ class TestsClassificationScheme(TestCase):
 
     def createRasterLayer(self)->QgsRasterLayer:
 
-        rl = QgsRasterLayer(enmapboxtestdata.hires)
+
+        rl = TestObjects.createRasterLayer(nb=3)
+
 
         renderer = QgsPalettedRasterRenderer(None, 1, {})
         assert isinstance(renderer, QgsPalettedRasterRenderer)
@@ -410,7 +412,7 @@ class TestsClassificationScheme(TestCase):
 
     def test_io_CSV(self):
 
-        testDir = os.path.dirname(enmapboxtestdata.library)
+
 
         pathTmp = tempfile.mktemp(suffix='.csv')
 
@@ -455,7 +457,7 @@ class TestsClassificationScheme(TestCase):
 
     def test_io_QML(self):
 
-        testDir = os.path.dirname(enmapboxtestdata.library)
+        testDir = tempfile.gettempdir()
         qmFiles = list(file_search(testDir, 'LandCov_*.qml'))
 
         pathTmp = tempfile.mktemp(suffix='.qml')

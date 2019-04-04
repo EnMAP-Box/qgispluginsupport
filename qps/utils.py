@@ -929,6 +929,9 @@ def parseWavelength(dataset):
                         tmp = re.findall(r'\d+', values)  # find integers
                     if len(tmp) == dataset.RasterCount:
                         wl = np.asarray([float(w) for w in tmp])
+                    if wl is None and len(tmp) > 0 and len(tmp) != dataset.RasterCount:
+                        print('Wavelength definition in "{}" contains {} instead {} values'
+                              .format(key, len(tmp), dataset.RasterCount), file=sys.stderr)
 
                 if re.search(r'wavelength.units?', key):
                     if re.search(r'(Micrometers?|um)', values, re.I):
@@ -1073,14 +1076,9 @@ def check_vsimem()->bool:
         assert isinstance(layer, QgsRasterLayer)
         result = layer.isValid()
 
-        s = ""
-
-
-    except:
+    except Exception as ex:
         return False
     return result
-
-
 
 def layerGeoTransform(rasterLayer:QgsRasterLayer)->tuple:
     """
