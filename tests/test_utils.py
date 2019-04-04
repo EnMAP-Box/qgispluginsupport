@@ -24,7 +24,7 @@ SHOW_GUI = False and os.environ.get('CI') is None
 QGIS_APP = initQgisApplication()
 from qps.utils import *
 
-from enmapboxtestdata import enmap
+
 
 
 class testClassUtils(unittest.TestCase):
@@ -99,7 +99,9 @@ class testClassUtils(unittest.TestCase):
 
     def test_gdalDataset(self):
 
-        ds1 = gdalDataset(enmap)
+        ds = TestObjects.inMemoryImage()
+        path = ds.GetFileList()[0]
+        ds1 = gdalDataset(path)
         self.assertIsInstance(ds1, gdal.Dataset)
         ds2 = gdalDataset(ds1)
         self.assertEqual(ds1, ds2)
@@ -107,7 +109,13 @@ class testClassUtils(unittest.TestCase):
 
     def test_bandNames(self):
 
-        validSources = [QgsRasterLayer(self.wmsUri,'', 'wms'),enmap, QgsRasterLayer(enmap), gdal.Open(enmap)]
+        ds = TestObjects.inMemoryImage()
+        pathRaster = ds.GetFileList()[0]
+
+        validSources = [QgsRasterLayer(self.wmsUri, '', 'wms'),
+                        pathRaster,
+                        QgsRasterLayer(pathRaster),
+                        gdal.Open(pathRaster)]
 
         for src in validSources:
             names = displayBandNames(src, leadingBandNumber=True)
@@ -223,6 +231,5 @@ if __name__ == "__main__":
     SHOW_GUI = False
     unittest.main()
 
-
-
 QGIS_APP.quit()
+
