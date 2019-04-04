@@ -1,4 +1,7 @@
-# QGIS Plugin Support (QPS)
+# QGIS Plugin Support (QPS) 
+![build status](https://img.shields.io/bitbucket/pipelines/jakimowb/qgispluginsupport.svg)
+
+
 
 This is a small library to support programming QGIS Plugins.
 
