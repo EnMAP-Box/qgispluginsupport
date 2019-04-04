@@ -167,35 +167,20 @@ class TestIO(unittest.TestCase):
         except:
             pass
 
-
-    #def test_ASD(self):
-    #    self.fail()
-
-
-    def test_ENVI_Floh(self):
-        path = r'F:\Temp\FlorianBeyer\speclib.sli'
-
-        sli = EnviSpectralLibraryIO.readFrom(path)
-
-        s = ""
-
-
     def test_ENVI(self):
-        import enmapboxtestdata
 
-        pathESL = enmapboxtestdata.library
+
+        pathESL = speclibpath
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL)
 
         self.assertIsInstance(sl1, SpectralLibrary)
         p0 = sl1[0]
         self.assertIsInstance(p0, SpectralProfile)
 
-        self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
-        self.assertEqual(p0.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
+        self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values'])
+        self.assertEqual(p0.fieldNames(), ['fid', 'name', 'source', 'values'])
 
         self.assertEqual(p0.attribute('name'), p0.name())
-        self.assertEqual(p0.attribute('name'), 'red clay tile 1')
-        self.assertEqual(p0.attribute('level_1'), 'impervious')
 
 
         sl2 = SpectralLibrary.readFrom(pathESL)
@@ -1028,9 +1013,7 @@ class TestCore(unittest.TestCase):
 
         # speclib = self.createSpeclib()
 
-        import enmapboxtestdata
-
-        speclib = SpectralLibrary.readFrom(enmapboxtestdata.library)
+        speclib = SpectralLibrary.readFrom(speclibpath)
         slw = SpectralLibraryWidget(speclib=speclib)
 
         QgsProject.instance().addMapLayer(slw.speclib())
@@ -1134,13 +1117,9 @@ class TestCore(unittest.TestCase):
         btn2 = tb.findChildren(QToolButton)[2]
         self.assertIsInstance(btn2, QToolButton)
 
-
-
         if SHOW_GUI:
             tb.show()
             QAPP.exec_()
-
-
 
 if __name__ == '__main__':
 
