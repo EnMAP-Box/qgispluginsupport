@@ -13,11 +13,18 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 
+
 class testClassTesting(unittest.TestCase):
 
 
+
+
     def test_init_core(self):
-        self.assertTrue(QgsApplication.instance() is None)
+
+        if isinstance(QgsApplication.instance(), QgsApplication):
+            QgsApplication.instance().quit()
+
+        # self.assertTrue(QgsApplication.instance() is None)
 
         if False:
             import re
@@ -38,7 +45,9 @@ class testClassTesting(unittest.TestCase):
         iface = get_iface()
         self.assertIsInstance(QgsApplication.instance(), QgsApplication)
         self.assertIsInstance(iface, QgisInterface)
+        QgsApplication.instance().quit()
 
+        s = ""
 
     def test_init(self):
 
