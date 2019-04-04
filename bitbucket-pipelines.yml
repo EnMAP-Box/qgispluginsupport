@@ -41,4 +41,6 @@ pipelines:
           #- python -m unittest discover tests "test_utils.py"
           # - python -m pip install pytest-cov
           # - py.test --cov enmapbox --cov-report term-missing enmapboxtesting
+          - python -m runfirst
+          - mkdir test-reports
           - python -m nose2 --verbose > test-reports/report.txt
