@@ -13,10 +13,19 @@ def initResources():
         print(ex, file=sys.stderr)
         print('It might be required to compile the qps/resources.py first', file=sys.stderr)
 
+
 # make required modules available in case they are not part of the core-python installation
-if importlib.util.find_spec('pyqtgraph') is None:
-    path = os.path.join(os.path.dirname(__file__), *['externals', 'ext-pyqtgraph'])
-    site.addsitedir(path)
+# if importlib.util.find_spec('pyqtgraph') is None:
+#    path = os.path.join(os.path.dirname(__file__), *['externals', 'ext-pyqtgraph'])
+#    site.addsitedir(path)
+"""
+try:
+    import pyqtgraph
+except:
+    print('PyQtGraph is not installed. Use qps.externals.pyqtgraph instead.')
+    import qps.externals.pyqtgraph
+    sys.modules['pyqtgraph'] = qps.externals.pyqtgraph
+"""
 
 def registerEditorWidgets():
     """

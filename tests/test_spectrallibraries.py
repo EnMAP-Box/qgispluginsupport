@@ -18,14 +18,14 @@
 """
 # noinspection PyPep8Naming
 import unittest, tempfile
-from qps.testing import initQgisApplication, installTestdata, TestObjects
+from qps.testing import initQgisApplication, TestObjects
 QAPP = initQgisApplication()
 from qps import initResources
 initResources()
-installTestdata()
 
-from enmapboxtestdata import *
 
+from qpstestdata import enmap, hymap
+from qpstestdata import speclib as speclibpath
 
 from osgeo import gdal
 gdal.AllRegister()
@@ -39,19 +39,19 @@ from qps.speclib.plotting import *
 
 SHOW_GUI = True and os.environ.get('CI') is None
 
-import enmapboxtestdata
+
 
 
 
 def createSpeclib()->SpectralLibrary:
-    from enmapboxtestdata import hires
+
 
     # for dx in range(-120, 120, 90):
     #    for dy in range(-120, 120, 90):
     #        pos.append(SpatialPoint(ext.crs(), center.x() + dx, center.y() + dy))
 
-    speclib = SpectralLibrary()
-    assert speclib.isValid()
+    SLIB = SpectralLibrary()
+    assert SLIB.isValid()
     p1 = SpectralProfile()
     p1.setName('No Geometry')
 
@@ -68,7 +68,8 @@ def createSpeclib()->SpectralLibrary:
     p4.setValues(x=[0.250, 0.251, 0.253, 0.254, 0.256], y=[0.22, 0.333, 0.222, 0.555, 0.777])
     p4.setXUnit('um')
 
-    path = hires
+    ds = TestObjects.inMemoryImage(300, 400, 255)
+    path = ds.GetFileList()[0]
     ext = SpatialExtent.fromRasterSource(path)
     posA = ext.spatialCenter()
     posB = SpatialPoint(posA.crs(), posA.x() + 60, posA.y() + 90)
@@ -78,10 +79,10 @@ def createSpeclib()->SpectralLibrary:
     p6 = SpectralProfile.fromRasterSource(path, posB)
     p6.setName('Position B')
 
-    speclib.startEditing()
-    speclib.addProfiles([p1, p2, p3, p4, p5, p6])
-    speclib.commitChanges()
-    return speclib
+    SLIB.startEditing()
+    SLIB.addProfiles([p1, p2, p3, p4, p5, p6])
+    SLIB.commitChanges()
+    return SLIB
 
 
 class TestIO(unittest.TestCase):
@@ -109,16 +110,16 @@ class TestIO(unittest.TestCase):
         s = ""
 
     def test_CSV2(self):
-        speclib = self.createSpeclib()
+        SLIB = self.createSpeclib()
         #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs2.out.csv')
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        CSVSpectralLibraryIO.write(speclib, pathCSV)
+        CSVSpectralLibraryIO.write(SLIB, pathCSV)
 
         self.assertTrue(os.path.isfile(pathCSV))
         dialect = CSVSpectralLibraryIO.canRead(pathCSV)
         self.assertTrue(dialect is not None)
         speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect)
-        self.assertTrue(len(speclib) == len(speclib2))
+        self.assertTrue(len(SLIB) == len(speclib2))
 
 
     def test_CSV(self):
@@ -161,34 +162,25 @@ class TestIO(unittest.TestCase):
 
         self.SPECLIB = speclib
 
-    #def test_ASD(self):
-    #    self.fail()
-
-
-    def test_ENVI_Floh(self):
-        path = r'F:\Temp\FlorianBeyer\speclib.sli'
-
-        sli = EnviSpectralLibraryIO.readFrom(path)
-
-        s = ""
-
+        try:
+            os.remove(pathCSV)
+        except:
+            pass
 
     def test_ENVI(self):
-        import enmapboxtestdata
 
-        pathESL = enmapboxtestdata.library
+
+        pathESL = speclibpath
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL)
 
         self.assertIsInstance(sl1, SpectralLibrary)
         p0 = sl1[0]
         self.assertIsInstance(p0, SpectralProfile)
 
-        self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
-        self.assertEqual(p0.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
+        self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values'])
+        self.assertEqual(p0.fieldNames(), ['fid', 'name', 'source', 'values'])
 
         self.assertEqual(p0.attribute('name'), p0.name())
-        self.assertEqual(p0.attribute('name'), 'red clay tile 1')
-        self.assertEqual(p0.attribute('level_1'), 'impervious')
 
 
         sl2 = SpectralLibrary.readFrom(pathESL)
@@ -260,7 +252,9 @@ class TestCore(unittest.TestCase):
 
         self.SP = None
         self.SPECLIB = None
-        self.lyr1 = QgsRasterLayer(hires)
+
+
+        self.lyr1 = QgsRasterLayer(hymap)
         self.lyr2 = QgsRasterLayer(enmap)
         self.layers = [self.lyr1, self.lyr2]
         QgsProject.instance().addMapLayers(self.layers)
@@ -307,9 +301,9 @@ class TestCore(unittest.TestCase):
 
     def test_AttributeDialog(self):
 
-        speclib = createSpeclib()
+        SLIB = createSpeclib()
 
-        d = AddAttributeDialog(speclib)
+        d = AddAttributeDialog(SLIB)
 
         if SHOW_GUI:
             d.show()
@@ -608,7 +602,7 @@ class TestCore(unittest.TestCase):
         sp2.setName('Name 2')
         sp2.setValues(y=[2, 2, 2, 2, 2], x=[450, 500, 750, 1000, 1500])
 
-        speclib = SpectralLibrary()
+        SLIB = SpectralLibrary()
         self.assertEqual(len(vsiSpeclibs()), 1)
         self.assertEqual(len(SpectralLibrary.instances()), 1)
         self.assertEqual(len(SpectralLibrary.instances()), 1)
@@ -622,22 +616,22 @@ class TestCore(unittest.TestCase):
         del sl2
         self.assertEqual(len(SpectralLibrary.instances()), 1)
 
-        self.assertEqual(speclib.name(), 'SpectralLibrary')
-        speclib.setName('MySpecLib')
-        self.assertEqual(speclib.name(), 'MySpecLib')
+        self.assertEqual(SLIB.name(), 'SpectralLibrary')
+        SLIB.setName('MySpecLib')
+        self.assertEqual(SLIB.name(), 'MySpecLib')
 
-        speclib.startEditing()
-        speclib.addProfiles([sp1, sp2])
-        speclib.rollBack()
-        self.assertEqual(len(speclib), 0)
+        SLIB.startEditing()
+        SLIB.addProfiles([sp1, sp2])
+        SLIB.rollBack()
+        self.assertEqual(len(SLIB), 0)
 
-        speclib.startEditing()
-        speclib.addProfiles([sp1, sp2])
-        speclib.commitChanges()
-        self.assertEqual(len(speclib),2)
+        SLIB.startEditing()
+        SLIB.addProfiles([sp1, sp2])
+        SLIB.commitChanges()
+        self.assertEqual(len(SLIB),2)
 
         # test subsetting
-        p = speclib[0]
+        p = SLIB[0]
         self.assertIsInstance(p, SpectralProfile)
         self.assertIsInstance(p.values(), dict)
 
@@ -645,36 +639,36 @@ class TestCore(unittest.TestCase):
             s = ""
 
         self.assertEqual(p.values(), sp1.values(), msg='Unequal values:\n\t{}\n\t{}'.format(str(p.values()), str(sp1.values())))
-        self.assertEqual(speclib[0].values(), sp1.values())
+        self.assertEqual(SLIB[0].values(), sp1.values())
 
         #self.assertNotEqual(speclib[0], sp1) #because sl1 has an FID
 
 
-        subset = speclib[0:1]
+        subset = SLIB[0:1]
         self.assertIsInstance(subset, list)
         self.assertEqual(len(subset), 1)
 
 
-        self.assertEqual(set(speclib.allFeatureIds()), set([1,2]))
-        slSubset = speclib.speclibFromFeatureIDs(fids=2)
-        self.assertEqual(set(speclib.allFeatureIds()), set([1, 2]))
+        self.assertEqual(set(SLIB.allFeatureIds()), set([1,2]))
+        slSubset = SLIB.speclibFromFeatureIDs(fids=2)
+        self.assertEqual(set(SLIB.allFeatureIds()), set([1, 2]))
         self.assertIsInstance(slSubset, SpectralLibrary)
 
         refs = list(SpectralLibrary.instances())
         self.assertTrue(len(refs) == 2)
 
         self.assertEqual(len(slSubset), 1)
-        self.assertEqual(slSubset[0].values(), speclib[1].values())
+        self.assertEqual(slSubset[0].values(), SLIB[1].values())
 
         n = len(vsiSpeclibs())
-        dump = pickle.dumps(speclib)
+        dump = pickle.dumps(SLIB)
         restoredSpeclib = pickle.loads(dump)
         self.assertIsInstance(restoredSpeclib, SpectralLibrary)
         self.assertEqual(len(vsiSpeclibs()), n+1)
-        self.assertEqual(len(speclib), len(restoredSpeclib))
+        self.assertEqual(len(SLIB), len(restoredSpeclib))
 
-        for i in range(len(speclib)):
-            p1 = speclib[i]
+        for i in range(len(SLIB)):
+            p1 = SLIB[i]
             r1 = restoredSpeclib[i]
 
             if p1.values() != r1.values():
@@ -685,7 +679,7 @@ class TestCore(unittest.TestCase):
         restoredSpeclib.startEditing()
         restoredSpeclib.addProfiles([sp2])
         self.assertTrue(restoredSpeclib.commitChanges())
-        self.assertNotEqual(speclib, restoredSpeclib)
+        self.assertNotEqual(SLIB, restoredSpeclib)
         self.assertEqual(restoredSpeclib[-1].values(), sp2.values())
 
 
@@ -698,11 +692,11 @@ class TestCore(unittest.TestCase):
             center1 = SpatialExtent.fromRasterSource(self.lyr1.source()).spatialCenter()
             center2 = SpatialExtent.fromRasterSource(self.lyr1.source()).spatialCenter()
             s  =""
-        speclib = SpectralLibrary.readFromRasterPositions(hires, center1)
-        slSubset = SpectralLibrary.readFromRasterPositions(hires, center2)
-        restoredSpeclib = SpectralLibrary.readFromRasterPositions(hires, [center1, center2])
+        SLIB = SpectralLibrary.readFromRasterPositions(hymap, center1)
+        slSubset = SpectralLibrary.readFromRasterPositions(hymap, center2)
+        restoredSpeclib = SpectralLibrary.readFromRasterPositions(hymap, [center1, center2])
 
-        for sl in [speclib, slSubset]:
+        for sl in [SLIB, slSubset]:
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) == 1)
             self.assertIsInstance(sl[0], SpectralProfile)
@@ -710,15 +704,15 @@ class TestCore(unittest.TestCase):
 
         self.assertTrue(len(restoredSpeclib) == 2)
 
-        n1 = len(speclib)
+        n1 = len(SLIB)
         n2 = len(slSubset)
 
-        speclib.startEditing()
-        speclib.addProfiles(slSubset[:])
-        self.assertTrue(len(speclib) == n1+n2)
-        speclib.addProfiles(slSubset[:])
-        self.assertTrue(len(speclib) == n1 + n2 + n2)
-        self.assertTrue(speclib.commitChanges())
+        SLIB.startEditing()
+        SLIB.addProfiles(slSubset[:])
+        self.assertTrue(len(SLIB) == n1+n2)
+        SLIB.addProfiles(slSubset[:])
+        self.assertTrue(len(SLIB) == n1 + n2 + n2)
+        self.assertTrue(SLIB.commitChanges())
 
     def test_others(self):
 
@@ -752,7 +746,7 @@ class TestCore(unittest.TestCase):
     def test_mergeSpeclibs(self):
         sp1 = self.createSpeclib()
 
-        sp2 = SpectralLibrary.readFrom(library)
+        sp2 = SpectralLibrary.readFrom(speclibpath)
 
         self.assertIsInstance(sp1, SpectralLibrary)
         self.assertIsInstance(sp2, SpectralLibrary)
@@ -771,10 +765,10 @@ class TestCore(unittest.TestCase):
 
     def test_SpectralProfileEditorWidget(self):
 
-        speclib = self.createSpeclib()
+        SLIB = self.createSpeclib()
 
         w = SpectralProfileEditorWidget()
-        p = speclib[-1]
+        p = SLIB[-1]
         w.setProfileValues(p)
 
         if SHOW_GUI:
@@ -876,7 +870,7 @@ class TestCore(unittest.TestCase):
             QAPP.exec_()
 
     def test_PyQtGraphPlot(self):
-        import pyqtgraph as pg
+        import qps.externals.pyqtgraph as pg
         pg.systemInfo()
 
         plotWidget = pg.plot(title="Three plot curves")
@@ -891,8 +885,8 @@ class TestCore(unittest.TestCase):
 
     def test_SpectralLibraryPlotWidget(self):
 
-        speclib = SpectralLibrary.readFrom(enmapboxtestdata.library)
-        #speclib = self.createSpeclib()
+        speclib = SpectralLibrary.readFrom(speclibpath)
+
 
 
         pw = SpectralLibraryPlotWidget()
@@ -1027,9 +1021,7 @@ class TestCore(unittest.TestCase):
 
         # speclib = self.createSpeclib()
 
-        import enmapboxtestdata
-
-        speclib = SpectralLibrary.readFrom(enmapboxtestdata.library)
+        speclib = SpectralLibrary.readFrom(speclibpath)
         slw = SpectralLibraryWidget(speclib=speclib)
 
         QgsProject.instance().addMapLayer(slw.speclib())
@@ -1133,8 +1125,6 @@ class TestCore(unittest.TestCase):
         btn2 = tb.findChildren(QToolButton)[2]
         self.assertIsInstance(btn2, QToolButton)
 
-
-
         if SHOW_GUI:
             tb.show()
             QAPP.exec_()
@@ -1143,3 +1133,6 @@ if __name__ == '__main__':
 
     SHOW_GUI = False
     unittest.main()
+
+
+QAPP.quit()

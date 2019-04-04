@@ -32,10 +32,15 @@ class CursorLocationTest(unittest.TestCase):
     def setUp(self):
         self.wmsUri1 = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
         self.wmsUri2 = 'referer=OpenStreetMap%20contributors,%20under%20ODbL&type=xyz&url=http://tiles.wmflabs.org/hikebike/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=17&zmin=1'
-        self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
+        # self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
+        # self.wfsUri = r"pagingEnabled='true' restrictToRequestBBOX='1' srsname='EPSG:26986' typename='massgis:GISDATA.WATERPIPES_ARC_M150' url='http://giswebservices.massgis.state.ma.us/geoserver/wfs' url='http://giswebservices.massgis.state.ma.us/geoserver/wfs?request=getcapabilities' version='auto' table="" sql='"
 
     def webLayers(self)->list:
-        layers = [QgsRasterLayer(self.wmsUri1, 'XYZ Web Map Service Raster Layer', 'wms'), QgsRasterLayer(self.wmsUri2, 'OSM', 'wms'), QgsVectorLayer(self.wfsUri, 'Berlin', 'WFS')]
+        l1 = QgsRasterLayer(self.wmsUri1, 'XYZ Web Map Service Raster Layer', 'wms')
+        l2 = QgsRasterLayer(self.wmsUri2, 'OSM', 'wms')
+        # l3 = QgsVectorLayer(self.wfsUri, 'Lee Water Pipes', 'WFS')
+
+        layers = [l1, l2]
         for l in layers:
             self.assertIsInstance(l, QgsMapLayer)
             self.assertTrue(l.isValid())
@@ -52,21 +57,26 @@ class CursorLocationTest(unittest.TestCase):
         layers = [TestObjects.createRasterLayer(nc=3), TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
 
         for lyr in layers:
-            assert isinstance(lyr, QgsMapLayer)
+            self.assertIsInstance(lyr, QgsMapLayer)
+            self.assertTrue(lyr.isValid())
+
             if isinstance(lyr, QgsRasterLayer):
                 center = SpatialPoint.fromMapLayerCenter(lyr)
+
             elif isinstance(lyr, QgsVectorLayer):
                 for feature in lyr.getFeatures():
                     assert isinstance(feature, QgsFeature)
-                    center = feature.geometry().centroid().asPoint()
-                    center = SpatialPoint(lyr.crs(), center)
-                    break
+                    if not feature.geometry().isNull():
+                        center = feature.geometry().centroid().asPoint()
+                        center = SpatialPoint(lyr.crs(), center)
+                        break
 
 
             store = QgsMapLayerStore()
             store.addMapLayer(lyr)
             canvas.setLayers([lyr])
             cldock = CursorLocationInfoDock()
+            cldock.show()
             self.assertIsInstance(cldock, CursorLocationInfoDock)
             cldock.cursorLocation() == center
             cldock.loadCursorLocation(center, canvas)
@@ -75,7 +85,7 @@ class CursorLocationTest(unittest.TestCase):
 
 
         if SHOW_GUI:
-            cldock.show()
+
             QGIS_APP.exec_()
 
     def test_weblayertest(self):
@@ -86,24 +96,29 @@ class CursorLocationTest(unittest.TestCase):
         center = SpatialPoint.fromMapLayerCenter(layers[0])
         store = QgsMapLayerStore()
         store.addMapLayers(layers)
+
         canvas.setLayers(layers)
+        canvas.setCenter(center)
         cldock = CursorLocationInfoDock()
+        cldock.show()
+
         self.assertIsInstance(cldock, CursorLocationInfoDock)
 
         cldock.loadCursorLocation(center, canvas)
-        crs, point = cldock.cursorLocation()
-        self.assertIsInstance(point, QgsPointXY)
-        self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
+        point = cldock.cursorLocation()
+        self.assertIsInstance(point, SpatialPoint)
+
 
         if SHOW_GUI:
-            cldock.show()
             QGIS_APP.exec_()
+
 
 
 if __name__ == "__main__":
     SHOW_GUI = False
-    #exampleMapLinking()
+
     unittest.main()
 
 
 
+QGIS_APP.quit()

@@ -22,6 +22,8 @@ QGIS_APP = initQgisApplication()
 
 SHOW_GUI = False and os.environ.get('CI') is None
 
+LAYER_WIDGET_REPS = 50 if os.environ.get('CI') is None else 5
+
 class LayerRendererTests(unittest.TestCase):
 
 
@@ -63,6 +65,7 @@ class LayerRendererTests(unittest.TestCase):
         w1 = QgsRendererRasterPropertiesWidget(lyr, canvas, None)
         w1.show()
 
+
         if SHOW_GUI:
             QGIS_APP.exec_()
 
@@ -88,8 +91,8 @@ class LayerRendererTests(unittest.TestCase):
         canvas = QgsMapCanvas()
         canvas.setLayers([lyr])
         canvas.setExtent(canvas.fullExtent())
-        for i in range(50):
-            #print('open {}'.format(i))
+        for i in range(LAYER_WIDGET_REPS):
+            print('open {}'.format(i))
             w = RasterLayerProperties(lyr, canvas)
             self.assertIsInstance(w, RasterLayerProperties)
             w.show()
@@ -110,8 +113,8 @@ class LayerRendererTests(unittest.TestCase):
         canvas.setLayers([lyr])
         canvas.setExtent(canvas.fullExtent())
 
-        for i in range(50):
-            #print('open {}'.format(i))
+        for i in range(LAYER_WIDGET_REPS):
+            print('open {}'.format(i))
             w = VectorLayerProperties(lyr, canvas)
             self.assertIsInstance(w, VectorLayerProperties)
             w.show()
@@ -136,8 +139,10 @@ class LayerRendererTests(unittest.TestCase):
 
 
 
+
 if __name__ == "__main__":
     unittest.main()
 
 
 
+QGIS_APP.quit()
