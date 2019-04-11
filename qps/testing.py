@@ -11,7 +11,7 @@ import qgis.utils
 import numpy as np
 from osgeo import gdal, ogr, osr
 
-from qps.utils import file_search, dn, jp, findUpwardPath
+from .utils import file_search, dn, jp, findUpwardPath
 
 
 URL_TESTDATA = r'https://bitbucket.org/hu-geomatics/enmap-box-testdata/get/master.zip'
@@ -393,7 +393,7 @@ class QgisMockup(QgisInterface):
         self.lyrs.append(l)
         QgsProject.instance().addMapLayer(l, True)
         self.mRootNode.addLayer(l)
-        self.mCanvas.setLayers(self.mCanvas.layers() + l)
+        #self.mCanvas.setLayers(self.mCanvas.layers() + l)
 
     def createActions(self):
         m = self.ui.menuBar().addAction('Add Vector')
