@@ -382,6 +382,12 @@ class QgisMockup(QgisInterface):
     def legendInterface(self):
         return None
 
+    def layerTreeCanvasBridge(self)->QgsLayerTreeMapCanvasBridge:
+        return self.mLayerTreeMapCanvasBridge
+
+    def layerTreeView(self)->QgsLayerTreeView:
+        return self.mLayerTreeView
+
     def addRasterLayer(self, path, baseName=''):
         l = QgsRasterLayer(path, os.path.basename(path))
         self.lyrs.append(l)
