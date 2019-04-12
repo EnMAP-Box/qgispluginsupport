@@ -39,7 +39,7 @@ class testClassTesting(unittest.TestCase):
                 #QApplication.addLibraryPath(libraryPath2)
 
                 QApplication.addLibraryPath(libraryPath1)
-
+        from qgis.testing import start_app, stop_app
         from qgis.testing.mocked import get_iface
 
         iface = get_iface()
@@ -47,7 +47,7 @@ class testClassTesting(unittest.TestCase):
         self.assertIsInstance(iface, QgisInterface)
         QgsApplication.instance().quit()
 
-        s = ""
+        stop_app()
 
     def test_init(self):
 
@@ -71,7 +71,7 @@ class testClassTesting(unittest.TestCase):
                               QgsEditorWidgetFactory)
 
 
-
+        app.quit()
 
 if __name__ == "__main__":
     unittest.main()
