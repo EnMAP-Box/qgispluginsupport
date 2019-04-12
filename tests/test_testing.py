@@ -37,14 +37,14 @@ class testClassTesting(unittest.TestCase):
         ENV = app.systemEnvVars()
         for k in sorted(ENV.keys()): print('{}={}'.format(k, ENV[k]))
 
-
+        qgis_app.quit()
 
     def test_init_minimal(self):
         import qps.testing
         qgis_app = qps.testing.initQgisApplication(minimal=True)
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
-
+        qgis_app.quit()
 
 
 if __name__ == "__main__":

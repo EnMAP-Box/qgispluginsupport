@@ -51,8 +51,8 @@ class testClassTesting(unittest.TestCase):
 
     def test_init(self):
 
-        from qps.testing import initQgisApplication
 
+        from qps.testing import initQgisApplication
         app = initQgisApplication()
         self.assertIsInstance(app, QgsApplication)
 

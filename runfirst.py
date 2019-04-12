@@ -1,7 +1,7 @@
 
 
-from qps.utils import file_search, dn, jp
-from qps.make.make import searchAndCompileResourceFiles
+from .qps.utils import file_search, dn, jp
+from .qps.make.make import searchAndCompileResourceFiles
 root = dn(__file__)
 
 makeQrc = False

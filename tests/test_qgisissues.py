@@ -11,7 +11,7 @@ from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
-from qgis.testing import start_app, unittest
+from qgis.testing import start_app, unittest, stop_app
 
 start_app()
 
@@ -69,3 +69,5 @@ class TestQgsFeature(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+stop_app()

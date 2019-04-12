@@ -22,7 +22,7 @@ QGIS_APP = initQgisApplication()
 
 SHOW_GUI = False and os.environ.get('CI') is None
 
-LAYER_WIDGET_REPS = 50 if os.environ.get('CI') is None else 5
+LAYER_WIDGET_REPS = 5 if os.environ.get('CI') is None else 5
 
 class LayerRendererTests(unittest.TestCase):
 

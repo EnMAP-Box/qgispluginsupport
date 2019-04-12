@@ -199,7 +199,7 @@ def initQgisApplication(*args, qgisResourceDir:str=None,
         assert QgsProviderRegistry.instance().libraryDirectory().exists()
 
 
-        from qps.utils import check_vsimem
+        from .utils import check_vsimem
         assert check_vsimem()
 
         # initialize things not done by qgis.test.start_app()...

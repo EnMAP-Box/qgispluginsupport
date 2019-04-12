@@ -13,7 +13,7 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest, os
 from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()
-SHOW_GUI = True and os.environ.get('CI') is None
+SHOW_GUI = False and os.environ.get('CI') is None
 from qps.crosshair.crosshair import *
 
 
