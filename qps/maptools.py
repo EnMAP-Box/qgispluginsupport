@@ -21,6 +21,7 @@
 """
 # noinspection PyPep8Naming
 
+import enum, math
 from qgis import *
 from qgis.core import *
 from qgis.gui import *
@@ -445,5 +446,978 @@ class TemporalProfileMapTool(CursorLocationMapTool):
 class SpectralProfileMapTool(CursorLocationMapTool):
     def __init__(self, *args, **kwds):
         super(SpectralProfileMapTool, self).__init__(*args, **kwds)
+
+
+
+# mActionAddFeatures
+# QgisApp.addFeature
+# set maptool mAddFeatures QgsMapToolAddFeature->QgsMapToolDigitizeFeature->QgsMapToolCapture
+
+class MapToolDigitizeFeature(QgsMapToolCapture):
+
+    digitizingCompleted = pyqtSignal(QgsFeature)
+    digitizingFinished = pyqtSignal()
+
+    def __init__(self, canvas:QgsMapCanvas, cadDock:QgsAdvancedDigitizingDockWidget,
+                 captureMode:QgsMapToolCapture.CaptureMode):
+        super(MapToolDigitizeFeature, self).__init__(canvas, cadDock, captureMode)
+
+        QgsProject.instance().cleared.connect(lambda : self.stopCapturing())
+
+        self.mRememberedLayer = None
+
+
+    def currentVectorLayer(self)->QgsVectorLayer:
+
+        lyr = self.canvas().currentLayer()
+        if isinstance(lyr, QgsVectorLayer):
+            return lyr
+        else:
+            return None
+
+    def digitized(self, f:QgsFeature):
+        self.digitizingCompleted.emit(f)
+
+
+    def activate(self):
+        vlayer = self.currentVectorLayer()
+
+        if isinstance(vlayer, QgsVectorLayer):
+            if vlayer.geometryType() == QgsWkbTypes.NullGeometry:
+                f = QgsFeature()
+                self.digitized(f)
+                return
+
+            #always edit the current map canvas vector layer
+            self.mRememberedLayer = self.canvas().currentLayer()
+            self.canvas().setCurrentLayer(vlayer)
+
+            super(MapToolDigitizeFeature, self).activate()
+
+    def deactivate(self):
+        super(MapToolDigitizeFeature, self).deactivate()
+
+        if isinstance(self.mRememberedLayer, QgsMapLayer):
+            self.canvas().setCurrentLayer(self.mRememberedLayer)
+
+        self.digitizingFinished.emit()
+
+    def checkGeometryType(self):
+        pass
+
+    def setCheckGeometryType(self, b:bool):
+        pass
+
+
+    def cadCanvasReleaseEvent(self, e:QgsMapMouseEvent):
+
+        vlayer = self.currentVectorLayer()
+
+        if isinstance(vlayer, QgsVectorLayer) and vlayer.isEditable():
+
+            g = None
+
+            f = QgsFeature(vlayer.fields(), 0)
+
+            if self.mode() == QgsMapToolCapture.CapturePoint:
+                if e.button() == Qt.LeftButton:
+                    return
+
+
+                layerPoint = self.toLayerCoordinates(vlayer, e.mapPoint())
+                savePoint = QgsPoint(layerPoint.x(), layerPoint.y())
+                g = QgsGeometry(savePoint)
+                f.setGeometry(g)
+                f.setValid(True)
+                self.digitized(f)
+                self.cadDockWidget().clearPoints()
+
+            elif self.mode() in [QgsMapToolCapture.CaptureLine, QgsMapToolCapture.CapturePolygon]:
+
+                if e.button() == Qt.LeftButton:
+                    error = self.addVertex(e.mapPoint(), e.mapPointMatch())
+                    if error == 1:
+                        return
+                    elif error == 2:
+                        return
+
+                    self.startCapturing()
+                elif e.button() == Qt.RightButton:
+
+                    self.deleteTempRubberBand()
+
+                    # bail outs
+                    if self.mode() == QgsMapToolCapture.CaptureLine and self.size() < 2:
+                        self.stopCapturing()
+                        return
+
+                    if self.mode() == QgsMapToolCapture.CapturePolygon and self.size() < 3:
+                        self.stopCapturing()
+                        return
+
+                    if self.mode() == QgsMapToolCapture.CapturePolygon:
+                        self.closePolygon()
+
+                    f = QgsFeature(vlayer.fields(), 0)
+
+                    hasCurvedSegments = self.captureCurve().hasCurvedSegments()
+                    providerSupportsCurvedSegments = vlayer.dataProvider().capabilities() & QgsVectorDataProvider.CircularGeometries
+
+                    if hasCurvedSegments and providerSupportsCurvedSegments:
+                        curveToAdd = self.captureCurve().clone()
+                    else:
+                        curveToAdd = self.captureCurve().curveToLine()
+                        smappingMatchesList = self.snappingMatches()
+
+                    if self.mode() == QgsMapToolCapture.CaptureLine:
+                        g = QgsGeometry(curveToAdd)
+                        f.setGeometry(g)
+
+                    if self.mode() == QgsMapToolCapture.CapturePolygon:
+                        if hasCurvedSegments and providerSupportsCurvedSegments:
+                            poly = QgsCurvePolygon()
+                        else:
+                            poly = QgsPolygon()
+
+                        poly.setExteriorRing(curveToAdd)
+                        g = QgsGeometry(poly)
+                        f.setGeometry(g)
+
+                    f.setValid(True)
+                    self.digitized(f)
+                    self.stopCapturing()
+
+
+
+class FeatureAction(QAction):
+    """
+    This is a python copy of the qgis/app/QgsFeatureAction.cpp
+    """
+    def __init__(self, name:str, f:QgsFeature, layer:QgsVectorLayer, actionID:id, defaultAttr:int, parent:QObject=None):
+
+        super(FeatureAction, self).__init__(name, parent)
+
+        self.mLayer = layer
+        self.mFeature = f
+        self.mActionId = actionID
+        self.mIdx = defaultAttr
+        self.mFeatureSaved = False
+        self.mForceSuppressFormPopup = False
+
+    def executed(self):
+        self.mLayer.actions().doAction(self.mActionId, self.mFeature, self.mIdx)
+
+    def addFeature(self, defaultAttributes:dict, showModal:bool, scope:QgsExpressionContextScope):
+
+        if not (isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.isEditable()):
+            return
+
+        reuseLastValues = bool(QgsSettings().value('qgis/digitizing/reuseLastValues', False))
+
+        fields = self.mLayer.fields()
+        initialAttributeValues = dict()
+
+
+        context = self.mLayer.createExpressionContext()
+        if scope:
+            context.appendScope(scope)
+
+        newFeature = QgsVectorLayerUtils.createFeature(self.mLayer, self.mFeature.geometry(), initialAttributeValues, context)
+
+
+        self.mFeature = newFeature
+
+        isDisabledAttributesValueDlg = bool(QgsSettings().value('qgis/digitizing/disable_enter_attribute_values_dialog', False))
+        if not self.mLayer.isSpatial():
+            isDisabledAttributesValueDlg = False
+
+        if fields.count() == 0:
+            isDisabledAttributesValueDlg = True
+
+        opt = self.mLayer.editFormConfig().suppress()
+        if opt == QgsEditFormConfig.SuppressOn:
+            isDisabledAttributesValueDlg = True
+        elif opt == QgsEditFormConfig.SuppressOff:
+            isDisabledAttributesValueDlg = False
+
+        if self.mForceSuppressFormPopup:
+            isDisabledAttributesValueDlg = True
+
+        if isDisabledAttributesValueDlg:
+            self.mLayer.beginEditCommand(self.text())
+            self.mFeatureSaved = self.mLayer.addFeature(self.mFeature)
+            if self.mFeatureSaved:
+                self.mLayer.endEditCommand()
+                self.mLayer.triggerRepaint()
+            else:
+                self.mLayer.destroyEditComand()
+        else:
+
+            dialog = self.newDialog(False)
+            dialog.setAttribute(Qt.WA_DeleteOnClose)
+            dialog.setMode(QgsAttributeEditorContext.AddFeatureMode)
+            dialog.setEditCommandMessage(self.text())
+            dialog.attributeForm().featureSaved.connect(self.onFeatureSaved)
+
+            if not showModal:
+                self.setParent(dialog)
+                dialog.show()
+                self.mFeature = None
+                return True
+
+        dialog.exec_()
+
+
+        return self.mFeatureSaved
+
+
+    def onFeatureSaved(self, feature:QgsFeature):
+        # todo: save last values
+        pass
+
+    def newDialog(self, cloneFeatures:bool)->QgsAttributeDialog:
+        """
+        Creates a new dialog
+        :param cloneFeatures: bool
+        :return: QgsAttributeDialog
+        """
+        f = QgsFeature(self.mFeature) if cloneFeatures else self.mFeature
+
+        context = QgsAttributeEditorContext()
+
+        myDa = QgsDistanceArea()
+        myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
+        myDa.setEllipsoid(QgsProject.instance().ellipsoid())
+
+        context.setDistanceArea(myDa)
+        #context.setVectorLayerTools()
+        #context.setMapCanvas()
+        context.setFormMode(QgsAttributeEditorContext.StandaloneDialog)
+
+        dialog = QgsAttributeDialog(self.mLayer, f, cloneFeatures, self.parentWidget(), True, context)
+        dialog.setWindowFlags(dialog.windowFlags() | Qt.Tool)
+        dialog.setObjectName('featureaction {} {}'.format(self.mLayer.id(), f.id()))
+
+
+        # todo: init feature actions
+
+        return dialog
+
+
+class MapToolAddFeature(MapToolDigitizeFeature):
+
+
+    def __init__(self, canvas:QgsMapCanvas,
+                 cadDock:QgsAdvancedDigitizingDockWidget,
+                 captureMode:QgsMapToolCapture.CaptureMode):
+
+        super(MapToolAddFeature, self).__init__(canvas, cadDock, captureMode)
+
+    def addFeature(self, vectorLayer:QgsVectorLayer, feature:QgsFeature, showModal:bool)->bool:
+
+        scope = QgsExpressionContextUtils.mapToolCaptureScope(self.snappingMatches())
+        action = FeatureAction('Add feature', feature, vectorLayer, '', -1, self)
+
+
+        #open dialog to enter attributes
+
+        res = action.addFeature({}, showModal, scope)
+        if showModal:
+            del action
+        return res
+
+    def digitized(self, f:QgsFeature):
+
+        layer = self.currentVectorLayer()
+        res = self.addFeature(layer, f, False)
+        if res and (self.mode() in [QgsMapToolCapture.CaptureLine, QgsMapToolCapture.CapturePolygon]):
+            pass
+            # todo: add topological points
+
+
+class QgsDistanceWidget(QWidget):
+
+    distanceEditingCanceled = pyqtSignal()
+    distanceEditingFinished = pyqtSignal(float, Qt.KeyboardModifiers)
+    distanceEditingCanceled = pyqtSignal()
+
+    def __init__(self, label:str, parent:QWidget):
+
+        super(QgsDistanceWidget, self).__init__(parent)
+
+        self.mLayout = QHBoxLayout(self)
+        self.mLayout.setContentsMargins( 0, 0, 0, 0 )
+        self.mLayout.setAlignment(Qt.AlignLeft)
+        self.setLayout(self.mLayout)
+
+
+        if label:
+
+            lbl = QLabel( label, self)
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignCenter)
+            self.mLayout.addWidget( lbl )
+
+
+        self.mDistanceSpinBox = QgsDoubleSpinBox( self)
+        self.mDistanceSpinBox.setSingleStep( 1 )
+        self.mDistanceSpinBox.setValue( 0 )
+        self.mDistanceSpinBox.setMinimum( 0 )
+        self.mDistanceSpinBox.setMaximum( 1000000000 )
+        self.mDistanceSpinBox.setDecimals( 6 )
+        self.mDistanceSpinBox.setShowClearButton( False)
+        self.mDistanceSpinBox.setSizePolicy( QSizePolicy.MinimumExpanding, QSizePolicy.Preferred )
+        self.mLayout.addWidget(self.mDistanceSpinBox )
+
+        # connect signals
+        self.mDistanceSpinBox.installEventFilter(self)
+        self.mDistanceSpinBox.valueChanged.connect(self.distanceChanged)
+
+        # config focus
+        self.setFocusProxy(self.mDistanceSpinBox )
+
+
+
+    def setDistance(self, distance:float):
+
+        self.mDistanceSpinBox.setValue(distance)
+        self.mDistanceSpinBox.selectAll()
+
+
+    def distance(self)->float:
+        return self.mDistanceSpinBox.value()
+
+    def eventFilter(self, obj:QObject, ev:QEvent )->bool:
+
+        if ( obj == self.mDistanceSpinBox and ev.type() == QEvent.KeyPress ):
+
+            event = QKeyEvent(ev)
+            if event.key() == Qt.Key_Escape:
+
+              self.distanceEditingCanceled.emit()
+              return False
+
+            if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+
+              self.distanceEditingFinished.emit(self.distance(), event.modifiers() )
+              return True;
+
+
+
+        return False
+
+
+class QgsMapToolSelectUtils(object):
+    """
+    Mimics the QgsMapToolSelectUtils C++ implementation from the not-python-accessible QGIS app code
+    """
+    @staticmethod
+    def getCurrentVectorLayer(canvas:QgsMapCanvas):
+
+        vlayer = canvas.currentLayer()
+
+        if not isinstance(vlayer, QgsVectorLayer):
+            print("No active vector layer", file=sys.stderr)
+
+        return vlayer
+
+    @staticmethod
+    def setRubberBand( canvas:QgsMapCanvas, selectRect:QRect, rubberBand:QgsRubberBand):
+
+        transform = canvas.getCoordinateTransform()
+        ll = transform.toMapCoordinates(selectRect.left(), selectRect.bottom() )
+        lr = transform.toMapCoordinates( selectRect.right(), selectRect.bottom() )
+        ul = transform.toMapCoordinates( selectRect.left(), selectRect.top() )
+        ur = transform.toMapCoordinates( selectRect.right(), selectRect.top() )
+
+        if isinstance(rubberBand, QgsRubberBand):
+
+            rubberBand.reset(QgsWkbTypes.PolygonGeometry )
+            rubberBand.addPoint( ll, False )
+            rubberBand.addPoint( lr, False )
+            rubberBand.addPoint( ur, False )
+            rubberBand.addPoint( ul, True )
+
+    @staticmethod
+    def expandSelectRectangle( mapPoint:QgsPointXY, canvas:QgsMapCanvas, vlayer:QgsVectorLayer):
+
+        boxSize = 0
+        if ( not vlayer or vlayer.geometryType() != QgsWkbTypes.PolygonGeometry ):
+
+            #if point or line use an artificial bounding box of 10x10 pixels
+            #to aid the user to click on a feature accurately
+            boxSize = 5
+
+        else:
+            #otherwise just use the click point for polys
+            boxSize = 1
+
+
+        transform = canvas.getCoordinateTransform()
+        point = transform.transform( mapPoint )
+        ll = transform.toMapCoordinates( int( point.x() - boxSize ), int( point.y() + boxSize ) )
+        ur = transform.toMapCoordinates( int( point.x() + boxSize ), int( point.y() - boxSize ) )
+        return QgsRectangle( ll, ur )
+
+    @staticmethod
+    def selectMultipleFeatures( canvas:QgsMapCanvas, selectGeometry:QgsGeometry, modifiers:Qt.KeyboardModifiers):
+
+        behavior = QgsVectorLayer.SetSelection
+        if ( modifiers & Qt.ShiftModifier and modifiers & Qt.ControlModifier ):
+            behavior = QgsVectorLayer.IntersectSelection
+        elif ( modifiers & Qt.ShiftModifier ):
+            behavior = QgsVectorLayer.AddToSelection
+        elif ( modifiers & Qt.ControlModifier ):
+            behavior = QgsVectorLayer.RemoveFromSelection
+
+        doContains = modifiers & Qt.AltModifier
+        QgsMapToolSelectUtils.setSelectedFeatures( canvas, selectGeometry, behavior, doContains )
+
+    @staticmethod
+    def selectSingleFeature(canvas:QgsMapCanvas, selectGeometry:QgsGeometry, modifiers:Qt.KeyboardModifiers  ):
+
+        vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer( canvas )
+        if not isinstance(vlayer, QgsVectorLayer):
+            return
+
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        selectedFeatures = QgsMapToolSelectUtils.getMatchingFeatures( canvas, selectGeometry, False, True )
+        if len(selectedFeatures) == 0:
+
+            if ( not( modifiers & Qt.ShiftModifier or modifiers & Qt.ControlModifier ) ):
+                # if no modifiers then clicking outside features clears the selection
+                # but if there's a shift or ctrl modifier, then it's likely the user was trying
+                # to modify an existing selection by adding or subtracting features and just
+                # missed the feature
+                vlayer.removeSelection()
+
+            QApplication.restoreOverrideCursor()
+            return
+
+
+        behavior = QgsVectorLayer.SetSelection
+
+        # either shift or control modifier switches to "toggle" selection mode
+        if ( modifiers & Qt.ShiftModifier or modifiers & Qt.ControlModifier ):
+
+            selectId = selectedFeatures[0]
+            layerSelectedFeatures = vlayer.selectedFeatureIds()
+            if ( layerSelectedFeatures.contains( selectId ) ):
+                behavior = QgsVectorLayer.RemoveFromSelection
+            else:
+                behavior = QgsVectorLayer.AddToSelection
+
+
+        vlayer.selectByIds( selectedFeatures, behavior )
+
+        QApplication.restoreOverrideCursor()
+
+    @staticmethod
+    def setSelectedFeatures( canvas:QgsMapCanvas, selectGeometry:QgsGeometry, \
+                             selectBehavior:QgsVectorLayer.SelectBehavior,  \
+                             doContains:bool=True, \
+                             singleSelect:bool=False ):
+
+        vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer( canvas )
+        if not isinstance(vlayer, QgsVectorLayer):
+            return
+
+        QApplication.setOverrideCursor( Qt.WaitCursor )
+
+        selectedFeatures = QgsMapToolSelectUtils.getMatchingFeatures( canvas, selectGeometry, doContains, singleSelect )
+        vlayer.selectByIds( selectedFeatures, selectBehavior )
+
+        QApplication.restoreOverrideCursor()
+
+
+    @staticmethod
+    def getMatchingFeatures( canvas:QgsMapCanvas, selectGeometry:QgsGeometry, doContains:bool , singleSelect:bool )->list:
+
+        newSelectedFeatures = []
+
+        if ( selectGeometry.type() != QgsWkbTypes.PolygonGeometry ):
+            return newSelectedFeatures
+
+        vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer( canvas )
+        if not isinstance(vlayer, QgsVectorLayer):
+            return newSelectedFeatures
+
+        # toLayerCoordinates will throw an exception for any 'invalid' points in
+        # the rubber band.
+        # For example, if you project a world map onto a globe using EPSG 2163
+        # and then click somewhere off the globe, an exception will be thrown.
+        selectGeomTrans = selectGeometry
+
+        try:
+            ct = QgsCoordinateTransform()
+            ct.setSourceCrs(canvas.mapSettings().destinationCrs())
+            ct.setDestinationCrs(vlayer.crs())
+            ct.setContext(QgsProject.instance().transformContext())
+            #QgsCoordinateTransform ct( canvas->mapSettings().destinationCrs(), vlayer->crs(), QgsProject::instance() );
+
+            # todo: ...
+
+            selectGeomTrans.transform( ct )
+
+        except QgsCsException as cse:
+            # catch exception for 'invalid' point and leave existing selection unchanged
+            return newSelectedFeatures
+
+        context = QgsRenderContext.fromMapSettings(canvas.mapSettings())
+        context.expressionContext().appendScope(QgsExpressionContextUtils.layerScope(vlayer))
+        r = None
+        if ( vlayer.renderer()):
+            r = vlayer.renderer().clone()
+            r.startRender( context, vlayer.fields() )
+
+
+        request = QgsFeatureRequest()
+        request.setFilterRect(selectGeomTrans.boundingBox())
+        request.setFlags( QgsFeatureRequest.ExactIntersect )
+        if ( r ):
+            request.setSubsetOfAttributes( r.usedAttributes(context), vlayer.fields() )
+        else:
+            request.setNoAttributes()
+
+        fit = vlayer.getFeatures(request)
+        assert isinstance(fit, QgsFeatureIterator)
+
+        f = QgsFeature()
+        closestFeatureId = 0
+        foundSingleFeature = False
+        #double closestFeatureDist = std::numeric_limits<double>::max();
+        closestFeatureDist = sys.float_info.max
+        while ( fit.nextFeature( f ) ):
+            context.expressionContext().setFeature( f )
+            #// make sure to only use features that are visible
+            if ( r and not r.willRenderFeature( f, context ) ):
+                continue
+
+            g = f.geometry()
+            if ( doContains ):
+                if ( not selectGeomTrans.contains( g ) ):
+                    continue
+            else:
+              if ( not selectGeomTrans.intersects( g ) ):
+                    continue
+
+            if ( singleSelect ):
+
+                foundSingleFeature = True
+                distance = g.distance( selectGeomTrans )
+                if ( distance <= closestFeatureDist ):
+                    closestFeatureDist = distance
+                    closestFeatureId = f.id()
+
+
+            else:
+
+                newSelectedFeatures.append(f.id())
+
+
+        if ( singleSelect and foundSingleFeature ):
+
+            newSelectedFeatures.append(closestFeatureId)
+
+
+        if ( r ):
+            r.stopRender( context )
+
+
+        return newSelectedFeatures
+
+
+
+
+class QgsMapToolSelectionHandler(QObject):
+    """
+    Mimics the QgsMapToolSelectionHandler C++ implementation
+    """
+
+    class SelectionMode(enum.Enum):
+        SelectSimple=0
+        SelectPolygon=1
+        SelectFreehand=2
+        SelectRadius=3
+
+    geometryChanged = pyqtSignal(Qt.KeyboardModifiers)
+
+    def __init__(self, canvas:QgsMapCanvas, selectionMode):
+        super(QgsMapToolSelectionHandler, self).__init__()
+        assert isinstance(selectionMode, QgsMapToolSelectionHandler.SelectionMode)
+        self.mCanvas = canvas
+        self.mSelectionMode = selectionMode
+        self.mSnapIndicato = QgsSnapIndicator(canvas)
+        self.mIdentifyMenu = QgsIdentifyMenu(canvas)
+        self.mIdentifyMenu.setAllowMultipleReturn(False)
+        self.mIdentifyMenu.setExecWithSingleResult(True)
+        self.mSelectionActive = False
+
+        self.mDistanceWidget = None
+        self.mSelectionRubberBand = None
+        self.mInitDragPos = None
+        self.mRadiusCenter = None
+        self.mFillColor = QColor( 254, 178, 76, 63 )
+        self.mStrokeColor = QColor( 254, 58, 29, 100 )
+
+    def canvasReleaseEvent(self, e:QgsMapMouseEvent):
+        if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
+            self.selectFeaturesReleaseEvent( e )
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectPolygon:
+            pass
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectFreehand:
+            self.selectFreehandReleaseEvent( e )
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectRadius:
+            self.selectRadiusReleaseEvent( e )
+
+    def canvasMoveEvent(self, e:QgsMapMouseEvent):
+        if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
+            self.selectFeaturesMoveEvent( e )
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectPolygon:
+            self.selectPolygonMoveEvent( e )
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectFreehand:
+            self.selectFreehandMoveEvent( e )
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectRadius:
+            self.selectRadiusMoveEvent( e )
+
+    def canvasPressEvent(self, e:QgsMapMouseEvent):
+        if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
+            self.selectFeaturesPressEvent( e )
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectPolygon:
+            self.selectPolygonPressEvent( e )
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectFreehand:
+            pass
+        elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectRadius:
+            pass
+
+    def keyReleaseEvent(self, e:QKeyEvent)->bool:
+        if self.mSelectionActive and e.key() == Qt.Key_Escape:
+            self.cancel()
+            return True
+        else:
+            return False
+
+    def deactivate(self):
+        self.cancel()
+
+    def selectFeaturesPressEvent(self, e:QgsMapMouseEvent):
+        if not self.mSelectionRubberBand:
+            self.initRubberBand()
+        self.mInitDragPos = e.pos()
+
+    def selectFeaturesMoveEvent(self, e:QgsMapMouseEvent):
+
+        if e.buttons() != Qt.LeftButton:
+            return
+
+
+        if not self.mSelectionActive:
+            self.mSelectionActive = True
+            rect = QRect(e.pos(), e.pos())
+        else:
+            rect = QRect(e.pos(), self.mInitDragPos)
+
+        if isinstance(self.mSelectionRubberBand, QgsRubberBand):
+
+            self.mSelectionRubberBand.setToCanvasRectangle(rect)
+
+    def selectFeaturesReleaseEvent(self, e:QgsMapMouseEvent):
+
+        point = e.pos() - self.mInitDragPos
+
+        if not self.mSelectionActive or ( point.manhattanLength() < QApplication.startDragDistance() ):
+
+            self.mSelectionActive = False
+            self.setSelectedGeometry( QgsGeometry.fromPointXY(self.toMapCoordinates( e.pos() ) ), e.modifiers() )
+
+
+        if self.mSelectionRubberBand and self.mSelectionActive:
+
+            self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), e.modifiers() )
+            self.mSelectionRubberBand.reset()
+
+
+        self.mSelectionActive = False
+
+
+    def toMapCoordinates(self, point:QPoint)->QgsPointXY:
+        return self.mCanvas.getCoordinateTransform().toMapCoordinates( point )
+
+
+    def selectPolygonMoveEvent(self, e:QgsMapMouseEvent):
+        if not isinstance(self.mSelectionRubberBand, QgsRubberBand):
+            return
+
+        if self.mSelectionRubberBand.numberOfVertices() > 0:
+            self.mSelectionRubberBand.movePoint(self.toMapCoordinates( e.pos() ) )
+
+    def selectPolygonPressEvent(self, e:QgsMapMouseEvent):
+
+        #// Handle immediate right-click on feature to show context menu
+        if not self.mSelectionRubberBand and e.button() == Qt.RightButton:
+
+
+            # QList<QgsMapToolIdentify::IdentifyResult> results;
+            #QMap< QString, QString > derivedAttributes;
+
+            results = []
+            derivedAttributes = dict()
+
+            mapPoint = self.toMapCoordinates(e.pos())
+            x = mapPoint.x()
+            y = mapPoint.y()
+            sr = QgsMapTool.searchRadiusMU(self.mCanvas)
+
+            #const QList<QgsMapLayer *> layers = mCanvas->layers();
+            layers = self.mCanvas.layers()
+
+            for vectorLayer in layers:
+                if isinstance(vectorLayer, QgsVectorLayer):
+                    if vectorLayer.geometryType() == QgsWkbTypes.PolygonGeometry:
+                        fit = vectorLayer.getFeatures( QgsFeatureRequest()
+                                                   .setDestinationCrs(self.mCanvas.mapSettings().destinationCrs(),
+                                                                      self.mCanvas.mapSettings().transformContext())
+                                                   .setFilterRect( QgsRectangle( x - sr, y - sr, x + sr, y + sr ) )
+                                                   .setFlags( QgsFeatureRequest.ExactIntersect ) )
+                        f = None
+                        while fit.nextFeature( f ):
+                            results.append(QgsMapToolIdentify.IdentifyResult(vectorLayer, f, derivedAttributes ))
+
+
+            globalPos = self.mCanvas.mapToGlobal( QPoint( e.pos().x() + 5, e.pos().y() + 5 ) )
+            selectedFeatures = self.mIdentifyMenu.exec(results, globalPos )
+            if not selectedFeatures.empty() and selectedFeatures[0].mFeature.hasGeometry():
+                self.setSelectedGeometry(selectedFeatures[0].mFeature.geometry(), e.modifiers() )
+            return 
+
+
+        #// Handle definition of polygon by clicking points on cancas
+        if not self.mSelectionRubberBand:
+            self.initRubberBand()
+
+        if e.button() == Qt.LeftButton:
+            self.mSelectionRubberBand.addPoint(self.toMapCoordinates( e.pos() ) )
+            self.mSelectionActive = True
+        else:
+            if self.mSelectionRubberBand.numberOfVertices() > 2:
+                self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), e.modifiers() )
+
+            self.mSelectionRubberBand.reset()
+            self.mSelectionActive = False
+
+    def selectFreehandMoveEvent(self, e:QgsMapMouseEvent):
+
+        if not (self.mSelectionActive or self.mSelectionRubberBand):
+            return
+
+        self.mSelectionRubberBand.addPoint(self.toMapCoordinates( e.pos() ) )
+
+
+    def selectFreehandReleaseEvent(self, e:QgsMapMouseEvent):
+
+        if self.mSelectionActive:
+            if e.button() != Qt.LeftButton:
+                return
+
+            if not self.mSelectionRubberBand:
+                self.initRubberBand()
+
+            self.mSelectionRubberBand.addPoint(self.toMapCoordinates( e.pos() ) )
+            self.mSelectionActive = True
+
+        else:
+            if e.button() == Qt.LeftButton:
+                if self.mSelectionRubberBand and self.mSelectionRubberBand.numberOfVertices() > 2:
+                    self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), e.modifiers() )
+
+            self.mSelectionRubberBand.reset()
+            self.mSelectionActive = False
+
+
+    def selectRadiusMoveEvent(self, e:QgsMapMouseEvent):
+
+        radiusEdge = e.snapPoint()
+
+        self.mSnapIndicator.setMatch(e.mapPointMatch() )
+
+        if not self.mSelectionActive:
+            return
+
+
+        if not self.mSelectionRubberBand:
+
+            self.initRubberBand()
+
+        self.updateRadiusFromEdge( radiusEdge )
+
+
+    def selectRadiusReleaseEvent(self, e:QgsMapMouseEvent):
+
+        if e.button() == Qt.RightButton:
+            self.cancel()
+            return
+
+        if e.button() != Qt.LeftButton:
+            return
+
+        if not self.mSelectionActive:
+
+            self.mSelectionActive = True
+            self.mRadiusCenter = e.snapPoint()
+            self.createDistanceWidget()
+        else:
+            if isinstance(self.mSelectionRubberBand, QgsRubberBand):
+                self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), e.modifiers() )
+
+            self.cancel()
+
+
+    def initRubberBand(self):
+
+        self.mSelectionRubberBand = QgsRubberBand(self.mCanvas, QgsWkbTypes.PolygonGeometry)
+        self.mSelectionRubberBand.setFillColor(self.mFillColor )
+        self.mSelectionRubberBand.setStrokeColor(self.mStrokeColor)
+
+
+    def createDistanceWidget(self):
+        if not isinstance(self.mCanvas, QgsMapCanvas):
+            return
+
+        self.deleteDistanceWidget()
+
+        self.mDistanceWidget = QgsDistanceWidget("Selection radius:")
+        #QgisApp::instance()->addUserInputWidget( mDistanceWidget );
+        self.mDistanceWidget.setFocus(Qt.TabFocusReason)
+
+        #connect( mDistanceWidget, &QgsDistanceWidget::distanceChanged, this, &QgsMapToolSelectionHandler::updateRadiusRubberband );
+        #connect( mDistanceWidget, &QgsDistanceWidget::distanceEditingFinished, this, &QgsMapToolSelectionHandler::radiusValueEntered );
+        #connect( mDistanceWidget, &QgsDistanceWidget::distanceEditingCanceled, this, &QgsMapToolSelectionHandler::cancel );
+
+
+    def deleteDistanceWidget(self):
+        if isinstance(self.mDistanceWidget, QWidget):
+            self.mDistanceWidget.releaseKeyboard()
+            self.mDistanceWidget.deleteLater()
+
+        self.mDistanceWidget = None
+
+
+    def radiusValueEntered(self, radius:float, modifiers:Qt.KeyboardModifiers):
+
+        if not isinstance(self.mSelectionRubberBand, QgsRubberBand):
+            return
+
+        self.updateRadiusRubberband( radius );
+        self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), modifiers )
+        self.cancel();
+
+
+    def cancel(self):
+
+        self.deleteDistanceWidget()
+        self.mSnapIndicator.setMatch( QgsPointLocator.Match() )
+        self.mSelectionRubberBand.reset()
+        self.mSelectionActive = False
+
+
+    def updateRadiusRubberband(self, radius:float):
+
+        if not isinstance(self.mSelectionRubberBand, QgsRubberBand):
+            self.initRubberBand()
+
+        RADIUS_SEGMENTS = 80
+        self.mSelectionRubberBand.reset(QgsWkbTypes.PolygonGeometry)
+        for i in range(RADIUS_SEGMENTS):
+
+            theta = i * ( 2.0 * math.pi / RADIUS_SEGMENTS )
+            radiusPoint = QgsPointXY(self.mRadiusCenter.x() + radius * math.cos( theta ),
+                                     self.mRadiusCenter.y() + radius * math.sin( theta ) )
+            self.mSelectionRubberBand.addPoint( radiusPoint, False)
+
+        self.mSelectionRubberBand.closePoints(True)
+
+
+    def updateRadiusFromEdge(self, radiusEdge:QgsPointXY):
+        radius = math.sqrt(self.mRadiusCenter.sqrDist( radiusEdge ) )
+        if self.mDistanceWidget:
+            self.mDistanceWidget.setDistance( radius )
+            self.mDistanceWidget.setFocus( Qt.TabFocusReason )
+
+        else:
+            self.updateRadiusRubberband( radius )
+
+    def selectedGeometry(self)->QgsGeometry:
+        return self.mSelectionGeometry
+
+    def setSelectedGeometry(self, geometry:QgsGeometry, modifiers:Qt.KeyboardModifiers):
+
+        self.mSelectionGeometry = geometry
+        self.geometryChanged.emit(modifiers)
+
+    def setSelectionMode(self, mode):
+        assert isinstance(mode, QgsMapToolSelectionHandler.SelectionMode)
+        self.mSelectionMode = mode
+
+    def selectionMode(self):
+        return self.mSelectionMode
+
+
+class QgsMapToolSelect(QgsMapTool):
+
+    def __init__(self, canvas:QgsMapCanvas):
+        super(QgsMapToolSelect, self).__init__(canvas)
+
+        self.mSelectionHandler = QgsMapToolSelectionHandler(canvas, QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
+        self.mSelectionHandler.geometryChanged.connect(self.selectFeatures)
+        self.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
+
+
+    def setSelectionMode(self, selectionMode:QgsMapToolSelectionHandler.SelectionMode):
+        self.mSelectionHandler.setSelectionMode(selectionMode)
+        if selectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:
+            self.setCursor(QgsApplication.getThemeCursor(QgsApplication.Select))
+        else:
+            self.setCursor(Qt.ArrowCursor)
+
+    def canvasPressEvent(self, e:QgsMapMouseEvent):
+        self.mSelectionHandler.canvasPressEvent(e)
+
+
+    def canvasMoveEvent(self, e:QgsMapMouseEvent):
+        self.mSelectionHandler.canvasMoveEvent(e)
+
+
+    def canvasReleaseEvent(self, e:QgsMapMouseEvent):
+        self.mSelectionHandler.canvasReleaseEvent(e)
+
+
+    def keyReleaseEvent(self, e:QKeyEvent):
+        if (self.mSelectionHandler.keyReleaseEvent(e)):
+            return
+
+        super(QgsMapToolSelect, self).keyPressEvent(e)
+
+
+    def deactivate(self):
+        self.mSelectionHandler.deactivate()
+        super(QgsMapToolSelect, self).deactivate()
+
+
+
+    def selectFeatures(self, modifiers:Qt.KeyboardModifiers):
+
+        if self.mSelectionHandler.selectionMode() == QgsMapToolSelectionHandler.SelectionMode.SelectSimple \
+            and self.mSelectionHandler.selectedGeometry().type() == QgsWkbTypes.PointGeometry:
+
+            vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(self.canvas())
+            r = QgsMapToolSelectUtils.expandSelectRectangle(self.mSelectionHandler.selectedGeometry().asPoint(),
+                                                            self.canvas(),
+                                                            vlayer )
+            QgsMapToolSelectUtils.selectSingleFeature(self.canvas(), QgsGeometry.fromRect(r), modifiers )
+
+        else:
+            QgsMapToolSelectUtils.selectMultipleFeatures(self.canvas(), self.mSelectionHandler.selectedGeometry(),
+                                                         modifiers )
+
 
 

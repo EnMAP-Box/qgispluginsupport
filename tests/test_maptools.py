@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
 from qps.testing import initQgisApplication, TestObjects
-SHOW_GUI = False and os.environ.get('CI') is None
+SHOW_GUI = True and os.environ.get('CI') is None
 QGIS_APP = initQgisApplication()
 from qps.utils import *
 from qps.maptools import *
@@ -42,6 +42,50 @@ class TestMapTools(unittest.TestCase):
     def tearDown(self):
         self.canvas.close()
         QgsProject.instance().removeMapLayer(self.lyr)
+
+
+    def test_MapToolDigitizeFeatures(self):
+
+        lyrR = TestObjects.createRasterLayer()
+        lyrV_Point = TestObjects.createVectorLayer(QgsWkbTypes.PointGeometry)
+        lyrV_Poly = TestObjects.createVectorLayer(QgsWkbTypes.PolygonGeometry)
+        lyrV_Line = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
+        layers = [lyrR, lyrV_Point, lyrV_Line, lyrV_Poly]
+        QgsProject.instance().addMapLayers(layers)
+
+        c = QgsMapCanvas()
+        d = QgsAdvancedDigitizingDockWidget(c)
+        d.setVisible(False)
+        c.show()
+        c.setLayers(layers)
+        c.setDestinationCrs(lyrV_Poly.crs())
+        c.setExtent(c.fullExtent())
+
+        mt = MapToolAddFeature(c, d, QgsMapToolCapture.CapturePolygon)
+        self.assertIsInstance(mt, MapToolAddFeature)
+        c.setMapTool(mt)
+        #mt = QgsMapToolCapture(c, d, QgsMapToolCapture.CapturePolygon)
+
+        mts = QgsMapToolSelect(c)
+        mts.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
+        c.setMapTool(mts)
+        c.setCurrentLayer(lyrV_Poly)
+
+        #QMouseEvent(QEvent::Type type, const QPointF &localPos, Qt::MouseButton button, Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers)
+        
+        w,h = c.size().width(), c.size().height()
+        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0,0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me2 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me3 = QMouseEvent(QEvent.MouseButtonPress, QPointF(h, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me4 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5*h, 0.5*w), Qt.RightButton, Qt.RightButton, Qt.NoModifier)
+        c.mousePressEvent(me1)
+        c.mousePressEvent(me2)
+        c.mousePressEvent(me3)
+        c.mousePressEvent(me4)
+
+        if SHOW_GUI:
+            QGIS_APP.exec_()
+
 
     def test_MapTools(self):
 
