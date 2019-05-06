@@ -34,6 +34,10 @@ import numpy as np
 from .utils import *
 
 
+def tr(t:str)->str:
+    return t
+
+
 def createCursor(resourcePath:str):
     """
     Creates a QCursor from a icon path
@@ -297,6 +301,7 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
 
     def __init__(self, canvas:QgsMapCanvas):
         QgsMapToolEmitPoint.__init__(self, self.canvas)
+        self.isEmittingPoint = False
         self.rubberBand = QgsRubberBand(self.canvas(), QgsWkbTypes.PolygonGeometry)
         self.setStyle(Qt.red, 1)
         self.reset()
@@ -448,155 +453,19 @@ class SpectralProfileMapTool(CursorLocationMapTool):
         super(SpectralProfileMapTool, self).__init__(*args, **kwds)
 
 
-
-# mActionAddFeatures
-# QgisApp.addFeature
-# set maptool mAddFeatures QgsMapToolAddFeature->QgsMapToolDigitizeFeature->QgsMapToolCapture
-
-class MapToolDigitizeFeature(QgsMapToolCapture):
-
-    digitizingCompleted = pyqtSignal(QgsFeature)
-    digitizingFinished = pyqtSignal()
-
-    def __init__(self, canvas:QgsMapCanvas, cadDock:QgsAdvancedDigitizingDockWidget,
-                 captureMode:QgsMapToolCapture.CaptureMode):
-        super(MapToolDigitizeFeature, self).__init__(canvas, cadDock, captureMode)
-
-        QgsProject.instance().cleared.connect(lambda : self.stopCapturing())
-
-        self.mRememberedLayer = None
-
-
-    def currentVectorLayer(self)->QgsVectorLayer:
-
-        lyr = self.canvas().currentLayer()
-        if isinstance(lyr, QgsVectorLayer):
-            return lyr
-        else:
-            return None
-
-    def digitized(self, f:QgsFeature):
-        self.digitizingCompleted.emit(f)
-
-
-    def activate(self):
-        vlayer = self.currentVectorLayer()
-
-        if isinstance(vlayer, QgsVectorLayer):
-            if vlayer.geometryType() == QgsWkbTypes.NullGeometry:
-                f = QgsFeature()
-                self.digitized(f)
-                return
-
-            #always edit the current map canvas vector layer
-            self.mRememberedLayer = self.canvas().currentLayer()
-            self.canvas().setCurrentLayer(vlayer)
-
-            super(MapToolDigitizeFeature, self).activate()
-
-    def deactivate(self):
-        super(MapToolDigitizeFeature, self).deactivate()
-
-        if isinstance(self.mRememberedLayer, QgsMapLayer):
-            self.canvas().setCurrentLayer(self.mRememberedLayer)
-
-        self.digitizingFinished.emit()
-
-    def checkGeometryType(self):
-        pass
-
-    def setCheckGeometryType(self, b:bool):
-        pass
-
-
-    def cadCanvasReleaseEvent(self, e:QgsMapMouseEvent):
-
-        vlayer = self.currentVectorLayer()
-
-        if isinstance(vlayer, QgsVectorLayer) and vlayer.isEditable():
-
-            g = None
-
-            f = QgsFeature(vlayer.fields(), 0)
-
-            if self.mode() == QgsMapToolCapture.CapturePoint:
-                if e.button() == Qt.LeftButton:
-                    return
-
-
-                layerPoint = self.toLayerCoordinates(vlayer, e.mapPoint())
-                savePoint = QgsPoint(layerPoint.x(), layerPoint.y())
-                g = QgsGeometry(savePoint)
-                f.setGeometry(g)
-                f.setValid(True)
-                self.digitized(f)
-                self.cadDockWidget().clearPoints()
-
-            elif self.mode() in [QgsMapToolCapture.CaptureLine, QgsMapToolCapture.CapturePolygon]:
-
-                if e.button() == Qt.LeftButton:
-                    error = self.addVertex(e.mapPoint(), e.mapPointMatch())
-                    if error == 1:
-                        return
-                    elif error == 2:
-                        return
-
-                    self.startCapturing()
-                elif e.button() == Qt.RightButton:
-
-                    self.deleteTempRubberBand()
-
-                    # bail outs
-                    if self.mode() == QgsMapToolCapture.CaptureLine and self.size() < 2:
-                        self.stopCapturing()
-                        return
-
-                    if self.mode() == QgsMapToolCapture.CapturePolygon and self.size() < 3:
-                        self.stopCapturing()
-                        return
-
-                    if self.mode() == QgsMapToolCapture.CapturePolygon:
-                        self.closePolygon()
-
-                    f = QgsFeature(vlayer.fields(), 0)
-
-                    hasCurvedSegments = self.captureCurve().hasCurvedSegments()
-                    providerSupportsCurvedSegments = vlayer.dataProvider().capabilities() & QgsVectorDataProvider.CircularGeometries
-
-                    if hasCurvedSegments and providerSupportsCurvedSegments:
-                        curveToAdd = self.captureCurve().clone()
-                    else:
-                        curveToAdd = self.captureCurve().curveToLine()
-                        smappingMatchesList = self.snappingMatches()
-
-                    if self.mode() == QgsMapToolCapture.CaptureLine:
-                        g = QgsGeometry(curveToAdd)
-                        f.setGeometry(g)
-
-                    if self.mode() == QgsMapToolCapture.CapturePolygon:
-                        if hasCurvedSegments and providerSupportsCurvedSegments:
-                            poly = QgsCurvePolygon()
-                        else:
-                            poly = QgsPolygon()
-
-                        poly.setExteriorRing(curveToAdd)
-                        g = QgsGeometry(poly)
-                        f.setGeometry(g)
-
-                    f.setValid(True)
-                    self.digitized(f)
-                    self.stopCapturing()
-
-
-
-class FeatureAction(QAction):
+class QgsFeatureAction(QAction):
     """
     This is a python copy of the qgis/app/QgsFeatureAction.cpp
     """
+    from weakref import WeakKeyDictionary
+    sLastUsedValues = WeakKeyDictionary()
+
     def __init__(self, name:str, f:QgsFeature, layer:QgsVectorLayer, actionID:id, defaultAttr:int, parent:QObject=None):
 
-        super(FeatureAction, self).__init__(name, parent)
 
+        super(QgsFeatureAction, self).__init__(name, parent)
+        
+        assert isinstance(layer, QgsVectorLayer)
         self.mLayer = layer
         self.mFeature = f
         self.mActionId = actionID
@@ -604,8 +473,132 @@ class FeatureAction(QAction):
         self.mFeatureSaved = False
         self.mForceSuppressFormPopup = False
 
+
     def executed(self):
         self.mLayer.actions().doAction(self.mActionId, self.mFeature, self.mIdx)
+
+
+
+    def newDialog(self, cloneFeatures:bool)->QgsAttributeDialog:
+        """
+        Creates a new dialog
+        :param cloneFeatures: bool
+        :return: QgsAttributeDialog
+        """
+        f = QgsFeature(self.mFeature) if cloneFeatures else self.mFeature
+
+        context = QgsAttributeEditorContext()
+
+        myDa = QgsDistanceArea()
+        myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
+        myDa.setEllipsoid(QgsProject.instance().ellipsoid())
+
+        context.setDistanceArea(myDa)
+        #context.setVectorLayerTools()
+        #context.setMapCanvas()
+        context.setFormMode(QgsAttributeEditorContext.StandaloneDialog)
+
+        dialog = QgsAttributeDialog(self.mLayer, f, cloneFeatures, self.parentWidget(), True, context)
+        dialog.setWindowFlags(dialog.windowFlags() | Qt.Tool)
+        dialog.setObjectName('featureaction {} {}'.format(self.mLayer.id(), f.id()))
+
+
+        actions = self.mLayer.actions().actions("Feature")
+        if len(actions) == 0:
+            dialog.setContextMenuPolicy(Qt.ActionsContextMenu)
+
+        a = QAction(tr("Run Actions"), dialog)
+        a.setEnabled(False)
+        dialog.addAction(a)
+
+        for action in actions:
+            assert isinstance(action, QgsAction)
+            if not action.runable():
+                continue
+
+            if not self.mLayer.isEditable() and action.isEnabledOnlyWhenEditable():
+                continue
+
+            feat = dialog.feature()
+            a = QgsFeatureAction(action.name(), feat, self.mLayer, action.id(), -1, dialog)
+            dialog.addAction(a)
+            a.triggered.connect(a.execute)
+
+            pb = dialog.findChild(QAbstractButton, action.name())
+            if isinstance(pb, QAbstractButton):
+                pb.clicked.connect(a.execute)
+
+        return dialog
+
+    def viewFeatureForm(self, h:QgsHighlight)->bool:
+    
+        if not self.mLayer or not self.mFeature:
+            return False
+
+        name = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeature.id() )
+        
+        
+        #QgsAttributeDialog * dialog = QgisApp::instance()->findChild < QgsAttributeDialog * > (name);
+        #if (dialog)
+        #    {
+        #        delete
+        #    h;
+        #    dialog->raise ();
+        #    dialog->activateWindow();
+        #    return true;
+        #    }
+
+        dialog = self.newDialog(True)
+        dialog.setHighlight(h)
+        #// delete the dialog when it is closed
+        dialog.setAttribute(Qt.WA_DeleteOnClose )
+        dialog.show()
+
+        return True
+
+
+
+
+    def editFeature(self, showModal:bool)->bool:
+
+        if not self.mLayer:
+            return False
+
+        if showModal:
+
+            dialog = self.newDialog( False)
+
+            if not self.mFeature.isValid():
+                dialog.setMode( QgsAttributeEditorContext.AddFeatureMode )
+
+            rv = dialog.exec()
+            self.mFeature.setAttributes( dialog.feature().attributes())
+            return rv
+
+        else:
+
+            name = "featureactiondlg:{}:{}".format(self.mLayer.id(), self.mFeatureid() )
+
+            #QgsAttributeDialog *dialog = QgisApp::instance()->findChild<QgsAttributeDialog *>( name );
+            #if ( dialog )
+            #{
+            #  dialog->raise();
+            #  return true;
+            #}
+
+            dialog = self.newDialog( False)
+
+            if not self.mFeature.isValid():
+                dialog.setMode(QgsAttributeEditorContext.AddFeatureMode )
+
+            #// delete the dialog when it is closed
+            dialog.setAttribute( Qt.WA_DeleteOnClose )
+            dialog.show()
+
+
+        return True
+
+
 
     def addFeature(self, defaultAttributes:dict, showModal:bool, scope:QgsExpressionContextScope):
 
@@ -671,68 +664,376 @@ class FeatureAction(QAction):
         return self.mFeatureSaved
 
 
+    def setForceSuppressFormPopup(self, force:bool):
+        self.mForceSuppressFormPopup = force
+
+
+
     def onFeatureSaved(self, feature:QgsFeature):
-        # todo: save last values
-        pass
-
-    def newDialog(self, cloneFeatures:bool)->QgsAttributeDialog:
-        """
-        Creates a new dialog
-        :param cloneFeatures: bool
-        :return: QgsAttributeDialog
-        """
-        f = QgsFeature(self.mFeature) if cloneFeatures else self.mFeature
-
-        context = QgsAttributeEditorContext()
-
-        myDa = QgsDistanceArea()
-        myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
-        myDa.setEllipsoid(QgsProject.instance().ellipsoid())
-
-        context.setDistanceArea(myDa)
-        #context.setVectorLayerTools()
-        #context.setMapCanvas()
-        context.setFormMode(QgsAttributeEditorContext.StandaloneDialog)
-
-        dialog = QgsAttributeDialog(self.mLayer, f, cloneFeatures, self.parentWidget(), True, context)
-        dialog.setWindowFlags(dialog.windowFlags() | Qt.Tool)
-        dialog.setObjectName('featureaction {} {}'.format(self.mLayer.id(), f.id()))
+        form = self.sender()
+        if not isinstance(form, QgsAttributeForm):
+            return
 
 
-        # todo: init feature actions
+        #// Assign provider generated values
+        if self.mFeature:
+           self.mFeature = feature
 
-        return dialog
+        self.mFeatureSaved = True
+
+        settings = QgsSettings()
+
+        reuseLastValues = bool(settings.value("qgis/digitizing/reuseLastValues", False))
+        #QgsDebugMsg(QStringLiteral("reuseLastValues: %1").arg(reuseLastValues));
+
+        if reuseLastValues:
+            fields = self.mLayer.fields()
+            for idx in range(fields.count()):
+
+                newValues = feature.attributes();
+                origValues = self.sLastUsedValues[self.mLayer]
+
+                if origValues[idx] != newValues.at(idx):
+
+                    #QgsDebugMsg( QStringLiteral( "saving %1 for %2" ).arg( sLastUsedValues[mLayer][idx].toString() ).arg( idx ) );
+                    self.sLastUsedValues[self.mLayer][idx] = newValues.at( idx )
 
 
-class MapToolAddFeature(MapToolDigitizeFeature):
 
 
-    def __init__(self, canvas:QgsMapCanvas,
-                 cadDock:QgsAdvancedDigitizingDockWidget,
-                 captureMode:QgsMapToolCapture.CaptureMode):
+class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
-        super(MapToolAddFeature, self).__init__(canvas, cadDock, captureMode)
-
-    def addFeature(self, vectorLayer:QgsVectorLayer, feature:QgsFeature, showModal:bool)->bool:
-
-        scope = QgsExpressionContextUtils.mapToolCaptureScope(self.snappingMatches())
-        action = FeatureAction('Add feature', feature, vectorLayer, '', -1, self)
+    digitizingCompleted = pyqtSignal(QgsFeature)
+    digitizingFinished = pyqtSignal()
 
 
-        #open dialog to enter attributes
 
-        res = action.addFeature({}, showModal, scope)
+    def __init__(self, canvas:QgsMapCanvas, layer:QgsMapLayer, mode, cadDockWidget:QgsAdvancedDigitizingDockWidget):
+
+        super(QgsMapToolDigitizeFeature, self).__init__(canvas, cadDockWidget, mode)
+
+        self.mCheckGeometryType = True
+        self.mLayer = layer
+        self.mCurrentLayer = None
+        #mToolName = tr( "Digitize feature" );
+        #connect( QgisApp::instance(), &QgisApp::newProject, this, &QgsMapToolDigitizeFeature::stopCapturing );
+        #connect( QgisApp::instance(), &QgisApp::projectRead, this, &QgsMapToolDigitizeFeature::stopCapturing );
+
+
+    def digitized(self, f:QgsFeature):
+        self.digitizingCompleted.emit(f)
+
+
+    def activate(self):
+        vlayer = self.mLayer
+        if not isinstance(self.mLayer, QgsVectorLayer):
+            vlayer = self.currentVectorLayer()
+
+        if isinstance(vlayer, QgsVectorLayer) and vlayer.geometryType() == QgsWkbTypes.NullGeometry:
+            f = QgsFeature()
+            self.digitized(f)
+            return
+
+
+        if self.mLayer:
+            # //remember current layer
+            self.mCurrentLayer = self.canvas().currentLayer()
+            #//set the layer with the given
+            self.canvas().setCurrentLayer(self.mLayer)
+
+
+        super(QgsMapToolDigitizeFeature, self).activate()
+
+    def deactivate(self):
+        super(QgsMapToolDigitizeFeature, self).deactivate()
+
+        if self.mCurrentLayer:
+            #//set the layer back to the one remembered
+            self.canvas().setCurrentLayer(self.mCurrentLayer)
+            self.digitizingFinished.emit()
+
+    def checkGeometryType(self)->bool:
+        return self.mCheckGeometryType
+
+
+    def setCheckGeometryType(self, checkGeometryType:bool):
+
+        self.mCheckGeometryType = checkGeometryType
+
+    def cadCanvasReleaseEvent(self, e:QgsMapMouseEvent):
+
+        vlayer = self.mLayer
+        if not isinstance(vlayer, QgsVectorLayer):
+            #//if no given layer take the current from canvas
+            vlayer = self.currentVectorLayer()
+
+        if not isinstance(vlayer, QgsVectorLayer):
+
+            self.notifyNotVectorLayer()
+            return
+
+        layerWKBType = vlayer.wkbType()
+        provider = vlayer.dataProvider()
+
+        if not (provider.capabilities() & QgsVectorDataProvider.AddFeatures ):
+
+            self.messageEmitted.emit("The data provider for this layer does not support the addition of features.", Qgis.Warning)
+
+            return
+
+
+        if not vlayer.isEditable():
+
+            self.notifyNotEditableLayer()
+            return
+
+
+        #// POINT CAPTURING
+        if self.mode() == self.CapturePoint:
+
+            if e.button() != Qt.LeftButton:
+                return
+
+            #//check we only use this tool for point/multipoint layers
+            if vlayer.geometryType() != QgsWkbTypes.PointGeometry and self.mCheckGeometryType:
+
+                self.messageEmitted.emit("Wrong editing tool, cannot apply the 'capture point' tool on this vector layer", Qgis.Warning)
+                return
+
+
+            savePoint = None #; //point in layer coordinates
+            isMatchPointZ = False
+            try:
+
+                fetchPoint = QgsPoint()
+                res = self.fetchLayerPoint( e.mapPointMatch(), fetchPoint)
+                if QgsWkbTypes.hasZ(fetchPoint.wkbType()):
+                    isMatchPointZ = True
+
+                if res == 0:
+
+                    if isMatchPointZ:
+                        savePoint = fetchPoint
+                    else:
+                        savePoint = QgsPoint(fetchPoint.x(), fetchPoint.y())
+
+                else:
+
+                    layerPoint = self.toLayerCoordinates( vlayer, e.mapPoint() )
+                    if isMatchPointZ:
+                        savePoint = QgsPoint(QgsWkbTypes.PointZ, layerPoint.x(), layerPoint.y(), fetchPoint.z() )
+                    else:
+                        savePoint = QgsPoint(layerPoint.x(), layerPoint.y())
+            except QgsCsException as cse:
+                self.messageEmitted.emit("Cannot transform the point to the layers coordinate system", Qgis.Warning )
+                return
+
+
+            #//only do the rest for provider with feature addition support
+            #//note that for the grass provider, this will return false since
+            #//grass provider has its own mechanism of feature addition
+            if provider.capabilities() & QgsVectorDataProvider.AddFeatures:
+
+                f = QgsFeature(vlayer.fields(), 0 )
+
+                g = None
+                if layerWKBType == QgsWkbTypes.Point:
+                    g = QgsGeometry(savePoint )
+                elif not QgsWkbTypes.isMultiType(layerWKBType) and QgsWkbTypes.hasZ( layerWKBType ):
+                    g = QgsGeometry(QgsPoint(savePoint.x(), savePoint.y(), savePoint.z() if isMatchPointZ else self.defaultZValue() ) )
+                elif QgsWkbTypes.isMultiType(layerWKBType) and not QgsWkbTypes.hasZ( layerWKBType ):
+                    #g = QgsGeometry::fromMultiPointXY( QgsMultiPointXY() << savePoint );
+                    g = QgsGeometry.fromMultiPointXY(savePoint)
+
+                elif QgsWkbTypes.isMultiType(layerWKBType) and QgsWkbTypes.hasZ(layerWKBType):
+
+                    mp = QgsMultiPoint()
+                    mp.addGeometry(QgsPoint(QgsWkbTypes.PointZ, savePoint.x(), savePoint.y(), savePoint.z() if isMatchPointZ else self.defaultZValue() ) )
+                    g = QgsGeometry()
+                    g.set( mp )
+                else:
+                    #// if layer supports more types (mCheckGeometryType is false)
+                    g = QgsGeometry(QgsPoint(savePoint))
+
+                if QgsWkbTypes.hasM( layerWKBType ):
+                    g.get().addMValue()
+
+
+                f.setGeometry( g )
+                f.setValid( True)
+
+                self.digitized( f )
+
+                #// we are done with digitizing for now so instruct advanced digitizing dock to reset its CAD points
+                self.cadDockWidget().clearPoints()
+
+
+
+        #// LINE AND POLYGON CAPTURING
+        elif self.mode() == self.CaptureLine or self.mode() == self.CapturePolygon:
+
+            #//check we only use the line tool for line/multiline layers
+            if self.mode() == self.CaptureLine and vlayer.geometryType() != QgsWkbTypes.LineGeometry and self.mCheckGeometryType:
+
+                self.messageEmitted.emit(tr("Wrong editing tool, cannot apply the 'capture line' tool on this vector layer"), Qgis.Warning )
+                return
+
+
+            #//check we only use the polygon tool for polygon/multipolygon layers
+            if self.mode() == self.CapturePolygon and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry and self.mCheckGeometryType:
+
+              self.messageEmitted.emit( tr( "Wrong editing tool, cannot apply the 'capture polygon' tool on this vector layer" ), Qgis.Warning)
+              return
+
+
+            #//add point to list and to rubber band
+            if e.button() == Qt.LeftButton:
+
+                error = self.addVertex(e.mapPoint(), e.mapPointMatch() )
+                if error == 1 :
+                    #//current layer is not a vector layer
+                    return
+
+                elif error == 2:
+
+                    #//problem with coordinate transformation
+                    self.messageEmitted.emit( tr( "Cannot transform the point to the layers coordinate system" ), Qgis.Warning )
+                    return
+
+                self.startCapturing();
+
+            elif e.button() == Qt.RightButton:
+
+                #// End of string
+                self.deleteTempRubberBand()
+
+                #//lines: bail out if there are not at least two vertices
+                if self.mode() == self.CaptureLine and self.size() < 2:
+
+                    self.stopCapturing()
+                    return
+
+
+                #//polygons: bail out if there are not at least two vertices
+                if self.mode() == self.CapturePolygon and self.size() < 3:
+
+                    self.stopCapturing()
+                    return;
+
+
+                if self.mode() == self.CapturePolygon:
+                    self.closePolygon()
+
+
+                #//create QgsFeature with wkb representation
+                f = QgsFeature(vlayer.fields(), 0 )
+
+                #//does compoundcurve contain circular strings?
+                #//does provider support circular strings?
+                hasCurvedSegments = self.captureCurve().hasCurvedSegments()
+                providerSupportsCurvedSegments = vlayer.dataProvider().capabilities() & QgsVectorDataProvider.CircularGeometries
+
+                snappingMatchesList = []
+                curveToAdd = None
+                if hasCurvedSegments and providerSupportsCurvedSegments:
+
+                    curveToAdd = self.captureCurve().clone()
+
+                else:
+
+                    curveToAdd = self.captureCurve().curveToLine()
+                    snappingMatchesList = self.snappingMatches()
+
+
+                if self.mode() == self.CaptureLine:
+
+                    g = QgsGeometry(curveToAdd)
+                    f.setGeometry( g )
+
+                else:
+                    poly = None
+                    if hasCurvedSegments and providerSupportsCurvedSegments:
+                        poly = QgsCurvePolygon()
+                    else:
+                        poly = QgsPolygon()
+
+                    poly.setExteriorRing( curveToAdd )
+                    g = QgsGeometry( poly )
+                    f.setGeometry( g )
+
+                    featGeom = f.geometry()
+                    avoidIntersectionsReturn = featGeom.avoidIntersections( QgsProject.instance().avoidIntersectionsLayers() )
+                    f.setGeometry( featGeom )
+                    if avoidIntersectionsReturn == 1:
+                        #//not a polygon type. Impossible to get there
+                        pass
+
+                    if f.geometry().isEmpty(): # //avoid intersection might have removed the whole geometry
+
+                        self.messageEmitted.emit(tr( "The feature cannot be added because it's geometry collapsed due to intersection avoidance" ), Qgis.Critical )
+                        self.stopCapturing()
+                        return
+
+
+                f.setValid(True)
+
+                self.digitized(f)
+
+                self.stopCapturing()
+
+
+
+
+
+class QgsMapToolAddFeature(QgsMapToolDigitizeFeature):
+
+    def __init__(self, canvas:QgsMapCanvas, mode, cadDockWidget:QgsAdvancedDigitizingDockWidget):
+        super(QgsMapToolAddFeature, self).__init__(canvas, canvas.currentLayer(), mode, cadDockWidget)
+
+        self.setCheckGeometryType(True)
+        #mToolName = tr( "Add feature" );
+        #connect( QgisApp::instance(), &QgisApp::newProject, this, &QgsMapToolAddFeature::stopCapturing );
+        #connect( QgisApp::instance(), &QgisApp::projectRead, this, &QgsMapToolAddFeature::stopCapturing );
+
+
+    def addFeature(self, vlayer:QgsVectorLayer, f:QgsFeature, showModal:bool )->bool:
+
+        scope = QgsExpressionContextUtils.mapToolCaptureScope(self.snappingMatches() )
+        action = QgsFeatureAction(tr( "add feature" ), f, vlayer, '', -1, self)
+        res = action.addFeature({}, showModal, scope )
         if showModal:
             del action
         return res
 
+
     def digitized(self, f:QgsFeature):
 
-        layer = self.currentVectorLayer()
-        res = self.addFeature(layer, f, False)
-        if res and (self.mode() in [QgsMapToolCapture.CaptureLine, QgsMapToolCapture.CapturePolygon]):
-            pass
-            # todo: add topological points
+        vlayer = self.currentVectorLayer()
+        res = self.addFeature( vlayer, f, False)
+
+        if res and ( self.mode() == self.CaptureLine or self.mode() == self.CapturePolygon):
+
+            #//add points to other features to keep topology up-to-date
+            topologicalEditing = QgsProject.instance().topologicalEditing()
+
+            #//use always topological editing for avoidIntersection.
+            #//Otherwise, no way to guarantee the geometries don't have a small gap in between.
+            intersectionLayers = QgsProject.instance().avoidIntersectionsLayers()
+            avoidIntersection = len(intersectionLayers) > 0
+            if avoidIntersection:# //try to add topological points also to background layers
+
+                for vl in intersectionLayers:
+
+                    #//can only add topological points if background layer is editable...
+                    if vl.geometryType() == QgsWkbTypes.PolygonGeometry and vl.isEditable():
+
+                        vl.addTopologicalPoints( f.geometry() )
+
+
+
+            elif topologicalEditing:
+
+                vlayer.addTopologicalPoints( f.geometry() )
 
 
 class QgsDistanceWidget(QWidget):
