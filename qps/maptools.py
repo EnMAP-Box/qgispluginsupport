@@ -70,6 +70,8 @@ class MapTools(object):
     SpectralProfile = 'SPECTRAL_PROFILE'
     TemporalProfile = 'TEMPORAL_PROFILE'
     MoveToCenter = 'MOVE_CENTER'
+    AddFeature = 'ADD_FEATURE'
+    SelectFeature = 'SELECT_FEATURE'
 
     @staticmethod
     def create(mapToolKey:str, canvas, *args, activate=True, **kwds)->QgsMapTool:
