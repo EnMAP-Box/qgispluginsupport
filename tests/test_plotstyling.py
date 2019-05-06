@@ -28,7 +28,7 @@ from qps.testing import initQgisApplication
 from qps.plotstyling.plotstyling import *
 
 QAPP = initQgisApplication()
-SHOW_GUI = False and os.environ.get('CI') is None
+SHOW_GUI = True and os.environ.get('CI') is None
 
 class PlotStyleTests(unittest.TestCase):
 
@@ -86,6 +86,14 @@ class PlotStyleTests(unittest.TestCase):
 
         self.assertTrue(PlotStyle.fromJSON(None) == None)
         self.assertTrue(PlotStyle.fromJSON('') == None)
+
+    def test_PlotStyleWidget(self):
+        from qps.plotstyling.plotstyling import PlotStyleWidget
+        w = PlotStyleWidget()
+        w.show()
+
+        if SHOW_GUI:
+            QAPP.exec_()
 
     def test_PlotStyleQgsAction(self):
 

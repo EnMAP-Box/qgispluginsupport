@@ -47,6 +47,33 @@ class testClassTesting(unittest.TestCase):
         qgis_app.quit()
 
 
+    def test_TestObject(self):
+
+        from qps.testing import TestObjects, initQgisApplication
+        qgis_app = initQgisApplication(minimal=True)
+        from osgeo import ogr, osr
+
+        ds = TestObjects.createVectorDataSet(wkb=ogr.wkbPoint)
+        self.assertIsInstance(ds, ogr.DataSource)
+        self.assertTrue(ds.GetLayerCount() == 1)
+        lyr = ds.GetLayer(0)
+        self.assertIsInstance(lyr, ogr.Layer)
+        self.assertEqual(lyr.GetGeomType(), ogr.wkbPoint)
+        self.assertTrue(lyr.GetFeatureCount() > 0)
+
+        ds = TestObjects.createVectorDataSet(wkb=ogr.wkbLineString)
+        self.assertIsInstance(ds, ogr.DataSource)
+        self.assertTrue(ds.GetLayerCount() == 1)
+        lyr = ds.GetLayer(0)
+        self.assertIsInstance(lyr, ogr.Layer)
+        self.assertTrue(lyr.GetFeatureCount() > 0)
+        self.assertEqual(lyr.GetGeomType(), ogr.wkbLineString)
+
+
+        lyr = TestObjects.createVectorLayer()
+
+        qgis_app.quit()
+
 if __name__ == "__main__":
     SHOW_GUI = False
     unittest.main()

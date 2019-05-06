@@ -19,8 +19,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
 from qps.testing import initQgisApplication, TestObjects
-SHOW_GUI = False and os.environ.get('CI') is None
-QGIS_APP = initQgisApplication()
+SHOW_GUI = True and os.environ.get('CI') is None
+QGIS_APP = initQgisApplication(loadProcessingFramework=False)
 from qps.utils import *
 from qps.maptools import *
 
@@ -42,6 +42,63 @@ class TestMapTools(unittest.TestCase):
     def tearDown(self):
         self.canvas.close()
         QgsProject.instance().removeMapLayer(self.lyr)
+
+
+    def test_QgsMapTools(self):
+
+        lyrR = TestObjects.createRasterLayer()
+        lyrV_Point = TestObjects.createVectorLayer(QgsWkbTypes.PointGeometry)
+        lyrV_Poly = TestObjects.createVectorLayer(QgsWkbTypes.PolygonGeometry)
+        lyrV_Line = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
+        layers = [lyrR, lyrV_Point, lyrV_Line, lyrV_Poly]
+        QgsProject.instance().addMapLayers(layers)
+
+        canvas = QgsMapCanvas()
+        cadDockWidget = QgsAdvancedDigitizingDockWidget(canvas)
+        cadDockWidget.setVisible(True)
+        cadDockWidget.show()
+        canvas.show()
+        canvas.setLayers(layers)
+        canvas.setDestinationCrs(lyrV_Poly.crs())
+        canvas.setExtent(canvas.fullExtent())
+
+        w, h = canvas.size().width(), canvas.size().height()
+        
+        canvas.setCurrentLayer(lyrV_Point)
+
+        lyrV_Point.startEditing()
+        mt = QgsMapToolAddFeature(canvas, QgsMapToolCapture.CapturePoint, cadDockWidget)
+        self.assertIsInstance(mt, QgsMapToolAddFeature)
+        canvas.setMapTool(mt)
+        mt.activate()
+        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5*w, 0.5*h), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        canvas.mousePressEvent(me1)
+        #mt = QgsMapToolCapture(c, d, QgsMapToolCapture.CapturePolygon)
+        
+        if SHOW_GUI:
+            QGIS_APP.exec_()
+            
+
+        mts = QgsMapToolSelect(canvas)
+        mts.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
+        canvas.setMapTool(mts)
+        canvas.setCurrentLayer(lyrV_Poly)
+
+        #QMouseEvent(QEvent::Type type, const QPointF &localPos, Qt::MouseButton button, Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers)
+        
+
+        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0,0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me2 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me3 = QMouseEvent(QEvent.MouseButtonPress, QPointF(h, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me4 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5*h, 0.5*w), Qt.RightButton, Qt.RightButton, Qt.NoModifier)
+        canvas.mousePressEvent(me1)
+        canvas.mousePressEvent(me2)
+        canvas.mousePressEvent(me3)
+        canvas.mousePressEvent(me4)
+
+        if SHOW_GUI:
+            QGIS_APP.exec_()
+
 
     def test_MapTools(self):
 
