@@ -12,15 +12,17 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 
 import unittest, pickle
+from qps.testing import initQgisApplication, TestObjects
+QGIS_APP = initQgisApplication(loadProcessingFramework=False)
 from qgis import *
 from qgis.core import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
-from qps.testing import initQgisApplication, TestObjects
+
 SHOW_GUI = True and os.environ.get('CI') is None
-QGIS_APP = initQgisApplication(loadProcessingFramework=False)
+
 from qps.utils import *
 from qps.maptools import *
 
@@ -37,6 +39,7 @@ class TestMapTools(unittest.TestCase):
         QgsProject.instance().addMapLayer(lyr)
         canvas.setLayers([lyr])
         canvas.setExtent(lyr.extent())
+        canvas.setExtent(canvas.fullExtent())
         return canvas
 
     def tearDown(self):
@@ -99,6 +102,16 @@ class TestMapTools(unittest.TestCase):
         if SHOW_GUI:
             QGIS_APP.exec_()
 
+    def test_CenterMapCanvasMapTool(self):
+
+        canvas = self.createCanvas()
+        canvas.show()
+        mt = MapToolCenter(canvas)
+        canvas.setMapTool(mt)
+
+        if SHOW_GUI:
+            QGIS_APP.exec_()
+
 
     def test_MapTools(self):
 
@@ -157,6 +170,7 @@ class TestMapTools(unittest.TestCase):
         mt = FullExtentMapTool(self.canvas)
         self.assertIsInstance(mt, FullExtentMapTool)
  #       self.assertFalse(mt.canvas().cursor().pixmap().isNull())
+
 
 
 

@@ -224,6 +224,14 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
         """
         self.rubberband.reset()
 
+
+class MapToolCenter(CursorLocationMapTool):
+    """This maptool centers a QgsMapCanvas on the clicked position"""
+
+    def __init__(self, canvas:QgsMapCanvas):
+        super(MapToolCenter, self).__init__(canvas)
+        self.sigLocationRequest.connect(lambda point: self.canvas().setCenter(point))
+
 class PixelScaleExtentMapTool(QgsMapTool):
     """
     A QgsMapTool to scale the QgsMapCanvas to the pixel resolution of a selected QgsRasterLayer pixel.
@@ -285,7 +293,6 @@ class FullExtentMapTool(QgsMapTool):
 
     def flags(self):
         return QgsMapTool.Transient
-
 
 class PointLayersMapTool(CursorLocationMapTool):
 
