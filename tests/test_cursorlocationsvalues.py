@@ -90,6 +90,9 @@ class CursorLocationTest(unittest.TestCase):
 
     def test_weblayertest(self):
 
+        if os.environ.get('CI'):
+            # do not run in CI
+            return
         canvas = QgsMapCanvas()
 
         layers = self.webLayers()
