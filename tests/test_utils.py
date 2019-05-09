@@ -226,6 +226,21 @@ class testClassUtils(unittest.TestCase):
             self.assertIsInstance(s, str)
 
 
+    def test_defaultBands(self):
+
+        ds = TestObjects.inMemoryImage(nb=10)
+        self.assertIsInstance(ds, gdal.Dataset)
+
+        self.assertListEqual([0, 1, 2], defaultBands(ds))
+        self.assertListEqual([0, 1, 2], defaultBands(ds.GetFileList()[0]))
+
+        ds.SetMetadataItem('default bands', '{4,3,1}', 'ENVI')
+        self.assertListEqual([4, 3, 1], defaultBands(ds))
+
+        ds.SetMetadataItem('default_bands', '{4,3,1}', 'ENVI')
+        self.assertListEqual([4, 3, 1], defaultBands(ds))
+
+
 
 if __name__ == "__main__":
     SHOW_GUI = False
