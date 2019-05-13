@@ -63,6 +63,7 @@
      <addaction name="actionRemoveSelection"/>
      <addaction name="actionPanMapToSelectedRows"/>
      <addaction name="actionZoomMapToSelectedRows"/>
+     <addaction name="separator"/>
      <addaction name="actionReload"/>
      <addaction name="actionToggleEditing"/>
      <addaction name="actionCutSelectedRows"/>

@@ -458,7 +458,10 @@ class SpectralProfile(QgsFeature):
         """
         Returns the Spectral Profiles from source at position `position`
         :param source: path or gdal.Dataset
-        :param position:
+        :param position: list of positions
+                        QPoint -> pixel index position
+                        QgsPointXY -> pixel geolocation position in layer/dataset CRS
+                        SpatialPoint -> pixel geolocation position, will be transformed into layer/dataset CRS
         :return: SpectralProfile
         """
 
@@ -2510,6 +2513,10 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
     sigLoadFromMapRequest = pyqtSignal()
     sigFilesCreated = pyqtSignal(list)
 
+    sigMapExtentRequested = pyqtSignal(SpatialExtent)
+    sigMapCenterRequested = pyqtSignal(SpatialPoint)
+
+
     class CurrentProfilesMode(enum.Enum):
         normal = 0
         automatically = 1
@@ -2588,6 +2595,14 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.mMapInteraction = True
         self.setMapInteraction(self.mMapInteraction)
 
+
+    def canvas(self)->QgsMapCanvas:
+        """
+        Returns the internal, hidden QgsMapCanvas. Note: not to be used in other widgets!
+        :return: QgsMapCanvas
+        """
+        return self.mCanvas
+
     def onWillShowContextMenu(self, menu:QMenu, atIndex:QModelIndex):
         """
         Create the QMenu for the AttributeTable
@@ -2663,7 +2678,6 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
 
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
-
         def onSetBlocked(isBlocked):
             if isBlocked:
                 self.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.block)
@@ -2681,9 +2695,6 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
                 if b else self.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.normal)
         )
 
-
-        #self.actionSaveCurrentProfiles.event = onEvent
-
         self.actionImportSpeclib.triggered.connect(lambda: self.importSpeclib())
         self.actionSaveSpeclib.triggered.connect(self.onExportSpectra)
 
@@ -2692,19 +2703,11 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.actionSaveEdits.triggered.connect(self.onSaveEdits)
         self.actionDeleteSelected.triggered.connect(lambda : deleteSelected(self.speclib()))
 
-        self.actionSelectAll.triggered.connect(lambda :
-                                               self.speclib().selectAll()
-                                               )
-
-        self.actionInvertSelection.triggered.connect(lambda :
-                                                     self.speclib().invertSelection()
-                                                     )
-        self.actionRemoveSelection.triggered.connect(lambda :
-                                                     self.speclib().removeSelection()
-                                                     )
-
-
-
+        self.actionSelectAll.triggered.connect(self.selectAll)
+        self.actionInvertSelection.triggered.connect(self.invertSelection)
+        self.actionRemoveSelection.triggered.connect(self.removeSelection)
+        self.actionPanMapToSelectedRows.triggered.connect(self.panMapToSelectedRows)
+        self.actionZoomMapToSelectedRows.triggered.connect(self.zoomMapToSelectedRows)
 
         self.actionAddAttribute.triggered.connect(self.onAddAttribute)
         self.actionRemoveAttribute.triggered.connect(self.onRemoveAttribute)
@@ -2724,12 +2727,6 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         self.actionCopySelectedRows.triggered.connect(self.copySelectedFeatures)
         self.actionPasteFeatures.triggered.connect(self.pasteFeatures)
 
-        #to hide
-        #self.actionPanMapToSelectedRows.setVisible(False)
-        #self.actionZoomMapToSelectedRows.setVisible(False)
-        #self.actionCutSelectedRows.setVisible(False) #todo
-        #self.actionCopySelectedRows.setVisible(False) #todo
-        #self.actionPasteFeatures.setVisible(False)
         self.updateActionAvailability()
 
     def showProperties(self, *args):
@@ -2881,6 +2878,45 @@ class SpectralLibraryWidget(QFrame, loadSpeclibUI('spectrallibrarywidget.ui')):
         :return: bool
         """
         return self.mMapInteraction
+
+    def selectAll(self):
+        """
+        Selects all features/spectral profiles
+        """
+        self.speclib().selectAll()
+
+    def invertSelection(self):
+        """
+        Inverts the current selection
+        """
+        self.speclib().invertSelection()
+
+    def removeSelection(self):
+        """
+        Removes the current selection
+        """
+        self.speclib().removeSelection()
+
+    def panMapToSelectedRows(self):
+        """
+        Pan to the selected layer features
+        Requires that external maps respond to sigMapCenterRequested
+        """
+        crs = self.mCanvas.mapSettings().destinationCrs()
+        center = SpatialPoint(self.speclib().crs(), self.speclib().boundingBoxOfSelected().center()).toCrs(crs)
+        self.mCanvas.setCenter(center)
+        self.sigMapCenterRequested.emit(center)
+
+    def zoomMapToSelectedRows(self):
+        """
+        Zooms to the selected rows.
+        Requires that external maps respond to sigMapExtentRequested
+        """
+        crs = self.mCanvas.mapSettings().destinationCrs()
+        bbox = SpatialExtent(self.speclib().crs(), self.speclib().boundingBoxOfSelected()).toCrs(crs)
+        self.mCanvas.setExtent(bbox)
+        self.sigMapExtentRequested.emit(bbox)
+
 
     def cutSelectedFeatures(self):
         """

@@ -678,8 +678,11 @@ class LayerFieldConfigEditorWidget(QWidget, loadUI('layerfieldconfigeditorwidget
         """
         sw = self.stackedWidget
         assert isinstance(sw, QStackedWidget)
-        while sw.count() > 0:
-            sw.removeWidget(sw.widget(0))
+        i = sw.count() - 1
+        while i >= 0:
+            w = sw.widget(i)
+            w.setParent(None)
+            i -= 1
 
         lyr = self.layer()
         if isinstance(lyr, QgsVectorLayer):

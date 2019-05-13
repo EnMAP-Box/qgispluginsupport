@@ -1074,7 +1074,35 @@ class TestCore(unittest.TestCase):
             slw.show()
             QAPP.exec_()
 
+    def test_SpectralLibraryWidgetCanvas(self):
 
+        # speclib = self.createSpeclib()
+
+        lyr = QgsRasterLayer(hymap)
+        h, w = lyr.height(), lyr.width()
+        speclib = SpectralLibrary.readFromRasterPositions(enmap, [QPoint(0,0), QPoint(w-1, h-1), QPoint(2, 2)])
+        slw = SpectralLibraryWidget(speclib=speclib)
+        slw.show()
+
+        QgsProject.instance().addMapLayers([lyr, slw.speclib()])
+
+        canvas = QgsMapCanvas()
+
+        canvas.setLayers([lyr, slw.speclib()])
+        canvas.setDestinationCrs(slw.speclib().crs())
+        canvas.setExtent(slw.speclib().extent())
+        canvas.show()
+
+        def setLayers():
+            canvas.mapSettings().setDestinationCrs(slw.mCanvas.mapSettings().destinationCrs())
+            canvas.setExtent(slw.canvas().extent())
+            canvas.setLayers(slw.canvas().layers())
+
+        slw.sigMapCenterRequested.connect(setLayers)
+        slw.sigMapExtentRequested.connect(setLayers)
+
+        if SHOW_GUI:
+            QAPP.exec_()
 
     def test_editing(self):
 
