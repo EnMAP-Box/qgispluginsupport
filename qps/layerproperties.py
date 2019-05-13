@@ -1159,7 +1159,9 @@ class RasterLayerProperties(QgsOptionsDialogBase, loadUI('rasterlayerpropertiesd
         self.accepted.connect(self.apply)
         self.rejected.connect(self.onCancel)
         self.buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.apply)
-        #connect controls
+        self.buttonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+
+        # connect controls
         self.initOptionsBase(False, title)
         self.initOptsGeneral()
         self.initOptsStyle()
@@ -1316,11 +1318,14 @@ class VectorLayerProperties(QgsOptionsDialogBase, loadUI('vectorlayerpropertiesd
         self.buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.syncToLayer)
 
         self.pbnQueryBuilder.clicked.connect(self.on_pbnQueryBuilder_clicked)
+
         self.accepted.connect(self.syncToLayer)
         self.rejected.connect(self.onCancel)
 
         self.buttonBox.button(QDialogButtonBox.Apply).clicked.connect(self.syncToLayer)
-        self.buttonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.onCancel)
+        self.buttonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+
+
         self.syncFromLayer()
 
     def onCancel(self):
