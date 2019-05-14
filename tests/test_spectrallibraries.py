@@ -1051,6 +1051,23 @@ class TestCore(unittest.TestCase):
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertNotEqual(id(sl1), id(sl2))
 
+    def test_qmainwindow(self):
+
+        w1 = QWidget()
+        w1.setWindowTitle('Parent')
+        w1.setLayout(QVBoxLayout())
+
+        w2 = QMainWindow()
+        w2.setWindowTitle('CENTRAL MAIN APP')
+        l = QLabel('CENTRAL')
+        w2.setCentralWidget(l)
+
+        w1.layout().addWidget(w2)
+        w1.show()
+
+        if SHOW_GUI:
+            QAPP.exec_()
+
     def test_pointprofileimportdialog(self):
 
         lyrRaster = QgsRasterLayer(enmap)
@@ -1075,11 +1092,18 @@ class TestCore(unittest.TestCase):
         self.assertEqual(speclib1, d.vectorSource())
 
         if SHOW_GUI:
-
             slw = SpectralLibraryWidget()
-            slw.show()
-            # slw.actionImportVectorSource.trigger()
+            if True:
 
+                dw = QDockWidget()
+
+                dw.setWindowTitle('Parent Widget')
+                dw.setLayout(QVBoxLayout())
+                dw.setWidget(slw)
+                # slw.actionImportVectorSource.trigger()
+                dw.show()
+            else:
+                slw.show()
             QAPP.exec_()
 
 

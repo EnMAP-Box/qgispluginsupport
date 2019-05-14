@@ -2671,9 +2671,9 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         automatically = 1
         block = 2
 
-    def __init__(self, parent=None, speclib:SpectralLibrary=None):
+    def __init__(self, *args, speclib:SpectralLibrary=None, **kwds):
 
-        super(SpectralLibraryWidget, self).__init__(parent)
+        super(SpectralLibraryWidget, self).__init__(*args, **kwds)
         self.setupUi(self)
 
         # self.statusbar.setVisible(False)
