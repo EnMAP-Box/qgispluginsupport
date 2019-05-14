@@ -2310,26 +2310,6 @@ def deleteSelected(layer):
     #saveEdits(layer, leaveEditable=b)
 
 
-class SpectralLibraryPanel(QgsDockWidget):
-    sigLoadFromMapRequest = None
-    def __init__(self, parent=None):
-        super(SpectralLibraryPanel, self).__init__(parent)
-        self.setObjectName('spectralLibraryPanel')
-        self.setWindowTitle('Spectral Library')
-        self.SLW = SpectralLibraryWidget(self)
-        self.setWidget(self.SLW)
-
-
-    def speclib(self)->SpectralLibrary:
-        return self.SLW.speclib()
-
-    def setCurrentSpectra(self, listOfSpectra):
-        self.SLW.setCurrentSpectra(listOfSpectra)
-
-    def setAddCurrentSpectraToSpeclibMode(self, b: bool):
-        self.SLW.setAddCurrentSpectraToSpeclibMode(b)
-
-
 class UnitComboBoxItemModel(OptionListModel):
     def __init__(self, parent=None):
         super(UnitComboBoxItemModel, self).__init__(parent)
@@ -2795,7 +2775,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
     def setCurrentProfilesMode(self, mode:CurrentProfilesMode):
         """
-        Sets the way how incomming profiles are handles
+        Sets the way how to handel profiles added by setCurrentProfiles
         :param mode: CurrentProfilesMode
         """
         assert isinstance(mode, SpectralLibraryWidget.CurrentProfilesMode)
@@ -3267,6 +3247,45 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         """
         return list(self.mCurrentProfiles.keys())
 
+
+class SpectralLibraryPanel(QgsDockWidget):
+    sigLoadFromMapRequest = None
+
+    def __init__(self, *args, speclib:SpectralLibrary=None, **kwds):
+        super(SpectralLibraryPanel, self).__init__(*args, **kwds)
+        self.setObjectName('spectralLibraryPanel')
+        self.setWindowTitle('Spectral Library')
+        self.SLW = SpectralLibraryWidget(speclib=speclib)
+        self.setWidget(self.SLW)
+
+    def spectralLibraryWidget(self) -> SpectralLibraryWidget:
+        """
+        Returns the SpectralLibraryWidget
+        :return: SpectralLibraryWidget
+        """
+        return self.SLW
+
+    def speclib(self) -> SpectralLibrary:
+        """
+        Returns the SpectralLibrary
+        :return: SpectralLibrary
+        """
+        return self.SLW.speclib()
+
+    def setCurrentSpectra(self, listOfSpectra):
+        """
+        Adds a list of SpectralProfiles as current spectra
+        :param listOfSpectra: [list-of-SpectralProfiles]
+        :return:
+        """
+        self.SLW.setCurrentSpectra(listOfSpectra)
+
+    def setCurrentProfilesMode(self, mode:SpectralLibraryWidget.CurrentProfilesMode):
+        """
+        Sets the way how to handel profiles added by setCurrentProfiles
+        :param mode: SpectralLibraryWidget.CurrentProfilesMode
+        """
+        self.SLW.setCurrentProfilesMode(mode)
 
 
 registerAbstractLibraryIOs()

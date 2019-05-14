@@ -1093,19 +1093,15 @@ class TestCore(unittest.TestCase):
 
         if SHOW_GUI:
             slw = SpectralLibraryWidget()
-            if True:
-
-                dw = QDockWidget()
-
-                dw.setWindowTitle('Parent Widget')
-                dw.setLayout(QVBoxLayout())
-                dw.setWidget(slw)
-                # slw.actionImportVectorSource.trigger()
-                dw.show()
-            else:
-                slw.show()
             QAPP.exec_()
 
+    def test_SpectralLibraryPanel(self):
+
+        sp = SpectralLibraryPanel()
+        sp.show()
+
+        if SHOW_GUI:
+            QAPP.exec_()
 
     def test_SpectralLibraryWidget(self):
 
