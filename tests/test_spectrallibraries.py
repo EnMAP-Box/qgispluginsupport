@@ -122,6 +122,40 @@ class TestIO(unittest.TestCase):
         self.assertTrue(len(SLIB) == len(speclib2))
 
 
+    def test_vector2speclib(self):
+
+        lyrRaster = QgsRasterLayer(enmap)
+        h, w = lyrRaster.height(), lyrRaster.width()
+        pxPositions = [QPoint(0, 0), QPoint(w - 1, h - 1)]
+        speclib1 = SpectralLibrary.readFromRasterPositions(enmap, pxPositions)
+
+        ds = gdal.Open(enmap)
+        data = ds.ReadAsArray()
+        for i, px in enumerate(pxPositions):
+
+            vector = data[:, px.y(), px.x()]
+
+            profile = speclib1[i]
+
+            self.assertIsInstance(profile, SpectralProfile)
+            vector2 = profile.yValues()
+            self.assertListEqual(list(vector), vector2)
+
+        progress = QProgressDialog()
+
+        def onProgress(n, t, msg=None):
+            print('{} of {} = {} % {}'.format(n, t, 100 * n/t, msg))
+        progress.sigProgress.connect(onProgress)
+
+        speclib2 = SpectralLibrary.readFromVectorPositions(lyrRaster, speclib1, progressDialog=progress)
+        self.assertIsInstance(speclib2, SpectralLibrary)
+        self.assertEqual(len(speclib1), len(speclib2))
+        for i in range(len(speclib1)):
+            p1 = speclib1[i]
+            p2 = speclib2[i]
+            self.assertListEqual(p1.yValues(), p2.yValues())
+
+
     def test_CSV(self):
         # TEST CSV writing
         speclib = self.createSpeclib()
@@ -1016,6 +1050,38 @@ class TestCore(unittest.TestCase):
         self.assertIsInstance(sl1, SpectralLibrary)
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertNotEqual(id(sl1), id(sl2))
+
+    def test_pointprofileimportdialog(self):
+
+        lyrRaster = QgsRasterLayer(enmap)
+
+        h, w = lyrRaster.height(), lyrRaster.width()
+
+        pxPositions = [QPoint(0, 0), QPoint(w - 1, h - 1)]
+
+        speclib1 = SpectralLibrary.readFromRasterPositions(enmap, pxPositions)
+
+        self.assertIsInstance(speclib1, SpectralLibrary)
+
+        QgsProject.instance().addMapLayer(speclib1)
+
+        d = SpectralProfileImportPointsDialog()
+        self.assertIsInstance(d, QDialog)
+        d.setRasterSource(lyrRaster)
+        d.setVectorSource(speclib1)
+        # d.show()
+
+        self.assertEqual(lyrRaster, d.rasterSource())
+        self.assertEqual(speclib1, d.vectorSource())
+
+        if SHOW_GUI:
+
+            slw = SpectralLibraryWidget()
+            slw.show()
+            # slw.actionImportVectorSource.trigger()
+
+            QAPP.exec_()
+
 
     def test_SpectralLibraryWidget(self):
 

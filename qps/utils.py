@@ -1533,3 +1533,4 @@ def setToolButtonDefaultActionMenu(toolButton:QToolButton, actions:list):
 
     menu.triggered.connect(toolButton.setDefaultAction)
     toolButton.setMenu(menu)
+
