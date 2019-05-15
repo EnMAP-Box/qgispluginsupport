@@ -621,7 +621,7 @@
     <string>Reload Profiles</string>
    </property>
    <property name="toolTip">
-    <string>Reloads the x/y values from a raster source for all currently selected features / profile locations.</string>
+    <string>Reloads for all selected features the profile values from a raster source.</string>
    </property>
   </action>
  </widget>
