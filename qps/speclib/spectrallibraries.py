@@ -2736,6 +2736,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         self.mCanvas = QgsMapCanvas(self.centralwidget)
         self.mCanvas.setVisible(False)
         self.mCanvas.setDestinationCrs(self.mSpeclib.crs())
+        self.mSpeclib.crsChanged.connect(self.mCanvas.setDestinationCrs(self.mSpeclib.crs()))
 
         self.mSourceFilter = '*'
 
