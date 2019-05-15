@@ -85,6 +85,8 @@ def createSpeclib()->SpectralLibrary:
     return SLIB
 
 
+
+
 class TestIO(unittest.TestCase):
 
     def setUp(self):
@@ -154,6 +156,63 @@ class TestIO(unittest.TestCase):
             p1 = speclib1[i]
             p2 = speclib2[i]
             self.assertListEqual(p1.yValues(), p2.yValues())
+
+    def test_reloadProfiles(self):
+        lyr = QgsRasterLayer(enmap)
+        QgsProject.instance().addMapLayer(lyr)
+        lyr.setName('ENMAP')
+        self.assertIsInstance(lyr, QgsRasterLayer)
+        locations = []
+        for x in range(lyr.width()):
+            for y in range(lyr.height()):
+                locations.append(QPoint(x, y))
+
+        speclibA = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
+
+        speclibREF = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
+        speclibREF.setName('REF SPECLIB')
+        self.assertIsInstance(speclibA, SpectralLibrary)
+        self.assertTrue(len(locations) == len(speclibA))
+
+        self.assertTrue(speclibA.isEditable() == False)
+
+        # clean values
+        speclibA.startEditing()
+        idx = speclibA.fields().indexOf(FIELD_VALUES)
+        for p in speclibA:
+            self.assertIsInstance(p, SpectralProfile)
+            speclibA.changeAttributeValue(p.id(), idx, None)
+        self.assertTrue(speclibA.commitChanges())
+
+        for p in speclibA:
+            self.assertIsInstance(p, SpectralProfile)
+            self.assertEqual(p.yValues(), [])
+
+        # re-read values
+        speclibA.selectAll()
+        speclibA.startEditing()
+        speclibA.reloadSpectralValues(enmap)
+        self.assertTrue(speclibA.commitChanges())
+        for a, b in zip(speclibA[:], speclibREF[:]):
+            self.assertIsInstance(a, SpectralProfile)
+            self.assertIsInstance(b, SpectralProfile)
+            self.assertListEqual(a.xValues(), b.xValues())
+            self.assertListEqual(a.yValues(), b.yValues())
+
+        if SHOW_GUI:
+            slw = SpectralLibraryWidget(speclib=speclibA)
+            slw.show()
+            # clean values
+            speclibA.startEditing()
+            idx = speclibA.fields().indexOf(FIELD_VALUES)
+            for p in speclibA:
+                self.assertIsInstance(p, SpectralProfile)
+                speclibA.changeAttributeValue(p.id(), idx, None)
+            self.assertTrue(speclibA.commitChanges())
+            s = ""
+
+
+            QAPP.exec_()
 
 
     def test_CSV(self):
@@ -1093,6 +1152,7 @@ class TestCore(unittest.TestCase):
 
         if SHOW_GUI:
             slw = SpectralLibraryWidget()
+            slw.show()
             QAPP.exec_()
 
     def test_SpectralLibraryPanel(self):

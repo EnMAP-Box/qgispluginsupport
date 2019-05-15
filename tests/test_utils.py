@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
 from qps.testing import initQgisApplication, TestObjects
-SHOW_GUI = False and os.environ.get('CI') is None
+SHOW_GUI = True and os.environ.get('CI') is None
 QGIS_APP = initQgisApplication()
 from qps.utils import *
 
@@ -37,7 +37,7 @@ class testClassUtils(unittest.TestCase):
         self.w.setCentralWidget(self.cw)
         self.w.show()
         self.menuBar = self.w.menuBar()
-        self.menuA = self.menuBar.addMenu('Menu A')
+
         self.wmsUri = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
         self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
 
@@ -192,10 +192,10 @@ class testClassUtils(unittest.TestCase):
 
         B = QMenu()
         action = B.addAction('Do something')
+        menuA = QMenu()
+        appendItemsToMenu(menuA, B)
 
-        appendItemsToMenu(self.menuA, B)
-
-        self.assertTrue(action in self.menuA.children())
+        self.assertTrue(action in menuA.children())
 
 
     def test_value2string(self):
@@ -224,6 +224,34 @@ class testClassUtils(unittest.TestCase):
             s = filenameFromString(text)
             print('Test {}:"{}"->"{}"'.format(i + 1, text, s))
             self.assertIsInstance(s, str)
+
+    def test_selectMapLayersDialog(self):
+
+        lyrR = TestObjects.createRasterLayer()
+        lyrV = TestObjects.createVectorLayer()
+        QgsProject.instance().addMapLayers([lyrR, lyrV])
+        d = SelectMapLayersDialog()
+        d.addLayerDescription('ML', QgsMapLayerProxyModel.All)
+        layers = d.mapLayers()
+        self.assertIsInstance(layers, list)
+        self.assertTrue(len(layers) == 1)
+        self.assertListEqual(layers, [lyrR])
+
+        d = SelectMapLayersDialog()
+        d.addLayerDescription('ML', QgsMapLayerProxyModel.VectorLayer)
+        self.assertListEqual(d.mapLayers(), [lyrV])
+
+        d = SelectMapLayersDialog()
+        d.addLayerDescription('ML', QgsMapLayerProxyModel.RasterLayer)
+        self.assertListEqual(d.mapLayers(), [lyrR])
+
+
+        if SHOW_GUI:
+            d = SelectMapLayersDialog()
+            d.addLayerDescription('L1', QgsMapLayerProxyModel.VectorLayer)
+            d.addLayerDescription('L2 loong text', QgsMapLayerProxyModel.RasterLayer)
+            d.show()
+            QGIS_APP.exec_()
 
 
     def test_defaultBands(self):
