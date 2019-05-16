@@ -112,6 +112,18 @@ class TestMapTools(unittest.TestCase):
         if SHOW_GUI:
             QGIS_APP.exec_()
 
+    def test_QgsFeatureSelectTool(self):
+
+        canvas = self.createCanvas()
+        canvas.show()
+        canvas.setCurrentLayer(canvas.layers()[0])
+        mt = QgsMapToolSelect(canvas)
+        mt.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectRadius)
+        canvas.setMapTool(mt)
+
+        if SHOW_GUI:
+            QGIS_APP.exec_()
+
 
     def test_MapTools(self):
 
