@@ -1652,7 +1652,8 @@ class QgsMapToolSelectionHandler(QObject):
 
         self.deleteDistanceWidget()
         self.mSnapIndicator.setMatch( QgsPointLocator.Match() )
-        self.mSelectionRubberBand.reset()
+        if isinstance(self.mSelectionRubberBand, QgsRubberBand):
+            self.mSelectionRubberBand.reset()
         self.mSelectionActive = False
 
 

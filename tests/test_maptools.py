@@ -121,6 +121,12 @@ class TestMapTools(unittest.TestCase):
         mt.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectRadius)
         canvas.setMapTool(mt)
 
+        m2 = QgsMapToolZoom(canvas, True)
+        canvas.setMapTool(m2)
+
+        canvas.setMapTool(mt)
+
+
         if SHOW_GUI:
             QGIS_APP.exec_()
 
