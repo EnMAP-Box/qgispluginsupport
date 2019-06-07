@@ -168,7 +168,7 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
 
         QGIS_PREFIX_PATH = os.environ.get('QGIS_PREFIX_PATH')
         print('Initialize QGIS environment on {}'.format(QOperatingSystemVersion.current().name()))
-        if QOperatingSystemVersion.current().type() == QOperatingSystemVersion.Windows:
+        if QOperatingSystemVersion.current().type() == QOperatingSystemVersion.MacOS:
             # add location of Qt Libraries
             assert '.app' in qgis.__file__, 'Can not locate path of QGIS.app'
             PATH_QGIS_APP = re.search(r'.*\.app', qgis.__file__).group()
