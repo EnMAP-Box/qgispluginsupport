@@ -4,14 +4,22 @@ deploy/
 build/
 tmp/
 doc/build/
-
-qgisresources
+.idea/*
+.idea/*.*
+deploy/*
+temp/
+doc/build/*
+vrtbuilder/ui/resources.py
+vrtbuilder/externals/qps/qpsresources.py
+tests/outputs
+tests/outputs/*
 qgisresources/
+qgisresources/*
+qps/qpsresources.py
+qgisresources
 enmapboxtestdata/
 testdata/
 test-reports/
-
-qps/qpsresources.py
 
 
 # Untrack compiled files
