@@ -32,25 +32,25 @@ class LayerRendererTests(unittest.TestCase):
 
         #1 band, byte
         ds = TestObjects.inMemoryImage(nb=1, eType=gdal.GDT_Byte)
-        lyr = QgsRasterLayer(ds.GetFileList()[0])
+        lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsSingleBandGrayRenderer)
 
         # 1 band, classification
         ds = TestObjects.inMemoryImage(nc=3)
-        lyr = QgsRasterLayer(ds.GetFileList()[0])
+        lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsPalettedRasterRenderer)
 
         # 3 bands, byte
         ds = TestObjects.inMemoryImage(nb=3, eType=gdal.GDT_Byte)
-        lyr = QgsRasterLayer(ds.GetFileList()[0])
+        lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
         # 10 bands, int
         ds = TestObjects.inMemoryImage(nb=10, eType=gdal.GDT_Int16)
-        lyr = QgsRasterLayer(ds.GetFileList()[0])
+        lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 

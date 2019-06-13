@@ -69,7 +69,7 @@ def createSpeclib()->SpectralLibrary:
     p4.setXUnit('um')
 
     ds = TestObjects.inMemoryImage(300, 400, 255)
-    path = ds.GetFileList()[0]
+    path = ds.GetDescription()
     ext = SpatialExtent.fromRasterSource(path)
     posA = ext.spatialCenter()
     posB = SpatialPoint(posA.crs(), posA.x() + 60, posA.y() + 90)
