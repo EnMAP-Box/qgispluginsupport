@@ -1262,7 +1262,7 @@ class SpectralLibrary(QgsVectorLayer):
         :param uri: path or uri of the source from which to read SpectralProfiles and return them in a SpectralLibrary
         :return: SpectralLibrary
         """
-        if isinstance(uri, str) and uri.startswith(VSI_DIR) and uri.endswith('.gpkg'):
+        if isinstance(uri, str) and uri.endswith('.gpkg'):
             try:
                 return SpectralLibrary(uri=uri)
             except Exception as ex:
