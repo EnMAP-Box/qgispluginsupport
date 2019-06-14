@@ -2771,6 +2771,13 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         self.mMapInteraction = True
         self.setMapInteraction(self.mMapInteraction)
 
+        # make buttons with default actions = menu be look like menu parents
+        for toolBar in self.findChildren(QToolBar):
+            for toolButton in toolBar.findChildren(QToolButton):
+                assert isinstance(toolButton, QToolButton)
+                if isinstance(toolButton.defaultAction(), QAction) and isinstance(toolButton.defaultAction().menu(), QMenu):
+                    toolButton.setPopupMode(QToolButton.MenuButtonPopup)
+
 
     def onImportFromVectorSource(self):
 
@@ -2861,7 +2868,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
 
 
-    def initActions(self):
+    def  initActions(self):
 
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
@@ -2894,7 +2901,6 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         m.addAction(self.optionBlockProfiles)
 
         self.actionAddProfiles.setMenu(m)
-
 
         self.actionSaveSpeclib.triggered.connect(self.onExportSpectra)
 
