@@ -2356,8 +2356,12 @@ def deleteSelected(layer):
     b = layer.isEditable()
 
     layer.startEditing()
+    layer.beginEditCommand('Delete selected features')
     layer.deleteSelectedFeatures()
-    layer.commitChanges()
+    layer.endEditCommand()
+
+    if not b:
+        layer.commitChanges()
 
     #saveEdits(layer, leaveEditable=b)
 
@@ -3152,7 +3156,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         :return:
         """
         self.copySelectedFeatures()
-        iface = qgisAppQgisInterface()
+
         self.speclib().beginEditCommand('Features cut')
         self.speclib().deleteSelectedFeatures()
         self.speclib().endEditCommand()
