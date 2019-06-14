@@ -27,7 +27,7 @@
 *                                                                         *
 ***************************************************************************
 """
-import os, csv, tempfile, uuid
+import os, csv, tempfile, uuid, time
 from osgeo import gdal, gdal_array
 from .spectrallibraries import *
 
@@ -59,6 +59,26 @@ LUT_GDT_NAME = {gdal.GDT_Byte:'Byte',
 
 CSV_PROFILE_NAME_COLUMN_NAMES = ['spectra names', 'name']
 CSV_GEOMETRY_COLUMN = 'wkt'
+
+
+def flushCacheWithoutException(dataset:gdal.Dataset):
+    """
+    Tries to flush the gdal.Dataset cache up to 5 times, waiting 1 second in between.
+    :param dataset: gdal.Dataset
+    """
+    nTry = 5
+    n = 0
+    success = False
+
+    while not success and n < nTry:
+        try:
+            dataset.FlushCache()
+            success = True
+        except RuntimeError:
+            time.sleep(1)
+        n += 1
+
+
 
 def findENVIHeader(pathESL:str)->str:
     """
@@ -464,7 +484,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             if wlu not in ['', '-', None]:
                 ds.SetMetadataItem('wavelength units', wlu, 'ENVI')
 
-            ds.FlushCache()
+            flushCacheWithoutException(ds)
 
             pathHDR = ds.GetFileList()[1]
             ds = None
@@ -527,7 +547,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             if isinstance(value, list):
                 value = u','.join(v for v in value)
             ds.SetMetadataItem(key, value, 'ENVI')
-        ds.FlushCache()
+        flushCacheWithoutException(ds)
         return ds
 
 
@@ -688,6 +708,6 @@ def describeRawFile(pathRaw, pathVrt, xsize, ysize,
         assert isinstance(vrtBand, gdal.Band)
         #vrtBand.SetMetadata(md, 'vrt_sources')
         #vrt.append('  <VRTRasterBand dataType="{dataType}" band="{band}" subClass="VRTRawRasterBand">'.format(dataType=LUT_GDT_NAME[eType], band=b+1))
-    dsVRT.FlushCache()
+    flushCacheWithoutException(dsVRT)
     return dsVRT
 
