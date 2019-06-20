@@ -309,8 +309,17 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         if isinstance(zPlotTitles, str) and len(zPlotTitles.split(','))>=2:
             xUnit, yUnit = zPlotTitles.split(',')[0:2]
 
-        #get official ENVI Spectral Library standard values
+        # get official ENVI Spectral Library standard values
         spectraNames = md.get('spectra names', ['Spectrum {}'.format(i+1) for i in range(nSpectra)])
+
+        # thanks to Ann for https://bitbucket.org/jakimowb/qgispluginsupport/issues/3/speclib-envypy
+        try:
+            gbl = np.where(np.asarray(md.get('bbl'), dtype=int))[0]
+            if xValues is not None:
+                xValues = np.asarray(xValues, dtype=float)[gbl]
+        except TypeError:
+            gbl = range(nbands)
+
 
         speclibFields = createStandardFields()
 
@@ -347,7 +356,8 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         profiles = []
         for i in range(nSpectra):
             p = SpectralProfile(fields=speclibFields)
-            p.setValues(x=xValues, y=data[i, :].tolist(), xUnit=xUnit, yUnit=yUnit)
+
+            p.setValues(x=xValues, y=data[i, gbl].tolist(), xUnit=xUnit, yUnit=yUnit)
             name = spectraNames[i]
             p.setName(name)
             profiles.append(p)
