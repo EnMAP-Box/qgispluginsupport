@@ -2811,7 +2811,8 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
     def onImportFromVectorSource(self):
 
         d = SpectralProfileImportPointsDialog()
-        if d.exec_() == QDialog.Accepted:
+        d.exec_()
+        if d.result() == QDialog.Accepted:
             sl = d.speclib()
             assert isinstance(sl, SpectralLibrary)
             b = sl.isEditable()
