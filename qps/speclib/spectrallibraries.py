@@ -2699,7 +2699,11 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         slib = SpectralLibrary.readFromVectorPositions(self.rasterSource(), self.vectorSource(), progressDialog=progressDialog)
 
         if isinstance(slib, SpectralLibrary) and not progressDialog.wasCanceled():
+            self.mSpeclib = slib
             self.accept()
+        else:
+            self.mSpeclib = None
+            self.reject()
 
 
     def rasterSource(self)->QgsVectorLayer:
@@ -2814,10 +2818,17 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         d.exec_()
         if d.result() == QDialog.Accepted:
             sl = d.speclib()
-            assert isinstance(sl, SpectralLibrary)
-            b = sl.isEditable()
-            sl.startEditing()
-            sl.addSpeclib(sl, True)
+            n = len(sl)
+            if isinstance(sl, SpectralLibrary) and n > 0:
+
+                b = self.speclib().isEditable()
+                self.speclib().beginEditCommand('Add {} profiles from "{}" selected by "{}"'.format(n, d.rasterSource().name(), d.vectorSource().name()))
+                self.speclib().startEditing()
+                self.speclib().addSpeclib(sl, True)
+                self.speclib().endEditCommand()
+                if not b:
+                    self.speclib().commitChanges()
+
 
 
     def canvas(self)->QgsMapCanvas:
