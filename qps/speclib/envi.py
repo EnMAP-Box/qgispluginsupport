@@ -159,7 +159,7 @@ def readCSVMetadata(pathESL):
     if match:
         sep = match.group(1)
     else:
-        print('Unable to find column name "spectra names" in {}.'.format(pathCSV), file=sys.stderr)
+        # print('Unable to find column name "spectra names" in {}.'.format(pathCSV), file=sys.stderr)
         match = re.search(r'name[ ]*([;\t,])', lines[0], re.I)
         if match:
             sep = match.group(1)
@@ -339,7 +339,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
                     speclibFields.append(csvField)
 
             CSVLine2ESLProfile = {}
-            #look if we can match a CSV column with names to profile names
+            # look if we can match a CSV column with names to profile names
             for profileNameColumnName in CSV_PROFILE_NAME_COLUMN_NAMES:
                 if profileNameColumnName in CSV_FIELDS.names():
                     c = CSV_FIELDS.lookupField(profileNameColumnName)
