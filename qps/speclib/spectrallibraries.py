@@ -1023,6 +1023,7 @@ class SpectralLibrary(QgsVectorLayer):
             progressDialog.setMaximum(nSelected)
             progressDialog.setLabelText('Get pixel positions...')
 
+        nMissingGeometry = []
         for i, feature in enumerate(vectorSource.selectedFeatures()):
             if isinstance(progressDialog, QProgressDialog) and progressDialog.wasCanceled():
                 return None
@@ -1031,13 +1032,27 @@ class SpectralLibrary(QgsVectorLayer):
 
             if feature.hasGeometry():
                 g = feature.geometry().constGet()
+
                 if isinstance(g, QgsPoint):
                     point = trans.transform(QgsPointXY(g))
                     px = geo2px(point, gt)
                     pixelpositions.append(px)
 
+                if isinstance(g, QgsMultiPoint):
+                    for point in g.parts():
+                        if isinstance(point, QgsPoint):
+                            point = trans.transform(QgsPointXY(point))
+                            px = geo2px(point, gt)
+                            pixelpositions.append(px)
+                    s = ""
+            else:
+                nMissingGeometry += 1
+
             if isinstance(progressDialog, QProgressDialog):
                 progressDialog.setValue(progressDialog.value()+1)
+
+        if len(nMissingGeometry) > 0:
+            print('{} features without geometry in {}'.format(nMissingGeometry))
 
         return SpectralLibrary.readFromRasterPositions(rasterSource, pixelpositions, progressDialog=progressDialog)
 
