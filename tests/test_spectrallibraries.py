@@ -128,7 +128,14 @@ class TestIO(unittest.TestCase):
 
         lyrRaster = QgsRasterLayer(enmap)
         h, w = lyrRaster.height(), lyrRaster.width()
-        pxPositions = [QPoint(0, 0), QPoint(w - 1, h - 1)]
+
+        factor = [0, 0.5, 1.]
+        pxPositions = []
+
+        for x in factor:
+            for y in factor:
+                pxPositions.append(QPoint(int(x * (w-1)), int(y * (h-1))))
+
         speclib1 = SpectralLibrary.readFromRasterPositions(enmap, pxPositions)
 
         ds = gdal.Open(enmap)
@@ -145,17 +152,63 @@ class TestIO(unittest.TestCase):
 
         progress = QProgressDialog()
 
-        def onProgress(n, t, msg=None):
-            print('{} of {} = {} % {}'.format(n, t, 100 * n/t, msg))
-        progress.sigProgress.connect(onProgress)
 
         speclib2 = SpectralLibrary.readFromVectorPositions(lyrRaster, speclib1, progressDialog=progress)
         self.assertIsInstance(speclib2, SpectralLibrary)
         self.assertEqual(len(speclib1), len(speclib2))
-        for i in range(len(speclib1)):
-            p1 = speclib1[i]
-            p2 = speclib2[i]
+        self.assertTrue(speclib1.crs().toWkt() == speclib2.crs().toWkt())
+
+        profiles1 = sorted(speclib1[:], key=lambda f:f.name())
+        profiles2 = sorted(speclib1[:], key=lambda f:f.name())
+
+        for p1, p2 in zip(profiles1, profiles2):
+            self.assertIsInstance(p1, SpectralProfile)
+            self.assertIsInstance(p2, SpectralProfile)
             self.assertListEqual(p1.yValues(), p2.yValues())
+            self.assertTrue(p1.geometry().equals(p2.geometry()))
+
+
+        uri = "MultiPoint?crs=epsg:4326";
+        pathMultiPointLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
+        pathRasterLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
+        vlMultiPoint = None
+        if False:
+            vlMultiPoint = QgsVectorLayer(uri, "Scratch point layer", "memory")
+
+            self.assertIsInstance(vlMultiPoint, QgsVectorLayer)
+
+            n_max = 2
+            pointbuffer = []
+            vlMultiPoint.startEditing()
+            for i, feature in enumerate(list(speclib1.features())):
+                assert isinstance(feature, QgsFeature)
+                pointbuffer.append(feature.geometry())
+
+                if len(pointbuffer) >= n_max or i == speclib1.featureCount() - 1:
+                    #write QgsMultiPoint
+                    mp = QgsMultiPoint()
+                    for point in pointbuffer:
+
+                        mp.addGeometry(point.get())
+                    feature = QgsFeature()
+                    feature.setFields(vlMultiPoint.fields())
+                    geom = QgsGeometry.fromWkt(mp.asWkt())
+                    #feature.setGeometry(geom)
+
+                    #vectorLayer.dataProvider().addFeature(feature)
+                    self.assertTrue(vlMultiPoint.addFeature(feature))
+                    pointbuffer.clear()
+            speclib3 = SpectralLibrary.readFromVectorPositions(lyrRaster, vlMultiPoint, progressDialog=progress)
+        elif os.path.isfile(pathMultiPointLayer):
+            vlMultiPoint = QgsVectorLayer(pathMultiPointLayer)
+            rlEnMAP = QgsRasterLayer(pathRasterLayer)
+            speclib3 = SpectralLibrary.readFromVectorPositions(rlEnMAP, vlMultiPoint, progressDialog=progress)
+
+            self.assertIsInstance(speclib3, SpectralLibrary)
+            self.assertTrue(len(speclib3) > 0)
+
+
+
 
     def test_reloadProfiles(self):
         lyr = QgsRasterLayer(enmap)
@@ -561,6 +614,8 @@ class TestCore(unittest.TestCase):
         self.assertEqual(sp1.values(), r1.values())
         self.assertEqual(sp2.values(), r2.values())
         self.assertEqual(sp2.geometry().asWkt(), r2.geometry().asWkt())
+
+
 
 
     def test_SpectralProfileReading(self):
@@ -1127,7 +1182,7 @@ class TestCore(unittest.TestCase):
         if SHOW_GUI:
             QAPP.exec_()
 
-    def test_pointprofileimportdialog(self):
+    def test_SpectralProfileImportPointsDialog(self):
 
         lyrRaster = QgsRasterLayer(enmap)
 
