@@ -1185,16 +1185,17 @@ class TestCore(unittest.TestCase):
     def test_SpectralProfileImportPointsDialog(self):
 
         lyrRaster = QgsRasterLayer(enmap)
-
+        lyrRaster.setName('EnMAP')
         h, w = lyrRaster.height(), lyrRaster.width()
 
         pxPositions = [QPoint(0, 0), QPoint(w - 1, h - 1)]
 
         speclib1 = SpectralLibrary.readFromRasterPositions(enmap, pxPositions)
-
+        speclib1.setName('Extracted Spectra')
         self.assertIsInstance(speclib1, SpectralLibrary)
+        self.assertTrue(len(speclib1) > 0)
 
-        QgsProject.instance().addMapLayer(speclib1)
+        QgsProject.instance().addMapLayers([speclib1, lyrRaster])
 
         d = SpectralProfileImportPointsDialog()
         self.assertIsInstance(d, QDialog)
