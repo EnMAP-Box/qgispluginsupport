@@ -931,9 +931,9 @@ class SpectralLibrary(QgsVectorLayer):
     @staticmethod
     def readFromSourceDialog(parent=None):
         """
-        Opens a FileOpen dialog to select
+        Opens a FileOpen dialog to select a spectral library
         :param parent:
-        :return:
+        :return: SpectralLibrary
         """
 
         SETTINGS = speclibSettings()
@@ -948,6 +948,10 @@ class SpectralLibrary(QgsVectorLayer):
             SETTINGS.setValue('SpeclibSourceDirectory', os.path.dirname(uris[0]))
 
         uris = [u for u in uris if QFileInfo(u).isFile()]
+
+        if len(uris) == 0:
+            return None
+
         speclib = SpectralLibrary()
         speclib.startEditing()
         for u in uris:
@@ -2919,7 +2923,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         self.mSourceFilter = '*'
 
         assert isinstance(self.mDualView, QgsDualView)
-        self.mDualView.init(self.mSpeclib, self.mCanvas)#, context=self.mAttributeEditorContext)
+        self.mDualView.init(self.mSpeclib, self.mCanvas)
         self.mDualView.setView(QgsDualView.AttributeTable)
         self.mDualView.setAttributeTableConfig(self.mSpeclib.attributeTableConfig())
 
