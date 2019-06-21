@@ -313,6 +313,43 @@ class TestIO(unittest.TestCase):
         except:
             pass
 
+    def test_findEnviHeader(self):
+
+        binarypath = speclibpath
+
+        hdr, bin = findENVIHeader(speclibpath)
+
+        self.assertTrue(os.path.isfile(hdr))
+        self.assertTrue(os.path.isfile(bin))
+
+        self.assertTrue(bin == speclibpath)
+        self.assertTrue(hdr.endswith('.hdr'))
+
+        headerPath = hdr
+
+        # is is possible to use the *.hdr
+        hdr, bin = findENVIHeader(headerPath)
+
+        self.assertTrue(os.path.isfile(hdr))
+        self.assertTrue(os.path.isfile(bin))
+
+        self.assertTrue(bin == speclibpath)
+        self.assertTrue(hdr.endswith('.hdr'))
+
+
+        sl1 = SpectralLibrary.readFrom(binarypath)
+        sl2 = SpectralLibrary.readFrom(headerPath)
+
+        self.assertEqual(sl1, sl2)
+
+
+        # this should fail
+
+        pathWrong = enmap
+        hdr, bin = findENVIHeader(pathWrong)
+        self.assertTrue((hdr, bin) == (None, None))
+
+
     def test_ENVI(self):
 
 
@@ -343,18 +380,18 @@ class TestIO(unittest.TestCase):
 
 
         nWritten = 0
-        for path in writtenFiles:
-            self.assertTrue(os.path.isfile(path))
-            self.assertTrue(path.endswith('.sli'))
+        for pathHdr in writtenFiles:
+            self.assertTrue(os.path.isfile(pathHdr))
+            self.assertTrue(pathHdr.endswith('.sli'))
 
-            basepath = os.path.splitext(path)[0]
+            basepath = os.path.splitext(pathHdr)[0]
             pathHDR = basepath + '.hdr'
             pathCSV = basepath + '.csv'
             self.assertTrue(os.path.isfile(pathHDR))
             self.assertTrue(os.path.isfile(pathCSV))
 
-            self.assertTrue(EnviSpectralLibraryIO.canRead(path))
-            sl_read1 = EnviSpectralLibraryIO.readFrom(path)
+            self.assertTrue(EnviSpectralLibraryIO.canRead(pathHdr))
+            sl_read1 = EnviSpectralLibraryIO.readFrom(pathHdr)
             self.assertIsInstance(sl_read1, SpectralLibrary)
 
             for fieldA in sl1.fields():
@@ -370,7 +407,7 @@ class TestIO(unittest.TestCase):
 
 
 
-            sl_read2 = SpectralLibrary.readFrom(path)
+            sl_read2 = SpectralLibrary.readFrom(pathHdr)
             self.assertIsInstance(sl_read2, SpectralLibrary)
 
             print(sl_read1)
@@ -381,7 +418,21 @@ class TestIO(unittest.TestCase):
 
         self.assertEqual(len(sl1), nWritten, msg='Written and restored {} instead {}'.format(nWritten, len(sl1)))
 
+        # addresses issue #11:
+        # No error is generated when trying (by accident) to read the ENVI header file instead of the .sli/.esl file itself.
 
+
+        pathHdr = os.path.splitext(speclibpath)[0]+'.hdr'
+        self.assertTrue(os.path.isfile(pathHdr))
+        sl1 = SpectralLibrary.readFrom(speclibpath)
+        sl2 = SpectralLibrary.readFrom(pathHdr)
+        self.assertIsInstance(sl1, SpectralLibrary)
+        self.assertTrue(len(sl1) > 0)
+        #self.assertEqual(sl1, sl2)
+        for p1, p2 in zip(sl1[:], sl2[:]):
+            self.assertIsInstance(p1, SpectralProfile)
+            self.assertIsInstance(p2, SpectralProfile)
+            self.assertEqual(p1, p2)
 
 
 class TestCore(unittest.TestCase):

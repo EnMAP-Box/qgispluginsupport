@@ -80,18 +80,43 @@ def flushCacheWithoutException(dataset:gdal.Dataset):
 
 
 
-def findENVIHeader(pathESL:str)->str:
+def findENVIHeader(path:str)->(str, str):
     """
-    Get a path and returns the ENVI header (*.hdr) for
-    :param pathESL: str
-    :return: str pathESL.hdr
+    Get a path and returns the ENVI header (*.hdr) and the ENVI binary file (e.g. *.sli) for
+    :param path: str
+    :return: (str, str), e.g. ('pathESL.hdr', 'pathESL.sli')
     """
-    paths = [os.path.splitext(pathESL)[0] + '.hdr', pathESL + '.hdr']
+    # 1. find header file
+    paths = [os.path.splitext(path)[0] + '.hdr', path + '.hdr']
     pathHdr = None
     for p in paths:
         if os.path.exists(p):
             pathHdr = p
-    return pathHdr
+            break
+
+    if pathHdr is None:
+        return None, None
+
+    # 2. find binary file
+    if not path.endswith('.hdr') and os.path.isfile(path):
+        # this should be the default
+        pathSLI = path
+    else:
+        # find a binary part ending
+        paths = [os.path.splitext(pathHdr)[0] + '.sli',
+                 pathHdr + '.sli',
+                 os.path.splitext(pathHdr)[0] + '.esl',
+                 pathHdr + '.esl',
+                 ]
+        for p in paths:
+            if os.path.isfile(p):
+                pathSLI = p
+                break
+
+    if pathSLI is None:
+        return None, None
+
+    return pathHdr, pathSLI
 
 
 def value2hdrString(values):
@@ -281,13 +306,14 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         return 0
 
     @staticmethod
-    def readFrom(pathESL):
+    def readFrom(path):
         """
         Reads an ENVI Spectral Library (ESL).
-        :param pathESL: path ENVI Spectral Library
+        :param path: path to ENVI Spectral Library
         :return: SpectralLibrary
         """
-        assert isinstance(pathESL, str)
+        assert isinstance(path, str)
+        pathHdr, pathESL = findENVIHeader(path)
         md = EnviSpectralLibraryIO.readENVIHeader(pathESL, typeConversion=True)
 
         data = None
@@ -574,7 +600,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         if not os.path.isfile(pathESL):
             return None
 
-        pathHdr = findENVIHeader(pathESL)
+        pathHdr, pathBin = findENVIHeader(pathESL)
         if pathHdr is None:
             return None
 
@@ -616,8 +642,8 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
                 return None
 
         if typeConversion:
-            to_int = ['bands','lines','samples','data type','header offset','byte order']
-            to_float = ['fwhm','wavelength', 'reflectance scale factor']
+            to_int = ['bands', 'lines', 'samples', 'data type', 'header offset', 'byte order']
+            to_float = ['fwhm', 'wavelength', 'reflectance scale factor']
             for k in to_int:
                 if k in md.keys():
                     value = toType(int, md[k])
@@ -660,7 +686,7 @@ def describeRawFile(pathRaw, pathVrt, xsize, ysize,
     assert eType in LUT_GDT_SIZE.keys(), 'dataType "{}" is not a valid gdal datatype'.format(eType)
     interleave = interleave.lower()
 
-    assert interleave in ['bsq','bil','bip']
+    assert interleave in ['bsq', 'bil', 'bip']
     assert byteOrder in ['LSB', 'MSB']
 
     drvVRT = gdal.GetDriverByName('VRT')
