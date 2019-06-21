@@ -231,25 +231,17 @@ class testClassUtils(unittest.TestCase):
         lyrV = TestObjects.createVectorLayer()
         QgsProject.instance().addMapLayers([lyrR, lyrV])
         d = SelectMapLayersDialog()
-        d.addLayerDescription('ML', QgsMapLayerProxyModel.All)
+        d.addLayerDescription('Any Type', QgsMapLayerProxyModel.All)
         layers = d.mapLayers()
         self.assertIsInstance(layers, list)
         self.assertTrue(len(layers) == 1)
         self.assertListEqual(layers, [lyrR])
 
-        d = SelectMapLayersDialog()
-        d.addLayerDescription('ML', QgsMapLayerProxyModel.VectorLayer)
-        self.assertListEqual(d.mapLayers(), [lyrV])
-
-        d = SelectMapLayersDialog()
-        d.addLayerDescription('ML', QgsMapLayerProxyModel.RasterLayer)
-        self.assertListEqual(d.mapLayers(), [lyrR])
+        d.addLayerDescription('A Vector Layer', QgsMapLayerProxyModel.VectorLayer)
+        d.addLayerDescription('A Raster Layer', QgsMapLayerProxyModel.RasterLayer)
 
 
         if SHOW_GUI:
-            d = SelectMapLayersDialog()
-            d.addLayerDescription('L1', QgsMapLayerProxyModel.VectorLayer)
-            d.addLayerDescription('L2 loong text', QgsMapLayerProxyModel.RasterLayer)
             d.show()
             QGIS_APP.exec_()
 
