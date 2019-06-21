@@ -21,6 +21,8 @@ enmapboxtestdata/
 testdata/
 test-reports/
 
+*.gpkg-shm
+*.gpkg-wal
 
 # Untrack compiled files
 *.pyc 
