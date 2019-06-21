@@ -2909,9 +2909,11 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mPlotWidget.setSpeclib(self.mSpeclib)
         self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)
+
         self.mCanvas = QgsMapCanvas(self.centralwidget)
         self.mCanvas.setVisible(False)
         self.mCanvas.setDestinationCrs(self.mSpeclib.crs())
+
         self.mSpeclib.crsChanged.connect(lambda *args : self.mCanvas.setDestinationCrs(self.mSpeclib.crs()))
 
         self.mSourceFilter = '*'
@@ -3049,6 +3051,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         assert isinstance(mimeData, QMimeData)
         if containsSpeclib(mimeData):
             dragEnterEvent.accept()
+
 
 
 
@@ -3329,15 +3332,22 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             self.mCanvas.setExtent(bbox)
             self.sigMapExtentRequested.emit(bbox)
 
+    def deleteSelectedFeatures(self):
+        """
+        Deletes the selected SpectralProfiles / QgsFeatures. Requires that editing mode is enabled.
+        """
+        self.speclib().beginEditCommand('Delete selected features')
+        self.speclib().deleteSelectedFeatures()
+        self.speclib().endEditCommand()
 
     def cutSelectedFeatures(self):
         """
-
-        :return:
+        Copies the selected SpectralProfiles to the clipboard and deletes them from the SpectraLibrary.
+        Requires that editing mode is enabled.
         """
         self.copySelectedFeatures()
 
-        self.speclib().beginEditCommand('Features cut')
+        self.speclib().beginEditCommand('Cut Features')
         self.speclib().deleteSelectedFeatures()
         self.speclib().endEditCommand()
 
