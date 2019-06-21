@@ -29,7 +29,5 @@ test-reports/
 *.pyd
 
 #are changed all the time, should be commited explicitely
-*.aux.xml
-*bsq.aux.xml
 *.cache/
 *.cache/*
