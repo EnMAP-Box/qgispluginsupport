@@ -1182,6 +1182,51 @@ class TestCore(unittest.TestCase):
         if SHOW_GUI:
             QAPP.exec_()
 
+    def test_SpectralLibrary_readFromVector(self):
+
+        from qpstestdata import enmap_pixel, landcover, enmap
+
+        rl = QgsRasterLayer(enmap)
+        vl = QgsVectorLayer(enmap_pixel)
+
+        progressDialog = QProgressDialog()
+        progressDialog.show()
+
+        sl = SpectralLibrary.readFromVector(vl, rl, progressDialog=progressDialog)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertEqual(len(sl), rl.width() * rl.height())
+
+        self.assertTrue(progressDialog.value(), [-1, progressDialog.maximum()])
+
+        data = gdal.Open(enmap).ReadAsArray()
+        nb, nl, ns = data.shape
+
+        for p in sl:
+            self.assertIsInstance(p, SpectralProfile)
+
+            x = p.attribute('px_x')
+            y = p.attribute('px_y')
+            yValues = p.values()['y']
+            yValues2 = list(data[:, y, x])
+            self.assertListEqual(yValues, yValues2)
+            s = ""
+
+        self.assertTrue(sl.crs() != vl.crs())
+
+        sl2 = SpectralLibrary.readFromVector(sl, rl)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertEqual(sl, sl2)
+
+        rl = QgsRasterLayer(enmap)
+        vl = QgsVectorLayer(landcover)
+        sl = SpectralLibrary.readFromVector(vl, rl)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
+
+
+
+
+
     def test_SpectralProfileImportPointsDialog(self):
 
         lyrRaster = QgsRasterLayer(enmap)
@@ -1202,9 +1247,14 @@ class TestCore(unittest.TestCase):
         d.setRasterSource(lyrRaster)
         d.setVectorSource(speclib1)
         # d.show()
-
         self.assertEqual(lyrRaster, d.rasterSource())
         self.assertEqual(speclib1, d.vectorSource())
+
+
+        d.run()
+        slib = d.speclib()
+        self.assertIsInstance(slib, SpectralLibrary)
+
 
         if SHOW_GUI:
             slw = SpectralLibraryWidget()

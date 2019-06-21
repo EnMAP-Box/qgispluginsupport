@@ -136,22 +136,6 @@ def vsiSpeclibs()->list:
 
 # CURRENT_SPECTRUM_STYLE.linePenplo
 # pdi.setPen(fn.mkPen(QColor('green'), width=3))
-def gdalDataset(pathOrDataset, eAccess=gdal.GA_ReadOnly):
-    """
-
-    :param pathOrDataset: path or gdal.Dataset
-    :return: gdal.Dataset
-    """
-
-    if isinstance(pathOrDataset, QgsRasterLayer):
-        return gdalDataset(pathOrDataset.source())
-
-    if not isinstance(pathOrDataset, gdal.Dataset):
-        pathOrDataset = gdal.Open(pathOrDataset, eAccess)
-
-    assert isinstance(pathOrDataset, gdal.Dataset)
-
-    return pathOrDataset
 
 def runRemoveFeatureActionRoutine(layerID, id:int):
     """
@@ -456,7 +440,7 @@ class SpectralProfile(QgsFeature):
         return profile
 
     @staticmethod
-    def fromRasterSource(source, position, crs:QgsCoordinateReferenceSystem=None, gt:list=None):
+    def fromRasterSource(source, position, crs:QgsCoordinateReferenceSystem=None, gt:list=None, fields:QgsFields=None):
         """
         Returns the Spectral Profiles from source at position `position`
         :param source: str | gdal.Dataset | QgsRasterLayer - the raster source
@@ -527,7 +511,7 @@ class SpectralProfile(QgsFeature):
         if wlu in EMPTY_VALUES:
             wlu = None
 
-        profile = SpectralProfile()
+        profile = SpectralProfile(fields=fields)
         profile.setName('{} {},{}'.format(baseName, px.x(), px.y()))
         profile.setValues(x=wl, y=y, xUnit=wlu)
         profile.setCoordinates(geoCoordinate)
@@ -973,6 +957,163 @@ class SpectralLibrary(QgsVectorLayer):
         assert speclib.commitChanges()
         return speclib
 
+    # thanks to Ann for providing https://bitbucket.org/jakimowb/qgispluginsupport/issues/6/speclib-spectrallibrariespy
+    @staticmethod
+    def readFromVector(vector_qgs_layer:QgsVectorLayer=None, raster_qgs_layer:QgsRasterLayer=None, progressDialog:QProgressDialog=None):
+        """
+        Reads SpectraProfiles from a raster source, based on the locations specified in a vector data set.
+        Opens a Select Polygon Layer dialog to select the correct polygon and returns a Spectral Library with
+        metadata according to the polygons attribute table.
+        :return: Spectral Library
+        """
+
+        # for debugging only
+        # layers = [l for l in canvas.layers()]
+        # vector_qgs_layer = layers[0]
+        # raster_qgs_layer = layers[1]
+        # assert isinstance(vector_qgs_layer, QgsVectorLayer)
+        # assert isinstance(raster_qgs_layer, QgsRasterLayer)
+
+        # get QgsLayers of vector and raster
+        from ..utils import SelectMapLayersDialog
+        if not (isinstance(vector_qgs_layer, QgsVectorLayer) and isinstance(raster_qgs_layer, QgsRasterLayer)):
+
+            dialog = SelectMapLayersDialog()
+            dialog.addLayerDescription('Raster', QgsMapLayerProxyModel.RasterLayer)
+            dialog.addLayerDescription('Vector', QgsMapLayerProxyModel.VectorLayer)
+            dialog.exec_()
+            if dialog.result() == QDialog.Accepted:
+                raster_qgs_layer, vector_qgs_layer = dialog.mapLayers()
+
+                if not isinstance(vector_qgs_layer, QgsVectorLayer) or not isinstance(raster_qgs_layer, QgsRasterLayer):
+                    return
+
+        # get the shapefile fields and check the minimum requirements
+        # standard_fields = qgsStandardFields()
+
+        # field in the vector source
+        vector_fields = vector_qgs_layer.fields()
+
+        # fields in the output-spectral library
+        speclib_fields = createStandardFields()
+
+        # fields we need to copy values from the vector source to each SpectralProfile
+        fields_to_copy = []
+
+        for field in vector_fields:
+            if speclib_fields.indexOf(field.name()) == -1:
+                speclib_fields.append(QgsField(field))
+                fields_to_copy.append(field.name())
+
+        # get ORG/GDAL dataset and OGR/GDAL layer of vector and raster
+        drv = ogr.GetDriverByName('Memory')
+        assert isinstance(drv, ogr.Driver)
+        # load vector data into memory
+        vector_dataset = drv.CopyDataSource(ogrDataSource(vector_qgs_layer), '')
+        assert isinstance(vector_dataset, ogr.DataSource)
+        raster_dataset = gdal.Open(raster_qgs_layer.source())
+
+        iLayer = 0
+        layerNames = [vector_dataset.GetLayer(i).GetName() for i in range(vector_dataset.GetLayerCount())]
+        match = re.search('layername=([^|,;]+)', vector_qgs_layer.source())
+        if match:
+            layerName = match.group(1)
+            if layerName in layerNames:
+                iLayer = layerNames.index(layerName)
+
+        vector_layer = vector_dataset.GetLayer(iLayer)
+        assert isinstance(vector_layer, ogr.Layer)
+        ldefn = vector_layer.GetLayerDefn()
+        assert isinstance(ldefn, ogr.FeatureDefn)
+        fieldNames = [ldefn.GetFieldDefn(i).GetName() for i in range(ldefn.GetFieldCount())]
+
+        # make the internal FID a normal attribute which we can rasterize
+        fidName = 'FID'
+        i = 0
+        while fidName in fieldNames:
+            fidName = 'tmpFID{}'.format(i)
+        vector_layer.CreateField(ogr.FieldDefn(fidName, ogr.OFTInteger64))
+        # transform geometries to raster SRS
+        srsVector = vector_layer.GetSpatialRef()
+        srsRaster = osr.SpatialReference()
+        srsRaster.ImportFromWkt(raster_dataset.GetProjection())
+
+        trans = osr.CoordinateTransformation(srsVector, srsRaster)
+        assert isinstance(trans, osr.CoordinateTransformation)
+        for feature in vector_layer:
+            assert isinstance(feature, ogr.Feature)
+            feature.SetField(fidName, feature.GetFID())
+
+            # assert geom.Transform(trans) == ogr.OGRERR_NONE
+            # wow! gdal.Rasterize considers SRS differences
+            # geom = feature.GetGeometryRef()
+            # feature.SetGeometry(geom)
+            vector_layer.SetFeature(feature)
+
+        vector_layer.ResetReading()
+
+        # vector to array to x and y values
+        driver = gdal.GetDriverByName('MEM')
+        mem = driver.Create('', raster_dataset.RasterXSize, raster_dataset.RasterYSize, 1, gdal.GDT_UInt32)
+        assert isinstance(mem, gdal.Dataset)
+        band = mem.GetRasterBand(1)
+        assert isinstance(band, gdal.Band)
+        band.Fill(-1)
+        mem.SetGeoTransform(raster_dataset.GetGeoTransform())
+        mem.SetProjection(raster_dataset.GetProjection())
+        mem.FlushCache()
+
+        gdal.RasterizeLayer(mem, [1], vector_layer, options=['ALL_TOUCHED=TRUE', 'ATTRIBUTE={}'.format(fidName)])
+        memory_array = mem.ReadAsArray()
+        y, x = np.where(memory_array > 0)
+        fids = memory_array[y, x]
+        driver = None
+        del vector_layer, memory_array, mem, driver
+
+        # save all profiles in a spectral library
+        profiles = []
+
+        if isinstance(progressDialog, QProgressDialog):
+            progressDialog.setRange(0, len(fids) + 10)
+            progressDialog.setValue(0)
+            progressDialog.setLabelText('Read profiles...')
+
+        for i, (xx, yy, fid) in enumerate(zip(x, y, fids)):
+            if isinstance(progressDialog, QProgressDialog):
+                if progressDialog.wasCanceled():
+                    return None
+                progressDialog.setValue(i)
+
+            profile = SpectralProfile.fromRasterSource(raster_dataset, QPoint(xx, yy), fields=speclib_fields)  # also sets geometry
+            feature = vector_qgs_layer.getFeature(int(fid))
+            assert isinstance(feature, QgsFeature)
+            for fieldName in fields_to_copy:
+                assert isinstance(fieldName, str)
+                profile[fieldName] = feature[fieldName]
+            profiles.append(profile)
+
+
+        if isinstance(progressDialog, QProgressDialog):
+            progressDialog.setLabelText('Group Profiles')
+            progressDialog.setValue(progressDialog.value()+1)
+
+        spectral_library = SpectralLibrary()
+        spectral_library.startEditing()
+        spectral_library.addMissingFields(vector_fields)
+
+        if isinstance(progressDialog, QProgressDialog):
+            progressDialog.setValue(progressDialog.value()+1)
+
+        spectral_library.addProfiles(profiles)
+        spectral_library.commitChanges()
+
+        if isinstance(progressDialog, QProgressDialog):
+            # print('{} {} {}'.format(progressDialog.minimum(), progressDialog.maximum(), progressDialog.value()))
+            progressDialog.setValue(progressDialog.maximum())
+
+        return spectral_library
+
+
     @staticmethod
     def readFromVectorPositions(rasterSource, vectorSource, mode='CENTROIDS', progressDialog:QProgressDialog=None):
         """
@@ -1401,9 +1542,9 @@ class SpectralLibrary(QgsVectorLayer):
         # assert isinstance(actionSetStyle, QgsAction)
         # mgr.addAction(actionSetStyle)
 
-        actionRemoveSpectrum = createRemoveFeatureAction()
-        assert isinstance(actionRemoveSpectrum, QgsAction)
-        mgr.addAction(actionRemoveSpectrum)
+        # actionRemoveSpectrum = createRemoveFeatureAction()
+        # assert isinstance(actionRemoveSpectrum, QgsAction)
+        # mgr.addAction(actionRemoveSpectrum)
 
         columns = self.attributeTableConfig().columns()
         visibleColumns = ['name']
@@ -2695,6 +2836,8 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         progressDialog = QProgressDialog()
         progressDialog.setWindowModality(Qt.WindowModal)
         progressDialog.setMinimumDuration(0)
+
+        slib = SpectralLibrary.readFromVector(self.vectorSource(), self.rasterSource())
 
         slib = SpectralLibrary.readFromVectorPositions(self.rasterSource(), self.vectorSource(), progressDialog=progressDialog)
 
