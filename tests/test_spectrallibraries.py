@@ -150,6 +150,8 @@ class TestIO(unittest.TestCase):
             if p1 != p2:
                 s = ""
             self.assertEqual(p1, p2)
+
+
         #self.assertEqual(SLIB, speclib2)
 
 
@@ -176,6 +178,45 @@ class TestIO(unittest.TestCase):
                     s = ""
                 self.assertEqual(p1, p2)
 
+
+        # addresses issue #8 loading modified CSV values
+
+        SL = SpectralLibrary.readFrom(speclib)
+
+        pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+        CSVSpectralLibraryIO.write(SL, pathCSV)
+
+        with open(pathCSV, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            # change band values of b1 and b3
+
+        WKT = None
+        delimiter = '\t'
+        for i in range(len(lines)):
+            line = lines[i]
+            if line.startswith('WKT'):
+                WKT = line.split(delimiter)
+                continue
+            if line.startswith('Point'):
+
+                parts = line.split(delimiter)
+                parts[WKT.index('b1')] = '42.0'
+                parts[WKT.index('b100')] = '42'
+                line = delimiter.join(parts)
+
+            lines[i] = line
+
+        with open(pathCSV, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+
+        SL2 = CSVSpectralLibraryIO.readFrom(pathCSV)
+
+        self.assertEqual(len(SL), len(SL2))
+
+        for p in SL2:
+            self.assertIsInstance(p, SpectralProfile)
+            self.assertEqual(p.yValues()[0], 42)
+            self.assertEqual(p.yValues()[99], 42)
 
 
     def test_vector2speclib(self):
