@@ -50,7 +50,7 @@ class LayerRendererTests(unittest.TestCase):
             sDefs = subLayerDefinitions(rl)
             self.assertTrue(sDefs, list)
             self.assertTrue(len(sDefs) > 0)
-            
+
             sLayers = subLayers(rl)
 
             self.assertTrue(sLayers, list)
