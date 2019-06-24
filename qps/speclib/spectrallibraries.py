@@ -160,9 +160,9 @@ def runRemoveFeatureActionRoutine(layerID, id:int):
         if not wasEditable:
             if not layer.startEditing():
                 raise Exception('Layer "{}" can not be edited'.format(layer.name()))
-
+        layer.beginEditCommand('Remove {} features'.format(len(ids)))
         layer.deleteFeatures(ids)
-
+        layer.endEditCommand()
         if not layer.commitChanges():
             errors = layer.commitErrors()
             raise Exception('Unable to save {} to layer {}'.format('\n'.join(errors), layer.name()))
@@ -1550,9 +1550,9 @@ class SpectralLibrary(QgsVectorLayer):
         # assert isinstance(actionSetStyle, QgsAction)
         # mgr.addAction(actionSetStyle)
 
-        # actionRemoveSpectrum = createRemoveFeatureAction()
-        # assert isinstance(actionRemoveSpectrum, QgsAction)
-        # mgr.addAction(actionRemoveSpectrum)
+        actionRemoveSpectrum = createRemoveFeatureAction()
+        assert isinstance(actionRemoveSpectrum, QgsAction)
+        mgr.addAction(actionRemoveSpectrum)
 
         columns = self.attributeTableConfig().columns()
         visibleColumns = ['name']
@@ -1569,7 +1569,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         conf = QgsAttributeTableConfig()
         conf.setColumns(columns)
-        conf.setActionWidgetVisible(True)
+        conf.setActionWidgetVisible(False)
         conf.setActionWidgetStyle(QgsAttributeTableConfig.ButtonList)
 
         self.setAttributeTableConfig(conf)
