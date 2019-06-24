@@ -2921,13 +2921,13 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
         self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)mapCanvas
 
-        if not isinstance(mapCanvas, QgsMapCanvas):
-            mapCanvas = QgsMapCanvas(self.centralwidget)
-        self.mCanvas = mapCanvas
-        self.mCanvas.setVisible(False)
-        self.mCanvas.setDestinationCrs(self.mSpeclib.crs())
-
-        self.mSpeclib.crsChanged.connect(lambda *args : self.mCanvas.setDestinationCrs(self.mSpeclib.crs()))
+        if isinstance(mapCanvas, QgsMapCanvas):
+            self.mCanvas = mapCanvas
+        else:
+            self.mCanvas = QgsMapCanvas(self.centralwidget)
+            self.mCanvas.setVisible(False)
+            self.mCanvas.setDestinationCrs(self.mSpeclib.crs())
+            self.mSpeclib.crsChanged.connect(lambda *args : self.mCanvas.setDestinationCrs(self.mSpeclib.crs()))
 
         self.mSourceFilter = '*'
 
