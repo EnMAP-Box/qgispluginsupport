@@ -968,6 +968,10 @@ class SpectralLibrary(QgsVectorLayer):
         Reads SpectraProfiles from a raster source, based on the locations specified in a vector data set.
         Opens a Select Polygon Layer dialog to select the correct polygon and returns a Spectral Library with
         metadata according to the polygons attribute table.
+
+        :param vector_qgs_layer:
+        :param raster_qgs_layer:
+        :param progressDialog:
         :return: Spectral Library
         """
 
@@ -1095,7 +1099,6 @@ class SpectralLibrary(QgsVectorLayer):
                 assert isinstance(fieldName, str)
                 profile[fieldName] = feature[fieldName]
             profiles.append(profile)
-
 
         if isinstance(progressDialog, QProgressDialog):
             progressDialog.setLabelText('Group Profiles')
@@ -1279,16 +1282,11 @@ class SpectralLibrary(QgsVectorLayer):
 
             profile = SpectralProfile.fromRasterSource(source, position)
             if isinstance(profile, SpectralProfile):
-                # profile.setName('Spectrum {}'.format(i))
                 profiles.append(profile)
                 i += 1
 
             if isinstance(progressDialog, QProgressDialog):
                 progressDialog.setValue(progressDialog.value()+1)
-                #import time
-                #time.sleep(2)
-                #QCoreApplication.instance().processEvents()
-                #progressDialog.show()
 
 
         sl = SpectralLibrary()
@@ -2875,7 +2873,14 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         automatically = 1
         block = 2
 
-    def __init__(self, *args, speclib:SpectralLibrary=None, **kwds):
+    def __init__(self, *args, speclib:SpectralLibrary=None, mapCanvas=QgsMapCanvas, **kwds):
+        """
+        Constructor
+        :param args: QMainWindow arguments
+        :param speclib: SpectralLibrary, defaults: None
+        :param mapCanvas: QgsMapCanvas, default: None
+        :param kwds: QMainWindow keywords
+        """
 
         super(SpectralLibraryWidget, self).__init__(*args, **kwds)
         self.setupUi(self)
@@ -2912,9 +2917,13 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         from .plotting import SpectralLibraryPlotWidget
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mPlotWidget.setSpeclib(self.mSpeclib)
-        self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)
 
-        self.mCanvas = QgsMapCanvas(self.centralwidget)
+
+        self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)mapCanvas
+
+        if not isinstance(mapCanvas, QgsMapCanvas):
+            mapCanvas = QgsMapCanvas(self.centralwidget)
+        self.mCanvas = mapCanvas
         self.mCanvas.setVisible(False)
         self.mCanvas.setDestinationCrs(self.mSpeclib.crs())
 
