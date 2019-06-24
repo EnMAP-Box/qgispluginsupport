@@ -2970,6 +2970,10 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
                     toolButton.setPopupMode(QToolButton.MenuButtonPopup)
 
 
+        # shortcuts / redundant functions
+        self.spectraLibrary = self.speclib
+        self.clearTable = self.clearSpectralLibrary
+
     def onImportFromVectorSource(self):
 
         d = SpectralProfileImportPointsDialog()
@@ -3015,7 +3019,20 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         menu.addAction(self.actionCopySelectedRows)
         menu.addAction(self.actionPasteFeatures)
 
+    def clearSpectralLibrary(self):
+        """
+        Removes all SpectralProfiles and additional fields
+        """
+        feature_ids = [feature.id() for feature in self.spectralLibrary().getFeatures()]
+        self.speclib().startEditing()
+        self.speclib().deleteFeatures(feature_ids)
+        self.speclib().commitChanges()
 
+        for fieldName in self.speclib().optionalFieldNames():
+            index = self.spectralLibrary().fields().indexFromName(fieldName)
+            self.spectralLibrary().startEditing()
+            self.spectralLibrary().deleteAttribute(index)
+            self.spectralLibrary().commitChanges()
 
     def currentProfilesMode(self)->CurrentProfilesMode:
         """
