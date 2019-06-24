@@ -847,9 +847,15 @@ class SpectralProfile(QgsFeature):
         for i1, n in enumerate(self.fieldNames()):
             if n == FIELD_FID:
                 continue
-            i2 = names2.index(n)
-            if self.attribute(i1) != other.attribute(i2):
-                return False
+            elif n == FIELD_VALUES:
+                if self.xValues() != other.xValues():
+                    return False
+                if self.yValues() != other.yValues():
+                    return False
+            else:
+                i2 = names2.index(n)
+                if self.attribute(i1) != other.attribute(i2):
+                    return False
 
         return True
 
@@ -2919,7 +2925,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         self.mPlotWidget.setSpeclib(self.mSpeclib)
 
 
-        self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)mapCanvas
+        self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)
 
         if isinstance(mapCanvas, QgsMapCanvas):
             self.mCanvas = mapCanvas

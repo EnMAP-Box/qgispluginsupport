@@ -112,9 +112,10 @@ class TestIO(unittest.TestCase):
         s = ""
 
     def test_CSV2(self):
-        SLIB = self.createSpeclib()
-        #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs2.out.csv')
+        from qpstestdata import speclib
+        SLIB = SpectralLibrary.readFrom(speclib)
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+        print(pathCSV)
         CSVSpectralLibraryIO.write(SLIB, pathCSV)
 
         self.assertTrue(os.path.isfile(pathCSV))
@@ -122,6 +123,59 @@ class TestIO(unittest.TestCase):
         self.assertTrue(dialect is not None)
         speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect)
         self.assertTrue(len(SLIB) == len(speclib2))
+        for i, (p1, p2) in enumerate(zip(SLIB[:], speclib2[:])):
+            self.assertIsInstance(p1, SpectralProfile)
+            self.assertIsInstance(p2, SpectralProfile)
+            if p1 != p2:
+                s = ""
+            self.assertEqual(p1, p2)
+
+
+        SLIB = self.createSpeclib()
+        #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs2.out.csv')
+        pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+        print(pathCSV)
+        CSVSpectralLibraryIO.write(SLIB, pathCSV)
+
+        self.assertTrue(os.path.isfile(pathCSV))
+        dialect = CSVSpectralLibraryIO.canRead(pathCSV)
+        self.assertTrue(dialect is not None)
+        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect)
+        self.assertTrue(len(SLIB) == len(speclib2))
+        for i, (p1, p2) in enumerate(zip(SLIB[:], speclib2[:])):
+            self.assertIsInstance(p1, SpectralProfile)
+            self.assertIsInstance(p2, SpectralProfile)
+            self.assertEqual(p1.xValues(), p2.xValues())
+            self.assertEqual(p1.yValues(), p2.yValues())
+            if p1 != p2:
+                s = ""
+            self.assertEqual(p1, p2)
+        #self.assertEqual(SLIB, speclib2)
+
+
+        # addresses issue #8
+        from qpstestdata import speclib
+        SL1 = SpectralLibrary.readFrom(speclib)
+        self.assertIsInstance(SL1, SpectralLibrary)
+
+        pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+        print(pathCSV)
+        for dialect in [pycsv.excel_tab, pycsv.excel]:
+            pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+            CSVSpectralLibraryIO.write(SL1, pathCSV, dialect=dialect)
+            d = CSVSpectralLibraryIO.canRead(pathCSV)
+            self.assertEqual(d, dialect)
+            SL2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect)
+            self.assertIsInstance(SL2, SpectralLibrary)
+            self.assertTrue(len(SL1) == len(SL2))
+
+            for p1, p2 in zip(SL1[:], SL2[:]):
+                self.assertIsInstance(p1, SpectralProfile)
+                self.assertIsInstance(p2, SpectralProfile)
+                if p1 != p2:
+                    s = ""
+                self.assertEqual(p1, p2)
+
 
 
     def test_vector2speclib(self):
