@@ -507,15 +507,6 @@ class SpectralProfile(QgsFeature):
 
         wl, wlu = parseWavelength(ds)
 
-        if wl not in EMPTY_VALUES and len(wl) > 0:
-            wl = re.sub(r'[ {}]', '', wl).split(',')
-            wl = [float(w) for w in wl]
-        else:
-            wl = None
-
-        if wlu in EMPTY_VALUES:
-            wlu = None
-
         profile = SpectralProfile(fields=fields)
         profile.setName('{} {},{}'.format(baseName, px.x(), px.y()))
         profile.setValues(x=wl, y=y, xUnit=wlu)
