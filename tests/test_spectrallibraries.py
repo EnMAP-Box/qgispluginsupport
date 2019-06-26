@@ -1370,8 +1370,30 @@ class TestCore(unittest.TestCase):
         self.assertTrue(len(sl) > 0)
 
 
+    def test_mergeSpeclibSpeed(self):
 
+        from qpstestdata import speclib
+        sl1 = SpectralLibrary.readFrom(speclib)
 
+        sl2 = SpectralLibrary()
+
+        n = 3000
+        p = sl1[0]
+        profiles = []
+
+        for i in range(n):
+            profiles.append(p.clone())
+        sl2.startEditing()
+        sl2.addProfiles(profiles, addMissingFields=True)
+        sl2.commitChanges()
+
+        sl2.startEditing()
+        sl2.addSpeclib(sl2)
+        sl2.commitChanges()
+
+        self.assertEqual(len(sl2), n*2)
+
+        s = ""
 
     def test_SpectralProfileImportPointsDialog(self):
 
