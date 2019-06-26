@@ -1422,6 +1422,7 @@ class TestCore(unittest.TestCase):
         dt, spp, pps = timestats(t0, sl, info='read profiles')
         self.assertTrue(spp <= max_spp, msg='{} seconds per profile are too much!')
 
+        self.assertTrue(progressDialog.value() == -1)
         t0 = time.time()
         sl.startEditing()
         sl.addSpeclib(sl)
@@ -1429,8 +1430,6 @@ class TestCore(unittest.TestCase):
         dt, spp, pps = timestats(t0, sl, info='merge speclibs')
         self.assertTrue(spp <= max_spp, msg='too slow!')
 
-        if SHOW_GUI:
-            QAPP.exec_()
 
     def test_SpectralProfileImportPointsDialog(self):
 
