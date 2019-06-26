@@ -139,7 +139,7 @@ class TestMapTools(unittest.TestCase):
                 canvas.setCurrentLayer(l)
                 l.startEditing()
                 break
-        mt = QgsMapToolAddFeature(canvas, QgsMapToolDigitizeFeature.CapturePolygon, cadDockWidget)
+        mt = QgsMapToolAddFeature(canvas, QgsMapToolDigitizeFeature.CaptureNone, cadDockWidget)
         canvas.setMapTool(mt)
         if SHOW_GUI:
             QGIS_APP.exec_()
