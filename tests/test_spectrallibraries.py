@@ -1418,6 +1418,13 @@ class TestCore(unittest.TestCase):
     def test_SpectralLibraryWidget(self):
 
         # speclib = self.createSpeclib()
+        from qpstestdata import enmap, landcover, enmap_pixel
+
+        l1 = QgsRasterLayer(enmap, 'EnMAP')
+        l2 = QgsVectorLayer(landcover, 'LandCover')
+        l3 = QgsVectorLayer(enmap_pixel, 'Points of Interest')
+        QgsProject.instance().addMapLayers([l1, l2, l3])
+
 
         speclib = SpectralLibrary.readFrom(speclibpath)
         slw = SpectralLibraryWidget(speclib=speclib)

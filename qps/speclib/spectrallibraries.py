@@ -2845,9 +2845,9 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         progressDialog.setWindowModality(Qt.WindowModal)
         progressDialog.setMinimumDuration(0)
 
-        slib = SpectralLibrary.readFromVector(self.vectorSource(), self.rasterSource())
+        slib = SpectralLibrary.readFromVector(self.vectorSource(), self.rasterSource(), progressDialog=progressDialog)
 
-        slib = SpectralLibrary.readFromVectorPositions(self.rasterSource(), self.vectorSource(), progressDialog=progressDialog)
+        #slib = SpectralLibrary.readFromVectorPositions(self.rasterSource(), self.vectorSource(), progressDialog=progressDialog)
 
         if isinstance(slib, SpectralLibrary) and not progressDialog.wasCanceled():
             self.mSpeclib = slib
