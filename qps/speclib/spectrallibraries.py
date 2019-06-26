@@ -1110,6 +1110,10 @@ class SpectralLibrary(QgsVectorLayer):
             progressDialog.setLabelText('Group Profiles')
             progressDialog.setValue(progressDialog.value()+1)
 
+        for i, p in enumerate(profiles):
+            p.setId(i)
+
+
         spectral_library = SpectralLibrary()
         spectral_library.startEditing()
         spectral_library.addMissingFields(vector_fields)
@@ -1117,7 +1121,8 @@ class SpectralLibrary(QgsVectorLayer):
         if isinstance(progressDialog, QProgressDialog):
             progressDialog.setValue(progressDialog.value()+1)
 
-        spectral_library.addProfiles(profiles)
+        # spectral_library.addProfiles(profiles)
+        assert spectral_library.addFeatures(profiles, QgsFeatureSink.FastInsert)
         spectral_library.commitChanges()
 
         if isinstance(progressDialog, QProgressDialog):
@@ -2992,6 +2997,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
                 b = self.speclib().isEditable()
                 self.speclib().beginEditCommand('Add {} profiles from "{}" selected by "{}"'.format(n, d.rasterSource().name(), d.vectorSource().name()))
                 self.speclib().startEditing()
+                # todo: fast insert?
                 self.speclib().addSpeclib(sl, True)
                 self.speclib().endEditCommand()
                 if not b:
