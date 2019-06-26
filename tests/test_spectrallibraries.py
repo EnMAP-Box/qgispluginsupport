@@ -1394,6 +1394,40 @@ class TestCore(unittest.TestCase):
         self.assertEqual(len(sl2), n*2)
 
         s = ""
+    def test_speclibImportSpeed(self):
+
+        pathRaster = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
+        pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_polygon.shp'
+        #pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
+
+
+        vl = QgsVectorLayer(pathPoly)
+        rl = QgsRasterLayer(pathRaster)
+        if not vl.isValid() and rl.isValid():
+            return
+
+        max_spp = 1 # seconds per profile
+
+        def timestats(t0, sl, info='time'):
+            dt = time.time() - t0
+            spp = dt / len(sl)
+            pps = len(sl) / dt
+            print('{}: dt={}sec spp={} pps={}'.format(info, dt, spp, pps ))
+            return dt, spp, pps
+
+        t0 = time.time()
+        sl = SpectralLibrary.readFromVector(vl, rl)
+        dt, spp, pps = timestats(t0, sl, info='read profiles')
+        self.assertTrue(spp <= max_spp, msg='{} seconds per profile are too much!')
+
+        t0 = time.time()
+        sl.startEditing()
+        sl.addSpeclib(sl)
+        sl.commitChanges()
+        dt, spp, pps = timestats(t0, sl, info='merge speclibs')
+        self.assertTrue(spp <= max_spp, msg='too slow!')
+
+
 
     def test_SpectralProfileImportPointsDialog(self):
 

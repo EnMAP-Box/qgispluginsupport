@@ -984,6 +984,10 @@ class SpectralLibrary(QgsVectorLayer):
         # assert isinstance(vector_qgs_layer, QgsVectorLayer)
         # assert isinstance(raster_qgs_layer, QgsRasterLayer)
 
+        # the SpectralLibrary to be returned
+        spectral_library = SpectralLibrary()
+
+
         # get QgsLayers of vector and raster
         from ..utils import SelectMapLayersDialog
         if not (isinstance(vector_qgs_layer, QgsVectorLayer) and isinstance(raster_qgs_layer, QgsRasterLayer)):
@@ -1022,6 +1026,11 @@ class SpectralLibrary(QgsVectorLayer):
         vector_dataset = drv.CopyDataSource(ogrDataSource(vector_qgs_layer), '')
         assert isinstance(vector_dataset, ogr.DataSource)
         raster_dataset = gdal.Open(raster_qgs_layer.source())
+        bn = os.path.basename(raster_dataset.GetDescription())
+        assert isinstance(raster_dataset, gdal.Dataset)
+
+        wl, wlu = parseWavelength(raster_dataset)
+
 
         iLayer = 0
         layerNames = [vector_dataset.GetLayer(i).GetName() for i in range(vector_dataset.GetLayerCount())]
@@ -1039,9 +1048,9 @@ class SpectralLibrary(QgsVectorLayer):
 
         # make the internal FID a normal attribute which we can rasterize
         fidName = 'FID'
-        i = 0
+        iProfile = 0
         while fidName in fieldNames:
-            fidName = 'tmpFID{}'.format(i)
+            fidName = 'tmpFID{}'.format(iProfile)
         vector_layer.CreateField(ogr.FieldDefn(fidName, ogr.OFTInteger64))
         # transform geometries to raster SRS
         srsVector = vector_layer.GetSpatialRef()
@@ -1076,8 +1085,20 @@ class SpectralLibrary(QgsVectorLayer):
         gdal.RasterizeLayer(mem, [1], vector_layer, options=['ALL_TOUCHED=TRUE', 'ATTRIBUTE={}'.format(fidName)])
         memory_array = mem.ReadAsArray()
         y, x = np.where(memory_array > 0)
+        n_profiles = len(y)
+
+        if n_profiles == 0:
+            # no profiles to extract. Return an empty speclib
+            if isinstance(progressDialog, QProgressDialog):
+                progressDialog.setValue(progressDialog.maximum())
+            return spectral_library
+
         fids = memory_array[y, x]
+        unique_fids = list(np.unique(fids))
         driver = None
+
+        percentage_to_extract = float(len(y)) / (mem.RasterXSize * mem.RasterYSize)
+
         del vector_layer, memory_array, mem, driver
 
         # save all profiles in a spectral library
@@ -1088,29 +1109,99 @@ class SpectralLibrary(QgsVectorLayer):
             progressDialog.setValue(0)
             progressDialog.setLabelText('Read profiles...')
 
-        for i, (xx, yy, fid) in enumerate(zip(x, y, fids)):
-            if isinstance(progressDialog, QProgressDialog):
-                if progressDialog.wasCanceled():
-                    return None
-                progressDialog.setValue(i)
 
-            profile = SpectralProfile.fromRasterSource(raster_dataset, QPoint(xx, yy), fields=speclib_fields)  # also sets geometry
-            feature = vector_qgs_layer.getFeature(int(fid))
-            assert isinstance(feature, QgsFeature)
-            for fieldName in fields_to_copy:
-                assert isinstance(fieldName, str)
-                profile[fieldName] = feature[fieldName]
-            profiles.append(profile)
+
+        rasterCRS = raster_qgs_layer.crs()
+        rasterGT = raster_dataset.GetGeoTransform()
+
+        attr_idx_profile = []
+        attr_idx_feature = []
+        tmpProfile = SpectralProfile(fields=speclib_fields)
+        for fieldName in fields_to_copy:
+            attr_idx_profile.append(tmpProfile.fields().indexOf(fieldName))
+            attr_idx_feature.append(vector_fields.indexOf(fieldName))
+
+
+        # store relevant features in memory
+        features = {}
+        featureAttributes = {}
+        for f in vector_qgs_layer.getFeatures(unique_fids):
+            assert isinstance(f, QgsFeature)
+            features[f.id()] = f
+
+
+
+        if False:
+
+            for iProfile, (xx, yy, fid) in enumerate(zip(x, y, fids)):
+                if isinstance(progressDialog, QProgressDialog):
+                    if progressDialog.wasCanceled():
+                        return None
+                    progressDialog.setValue(iProfile)
+
+                profile = SpectralProfile.fromRasterSource(raster_dataset,
+                                                           QPoint(xx, yy),
+                                                           crs=rasterCRS, gt=rasterGT, fields=speclib_fields)  # also sets geometry
+                #feature = vector_qgs_layer.getFeature(int(fid))
+                feature = features[int(fid)]
+                assert isinstance(feature, QgsFeature)
+                for idx_p, idx_f in zip(attr_idx_profile, attr_idx_feature):
+                    profile.setAttribute(idx_p, feature.attribute(idx_f))
+                profiles.append(profile)
+        else:
+
+            # 1. read raster values
+
+            xoff, yoff = int(min(x)), int(min(y))
+            maxx, maxy = int(max(x)), int(max(y))
+            win_xsize, win_ysize = maxx-xoff+1, maxy-yoff+1
+
+            x_win, y_win = x - xoff, y - yoff
+
+            profileData = None
+
+            # should we consider a band-band-list?
+
+            for b in range(raster_dataset.RasterCount):
+                band = raster_dataset.GetRasterBand(b+1)
+                assert isinstance(band, gdal.Band)
+                bandData = band.ReadAsArray(xoff=xoff, yoff=yoff, win_xsize=win_xsize, win_ysize=win_ysize)
+                pxData = bandData[y_win, x_win]
+
+                assert len(pxData) == n_profiles
+
+                if profileData is None:
+                    profileData = np.ones((raster_dataset.RasterCount, n_profiles), dtype=pxData.dtype)
+                profileData[b, :] = pxData
+
+            del raster_dataset, bandData
+
+
+
+            # 2. profiles with source vector metadata
+            for iProfile, fid in enumerate(fids):
+                feature = features[fid]
+                profile = SpectralProfile(fields=speclib_fields)
+                assert isinstance(feature, QgsFeature)
+                # 2.1 set profile name
+                profile.setName('{} {},{}'.format(bn, x[iProfile], y[iProfile]))
+
+                # 2.2 copy vector feature attribute
+                for idx_p, idx_f in zip(attr_idx_profile, attr_idx_feature):
+                    profile.setAttribute(idx_p, feature.attribute(idx_f))
+
+                # 2.3 set the profile values
+                profile.setValues(x=wl, y=profileData[:, iProfile], xUnit=wlu)
+                profiles.append(profile)
 
         if isinstance(progressDialog, QProgressDialog):
             progressDialog.setLabelText('Group Profiles')
             progressDialog.setValue(progressDialog.value()+1)
 
-        for i, p in enumerate(profiles):
-            p.setId(i)
+        for iProfile, p in enumerate(profiles):
+            p.setId(iProfile)
 
 
-        spectral_library = SpectralLibrary()
         spectral_library.startEditing()
         spectral_library.addMissingFields(vector_fields)
 
