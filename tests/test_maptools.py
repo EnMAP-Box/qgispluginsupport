@@ -46,7 +46,6 @@ class TestMapTools(unittest.TestCase):
         self.canvas.close()
         QgsProject.instance().removeMapLayer(self.lyr)
 
-
     def test_QgsMapTools(self):
 
         lyrR = TestObjects.createRasterLayer()
@@ -130,19 +129,60 @@ class TestMapTools(unittest.TestCase):
         if SHOW_GUI:
             QGIS_APP.exec_()
 
+    def test_AddFeature(self):
+
+        canvas = self.createCanvas()
+        canvas.show()
+        cadDockWidget = QgsAdvancedDigitizingDockWidget(canvas)
+        for l in canvas.layers():
+            if isinstance(l, QgsVectorLayer):
+                canvas.setCurrentLayer(l)
+                l.startEditing()
+                break
+        mt = QgsMapToolAddFeature(canvas, QgsMapToolDigitizeFeature.CapturePolygon, cadDockWidget)
+        canvas.setMapTool(mt)
+        if SHOW_GUI:
+            QGIS_APP.exec_()
+
 
     def test_MapTools(self):
-
-        keys = MapTools.mapToolKeys()
-        for k in keys:
-            self.assertIsInstance(k, str)
-        self.assertIsInstance(keys, list)
-        self.assertTrue(len(keys) > 0)
+        canvas = QgsMapCanvas()
+        cadDockWidget = QgsAdvancedDigitizingDockWidget(canvas)
 
 
-        for key in keys:
-            print('Test MapTool {}...'.format(key))
-            mapTool = MapTools.create(key, self.canvas)
+        for name in MapTools.mapToolNames():
+            mte = MapTools.toMapToolEnum(name)
+            self.assertIsInstance(mte, MapTools)
+
+        for value in MapTools.mapToolNames():
+            mte = MapTools.toMapToolEnum(value)
+            self.assertIsInstance(mte, MapTools)
+
+
+        tools = []
+
+        for mte in MapTools.mapToolEnums():
+            self.assertIsInstance(mte, MapTools)
+
+            args = []
+            if mte == MapTools.AddFeature:
+                for mode  in [QgsMapToolCapture.CapturePoint,
+                              QgsMapToolCapture.CaptureLine,
+                              QgsMapToolCapture.CapturePolygon,
+                              QgsMapToolCapture.CaptureNone]:
+                    mt = MapTools.create(mte, canvas, mode, cadDockWidget)
+                    self.assertIsInstance(mt, QgsMapTool)
+                    tools.append(mt)
+            else:
+                mt = MapTools.create(mte, canvas, *args)
+                self.assertIsInstance(mt, QgsMapTool)
+                tools.append(mt)
+
+
+
+        for enum in MapTools.mapToolEnums():
+            print('Test MapTool {}...'.format(enum.name))
+            mapTool = MapTools.create(name, self.canvas)
             self.assertIsInstance(mapTool, QgsMapTool)
             self.assertEqual(mapTool, self.canvas.mapTool())
 
@@ -160,25 +200,6 @@ class TestMapTools(unittest.TestCase):
 
             mapTool.canvasPressEvent(qgsMouseEvent)
             mapTool.canvasReleaseEvent(qgsMouseEvent)
-
-            if SHOW_GUI:
-                d = QDialog(None)
-                d.setWindowTitle('Cursor "{}"'.format(mapTool.__class__.__name__))
-                d.setLayout(QVBoxLayout())
-                canvas = self.createCanvas()
-                mapTool = MapTools.create(key, canvas)
-                d.layout().addWidget(canvas)
-                self.assertEqual(mapTool, canvas.mapTool())
-                btn1 = QPushButton('Ok', d)
-                btn2 = QPushButton('Failed', d)
-
-                btn1.clicked.connect(d.accept)
-                btn2.clicked.connect(d.reject)
-                d.layout().addWidget(btn1)
-                d.layout().addWidget(btn2)
-
-                if d.exec_() == QDialog.Rejected:
-                    self.fail('Wrong/none cursor for maptool {}'.format(mapTool.__class__.__name__))
 
 
         mt = PixelScaleExtentMapTool(self.canvas)
