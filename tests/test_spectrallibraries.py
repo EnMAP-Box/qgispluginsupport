@@ -1401,6 +1401,8 @@ class TestCore(unittest.TestCase):
         #pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
 
 
+        progressDialog = QProgressDialog()
+        progressDialog.show()
         vl = QgsVectorLayer(pathPoly)
         rl = QgsRasterLayer(pathRaster)
         if not vl.isValid() and rl.isValid():
@@ -1416,7 +1418,7 @@ class TestCore(unittest.TestCase):
             return dt, spp, pps
 
         t0 = time.time()
-        sl = SpectralLibrary.readFromVector(vl, rl)
+        sl = SpectralLibrary.readFromVector(vl, rl, progressDialog=progressDialog)
         dt, spp, pps = timestats(t0, sl, info='read profiles')
         self.assertTrue(spp <= max_spp, msg='{} seconds per profile are too much!')
 
@@ -1427,7 +1429,8 @@ class TestCore(unittest.TestCase):
         dt, spp, pps = timestats(t0, sl, info='merge speclibs')
         self.assertTrue(spp <= max_spp, msg='too slow!')
 
-
+        if SHOW_GUI:
+            QAPP.exec_()
 
     def test_SpectralProfileImportPointsDialog(self):
 

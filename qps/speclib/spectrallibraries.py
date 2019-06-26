@@ -1104,12 +1104,6 @@ class SpectralLibrary(QgsVectorLayer):
         # save all profiles in a spectral library
         profiles = []
 
-        if isinstance(progressDialog, QProgressDialog):
-            progressDialog.setRange(0, len(fids) + 10)
-            progressDialog.setValue(0)
-            progressDialog.setLabelText('Read profiles...')
-
-
 
         rasterCRS = raster_qgs_layer.crs()
         rasterGT = raster_dataset.GetGeoTransform()
@@ -1128,7 +1122,6 @@ class SpectralLibrary(QgsVectorLayer):
         for f in vector_qgs_layer.getFeatures(unique_fids):
             assert isinstance(f, QgsFeature)
             features[f.id()] = f
-
 
 
         if False:
@@ -1150,6 +1143,12 @@ class SpectralLibrary(QgsVectorLayer):
                 profiles.append(profile)
         else:
 
+            if isinstance(progressDialog, QProgressDialog):
+
+                progressDialog.setRange(0, raster_dataset.RasterCount + n_profiles + 1)
+                progressDialog.setValue(0)
+                progressDialog.setLabelText('Read profiles...')
+
             # 1. read raster values
 
             xoff, yoff = int(min(x)), int(min(y))
@@ -1163,6 +1162,11 @@ class SpectralLibrary(QgsVectorLayer):
             # should we consider a band-band-list?
 
             for b in range(raster_dataset.RasterCount):
+                if isinstance(progressDialog, QProgressDialog):
+                    if progressDialog.wasCanceled():
+                        return None
+                    progressDialog.setValue(progressDialog.value()+1)
+
                 band = raster_dataset.GetRasterBand(b+1)
                 assert isinstance(band, gdal.Band)
                 bandData = band.ReadAsArray(xoff=xoff, yoff=yoff, win_xsize=win_xsize, win_ysize=win_ysize)
@@ -1180,6 +1184,11 @@ class SpectralLibrary(QgsVectorLayer):
 
             # 2. profiles with source vector metadata
             for iProfile, fid in enumerate(fids):
+                if isinstance(progressDialog, QProgressDialog):
+                    if progressDialog.wasCanceled():
+                        return None
+                    progressDialog.setValue(progressDialog.value()+1)
+
                 feature = features[fid]
                 profile = SpectralProfile(fields=speclib_fields)
                 assert isinstance(feature, QgsFeature)
@@ -1194,9 +1203,6 @@ class SpectralLibrary(QgsVectorLayer):
                 profile.setValues(x=wl, y=profileData[:, iProfile], xUnit=wlu)
                 profiles.append(profile)
 
-        if isinstance(progressDialog, QProgressDialog):
-            progressDialog.setLabelText('Group Profiles')
-            progressDialog.setValue(progressDialog.value()+1)
 
         for iProfile, p in enumerate(profiles):
             p.setId(iProfile)
@@ -1206,6 +1212,7 @@ class SpectralLibrary(QgsVectorLayer):
         spectral_library.addMissingFields(vector_fields)
 
         if isinstance(progressDialog, QProgressDialog):
+            progressDialog.setLabelText('Create speclib...')
             progressDialog.setValue(progressDialog.value()+1)
 
         # spectral_library.addProfiles(profiles)
