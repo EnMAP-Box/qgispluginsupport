@@ -65,6 +65,9 @@ COLOR_SELECTED_SPECTRA = QColor('yellow')
 COLOR_BACKGROUND = QColor('black')
 
 DEBUG = False
+
+
+
 def log(msg:str):
     if DEBUG:
         QgsMessageLog.logMessage(msg, 'spectrallibraries.py')
@@ -488,8 +491,10 @@ class SpectralProfile(QgsFeature):
             raise Exception('Unsupported type of argument "position" {}'.format('{}'.format(position)))
 
         # check out-of-raster
-        if px.x() < 0 or px.y() < 0: return None
-        if px.x() > ds.RasterXSize - 1 or px.y() > ds.RasterYSize - 1: return None
+        if px.x() < 0 or px.y() < 0:
+            return None
+        if px.x() > ds.RasterXSize - 1 or px.y() > ds.RasterYSize - 1:
+            return None
 
         y = ds.ReadAsArray(px.x(), px.y(), 1, 1)
 
@@ -500,8 +505,8 @@ class SpectralProfile(QgsFeature):
             if nodata and y[b] == nodata:
                 return None
 
-        wl = ds.GetMetadataItem('wavelength', 'ENVI')
-        wlu = ds.GetMetadataItem('wavelength_units', 'ENVI')
+        wl, wlu = parseWavelength(ds)
+
         if wl not in EMPTY_VALUES and len(wl) > 0:
             wl = re.sub(r'[ {}]', '', wl).split(',')
             wl = [float(w) for w in wl]
