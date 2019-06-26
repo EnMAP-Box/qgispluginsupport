@@ -1373,6 +1373,8 @@ class TestCore(unittest.TestCase):
     def test_mergeSpeclibSpeed(self):
 
         from qpstestdata import speclib
+
+
         sl1 = SpectralLibrary.readFrom(speclib)
 
         sl2 = SpectralLibrary()
@@ -1393,6 +1395,8 @@ class TestCore(unittest.TestCase):
 
         self.assertEqual(len(sl2), n*2)
 
+
+
         s = ""
     def test_speclibImportSpeed(self):
 
@@ -1404,7 +1408,9 @@ class TestCore(unittest.TestCase):
         progressDialog = QProgressDialog()
         progressDialog.show()
         vl = QgsVectorLayer(pathPoly)
+        vl.setName('Polygons')
         rl = QgsRasterLayer(pathRaster)
+        rl.setName('Raster Data')
         if not vl.isValid() and rl.isValid():
             return
 
@@ -1430,6 +1436,26 @@ class TestCore(unittest.TestCase):
         dt, spp, pps = timestats(t0, sl, info='merge speclibs')
         self.assertTrue(spp <= max_spp, msg='too slow!')
 
+
+        sl0 = SpectralLibrary()
+        t0 = time.time()
+        sl0.startEditing()
+        sl0.addSpeclib(sl)
+        dt, spp, pps = timestats(t0, sl, info='merge speclibs2')
+        self.assertTrue(spp <= max_spp, msg='too slow!')
+
+
+        w = SpectralLibraryWidget()
+        w.show()
+        t0 = time.time()
+        w.addSpeclib(sl)
+
+        if SHOW_GUI:
+            QgsProject.instance().addMapLayers([vl, rl])
+            w = SpectralLibraryWidget()
+            w.show()
+
+            QAPP.exec_()
 
     def test_SpectralProfileImportPointsDialog(self):
 

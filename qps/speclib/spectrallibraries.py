@@ -63,6 +63,8 @@ SPECLIB_CLIPBOARD = weakref.WeakValueDictionary()
 COLOR_CURRENT_SPECTRA = QColor('green')
 COLOR_SELECTED_SPECTRA = QColor('yellow')
 COLOR_BACKGROUND = QColor('black')
+CURRENT_PROFILE_COLOR = QColor('green')
+DEFAULT_PROFILE_COLOR = QColor('white')
 
 DEBUG = False
 
@@ -87,8 +89,7 @@ PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 #CURRENT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
 #CURRENT_SPECTRUM_STYLE.linePen.setColor(Qt.green)
 
-CURRENT_PROFILE_COLOR = QColor('green')
-DEFAULT_PROFILE_COLOR = QColor('white')
+
 
 # DEFAULT_SPECTRUM_STYLE = PlotStyle()
 # DEFAULT_SPECTRUM_STYLE.markerSymbol = None
@@ -1816,7 +1817,7 @@ class SpectralLibrary(QgsVectorLayer):
             elif addMissingFields:
                 raise Exception('Missing field: "{}"'.format(srcName))
 
-        #create new features + copy geometry
+        # create new features + copy geometry
 
         for pSrc in profiles:
             pDst = QgsFeature(self.fields())
@@ -3089,13 +3090,8 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             if isinstance(sl, SpectralLibrary) and n > 0:
 
                 b = self.speclib().isEditable()
-                self.speclib().beginEditCommand('Add {} profiles from "{}" selected by "{}"'.format(n, d.rasterSource().name(), d.vectorSource().name()))
-                self.speclib().startEditing()
-                # todo: fast insert?
-                self.speclib().addSpeclib(sl, True)
-                self.speclib().endEditCommand()
-                if not b:
-                    self.speclib().commitChanges()
+
+                self.addSpeclib(sl)
 
 
 
@@ -3529,54 +3525,44 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
     def addSpeclib(self, speclib:SpectralLibrary):
         """
-        Adds the spectral profiles of a SpectralLibrary
+        Adds spectral profiles of a SpectralLibrary. Suppresses plot updates in doing so
         :param speclib: SpectralLibrary
         """
         if isinstance(speclib, SpectralLibrary):
             sl = self.speclib()
 
-            b = self.mPlotWidget.signalsBlocked()
 
+            progressDialog = QProgressDialog(self)
+            progressDialog.setRange(0,1)
+            info = 'Add {} profiles...'.format(len(speclib))
+            progressDialog.setLabelText(info)
+            progressDialog.setValue(0)
+
+            plotWasBlocked = self.mPlotWidget.signalsBlocked()
+            wasEditable = sl.isEditable()
+            self.mPlotWidget.blockUpdates(True)
             try:
-                self.mPlotWidget.blockUpdates(True)
-                b = sl.isEditable()
                 sl.startEditing()
-
-                n = len(speclib)
-                self.mProgressBar.setRange(0, n)
-                self.mProgressBar.setValue(0)
-                self.mInfoLabel.setText('Add {} profiles...'.format(n))
-
-
-
-
-                allFids = speclib.allFeatureIds()
-                chunckSize = 10
-                sl.addMissingFields(speclib.fields())
-                for i in range(0,len(allFids),chunckSize):
-                    sl.startEditing()
-                    j = i+chunckSize
-                    fids = allFids[i:j]
-
-                    profiles = speclib.profiles(fids)
-                    sl.addProfiles(profiles, addMissingFields=False)
-                    assert sl.commitChanges()
-
-                    self.mProgressBar.setValue(j)
-                    QApplication.processEvents(QEventLoop.ExcludeSocketNotifiers)
-
-                if b:
+                sl.beginEditCommand(info)
+                sl.addSpeclib(speclib)
+                sl.endEditCommand()
+                if not wasEditable:
                     sl.commitChanges()
             except:
+
                 pass
+            progressDialog.setValue(1)
 
-            def onReset(*args):
-                self.mProgressBar.setValue(0)
-                self.mInfoLabel.setText('')
-                self.mPlotWidget.blockUpdates(False)
-                self.mPlotWidget.syncLibrary()
+            self.mPlotWidget.blockUpdates(not plotWasBlocked)
+            self.mPlotWidget.syncLibrary()
 
-            QTimer.singleShot(500, onReset)
+            #def onReset(*args):
+            #    self.mProgressBar.setValue(0)
+            #    self.mInfoLabel.setText('')
+            #    self.mPlotWidget.blockUpdates(False)
+            #    self.mPlotWidget.syncLibrary()
+
+            #QTimer.singleShot(500, onReset)
 
     def addCurrentSpectraToSpeclib(self, *args):
         """

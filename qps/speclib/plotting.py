@@ -400,7 +400,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         self.mCrosshairLineV = pg.InfiniteLine(angle=90, movable=False)
         self.mCrosshairLineH = pg.InfiniteLine(angle=0, movable=False)
+
         self.mInfoLabelCursor = pg.TextItem(text='<cursor position>', anchor=(1.0, 0.0))
+        self.mCrosshairLineH.pen.setWidth(2)
+        self.mCrosshairLineV.pen.setWidth(2)
+        self.mCrosshairLineH.setZValue(9999999)
+        self.mCrosshairLineV.setZValue(9999999)
+        self.mInfoLabelCursor.setZValue(9999999)
+
         self.scene().addItem(self.mInfoLabelCursor)
         self.mInfoLabelCursor.setParentItem(self.getPlotItem())
 
@@ -411,7 +418,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mInfoColor = None
         self.setInfoColor(QColor('yellow'))
 
-        self.proxy2D = pg.SignalProxy(self.scene().sigMouseMoved, rateLimit=60, slot=self.onMouseMoved2D)
+        self.proxy2D = pg.SignalProxy(self.scene().sigMouseMoved, rateLimit=100, slot=self.onMouseMoved2D)
 
         # set default axis unit
         self.setXLabel(self.mViewBox.xAxisUnit())
@@ -483,8 +490,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 self.mInfoLabelCursor.setPos(pos)
 
                 b = vb.mActionShowCrosshair.isChecked()
-                self.mCrosshairLineH.setVisible(b)
-                self.mCrosshairLineV.setVisible(b)
+                #self.mCrosshairLineH.setVisible(b)
+                #self.mCrosshairLineV.setVisible(b)
                 self.mCrosshairLineV.setPos(mousePoint.x())
                 self.mCrosshairLineH.setPos(mousePoint.y())
 
