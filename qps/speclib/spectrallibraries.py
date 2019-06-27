@@ -3244,18 +3244,19 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
         self.actionFormView.triggered.connect(lambda: self.mDualView.setView(QgsDualView.AttributeEditor))
         self.actionTableView.triggered.connect(lambda: self.mDualView.setView(QgsDualView.AttributeTable))
-        # self.actionRenderingView.triggered.connect(lambda : self.mDualView.setView)
-        self.actionProperties.triggered.connect(self.showProperties)
-        self.btnFormView.setDefaultAction(self.actionFormView)
-        self.btnTableView.setDefaultAction(self.actionTableView)
-        self.btnRenderingView.setDefaultAction(self.actionRenderingView)
-        self.btnRenderingView.setVisible(False)
 
-        self.btnSpeclibProperties.setDefaultAction(self.actionProperties)
+        self.actionProperties.triggered.connect(self.showProperties)
+
 
         self.actionCutSelectedRows.triggered.connect(self.cutSelectedFeatures)
         self.actionCopySelectedRows.triggered.connect(self.copySelectedFeatures)
         self.actionPasteFeatures.triggered.connect(self.pasteFeatures)
+
+        for action in [self.actionProperties, self.actionFormView, self.actionTableView]:
+            btn = QToolButton()
+            btn.setDefaultAction(action)
+            btn.setAutoRaise(True)
+            self.statusBar().addPermanentWidget(btn)
 
         self.onIsEditableChanged()
 
