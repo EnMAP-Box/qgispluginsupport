@@ -1177,6 +1177,62 @@ class TestCore(unittest.TestCase):
             plotWidget.show()
             QAPP.exec_()
 
+    def test_SpectralLibraryPlotWidgetSpeed(self):
+
+        pathRaster = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
+        #pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_polygon.shp'
+        pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
+
+        if os.path.isfile(pathRaster) and os.path.isfile(pathPoly):
+            sl = SpectralLibrary.readFromVector(pathPoly, pathRaster)
+        self.assertTrue(len(sl) > 10)
+
+        nProfiles = 10
+        nProfiles = len(sl)
+        nProfiles = min(nProfiles, len(sl))
+
+        # plotly
+        if False:
+            import plotly.plotly as py
+            import plotly.graph_objs as go
+
+            lines = []
+            for i in range(nProfiles):
+                p = sl[i]
+                v = p.values()
+                s = go.Scatter(x=v['x'], y=['y'], mode='lines', name=p.name())
+                lines.append(s)
+            py.plot(lines)
+
+        if False:
+            from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
+            from matplotlib.figure import Figure
+
+            w = QWidget()
+            w.setLayout(QVBoxLayout())
+            fig = Figure()
+            fc = FigureCanvasQTAgg(fig)
+            tb = NavigationToolbar2QT(fc, w)
+            w.layout().addWidget(tb)
+            w.layout().addWidget(fc)
+
+            w.show()
+            ax = fig.subplots(1)
+            fig.add_axes(ax)
+            for i in range(nProfiles):
+                p = sl[i]
+                v = p.values()
+                ax.plot(v['x'], v['y'])
+
+
+        slw = SpectralLibraryWidget()
+        slw.show()
+        slw.addSpeclib(sl)
+
+
+        if SHOW_GUI:
+            QAPP.exec_()
+
     def test_SpectralLibraryPlotWidget(self):
 
         speclib = SpectralLibrary.readFrom(speclibpath)
@@ -1449,6 +1505,8 @@ class TestCore(unittest.TestCase):
         w.show()
         t0 = time.time()
         w.addSpeclib(sl)
+
+        dt = time.time()-t0
 
         if SHOW_GUI:
             QgsProject.instance().addMapLayers([vl, rl])

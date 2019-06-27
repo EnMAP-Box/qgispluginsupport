@@ -361,8 +361,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         pi = self.getPlotItem()
         assert isinstance(pi, pg.PlotItem) and pi == plotItem and pi == self.plotItem
+        #pi.disableAutoRange()
+
 
         self.mSpeclib = None
+        self.mSpeclibSignalConnections = []
 
         self.mUpdatesBlocked = False
 
@@ -398,6 +401,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mMaxProfiles = 256
         self.mPlotOverlayItems = []
 
+        self.mAddedFeatureList = []
+
+        self.mUpdateTimer = QTimer()
+        #self.mUpdateTimer.timeout.connect(self._addedFeatureCheck)
+        self.mUpdateTimer.setInterval(2000)
+        self.mUpdateTimer.start(2000)
+
         self.mCrosshairLineV = pg.InfiniteLine(angle=90, movable=False)
         self.mCrosshairLineH = pg.InfiniteLine(angle=0, movable=False)
 
@@ -419,6 +429,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.setInfoColor(QColor('yellow'))
 
         self.proxy2D = pg.SignalProxy(self.scene().sigMouseMoved, rateLimit=100, slot=self.onMouseMoved2D)
+
 
         # set default axis unit
         self.setXLabel(self.mViewBox.xAxisUnit())
@@ -452,14 +463,30 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                     ai.setPen(QColor(color))
 
     def updatesBlocked(self) -> bool:
+        """
+        Returns whether speclib updates are shown in the plot widget or not
+        :return: bool
+        """
         return self.mUpdatesBlocked
 
     def blockUpdates(self, b: bool) -> bool:
+        """
+        Disconnect the plot widget from spectral library signales.
+        :param b:
+        :return:
+        """
         b0 = self.updatesBlocked()
         self.mUpdatesBlocked = b
 
         if b == True:
-            self.updatePlot()
+            self.disconnectSpeclibSignals()
+            self.blockSignals(True)
+            #self.updatePlot()
+            self.setViewportUpdateMode(QGraphicsView.NoViewportUpdate)
+        else:
+            self.setViewportUpdateMode(QGraphicsView.MinimalViewportUpdate)
+            self.blockSignals(False)
+            self.connectSpeclibSignals()
 
         return b0
 
@@ -552,19 +579,49 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :param speclib: SpectralLibrary
         """
         assert isinstance(speclib, SpectralLibrary)
-        # self.plotItem.clear()
-        # self.plotItem.clearPlots()
+
         self._removeSpectralProfilePDIs(self._spectralProfilePDIs())
         self.mSpeclib = speclib
-
-        self.mSpeclib.featureAdded.connect(self.onProfilesAdded)
-        self.mSpeclib.featuresDeleted.connect(self.onProfilesRemoved)
-        self.mSpeclib.selectionChanged.connect(self.onSelectionChanged)
-        self.mSpeclib.committedAttributeValuesChanges.connect(self.onCommittedAttributeValuesChanges)
-        self.mSpeclib.rendererChanged.connect(self.onRendererChanged)
+        self.connectSpeclibSignals()
         self.onProfilesAdded(self.speclib().allFeatureIds())
 
         self.updatePlot()
+
+    def connectSpeclibSignals(self):
+        if isinstance(self.mSpeclib, SpectralLibrary):
+
+            self.mSpeclib.featureAdded.connect(self.onProfilesAdded)
+            self.mSpeclib.featuresDeleted.connect(self.onProfilesRemoved)
+            self.mSpeclib.selectionChanged.connect(self.onSelectionChanged)
+            self.mSpeclib.committedAttributeValuesChanges.connect(self.onCommittedAttributeValuesChanges)
+            self.mSpeclib.rendererChanged.connect(self.onRendererChanged)
+
+
+    def disconnectSpeclibSignals(self):
+
+        if isinstance(self.mSpeclib, SpectralLibrary):
+            def disconnect(sig, slot):
+                while True:
+                    try:
+                        r = sig.disconnect(slot)
+                        s = ""
+                    except:
+                        break
+            disconnect(self.mSpeclib.featureAdded, self.onProfilesAdded)
+            disconnect(self.mSpeclib.featuresDeleted, self.onProfilesRemoved)
+            disconnect(self.mSpeclib.selectionChanged, self.onSelectionChanged)
+            disconnect(self.mSpeclib.committedAttributeValuesChanges, self.onCommittedAttributeValuesChanges)
+            disconnect(self.mSpeclib.rendererChanged, self.onRendererChanged)
+
+
+    def _addedFeatureCheck(self):
+        if len(self.mAddedFeatureList) > 0 and not self.mUpdatesBlocked:
+            fids = self.mAddedFeatureList[:]
+            self.mAddedFeatureList.clear()
+            self.onProfilesAdded(fids)
+
+    def _addAddedFeatureList(self, fid):
+        self.mAddedFeatureList.append(fid)
 
     def speclib(self) -> SpectralLibrary:
         """
@@ -596,14 +653,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             if isinstance(pdi, SpectralProfilePlotDataItem):
                 pdi.resetSpectralProfile(p)
 
+    @pyqtSlot()
     def onRendererChanged(self):
 
         profiles = self.mSpeclib.profiles(fids=self.mPlotDataItems.keys())
-        self.updateProfileStyles(profiles)
+        self.updateProfileStyles(list(profiles))
+
 
     def onSelectionChanged(self, selected, deselected):
-        if self.mUpdatesBlocked:
-            return
 
         for pdi in self.plotItem.items:
             if isinstance(pdi, SpectralProfilePlotDataItem):
@@ -615,9 +672,24 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         s = ""
 
     def syncLibrary(self):
-        profiles = self.speclib().profiles()
-        self.updateProfileStyles(profiles)
-        self.updatePlot()
+        s = ""
+        # see https://groups.google.com/forum/#!topic/pyqtgraph/kz4U6dswEKg
+        # speed problems in case of too many line items
+        profiles = list(self.speclib().profiles())
+        self.disableAutoRange()
+        self.blockSignals(True)
+        self.plotItem
+        self.setViewportUpdateMode(QGraphicsView.NoViewportUpdate)
+        self.updateProfileStyles(profiles) #take too much time
+        self.updatePlot() #take much more time
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
+        self.blockSignals(False)
+        self.enableAutoRange()
+        self.viewport().update()
+
+
+
+        s = ""
 
     def unitConversionFunction(self, unitSrc, unitDst):
         """
@@ -714,7 +786,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         self._removeSpectralProfilePDIs(to_remove)
         pi.addItems(to_add)
+
         pi.update()
+        s = ""
 
     def resetSpectralProfiles(self):
         for pdi in self.spectralProfilePlotDataItems():
@@ -747,12 +821,34 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         renderContext = QgsRenderContext()
         renderContext.setExtent(self.mSpeclib.extent())
         renderer = self.speclib().renderer().clone()
-        renderer.startRender(renderContext, self.mSpeclib.fields())
-        for profile in listOfProfiles:
+        colors = []
+
+        from .spectrallibraries import DEFAULT_PROFILE_COLOR
+        if isinstance(renderer, QgsNullSymbolRenderer):
+            for i in range(len(listOfProfiles)):
+                colors.append(DEFAULT_PROFILE_COLOR)
+        else:
+
+            renderer.startRender(renderContext, self.mSpeclib.fields())
+
+            for profile in listOfProfiles:
+                symbol = renderer.symbolForFeature(profile, renderContext)
+                if not isinstance(symbol, QgsSymbol):
+                    symbol = renderer.sourceSymbol()
+                assert isinstance(symbol, QgsSymbol)
+                color = QColor('white')
+
+                if isinstance(symbol, (QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol)):
+                    color = symbol.color()
+                colors.append(color)
+            renderer.stopRender(renderContext)
+
+        s = ""
+        for profile, color in zip(listOfProfiles, colors):
             assert isinstance(profile, SpectralProfile)
 
             if not self.mXUnitInitialized and isinstance(profile.xUnit(), str):
-                xUnit = profile.xUnit()
+                self.setXUnit(profile.xUnit())
 
             id = profile.id()
 
@@ -762,25 +858,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setClickable(True)
                 pdi.sigClicked.connect(self.onProfileClicked)
                 self.mPlotDataItems[profile.id()] = pdi
+            pdi.setColor(color)
 
-            if isinstance(renderer, QgsCategorizedSymbolRenderer):
-                s = ""
 
-            symbol = renderer.symbolForFeature(profile, renderContext)
-            if not isinstance(symbol, QgsSymbol):
-                symbol = renderer.sourceSymbol()
-
-            assert isinstance(symbol, QgsSymbol)
-            if isinstance(symbol, QgsMarkerSymbol):
-                pdi.setColor(symbol.color())
-
-            elif isinstance(symbol, QgsLineSymbol):
-                pdi.setColor(symbol.color())
-
-            elif isinstance(symbol, QgsFillSymbol):
-                pdi.setColor(symbol.color())
-
-        renderer.stopRender(renderContext)
         if isinstance(xUnit, str):
             self.setXUnit(xUnit)
             self.mXUnitInitialized = True
@@ -834,18 +914,19 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         return self.mSpeclib
 
     def onProfilesAdded(self, fids):
-        if self.mUpdatesBlocked:
-            return
-        profiles = self.speclib().profiles(fids=fids)
-        self.updateProfileStyles(profiles)
-        self.updatePlot()
-
-    def onProfilesRemoved(self, fids):
-        if self.mUpdatesBlocked:
-            return
-
+        if not isinstance(fids, list):
+            fids = [fids]
         if len(fids) == 0:
             return
+        profiles = self.speclib().profiles(fids=fids)
+        self.updateProfileStyles(list(profiles))
+        self.updatePlot()
+        s = ""
+
+    def onProfilesRemoved(self, fids):
+        if len(fids) == 0:
+            return
+
         pi = self.getPlotItem()
         assert isinstance(pi, pg.PlotItem)
         to_remove = [pdi for pdi in self._spectralProfilePDIs() if pdi.id() in fids]

@@ -972,9 +972,9 @@ class SpectralLibrary(QgsVectorLayer):
         Opens a Select Polygon Layer dialog to select the correct polygon and returns a Spectral Library with
         metadata according to the polygons attribute table.
 
-        :param vector_qgs_layer:
-        :param raster_qgs_layer:
-        :param progressDialog:
+        :param vector_qgs_layer: QgsVectorLayer | str
+        :param raster_qgs_layer: QgsRasterLayer | str
+        :param progressDialog: QProgressDialog
         :return: Spectral Library
         """
 
@@ -988,6 +988,11 @@ class SpectralLibrary(QgsVectorLayer):
         # the SpectralLibrary to be returned
         spectral_library = SpectralLibrary()
 
+        if isinstance(vector_qgs_layer, str):
+            vector_qgs_layer = QgsVectorLayer(vector_qgs_layer)
+
+        if isinstance(raster_qgs_layer, str):
+            raster_qgs_layer = QgsRasterLayer(raster_qgs_layer)
 
         # get QgsLayers of vector and raster
         from ..utils import SelectMapLayersDialog
@@ -3538,9 +3543,9 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             progressDialog.setLabelText(info)
             progressDialog.setValue(0)
 
-            plotWasBlocked = self.mPlotWidget.signalsBlocked()
+
             wasEditable = sl.isEditable()
-            self.mPlotWidget.blockUpdates(True)
+            plotWasBlocked = self.mPlotWidget.blockUpdates(True)
             try:
                 sl.startEditing()
                 sl.beginEditCommand(info)
@@ -3549,13 +3554,13 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
                 if not wasEditable:
                     sl.commitChanges()
             except:
-
+                s = ""
                 pass
             progressDialog.setValue(1)
 
-            self.mPlotWidget.blockUpdates(not plotWasBlocked)
+            self.mPlotWidget.blockUpdates(plotWasBlocked)
             self.mPlotWidget.syncLibrary()
-
+            s = ""
             #def onReset(*args):
             #    self.mProgressBar.setValue(0)
             #    self.mInfoLabel.setText('')
