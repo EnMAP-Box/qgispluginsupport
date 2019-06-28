@@ -1192,9 +1192,11 @@ class SpectralLibrary(QgsVectorLayer):
 
             wasPointGeometry = vector_qgs_layer.wkbType() in [QgsWkbTypes.Point, QgsWkbTypes.PointGeometry]
             if wasPointGeometry:
-                trans = QgsCoordinateTransform()
-                trans.setSourceCrs(vector_qgs_layer)
-                trans.setDestinationCrs(spectral_library)
+                pass
+
+            trans = QgsCoordinateTransform()
+            trans.setSourceCrs(vector_qgs_layer.crs())
+            trans.setDestinationCrs(spectral_library.crs())
 
             for iProfile, fid in enumerate(fids):
                 if isinstance(progressDialog, QProgressDialog):
@@ -1211,6 +1213,7 @@ class SpectralLibrary(QgsVectorLayer):
 
                 # 2.2 set geometry
                 pt = px2geo(QPoint(px_x, px_y), rasterGT)
+                pt = trans.transform(pt)
                 g = QgsGeometry.fromPointXY(pt)
                 profile.setGeometry(g)
 
