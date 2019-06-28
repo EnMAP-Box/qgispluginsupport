@@ -1067,7 +1067,7 @@ class SpectralLibrary(QgsVectorLayer):
         assert isinstance(trans, osr.CoordinateTransformation)
         for feature in vector_layer:
             assert isinstance(feature, ogr.Feature)
-            feature.SetField(fidName, feature.GetFID())
+            feature.SetField(fidName, feature.GetFID()+1) # let the smalled fid be 1
 
             # assert geom.Transform(trans) == ogr.OGRERR_NONE
             # wow! gdal.Rasterize considers SRS differences
@@ -1083,15 +1083,16 @@ class SpectralLibrary(QgsVectorLayer):
         assert isinstance(mem, gdal.Dataset)
         band = mem.GetRasterBand(1)
         assert isinstance(band, gdal.Band)
-        band.Fill(-1)
+        band.Fill(0)
         mem.SetGeoTransform(raster_dataset.GetGeoTransform())
         mem.SetProjection(raster_dataset.GetProjection())
         mem.FlushCache()
 
         gdal.RasterizeLayer(mem, [1], vector_layer, options=['ALL_TOUCHED=TRUE', 'ATTRIBUTE={}'.format(fidName)])
         memory_array = mem.ReadAsArray()
-        y, x = np.where(memory_array >= 0)
+        y, x = np.where(memory_array > 0)
         n_profiles = len(y)
+        memory_array = memory_array - 1 # decrease FID by 1 (we already got the right positions
 
         if n_profiles == 0:
             # no profiles to extract. Return an empty speclib
@@ -1110,9 +1111,32 @@ class SpectralLibrary(QgsVectorLayer):
         # save all profiles in a spectral library
         profiles = []
 
-
+        # transform x/y pixel position into speclib crs
         rasterCRS = raster_qgs_layer.crs()
         rasterGT = raster_dataset.GetGeoTransform()
+        rasterSRS = osr.SpatialReference()
+        speclibSRS = osr.SpatialReference()
+        rasterSRS.ImportFromWkt(rasterCRS.toWkt())
+        speclibSRS.ImportFromWkt(spectral_library.crs().toWkt())
+
+        transCRS = QgsCoordinateTransform()
+        transCRS.setSourceCrs(rasterCRS)
+        transCRS.setDestinationCrs(spectral_library.crs())
+
+        # transform many coordinates fast!
+        transSRS = osr.CoordinateTransformation(rasterSRS, speclibSRS)
+
+
+        # geo-coordinate in raster CRS
+        if True: # pixel center
+            x2, y2 = x+0.5, y+0.5
+        else:
+            x2, y2 = x, y
+        # transSRS.TransformPoints(np.ones((n_points, 2)))
+        geo_coordinates = np.empty((n_profiles, 2), dtype=np.float)
+        geo_coordinates[:, 0] = rasterGT[0] + x2 * rasterGT[1] + y2 * rasterGT[2]
+        geo_coordinates[:, 1] = rasterGT[3] + x2 * rasterGT[4] + y2 * rasterGT[5]
+        geo_coordinates = transSRS.TransformPoints(geo_coordinates)
 
         attr_idx_profile = []
         attr_idx_feature = []
@@ -1194,11 +1218,8 @@ class SpectralLibrary(QgsVectorLayer):
             if wasPointGeometry:
                 pass
 
-            trans = QgsCoordinateTransform()
-            trans.setSourceCrs(vector_qgs_layer.crs())
-            trans.setDestinationCrs(spectral_library.crs())
 
-            for iProfile, fid in enumerate(fids):
+            for iProfile, fid, in enumerate(fids):
                 if isinstance(progressDialog, QProgressDialog):
                     if progressDialog.wasCanceled():
                         return None
@@ -1212,10 +1233,8 @@ class SpectralLibrary(QgsVectorLayer):
                 profile.setName('{} {},{}'.format(bn, px_x, px_y))
 
                 # 2.2 set geometry
-                pt = px2geo(QPoint(px_x, px_y), rasterGT)
-                pt = trans.transform(pt)
-                g = QgsGeometry.fromPointXY(pt)
-                profile.setGeometry(g)
+                g = geo_coordinates[iProfile]
+                profile.setGeometry(QgsPoint(g[0], g[1]))
 
                 # 2.3 copy vector feature attribute
                 for idx_p, idx_f in zip(attr_idx_profile, attr_idx_feature):
