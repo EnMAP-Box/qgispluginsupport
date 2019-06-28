@@ -1090,7 +1090,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         gdal.RasterizeLayer(mem, [1], vector_layer, options=['ALL_TOUCHED=TRUE', 'ATTRIBUTE={}'.format(fidName)])
         memory_array = mem.ReadAsArray()
-        y, x = np.where(memory_array > 0)
+        y, x = np.where(memory_array >= 0)
         n_profiles = len(y)
 
         if n_profiles == 0:
