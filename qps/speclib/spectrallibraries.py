@@ -1189,6 +1189,13 @@ class SpectralLibrary(QgsVectorLayer):
 
 
             # 2. profiles with source vector metadata
+
+            wasPointGeometry = vector_qgs_layer.wkbType() in [QgsWkbTypes.Point, QgsWkbTypes.PointGeometry]
+            if wasPointGeometry:
+                trans = QgsCoordinateTransform()
+                trans.setSourceCrs(vector_qgs_layer)
+                trans.setDestinationCrs(spectral_library)
+
             for iProfile, fid in enumerate(fids):
                 if isinstance(progressDialog, QProgressDialog):
                     if progressDialog.wasCanceled():
@@ -1199,13 +1206,19 @@ class SpectralLibrary(QgsVectorLayer):
                 profile = SpectralProfile(fields=speclib_fields)
                 assert isinstance(feature, QgsFeature)
                 # 2.1 set profile name
-                profile.setName('{} {},{}'.format(bn, x[iProfile], y[iProfile]))
+                px_x, px_y = x[iProfile], y[iProfile]
+                profile.setName('{} {},{}'.format(bn, px_x, px_y))
 
-                # 2.2 copy vector feature attribute
+                # 2.2 set geometry
+                pt = px2geo(QPoint(px_x, px_y), rasterGT)
+                g = QgsGeometry.fromPointXY(pt)
+                profile.setGeometry(g)
+
+                # 2.3 copy vector feature attribute
                 for idx_p, idx_f in zip(attr_idx_profile, attr_idx_feature):
                     profile.setAttribute(idx_p, feature.attribute(idx_f))
 
-                # 2.3 set the profile values
+                # 2.4 set the profile values
                 profile.setValues(x=wl, y=profileData[:, iProfile], xUnit=wlu)
                 profiles.append(profile)
 
