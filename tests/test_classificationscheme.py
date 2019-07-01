@@ -115,6 +115,17 @@ class TestsClassificationScheme(TestCase):
         self.assertEqual(c.label(), label2)
         self.assertEqual(c.color(), color2)
 
+    def test_ClassificationSchemeFromField(self):
+
+        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point)
+
+        cs = ClassificationScheme.fromUniqueFieldValues(lyr, 'CONTINENT')
+        cs1 = ClassificationScheme.fromUniqueFieldValues(lyr, 'LEVEL')
+
+        names = set(cs.classNames())
+        for name in ['South America', 'Antarctica', 'Asia', 'Seven seas (open ocean)', 'Europe', 'North America', 'Africa', 'Oceania']:
+            self.assertTrue(name in names)
+
 
     def test_ClassificationScheme(self):
         cs = ClassificationScheme.create(3)
