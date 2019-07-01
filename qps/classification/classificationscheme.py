@@ -1452,6 +1452,11 @@ class ClassificationSchemeWidget(QWidget, loadClassificationUI('classificationsc
 
             s  =""
 
+    def onLoadClassesFromRenderer(self, layer):
+        cs = ClassificationScheme.fromMapLayer(layer)
+        if isinstance(cs, ClassificationScheme):
+            self.mScheme.insertClasses(cs[:])
+
     def onLoadClassesFromField(self, layer, field):
 
         if field is None:
@@ -1536,6 +1541,11 @@ class ClassificationSchemeWidget(QWidget, loadClassificationUI('classificationsc
                 m.addSeparator()
                 a = m.addAction('Unique values "{}"'.format(field.name()))
                 a.triggered.connect(lambda _, lyr=layer, f=idx: self.onLoadClassesFromField(lyr, idx))
+
+                if isinstance(layer.renderer(), QgsCategorizedSymbolRenderer):
+                    a = m.addAction('Current Symbology'.format(layer.name()))
+                    a.triggered.connect(lambda _, lyr=layer: self.onLoadClassesFromRenderer(lyr))
+
 
         self.btnLoadClasses.setMenu(m)
 
