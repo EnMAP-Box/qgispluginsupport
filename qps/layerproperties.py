@@ -1461,6 +1461,9 @@ class VectorLayerProperties(QgsOptionsDialogBase, loadUI('vectorlayerpropertiesd
         if isinstance(self.mLayerFieldConfigEditorWidget, LayerFieldConfigEditorWidget):
             self.mLayerFieldConfigEditorWidget.onApply()
 
+        if self.mLayerOrigNameLineEdit.text() != self.mLayer.name():
+            self.mLayer.setName(self.mLayerOrigNameLineEdit.text())
+
         self.mLayer.triggerRepaint()
         pass
 
