@@ -1517,7 +1517,7 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
         try:
             root = iface.layerTreeView().model().rootGroup()
             assert isinstance(QgsLayerTreeGroup)
-            grp = root.adGroup('temporary enmapbox layers')
+            grp = root.addGroup('temporary enmapbox layers')
             assert isinstance(grp, QgsLayerTreeGroup)
             grp.setItemVisibilityChecked(False)
             lyrNode = grp.addLayer(layer)
