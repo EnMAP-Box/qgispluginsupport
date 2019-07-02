@@ -1386,7 +1386,7 @@ class RasterLayerProperties(QgsOptionsDialogBase, loadUI('rasterlayerpropertiesd
             self.mRasterLayer.setRenderer(renderer)
             self.mRasterLayer.triggerRepaint()
             self.setResult(QDialog.Accepted)
-        s  =""
+        s = ""
 
 
 

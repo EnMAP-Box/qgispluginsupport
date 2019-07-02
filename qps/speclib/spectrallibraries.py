@@ -966,7 +966,10 @@ class SpectralLibrary(QgsVectorLayer):
 
     # thanks to Ann for providing https://bitbucket.org/jakimowb/qgispluginsupport/issues/6/speclib-spectrallibrariespy
     @staticmethod
-    def readFromVector(vector_qgs_layer:QgsVectorLayer=None, raster_qgs_layer:QgsRasterLayer=None, progressDialog:QProgressDialog=None):
+    def readFromVector(vector_qgs_layer:QgsVectorLayer=None,
+                       raster_qgs_layer:QgsRasterLayer=None,
+                       progressDialog:QProgressDialog=None,
+                       all_touched=False):
         """
         Reads SpectraProfiles from a raster source, based on the locations specified in a vector data set.
         Opens a Select Polygon Layer dialog to select the correct polygon and returns a Spectral Library with
@@ -975,6 +978,8 @@ class SpectralLibrary(QgsVectorLayer):
         :param vector_qgs_layer: QgsVectorLayer | str
         :param raster_qgs_layer: QgsRasterLayer | str
         :param progressDialog: QProgressDialog (optional)
+        :param all_touched: bool, False (default) = extract only pixel entirely covered with a geometry
+                                  True = extract all pixels touched by a geometry
         :return: Spectral Library
         """
 
@@ -1087,8 +1092,10 @@ class SpectralLibrary(QgsVectorLayer):
         mem.SetGeoTransform(raster_dataset.GetGeoTransform())
         mem.SetProjection(raster_dataset.GetProjection())
         mem.FlushCache()
-
-        gdal.RasterizeLayer(mem, [1], vector_layer, options=['ALL_TOUCHED=TRUE', 'ATTRIBUTE={}'.format(fidName)])
+        all_touched = 'TRUE' if all_touched else 'FALSE'
+        gdal.RasterizeLayer(mem, [1], vector_layer,
+                            options=['ALL_TOUCHED={}'.format(all_touched),
+                                     'ATTRIBUTE={}'.format(fidName)])
         memory_array = mem.ReadAsArray()
         y, x = np.where(memory_array > 0)
         n_profiles = len(y)
@@ -1236,7 +1243,8 @@ class SpectralLibrary(QgsVectorLayer):
         spectral_library.addMissingFields(vector_fields)
 
         # spectral_library.addProfiles(profiles)
-        assert spectral_library.addFeatures(profiles, QgsFeatureSink.FastInsert)
+        if not spectral_library.addFeatures(profiles, QgsFeatureSink.FastInsert):
+            s = ""
         spectral_library.commitChanges()
 
         if isinstance(progressDialog, QProgressDialog):
@@ -2965,12 +2973,26 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         #self.setupUi(self)
         self.setWindowTitle('Read Spectral Profiles')
         self.addLayerDescription('Raster Layer', QgsMapLayerProxyModel.RasterLayer)
-        self.addLayerDescription('Vector Layer', QgsMapLayerProxyModel.VectorLayer)
+        cb = self.addLayerDescription('Vector Layer', QgsMapLayerProxyModel.VectorLayer)
+        cb.layerChanged.connect(self.onVectorLayerChanged)
         self.mSpeclib = None
+
+
+        self.mCbTouched = QCheckBox(self)
+        self.mCbTouched.setText('All touched')
+        self.mCbTouched.setToolTip('Activate to extract all touched pixels, not only thoose entirel covered by a geometry.')
+        i = self.mGrid.rowCount()
+        self.mGrid.addWidget(self.mCbTouched, i, 1)
 
         self.buttonBox().button(QDialogButtonBox.Ok).clicked.disconnect(self.accept)
         self.buttonBox().button(QDialogButtonBox.Ok).clicked.connect(self.run)
         self.buttonBox().button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+
+        self.onVectorLayerChanged(cb.currentLayer())
+
+    def onVectorLayerChanged(self, layer:QgsVectorLayer):
+        self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer) and
+                                   QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
 
     def speclib(self)->SpectralLibrary:
         return self.mSpeclib
@@ -2993,7 +3015,10 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         progressDialog.setWindowModality(Qt.WindowModal)
         progressDialog.setMinimumDuration(0)
 
-        slib = SpectralLibrary.readFromVector(self.vectorSource(), self.rasterSource(), progressDialog=progressDialog)
+        slib = SpectralLibrary.readFromVector(self.vectorSource(),
+                                              self.rasterSource(),
+                                              all_touched=self.allTouched(),
+                                              progressDialog=progressDialog)
 
         #slib = SpectralLibrary.readFromVectorPositions(self.rasterSource(), self.vectorSource(), progressDialog=progressDialog)
 
@@ -3004,6 +3029,8 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
             self.mSpeclib = None
             self.reject()
 
+    def allTouched(self)->bool:
+        return self.mCbTouched.isEnabled() and self.mCbTouched.isChecked()
 
     def rasterSource(self)->QgsVectorLayer:
         return self.mapLayers()[0]

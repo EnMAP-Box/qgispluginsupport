@@ -1508,7 +1508,7 @@ class TestCore(unittest.TestCase):
 
         pathRaster = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
         pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_polygon.shp'
-        pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
+        #pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
 
 
         progressDialog = QProgressDialog()
@@ -1578,7 +1578,10 @@ class TestCore(unittest.TestCase):
         self.assertIsInstance(speclib1, SpectralLibrary)
         self.assertTrue(len(speclib1) > 0)
 
-        QgsProject.instance().addMapLayers([speclib1, lyrRaster])
+        vl1 = TestObjects.createVectorLayer(QgsWkbTypes.Polygon)
+        vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
+        vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
+        QgsProject.instance().addMapLayers([speclib1, lyrRaster, vl1, vl2, vl3])
 
         d = SpectralProfileImportPointsDialog()
         self.assertIsInstance(d, QDialog)
@@ -1590,13 +1593,12 @@ class TestCore(unittest.TestCase):
 
 
         d.run()
+        d.show()
         slib = d.speclib()
         self.assertIsInstance(slib, SpectralLibrary)
 
 
         if SHOW_GUI:
-            slw = SpectralLibraryWidget()
-            slw.show()
             QAPP.exec_()
 
     def test_SpectralLibraryPanel(self):
