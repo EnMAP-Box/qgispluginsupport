@@ -1494,7 +1494,11 @@ class VectorLayerProperties(QgsOptionsDialogBase, loadUI('vectorlayerpropertiesd
             self.mOptsPage_Style.setEnabled(False)
 
 
-def showLayerPropertiesDialog(layer:QgsMapLayer, canvas:QgsMapCanvas, parent:QObject=None, modal:bool=True)->QDialog.DialogCode:
+def showLayerPropertiesDialog(layer:QgsMapLayer,
+                              canvas:QgsMapCanvas,
+                              parent:QObject=None,
+                              modal:bool=True,
+                              useQGISDialog:bool=False)->QDialog.DialogCode:
     """
     Opens a dialog to adjust map layer settiongs.
     :param layer: QgsMapLayer of type QgsVectorLayer or QgsRasterLayer
@@ -1505,39 +1509,42 @@ def showLayerPropertiesDialog(layer:QgsMapLayer, canvas:QgsMapCanvas, parent:QOb
     """
     dialog = None
     result = QDialog.Rejected
+    from .utils import qgisAppQgisInterface
+    iface = qgisAppQgisInterface()
+    qgisUsed = False
+    if useQGISDialog and isinstance(iface, QgisInterface):
+        # try to use the QGIS vector layer properties dialog
+        try:
+            root = iface.layerTreeView().model().rootGroup()
+            assert isinstance(QgsLayerTreeGroup)
+            grp = root.adGroup('temporary enmapbox layers')
+            assert isinstance(grp, QgsLayerTreeGroup)
+            grp.setItemVisibilityChecked(False)
+            lyrNode = grp.addLayer(layer)
+            assert isinstance(lyrNode, QgsLayerTreeLayer)
+            iface.setActiveLayer(layer)
+            iface.showLayerProperties(layer)
+            root.removeChildNode(grp)
+            return QDialog.Accepted
 
-    if isinstance(layer, (QgsRasterLayer, QgsVectorLayer)) and isinstance(canvas, QgsMapCanvas):
+        except Exception as ex:
+            print(ex)
+
+    if isinstance(layer, (QgsRasterLayer, QgsVectorLayer)):
+
+        if canvas is None:
+            canvas = QgsMapCanvas()
+            canvas.setVisible(False)
+            canvas.setDestinationCrs(layer.crs())
+            canvas.setExtent(layer.extent())
+            canvas.setLayers([layer])
+
         if isinstance(layer, QgsRasterLayer):
             dialog = RasterLayerProperties(layer, canvas, parent=parent)
-
-
         elif isinstance(layer, QgsVectorLayer):
-            if True:
-                from .utils import qgisAppQgisInterface
-                iface = qgisAppQgisInterface()
-                # try to use the QGIS vector layer properties dialog
-                if isinstance(iface, QgisInterface):
-                    try:
-                        root = iface.layerTreeView().model().rootGroup()
-                        root.addLayer(layer)
-                        iface.setActiveLayer(layer)
-                        iface.showLayerProperties(layer)
-                        root.removeLayer(layer)
-                        return QDialog.Accepted
-
-                    except Exception as ex:
-                        print(ex)
-                        dialog = VectorLayerProperties(layer, canvas, parent=parent)
-
-
-                else:
-                    dialog = VectorLayerProperties(layer, canvas, parent=parent)
-
-            else:
-
-                dialog = VectorLayerProperties(layer, canvas, parent=parent)
+            dialog = VectorLayerProperties(layer, canvas, parent=parent)
         else:
-            assert NotImplementedError()
+            raise NotImplementedError()
 
         if modal == True:
             dialog.setModal(True)
