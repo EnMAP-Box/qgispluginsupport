@@ -1518,7 +1518,8 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
             root = iface.layerTreeView().model().rootGroup()
             temporaryGroup = None
             lastActiveLayer = iface.activeLayer()
-            if not isinstance(root.findLayer(layer), QgsMapLayer):
+
+            if root.findLayer(layer) is None:
                 assert isinstance(QgsLayerTreeGroup)
                 temporaryGroup = root.addGroup('.')
                 assert isinstance(temporaryGroup, QgsLayerTreeGroup)
