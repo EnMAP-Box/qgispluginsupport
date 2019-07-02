@@ -1509,9 +1509,33 @@ def showLayerPropertiesDialog(layer:QgsMapLayer, canvas:QgsMapCanvas, parent:QOb
     if isinstance(layer, (QgsRasterLayer, QgsVectorLayer)) and isinstance(canvas, QgsMapCanvas):
         if isinstance(layer, QgsRasterLayer):
             dialog = RasterLayerProperties(layer, canvas, parent=parent)
-            #d.setSettings(QSettings())
+
+
         elif isinstance(layer, QgsVectorLayer):
-            dialog = VectorLayerProperties(layer, canvas, parent=parent)
+            if True:
+                from .utils import qgisAppQgisInterface
+                iface = qgisAppQgisInterface()
+                # try to use the QGIS vector layer properties dialog
+                if isinstance(iface, QgisInterface):
+                    try:
+                        root = iface.layerTreeView().model().rootGroup()
+                        root.addLayer(layer)
+                        iface.setActiveLayer(layer)
+                        iface.showLayerProperties(layer)
+                        root.removeLayer(layer)
+                        return QDialog.Accepted
+
+                    except Exception as ex:
+                        print(ex)
+                        dialog = VectorLayerProperties(layer, canvas, parent=parent)
+
+
+                else:
+                    dialog = VectorLayerProperties(layer, canvas, parent=parent)
+
+            else:
+
+                dialog = VectorLayerProperties(layer, canvas, parent=parent)
         else:
             assert NotImplementedError()
 
