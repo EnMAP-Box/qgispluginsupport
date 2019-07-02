@@ -1516,11 +1516,12 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
         # try to use the QGIS vector layer properties dialog
         try:
             root = iface.layerTreeView().model().rootGroup()
+            assert isinstance(root, QgsLayerTreeGroup)
             temporaryGroup = None
             lastActiveLayer = iface.activeLayer()
 
             if root.findLayer(layer) is None:
-                assert isinstance(QgsLayerTreeGroup)
+
                 temporaryGroup = root.addGroup('.')
                 assert isinstance(temporaryGroup, QgsLayerTreeGroup)
                 temporaryGroup.setItemVisibilityChecked(False)
