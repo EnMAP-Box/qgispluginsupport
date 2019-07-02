@@ -1516,15 +1516,21 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
         # try to use the QGIS vector layer properties dialog
         try:
             root = iface.layerTreeView().model().rootGroup()
-            assert isinstance(QgsLayerTreeGroup)
-            grp = root.addGroup('temporary enmapbox layers')
-            assert isinstance(grp, QgsLayerTreeGroup)
-            grp.setItemVisibilityChecked(False)
-            lyrNode = grp.addLayer(layer)
-            assert isinstance(lyrNode, QgsLayerTreeLayer)
+            temporaryGroup = None
+            lastActiveLayer = iface.activeLayer()
+            if not isinstance(root.findLayer(layer), QgsMapLayer):
+                assert isinstance(QgsLayerTreeGroup)
+                temporaryGroup = root.addGroup('.')
+                assert isinstance(temporaryGroup, QgsLayerTreeGroup)
+                temporaryGroup.setItemVisibilityChecked(False)
+                lyrNode = temporaryGroup.addLayer(layer)
+                assert isinstance(lyrNode, QgsLayerTreeLayer)
             iface.setActiveLayer(layer)
             iface.showLayerProperties(layer)
-            root.removeChildNode(grp)
+            if isinstance(temporaryGroup, QgsLayerTreeGroup):
+                root.removeChildNode(temporaryGroup)
+            iface.setActiveLayer(lastActiveLayer)
+
             return QDialog.Accepted
 
         except Exception as ex:
