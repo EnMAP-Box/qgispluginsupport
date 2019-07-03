@@ -1,4 +1,8 @@
 
+import os, sys, re, pathlib, json
+import csv as pycsv
+from .spectrallibraries import *
+
 
 class EcoSYSSpectralLibraryIO(object):
     """
