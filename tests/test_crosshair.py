@@ -83,6 +83,15 @@ class CrosshairTests(unittest.TestCase):
             refCanvas.show()
             QGIS_APP.exec_()
 
+    def test_dialog(self):
+
+        refCanvas = QgsMapCanvas()
+        refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
+
+        style = getCrosshairStyle(mapCanvas=refCanvas)
+
+        if SHOW_GUI:
+            QGIS_APP.exec_()
 
 if __name__ == "__main__":
     SHOW_GUI = False
