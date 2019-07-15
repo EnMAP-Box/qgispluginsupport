@@ -199,7 +199,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :param QWidget_widget:
         :return:
         """
-        if isinstance(self.mPosition, SpatialPoint) and self.mShow and self.mCrosshairStyle.mShow:
+        if isinstance(self.mPosition, QgsPointXY) and self.mShow and self.mCrosshairStyle.mShow:
            #paint the crosshair
             size = self.mCanvas.size()
             m2p = self.mCanvas.mapSettings().mapToPixel()
@@ -457,6 +457,7 @@ class CrosshairWidget(QWidget, loadUI('crosshairwidget.ui')):
         style = self.crosshairStyle()
         self.mapCanvasItem.setVisibility(True)
         self.mapCanvasItem.setCrosshairStyle(style)
+        self.mapCanvasItem.updateCanvas()
         self.sigCrosshairStyleChanged.emit(style)
 
     def setCrosshairStyle(self, style):
