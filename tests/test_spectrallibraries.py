@@ -20,8 +20,9 @@
 import unittest, tempfile
 from qps.testing import initQgisApplication, TestObjects
 QAPP = initQgisApplication()
-from qps import initResources
+from qps import initResources, registerEditorWidgets
 initResources()
+registerEditorWidgets()
 
 
 from qpstestdata import enmap, hymap
@@ -110,6 +111,55 @@ class TestIO(unittest.TestCase):
         self.assertIsInstance(slib2, SpectralLibrary)
         self.assertEqual(slib1, slib2)
         s = ""
+
+
+    def test_jsonIO(self):
+
+        slib = self.createSpeclib()
+        pathJSON = tempfile.mktemp(suffix='.json', prefix='tmpSpeclib')
+
+        # no additional info, no JSON file
+        slib.writeJSONProperties(pathJSON)
+        self.assertFalse(os.path.isfile(pathJSON))
+
+        # add categorical info
+        slib.startEditing()
+        slib.addAttribute(QgsField('class1', QVariant.String, 'varchar'))
+        slib.addAttribute(QgsField('class2', QVariant.Int, 'int'))
+        slib.commitChanges()
+        slib.startEditing()
+
+        from qps.classification.classificationscheme import ClassificationScheme, ClassInfo, EDITOR_WIDGET_REGISTRY_KEY, classSchemeToConfig, classSchemeFromConfig
+
+
+        cs = ClassificationScheme()
+        cs.insertClass(ClassInfo(name='unclassified'))
+        cs.insertClass(ClassInfo(name='class a', color=QColor('red')))
+        cs.insertClass(ClassInfo(name='class b', color=QColor('blue')))
+
+
+        idx1 = slib.fields().lookupField('class1')
+        idx2 = slib.fields().lookupField('class2')
+
+        config = classSchemeToConfig(cs)
+        setup1 = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, config)
+        setup2 = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, config)
+        slib.setEditorWidgetSetup(idx1, setup1)
+        slib.setEditorWidgetSetup(idx2, setup2)
+
+        slib.writeJSONProperties(pathJSON)
+        self.assertTrue(os.path.isfile(pathJSON))
+        with open(pathJSON, 'r') as file:
+            jsonData = json.load(file)
+            self.assertTrue('class1' in jsonData.keys())
+            self.assertTrue('class2' in jsonData.keys())
+
+        slib.setEditorWidgetSetup(idx1, QgsEditorWidgetSetup('', {}))
+        slib.setEditorWidgetSetup(idx2, QgsEditorWidgetSetup('', {}))
+        data = slib.readJSONProperties(pathJSON)
+        s = ""
+
+
 
     def test_CSV2(self):
         from qpstestdata import speclib
@@ -1457,7 +1507,7 @@ class TestCore(unittest.TestCase):
     def test_speclibImportSpeed(self):
 
         pathRaster = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
-        pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_polygon.shp'
+        #pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_polygon.shp'
         pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
 
 
@@ -1528,7 +1578,10 @@ class TestCore(unittest.TestCase):
         self.assertIsInstance(speclib1, SpectralLibrary)
         self.assertTrue(len(speclib1) > 0)
 
-        QgsProject.instance().addMapLayers([speclib1, lyrRaster])
+        vl1 = TestObjects.createVectorLayer(QgsWkbTypes.Polygon)
+        vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
+        vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
+        QgsProject.instance().addMapLayers([speclib1, lyrRaster, vl1, vl2, vl3])
 
         d = SpectralProfileImportPointsDialog()
         self.assertIsInstance(d, QDialog)
@@ -1540,13 +1593,12 @@ class TestCore(unittest.TestCase):
 
 
         d.run()
+        d.show()
         slib = d.speclib()
         self.assertIsInstance(slib, SpectralLibrary)
 
 
         if SHOW_GUI:
-            slw = SpectralLibraryWidget()
-            slw.show()
             QAPP.exec_()
 
     def test_SpectralLibraryPanel(self):
