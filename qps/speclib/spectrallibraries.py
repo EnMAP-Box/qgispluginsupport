@@ -1260,7 +1260,7 @@ class SpectralLibrary(QgsVectorLayer):
                     profileNameCounts[profileName] = 1
                 else:
                     profileNameCounts[profileName] = n + 1
-                    profileName = profileName + ' {}'.format(n + 1)
+                    profileName = profileName + ' ({})'.format(n + 1)
             profile.setName(profileName)
 
             # 2.3 set geometry
