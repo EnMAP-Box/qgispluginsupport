@@ -2242,6 +2242,23 @@ class AbstractSpectralLibraryIO(object):
         return 0
 
 
+    @staticmethod
+    def importActions(spectralLibrary:SpectralLibrary)->list:
+        """
+        Returns a list of QActions or QMenus that can be called to read/import SpectralProfiles from a certain file format into a SpectralLibrary
+        :param spectralLibrary: SpectralLibrary to import SpectralProfiles to
+        :return: [list-of-QAction-or-QMenus]
+        """
+        return []
+
+    def exportActions(spectralLibrary:SpectralLibrary)->list:
+        """
+        Returns a list of QActions or QMenus that can be called to write/export SpectralProfiles into certain file format
+        :param spectralLibrary: SpectralLibrary to export SpectralProfiles from
+        :return: [list-of-QAction-or-QMenus]
+        """
+        return []
+
 
 class AddAttributeDialog(QDialog):
     """

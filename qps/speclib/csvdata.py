@@ -45,6 +45,19 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
     REGEX_BANDVALUE_COLUMN = re.compile(r'^(?P<bandprefix>\D+)?(?P<band>\d+)[ _]*(?P<xvalue>-?\d+\.?\d*)?[ _]*(?P<xunit>\D+)?', re.IGNORECASE)
 
     @staticmethod
+    def importActions(spectralLibrary:SpectralLibrary):
+        actions = []
+
+        a = QAction('CSV Textfile')
+        a.setToolTip('Imports Spectral Profiles from a CSV textfile.')
+
+        actions.append(a)
+
+        return actions
+
+
+
+    @staticmethod
     def isHeaderLine(line: str) -> str:
         """
         Returns True if str ``line`` could be a CSV header
