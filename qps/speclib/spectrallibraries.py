@@ -2203,7 +2203,7 @@ class SpectralLibrary(QgsVectorLayer):
 class AbstractSpectralLibraryIO(object):
     """
     Abstract class interface to define I/O operations for spectral libraries
-    Overwrite the canRead and read From routines.
+    Overwrite the canRead and readFrom routines.
     """
     @staticmethod
     def canRead(path):
@@ -2243,21 +2243,20 @@ class AbstractSpectralLibraryIO(object):
 
 
     @staticmethod
-    def importActions(spectralLibrary:SpectralLibrary)->list:
+    def addImportActions(spectralLibrary:SpectralLibrary, menu:QMenu):
         """
         Returns a list of QActions or QMenus that can be called to read/import SpectralProfiles from a certain file format into a SpectralLibrary
         :param spectralLibrary: SpectralLibrary to import SpectralProfiles to
         :return: [list-of-QAction-or-QMenus]
         """
-        return []
 
-    def exportActions(spectralLibrary:SpectralLibrary)->list:
+    @staticmethod
+    def addExportActions(spectralLibrary:SpectralLibrary, menu:QMenu):
         """
         Returns a list of QActions or QMenus that can be called to write/export SpectralProfiles into certain file format
         :param spectralLibrary: SpectralLibrary to export SpectralProfiles from
         :return: [list-of-QAction-or-QMenus]
         """
-        return []
 
 
 class AddAttributeDialog(QDialog):
@@ -3144,6 +3143,20 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
         self.m_plot_max = 500
 
+        from .envi import EnviSpectralLibraryIO
+        from .csvdata import CSVSpectralLibraryIO
+        from .asd import ASDSpectralLibraryIO
+        from .ecosis import EcoSISSpectralLibraryIO
+        from .specchio import SPECCHIOSpectralLibraryIO
+
+        self.mSpeclibIOInterfaces = [
+            EnviSpectralLibraryIO(),
+            CSVSpectralLibraryIO(),
+            ASDSpectralLibraryIO(),
+            EcoSISSpectralLibraryIO(),
+            SPECCHIOSpectralLibraryIO()
+        ]
+
         self.mSelectionModel = None
 
         if not isinstance(speclib, SpectralLibrary):
@@ -3326,7 +3339,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
 
 
-    def  initActions(self):
+    def initActions(self):
 
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
@@ -3347,9 +3360,15 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         )
 
         self.actionImportSpeclib.triggered.connect(lambda: self.importSpeclib())
+
+        self.actionImportSpeclib.setMenu(self.importSpeclibMenu())
+
+        self.actionImportSpeclib.triggered.connect(lambda: self.importSpeclib())
+
         self.actionImportVectorSource.triggered.connect(self.onImportFromVectorSource)
         self.actionAddProfiles.triggered.connect(self.addCurrentSpectraToSpeclib)
         self.actionReloadProfiles.triggered.connect(self.onReloadProfiles)
+
 
         m = QMenu()
         m.addAction(self.actionImportSpeclib)
@@ -3360,8 +3379,9 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
         self.actionAddProfiles.setMenu(m)
 
-        self.actionSaveSpeclib.triggered.connect(self.onExportSpectra)
-
+        self.actionExportSpeclib.triggered.connect(self.onExportSpectra)
+        self.actionExportSpeclib.setMenu(self.exportSpeclibMenu())
+        self.actionSaveSpeclib = self.actionExportSpeclib  # backward compatibility
         self.actionReload.triggered.connect(lambda : self.mPlotWidget.updatePlot())
         self.actionToggleEditing.toggled.connect(self.onToggleEditing)
         self.actionSaveEdits.triggered.connect(self.onSaveEdits)
@@ -3393,6 +3413,27 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             self.statusBar().addPermanentWidget(btn)
 
         self.onIsEditableChanged()
+
+    def importSpeclibMenu(self)->QMenu:
+        """
+        :return: QMenu with QActions and submenus to import SpectralProfiles
+        """
+        m = QMenu()
+        for iface in self.mSpeclibIOInterfaces:
+            assert isinstance(iface, AbstractSpectralLibraryIO), iface
+            iface.addImportActions(self.speclib(), m)
+        return m
+
+    def exportSpeclibMenu(self)->QMenu:
+        """
+        :return: QMenu with QActions and submenus to export SpectralProfiles
+        """
+        m = QMenu()
+        for iface in self.mSpeclibIOInterfaces:
+            assert isinstance(iface, AbstractSpectralLibraryIO)
+            iface.addExportActions(self.speclib(), m)
+        return m
+
 
     def showProperties(self, *args):
 

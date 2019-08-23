@@ -17,7 +17,7 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest, tempfile
+import unittest, tempfile, shutil
 from qps.testing import initQgisApplication, TestObjects
 QAPP = initQgisApplication()
 from qps import initResources, registerEditorWidgets
@@ -40,8 +40,7 @@ from qps.speclib.plotting import *
 
 SHOW_GUI = True and os.environ.get('CI') is None
 
-
-
+TEST_DIR = os.path.join(os.path.dirname(__file__), 'SPECLIB_TEST_DIR')
 
 
 def createSpeclib()->SpectralLibrary:
@@ -98,6 +97,15 @@ class TestIO(unittest.TestCase):
         for s in SpectralLibrary.__refs__:
             del s
         SpectralLibrary.__refs__ = []
+
+    @classmethod
+    def setUpClass(cls):
+        os.makedirs(TEST_DIR, exist_ok=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        if os.path.isdir(TEST_DIR):
+            shutil.rmtree(TEST_DIR, ignore_errors=True)
 
     def createSpeclib(self)->SpectralLibrary:
         return createSpeclib()
@@ -297,7 +305,6 @@ class TestIO(unittest.TestCase):
 
         progress = QProgressDialog()
 
-
         speclib2 = SpectralLibrary.readFromVectorPositions(lyrRaster, speclib1, progressDialog=progress)
         self.assertIsInstance(speclib2, SpectralLibrary)
         self.assertEqual(len(speclib1), len(speclib2))
@@ -311,7 +318,6 @@ class TestIO(unittest.TestCase):
             self.assertIsInstance(p2, SpectralProfile)
             self.assertListEqual(p1.yValues(), p2.yValues())
             self.assertTrue(p1.geometry().equals(p2.geometry()))
-
 
         uri = "MultiPoint?crs=epsg:4326";
         pathMultiPointLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
@@ -351,9 +357,6 @@ class TestIO(unittest.TestCase):
 
             self.assertIsInstance(speclib3, SpectralLibrary)
             self.assertTrue(len(speclib3) > 0)
-
-
-
 
     def test_reloadProfiles(self):
         lyr = QgsRasterLayer(enmap)
@@ -409,8 +412,75 @@ class TestIO(unittest.TestCase):
             self.assertTrue(speclibA.commitChanges())
             s = ""
 
-
             QAPP.exec_()
+
+
+    def test_EcoSIS(self):
+
+
+        from qps.speclib.ecosis import EcoSISSpectralLibraryIO
+
+        # 1. read
+        from qpstestdata import DIR_ECOSIS
+        for path in reversed(list(file_search(DIR_ECOSIS, '*.csv'))):
+
+            self.assertTrue(EcoSISSpectralLibraryIO.canRead(path))
+            sl = EcoSISSpectralLibraryIO.readFrom(path)
+            self.assertIsInstance(sl, SpectralLibrary)
+            self.assertTrue(len(sl) > 0)
+
+        # 2. write
+        speclib = self.createSpeclib()
+        pathCSV = os.path.join(TEST_DIR, 'speclib.ecosys.csv')
+        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV)
+
+        n = 0
+        for p in csvFiles:
+            self.assertTrue(os.path.isfile(p))
+            self.assertTrue(EcoSISSpectralLibraryIO.canRead(p))
+
+            slPart = EcoSISSpectralLibraryIO.readFrom(p)
+            self.assertIsInstance(slPart, SpectralLibrary)
+
+
+            n += len(slPart)
+
+        self.assertEqual(len(speclib) - 1, n)
+
+
+
+
+    def test_SPECCHIO(self):
+
+
+        from qps.speclib.specchio import SPECCHIOSpectralLibraryIO
+
+        # 1. read
+        from qpstestdata import DIR_SPECCHIO
+        for path in reversed(list(file_search(DIR_SPECCHIO, '*.csv'))):
+
+            self.assertTrue(SPECCHIOSpectralLibraryIO.canRead(path))
+            sl = SPECCHIOSpectralLibraryIO.readFrom(path)
+            self.assertIsInstance(sl, SpectralLibrary)
+            self.assertTrue(len(sl) > 0)
+
+        # 2. write
+        speclib = self.createSpeclib()
+        pathCSV = os.path.join(TEST_DIR, 'speclib.specchio.csv')
+        csvFiles = SPECCHIOSpectralLibraryIO.write(speclib, pathCSV)
+
+        n = 0
+        for p in csvFiles:
+            self.assertTrue(os.path.isfile(p))
+            self.assertTrue(SPECCHIOSpectralLibraryIO.canRead(p))
+
+            slPart = SPECCHIOSpectralLibraryIO.readFrom(p)
+            self.assertIsInstance(slPart, SpectralLibrary)
+
+
+            n += len(slPart)
+
+        self.assertEqual(len(speclib) - 1, n)
 
 
     def test_CSV(self):
@@ -1608,6 +1678,8 @@ class TestCore(unittest.TestCase):
 
         if SHOW_GUI:
             QAPP.exec_()
+
+
 
     def test_SpectralLibraryWidget(self):
 
