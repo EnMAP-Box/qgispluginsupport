@@ -126,7 +126,7 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
 
                 if FIELD_NAME not in fieldnames:
                     profile.setName('{}:{}'.format(bn, i+1))
-
+                profiles.append(profile)
 
             speclib.addProfiles(profiles)
 
