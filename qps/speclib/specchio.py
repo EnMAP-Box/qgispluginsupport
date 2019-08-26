@@ -18,12 +18,9 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         """
 
         with open(path, 'r', encoding='utf-8') as f:
-            line = f.readline()
-            while line is not None:
-
-                if re.search(r'^\d+(\.\d+),.+', line):
+            for line in f:
+                if re.search(r'^\d+(\.\d+)?.+', line):
                     return True
-                line = f.readline()
 
         return False
 
@@ -86,9 +83,13 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
 
             sl.beginEditCommand('Set metadata columns')
             for k in metadataKeys:
+                if k in sl.fieldNames():
+                    continue
+
                 k2 = k.replace(' ', '_')
                 qgsField = createQgsField(k, DATA[k][0])
                 assert sl.addAttribute(qgsField)
+
 
             sl.endEditCommand()
             sl.commitChanges()
@@ -119,15 +120,65 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return sl
 
     @staticmethod
-    def write(speclib, path)->list:
+    def write(speclib:SpectralLibrary, path:str, delimiter:str=',')->list:
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom(...)
         :param speclib: SpectralLibrary
         :param path: str, path to library source
         :return: [str-list-of-written-files]
         """
+        """
+                Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
+                """
         assert isinstance(speclib, SpectralLibrary)
-        return []
+        basePath, ext = os.path.splitext(path)
+        s = ""
+
+        writtenFiles = []
+        fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES, FIELD_FID]]
+        groups = speclib.groupBySpectralProperties()
+        for i, grp in enumerate(groups.keys()):
+            # in-memory text buffer
+            stream = io.StringIO()
+            xValues, xUnit, yUnit = grp
+            profiles = groups[grp]
+            if i == 0:
+                path = basePath + ext
+            else:
+                path = basePath + '{}{}'.format(i + 1, ext)
+
+            # write metadata
+            for fn in speclib.fields().names():
+                assert isinstance(fn, str)
+                if fn in [FIELD_FID, FIELD_VALUES]:
+                    continue
+                line = [fn]
+                for p in profiles:
+                    assert isinstance(p, SpectralProfile)
+                    line.append(str(p.attribute(fn)))
+                stream.write(delimiter.join(line) + '\n')
+            #
+            line = ['wavelength unit']
+            for p in profiles:
+                line.append(str(p.xUnit()))
+            stream.write(delimiter.join(line) + '\n')
+
+            # write values
+            for i, xValue in enumerate(xValues):
+                line = [str(xValue)]
+                for p in profiles:
+                    assert isinstance(p, SpectralProfile)
+                    yValue = p.values()['y'][i]
+                    line.append(str(yValue))
+                stream.write(delimiter.join(line) + '\n')
+
+            lines = stream.getvalue().replace('\r', '')
+
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(lines)
+                writtenFiles.append(path)
+
+        return writtenFiles
 
     @staticmethod
     def score(uri:str)->int:

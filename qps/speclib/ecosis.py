@@ -56,12 +56,12 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
             return False
 
         with open(path, 'r', encoding='utf-8') as f:
-            line = ''
-            while len(line) == 0:
+            for line in f:
                 line = f.readline().strip()
-            # mostt-right header name must be a number
-            lastColumn = re.split(r'[\t;,]', line)[-1]
-            return re.search(r'^\d+(\.\d+)?$', lastColumn) is not None
+                if len(line) > 0:
+                    # mostt-right header name must be a number
+                    lastColumn = re.split(r'[\t;,]', line)[-1]
+                    return re.search(r'^\d+(\.\d+)?$', lastColumn) is not None
 
         return False
 
@@ -137,8 +137,10 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         return speclib
 
     @staticmethod
-    def write(speclib, path:str, delimiter=';'):
-        """Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom"""
+    def write(speclib:SpectralLibrary, path:str, delimiter:str=';'):
+        """
+        Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
+        """
         assert isinstance(speclib, SpectralLibrary)
         basePath, ext = os.path.splitext(path)
         s = ""
@@ -154,7 +156,7 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
             if i == 0:
                 path = basePath + ext
             else:
-                path = basePath + '{}.{}'.format(i+1, ext)
+                path = basePath + '{}{}'.format(i+1, ext)
 
 
             headerNames = fieldNames + [str(v) for v in xValues]
