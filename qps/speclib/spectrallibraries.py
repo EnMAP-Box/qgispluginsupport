@@ -30,7 +30,7 @@
 """
 
 #see http://python-future.org/str_literals.html for str issue discussion
-import json, enum, tempfile, pickle, collections
+import json, enum, tempfile, pickle, collections, typing
 from osgeo import ogr, osr
 from qgis.utils import iface
 from qgis.gui import Targets, QgsMapLayerAction
@@ -209,7 +209,7 @@ def findTypeFromString(value:str):
             continue
         return t
 
-    #every values can be converted into a string
+    # every values can be converted into a string
     return str
 
 def setComboboxValue(cb: QComboBox, text: str):
@@ -1645,8 +1645,11 @@ class SpectralLibrary(QgsVectorLayer):
         readers = AbstractSpectralLibraryIO.__subclasses__()
 
         for cls in sorted(readers, key=lambda r:r.score(uri)):
-            if cls.canRead(uri):
-                return cls.readFrom(uri)
+            try:
+                if cls.canRead(uri):
+                    return cls.readFrom(uri)
+            except Exception as ex:
+                s = ""
         return None
 
 
@@ -2206,7 +2209,7 @@ class AbstractSpectralLibraryIO(object):
     Overwrite the canRead and readFrom routines.
     """
     @staticmethod
-    def canRead(path):
+    def canRead(path:str):
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -3371,7 +3374,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
 
         m = QMenu()
-        m.addAction(self.actionImportSpeclib)
+        #m.addAction(self.actionImportSpeclib)
         m.addAction(self.actionImportVectorSource)
         m.addAction(self.optionAddCurrentProfilesAutomatically)
         m.addSeparator()

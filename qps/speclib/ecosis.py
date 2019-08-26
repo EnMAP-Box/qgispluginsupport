@@ -214,7 +214,8 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
                     speclib.endEditCommand()
                     speclib.commitChanges()
 
-        m = menu.addAction('EcoSIS CSV')
+        m = menu.addAction('EcoSIS')
+        m.setToolTip('Adds profiles from an EcoSIS csv text file.')
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
 

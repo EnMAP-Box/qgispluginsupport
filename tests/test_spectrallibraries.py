@@ -483,19 +483,53 @@ class TestIO(unittest.TestCase):
         self.assertEqual(len(speclib) - 1, n)
 
 
+    def test_ASD(self):
+
+        # read binary files
+        from qps.speclib.asd import ASDSpectralLibraryIO, ASDBinaryFile
+        from qpstestdata import DIR_ASD_BIN, DIR_ASD_TXT
+
+        binaryFiles = list(file_search(DIR_ASD_BIN, '*.asd'))
+        for path in binaryFiles:
+            self.assertTrue(ASDSpectralLibraryIO.canRead(path))
+            asdFile = ASDBinaryFile().readFromBinaryFile(path)
+
+            self.assertIsInstance(asdFile, ASDBinaryFile)
+
+            sl = ASDSpectralLibraryIO.readFrom(path)
+            self.assertIsInstance(sl, SpectralLibrary)
+            self.assertEqual(len(sl), 1)
+
+        sl = ASDSpectralLibraryIO.readFrom(binaryFiles)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertEqual(len(sl), len(binaryFiles))
+
+        textFiles = list(file_search(DIR_ASD_TXT, '*.asd.txt'))
+        for path in textFiles:
+            self.assertTrue(ASDSpectralLibraryIO.canRead(path))
+
+            sl = ASDSpectralLibraryIO.readFrom(path)
+            self.assertIsInstance(sl, SpectralLibrary)
+            self.assertEqual(len(sl), 1)
+
+        sl = ASDSpectralLibraryIO.readFrom(textFiles)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertEqual(len(sl), len(textFiles))
+
+
+
+
+
     def test_CSV(self):
         # TEST CSV writing
         speclib = self.createSpeclib()
 
         # txt = CSVSpectralLibraryIO.asString(speclib)
-
-
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
         pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs3.out.csv')
         writtenFiles = speclib.exportProfiles(pathCSV)
         self.assertIsInstance(writtenFiles, list)
         self.assertTrue(len(writtenFiles) == 1)
-
 
         path = writtenFiles[0]
         lines = None

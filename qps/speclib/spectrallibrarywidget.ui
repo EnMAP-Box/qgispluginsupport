@@ -94,6 +94,7 @@
    </attribute>
    <addaction name="actionSelectProfilesFromMap"/>
    <addaction name="actionAddProfiles"/>
+   <addaction name="actionImportSpeclib"/>
    <addaction name="actionExportSpeclib"/>
   </widget>
   <widget class="QToolBar" name="toolBarFeatureSelections">

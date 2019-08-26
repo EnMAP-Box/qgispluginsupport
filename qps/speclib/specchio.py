@@ -221,5 +221,6 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
                     speclib.endEditCommand()
                     speclib.commitChanges()
 
-        m = menu.addAction('SPECCHIO CSV')
+        m = menu.addAction('SPECCHIO')
+        m.setToolTip('Adds profiles stored in an SPECCHIO csv text file.')
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))

@@ -316,6 +316,8 @@ def createQgsField(name : str, exampleValue, comment:str=None):
         return QgsField(name, QVariant.Double, 'double', comment=comment)
     elif isinstance(exampleValue, np.ndarray):
         return QgsField(name, QVariant.String, 'varchar', comment=comment)
+    elif isinstance(exampleValue, np.datetime64):
+        return QgsField(name, QVariant.String, 'varchar', comment=comment)
     elif isinstance(exampleValue, list):
         assert len(exampleValue) > 0, 'need at least one value in provided list'
         v = exampleValue[0]
