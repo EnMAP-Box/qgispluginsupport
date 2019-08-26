@@ -465,6 +465,31 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(cs2, ClassificationScheme)
         self.assertEqual(cs, cs2)
 
+    def test_io_clipboard(self):
+
+        cs  = ClassificationScheme.create(5)
+
+        md = cs.mimeData(None)
+
+        self.assertIsInstance(md, QMimeData)
+
+        from qps.layerproperties import pasteStyleToClipboard
+        r = cs.featureRenderer()
+        self.assertIsInstance(r, QgsFeatureRenderer)
+
+        dom = QDomDocument()
+        context = QgsReadWriteContext()
+        r.save(dom, context)
+
+        s = ""
+        r.w
+
+        cs2 = ClassificationScheme.fromMimeData(md)
+        self.assertIsInstance(md, QMimeData)
+
+        self.assertEqual(cs, cs2)
+
+
 
     def test_io_QML(self):
 

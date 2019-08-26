@@ -25,6 +25,7 @@ from qgis.gui import *
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtXml import *
 import numpy as np
 from osgeo import gdal
 from ..utils import gdalDataset, nextColor, loadUIFormClass, findMapLayer, registeredMapLayers
@@ -38,7 +39,7 @@ DEFAULT_FIRST_COLOR = QColor('#a6cee3')
 MIMEDATA_KEY = 'hub-classscheme'
 MIMEDATA_KEY_TEXT = 'text/plain'
 MIMEDATA_INTERNAL_IDs = 'classinfo_ids'
-
+MIMEDATA_KEY_QGIS_STYLE = 'application/qgis.style'
 MAX_UNIQUE_CLASSES = 100
 
 def findMapLayersWithClassInfo()->list:
@@ -319,8 +320,21 @@ class ClassificationScheme(QAbstractTableModel):
         cs.insertClasses(classes)
         mimeData = QMimeData()
         mimeData.setData(MIMEDATA_KEY, cs.qByteArray())
-        mimeData.setData(MIMEDATA_INTERNAL_IDs, QByteArray(pickle.dumps([id(c) for c in classes ])))
+        mimeData.setData(MIMEDATA_INTERNAL_IDs, QByteArray(pickle.dumps([id(c) for c in classes])))
         mimeData.setText(cs.toString())
+
+        renderer = self.featureRenderer()
+
+        doc = QDomDocument()
+        err = ''
+        for typeName in ['POLYGON']:
+            lyr = QgsVectorLayer('{}?crs=epsg:4326&field=id:integer'.format(typeName), cs.name(), 'memory')
+            assert isinstance(lyr, QgsVectorLayer) and lyr.isValid()
+            lyr.setRenderer(renderer.clone())
+            err = lyr.exportNamedStyle(doc)
+            xml = doc.toString()
+            s = ""
+        mimeData.setData(MIMEDATA_KEY_QGIS_STYLE, doc.toByteArray())
         return mimeData
 
     def mimeTypes(self)->list:
@@ -584,7 +598,7 @@ class ClassificationScheme(QAbstractTableModel):
         :return: ClassificationScheme
         """
 
-        r = QgsCategorizedSymbolRenderer('dummy', [])
+        r = QgsCategorizedSymbolRenderer(self.name(), [])
 
         for c in self:
             assert isinstance(c, ClassInfo)
@@ -1765,6 +1779,7 @@ class ClassificationSchemeEditorConfigWidget(QgsEditorConfigWidget):
     def setConfig(self, config:dict):
         self.mLastConfig = config
         cs = classSchemeFromConfig(config)
+        cs.setName(self.layer().fields()[self.field()].name())
         self.mSchemeWidget.setClassificationScheme(cs)
 
     def resetClassificationScheme(self):
