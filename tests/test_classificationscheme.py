@@ -461,6 +461,10 @@ class TestsClassificationScheme(TestCase):
         r = cs.featureRenderer()
         self.assertIsInstance(r, QgsCategorizedSymbolRenderer)
 
+        for t in [QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol]:
+            r = cs.featureRenderer(symbolType=t)
+            self.assertIsInstance(r, QgsCategorizedSymbolRenderer)
+
         cs2 = ClassificationScheme.fromFeatureRenderer(r)
         self.assertIsInstance(cs2, ClassificationScheme)
         self.assertEqual(cs, cs2)
@@ -470,19 +474,18 @@ class TestsClassificationScheme(TestCase):
         cs  = ClassificationScheme.create(5)
 
         md = cs.mimeData(None)
-
+        print(md.data(MIMEDATA_KEY_QGIS_STYLE))
         self.assertIsInstance(md, QMimeData)
 
         from qps.layerproperties import pasteStyleToClipboard
         r = cs.featureRenderer()
         self.assertIsInstance(r, QgsFeatureRenderer)
 
+        QApplication.instance().clipboard().setMimeData(md)
+
         dom = QDomDocument()
         context = QgsReadWriteContext()
         r.save(dom, context)
-
-        s = ""
-        r.w
 
         cs2 = ClassificationScheme.fromMimeData(md)
         self.assertIsInstance(md, QMimeData)

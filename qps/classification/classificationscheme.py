@@ -19,7 +19,7 @@
 ***************************************************************************
 """
 
-import os, json, pickle, warnings, csv, re, sys
+import os, json, pickle, warnings, csv, re, sys, typing
 from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtCore import *
@@ -335,6 +335,7 @@ class ClassificationScheme(QAbstractTableModel):
             xml = doc.toString()
             s = ""
         mimeData.setData(MIMEDATA_KEY_QGIS_STYLE, doc.toByteArray())
+        mimeData.setText(doc.toString())
         return mimeData
 
     def mimeTypes(self)->list:
@@ -592,7 +593,7 @@ class ClassificationScheme(QAbstractTableModel):
 
         return cs
 
-    def featureRenderer(self)->QgsCategorizedSymbolRenderer:
+    def featureRenderer(self, symbolType:typing.Union[QgsMarkerSymbol, QgsFillSymbol, QgsLineSymbol]=QgsFillSymbol)->QgsCategorizedSymbolRenderer:
         """
         Returns the ClassificationScheme as QgsCategorizedSymbolRenderer
         :return: ClassificationScheme
@@ -602,7 +603,7 @@ class ClassificationScheme(QAbstractTableModel):
 
         for c in self:
             assert isinstance(c, ClassInfo)
-            symbol = QgsMarkerSymbol()
+            symbol = symbolType()
             symbol.setColor(QColor(c.color()))
             cat = QgsRendererCategory(c.label(), symbol, c.name(), render=True)
             r.addCategory(cat)
@@ -1003,10 +1004,11 @@ class ClassificationScheme(QAbstractTableModel):
             if isinstance(ba, ClassificationScheme):
                 return ba
         if MIMEDATA_KEY_TEXT in mimeData.formats():
-
             ba = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY_TEXT))
             if isinstance(ba, ClassificationScheme):
                 return ba
+        if MIMEDATA_KEY_QGIS_STYLE in mimeData.formats():
+            s = ""
 
         return None
 
@@ -1557,7 +1559,7 @@ class ClassificationSchemeWidget(QWidget, loadClassificationUI('classificationsc
                 a.triggered.connect(lambda _, lyr=layer, f=idx: self.onLoadClassesFromField(lyr, idx))
 
                 if isinstance(layer.renderer(), QgsCategorizedSymbolRenderer):
-                    a = m.addAction('Current Symbology'.format(layer.name()))
+                    a = m.addAction('Current Symbols'.format(layer.name()))
                     a.triggered.connect(lambda _, lyr=layer: self.onLoadClassesFromRenderer(lyr))
 
 
@@ -1586,7 +1588,7 @@ class ClassificationSchemeWidget(QWidget, loadClassificationUI('classificationsc
 
     def onClipboard(self, *args):
         mimeData = QApplication.clipboard().mimeData()
-        b = isinstance(mimeData, QMimeData) and MIMEDATA_KEY_TEXT in mimeData.formats()
+        b = isinstance(mimeData, QMimeData) and (MIMEDATA_KEY_TEXT in mimeData.formats() or MIMEDATA_KEY_QGIS_STYLE in mimeData.formats())
         self.actionPasteClasses.setEnabled(b)
 
 
