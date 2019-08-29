@@ -281,6 +281,29 @@ def findMapLayer(layer)->QgsMapLayer:
     return None
 
 
+def gdalFileSize(path) -> int:
+    """
+    Returns the size of a local gdal readible file (including metadata files etc.)
+    :param path: str
+    :return: int
+    """
+    ds = gdal.Open(path)
+    if not isinstance(ds, gdal.Dataset):
+        return 0
+    else:
+        size = 0
+        for file in ds.GetFileList():
+            size += os.stat(file).st_size
+
+            # recursively inspect VRT sources
+            if file.endswith('.vrt') and file != path:
+                size += gdalFileSize(file)
+
+        return size
+
+
+        s = ""
+
 
 def qgisLayerTreeLayers() -> list:
     """

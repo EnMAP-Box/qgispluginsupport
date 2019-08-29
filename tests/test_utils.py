@@ -55,6 +55,16 @@ class testClassUtils(unittest.TestCase):
             self.assertIsInstance(t, object)
 
 
+    def test_gdal_filesize(self):
+
+        DIR_VRT_STACK = r'Q:\Processing_BJ\99_OSARIS_Testdata\Loibl-2019-OSARIS-Ala-Archa\BJ_VRT_Stacks'
+
+        if os.path.isdir(DIR_VRT_STACK):
+            for path in file_search(DIR_VRT_STACK, '*.vrt'):
+                size = gdalFileSize(path)
+                self.assertTrue(size > 0)
+
+
     def test_file_search(self):
 
 
