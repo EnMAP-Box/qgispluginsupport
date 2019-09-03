@@ -1305,7 +1305,7 @@ class SpectralLibrary(QgsVectorLayer):
         :param mode:
         :return:
         """
-
+        warnings.warn(DeprecationWarning('Use readFromVector instread'))
         assert mode in ['CENTROIDS', 'AVERAGES', 'PIXELS']
 
         if isinstance(rasterSource, str):

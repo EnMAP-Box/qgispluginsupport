@@ -1,0 +1,29 @@
+CLASS:  Generic class
+PROJECT:  PROSAIL1000fcover
+COMMENT:  
+DATE:  2019-08-05
+SENSOR:  NO SENSOR
+# BANDS:  2101.000000
+# SAMPLES:  10.000000
+File created for ARTMO. Date: 2019/8/5 Time: 9:12:50
+
+Line 1, Column 8 ... end: Wavelength 
+Column 1: Cab	min: 0.0550	 max: 79.9352	 count: 1000
+Column 2: Cw	min: 0.0020	 max: 0.0500	 count: 1000
+Column 3: Cm	min: 0.0020	 max: 0.0500	 count: 1000
+Column 4: lai	min: 0.0001	 max: 7.9968	 count: 1000
+Column 5: angle	min: 0.0264	 max: 89.9445	 count: 1000
+Column 6: psoil	min: 0.0000	 max: 0.9996	 count: 1000
+Column 7: vCover	min: 0.0001	 max: 0.9995	 count: 1000
+
+Line 2, Column 8 ... end: Directional_reflectance
+
+Fixed variables:
+Model: Prospect 4
+N:Leaf Structural Parameter:	1.5000
+Model: 4SAIL
+skyl:Diffuse/Direct light:	10.0000
+hspot:Hot spot:	0.0100
+tts:Solar Zenith Angle [deg]:	30.0000
+tto:View zenith Angle [deg]:	0.0000
+psi:Relative Azimuth Angle [deg]:	0.0000

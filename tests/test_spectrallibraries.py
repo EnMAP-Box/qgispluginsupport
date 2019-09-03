@@ -518,7 +518,20 @@ class TestIO(unittest.TestCase):
 
 
 
+    def test_ARTMO(self):
 
+        from qpstestdata import DIR_ARTMO
+
+        p = os.path.join(DIR_ARTMO, 'directional_reflectance.txt')
+
+        from qps.speclib.artmo import ARTMOSpectralLibraryIO
+
+        self.assertTrue(ARTMOSpectralLibraryIO.canRead(p))
+
+        sl = ARTMOSpectralLibraryIO.readFrom(p)
+
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertEqual(len(sl), 10)
 
     def test_CSV(self):
         # TEST CSV writing
