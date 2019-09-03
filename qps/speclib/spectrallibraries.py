@@ -3151,14 +3151,19 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         from .asd import ASDSpectralLibraryIO
         from .ecosis import EcoSISSpectralLibraryIO
         from .specchio import SPECCHIOSpectralLibraryIO
+        from .artmo import ARTMOSpectralLibraryIO
 
         self.mSpeclibIOInterfaces = [
             EnviSpectralLibraryIO(),
             CSVSpectralLibraryIO(),
+            ARTMOSpectralLibraryIO(),
             ASDSpectralLibraryIO(),
             EcoSISSpectralLibraryIO(),
-            SPECCHIOSpectralLibraryIO()
+            SPECCHIOSpectralLibraryIO(),
         ]
+
+        self.mSpeclibIOInterfaces = sorted(self.mSpeclibIOInterfaces, key=lambda c:c.__class__.__name__)
+
 
         self.mSelectionModel = None
 
