@@ -120,7 +120,7 @@ class SubDataSetInputTableModel(QAbstractTableModel):
 
 
 
-class SubDataSetSelectionDialog(QDialog, loadUI('sublayerselectiondialog.ui')):
+class SubDataSetSelectionDialog(QDialog, loadUI('subdatasetselectiondialog.ui')):
 
 
     pass
@@ -380,6 +380,11 @@ def pasteStyleFromClipboard(layer:QgsMapLayer):
 
 
 def subLayerDefinitions(mapLayer:QgsMapLayer)->typing.List[QgsSublayersDialog.LayerDefinition]:
+    """
+
+    :param mapLayer:QgsMapLayer
+    :return: list of sublayer definitions
+    """
     definitions = []
     dp = mapLayer.dataProvider()
 
@@ -423,7 +428,7 @@ def subLayerDefinitions(mapLayer:QgsMapLayer)->typing.List[QgsSublayersDialog.La
 
     return definitions
 
-def subLayers(mapLayer:QgsMapLayer, subLayers:list=None)->list:
+def subLayers(mapLayer:QgsMapLayer, subLayers:list=None)->typing.List[QgsMapLayer]:
     """
     Returns a list of QgsMapLayer instances extracted from the input QgsMapLayer.
     Returns the "parent" QgsMapLayer in case no sublayers can be extracted
