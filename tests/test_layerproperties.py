@@ -27,6 +27,15 @@ LAYER_WIDGET_REPS = 5 if os.environ.get('CI') is None else 5
 class LayerRendererTests(unittest.TestCase):
 
 
+    def test_SubLayerSelection(self):
+
+        p = r'F:\Temp\Hajo\S3A_OL_2_EFR____20160614T082507_20160614T082707_20170930T190837_0119_005_178______MR1_R_NT_002_vical_c2rcc015nets20170704.nc'
+
+        #d = QgsSublayersDialog(QgsSublayersDialog.Gdal, )
+
+
+
+
     def test_subLayerDefinitions(self):
 
 

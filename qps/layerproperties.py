@@ -21,7 +21,7 @@
 import collections
 import os
 import re
-
+import typing
 from osgeo import gdal, ogr, osr
 import numpy as np
 from qgis.gui import *
@@ -73,6 +73,37 @@ DUMMY_RASTERINTERFACE = QgsSingleBandGrayRenderer(None, 0)
 
 MDF_QGIS_LAYER_STYLE = 'application/qgis.style'
 MDF_TEXT_PLAIN = 'text/plain'
+
+
+class SubDataSetInputTableModel(QAbstractTableModel):
+
+    def __init__(self, *args, **kwds):
+        super(SubDataSetInputTableModel, self).__init__(*args, **kwds)
+
+        self.cnID = '#'
+        self.cnName = 'name'
+        self.cnPath = 'path'
+
+        self.cnSamples = 'ns'
+        self.cnLines = 'nl'
+        self.cnBands = 'nb'
+
+        self.mInputBands = []
+
+
+
+
+
+    def setSourceDataSet(self, ds:gdal.Dataset):
+        pass
+
+
+
+class SubDataSetSelectionDialog(QDialog, loadUI('sublayerselectiondialog.ui')):
+
+
+    pass
+
 
 def rendererFromXml(xml):
     """
@@ -327,7 +358,7 @@ def pasteStyleFromClipboard(layer:QgsMapLayer):
         layer.triggerRepaint()
 
 
-def subLayerDefinitions(mapLayer:QgsMapLayer)->list:
+def subLayerDefinitions(mapLayer:QgsMapLayer)->typing.List[QgsSublayersDialog.LayerDefinition]:
     definitions = []
     dp = mapLayer.dataProvider()
 

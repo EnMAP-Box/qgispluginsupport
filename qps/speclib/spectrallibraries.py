@@ -3023,14 +3023,6 @@ def registerSpectralProfileEditorWidget():
         reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
 
 
-def registerAbstractLibraryIOs():
-    try:
-        import asd
-    except:
-        s = ""
-
-
-
 from ..utils import SelectMapLayersDialog
 class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
 
@@ -3863,4 +3855,7 @@ class SpectralLibraryPanel(QgsDockWidget):
         self.SLW.setCurrentProfilesMode(mode)
 
 
-registerAbstractLibraryIOs()
+class SpectralLibraryLayerStyleWidget(QgsMapLayerConfigWidget):
+
+    pass
+
