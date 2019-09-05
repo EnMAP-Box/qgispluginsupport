@@ -74,6 +74,27 @@ DUMMY_RASTERINTERFACE = QgsSingleBandGrayRenderer(None, 0)
 MDF_QGIS_LAYER_STYLE = 'application/qgis.style'
 MDF_TEXT_PLAIN = 'text/plain'
 
+def openRasterLayerSilent(uri, name, provider)->QgsRasterLayer:
+    """
+    Opens a QgsRasterLayer without asking for its CRS in case it is undefined.
+    :param uri: path
+    :param name: name of layer
+    :param provider: provider string
+    :return: QgsRasterLayer
+    """
+    key = '/Projections/defaultBehavior'
+    v = QgsSettings().value(key)
+    isPrompt = v == 'prompt'
+
+    if isPrompt:
+        # do not ask!
+        QgsSettings().setValue(key, 'useProject')
+
+    lyr = QgsRasterLayer(uri, name, provider)
+
+    if isPrompt:
+        QgsSettings().setValue(key, v)
+    return lyr
 
 class SubDataSetInputTableModel(QAbstractTableModel):
 
