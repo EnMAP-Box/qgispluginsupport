@@ -796,10 +796,10 @@ class SpectralProfile(QgsFeature):
         pi = SpectralProfilePlotDataItem(self)
         pi.setClickable(True)
         pw = pg.plot( title=self.name())
-        pw.plotItem().addItem(pi)
+        pw.getPlotItem().addItem(pi)
 
         pi.setColor('green')
-        pg.QAPP.exec_()
+        #pg.QAPP.exec_()
 
 
     def __reduce_ex__(self, protocol):
