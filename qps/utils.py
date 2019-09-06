@@ -1677,3 +1677,9 @@ class SelectMapLayersDialog(QgsDialog):
 
 
 
+class QgsTaskMock(QgsTask):
+    """
+    A mocked QgsTask
+    """
+    def __init__(self):
+        super(QgsTaskMock, self).__init__()
