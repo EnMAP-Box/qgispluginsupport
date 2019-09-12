@@ -17,6 +17,7 @@ assert isinstance(renderer, QgsSingleBandPseudoColorRenderer)
 
 # clone the render
 newRenderer = renderer.clone()
+#newRenderer.setInput(renderer.input()) #<-solution
 newRenderer.setBand(2)
 layer.setRenderer(newRenderer)
 
