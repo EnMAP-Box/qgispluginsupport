@@ -1,4 +1,4 @@
-from __future__ import *
+
 # -*- coding: utf-8 -*-
 # noinspection PyPep8Naming
 """
