@@ -18,11 +18,27 @@ Virtual Raster Builder https://bitbucket.org/jakimowb/virtual-raster-builder
 ## Usage ##
 
 
-1. Copy the qgs folder into your source code, e.g. ``mymodule/qps``
+1. Copy the qgs folder into your source code, e.g. ``mymodule/qps``, and ensure that the Qt resource files are compiled:
 
-2. Call the QPS package ``initAll``. It will call other rountines to, e.g. register widgets in QGIS
+    ```python
+    from mymodule.qps.setup import compileQPSResources
+    compileQPSResources()
+     ```
 
-For example, this is how you can use the QPS SpectralLibrary widget:
+This converts the ``qps/qpsresources.qrc`` into the ``qps/qpsresources.py``, contains icons for the Qt resource system. 
+
+
+2. Now you can use the QPS python API. Some of its features need to be 
+registered to the running Qt Application/QGIS Application. This is preferably done in the ```__init__.py``` of 
+your application by calling:
+
+    ```python
+    from mymodule.qps import initAll
+    initAll()
+    ```
+
+### Example: Spectral Library Widget ###
+The following example shows you how to initialize (for testing) a mocked QGIS Application and to open the Spectral Library  Wdiget: 
 
 ```python
 from mymodule.qps.testing import initQgisApplication
@@ -31,13 +47,15 @@ QGIS_APP = initQgisApplication()
 
 from mymodule.qps import initAll 
 from mymodule.qps.speclib.spectrallibraries import SpectralLibraryWidget
-
 initAll()
+
 widget = SpectralLibraryWidget()
 widget.show()
 
 QGIS_APP.exec_()
 ```
+
+Note that the first two lines and the last line are not required if QGIS is already started. 
 
 
 
