@@ -20,9 +20,10 @@ import numpy as np
 from . import resourcemockup
 
 try:
-    import qps
-except:
+
     from .. import qps
+except:
+    import qps
 
 jp = os.path.join
 dn = os.path.dirname

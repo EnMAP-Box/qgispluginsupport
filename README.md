@@ -15,7 +15,7 @@ EO Time Series Viewer https://bitbucket.org/jakimowb/eo-time-series-viewer
 Virtual Raster Builder https://bitbucket.org/jakimowb/virtual-raster-builder
 
 
-## Usage ##
+## Installation ##
 
 
 1. Copy the qgs folder into your source code, e.g. ``mymodule/qps``, and ensure that the Qt resource files are compiled:
@@ -25,17 +25,20 @@ Virtual Raster Builder https://bitbucket.org/jakimowb/virtual-raster-builder
     compileQPSResources()
      ```
 
-This converts the ``qps/qpsresources.qrc`` into the ``qps/qpsresources.py``, contains icons for the Qt resource system. 
+2. QPS uses the Qt resource system, e.g. to access icons. This requires to convert the ``qps/qpsresources.qrc`` file 
+into a corresponding python module ``qps/qpsresources.py``.  
 
 
-2. Now you can use the QPS python API. Some of its features need to be 
-registered to the running Qt Application/QGIS Application. This is preferably done in the ```__init__.py``` of 
-your application by calling:
+3. Now you can use the QPS python API. Keep in mind that some of its features need to be 
+registered to a running Qt Application or the QGIS Application instance. 
+This is preferably done in the ```__init__.py``` of 
+your application, e.g. by calling:
 
     ```python
     from mymodule.qps import initAll
     initAll()
     ```
+
 
 ### Example: Spectral Library Widget ###
 The following example shows you how to initialize (for testing) a mocked QGIS Application and to open the Spectral Library  Wdiget: 

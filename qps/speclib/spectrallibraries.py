@@ -3135,7 +3135,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         # set spacer into menu
         # empty = QWidget(self.mToolbar)
          #empty.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        from .plotting import SpectralLibraryPlotWidget
+        from ..speclib.plotting import SpectralLibraryPlotWidget
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         #self.mToolbar.insertWidget(self.actionReload, empty)
 
