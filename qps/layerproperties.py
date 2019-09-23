@@ -208,7 +208,7 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSiz
     # get band stats
     bandStats = [layer.dataProvider().bandStatistics(b + 1,
                                                      stats=QgsRasterBandStats.All,
-                                                     sampleSize=256) for b in bandIndices]
+                                                     sampleSize=sampleSize) for b in bandIndices]
     dp = layer.dataProvider()
     assert isinstance(dp, QgsRasterDataProvider)
 
@@ -239,7 +239,7 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSiz
                 ce.setMinimumValue(0)
                 ce.setMaximumValue(255)
         else:
-            vmin, vmax = layer.dataProvider().cumulativeCut(b, 0.02, 0.98)
+            vmin, vmax = layer.dataProvider().cumulativeCut(b, 0.02, 0.98, sampleSize=sampleSize)
             ce.setMinimumValue(vmin)
             ce.setMaximumValue(vmax)
 
@@ -259,7 +259,7 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSiz
 
             assert isinstance(ce, QgsContrastEnhancement)
             ce.setContrastEnhancementAlgorithm(QgsContrastEnhancement.StretchToMinimumMaximum, True)
-            vmin, vmax = layer.dataProvider().cumulativeCut(b, 0.02, 0.98)
+            vmin, vmax = layer.dataProvider().cumulativeCut(b, 0.02, 0.98, sampleSize=sampleSize)
             if dt == Qgis.Byte:
                 #standard RGB photo?
                 if False and layer.bandCount() == 3:
