@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy, shutil
+import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy, shutil, typing
 
 from qgis.core import *
 from qgis.core import QgsFeature, QgsPointXY, QgsRectangle
@@ -881,7 +881,7 @@ def displayBandNames(rasterSource, bands=None, leadingBandNumber=True):
     return None
 
 
-def defaultBands(dataset):
+def defaultBands(dataset)->list:
     """
     Returns a list of 3 default bands
     :param dataset:
@@ -928,13 +928,13 @@ def defaultBands(dataset):
         raise Exception()
 
 
-def bandClosestToWavelength(dataset, wl, wl_unit='nm'):
+def bandClosestToWavelength(dataset, wl, wl_unit='nm')->int:
     """
     Returns the band index of an image dataset closest to wavelength `wl`.
     :param dataset: str | gdal.Dataset
     :param wl: wavelength to search the closed band for
     :param wl_unit: unit of wavelength. Default = nm
-    :return: band index | 0 of wavelength information is not provided
+    :return: band index | 0 if wavelength information is not provided
     """
     if isinstance(wl, str):
         assert wl.upper() in LUT_WAVELENGTH.keys(), wl
@@ -1048,7 +1048,7 @@ def qgisAppQgisInterface()->QgisInterface:
         return None
 
 
-def getDOMAttributes(elem):
+def getDOMAttributes(elem)->dict:
     assert isinstance(elem, QDomElement)
     values = dict()
     attributes = elem.attributes()
@@ -1058,7 +1058,7 @@ def getDOMAttributes(elem):
     return values
 
 
-def fileSizeString(num, suffix='B', div=1000):
+def fileSizeString(num, suffix='B', div=1000)->str:
     """
     Returns a human-readable file size string.
     thanks to Fred Cirera
@@ -1075,7 +1075,7 @@ def fileSizeString(num, suffix='B', div=1000):
     return "{:.1f} {}{}".format(num, unit, suffix)
 
 
-def geo2pxF(geo, gt):
+def geo2pxF(geo, gt)->QPointF:
     """
     Returns the pixel position related to a Geo-Coordinate in floating point precision.
     :param geo: Geo-Coordinate as QgsPoint
@@ -1088,7 +1088,7 @@ def geo2pxF(geo, gt):
     py = (geo.y() - gt[3]) / gt[5]  # y pixel
     return QPointF(px, py)
 
-def geo2px(geo, gt):
+def geo2px(geo, gt)->QPoint:
     """
     Returns the pixel position related to a Geo-Coordinate as integer number.
     Floating-point coordinate are casted to integer coordinate, e.g. the pixel coordinate (0.815, 23.42) is returned as (0,23)
@@ -1141,7 +1141,7 @@ def check_vsimem()->bool:
         return False
     return result
 
-def layerGeoTransform(rasterLayer:QgsRasterLayer)->tuple:
+def layerGeoTransform(rasterLayer:QgsRasterLayer)->typing.Tuple[float, float, float, float, float, float]:
     """
     Returns the geo-transform vector from a QgsRasterLayer.
     See https://www.gdal.org/gdal_datamodel.html
@@ -1157,7 +1157,7 @@ def layerGeoTransform(rasterLayer:QgsRasterLayer)->tuple:
                 0, -1 * rasterLayer.rasterUnitsPerPixelY())
     return gt
 
-def px2geo(px, gt, pxCenter=True):
+def px2geo(px:QPoint, gt, pxCenter=True)->QgsPointXY
     """
     Converts a pixel coordinate into a geo-coordinate
     :param px: QPoint() with pixel coordinates
