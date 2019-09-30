@@ -1157,7 +1157,7 @@ def layerGeoTransform(rasterLayer:QgsRasterLayer)->typing.Tuple[float, float, fl
                 0, -1 * rasterLayer.rasterUnitsPerPixelY())
     return gt
 
-def px2geo(px:QPoint, gt, pxCenter=True)->QgsPointXY
+def px2geo(px:QPoint, gt, pxCenter=True)->QgsPointXY:
     """
     Converts a pixel coordinate into a geo-coordinate
     :param px: QPoint() with pixel coordinates
