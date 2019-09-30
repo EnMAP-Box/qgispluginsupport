@@ -90,7 +90,8 @@ def openRasterLayerSilent(uri, name, provider)->QgsRasterLayer:
         # do not ask!
         QgsSettings().setValue(key, 'useProject')
 
-    lyr = QgsRasterLayer(uri, name, provider)
+    loptions = QgsRasterLayer.LayerOptions(loadDefaultStyle=False)
+    lyr = QgsRasterLayer(uri, name, provider, options=loptions)
 
     if isPrompt:
         QgsSettings().setValue(key, v)
