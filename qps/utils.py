@@ -10,6 +10,7 @@ from qgis.gui import QgisInterface, QgsDockWidget, QgsPluginManagerInterface
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtCore import QMimeData
 from qgis.PyQt.QtGui import *
+from qgis.PyQt.Qt import PYQT_VERSION_STR
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtXml import *
 from qgis.PyQt.QtXml import QDomDocument
@@ -573,6 +574,22 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
 
         doc = QDomDocument()
         doc.setContent(txt)
+
+        if PYQT_VERSION_STR < '5.10':
+            #
+            toRemove = []
+
+            actions = doc.elementsByTagName('action')
+            for iAction in range(actions.count()):
+                properties = actions.item(iAction).toElement().elementsByTagName('property')
+                for iProperty in range(properties.count()):
+                    prop = properties.item(iProperty).toElement()
+                    if prop.attribute('name') == 'shortcutVisibleInContextMenu':
+                        toRemove.append(prop)
+            for prop in toRemove:
+                prop.parentNode().removeChild(prop)
+            del toRemove
+
 
         elem = doc.elementsByTagName('customwidget')
         for child in [elem.item(i) for i in range(elem.count())]:
