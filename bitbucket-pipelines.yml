@@ -53,7 +53,7 @@ pipelines:
           - python -m nose2 -s tests test_models > test-reports/report.txt
           - python -m nose2 -s tests test_plotstyling > test-reports/report.txt
           - python -m nose2 -s tests test_qgisinstance > test-reports/report.txt
-          - python -m nose2 -s tests test_qgisissues > test-reports/report.txt
+          #- python -m nose2 -s tests test_qgisissues > test-reports/report.txt
           - python -m nose2 -s tests test_spectrallibraries > test-reports/report.txt
           - python -m nose2 -s tests test_testing > test-reports/report.txt
           - python -m nose2 -s tests test_utils > test-reports/report.txt
