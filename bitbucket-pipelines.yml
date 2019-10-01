@@ -45,15 +45,15 @@ pipelines:
           - mkdir test-reports
           #- python -m nose2 --verbose > test-reports/report.txt
           - python -m nose2 -s tests test_classificationscheme > test-reports/report.txt
-          -  python -m nose2 -s tests test_crosshair > test-reports/report.txt
-          -  python -m nose2 -s tests test_cursorlocationsvalues > test-reports/report.txt
-          -  python -m nose2 -s tests test_init > test-reports/report.txt
-          -  python -m nose2 -s tests test_layerproperties > test-reports/report.txt
-          -  python -m nose2 -s tests test_maptools > test-reports/report.txt
-          -  python -m nose2 -s tests test_models > test-reports/report.txt
-          -  python -m nose2 -s tests test_plotstyling > test-reports/report.txt
-          -  python -m nose2 -s tests test_qgisinstance > test-reports/report.txt
-          -  python -m nose2 -s tests test_qgisissues > test-reports/report.txt
-          -  python -m nose2 -s tests test_spectrallibraries > test-reports/report.txt
-          -  python -m nose2 -s tests test_testing > test-reports/report.txt
+          - python -m nose2 -s tests test_crosshair > test-reports/report.txt
+          - python -m nose2 -s tests test_cursorlocationsvalues > test-reports/report.txt
+          - python -m nose2 -s tests test_init > test-reports/report.txt
+          - python -m nose2 -s tests test_layerproperties > test-reports/report.txt
+          - python -m nose2 -s tests test_maptools > test-reports/report.txt
+          - python -m nose2 -s tests test_models > test-reports/report.txt
+          - python -m nose2 -s tests test_plotstyling > test-reports/report.txt
+          - python -m nose2 -s tests test_qgisinstance > test-reports/report.txt
+          - python -m nose2 -s tests test_qgisissues > test-reports/report.txt
+          - python -m nose2 -s tests test_spectrallibraries > test-reports/report.txt
+          - python -m nose2 -s tests test_testing > test-reports/report.txt
           - python -m nose2 -s tests test_utils > test-reports/report.txt
