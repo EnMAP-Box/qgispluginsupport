@@ -305,7 +305,7 @@ class TestIO(unittest.TestCase):
 
         progress = QProgressDialog()
 
-        speclib2 = SpectralLibrary.readFromVectorPositions(lyrRaster, speclib1, progressDialog=progress)
+        speclib2 = SpectralLibrary.readFromVector(speclib1, lyrRaster, progressDialog=progress)
         self.assertIsInstance(speclib2, SpectralLibrary)
         self.assertEqual(len(speclib1), len(speclib2))
         self.assertTrue(speclib1.crs().toWkt() == speclib2.crs().toWkt())
@@ -323,37 +323,11 @@ class TestIO(unittest.TestCase):
         pathMultiPointLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
         pathRasterLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
         vlMultiPoint = None
-        if False:
-            vlMultiPoint = QgsVectorLayer(uri, "Scratch point layer", "memory")
 
-            self.assertIsInstance(vlMultiPoint, QgsVectorLayer)
-
-            n_max = 2
-            pointbuffer = []
-            vlMultiPoint.startEditing()
-            for i, feature in enumerate(list(speclib1.features())):
-                assert isinstance(feature, QgsFeature)
-                pointbuffer.append(feature.geometry())
-
-                if len(pointbuffer) >= n_max or i == speclib1.featureCount() - 1:
-                    #write QgsMultiPoint
-                    mp = QgsMultiPoint()
-                    for point in pointbuffer:
-
-                        mp.addGeometry(point.get())
-                    feature = QgsFeature()
-                    feature.setFields(vlMultiPoint.fields())
-                    geom = QgsGeometry.fromWkt(mp.asWkt())
-                    #feature.setGeometry(geom)
-
-                    #vectorLayer.dataProvider().addFeature(feature)
-                    self.assertTrue(vlMultiPoint.addFeature(feature))
-                    pointbuffer.clear()
-            speclib3 = SpectralLibrary.readFromVectorPositions(lyrRaster, vlMultiPoint, progressDialog=progress)
-        elif os.path.isfile(pathMultiPointLayer):
+        if os.path.isfile(pathMultiPointLayer) and os.path.isfile(pathRasterLayer):
             vlMultiPoint = QgsVectorLayer(pathMultiPointLayer)
             rlEnMAP = QgsRasterLayer(pathRasterLayer)
-            speclib3 = SpectralLibrary.readFromVectorPositions(rlEnMAP, vlMultiPoint, progressDialog=progress)
+            speclib3 = SpectralLibrary.readFromVector(vlMultiPoint, rlEnMAP, progressDialog=progress)
 
             self.assertIsInstance(speclib3, SpectralLibrary)
             self.assertTrue(len(speclib3) > 0)
