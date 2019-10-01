@@ -90,13 +90,16 @@ def createSpeclib()->SpectralLibrary:
 class TestIO(unittest.TestCase):
 
     def setUp(self):
-
+        print('RUN TEST {}'.format(self.id()))
         for file in vsiSpeclibs():
             gdal.Unlink(file)
             s = ""
         for s in SpectralLibrary.__refs__:
             del s
         SpectralLibrary.__refs__ = []
+        QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
+
+
 
     @classmethod
     def setUpClass(cls):
@@ -674,7 +677,7 @@ class TestIO(unittest.TestCase):
 class TestCore(unittest.TestCase):
 
     def setUp(self):
-
+        print('RUN TEST {}'.format(self.id()))
         for file in vsiSpeclibs():
             gdal.Unlink(file)
             s = ""
@@ -682,6 +685,7 @@ class TestCore(unittest.TestCase):
             del s
         SpectralLibrary.__refs__ = []
 
+        QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
         self.SP = None
         self.SPECLIB = None
@@ -692,6 +696,11 @@ class TestCore(unittest.TestCase):
         self.layers = [self.lyr1, self.lyr2]
         QgsProject.instance().addMapLayers(self.layers)
 
+    def tearDown(self):
+        self.SP = None
+        self.SPECLIB = None
+        self.lyr1 = None
+        self.lyr2 = None
 
 
     def createSpeclib(self):

@@ -17,6 +17,8 @@ test-reports.txt
 test-results/
 qgisresources/
 qgisresources/*
+qgisresources.zip
+
 qps/qpsresources.py
 qgisresources
 enmapboxtestdata/
