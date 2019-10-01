@@ -548,23 +548,19 @@ class TestObjects():
         Create an in-memory ogr.DataSource
         :return: ogr.DataSource
         """
+        ogr.UseExceptions()
         assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
 
         # find the QGIS world_map.shp
         pkgPath = QgsApplication.instance().pkgDataPath()
         pathSrc = None
         potentialPathes = [
-            os.path.join(pkgPath, *['resources', 'data', 'world_map.shp'])
+            os.path.join(os.path.dirname(__file__), 'testpolygons.geojson'),
+            os.path.join(pkgPath, *['resources', 'data', 'world_map.shp']),
         ]
         for p in potentialPathes:
             if os.path.isfile(p):
                 pathSrc = p
-                break
-
-        if pathSrc is None:
-            print('Unable to find world_map.shp. Search in QGIS prefix path (might take some time)', file=sys.stderr)
-            for pathSrc in file_search(QgsApplication.instance().prefixPath(), 'world_map.shp', recursive=True):
-                print('Fount "world_map.shp in: {}'.format(pathSrc), file=sys.stderr)
                 break
 
         assert os.path.isfile(pathSrc), 'Unable to find QGIS "world_map.shp". QGIS Pkg path = {}'.format(pkgPath)
@@ -580,19 +576,19 @@ class TestObjects():
         srs = lyrSrc.GetSpatialRef()
         assert isinstance(srs, osr.SpatialReference)
 
-        drv = dsSrc.GetDriver()
+        drv = ogr.GetDriverByName('ESRI Shapefile')
         assert isinstance(drv, ogr.Driver)
 
         # set temp path
         if wkb == ogr.wkbPolygon:
             lname = 'polygons'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.world_map.polygons.shp'
+            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.polygons.shp'
         elif wkb == ogr.wkbPoint:
             lname = 'points'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.world_map.centroids.shp'
+            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.centroids.shp'
         elif wkb == ogr.wkbLineString:
             lname = 'lines'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.world_map.line.shp'
+            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.line.shp'
         else:
             raise NotImplementedError()
 
@@ -632,7 +628,7 @@ class TestObjects():
                 for i in range(ldef.GetFieldCount()):
                     fDst.SetField(i, fSrc.GetField(i))
 
-                lyrDst.CreateFeature(fDst)
+                assert lyrDst.CreateFeature(fDst) == ogr.OGRERR_NONE
 
         assert isinstance(dsDst, ogr.DataSource)
         dsDst.FlushCache()
