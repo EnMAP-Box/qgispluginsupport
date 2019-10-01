@@ -47,9 +47,10 @@ pipelines:
           # - python -m pip install pytest-cov
           # - py.test --cov enmapbox --cov-report term-missing enmapboxtesting
           - python -m runfirst
-          - mkdir test-results
           #- python -m nose2 --verbose > test-results/reports_all_tests.txt
+          - set +e
           - python -m nose2 -s tests test_spectrallibraries > test-results/test_spectrallibraries.txt
+          - set -e
           - python -m nose2 -s tests test_classificationscheme > test-results/test_classificationscheme.txt
           - python -m nose2 -s tests test_crosshair > test-results/test_crosshair.txt
           - python -m nose2 -s tests test_cursorlocationsvalues > test-results/test_cursorlocationsvalues.txt
