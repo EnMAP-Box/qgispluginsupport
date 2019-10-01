@@ -121,11 +121,11 @@ class TestsClassificationScheme(TestCase):
 
         lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point)
 
-        cs = ClassificationScheme.fromUniqueFieldValues(lyr, 'CONTINENT')
-        cs1 = ClassificationScheme.fromUniqueFieldValues(lyr, 'LEVEL')
+        cs = ClassificationScheme.fromUniqueFieldValues(lyr, 'name')
+        cs1 = ClassificationScheme.fromUniqueFieldValues(lyr, 'id')
 
         names = set(cs.classNames())
-        for name in ['South America', 'Antarctica', 'Asia', 'Seven seas (open ocean)', 'Europe', 'North America', 'Africa', 'Oceania']:
+        for name in ['impervious', 'vegetation']:
             self.assertTrue(name in names)
 
 

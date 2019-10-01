@@ -7,7 +7,7 @@ exit /b
 
 :sub
 
-:: python -m nose2 --verbose discover enmapboxtesting "test_*.py"
+:: python -m nose2 --verbose discover tests "test_*.py"
 python -m nose2 -s tests test_classificationscheme
 python -m nose2 -s tests test_crosshair
 python -m nose2 -s tests test_cursorlocationsvalues

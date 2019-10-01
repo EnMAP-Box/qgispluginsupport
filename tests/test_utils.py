@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
 from qps.testing import initQgisApplication, TestObjects
-SHOW_GUI = True and os.environ.get('CI') is None
+SHOW_GUI = False and os.environ.get('CI') is None
 QGIS_APP = initQgisApplication()
 from qps.utils import *
 
