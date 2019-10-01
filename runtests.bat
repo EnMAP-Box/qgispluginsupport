@@ -2,7 +2,7 @@
 ::mkdir test-results
 set CI=True
 @echo off
-call :sub >test-report.txt
+call :sub >test-results.txt
 exit /b
 
 :sub
