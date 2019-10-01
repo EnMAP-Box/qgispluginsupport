@@ -14,6 +14,7 @@ vrtbuilder/externals/qps/qpsresources.py
 tests/outputs
 tests/outputs/*
 test-reports.txt
+test-results/
 qgisresources/
 qgisresources/*
 qps/qpsresources.py
