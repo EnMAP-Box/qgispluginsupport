@@ -163,6 +163,7 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
         loadPythonRunner = False
 
     if isinstance(QgsApplication.instance(), QgsApplication):
+        print('Found existing QgsApplication.instance()')
         return QgsApplication.instance()
     else:
 
@@ -215,6 +216,7 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
             for m in modules:
                 mod = importlib.import_module('qgisresources.{}'.format(m))
                 if "qInitResources" in dir(mod):
+                    print('Loads Qt resources from {}'.format(m))
                     mod.qInitResources()
 
         # initiate a PythonRunner instance if None exists

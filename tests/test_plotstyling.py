@@ -27,6 +27,7 @@ from qps.testing import initQgisApplication
 
 from qps.plotstyling.plotstyling import *
 
+print('INIT QGIS APPLICATION')
 QAPP = initQgisApplication()
 SHOW_GUI = True and os.environ.get('CI') is None
 

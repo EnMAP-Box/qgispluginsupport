@@ -5,7 +5,7 @@ app = initQgisApplication()
 from ..utils import *
 from osgeo import gdal, ogr, osr
 
-DIR_QGIS_REPO = r'C:\Users\geo_beja\Repositories\QGIS'
+DIR_QGIS_REPO = os.environ.get('DIR_QGIS_REPO')
 
 DIR_REPO = findUpwardPath(__file__, '.git')
 if not DIR_REPO is None:
@@ -208,13 +208,20 @@ def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None):
     resourcefiles = list(qrcs)
     assert len(resourcefiles) > 0
 
+    qrcFiles = []
+
     for root_dir, f in resourcefiles:
 
         pathQrc = os.path.normpath(jp(root_dir, f))
         if not os.path.exists(pathQrc):
             print('Resource file does not exist: {}'.format(pathQrc))
             continue
-        compileResourceFile(pathQrc, targetDir=targetDir)
+        if pathQrc not in qrcFiles:
+            qrcFiles.append(pathQrc)
+
+    print('Compile {} *.qrc files'.format(len(qrcFiles)))
+    for qrcFiles in qrcFiles:
+        compileResourceFile(qrcFiles, targetDir=targetDir)
 
 
 def compileResourceFile(pathQrc:str, targetDir:str=None):
@@ -274,8 +281,9 @@ def compileQGISResourceFiles(pathQGISRepo:str, target:str=None):
             pathQGISRepo = pathQGISRepo.strip("'").strip('"')
 
 
-    assert os.path.isdir(pathQGISRepo)
-    if not isinstance(target, str):
-        target = jp(DIR_REPO, 'qgisresources')
-    searchAndCompileResourceFiles(pathQGISRepo, targetDir=target)
-
+    if os.path.isdir(pathQGISRepo):
+        if not isinstance(target, str):
+            target = jp(DIR_REPO, 'qgisresources')
+        searchAndCompileResourceFiles(pathQGISRepo, targetDir=target)
+    else:
+        print('Unable to find local QGIS_REPOSITORY')
