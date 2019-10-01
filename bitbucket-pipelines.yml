@@ -28,6 +28,8 @@ pipelines:
           - ps aux | grep X
           - DISPLAY=:1.0
           - export DISPLAY
+          - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
+          - unzip qgisresources.zip
           #- python -m unittest discover tests "test_classificationscheme.py"
           #- python -m unittest discover tests "test_crosshair.py"
           #- python -m unittest discover tests "test_cursorlocationvalues.py"

@@ -38,7 +38,7 @@ from qps.speclib.envi import *
 from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
-SHOW_GUI = True and os.environ.get('CI') is None
+SHOW_GUI = False and os.environ.get('CI') is None
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'SPECLIB_TEST_DIR')
 
@@ -173,7 +173,7 @@ class TestIO(unittest.TestCase):
         from qpstestdata import speclib
         SLIB = SpectralLibrary.readFrom(speclib)
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        print(pathCSV)
+        #print(pathCSV)
         CSVSpectralLibraryIO.write(SLIB, pathCSV)
 
         self.assertTrue(os.path.isfile(pathCSV))
