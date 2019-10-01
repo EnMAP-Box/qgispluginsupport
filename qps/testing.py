@@ -561,7 +561,7 @@ class TestObjects():
                 pathSrc = p
                 break
 
-        if not os.path.isfile(pathSrc):
+        if pathSrc is None:
             print('Unable to find world_map.shp. Search in QGIS prefix path (might take some time)', file=sys.stderr)
             files = file_search(QgsApplication.instance().prefixPath(), 'world_map.shp', recursive=True)
             if len(files) > 0:
