@@ -550,9 +550,25 @@ class TestObjects():
         """
         assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
 
+        # find the QGIS world_map.shp
         pkgPath = QgsApplication.instance().pkgDataPath()
-        pathSrc = os.path.join(pkgPath, *['resources', 'data', 'world_map.shp'])
-        assert os.path.isfile(pathSrc), 'Unable to find QGIS "world_map.shp"'
+        pathSrc = None
+        potentialPathes = [
+            os.path.join(pkgPath, *['resources', 'data', 'world_map.shp'])
+        ]
+        for p in potentialPathes:
+            if os.path.isfile(p):
+                pathSrc = p
+                break
+
+        if not os.path.isfile(pathSrc):
+            print('Unable to find world_map.shp. Search in QGIS prefix path (might take some time)', file=sys.stderr)
+            files = file_search(QgsApplication.instance().prefixPath(), 'world_map.shp', recursive=True)
+            if len(files) > 0:
+                pathSrc = files[0]
+                print('Fount "world_map.shp in: {}'.format(pathSrc), file=sys.stderr)
+
+        assert os.path.isfile(pathSrc), 'Unable to find QGIS "world_map.shp". QGIS Pkg path = {}'.format(pkgPath)
 
         dsSrc = ogr.Open(pathSrc)
         assert isinstance(dsSrc, ogr.DataSource)

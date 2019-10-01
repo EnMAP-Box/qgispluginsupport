@@ -16,7 +16,7 @@ QGIS_APP = initQgisApplication()
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
-SHOW_GUI = True and os.environ.get('CI') is None
+SHOW_GUI = False and os.environ.get('CI') is None
 
 
 
@@ -28,6 +28,8 @@ class TestsClassificationScheme(TestCase):
 
         self.nameL1 = 'Level 1 (int)'
         self.nameL2 = 'Level 2 (str)'
+        for store in MAP_LAYER_STORES:
+            store.removeMapLayers(store.mapLayers().values())
 
     def createClassSchemeA(self)->ClassificationScheme:
 
@@ -96,7 +98,7 @@ class TestsClassificationScheme(TestCase):
 
         return vl
 
-    def testClassInfo(self):
+    def test_ClassInfo(self):
         name = 'TestName'
         label = 2
         color = QColor('green')
@@ -194,9 +196,10 @@ class TestsClassificationScheme(TestCase):
         w.setCurrentIndex(2)
         self.assertIsInstance(w.currentClassInfo(), ClassInfo)
         self.assertEqual(w.currentClassInfo(), scheme[2])
+        w.show()
 
         if SHOW_GUI:
-            w.show()
+
             QGIS_APP.exec_()
 
 
@@ -260,10 +263,11 @@ class TestsClassificationScheme(TestCase):
 
         eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
+        configWidget.show()
+        dv.show()
+        w.show()
+
         if SHOW_GUI:
-            configWidget.show()
-            dv.show()
-            w.show()
             QGIS_APP.exec_()
 
 
@@ -297,9 +301,11 @@ class TestsClassificationScheme(TestCase):
         self.assertTrue(vl in lyrs)
         self.assertTrue(rl in lyrs)
 
+        w = ClassificationSchemeWidget()
+        w.show()
+
+
         if SHOW_GUI:
-            w = ClassificationSchemeWidget()
-            w.show()
             w.onLoadClasses('layer')
             QGIS_APP.exec_()
 
@@ -312,11 +318,9 @@ class TestsClassificationScheme(TestCase):
         w.btnAddClasses.click()
 
         self.assertTrue(len(w.classificationScheme()) == 2)
-
-
+        w.show()
 
         if SHOW_GUI:
-            w.show()
             QGIS_APP.exec_()
 
     def test_ClassificationSchemeComboBox(self):
@@ -415,9 +419,10 @@ class TestsClassificationScheme(TestCase):
         ci = cbox.currentClassInfo()
         self.assertEqual(ci, None)
 
+        w.show()
+        w2.show()
+
         if SHOW_GUI:
-            w.show()
-            w2.show()
             QGIS_APP.exec_()
 
 
