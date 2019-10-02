@@ -323,13 +323,6 @@ class QgisMockup(QgisInterface):
 
         self.mClipBoard = QgsClipboardMockup()
 
-        # mockup other methods for which wo do not have a more sophisticated implementation
-        self._mockedBackEnd = mock.MagicMock(spec=QgisInterface)
-
-        for n in self._mockedBackEnd._mock_methods:
-            if not (n.startswith('_') or hasattr(self, n)):
-                setattr(self, n, getattr(self._mockedBackEnd, n))
-
     def activeLayer(self):
         return self.mapCanvas().currentLayer()
 

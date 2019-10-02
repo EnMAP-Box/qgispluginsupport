@@ -1,12 +1,14 @@
+:: use this script to run unit tests locally
+::
 
-::mkdir test-results
+mkdir test-results
 set CI=True
 @echo off
 call :sub >test-results.txt
 exit /b
 
 :sub
-
+python runfirst.py
 :: python -m nose2 --verbose discover tests "test_*.py"  > test-results/test_all.txt
 python -m nose2 -s tests test_spectrallibraries > test-results/test_spectrallibraries.txt
 python -m nose2 -s tests test_classificationscheme > test-results/test_classificationscheme.txt

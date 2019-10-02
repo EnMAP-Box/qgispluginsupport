@@ -21,8 +21,10 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
 
-SHOW_GUI = True and os.environ.get('CI') is None
+SHOW_GUI = False and os.environ.get('CI') is None
 
+from qps import initAll
+initAll()
 from qps.utils import *
 from qps.maptools import *
 
