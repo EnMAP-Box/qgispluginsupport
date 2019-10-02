@@ -32,7 +32,7 @@ pipelines:
           - export DISPLAY
           - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
           - unzip qgisresources.zip
-          - mkdir test-results
+
           #- python -m unittest discover tests "test_classificationscheme.py"
           #- python -m unittest discover tests "test_crosshair.py"
           #- python -m unittest discover tests "test_cursorlocationvalues.py"
@@ -48,6 +48,6 @@ pipelines:
           # - py.test --cov enmapbox --cov-report term-missing enmapboxtesting
           #- python -m runfirst
           #- python -m nose2 --verbose > test-results/reports_all_tests.txt
-          - set +e
+          #- set +e
           - /bin/bash runtests.sh
-          - set -e
+          #- set -e
