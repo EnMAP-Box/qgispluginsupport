@@ -218,6 +218,7 @@ class TestMapTools(unittest.TestCase):
 
 if __name__ == "__main__":
     SHOW_GUI = False
+    print('START WITH XMLRUNNER')
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-results'))
 
 

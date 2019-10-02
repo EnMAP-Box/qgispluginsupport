@@ -7,7 +7,7 @@ gdal
 numpy>=1.15
 scipy>=1.1
 scikit-learn>=0.19.2
-unittest-xml-reporting
+unittest-xml-reporting # unit tests only
 
 # will be replaces with stable 0.11
 # pyqtgraph>=0.11
