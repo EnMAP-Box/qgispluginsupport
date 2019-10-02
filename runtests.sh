@@ -1,7 +1,6 @@
 
-:: use this script to run unit tests locally
-::
-set CI=True
+# use this script to run unit tests locally
+#
 python runfirst.py
 
 mkdir test-reports/today
