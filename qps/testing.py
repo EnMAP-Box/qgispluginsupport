@@ -1,4 +1,4 @@
-import os, sys, re, io, importlib, uuid, warnings, pathlib, time, site
+import os, sys, re, io, importlib, uuid, warnings, pathlib, time, site, mock, inspect, types
 import sip
 from qgis.core import *
 from qgis.gui import *
@@ -210,6 +210,7 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
             if isinstance(resourceDir, str) and os.path.exists(resourceDir):
                 qgisResourceDir = resourceDir
 
+        # try to find a directory "qgisresources" that contains python modules mit a qInitResources method
         if isinstance(qgisResourceDir, str) and os.path.isdir(qgisResourceDir):
             modules = [m for m in os.listdir(qgisResourceDir) if re.search(r'[^_].*\.py', m)]
             modules = [m[0:-3] for m in modules]
@@ -257,7 +258,7 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
         providers = QgsProviderRegistry.instance().providerList()
 
         potentialProviders = ['DB2', 'WFS', 'arcgisfeatureserver', 'arcgismapserver', 'delimitedtext', 'gdal',
-                              'geonode', 'gpx', 'mdal', 'memory', 'mesh_memory', 'mssql', 'ogr', 'oracle', 'ows',
+                              'geonode', 'gpx', 'mdal', 'memory', 'mesh_memory', 'mssql', 'ogr', 'ows',
                               'postgres', 'spatialite', 'virtual', 'wcs', 'wms']
         missing = [p for p in potentialProviders if p not in providers]
 
@@ -276,8 +277,15 @@ class QgisMockup(QgisInterface):
         return self.mPluginManager
 
     def __init__(self, *args):
-        # QgisInterface.__init__(self)
+
         super(QgisMockup, self).__init__()
+
+        #mock.MagicMock.__init__(self, spec=QgisInterface, name='QgisMockup')
+
+        #super(QgisMockup, self).__init__(spec=QgisInterface, name='QgisMockup')
+        #mock.MagicMock.__init__(self, spec=QgisInterface)
+        #QgisInterface.__init__(self)
+
 
         self.mCanvas = QgsMapCanvas()
         self.mCanvas.blockSignals(False)
@@ -314,6 +322,13 @@ class QgisMockup(QgisInterface):
         self.createActions()
 
         self.mClipBoard = QgsClipboardMockup()
+
+        # mockup other methods for which wo do not have a more sophisticated implementation
+        self._mockedBackEnd = mock.MagicMock(spec=QgisInterface)
+
+        for n in self._mockedBackEnd._mock_methods:
+            if not (n.startswith('_') or hasattr(self, n)):
+                setattr(self, n, getattr(self._mockedBackEnd, n))
 
     def activeLayer(self):
         return self.mapCanvas().currentLayer()

@@ -35,7 +35,8 @@ class testClassTesting(unittest.TestCase):
 
         app = QgsApplication.instance()
         ENV = app.systemEnvVars()
-        for k in sorted(ENV.keys()): print('{}={}'.format(k, ENV[k]))
+        for k in sorted(ENV.keys()):
+            print('{}={}'.format(k, ENV[k]))
 
         qgis_app.quit()
 
@@ -50,7 +51,7 @@ class testClassTesting(unittest.TestCase):
     def test_TestObject(self):
 
         from qps.testing import TestObjects, initQgisApplication
-        qgis_app = initQgisApplication(minimal=True)
+        qgis_app = initQgisApplication(minimal=False)
         from osgeo import ogr, osr
 
         ds = TestObjects.createVectorDataSet(wkb=ogr.wkbPoint)
