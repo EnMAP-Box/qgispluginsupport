@@ -22,6 +22,7 @@ except Exception as ex:
 
 if makeQrc:
     print('Need to create qpsresources.py')
+    print('Start *.qrc search  in {}'.format(root))
     searchAndCompileResourceFiles(root)
 else:
     print('qpsresources.py exists and is up-to-date')
