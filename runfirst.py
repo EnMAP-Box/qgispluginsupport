@@ -1,9 +1,9 @@
 
-
+import os
 from qps.utils import file_search, dn, jp
 from qps.make.make import searchAndCompileResourceFiles
-root = dn(__file__)
-
+root = os.path.dirname(__file__)
+assert os.path.isdir(root), 'Unable to find root / repository directory: "{}" __file__ = {}'.format(root, __file__)
 makeQrc = False
 try:
     import os.path
