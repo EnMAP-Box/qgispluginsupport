@@ -29,7 +29,7 @@ from qps.plotstyling.plotstyling import *
 
 print('INIT QGIS APPLICATION')
 QAPP = initQgisApplication()
-SHOW_GUI = True and os.environ.get('CI') is None
+SHOW_GUI = False and os.environ.get('CI') is None
 
 class PlotStyleTests(unittest.TestCase):
 
@@ -220,7 +220,7 @@ class PlotStyleTests(unittest.TestCase):
         eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
         fields = vl.fields()
-        vl.setEditorWidgetSetup(fields.lookupField('fStyle'), QgsEditorWidgetSetup('PlotSettings',{}))
+        vl.setEditorWidgetSetup(fields.lookupField('fStyle'), QgsEditorWidgetSetup('PlotSettings', {}))
 
         vl.startEditing()
         value = eww.value()

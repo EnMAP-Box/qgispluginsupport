@@ -8,11 +8,11 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import unittest
 import tempfile
-
+from qgis.core import *
+from qgis.gui import *
 
 from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication()
-
 from qps.utils import *
 from qps.classification.classificationscheme import *
 

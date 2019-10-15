@@ -18,6 +18,8 @@
 """
 # noinspection PyPep8Naming
 import unittest, tempfile, shutil
+from qgis.core import *
+from qgis.gui import *
 from qps.testing import initQgisApplication, TestObjects
 QAPP = initQgisApplication()
 from qps import initResources, registerEditorWidgets
