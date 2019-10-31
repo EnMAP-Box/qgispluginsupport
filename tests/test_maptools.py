@@ -11,7 +11,7 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 
-import unittest, xmlrunner
+import unittest
 from qps.testing import initQgisApplication, TestObjects
 QGIS_APP = initQgisApplication(loadProcessingFramework=False)
 from qgis import *
@@ -218,8 +218,7 @@ class TestMapTools(unittest.TestCase):
 
 if __name__ == "__main__":
     SHOW_GUI = False
-    print('START WITH XMLRUNNER')
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-results'))
+    unittest.main()
 
 
 
