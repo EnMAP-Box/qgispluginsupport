@@ -113,6 +113,38 @@ class TestMapTools(unittest.TestCase):
         if SHOW_GUI:
             QGIS_APP.exec_()
 
+
+    def onExtentReceived(self, spatialExtent:SpatialExtent):
+        self.assertIsInstance(spatialExtent, SpatialExtent)
+        self.mSpatialExtent = spatialExtent
+
+    def test_SpatialExtentMapTool(self):
+
+        canvas = self.createCanvas()
+        canvas.show()
+        canvas.setCurrentLayer(canvas.layers()[0])
+        mt = SpatialExtentMapTool(canvas)
+        canvas.setMapTool(mt)
+
+
+        mt.sigSpatialExtentSelected.connect(self.onExtentReceived)
+        self.mSpatialExtent = None
+        size = canvas.size()
+        point = QPointF(0.3 * size.width(), 0.3 * size.height())
+        event = QMouseEvent(QEvent.MouseButtonPress, point, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        canvas.mousePressEvent(event)
+
+        point = QPointF(0.4 * size.width(), 0.4 * size.height())
+        event = QMouseEvent(QEvent.MouseMove, point, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        canvas.mouseMoveEvent(event)
+
+        point = QPointF(0.6 * size.width(), 0.6 * size.height())
+        event = QMouseEvent(QEvent.MouseButtonRelease, point, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        canvas.mouseReleaseEvent(event)
+
+        self.assertIsInstance(self.mSpatialExtent, SpatialExtent)
+
+
     def test_QgsFeatureSelectTool(self):
 
         canvas = self.createCanvas()
