@@ -4,14 +4,14 @@
 ***************************************************************************
 
     ---------------------
-    Date                 : 30.11.2017
+    Date                 : 25.11.2019
     Copyright            : (C) 2017 by Benjamin Jakimow
     Email                : benjamin jakimow at geo dot hu-berlin dot de
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
 *   it under the terms of the GNU General Public License as published by  *
-*   the Free Software Foundation; either version 2 of the License, or     *
+*   the Free Software Foundation; either version 3 of the License, or     *
 *   (at your option) any later version.                                   *
 *                                                                         *
 ***************************************************************************
