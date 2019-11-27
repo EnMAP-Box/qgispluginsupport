@@ -2217,7 +2217,7 @@ class AbstractSpectralLibraryIO(object):
     Overwrite the canRead and readFrom routines.
     """
     @staticmethod
-    def canRead(path:str):
+    def canRead(path:str)->bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -2226,7 +2226,7 @@ class AbstractSpectralLibraryIO(object):
         return False
 
     @staticmethod
-    def readFrom(path):
+    def readFrom(path:str)->SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -2235,7 +2235,7 @@ class AbstractSpectralLibraryIO(object):
         return None
 
     @staticmethod
-    def write(speclib, path):
+    def write(speclib:SpectralLibrary, path:str)->typing.List[str]:
         """Writes the SpectralLibrary to path and returns a list of written files that can be used to open
         the spectral library with readFrom"""
         assert isinstance(speclib, SpectralLibrary)
@@ -3152,6 +3152,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         from .ecosis import EcoSISSpectralLibraryIO
         from .specchio import SPECCHIOSpectralLibraryIO
         from .artmo import ARTMOSpectralLibraryIO
+        from .vectorsources import VectorSourceSpectralLibraryIO
 
         self.mSpeclibIOInterfaces = [
             EnviSpectralLibraryIO(),
@@ -3160,9 +3161,10 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             ASDSpectralLibraryIO(),
             EcoSISSpectralLibraryIO(),
             SPECCHIOSpectralLibraryIO(),
+            VectorSourceSpectralLibraryIO(),
         ]
 
-        self.mSpeclibIOInterfaces = sorted(self.mSpeclibIOInterfaces, key=lambda c:c.__class__.__name__)
+        self.mSpeclibIOInterfaces = sorted(self.mSpeclibIOInterfaces, key=lambda c: c.__class__.__name__)
 
 
         self.mSelectionModel = None
