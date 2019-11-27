@@ -40,7 +40,7 @@ from qps.speclib.envi import *
 from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
-SHOW_GUI = False and os.environ.get('CI') is None
+SHOW_GUI = True and os.environ.get('CI') is None
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'SPECLIB_TEST_DIR')
 
@@ -495,6 +495,29 @@ class TestIO(unittest.TestCase):
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), len(textFiles))
 
+    def test_vectorlayer(self):
+
+        slib = self.createSpeclib()
+
+
+        from qps.speclib.vectorsources import VectorSourceSpectralLibraryIO
+        pathTmp = tempfile.mktemp(suffix='.gpkg', prefix='tmpSpeclib')
+
+        # write
+        writtenFiles = VectorSourceSpectralLibraryIO.write(slib, pathTmp)
+        self.assertTrue(len(writtenFiles) > 0)
+
+        # read
+        results = []
+        n = 0
+        for file in writtenFiles:
+            self.assertTrue(VectorSourceSpectralLibraryIO.canRead(file))
+            sl = VectorSourceSpectralLibraryIO.readFrom(file)
+            n += len(sl)
+            self.assertIsInstance(sl, SpectralLibrary)
+            results.append(sl)
+
+        self.assertEqual(n, len(slib))
 
 
     def test_ARTMO(self):
