@@ -1990,13 +1990,13 @@ class SpectralLibrary(QgsVectorLayer):
             for fid in fids:
                 assert isinstance(fid, int)
             featureRequest.setFilterFids(fids)
-        # features = [f for f in self.features() if f.id() in fids]
+        # features = [f for f in self.features() if f.id() in fidsToRemove]
         return self.getFeatures(featureRequest)
 
 
     def profiles(self, fids=None):
         """
-        Like features(fids=None), but converts each returned QgsFeature into a SpectralProfile
+        Like features(fidsToRemove=None), but converts each returned QgsFeature into a SpectralProfile
         :param fids: optional, [int-list-of-feature-ids] to return
         :return: generator of [List-of-SpectralProfiles]
         """
@@ -2171,9 +2171,9 @@ class SpectralLibrary(QgsVectorLayer):
         self.commitChanges()
 
 
-    def __len__(self):
+    def __len__(self)->int:
         cnt = self.featureCount()
-        #can be -1 if the number of features is unknown
+        # can be -1 if the number of features is unknown
         return max(cnt, 0)
 
     def __iter__(self):
@@ -3392,7 +3392,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         self.actionExportSpeclib.triggered.connect(self.onExportSpectra)
         self.actionExportSpeclib.setMenu(self.exportSpeclibMenu())
         self.actionSaveSpeclib = self.actionExportSpeclib  # backward compatibility
-        self.actionReload.triggered.connect(lambda : self.mPlotWidget.updatePlot())
+        self.actionReload.triggered.connect(lambda : self.mPlotWidget.updateSpectralProfilePlotItems())
         self.actionToggleEditing.toggled.connect(self.onToggleEditing)
         self.actionSaveEdits.triggered.connect(self.onSaveEdits)
         self.actionDeleteSelected.triggered.connect(lambda : deleteSelected(self.speclib()))
@@ -3496,6 +3496,11 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         self.actionCutSelectedRows.setEnabled(self.mSpeclib.isEditable() and hasSelected)
         self.actionDeleteSelected.setEnabled(self.mSpeclib.isEditable() and hasSelected)
         self.actionReloadProfiles.setEnabled(self.mSpeclib.isEditable() and hasSelected)
+
+        self.actionPanMapToSelectedRows.setEnabled(hasSelected)
+        self.actionRemoveSelection.setEnabled(hasSelected)
+        self.actionZoomMapToSelectedRows.setEnabled(hasSelected)
+
 
     def onIsEditableChanged(self, *args):
         speclib = self.speclib()

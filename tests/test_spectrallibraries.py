@@ -44,6 +44,37 @@ SHOW_GUI = True and os.environ.get('CI') is None
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'SPECLIB_TEST_DIR')
 
+def createLargeSpeclib(n:int=1000)->SpectralLibrary:
+    """
+    Create a large SpectralLibrary with n Profiles
+    """
+    from qpstestdata import speclib as pathSpeclib
+
+    speclib = SpectralLibrary()
+    assert speclib.startEditing()
+    if True:
+        profiles = []
+        for i in range(1, n+1):
+            p = SpectralProfile(fields=speclib.fields())
+            xvalues = np.arange(100)
+            yvalues = np.ones(100) * i
+            p.setValues(xvalues, yvalues)
+            profiles.append(p)
+        speclib.addProfiles(profiles, addMissingFields=False)
+    else:
+        nMissing = n
+        masterProfiles = SpectralLibrary.readFrom(pathSpeclib)[:]
+        while nMissing > 0:
+            n2 = min(nMissing, len(masterProfiles))
+            profiles = masterProfiles[0:n2]
+            speclib.addProfiles(profiles)
+            assert speclib.commitChanges()
+            assert speclib.startEditing()
+            nMissing = n - len(speclib)
+
+    assert speclib.commitChanges()
+    return speclib
+
 
 def createSpeclib()->SpectralLibrary:
 
@@ -86,6 +117,128 @@ def createSpeclib()->SpectralLibrary:
     SLIB.commitChanges()
     return SLIB
 
+class TestPlotting(unittest.TestCase):
+
+    def setUp(self) -> None:
+
+        pass
+
+    def tearDown(self) -> None:
+        if SHOW_GUI:
+            QAPP.exec_()
+
+
+
+    def test_PyQtGraphPlot(self):
+        import qps.externals.pyqtgraph as pg
+        pg.systemInfo()
+
+        plotWidget = pg.plot(title="Three plot curves")
+
+        item1 = pg.PlotItem(x=[1,2,3],   y=[2, 3, 4], color='white')
+        plotWidget.plotItem.addItem(item1)
+        self.assertIsInstance(plotWidget, pg.PlotWidget)
+        plotWidget.show()
+
+    def test_SpectralLibraryPlotWidgetSimple(self):
+
+
+        speclib = createLargeSpeclib(10)
+        w = SpectralLibraryPlotWidget()
+        w.show()
+        w.setSpeclib(speclib)
+        QAPP.exec_()
+
+    def test_SpectralLibraryPlotWidgetThousands(self):
+
+
+        speclib = createLargeSpeclib(1000)
+        w = SpectralLibraryPlotWidget()
+        w.show()
+        w.setSpeclib(speclib)
+        QAPP.exec_()
+
+
+    def test_SpectralLibraryPlotWidget(self):
+
+        speclib = SpectralLibrary.readFrom(speclibpath)
+
+
+
+        pw = SpectralLibraryPlotWidget()
+        self.assertIsInstance(pw, SpectralLibraryPlotWidget)
+        self.assertTrue(pw.xUnit(), BAND_INDEX)
+
+        p = speclib[0]
+        sl = SpectralLibrary()
+        sl.startEditing()
+        pw.setSpeclib(sl)
+
+        sl.addProfiles([p])
+        self.assertTrue(pw.xUnit(), p.xUnit())
+
+
+        w = QWidget()
+        w.setLayout(QVBoxLayout())
+        pw = SpectralLibraryPlotWidget()
+
+        btn = QPushButton('Add speclib')
+        btn.clicked.connect(lambda : pw.setSpeclib(speclib))
+        w.layout().addWidget(pw)
+        w.layout().addWidget(btn)
+
+
+        self.assertIsInstance(pw.plotItem, pg.PlotItem)
+        self.assertIsInstance(pw.plotItem.getViewBox(), SpectralViewBox)
+        self.assertIsInstance(pw.plotItem.getAxis('bottom'), SpectralXAxis)
+
+
+
+        plotItem = pw.getPlotItem()
+        self.assertIsInstance(plotItem, pg.PlotItem)
+        self.assertTrue(len(plotItem.dataItems) == 0)
+        pw.setSpeclib(speclib)
+        self.assertTrue(len(plotItem.dataItems) == len(speclib))
+
+
+        if True:
+
+            ids = [1, 2, 3, 4, 5]
+            speclib.selectByIds(ids)
+
+            n = 0
+            DEFAULT_LINE_WIDTH = 1
+
+            for pdi in pw.plotItem.items:
+                if isinstance(pdi, SpectralProfilePlotDataItem):
+
+                    width = pdi.pen().width()
+                    if pdi.id() in ids:
+                        self.assertTrue(width > DEFAULT_LINE_WIDTH)
+                    else:
+                        self.assertTrue(width == DEFAULT_LINE_WIDTH)
+
+            pdis = pw.spectralProfilePlotDataItems()
+            self.assertTrue(len(pdis) == len(speclib))
+            speclib.startEditing()
+            speclib.removeProfiles(speclib[0:1])
+            pdis = pw.spectralProfilePlotDataItems()
+            self.assertTrue(len(pdis) == len(speclib))
+
+            n = len(speclib)
+            p2 = speclib[0]
+            speclib.addProfiles([p2])
+            n2 = len(speclib)
+            pdis = pw.spectralProfilePlotDataItems()
+            self.assertTrue(len(pdis) == len(speclib))
+            self.assertTrue(len(pdis) == n+1)
+
+        pw.setXUnit('nm')
+
+
+        if SHOW_GUI:
+            w.show()
+            QAPP.exec_()
 
 
 
@@ -1338,100 +1491,6 @@ class TestCore(unittest.TestCase):
 
             QAPP.exec_()
 
-    def test_PyQtGraphPlot(self):
-        import qps.externals.pyqtgraph as pg
-        pg.systemInfo()
-
-        plotWidget = pg.plot(title="Three plot curves")
-
-        item1 = pg.PlotItem(x=[1,2,3],   y=[2, 3, 4])
-        plotWidget.plotItem.addItem(item1)
-        plotWidget.plotItem.removeItem(item1)
-        self.assertIsInstance(plotWidget, pg.PlotWidget)
-        if SHOW_GUI:
-            plotWidget.show()
-            QAPP.exec_()
-
-
-    def test_SpectralLibraryPlotWidget(self):
-
-        speclib = SpectralLibrary.readFrom(speclibpath)
-
-
-
-        pw = SpectralLibraryPlotWidget()
-        self.assertIsInstance(pw, SpectralLibraryPlotWidget)
-        self.assertTrue(pw.xUnit(), BAND_INDEX)
-
-        p = speclib[0]
-        sl = SpectralLibrary()
-        sl.startEditing()
-        pw.setSpeclib(sl)
-
-        sl.addProfiles([p])
-        self.assertTrue(pw.xUnit(), p.xUnit())
-
-
-        w = QWidget()
-        w.setLayout(QVBoxLayout())
-        pw = SpectralLibraryPlotWidget()
-
-        btn = QPushButton('Add speclib')
-        btn.clicked.connect(lambda : pw.setSpeclib(speclib))
-        w.layout().addWidget(pw)
-        w.layout().addWidget(btn)
-
-
-        self.assertIsInstance(pw.plotItem, pg.PlotItem)
-        self.assertIsInstance(pw.plotItem.getViewBox(), SpectralViewBox)
-        self.assertIsInstance(pw.plotItem.getAxis('bottom'), SpectralXAxis)
-
-
-
-        plotItem = pw.getPlotItem()
-        self.assertIsInstance(plotItem, pg.PlotItem)
-        self.assertTrue(len(plotItem.dataItems) == 0)
-        pw.setSpeclib(speclib)
-        self.assertTrue(len(plotItem.dataItems) == len(speclib))
-
-
-        if True:
-
-            ids = [1, 2, 3, 4, 5]
-            speclib.selectByIds(ids)
-
-            n = 0
-            DEFAULT_LINE_WIDTH = 1
-
-            for pdi in pw.plotItem.items:
-                if isinstance(pdi, SpectralProfilePlotDataItem):
-
-                    width = pdi.pen().width()
-                    if pdi.id() in ids:
-                        self.assertTrue(width > DEFAULT_LINE_WIDTH)
-                    else:
-                        self.assertTrue(width == DEFAULT_LINE_WIDTH)
-
-            pdis = pw._spectralProfilePDIs()
-            self.assertTrue(len(pdis) == len(speclib))
-            speclib.startEditing()
-            speclib.removeProfiles(speclib[0:1])
-            pdis = pw._spectralProfilePDIs()
-            self.assertTrue(len(pdis) == len(speclib))
-
-            n = len(speclib)
-            p2 = speclib[0]
-            speclib.addProfiles([p2])
-            pdis = pw._spectralProfilePDIs()
-            self.assertTrue(len(pdis) == len(speclib))
-            self.assertTrue(len(pdis) == n+1)
-
-        pw.setXUnit('nm')
-
-
-        if SHOW_GUI:
-            w.show()
-            QAPP.exec_()
 
     def test_largeLibs(self):
 
