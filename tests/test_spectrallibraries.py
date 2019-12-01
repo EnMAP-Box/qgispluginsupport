@@ -63,7 +63,7 @@ def createLargeSpeclib(n:int=1000)->SpectralLibrary:
         speclib.addProfiles(profiles, addMissingFields=False)
     else:
         nMissing = n
-        masterProfiles = SpectralLibrary.readFrom(pathSpeclib)[:]
+        masterProfiles = SpectralLibrary.readFrom(pathSpeclib, progressDialog=self.progressDialog)[:]
         while nMissing > 0:
             n2 = min(nMissing, len(masterProfiles))
             profiles = masterProfiles[0:n2]
@@ -120,10 +120,12 @@ def createSpeclib()->SpectralLibrary:
 class TestPlotting(unittest.TestCase):
 
     def setUp(self) -> None:
-
+        #self.progressDialog = QProgressDialog()
+        #self.progressDialog.setVisible(False)
         pass
 
     def tearDown(self) -> None:
+        #self.progressDialog.close()
         if SHOW_GUI:
             QAPP.exec_()
 
@@ -143,19 +145,33 @@ class TestPlotting(unittest.TestCase):
     def test_SpectralLibraryPlotWidgetSimple(self):
 
 
-        speclib = createLargeSpeclib(10)
+        speclib = createLargeSpeclib(15)
         w = SpectralLibraryPlotWidget()
         w.show()
         w.setSpeclib(speclib)
         QAPP.exec_()
 
-    def test_SpectralLibraryPlotWidgetThousands(self):
+    def test_SpectralLibraryWidgetThousands(self):
 
+        import qpstestdata
 
-        speclib = createLargeSpeclib(1000)
-        w = SpectralLibraryPlotWidget()
+        pathSL = os.path.join(os.path.dirname(qpstestdata.__file__), 'roberts2017_urban.sli')
+        if False and os.path.exists(pathSL):
+            t0 = datetime.datetime.now()
+            speclib = SpectralLibrary.readFrom(pathSL)
+
+            dt = datetime.datetime.now() - t0
+            print('Reading required : {}'.format(dt))
+        else:
+            speclib = createLargeSpeclib(2)
+
+        t0 = datetime.datetime.now()
+        w = SpectralLibraryWidget()
         w.show()
-        w.setSpeclib(speclib)
+        w.addSpeclib(speclib)
+        dt = datetime.datetime.now() - t0
+        print('Adding speclib required : {}'.format(dt))
+
         QAPP.exec_()
 
 
@@ -254,7 +270,10 @@ class TestIO(unittest.TestCase):
         SpectralLibrary.__refs__ = []
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
+        self.progressDialog = QProgressDialog()
 
+    def tearDown(self) -> None:
+        self.progressDialog.close()
 
     @classmethod
     def setUpClass(cls):
@@ -273,7 +292,7 @@ class TestIO(unittest.TestCase):
         slib1 = self.createSpeclib()
         path = slib1.source()
 
-        slib2 = SpectralLibrary.readFrom(path)
+        slib2 = SpectralLibrary.readFrom(path, progressDialog=self.progressDialog)
         self.assertIsInstance(slib2, SpectralLibrary)
         self.assertEqual(slib1, slib2)
         s = ""
@@ -329,15 +348,15 @@ class TestIO(unittest.TestCase):
 
     def test_CSV2(self):
         from qpstestdata import speclib
-        SLIB = SpectralLibrary.readFrom(speclib)
+        SLIB = SpectralLibrary.readFrom(speclib, progressDialog=self.progressDialog)
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
         #print(pathCSV)
-        CSVSpectralLibraryIO.write(SLIB, pathCSV)
+        CSVSpectralLibraryIO.write(SLIB, pathCSV, progressDialog=self.progressDialog)
 
         self.assertTrue(os.path.isfile(pathCSV))
         dialect = CSVSpectralLibraryIO.canRead(pathCSV)
         self.assertTrue(dialect is not None)
-        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect)
+        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, progressDialog=self.progressDialog)
         self.assertTrue(len(SLIB) == len(speclib2))
         for i, (p1, p2) in enumerate(zip(SLIB[:], speclib2[:])):
             self.assertIsInstance(p1, SpectralProfile)
@@ -351,12 +370,12 @@ class TestIO(unittest.TestCase):
         #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs2.out.csv')
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
         print(pathCSV)
-        CSVSpectralLibraryIO.write(SLIB, pathCSV)
+        CSVSpectralLibraryIO.write(SLIB, pathCSV, progressDialog=self.progressDialog)
 
         self.assertTrue(os.path.isfile(pathCSV))
         dialect = CSVSpectralLibraryIO.canRead(pathCSV)
         self.assertTrue(dialect is not None)
-        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect)
+        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, progressDialog=self.progressDialog)
         self.assertTrue(len(SLIB) == len(speclib2))
         for i, (p1, p2) in enumerate(zip(SLIB[:], speclib2[:])):
             self.assertIsInstance(p1, SpectralProfile)
@@ -373,17 +392,17 @@ class TestIO(unittest.TestCase):
 
         # addresses issue #8
         from qpstestdata import speclib
-        SL1 = SpectralLibrary.readFrom(speclib)
+        SL1 = SpectralLibrary.readFrom(speclib, progressDialog=self.progressDialog)
         self.assertIsInstance(SL1, SpectralLibrary)
 
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
         print(pathCSV)
         for dialect in [pycsv.excel_tab, pycsv.excel]:
             pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-            CSVSpectralLibraryIO.write(SL1, pathCSV, dialect=dialect)
+            CSVSpectralLibraryIO.write(SL1, pathCSV, dialect=dialect, progressDialog=self.progressDialog)
             d = CSVSpectralLibraryIO.canRead(pathCSV)
             self.assertEqual(d, dialect)
-            SL2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect)
+            SL2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, progressDialog=self.progressDialog)
             self.assertIsInstance(SL2, SpectralLibrary)
             self.assertTrue(len(SL1) == len(SL2))
 
@@ -397,10 +416,10 @@ class TestIO(unittest.TestCase):
 
         # addresses issue #8 loading modified CSV values
 
-        SL = SpectralLibrary.readFrom(speclib)
+        SL = SpectralLibrary.readFrom(speclib, progressDialog=self.progressDialog)
 
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        CSVSpectralLibraryIO.write(SL, pathCSV)
+        CSVSpectralLibraryIO.write(SL, pathCSV, progressDialog=self.progressDialog)
 
         with open(pathCSV, 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -425,7 +444,7 @@ class TestIO(unittest.TestCase):
         with open(pathCSV, 'w', encoding='utf-8') as f:
             f.writelines(lines)
 
-        SL2 = CSVSpectralLibraryIO.readFrom(pathCSV)
+        SL2 = CSVSpectralLibraryIO.readFrom(pathCSV, progressDialog=self.progressDialog)
 
         self.assertEqual(len(SL), len(SL2))
 
@@ -557,21 +576,21 @@ class TestIO(unittest.TestCase):
         for path in reversed(list(file_search(DIR_ECOSIS, '*.csv'))):
 
             self.assertTrue(EcoSISSpectralLibraryIO.canRead(path))
-            sl = EcoSISSpectralLibraryIO.readFrom(path)
+            sl = EcoSISSpectralLibraryIO.readFrom(path, progressDialog=self.progressDialog)
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) > 0)
 
         # 2. write
         speclib = self.createSpeclib()
         pathCSV = os.path.join(TEST_DIR, 'speclib.ecosys.csv')
-        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV)
+        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=self.progressDialog)
 
         n = 0
         for p in csvFiles:
             self.assertTrue(os.path.isfile(p))
             self.assertTrue(EcoSISSpectralLibraryIO.canRead(p))
 
-            slPart = EcoSISSpectralLibraryIO.readFrom(p)
+            slPart = EcoSISSpectralLibraryIO.readFrom(p, progressDialog=self.progressDialog)
             self.assertIsInstance(slPart, SpectralLibrary)
 
 
@@ -592,21 +611,21 @@ class TestIO(unittest.TestCase):
         for path in reversed(list(file_search(DIR_SPECCHIO, '*.csv'))):
 
             self.assertTrue(SPECCHIOSpectralLibraryIO.canRead(path))
-            sl = SPECCHIOSpectralLibraryIO.readFrom(path)
+            sl = SPECCHIOSpectralLibraryIO.readFrom(path, progressDialog=self.progressDialog)
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) > 0)
 
         # 2. write
         speclib = self.createSpeclib()
         pathCSV = os.path.join(TEST_DIR, 'speclib.specchio.csv')
-        csvFiles = SPECCHIOSpectralLibraryIO.write(speclib, pathCSV)
+        csvFiles = SPECCHIOSpectralLibraryIO.write(speclib, pathCSV, progressDialog=self.progressDialog)
 
         n = 0
         for p in csvFiles:
             self.assertTrue(os.path.isfile(p))
             self.assertTrue(SPECCHIOSpectralLibraryIO.canRead(p))
 
-            slPart = SPECCHIOSpectralLibraryIO.readFrom(p)
+            slPart = SPECCHIOSpectralLibraryIO.readFrom(p, progressDialog=self.progressDialog)
             self.assertIsInstance(slPart, SpectralLibrary)
 
 
@@ -628,11 +647,11 @@ class TestIO(unittest.TestCase):
 
             self.assertIsInstance(asdFile, ASDBinaryFile)
 
-            sl = ASDSpectralLibraryIO.readFrom(path)
+            sl = ASDSpectralLibraryIO.readFrom(path, progressDialog=self.progressDialog)
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertEqual(len(sl), 1)
 
-        sl = ASDSpectralLibraryIO.readFrom(binaryFiles)
+        sl = ASDSpectralLibraryIO.readFrom(binaryFiles, progressDialog=self.progressDialog)
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), len(binaryFiles))
 
@@ -640,11 +659,11 @@ class TestIO(unittest.TestCase):
         for path in textFiles:
             self.assertTrue(ASDSpectralLibraryIO.canRead(path))
 
-            sl = ASDSpectralLibraryIO.readFrom(path)
+            sl = ASDSpectralLibraryIO.readFrom(path, progressDialog=self.progressDialog)
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertEqual(len(sl), 1)
 
-        sl = ASDSpectralLibraryIO.readFrom(textFiles)
+        sl = ASDSpectralLibraryIO.readFrom(textFiles, progressDialog=self.progressDialog)
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), len(textFiles))
 
@@ -657,7 +676,7 @@ class TestIO(unittest.TestCase):
         pathTmp = tempfile.mktemp(suffix='.gpkg', prefix='tmpSpeclib')
 
         # write
-        writtenFiles = VectorSourceSpectralLibraryIO.write(slib, pathTmp)
+        writtenFiles = VectorSourceSpectralLibraryIO.write(slib, pathTmp, progressDialog=self.progressDialog)
         self.assertTrue(len(writtenFiles) > 0)
 
         # read
@@ -665,12 +684,40 @@ class TestIO(unittest.TestCase):
         n = 0
         for file in writtenFiles:
             self.assertTrue(VectorSourceSpectralLibraryIO.canRead(file))
-            sl = VectorSourceSpectralLibraryIO.readFrom(file)
+            sl = VectorSourceSpectralLibraryIO.readFrom(file, progressDialog=self.progressDialog)
             n += len(sl)
             self.assertIsInstance(sl, SpectralLibrary)
             results.append(sl)
 
         self.assertEqual(n, len(slib))
+
+    def test_AbstractSpectralLibraryIOs(self):
+        """ A generic test to check all AbstractSpectralLibraryIO implementations"""
+        slib = createSpeclib()
+
+        nFeatures = len(slib)
+        nProfiles = 0
+        for p in slib:
+            if len(p.yValues()) > 0:
+                nProfiles += 1
+
+        for c in allSubclasses(AbstractSpectralLibraryIO):
+            print('Test {}'.format(c.__name__))
+            path = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+            writtenFiles = c.write(slib, path, progressDialog=self.progressDialog)
+
+            # if it can write, it should read the profiles too
+            if len(writtenFiles) > 0:
+
+                n = 0
+                for path in writtenFiles:
+                    self.assertTrue(os.path.isfile(path))
+                    sl = c.readFrom(path, progressDialog=self.progressDialog)
+                    self.assertIsInstance(sl, SpectralLibrary)
+                    n += len(sl)
+
+                self.assertTrue(n == nProfiles or n == nFeatures)
+            pass
 
 
     def test_ARTMO(self):
@@ -683,7 +730,7 @@ class TestIO(unittest.TestCase):
 
         self.assertTrue(ARTMOSpectralLibraryIO.canRead(p))
 
-        sl = ARTMOSpectralLibraryIO.readFrom(p)
+        sl = ARTMOSpectralLibraryIO.readFrom(p, progressDialog=self.progressDialog)
 
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), 10)
@@ -704,8 +751,8 @@ class TestIO(unittest.TestCase):
         with open(path, 'r') as f:
             lines = f.read()
         self.assertTrue(CSVSpectralLibraryIO.canRead(path), msg='Unable to read {}'.format(path))
-        sl_read1 = CSVSpectralLibraryIO.readFrom(path)
-        sl_read2 = SpectralLibrary.readFrom(path)
+        sl_read1 = CSVSpectralLibraryIO.readFrom(path, progressDialog=self.progressDialog)
+        sl_read2 = SpectralLibrary.readFrom(path, progressDialog=self.progressDialog)
 
         self.assertTrue(len(sl_read1) > 0)
         self.assertIsInstance(sl_read1, SpectralLibrary)
@@ -754,8 +801,8 @@ class TestIO(unittest.TestCase):
         self.assertTrue(hdr.endswith('.hdr'))
 
 
-        sl1 = SpectralLibrary.readFrom(binarypath)
-        sl2 = SpectralLibrary.readFrom(headerPath)
+        sl1 = SpectralLibrary.readFrom(binarypath, progressDialog=self.progressDialog)
+        sl2 = SpectralLibrary.readFrom(headerPath, progressDialog=self.progressDialog)
 
         self.assertEqual(sl1, sl2)
 
@@ -771,7 +818,7 @@ class TestIO(unittest.TestCase):
 
 
         pathESL = speclibpath
-        sl1 = EnviSpectralLibraryIO.readFrom(pathESL)
+        sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=self.progressDialog)
 
         self.assertIsInstance(sl1, SpectralLibrary)
         p0 = sl1[0]
@@ -783,7 +830,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(p0.attribute('name'), p0.name())
 
 
-        sl2 = SpectralLibrary.readFrom(pathESL)
+        sl2 = SpectralLibrary.readFrom(pathESL, progressDialog=self.progressDialog)
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertEqual(sl1, sl2)
         p1 = sl2[0]
@@ -793,7 +840,7 @@ class TestIO(unittest.TestCase):
 
         # test ENVI Spectral Library
         pathTmp = tempfile.mktemp(prefix='tmpESL', suffix='.sli')
-        writtenFiles = EnviSpectralLibraryIO.write(sl1, pathTmp)
+        writtenFiles = EnviSpectralLibraryIO.write(sl1, pathTmp, progressDialog=self.progressDialog)
 
 
         nWritten = 0
@@ -808,7 +855,7 @@ class TestIO(unittest.TestCase):
             self.assertTrue(os.path.isfile(pathCSV))
 
             self.assertTrue(EnviSpectralLibraryIO.canRead(pathHdr))
-            sl_read1 = EnviSpectralLibraryIO.readFrom(pathHdr)
+            sl_read1 = EnviSpectralLibraryIO.readFrom(pathHdr, progressDialog=self.progressDialog)
             self.assertIsInstance(sl_read1, SpectralLibrary)
 
             for fieldA in sl1.fields():
@@ -824,7 +871,7 @@ class TestIO(unittest.TestCase):
 
 
 
-            sl_read2 = SpectralLibrary.readFrom(pathHdr)
+            sl_read2 = SpectralLibrary.readFrom(pathHdr, progressDialog=self.progressDialog)
             self.assertIsInstance(sl_read2, SpectralLibrary)
 
             print(sl_read1)
@@ -841,8 +888,8 @@ class TestIO(unittest.TestCase):
 
         pathHdr = os.path.splitext(speclibpath)[0]+'.hdr'
         self.assertTrue(os.path.isfile(pathHdr))
-        sl1 = SpectralLibrary.readFrom(speclibpath)
-        sl2 = SpectralLibrary.readFrom(pathHdr)
+        sl1 = SpectralLibrary.readFrom(speclibpath, progressDialog=self.progressDialog)
+        sl2 = SpectralLibrary.readFrom(pathHdr, progressDialog=self.progressDialog)
         self.assertIsInstance(sl1, SpectralLibrary)
         self.assertTrue(len(sl1) > 0)
         #self.assertEqual(sl1, sl2)
@@ -865,6 +912,13 @@ class TestCore(unittest.TestCase):
 
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
+
+        self.progressDialog = None
+        if True:
+            self.progressDialog = QProgressDialog()
+            self.progressDialog.setWindowTitle('TESTS')
+            self.progressDialog.setVisible(False)
+
         self.SP = None
         self.SPECLIB = None
 
@@ -875,6 +929,11 @@ class TestCore(unittest.TestCase):
         QgsProject.instance().addMapLayers(self.layers)
 
     def tearDown(self):
+        if isinstance(self.progressDialog, QProgressDialog):
+            self.progressDialog.setVisible(False)
+            self.progressDialog.close()
+            self.progressDialog = None
+
         self.SP = None
         self.SPECLIB = None
         self.lyr1 = None
@@ -938,6 +997,67 @@ class TestCore(unittest.TestCase):
         s = ""
 
 
+    def test_SpectralProfile_BandBandList(self):
+
+        sp = SpectralProfile()
+        xvals = [1, 2, 3, 4, 5]
+        yvals = [2, 3, 4, 5, 6]
+        sp.setValues(x=xvals, y=yvals)
+        self.assertEqual(len(xvals), sp.nb())
+        self.assertIsInstance(sp.bbl(), list)
+        self.assertListEqual(sp.bbl(), np.ones(len(xvals)).tolist())
+
+        bbl = [1, 0, 1, 1, 1]
+        sp.setValues(bbl=bbl)
+        self.assertIsInstance(sp.bbl(), list)
+        self.assertListEqual(sp.bbl(), bbl)
+
+    def test_Serialization(self):
+
+
+        import qps.speclib.spectrallibraries
+        x = [1, 2, 3, 4, 5]
+        y = [2, 3, 4, 5, 6]
+        bbl = [1, 0, 1, 1, 0]
+        xUnit = 'nm'
+        yUnit = None
+
+        reminder = qps.speclib.spectrallibraries.SERIALIZATION
+
+        for mode in [SerializationMode.JSON, SerializationMode.PICKLE]:
+            qps.speclib.spectrallibraries.SERIALIZATION = mode
+
+            sl = SpectralLibrary()
+            self.assertTrue(sl.startEditing())
+            sp = SpectralProfile()
+            sp.setValues(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
+
+            vd1 = sp.values()
+            dump = encodeProfileValueDict(vd1)
+
+            if mode == SerializationMode.JSON:
+                self.assertIsInstance(dump, str)
+            elif mode == SerializationMode.PICKLE:
+                self.assertIsInstance(dump, QByteArray)
+
+            vd2 = decodeProfileValueDict(dump)
+            self.assertIsInstance(vd2, dict)
+            self.assertEqual(vd1, vd2)
+            sl.addProfiles([sp])
+            self.assertTrue(sl.commitChanges())
+
+            rawValues = sl.getFeature(sl.allFeatureIds()[0]).attribute(FIELD_VALUES)
+
+            if mode == SerializationMode.JSON:
+                self.assertIsInstance(rawValues, str)
+            elif mode == SerializationMode.PICKLE:
+                self.assertIsInstance(rawValues, QByteArray)
+
+
+
+        qps.speclib.spectrallibraries.SERIALIZATION = reminder
+
+
     def test_SpectralProfile(self):
 
         # empty profile
@@ -960,10 +1080,8 @@ class TestCore(unittest.TestCase):
 
         d = sp.values()
         self.assertIsInstance(d, dict)
-        self.assertEqual(d['y'], EMPTY_PROFILE_VALUES['y'])
-        self.assertEqual(d['x'], EMPTY_PROFILE_VALUES['x'])
-        self.assertEqual(d['xUnit'], EMPTY_PROFILE_VALUES['xUnit'])
-        self.assertEqual(d['yUnit'], EMPTY_PROFILE_VALUES['yUnit'])
+        for k in ['x','y', 'yUnit', 'xUnit', 'bbl']:
+            self.assertEqual(d[k], EMPTY_PROFILE_VALUES[k])
 
 
         sp.setValues(y=y)
@@ -1211,8 +1329,8 @@ class TestCore(unittest.TestCase):
             s = ""
 
 
-    def test_SpectralLibrary(self):
 
+    def test_SpectralLibrary(self):
 
         self.assertListEqual(vsiSpeclibs(), [])
         self.assertTrue(len(SpectralLibrary.instances()) == 0)
@@ -1250,7 +1368,7 @@ class TestCore(unittest.TestCase):
         SLIB.startEditing()
         SLIB.addProfiles([sp1, sp2])
         SLIB.commitChanges()
-        self.assertEqual(len(SLIB),2)
+        self.assertEqual(len(SLIB), 2)
 
         # test subsetting
         p = SLIB[0]
@@ -1368,7 +1486,7 @@ class TestCore(unittest.TestCase):
     def test_mergeSpeclibs(self):
         sp1 = self.createSpeclib()
 
-        sp2 = SpectralLibrary.readFrom(speclibpath)
+        sp2 = SpectralLibrary.readFrom(speclibpath, progressDialog=self.progressDialog)
 
         self.assertIsInstance(sp1, SpectralLibrary)
         self.assertIsInstance(sp2, SpectralLibrary)
@@ -1501,7 +1619,7 @@ class TestCore(unittest.TestCase):
             pps_min = 1000 #minium number of profiles per second
 
             t0 = time.time()
-            sl = SpectralLibrary.readFrom(r)
+            sl = SpectralLibrary.readFrom(r, progressDialog=self.progressDialog)
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) > 1000)
 
@@ -1610,7 +1728,7 @@ class TestCore(unittest.TestCase):
         from qpstestdata import speclib
 
 
-        sl1 = SpectralLibrary.readFrom(speclib)
+        sl1 = SpectralLibrary.readFrom(speclib, progressDialog=self.progressDialog)
 
         sl2 = SpectralLibrary()
 
@@ -1741,6 +1859,17 @@ class TestCore(unittest.TestCase):
         if SHOW_GUI:
             QAPP.exec_()
 
+    def test_SpectralLibraryWidgetProgressDialog(self):
+
+        slib = createLargeSpeclib(3000)
+        sw = SpectralLibraryWidget()
+        sw.show()
+        QApplication.processEvents()
+        #sw.addSpeclib(slib)
+        #QApplication.processEvents()
+
+        if SHOW_GUI:
+            QAPP.exec_()
 
 
     def test_SpectralLibraryWidget(self):
@@ -1754,7 +1883,7 @@ class TestCore(unittest.TestCase):
         QgsProject.instance().addMapLayers([l1, l2, l3])
 
 
-        speclib = SpectralLibrary.readFrom(speclibpath)
+        speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=self.progressDialog)
         slw = SpectralLibraryWidget(speclib=speclib)
 
         QgsProject.instance().addMapLayer(slw.speclib())

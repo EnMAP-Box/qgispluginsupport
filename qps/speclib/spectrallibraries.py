@@ -3274,18 +3274,13 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         self.mDualView.setView(QgsDualView.AttributeTable)
         self.mDualView.setAttributeTableConfig(self.mSpeclib.attributeTableConfig())
         self.mDualView.showContextMenuExternally.connect(self.onShowContextMenuExternally)
+        self.mDualView.tableView().willShowContextMenu.connect(self.onWillShowContextMenu)
         from .plotting import SpectralLibraryPlotWidget
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mPlotWidget.setDualView(self.mDualView)
         self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)
 
-
-
-        self.mTableView = self.mDualView.tableView()
-        assert isinstance(self.mTableView, QgsAttributeTableView)
-        self.mTableView.willShowContextMenu.connect(self.onWillShowContextMenu)
-
-        # change selected row color: keep color also when attribtue table looses focus
+        # change selected row color: keep color also when the attribute table looses focus
 
         pal = self.mDualView.tableView().palette()
         cSelected = pal.color(QPalette.Active, QPalette.Highlight)
@@ -3321,6 +3316,8 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
     def onShowContextMenuExternally(self, menu:QgsActionMenu, fid):
         s = ""
+
+
 
     def onImportFromVectorSource(self):
 
@@ -3362,6 +3359,51 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         menu.addAction(self.actionCutSelectedRows)
         menu.addAction(self.actionCopySelectedRows)
         menu.addAction(self.actionPasteFeatures)
+
+        menu.addSeparator()
+
+        selectedFIDs = self.mDualView.tableView().selectedFeaturesIds()
+        n = len(selectedFIDs)
+        menuColors = menu.addMenu('Profile Colors')
+        wa = QWidgetAction(menuColors)
+
+        btnResetColors = QPushButton('Reset')
+
+        btnSetColor = QgsColorButton()
+        lastColor = self.plotWidget().lastProfileColor()
+        if isinstance(lastColor, QColor):
+            btnSetColor.setColor(QColor(lastColor))
+        else:
+            btnSetColor.setColor(QColor('red'))
+        btnSetColor.colorChanged.connect(
+            lambda color, fids=selectedFIDs: self.plotWidget().setProfileColor(color, fids))
+
+        if n == 0:
+            btnResetColors.setText('Reset')
+            btnResetColors.clicked.connect(self.plotWidget().resetProfileColors)
+            btnResetColors.setToolTip('Resets all profile colors')
+            btnSetColor.setEnabled(False)
+            btnSetColor.setToolTip('Select profiles to specify their color'.format(n))
+        else:
+            btnResetColors.setText('Reset Selected')
+            btnResetColors.clicked.connect(lambda *args, fids=selectedFIDs: self.plotWidget().setProfileColor(None, fids))
+            btnResetColors.setToolTip('Resets the colors of {} selected profiles'.format(n))
+            btnSetColor.setEnabled(True)
+            btnSetColor.setToolTip('Sets the color of {} selected profiles'.format(n))
+
+
+
+
+        frame = QFrame()
+        l = QVBoxLayout()
+        l.addWidget(btnResetColors)
+        l.addWidget(btnSetColor)
+        frame.setLayout(l)
+        wa.setDefaultWidget(frame)
+        menuColors.addAction(wa)
+
+        self.mDualView.tableView().currentIndex()
+
 
     def clearSpectralLibrary(self):
         """
