@@ -39,7 +39,8 @@ from ..externals.pyqtgraph import PlotItem
 from ..externals import pyqtgraph as pg
 from ..models import Option, OptionListModel
 from .. utils import *
-from ..speclib import speclibSettings
+from ..speclib import speclibSettings, SpectralLibrarySettingsKey
+from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -60,12 +61,6 @@ SPECLIB_EPSG_CODE = 4326
 SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))
 
 SPECLIB_CLIPBOARD = weakref.WeakValueDictionary()
-
-COLOR_CURRENT_SPECTRA = QColor('green')
-COLOR_SELECTED_SPECTRA = QColor('yellow')
-COLOR_BACKGROUND = QColor('black')
-CURRENT_PROFILE_COLOR = QColor('green')
-DEFAULT_PROFILE_COLOR = QColor('white')
 
 DEBUG = False
 
@@ -1707,8 +1702,6 @@ class SpectralLibrary(QgsVectorLayer):
                 s = ""
         return None
 
-
-
     sigNameChanged = pyqtSignal(str)
 
     __refs__ = []
@@ -1791,8 +1784,9 @@ class SpectralLibrary(QgsVectorLayer):
         """
         Initializes the default QgsFeatureRenderer
         """
-        self.renderer().symbol().setColor(DEFAULT_PROFILE_COLOR)
-        s = ""
+        color = speclibSettings().value('DEFAULT_PROFILE_COLOR', QColor('green'))
+        self.renderer().symbol().setColor(color)
+
 
     def initTableConfig(self):
         """
@@ -2505,13 +2499,13 @@ class SpectralProfileMapTool(QgsMapToolEmitPoint):
         self.marker = QgsVertexMarker(self.mCanvas)
         self.rubberband = QgsRubberBand(self.mCanvas, QgsWkbTypes.PolygonGeometry)
 
-        color = QColor('red')
+        plotStyle = QColor('red')
 
         self.rubberband.setLineStyle(Qt.SolidLine)
-        self.rubberband.setColor(color)
+        self.rubberband.setColor(plotStyle)
         self.rubberband.setWidth(2)
 
-        self.marker.setColor(color)
+        self.marker.setColor(plotStyle)
         self.marker.setPenWidth(3)
         self.marker.setIconSize(5)
         self.marker.setIconType(QgsVertexMarker.ICON_CROSS)  # or ICON_CROSS, ICON_X
@@ -2521,9 +2515,9 @@ class SpectralProfileMapTool(QgsMapToolEmitPoint):
         self.marker.setCenter(geoPoint)
         #self.marker.show()
 
-    def setStyle(self, color=None, brushStyle=None, fillColor=None, lineStyle=None):
-        if color:
-            self.rubberband.setColor(color)
+    def setStyle(self, plotStyle=None, brushStyle=None, fillColor=None, lineStyle=None):
+        if plotStyle:
+            self.rubberband.setColor(plotStyle)
         if brushStyle:
             self.rubberband.setBrushStyle(brushStyle)
         if fillColor:
@@ -3216,10 +3210,6 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
          #empty.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         from ..speclib.plotting import SpectralLibraryPlotWidget
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
-        #self.mToolbar.insertWidget(self.actionReload, empty)
-
-        self.mColorCurrentSpectra = COLOR_SELECTED_SPECTRA
-        self.mColorSelectedSpectra = COLOR_SELECTED_SPECTRA
 
         self.m_plot_max = 500
 
@@ -3278,9 +3268,9 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         from .plotting import SpectralLibraryPlotWidget
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mPlotWidget.setDualView(self.mDualView)
-        self.mPlotWidget.backgroundBrush().setColor(COLOR_BACKGROUND)
 
-        # change selected row color: keep color also when the attribute table looses focus
+
+        # change selected row plotStyle: keep plotStyle also when the attribute table looses focus
 
         pal = self.mDualView.tableView().palette()
         cSelected = pal.color(QPalette.Active, QPalette.Highlight)
@@ -3364,43 +3354,37 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
         selectedFIDs = self.mDualView.tableView().selectedFeaturesIds()
         n = len(selectedFIDs)
-        menuColors = menu.addMenu('Profile Colors')
-        wa = QWidgetAction(menuColors)
+        menuProfileStyle = menu.addMenu('Profile Style')
+        wa = QWidgetAction(menuProfileStyle)
 
-        btnResetColors = QPushButton('Reset')
+        btnResetProfileStyles = QPushButton('Reset')
 
-        btnSetColor = QgsColorButton()
-        lastColor = self.plotWidget().lastProfileColor()
-        if isinstance(lastColor, QColor):
-            btnSetColor.setColor(QColor(lastColor))
-        else:
-            btnSetColor.setColor(QColor('red'))
-        btnSetColor.colorChanged.connect(
-            lambda color, fids=selectedFIDs: self.plotWidget().setProfileColor(color, fids))
-
+        plotStyle = self.plotWidget().colorScheme().ps
         if n == 0:
-            btnResetColors.setText('Reset')
-            btnResetColors.clicked.connect(self.plotWidget().resetProfileColors)
-            btnResetColors.setToolTip('Resets all profile colors')
-            btnSetColor.setEnabled(False)
-            btnSetColor.setToolTip('Select profiles to specify their color'.format(n))
+            btnResetProfileStyles.setText('Reset All')
+            btnResetProfileStyles.clicked.connect(self.plotWidget().resetProfileStyles)
+            btnResetProfileStyles.setToolTip('Resets all profile styles')
         else:
-            btnResetColors.setText('Reset Selected')
-            btnResetColors.clicked.connect(lambda *args, fids=selectedFIDs: self.plotWidget().setProfileColor(None, fids))
-            btnResetColors.setToolTip('Resets the colors of {} selected profiles'.format(n))
-            btnSetColor.setEnabled(True)
-            btnSetColor.setToolTip('Sets the color of {} selected profiles'.format(n))
+            from .plotting import SpectralProfilePlotDataItem
+            for fid in selectedFIDs:
+                spi = self.plotWidget().spectralProfilePlotDataItem(fid)
+                if isinstance(spi, SpectralProfilePlotDataItem):
+                    plotStyle = PlotStyle.fromPlotDataItem(spi)
 
+            btnResetProfileStyles.setText('Reset Selected')
+            btnResetProfileStyles.clicked.connect(lambda *args, fids=selectedFIDs: self.plotWidget().setProfileStyle(None, fids))
 
-
+        psw = PlotStyleWidget(plotStyle=plotStyle)
+        psw.sigPlotStyleChanged.connect(lambda style, fids=selectedFIDs : self.plotWidget().setProfileStyle(style, fids))
 
         frame = QFrame()
         l = QVBoxLayout()
-        l.addWidget(btnResetColors)
-        l.addWidget(btnSetColor)
+        l.addWidget(btnResetProfileStyles)
+        l.addWidget(psw)
+
         frame.setLayout(l)
         wa.setDefaultWidget(frame)
-        menuColors.addAction(wa)
+        menuProfileStyle.addAction(wa)
 
         self.mDualView.tableView().currentIndex()
 
@@ -3848,9 +3832,9 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             sl = self.speclib()
 
 
-            #progressDialog = QProgressDialog(self)
-            #progressDialog.setWindowTitle('Add Spectral Library')
-            #progressDialog.show()
+            progressDialog = QProgressDialog(self)
+            progressDialog.setWindowTitle('Add Spectral Library')
+            progressDialog.show()
 
             info = 'Add {} profiles...'.format(len(speclib))
 
@@ -3859,7 +3843,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             try:
                 sl.startEditing()
                 sl.beginEditCommand(info)
-                sl.addSpeclib(speclib, progressDialog=None)
+                sl.addSpeclib(speclib, progressDialog=progressDialog)
                 sl.endEditCommand()
                 if not wasEditable:
                     sl.commitChanges()
@@ -3867,9 +3851,9 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
                 print(ex, file=sys.stderr)
                 pass
 
-            #progressDialog.hide()
-            #progressDialog.close()
-            #QApplication.processEvents()
+            progressDialog.hide()
+            progressDialog.close()
+            QApplication.processEvents()
 
 
     def addCurrentSpectraToSpeclib(self, *args):
