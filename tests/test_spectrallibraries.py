@@ -40,6 +40,7 @@ from qps.speclib.envi import *
 from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
+
 SHOW_GUI = True and os.environ.get('CI') is None
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'SPECLIB_TEST_DIR')
@@ -126,9 +127,7 @@ class TestPlotting(unittest.TestCase):
 
     def tearDown(self) -> None:
         #self.progressDialog.close()
-        if SHOW_GUI:
-            QAPP.exec_()
-
+        pass
 
 
     def test_PyQtGraphPlot(self):
@@ -144,19 +143,21 @@ class TestPlotting(unittest.TestCase):
 
     def test_SpectralLibraryPlotWidgetSimple(self):
 
-
         speclib = createLargeSpeclib(15)
         w = SpectralLibraryPlotWidget()
         w.show()
         w.setSpeclib(speclib)
-        QAPP.exec_()
+
+        if SHOW_GUI:
+            QAPP.exec_()
+
 
     def test_SpectralLibraryWidgetThousands(self):
 
         import qpstestdata
 
         pathSL = os.path.join(os.path.dirname(qpstestdata.__file__), 'roberts2017_urban.sli')
-        if False and os.path.exists(pathSL):
+        if True and os.path.exists(pathSL):
             t0 = datetime.datetime.now()
             speclib = SpectralLibrary.readFrom(pathSL)
 
@@ -172,7 +173,47 @@ class TestPlotting(unittest.TestCase):
         dt = datetime.datetime.now() - t0
         print('Adding speclib required : {}'.format(dt))
 
-        QAPP.exec_()
+        if SHOW_GUI:
+            QAPP.exec_()
+
+
+
+
+
+    def test_SpectralLibraryPlotColorScheme(self):
+
+        self.assertIsInstance(SpectralLibraryPlotColorScheme.default(), SpectralLibraryPlotColorScheme)
+        self.assertIsInstance(SpectralLibraryPlotColorScheme.dark(), SpectralLibraryPlotColorScheme)
+        self.assertIsInstance(SpectralLibraryPlotColorScheme.bright(), SpectralLibraryPlotColorScheme)
+        self.assertIsInstance(SpectralLibraryPlotColorScheme.fromUserSettings(), SpectralLibraryPlotColorScheme)
+
+        b = SpectralLibraryPlotColorScheme.bright()
+        b.saveToUserSettings()
+        self.assertEqual(b, SpectralLibraryPlotColorScheme.fromUserSettings())
+        d = SpectralLibraryPlotColorScheme.default()
+        d.saveToUserSettings()
+        self.assertEqual(d, SpectralLibraryPlotColorScheme.fromUserSettings())
+
+    def test_SpectralLibraryPlotColorSchemeWidget(self):
+
+        w = SpectralLibraryPlotColorSchemeWidget()
+        w.show()
+
+        if SHOW_GUI:
+            QAPP.exec_()
+
+    def test_SpectraLibraryPlotDataItem(self):
+
+        sl = createSpeclib()
+        profile = sl[0]
+        sp = SpectralProfilePlotDataItem(profile)
+
+        plotStyle = defaultCurvePlotStyle()
+        plotStyle.apply(sp)
+
+        ps2 = PlotStyle.fromPlotDataItem(sp)
+
+        self.assertEqual(plotStyle, ps2)
 
 
     def test_SpectralLibraryPlotWidget(self):
@@ -214,10 +255,12 @@ class TestPlotting(unittest.TestCase):
         self.assertIsInstance(plotItem, pg.PlotItem)
         self.assertTrue(len(plotItem.dataItems) == 0)
         pw.setSpeclib(speclib)
-        self.assertTrue(len(plotItem.dataItems) == len(speclib))
+        pw.updateSpectralProfilePlotItems()
+        n = len([sp for sp in plotItem.dataItems if isinstance(sp, SpectralProfilePlotDataItem)])
+        self.assertTrue(n == len(speclib))
 
 
-        if True:
+        if False:
 
             ids = [1, 2, 3, 4, 5]
             speclib.selectByIds(ids)
@@ -250,10 +293,9 @@ class TestPlotting(unittest.TestCase):
             self.assertTrue(len(pdis) == n+1)
 
         pw.setXUnit('nm')
-
+        w.show()
 
         if SHOW_GUI:
-            w.show()
             QAPP.exec_()
 
 
