@@ -2,7 +2,7 @@
 # use this script to run unit tests locally
 #
 python runfirst.py
-
+mkdir test-reports
 mkdir test-reports/today
 python -m nose2 -s tests test_classificationscheme ; mv nose2-junit.xml test-reports/today/test_classificationscheme.xml
 python -m nose2 -s tests test_crosshair ; mv nose2-junit.xml test-reports/today/test_crosshair.xml
