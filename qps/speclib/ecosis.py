@@ -55,14 +55,16 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         """
         if not isinstance(path, str) and os.path.isfile(path):
             return False
-
-        with open(path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = f.readline().strip()
-                if len(line) > 0:
-                    # mostt-right header name must be a number
-                    lastColumn = re.split(r'[\t;,]', line)[-1]
-                    return re.search(r'^\d+(\.\d+)?$', lastColumn) is not None
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = f.readline().strip()
+                    if len(line) > 0:
+                        # most-right header name must be a number
+                        lastColumn = [c for c in re.split(r'[\t\n;,]', line) if c != ''][-1]
+                        return re.search(r'^\d+(\.\d+)?$', lastColumn) is not None
+        except Exception as ex:
+            print(ex, file=sys.stderr)
 
         return False
 
@@ -83,20 +85,23 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
 
             reader = pycsv.DictReader(f, dialect=dialect)
             fieldnames = reader.fieldnames
+
             if fieldnames[0].startswith('\ufeff'):
                 s = ""
-
+            fieldnames = [n for n in fieldnames if len(n) > 0]
 
 
             xUnit = yUnit = None
             xValueNames = []
             for fieldName in reversed(fieldnames):
-                if re.search(r'(\d+(\.\d+)?)', fieldName):
+                if re.search(r'^\d+(\.\d+)?$', fieldName):
                     xValueNames.insert(0, fieldName)
                 else:
                     break
             s = ""
             xValues = [float(n) for n in xValueNames]
+            if len(xValues) == 0:
+                s = ""
             if xValues[0] > 200:
                 xUnit = 'nm'
 
@@ -135,6 +140,8 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
 
                 if FIELD_NAME not in fieldnames:
                     profile.setName('{}:{}'.format(bn, i+1))
+                else:
+                    profile.setName(row[FIELD_NAME])
                 profiles.append(profile)
 
             speclib.addProfiles(profiles)
