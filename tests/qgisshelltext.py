@@ -4,7 +4,8 @@ from enmapboxtestdata import library
 from qps.speclib.spectrallibraries import SpectralLibraryWidget, SpectralLibrary
 w1 = SpectralLibraryWidget()
 w1.show()
-w1.importSpeclib(library)
+w1.addSpeclib(library)
+
 w2 = SpectralLibraryWidget()
 w2.show()
 
