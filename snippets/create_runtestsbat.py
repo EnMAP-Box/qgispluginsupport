@@ -27,6 +27,8 @@ python runfirst.py
 dirOut = 'test-reports/today'
 linesBat = [PREFACE_BAT]
 linesSh = [PREFACE_SH]
+linesSh.append('mkdir {}'.format(os.path.dirname(dirOut)))
+linesBat.append('mkdir {}'.format(os.path.dirname(dirOut)))
 linesBat.append('mkdir {}'.format(dirOut.replace('/', '\\')))
 linesSh.append('mkdir {}'.format(dirOut))
 
