@@ -1984,7 +1984,7 @@ class SpectralLibrary(QgsVectorLayer):
             if not self.addFeatures(profileBuffer):
                 self.raiseError()
             nAdded += len(profileBuffer)
-            print('added {}'.format(len(profileBuffer)))
+            #print('added {}'.format(len(profileBuffer)))
             profileBuffer.clear()
 
             if isinstance(progressDialog, QProgressDialog):
@@ -3423,6 +3423,8 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             btnResetProfileStyles.clicked.connect(lambda *args, fids=selectedFIDs: self.plotWidget().setProfileStyle(None, fids))
 
         psw = PlotStyleWidget(plotStyle=plotStyle)
+        psw.setPreviewVisible(False)
+        psw.cbIsVisible.setVisible(False)
         psw.sigPlotStyleChanged.connect(lambda style, fids=selectedFIDs : self.plotWidget().setProfileStyle(style, fids))
 
         frame = QFrame()
