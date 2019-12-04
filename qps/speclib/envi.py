@@ -215,29 +215,40 @@ def readCSVMetadata(pathESL):
     QGSFIELD_PYTHON_TYPES = []
     QGSFIELDS = QgsFields()
     for i, fieldName in enumerate(fieldNames):
-        for row in METADATA_LINES:
-            if row[i] in ['', None, 'NA']:
-                continue
+        refValue = None
+        for lineValues in METADATA_LINES:
 
-            fieldType = findTypeFromString(row[i])
+            if lineValues[i] not in ['', None, 'NA']:
+                refValue = lineValues[i]
+                break
+        if refValue is None:
+            refValue = ''
+        fieldType = findTypeFromString(refValue)
 
-            if fieldType is str:
-                a, b = QVariant.String, 'varchar'
-            elif fieldType is float:
-                a, b = QVariant.Double, 'double'
-            elif fieldType is int:
-                a, b = QVariant.Int, 'int'
-            else:
-                raise NotImplementedError()
-            QGSFIELD_PYTHON_TYPES.append(fieldType)
-            QGSFIELDS.append(QgsField(fieldName, a, b))
-            break
+        if fieldType is str:
+            a, b = QVariant.String, 'varchar'
+        elif fieldType is float:
+            a, b = QVariant.Double, 'double'
+        elif fieldType is int:
+            a, b = QVariant.Int, 'int'
+        else:
+            raise NotImplementedError()
+
+        QGSFIELD_PYTHON_TYPES.append(fieldType)
+        QGSFIELDS.append(QgsField(fieldName, a, b))
+
 
     # convert metadata string values to basic python type
     def typeOrNone(value:str, t:type):
         return value if value is None else t(value)
 
-    METADATA_LINES = [tuple(typeOrNone(v, QGSFIELD_PYTHON_TYPES[i]) for i, v in enumerate(line)) for line in METADATA_LINES]
+
+    for i in range(len(METADATA_LINES)):
+        line = METADATA_LINES[i]
+        lineTuple = tuple(typeOrNone(cellValue, cellType) for cellValue, cellType in zip(line, QGSFIELD_PYTHON_TYPES))
+        METADATA_LINES[i] = lineTuple
+
+    #METADATA_LINES = [tuple(typeOrNone(v, QGSFIELD_PYTHON_TYPES[i]) for i, v in enumerate(line)) for line in METADATA_LINES]
 
     return (METADATA_LINES, QGSFIELDS)
 
@@ -426,24 +437,21 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         assert SLIB.startEditing()
         SLIB.addMissingFields(speclibFields)
 
-        sliceCSV = []
-        sliceAttr = []
-        for slibField in SLIB.fields():
-            fieldName = slibField.name()
+        if CSV_METADATA is not None:
+            sliceCSV = []
+            sliceAttr = []
+            for slibField in SLIB.fields():
+                fieldName = slibField.name()
 
-            iSLIB = SLIB.fields().lookupField(fieldName)
-            iCSV = CSV_FIELDS.lookupField(fieldName)
+                iSLIB = SLIB.fields().lookupField(fieldName)
+                iCSV = CSV_FIELDS.lookupField(fieldName)
 
-            if iCSV >= 0:
-                sliceCSV.append(iCSV)
-                sliceAttr.append(iSLIB)
+                if iCSV >= 0:
+                    sliceCSV.append(iCSV)
+                    sliceAttr.append(iSLIB)
 
-        iCSVGeometry = CSV_FIELDS.lookupField(CSV_GEOMETRY_COLUMN)
+            iCSVGeometry = CSV_FIELDS.lookupField(CSV_GEOMETRY_COLUMN)
 
-
-
-
-        s =""
         profiles = []
         import datetime
         t0 = datetime.datetime.now()
@@ -453,30 +461,31 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
 
             valueDict = {'x': xValues, 'y': data[i, :].tolist(), 'xUnit': xUnit, 'yUnit': yUnit, 'bbl': bbl}
 
-            j = PROFILE2CSVLine.get(i)
-            if j:
-                csvLine = CSV_DATA[j]
-                attr = f.attributes()
-                for iCSV, iAttr in zip(sliceCSV, sliceAttr):
-                    attr[iAttr] = csvLine[iCSV]
-                f.setAttributes(attr)
+            if CSV_METADATA is not None:
+                j = PROFILE2CSVLine.get(i)
+                if j:
+                    csvLine = CSV_DATA[j]
+                    attr = f.attributes()
+                    for iCSV, iAttr in zip(sliceCSV, sliceAttr):
+                        attr[iAttr] = csvLine[iCSV]
+                    f.setAttributes(attr)
 
-                if iCSVGeometry > 0:
-                    wkt = csvLine[iCSVGeometry]
-                    if isinstance(wkt, str):
-                        g = QgsGeometry.fromWkt(wkt)
-                        if g.wkbType() == QgsWkbTypes.Point:
-                            f.setGeometry(g)
+                    if iCSVGeometry > 0:
+                        wkt = csvLine[iCSVGeometry]
+                        if isinstance(wkt, str):
+                            g = QgsGeometry.fromWkt(wkt)
+                            if g.wkbType() == QgsWkbTypes.Point:
+                                f.setGeometry(g)
 
             f.setAttribute(FIELD_VALUES, encodeProfileValueDict(valueDict))
             f.setAttribute(FIELD_NAME, spectraNames[i])
 
             profiles.append(f)
 
-        print('Creation: {}'.format(datetime.datetime.now() - t0))
+        #print('Creation: {}'.format(datetime.datetime.now() - t0))
         t0 = datetime.datetime.now()
         SLIB.addFeatures(profiles)
-        print('Adding: {}'.format(datetime.datetime.now() - t0))
+        #print('Adding: {}'.format(datetime.datetime.now() - t0))
 
         assert SLIB.commitChanges()
         assert SLIB.featureCount() == nSpectra
