@@ -1967,7 +1967,7 @@ class SpectralLibrary(QgsVectorLayer):
         assert self.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(self.name())
 
         if isinstance(progressDialog, QProgressDialog):
-            progressDialog.setLabelText('Add {} profile'.format(len(profiles)))
+            progressDialog.setLabelText('Add {} profiles'.format(len(profiles)))
             progressDialog.setValue(0)
             progressDialog.setRange(0, len(profiles))
 
@@ -3298,7 +3298,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         from .plotting import SpectralLibraryPlotWidget
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mPlotWidget.setDualView(self.mDualView)
-
+        self.mPlotWidget.mUpdateTimer.timeout.connect(self.updateStatusBar)
 
         # change selected row plotStyle: keep plotStyle also when the attribute table looses focus
 
@@ -3341,6 +3341,16 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         :rtype:
         """
         self.plotWidget().onPlotUpdateTimeOut()
+
+    def updateStatusBar(self):
+
+        assert isinstance(self.mStatusBar, QStatusBar)
+        slib = self.speclib()
+        nFeatures = slib.featureCount()
+        nSelected = slib.selectedFeatureCount()
+        nVisible = self.plotWidget().plottedProfileCount()
+        msg = "{}/{}/{}".format(nFeatures, nSelected, nVisible)
+        self.mStatusBar.showMessage(msg)
 
     def onShowContextMenuExternally(self, menu:QgsActionMenu, fid):
         s = ""
@@ -3684,7 +3694,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
     def onReloadProfiles(self):
 
         cnt = self.speclib().selectedFeatureCount()
-        if  cnt > 0 and self.speclib().isEditable():
+        if cnt > 0 and self.speclib().isEditable():
             # ask for profile source raster
             from ..utils import SelectMapLayersDialog
 
@@ -3864,7 +3874,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
 
             progressDialog = QProgressDialog(self)
-            progressDialog.setWindowTitle('Add Spectral Library')
+            progressDialog.setWindowTitle('Add Profiles')
             progressDialog.show()
 
             info = 'Add {} profiles...'.format(len(speclib))

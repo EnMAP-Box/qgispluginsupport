@@ -585,7 +585,7 @@ class SpectralViewBox(pg.ViewBox):
     """
     sigXUnitChanged = pyqtSignal(str)
     sigColorSchemeChanged = pyqtSignal(SpectralLibraryPlotColorScheme)
-
+    sigMaxNumberOfProfilesChanged = pyqtSignal(int)
 
     def __init__(self, parent=None):
         """
@@ -602,11 +602,28 @@ class SpectralViewBox(pg.ViewBox):
 
         self.cbXAxisUnits = QComboBox(parent)
 
-        self.wColorScheme = SpectralLibraryPlotColorSchemeWidget(parent)
-        self.wColorScheme.sigColorSchemeChanged.connect(self.sigColorSchemeChanged.emit)
 
+        # profile settings
+        menuProfiles = self.menu.addMenu('Profiles')
+        l = QGridLayout()
+        self.sbMaxProfiles = QSpinBox(parent)
+        self.sbMaxProfiles.setToolTip('Maximum number of profiles to plot.')
+        self.sbMaxProfiles.setRange(0, 256)
+        self.sbMaxProfiles.setValue(64)
+        self.sbMaxProfiles.valueChanged[int].connect(self.sigMaxNumberOfProfilesChanged)
+        l.addWidget(QLabel('Max.'), 0, 0)
+        l.addWidget(self.sbMaxProfiles, 0, 1)
+        frame = QFrame()
+        frame.setLayout(l)
+        wa = QWidgetAction(menuProfiles)
+        wa.setDefaultWidget(frame)
+        menuProfiles.addAction(wa)
+
+        # color settings
         menuColors = self.menu.addMenu('Colors')
         wa = QWidgetAction(menuColors)
+        self.wColorScheme = SpectralLibraryPlotColorSchemeWidget(parent)
+        self.wColorScheme.sigColorSchemeChanged.connect(self.sigColorSchemeChanged.emit)
         wa.setDefaultWidget(self.wColorScheme)
         menuColors.addAction(wa)
 
@@ -736,15 +753,18 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def __init__(self, parent=None):
         super(SpectralLibraryPlotWidget, self).__init__(parent)
 
+        self.mMaxProfiles = 64
+
         self.mViewBox = SpectralViewBox()
         plotItem = SpectralLibraryPlotItem(
             axisItems={'bottom': SpectralXAxis(orientation='bottom')}
             , viewBox=self.mViewBox
         )
+        self.mViewBox.sbMaxProfiles.setValue(self.mMaxProfiles)
         self.mViewBox.sigColorSchemeChanged.connect(self.setColorScheme)
-
+        self.mViewBox.sigMaxNumberOfProfilesChanged.connect(self.setMaxProfiles)
         self.mDualView = None
-        self.mMaxProfiles = 64
+
         self.centralWidget.setParent(None)
         self.centralWidget = None
         self.setCentralWidget(plotItem)
@@ -1082,7 +1102,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :type n: int
         """
         assert n > 0
+
         self.mMaxProfiles = n
+        self.mViewBox.sbMaxProfiles.setValue(self.mMaxProfiles)
 
     def setSpeclib(self, speclib: SpectralLibrary):
         """
@@ -1443,12 +1465,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def xLabel(self) -> str:
         return self.getPlotItem().getAxis('bottom').label
 
-    def speclib(self) -> SpectralLibrary:
+    def plottedProfileCount(self)->int:
         """
-        :return: SpectralLibrary
+        Returns the number of plotted profiles
+        :return: int
+        :rtype: int
         """
-        return self.mSpeclib
-
+        return len(self.allSpectralProfilePlotDataItems())
 
     def plottedProfileIDs(self)->typing.List[int]:
         """
@@ -1458,10 +1481,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
     def profileIDsToVisualize(self)->typing.List[int]:
         """
-        Returns a list of profile/feature ids to visualize.
-        The maximum number is determined by the
+        Returns the list of profile/feature ids to be visualized.
+        The maximum number is determined by self.mMaxProfiles
+        Order of returned fids is equal to its importance. 1st postion = most important
         """
-
         nMax = len(self.speclib())
 
         allIDs = self.speclib().allFeatureIds()
@@ -1494,29 +1517,20 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             priority2 = self.speclib().selectedFeatureIds()
             priority3 = self.speclib().allFeatureIds()
 
-        featurePool = priority3
+        #featurePool = priority3
         featurePool = priority1+priority2
         toVisualize = sorted(featurePool, key=lambda fid : (fid not in priority1, fid not in priority2, fid))
 
         if len(toVisualize) >= self.mMaxProfiles:
             return sorted(toVisualize[0:self.mMaxProfiles])
         else:
+            toVisualize = sorted(toVisualize)
+            nMissing = min(self.mMaxProfiles - len(toVisualize), len(priority3))
+            if nMissing > 0:
+                toVisualize += sorted(priority3[0:nMissing])
             return toVisualize
 
 
-        # 2. show profiles that are already shown
-
-        toVisualize += [id for id in vis if id not in toVisualize]
-        if len(toVisualize) >= self.mMaxProfiles:
-            return sorted(toVisualize[0:self.mMaxProfiles])
-
-        # 3. show other profiles
-        others = [id for id in allIDs if id not in toVisualize]
-        nMissing = self.mMaxProfiles - len(toVisualize)
-        step = int(len(others) / nMissing)
-        others = others[::step]
-
-        return sorted(toVisualize + others)
 
     def dragEnterEvent(self, event):
         assert isinstance(event, QDragEnterEvent)
