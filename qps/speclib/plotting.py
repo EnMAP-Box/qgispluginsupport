@@ -469,6 +469,25 @@ class SpectralProfilePlotDataItem(PlotDataItem):
             self.setLineWidth(self.mDefaultStyle.lineWidth())
             self.setZValue(1)
 
+    def setPlotStyle(self, plotStyle:PlotStyle, updateItem=True):
+        """
+        Applies a PlotStyle to this SpectralProfilePlotDataItem
+        :param plotStyle:
+        :type plotStyle:
+        :param updateItem: set True (default) to apply changes immediately.
+        :type updateItem: bool
+        """
+        assert isinstance(plotStyle, PlotStyle)
+        plotStyle.apply(self, updateItem=updateItem)
+
+    def plotStyle(self)->PlotStyle:
+        """
+        Returns the SpectralProfilePlotDataItems' PlotStyle
+        :return: PlotStyle
+        :rtype: PlotStyle
+        """
+        return PlotStyle.fromPlotDataItem(self)
+
     def setColor(self, color: QColor):
         """
         Sets the profile plotStyle

@@ -6,7 +6,7 @@ from qgis.PyQt.QtWidgets import *
 from qgis.core import *
 
 
-from .spectrallibraries import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField
+from .spectrallibraries import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, OGR_EXTENSION2DRIVER
 
 class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     """
@@ -82,10 +82,16 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         assert isinstance(speclib, SpectralLibrary)
         basePath, ext = os.path.splitext(path)
 
+
+
         if not isinstance(options, QgsVectorFileWriter.SaveVectorOptions):
+            driverName = OGR_EXTENSION2DRIVER.get(ext, 'GPKG')
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.fileEncoding = 'utf-8'
-            options.driverName = 'GPKG'
+            options.driverName = driverName
+
+            if driverName == 'GPKG' and not ext == '.gpkg':
+                path += '.gpkg'
 
         if options.layerName in [None, '']:
             options.layerName = speclib.name()
@@ -93,7 +99,9 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         errors = QgsVectorFileWriter.writeAsVectorFormat(layer=speclib,
                                                          fileName=path,
                                                          options=options)
-        writtenFiles = [path]
+        writtenFiles = []
+        if os.path.exists(path):
+            writtenFiles.append(path)
         return writtenFiles
 
     @staticmethod
