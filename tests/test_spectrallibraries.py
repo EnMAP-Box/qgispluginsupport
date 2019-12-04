@@ -1963,7 +1963,6 @@ class TestCore(unittest.TestCase):
 
     def test_SpectralLibraryWidget(self):
 
-        # speclib = self.createSpeclib()
         from qpstestdata import enmap, landcover, enmap_pixel
 
         l1 = QgsRasterLayer(enmap, 'EnMAP')
