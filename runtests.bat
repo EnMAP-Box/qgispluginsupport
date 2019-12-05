@@ -4,6 +4,7 @@
 set CI=True
 python runfirst.py
 
+mkdir test-reports
 mkdir test-reports\today
 python -m nose2 -s tests test_classificationscheme & move nose2-junit.xml test-reports/today/test_classificationscheme.xml
 python -m nose2 -s tests test_crosshair & move nose2-junit.xml test-reports/today/test_crosshair.xml
