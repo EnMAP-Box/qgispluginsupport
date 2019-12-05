@@ -14,7 +14,7 @@ pipelines:
           - docker
           - pip
         script: # Modify the commands below to build your repository.
-          - python -m pip install -r requirements.txt
+          - python3 -m pip install -r requirements.txt
           # - Xvfb :1
           # - xvfb-run
           # - startx
@@ -49,6 +49,6 @@ pipelines:
           #- python -m runfirst
           #- python -m nose2 --verbose > test-results/reports_all_tests.txt
           #- set +e
-          - python runfirst.py
+          - python3 runfirst.py
           - /bin/bash runtests.sh
           #- set -e
