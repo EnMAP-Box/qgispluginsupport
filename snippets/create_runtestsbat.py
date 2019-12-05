@@ -14,14 +14,14 @@ PREFACE_BAT = \
 :: use this script to run unit tests locally
 ::
 set CI=True
-python runfirst.py
+python3 runfirst.py
 """
 
 PREFACE_SH = \
 """
 # use this script to run unit tests locally
 #
-python runfirst.py
+python3 runfirst.py
 """
 
 dirOut = 'test-reports/today'

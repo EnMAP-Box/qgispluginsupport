@@ -1,7 +1,7 @@
 
 # use this script to run unit tests locally
 #
-python runfirst.py
+python3 runfirst.py
 
 mkdir test-reports
 mkdir test-reports/today
