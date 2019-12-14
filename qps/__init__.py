@@ -1,5 +1,6 @@
 import sys, importlib, site, os
 from qgis.core import QgsApplication
+from qgis.gui import QgisInterface
 
 
 def initResources():
@@ -64,8 +65,18 @@ def registerEditorWidgets():
         print(ex, file=sys.stderr)
 
 
+_mapLayerConfigFactories = []
+def registerLayerConfigWidgetFactories():
+    import qgis.utils
+    if isinstance(qgis.utils.iface, QgisInterface):
+        from .renderer.flagrasterrenderer import FlagRasterRendererConfigWidgetFactory
+        factory = FlagRasterRendererConfigWidgetFactory()
+        _mapLayerConfigFactories.append(factory)
+        qgis.utils.iface.registerMapLayerConfigWidgetFactory(factory)
+
 
 def initAll():
 
     initResources()
     registerEditorWidgets()
+    registerLayerConfigWidgetFactories()
