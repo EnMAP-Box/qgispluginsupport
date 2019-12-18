@@ -1,7 +1,7 @@
 import sys, importlib, site, os
 from qgis.core import QgsApplication
 from qgis.gui import QgisInterface
-__version__ = '0.1'
+__version__ = '0.2'
 
 def initResources():
     """
