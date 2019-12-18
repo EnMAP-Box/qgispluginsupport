@@ -1,0 +1,17 @@
+
+"""
+To test in QGIS
+
+pQPS = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\qgispluginsupport'
+pLyr = r'J:\diss_bj\level2\s-america\X0048_Y0025\20140826_LEVEL2_LND07_QAI.tif'
+iface.addRasterLayer(pLyr)
+import sys, importlib
+sys.path.append(pQPS)
+import qps
+qps.initAll()
+
+
+
+importlib.reload(qps)
+
+"""

@@ -6,12 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>225</width>
+    <width>242</width>
     <height>301</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../qpsresources.qrc">
+    <normaloff>:/qps/ui/icons/raster_flagimage.svg</normaloff>:/qps/ui/icons/raster_flagimage.svg</iconset>
   </property>
   <layout class="QGridLayout" name="gridLayout" columnstretch="0,2,1">
    <property name="leftMargin">
@@ -29,24 +33,10 @@
    <property name="spacing">
     <number>2</number>
    </property>
-   <item row="0" column="1">
-    <widget class="QgsRasterBandComboBox" name="mRasterBandComboBox">
-     <property name="editable">
-      <bool>false</bool>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
       <string>Band</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="2">
-    <widget class="QLabel" name="labelBandInfo">
-     <property name="text">
-      <string/>
      </property>
     </widget>
    </item>
@@ -87,6 +77,10 @@
           <property name="text">
            <string>-</string>
           </property>
+          <property name="icon">
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
+          </property>
           <property name="autoRaise">
            <bool>true</bool>
           </property>
@@ -97,28 +91,12 @@
           <property name="text">
            <string>+</string>
           </property>
+          <property name="icon">
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
+          </property>
           <property name="autoRaise">
            <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QSpinBox" name="sbBitCount">
-          <property name="frame">
-           <bool>false</bool>
-          </property>
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <number>8</number>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="labelBits">
-          <property name="text">
-           <string>Bits</string>
           </property>
          </widget>
         </item>
@@ -206,6 +184,13 @@ QTreeView::branch:open:has-children:has-siblings  {
      </property>
     </spacer>
    </item>
+   <item row="0" column="1" colspan="2">
+    <widget class="QgsRasterBandComboBox" name="mRasterBandComboBox">
+     <property name="editable">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
   </layout>
   <action name="actionAddParameter">
    <property name="icon">
@@ -247,6 +232,7 @@ QTreeView::branch:open:has-children:has-siblings  {
  </customwidgets>
  <resources>
   <include location="../../../../QGIS/images/images.qrc"/>
+  <include location="../qpsresources.qrc"/>
  </resources>
  <connections/>
 </ui>

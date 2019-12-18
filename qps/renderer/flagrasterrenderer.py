@@ -4,10 +4,11 @@ from qgis.gui import *
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import *
-from qps.utils import loadUI, loadUIFormClass, nextColor
+from qgis.PyQt.QtXml import *
+from qps.utils import loadUIFormClass
 from osgeo import gdal
 import numpy as np
-pathFlagRasterRendererUI = os.path.join(os.path.dirname(__file__), 'flagrasterrenderer.ui')
+pathFlagRasterRendererUI = os.path.join(os.path.dirname(__file__), 'bitflagrenderer.ui')
 
 TYPE = 'FlagRasterRenderer'
 
@@ -22,6 +23,37 @@ QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.byte,
                          Qgis.CFloat64: np.complex64,
                          Qgis.ARGB32: np.uint32,
                          Qgis.ARGB32_Premultiplied: np.uint32}
+
+MAX_BITS_PER_PARAMETER = 4
+
+NEXT_COLOR_HUE_DELTA_CON = 10
+NEXT_COLOR_HUE_DELTA_CAT = 100
+
+def nextColor(color, mode='cat')->QColor:
+    """
+    Returns another color.
+    :param color: QColor
+    :param mode: str, 'cat' for categorical colors (much difference from 'color')
+                      'con' for continuous colors (similar to 'color')
+    :return: QColor
+    """
+    assert mode in ['cat', 'con']
+    assert isinstance(color, QColor)
+    hue, sat, value, alpha = color.getHsl()
+    if mode == 'cat':
+        hue += NEXT_COLOR_HUE_DELTA_CAT
+    elif mode == 'con':
+        hue += NEXT_COLOR_HUE_DELTA_CON
+    if sat == 0:
+        sat = 255
+        value = 128
+        alpha = 255
+        s = ""
+    while hue > 360:
+        hue -= 360
+
+    return QColor.fromHsl(hue, sat, value, alpha)
+
 
 def contrastColor(c:QColor)->QColor:
     """
@@ -65,7 +97,7 @@ class FlagState(object):
         return 0
 
     def bitCombination(self, nbits=1)->str:
-        f = '{:'+str(nbits)+'b}'
+        f = '{:0'+str(nbits)+'b}'
         return f.format(self.mNumber)
 
     def bitNumber(self)->str:
@@ -132,6 +164,9 @@ class FlagParameter(object):
         self.mBitSize = bitCount
         self.mFlagStates = list()
 
+        self.mIsExpanded : bool
+        self.mIsExpanded = True
+
         color0 = QColor('black')
         for i in range(firstBit + 1):
             color0 = nextColor(color0, 'cat')
@@ -141,6 +176,19 @@ class FlagParameter(object):
             color = nextColor(color, 'con')
             state = FlagState(self.mStartBit, i, name, color=color)
             self.mFlagStates.append(state)
+
+    def __eq__(self, other):
+        if not isinstance(other, FlagParameter):
+            return None
+        if not len(other) == len(self) and self.name() == other.name() and self.mStartBit == other.mStartBit and self.mBitSize == other.mBitSize:
+            return False
+        for s1, s2 in zip(self.mFlagStates, other.mFlagStates):
+            if not s1 == s2:
+                return False
+
+        return True
+
+
 
     def __contains__(self, item):
         return item in self.mFlagStates
@@ -167,21 +215,27 @@ class FlagParameter(object):
         assert isinstance(other, FlagParameter)
         return self.mStartBit < other.mStartBit
 
+    def __repr__(self)->str:
+        info = '{}:{}bits:"{}"'.format(self.mStartBit, self.mBitSize, self.mName)
+        return info
+
     def setBitSize(self, bitSize:int):
         assert isinstance(bitSize, int) and bitSize >= 1
         nStates0 = 2 ** self.mBitSize
         nStates2 = 2 ** bitSize
         n = len(self.mFlagStates)
+        self.mBitSize = bitSize
         diff = 2**bitSize - n
         if diff > 0:
             # add missing states
             for i in range(diff):
-                state = FlagState(self.mStartBit, n+1)
+                s = n + i
+                state = FlagState(self.mStartBit, s)
                 self.mFlagStates.append(state)
             # remove
         elif diff < 0:
-            remove = self.mFlagStates[n-diff:]
-            del self.mFlagStates[n-diff]
+            remove = self.mFlagStates[n + diff:]
+            del self.mFlagStates[n + diff:]
 
     def states(self)->typing.List[FlagState]:
         return self.mFlagStates
@@ -210,13 +264,14 @@ class FlagParameter(object):
 
 
 
+
 class FlagModel(QAbstractItemModel):
 
     def __init__(self, *args, **kwds):
         super(FlagModel, self).__init__(*args, **kwds)
         self.mFlagParameters = []
 
-        self.cnBit = 'Bit No.'
+        self.cnBitPosition = 'Bit No.'
         self.cnName = 'Name'
         self.cnBitComb = 'Bits'
         self.cnBitNum = 'Num'
@@ -225,7 +280,7 @@ class FlagModel(QAbstractItemModel):
         self.mRootIndex = QModelIndex()
 
     def columnNames(self):
-        return [self.cnBit, self.cnName, self.cnBitComb, self.cnBitNum, self.cnColor]
+        return [self.cnBitPosition, self.cnName, self.cnBitComb, self.cnBitNum, self.cnColor]
 
     def __contains__(self, item):
         return item in self.mFlagParameters
@@ -254,7 +309,7 @@ class FlagModel(QAbstractItemModel):
                 lines.append(line)
         return '\n'.join(lines)
 
-    def rowCount(self, parent: QModelIndex = ...) -> int:
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         if not parent.isValid():
             return len(self.mFlagParameters)
 
@@ -262,9 +317,8 @@ class FlagModel(QAbstractItemModel):
         assert isinstance(item, (FlagParameter, FlagState))
         return len(item)
 
-    def columnCount(self, parent: QModelIndex = ...) -> int:
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return len(self.columnNames())
-
 
     def addFlagParameter(self, flagParameter:FlagParameter):
         row = bisect.bisect(self.mFlagParameters, flagParameter)
@@ -278,15 +332,6 @@ class FlagModel(QAbstractItemModel):
             self.beginRemoveRows(self.mRootIndex, row, row)
             self.mFlagParameters.remove(flagParameter)
             self.endRemoveRows()
-
-
-
-
-    def flagStates(self)->typing.List[FlagState]:
-        return [state for parameter in self for state in parameter]
-
-    def visibleFlagStates(self)->typing.List[FlagState]:
-        return [state for parameter in self for state in parameter if state.isVisible()]
 
     def headerData(self, section, orientation, role):
         assert isinstance(section, int)
@@ -311,6 +356,10 @@ class FlagModel(QAbstractItemModel):
 
         if cName in [self.cnName, self.cnColor]:
             flags = flags | Qt.ItemIsEditable
+
+        if cName == self.cnBitPosition and isinstance(index.internalPointer(), FlagParameter):
+            flags = flags | Qt.ItemIsEditable
+
         return flags
 
     def parent(self, child: QModelIndex) -> QModelIndex:
@@ -360,7 +409,7 @@ class FlagModel(QAbstractItemModel):
         if isinstance(item, FlagParameter):
 
             if role in [Qt.DisplayRole, Qt.EditRole]:
-                if cName == self.cnBit:
+                if cName == self.cnBitPosition:
                     if item.bitCount() == 1:
                         return '{}'.format(item.firstBit())
                     else:
@@ -390,12 +439,14 @@ class FlagModel(QAbstractItemModel):
             if role in [Qt.DisplayRole, Qt.EditRole]:
                 if cName == self.cnBitNum:
                     return item.bitNumber()
-                if cName == self.cnName:
-                    return item.name()
+
                 if cName == self.cnBitComb:
                     param = index.parent().internalPointer()
                     assert isinstance(param, FlagParameter)
                     return item.bitCombination(param.bitCount())
+
+                if cName == self.cnName:
+                    return item.name()
 
                 if cName == self.cnColor:
                     return item.color().name()
@@ -426,7 +477,7 @@ class FlagModel(QAbstractItemModel):
             return False
 
         result = False
-
+        index
         item = index.internalPointer()
         cName = self.columnNames()[index.column()]
 
@@ -460,11 +511,41 @@ class FlagModel(QAbstractItemModel):
                             self.setData(stateIndex, value, Qt.CheckStateRole)
                             result = True
 
+
             if role == Qt.EditRole:
                 if cName == self.cnName:
                     item.setName(str(value))
                     result = True
 
+                if cName == self.cnBitPosition:
+                    value = str(value).strip()
+                    matchSingle = re.search(r'^(\d+)$', value)
+                    matchRange = re.search(r'^(\d+)-(\d+)+$', value)
+                    bit1 = None
+                    bitSize = None
+                    if matchSingle:
+                        bit1 = int(matchSingle.group(1))
+                        bitSize = 1
+                        result = True
+                    elif matchRange:
+                        bit1, bit2 = sorted([int(matchRange.group(1)), int(matchRange.group(2))])
+                        bitSize = bit2-bit1+1
+
+                    if isinstance(bit1, int) and isinstance(bitSize, int) and bitSize > 0:
+                        bitSize = min(bitSize, MAX_BITS_PER_PARAMETER)
+                        item.setFirstBit(bit1)
+                        n1 = len(item)
+                        n2 = 2**bitSize
+                        diff = n2 - n1
+                        if diff < 0:
+                            self.beginRemoveRows(index, n2, n1-1)
+                            item.setBitSize(bitSize)
+                            self.endRemoveRows()
+                        elif diff > 0:
+                            self.beginInsertRows(index, n1, n2-1)
+                            item.setBitSize(bitSize)
+                            self.endInsertRows()
+                        result = True
 
 
 
@@ -472,6 +553,14 @@ class FlagModel(QAbstractItemModel):
             self.dataChanged.emit(index, index, [role])
 
         return result
+
+    def clear(self):
+
+        n = self.rowCount()
+        self.beginRemoveRows(QModelIndex(), 0, n-1)
+        self.mFlagParameters.clear()
+        self.endRemoveRows()
+
 
 
 class FlagRasterRendererWidget(QgsRasterRendererWidget, loadUIFormClass(pathFlagRasterRendererUI)):
@@ -483,27 +572,31 @@ class FlagRasterRendererWidget(QgsRasterRendererWidget, loadUIFormClass(pathFlag
 
         assert isinstance(self.mTreeView, QTreeView)
 
+
+
         self.mFlagModel:FlagModel
         self.mFlagModel = FlagModel()
-        self.mFlagModel.dataChanged.connect(self.onModelDataChanged)
-        self.mFlagModel.rowsInserted.connect(self.onModelDataChanged)
-        self.mFlagModel.rowsRemoved.connect(self.onModelDataChanged)
-
         self.mProxyModel = QSortFilterProxyModel()
         self.mProxyModel.setSourceModel(self.mFlagModel)
         self.mTreeView.setModel(self.mProxyModel)
+
+        self.setRasterLayer(layer)
+
+        self.mFlagModel.dataChanged.connect(self.widgetChanged.emit)
+        self.mFlagModel.rowsInserted.connect(self.widgetChanged.emit)
+        self.mFlagModel.rowsRemoved.connect(self.widgetChanged.emit)
+
         self.mTreeView.selectionModel().selectionChanged.connect(self.onSelectionChanged)
         self.mTreeView.doubleClicked.connect(self.onTreeViewDoubleClick)
         self.mTreeView.header().setSectionResizeMode(QHeaderView.ResizeToContents)
+
         self.actionAddParameter.triggered.connect(self.onAddParameter)
         self.actionRemoveParameters.triggered.connect(self.onRemoveParameters)
         self.btnAddFlag.setDefaultAction(self.actionAddParameter)
         self.btnRemoveFlags.setDefaultAction(self.actionRemoveParameters)
 
-        if isinstance(layer, QgsRasterLayer):
-            self.setLayer(layer)
-
         self.updateWidgets()
+
 
     def onTreeViewDoubleClick(self, idx):
         idx = self.mProxyModel.mapToSource(idx)
@@ -515,14 +608,27 @@ class FlagRasterRendererWidget(QgsRasterRendererWidget, loadUIFormClass(pathFlag
 
             self.mFlagModel.setData(idx, c, role=Qt.EditRole)
 
-    def onModelDataChanged(self, *args, **kwds):
-        # todo: compare renderer differences
-        self.widgetChanged.emit()
-
     def setRasterLayer(self, layer:QgsRasterLayer):
         super(FlagRasterRendererWidget, self).setRasterLayer(layer)
         self.mRasterBandComboBox.setLayer(layer)
 
+        if layer.isValid() and isinstance(layer.renderer(), FlagRasterRenderer):
+
+            self.mFlagModel.beginResetModel()
+            self.mFlagModel.mFlagParameters.clear()
+            self.mFlagModel.mFlagParameters.extend(layer.renderer().flagParameters())
+            self.mFlagModel.endResetModel()
+
+            self.mTreeView.setUpdatesEnabled(False)
+            print('SET RASTER LAYER')
+            for row in range(0, self.mProxyModel.rowCount()):
+                idxP = self.mProxyModel.index(row, 0)
+                idxS = self.mProxyModel.mapToSource(idxP)
+                item = idxS.internalPointer()
+                if isinstance(item, FlagParameter):
+                    self.mTreeView.setExpanded(idxP, item.mIsExpanded)
+
+            self.mTreeView.setUpdatesEnabled(True)
 
     def onSelectionChanged(self, selected, deselected):
         self.updateWidgets()
@@ -534,8 +640,8 @@ class FlagRasterRendererWidget(QgsRasterRendererWidget, loadUIFormClass(pathFlag
 
         startBit = self.mFlagModel.nextFreeBit()
         name = 'Parameter {}'.format(len(self.mFlagModel) + 1)
-        bitCount = self.sbBitCount.value()
-        flagParameter = FlagParameter(name, startBit, bitCount)
+
+        flagParameter = FlagParameter(name, startBit, 1)
         self.mFlagModel.addFlagParameter(flagParameter)
         self.updateWidgets()
 
@@ -545,8 +651,8 @@ class FlagRasterRendererWidget(QgsRasterRendererWidget, loadUIFormClass(pathFlag
 
         b = self.mFlagModel.nextFreeBit() < self.layerBitCount()
         self.actionAddParameter.setEnabled(b)
-        self.sbBitCount.setEnabled(b)
-        self.labelBits.setEnabled(b)
+
+
 
 
     def renderer(self)->QgsRasterRenderer:
@@ -554,7 +660,20 @@ class FlagRasterRendererWidget(QgsRasterRendererWidget, loadUIFormClass(pathFlag
         r = FlagRasterRenderer()
         r.setInput(self.rasterLayer().dataProvider())
         r.setBand(self.selectedBand())
-        r.setFlagParameters(copy.deepcopy(self.mFlagModel[:]))
+
+        parameters = []
+        for row in range(self.mFlagModel.rowCount()):
+
+            idxS = self.mFlagModel.index(row, 0)
+            idxP = self.mProxyModel.mapFromSource(idxS)
+            b = self.mTreeView.isExpanded(idxP)
+            par = self.mFlagModel.data(idxS, role=Qt.UserRole)
+            assert isinstance(par, FlagParameter)
+            par.mIsExpanded = b
+            par = copy.deepcopy(par)
+            parameters.append(par)
+
+        r.setFlagParameters(parameters)
 
         return r
 
@@ -589,14 +708,14 @@ class FlagRasterRendererWidget(QgsRasterRendererWidget, loadUIFormClass(pathFlag
             dt = rasterLayer.dataProvider().dataType(self.mRasterBandComboBox.currentBand())
             dtName = gdal.GetDataTypeName(dt)
             dtSize = gdal.GetDataTypeSize(dt)
-            self.labelBandInfo.setText('{} bits ({}) '.format(dtSize, dtName))
+            self.mRasterBandComboBox.setToolTip('{} bits ({}) '.format(dtSize, dtName))
         else:
             self.clear()
 
     def clear(self):
         self.mRasterBandComboBox.setLayer(None)
-        self.labelBandInfo.setText('')
-        pass
+        self.mRasterBandComboBox.setToolTip('')
+
 
 
 
@@ -638,21 +757,49 @@ class FlagRasterRenderer(QgsRasterRenderer):
     def usesBands(self)->typing.List[int]:
         return [self.mBand]
 
+    def writeXml(self, doc:QDomDocument, parentElem:QDomElement):
+
+        if parentElem.isNull():
+            return
+
+        domElement = doc.createElement('rasterrenderer')
+        domElement.setAttribute('type', self.type())
+        domElement.setAttribute('opacity', str(self.opacity()))
+        domElement.setAttribute('alphaBand', self.alphaBand())
+        trans = self.rasterTransparency()
+        if isinstance(trans, QgsRasterTransparency):
+            trans.writeXml(doc, domElement)
+
+        minMaxOriginElement = doc.createElement('minMaxOrigin')
+        self.minMaxOrigin().writeXml(doc, minMaxOriginElement)
+
+
+    def readXml(self, rendererElem:QDomElement):
+
+        pass
+
+
     def legendSymbologyItems(self, *args, **kwargs):
         """ Overwritten from parent class. Items for the legend. """
         items = []
         for parameter in self.flagParameters():
+            b0 = parameter.firstBit()
+            b1 = parameter.lastBit()
+            if b0 == b1:
+                bitPos = '{}'.format(b0)
+            else:
+                bitPos = '{}-{}'.format(b0, b1)
+
+
             for flagState in parameter:
                 assert isinstance(flagState, FlagState)
+
                 if flagState.isVisible():
-                    b0 = flagState.firstBit()
-                    b1 = flagState.lastBit()
-                    if b0 == b1:
-                        item = ('Bit {}:{}:{}'.format(b0, flagState.number(), flagState.name()), flagState.color())
-                    else:
-                        item = ('Bit {}-{}:{}:{}'.format(b0, b1, flagState.number(), flagState.name()), flagState.color())
+                    item = ('Bit {}:{}:{}'.format(bitPos, flagState.bitNumber(), flagState.name()), flagState.color())
                     items.append(item)
         return items
+
+
 
     def block(self, band_nr: int, extent: QgsRectangle, width: int, height: int,
               feedback: QgsRasterBlockFeedback = None):
@@ -667,15 +814,12 @@ class FlagRasterRenderer(QgsRasterRenderer):
 
         # see https://github.com/Septima/qgis-hillshaderenderer/blob/master/hillshaderenderer.py
         nb = self.input().bandCount()
-        input_missmatch = None
-        if len(self.mFlagParameters) == 0:
-            input_missmatch = 'No flag stats defined to render pixels for.'
 
         output_block = QgsRasterBlock(Qgis.ARGB32_Premultiplied, width, height)
         color_array = np.frombuffer(output_block.data(), dtype=QGIS2NUMPY_DATA_TYPES[output_block.dataType()])
         color_array[:] = self.mNoDataColor.rgba()
 
-        if input_missmatch:
+        if len(self.mFlagParameters) == 0:
             print(input_missmatch, file=sys.stderr)
             output_block.setData(color_array.tobytes())
             return output_block
@@ -723,34 +867,41 @@ class FlagRasterLayerConfigWidget(QgsMapLayerConfigWidget):
     def __init__(self, layer:QgsRasterLayer, canvas:QgsMapCanvas, parent:QWidget=None):
 
         super(FlagRasterLayerConfigWidget, self).__init__(layer, canvas, parent=parent)
-        self.setupUi(self)
+
+        self.setLayout(QVBoxLayout())
+        self.setPanelTitle('Flag Layer Settings')
         self.mCanvas = canvas
         self.mLayer = layer
-        self.mLayer.rendererChanged.connect(self.onRendererChanged)
+        self.mRenderWidget : FlagRasterRendererWidget
+        if isinstance(layer, QgsRasterLayer) and layer.isValid():
+            ext = layer.extent()
+        else:
+            ext = QgsRectangle()
 
-        self.initRenderer()
 
-        self.setPanelTitle('Flag Layer Settings')
+        self.mIsInDockMode = False
+        self.mRenderWidget = FlagRasterRendererWidget(layer, ext)
+        self.mRenderWidget.widgetChanged.connect(self.apply)
+        self.layout().addWidget(self.mRenderWidget)
 
-    def onRendererChanged(self):
-        self.initRenderer()
 
-    def initRenderer(self):
-
-        renderer = self.mLayer.renderer()
+    def shouldTriggerLayerRepaint(self):
+        return True
 
     def renderer(self)->QgsRasterRenderer:
-        return self.mLayer.renderer()
+        return self.mRenderWidget.renderer()
 
     def apply(self):
         r = self.renderer()
-        newRenderer = None
 
-        if isinstance(newRenderer, QgsRasterRenderer):
-            self.mLayer.setRenderer(newRenderer)
+        if isinstance(r, QgsRasterRenderer):
+            self.mLayer.setRenderer(r)
+            self.mLayer.triggerRepaint()
 
     def setDockMode(self, dockMode:bool):
-        pass
+        print('SET DOCKMODE CALLED')
+        self.mIsInDockMode = dockMode
+        super(FlagRasterLayerConfigWidget, self).setDockMode(dockMode)
 
 
 
@@ -758,19 +909,28 @@ class FlagRasterRendererConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
 
-        super(FlagRasterRendererConfigWidgetFactory, self).__init__()
-
-
+        super(FlagRasterRendererConfigWidgetFactory, self).__init__('Flags', QIcon(':/qps/ui/icons/bitflagimage.svg'))
         self.setSupportLayerPropertiesDialog(True)
         self.setSupportsStyleDock(True)
         self.setTitle('Flag Raster Renderer')
+        self.mWidget = None
+
 
     def supportsLayer(self, layer):
+        b = False
         if isinstance(layer, QgsRasterLayer) and layer.isValid():
             dt = layer.dataProvider().dataType(1)
-            return dt in [gdal.GDT_Byte, gdal.GDT_Int16, gdal.GDT_Int32, gdal.GDT_UInt16, gdal.GDT_UInt32, gdal.GDT_CInt16, gdal.GDT_CInt32]
+            b = dt in [gdal.GDT_Byte, gdal.GDT_Int16, gdal.GDT_Int32, gdal.GDT_UInt16, gdal.GDT_UInt32, gdal.GDT_CInt16, gdal.GDT_CInt32]
 
-        return False
+            if not b:
+                print(dt)
+
+        if b is False:
+            print('Unsupported: {}'.format(layer))
+        return b
+
+    def icon(self)->QIcon:
+        return QIcon(':/qps/ui/icons/bitflagimage.svg')
 
     def supportLayerPropertiesDialog(self):
         return True
@@ -780,8 +940,5 @@ class FlagRasterRendererConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
 
     def createWidget(self, layer, canvas, dockWidget=True, parent=None)->QgsMapLayerConfigWidget:
-
-        w = FlagRasterLayerConfigWidget(layer, canvas, parent=parent)
-        self._w = w
-        return w
+        return FlagRasterLayerConfigWidget(layer, canvas, parent=parent)
 

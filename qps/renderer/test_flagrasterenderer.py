@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import unittest
 import sys, os, re, pathlib, pickle, typing, enum
 from qgis.core import *
@@ -16,15 +17,11 @@ from .flagrasterrenderer import *
 
 SHOW_GUI = True and os.environ.get('CI') is None
 
-
-pathFlagImage = list(file_search(pathlib.Path(__file__).parents[2],  'force_QAI.tif', recursive=True))[0]
+pathFlagImage = r'J:\diss_bj\level2\s-america\X0048_Y0025\20140826_LEVEL2_LND07_QAI.tif'
+if not os.path.isfile(pathFlagImage):
+    pathFlagImage = list(file_search(pathlib.Path(__file__).parents[2],  'force_QAI.tif', recursive=True))[0]
 
 class MyTestCase(unittest.TestCase):
-
-
-    flagDescription = { (1,1,)
-
-    }
 
     def flagImageLayer(self)->QgsRasterLayer:
         lyr = QgsRasterLayer(pathFlagImage)
@@ -63,6 +60,14 @@ class MyTestCase(unittest.TestCase):
         # define
 
 
+        flagPar = FlagParameter('test', 2, 3)
+        self.assertIsInstance(flagPar, FlagParameter)
+        self.assertEqual(len(flagPar), 8)
+        flagPar.setBitSize(2)
+        self.assertEqual(len(flagPar), 4)
+        flagPar.setBitSize(3)
+        self.assertEqual(len(flagPar), 8)
+
 
         flagModel = FlagModel()
         tv = QTreeView()
@@ -76,6 +81,12 @@ class MyTestCase(unittest.TestCase):
             self.assertIsInstance(flagModel[i], FlagParameter)
             self.assertIsInstance(flagModel[i][0], FlagState)
             self.assertEqual(flagModel[i], par)
+
+        idx = flagModel.createIndex(0, 0)
+        flagModel.setData(idx, '1-3', role=[Qt.EditRole])
+        flagModel.setData(idx, '3', role=[Qt.EditRole])
+
+
 
         if SHOW_GUI:
             QAPP.exec_()
@@ -96,7 +107,11 @@ class MyTestCase(unittest.TestCase):
         canvas.waitWhileRendering()
         canvas.setCanvasColor(QColor('grey'))
 
+
         w = FlagRasterRendererWidget(lyr, lyr.extent())
+
+        btnReAdd = QPushButton('Re-Add')
+        btnReAdd.clicked.connect(lambda : w.setRasterLayer(lyr))
 
         def onWidgetChanged(w, lyr):
 
@@ -114,7 +129,10 @@ class MyTestCase(unittest.TestCase):
         top = QWidget()
         top.setLayout(QHBoxLayout())
         top.layout().addWidget(canvas)
-        top.layout().addWidget(w)
+        v = QVBoxLayout()
+        v.addWidget(btnReAdd)
+        v.addWidget(w)
+        top.layout().addLayout(v)
         top.show()
 
         if SHOW_GUI:
@@ -145,6 +163,7 @@ class MyTestCase(unittest.TestCase):
         r2 = renderer.clone()
         self.assertIsInstance(r2, FlagRasterRenderer)
 
+        r2.legendSymbologyItems()
 
         canvas = QgsMapCanvas()
         QgsProject.instance().addMapLayer(lyr)
@@ -153,6 +172,37 @@ class MyTestCase(unittest.TestCase):
         canvas.setLayers([lyr])
         canvas.show()
         canvas.waitWhileRendering()
+
+        if SHOW_GUI:
+            QAPP.exec_()
+
+    def test_FlagLayerConfigWidget(self):
+
+        factory = FlagRasterRendererConfigWidgetFactory()
+        lyr = self.flagImageLayer()
+        parameters = self.createFlagParameters()
+
+        canvas = QgsMapCanvas()
+        QgsProject.instance().addMapLayer(lyr)
+        canvas.mapSettings().setDestinationCrs(lyr.crs())
+        ext = lyr.extent()
+        ext.scale(1.1)
+        canvas.setExtent(ext)
+        canvas.setLayers([lyr])
+        canvas.show()
+        canvas.waitWhileRendering()
+        canvas.setCanvasColor(QColor('grey'))
+
+        w = factory.createWidget(lyr, canvas)
+
+        top = QWidget()
+        top.setLayout(QHBoxLayout())
+        top.layout().addWidget(canvas)
+        top.layout().addWidget(w)
+        top.show()
+
+        #w = factory.createWidget(lyr, canvas)
+        #w.show()
 
         if SHOW_GUI:
             QAPP.exec_()
