@@ -70,9 +70,11 @@ def registerLayerConfigWidgetFactories():
     import qgis.utils
     if isinstance(qgis.utils.iface, QgisInterface):
         from .renderer.flagrasterrenderer import FlagRasterRendererConfigWidgetFactory
-        factory = FlagRasterRendererConfigWidgetFactory()
-        _mapLayerConfigFactories.append(factory)
-        qgis.utils.iface.registerMapLayerConfigWidgetFactory(factory)
+        f = [f for f in _mapLayerConfigFactories if isinstance(f, FlagRasterRendererConfigWidgetFactory)]
+        if len(f) == 0:
+            factory = FlagRasterRendererConfigWidgetFactory()
+            _mapLayerConfigFactories.append(factory)
+            qgis.utils.iface.registerMapLayerConfigWidgetFactory(factory)
 
 
 def initAll():
