@@ -408,12 +408,13 @@ class QgisMockup(QgisInterface):
     def layerTreeView(self) -> QgsLayerTreeView:
         return self.mLayerTreeView
 
-    def addRasterLayer(self, path, baseName=''):
+    def addRasterLayer(self, path, baseName:str='')->QgsRasterLayer:
         l = QgsRasterLayer(path, os.path.basename(path))
         self.lyrs.append(l)
         QgsProject.instance().addMapLayer(l, True)
         self.mRootNode.addLayer(l)
         # self.mCanvas.setLayers(self.mCanvas.layers() + l)
+        return l
 
     def createActions(self):
         m = self.ui.menuBar().addAction('Add Vector')
