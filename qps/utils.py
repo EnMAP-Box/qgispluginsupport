@@ -260,7 +260,7 @@ def nextColor(color, mode='cat')->QColor:
         value = 128
         alpha = 255
         s = ""
-    while hue > 360:
+    while hue >= 360:
         hue -= 360
 
     return QColor.fromHsl(hue, sat, value, alpha)
