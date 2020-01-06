@@ -271,6 +271,20 @@ class testClassUtils(unittest.TestCase):
         self.assertListEqual([4, 3, 1], defaultBands(ds))
 
 
+    def test_nextColor(self):
+
+        c = QColor('#ff012b')
+        for i in range(500):
+            c = nextColor(c, mode='con')
+            self.assertIsInstance(c, QColor)
+            self.assertTrue(c.name() != '#000000')
+
+        c = QColor('black')
+        for i in range(500):
+            c = nextColor(c, mode='cat')
+            self.assertIsInstance(c, QColor)
+            self.assertTrue(c.name() != '#000000')
+
 
 if __name__ == "__main__":
     SHOW_GUI = False
