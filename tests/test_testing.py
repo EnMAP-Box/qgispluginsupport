@@ -6,10 +6,6 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest, pickle
-from qgis import *
-from qgis.core import *
-from qgis.gui import *
-from PyQt5.QtCore import *
 
 class testClassTesting(unittest.TestCase):
 
@@ -21,7 +17,8 @@ class testClassTesting(unittest.TestCase):
 
         qgis_app = qps.testing.initQgisApplication()
 
-
+        from qgis.core import QgsApplication, QgsProcessingRegistry
+        from qgis.gui import QgsGui
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
 
@@ -42,7 +39,9 @@ class testClassTesting(unittest.TestCase):
 
     def test_init_minimal(self):
         import qps.testing
+        from qgis.core import QgsApplication
         qgis_app = qps.testing.initQgisApplication(minimal=True)
+
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
         qgis_app.quit()

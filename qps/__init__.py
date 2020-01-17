@@ -65,20 +65,8 @@ def registerEditorWidgets():
         print(ex, file=sys.stderr)
 
 
-_mapLayerConfigFactories = []
-def registerLayerConfigWidgetFactories():
-    import qgis.utils
-    if isinstance(qgis.utils.iface, QgisInterface):
-        from .renderer.flagrasterrenderer import FlagRasterRendererConfigWidgetFactory
-        f = [f for f in _mapLayerConfigFactories if isinstance(f, FlagRasterRendererConfigWidgetFactory)]
-        if len(f) == 0:
-            factory = FlagRasterRendererConfigWidgetFactory()
-            _mapLayerConfigFactories.append(factory)
-            qgis.utils.iface.registerMapLayerConfigWidgetFactory(factory)
-
 
 def initAll():
 
     initResources()
     registerEditorWidgets()
-    registerLayerConfigWidgetFactories()

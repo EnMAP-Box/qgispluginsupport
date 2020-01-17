@@ -187,6 +187,8 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
                 QgsProviderRegistry.instance().setLibraryDirectory(QDir(QApplication.instance().libraryPaths()[0]))
                 s = ""
 
+            qgsApp.setPkgDataPath(re.sub(r'(/envs/[^/]+)/\.$', r'\1/Library', qgsApp.pkgDataPath()))
+
         elif QOperatingSystemVersion.current().type() == QOperatingSystemVersion.Unknown:
 
             qgsApp = qgis.testing.start_app()
