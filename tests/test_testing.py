@@ -51,6 +51,15 @@ class testClassTesting(unittest.TestCase):
 
 
 class test_TestObject(qps.testing.TestCase):
+
+    def test_spectralProfiles(self):
+
+        from qps.testing import TestObjects
+
+        profiles = TestObjects.spectralProfiles(10)
+        self.assertIsInstance(profiles, list)
+        self.assertTrue(len(profiles) == 10)
+
     def test_VectorLayers(self):
 
         from qps.testing import TestObjects, start_app
@@ -98,11 +107,11 @@ class test_TestObject(qps.testing.TestCase):
         self.assertEqual(ds.RasterCount, 100)
         self.assertEqual(ds.RasterXSize, 1000)
         self.assertEqual(ds.RasterYSize, 2000)
-        self.assertEqual(ds.GetRasterBand(1).GetDataType, gdal.GDT_Float32)
+        self.assertEqual(ds.GetRasterBand(1).DataType, gdal.GDT_Float32)
 
 
 if __name__ == "__main__":
-    SHOW_GUI = False
+
     unittest.main()
 
 

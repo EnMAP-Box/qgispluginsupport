@@ -1,7 +1,7 @@
 
 import xml.etree.ElementTree as ET
-from ..testing import initQgisApplication
-app = initQgisApplication()
+from ..testing import start_app
+#app = initQgisApplication()
 from ..utils import *
 from osgeo import gdal, ogr, osr
 
@@ -177,7 +177,7 @@ def getDOMAttributes(elem):
     return values
 
 
-def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None):
+def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str='_rc.py'):
     """
     Searches for *.ui files and compiles the *.qrc files they use.
     :param dirRoot: str, root directory, in which to search for *.qrc files or a list of *.ui file paths.
@@ -224,7 +224,7 @@ def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None):
         compileResourceFile(qrcFiles, targetDir=targetDir)
 
 
-def compileResourceFile(pathQrc:str, targetDir:str=None):
+def compileResourceFile(pathQrc:str, targetDir:str=None, suffix:str='_rc.py'):
     """
     Compiles a *.qrc file
     :param pathQrc:
@@ -242,7 +242,7 @@ def compileResourceFile(pathQrc:str, targetDir:str=None):
         dn = os.path.dirname(pathQrc)
 
     bn = os.path.splitext(bn)[0]
-    pathPy = os.path.join(dn, bn + '.py')
+    pathPy = os.path.join(dn, bn + suffix)
 
     try:
         from PyQt5.pyrcc_main import processResourceFile

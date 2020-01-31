@@ -1,4 +1,4 @@
-import sys, importlib, site, os
+import sys, importlib, site, os, pathlib
 from qgis.core import QgsApplication
 from qgis.gui import QgisInterface
 __version__ = '0.2'
@@ -7,26 +7,17 @@ def initResources():
     """
     Initializes compiled Qt resources
     """
-    try:
-        from .qpsresources import qInitResources
-        qInitResources()
-    except Exception as ex:
-        print(ex, file=sys.stderr)
-        print('It might be required to compile the qps/resources.py first', file=sys.stderr)
+    import importlib.util
+    for r, dirs, files in os.walk(pathlib.Path(__file__).parent):
+        root = pathlib.Path(r)
+        for f in [f for f in files if f.endswith('_rc.py')]:
+            path = root / f
+            name = f[:-3]
+            spec = importlib.util.spec_from_file_location(name, path)
+            rcModule = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(rcModule)
+            rcModule.qInitResources()
 
-
-# make required modules available in case they are not part of the core-python installation
-# if importlib.util.find_spec('pyqtgraph') is None:
-#    path = os.path.join(os.path.dirname(__file__), *['externals', 'ext-pyqtgraph'])
-#    site.addsitedir(path)
-"""
-try:
-    import pyqtgraph
-except:
-    print('PyQtGraph is not installed. Use qps.externals.pyqtgraph instead.')
-    import qps.externals.pyqtgraph
-    sys.modules['pyqtgraph'] = qps.externals.pyqtgraph
-"""
 
 def registerEditorWidgets():
     """

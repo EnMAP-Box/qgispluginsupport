@@ -9,15 +9,14 @@ from qgis.gui import *
 from qgis.gui import QgisInterface, QgsDockWidget, QgsPluginManagerInterface
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtCore import QMimeData
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtXml import *
-from qgis.PyQt.QtXml import QDomDocument
+from PyQt5.QtGui import *
+
+from PyQt5.QtXml import *
+from PyQt5.QtXml import QDomDocument
 from qgis.PyQt import uic
 from osgeo import gdal, ogr
 import numpy as np
-
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
 
@@ -849,6 +848,23 @@ def zipdir(pathDir, pathZip):
                     arcname = os.path.join(os.path.relpath(root, relroot), file)
                     zip.write(filename, arcname)
 
+def scanResources(path=':')->typing.Iterator[str]:
+    """
+    Returns all resource-paths of the Qt Resource system
+    :param path:
+    :type path:
+    :return:
+    :rtype:
+    """
+    D = QDirIterator(path)
+    while D.hasNext():
+        entry = D.next()
+        if D.fileInfo().isDir():
+            yield from scanResources(path=entry)
+        elif D.fileInfo().isFile():
+            yield D.filePath()
+
+
 
 def convertMetricUnit(value: float, u1: str, u2: str)->float:
     """
@@ -1074,7 +1090,7 @@ def parseWavelength(dataset):
 
                 if re.search(r'wavelength.units?', key):
                     if re.search(r'(Micrometers?|um|μm)', values, re.I):
-                        wlu = 'um'  # fix with python 3 UTF
+                        wlu = 'μm'  # fix with python 3 UTF
                     elif re.search(r'(Nanometers?|nm)', values, re.I):
                         wlu = 'nm'
                     elif re.search(r'(Millimeters?|mm)', values, re.I):

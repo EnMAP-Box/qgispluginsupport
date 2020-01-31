@@ -11,21 +11,26 @@ import tempfile
 from qgis.core import *
 from qgis.gui import *
 
-from qps.testing import initQgisApplication, TestObjects
-QGIS_APP = initQgisApplication()
+from qps.testing import start_app, TestObjects, TestCase
+
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
-SHOW_GUI = False and os.environ.get('CI') is None
+os.environ['CI'] = 'True' # un-comment to popup GUIs
 
 
-
-
-from unittest import TestCase
 class TestsClassificationScheme(TestCase):
 
-    def setUp(self):
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(TestsClassificationScheme, cls).setUpClass(cls)
+
+        import qps
+        qps.initResources()
+
+
+    def setUp(self):
         self.nameL1 = 'Level 1 (int)'
         self.nameL2 = 'Level 2 (str)'
         for store in MAP_LAYER_STORES:
@@ -196,12 +201,9 @@ class TestsClassificationScheme(TestCase):
         w.setCurrentIndex(2)
         self.assertIsInstance(w.currentClassInfo(), ClassInfo)
         self.assertEqual(w.currentClassInfo(), scheme[2])
-        w.show()
 
-        if SHOW_GUI:
 
-            QGIS_APP.exec_()
-
+        self.showGui(w)
 
     def test_ClassificationSchemeEditorWidgetFactory(self):
 
@@ -263,13 +265,8 @@ class TestsClassificationScheme(TestCase):
 
         eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
-        configWidget.show()
-        dv.show()
-        w.show()
 
-        if SHOW_GUI:
-            QGIS_APP.exec_()
-
+        self.showGui([configWidget, dv, w])
 
     def test_findMapLayerWithClassInfo(self):
 
@@ -302,12 +299,8 @@ class TestsClassificationScheme(TestCase):
         self.assertTrue(rl in lyrs)
 
         w = ClassificationSchemeWidget()
-        w.show()
 
-
-        if SHOW_GUI:
-            w.onLoadClasses('layer')
-            QGIS_APP.exec_()
+        self.showGui(w)
 
     def test_ClassificationSchemeWidget(self):
 
@@ -318,10 +311,8 @@ class TestsClassificationScheme(TestCase):
         w.btnAddClasses.click()
 
         self.assertTrue(len(w.classificationScheme()) == 2)
-        w.show()
 
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui(w)
 
     def test_ClassificationSchemeComboBox(self):
 
@@ -419,11 +410,7 @@ class TestsClassificationScheme(TestCase):
         ci = cbox.currentClassInfo()
         self.assertEqual(ci, None)
 
-        w.show()
-        w2.show()
-
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui([w, w2])
 
 
     def test_io_CSV(self):
@@ -523,7 +510,6 @@ class TestsClassificationScheme(TestCase):
 
 if __name__ == "__main__":
 
-    SHOW_GUI = False
     unittest.main()
 
 

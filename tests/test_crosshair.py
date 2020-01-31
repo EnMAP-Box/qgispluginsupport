@@ -11,14 +11,13 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest, os
-from qps.testing import initQgisApplication, TestObjects
-QGIS_APP = initQgisApplication()
-SHOW_GUI = False and os.environ.get('CI') is None
+from qps.testing import TestObjects, TestCase
 from qps.crosshair.crosshair import *
 
+os.environ['CI'] = 'False' # un-comment or set to 'False' to popup GUIs
 
 
-class CrosshairTests(unittest.TestCase):
+class CrosshairTests(TestCase):
 
     def test_crosshair(self):
         # add site-packages to sys.path as done by enmapboxplugin.py
@@ -44,14 +43,7 @@ class CrosshairTests(unittest.TestCase):
         style.setShowPixelBorder(True)
         item.setCrosshairStyle(style)
 
-        if SHOW_GUI:
-            #style = CrosshairDialog.getCrosshairStyle(mapCanvas=refCanvas)
-            #if style is not None:
-            #    self.assertIsInstance(style, CrosshairStyle)
-
-            refCanvas.show()
-
-            QGIS_APP.exec_()
+        self.showGui(refCanvas)
 
     def test_noCRS(self):
 
@@ -64,9 +56,7 @@ class CrosshairTests(unittest.TestCase):
         item.setCrosshairStyle(style)
         item.setPosition(refCanvas.center())
 
-        if SHOW_GUI:
-            refCanvas.show()
-            QGIS_APP.exec_()
+        self.showGui(refCanvas)
 
     def test_CRS(self):
 
@@ -79,24 +69,17 @@ class CrosshairTests(unittest.TestCase):
         item.setCrosshairStyle(style)
         item.setPosition(refCanvas.center())
 
-        if SHOW_GUI:
-            refCanvas.show()
-            QGIS_APP.exec_()
+        self.showGui(refCanvas)
 
     def test_dialog(self):
 
         refCanvas = QgsMapCanvas()
         refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
 
-        style = getCrosshairStyle(mapCanvas=refCanvas)
-
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        func = lambda: getCrosshairStyle(mapCanvas=refCanvas)
+        self.showGui(func)
 
 if __name__ == "__main__":
-    SHOW_GUI = False
     unittest.main()
 
 
-
-QGIS_APP.quit()

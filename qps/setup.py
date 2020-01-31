@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, pathlib
 
 DIR_QGIS_REPO = os.environ.get('DIR_QGIS_REPO')
 

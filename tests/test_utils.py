@@ -15,9 +15,9 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 import unittest, pickle, os
 from qgis import *
 from qgis.core import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
+from qgis.PyQt.QtGui import *
+
+from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
 from qps.testing import TestObjects
 
