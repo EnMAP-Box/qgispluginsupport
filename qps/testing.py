@@ -1,4 +1,5 @@
-import os, sys, re, io, importlib, uuid, warnings, pathlib, time, site, mock, inspect, types
+import os, sys, re, io, importlib, typing
+import uuid, warnings, pathlib, time, site, mock, inspect, types, enum
 import sip
 from qgis.core import *
 from qgis.gui import *
@@ -8,23 +9,8 @@ from qgis.PyQt.QtWidgets import *
 import qgis.testing
 import qgis.utils
 import numpy as np
-from osgeo import gdal, ogr, osr
+from osgeo import gdal, ogr, osr, gdal_array
 
-from .utils import file_search, dn, jp, findUpwardPath
-
-URL_TESTDATA = r'https://bitbucket.org/hu-geomatics/enmap-box-testdata/get/master.zip'
-DIR_TESTDATA = findUpwardPath(__file__, 'enmapboxtestdata')
-if DIR_TESTDATA is None:
-    try:
-        import enmapboxtestdata
-
-        DIR_TESTDATA = dn(enmapboxtestdata.__file__)
-    except:
-        try:
-            root = dn(findUpwardPath(__file__, '.git'))
-            DIR_TESTDATA = jp(root, 'enmapboxtestdata')
-        except:
-            print('Unable to locate "enmapboxtestdata" directory.', file=sys.stderr)
 
 SHOW_GUI = True
 
@@ -153,9 +139,11 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
     :return:
     """
     """
-
+    
     :return: QgsApplication instance of local QGIS installation
     """
+    warnings.warn('Use qps.testing.start_app instead', DeprecationWarning)
+    return start_app(cleanup=True, options=StartOptions.All())
 
     if minimal:
         loadEditorWidgets = False
@@ -225,7 +213,7 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
 
         # initiate a PythonRunner instance if None exists
         if not QgsPythonRunner.isValid() and loadPythonRunner == True:
-            r = PythonRunnerImpl()
+            r = QgsPythonRunnerMockup()
             QgsPythonRunner.setInstance(r)
 
         from qgis.analysis import QgsNativeAlgorithms
@@ -267,6 +255,64 @@ def initQgisApplication(*args, qgisResourceDir: str = None,
 
         if len(missing) > 0:
             warnings.warn('Missing QGIS provider(s): {}'.format(', '.join(missing)))
+
+        return qgsApp
+
+
+
+@enum.unique
+class StartOptions(enum.IntFlag):
+    Minimized = 0
+    EditorWidgets = 1
+    ProcessingFramework = 2
+    PythonRunner = 4
+    PrintProviders = 8
+    All = EditorWidgets | ProcessingFramework | PythonRunner | PrintProviders
+
+def start_app(cleanup=True, options=StartOptions.Minimized)->QgsApplication:
+    if isinstance(QgsApplication.instance(), QgsApplication):
+        print('Found existing QgsApplication.instance()')
+        return QgsApplication.instance()
+    else:
+        qgsApp = qgis.testing.start_app(cleanup=cleanup)
+        assert QgsProviderRegistry.instance().libraryDirectory().exists()
+
+        # initialize things not done by qgis.test.start_app()...
+        if StartOptions.PythonRunner in options:
+            # initiate a PythonRunner instance if None exists
+            if not QgsPythonRunner.isValid():
+                r = QgsPythonRunnerMockup()
+                QgsPythonRunner.setInstance(r)
+
+        # init standard EditorWidgets
+        if StartOptions.EditorWidgets in options:
+            QgsGui.editorWidgetRegistry().initEditors()
+
+        if not isinstance(qgis.utils.iface, QgisInterface):
+            iface = QgisMockup()
+            qgis.utils.initInterface(sip.unwrapinstance(iface))
+            assert iface == qgis.utils.iface
+
+        # set 'home_plugin_path', which is required from the QGIS Plugin manager
+        qgis.utils.home_plugin_path = os.path.join(QgsApplication.instance().qgisSettingsDirPath(),
+                                                   *['python', 'plugins'])
+
+        # initialize the QGIS processing framework
+        if StartOptions.ProcessingFramework in options:
+            from qgis.analysis import QgsNativeAlgorithms
+            QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
+
+            qgisCorePythonPluginDir = pathlib.Path(QgsApplication.pkgDataPath()) / 'python' / 'plugins'
+            assert os.path.isdir(qgisCorePythonPluginDir)
+            if not qgisCorePythonPluginDir in sys.path:
+                sys.path.append(qgisCorePythonPluginDir.as_posix())
+
+            from processing.core.Processing import Processing
+            Processing.initialize()
+
+        if StartOptions.PrintProviders in options:
+            providers = QgsProviderRegistry.instance().providerList()
+            print('Providers: {}'.format(', '.join(providers)))
 
         return qgsApp
 
@@ -447,10 +493,38 @@ class QgisMockup(QgisInterface):
         super().zoomFull(*args, **kwargs)
 
 
+class TestCase(qgis.testing.TestCase):
+
+    @classmethod
+    def setUpClass(cls, cleanup=True, options=StartOptions.All) -> None:
+        app = start_app(cleanup=cleanup, options=options)
+
+    def showGui(self, widgets):
+        """
+        Call this to show GUI(s) in case we do not run within a CI system
+        """
+
+        if str(os.environ.get('CI')).lower() not in ['', 'none', 'false', '0']:
+            return
+
+        if not isinstance(widgets, list):
+            widgets = [widgets]
+        for w in widgets:
+            if isinstance(w, QWidget):
+                w.show()
+
+        app = QApplication.instance()
+        if isinstance(app, QApplication):
+            app.exec_()
+
+
 class TestObjects():
     """
     Creates objects to be used for testing. It is preferred to generate objects in-memory.
     """
+
+    _source_raster = pathlib.Path(__file__).parent / 'enmap.tif'
+    assert _source_raster.is_file()
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
@@ -493,12 +567,22 @@ class TestObjects():
     """
 
     @staticmethod
-    def inMemoryImage(nl=10, ns=20, nb=1, crs='EPSG:32632', eType=gdal.GDT_Byte, nc: int = 0, path: str = None):
+    def inMemoryImage(*args, **kwds):
+        warnings.warn('Use createRasterDataset insted')
+        return TestObjects.createRasterDataset(*args, **kwds)
+
+    @staticmethod
+    def createRasterDataset(ns=10, nl=20, nb=1, crs='EPSG:32632', eType=gdal.GDT_Byte, nc: int = 0, path: str = None):
         from .classification.classificationscheme import ClassificationScheme
+
+        example_data = gdal_array.LoadFile(TestObjects._source_raster.as_posix())
+        assert isinstance(example_data, np.ndarray)
+
 
         scheme = None
         if nc is None:
             nc = 0
+
         if nc > 0:
             eType = gdal.GDT_Byte if nc < 256 else gdal.GDT_Int16
             scheme = ClassificationScheme()
@@ -522,10 +606,13 @@ class TestObjects():
                             0, 0, -1.0])
 
         assert isinstance(ds, gdal.Dataset)
-        for b in range(1, nb + 1):
-            band = ds.GetRasterBand(b)
+        for b in range(nb):
+            band = ds.GetRasterBand(b+1)
 
-            if isinstance(scheme, ClassificationScheme) and b == 1:
+            c = min(b, example_data.shape[0]-1)
+            example_band = example_data[c, ::]
+            array = np.zeros((nl, ns), dtype=np.uint8)
+            if isinstance(scheme, ClassificationScheme) and b == 0:
                 array = np.zeros((nl, ns), dtype=np.uint8) - 1
                 y0 = 0
 
@@ -538,6 +625,8 @@ class TestObjects():
                 band.SetCategoryNames(scheme.classNames())
                 band.SetColorTable(scheme.gdalColorTable())
             else:
+                # fill with example data
+
                 # create random data
                 array = np.random.random((nl, ns))
                 if eType == gdal.GDT_Byte:
@@ -854,13 +943,13 @@ class QgsClipboardMockup(QObject):
         pass
 
 
-class PythonRunnerImpl(QgsPythonRunner):
+class QgsPythonRunnerMockup(QgsPythonRunner):
     """
     A Qgs PythonRunner implementation
     """
 
     def __init__(self):
-        super(PythonRunnerImpl, self).__init__()
+        super(QgsPythonRunnerMockup, self).__init__()
 
     def evalCommand(self, cmd: str, result: str):
         try:

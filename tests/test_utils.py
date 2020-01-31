@@ -12,22 +12,21 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
-import unittest, pickle
+import unittest, pickle, os
 from qgis import *
 from qgis.core import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
-from qps.testing import initQgisApplication, TestObjects
-SHOW_GUI = False and os.environ.get('CI') is None
-QGIS_APP = initQgisApplication()
+from qps.testing import TestObjects
+
 from qps.utils import *
+from qps.testing import TestCase
 
+os.environ['CI'] = 'True'
 
-
-
-class testClassUtils(unittest.TestCase):
+class testClassUtils(TestCase):
     """Test rerources work."""
 
     def setUp(self):
@@ -250,11 +249,7 @@ class testClassUtils(unittest.TestCase):
         d.addLayerDescription('A Vector Layer', QgsMapLayerProxyModel.VectorLayer)
         d.addLayerDescription('A Raster Layer', QgsMapLayerProxyModel.RasterLayer)
 
-
-        if SHOW_GUI:
-            d.show()
-            QGIS_APP.exec_()
-
+        self.showGui(d)
 
     def test_defaultBands(self):
 
@@ -287,8 +282,5 @@ class testClassUtils(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    SHOW_GUI = False
     unittest.main()
-
-QGIS_APP.quit()
 
