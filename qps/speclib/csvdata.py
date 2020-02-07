@@ -29,6 +29,7 @@
 ***************************************************************************
 """
 import os, sys, re, pathlib, json
+from qgis.core import *
 import csv as pycsv
 from .spectrallibraries import *
 

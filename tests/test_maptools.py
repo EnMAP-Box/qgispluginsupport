@@ -12,8 +12,8 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 
 import unittest
-from qps.testing import initQgisApplication, TestObjects
-QGIS_APP = initQgisApplication(loadProcessingFramework=False)
+from qps.testing import TestObjects, TestCase
+
 from qgis import *
 from qgis.core import *
 from PyQt5.QtGui import *
@@ -21,14 +21,13 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
 
-SHOW_GUI = False and os.environ.get('CI') is None
 
-from qps import initAll
-initAll()
+os.environ['CI'] = '1'
+
 from qps.utils import *
 from qps.maptools import *
 
-class TestMapTools(unittest.TestCase):
+class TestMapTools(TestCase):
 
     def setUp(self):
         self.canvas = QgsMapCanvas()
@@ -79,9 +78,7 @@ class TestMapTools(unittest.TestCase):
         canvas.mousePressEvent(me1)
         #mt = QgsMapToolCapture(c, d, QgsMapToolCapture.CapturePolygon)
         
-        if SHOW_GUI:
-            QGIS_APP.exec_()
-            
+
 
         mts = QgsMapToolSelect(canvas)
         mts.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
@@ -100,8 +97,7 @@ class TestMapTools(unittest.TestCase):
         canvas.mousePressEvent(me3)
         canvas.mousePressEvent(me4)
 
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui(canvas)
 
     def test_CenterMapCanvasMapTool(self):
 
@@ -110,9 +106,7 @@ class TestMapTools(unittest.TestCase):
         mt = MapToolCenter(canvas)
         canvas.setMapTool(mt)
 
-        if SHOW_GUI:
-            QGIS_APP.exec_()
-
+        self.showGui(canvas)
 
     def onExtentReceived(self, spatialExtent:SpatialExtent):
         self.assertIsInstance(spatialExtent, SpatialExtent)
@@ -159,9 +153,7 @@ class TestMapTools(unittest.TestCase):
 
         canvas.setMapTool(mt)
 
-
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui(canvas)
 
     def test_AddFeature(self):
 
@@ -175,8 +167,7 @@ class TestMapTools(unittest.TestCase):
                 break
         mt = QgsMapToolAddFeature(canvas, QgsMapToolDigitizeFeature.CaptureNone, cadDockWidget)
         canvas.setMapTool(mt)
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui(canvas)
 
 
     def test_MapTools(self):
@@ -238,20 +229,13 @@ class TestMapTools(unittest.TestCase):
 
         mt = PixelScaleExtentMapTool(self.canvas)
         self.assertIsInstance(mt, PixelScaleExtentMapTool)
-#        self.assertFalse(mt.canvas().cursor().pixmap().isNull())
 
         mt = FullExtentMapTool(self.canvas)
         self.assertIsInstance(mt, FullExtentMapTool)
- #       self.assertFalse(mt.canvas().cursor().pixmap().isNull())
 
 
 
 
 
 if __name__ == "__main__":
-    SHOW_GUI = False
     unittest.main()
-
-
-
-QGIS_APP.quit()

@@ -161,7 +161,9 @@ def start_app(cleanup=True, options=StartOptions.Minimized)->QgsApplication:
     else:
         qgsApp = qgis.testing.start_app(cleanup=cleanup)
         if not QgsProviderRegistry.instance().libraryDirectory().exists():
-            s = ""
+            libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'
+            QgsProviderRegistry.instance().setLibraryDirectory(QDir(libDir.as_posix()))
+
         assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
             'Directory: {} does not exist'.format(QgsProviderRegistry.instance().libraryDirectory().path())
 
@@ -456,8 +458,10 @@ class TestObjects():
         """Creates a QDropEvent containing the provided QMimeData ``mimeData``"""
         return QDropEvent(QPointF(0, 0), Qt.CopyAction, mimeData, Qt.LeftButton, Qt.NoModifier)
 
+
+
     @staticmethod
-    def spectralProfiles(n=10):
+    def spectralProfileData(n=10):
         """
         Returns n random spectral profiles from the test data
         :return: lost of (N,3) array of floats specifying point locations.
@@ -473,14 +477,49 @@ class TestObjects():
             x = random.randint(0, coredata.shape[2] - 1)
             y = random.randint(0, coredata.shape[1] - 1)
             profile = coredata[:, y, x]
-            results.append(profile)
+            yield profile, wl, wlu
             i += 1
 
-        return results
+    @staticmethod
+    def spectralProfiles(n=10, fields:QgsFields=None):
+        from .speclib.spectrallibraries import SpectralProfile
+        for (data, wl, wlu) in TestObjects.spectralProfileData(n):
+            profile = SpectralProfile(fields=fields)
+            profile.setValues(y=data, x=wl, xUnit=wlu)
+            yield profile
 
     """
     Class with static routines to create test objects
     """
+
+    @staticmethod
+    def createSpectralLibrary(n:int=10, nEmpty:int=0):
+        """
+        Creates an Spectral Library
+        :param n: total number of profiles
+        :type n: int
+        :param nEmpty: number of empty profiles, SpectralProfiles with empty x/y values
+        :type nEmpty: int
+        :return: SpectralLibrary
+        :rtype: SpectralLibrary
+        """
+        assert n > 0
+        assert nEmpty >= 0 and nEmpty <= n
+
+        from .speclib.spectrallibraries import SpectralLibrary
+        slib = SpectralLibrary()
+        assert slib.startEditing()
+        profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields()))
+        slib.addProfiles(profiles, addMissingFields=False)
+
+        for i in range(nEmpty):
+            p = slib[i]
+            p.setValues([], [])
+            assert slib.updateFeature(p)
+
+        assert slib.commitChanges()
+        return slib
+
 
     @staticmethod
     def inMemoryImage(*args, **kwds):

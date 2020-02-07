@@ -5,14 +5,13 @@ from qgis.gui import *
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import *
-from qps.testing import initQgisApplication
+from qps.testing import TestCase
 
 from qps.models import *
 
-QAPP = initQgisApplication()
-SHOW_GUI = False and os.environ.get('CI') is None
+#os.environ['CI'] = 'True'
 
-class ModelTests(unittest.TestCase):
+class ModelTests(TestCase):
 
     def test_treeNode(self):
 
@@ -124,9 +123,7 @@ class ModelTests(unittest.TestCase):
 
         nB.parentNode().removeChildNode(nB)
 
-        if SHOW_GUI:
-            TV.show()
-            QAPP.exec_()
+        self.showGui(TV)
 
 
     def test_nodeColumnSpan(self):
@@ -161,9 +158,7 @@ class ModelTests(unittest.TestCase):
             n21.setValues(None)
 
         # todo: test if columns are spanned / not
-        if SHOW_GUI:
-            TV.show()
-            QAPP.exec_()
+        self.showGui(TV)
 
     def test_modelview(self):
 
@@ -190,14 +185,7 @@ class ModelTests(unittest.TestCase):
         n1.appendChildNodes([n3])
         n1.appendChildNodes(n4)
 
-        print('DONE')
-        if SHOW_GUI:
-            cb.show()
-            tv.show()
-            QAPP.exec_()
+        self.showGui(tv)
 
 if __name__ == '__main__':
-    SHOW_GUI = False
     unittest.main()
-
-QAPP.quit()

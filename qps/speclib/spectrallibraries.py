@@ -31,21 +31,22 @@
 """
 
 #see http://python-future.org/str_literals.html for str issue discussion
-import json, enum, tempfile, pickle, collections, typing, inspect
+import json, enum, tempfile, pickle, sys, collections, typing, inspect, weakref
 from osgeo import ogr, osr
 from qgis.utils import iface
-from qgis.gui import Targets, QgsMapLayerAction
-from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsVectorFileWriter
+from qgis.gui import *
+from qgis.core import *
+from PyQt5.QtWidgets import *
 from ..externals.pyqtgraph import PlotItem
 from ..externals import pyqtgraph as pg
 from ..models import Option, OptionListModel
-from .. utils import *
+from ..utils import *
 from ..speclib import speclibSettings, SpectralLibrarySettingsKey
 from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
-#'timeseriesviewer.plotstyling'
+
 for name, module in sys.modules.items():
     if hasattr(module, '__file__') and module.__file__ == __file__:
         MODULE_IMPORT_PATH = name
@@ -123,15 +124,6 @@ FIELD_NAME = 'name'
 FIELD_FID = 'fid'
 
 VSI_DIR = r'/vsimem/speclibs/'
-VSIMEM_AVAILABLE = True
-if not check_vsimem():
-    VSI_DIR = tempfile.gettempdir()
-    VSIMEM_AVAILABLE = False
-try:
-    gdal.Mkdir(VSI_DIR, 0)
-except:
-    pass
-
 
 X_UNITS = ['Index', 'Micrometers', 'Nanometers', 'Millimeters', 'Centimeters', 'Meters', 'Wavenumber', 'Angstroms', 'GHz', 'MHz', '']
 Y_UNITS = ['DN', 'Reflectance', 'Radiance', '']
@@ -144,21 +136,16 @@ def vsiSpeclibs()->list:
     :return: [list-of-str]
     """
     visSpeclibs = []
-    if VSIMEM_AVAILABLE:
-        for bn in gdal.ReadDir(VSI_DIR):
-            if bn == '':
-                continue
+
+    entry = gdal.ReadDir(VSI_DIR)
+    if entry is not None:
+        for bn in entry:
             p = pathlib.PurePosixPath(VSI_DIR) / bn
             p = p.as_posix()
             stats = gdal.VSIStatL(p)
             if isinstance(stats, gdal.StatBuf) and not stats.IsDirectory():
                 visSpeclibs.append(p)
-    else:
-        visSpeclibs.extend(list(file_search(VSI_DIR, '*.gpkg')))
     return visSpeclibs
-
-# CURRENT_SPECTRUM_STYLE.linePenplo
-# pdi.setPen(fn.mkPen(QColor('green'), width=3))
 
 def runRemoveFeatureActionRoutine(layerID, id:int):
     """
@@ -958,7 +945,7 @@ class SpectralLibrary(QgsVectorLayer):
     """
     SpectralLibrary
     """
-    _instances = []
+    _instances = weakref.WeakSet()
 
     @staticmethod
     def readFromMimeData(mimeData:QMimeData):
@@ -1734,20 +1721,15 @@ class SpectralLibrary(QgsVectorLayer):
 
     sigNameChanged = pyqtSignal(str)
 
-    __refs__ = []
+    __refs__ = weakref.WeakSet()
     @classmethod
-    def instances(cls)->list:
+    def instances(cls)-> list:
 
-        refs = []
         instances = []
 
-        for r in SpectralLibrary.__refs__:
-            if r is not None:
-                instance = r()
-                if isinstance(instance, SpectralLibrary):
-                    refs.append(r)
-                    instances.append(instance)
-        SpectralLibrary.__refs__ = refs
+        for instance in SpectralLibrary.__refs__:
+            if isinstance(instance, SpectralLibrary):
+                instances.append(instance)
         return instances
 
     sigProgressInfo = pyqtSignal(int, int, str)
@@ -1805,7 +1787,7 @@ class SpectralLibrary(QgsVectorLayer):
             crs = self.crs()
             crs.fromWkt(srs.ExportToWkt())
             self.setCrs(crs)
-        SpectralLibrary.__refs__.append(weakref.ref(self))
+        SpectralLibrary.__refs__.add(self)
 
         self.initTableConfig()
         self.initRenderer()
@@ -1990,7 +1972,7 @@ class SpectralLibrary(QgsVectorLayer):
             if isinstance(progressDialog, QProgressDialog):
                 progressDialog.setValue(nAdded)
 
-                QApplication.processEvents()
+                # QApplication.processEvents()
 
 
 
@@ -2212,7 +2194,7 @@ class SpectralLibrary(QgsVectorLayer):
                         ))
 
 
-        dump = pickle.dumps((self.name(),fields, data))
+        dump = pickle.dumps((self.name(), fields, data))
         return dump
         #return self.__dict__.copy()
 
@@ -2268,7 +2250,7 @@ class SpectralLibrary(QgsVectorLayer):
         for f in self.getFeatures(r):
             yield SpectralProfile.fromSpecLibFeature(f)
 
-    def __getitem__(self, slice):
+    def __getitem__(self, slice)->typing.Union[SpectralProfile, typing.List[SpectralProfile]]:
         fids = sorted(self.allFeatureIds())[slice]
 
         if isinstance(fids, list):
@@ -2293,7 +2275,8 @@ class SpectralLibrary(QgsVectorLayer):
         return True
 
     def __hash__(self):
-        return super(SpectralLibrary, self).__hash__()
+        #return super(SpectralLibrary, self).__hash__()
+        return hash(self.id())
 
 
 
@@ -2597,8 +2580,6 @@ class SpectralProfileValueTableModel(QAbstractTableModel):
         self.mColumnDataUnits = ['-', '-']
         self.mValues = EMPTY_PROFILE_VALUES.copy()
 
-
-
     def setProfileData(self, values):
         """
         :param values:
@@ -2631,10 +2612,10 @@ class SpectralProfileValueTableModel(QAbstractTableModel):
         return self.mValues
 
     def rowCount(self, QModelIndex_parent=None, *args, **kwargs):
-        if self.mValues['x'] is None:
+        if self.mValues['y'] is None:
             return 0
         else:
-            return len(self.mValues['x'])
+            return len(self.mValues['y'])
 
     def columnCount(self, parent=QModelIndex()):
         return 2
@@ -3178,7 +3159,7 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.selectMapLayer(1, lyr)
 
     def run(self):
-        progressDialog = QProgressDialog()
+        progressDialog = QProgressDialog(parent=self)
         progressDialog.setWindowModality(Qt.WindowModal)
         progressDialog.setMinimumDuration(0)
 
@@ -3272,7 +3253,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         assert isinstance(speclib, SpectralLibrary)
         self.mSpeclib = speclib
 
-        QPS_MAPLAYER_STORE.addMapLayer(speclib)
+        #QPS_MAPLAYER_STORE.addMapLayer(speclib)
 
         self.mSpeclib.editingStarted.connect(self.onIsEditableChanged)
         self.mSpeclib.editingStopped.connect(self.onIsEditableChanged)
@@ -3334,6 +3315,10 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
         self.spectraLibrary = self.speclib
         self.clearTable = self.clearSpectralLibrary
 
+    def closeEvent(self, *args, **kwargs):
+
+        super(SpectralLibraryWidget, self).closeEvent(*args, **kwargs)
+
     def applyAllPlotUpdates(self):
         """
         Forces the plot widget to update
@@ -3346,11 +3331,14 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
 
         assert isinstance(self.mStatusBar, QStatusBar)
         slib = self.speclib()
-        nFeatures = slib.featureCount()
-        nSelected = slib.selectedFeatureCount()
-        nVisible = self.plotWidget().plottedProfileCount()
-        msg = "{}/{}/{}".format(nFeatures, nSelected, nVisible)
-        self.mStatusBar.showMessage(msg)
+        import sip
+        if not sip.isdeleted(slib):
+            nFeatures = slib.featureCount()
+            nSelected = slib.selectedFeatureCount()
+            nVisible = self.plotWidget().plottedProfileCount()
+            msg = "{}/{}/{}".format(nFeatures, nSelected, nVisible)
+            self.mStatusBar.showMessage(msg)
+
 
     def onShowContextMenuExternally(self, menu:QgsActionMenu, fid):
         s = ""
@@ -3875,9 +3863,9 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             sl = self.speclib()
 
 
-            progressDialog = QProgressDialog(self)
-            progressDialog.setWindowTitle('Add Profiles')
-            progressDialog.show()
+            self._progressDialog = QProgressDialog(parent=self)
+            self._progressDialog.setWindowTitle('Add Profiles')
+            #progressDialog.show()
 
             info = 'Add {} profiles...'.format(len(speclib))
 
@@ -3886,7 +3874,7 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
             try:
                 sl.startEditing()
                 sl.beginEditCommand(info)
-                sl.addSpeclib(speclib, progressDialog=progressDialog)
+                sl.addSpeclib(speclib, progressDialog=self._progressDialog)
                 sl.endEditCommand()
                 if not wasEditable:
                     sl.commitChanges()
@@ -3894,9 +3882,10 @@ class SpectralLibraryWidget(QMainWindow, loadSpeclibUI('spectrallibrarywidget.ui
                 print(ex, file=sys.stderr)
                 pass
 
-            progressDialog.hide()
-            progressDialog.close()
-            QApplication.processEvents()
+            self._progressDialog.hide()
+            self._progressDialog.close()
+            del self._progressDialog
+            #QApplication.processEvents()
 
 
     def addCurrentSpectraToSpeclib(self, *args):

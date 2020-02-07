@@ -56,9 +56,10 @@ class test_TestObject(qps.testing.TestCase):
 
         from qps.testing import TestObjects
 
-        profiles = TestObjects.spectralProfiles(10)
+        profiles = list(TestObjects.spectralProfiles(10))
         self.assertIsInstance(profiles, list)
         self.assertTrue(len(profiles) == 10)
+
 
     def test_VectorLayers(self):
 
@@ -109,6 +110,13 @@ class test_TestObject(qps.testing.TestCase):
         self.assertEqual(ds.RasterYSize, 2000)
         self.assertEqual(ds.GetRasterBand(1).DataType, gdal.GDT_Float32)
 
+    def test_Speclibs(self):
+
+        from qps.testing import TestObjects
+        from qps.speclib.spectrallibraries import SpectralLibrary
+        slib = TestObjects.createSpectralLibrary(7)
+        self.assertIsInstance(slib, SpectralLibrary)
+        self.assertTrue(len(slib) == 7)
 
 if __name__ == "__main__":
 

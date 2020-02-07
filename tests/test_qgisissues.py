@@ -13,10 +13,16 @@ from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.testing import start_app, unittest, stop_app
 
-start_app()
-
 
 class TestQgsFeature(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        start_app()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        stop_app()
 
     def test_QgsMapMouseEvent(self):
         canvas = QgsMapCanvas()
@@ -70,4 +76,3 @@ class TestQgsFeature(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-stop_app()

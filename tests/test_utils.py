@@ -108,7 +108,7 @@ class testClassUtils(TestCase):
 
     def test_gdalDataset(self):
 
-        ds = TestObjects.inMemoryImage()
+        ds = TestObjects.createRasterDataset()
         path = ds.GetDescription()
         ds1 = gdalDataset(path)
         self.assertIsInstance(ds1, gdal.Dataset)
@@ -118,7 +118,7 @@ class testClassUtils(TestCase):
 
     def test_bandNames(self):
 
-        ds = TestObjects.inMemoryImage()
+        ds = TestObjects.createRasterDataset()
         pathRaster = ds.GetDescription()
 
         validSources = [QgsRasterLayer(self.wmsUri, '', 'wms'),
@@ -134,7 +134,7 @@ class testClassUtils(TestCase):
 
     def test_coordinateTransformations(self):
 
-        ds = TestObjects.inMemoryImage(300, 500)
+        ds = TestObjects.createRasterDataset(300, 500)
         lyr = QgsRasterLayer(ds.GetDescription())
 
         self.assertEqual(ds.GetGeoTransform(), layerGeoTransform(lyr))
@@ -253,7 +253,7 @@ class testClassUtils(TestCase):
 
     def test_defaultBands(self):
 
-        ds = TestObjects.inMemoryImage(nb=10)
+        ds = TestObjects.createRasterDataset(nb=10)
         self.assertIsInstance(ds, gdal.Dataset)
 
         self.assertListEqual([0, 1, 2], defaultBands(ds))

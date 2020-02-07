@@ -29,6 +29,8 @@
 """
 
 from .spectrallibraries import *
+from PyQt5.QtWidgets import QProgressDialog
+import locale
 
 class ClipboardIO(AbstractSpectralLibraryIO):
     """
@@ -70,7 +72,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
         return SpectralLibrary()
 
     @staticmethod
-    def write(speclib, path=None, mode=None, sep=None, newline=None, progressDialog:QProgressDialog):
+    def write(speclib, path=None, mode=None, sep=None, newline=None, progressDialog:QProgressDialog=None):
         if mode is None:
             mode = ClipboardIO.WritingModes.ALL
         assert isinstance(speclib, SpectralLibrary)
@@ -88,8 +90,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
         csvlines = []
         fields = speclib.fields()
 
-        attributeIndices = [i for i, name in zip(fields.allAttributesList(), fields.names())
-                            if not name.startswith(HIDDEN_ATTRIBUTE_PREFIX)]
+        attributeIndices = [i for i, name in zip(fields.allAttributesList(), fields.names())]
 
         skipGeometry = mode == ClipboardIO.WritingModes.VALUES
         skipAttributes = mode == ClipboardIO.WritingModes.VALUES

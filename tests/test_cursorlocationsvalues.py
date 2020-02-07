@@ -24,7 +24,7 @@ from qps.testing import TestObjects, TestCase
 
 from qps.cursorlocationvalue import *
 
-os.environ['CI'] = 'False' # un-comment or set to 'False' to popup GUIs
+os.environ['CI'] = '1' # un-comment or set to 'False' to popup GUIs
 
 class CursorLocationTest(TestCase):
 

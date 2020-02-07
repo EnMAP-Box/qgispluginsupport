@@ -861,6 +861,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mUpdateTimerInterval = 500
         self.mUpdateTimer.timeout.connect(self.onPlotUpdateTimeOut)
 
+    def closeEvent(self, *args, **kwds):
+        """
+        Stop the time to avoid calls on freed / deleted C++ object references
+        """
+        self.mUpdateTimer.stop()
+
+        super(SpectralLibraryPlotWidget, self).closeEvent(*args, **kwds)
+
 
     def viewBox(self)->SpectralViewBox:
         return self.mViewBox

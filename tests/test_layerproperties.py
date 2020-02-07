@@ -16,15 +16,15 @@ from qgis.gui import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
-from qps.testing import initQgisApplication, TestObjects
+from qps.testing import TestObjects, TestCase
 from qps.layerproperties import *
-QGIS_APP = initQgisApplication()
 
-SHOW_GUI = True and os.environ.get('CI') is None
 
-LAYER_WIDGET_REPS = 5 if os.environ.get('CI') is None else 5
+os.environ['CI'] = '1'
 
-class LayerRendererTests(unittest.TestCase):
+LAYER_WIDGET_REPS = 5
+
+class LayerRendererTests(TestCase):
 
 
     def test_SubLayerSelection(self):
@@ -70,25 +70,25 @@ class LayerRendererTests(unittest.TestCase):
     def test_defaultRenderer(self):
 
         #1 band, byte
-        ds = TestObjects.inMemoryImage(nb=1, eType=gdal.GDT_Byte)
+        ds = TestObjects.createRasterDataset(nb=1, eType=gdal.GDT_Byte)
         lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsSingleBandGrayRenderer)
 
         # 1 band, classification
-        ds = TestObjects.inMemoryImage(nc=3)
+        ds = TestObjects.createRasterDataset(nc=3)
         lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsPalettedRasterRenderer)
 
         # 3 bands, byte
-        ds = TestObjects.inMemoryImage(nb=3, eType=gdal.GDT_Byte)
+        ds = TestObjects.createRasterDataset(nb=3, eType=gdal.GDT_Byte)
         lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
         # 10 bands, int
-        ds = TestObjects.inMemoryImage(nb=10, eType=gdal.GDT_Int16)
+        ds = TestObjects.createRasterDataset(nb=10, eType=gdal.GDT_Int16)
         lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
@@ -102,11 +102,8 @@ class LayerRendererTests(unittest.TestCase):
         canvas.setExtent(canvas.fullExtent())
 
         w1 = QgsRendererRasterPropertiesWidget(lyr, canvas, None)
-        w1.show()
 
-
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui(([canvas, w1]))
 
     def test_rasterLayerPropertiesWidget(self):
 
@@ -118,10 +115,7 @@ class LayerRendererTests(unittest.TestCase):
         w = RasterLayerProperties(lyr, canvas)
         self.assertIsInstance(w, RasterLayerProperties)
 
-        if SHOW_GUI:
-            canvas.show()
-            w.show()
-            QGIS_APP.exec_()
+        self.showGui([canvas, w])
 
     def test_rasterLayerPropertiesWidgetRepeated(self):
 
@@ -172,16 +166,10 @@ class LayerRendererTests(unittest.TestCase):
         w = VectorLayerProperties(lyr, None)
         self.assertIsInstance(w, VectorLayerProperties)
 
-        if SHOW_GUI:
-            w.show()
-            QGIS_APP.exec_()
-
+        self.showGui(w)
 
 
 
 if __name__ == "__main__":
     unittest.main()
 
-
-
-QGIS_APP.quit()

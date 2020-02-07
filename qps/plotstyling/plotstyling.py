@@ -22,8 +22,9 @@
 
 import os, json, sys
 
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ..utils import *
