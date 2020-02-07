@@ -16,7 +16,7 @@ import unittest, pickle, os
 from qgis import *
 from qgis.core import *
 from qgis.PyQt.QtGui import *
-
+from qgis.PyQt.Qt import *
 from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
 from qps.testing import TestObjects
