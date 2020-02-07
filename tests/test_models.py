@@ -9,7 +9,7 @@ from qps.testing import TestCase
 
 from qps.models import *
 
-#os.environ['CI'] = 'True'
+os.environ['CI'] = 'True'
 
 class ModelTests(TestCase):
 

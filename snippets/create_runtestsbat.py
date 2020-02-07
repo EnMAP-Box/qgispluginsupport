@@ -37,8 +37,8 @@ for file in file_search(DIR_TESTS, 'test_*.py'):
 
     bn = os.path.basename(file)
     bn = os.path.splitext(bn)[0]
-    lineBat = 'python -m nose2 -s {3} {0} & move {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
-    lineSh = 'python -m nose2 -s {3} {0} ; mv {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
+    lineBat = 'python3 -m nose2 -s {3} {0} & move {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
+    lineSh = 'python3 -m nose2 -s {3} {0} ; mv {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
     linesBat.append(lineBat)
     linesSh.append(lineSh)
 

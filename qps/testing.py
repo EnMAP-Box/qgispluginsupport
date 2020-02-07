@@ -157,54 +157,64 @@ class StartOptions(enum.IntFlag):
 def start_app(cleanup=True, options=StartOptions.Minimized)->QgsApplication:
     if isinstance(QgsApplication.instance(), QgsApplication):
         print('Found existing QgsApplication.instance()')
-        return QgsApplication.instance()
+        qgsApp = QgsApplication.instance()
     else:
         qgsApp = qgis.testing.start_app(cleanup=cleanup)
-        if not QgsProviderRegistry.instance().libraryDirectory().exists():
-            libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'
-            QgsProviderRegistry.instance().setLibraryDirectory(QDir(libDir.as_posix()))
 
-        assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
-            'Directory: {} does not exist'.format(QgsProviderRegistry.instance().libraryDirectory().path())
+    # initialize things not done by qgis.test.start_app()...
 
-        # initialize things not done by qgis.test.start_app()...
-        if StartOptions.PythonRunner in options:
-            # initiate a PythonRunner instance if None exists
-            if not QgsPythonRunner.isValid():
-                r = QgsPythonRunnerMockup()
-                QgsPythonRunner.setInstance(r)
+    if not QgsProviderRegistry.instance().libraryDirectory().exists():
+        libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'
+        QgsProviderRegistry.instance().setLibraryDirectory(QDir(libDir.as_posix()))
 
-        # init standard EditorWidgets
-        if StartOptions.EditorWidgets in options:
-            QgsGui.editorWidgetRegistry().initEditors()
+    assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
+        'Directory: {} does not exist'.format(QgsProviderRegistry.instance().libraryDirectory().path())
 
-        if not isinstance(qgis.utils.iface, QgisInterface):
-            iface = QgisMockup()
-            qgis.utils.initInterface(sip.unwrapinstance(iface))
-            assert iface == qgis.utils.iface
 
-        # set 'home_plugin_path', which is required from the QGIS Plugin manager
-        qgis.utils.home_plugin_path = os.path.join(QgsApplication.instance().qgisSettingsDirPath(),
-                                                   *['python', 'plugins'])
+    # initiate a PythonRunner instance if None exists
 
-        # initialize the QGIS processing framework
-        if StartOptions.ProcessingFramework in options:
+    if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
+        r = QgsPythonRunnerMockup()
+        QgsPythonRunner.setInstance(r)
+
+    # init standard EditorWidgets
+    if StartOptions.EditorWidgets in options and len(QgsGui.editorWidgetRegistry().factories()) == 0:
+        QgsGui.editorWidgetRegistry().initEditors()
+
+    if not isinstance(qgis.utils.iface, QgisInterface):
+        iface = QgisMockup()
+        qgis.utils.initInterface(sip.unwrapinstance(iface))
+        assert iface == qgis.utils.iface
+
+    # set 'home_plugin_path', which is required from the QGIS Plugin manager
+    qgis.utils.home_plugin_path = (pathlib.Path(QgsApplication.instance().qgisSettingsDirPath()) \
+                                   / 'python' / 'plugins').as_posix()
+
+    # initialize the QGIS processing framework
+    if StartOptions.ProcessingFramework in options:
+
+        pfProviderIds = [p.id() for p in QgsApplication.processingRegistry().providers()]
+        if not 'native' in pfProviderIds:
             from qgis.analysis import QgsNativeAlgorithms
             QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 
-            qgisCorePythonPluginDir = pathlib.Path(QgsApplication.pkgDataPath()) / 'python' / 'plugins'
-            assert os.path.isdir(qgisCorePythonPluginDir)
-            if not qgisCorePythonPluginDir in sys.path:
-                sys.path.append(qgisCorePythonPluginDir.as_posix())
+        qgisCorePythonPluginDir = pathlib.Path(QgsApplication.pkgDataPath()) \
+                                  / 'python' / 'plugins'
+        assert os.path.isdir(qgisCorePythonPluginDir)
+        if not qgisCorePythonPluginDir in sys.path:
+            sys.path.append(qgisCorePythonPluginDir.as_posix())
 
+        required = ['qgis', 'gdal'] # at least these should be available
+        missing = [p for p in required if p not in pfProviderIds]
+        if len(missing) > 0:
             from processing.core.Processing import Processing
             Processing.initialize()
 
-        if StartOptions.PrintProviders in options:
-            providers = QgsProviderRegistry.instance().providerList()
-            print('Providers: {}'.format(', '.join(providers)))
+    if StartOptions.PrintProviders in options:
+        providers = QgsProviderRegistry.instance().providerList()
+        print('Providers: {}'.format(', '.join(providers)))
 
-        return qgsApp
+    return qgsApp
 
 
 class QgisMockup(QgisInterface):
