@@ -60,7 +60,12 @@ QGIS_APP.exec_()
 
 Note that the first two lines and the last line are not required if QGIS is already started. 
 
+## Update pyqtgraph
 
+Run the the following command to the qps internal [pyqtgraph](http://pyqtgraph.org) version
+```
+git read-tree --prefix=qps/externals/pyqtgraph/ -u pyqtgraph-0.11.0rc0:pyqtgraph
+```
 
 ## License
 

@@ -166,7 +166,7 @@ class SpectralLibraryPlotColorScheme(object):
 
         return SpectralLibraryPlotColorScheme(
             name='Dark', fg=QColor('white'), bg=QColor('black'),
-            ic=QColor('yellow'), ps=ps, cs=cs, userRendererColors=False)
+            ic=QColor('yellow'), ps=ps, cs=cs, useRendererColors=False)
 
     @staticmethod
     def bright():
@@ -178,7 +178,7 @@ class SpectralLibraryPlotColorScheme(object):
 
         return SpectralLibraryPlotColorScheme(
             name='Bright', fg=QColor('black'), bg=QColor('white'),
-            ic=QColor('red'), ps=ps, cs=cs, userRendererColors=False)
+            ic=QColor('red'), ps=ps, cs=cs, useRendererColors=False)
 
     def __init__(self, name:str='color_scheme',
                  fg:QColor=QColor('white'),
@@ -186,25 +186,44 @@ class SpectralLibraryPlotColorScheme(object):
                  ps:PlotStyle=PlotStyle(),
                  cs:PlotStyle=PlotStyle(),
                  ic:QColor=QColor('yellow'),
-                 userRendererColors:bool=True):
+                 useRendererColors:bool=True):
+        """
+        :param name: name of color scheme
+        :type name: str
+        :param fg: foreground color
+        :type fg: QColor
+        :param bg: background color
+        :type bg: QColor
+        :param ps: default profile style
+        :type ps: PlotStyle
+        :param cs: current profile style, i.e. selected profiles
+        :type cs: PlotStyle
+        :param ic: info color, color of additiona information, like crosshair and cursor location
+        :type ic: QColor
+        :param useRendererColors: if true (default), use colors from the QgsVectorRenderer to colorize plot lines
+        :type useRendererColors: bool
+        """
 
-        self.name:str
+        self.name: str
         self.name = name
 
-        self.fg : QColor
+        self.fg: QColor
         self.fg = fg
 
-        self.bg : QColor
+        self.bg: QColor
         self.bg = bg
 
-        self.ps:PlotStyle
+        self.ps: PlotStyle
         self.ps = ps
+
         self.cs: PlotStyle
         self.cs = cs
-        self.ic:QColor
+
+        self.ic: QColor
         self.ic = ic
-        self.useRendererColors:bool
-        self.useRendererColors = userRendererColors
+
+        self.useRendererColors: bool
+        self.useRendererColors = useRendererColors
 
     def clone(self):
         return copy.deepcopy(self)
@@ -239,8 +258,6 @@ class SpectralLibraryPlotColorScheme(object):
                    self.ps == other.ps and \
                    self.cs == other.cs and \
                    self.useRendererColors == other.useRendererColors
-
-
 
 
 
@@ -321,7 +338,8 @@ class SpectralLibraryPlotColorSchemeWidget(QWidget, loadSpeclibUI('spectrallibra
         cs.fg = self.btnColorForeground.color()
         cs.ic = self.btnColorInfo.color()
         cs.ps = self.wDefaultProfileStyle.plotStyle()
-        cs.cs = self.mLastColorScheme.cs
+        if isinstance(self.mLastColorScheme, SpectralLibraryPlotColorScheme):
+            cs.cs = self.mLastColorScheme.cs.clone()
         cs.useRendererColors = self.cbUseRendererColors.isChecked()
         return cs
 
@@ -866,9 +884,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Stop the time to avoid calls on freed / deleted C++ object references
         """
         self.mUpdateTimer.stop()
-
         super(SpectralLibraryPlotWidget, self).closeEvent(*args, **kwds)
-
 
     def viewBox(self)->SpectralViewBox:
         return self.mViewBox

@@ -17,7 +17,7 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest, tempfile, shutil
+import unittest, shutil, pathlib
 from qgis.core import *
 from qgis.gui import *
 from qps.testing import TestObjects, TestCase
@@ -38,7 +38,7 @@ from qps.speclib.plotting import *
 
 os.environ['CI'] = 'True'
 
-TEST_DIR = os.path.join(os.path.dirname(__file__), 'SPECLIB_TEST_DIR')
+TEST_DIR = pathlib.Path(__file__).parent / 'temp'
 
 
 class TestCore(TestCase):
@@ -52,7 +52,6 @@ class TestCore(TestCase):
     def tearDownClass(cls):
         super(TestCore, cls).tearDownClass()
         if os.path.isdir(TEST_DIR):
-            import shutil
             shutil.rmtree(TEST_DIR)
 
 

@@ -12,10 +12,6 @@ scikit-learn>=0.19.2
 nose2
 unittest-xml-reporting
 
-# will be replaces with stable 0.11
-# pyqtgraph>=0.11
-# https://bitbucket.org/hu-geomatics/enmap-box/downloads/pyqtgraph-0.11.0.dev0.zip
-
 matplotlib>=3.0
 
 # git+https://github.com/pyqtgraph/pyqtgraph

@@ -48,6 +48,7 @@ class testClassUtils(TestCase):
 
         import qps
         sources = list(file_search(dn(qps.__file__), '*.ui', recursive=True))
+        sources = [s for s in sources if not 'pyqtgraph' in s]
         for pathUi in sources[4:5]:
             print('Test "{}"'.format(pathUi))
             t = loadUIFormClass(pathUi)

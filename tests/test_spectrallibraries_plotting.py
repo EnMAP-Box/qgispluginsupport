@@ -36,9 +36,9 @@ from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
 
-os.environ['CI'] = 'True'
+os.environ['CI'] = '1'
 
-TEST_DIR = os.path.join(os.path.dirname(__file__), 'SPECLIB_TEST_DIR')
+TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
 class TestPlotting(TestCase):
 
