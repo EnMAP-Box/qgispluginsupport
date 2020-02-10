@@ -38,7 +38,7 @@ from qps.speclib.plotting import *
 
 os.environ['CI'] = 'True'
 
-TEST_DIR = os.path.join(os.path.dirname(__file__), 'SPECLIB_TEST_DIR')
+TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
 class TestIO(TestCase):
 

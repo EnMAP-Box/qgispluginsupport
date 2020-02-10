@@ -1,4 +1,4 @@
-import os, sys, re, io, importlib, typing, traceback
+import os, sys, re, io, importlib, typing, traceback, sqlite3
 import uuid, warnings, pathlib, time, site, mock, inspect, types, enum
 import sip
 from qgis.core import *
@@ -180,6 +180,19 @@ def start_app(cleanup=True, options=StartOptions.Minimized)->QgsApplication:
     # init standard EditorWidgets
     if StartOptions.EditorWidgets in options and len(QgsGui.editorWidgetRegistry().factories()) == 0:
         QgsGui.editorWidgetRegistry().initEditors()
+
+    # test SRS
+    if True:
+        assert os.path.isfile(QgsApplication.qgisUserDatabaseFilePath()), \
+            'QgsApplication.qgisUserDatabaseFilePath() does not exists: {}'.format(QgsApplication.qgisUserDatabaseFilePath())
+
+        con = sqlite3.connect(QgsApplication.qgisUserDatabaseFilePath())
+        cursor = con.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [v[0] for v in cursor.fetchall() if v[0] != 'sqlite_sequence']
+        if not 'tbl_srs' in tables:
+            info = ['{} misses "tbl_srs"'.format(QgsApplication.qgisSettingsDirPath())]
+            info.append('Settings directory might be outdated: {}'.format(QgsApplication.instance().qgisSettingsDirPath()))
+            print('\n'.join(info), file=sys.stderr)
 
     if not isinstance(qgis.utils.iface, QgisInterface):
         iface = QgisMockup()
