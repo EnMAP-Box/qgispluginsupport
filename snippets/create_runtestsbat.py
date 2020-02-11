@@ -13,8 +13,20 @@ PREFACE_BAT = \
 """
 :: use this script to run unit tests locally
 ::
+:: use this script to run unit tests locally
+::
+@echo off
 set CI=True
-python3 runfirst.py
+
+WHERE python3 >nul 2>&1 && (
+    echo Found "python3" command
+    set PYTHON=python3
+) || (
+    echo Did not found "python3" command. use "python" instead
+    set PYTHON=python
+)
+
+start %PYTHON% runfirst.py
 """
 
 PREFACE_SH = \
@@ -37,7 +49,7 @@ for file in file_search(DIR_TESTS, 'test_*.py'):
 
     bn = os.path.basename(file)
     bn = os.path.splitext(bn)[0]
-    lineBat = 'python3 -m nose2 -s {3} {0} & move {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
+    lineBat = 'call %PYTHON% -m nose2 -s {3} {0} & move {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
     lineSh = 'python3 -m nose2 -s {3} {0} ; mv {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
     linesBat.append(lineBat)
     linesSh.append(lineSh)

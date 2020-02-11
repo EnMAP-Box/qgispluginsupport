@@ -60,6 +60,32 @@ QGIS_APP.exec_()
 
 Note that the first two lines and the last line are not required if QGIS is already started. 
 
+### Example: QGIS Resource files
+
+Many QGIS icons are available as resource strings. Based on the Qt reosurce system, theses icons
+can be used in own QGIS plugins, which reduces the need to provide own `*.png` or `*.svg` files and 
+reduces the plugin size. 
+
+For development, you might load the QGIS repository `images/images.qrc` to your reosurce files in the Qt Designer.
+
+1. Clone the QGIS Repository to access its `images/images.qrc` 
+   To donwload the `/images` folder only, you can do a sparse checkout:
+    
+    
+    ```
+    mkdir QGIS_Images
+    cd QGIS_Images
+    git init
+    git config core.sparseCheckout true
+    git remote add -t master origin https://github.com/qgis/QGIS.git
+    echo '/images/' > .git/info/sparse-checkout
+    git pull origin master
+    ```
+
+2. Open the `images/images.qrc` to your Qt Designer / Qt Creator to visualize icons and copy & paste their resource
+   paths. E.g. `':/images/icons/qgis_icon.svg'` for the QGIS icon.
+   
+ 
 
 ### Example: unit tests
 
