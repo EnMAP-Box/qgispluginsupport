@@ -50,7 +50,7 @@ class TestCore(TestCase):
         resources = []
         # find QGIS resource images
         images_rc = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
-        if images_rc.is_file:
+        if images_rc.is_file():
             resources.append(images_rc)
         super(TestCore, cls).setUpClass(*args, resources=resources)
         from qps import initResources
@@ -968,6 +968,7 @@ class TestCore(TestCase):
         #QApplication.processEvents()
 
         #self.showGui(sw)
+
 
 
 

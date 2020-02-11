@@ -27,13 +27,10 @@ pipelines:
           - python3 -m pip install -r requirements.txt
           - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
           - unzip qgisresources.zip
-          # - py.test --cov enmapbox --cov-report term-missing enmapboxtesting
-          #- python -m runfirst
-          #- python -m nose2 --verbose > test-results/reports_all_tests.txt
-          #- set +e
+          - ls
           - python3 runfirst.py
           - /bin/bash runtests.sh
-          #- set -e
+
 
 definitions:
   caches:
