@@ -154,15 +154,26 @@ class StartOptions(enum.IntFlag):
     PrintProviders = 8
     All = EditorWidgets | ProcessingFramework | PythonRunner | PrintProviders
 
-def start_app(cleanup=True, options=StartOptions.Minimized)->QgsApplication:
+def start_app(cleanup=True, options=StartOptions.Minimized, resources:list=[])->QgsApplication:
+
     if isinstance(QgsApplication.instance(), QgsApplication):
         print('Found existing QgsApplication.instance()')
         qgsApp = QgsApplication.instance()
     else:
         qgsApp = qgis.testing.start_app(cleanup=cleanup)
 
-    # initialize things not done by qgis.test.start_app()...
+    # load resource files
+    for path in resources:
+        if isinstance(path, pathlib.Path):
+            path = path.as_posix()
+        assert isinstance(path, str) and path.endswith('.py')
+        name = os.path.basename(path)[:-3]
+        spec = importlib.util.spec_from_file_location(name, path)
+        rcModule = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rcModule)
+        rcModule.qInitResources()
 
+    # initialize things not done by qgis.test.start_app()...
     if not QgsProviderRegistry.instance().libraryDirectory().exists():
         libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'
         QgsProviderRegistry.instance().setLibraryDirectory(QDir(libDir.as_posix()))
@@ -170,9 +181,7 @@ def start_app(cleanup=True, options=StartOptions.Minimized)->QgsApplication:
     assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
         'Directory: {} does not exist'.format(QgsProviderRegistry.instance().libraryDirectory().path())
 
-
     # initiate a PythonRunner instance if None exists
-
     if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
         r = QgsPythonRunnerMockup()
         QgsPythonRunner.setInstance(r)
@@ -227,6 +236,7 @@ def start_app(cleanup=True, options=StartOptions.Minimized)->QgsApplication:
         providers = QgsProviderRegistry.instance().providerList()
         print('Providers: {}'.format(', '.join(providers)))
 
+
     return qgsApp
 
 
@@ -237,18 +247,9 @@ class QgisMockup(QgisInterface):
     def __init__(self, *args):
         super(QgisMockup, self).__init__()
 
-        #mock.MagicMock.__init__(self, spec=QgisInterface, name='QgisMockup')
-
-
-        #super(QgisMockup, self).__init__(spec=QgisInterface, name='QgisMockup')
-        #mock.MagicMock.__init__(self, spec=QgisInterface)
-        #QgisInterface.__init__(self)
-
-
         self.mCanvas = QgsMapCanvas()
         self.mCanvas.blockSignals(False)
         self.mCanvas.setCanvasColor(Qt.black)
-        self.mCanvas.extentsChanged.connect(self.testSlot)
         self.mLayerTreeView = QgsLayerTreeView()
         self.mRootNode = QgsLayerTree()
         self.mLayerTreeModel = QgsLayerTreeModel(self.mRootNode)
@@ -257,7 +258,6 @@ class QgisMockup(QgisInterface):
         self.mLayerTreeMapCanvasBridge.setAutoSetupOnFirstLayer(True)
 
         import pyplugin_installer.installer
-        PI = pyplugin_installer.instance()
         self.mPluginManager = QgsPluginManagerMockup()
 
         self.ui = QMainWindow()
@@ -292,8 +292,6 @@ class QgisMockup(QgisInterface):
                     inspect.getfullargspec(getattr(self, n))
                 except:
                     setattr(self, n, getattr(self._mock, n))
-
-
 
     def pluginManagerInterface(self) -> QgsPluginManagerInterface:
         return self.mPluginManager
@@ -333,10 +331,6 @@ class QgisMockup(QgisInterface):
     def iconSize(self, dockedToolbar=False):
         return QSize(30, 30)
 
-    def testSlot(self, *args):
-        # print('--canvas changes--')
-        s = ""
-
     def mainWindow(self):
         return self.ui
 
@@ -346,19 +340,15 @@ class QgisMockup(QgisInterface):
     def removeToolBarIcon(self, action):
         assert isinstance(action, QAction)
 
-    def addVectorLayer(self, path, basename=None, providerkey=None):
+    def addVectorLayer(self, path, basename=None, providerkey:str='ogr'):
         if basename is None:
             basename = os.path.basename(path)
-        if providerkey is None:
-            bn, ext = os.path.splitext(basename)
 
-            providerkey = 'ogr'
         l = QgsVectorLayer(path, basename, providerkey)
         assert l.isValid()
         QgsProject.instance().addMapLayer(l, True)
         self.mRootNode.addLayer(l)
         self.mLayerTreeMapCanvasBridge.setCanvasLayers()
-        s = ""
 
     def legendInterface(self):
         return None
@@ -374,7 +364,6 @@ class QgisMockup(QgisInterface):
         self.lyrs.append(l)
         QgsProject.instance().addMapLayer(l, True)
         self.mRootNode.addLayer(l)
-        # self.mCanvas.setLayers(self.mCanvas.layers() + l)
         return l
 
     def createActions(self):
@@ -409,8 +398,8 @@ class QgisMockup(QgisInterface):
 class TestCase(qgis.testing.TestCase):
 
     @classmethod
-    def setUpClass(cls, cleanup=True, options=StartOptions.All) -> None:
-        app = start_app(cleanup=cleanup, options=options)
+    def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
+        app = start_app(cleanup=cleanup, options=options, resources=resources)
 
         from osgeo import gdal
         gdal.AllRegister()

@@ -8,6 +8,7 @@ doc/build/
 .idea/*.*
 deploy/*
 temp/
+*/temp/
 doc/build/*
 vrtbuilder/ui/resources.py
 vrtbuilder/externals/qps/qpsresources.py

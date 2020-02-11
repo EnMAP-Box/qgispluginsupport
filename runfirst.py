@@ -2,7 +2,7 @@ def setupRepository():
 
     import os
     from qps.utils import file_search, dn, jp
-    from qps.make.make import searchAndCompileResourceFiles
+    from qps.make.make import compileResourceFiles
     root = os.path.dirname(os.path.realpath(__file__))
     assert os.path.isdir(root), 'Unable to find root / repository directory: "{}" __file__ = {}'.format(root, __file__)
     makeQrc = False
@@ -24,7 +24,7 @@ def setupRepository():
     if makeQrc:
         print('Need to create qpsresources.py')
         print('Start *.qrc search  in {}'.format(root))
-        searchAndCompileResourceFiles(root)
+        compileResourceFiles(root)
     else:
         print('qpsresources.py exists and is up-to-date')
 

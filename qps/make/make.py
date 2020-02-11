@@ -1,7 +1,3 @@
-
-import xml.etree.ElementTree as ET
-from ..testing import start_app
-#app = initQgisApplication()
 from ..utils import *
 from osgeo import gdal, ogr, osr
 
@@ -177,7 +173,7 @@ def getDOMAttributes(elem):
     return values
 
 
-def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str='_rc.py'):
+def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
     """
     Searches for *.ui files and compiles the *.qrc files they use.
     :param dirRoot: str, root directory, in which to search for *.qrc files or a list of *.ui file paths.
@@ -203,10 +199,8 @@ def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str='_
                 print((ui_file, str(attr['location'])))
                 qrcs.add((pathDir, str(attr['location'])))
 
-    #compile Qt resource files
-    #resourcefiles = file_search(ROOT, '*.qrc', recursive=True)
     resourcefiles = list(qrcs)
-    assert len(resourcefiles) > 0
+    assert len(resourcefiles) > 0, 'Unable to find *.qrc files in {}'.format(dirRoot)
 
     qrcFiles = []
 
@@ -244,11 +238,18 @@ def compileResourceFile(pathQrc:str, targetDir:str=None, suffix:str='_rc.py'):
     bn = os.path.splitext(bn)[0]
     pathPy = os.path.join(dn, bn + suffix)
 
-    try:
-        from PyQt5.pyrcc_main import processResourceFile
-        assert processResourceFile([pathQrc], pathPy, False)
-    except Exception as ex:
-        cmd = 'pyrcc5 -o {} {}'.format(pathPy, pathQrc)
+    if True:
+        import PyQt5.pyrcc_main
+        level = PyQt5.pyrcc_main.compressLevel
+        threshold = PyQt5.pyrcc_main.compressThreshold
+        # increase compression level
+        PyQt5.pyrcc_main.compressLevel = 100
+        PyQt5.pyrcc_main.compressThreshold = 1
+        assert PyQt5.pyrcc_main.processResourceFile([pathQrc], pathPy, False)
+        PyQt5.pyrcc_main.compressLevel = level
+        PyQt5.pyrcc_main.compressThreshold = threshold
+    else:
+        cmd = 'pyrcc5 -compress 100 -o {} {}'.format(pathPy, pathQrc)
         print(cmd)
         os.system(cmd)
 
@@ -275,15 +276,9 @@ def compileQGISResourceFiles(pathQGISRepo:str, target:str=None):
     :param target: str, path to directory that contains the compiled QGIS resources. By default it will be
             `<REPOSITORY_ROOT>/qgisresources`
     """
-    if pathQGISRepo is None:
-        pathQGISRepo = os.environ.get('QGIS_REPOSITORY')
-        if isinstance(pathQGISRepo, str):
-            pathQGISRepo = pathQGISRepo.strip("'").strip('"')
+    assert os.path.isdir(pathQGISRepo), 'Unable to find local QGIS_REPOSITORY'
 
+    if not isinstance(target, str):
+        target = jp(DIR_REPO, 'qgisresources')
+    compileResourceFiles(pathQGISRepo, targetDir=target)
 
-    if os.path.isdir(pathQGISRepo):
-        if not isinstance(target, str):
-            target = jp(DIR_REPO, 'qgisresources')
-        searchAndCompileResourceFiles(pathQGISRepo, targetDir=target)
-    else:
-        print('Unable to find local QGIS_REPOSITORY')

@@ -48,6 +48,9 @@ class TestPlotting(TestCase):
         os.makedirs(TEST_DIR, exist_ok=True)
         super(TestPlotting, cls).setUpClass(*args, **kwds)
 
+        from qps import initResources
+        initResources()
+
     @classmethod
     def tearDownClass(cls):
         super(TestPlotting, cls).tearDownClass()

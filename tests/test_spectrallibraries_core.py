@@ -36,7 +36,7 @@ from qps.speclib.asd import *
 from qps.speclib.plotting import *
 
 
-os.environ['CI'] = 'True'
+#os.environ['CI'] = 'False'
 
 TEST_DIR = pathlib.Path(__file__).parent / 'temp'
 
@@ -46,7 +46,15 @@ class TestCore(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         os.makedirs(TEST_DIR, exist_ok=True)
-        super(TestCore, cls).setUpClass(*args, **kwds)
+
+        resources = []
+        # find QGIS resource images
+        images_rc = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
+        if images_rc.is_file:
+            resources.append(images_rc)
+        super(TestCore, cls).setUpClass(*args, resources=resources)
+        from qps import initResources
+        initResources()
 
     @classmethod
     def tearDownClass(cls):
