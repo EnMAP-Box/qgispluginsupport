@@ -25,7 +25,8 @@ pipelines:
           - DISPLAY=:1.0
           - export DISPLAY
           - python3 -m pip install -r requirements.txt
-          - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip | unzip qgisresources.zip --path qgisresources
+          - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
+          - unzip qgisresources.zip --path qgisresources
           # - py.test --cov enmapbox --cov-report term-missing enmapboxtesting
           #- python -m runfirst
           #- python -m nose2 --verbose > test-results/reports_all_tests.txt
