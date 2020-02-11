@@ -13,8 +13,8 @@ pipelines:
         caches:
           - docker
           - pip
+          - qgisicons
         script: # Modify the commands below to build your repository.
-          - python3 -m pip install -r requirements.txt
           - apt-get update
           - apt-get install xvfb
           - apt-get install -y wget
@@ -23,8 +23,8 @@ pipelines:
           - ps aux | grep X
           - DISPLAY=:1.0
           - export DISPLAY
-          - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
-          - unzip qgisresources.zip
+          - python3 -m pip install -r requirements.txt
+          - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip | unzip qgisresources.zip --path qgisresources
           # - py.test --cov enmapbox --cov-report term-missing enmapboxtesting
           #- python -m runfirst
           #- python -m nose2 --verbose > test-results/reports_all_tests.txt
@@ -32,3 +32,7 @@ pipelines:
           - python3 runfirst.py
           - /bin/bash runtests.sh
           #- set -e
+
+definitions:
+  caches:
+    qgisicons: qgisresources
