@@ -15,6 +15,7 @@ pipelines:
           - pip
           - qgisicons
         script: # Modify the commands below to build your repository.
+          - python3 -m pip install -r requirements.txt
           - apt-get update
           - apt-get install xvfb
           - apt-get install -y wget
