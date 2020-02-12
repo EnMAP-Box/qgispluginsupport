@@ -32,6 +32,22 @@ def missingTestdata() -> bool:
         print(ex, file=sys.stderr)
         return True
 
+def initQtResources(roots:list=[]):
+    if len(roots) == 0:
+        p = pathlib.Path(__file__).parent
+        roots.append(p.parent)
+
+    for rootDir in roots:
+        for r, dirs, files in os.walk(rootDir):
+            root = pathlib.Path(r)
+            for f in [f for f in files if f.endswith('_rc.py')]:
+                path = root / f
+                name = f[:-3]
+                spec = importlib.util.spec_from_file_location(name, path)
+                rcModule = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(rcModule)
+                rcModule.qInitResources()
+
 
 def installTestdata(overwrite_existing=False):
     """
@@ -416,7 +432,7 @@ class TestCase(qgis.testing.TestCase):
 
         s = ""
 
-    def showGui(self, widgets)->bool:
+    def showGui(self, widgets=[])->bool:
         """
         Call this to show GUI(s) in case we do not run within a CI system
         """
@@ -428,6 +444,7 @@ class TestCase(qgis.testing.TestCase):
             widgets = [widgets]
 
         keepOpen = False
+
 
         for w in widgets:
             if isinstance(w, QWidget):
