@@ -950,7 +950,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         Labels = 'Labels'
         Transparency = 'Transparency'
         Histogram = 'Histogram'
-        Renderung = 'Rendering'
+        Rendering = 'Rendering'
         Pyramids = 'Pyramids'
         Metadata = 'Metadata'
         Fields = 'Fields'
@@ -1052,12 +1052,14 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
     def onOk(self):
         self.onApply()
-        self.setResult(QDialog.Accepted)
+        #self.setResult(QDialog.Accepted)
+        self.accept()
 
     def onCancel(self):
         # do restore previous settings?
 
-        self.setResult(QDialog.Rejected)
+        #self.setResult(QDialog.Rejected)
+        self.reject()
 
 
     def onApply(self):
@@ -1179,7 +1181,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
     def sync_labels(self, lyr:QgsMapLayer):
         is_vector = isinstance(lyr, QgsVectorLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Transparency, False):
+        if self.activateListItem(LayerPropertiesDialog.Pages.Labels, False):
             # to be implemented
             pass
 
@@ -1203,7 +1205,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
     def sync_rendering(self, lyr:QgsMapLayer):
         is_maplayer = isinstance(lyr, QgsMapLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Renderung, is_maplayer):
+        if self.activateListItem(LayerPropertiesDialog.Pages.Rendering, is_maplayer):
             self.mScaleRangeWidget.setScaleRange(lyr.minimumScale(), lyr.maximumScale())
 
 
@@ -1246,12 +1248,12 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
         s  = ""
 def showLayerPropertiesDialog(layer:QgsMapLayer,
-                              canvas:QgsMapCanvas,
+                              canvas:QgsMapCanvas=None,
                               parent:QObject=None,
                               modal:bool=True,
-                              useQGISDialog:bool=False)->QDialog.DialogCode:
+                              useQGISDialog:bool=False)->typing.Union[QDialog.DialogCode, QDialog]:
     """
-    Opens a dialog to adjust map layer settiongs.
+    Opens a dialog to adjust map layer settings.
     :param layer: QgsMapLayer of type QgsVectorLayer or QgsRasterLayer
     :param canvas: QgsMapCanvas
     :param parent:
@@ -1272,7 +1274,6 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
             lastActiveLayer = iface.activeLayer()
 
             if root.findLayer(layer) is None:
-
                 temporaryGroup = root.addGroup('.')
                 assert isinstance(temporaryGroup, QgsLayerTreeGroup)
                 temporaryGroup.setItemVisibilityChecked(False)
@@ -1280,6 +1281,7 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
                 assert isinstance(lyrNode, QgsLayerTreeLayer)
             iface.setActiveLayer(layer)
             iface.showLayerProperties(layer)
+
             if isinstance(temporaryGroup, QgsLayerTreeGroup):
                 root.removeChildNode(temporaryGroup)
             iface.setActiveLayer(lastActiveLayer)
@@ -1290,15 +1292,17 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
             print(ex)
     else:
 
-        dialog = LayerPropertiesDialog(layer)
+        dialog = LayerPropertiesDialog(layer, canvas=canvas)
 
         if modal == True:
             dialog.setModal(True)
+            return dialog.exec_()
         else:
             dialog.setModal(False)
+            dialog.show()
+            return dialog
 
-        result = dialog.exec_()
-    return result
+    return None
 
 
 

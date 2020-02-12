@@ -111,8 +111,6 @@ class LayerRendererTests(TestCase):
         self.showGui(([canvas, w1]))
 
 
-
-
     def test_metadatatable(self):
 
         lyr = TestObjects.createVectorLayer()
@@ -151,23 +149,36 @@ class LayerRendererTests(TestCase):
         w.layout().addWidget(d)
         self.showGui(w)
 
+    def test_LayerProperties(self):
+
+        layers = [TestObjects.createRasterLayer(),
+                  TestObjects.createVectorLayer()]
+        for lyr in layers:
+            dialog = showLayerPropertiesDialog(lyr, modal=False)
+            self.assertIsInstance(dialog, LayerPropertiesDialog)
+            self.assertTrue(dialog.isVisible())
+
+            dialog.btnCancel.click()
+            self.assertTrue(dialog.result() == QDialog.Rejected)
+
+            dialog = showLayerPropertiesDialog(lyr, modal=False)
+            dialog.btnOk.click()
+            self.assertTrue(dialog.result() == QDialog.Accepted)
+
 
     def test_p(self):
 
         rl = TestObjects.createRasterLayer()
         vl = TestObjects.createVectorLayer()
         vd = QgsRendererPropertiesDialog(vl, QgsStyle(), True, None)
-
-
         canvas = QgsMapCanvas()
-
         rd = QgsRendererRasterPropertiesWidget(rl, canvas, None)
-
-
         wtrans = QgsRasterTransparencyWidget(rl, canvas, None)
 
         style = QgsMapLayerStyleManagerWidget(rl, canvas, None)
         self.showGui([vd, rd, wtrans,style])
+
+
 
 
 if __name__ == "__main__":
