@@ -25,8 +25,8 @@ from requests.auth import HTTPBasicAuth
 from http.client import responses
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from ..testing import initQgisApplication
-qgisApp = initQgisApplication()
+from ..testing import start_app
+qgisApp = start_app()
 from ..utils import *
 
 from qgis.PyQt.QtCore import *
