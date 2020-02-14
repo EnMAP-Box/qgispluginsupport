@@ -48,6 +48,28 @@ def initQtResources(roots:list=[]):
                 spec.loader.exec_module(rcModule)
                 rcModule.qInitResources()
 
+def initQGISResources():
+    """
+    Tries to find a folder 'qgisresources'. If so, it will load all '*_rc.py' to make the Qt resources available.
+    See snippets/create_qgisresourcefilearchive.py to create the 'qgisresources' folder.
+    """
+    root = None
+    if 'QPS_QGIS_RESOURCES' in os.environ.keys():
+        root = os.environ.keys()
+    else:
+        d = pathlib.Path(__file__)
+
+        while d != pathlib.Path('.'):
+            if (d / 'qgisresources').is_dir():
+                root = (d / 'qgisresources')
+                break
+            else:
+                d = d.parent
+            if len(d.parts) == 1:
+                break
+
+    if isinstance(root, pathlib.Path):
+        initQtResources([root])
 
 def installTestdata(overwrite_existing=False):
     """
@@ -415,7 +437,11 @@ class TestCase(qgis.testing.TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
-        app = start_app(cleanup=cleanup, options=options, resources=resources)
+
+        cls.app = start_app(cleanup=cleanup, options=options, resources=resources)
+
+        if len(resources) == 0:
+            initQGISResources()
 
         from osgeo import gdal
         gdal.AllRegister()
@@ -424,13 +450,19 @@ class TestCase(qgis.testing.TestCase):
     def tearDownClass(cls):
 
 
-        if isinstance(QgsApplication.instance(), QgsApplication):
+        if True and isinstance(QgsApplication.instance(), QgsApplication):
             QgsApplication.exitQgis()
             QApplication.quit()
             import gc
             gc.collect()
 
-        s = ""
+    def setUp(self):
+
+        print('SET UP {}'.format(self.id()))
+
+    def tearDown(self):
+
+        print('TEAR DOWN {}'.format(self.id()))
 
     def showGui(self, widgets=[])->bool:
         """
