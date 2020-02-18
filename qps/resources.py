@@ -153,7 +153,6 @@ class ResourceTableModel(QAbstractTableModel):
         self.cnIcon = 'Resource'
 
         self.RESOURCES = []
-        self.ICONCACHE = dict()
 
         self.reloadResources()
 
@@ -161,7 +160,6 @@ class ResourceTableModel(QAbstractTableModel):
 
         self.beginResetModel()
         self.RESOURCES.clear()
-        self.ICONCACHE.clear()
         self.RESOURCES.extend(list(scanResources()))
         self.endResetModel()
 
@@ -228,13 +226,10 @@ class ResourceTableView(QTableView):
             a.triggered.connect(lambda *args, n=uri: QApplication.clipboard().setPixmap(QPixmap(n)))
 
             m.exec_(event.globalPos())
-            s = ""
+
         pass
 
 
-
-    def onCopyIcon(self, uri):
-        pass
 class ResourceBrowser(QWidget):
 
     def __init__(self, *args, **kwds):
