@@ -17,23 +17,17 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest, tempfile, shutil
-from qgis.core import *
-from qgis.gui import *
+import unittest
 from qps.testing import TestObjects, TestCase
 
 
-from qpstestdata import enmap, hymap
+from qpstestdata import enmap
 from qpstestdata import speclib as speclibpath
 
-
-import qps
-import qps.speclib
-
-from qps.speclib.csvdata import *
-from qps.speclib.envi import *
-from qps.speclib.asd import *
-from qps.speclib.plotting import *
+from qps.speclib.io.csvdata import *
+from qps.speclib.io.envi import *
+from qps.speclib.io.asd import *
+from qps.speclib.gui import *
 
 
 os.environ['CI'] = 'True'
@@ -54,10 +48,8 @@ class TestIO(TestCase):
             import shutil
             shutil.rmtree(TEST_DIR)
 
-
     def setUp(self):
-
-        print('RUN TEST {}'.format(self.id()))
+        super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
         for s in SpectralLibrary.instances():
@@ -65,10 +57,6 @@ class TestIO(TestCase):
 
         for file in vsiSpeclibs():
             gdal.Unlink(file)
-
-
-    def tearDown(self) -> None:
-        print('FINISHED  {}'.format(self.id()))
 
     def test_VSI(self):
 
@@ -79,7 +67,6 @@ class TestIO(TestCase):
         self.assertIsInstance(slib2, SpectralLibrary)
         self.assertEqual(slib1, slib2)
         s = ""
-
 
     def test_jsonIO(self):
 
@@ -97,14 +84,12 @@ class TestIO(TestCase):
         slib.commitChanges()
         slib.startEditing()
 
-        from qps.classification.classificationscheme import ClassificationScheme, ClassInfo, EDITOR_WIDGET_REGISTRY_KEY, classSchemeToConfig, classSchemeFromConfig
-
+        from qps.classification.classificationscheme import ClassificationScheme, ClassInfo, EDITOR_WIDGET_REGISTRY_KEY, classSchemeToConfig
 
         cs = ClassificationScheme()
         cs.insertClass(ClassInfo(name='unclassified'))
         cs.insertClass(ClassInfo(name='class a', color=QColor('red')))
         cs.insertClass(ClassInfo(name='class b', color=QColor('blue')))
-
 
         idx1 = slib.fields().lookupField('class1')
         idx2 = slib.fields().lookupField('class2')
@@ -127,13 +112,12 @@ class TestIO(TestCase):
         data = slib.readJSONProperties(pathJSON)
         s = ""
 
-
-
     def test_CSV2(self):
         from qpstestdata import speclib
+        from qps.speclib.io.csvdata import CSVSpectralLibraryIO
         SLIB = SpectralLibrary.readFrom(speclib, progressDialog=QProgressDialog())
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        #print(pathCSV)
+
         CSVSpectralLibraryIO.write(SLIB, pathCSV, progressDialog=QProgressDialog())
 
         self.assertTrue(os.path.isfile(pathCSV))
@@ -147,7 +131,6 @@ class TestIO(TestCase):
             if p1 != p2:
                 s = ""
             self.assertEqual(p1, p2)
-
 
         SLIB = TestObjects.createSpectralLibrary()
         #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs2.out.csv')
@@ -239,7 +222,6 @@ class TestIO(TestCase):
             self.assertIsInstance(p, SpectralProfile)
             self.assertEqual(p.yValues()[0], 42)
             self.assertEqual(p.yValues()[99], 42)
-
 
     def test_vector2speclib(self):
 
@@ -350,11 +332,10 @@ class TestIO(TestCase):
 
         self.showGui(slw)
 
-
     def test_EcoSIS(self):
 
 
-        from qps.speclib.ecosis import EcoSISSpectralLibraryIO
+        from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
 
         # 1. read
         from qpstestdata import DIR_ECOSIS
@@ -398,7 +379,7 @@ class TestIO(TestCase):
     def test_SPECCHIO(self):
 
 
-        from qps.speclib.specchio import SPECCHIOSpectralLibraryIO
+        from qps.speclib.io.specchio import SPECCHIOSpectralLibraryIO
 
         # 1. read
         from qpstestdata import DIR_SPECCHIO
@@ -431,7 +412,7 @@ class TestIO(TestCase):
     def test_ASD(self):
 
         # read binary files
-        from qps.speclib.asd import ASDSpectralLibraryIO, ASDBinaryFile
+        from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDBinaryFile
         from qpstestdata import DIR_ASD_BIN, DIR_ASD_TXT
 
         binaryFiles = list(file_search(DIR_ASD_BIN, '*.asd'))
@@ -467,7 +448,7 @@ class TestIO(TestCase):
         slib = TestObjects.createSpectralLibrary()
 
 
-        from qps.speclib.vectorsources import VectorSourceSpectralLibraryIO
+        from qps.speclib.io.vectorsources import VectorSourceSpectralLibraryIO
 
         extensions = ['.csv', '.gpkg', '.shp', '.kml', '.gpx']
         for ext in extensions:
@@ -530,7 +511,7 @@ class TestIO(TestCase):
 
         p = os.path.join(DIR_ARTMO, 'directional_reflectance.txt')
 
-        from qps.speclib.artmo import ARTMOSpectralLibraryIO
+        from qps.speclib.io.artmo import ARTMOSpectralLibraryIO
 
         self.assertTrue(ARTMOSpectralLibraryIO.canRead(p))
         pd = QProgressDialog()
@@ -545,7 +526,7 @@ class TestIO(TestCase):
 
         # txt = CSVSpectralLibraryIO.asString(speclib)
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs3.out.csv')
+        #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs3.out.csv')
         writtenFiles = speclib.exportProfiles(pathCSV)
         self.assertIsInstance(writtenFiles, list)
         self.assertTrue(len(writtenFiles) == 1)

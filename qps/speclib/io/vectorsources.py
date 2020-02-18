@@ -6,7 +6,7 @@ from qgis.PyQt.QtWidgets import *
 from qgis.core import *
 
 
-from .spectrallibraries import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, OGR_EXTENSION2DRIVER
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, OGR_EXTENSION2DRIVER
 
 class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     """

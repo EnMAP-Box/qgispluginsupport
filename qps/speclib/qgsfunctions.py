@@ -31,7 +31,7 @@ import pickle
 
 from qgis.core import *
 
-from .spectrallibraries import FIELD_VALUES, decodeProfileValueDict
+from .core import FIELD_VALUES, decodeProfileValueDict
 
 QGS_FUNCTION_GROUP = "Spectral Libraries"
 """

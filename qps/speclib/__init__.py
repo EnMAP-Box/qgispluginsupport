@@ -27,11 +27,13 @@
 *                                                                         *
 ***************************************************************************
 """
-import sys, enum
+import enum
 from qgis.core import *
-from qgis.gui import *
 
 from qgis.PyQt.QtCore import QSettings
+
+
+EDITOR_WIDGET_REGISTRY_KEY = 'Spectral Profile'
 
 class SpectralLibrarySettingsKey(enum.Enum):
     CURRENT_PROFILE_STYLE = 1
@@ -52,7 +54,7 @@ def speclibSettings()->QSettings:
     return QgsSettings('HUB', 'speclib')
 
 try:
-    from .envi import EnviSpectralLibraryIO
+    from qps.speclib.io.envi import EnviSpectralLibraryIO
 except:
     pass
 

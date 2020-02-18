@@ -1,7 +1,7 @@
 
 import os, sys, re, pathlib, json, collections
 import csv as pycsv
-from .spectrallibraries import *
+from ..core import *
 
 
 class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):

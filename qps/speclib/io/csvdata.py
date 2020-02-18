@@ -31,7 +31,7 @@
 import os, sys, re, pathlib, json
 from qgis.core import *
 import csv as pycsv
-from .spectrallibraries import *
+from ..core import *
 
 # max size a CSV file can have, in MBytes
 MAX_CSV_SIZE = 5
