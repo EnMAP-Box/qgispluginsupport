@@ -5,7 +5,7 @@ CI=True
 export CI
 
 find . -name "*.pyc" -exec rm -f {} \;
-
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 python3 runfirst.py
 
 mkdir test-reports
@@ -26,4 +26,4 @@ python3 -m coverage run --rcfile=.coveragec --append  tests/test_speclib_gui.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_speclib_io.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_testing.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_utils.py
-coverage report
+python3 -m coverage report

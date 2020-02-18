@@ -37,7 +37,7 @@ CI=True
 export CI
 
 find . -name "*.pyc" -exec rm -f {} \;
-
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 python3 runfirst.py
 """
 
