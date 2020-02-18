@@ -8,11 +8,8 @@ numpy>=1.15
 scipy>=1.1
 scikit-learn>=0.19.2
 
-# unit testing only
+# for unit testing only
 nose2
 unittest-xml-reporting
-
-matplotlib>=3.0
-
-# git+https://github.com/pyqtgraph/pyqtgraph
+coverage
 

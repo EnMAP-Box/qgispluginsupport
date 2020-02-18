@@ -1,8 +1,5 @@
 import pathlib, os, zipfile, sys
 
-
-
-
 if __name__ == '__main__':
 
     import getopt
@@ -12,7 +9,6 @@ if __name__ == '__main__':
     except getopt.GetoptError as err:
         print(err)
     if len(qgis_repo) == 0:
-
         assert 'QGIS_REPO' in os.environ.keys(), 'QGIS_REPO is not specified'
         qgis_repo = os.environ['QGIS_REPO']
     else:

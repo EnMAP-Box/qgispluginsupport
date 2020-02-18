@@ -30,7 +30,7 @@ from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtXml import QDomDocument
-
+from . import DIR_UI_FILES
 from .utils import *
 from .models import OptionListModel, Option
 from .classification.classificationscheme import ClassificationScheme, ClassInfo
@@ -820,13 +820,14 @@ class FieldConfigEditorWidget(QWidget):
             self.sigChanged.emit(self)
 
 
-class LayerFieldConfigEditorWidget(QWidget, loadUI('layerfieldconfigeditorwidget.ui')):
+class LayerFieldConfigEditorWidget(QWidget):
     """
     A widget to set QgsVetorLayer field settings
     """
-    def __init__(self, parent, *args, **kwds):
-        super(LayerFieldConfigEditorWidget, self).__init__(parent,  *args, **kwds)
-        self.setupUi(self)
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        loadUi(DIR_UI_FILES / 'layerfieldconfigeditorwidget.ui', self)
 
         self.scrollArea.resizeEvent = self.onScrollAreaResize
         self.mFieldModel = LabelFieldModel(self)

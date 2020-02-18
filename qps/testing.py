@@ -40,19 +40,39 @@ def initQtResources(roots:list=[]):
     for rootDir in roots:
         for r, dirs, files in os.walk(rootDir):
             root = pathlib.Path(r)
-            for f in [f for f in files if f.endswith('_rc.py')]:
+            rc_files = [f for f in files if f.endswith('_rc.py')]
+            for f in rc_files:
                 path = root / f
-                name = f[:-3]
-                spec = importlib.util.spec_from_file_location(name, path)
-                rcModule = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(rcModule)
-                rcModule.qInitResources()
+                print('load {}'.format(path))
+                initResourceFile(path)
 
-def initQGISResources():
+
+def initResourceFile(path):
+    if not isinstance(path, pathlib.Path):
+        path = pathlib.Path(path)
+    f = path.name
+    name = f[:-3]
+    try:
+        add_path = path.parent.as_posix() not  in sys.path
+        if add_path:
+            sys.path.append(path.parent.as_posix())
+        #spec = importlib.util.spec_from_file_location(name, path)
+        __import__(name)
+        #rcModule = importlib.util.module_from_spec(spec)
+        #spec.loader.exec_module(rcModule)
+        #rcModule.qInitResources()
+        if add_path:
+            sys.path.remove(path.parent.as_posix())
+
+    except Exception as ex:
+        print(ex, file=sys.stderr)
+
+def findQGISResourceFiles():
     """
-    Tries to find a folder 'qgisresources'. If so, it will load all '*_rc.py' to make the Qt resources available.
+    Tries to find a folder 'qgisresources'.
     See snippets/create_qgisresourcefilearchive.py to create the 'qgisresources' folder.
     """
+    results = []
     root = None
     if 'QPS_QGIS_RESOURCES' in os.environ.keys():
         root = os.environ.keys()
@@ -69,7 +89,12 @@ def initQGISResources():
                 break
 
     if isinstance(root, pathlib.Path):
-        initQtResources([root])
+        for root, dirs, files in os.walk(root):
+            for rc_file_name in [f for f in files if f.endswith('_rc.py')]:
+                path = pathlib.Path(root) / rc_file_name
+                if path.is_file():
+                    results.append(path)
+    return results
 
 def installTestdata(overwrite_existing=False):
     """
@@ -200,16 +225,9 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources:list=[])->
     else:
         qgsApp = qgis.testing.start_app(cleanup=cleanup)
 
-    # load resource files
+    # load resource files, e.g to make icons available
     for path in resources:
-        if isinstance(path, pathlib.Path):
-            path = path.as_posix()
-        assert isinstance(path, str) and path.endswith('.py')
-        name = os.path.basename(path)[:-3]
-        spec = importlib.util.spec_from_file_location(name, path)
-        rcModule = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(rcModule)
-        rcModule.qInitResources()
+        initResourceFile(path)
 
     # initialize things not done by qgis.test.start_app()...
     if not QgsProviderRegistry.instance().libraryDirectory().exists():
@@ -295,17 +313,13 @@ class QgisMockup(QgisInterface):
         self.mLayerTreeMapCanvasBridge = QgsLayerTreeMapCanvasBridge(self.mRootNode, self.mCanvas)
         self.mLayerTreeMapCanvasBridge.setAutoSetupOnFirstLayer(True)
 
-        import pyplugin_installer.installer
         self.mPluginManager = QgsPluginManagerMockup()
 
         self.ui = QMainWindow()
-
         self.mMessageBar = QgsMessageBar()
         mainFrame = QFrame()
-
         self.ui.setCentralWidget(mainFrame)
         self.ui.setWindowTitle('QGIS Mockup')
-
         l = QHBoxLayout()
         l.addWidget(self.mLayerTreeView)
         l.addWidget(self.mCanvas)
@@ -316,12 +330,10 @@ class QgisMockup(QgisInterface):
         self.ui.setCentralWidget(mainFrame)
         self.lyrs = []
         self.createActions()
-
         self.mClipBoard = QgsClipboardMockup()
 
         # mock other functions
         excluded = QObject.__dict__.keys()
-
         self._mock = mock.Mock(spec=QgisInterface)
         for n in self._mock._mock_methods:
             assert isinstance(n, str)
@@ -330,6 +342,7 @@ class QgisMockup(QgisInterface):
                     inspect.getfullargspec(getattr(self, n))
                 except:
                     setattr(self, n, getattr(self._mock, n))
+
 
     def pluginManagerInterface(self) -> QgsPluginManagerInterface:
         return self.mPluginManager
@@ -433,23 +446,78 @@ class QgisMockup(QgisInterface):
         super().zoomFull(*args, **kwargs)
 
 
+def scanResources(path=':')->str:
+    """Recursively returns file paths in directory"""
+    D = QDirIterator(path)
+    while D.hasNext():
+        entry = D.next()
+        if D.fileInfo().isDir():
+            yield from scanResources(path=entry)
+        elif D.fileInfo().isFile():
+            yield D.filePath()
+
+def printResources():
+    print('Available resources:')
+    res = sorted(list(scanResources()))
+    for r in res:
+        print(r)
+
+
+
+def showResources()->QWidget:
+    """
+    A simple way to list available Qt resources
+    :return:
+    :rtype:
+    """
+    needQApp = not isinstance(QApplication.instance(), QApplication)
+    if needQApp:
+        app = QApplication([])
+    scrollArea = QScrollArea()
+
+    widget = QFrame()
+    grid = QGridLayout()
+    iconSize = QSize(25, 25)
+    row = 0
+    for resourcePath in scanResources(':'):
+        labelText = QLabel(resourcePath)
+        labelText.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        labelIcon = QLabel()
+        icon = QIcon(resourcePath)
+        assert not icon.isNull()
+
+        labelIcon.setPixmap(icon.pixmap(iconSize))
+
+        grid.addWidget(labelText, row, 0)
+        grid.addWidget(labelIcon, row, 1)
+        row += 1
+
+    widget.setLayout(grid)
+    widget.setMinimumSize(widget.sizeHint())
+    scrollArea.setWidget(widget)
+    scrollArea.show()
+    if needQApp:
+        QApplication.instance().exec_()
+    return scrollArea
+
+
 class TestCase(qgis.testing.TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
 
-        cls.app = start_app(cleanup=cleanup, options=options, resources=resources)
+        # trie to find QGIS resource files
+        for r in findQGISResourceFiles():
+            if r not in resources:
+                resources.append(r)
 
-        if len(resources) == 0:
-            initQGISResources()
+        cls.app = start_app(cleanup=cleanup, options=options, resources=resources)
 
         from osgeo import gdal
         gdal.AllRegister()
 
     @classmethod
     def tearDownClass(cls):
-
-
         if True and isinstance(QgsApplication.instance(), QgsApplication):
             QgsApplication.exitQgis()
             QApplication.quit()
@@ -458,7 +526,7 @@ class TestCase(qgis.testing.TestCase):
 
     def setUp(self):
 
-        print('SET UP {}'.format(self.id()))
+        print('\nSET UP {}'.format(self.id()))
 
     def tearDown(self):
 
@@ -468,7 +536,6 @@ class TestCase(qgis.testing.TestCase):
         """
         Call this to show GUI(s) in case we do not run within a CI system
         """
-
         if str(os.environ.get('CI')).lower() not in ['', 'none', 'false', '0']:
             return False
 
@@ -476,7 +543,6 @@ class TestCase(qgis.testing.TestCase):
             widgets = [widgets]
 
         keepOpen = False
-
 
         for w in widgets:
             if isinstance(w, QWidget):
@@ -543,7 +609,7 @@ class TestObjects():
 
     @staticmethod
     def spectralProfiles(n=10, fields:QgsFields=None):
-        from .speclib.spectrallibraries import SpectralProfile
+        from .speclib.core import SpectralProfile
         for (data, wl, wlu) in TestObjects.spectralProfileData(n):
             profile = SpectralProfile(fields=fields)
             profile.setValues(y=data, x=wl, xUnit=wlu)
@@ -567,7 +633,7 @@ class TestObjects():
         assert n > 0
         assert nEmpty >= 0 and nEmpty <= n
 
-        from .speclib.spectrallibraries import SpectralLibrary
+        from .speclib.core import SpectralLibrary
         slib = SpectralLibrary()
         assert slib.startEditing()
         profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields()))
@@ -590,7 +656,7 @@ class TestObjects():
 
     @staticmethod
     def createRasterDataset(ns=10, nl=20, nb=1, crs='EPSG:32632',
-                            eType:int = gdal.GDT_Byte, nc: int = 0, path: str = None) -> gdal.Dataset:
+                            eType:int = gdal.GDT_Int16, nc: int = 0, path: str = None) -> gdal.Dataset:
         """
         Generates a gdal.Dataset of arbitrary size based on true data from a smaller EnMAP raster image
         """
@@ -667,8 +733,7 @@ class TestObjects():
                 yoff = 0
                 while yoff < nl - 1:
                     ysize = min(cl, nl - yoff)
-
-                    ds.WriteRaster(xoff, yoff, xsize, ysize, coredata[:,0:ysize, 0:xsize].tobytes())
+                    ds.WriteRaster(xoff, yoff, xsize, ysize, coredata[:, 0:ysize, 0:xsize].tobytes())
                     yoff += ysize
                 xoff += xsize
 
