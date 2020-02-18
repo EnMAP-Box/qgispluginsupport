@@ -54,7 +54,7 @@ def speclibSettings()->QSettings:
     return QgsSettings('HUB', 'speclib')
 
 try:
-    from qps.speclib.io.envi import EnviSpectralLibraryIO
+    from ..speclib.io.envi import EnviSpectralLibraryIO
 except:
     pass
 

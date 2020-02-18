@@ -5,7 +5,7 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest, pickle
+import unittest, pickle, pathlib, re
 from qgis import *
 from qgis.core import *
 from qgis.gui import *
@@ -51,6 +51,23 @@ class testClassTesting(unittest.TestCase):
 
 
         app.quit()
+
+
+    def test_relative_imports(self):
+
+        root = pathlib.Path(__file__).parents[1]
+
+        from qps.utils import file_search
+
+        re1 = re.compile(r'^\w*import qps')
+        re2 = re.compile(r'^\w*from qps')
+        for path in file_search(root / 'qps', '*.py', recursive=True):
+            with open(path) as f:
+                lines = f.read()
+                self.assertTrue(re1.search(lines) == None, msg='non-relative "import qps" in {}'.format(path))
+                self.assertTrue(re2.search(lines) == None, msg='non-relative "from qps" in {}'.format(path))
+
+
 
 if __name__ == "__main__":
     unittest.main()

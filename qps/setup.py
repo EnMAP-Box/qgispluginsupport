@@ -8,7 +8,7 @@ def compileQPSResources():
     if addSysPath:
         sys.path.append(pathQPSRoot)
 
-    from qps.make.make import compileResourceFiles, compileQGISResourceFiles
+    from .make.make import compileResourceFiles, compileQGISResourceFiles
     compileResourceFiles(pathQPSDir)
 
     if addSysPath:

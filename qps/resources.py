@@ -236,7 +236,7 @@ class ResourceBrowser(QWidget):
         super().__init__(*args, **kwds)
 
 
-        from qps.utils import loadUi
+        from .utils import loadUi
         pathUi = pathlib.Path(__file__).parent / 'ui' / 'qpsresourcebrowser.ui'
         loadUi(pathUi, self)
         self.setWindowTitle('QPS Resource Browser')

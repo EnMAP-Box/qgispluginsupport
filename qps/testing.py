@@ -10,7 +10,7 @@ import qgis.testing
 import qgis.utils
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
-from qps.resources import *
+from .resources import *
 
 
 WMS_GMAPS = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'

@@ -977,7 +977,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         elif MIMEDATA_TEXT in mimeData.formats():
             txt = mimeData.text()
-            from qps.speclib.io.csvdata import CSVSpectralLibraryIO
+            from ..speclib.io.csvdata import CSVSpectralLibraryIO
             return CSVSpectralLibraryIO.fromString(txt)
 
         elif MIMEDATA_URL in mimeData.formats():
@@ -1876,7 +1876,7 @@ class SpectralLibrary(QgsVectorLayer):
             elif format == MIMEDATA_URL:
                 mimeData.setUrls([QUrl(self.source())])
             elif format == MIMEDATA_TEXT:
-                from qps.speclib.io.csvdata import CSVSpectralLibraryIO
+                from .io.csvdata import CSVSpectralLibraryIO
                 txt = CSVSpectralLibraryIO.asString(self)
                 mimeData.setText(txt)
 
@@ -2132,11 +2132,11 @@ class SpectralLibrary(QgsVectorLayer):
         if len(path) > 0:
             ext = os.path.splitext(path)[-1].lower()
             if ext in ['.sli', '.esl']:
-                from qps.speclib.io.envi import EnviSpectralLibraryIO
+                from .io.envi import EnviSpectralLibraryIO
                 return EnviSpectralLibraryIO.write(self, path)
 
             if ext in ['.csv']:
-                from qps.speclib.io.csvdata import CSVSpectralLibraryIO
+                from .io.csvdata import CSVSpectralLibraryIO
                 from csv import excel_tab
                 return CSVSpectralLibraryIO.write(self, path, dialect=kwds.get('dialect', excel_tab))
 

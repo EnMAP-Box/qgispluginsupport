@@ -2317,13 +2317,13 @@ class SpectralLibraryWidget(QMainWindow):
 
         self.m_plot_max = 500
 
-        from qps.speclib.io.envi import EnviSpectralLibraryIO
-        from qps.speclib.io.csvdata import CSVSpectralLibraryIO
-        from qps.speclib.io.asd import ASDSpectralLibraryIO
-        from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
-        from qps.speclib.io.specchio import SPECCHIOSpectralLibraryIO
-        from qps.speclib.io.artmo import ARTMOSpectralLibraryIO
-        from qps.speclib.io.vectorsources import VectorSourceSpectralLibraryIO
+        from .io.envi import EnviSpectralLibraryIO
+        from .io.csvdata import CSVSpectralLibraryIO
+        from .io.asd import ASDSpectralLibraryIO
+        from .io.ecosis import EcoSISSpectralLibraryIO
+        from .io.specchio import SPECCHIOSpectralLibraryIO
+        from .io.artmo import ARTMOSpectralLibraryIO
+        from .io.vectorsources import VectorSourceSpectralLibraryIO
 
 
         self.mSpeclibIOInterfaces = [
