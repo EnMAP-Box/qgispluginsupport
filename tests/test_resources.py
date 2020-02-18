@@ -6,6 +6,7 @@ from qps import QPS_RESOURCE_FILE
 
 class ResourceTests(unittest.TestCase):
 
+
     def test_qrc(self):
 
         pathQRC = pathlib.Path(__file__).parents[1] / 'qps' / 'qpsresources.qrc'
@@ -32,7 +33,7 @@ class ResourceTests(unittest.TestCase):
 
         app = start_app(resources=[QPS_RESOURCE_FILE])
 
-        r = ':qps/ui/icons/speclib.svg'
+        r = ':/qps/ui/icons/speclib.svg'
         self.assertIsInstance(r, str)
         resources = list(scanResources())
 
