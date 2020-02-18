@@ -39,8 +39,12 @@ your application, e.g. by calling:
     initAll()
     ```
 
+## Examples ###
 
-### Example: Spectral Library Widget ###
+Examples can be found in the `examples` folder.
+
+### Spectral Library Widget ###
+
 The following example shows you how to initialize (for testing) a mocked QGIS Application and to open the Spectral Library  Wdiget: 
 
 ```python
@@ -49,7 +53,7 @@ QGIS_APP = initQgisApplication()
 
 
 from mymodule.qps import initAll 
-from mymodule.qps.speclib.spectrallibraries import SpectralLibraryWidget
+from mymodule.qps.speclib.core import SpectralLibraryWidget
 initAll()
 
 widget = SpectralLibraryWidget()
@@ -60,7 +64,7 @@ QGIS_APP.exec_()
 
 Note that the first two lines and the last line are not required if QGIS is already started. 
 
-### Example: QGIS Resource files
+### QGIS Resource files
 
 Many QGIS icons are available as resource strings. Based on the Qt reosurce system, theses icons
 can be used in own QGIS plugins, which reduces the need to provide own `*.png` or `*.svg` files and 
