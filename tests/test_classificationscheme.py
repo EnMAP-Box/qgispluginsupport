@@ -6,19 +6,21 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
-import unittest
+import unittest, sys
 import tempfile
 from qgis.core import *
 from qgis.gui import *
 
-from qps.testing import start_app, TestObjects, TestCase
-from qps.utils import *
-from qps.classification.classificationscheme import *
 
 print('PYTHONPATH:')
 for p in sorted(sys.path):
     print(p)
 print('')
+
+from qps.testing import start_app, TestObjects, TestCase
+from qps.utils import *
+from qps.classification.classificationscheme import *
+
 
 class TestsClassificationScheme(TestCase):
 
