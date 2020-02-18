@@ -10,117 +10,12 @@ import qgis.testing
 import qgis.utils
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
-
+from qps.resources import *
 
 
 WMS_GMAPS = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
 WMS_OSM = r'referer=OpenStreetMap%20contributors,%20under%20ODbL&type=xyz&url=http://tiles.wmflabs.org/hikebike/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=17&zmin=1'
 WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
-
-
-def missingTestdata() -> bool:
-    """
-    Returns (True, message:str) if testdata can not be loaded,
-     (False, None) else
-    :return: (bool, str)
-    """
-    try:
-        import enmapboxtestdata
-        assert os.path.isfile(enmapboxtestdata.enmap)
-        return False
-    except Exception as ex:
-        print(ex, file=sys.stderr)
-        return True
-
-
-def installTestdata(overwrite_existing=False):
-    """
-    Downloads and installs the EnMAP-Box Example Data
-    """
-    if not missingTestdata() and not overwrite_existing:
-        print('Testdata already installed and up to date.')
-        return
-
-    btn = QMessageBox.question(None, 'Testdata is missing or outdated',
-                               'Download testdata from \n{}\n?'.format(URL_TESTDATA))
-    if btn != QMessageBox.Yes:
-        print('Canceled')
-        return
-
-    if DIR_TESTDATA is None:
-        s = ""
-
-    pathLocalZip = os.path.join(os.path.dirname(DIR_TESTDATA), 'enmapboxtestdata.zip')
-    url = QUrl(URL_TESTDATA)
-    dialog = QgsFileDownloaderDialog(url, pathLocalZip, 'Download {}'.format(os.path.basename(URL_TESTDATA)))
-
-    def onCanceled():
-        print('Download canceled')
-        return
-
-    def onCompleted():
-        print('Download completed')
-        print('Unzip {}...'.format(pathLocalZip))
-
-        targetDir = DIR_TESTDATA
-        os.makedirs(targetDir, exist_ok=True)
-        import zipfile
-        zf = zipfile.ZipFile(pathLocalZip)
-
-        names = zf.namelist()
-        names = [n for n in names if re.search(r'[^/]/enmapboxtestdata/..*', n) and not n.endswith('/')]
-        for name in names:
-            # create directory if doesn't exist
-
-            pathRel = re.search(r'[^/]+/enmapboxtestdata/(.*)$', name).group(1)
-            subDir, baseName = os.path.split(pathRel)
-            fullDir = os.path.normpath(os.path.join(targetDir, subDir))
-            os.makedirs(fullDir, exist_ok=True)
-
-            if not name.endswith('/'):
-                fullPath = os.path.normpath(os.path.join(targetDir, pathRel))
-                with open(fullPath, 'wb') as outfile:
-                    outfile.write(zf.read(name))
-                    outfile.flush()
-
-        zf.close()
-        del zf
-
-        print('Testdata installed.')
-        spec = importlib.util.spec_from_file_location('enmapboxtestdata', os.path.join(targetDir, '__init__.py'))
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        sys.modules['enmapboxtestdata'] = module
-
-    def onDownloadError(messages):
-        raise Exception('\n'.join(messages))
-
-    def deleteFileDownloadedFile():
-
-        pass
-        # dirty patch for Issue #167
-        #
-        # print('Remove {}...'.format(pathLocalZip))
-        # os.remove(pathLocalZip)
-
-    def onDownLoadExited():
-
-        from qgis.PyQt.QtCore import QTimer
-        QTimer.singleShot(5000, deleteFileDownloadedFile)
-
-    def onDownloadProgress(received, total):
-        print('\r{:0.2f} %'.format(100. * received / total), end=' ', flush=True)
-        time.sleep(0.1)
-
-    dialog.downloadCanceled.connect(onCanceled)
-    dialog.downloadCompleted.connect(onCompleted)
-    dialog.downloadError.connect(onDownloadError)
-    dialog.downloadExited.connect(onDownLoadExited)
-    dialog.downloadProgress.connect(onDownloadProgress)
-
-    dialog.open()
-    dialog.exec_()
-
 
 def initQgisApplication(*args, qgisResourceDir: str = None,
                         loadProcessingFramework=True,
@@ -162,16 +57,9 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources:list=[])->
     else:
         qgsApp = qgis.testing.start_app(cleanup=cleanup)
 
-    # load resource files
+    # load resource files, e.g to make icons available
     for path in resources:
-        if isinstance(path, pathlib.Path):
-            path = path.as_posix()
-        assert isinstance(path, str) and path.endswith('.py')
-        name = os.path.basename(path)[:-3]
-        spec = importlib.util.spec_from_file_location(name, path)
-        rcModule = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(rcModule)
-        rcModule.qInitResources()
+        initResourceFile(path)
 
     # initialize things not done by qgis.test.start_app()...
     if not QgsProviderRegistry.instance().libraryDirectory().exists():
@@ -236,7 +124,6 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources:list=[])->
         providers = QgsProviderRegistry.instance().providerList()
         print('Providers: {}'.format(', '.join(providers)))
 
-
     return qgsApp
 
 
@@ -257,17 +144,13 @@ class QgisMockup(QgisInterface):
         self.mLayerTreeMapCanvasBridge = QgsLayerTreeMapCanvasBridge(self.mRootNode, self.mCanvas)
         self.mLayerTreeMapCanvasBridge.setAutoSetupOnFirstLayer(True)
 
-        import pyplugin_installer.installer
         self.mPluginManager = QgsPluginManagerMockup()
 
         self.ui = QMainWindow()
-
         self.mMessageBar = QgsMessageBar()
         mainFrame = QFrame()
-
         self.ui.setCentralWidget(mainFrame)
         self.ui.setWindowTitle('QGIS Mockup')
-
         l = QHBoxLayout()
         l.addWidget(self.mLayerTreeView)
         l.addWidget(self.mCanvas)
@@ -278,12 +161,10 @@ class QgisMockup(QgisInterface):
         self.ui.setCentralWidget(mainFrame)
         self.lyrs = []
         self.createActions()
-
         self.mClipBoard = QgsClipboardMockup()
 
         # mock other functions
         excluded = QObject.__dict__.keys()
-
         self._mock = mock.Mock(spec=QgisInterface)
         for n in self._mock._mock_methods:
             assert isinstance(n, str)
@@ -292,6 +173,7 @@ class QgisMockup(QgisInterface):
                     inspect.getfullargspec(getattr(self, n))
                 except:
                     setattr(self, n, getattr(self._mock, n))
+
 
     def pluginManagerInterface(self) -> QgsPluginManagerInterface:
         return self.mPluginManager
@@ -395,32 +277,42 @@ class QgisMockup(QgisInterface):
         super().zoomFull(*args, **kwargs)
 
 
+
 class TestCase(qgis.testing.TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
-        app = start_app(cleanup=cleanup, options=options, resources=resources)
+
+        # trie to find QGIS resource files
+        for r in findQGISResourceFiles():
+            if r not in resources:
+                resources.append(r)
+
+        cls.app = start_app(cleanup=cleanup, options=options, resources=resources)
 
         from osgeo import gdal
         gdal.AllRegister()
 
     @classmethod
     def tearDownClass(cls):
-
-
-        if isinstance(QgsApplication.instance(), QgsApplication):
+        if True and isinstance(QgsApplication.instance(), QgsApplication):
             QgsApplication.exitQgis()
             QApplication.quit()
             import gc
             gc.collect()
 
-        s = ""
+    def setUp(self):
 
-    def showGui(self, widgets)->bool:
+        print('\nSET UP {}'.format(self.id()))
+
+    def tearDown(self):
+
+        print('TEAR DOWN {}'.format(self.id()))
+
+    def showGui(self, widgets=[])->bool:
         """
         Call this to show GUI(s) in case we do not run within a CI system
         """
-
         if str(os.environ.get('CI')).lower() not in ['', 'none', 'false', '0']:
             return False
 
@@ -494,7 +386,7 @@ class TestObjects():
 
     @staticmethod
     def spectralProfiles(n=10, fields:QgsFields=None):
-        from .speclib.spectrallibraries import SpectralProfile
+        from .speclib.core import SpectralProfile
         for (data, wl, wlu) in TestObjects.spectralProfileData(n):
             profile = SpectralProfile(fields=fields)
             profile.setValues(y=data, x=wl, xUnit=wlu)
@@ -518,7 +410,7 @@ class TestObjects():
         assert n > 0
         assert nEmpty >= 0 and nEmpty <= n
 
-        from .speclib.spectrallibraries import SpectralLibrary
+        from .speclib.core import SpectralLibrary
         slib = SpectralLibrary()
         assert slib.startEditing()
         profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields()))
@@ -541,7 +433,7 @@ class TestObjects():
 
     @staticmethod
     def createRasterDataset(ns=10, nl=20, nb=1, crs='EPSG:32632',
-                            eType:int = gdal.GDT_Byte, nc: int = 0, path: str = None) -> gdal.Dataset:
+                            eType:int = gdal.GDT_Int16, nc: int = 0, path: str = None) -> gdal.Dataset:
         """
         Generates a gdal.Dataset of arbitrary size based on true data from a smaller EnMAP raster image
         """
@@ -618,8 +510,7 @@ class TestObjects():
                 yoff = 0
                 while yoff < nl - 1:
                     ysize = min(cl, nl - yoff)
-
-                    ds.WriteRaster(xoff, yoff, xsize, ysize, coredata[:,0:ysize, 0:xsize].tobytes())
+                    ds.WriteRaster(xoff, yoff, xsize, ysize, coredata[:, 0:ysize, 0:xsize].tobytes())
                     yoff += ysize
                 xoff += xsize
 
@@ -927,7 +818,6 @@ class QgsClipboardMockup(QObject):
     def systemClipboardChanged(self):
         pass
 
-
 class QgsPythonRunnerMockup(QgsPythonRunner):
     """
     A Qgs PythonRunner implementation
@@ -955,5 +845,4 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
             raise ex
             return False
         return True
-
 

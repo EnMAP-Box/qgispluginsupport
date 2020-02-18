@@ -13,7 +13,7 @@
 import os, sys, re, pathlib, json, enum, struct, time, datetime, typing, collections
 import numpy as np
 import csv as pycsv
-from .spectrallibraries import *
+from ..core import *
 
 
 """

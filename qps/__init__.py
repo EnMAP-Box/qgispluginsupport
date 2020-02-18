@@ -1,23 +1,11 @@
 import sys, importlib, site, os, pathlib
 from qgis.core import QgsApplication
 from qgis.gui import QgisInterface
-__version__ = '0.2'
+__version__ = '0.3'
 
-def initResources():
-    """
-    Initializes compiled Qt resources
-    """
-    import importlib.util
-    for r, dirs, files in os.walk(pathlib.Path(__file__).parent):
-        root = pathlib.Path(r)
-        for f in [f for f in files if f.endswith('_rc.py')]:
-            path = root / f
-            name = f[:-3]
-            spec = importlib.util.spec_from_file_location(name, path)
-            rcModule = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(rcModule)
-            rcModule.qInitResources()
-
+DIR_UI_FILES = pathlib.Path(__file__).parent / 'ui'
+DIR_ICONS = DIR_UI_FILES / 'icons'
+QPS_RESOURCE_FILE = pathlib.Path(__file__).parent / 'qpsresources_rc.py'
 
 def registerEditorWidgets():
     """
@@ -27,10 +15,10 @@ def registerEditorWidgets():
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
 
     try:
-        from .speclib.spectrallibraries import registerSpectralProfileEditorWidget
+        from .speclib.gui import registerSpectralProfileEditorWidget
         registerSpectralProfileEditorWidget()
     except Exception as ex:
-        print('Failed to call qps.speclib.spectrallibraries.registerSpectralProfileEditorWidget()', file=sys.stderr)
+        print('Failed to call qps.speclib.core.registerSpectralProfileEditorWidget()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
     try:
@@ -55,9 +43,10 @@ def registerEditorWidgets():
         print('Failed to call qps.plotstyling.plotstyling.registerPlotStyleEditorWidget()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
-
+def initResources():
+    from .testing import initResourceFile
+    initResourceFile(QPS_RESOURCE_FILE)
 
 def initAll():
-
     initResources()
     registerEditorWidgets()

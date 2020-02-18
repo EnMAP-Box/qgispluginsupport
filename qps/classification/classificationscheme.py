@@ -19,7 +19,7 @@
 ***************************************************************************
 """
 
-import os, json, pickle, warnings, csv, re, sys, typing
+import os, json, pickle, warnings, csv, re, sys, typing, pathlib
 from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtCore import *
@@ -28,10 +28,7 @@ from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtXml import *
 import numpy as np
 from osgeo import gdal
-from ..utils import gdalDataset, nextColor, loadUIFormClass, findMapLayer, registeredMapLayers
-
-
-loadClassificationUI = lambda name: loadUIFormClass(os.path.join(os.path.dirname(__file__), name))
+from ..utils import gdalDataset, nextColor, findMapLayer, registeredMapLayers, loadUi
 
 DEFAULT_UNCLASSIFIEDCOLOR = QColor('black')
 DEFAULT_FIRST_COLOR = QColor('#a6cee3')
@@ -1394,23 +1391,20 @@ class ClassificationSchemeComboBox(QComboBox):
             classInfo = self.itemData(i, role=Qt.UserRole)
         return classInfo
 
-class ClassificationSchemeWidget(QWidget, loadClassificationUI('classificationscheme.ui')):
+class ClassificationSchemeWidget(QWidget):
 
     sigValuesChanged = pyqtSignal()
 
     def __init__(self, parent=None, classificationScheme=None):
         super(ClassificationSchemeWidget, self).__init__(parent)
-        self.setupUi(self)
+        pathUi = pathlib.Path(__file__).parent / 'classificationscheme.ui'
+        loadUi(pathUi, self)
 
         self.mScheme = ClassificationScheme()
         if classificationScheme is not None:
             self.setClassificationScheme(classificationScheme)
 
-
-
-
         assert isinstance(self.tableClassificationScheme, QTableView)
-        #self.tableClassificationScheme.horizontalHeader().setResizeMode(QHeaderView.ResizeToContents)
         self.tableClassificationScheme.setModel(self.mScheme)
         self.tableClassificationScheme.doubleClicked.connect(self.onTableDoubleClick)
         self.tableClassificationScheme.resizeColumnsToContents()

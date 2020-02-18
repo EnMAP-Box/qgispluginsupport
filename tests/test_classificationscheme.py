@@ -6,17 +6,20 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
-import unittest
+import unittest, sys
 import tempfile
 from qgis.core import *
 from qgis.gui import *
 
-from qps.testing import start_app, TestObjects, TestCase
 
+print('PYTHONPATH:')
+for p in sorted(sys.path):
+    print(p)
+print('')
+
+from qps.testing import start_app, TestObjects, TestCase
 from qps.utils import *
 from qps.classification.classificationscheme import *
-
-os.environ['CI'] = '1' # un-comment to popup GUIs
 
 
 class TestsClassificationScheme(TestCase):
@@ -31,6 +34,7 @@ class TestsClassificationScheme(TestCase):
 
 
     def setUp(self):
+        super().setUp()
         self.nameL1 = 'Level 1 (int)'
         self.nameL2 = 'Level 2 (str)'
         for store in MAP_LAYER_STORES:
@@ -246,7 +250,7 @@ class TestsClassificationScheme(TestCase):
         vl.startEditing()
 
         w.resize(QSize(300, 250))
-        print(vl.fields().names())
+        #print(vl.fields().names())
         look = vl.fields().lookupField
         score = factory.fieldScore(vl, look(self.nameL1))
         #self.assertTrue(factory.fieldScore(vl, look(self.nameL1)) == 20)
@@ -263,7 +267,7 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(eww, ClassificationSchemeEditorWidgetWrapper)
         self.assertIsInstance(eww.widget(), ClassificationSchemeComboBox)
 
-        eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
+        #eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
 
         self.showGui([configWidget, dv, w])
@@ -466,7 +470,7 @@ class TestsClassificationScheme(TestCase):
         cs  = ClassificationScheme.create(5)
 
         md = cs.mimeData(None)
-        print(md.data(MIMEDATA_KEY_QGIS_STYLE))
+        #print(md.data(MIMEDATA_KEY_QGIS_STYLE))
         self.assertIsInstance(md, QMimeData)
 
         from qps.layerproperties import pasteStyleToClipboard

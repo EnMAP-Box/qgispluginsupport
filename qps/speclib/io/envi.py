@@ -29,7 +29,7 @@
 """
 import os, csv, tempfile, uuid, time
 from osgeo import gdal, gdal_array
-from .spectrallibraries import *
+from ..core import *
 
 #lookup GDAL Data Type and its size in bytes
 LUT_GDT_SIZE = {gdal.GDT_Byte:1,

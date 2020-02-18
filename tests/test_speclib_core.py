@@ -17,54 +17,28 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest, shutil, pathlib
-from qgis.core import *
+import unittest, shutil
 from qgis.gui import *
 from qps.testing import TestObjects, TestCase
-
-
-from qpstestdata import enmap, hymap
+from qpstestdata import hymap
 from qpstestdata import speclib as speclibpath
 
-
-import qps
-import qps.speclib
-
-from qps.speclib.csvdata import *
-from qps.speclib.envi import *
-from qps.speclib.asd import *
-from qps.speclib.plotting import *
-
-
-#os.environ['CI'] = 'False'
-
-TEST_DIR = pathlib.Path(__file__).parent / 'temp'
-
+from qps.speclib.io.csvdata import *
+from qps.speclib.io.envi import *
+from qps.speclib.io.asd import *
+from qps import initResources
 
 class TestCore(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
-        os.makedirs(TEST_DIR, exist_ok=True)
-
-        resources = []
-        # find QGIS resource images
-        images_rc = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
-        if images_rc.is_file():
-            resources.append(images_rc)
-        super(TestCore, cls).setUpClass(*args, resources=resources)
-        from qps import initResources
+        super(TestCore, cls).setUpClass(*args, **kwds)
         initResources()
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestCore, cls).tearDownClass()
-        if os.path.isdir(TEST_DIR):
-            shutil.rmtree(TEST_DIR)
 
 
     def setUp(self):
-        print('RUN TEST {}'.format(self.id()))
+        super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
         for s in SpectralLibrary.instances():
@@ -73,10 +47,6 @@ class TestCore(TestCase):
 
         for file in vsiSpeclibs():
             gdal.Unlink(file)
-
-    def tearDown(self):
-
-        print('FINISHED {}'.format(self.id()))
 
 
     def test_fields(self):
@@ -114,15 +84,6 @@ class TestCore(TestCase):
             self.assertEqual(f1.typeName(), f2.typeName())
 
 
-    def test_AttributeDialog(self):
-
-        SLIB = TestObjects.createSpectralLibrary()
-
-        d = AddAttributeDialog(SLIB)
-
-        self.showGui(d)
-
-
 
     def test_SpectralProfile_BandBandList(self):
 
@@ -142,17 +103,17 @@ class TestCore(TestCase):
     def test_Serialization(self):
 
 
-        import qps.speclib.spectrallibraries
+        import qps.speclib.core
         x = [1, 2, 3, 4, 5]
         y = [2, 3, 4, 5, 6]
         bbl = [1, 0, 1, 1, 0]
         xUnit = 'nm'
         yUnit = None
 
-        reminder = qps.speclib.spectrallibraries.SERIALIZATION
+        reminder = qps.speclib.core.SERIALIZATION
 
         for mode in [SerializationMode.JSON, SerializationMode.PICKLE]:
-            qps.speclib.spectrallibraries.SERIALIZATION = mode
+            qps.speclib.core.SERIALIZATION = mode
 
             sl = SpectralLibrary()
             self.assertTrue(sl.startEditing())
@@ -182,7 +143,7 @@ class TestCore(TestCase):
 
 
 
-        qps.speclib.spectrallibraries.SERIALIZATION = reminder
+        qps.speclib.core.SERIALIZATION = reminder
 
 
     def test_SpectralProfile(self):
@@ -220,19 +181,15 @@ class TestCore(TestCase):
         self.assertListEqual(d['y'], y)
         self.assertListEqual(d['x'], x)
 
-
-
         sClone = sp.clone()
         self.assertIsInstance(sClone, SpectralProfile)
         self.assertEqual(sClone, sp)
         sClone.setId(-9999)
         self.assertEqual(sClone, sp)
 
-
-
         canvas = QgsMapCanvas()
-        lyr1 = QgsRasterLayer(enmap)
-        lyr2 = QgsRasterLayer(hymap)
+        lyr1 = TestObjects.createRasterLayer(ns=1000, nl=1000)
+        lyr2 = TestObjects.createRasterLayer(ns=900, nl=900)
         canvas.setLayers([lyr1, lyr2])
         canvas.setExtent(lyr1.extent())
         canvas.setDestinationCrs(lyr1.crs())
@@ -604,149 +561,6 @@ class TestCore(TestCase):
 
 
 
-
-    def test_SpectralProfileEditorWidget(self):
-
-        SLIB = TestObjects.createSpectralLibrary()
-
-        w = SpectralProfileEditorWidget()
-        p = SLIB[-1]
-        w.setProfileValues(p)
-
-        self.showGui(w)
-
-    def test_SpectralProfileValueTableModel(self):
-
-        speclib = TestObjects.createSpectralLibrary()
-        p3 = speclib[2]
-        self.assertIsInstance(p3, SpectralProfile)
-
-        xUnit = p3.xUnit()
-        yUnit = p3.yUnit()
-
-        if yUnit is None:
-            yUnit = '-'
-        if xUnit is None:
-            xUnit = '-'
-
-        m = SpectralProfileValueTableModel()
-
-        self.assertIsInstance(m, SpectralProfileValueTableModel)
-        self.assertTrue(m.rowCount() == 0)
-        self.assertTrue(m.columnCount() == 2)
-        self.assertEqual('Y [-]', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('X [-]', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-
-        m.setProfileData(p3)
-        self.assertTrue(m.rowCount() == len(p3.xValues()))
-        self.assertEqual('Y [{}]'.format(yUnit), m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('X [{}]'.format(xUnit), m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-
-        m.setColumnValueUnit(0, '')
-
-    def test_SpectralProfileEditorWidgetFactory(self):
-
-        # init some other requirements
-        print('initialize EnMAP-Box editor widget factories')
-        # register Editor widgets, if not done before
-
-        reg = QgsGui.editorWidgetRegistry()
-        if len(reg.factories()) == 0:
-            reg.initEditors()
-
-        registerSpectralProfileEditorWidget()
-        self.assertTrue(EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys())
-        factory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
-        self.assertIsInstance(factory, SpectralProfileEditorWidgetFactory)
-        vl = TestObjects.createSpectralLibrary()
-        am = vl.actions()
-        self.assertIsInstance(am, QgsActionManager)
-
-        c = QgsMapCanvas()
-        w = QWidget()
-        w.setLayout(QVBoxLayout())
-        dv = QgsDualView()
-        dv.init(vl, c)
-        dv.setView(QgsDualView.AttributeTable)
-        dv.setAttributeTableConfig(vl.attributeTableConfig())
-        cb = QCheckBox()
-        cb.setText('Show Editor')
-        def onClicked(b:bool):
-            if b:
-                dv.setView(QgsDualView.AttributeEditor)
-            else:
-                dv.setView(QgsDualView.AttributeTable)
-        cb.clicked.connect(onClicked)
-        w.layout().addWidget(dv)
-        w.layout().addWidget(cb)
-
-        w.resize(QSize(300, 250))
-        print(vl.fields().names())
-        look = vl.fields().lookupField
-
-        parent = QWidget()
-        configWidget = factory.configWidget(vl, look(FIELD_VALUES), None)
-        self.assertIsInstance(configWidget, SpectralProfileEditorConfigWidget)
-
-        self.assertIsInstance(factory.createSearchWidget(vl, 0, dv), QgsSearchWidgetWrapper)
-
-        eww = factory.create(vl, 0, None, dv )
-        self.assertIsInstance(eww, SpectralProfileEditorWidgetWrapper)
-        self.assertIsInstance(eww.widget(), SpectralProfileEditorWidget)
-
-        eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
-
-        fields = vl.fields()
-        vl.startEditing()
-        value = eww.value()
-        f = vl.getFeature(1)
-        self.assertTrue(vl.updateFeature(f))
-
-        self.showGui([w, configWidget])
-
-
-    def test_largeLibs(self):
-
-        r = r'T:/4bj/20140615_fulllib_clean.sli'
-        if os.path.isfile(r):
-            import time
-
-            pps_min = 1000 #minium number of profiles per second
-
-            t0 = time.time()
-            pd = QProgressDialog()
-            sl = SpectralLibrary.readFrom(r, progressDialog=pd)
-            self.assertIsInstance(sl, SpectralLibrary)
-            self.assertTrue(len(sl) > 1000)
-
-            t1 = time.time()
-            pps = float(len(sl)) / (t1-t0)
-
-            print('read ESL {}'.format(pps))
-            #self.assertTrue(pps > pps_min, msg='spectra import took tooo long. Need to have {} profiles per second at least. got {}'.format(pps_min, pps))
-
-
-            slw = SpectralLibraryWidget()
-
-
-            QgsApplication.processEvents()
-
-            time0 = time.time()
-            slw.addSpeclib(sl)
-            QgsApplication.processEvents()
-            time1 = time.time()
-
-            pps = float(len(sl)) / (time1 - time0)
-            print('visualize ESL {}'.format(pps))
-
-            QgsApplication.processEvents()
-
-            if not self.showGui([slw]):
-                self.assertTrue(pps > 5*60,
-                                msg='spectra visualization took tooo long. Need to have {} profiles per second at least. got {}'.format(
-                                    pps_min, pps))
-
-
     def test_multiinstances(self):
 
         sl1 = SpectralLibrary(name='A')
@@ -755,22 +569,6 @@ class TestCore(TestCase):
         self.assertIsInstance(sl1, SpectralLibrary)
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertNotEqual(id(sl1), id(sl2))
-
-    def test_qmainwindow(self):
-
-        w1 = QWidget()
-        w1.setWindowTitle('Parent')
-        w1.setLayout(QVBoxLayout())
-
-        w2 = QMainWindow()
-        w2.setWindowTitle('CENTRAL MAIN APP')
-        l = QLabel('CENTRAL')
-        w2.setCentralWidget(l)
-
-        w1.layout().addWidget(w2)
-
-
-        self.showGui(w1)
 
     def test_SpectralLibrary_readFromVector(self):
 
@@ -828,6 +626,7 @@ class TestCore(TestCase):
         self.assertTrue(len(sl) > 0)
 
 
+
     def test_mergeSpeclibSpeed(self):
 
         from qpstestdata import speclib
@@ -856,257 +655,8 @@ class TestCore(TestCase):
 
 
         s = ""
-    def test_speclibImportSpeed(self):
 
-        pathRaster = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
-        #pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_polygon.shp'
-        pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
 
-        for p in [pathRaster, pathPoly]:
-            if not os.path.isfile(p):
-                return
-
-        progressDialog = QProgressDialog()
-        #progressDialog.show()
-        vl = QgsVectorLayer(pathPoly)
-        vl.setName('Polygons')
-        rl = QgsRasterLayer(pathRaster)
-        rl.setName('Raster Data')
-        if not vl.isValid() and rl.isValid():
-            return
-
-        max_spp = 1 # seconds per profile
-
-        def timestats(t0, sl, info='time'):
-            dt = time.time() - t0
-            spp = dt / len(sl)
-            pps = len(sl) / dt
-            print('{}: dt={}sec spp={} pps={}'.format(info, dt, spp, pps ))
-            return dt, spp, pps
-
-        t0 = time.time()
-        sl = SpectralLibrary.readFromVector(vl, rl, progressDialog=progressDialog)
-        dt, spp, pps = timestats(t0, sl, info='read profiles')
-        self.assertTrue(spp <= max_spp, msg='{} seconds per profile are too much!')
-
-        self.assertTrue(progressDialog.value() == -1)
-        t0 = time.time()
-        sl.startEditing()
-        sl.addSpeclib(sl)
-        sl.commitChanges()
-        dt, spp, pps = timestats(t0, sl, info='merge speclibs')
-        self.assertTrue(spp <= max_spp, msg='too slow!')
-
-
-        sl0 = SpectralLibrary()
-        t0 = time.time()
-        sl0.startEditing()
-        sl0.addSpeclib(sl)
-        dt, spp, pps = timestats(t0, sl, info='merge speclibs2')
-        self.assertTrue(spp <= max_spp, msg='too slow!')
-
-
-        w = SpectralLibraryWidget()
-
-        t0 = time.time()
-        w.addSpeclib(sl)
-
-        dt = time.time()-t0
-
-        QgsProject.instance().addMapLayers([vl, rl])
-        w = SpectralLibraryWidget()
-        self.showGui(w)
-
-    def test_SpectralProfileImportPointsDialog(self):
-
-        lyrRaster = QgsRasterLayer(enmap)
-        lyrRaster.setName('EnMAP')
-        h, w = lyrRaster.height(), lyrRaster.width()
-
-        pxPositions = [QPoint(0, 0), QPoint(w - 1, h - 1)]
-
-        speclib1 = SpectralLibrary.readFromRasterPositions(enmap, pxPositions)
-        speclib1.setName('Extracted Spectra')
-        self.assertIsInstance(speclib1, SpectralLibrary)
-        self.assertTrue(len(speclib1) > 0)
-
-        vl1 = TestObjects.createVectorLayer(QgsWkbTypes.Polygon)
-        vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
-        vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
-        QgsProject.instance().addMapLayers([speclib1, lyrRaster, vl1, vl2, vl3])
-
-        d = SpectralProfileImportPointsDialog()
-        self.assertIsInstance(d, SpectralProfileImportPointsDialog)
-        d.setRasterSource(lyrRaster)
-        d.setVectorSource(speclib1)
-        d.show()
-        self.assertEqual(lyrRaster, d.rasterSource())
-        self.assertEqual(speclib1, d.vectorSource())
-
-        d.run()
-
-        slib = d.speclib()
-        self.assertIsInstance(slib, SpectralLibrary)
-        print('TEST ENDED', file=sys.stderr)
-        self.showGui(d)
-
-    def test_SpectralLibraryPanel(self):
-
-        sp = SpectralLibraryPanel()
-        self.showGui(sp)
-
-
-    def test_SpectralLibraryWidgetProgressDialog(self):
-
-        slib = TestObjects.createSpectralLibrary(3000)
-        self.assertIsInstance(slib, SpectralLibrary)
-        self.assertTrue(slib.isValid())
-        #sw = SpectralLibraryWidget()
-        #sw.show()
-        #QApplication.processEvents()
-        #sw.addSpeclib(slib)
-        #QApplication.processEvents()
-
-        #self.showGui(sw)
-
-
-
-
-    def test_SpectralLibraryWidget(self):
-
-        from qpstestdata import enmap, landcover, enmap_pixel
-
-        l1 = QgsRasterLayer(enmap, 'EnMAP')
-        l2 = QgsVectorLayer(landcover, 'LandCover')
-        l3 = QgsVectorLayer(enmap_pixel, 'Points of Interest')
-        QgsProject.instance().addMapLayers([l1, l2, l3])
-
-        pd = QProgressDialog()
-        speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
-        slw = SpectralLibraryWidget(speclib=speclib)
-
-        QgsProject.instance().addMapLayer(slw.speclib())
-
-        self.assertEqual(slw.speclib(), speclib)
-        self.assertIsInstance(slw.speclib(), SpectralLibrary)
-        fieldNames = slw.speclib().fieldNames()
-        self.assertIsInstance(fieldNames, list)
-
-        for mode in list(SpectralLibraryWidget.CurrentProfilesMode):
-            assert isinstance(mode, SpectralLibraryWidget.CurrentProfilesMode)
-            slw.setCurrentProfilesMode(mode)
-            assert slw.currentProfilesMode() == mode
-
-        cs = [speclib[0], speclib[3], speclib[-1]]
-        l = len(speclib)
-        self.assertTrue(slw.speclib() == speclib)
-
-        self.assertTrue(len(slw.currentSpectra()) == 0)
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.block)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 0)
-
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.automatically)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 0)
-
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.normal)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 3)
-
-        speclib.selectByIds([1, 2, 3])
-
-        n = len(speclib)
-        sids = speclib.selectedFeatureIds()
-
-        self.assertTrue(len(sids) > 0)
-        slw.copySelectedFeatures()
-        slw.cutSelectedFeatures()
-        slw.pasteFeatures()
-
-        self.assertEqual(n, len(speclib))
-
-
-
-        self.showGui(slw)
-
-
-    def test_SpectralLibraryWidgetCanvas(self):
-
-        # speclib = self.createSpeclib()
-
-        lyr = QgsRasterLayer(hymap)
-        h, w = lyr.height(), lyr.width()
-        speclib = SpectralLibrary.readFromRasterPositions(enmap, [QPoint(0,0), QPoint(w-1, h-1), QPoint(2, 2)])
-        slw = SpectralLibraryWidget(speclib=speclib)
-
-
-        QgsProject.instance().addMapLayers([lyr, slw.speclib()])
-
-        canvas = QgsMapCanvas()
-
-        canvas.setLayers([lyr, slw.speclib()])
-        canvas.setDestinationCrs(slw.speclib().crs())
-        canvas.setExtent(slw.speclib().extent())
-
-
-        def setLayers():
-            canvas.mapSettings().setDestinationCrs(slw.mCanvas.mapSettings().destinationCrs())
-            canvas.setExtent(slw.canvas().extent())
-            canvas.setLayers(slw.canvas().layers())
-
-        slw.sigMapCenterRequested.connect(setLayers)
-        slw.sigMapExtentRequested.connect(setLayers)
-
-        self.showGui([canvas, slw])
-
-    def test_editing(self):
-
-        slib = TestObjects.createSpectralLibrary()
-        self.assertTrue(len(slib) > 0)
-        slw = SpectralLibraryWidget()
-        slw.speclib().startEditing()
-        slw.speclib().addSpeclib(slib)
-
-        slw.actionToggleEditing.setChecked(True)
-
-        #self.assertTrue()
-        self.showGui(slw)
-
-
-    def test_speclibAttributeWidgets(self):
-
-        import qps
-        qps.registerEditorWidgets()
-        speclib = TestObjects.createSpectralLibrary()
-
-        slw = SpectralLibraryWidget(speclib=speclib)
-
-        import qps.layerproperties
-        properties = qps.layerproperties.VectorLayerProperties(speclib, None)
-
-        self.showGui([slw, properties])
-
-
-
-
-    def test_toolbarStackedActions(self):
-
-        tb = QToolBar()
-        a1 = tb.addAction('Action1')
-        a2 = tb.addAction('ActionA2')
-
-        a21 = QAction('A2.1')
-        a22 = QAction('A2.2')
-        a22.setCheckable(True)
-
-        setToolButtonDefaultActionMenu(a2, [a21, a22])
-
-
-        btn2 = tb.findChildren(QToolButton)[2]
-        self.assertIsInstance(btn2, QToolButton)
-
-        self.showGui(tb)
 
 if __name__ == '__main__':
 

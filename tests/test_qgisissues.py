@@ -13,7 +13,6 @@ from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.testing import start_app, unittest, stop_app
 
-
 class TestQgsFeature(unittest.TestCase):
 
     @classmethod

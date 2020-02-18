@@ -493,12 +493,16 @@ class PlotStyle(QObject):
         self.__dict__.update(state)
 
 
-class PlotStyleWidget(QWidget, loadUI('plotstylewidget.ui')):
+class PlotStyleWidget(QWidget):
     sigPlotStyleChanged = pyqtSignal(PlotStyle)
 
     def __init__(self, title='<#>', parent=None, x=None, y=None, plotStyle:PlotStyle=PlotStyle()):
         super(PlotStyleWidget, self).__init__(parent)
-        self.setupUi(self)
+
+        ui_file = pathlib.Path(__file__).parent / 'plotstylewidget.ui'
+        assert ui_file.is_file()
+        loadUi(ui_file, self)
+
         assert isinstance(self.plotWidget, pg.PlotWidget)
 
         self.mBlockUpdates = False

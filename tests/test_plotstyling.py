@@ -24,11 +24,7 @@ from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import *
 from qps.testing import TestCase
-
 from qps.plotstyling.plotstyling import *
-
-
-os.environ['CI'] = 'True'
 
 class PlotStyleTests(TestCase):
 

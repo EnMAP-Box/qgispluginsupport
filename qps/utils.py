@@ -4,15 +4,11 @@
 import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy, shutil, typing
 
 from qgis.core import *
-from qgis.core import QgsFeature, QgsPointXY, QgsRectangle
 from qgis.gui import *
-from qgis.gui import QgisInterface, QgsDockWidget, QgsPluginManagerInterface
 from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtCore import QMimeData
-from PyQt5.QtGui import *
-
-from PyQt5.QtXml import *
-from PyQt5.QtXml import QDomDocument
+from qgis.PyQt.QtGui import *
+from qgis.PyQt.QtXml import *
+from qgis.PyQt.QtXml import QDomDocument
 from qgis.PyQt import uic
 from osgeo import gdal, ogr
 import numpy as np
@@ -528,6 +524,7 @@ def loadUI(basename: str):
     :param basename:
     :return:
     """
+    warnings.warn('Will be removed in future versions.', DeprecationWarning)
     assert isinstance(basename, str)
     for pathDir in UI_DIRECTORIES:
         assert isinstance(pathDir, str)
@@ -537,9 +534,141 @@ def loadUI(basename: str):
                 return loadUIFormClass(pathUi)
     raise Exception('Unable to find full path for "{}". Make its directory known to UI_DIRECTORIES'.format(basename))
 
+
+def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_resource_references=True):
+    """
+    :param uifile:
+    :type uifile:
+    :param baseinstance:
+    :type baseinstance:
+    :param package:
+    :type package:
+    :param resource_suffix:
+    :type resource_suffix:
+    :param remove_resource_references:
+    :type remove_resource_references:
+    :return:
+    :rtype:
+    """
+
+    assert os.path.isfile(uifile), '*.ui file does not exist: {}'.format(uifile)
+
+    with open(uifile, 'r', encoding='utf-8') as f:
+        txt = f.read()
+
+    dirUi = os.path.dirname(uifile)
+
+    locations = []
+
+    for m in re.findall(r'(<include location="(.*\.qrc)"/>)', txt):
+        locations.append(m)
+
+    missing = []
+    for t in locations:
+        line, path = t
+        if not os.path.isabs(path):
+            p = os.path.join(dirUi, path)
+        else:
+            p = path
+
+        if not os.path.isfile(p):
+            missing.append(t)
+
+    match = re.search(r'resource="[^:].*/QGIS[^/"]*/images/images.qrc"', txt)
+    if match:
+        txt = txt.replace(match.group(), 'resource=":/images/images.qrc"')
+
+
+
+    if len(missing) > 0:
+
+        missingQrc = []
+        missingQgs = []
+
+        for t in missing:
+            line, path = t
+            if re.search(r'.*(?i:qgis)/images/images\.qrc.*', line):
+                missingQgs.append(m)
+            else:
+                missingQrc.append(m)
+
+        if len(missingQrc) > 0:
+            print('{}\nrefers to {} none-existing resource (*.qrc) file(s):'.format(uifile, len(missingQrc)))
+            for i, t in enumerate(missingQrc):
+                line, path = t
+                print('{}: "{}"'.format(i+1, path), file=sys.stderr)
+
+        if len(missingQgs) > 0 and not isinstance(qgisAppQgisInterface(), QgisInterface):
+            missingFiles = [p[1] for p in missingQrc if p[1] not in QGIS_RESOURCE_WARNINGS]
+
+            if len(missingFiles) > 0:
+                print('{}\nrefers to {} none-existing resource (*.qrc) file(s) '.format(uifile, len(missingFiles)))
+                for i, path in enumerate(missingFiles):
+                    print('{}: "{}"'.format(i+1, path))
+                print('These files are likely available in a QGIS Desktop session. Further warnings will be skipped')
+
+    doc = QDomDocument()
+    doc.setContent(txt)
+
+    if REMOVE_setShortcutVisibleInContextMenu and 'shortcutVisibleInContextMenu' in txt:
+        toRemove = []
+        actions = doc.elementsByTagName('action')
+        for iAction in range(actions.count()):
+            properties = actions.item(iAction).toElement().elementsByTagName('property')
+            for iProperty in range(properties.count()):
+                prop = properties.item(iProperty).toElement()
+                if prop.attribute('name') == 'shortcutVisibleInContextMenu':
+                    toRemove.append(prop)
+        for prop in toRemove:
+            prop.parentNode().removeChild(prop)
+        del toRemove
+
+    if False:
+        elem = doc.elementsByTagName('customwidget')
+        for child in [elem.item(i) for i in range(elem.count())]:
+            child = child.toElement()
+
+            cClass = child.firstChildElement('class').firstChild()
+            cHeader = child.firstChildElement('header').firstChild()
+            cExtends = child.firstChildElement('extends').firstChild()
+
+            sClass = str(cClass.nodeValue())
+            sExtends = str(cHeader.nodeValue())
+
+            if sClass.startswith('Qgs'):
+                cHeader.setNodeValue('qgis.gui')
+            if sExtends.startswith('qps.'):
+                cHeader.setNodeValue(re.sub(r'^qps\.', qps.__spec__.name + '.', sExtends))
+
+    if remove_resource_references:
+        # remove resource file locations to avoid import errors.
+        elems = doc.elementsByTagName('include')
+        for i in range(elems.count()):
+            node = elems.item(i).toElement()
+            attribute = node.attribute('location')
+            if len(attribute) > 0 and attribute.endswith('.qrc'):
+                node.parentNode().removeChild(node)
+
+        # remove iconset resource names, e.g.<iconset resource="../qpsresources.qrc">
+        elems = doc.elementsByTagName('iconset')
+        for i in range(elems.count()):
+            node = elems.item(i).toElement()
+            attribute = node.attribute('resource')
+            if len(attribute) > 0:
+                node.removeAttribute('resource')
+
+    buffer = io.StringIO()  # buffer to store modified XML
+    buffer.write(doc.toString())
+    buffer.flush()
+    buffer.seek(0)
+
+    return uic.loadUi(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
+
+
 # dictionary to store form classes and avoid multiple calls to read <myui>.ui
 FORM_CLASSES = dict()
 QGIS_RESOURCE_WARNINGS = set()
+
 
 def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQGISRessourceFileReferences=True, _modifiedui=None):
     """
@@ -550,6 +679,7 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
     :param resourceSuffix: is the suffix appended to the basename of any resource file specified in the .ui file to create the name of the Python module generated from the resource file by pyrcc4. The default is '_rc', i.e. if the .ui file specified a resource file called foo.qrc then the corresponding Python module is foo_rc.
     :return: the form class, e.g. to be used in a class definition like MyClassUI(QFrame, loadUi('myclassui.ui'))
     """
+    warnings.warn('User qps.utils.loadUi instead', DeprecationWarning)
 
     RC_SUFFIX = resourceSuffix
     assert os.path.isfile(pathUi), '*.ui file does not exist: {}'.format(pathUi)

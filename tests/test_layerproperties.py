@@ -16,15 +16,17 @@ from qgis.gui import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
 from qps.layerproperties import *
-
-
-os.environ['CI'] = '1'
 
 LAYER_WIDGET_REPS = 5
 
 class LayerRendererTests(TestCase):
+
+    @classmethod
+    def setUpClass(cls, cleanup=True, options=StartOptions.EditorWidgets, resources=[]) -> None:
+        super(LayerRendererTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
+        initQtResources()
 
 
     def test_SubLayerSelection(self):
@@ -105,68 +107,74 @@ class LayerRendererTests(TestCase):
 
         self.showGui(([canvas, w1]))
 
-    def test_rasterLayerPropertiesWidget(self):
 
-        lyr = TestObjects.createRasterLayer(nb=3)
-        QgsProject.instance().addMapLayer(lyr)
-        canvas = QgsMapCanvas()
-        canvas.setLayers([lyr])
-        canvas.setExtent(canvas.fullExtent())
-        w = RasterLayerProperties(lyr, canvas)
-        self.assertIsInstance(w, RasterLayerProperties)
-
-        self.showGui([canvas, w])
-
-    def test_rasterLayerPropertiesWidgetRepeated(self):
-
-        lyr = TestObjects.createRasterLayer(nb=3)
-        QgsProject.instance().addMapLayer(lyr)
-        canvas = QgsMapCanvas()
-        canvas.setLayers([lyr])
-        canvas.setExtent(canvas.fullExtent())
-        for i in range(LAYER_WIDGET_REPS):
-            print('open {}'.format(i))
-            w = RasterLayerProperties(lyr, canvas)
-            self.assertIsInstance(w, RasterLayerProperties)
-            w.show()
-            QApplication.processEvents()
-
-
-        print('Done')
-
-    def test_vectorLayerPropertiesWidgetRepeated(self):
+    def test_metadatatable(self):
 
         lyr = TestObjects.createVectorLayer()
+        #lyr = TestObjects.createRasterLayer()
+        model = GDALMetadataModel()
+        tv = QTableView()
+        tv.setModel(model)
+        model.setLayer(lyr)
 
-        import qps
-        qps.registerEditorWidgets()
-        w = VectorLayerProperties(lyr, None)
-        self.assertIsInstance(w, VectorLayerProperties)
-        canvas = QgsMapCanvas()
-        canvas.setLayers([lyr])
-        canvas.setExtent(canvas.fullExtent())
-
-        for i in range(LAYER_WIDGET_REPS):
-            print('open {}'.format(i))
-            w = VectorLayerProperties(lyr, canvas)
-            self.assertIsInstance(w, VectorLayerProperties)
-            w.show()
-            QApplication.processEvents()
-            # time.sleep(1)
-
-        print('Done')
+        self.showGui(tv)
 
 
-    def test_vectorLayerPropertiesWidget(self):
-
+    def test_LayerPropertiesDialog_Vector(self):
         lyr = TestObjects.createVectorLayer()
+        d = LayerPropertiesDialog(lyr)
+        self.assertIsInstance(d, LayerPropertiesDialog)
+        d.show()
+        d.sync()
 
-        import qps
-        qps.registerEditorWidgets()
-        w = VectorLayerProperties(lyr, None)
-        self.assertIsInstance(w, VectorLayerProperties)
-
+        w = QWidget()
+        w.setLayout(QHBoxLayout())
+        w.layout().addWidget(d.canvas())
+        w.layout().addWidget(d)
         self.showGui(w)
+
+    def test_LayerPropertiesDialog_Raster(self):
+        lyr = TestObjects.createRasterLayer()
+        d = LayerPropertiesDialog(lyr)
+        self.assertIsInstance(d, LayerPropertiesDialog)
+        d.show()
+        d.sync()
+
+        w = QWidget()
+        w.setLayout(QHBoxLayout())
+        w.layout().addWidget(d.canvas())
+        w.layout().addWidget(d)
+        self.showGui(w)
+
+    def test_LayerProperties(self):
+
+        layers = [TestObjects.createRasterLayer(),
+                  TestObjects.createVectorLayer()]
+        for lyr in layers:
+            dialog = showLayerPropertiesDialog(lyr, modal=False)
+            self.assertIsInstance(dialog, LayerPropertiesDialog)
+            self.assertTrue(dialog.isVisible())
+
+            dialog.btnCancel.click()
+            self.assertTrue(dialog.result() == QDialog.Rejected)
+
+            dialog = showLayerPropertiesDialog(lyr, modal=False)
+            dialog.btnOk.click()
+            self.assertTrue(dialog.result() == QDialog.Accepted)
+
+
+    def test_p(self):
+
+        rl = TestObjects.createRasterLayer()
+        vl = TestObjects.createVectorLayer()
+        vd = QgsRendererPropertiesDialog(vl, QgsStyle(), True, None)
+        canvas = QgsMapCanvas()
+        rd = QgsRendererRasterPropertiesWidget(rl, canvas, None)
+        wtrans = QgsRasterTransparencyWidget(rl, canvas, None)
+
+        style = QgsMapLayerStyleManagerWidget(rl, canvas, None)
+        self.showGui([vd, rd, wtrans,style])
+
 
 
 

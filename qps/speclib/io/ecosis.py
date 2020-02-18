@@ -7,7 +7,7 @@ from qgis.core import *
 
 
 import csv as pycsv
-from .spectrallibraries import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField
 
 class EcoSISCSVDialect(pycsv.Dialect):
     delimiter = ','

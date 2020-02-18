@@ -28,7 +28,7 @@
 ***************************************************************************
 """
 
-from .spectrallibraries import *
+from ..core import *
 from PyQt5.QtWidgets import QProgressDialog
 import locale
 

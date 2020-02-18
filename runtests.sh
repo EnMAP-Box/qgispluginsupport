@@ -1,22 +1,29 @@
+#!/bin/bash
+QT_QPA_PLATFORM=offscreen
+export QT_QPA_PLATFORM
+CI=True
+export CI
 
-# use this script to run unit tests locally
-#
+find . -name "*.pyc" -exec rm -f {} \;
+
 python3 runfirst.py
 
 mkdir test-reports
 mkdir test-reports/today
-python3 -m nose2 -s tests test_classificationscheme ; mv nose2-junit.xml test-reports/today/test_classificationscheme.xml
-python3 -m nose2 -s tests test_crosshair ; mv nose2-junit.xml test-reports/today/test_crosshair.xml
-python3 -m nose2 -s tests test_cursorlocationsvalues ; mv nose2-junit.xml test-reports/today/test_cursorlocationsvalues.xml
-python3 -m nose2 -s tests test_example ; mv nose2-junit.xml test-reports/today/test_example.xml
-python3 -m nose2 -s tests test_init ; mv nose2-junit.xml test-reports/today/test_init.xml
-python3 -m nose2 -s tests test_layerproperties ; mv nose2-junit.xml test-reports/today/test_layerproperties.xml
-python3 -m nose2 -s tests test_maptools ; mv nose2-junit.xml test-reports/today/test_maptools.xml
-python3 -m nose2 -s tests test_models ; mv nose2-junit.xml test-reports/today/test_models.xml
-python3 -m nose2 -s tests test_plotstyling ; mv nose2-junit.xml test-reports/today/test_plotstyling.xml
-python3 -m nose2 -s tests test_qgisissues ; mv nose2-junit.xml test-reports/today/test_qgisissues.xml
-python3 -m nose2 -s tests test_spectrallibraries_core ; mv nose2-junit.xml test-reports/today/test_spectrallibraries_core.xml
-python3 -m nose2 -s tests test_spectrallibraries_io ; mv nose2-junit.xml test-reports/today/test_spectrallibraries_io.xml
-python3 -m nose2 -s tests test_spectrallibraries_plotting ; mv nose2-junit.xml test-reports/today/test_spectrallibraries_plotting.xml
-python3 -m nose2 -s tests test_testing ; mv nose2-junit.xml test-reports/today/test_testing.xml
-python3 -m nose2 -s tests test_utils ; mv nose2-junit.xml test-reports/today/test_utils.xml
+python3 -m coverage run --rcfile=.coveragec   tests/test_classificationscheme.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_crosshair.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_cursorlocationsvalues.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_example.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_init.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_layerproperties.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_maptools.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_models.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_plotstyling.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_qgisissues.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_resources.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_speclib_core.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_speclib_gui.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_speclib_io.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_testing.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_utils.py
+coverage report
