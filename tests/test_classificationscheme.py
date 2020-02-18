@@ -12,9 +12,13 @@ from qgis.core import *
 from qgis.gui import *
 
 from qps.testing import start_app, TestObjects, TestCase
-
 from qps.utils import *
 from qps.classification.classificationscheme import *
+
+print('PYTHONPATH:')
+for p in sorted(sys.path):
+    print(p)
+print('')
 
 class TestsClassificationScheme(TestCase):
 

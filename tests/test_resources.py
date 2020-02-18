@@ -46,10 +46,8 @@ class ResourceTests(unittest.TestCase):
         app = start_app(resources=[QPS_RESOURCE_FILE])
 
         B = ResourceBrowser()
-
         B.show()
 
-        app.exec_()
         if not os.environ.get('CI'):
             app.exec_()
 
