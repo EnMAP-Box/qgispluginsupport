@@ -1,8 +1,10 @@
 [run]
-source = qps
-omit = qps/externals/*
+include =
+    */qps/*
 
-[report]
 omit =
-    qps/externals/*
+    */qps/externals/*
+
+
+
 

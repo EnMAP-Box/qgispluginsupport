@@ -58,14 +58,15 @@ for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py')):
     do_append = '' if i == 0 else '--append'
     pathTest = str(pathlib.Path(*file.parts[-2:]).as_posix())
     #lineBat = '%PYTHON% -m coverage run --source qps --omit qps/externals/*  {}  {}'.format(do_append, pathTest)
-    lineBat = '%PYTHON% -m coverage run {}  {}'.format(do_append, pathTest)
+    lineBat = 'coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest)
     #lineSh = 'python3 -m coverage run --source qps  --omit qps/externals/* {} {}'.format(do_append, pathTest)
-    lineSh = 'python3 -m coverage run {}  {}'.format(do_append, pathTest)
+    lineSh = 'coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest)
+
     linesBat.append(lineBat)
     linesSh.append(lineSh)
 
-linesBat.append('call %PYTHON% -m coverage report --omit qps/externals/*')
-linesSh.append('python3 -m coverage report --omit qps/externals/*')
+linesBat.append('coverage report')
+linesSh.append('coverage report')
 
 with open(PATH_RUNTESTS_BAT, 'w', encoding='utf-8') as f:
     f.write('\n'.join(linesBat))
