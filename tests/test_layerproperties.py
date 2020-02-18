@@ -19,9 +19,6 @@ from osgeo import gdal, ogr, osr
 from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
 from qps.layerproperties import *
 
-
-#os.environ['CI'] = '1'
-
 LAYER_WIDGET_REPS = 5
 
 class LayerRendererTests(TestCase):

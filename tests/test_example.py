@@ -8,8 +8,6 @@ from qgis.core import QgsApplication
 
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
 
-
-
 class Example1(unittest.TestCase):
 
     @unittest.skipIf(not qgis_images_resources.is_file(), 'Resource file does not exist: {}'.format(qgis_images_resources))

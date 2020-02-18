@@ -24,25 +24,17 @@ from qps.testing import TestObjects
 from qps.utils import *
 from qps.testing import TestCase
 
-os.environ['CI'] = 'True'
-
 class testClassUtils(TestCase):
-    """Test rerources work."""
-
     def setUp(self):
-        self.w = QMainWindow()
-        self.cw = QWidget()
-        self.cw.setLayout(QVBoxLayout())
-        self.w.setCentralWidget(self.cw)
-        self.w.show()
-        self.menuBar = self.w.menuBar()
+        super().setUp()
 
         self.wmsUri = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
         self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
 
     def tearDown(self):
-        self.w.close()
 
+
+        super().tearDown()
 
     def test_loadformClasses(self):
 
@@ -68,14 +60,14 @@ class testClassUtils(TestCase):
     def test_file_search(self):
 
 
-        rootQps = os.path.join(os.path.dirname(__file__), *['..','qps'])
-        self.assertTrue(os.path.isdir(rootQps))
+        rootQps = pathlib.Path(__file__).parents[1]
+        self.assertTrue(rootQps.is_dir())
 
-        results = list(file_search(rootQps, 'spectrallibraries.py', recursive=False))
+        results = list(file_search(rootQps, 'test_utils.py', recursive=False))
         self.assertIsInstance(results, list)
         self.assertTrue(len(results) == 0)
 
-        for pattern in ['spectrallibraries.py', 'spectrallib*.py', re.compile(r'spectrallibraries\.py')]:
+        for pattern in ['test_utils.py', 'test_utils*.py', re.compile(r'test_utils\.py')]:
 
             results = list(file_search(rootQps, pattern, recursive=True))
             self.assertIsInstance(results, list)
@@ -190,6 +182,7 @@ class testClassUtils(TestCase):
 
     def test_convertMetricUnits(self):
 
+        print('DONE', flush=True)
         self.assertEqual(convertMetricUnit(100, 'm', 'km'), 0.1)
         self.assertEqual(convertMetricUnit(0.1, 'km', 'm'), 100)
 
@@ -198,9 +191,10 @@ class testClassUtils(TestCase):
 
         self.assertEqual(convertMetricUnit(400, 'nm', 'km'), 4e-10)
 
-    def test_appendItemsToMenu(self):
 
+    def test_appendItemsToMenu(self):
         B = QMenu()
+
         action = B.addAction('Do something')
         menuA = QMenu()
         appendItemsToMenu(menuA, B)

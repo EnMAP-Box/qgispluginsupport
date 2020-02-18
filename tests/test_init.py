@@ -9,16 +9,10 @@ import unittest, pickle
 from qgis import *
 from qgis.core import *
 from qgis.gui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from qps.testing import TestCase
 
 class testClassTesting(unittest.TestCase):
-
-
-
 
     def test_init(self):
 
@@ -44,8 +38,8 @@ class testClassTesting(unittest.TestCase):
         import qps
         qps.registerEditorWidgets()
 
-        import qps.speclib.spectrallibraries
-        self.assertIsInstance(qps.speclib.spectrallibraries.SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY, QgsEditorWidgetFactory)
+        import qps.speclib.core
+        self.assertIsInstance(qps.speclib.gui.SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY, QgsEditorWidgetFactory)
 
         import qps.plotstyling.plotstyling
         self.assertIsInstance(qps.plotstyling.plotstyling.PLOTSTYLE_EDITOR_WIDGET_FACTORY,

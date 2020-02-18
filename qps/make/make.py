@@ -230,7 +230,7 @@ def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
         for qrcFile in qrc_files_skipped:
             print(qrcFile.as_posix())
 
-def compileResourceFile(pathQrc, targetDir=None, suffix:str='_rc.py', compressLevel=100, compressThreshold=1):
+def compileResourceFile(pathQrc, targetDir=None, suffix:str='_rc.py', compressLevel=0, compressThreshold=100):
     """
     Compiles a *.qrc file
     :param pathQrc:
@@ -255,25 +255,32 @@ def compileResourceFile(pathQrc, targetDir=None, suffix:str='_rc.py', compressLe
 
     pathPy = targetDir / (os.path.splitext(pathQrc.name)[0] + suffix)
 
-    cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
-    print(cmd)
-
-
-    last_level = PyQt5.pyrcc_main.compressLevel
-    last_threshold = PyQt5.pyrcc_main.compressThreshold
     last_cwd = os.getcwd()
-
-    # increase compression level and move to *.qrc's directory
-    PyQt5.pyrcc_main.compressLevel = compressLevel
-    PyQt5.pyrcc_main.compressThreshold = compressThreshold
     os.chdir(cwd)
 
-    assert PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)
+    cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
+    cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
+    #print(cmd)
 
-    # restore previous settings
-    PyQt5.pyrcc_main.compressLevel = last_level
-    PyQt5.pyrcc_main.compressThreshold = last_threshold
+    if False:
+        last_level = PyQt5.pyrcc_main.compressLevel
+        last_threshold = PyQt5.pyrcc_main.compressThreshold
+
+        # increase compression level and move to *.qrc's directory
+        PyQt5.pyrcc_main.compressLevel = compressLevel
+        PyQt5.pyrcc_main.compressThreshold = compressThreshold
+
+        assert PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)
+
+        # restore previous settings
+        PyQt5.pyrcc_main.compressLevel = last_level
+        PyQt5.pyrcc_main.compressThreshold = last_threshold
+    else:
+        print(cmd2)
+        os.system(cmd2)
+
     os.chdir(last_cwd)
+
 
 def fileNeedsUpdate(file1, file2):
     """

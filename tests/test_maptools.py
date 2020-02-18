@@ -22,8 +22,6 @@ from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
 
 
-os.environ['CI'] = '1'
-
 from qps.utils import *
 from qps.maptools import *
 

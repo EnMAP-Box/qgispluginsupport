@@ -31,6 +31,7 @@ class TestsClassificationScheme(TestCase):
 
 
     def setUp(self):
+        super().setUp()
         self.nameL1 = 'Level 1 (int)'
         self.nameL2 = 'Level 2 (str)'
         for store in MAP_LAYER_STORES:
@@ -246,7 +247,7 @@ class TestsClassificationScheme(TestCase):
         vl.startEditing()
 
         w.resize(QSize(300, 250))
-        print(vl.fields().names())
+        #print(vl.fields().names())
         look = vl.fields().lookupField
         score = factory.fieldScore(vl, look(self.nameL1))
         #self.assertTrue(factory.fieldScore(vl, look(self.nameL1)) == 20)
@@ -263,7 +264,7 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(eww, ClassificationSchemeEditorWidgetWrapper)
         self.assertIsInstance(eww.widget(), ClassificationSchemeComboBox)
 
-        eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
+        #eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
 
         self.showGui([configWidget, dv, w])
@@ -466,7 +467,7 @@ class TestsClassificationScheme(TestCase):
         cs  = ClassificationScheme.create(5)
 
         md = cs.mimeData(None)
-        print(md.data(MIMEDATA_KEY_QGIS_STYLE))
+        #print(md.data(MIMEDATA_KEY_QGIS_STYLE))
         self.assertIsInstance(md, QMimeData)
 
         from qps.layerproperties import pasteStyleToClipboard
