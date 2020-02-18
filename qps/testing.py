@@ -10,180 +10,12 @@ import qgis.testing
 import qgis.utils
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
-
+from qps.resources import *
 
 
 WMS_GMAPS = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
 WMS_OSM = r'referer=OpenStreetMap%20contributors,%20under%20ODbL&type=xyz&url=http://tiles.wmflabs.org/hikebike/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=17&zmin=1'
 WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
-
-
-def missingTestdata() -> bool:
-    """
-    Returns (True, message:str) if testdata can not be loaded,
-     (False, None) else
-    :return: (bool, str)
-    """
-    try:
-        import enmapboxtestdata
-        assert os.path.isfile(enmapboxtestdata.enmap)
-        return False
-    except Exception as ex:
-        print(ex, file=sys.stderr)
-        return True
-
-def initQtResources(roots:list=[]):
-    if len(roots) == 0:
-        p = pathlib.Path(__file__).parent
-        roots.append(p.parent)
-
-    for rootDir in roots:
-        for r, dirs, files in os.walk(rootDir):
-            root = pathlib.Path(r)
-            rc_files = [f for f in files if f.endswith('_rc.py')]
-            for f in rc_files:
-                path = root / f
-                print('load {}'.format(path))
-                initResourceFile(path)
-
-
-def initResourceFile(path):
-    if not isinstance(path, pathlib.Path):
-        path = pathlib.Path(path)
-    f = path.name
-    name = f[:-3]
-    try:
-        add_path = path.parent.as_posix() not  in sys.path
-        if add_path:
-            sys.path.append(path.parent.as_posix())
-        #spec = importlib.util.spec_from_file_location(name, path)
-        __import__(name)
-        #rcModule = importlib.util.module_from_spec(spec)
-        #spec.loader.exec_module(rcModule)
-        #rcModule.qInitResources()
-        if add_path:
-            sys.path.remove(path.parent.as_posix())
-
-    except Exception as ex:
-        print(ex, file=sys.stderr)
-
-def findQGISResourceFiles():
-    """
-    Tries to find a folder 'qgisresources'.
-    See snippets/create_qgisresourcefilearchive.py to create the 'qgisresources' folder.
-    """
-    results = []
-    root = None
-    if 'QPS_QGIS_RESOURCES' in os.environ.keys():
-        root = os.environ.keys()
-    else:
-        d = pathlib.Path(__file__)
-
-        while d != pathlib.Path('.'):
-            if (d / 'qgisresources').is_dir():
-                root = (d / 'qgisresources')
-                break
-            else:
-                d = d.parent
-            if len(d.parts) == 1:
-                break
-
-    if isinstance(root, pathlib.Path):
-        for root, dirs, files in os.walk(root):
-            for rc_file_name in [f for f in files if f.endswith('_rc.py')]:
-                path = pathlib.Path(root) / rc_file_name
-                if path.is_file():
-                    results.append(path)
-    return results
-
-def installTestdata(overwrite_existing=False):
-    """
-    Downloads and installs the EnMAP-Box Example Data
-    """
-    if not missingTestdata() and not overwrite_existing:
-        print('Testdata already installed and up to date.')
-        return
-
-    btn = QMessageBox.question(None, 'Testdata is missing or outdated',
-                               'Download testdata from \n{}\n?'.format(URL_TESTDATA))
-    if btn != QMessageBox.Yes:
-        print('Canceled')
-        return
-
-    if DIR_TESTDATA is None:
-        s = ""
-
-    pathLocalZip = os.path.join(os.path.dirname(DIR_TESTDATA), 'enmapboxtestdata.zip')
-    url = QUrl(URL_TESTDATA)
-    dialog = QgsFileDownloaderDialog(url, pathLocalZip, 'Download {}'.format(os.path.basename(URL_TESTDATA)))
-
-    def onCanceled():
-        print('Download canceled')
-        return
-
-    def onCompleted():
-        print('Download completed')
-        print('Unzip {}...'.format(pathLocalZip))
-
-        targetDir = DIR_TESTDATA
-        os.makedirs(targetDir, exist_ok=True)
-        import zipfile
-        zf = zipfile.ZipFile(pathLocalZip)
-
-        names = zf.namelist()
-        names = [n for n in names if re.search(r'[^/]/enmapboxtestdata/..*', n) and not n.endswith('/')]
-        for name in names:
-            # create directory if doesn't exist
-
-            pathRel = re.search(r'[^/]+/enmapboxtestdata/(.*)$', name).group(1)
-            subDir, baseName = os.path.split(pathRel)
-            fullDir = os.path.normpath(os.path.join(targetDir, subDir))
-            os.makedirs(fullDir, exist_ok=True)
-
-            if not name.endswith('/'):
-                fullPath = os.path.normpath(os.path.join(targetDir, pathRel))
-                with open(fullPath, 'wb') as outfile:
-                    outfile.write(zf.read(name))
-                    outfile.flush()
-
-        zf.close()
-        del zf
-
-        print('Testdata installed.')
-        spec = importlib.util.spec_from_file_location('enmapboxtestdata', os.path.join(targetDir, '__init__.py'))
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        sys.modules['enmapboxtestdata'] = module
-
-    def onDownloadError(messages):
-        raise Exception('\n'.join(messages))
-
-    def deleteFileDownloadedFile():
-
-        pass
-        # dirty patch for Issue #167
-        #
-        # print('Remove {}...'.format(pathLocalZip))
-        # os.remove(pathLocalZip)
-
-    def onDownLoadExited():
-
-        from qgis.PyQt.QtCore import QTimer
-        QTimer.singleShot(5000, deleteFileDownloadedFile)
-
-    def onDownloadProgress(received, total):
-        print('\r{:0.2f} %'.format(100. * received / total), end=' ', flush=True)
-        time.sleep(0.1)
-
-    dialog.downloadCanceled.connect(onCanceled)
-    dialog.downloadCompleted.connect(onCompleted)
-    dialog.downloadError.connect(onDownloadError)
-    dialog.downloadExited.connect(onDownLoadExited)
-    dialog.downloadProgress.connect(onDownloadProgress)
-
-    dialog.open()
-    dialog.exec_()
-
 
 def initQgisApplication(*args, qgisResourceDir: str = None,
                         loadProcessingFramework=True,
@@ -291,7 +123,6 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources:list=[])->
     if StartOptions.PrintProviders in options:
         providers = QgsProviderRegistry.instance().providerList()
         print('Providers: {}'.format(', '.join(providers)))
-
 
     return qgsApp
 
@@ -445,60 +276,6 @@ class QgisMockup(QgisInterface):
     def zoomFull(self, *args, **kwargs):
         super().zoomFull(*args, **kwargs)
 
-
-def scanResources(path=':')->str:
-    """Recursively returns file paths in directory"""
-    D = QDirIterator(path)
-    while D.hasNext():
-        entry = D.next()
-        if D.fileInfo().isDir():
-            yield from scanResources(path=entry)
-        elif D.fileInfo().isFile():
-            yield D.filePath()
-
-def printResources():
-    print('Available resources:')
-    res = sorted(list(scanResources()))
-    for r in res:
-        print(r)
-
-
-
-def showResources()->QWidget:
-    """
-    A simple way to list available Qt resources
-    :return:
-    :rtype:
-    """
-    needQApp = not isinstance(QApplication.instance(), QApplication)
-    if needQApp:
-        app = QApplication([])
-    scrollArea = QScrollArea()
-
-    widget = QFrame()
-    grid = QGridLayout()
-    iconSize = QSize(25, 25)
-    row = 0
-    for resourcePath in scanResources(':'):
-        labelText = QLabel(resourcePath)
-        labelText.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        labelIcon = QLabel()
-        icon = QIcon(resourcePath)
-        assert not icon.isNull()
-
-        labelIcon.setPixmap(icon.pixmap(iconSize))
-
-        grid.addWidget(labelText, row, 0)
-        grid.addWidget(labelIcon, row, 1)
-        row += 1
-
-    widget.setLayout(grid)
-    widget.setMinimumSize(widget.sizeHint())
-    scrollArea.setWidget(widget)
-    scrollArea.show()
-    if needQApp:
-        QApplication.instance().exec_()
-    return scrollArea
 
 
 class TestCase(qgis.testing.TestCase):
@@ -1041,7 +818,6 @@ class QgsClipboardMockup(QObject):
     def systemClipboardChanged(self):
         pass
 
-
 class QgsPythonRunnerMockup(QgsPythonRunner):
     """
     A Qgs PythonRunner implementation
@@ -1069,5 +845,4 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
             raise ex
             return False
         return True
-
 

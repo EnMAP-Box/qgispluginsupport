@@ -574,7 +574,7 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
         if not os.path.isfile(p):
             missing.append(t)
 
-    match = re.search(r'resource="[^:].*/QGIS[^/"]*/images/images.qrc"',txt)
+    match = re.search(r'resource="[^:].*/QGIS[^/"]*/images/images.qrc"', txt)
     if match:
         txt = txt.replace(match.group(), 'resource=":/images/images.qrc"')
 
@@ -662,7 +662,6 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
     buffer.flush()
     buffer.seek(0)
 
-
     return uic.loadUi(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
 
 
@@ -680,6 +679,7 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
     :param resourceSuffix: is the suffix appended to the basename of any resource file specified in the .ui file to create the name of the Python module generated from the resource file by pyrcc4. The default is '_rc', i.e. if the .ui file specified a resource file called foo.qrc then the corresponding Python module is foo_rc.
     :return: the form class, e.g. to be used in a class definition like MyClassUI(QFrame, loadUi('myclassui.ui'))
     """
+    warnings.warn('User qps.utils.loadUi instead', DeprecationWarning)
 
     RC_SUFFIX = resourceSuffix
     assert os.path.isfile(pathUi), '*.ui file does not exist: {}'.format(pathUi)

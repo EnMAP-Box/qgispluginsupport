@@ -16,9 +16,6 @@ from qps.testing import start_app, TestObjects, TestCase
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
-os.environ['CI'] = '1' # un-comment to popup GUIs
-
-
 class TestsClassificationScheme(TestCase):
 
 

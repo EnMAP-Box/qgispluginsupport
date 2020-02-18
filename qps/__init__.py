@@ -43,10 +43,10 @@ def registerEditorWidgets():
         print('Failed to call qps.plotstyling.plotstyling.registerPlotStyleEditorWidget()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
-
-
-def initAll():
-
+def initResources():
     from .testing import initResourceFile
     initResourceFile(QPS_RESOURCE_FILE)
+
+def initAll():
+    initResources()
     registerEditorWidgets()
