@@ -14,15 +14,11 @@ from osgeo import gdal, ogr
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 
+
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
 
-from . import resourcemockup
 
-try:
-
-    from .. import qps
-except:
-    import qps
+from .. import qps
 
 jp = os.path.join
 dn = os.path.dirname
@@ -509,7 +505,7 @@ def qgsRasterLayer(source)->QgsRasterLayer:
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
 
-def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_resource_references=True):
+def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_resource_references=True, loadUiType=False):
     """
     :param uifile:
     :type uifile:
@@ -598,20 +594,22 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
             prop.parentNode().removeChild(prop)
         del toRemove
 
-    if False:
-        elem = doc.elementsByTagName('customwidget')
-        for child in [elem.item(i) for i in range(elem.count())]:
-            child = child.toElement()
 
-            cClass = child.firstChildElement('class').firstChild()
-            cHeader = child.firstChildElement('header').firstChild()
-            cExtends = child.firstChildElement('extends').firstChild()
+    elem = doc.elementsByTagName('customwidget')
+    for child in [elem.item(i) for i in range(elem.count())]:
+        child = child.toElement()
 
-            sClass = str(cClass.nodeValue())
-            sExtends = str(cHeader.nodeValue())
+        cClass = child.firstChildElement('class').firstChild()
+        cHeader = child.firstChildElement('header').firstChild()
+        cExtends = child.firstChildElement('extends').firstChild()
 
+        sClass = str(cClass.nodeValue())
+        sExtends = str(cHeader.nodeValue())
+        if False:
             if sClass.startswith('Qgs'):
                 cHeader.setNodeValue('qgis.gui')
+        if True:
+            # replace 'qps' package location with local absolute position
             if sExtends.startswith('qps.'):
                 cHeader.setNodeValue(re.sub(r'^qps\.', qps.__spec__.name + '.', sExtends))
 
@@ -637,7 +635,18 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
     buffer.flush()
     buffer.seek(0)
 
-    return uic.loadUi(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
+    if not loadUiType:
+        return uic.loadUi(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
+    else:
+        return uic.loadUiType(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
+
+
+def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQGISRessourceFileReferences=True, _modifiedui=None):
+    """
+    Backport, deprecated
+    """
+    warnings.warn('Use loadUi(... , loadUiType=True) instead.', DeprecationWarning)
+    return loadUi(pathUi, resource_suffix=resourceSuffix, loadUiType=True)[0]
 
 
 # dictionary to store form classes and avoid multiple calls to read <myui>.ui

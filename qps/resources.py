@@ -5,7 +5,7 @@ from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtCore import *
 
 
-def initQtResources(roots:list=[]):
+def initQtResources(roots: list = []):
     """
     Searches recursively for `*_rc.py` files and loads them into the QApplications resources system
     :param roots: list of root folders to search within
@@ -13,6 +13,8 @@ def initQtResources(roots:list=[]):
     :return:
     :rtype:
     """
+    if not isinstance(roots, list):
+        roots = [roots]
 
     if len(roots) == 0:
         p = pathlib.Path(__file__).parent
