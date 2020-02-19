@@ -17,8 +17,11 @@ from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, Q
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
 
+try:
+    from .. import qps
+except:
+    import qps
 
-from .. import qps
 
 jp = os.path.join
 dn = os.path.dirname
