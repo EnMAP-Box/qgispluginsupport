@@ -13,6 +13,7 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import unittest, pickle, os
+import xml.etree.ElementTree as ET
 from qgis import *
 from qgis.core import *
 from qgis.PyQt.QtGui import *
@@ -24,7 +25,7 @@ from qps.testing import TestObjects
 from qps.utils import *
 from qps.testing import TestCase
 
-class testClassUtils(TestCase):
+class TestUtils(TestCase):
     def setUp(self):
         super().setUp()
 
@@ -36,15 +37,59 @@ class testClassUtils(TestCase):
 
         super().tearDown()
 
-    def test_loadformClasses(self):
+    def test_loadUi(self):
 
         import qps
         sources = list(file_search(dn(qps.__file__), '*.ui', recursive=True))
         sources = [s for s in sources if not 'pyqtgraph' in s]
-        for pathUi in sources[4:5]:
-            print('Test "{}"'.format(pathUi))
-            t = loadUIFormClass(pathUi)
-            self.assertIsInstance(t, object)
+        for pathUi in sources:
+            tree = ET.parse(pathUi)
+            root = tree.getroot()
+            self.assertEqual(root.tag, 'ui')
+            baseClass = root.find('widget').attrib['class']
+
+            print('Try to load {} as {}'.format(pathUi, baseClass))
+            self.assertIsInstance(baseClass, str)
+
+            if baseClass == 'QDialog':
+                class TestWidget(QDialog):
+
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+
+            elif baseClass == 'QWidget':
+                class TestWidget(QWidget):
+
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+
+            elif baseClass == 'QMainWindow':
+                class TestWidget(QMainWindow):
+
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+            elif baseClass == 'QDockWidget':
+                class TestWidget(QDockWidget):
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+            else:
+                warnings.warn('BaseClass {} not implemented\nto test {}'.format(baseClass, pathUi), Warning)
+                continue
+
+
+            w = None
+            try:
+                w = TestWidget()
+                s = ""
+
+            except Exception as ex:
+                info = 'Failed to load {}'.format(pathUi)
+                info += '\n' + str(ex)
+                self.fail(info)
 
 
     def test_gdal_filesize(self):

@@ -168,14 +168,6 @@ def file_search(rootdir, pattern, recursive=False, ignoreCase=False):
 """
 
 
-UI_DIRECTORIES = []
-if os.path.isdir(jp(dn(__file__), 'ui')):
-    UI_DIRECTORIES.append(jp(dn(__file__), 'ui'))
-for f in file_search(os.path.dirname(__file__), '*.ui', recursive=True):
-    path = os.path.dirname(f)
-    if path not in UI_DIRECTORIES:
-        UI_DIRECTORIES.append(path)
-
 
 def registerMapLayerStore(store):
     """
@@ -517,24 +509,6 @@ def qgsRasterLayer(source)->QgsRasterLayer:
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
 
-def loadUI(basename: str):
-    """
-    Loads a UI using the basename ("file.ui") only.
-    Will search all directories specified in UI_DIRECTORIES
-    :param basename:
-    :return:
-    """
-    warnings.warn('Will be removed in future versions.', DeprecationWarning)
-    assert isinstance(basename, str)
-    for pathDir in UI_DIRECTORIES:
-        assert isinstance(pathDir, str)
-        if os.path.isdir(pathDir):
-            pathUi = jp(pathDir, basename)
-            if os.path.isfile(pathUi):
-                return loadUIFormClass(pathUi)
-    raise Exception('Unable to find full path for "{}". Make its directory known to UI_DIRECTORIES'.format(basename))
-
-
 def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_resource_references=True):
     """
     :param uifile:
@@ -605,6 +579,7 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
                 print('{}\nrefers to {} none-existing resource (*.qrc) file(s) '.format(uifile, len(missingFiles)))
                 for i, path in enumerate(missingFiles):
                     print('{}: "{}"'.format(i+1, path))
+                    QGIS_RESOURCE_WARNINGS.add(path)
                 print('These files are likely available in a QGIS Desktop session. Further warnings will be skipped')
 
     doc = QDomDocument()
@@ -666,190 +641,20 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
 
 
 # dictionary to store form classes and avoid multiple calls to read <myui>.ui
-FORM_CLASSES = dict()
 QGIS_RESOURCE_WARNINGS = set()
 
 
-def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQGISRessourceFileReferences=True, _modifiedui=None):
-    """
-    Loads Qt UI files (*.ui) while taking care on QgsCustomWidgets.
-    Uses PyQt4.uic.loadUiType (see http://pyqt.sourceforge.net/Docs/PyQt4/designer.html#the-uic-module)
-    :param pathUi: *.ui file path
-    :param from_imports:  is optionally set to use import statements that are relative to '.'. At the moment this only applies to the import of resource modules.
-    :param resourceSuffix: is the suffix appended to the basename of any resource file specified in the .ui file to create the name of the Python module generated from the resource file by pyrcc4. The default is '_rc', i.e. if the .ui file specified a resource file called foo.qrc then the corresponding Python module is foo_rc.
-    :return: the form class, e.g. to be used in a class definition like MyClassUI(QFrame, loadUi('myclassui.ui'))
-    """
-    warnings.warn('User qps.utils.loadUi instead', DeprecationWarning)
-
-    RC_SUFFIX = resourceSuffix
-    assert os.path.isfile(pathUi), '*.ui file does not exist: {}'.format(pathUi)
-
-
-    if pathUi not in FORM_CLASSES.keys():
-        #parse *.ui xml and replace *.h by qgis.gui
-
-        with open(pathUi, 'r', encoding='utf-8') as f:
-            txt = f.read()
-
-        dirUi = os.path.dirname(pathUi)
-
-        locations = []
-
-        for m in re.findall(r'(<include location="(.*\.qrc)"/>)', txt):
-            locations.append(m)
-
-        missing = []
-        for t in locations:
-            line, path = t
-            if not os.path.isabs(path):
-                p = os.path.join(dirUi, path)
-            else:
-                p = path
-
-            if not os.path.isfile(p):
-                missing.append(t)
-
-        match = re.search(r'resource="[^:].*/QGIS[^/"]*/images/images.qrc"',txt)
-        if match:
-            txt = txt.replace(match.group(), 'resource=":/images/images.qrc"')
-
-
-
-        if len(missing) > 0:
-
-            missingQrc = []
-            missingQgs = []
-
-            for t in missing:
-                line, path = t
-                if re.search(r'.*(?i:qgis)/images/images\.qrc.*', line):
-                    missingQgs.append(m)
-                else:
-                    missingQrc.append(m)
-
-            if len(missingQrc) > 0:
-                print('{}\nrefers to {} none-existing resource (*.qrc) file(s):'.format(pathUi, len(missingQrc)))
-                for i, t in enumerate(missingQrc):
-                    line, path = t
-                    print('{}: "{}"'.format(i+1, path), file=sys.stderr)
-
-            if len(missingQgs) > 0 and not isinstance(qgisAppQgisInterface(), QgisInterface):
-                missingFiles = [p[1] for p in missingQrc if p[1] not in QGIS_RESOURCE_WARNINGS]
-
-                if len(missingFiles) > 0:
-                    print('{}\nrefers to {} none-existing resource (*.qrc) file(s) '.format(pathUi, len(missingFiles)))
-                    for i, path in enumerate(missingFiles):
-                        print('{}: "{}"'.format(i+1, path))
-                    print('These files are likely available in a QGIS Desktop session. Further warnings will be skipped')
-
-        doc = QDomDocument()
-        doc.setContent(txt)
-
-        if REMOVE_setShortcutVisibleInContextMenu and 'shortcutVisibleInContextMenu' in txt:
-            toRemove = []
-            actions = doc.elementsByTagName('action')
-            for iAction in range(actions.count()):
-                properties = actions.item(iAction).toElement().elementsByTagName('property')
-                for iProperty in range(properties.count()):
-                    prop = properties.item(iProperty).toElement()
-                    if prop.attribute('name') == 'shortcutVisibleInContextMenu':
-                        toRemove.append(prop)
-            for prop in toRemove:
-                prop.parentNode().removeChild(prop)
-            del toRemove
-
-
-        elem = doc.elementsByTagName('customwidget')
-        for child in [elem.item(i) for i in range(elem.count())]:
-            child = child.toElement()
-
-            cClass = child.firstChildElement('class').firstChild()
-            cHeader = child.firstChildElement('header').firstChild()
-            cExtends = child.firstChildElement('extends').firstChild()
-
-            sClass = str(cClass.nodeValue())
-            sExtends = str(cHeader.nodeValue())
-
-            if sClass.startswith('Qgs'):
-                cHeader.setNodeValue('qgis.gui')
-            if sExtends.startswith('qps.'):
-                cHeader.setNodeValue(re.sub(r'^qps\.', qps.__spec__.name + '.', sExtends))
-
-        # collect resource file locations
-        elems = doc.elementsByTagName('include')
-        qrcPaths = []
-        for i in range(elems.count()):
-            node = elems.item(i).toElement()
-            lpath = node.attribute('location')
-            if len(lpath) > 0 and lpath.endswith('.qrc'):
-                p = lpath
-                if not os.path.isabs(lpath):
-                    p = os.path.join(dirUi, lpath)
-                else:
-                    p = lpath
-                qrcPaths.append(p)
-
-
-        buffer = io.StringIO()  # buffer to store modified XML
-
-        if isinstance(_modifiedui, str):
-            f = open(_modifiedui, 'w', encoding='utf-8')
-            f.write(doc.toString())
-            f.flush()
-            f.close()
-
-        buffer.write(doc.toString())
-        buffer.flush()
-        buffer.seek(0)
-
-        # if existent, make resource file directories available to the python path (sys.path)
-        baseDir = os.path.dirname(pathUi)
-        tmpDirs = []
-        if True:
-            for qrcPath in qrcPaths:
-                d = os.path.abspath(os.path.join(baseDir, qrcPath))
-                d = os.path.dirname(d)
-                if os.path.isdir(d) and d not in sys.path:
-                    tmpDirs.append(d)
-            sys.path.extend(tmpDirs)
-
-        # create requried mockups
-        if True:
-            FORM_CLASS_MOCKUP_MODULES = [os.path.splitext(os.path.basename(p))[0] for p in qrcPaths]
-            FORM_CLASS_MOCKUP_MODULES = [m for m in FORM_CLASS_MOCKUP_MODULES if m not in sys.modules.keys()]
-            for mockupModule in FORM_CLASS_MOCKUP_MODULES:
-                #print('ADD MOCKUP MODULE {}'.format(mockupModule))
-
-                sys.modules[mockupModule] = resourcemockup
-
-        # load form class
-        try:
-            FORM_CLASS, _ = uic.loadUiType(buffer, resource_suffix=RC_SUFFIX)
-        except Exception as ex1:
-            print(doc.toString(), file=sys.stderr)
-            info = 'Unable to load {}'.format(pathUi) + '\n{}'.format(str(ex1))
-            ex = Exception(info)
-            raise ex
-
-        for mockupModule in FORM_CLASS_MOCKUP_MODULES:
-            if mockupModule in sys.modules.keys():
-                sys.modules.pop(mockupModule)
-
-
-        buffer.close()
-
-        FORM_CLASSES[pathUi] = FORM_CLASS
-
-        #remove temporary added directories from python path
-        for d in tmpDirs:
-            sys.path.remove(d)
-
-
-    return FORM_CLASSES[pathUi]
-
-
-
 def typecheck(variable, type_):
+    """
+    Checks for `variable` if it is an instance of type `type_`.
+    In case `variable` is a list, all list elements will be checked.
+    :param variable:
+    :type variable:
+    :param type_:
+    :type type_:
+    :return:
+    :rtype:
+    """
     if isinstance(type_, list):
         for i in range(len(type_)):
             typecheck(variable[i], type_[i])
