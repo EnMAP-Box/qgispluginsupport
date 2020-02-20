@@ -155,11 +155,7 @@ class ResourceTableModel(QAbstractTableModel):
 
         self.cnUri = 'Path'
         self.cnIcon = 'Resource'
-
         self.RESOURCES = []
-        from qgis.PyQt.QtGui import QImageReader
-        self.supportedFormats = [bytes(f).decode() for f in QImageReader.supportedImageFormats()]
-
         self.reloadResources()
 
     def reloadResources(self):
@@ -185,19 +181,11 @@ class ResourceTableModel(QAbstractTableModel):
 
         return super().headerData(section, orientation, role)
 
-
-    def canRenderAsIcon(self, uri)->bool:
-        match = REGEX_FILEXTENSION_IMAGE.search(uri)
-        return match and match.group(1) in self.supportedFormats
-
-
     def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
         if not index.isValid():
             return None
 
         uri = self.RESOURCES[index.row()]
-        ext = os.path.splitext(uri)[1]
-
         cn = self.columnNames()[index.column()]
 
         if role == Qt.DisplayRole:
@@ -212,17 +200,6 @@ class ResourceTableModel(QAbstractTableModel):
         if role == Qt.ToolTipRole:
             if cn == self.cnUri:
                 return uri
-            if cn == self.cnIcon:
-
-                if self.canRenderAsIcon(uri):
-                    return uri
-                else:
-                    return '{}\n(cannot be rendered as icon. Please check your QT_PLUGIN_PATH)'.format(uri)
-        if role == Qt.ForegroundRole and cn == self.cnIcon:
-            if not self.canRenderAsIcon(uri):
-                brush = QBrush()
-                brush.setColor(QColor('red'))
-                return brush
 
         if role == Qt.UserRole:
             return uri
@@ -276,7 +253,6 @@ class ResourceBrowser(QWidget):
         self.graphicsScene = QGraphicsScene()
         self.graphicsView.setScene(self.graphicsScene)
 
-
         self.textBrowser: QTextBrowser
 
         self.resourceModel: ResourceTableModel = ResourceTableModel()
@@ -291,6 +267,7 @@ class ResourceBrowser(QWidget):
 
         self.btnReload.setDefaultAction(self.actionReload)
         self.btnUseRegex.setDefaultAction(self.optionUseRegex)
+        self.actionReload.triggered.connect(self.resourceModel.reloadResources)
 
         self.optionUseRegex.toggled.connect(self.updateFilter)
         self.tbFilter.textChanged.connect(self.updateFilter)
@@ -328,9 +305,8 @@ class ResourceBrowser(QWidget):
 
     def updatePreview(self, uri:str):
 
-        from qgis.PyQt.QtGui import QImageReader
-        supportedImageFormats = [bytes(f).decode() for f in QImageReader.supportedImageFormats()]
-        hasImage = hasText = False
+        hasImage = False
+        hasText = False
         self.textBrowser.clear()
         self.graphicsScene.clear()
 
@@ -341,14 +317,16 @@ class ResourceBrowser(QWidget):
             if ext == '.svg':
                 item = QGraphicsSvgItem(uri)
             else:
-                item = QGraphicsPixmapItem(QPixmap(uri))
+                pm = QPixmap(uri)
+                if not pm.isNull():
+                    item = QGraphicsPixmapItem(pm)
 
             if item:
                 hasImage = True
                 self.graphicsScene.addItem(item)
                 self.graphicsView.fitInView(item, Qt.KeepAspectRatio)
 
-            if re.search(r'\.(svg|html|xml|txt)$', uri, re.I):
+            if re.search(r'\.(svg|html|xml|txt)$', uri, re.I) is not None:
                 file = QFile(uri)
                 if file.open(QFile.ReadOnly | QFile.Text):
                     stream = QTextStream(file)
@@ -358,8 +336,9 @@ class ResourceBrowser(QWidget):
                     hasText = True
                     file.close()
 
-        self.pageImage.setEnabled(hasImage)
-        self.pageText.setEnabled(hasText)
+        self.tabWidget.setTabEnabled(self.tabWidget.indexOf(self.pageImage), hasImage)
+        self.tabWidget.setTabEnabled(self.tabWidget.indexOf(self.pageText), hasText)
+
 
 
     def useFilterRegex(self)->bool:
