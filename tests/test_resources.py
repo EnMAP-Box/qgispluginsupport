@@ -46,8 +46,8 @@ class ResourceTests(unittest.TestCase):
     def test_resource_browser(self):
 
         import qgis.testing
-
-        app = qgis.testing.start_app()
+        import qps.testing
+        app = qps.testing.start_app()
 
         B = ResourceBrowser()
         self.assertIsInstance(B, QWidget)

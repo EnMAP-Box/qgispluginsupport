@@ -66,6 +66,18 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources:list=[])->
         libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'
         QgsProviderRegistry.instance().setLibraryDirectory(QDir(libDir.as_posix()))
 
+    # check for potentially missing qt plugin folders
+    if not os.environ.get('QT_PLUGIN_PATH'):
+        existing = [pathlib.Path(p).resolve() for p in qgsApp.libraryPaths()]
+
+        prefixDir = pathlib.Path(qgsApp.pkgDataPath()).resolve()
+        candidates = [prefixDir / 'qtplugins',
+                      prefixDir / 'plugins',
+                      prefixDir / 'bin']
+        for candidate in candidates:
+            if candidate.is_dir() and candidate not in existing:
+                qgsApp.addLibraryPath(candidate.as_posix())
+
     assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
         'Directory: {} does not exist'.format(QgsProviderRegistry.instance().libraryDirectory().path())
 
