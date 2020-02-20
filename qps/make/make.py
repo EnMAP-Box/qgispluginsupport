@@ -230,7 +230,7 @@ def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
         for qrcFile in qrc_files_skipped:
             print(qrcFile.as_posix())
 
-def compileResourceFile(pathQrc, targetDir=None, suffix:str='_rc.py', compressLevel=0, compressThreshold=100):
+def compileResourceFile(pathQrc, targetDir=None, suffix:str='_rc.py', compressLevel=7, compressThreshold=100):
     """
     Compiles a *.qrc file
     :param pathQrc:
@@ -262,7 +262,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix:str='_rc.py', compressLe
     cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
     #print(cmd)
 
-    if False:
+    if True:
         last_level = PyQt5.pyrcc_main.compressLevel
         last_threshold = PyQt5.pyrcc_main.compressThreshold
 
