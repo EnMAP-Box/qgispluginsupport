@@ -3,6 +3,7 @@ import sys, os, pathlib, typing, re
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtCore import *
+from qgis.PyQt.QtSvg import QGraphicsSvgItem
 
 REGEX_FILEXTENSION_IMAGE = re.compile(r'\.([^.]+)$')
 
@@ -259,7 +260,6 @@ class ResourceBrowser(QWidget):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-
         from .utils import loadUi
         pathUi = pathlib.Path(__file__).parent / 'ui' / 'qpsresourcebrowser.ui'
         loadUi(pathUi, self)
@@ -271,6 +271,13 @@ class ResourceBrowser(QWidget):
         self.btnUseRegex: QToolButton
         self.btnReload: QToolButton
         self.preview: QLabel
+
+        self.graphicsView:QGraphicsView
+        self.graphicsScene = QGraphicsScene()
+        self.graphicsView.setScene(self.graphicsScene)
+
+
+        self.textBrowser: QTextBrowser
 
         self.resourceModel: ResourceTableModel = ResourceTableModel()
         self.resourceProxyModel = QSortFilterProxyModel()
@@ -321,15 +328,37 @@ class ResourceBrowser(QWidget):
 
     def updatePreview(self, uri:str):
 
-        l = self.preview
-        assert isinstance(l, QLabel)
+        from qgis.PyQt.QtGui import QImageReader
+        supportedImageFormats = [bytes(f).decode() for f in QImageReader.supportedImageFormats()]
+        hasImage = hasText = False
+        self.textBrowser.clear()
+        self.graphicsScene.clear()
 
-        if uri is None:
-            pm = QPixmap()
-        else:
-            pm = QPixmap(uri)
-            pm = pm.scaled(l.width(), l.height(), Qt.KeepAspectRatio)
-        l.setPixmap(pm)
+        if isinstance(uri, str) and '.' in uri:
+            ext = os.path.splitext(uri)[1]
+
+            item = None
+            if ext == '.svg':
+                item = QGraphicsSvgItem(uri)
+            else:
+                item = QGraphicsPixmapItem(QPixmap(uri))
+
+            if item:
+                hasImage = True
+                self.graphicsScene.addItem(item)
+
+            if re.search(r'\.(svg|html|xml|txt)$', uri, re.I):
+                file = QFile(uri)
+                if file.open(QFile.ReadOnly | QFile.Text):
+                    stream = QTextStream(file)
+                    stream.setAutoDetectUnicode(True)
+                    txt = stream.readAll()
+                    self.textBrowser.setPlainText(txt)
+                    hasText = True
+                    file.close()
+
+        self.pageImage.setEnabled(hasImage)
+        self.pageText.setEnabled(hasText)
 
 
     def useFilterRegex(self)->bool:
