@@ -346,6 +346,7 @@ class ResourceBrowser(QWidget):
             if item:
                 hasImage = True
                 self.graphicsScene.addItem(item)
+                self.graphicsView.fitInView(item, Qt.KeepAspectRatio)
 
             if re.search(r'\.(svg|html|xml|txt)$', uri, re.I):
                 file = QFile(uri)
