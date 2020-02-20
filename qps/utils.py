@@ -14,6 +14,8 @@ from osgeo import gdal, ogr
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 
+# dictionary to store form classes and avoid multiple calls to read <myui>.ui
+QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
 
@@ -643,17 +645,12 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
     else:
         return uic.loadUiType(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
 
-
 def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQGISRessourceFileReferences=True, _modifiedui=None):
     """
     Backport, deprecated
     """
     warnings.warn('Use loadUi(... , loadUiType=True) instead.', DeprecationWarning)
     return loadUi(pathUi, resource_suffix=resourceSuffix, loadUiType=True)[0]
-
-
-# dictionary to store form classes and avoid multiple calls to read <myui>.ui
-QGIS_RESOURCE_WARNINGS = set()
 
 
 def typecheck(variable, type_):

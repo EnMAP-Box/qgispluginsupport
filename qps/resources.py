@@ -1,9 +1,10 @@
 
-import sys, os, pathlib, typing
+import sys, os, pathlib, typing, re
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtCore import *
 
+REGEX_FILEXTENSION_IMAGE = re.compile(r'\.([^.]+)$')
 
 def initQtResources(roots: list = []):
     """
@@ -155,6 +156,8 @@ class ResourceTableModel(QAbstractTableModel):
         self.cnIcon = 'Resource'
 
         self.RESOURCES = []
+        from qgis.PyQt.QtGui import QImageReader
+        self.supportedFormats = [bytes(f).decode() for f in QImageReader.supportedImageFormats()]
 
         self.reloadResources()
 
@@ -182,11 +185,18 @@ class ResourceTableModel(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
 
+    def canRenderAsIcon(self, uri)->bool:
+        match = REGEX_FILEXTENSION_IMAGE.search(uri)
+        return match and match.group(1) in self.supportedFormats
+
+
     def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
         if not index.isValid():
             return None
 
         uri = self.RESOURCES[index.row()]
+        ext = os.path.splitext(uri)[1]
+
         cn = self.columnNames()[index.column()]
 
         if role == Qt.DisplayRole:
@@ -199,7 +209,19 @@ class ResourceTableModel(QAbstractTableModel):
                 return QIcon(uri)
 
         if role == Qt.ToolTipRole:
-            return uri
+            if cn == self.cnUri:
+                return uri
+            if cn == self.cnIcon:
+
+                if self.canRenderAsIcon(uri):
+                    return uri
+                else:
+                    return '{}\n(cannot be rendered as icon. Please check your QT_PLUGIN_PATH)'.format(uri)
+        if role == Qt.ForegroundRole and cn == self.cnIcon:
+            if not self.canRenderAsIcon(uri):
+                brush = QBrush()
+                brush.setColor(QColor('red'))
+                return brush
 
         if role == Qt.UserRole:
             return uri

@@ -49,7 +49,8 @@ class ResourceTests(unittest.TestCase):
         B = ResourceBrowser()
         B.show()
 
-        if not os.environ.get('CI'):
+
+        if str(os.environ.get('CI')).lower() in ['', 'false', '0']:
             app.exec_()
 
 if __name__ == '__main__':
