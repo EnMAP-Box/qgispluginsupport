@@ -465,10 +465,10 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         super(RasterBandConfigWidget, self).__init__(layer, canvas, parent=parent)
         pathUi = pathlib.Path(__file__).parent / 'ui' / 'rasterbandconfigwidget.ui'
         loadUi(pathUi, self)
-
+        assert isinstance(layer, QgsRasterLayer)
         self.mCanvas = canvas
         self.mLayer = layer
-        self.mLayer.rendererChanged.connect(self.onRendererChanged)
+        self.mLayer.rendererChanged.connect(self.syncToLayer)
         assert isinstance(self.cbSingleBand, QgsRasterBandComboBox)
 
         self.cbSingleBand.setLayer(self.mLayer)
@@ -513,74 +513,104 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         self.btnSetSBBand_NIR.clicked.connect(lambda: self.setWL(('NIR',)))
         self.btnSetSBBand_SWIR.clicked.connect(lambda: self.setWL(('SWIR',)))
 
-        self.btnSetMBBands_RGB.clicked.connect(lambda : self.setWL(('R','G','B')))
+        self.btnSetMBBands_RGB.clicked.connect(lambda : self.setWL(('R', 'G', 'B')))
         self.btnSetMBBands_NIRRG.clicked.connect(lambda: self.setWL(('NIR', 'R', 'G')))
         self.btnSetMBBands_SWIRNIRR.clicked.connect(lambda: self.setWL(('SWIR', 'NIR', 'R')))
 
-
-        self.initRenderer()
+        self.syncToLayer()
 
         self.setPanelTitle('Band Selection')
 
-    def onRendererChanged(self):
-        self.initRenderer()
-
-    def initRenderer(self):
+    def syncToLayer(self):
 
         renderer = self.mLayer.renderer()
-        w = self.renderBandWidget
-        assert isinstance(self.labelRenderType, QLabel)
-        assert isinstance(w, QStackedWidget)
-        self.labelRenderType.setText(str(renderer.type()))
-        if isinstance(renderer, (QgsSingleBandGrayRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandPseudoColorRenderer, QgsPalettedRasterRenderer)):
-            w.setCurrentWidget(self.pageSingleBand)
-        elif isinstance(renderer, QgsMultiBandColorRenderer):
-            w.setCurrentWidget(self.pageMultiBand)
-        else:
-            w.setCurrentWidget(self.pageUnknown)
+        self.setRenderer(renderer)
 
     def renderer(self)->QgsRasterRenderer:
-        return self.mLayer.renderer()
-
-    def apply(self):
-        r = self.renderer()
-        newRenderer = None
-        if isinstance(r, QgsSingleBandGrayRenderer):
+        oldRenderer = self.mLayer.renderer()
+        if isinstance(oldRenderer, QgsSingleBandGrayRenderer):
             newRenderer = self.renderer().clone()
             newRenderer.setGrayBand(self.cbSingleBand.currentBand())
 
-        elif isinstance(r, QgsSingleBandPseudoColorRenderer):
-            pass
+        elif isinstance(oldRenderer, QgsSingleBandPseudoColorRenderer):
             # there is a bug when using the QgsSingleBandPseudoColorRenderer.setBand()
             # see https://github.com/qgis/QGIS/issues/31568
-            #band = self.cbSingleBand.currentBand()
-            vMin, vMax = r.shader().minimumValue(), r.shader().maximumValue()
+            # band = self.cbSingleBand.currentBand()
+            vMin, vMax = oldRenderer.shader().minimumValue(), oldRenderer.shader().maximumValue()
             shader = QgsRasterShader(vMin, vMax)
 
-            f = r.shader().rasterShaderFunction()
+            f = oldRenderer.shader().rasterShaderFunction()
             if isinstance(f, QgsColorRampShader):
                 shaderFunction = QgsColorRampShader(f)
             else:
                 shaderFunction = QgsRasterShaderFunction(f)
 
             shader.setRasterShaderFunction(shaderFunction)
-            newRenderer = QgsSingleBandPseudoColorRenderer(r.input(), self.cbSingleBand.currentBand(), shader)
+            newRenderer = QgsSingleBandPseudoColorRenderer(oldRenderer.input(), self.cbSingleBand.currentBand(), shader)
 
-        elif isinstance(r, QgsPalettedRasterRenderer):
-            newRenderer = QgsPalettedRasterRenderer(r.input(), self.cbSingleBand.currentBand(), r.classes())
+        elif isinstance(oldRenderer, QgsPalettedRasterRenderer):
+            newRenderer = QgsPalettedRasterRenderer(oldRenderer.input(), self.cbSingleBand.currentBand(),
+                                                    oldRenderer.classes())
 
-            #r.setBand(band)
-        elif isinstance(r, QgsSingleBandColorDataRenderer):
-            newRenderer = QgsSingleBandColorDataRenderer(r.input(), self.cbSingleBand.currentBand())
+            # r.setBand(band)
+        elif isinstance(oldRenderer, QgsSingleBandColorDataRenderer):
+            newRenderer = QgsSingleBandColorDataRenderer(oldRenderer.input(), self.cbSingleBand.currentBand())
 
-        elif isinstance(r, QgsMultiBandColorRenderer):
-            newRenderer = self.renderer().clone()
+        elif isinstance(oldRenderer, QgsMultiBandColorRenderer):
+            newRenderer = oldRenderer.clone()
+            newRenderer.setInput(oldRenderer.input())
             newRenderer.setRedBand(self.cbMultiBandRed.currentBand())
             newRenderer.setGreenBand(self.cbMultiBandGreen.currentBand())
             newRenderer.setBlueBand(self.cbMultiBandBlue.currentBand())
+        return newRenderer
 
-        if isinstance(newRenderer, QgsRasterRenderer):
+    def setRenderer(self, renderer:QgsRasterRenderer):
+        w = self.renderBandWidget
+        assert isinstance(self.labelRenderType, QLabel)
+        assert isinstance(w, QStackedWidget)
+        self.labelRenderType.setText(str(renderer.type()))
+        if isinstance(renderer, (
+                QgsSingleBandGrayRenderer,
+                QgsSingleBandColorDataRenderer,
+                QgsSingleBandPseudoColorRenderer,
+                QgsPalettedRasterRenderer)):
+            w.setCurrentWidget(self.pageSingleBand)
+
+            if isinstance(renderer, QgsSingleBandGrayRenderer):
+                self.cbSingleBand.setBand(renderer.grayBand())
+
+            elif isinstance(renderer, QgsSingleBandPseudoColorRenderer):
+                self.cbSingleBand.setBand(renderer.band())
+
+            elif isinstance(renderer, QgsPalettedRasterRenderer):
+                self.cbSingleBand.setBand(renderer.band())
+
+            elif isinstance(renderer, QgsSingleBandColorDataRenderer):
+                self.cbSingleBand.setBand(renderer.usesBands()[0])
+
+        elif isinstance(renderer, QgsMultiBandColorRenderer):
+            w.setCurrentWidget(self.pageMultiBand)
+            self.cbMultiBandRed.setBand(renderer.redBand())
+            self.cbMultiBandGreen.setBand(renderer.greenBand())
+            self.cbMultiBandBlue.setBand(renderer.blueBand())
+
+        else:
+            w.setCurrentWidget(self.pageUnknown)
+
+
+
+
+    def shouldTriggerLayerRepaint(self)->bool:
+        return True
+
+    def apply(self):
+
+        newRenderer = self.renderer()
+
+        if isinstance(newRenderer, QgsRasterRenderer) and isinstance(self.mLayer, QgsRasterLayer):
+            newRenderer.setInput(self.mLayer.dataProvider())
             self.mLayer.setRenderer(newRenderer)
+            self.widgetChanged.emit()
 
     def wlBand(self, wlKey:str)->int:
         if isinstance(self.mWL, np.ndarray):
@@ -603,7 +633,7 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
             self.cbMultiBandGreen.setBand(bG)
             self.cbMultiBandRed.setBand(bR)
 
-        pass
+        self.widgetChanged.emit()
 
     def setDockMode(self, dockMode:bool):
         pass
@@ -782,6 +812,9 @@ class GDALMetadataModelConfigWidget(QgsMapLayerConfigWidget):
             self.metadataModel.setLayer(layer)
         else:
             self.gbMetadata.setTitle('No GDAL/OGR Metadata')
+
+    def apply(self):
+        pass
 
     def updateFilter(self, *args):
 
@@ -1236,9 +1269,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         pathUi = pathlib.Path(__file__).parent / 'ui' / 'layerpropertiesdialog.ui'
         loadUi(pathUi.as_posix(), self)
         self.initOptionsBase(False, 'Layer Properties - {}'.format(lyr.name()))
-
         self.mOptionsListWidget: QListWidget
-        self.mOptionsListWidget.itemClicked.connect(self.dummySlot)
 
         assert isinstance(lyr, QgsMapLayer)
         self.mLayer: QgsMapLayer = lyr
@@ -1275,13 +1306,17 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.pageSymbology: QWidget
         self.symbologyScrollArea: QScrollArea
         self.symbologyScrollAreaWidget: QWidget
+        self.mRendererRasterPropertiesWidget:QgsRendererRasterPropertiesWidget = None
+        self.mRendererVectorPropertiesDialog:QgsRendererPropertiesDialog = None
+
 
 
         # pageLabels
         self.pageLabels: QWidget
 
-
+        # pageTransparency
         self.pageTransparency: QWidget
+        self.mRasterTransparencyWidget:QgsRasterTransparencyWidget = None
 
         # pageHistogram
         self.pageHistogram: QWidget
@@ -1310,7 +1345,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
         self.sync()
 
-        self.btnApply.clicked.connect(self.onApply)
+        self.btnApply.clicked.connect(self.apply)
         self.btnOk.clicked.connect(self.onOk)
         self.btnCancel.clicked.connect(self.onCancel)
 
@@ -1335,6 +1370,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
                 listItem = QListWidgetItem(f.icon(), f.title())
                 listWidget = f.createWidget(self.mapLayer(), self.canvas(), dockWidget=False)
+                assert isinstance(listWidget, QgsMapLayerConfigWidget)
 
                 i = self.mOptionsListWidget.count()
                 if hasattr(f, '_PREFERRED_PREDECESSORS'):
@@ -1348,13 +1384,13 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
                             i = itemNames.index(p) + 1
                             break
 
+                #listWidget.widgetChanged.connect(self.onApply)
                 self.mOptionsListWidget.insertItem(i, listItem)
                 self.mOptionsStackedWidget.insertWidget(i, listWidget)
 
 
     def onOk(self):
-        self.onApply()
-        #self.setResult(QDialog.Accepted)
+        self.apply()
         self.accept()
 
     def onCancel(self):
@@ -1364,23 +1400,46 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.reject()
 
 
-    def onApply(self):
-        lyr = self.mapLayer()
-        if isinstance(lyr, QgsMapLayer):
-            lyr.setName(self.tbLayerName.text())
-            lyr.setCrs(self.mCRS.crs())
+    def currentWidget(self)->QWidget:
+        return self.mOptionsStackedWidget.currentWidget()
 
-            self.legendWidget.applyToLayer()
+    def apply(self):
 
-
-        if isinstance(lyr, QgsRasterLayer):
-            pass
-
-        if isinstance(lyr, QgsVectorLayer):
-            pass
+        page = self.currentWidget()
+        child = None
+        for t in [QgsMapLayerConfigWidget, QgsRendererPropertiesDialog]:
+            child = page.findChild(t)
+            if child:
+                break
+        if isinstance(page, QgsMapLayerConfigWidget):
+            page.apply()
+        elif isinstance(child, (QgsMapLayerConfigWidget, QgsRendererPropertiesDialog)):
+            child.apply()
+        elif page == self.pageInformation:
+            self.apply_information()
+        elif page == self.pageSource:
+            self.apply_source()
+        elif page == self.pageLabels:
+            self.apply_labels()
+        elif page == self.pageTransparency:
+            self.apply_transparency()
+        elif page == self.pageHistogram:
+            self.apply_histogram()
+        elif page == self.pageRendering:
+            self.apply_rendering()
+        elif page == self.pagePyramids:
+            self.apply_pyramids()
+        elif page == self.pageFields:
+            self.apply_fields()
+        elif page == self.pageForms:
+            self.apply_forms()
+        elif page == self.pageLegend:
+            self.apply_legend()
 
         self.mapLayer().triggerRepaint()
         self.sync()
+
+
 
     def canvas(self)->QgsMapCanvas:
         return self.mCanvas
@@ -1448,6 +1507,9 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         else:
             self.mMetadataViewer.setHtml('')
 
+    def apply_information(self):
+        pass
+
     def sync_source(self, lyr:QgsMapLayer):
         if self.activateListItem(LayerPropertiesDialog.Pages.Source, isinstance(lyr, QgsMapLayer)):
             self.tbLayerName.setText(lyr.name())
@@ -1457,6 +1519,16 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             self.tbLayerDisplayName.setText('')
             self.mCRS.setCrs(None)
 
+    def apply_source(self):
+        lyr = self.mapLayer()
+
+        if isinstance(lyr, QgsMapLayer):
+            name = self.tbLayerName.text()
+            if name != lyr.name():
+                lyr.setName(name)
+            if self.mCRS.crs() != lyr.crs():
+                lyr.setCrs(self.mCRS.crs())
+
     def sync_symbology(self, lyr:QgsMapLayer):
         is_raster = isinstance(lyr, QgsRasterLayer)
         is_vector = isinstance(lyr, QgsVectorLayer)
@@ -1464,21 +1536,27 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
         if self.activateListItem(LayerPropertiesDialog.Pages.Symbology, is_maplayer):
             w = self.symbologyScrollArea.widget()
+
             if is_raster:
-                if not isinstance(w, QgsRendererRasterPropertiesWidget):
-                    w = QgsRendererRasterPropertiesWidget(lyr, self.canvas(), None)
-                    self.symbologyScrollArea.setWidget(w)
-                    self.btnApply.clicked.connect(w.apply)
-                else:
-                    w.syncToLayer(lyr)
+
+                if isinstance(self.mRendererRasterPropertiesWidget, QgsRendererRasterPropertiesWidget):
+                    r1 = self.mRendererRasterPropertiesWidget.currentRenderWidget().renderer()
+                    r2 = lyr.renderer()
+                    if r1.usesBands() != r2.usesBands():
+                        if True: # see https://github.com/qgis/QGIS/issues/34602
+                            self.mRendererRasterPropertiesWidget = None
+                            w.setParent(None)
+                        else:
+                            self.mRendererRasterPropertiesWidget.syncToLayer(lyr)
+
+                if not isinstance(self.mRendererRasterPropertiesWidget, QgsRendererRasterPropertiesWidget):
+                    self.mRendererRasterPropertiesWidget = QgsRendererRasterPropertiesWidget(lyr, self.canvas(), None)
+                    self.symbologyScrollArea.setWidget(self.mRendererRasterPropertiesWidget)
 
             elif is_vector:
-                if not isinstance(w, QgsRendererPropertiesDialog):
-                    w = QgsRendererPropertiesDialog(lyr, QgsStyle(), embedded=True)
-                    self.symbologyScrollArea.setWidget(w)
-                    self.btnApply.clicked.connect(w.apply)
-                else:
-                    w.syncToLayer()
+                if not isinstance(self.mRendererVectorPropertiesDialog, QgsRendererPropertiesDialog):
+                    self.mRendererVectorPropertiesDialog = QgsRendererPropertiesDialog(lyr, QgsStyle(), embedded=True)
+                    self.symbologyScrollArea.setWidget(self.mRendererVectorPropertiesDialog)
 
     def sync_labels(self, lyr:QgsMapLayer):
         is_vector = isinstance(lyr, QgsVectorLayer)
@@ -1486,14 +1564,35 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             # to be implemented
             pass
 
+    def apply_labels(self):
+
+        self.sync_labels()
+
     def sync_transparency(self, lyr:QgsMapLayer):
         l = self.pageTransparency.layout()
         assert isinstance(l, QVBoxLayout)
         is_raster = isinstance(lyr, QgsRasterLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Transparency, is_raster) and l.count() == 0:
-                w = QgsRasterTransparencyWidget(lyr, self.canvas(), None)
-                self.btnApply.clicked.connect(lambda *args, w=w: w.apply())
-                l.addWidget(w)
+        if self.activateListItem(LayerPropertiesDialog.Pages.Transparency, is_raster):
+            w = self.pageTransparency.findChild(QgsRasterTransparencyWidget)
+            if not isinstance(w, QgsRasterTransparencyWidget):
+                self.mRasterTransparencyWidget = QgsRasterTransparencyWidget(lyr, self.canvas(), None)
+                l.addWidget(self.mRasterTransparencyWidget)
+            else:
+                w.syncToLayer()
+
+
+    def apply_transparency(self):
+
+        for w in self.pageTransparency.findChildren(QgsRasterTransparencyWidget):
+            assert isinstance(w, QgsRasterTransparencyWidget)
+
+            s = ""
+            w.apply()
+            s = ""
+            break
+
+        self.sync_transparency(self.mapLayer())
+        pass
 
     def sync_histogram(self, lyr:QgsMapLayer):
         is_raster = isinstance(lyr, QgsRasterLayer)
@@ -1501,14 +1600,21 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
                 w = self.histogramScrollArea.widget()
                 if not isinstance(w, QgsRasterHistogramWidget):
                     w = QgsRasterHistogramWidget(lyr, None)
-                    self.btnApply.clicked.connect(lambda *args, w=w: w.apply())
                     self.histogramScrollArea.setWidget(w)
+
+    def apply_histogram(self):
+        pass
 
     def sync_rendering(self, lyr:QgsMapLayer):
         is_maplayer = isinstance(lyr, QgsMapLayer)
         if self.activateListItem(LayerPropertiesDialog.Pages.Rendering, is_maplayer):
             self.mScaleRangeWidget.setScaleRange(lyr.minimumScale(), lyr.maximumScale())
 
+    def apply_rendering(self):
+        assert isinstance(self.mScaleRangeWidget, QgsScaleRangeWidget)
+        if isinstance(self.mapLayer(), QgsMapLayer):
+            self.mapLayer().setMaximumScale(self.mScaleRangeWidget.maximumScale())
+            self.mapLayer().setMinimumScale(self.mScaleRangeWidget.minimumScale())
 
     def sync_pyramids(self, lyr:QgsMapLayer):
         is_raster = isinstance(lyr, QgsRasterLayer)
@@ -1516,24 +1622,40 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             # to be implemented
             pass
 
+    def apply_pyramids(self):
+        pass
+
     def sync_fields(self, lyr:QgsMapLayer):
         is_vector = isinstance(lyr, QgsVectorLayer)
         if self.activateListItem(LayerPropertiesDialog.Pages.Fields, False):
             # tbi
             pass
+    def apply_fields(self):
+
+        pass
+
+
+    def apply_fields(self):
+
+        pass
 
     def sync_forms(self, lyr:QgsMapLayer):
         if self.activateListItem(LayerPropertiesDialog.Pages.Forms, isinstance(lyr, QgsVectorLayer)):
             self.mLayerFieldConfigEditorWidget.setLayer(lyr)
 
+    def apply_forms(self):
+
+        pass
+
+
     def sync_legend(self, lyr:QgsMapLayer):
         if self.activateListItem(LayerPropertiesDialog.Pages.Legend, isinstance(lyr, QgsMapLayer)):
             self.legendWidget.setLayer(lyr)
 
+    def apply_legend(self):
+        self.legendWidget.applyToLayer()
 
-    def dummySlot(self, *args, **kwds):
 
-        s  = ""
 def showLayerPropertiesDialog(layer:QgsMapLayer,
                               canvas:QgsMapCanvas=None,
                               parent:QObject=None,

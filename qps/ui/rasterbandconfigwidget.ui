@@ -24,7 +24,7 @@
    <item>
     <widget class="QStackedWidget" name="renderBandWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="pageSingleBand">
       <layout class="QGridLayout" name="gridLayout_2">
@@ -342,7 +342,9 @@
    <header>qgsrasterbandcombobox.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../qpsresources.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>cbSingleBand</sender>

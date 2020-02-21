@@ -240,7 +240,7 @@
           </sizepolicy>
          </property>
          <property name="currentIndex">
-          <number>8</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="pageInformation">
           <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -367,8 +367,8 @@ border-radius: 2px;</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>100</width>
-                <height>30</height>
+                <width>652</width>
+                <height>541</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_18">
@@ -422,8 +422,8 @@ border-radius: 2px;</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>65</width>
-                <height>16</height>
+                <width>634</width>
+                <height>523</height>
                </rect>
               </property>
              </widget>

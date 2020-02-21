@@ -18,7 +18,7 @@ from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
 from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
 from qps.layerproperties import *
-
+from qps import registerMapLayerConfigWidgetFactories
 LAYER_WIDGET_REPS = 5
 
 class LayerRendererTests(TestCase):
@@ -119,18 +119,6 @@ class LayerRendererTests(TestCase):
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
-    def test_QgsMapLayerConfigWidget(self):
-
-        lyr = TestObjects.createRasterLayer(nb=3)
-        QgsProject.instance().addMapLayer(lyr)
-        canvas = QgsMapCanvas()
-        canvas.setLayers([lyr])
-        canvas.setExtent(canvas.fullExtent())
-
-        w1 = QgsRendererRasterPropertiesWidget(lyr, canvas, None)
-
-        self.showGui(([canvas, w1]))
-
 
     def test_metadatatable(self):
 
@@ -145,6 +133,7 @@ class LayerRendererTests(TestCase):
 
 
     def test_LayerPropertiesDialog_Vector(self):
+        registerMapLayerConfigWidgetFactories()
         lyr = TestObjects.createVectorLayer()
         d = LayerPropertiesDialog(lyr)
         self.assertIsInstance(d, LayerPropertiesDialog)
@@ -158,8 +147,13 @@ class LayerRendererTests(TestCase):
         self.showGui(w)
 
     def test_LayerPropertiesDialog_Raster(self):
-        lyr = TestObjects.createRasterLayer()
+        registerMapLayerConfigWidgetFactories()
+        lyr = TestObjects.createRasterLayer(nb=100)
+
+
+
         d = LayerPropertiesDialog(lyr)
+
         self.assertIsInstance(d, LayerPropertiesDialog)
         d.show()
         d.sync()
