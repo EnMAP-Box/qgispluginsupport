@@ -138,8 +138,6 @@ class LayerRendererTests(TestCase):
         d = LayerPropertiesDialog(lyr)
         self.assertIsInstance(d, LayerPropertiesDialog)
         d.show()
-        d.sync()
-
         w = QWidget()
         w.setLayout(QHBoxLayout())
         w.layout().addWidget(d.canvas())
@@ -156,7 +154,6 @@ class LayerRendererTests(TestCase):
 
         self.assertIsInstance(d, LayerPropertiesDialog)
         d.show()
-        d.sync()
 
         w = QWidget()
         w.setLayout(QHBoxLayout())

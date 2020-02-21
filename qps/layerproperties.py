@@ -135,7 +135,7 @@ def rendererFromXml(xml):
                     context = QgsReadWriteContext()
                     return rClass.load(elem, context)
             else:
-                print(typeName)
+                #print(typeName)
                 s =""
     return None
 
@@ -773,12 +773,31 @@ class GDALMetadataModel(QAbstractTableModel):
 
         return items
 
+class GDALMetadataModelTreeView(QTreeView):
+    """
+    A QTreeView for the GDALMetadataModel
+    """
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        """
+        Opens a context menue
+        """
+        index = self.indexAt(event.pos())
+        if index.isValid():
+            value = str(index.data(Qt.DisplayRole))
+            m = QMenu()
+            a = m.addAction('Copy Value')
+            a.triggered.connect(lambda *args, value=value: QApplication.clipboard().setText(value))
+            m.exec_(event.globalPos())
+
 
 class GDALMetadataModelConfigWidget(QgsMapLayerConfigWidget):
 
     @staticmethod
     def icon()->QIcon:
-        return QIcon(':/images/themes/default/propertyicons/editmetadata.svg')
+        return QIcon(':/qps/ui/icons/edit_gdal_metadata.svg')
 
     def __init__(self, layer:QgsMapLayer, canvas:QgsMapCanvas, parent:QWidget=None):
         super(GDALMetadataModelConfigWidget, self).__init__(layer, canvas, parent=parent)
@@ -838,7 +857,7 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
 
-        super(GDALMetadataConfigWidgetFactory, self).__init__('Metadata', GDALMetadataModelConfigWidget.icon())
+        super(GDALMetadataConfigWidgetFactory, self).__init__('GDAL Metadata', GDALMetadataModelConfigWidget.icon())
         self.setSupportLayerPropertiesDialog(True)
         self.setSupportsStyleDock(True)
         self.setTitle('Metadata')
@@ -860,6 +879,13 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         w = GDALMetadataModelConfigWidget(layer, canvas, parent=parent)
         self._w = w
         return w
+
+    def title(self)->str:
+        return 'GDAL Metadata'
+
+    def icon(self)->QIcon:
+        return GDALMetadataModelConfigWidget.icon()
+
 
 
 class LabelFieldModel(QgsFieldModel):
@@ -1244,20 +1270,6 @@ class LayerFieldConfigEditorWidget(QWidget):
 
 
 class LayerPropertiesDialog(QgsOptionsDialogBase):
-    class Pages(enum.Enum):
-
-        Information = 'Information'
-        Source = 'Source'
-        Symbology = 'Symbology'
-        Labels = 'Labels'
-        Transparency = 'Transparency'
-        Histogram = 'Histogram'
-        Rendering = 'Rendering'
-        Pyramids = 'Pyramids'
-        Metadata = 'Metadata'
-        Fields = 'Fields'
-        Forms = 'Forms'
-        Legend = 'Legend'
 
     def __init__(self,
                  lyr:typing.Union[QgsRasterLayer, QgsVectorLayer],
@@ -1270,7 +1282,8 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         loadUi(pathUi.as_posix(), self)
         self.initOptionsBase(False, 'Layer Properties - {}'.format(lyr.name()))
         self.mOptionsListWidget: QListWidget
-
+        assert isinstance(self.mOptionsListWidget, QListWidget)
+        self.mOptionsListWidget.currentRowChanged.connect(self.onPageChanged)
         assert isinstance(lyr, QgsMapLayer)
         self.mLayer: QgsMapLayer = lyr
 
@@ -1288,6 +1301,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.btnCancel: QPushButton = self.buttonBox.button(QDialogButtonBox.Cancel)
         self.btnOk: QPushButton = self.buttonBox.button(QDialogButtonBox.Ok)
 
+        assert isinstance(self.mOptionsListWidget, QListWidget)
 
 
         # pageInformation
@@ -1305,11 +1319,8 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         # pageSymbology
         self.pageSymbology: QWidget
         self.symbologyScrollArea: QScrollArea
-        self.symbologyScrollAreaWidget: QWidget
-        self.mRendererRasterPropertiesWidget:QgsRendererRasterPropertiesWidget = None
-        self.mRendererVectorPropertiesDialog:QgsRendererPropertiesDialog = None
-
-
+        assert isinstance(self.symbologyScrollArea, QScrollArea)
+        self.symbologyWidget: QWidget = None
 
         # pageLabels
         self.pageLabels: QWidget
@@ -1336,13 +1347,6 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.pageLegend: QWidget
         self.legendWidget: QgsLayerTreeEmbeddedConfigWidget
 
-        self.mPageItems = dict()
-        for i in range(self.mOptionsListWidget.count()):
-            item = self.mOptionsListWidget.item(i)
-            #item.setHidden(True)
-            assert isinstance(item, QListWidgetItem)
-            self.mPageItems[item.text()] = item
-
         self.sync()
 
         self.btnApply.clicked.connect(self.apply)
@@ -1354,6 +1358,16 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             mapLayerConfigFactories = getFactories()
 
         self.initConfigFactories(mapLayerConfigFactories)
+
+        # select the first item
+        self.mOptionsListWidget.setCurrentRow(0)
+
+    def onPageChanged(self, row):
+        if self.currentPage() == self.pageSymbology:
+            pass
+            #self.symbologyScrollArea.ensureWidgetVisible(self.symbologyWidget)
+
+
 
     def initConfigFactories(self, mapLayerConfigFactories: list = []):
         """
@@ -1400,12 +1414,12 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.reject()
 
 
-    def currentWidget(self)->QWidget:
+    def currentPage(self)->QWidget:
         return self.mOptionsStackedWidget.currentWidget()
 
     def apply(self):
 
-        page = self.currentWidget()
+        page = self.currentPage()
         child = None
         for t in [QgsMapLayerConfigWidget, QgsRendererPropertiesDialog]:
             child = page.findChild(t)
@@ -1415,6 +1429,8 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             page.apply()
         elif isinstance(child, (QgsMapLayerConfigWidget, QgsRendererPropertiesDialog)):
             child.apply()
+            if isinstance(child, QgsRendererPropertiesDialog):
+                s = ""
         elif page == self.pageInformation:
             self.apply_information()
         elif page == self.pageSource:
@@ -1482,24 +1498,32 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.sync_forms(lyr)
         self.sync_legend(lyr)
 
-    def listWidgetItem(self, page:Pages)->QListWidgetItem:
+    def listWidgetItem(self, page:QWidget)->QListWidgetItem:
         """
-        Returns q QListWidgetItem
+        Returns the QListWidgetItem that corresponds to a page
         :param name:
         :type name:
         :return:
         :rtype:
         """
-        return self.mPageItems.get(page.value, None)
+        assert self.mOptionsStackedWidget.count() == self.mOptionsListWidget.count()
+        i = self.mOptionsStackedWidget.indexOf(page)
+        assert i >= 0
+        item = self.mOptionsListWidget.item(i)
+        assert isinstance(item, QListWidgetItem)
+        #print((page.objectName(), item.text()))
+        return item
 
-    def activateListItem(self, page:Pages, is_active:bool)->bool:
+
+    def activateListItem(self, page:QWidget, is_active:bool)->bool:
+        page.setEnabled(is_active)
         item = self.listWidgetItem(page)
         assert isinstance(item, QListWidgetItem)
         item.setHidden(not is_active)
         return is_active
 
     def sync_information(self, lyr):
-        if self.activateListItem(LayerPropertiesDialog.Pages.Information, isinstance(lyr, QgsMapLayer)):
+        if self.activateListItem(self.pageInformation, isinstance(lyr, QgsMapLayer)):
             style = QgsApplication.reportStyleSheet(QgsApplication.WebBrowser)
             md = lyr.htmlMetadata()
             md = md.replace('<head>', '<head><style type="text/css">{}</style>'.format(style))
@@ -1511,7 +1535,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         pass
 
     def sync_source(self, lyr:QgsMapLayer):
-        if self.activateListItem(LayerPropertiesDialog.Pages.Source, isinstance(lyr, QgsMapLayer)):
+        if self.activateListItem(self.pageSource, isinstance(lyr, QgsMapLayer)):
             self.tbLayerName.setText(lyr.name())
             self.mCRS.setCrs(lyr.crs())
         else:
@@ -1534,33 +1558,36 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         is_vector = isinstance(lyr, QgsVectorLayer)
         is_maplayer = is_raster or is_vector
 
-        if self.activateListItem(LayerPropertiesDialog.Pages.Symbology, is_maplayer):
-            w = self.symbologyScrollArea.widget()
+        if self.activateListItem(self.pageSymbology, is_maplayer):
+            w = self.symbologyWidget
 
             if is_raster:
 
-                if isinstance(self.mRendererRasterPropertiesWidget, QgsRendererRasterPropertiesWidget):
-                    r1 = self.mRendererRasterPropertiesWidget.currentRenderWidget().renderer()
+                if isinstance(self.symbologyWidget, QgsRendererRasterPropertiesWidget):
+                    r1 = self.symbologyWidget.currentRenderWidget().renderer()
                     r2 = lyr.renderer()
                     if r1.usesBands() != r2.usesBands():
                         if True: # see https://github.com/qgis/QGIS/issues/34602
-                            self.mRendererRasterPropertiesWidget = None
+                            self.symbologyWidget = None
                             w.setParent(None)
                         else:
-                            self.mRendererRasterPropertiesWidget.syncToLayer(lyr)
+                            self.symbologyWidget.syncToLayer(lyr)
 
-                if not isinstance(self.mRendererRasterPropertiesWidget, QgsRendererRasterPropertiesWidget):
-                    self.mRendererRasterPropertiesWidget = QgsRendererRasterPropertiesWidget(lyr, self.canvas(), None)
-                    self.symbologyScrollArea.setWidget(self.mRendererRasterPropertiesWidget)
+                if not isinstance(self.symbologyWidget, QgsRendererRasterPropertiesWidget):
+                    self.symbologyWidget = QgsRendererRasterPropertiesWidget(lyr, self.canvas(), None)
+                    self.symbologyScrollArea.setWidget(self.symbologyWidget)
 
             elif is_vector:
-                if not isinstance(self.mRendererVectorPropertiesDialog, QgsRendererPropertiesDialog):
-                    self.mRendererVectorPropertiesDialog = QgsRendererPropertiesDialog(lyr, QgsStyle(), embedded=True)
-                    self.symbologyScrollArea.setWidget(self.mRendererVectorPropertiesDialog)
+                if not isinstance(self.symbologyWidget, QgsRendererPropertiesDialog):
+                    self.symbologyWidget = QgsRendererPropertiesDialog(lyr, QgsStyle(), embedded=True)
+
+
+            if self.symbologyScrollArea.widget() != self.symbologyWidget:
+                self.symbologyScrollArea.setWidget(self.symbologyWidget)
 
     def sync_labels(self, lyr:QgsMapLayer):
         is_vector = isinstance(lyr, QgsVectorLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Labels, False):
+        if self.activateListItem(self.pageLabels, False):
             # to be implemented
             pass
 
@@ -1572,7 +1599,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         l = self.pageTransparency.layout()
         assert isinstance(l, QVBoxLayout)
         is_raster = isinstance(lyr, QgsRasterLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Transparency, is_raster):
+        if self.activateListItem(self.pageTransparency, is_raster):
             w = self.pageTransparency.findChild(QgsRasterTransparencyWidget)
             if not isinstance(w, QgsRasterTransparencyWidget):
                 self.mRasterTransparencyWidget = QgsRasterTransparencyWidget(lyr, self.canvas(), None)
@@ -1596,7 +1623,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
     def sync_histogram(self, lyr:QgsMapLayer):
         is_raster = isinstance(lyr, QgsRasterLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Histogram, is_raster):
+        if self.activateListItem(self.pageHistogram, is_raster):
                 w = self.histogramScrollArea.widget()
                 if not isinstance(w, QgsRasterHistogramWidget):
                     w = QgsRasterHistogramWidget(lyr, None)
@@ -1607,18 +1634,23 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
     def sync_rendering(self, lyr:QgsMapLayer):
         is_maplayer = isinstance(lyr, QgsMapLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Rendering, is_maplayer):
+        if self.activateListItem(self.pageRendering, is_maplayer):
+            self.gbRenderingScale.setChecked(lyr.hasScaleBasedVisibility())
             self.mScaleRangeWidget.setScaleRange(lyr.minimumScale(), lyr.maximumScale())
 
     def apply_rendering(self):
         assert isinstance(self.mScaleRangeWidget, QgsScaleRangeWidget)
-        if isinstance(self.mapLayer(), QgsMapLayer):
-            self.mapLayer().setMaximumScale(self.mScaleRangeWidget.maximumScale())
-            self.mapLayer().setMinimumScale(self.mScaleRangeWidget.minimumScale())
+        lyr = self.mapLayer()
+        if not isinstance(lyr, QgsMapLayer):
+            return
+        lyr.setScaleBasedVisibility(self.gbRenderingScale.isChecked())
+        if self.gbRenderingScale.isChecked():
+            lyr.setMaximumScale(self.mScaleRangeWidget.maximumScale())
+            lyr.setMinimumScale(self.mScaleRangeWidget.minimumScale())
 
     def sync_pyramids(self, lyr:QgsMapLayer):
         is_raster = isinstance(lyr, QgsRasterLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Pyramids, False):
+        if self.activateListItem(self.pagePyramids, False):
             # to be implemented
             pass
 
@@ -1627,7 +1659,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
     def sync_fields(self, lyr:QgsMapLayer):
         is_vector = isinstance(lyr, QgsVectorLayer)
-        if self.activateListItem(LayerPropertiesDialog.Pages.Fields, False):
+        if self.activateListItem(self.pageFields, False):
             # tbi
             pass
     def apply_fields(self):
@@ -1640,7 +1672,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         pass
 
     def sync_forms(self, lyr:QgsMapLayer):
-        if self.activateListItem(LayerPropertiesDialog.Pages.Forms, isinstance(lyr, QgsVectorLayer)):
+        if self.activateListItem(self.pageForms, isinstance(lyr, QgsVectorLayer)):
             self.mLayerFieldConfigEditorWidget.setLayer(lyr)
 
     def apply_forms(self):
@@ -1649,7 +1681,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
 
 
     def sync_legend(self, lyr:QgsMapLayer):
-        if self.activateListItem(LayerPropertiesDialog.Pages.Legend, isinstance(lyr, QgsMapLayer)):
+        if self.activateListItem(self.pageLegend, isinstance(lyr, QgsMapLayer)):
             self.legendWidget.setLayer(lyr)
 
     def apply_legend(self):
@@ -1698,7 +1730,8 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
             return QDialog.Accepted
 
         except Exception as ex:
-            print(ex)
+            print(ex, file=sys.stderr)
+
     else:
 
         dialog = LayerPropertiesDialog(layer, canvas=canvas)

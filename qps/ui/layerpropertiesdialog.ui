@@ -240,7 +240,7 @@
           </sizepolicy>
          </property>
          <property name="currentIndex">
-          <number>1</number>
+          <number>6</number>
          </property>
          <widget class="QWidget" name="pageInformation">
           <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -257,7 +257,11 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QTextBrowser" name="mMetadataViewer"/>
+            <widget class="QTextBrowser" name="mMetadataViewer">
+             <property name="frameShape">
+              <enum>QFrame::NoFrame</enum>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
@@ -359,10 +363,13 @@ border-radius: 2px;</string>
              <property name="frameShape">
               <enum>QFrame::NoFrame</enum>
              </property>
+             <property name="sizeAdjustPolicy">
+              <enum>QAbstractScrollArea::AdjustToContents</enum>
+             </property>
              <property name="widgetResizable">
               <bool>true</bool>
              </property>
-             <widget class="QWidget" name="symbologyScrollAreaWidget">
+             <widget class="QWidget" name="symbologyWidget">
               <property name="geometry">
                <rect>
                 <x>0</x>
@@ -437,6 +444,9 @@ border-radius: 2px;</string>
             <widget class="QgsCollapsibleGroupBox" name="gbRenderingScale">
              <property name="title">
               <string>Scale Dependent Visibility</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_13">
               <item>

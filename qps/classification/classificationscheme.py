@@ -1534,11 +1534,11 @@ class ClassificationSchemeWidget(QWidget):
         m = QMenu('Load classes')
         m.setToolTip('Load classes ...')
         a = m.addAction('Load from raster')
-        a.triggered.connect(lambda : self.onLoadClasses('raster'))
+        a.triggered.connect(lambda: self.onLoadClasses('raster'))
         a = m.addAction('Load from map layer')
-        a.triggered.connect(lambda : self.onLoadClasses('layer'))
+        a.triggered.connect(lambda: self.onLoadClasses('layer'))
         a = m.addAction('Load from other textfile')
-        a.triggered.connect(lambda : self.onLoadClasses('textfile'))
+        a.triggered.connect(lambda: self.onLoadClasses('textfile'))
 
 
         parent = self.parent()
