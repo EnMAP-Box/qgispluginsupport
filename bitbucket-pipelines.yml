@@ -6,30 +6,31 @@
 image: qgis/qgis
 
 pipelines:
-  branches: '{master, develop}'
-    - step:
-        services:
-          - docker
-        caches:
-          - docker
-          - pip
-          - qgisicons
-        script: # Modify the commands below to build your repository.
-          - python3 -m pip install -r requirements.txt
-          - apt-get update
-          - apt-get install -y xvfb
-          - apt-get install -y wget
-          - apt-get install -y unzip
-          - Xvfb :1 -screen 0 1024x768x16 &> xvfb.log  &
-          - ps aux | grep X
-          - DISPLAY=:1.0
-          - export DISPLAY
-          - python3 -m pip install -r requirements.txt
-          - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
-          - unzip qgisresources.zip
-          - ls
-          - python3 runfirst.py
-          - /bin/bash runtests.sh
+  branches:
+    master, develop
+      - step:
+          services:
+            - docker
+          caches:
+            - docker
+            - pip
+            - qgisicons
+          script: # Modify the commands below to build your repository.
+            - python3 -m pip install -r requirements.txt
+            - apt-get update
+            - apt-get install -y xvfb
+            - apt-get install -y wget
+            - apt-get install -y unzip
+            - Xvfb :1 -screen 0 1024x768x16 &> xvfb.log  &
+            - ps aux | grep X
+            - DISPLAY=:1.0
+            - export DISPLAY
+            - python3 -m pip install -r requirements.txt
+            - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
+            - unzip qgisresources.zip
+            - ls
+            - python3 runfirst.py
+            - /bin/bash runtests.sh
 
 
 definitions:
