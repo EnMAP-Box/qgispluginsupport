@@ -453,6 +453,190 @@ def subLayers(mapLayer:QgsMapLayer, subLayers:list=None)->typing.List[QgsMapLaye
     return layers
 
 
+
+class RasterBandConfigWidget(QgsMapLayerConfigWidget):
+
+    @staticmethod
+    def icon()->QIcon:
+        return QIcon(':/qps/ui/icons/rasterband_select.svg')
+
+    def __init__(self, layer:QgsRasterLayer, canvas:QgsMapCanvas, parent:QWidget=None):
+
+        super(RasterBandConfigWidget, self).__init__(layer, canvas, parent=parent)
+        pathUi = pathlib.Path(__file__).parent / 'ui' / 'rasterbandconfigwidget.ui'
+        loadUi(pathUi, self)
+
+        self.mCanvas = canvas
+        self.mLayer = layer
+        self.mLayer.rendererChanged.connect(self.onRendererChanged)
+        assert isinstance(self.cbSingleBand, QgsRasterBandComboBox)
+
+        self.cbSingleBand.setLayer(self.mLayer)
+        self.cbMultiBandRed.setLayer(self.mLayer)
+        self.cbMultiBandGreen.setLayer(self.mLayer)
+        self.cbMultiBandBlue.setLayer(self.mLayer)
+
+        self.cbSingleBand.bandChanged.connect(self.widgetChanged)
+        self.cbMultiBandRed.bandChanged.connect(self.widgetChanged)
+        self.cbMultiBandGreen.bandChanged.connect(self.widgetChanged)
+        self.cbMultiBandBlue.bandChanged.connect(self.widgetChanged)
+
+
+        assert isinstance(self.sliderSingleBand, QSlider)
+        self.sliderSingleBand.setRange(1, self.mLayer.bandCount())
+        self.sliderMultiBandRed.setRange(1, self.mLayer.bandCount())
+        self.sliderMultiBandGreen.setRange(1, self.mLayer.bandCount())
+        self.sliderMultiBandBlue.setRange(1, self.mLayer.bandCount())
+
+        mWL, mWLUnit = parseWavelength(self.mLayer)
+        if isinstance(mWL, list):
+            mWL = np.asarray(mWL)
+
+        if isinstance(mWLUnit, str) and mWLUnit != 'nm':
+            try:
+                # convert to nanometers
+                mWL = np.asarray([convertMetricUnit(v, mWLUnit, 'nm') for v in mWL])
+            except:
+                mWL = None
+                mWLUnit = None
+
+        self.mWL = mWL
+        self.mWLUnit = mWLUnit
+
+        hasWL = self.mWL is not None
+        self.gbMultiBandWavelength.setEnabled(hasWL)
+        self.gbSingleBandWavelength.setEnabled(hasWL)
+
+        self.btnSetSBBand_B.clicked.connect(lambda : self.setWL(('B',)))
+        self.btnSetSBBand_G.clicked.connect(lambda: self.setWL(('G',)))
+        self.btnSetSBBand_R.clicked.connect(lambda: self.setWL(('R',)))
+        self.btnSetSBBand_NIR.clicked.connect(lambda: self.setWL(('NIR',)))
+        self.btnSetSBBand_SWIR.clicked.connect(lambda: self.setWL(('SWIR',)))
+
+        self.btnSetMBBands_RGB.clicked.connect(lambda : self.setWL(('R','G','B')))
+        self.btnSetMBBands_NIRRG.clicked.connect(lambda: self.setWL(('NIR', 'R', 'G')))
+        self.btnSetMBBands_SWIRNIRR.clicked.connect(lambda: self.setWL(('SWIR', 'NIR', 'R')))
+
+
+        self.initRenderer()
+
+        self.setPanelTitle('Band Selection')
+
+    def onRendererChanged(self):
+        self.initRenderer()
+
+    def initRenderer(self):
+
+        renderer = self.mLayer.renderer()
+        w = self.renderBandWidget
+        assert isinstance(self.labelRenderType, QLabel)
+        assert isinstance(w, QStackedWidget)
+        self.labelRenderType.setText(str(renderer.type()))
+        if isinstance(renderer, (QgsSingleBandGrayRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandPseudoColorRenderer, QgsPalettedRasterRenderer)):
+            w.setCurrentWidget(self.pageSingleBand)
+        elif isinstance(renderer, QgsMultiBandColorRenderer):
+            w.setCurrentWidget(self.pageMultiBand)
+        else:
+            w.setCurrentWidget(self.pageUnknown)
+
+    def renderer(self)->QgsRasterRenderer:
+        return self.mLayer.renderer()
+
+    def apply(self):
+        r = self.renderer()
+        newRenderer = None
+        if isinstance(r, QgsSingleBandGrayRenderer):
+            newRenderer = self.renderer().clone()
+            newRenderer.setGrayBand(self.cbSingleBand.currentBand())
+
+        elif isinstance(r, QgsSingleBandPseudoColorRenderer):
+            pass
+            # there is a bug when using the QgsSingleBandPseudoColorRenderer.setBand()
+            # see https://github.com/qgis/QGIS/issues/31568
+            #band = self.cbSingleBand.currentBand()
+            vMin, vMax = r.shader().minimumValue(), r.shader().maximumValue()
+            shader = QgsRasterShader(vMin, vMax)
+
+            f = r.shader().rasterShaderFunction()
+            if isinstance(f, QgsColorRampShader):
+                shaderFunction = QgsColorRampShader(f)
+            else:
+                shaderFunction = QgsRasterShaderFunction(f)
+
+            shader.setRasterShaderFunction(shaderFunction)
+            newRenderer = QgsSingleBandPseudoColorRenderer(r.input(), self.cbSingleBand.currentBand(), shader)
+
+        elif isinstance(r, QgsPalettedRasterRenderer):
+            newRenderer = QgsPalettedRasterRenderer(r.input(), self.cbSingleBand.currentBand(), r.classes())
+
+            #r.setBand(band)
+        elif isinstance(r, QgsSingleBandColorDataRenderer):
+            newRenderer = QgsSingleBandColorDataRenderer(r.input(), self.cbSingleBand.currentBand())
+
+        elif isinstance(r, QgsMultiBandColorRenderer):
+            newRenderer = self.renderer().clone()
+            newRenderer.setRedBand(self.cbMultiBandRed.currentBand())
+            newRenderer.setGreenBand(self.cbMultiBandGreen.currentBand())
+            newRenderer.setBlueBand(self.cbMultiBandBlue.currentBand())
+
+        if isinstance(newRenderer, QgsRasterRenderer):
+            self.mLayer.setRenderer(newRenderer)
+
+    def wlBand(self, wlKey:str)->int:
+        if isinstance(self.mWL, np.ndarray):
+            targetWL = float(LUT_WAVELENGTH[wlKey])
+            return int(np.argmin(np.abs(self.mWL - targetWL)))+1
+        else:
+            return None
+
+    def setWL(self, wlRegions:tuple):
+        r = self.renderer().clone()
+        if isinstance(r, (QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer, QgsSingleBandColorDataRenderer)):
+            band = self.wlBand(wlRegions[0])
+            self.cbSingleBand.setBand(band)
+        elif isinstance(r, QgsMultiBandColorRenderer):
+            bR = self.wlBand(wlRegions[0])
+            bG = self.wlBand(wlRegions[1])
+            bB = self.wlBand(wlRegions[2])
+
+            self.cbMultiBandBlue.setBand(bB)
+            self.cbMultiBandGreen.setBand(bG)
+            self.cbMultiBandRed.setBand(bR)
+
+        pass
+
+    def setDockMode(self, dockMode:bool):
+        pass
+
+class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
+
+    def __init__(self):
+        super(RasterBandConfigWidgetFactory, self).__init__('Raster Band', RasterBandConfigWidget.icon())
+        self.setSupportLayerPropertiesDialog(True)
+        self.setSupportsStyleDock(True)
+        self.setTitle('Band Selection')
+
+        self._PREFERRED_PREDECESSORS = 'Symbology'
+
+
+    def supportsLayer(self, layer):
+        if isinstance(layer, QgsRasterLayer):
+            return True
+
+        return False
+
+    def supportLayerPropertiesDialog(self):
+        return False
+
+    def supportsStyleDock(self):
+        return True
+
+    def createWidget(self, layer, canvas, dockWidget=True, parent=None)->QgsMapLayerConfigWidget:
+        w = RasterBandConfigWidget(layer, canvas, parent=parent)
+        self._w = w
+        return w
+
+
 class GDALMetadataModel(QAbstractTableModel):
 
     class MDItem(object):
@@ -559,6 +743,90 @@ class GDALMetadataModel(QAbstractTableModel):
 
         return items
 
+
+class GDALMetadataModelConfigWidget(QgsMapLayerConfigWidget):
+
+    @staticmethod
+    def icon()->QIcon:
+        return QIcon(':/images/themes/default/propertyicons/editmetadata.svg')
+
+    def __init__(self, layer:QgsMapLayer, canvas:QgsMapCanvas, parent:QWidget=None):
+        super(GDALMetadataModelConfigWidget, self).__init__(layer, canvas, parent=parent)
+        pathUi = pathlib.Path(__file__).parent / 'ui' / 'gdalmetadatamodelwidget.ui'
+        loadUi(pathUi, self)
+
+        self.setWindowIcon(GDALMetadataModelConfigWidget.icon())
+        self.tvMetadata: QTableView
+        self.tbFilter: QLineEdit
+        self.btnMatchCase.setDefaultAction(self.optionMatchCase)
+        self.btnRegex.setDefaultAction(self.optionRegex)
+
+        self.metadataModel = GDALMetadataModel()
+        self.metadataProxyModel = QSortFilterProxyModel()
+        self.metadataProxyModel.setSourceModel(self.metadataModel)
+        self.metadataProxyModel.setFilterKeyColumn(-1)
+        self.tableView.setModel(self.metadataProxyModel)
+
+        self.tbFilter.textChanged.connect(self.updateFilter)
+        self.optionMatchCase.changed.connect(self.updateFilter)
+        self.optionRegex.changed.connect(self.updateFilter)
+
+        is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
+        is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
+
+        if is_gdal:
+            self.gbMetadata.setTitle('GDAL Metadata Model')
+            self.metadataModel.setLayer(layer)
+        elif is_ogr:
+            self.gbMetadata.setTitle('OGR Metadata Model')
+            self.metadataModel.setLayer(layer)
+        else:
+            self.gbMetadata.setTitle('No GDAL/OGR Metadata')
+
+    def updateFilter(self, *args):
+
+        text = self.tbFilter.text()
+        if self.optionMatchCase.isChecked():
+            matchCase = Qt.CaseSensitive
+        else:
+            matchCase = Qt.CaseInsensitive
+
+        if self.optionRegex.isChecked():
+            syntax = QRegExp.RegExp
+        else:
+            syntax = QRegExp.Wildcard
+        rx = QRegExp(text, cs=matchCase, syntax=syntax)
+        if rx.isValid():
+            self.metadataProxyModel.setFilterRegExp(rx)
+        else:
+            self.metadataProxyModel.setFilterRegExp(None)
+
+class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
+
+    def __init__(self):
+
+        super(GDALMetadataConfigWidgetFactory, self).__init__('Metadata', GDALMetadataModelConfigWidget.icon())
+        self.setSupportLayerPropertiesDialog(True)
+        self.setSupportsStyleDock(True)
+        self.setTitle('Metadata')
+
+        self._PREFERRED_PREDECESSORS = ['Pyramids', 'Rendering']
+
+    def supportsLayer(self, layer):
+        is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
+        is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
+        return is_gdal or is_ogr
+
+    def supportLayerPropertiesDialog(self):
+        return True
+
+    def supportsStyleDock(self):
+        return False
+
+    def createWidget(self, layer, canvas, dockWidget=True, parent=None)->GDALMetadataModelConfigWidget:
+        w = GDALMetadataModelConfigWidget(layer, canvas, parent=parent)
+        self._w = w
+        return w
 
 
 class LabelFieldModel(QgsFieldModel):
@@ -958,10 +1226,15 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         Forms = 'Forms'
         Legend = 'Legend'
 
-    def __init__(self, lyr:typing.Union[QgsRasterLayer, QgsVectorLayer], canvas:QgsMapCanvas=None, parent=None):
+    def __init__(self,
+                 lyr:typing.Union[QgsRasterLayer, QgsVectorLayer],
+                 canvas:QgsMapCanvas=None,
+                 parent=None,
+                 mapLayerConfigFactories:typing.List[QgsMapLayerConfigWidgetFactory] = None):
+
         super(QgsOptionsDialogBase, self).__init__('QPS_LAYER_PROPERTIES', parent, Qt.Dialog, settings=None)
         pathUi = pathlib.Path(__file__).parent / 'ui' / 'layerpropertiesdialog.ui'
-        uic.loadUi(pathUi.as_posix(), self)
+        loadUi(pathUi.as_posix(), self)
         self.initOptionsBase(False, 'Layer Properties - {}'.format(lyr.name()))
 
         self.mOptionsListWidget: QListWidget
@@ -1021,22 +1294,12 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         # pagePyramids
         self.pagePyramids: QWidget
 
-        # pageMetadata
-        self.pageMetadata: QWidget
-        self.tvMetadata: QTableView
-        self.metadataModel = GDALMetadataModel()
-        self.metadataProxyModel = QSortFilterProxyModel()
-        self.metadataProxyModel.setSourceModel(self.metadataModel)
-        self.tvMetadata.setModel(self.metadataProxyModel)
-
         # pageForms
         self.pageForms: QWidget
         self.mLayerFieldConfigEditorWidget: LayerFieldConfigEditorWidget
 
         self.pageLegend: QWidget
         self.legendWidget: QgsLayerTreeEmbeddedConfigWidget
-
-
 
         self.mPageItems = dict()
         for i in range(self.mOptionsListWidget.count()):
@@ -1050,6 +1313,44 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.btnApply.clicked.connect(self.onApply)
         self.btnOk.clicked.connect(self.onOk)
         self.btnCancel.clicked.connect(self.onCancel)
+
+        if mapLayerConfigFactories is None:
+            from . import mapLayerConfigWidgetFactories as getFactories
+            mapLayerConfigFactories = getFactories()
+
+        self.initConfigFactories(mapLayerConfigFactories)
+
+    def initConfigFactories(self, mapLayerConfigFactories: list = []):
+        """
+        Initialized additional items created from QgsMapLayerConfigFactories
+        :param mapLayerConfigFactories:
+        :type mapLayerConfigFactories:
+        :return:
+        :rtype:
+        """
+        for f in mapLayerConfigFactories:
+            assert isinstance(f, QgsMapLayerConfigWidgetFactory)
+            if f.supportsLayer(self.mapLayer()):
+
+
+                listItem = QListWidgetItem(f.icon(), f.title())
+                listWidget = f.createWidget(self.mapLayer(), self.canvas(), dockWidget=False)
+
+                i = self.mOptionsListWidget.count()
+                if hasattr(f, '_PREFERRED_PREDECESSORS'):
+                    predecessorNames = f._PREFERRED_PREDECESSORS
+                    if not isinstance(predecessorNames, list):
+                        predecessorNames = [predecessorNames]
+
+                    itemNames = [self.mOptionsListWidget.item(i).text() for i in range(self.mOptionsListWidget.count())]
+                    for p in predecessorNames:
+                        if p in itemNames:
+                            i = itemNames.index(p) + 1
+                            break
+
+                self.mOptionsListWidget.insertItem(i, listItem)
+                self.mOptionsStackedWidget.insertWidget(i, listWidget)
+
 
     def onOk(self):
         self.onApply()
@@ -1118,7 +1419,6 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.sync_histogram(lyr)
         self.sync_rendering(lyr)
         self.sync_pyramids(lyr)
-        self.sync_metadata(lyr)
         self.sync_fields(lyr)
         self.sync_forms(lyr)
         self.sync_legend(lyr)
@@ -1215,20 +1515,6 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         if self.activateListItem(LayerPropertiesDialog.Pages.Pyramids, False):
             # to be implemented
             pass
-
-
-    def sync_metadata(self, lyr:QgsMapLayer):
-
-        is_gdal = isinstance(lyr, QgsRasterLayer) and lyr.dataProvider().name() == 'gdal'
-        is_ogr = isinstance(lyr, QgsVectorLayer) and lyr.dataProvider().name() == 'ogr'
-        self.activateListItem(LayerPropertiesDialog.Pages.Pyramids, is_gdal or is_ogr)
-
-        if is_gdal:
-            self.gbMetadata.setTitle('GDAL Metadata Model')
-            self.metadataModel.setLayer(lyr)
-        elif is_ogr:
-            self.gbMetadata.setTitle('OGR Metadata Model')
-            self.metadataModel.setLayer(lyr)
 
     def sync_fields(self, lyr:QgsMapLayer):
         is_vector = isinstance(lyr, QgsVectorLayer)

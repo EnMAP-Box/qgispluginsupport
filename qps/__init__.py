@@ -1,11 +1,46 @@
-import sys, importlib, site, os, pathlib
+import sys, importlib, site, os, pathlib, typing
 from qgis.core import QgsApplication
-from qgis.gui import QgisInterface
+from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 __version__ = '0.3'
 
 DIR_UI_FILES = pathlib.Path(__file__).parent / 'ui'
 DIR_ICONS = DIR_UI_FILES / 'icons'
 QPS_RESOURCE_FILE = pathlib.Path(__file__).parent / 'qpsresources_rc.py'
+
+
+MAPLAYER_CONFIGWIDGET_FACTORIES = list()
+
+def registerMapLayerConfigWidgetFactory(factory:QgsMapLayerConfigWidgetFactory):
+    """
+    Register a new tab in the map layer properties dialog.
+    :param factory: QgsMapLayerConfigWidgetFactory
+    :type factory:
+    :return:
+    :rtype:
+    """
+    assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+    if factory not in MAPLAYER_CONFIGWIDGET_FACTORIES:
+        MAPLAYER_CONFIGWIDGET_FACTORIES.append(factory)
+
+def unregisterMapLayerConfigWidgetFactory(factory:QgsMapLayerConfigWidgetFactory):
+    """
+    Unregister a previously registered tab in the map layer properties dialog.
+    :param factory:
+    :type factory:
+    :return:
+    :rtype:
+    """
+    assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+    while factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
+        MAPLAYER_CONFIGWIDGET_FACTORIES.remove(factory)
+
+def mapLayerConfigWidgetFactories()->typing.List[QgsMapLayerConfigWidgetFactory]:
+    """
+    Returns registered QgsMapLayerConfigWidgetFactories
+    :return: list of QgsMapLayerConfigWidgetFactories
+    :rtype:
+    """
+    return MAPLAYER_CONFIGWIDGET_FACTORIES[:]
 
 def registerEditorWidgets():
     """
@@ -43,6 +78,12 @@ def registerEditorWidgets():
         print('Failed to call qps.plotstyling.plotstyling.registerPlotStyleEditorWidget()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
+
+def registerMapLayerConfigWidgetFactories():
+    from .layerproperties import RasterBandConfigWidgetFactory, GDALMetadataConfigWidgetFactory
+    registerMapLayerConfigWidgetFactory(RasterBandConfigWidgetFactory())
+    registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
+
 def initResources():
     from .testing import initResourceFile
     initResourceFile(QPS_RESOURCE_FILE)
@@ -50,3 +91,5 @@ def initResources():
 def initAll():
     initResources()
     registerEditorWidgets()
+    registerMapLayerConfigWidgetFactories()
+

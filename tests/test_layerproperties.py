@@ -36,6 +36,30 @@ class LayerRendererTests(TestCase):
         #d = QgsSublayersDialog(QgsSublayersDialog.Gdal, )
 
 
+    def test_maplayerconfigwidgets(self):
+        lyr = TestObjects.createRasterLayer(nb=100)
+        c = QgsMapCanvas()
+        c.setLayers([lyr])
+        c.setDestinationCrs(lyr.crs())
+        c.setExtent(lyr.extent())
+
+        f1 = RasterBandConfigWidgetFactory()
+        self.assertIsInstance(f1, QgsMapLayerConfigWidgetFactory)
+        w1 = f1.createWidget(lyr, c, dockWidget=False)
+        self.assertIsInstance(w1, RasterBandConfigWidget)
+
+
+        f2 = GDALMetadataConfigWidgetFactory()
+        self.assertIsInstance(f2, GDALMetadataConfigWidgetFactory)
+        w2 = f2.createWidget(lyr, c, dockWidget=False)
+        self.assertIsInstance(w2, GDALMetadataModelConfigWidget)
+        w2.tbFilter.setText('band')
+
+        d = LayerPropertiesDialog(lyr, c)
+        d.initConfigFactories([f1, f2])
+
+        self.showGui([d])
+
 
 
     def test_subLayerDefinitions(self):

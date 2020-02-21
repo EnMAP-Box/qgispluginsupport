@@ -643,7 +643,7 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
     if not loadUiType:
         return uic.loadUi(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
     else:
-        return uic.loadUiType(buffer, baseinstance=baseinstance, package=package, resource_suffix=resource_suffix)
+        return uic.loadUiType(buffer, resource_suffix=resource_suffix)
 
 def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQGISRessourceFileReferences=True, _modifiedui=None):
     """
@@ -651,7 +651,6 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
     """
     warnings.warn('Use loadUi(... , loadUiType=True) instead.', DeprecationWarning)
     return loadUi(pathUi, resource_suffix=resourceSuffix, loadUiType=True)[0]
-
 
 def typecheck(variable, type_):
     """

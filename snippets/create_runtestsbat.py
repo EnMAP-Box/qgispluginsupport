@@ -13,8 +13,6 @@ PREFACE_BAT = \
 """
 :: use this script to run unit tests locally
 ::
-:: use this script to run unit tests locally
-::
 @echo off
 set CI=True
 

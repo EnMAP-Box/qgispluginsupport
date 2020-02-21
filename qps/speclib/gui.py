@@ -1883,7 +1883,7 @@ class SpectralProfileEditorWidget(QWidget):
     sigProfileValuesChanged = pyqtSignal(dict)
     def __init__(self, *args, **kwds):
         super(SpectralProfileEditorWidget, self).__init__(*args, **kwds)
-        uic.loadUi(speclibUiPath('spectralprofileeditorwidget.ui'), self)
+        loadUi(speclibUiPath('spectralprofileeditorwidget.ui'), self)
         self.mDefault = None
         self.mModel = SpectralProfileValueTableModel(parent=self)
         self.mModel.dataChanged.connect(lambda :self.sigProfileValuesChanged.emit(self.profileValues()))
