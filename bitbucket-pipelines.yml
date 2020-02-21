@@ -7,8 +7,8 @@ image: qgis/qgis
 
 pipelines:
   branches:
-    '{master, develop}':
-      - step:
+    master, develop:
+    - step:
           services:
             - docker
           caches:
