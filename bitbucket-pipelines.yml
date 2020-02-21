@@ -7,7 +7,7 @@ image: qgis/qgis
 
 pipelines:
   branches:
-    master, develop:
+    '{master, develop}':
       - step:
           services:
             - docker
