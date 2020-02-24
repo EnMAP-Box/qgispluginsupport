@@ -346,6 +346,29 @@ class TestCase(qgis.testing.TestCase):
 
         return True
 
+    def assertIconsEqual(self, icon1, icon2):
+        self.assertIsInstance(icon1, QIcon)
+        self.assertIsInstance(icon2, QIcon)
+        size = QSize(256, 256)
+        self.assertEqual(icon1.actualSize(size), icon2.actualSize(size))
+
+        img1 = QImage(icon1.pixmap(size))
+        img2 = QImage(icon2.pixmap(size))
+        self.assertImagesEqual(img1, img2)
+
+    def assertImagesEqual(self, image1:QImage, image2:QImage):
+        if image1.size() != image2.size():
+            return False
+        if image1.format() != image2.format():
+            return False
+
+        for x in range(image1.width()):
+            for y in range(image1.height()):
+                s = image1.bits()
+                if image1.pixel(x,y,) != image2.pixel(x,y):
+                    return False
+        return True
+
 class TestObjects():
     """
     Creates objects to be used for testing. It is preferred to generate objects in-memory.

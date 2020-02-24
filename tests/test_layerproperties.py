@@ -21,11 +21,11 @@ from qps.layerproperties import *
 from qps import registerMapLayerConfigWidgetFactories
 LAYER_WIDGET_REPS = 5
 
-class LayerRendererTests(TestCase):
+class LayerPropertyTests(TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.EditorWidgets, resources=[]) -> None:
-        super(LayerRendererTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
+        super(LayerPropertyTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initQtResources()
 
 
@@ -144,12 +144,25 @@ class LayerRendererTests(TestCase):
         w.layout().addWidget(d)
         self.showGui(w)
 
+    def test_QPSMapLayerConfigWidgetFactory(self):
+        title = 'TEST'
+        icon = QIcon(':/qps/ui/icons/cross_red.svg')
+        f = QPSMapLayerConfigWidgetFactory(title, icon)
+        self.assertEqual(f.title(), title)
+        self.assertIconsEqual(f.icon(), icon)
+        self.assertIsInstance(f.preferredPredecessors(), list)
+        self.assertIsInstance(f.supportLayerPropertiesDialog(), bool)
+
+        lyrR = TestObjects.createRasterLayer()
+        lyrV = TestObjects.createVectorLayer()
+
+        self.assertIsInstance(f.supportsLayer(lyrR), bool)
+        self.assertIsInstance(f.supportsLayer(lyrV), bool)
+
+
     def test_LayerPropertiesDialog_Raster(self):
         registerMapLayerConfigWidgetFactories()
         lyr = TestObjects.createRasterLayer(nb=100)
-
-
-
         d = LayerPropertiesDialog(lyr)
 
         self.assertIsInstance(d, LayerPropertiesDialog)

@@ -1,0 +1,388 @@
+import typing, pathlib
+from qgis.core import QgsRasterLayer, QgsRasterRenderer
+from qgis.core import *
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsRasterBandComboBox
+from qgis.gui import *
+from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtGui import QIcon
+import numpy as np
+
+
+class LabelFieldModel(QgsFieldModel):
+    """
+    A model to show the QgsFields of an QgsVectorLayer.
+    Inherits QgsFieldModel and allows to change the name of the 1st column.
+    """
+    def __init__(self, parent):
+        """
+        Constructor
+        :param parent:
+        """
+        super(LabelFieldModel, self).__init__(parent)
+        self.mColumnNames = ['Fields']
+
+    def headerData(self, col, orientation, role=Qt.DisplayRole):
+        """
+        Returns header data
+        :param col: int
+        :param orientation: Qt.Horizontal | Qt.Vertical
+        :param role:
+        :return: value
+        """
+        if Qt is None:
+            return None
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.mColumnNames[col]
+        elif orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return col
+        return None
+
+    def setHeaderData(self, col, orientation, value, role=Qt.EditRole):
+        """
+        Sets the header data.
+        :param col: int
+        :param orientation:
+        :param value: any
+        :param role:
+        """
+        result = False
+
+        if role == Qt.EditRole:
+            if orientation == Qt.Horizontal and col < len(self.mColumnNames) and isinstance(value, str):
+                self.mColumnNames[col] = value
+                result = True
+
+        if result == True:
+            self.headerDataChanged.emit(orientation, col, col)
+        return result
+
+class FieldConfigEditorWidget(QWidget):
+
+    class ConfigInfo(QStandardItem):
+        """
+        Describes a QgsEditorWidgetFactory configuration.
+        """
+        def __init__(self, key:str, factory:QgsEditorWidgetFactory, configWidget:QgsEditorConfigWidget):
+            super(FieldConfigEditorWidget.ConfigInfo, self).__init__()
+
+            assert isinstance(key, str)
+            assert isinstance(factory, QgsEditorWidgetFactory)
+            assert isinstance(configWidget, QgsEditorConfigWidget)
+            self.mKey = key
+            self.mFactory = factory
+            self.mConfigWidget = configWidget
+            self.setText(factory.name())
+            self.setToolTip(factory.name())
+            self.mInitialConfig = dict(configWidget.config())
+
+
+        def resetConfig(self):
+            """
+            Resets the widget to its initial values
+            """
+            self.mConfigWidget.setConfig(dict(self.mInitialConfig))
+
+        def factoryKey(self)->str:
+            """
+            Returns the QgsEditorWidgetFactory key, e.g. "CheckBox"
+            :return: str
+            """
+            return self.mKey
+
+        def factoryName(self)->str:
+            """
+            Returns the QgsEditorWidgetFactory name, e.g. "Checkbox"
+            :return: str
+            """
+            return self.factory().name()
+
+        def config(self)->dict:
+            """
+            Returns the config dictionary
+            :return: dict
+            """
+            return self.mConfigWidget.config()
+
+        def configWidget(self)->QgsEditorConfigWidget:
+            """
+            Returns the QgsEditorConfigWidget
+            :return: QgsEditorConfigWidget
+            """
+            return self.mConfigWidget
+
+        def factory(self)->QgsEditorWidgetFactory:
+            """
+            Returns the QgsEditorWidgetFactory
+            :return: QgsEditorWidgetFactory
+            """
+            return self.mFactory
+
+        def editorWidgetSetup(self)->QgsEditorWidgetSetup:
+            """
+            Creates a QgsEditorWidgetSetup
+            :return: QgsEditorWidgetSetup
+            """
+            return QgsEditorWidgetSetup(self.factoryKey(), self.config())
+
+
+    sigChanged = pyqtSignal(object)
+
+    def __init__(self, parent, layer:QgsVectorLayer, index:int):
+        super(FieldConfigEditorWidget, self).__init__(parent)
+
+        self.setLayout(QVBoxLayout())
+
+        assert isinstance(layer, QgsVectorLayer)
+        assert isinstance(index, int)
+
+        self.mLayer = layer
+        self.mField = layer.fields().at(index)
+        assert isinstance(self.mField, QgsField)
+        self.mFieldIndex = index
+
+        self.mFieldNameLabel = QLabel(parent)
+        self.mFieldNameLabel.setText(self.mField.name())
+
+        self.layout().addWidget(self.mFieldNameLabel)
+
+        self.gbWidgetType = QgsCollapsibleGroupBox(self)
+        self.gbWidgetType.setTitle('Widget Type')
+        self.gbWidgetType.setLayout(QVBoxLayout())
+        self.cbWidgetType = QComboBox(self.gbWidgetType)
+
+        self.stackedWidget = QStackedWidget(self.gbWidgetType)
+        self.gbWidgetType.layout().addWidget(self.cbWidgetType)
+        self.gbWidgetType.layout().addWidget(self.stackedWidget)
+
+
+
+
+        currentSetup = self.mLayer.editorWidgetSetup(self.mFieldIndex)
+        #self.mInitialConf = currentSetup.config()
+        refkey = currentSetup.type()
+        if refkey == '':
+            refkey = QgsGui.editorWidgetRegistry().findBest(self.mLayer, self.mField.name()).type()
+
+        self.mItemModel = QStandardItemModel(parent=self.cbWidgetType)
+
+        iCurrent = -1
+        i = 0
+        factories = QgsGui.editorWidgetRegistry().factories()
+        for key, fac in factories.items():
+            assert isinstance(key, str)
+            assert isinstance(fac, QgsEditorWidgetFactory)
+            score = fac.fieldScore(self.mLayer, self.mFieldIndex)
+            configWidget = fac.configWidget(self.mLayer, self.mFieldIndex, self.stackedWidget)
+
+            if isinstance(configWidget, QgsEditorConfigWidget):
+                configWidget.changed.connect(lambda: self.sigChanged.emit(self))
+                self.stackedWidget.addWidget(configWidget)
+                confItem = FieldConfigEditorWidget.ConfigInfo(key, fac, configWidget)
+                if key == refkey:
+                    iCurrent = i
+                confItem.setEnabled(score > 0)
+                confItem.setData(self, role=Qt.UserRole)
+                self.mItemModel.appendRow(confItem)
+
+                i += 1
+
+        self.cbWidgetType.setModel(self.mItemModel)
+        self.cbWidgetType.currentIndexChanged.connect(self.updateConfigWidget)
+
+        self.layout().addWidget(self.gbWidgetType)
+        self.layout().addStretch()
+        self.cbWidgetType.setCurrentIndex(iCurrent)
+
+
+        conf = self.currentFieldConfig()
+        if isinstance(conf, FieldConfigEditorWidget.ConfigInfo):
+            self.mInitialFactoryKey = conf.factoryKey()
+            self.mInitialConf = conf.config()
+        else:
+            s = ""
+
+
+    def setFactory(self, factoryKey:str):
+        """
+        Shows the QgsEditorConfigWidget of QgsEditorWidgetFactory `factoryKey`
+        :param factoryKey: str
+        """
+        for i in range(self.mItemModel.rowCount()):
+            confItem = self.mItemModel.item(i)
+            assert isinstance(confItem, FieldConfigEditorWidget.ConfigInfo)
+            if confItem.factoryKey() == factoryKey:
+                self.cbWidgetType.setCurrentIndex(i)
+                break
+
+
+    def changed(self)->bool:
+        """
+        Returns True if the QgsEditorWidgetFactory or its configuration has been changed
+        :return: bool
+        """
+
+        recentConfigInfo = self.currentFieldConfig()
+        if isinstance(recentConfigInfo, FieldConfigEditorWidget.ConfigInfo):
+            if self.mInitialFactoryKey != recentConfigInfo.factoryKey():
+                return True
+            elif self.mInitialConf != recentConfigInfo.config():
+                return True
+
+        return False
+
+    def apply(self):
+        """
+        Applies the
+        :return:
+        """
+        if self.changed():
+            configInfo = self.currentFieldConfig()
+            self.mInitialConf = configInfo.config()
+            self.mInitialFactoryKey = configInfo.factoryKey()
+            setup = QgsEditorWidgetSetup(self.mInitialFactoryKey, self.mInitialConf)
+            self.mLayer.setEditorWidgetSetup(self.mFieldIndex, setup)
+
+    def reset(self):
+        """
+        Resets the widget to its initial status
+        """
+        if self.changed():
+
+            self.setFactory(self.mInitialFactoryKey)
+            self.currentEditorConfigWidget().setConfig(self.mInitialConf)
+
+    def currentFieldConfig(self)->ConfigInfo:
+        i = self.cbWidgetType.currentIndex()
+        return self.mItemModel.item(i)
+
+    def currentEditorConfigWidget(self)->QgsEditorConfigWidget:
+        return self.currentFieldConfig().configWidget()
+
+
+    def updateConfigWidget(self, index):
+        self.stackedWidget.setCurrentIndex(index)
+        fieldConfig = self.currentFieldConfig()
+        if isinstance(fieldConfig, FieldConfigEditorWidget.ConfigInfo):
+
+            self.sigChanged.emit(self)
+
+
+class LayerFieldConfigEditorWidget(QWidget):
+    """
+    A widget to set QgsVetorLayer field settings
+    """
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        loadUi(DIR_UI_FILES / 'layerfieldconfigeditorwidget.ui', self)
+
+        self.scrollArea.resizeEvent = self.onScrollAreaResize
+        self.mFieldModel = LabelFieldModel(self)
+        self.treeView.setModel(self.mFieldModel)
+        self.treeView.selectionModel().currentRowChanged.connect(self.onSelectedFieldChanged)
+
+        self.btnApply = self.buttonBox.button(QDialogButtonBox.Apply)
+        self.btnReset = self.buttonBox.button(QDialogButtonBox.Reset)
+        self.btnApply.clicked.connect(self.onApply)
+        self.btnReset.clicked.connect(self.onReset)
+
+    def onSelectedFieldChanged(self, index1:QModelIndex, index2:QModelIndex):
+        """
+        Shows the widget for the selected QgsField
+        :param index1:
+        :param index2:
+        """
+        if isinstance(index1, QModelIndex) and index1.isValid():
+            r = index1.row()
+            if r < 0 or r >= self.stackedWidget.count():
+                s = ""
+            self.stackedWidget.setCurrentIndex(r)
+
+    def onScrollAreaResize(self, resizeEvent:QResizeEvent):
+        """
+        Forces the stackedWidget's width to fit into the scrollAreas viewport
+        :param resizeEvent: QResizeEvent
+        """
+        assert isinstance(resizeEvent, QResizeEvent)
+        self.stackedWidget.setMaximumWidth(resizeEvent.size().width())
+        s  =""
+
+    def onReset(self):
+
+        sw = self.stackedWidget
+        assert isinstance(sw, QStackedWidget)
+
+        for i in range(sw.count()):
+            w = sw.widget(i)
+            assert isinstance(w, FieldConfigEditorWidget)
+            w.reset()
+        self.onSettingsChanged()
+
+    def onApply(self):
+        """
+        Applies all changes to the QgsVectorLayer
+        :return:
+        """
+
+        sw = self.stackedWidget
+        assert isinstance(sw, QStackedWidget)
+
+        for i in range(sw.count()):
+            w = sw.widget(i)
+            assert isinstance(w, FieldConfigEditorWidget)
+            w.apply()
+        self.onSettingsChanged()
+
+
+    def setLayer(self, layer:QgsVectorLayer):
+        """
+        Sets the QgsVectorLayer
+        :param layer:
+        """
+        self.mFieldModel.setLayer(layer)
+        self.updateFieldWidgets()
+
+    def layer(self)->QgsVectorLayer:
+        """
+        Returns the current QgsVectorLayer
+        :return:
+        """
+        return self.mFieldModel.layer()
+
+    def updateFieldWidgets(self):
+        """
+        Empties the stackedWidget and populates it with a FieldConfigEditor
+        for each QgsVectorLayer field.
+        """
+        sw = self.stackedWidget
+        assert isinstance(sw, QStackedWidget)
+        i = sw.count() - 1
+        while i >= 0:
+            w = sw.widget(i)
+            w.setParent(None)
+            i -= 1
+
+        lyr = self.layer()
+        if isinstance(lyr, QgsVectorLayer):
+            for i in range(lyr.fields().count()):
+                w = FieldConfigEditorWidget(sw, lyr, i)
+                w.sigChanged.connect(self.onSettingsChanged)
+                sw.addWidget(w)
+
+        self.onSettingsChanged()
+
+    def onSettingsChanged(self):
+        """
+        Enables/disables buttons
+        :return:
+        """
+        b = False
+        for i in range(self.stackedWidget.count()):
+            w = self.stackedWidget.widget(i)
+            assert isinstance(w, FieldConfigEditorWidget)
+            if w.changed():
+                b = True
+                break
+
+        self.btnReset.setEnabled(b)
+        self.btnApply.setEnabled(b)
