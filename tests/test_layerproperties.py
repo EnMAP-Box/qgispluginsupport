@@ -36,31 +36,6 @@ class LayerPropertyTests(TestCase):
         #d = QgsSublayersDialog(QgsSublayersDialog.Gdal, )
 
 
-    def test_maplayerconfigwidgets(self):
-        lyr = TestObjects.createRasterLayer(nb=100)
-        c = QgsMapCanvas()
-        c.setLayers([lyr])
-        c.setDestinationCrs(lyr.crs())
-        c.setExtent(lyr.extent())
-
-        f1 = RasterBandConfigWidgetFactory()
-        self.assertIsInstance(f1, QgsMapLayerConfigWidgetFactory)
-        w1 = f1.createWidget(lyr, c, dockWidget=False)
-        self.assertIsInstance(w1, RasterBandConfigWidget)
-
-
-        f2 = GDALMetadataConfigWidgetFactory()
-        self.assertIsInstance(f2, GDALMetadataConfigWidgetFactory)
-        w2 = f2.createWidget(lyr, c, dockWidget=False)
-        self.assertIsInstance(w2, GDALMetadataModelConfigWidget)
-        w2.tbFilter.setText('band')
-
-        d = LayerPropertiesDialog(lyr, c)
-        d.initConfigFactories([f1, f2])
-
-        self.showGui([d])
-
-
 
     def test_subLayerDefinitions(self):
 
@@ -120,17 +95,6 @@ class LayerPropertyTests(TestCase):
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
 
-    def test_metadatatable(self):
-
-        lyr = TestObjects.createVectorLayer()
-        #lyr = TestObjects.createRasterLayer()
-        model = GDALMetadataModel()
-        tv = QTableView()
-        tv.setModel(model)
-        model.setLayer(lyr)
-
-        self.showGui(tv)
-
 
     def test_LayerPropertiesDialog_Vector(self):
         registerMapLayerConfigWidgetFactories()
@@ -138,34 +102,32 @@ class LayerPropertyTests(TestCase):
         d = LayerPropertiesDialog(lyr)
         self.assertIsInstance(d, LayerPropertiesDialog)
         d.show()
+        d.sync()
+        for p in d.pages():
+            self.assertIsInstance(p, QgsMapLayerConfigWidget)
+            p.apply()
+            d.setPage(p)
+
         w = QWidget()
         w.setLayout(QHBoxLayout())
         w.layout().addWidget(d.canvas())
         w.layout().addWidget(d)
+
         self.showGui(w)
-
-    def test_QPSMapLayerConfigWidgetFactory(self):
-        title = 'TEST'
-        icon = QIcon(':/qps/ui/icons/cross_red.svg')
-        f = QPSMapLayerConfigWidgetFactory(title, icon)
-        self.assertEqual(f.title(), title)
-        self.assertIconsEqual(f.icon(), icon)
-        self.assertIsInstance(f.preferredPredecessors(), list)
-        self.assertIsInstance(f.supportLayerPropertiesDialog(), bool)
-
-        lyrR = TestObjects.createRasterLayer()
-        lyrV = TestObjects.createVectorLayer()
-
-        self.assertIsInstance(f.supportsLayer(lyrR), bool)
-        self.assertIsInstance(f.supportsLayer(lyrV), bool)
 
 
     def test_LayerPropertiesDialog_Raster(self):
+
         registerMapLayerConfigWidgetFactories()
         lyr = TestObjects.createRasterLayer(nb=100)
         d = LayerPropertiesDialog(lyr)
-
+        d.sync()
         self.assertIsInstance(d, LayerPropertiesDialog)
+        for p in d.pages():
+            self.assertIsInstance(p, QgsMapLayerConfigWidget)
+            p.apply()
+            d.setPage(p)
+
         d.show()
 
         w = QWidget()

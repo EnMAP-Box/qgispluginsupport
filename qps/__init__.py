@@ -80,7 +80,9 @@ def registerEditorWidgets():
 
 
 def registerMapLayerConfigWidgetFactories():
-    from .layerproperties import RasterBandConfigWidgetFactory, GDALMetadataConfigWidgetFactory
+    from .layerconfigwidgets.rasterbands import RasterBandConfigWidgetFactory
+    from .layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
+
     registerMapLayerConfigWidgetFactory(RasterBandConfigWidgetFactory())
     registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
 

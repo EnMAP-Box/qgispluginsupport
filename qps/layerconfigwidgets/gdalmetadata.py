@@ -6,7 +6,10 @@ from qgis.gui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
+from ..utils import loadUi
 import numpy as np
+from .core import QpsMapLayerConfigWidget
+from osgeo import gdal, ogr
 
 class GDALMetadataModel(QAbstractTableModel):
     class MDItem(object):
@@ -135,7 +138,7 @@ class GDALMetadataModelTreeView(QTreeView):
             m.exec_(event.globalPos())
 
 
-class GDALMetadataModelConfigWidget(QgsMapLayerConfigWidget):
+class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
     @staticmethod
     def icon()->QIcon:
@@ -143,7 +146,7 @@ class GDALMetadataModelConfigWidget(QgsMapLayerConfigWidget):
 
     def __init__(self, layer:QgsMapLayer, canvas:QgsMapCanvas, parent:QWidget=None):
         super(GDALMetadataModelConfigWidget, self).__init__(layer, canvas, parent=parent)
-        pathUi = pathlib.Path(__file__).parent / 'ui' / 'gdalmetadatamodelwidget.ui'
+        pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
 
         self.setWindowIcon(GDALMetadataModelConfigWidget.icon())
@@ -175,7 +178,11 @@ class GDALMetadataModelConfigWidget(QgsMapLayerConfigWidget):
             self.gbMetadata.setTitle('No GDAL/OGR Metadata')
 
     def apply(self):
+        #todo: apply changes to vector layer
         pass
+
+    def syncToLayer(self):
+        self.metadataModel.syncToLayer()
 
     def updateFilter(self, *args):
 
@@ -195,18 +202,21 @@ class GDALMetadataModelConfigWidget(QgsMapLayerConfigWidget):
         else:
             self.metadataProxyModel.setFilterRegExp(None)
 
-class GDALMetadataConfigWidgetFactory(QPSMapLayerConfigWidgetFactory):
+class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
-
         super(GDALMetadataConfigWidgetFactory, self).__init__('GDAL Metadata', GDALMetadataModelConfigWidget.icon())
-        self.mPreferredPredecessors.extend(['Pyramids', 'Rendering'])
-
 
     def supportsLayer(self, layer):
         is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
         is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
         return is_gdal or is_ogr
+
+    def supportLayerPropertiesDialog(self):
+        return True
+
+    def supportsStyleDock(self):
+        return False
 
     def createWidget(self, layer, canvas, dockWidget=True, parent=None)->GDALMetadataModelConfigWidget:
         w = GDALMetadataModelConfigWidget(layer, canvas, parent=parent)

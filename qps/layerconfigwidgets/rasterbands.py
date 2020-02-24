@@ -17,7 +17,7 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
     def __init__(self, layer:QgsRasterLayer, canvas:QgsMapCanvas, parent:QWidget=None):
 
         super(RasterBandConfigWidget, self).__init__(layer, canvas, parent=parent)
-        pathUi = pathlib.Path(__file__).parent / 'ui' / 'rasterbandconfigwidget.ui'
+        pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'rasterbandconfigwidget.ui'
         loadUi(pathUi, self)
         assert isinstance(layer, QgsRasterLayer)
         self.mCanvas = canvas
@@ -200,9 +200,6 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         self.setSupportsStyleDock(True)
         self.setTitle('Band Selection')
 
-        self._PREFERRED_PREDECESSORS = 'Symbology'
-
-
     def supportsLayer(self, layer):
         if isinstance(layer, QgsRasterLayer):
             return True
@@ -210,7 +207,7 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         return False
 
     def supportLayerPropertiesDialog(self):
-        return False
+        return True
 
     def supportsStyleDock(self):
         return True

@@ -15,6 +15,7 @@ python3 -m coverage run --rcfile=.coveragec --append  tests/test_crosshair.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_cursorlocationsvalues.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_example.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_init.py
+python3 -m coverage run --rcfile=.coveragec --append  tests/test_layerconfigwidgets.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_layerproperties.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_maptools.py
 python3 -m coverage run --rcfile=.coveragec --append  tests/test_models.py

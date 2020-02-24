@@ -73,7 +73,17 @@
           <number>6</number>
          </property>
          <item>
-          <widget class="QLineEdit" name="tbFilter"/>
+          <widget class="QgsFilterLineEdit" name="tbFilter">
+           <property name="showSearchIcon">
+            <bool>true</bool>
+           </property>
+           <property name="showSpinner">
+            <bool>false</bool>
+           </property>
+           <property name="qgisRelation" stdset="0">
+            <string notr="true"/>
+           </property>
+          </widget>
          </item>
          <item>
           <widget class="QToolButton" name="btnMatchCase">
@@ -140,9 +150,14 @@
    <container>1</container>
   </customwidget>
   <customwidget>
+   <class>QgsFilterLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>qgsfilterlineedit.h</header>
+  </customwidget>
+  <customwidget>
    <class>GDALMetadataModelTreeView</class>
    <extends>QTreeView</extends>
-   <header>qps.layerproperties</header>
+   <header>qps.layerconfigwidgets.gdalmetadata</header>
   </customwidget>
  </customwidgets>
  <resources>

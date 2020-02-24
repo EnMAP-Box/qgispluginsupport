@@ -1,8 +1,6 @@
 
 :: use this script to run unit tests locally
 ::
-:: use this script to run unit tests locally
-::
 @echo off
 set CI=True
 
@@ -23,6 +21,7 @@ mkdir test-reports\today
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_cursorlocationsvalues.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_example.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_init.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_layerconfigwidgets.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_layerproperties.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_maptools.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_models.py
