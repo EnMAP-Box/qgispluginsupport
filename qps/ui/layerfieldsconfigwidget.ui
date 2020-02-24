@@ -139,6 +139,7 @@
  </widget>
  <resources>
   <include location="../../../../QGIS_FORK/images/images.qrc"/>
+  <include location="../qpsresources.qrc"/>
  </resources>
  <connections/>
 </ui>

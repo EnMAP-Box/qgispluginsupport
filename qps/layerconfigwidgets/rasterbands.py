@@ -214,6 +214,5 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def createWidget(self, layer, canvas, dockWidget=True, parent=None)->QgsMapLayerConfigWidget:
         w = RasterBandConfigWidget(layer, canvas, parent=parent)
-        self._w = w
         return w
 

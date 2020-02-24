@@ -96,6 +96,7 @@ class LayerPropertyTests(TestCase):
 
 
 
+
     def test_LayerPropertiesDialog_Vector(self):
         registerMapLayerConfigWidgetFactories()
         lyr = TestObjects.createVectorLayer()
@@ -113,7 +114,7 @@ class LayerPropertyTests(TestCase):
         w.layout().addWidget(d.canvas())
         w.layout().addWidget(d)
 
-        self.showGui(w)
+        self.showGui([w])
 
 
     def test_LayerPropertiesDialog_Raster(self):

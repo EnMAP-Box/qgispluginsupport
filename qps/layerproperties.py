@@ -668,12 +668,20 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         for f in mapLayerConfigFactories:
             assert isinstance(f, QgsMapLayerConfigWidgetFactory)
             if f.supportsLayer(self.mapLayer()) and f.supportLayerPropertiesDialog():
-                pageItem = QListWidgetItem(f.icon(), f.title())
-                assert isinstance(pageItem, QListWidgetItem)
                 pageWidget = f.createWidget(self.mapLayer(), self.canvas(), dockWidget=False)
                 assert isinstance(pageWidget, QgsMapLayerConfigWidget)
 
-                pageItem.setToolTip(pageWidget.panelTitle())
+                # prefer panel widget's title or icon, as they might consider the type of QgsMapLayer
+                title = pageWidget.panelTitle()
+                if title in [None, '']:
+                    title = f.title()
+                icon = pageWidget.windowIcon()
+                if icon.isNull():
+                    icon = f.icon()
+
+                pageItem = QListWidgetItem(icon, title)
+                assert isinstance(pageItem, QListWidgetItem)
+                pageItem.setToolTip(pageWidget.toolTip())
                 self.mOptionsListWidget.addItem(pageItem)
                 self.mOptionsStackedWidget.addWidget(pageWidget)
 

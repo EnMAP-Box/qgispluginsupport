@@ -441,12 +441,13 @@ class RenderingConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         self.setSupportsStyleDock(False)
 
     def createWidget(self, layer, canvas, dockWidget=False, parent=None):
-        return LegendConfigWidget(layer, canvas, parent=parent)
+        return RenderingConfigWidget(layer, canvas, parent=parent)
 
     def supportsLayer(self, layer):
         return isinstance(layer, QgsMapLayer)
 
     def supportLayerPropertiesDialog(self):
         return True
+
     def supportsStyleDock(self):
-        return False
+        return True

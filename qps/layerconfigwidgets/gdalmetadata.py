@@ -140,16 +140,21 @@ class GDALMetadataModelTreeView(QTreeView):
 
 class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
-    @staticmethod
-    def icon()->QIcon:
-        return QIcon(':/qps/ui/icons/edit_gdal_metadata.svg')
 
     def __init__(self, layer:QgsMapLayer, canvas:QgsMapCanvas, parent:QWidget=None):
         super(GDALMetadataModelConfigWidget, self).__init__(layer, canvas, parent=parent)
         pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
 
-        self.setWindowIcon(GDALMetadataModelConfigWidget.icon())
+        if isinstance(layer, QgsRasterLayer):
+            self.setPanelTitle('GDAL Metadata')
+            self.setToolTip('Layer metadata according to the GDAL Metadata model')
+            self.setWindowIcon(QIcon(':/qps/ui/icons/edit_gdal_metadata.svg'))
+        elif isinstance(layer, QgsVectorLayer):
+            self.setPanelTitle('OGR Metadata')
+            self.setToolTip('Layer metadata according to the OGR Metadata model')
+            self.setWindowIcon(QIcon(':/qps/ui/icons/edit_ogr_metadata.svg'))
+
         self.tvMetadata: QTableView
         self.tbFilter: QLineEdit
         self.btnMatchCase.setDefaultAction(self.optionMatchCase)
@@ -167,15 +172,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
         is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
-
-        if is_gdal:
-            self.gbMetadata.setTitle('GDAL Metadata Model')
-            self.metadataModel.setLayer(layer)
-        elif is_ogr:
-            self.gbMetadata.setTitle('OGR Metadata Model')
-            self.metadataModel.setLayer(layer)
-        else:
-            self.gbMetadata.setTitle('No GDAL/OGR Metadata')
 
     def apply(self):
         #todo: apply changes to vector layer
@@ -205,7 +201,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
-        super(GDALMetadataConfigWidgetFactory, self).__init__('GDAL Metadata', GDALMetadataModelConfigWidget.icon())
+        super(GDALMetadataConfigWidgetFactory, self).__init__('GDAL/OGR Metadata', QIcon(':/qps/ui/icons/edit_gdal_metadata.svg'))
 
     def supportsLayer(self, layer):
         is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
@@ -220,11 +216,8 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def createWidget(self, layer, canvas, dockWidget=True, parent=None)->GDALMetadataModelConfigWidget:
         w = GDALMetadataModelConfigWidget(layer, canvas, parent=parent)
-        self._w = w
         return w
 
     def title(self)->str:
         return 'GDAL Metadata'
 
-    def icon(self)->QIcon:
-        return GDALMetadataModelConfigWidget.icon()
