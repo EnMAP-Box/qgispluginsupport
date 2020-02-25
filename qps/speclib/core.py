@@ -32,7 +32,7 @@
 
 
 #see http://python-future.org/str_literals.html for str issue discussion
-import json, enum, pickle
+import json, enum, pickle, typing, pathlib
 from osgeo import osr
 from PyQt5.QtWidgets import *
 
@@ -59,6 +59,7 @@ SPECLIB_EPSG_CODE = 4326
 SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))
 
 SPECLIB_CLIPBOARD = weakref.WeakValueDictionary()
+
 
 
 OGR_EXTENSION2DRIVER = dict()
@@ -135,6 +136,88 @@ def speclibUiPath(name:str)->str:
     path = pathlib.Path(__file__).parent / name
     assert path.is_file()
     return path.as_posix()
+
+
+class ProgressHandler(QObject):
+
+    canceled = pyqtSignal()
+    progressChanged = pyqtSignal([int], [int, int, int])
+
+    def __init__(self, *args, **kwds):
+        super().__init__()
+
+
+        self.mMinimum:int= int(kwds.get('minimum', 0))
+        self.mMaximum:int= int(kwds.get('maximum', 0))
+        self.mValue:int=0
+        self.mLabelText:str = ''
+        self.mWasCanceled = False
+
+    def setValue(self, value:int):
+        assert isinstance(value, int)
+        self.mValue = value
+        self.progressChanged[int].emit(value)
+        self.progressChanged[int, int, int].emit(self.mMinimum, self.mMaximum, self.mValue)
+
+    def value(self)->int:
+        return self.mValue
+
+    def cancel(self):
+        self.mWasCanceled = True
+        self.canceled.emit()
+
+    def wasCanceled(self)->bool:
+        return self.mWasCanceled
+
+    def setAutoClose(self):
+        pass
+
+    def autoClose(self):
+        return True
+
+    def setAutoReset(self):
+        pass
+
+    def autoReset(self):
+        return False
+
+    def setBar(self, bar):
+        pass
+
+    def setCancelButto(self, btn):
+        pass
+
+    def setLabel(self, label):
+        pass
+
+    def reset(self):
+        pass
+
+    def setLabelText(self, text:str):
+        self.mLabelText = str(text)
+
+    def labelText(self):
+        return self.mLabelText()
+
+    def setRange(self, vMin:int, vMax:int):
+        assert vMin <= vMax
+        self.setMinimum(vMin)
+        self.setMaximum(vMax)
+
+    def setMaximum(self, v:int):
+        assert isinstance(v, int)
+        self.mMaximum = v
+
+    def setMinimum(self, v: int):
+        assert isinstance(v, int)
+        self.mMinimum = v
+
+    def setMinimumDuration(self, *args):
+        pass
+
+    def setCancelButtonText(self, *args):
+        pass
+
 
 
 
@@ -1032,7 +1115,7 @@ class SpectralLibrary(QgsVectorLayer):
     @staticmethod
     def readFromVector(vector_qgs_layer:QgsVectorLayer=None,
                        raster_qgs_layer:QgsRasterLayer=None,
-                       progressDialog:QProgressDialog=None,
+                       progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None,
                        nameField=None,
                        all_touched=False,
                        returnProfileList=False):
@@ -1048,7 +1131,9 @@ class SpectralLibrary(QgsVectorLayer):
         :param all_touched: bool, False (default) = extract only pixel entirely covered with a geometry
                                   True = extract all pixels touched by a geometry
         :param returnProfileList: bool, False (default) = return a SpectralLibrary
-                                        True = return a [list-of-SpectralProfiles] and skip the SpectralLibrary generations.
+                                        True = return a [list-of-SpectralProfiles] and skip the creation of
+                                        a SpectralLibrary. This might become faster if the spectral profiles
+                                        are to be added to another SpectraLibrary anyway.
         :return: Spectral Library | [list-of-profiles]
         """
 
@@ -1112,7 +1197,7 @@ class SpectralLibrary(QgsVectorLayer):
         if tmp_qgs_layer.featureCount() == 0:
             info = 'No intersection between\nraster {} and vector {}'.format(raster_qgs_layer.source(), vector_qgs_layer.source())
             print(info)
-            if isinstance(progressDialog, QProgressDialog):
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
                 progressDialog.setLabelText('No intersection between raster and vector source')
                 progressDialog.setValue(progressDialog.maximum())
             return spectral_library
@@ -1177,11 +1262,11 @@ class SpectralLibrary(QgsVectorLayer):
 
         if n_profiles == 0:
             # no profiles to extract. Return an empty speclib
-            if isinstance(progressDialog, QProgressDialog):
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
                 progressDialog.setValue(progressDialog.maximum())
             return spectral_library
 
-        if isinstance(progressDialog, QProgressDialog):
+        if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
 
             progressDialog.setRange(0, raster_dataset.RasterCount + n_profiles + 1)
             progressDialog.setValue(0)
@@ -1253,7 +1338,7 @@ class SpectralLibrary(QgsVectorLayer):
         profileData = None
 
         for b in range(raster_dataset.RasterCount):
-            if isinstance(progressDialog, QProgressDialog):
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
                 if progressDialog.wasCanceled():
                     return None
                 progressDialog.setValue(progressDialog.value()+1)
@@ -1301,7 +1386,7 @@ class SpectralLibrary(QgsVectorLayer):
         profileNameCounts = dict() # dictionary to store spectra names
 
         for iProfile, fid, in enumerate(fids):
-            if isinstance(progressDialog, QProgressDialog):
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
                 if progressDialog.wasCanceled():
                     return None
                 progressDialog.setValue(progressDialog.value()+1)
@@ -1345,7 +1430,7 @@ class SpectralLibrary(QgsVectorLayer):
         if returnProfileList:
             return profiles
 
-        if isinstance(progressDialog, QProgressDialog):
+        if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
             progressDialog.setLabelText('Create speclib...')
 
         assert spectral_library.startEditing()
@@ -1360,7 +1445,7 @@ class SpectralLibrary(QgsVectorLayer):
         if not spectral_library.commitChanges():
             s = ""
 
-        if isinstance(progressDialog, QProgressDialog):
+        if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
             # print('{} {} {}'.format(progressDialog.minimum(), progressDialog.maximum(), progressDialog.value()))
             progressDialog.setValue(progressDialog.value()+1)
 
@@ -1373,7 +1458,8 @@ class SpectralLibrary(QgsVectorLayer):
 
 
     @staticmethod
-    def readFromVectorPositions(rasterSource, vectorSource, mode='CENTROIDS', progressDialog:QProgressDialog=None):
+    def readFromVectorPositions(rasterSource, vectorSource, mode='CENTROIDS', \
+                                progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
         """
 
         :param pathRaster:
@@ -1417,14 +1503,14 @@ class SpectralLibrary(QgsVectorLayer):
 
         pixelpositions = []
 
-        if isinstance(progressDialog, QProgressDialog):
+        if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
             progressDialog.setMinimum(0)
             progressDialog.setMaximum(nSelected)
             progressDialog.setLabelText('Get pixel positions...')
 
         nMissingGeometry = []
         for i, feature in enumerate(vectorSource.selectedFeatures()):
-            if isinstance(progressDialog, QProgressDialog) and progressDialog.wasCanceled():
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)) and progressDialog.wasCanceled():
                 return None
 
             assert isinstance(feature, QgsFeature)
@@ -1447,7 +1533,7 @@ class SpectralLibrary(QgsVectorLayer):
             else:
                 nMissingGeometry += 1
 
-            if isinstance(progressDialog, QProgressDialog):
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
                 progressDialog.setValue(progressDialog.value()+1)
 
         if len(nMissingGeometry) > 0:
@@ -1504,7 +1590,7 @@ class SpectralLibrary(QgsVectorLayer):
 
 
     @staticmethod
-    def readFromRasterPositions(pathRaster, positions, progressDialog:QProgressDialog=None):
+    def readFromRasterPositions(pathRaster, positions, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
         """
         Reads a SpectralLibrary from a set of positions
         :param pathRaster:
@@ -1520,7 +1606,7 @@ class SpectralLibrary(QgsVectorLayer):
 
 
         nTotal = len(positions)
-        if isinstance(progressDialog, QProgressDialog):
+        if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
             progressDialog.setMinimum(0)
             progressDialog.setMaximum(nTotal)
             progressDialog.setValue(0)
@@ -1528,7 +1614,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         for p, position in enumerate(positions):
 
-            if isinstance(progressDialog, QProgressDialog) and progressDialog.wasCanceled():
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)) and progressDialog.wasCanceled():
                 return None
 
             profile = SpectralProfile.fromRasterSource(source, position)
@@ -1536,7 +1622,7 @@ class SpectralLibrary(QgsVectorLayer):
                 profiles.append(profile)
                 i += 1
 
-            if isinstance(progressDialog, QProgressDialog):
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
                 progressDialog.setValue(progressDialog.value()+1)
 
 
@@ -1704,7 +1790,7 @@ class SpectralLibrary(QgsVectorLayer):
 
 
     @staticmethod
-    def readFrom(uri, progressDialog:QProgressDialog=None):
+    def readFrom(uri, progressDialog:(QProgressDialog, ProgressHandler)=None):
         """
         Reads a Spectral Library from the source specified in "uri" (path, url, ...)
         :param uri: path or uri of the source from which to read SpectralProfiles and return them in a SpectralLibrary
@@ -1931,7 +2017,7 @@ class SpectralLibrary(QgsVectorLayer):
         #    self.dataProvider().addAttributes(missingFields)
 
 
-    def addSpeclib(self, speclib, addMissingFields=True, progressDialog:QProgressDialog=None):
+    def addSpeclib(self, speclib, addMissingFields=True, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
         """
         Adds another SpectraLibrary
         :param speclib: SpectralLibrary
@@ -1944,7 +2030,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     def addProfiles(self, profiles:typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
                     addMissingFields:bool=None,
-                    progressDialog:QProgressDialog=None):
+                    progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
 
         if isinstance(profiles, SpectralProfile):
             profiles = [profiles]
@@ -1957,7 +2043,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         assert self.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(self.name())
 
-        if isinstance(progressDialog, QProgressDialog):
+        if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
             progressDialog.setLabelText('Add {} profiles'.format(len(profiles)))
             progressDialog.setValue(0)
             progressDialog.setRange(0, len(profiles))
@@ -1977,7 +2063,7 @@ class SpectralLibrary(QgsVectorLayer):
             nAdded += len(profileBuffer)
             profileBuffer.clear()
 
-            if isinstance(progressDialog, QProgressDialog):
+            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
                 progressDialog.setValue(nAdded)
 
         for i, pSrc in enumerate(profiles):
@@ -2285,7 +2371,6 @@ class SpectralLibrary(QgsVectorLayer):
 
 
 
-
 class AbstractSpectralLibraryIO(object):
     """
     Abstract class interface to define I/O operations for spectral libraries
@@ -2300,7 +2385,7 @@ class AbstractSpectralLibraryIO(object):
         return False
 
     @staticmethod
-    def readFrom(path:str, progressDialog:QProgressDialog=None)->SpectralLibrary:
+    def readFrom(path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of Spectral Library
@@ -2310,7 +2395,7 @@ class AbstractSpectralLibraryIO(object):
         return None
 
     @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:QProgressDialog)->typing.List[str]:
+    def write(speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler])->typing.List[str]:
         """
         Writes the SpectralLibrary.
         :param speclib: SpectralLibrary to write

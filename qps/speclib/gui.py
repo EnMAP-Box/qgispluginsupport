@@ -628,6 +628,8 @@ class SpectralViewBox(pg.ViewBox):
         wa = QWidgetAction(menuProfiles)
         wa.setDefaultWidget(frame)
         menuProfiles.addAction(wa)
+        self.mActionShowSelectedProfilesOnly = menuProfiles.addAction('Selected Only')
+        self.mActionShowSelectedProfilesOnly.setCheckable(True)
 
         # color settings
         menuColors = self.menu.addMenu('Colors')
@@ -694,9 +696,11 @@ class SpectralViewBox(pg.ViewBox):
         self.mActionShowCrosshair = self.menu.addAction('Show Crosshair')
         self.mActionShowCrosshair.setCheckable(True)
         self.mActionShowCrosshair.setChecked(True)
+
         self.mActionShowCursorValues = self.menu.addAction('Show Mouse values')
         self.mActionShowCursorValues.setCheckable(True)
         self.mActionShowCursorValues.setChecked(True)
+
 
     def raiseContextMenu(self, ev):
         self.mLastColorScheme = self.colorScheme()
@@ -858,6 +862,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mColorScheme: SpectralLibraryPlotColorScheme
         self.mColorScheme = SpectralLibraryPlotColorScheme.fromUserSettings()
         self.setColorScheme(self.mColorScheme)
+
 
         self.mUpdateTimer = QTimer()
         self.mUpdateTimeIsBlocked = False
@@ -1494,10 +1499,15 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         1st position = most important, should be plottet on top of all other profiles
         """
         nMax = len(self.speclib())
+        selectedOnly = self.viewBox().mActionShowSelectedProfilesOnly.isChecked()
+        selectedIds = self.speclib().selectedFeatureIds()
 
         allIDs = self.speclib().allFeatureIds()
         if nMax <= self.mMaxProfiles:
-            return allIDs
+            if selectedOnly:
+                return [fid for fid in allIDs if fid in selectedIds]
+            else:
+                return allIDs
 
         # Order:
         # 1. visible in table
@@ -1506,25 +1516,29 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         dualView = self.dualView()
 
-        priority0 = [k for k,v in self.mSPECIFIC_PROFILE_STYLES.items() if v  == self.colorScheme().cs]
+        # overlaided features / current spectral
+        priority0 = [fid for fid, v in self.mSPECIFIC_PROFILE_STYLES.items() if v == self.colorScheme().cs]
+        priority1 = [] # visible features
+        priority2 = [] # selected features
+        priority3 = [] # any other : not visible / not selected
 
-        priority1 = []
         if isinstance(dualView, QgsDualView):
             tv = dualView.tableView()
             assert isinstance(tv, QTableView)
-            rowHeight = tv.rowViewportPosition(1) - tv.rowViewportPosition(0)
-            for y in range(0, tv.viewport().height(), rowHeight):
-                idx = dualView.tableView().indexAt(QPoint(0, y))
-                if idx.isValid():
-                    fid = tv.model().data(idx, role=Qt.UserRole)
-                    priority1.append(fid)
+            if not selectedOnly:
+                rowHeight = tv.rowViewportPosition(1) - tv.rowViewportPosition(0)
+                for y in range(0, tv.viewport().height(), rowHeight):
+                    idx = dualView.tableView().indexAt(QPoint(0, y))
+                    if idx.isValid():
+                        fid = tv.model().data(idx, role=Qt.UserRole)
+                        priority1.append(fid)
             priority2 = self.dualView().masterModel().layer().selectedFeatureIds()
-            priority3 = dualView.filteredFeatures()
+            if not selectedOnly:
+                priority3 = dualView.filteredFeatures()
         else:
-            priority2 = self.speclib().selectedFeatureIds()
-            priority3 = self.speclib().allFeatureIds()
-
-        #featurePool = priority3
+            priority2 = selectedIds
+            if not selectedOnly:
+                priority3 = allIDs
 
         featurePool = np.unique(priority0 + priority1 + priority2).tolist()
         toVisualize = sorted(featurePool, key=lambda fid : (fid not in priority0, fid not in priority1, fid not in priority2, fid))
@@ -2069,80 +2083,6 @@ def registerSpectralProfileEditorWidget():
         SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
         reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
 
-from ..utils import SelectMapLayersDialog
-class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
-
-    def __init__(self, parent=None, f:Qt.WindowFlags=None):
-        super(SpectralProfileImportPointsDialog, self).__init__()
-        #self.setupUi(self)
-        self.setWindowTitle('Read Spectral Profiles')
-        self.addLayerDescription('Raster Layer', QgsMapLayerProxyModel.RasterLayer)
-        cb = self.addLayerDescription('Vector Layer', QgsMapLayerProxyModel.VectorLayer)
-        cb.layerChanged.connect(self.onVectorLayerChanged)
-        self.mSpeclib = None
-
-
-        self.mCbTouched = QCheckBox(self)
-        self.mCbTouched.setText('All touched')
-        self.mCbTouched.setToolTip('Activate to extract all touched pixels, not only thoose entirel covered by a geometry.')
-        i = self.mGrid.rowCount()
-        self.mGrid.addWidget(self.mCbTouched, i, 1)
-
-        self.buttonBox().button(QDialogButtonBox.Ok).clicked.disconnect(self.accept)
-        self.buttonBox().button(QDialogButtonBox.Ok).clicked.connect(self.run)
-        self.buttonBox().button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
-
-        self.onVectorLayerChanged(cb.currentLayer())
-
-    def onVectorLayerChanged(self, layer:QgsVectorLayer):
-        self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer) and
-                                   QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
-
-    def speclib(self)->SpectralLibrary:
-        return self.mSpeclib
-
-    def setRasterSource(self, lyr):
-        if isinstance(lyr, str):
-            lyr = QgsRasterLayer(lyr)
-        assert isinstance(lyr, QgsRasterLayer)
-        self.selectMapLayer(0, lyr)
-
-    def setVectorSource(self, lyr):
-
-        if isinstance(lyr, str):
-            lyr = QgsVectorLayer(lyr)
-        assert isinstance(lyr, QgsVectorLayer)
-        self.selectMapLayer(1, lyr)
-
-    def run(self):
-        progressDialog = QProgressDialog(parent=self)
-        progressDialog.setWindowModality(Qt.WindowModal)
-        progressDialog.setMinimumDuration(0)
-
-        slib = SpectralLibrary.readFromVector(self.vectorSource(),
-                                              self.rasterSource(),
-                                              all_touched=self.allTouched(),
-                                              progressDialog=progressDialog)
-
-        #slib = SpectralLibrary.readFromVectorPositions(self.rasterSource(), self.vectorSource(), progressDialog=progressDialog)
-
-        if isinstance(slib, SpectralLibrary) and not progressDialog.wasCanceled():
-            self.mSpeclib = slib
-            self.accept()
-        else:
-            self.mSpeclib = None
-            self.reject()
-
-    def allTouched(self)->bool:
-        return self.mCbTouched.isEnabled() and self.mCbTouched.isChecked()
-
-    def rasterSource(self)->QgsVectorLayer:
-        return self.mapLayers()[0]
-
-
-    def vectorSource(self)->QgsVectorLayer:
-        return self.mapLayers()[1]
-
 class SpectralLibraryWidget(QMainWindow):
 
     sigFilesCreated = pyqtSignal(list)
@@ -2228,7 +2168,7 @@ class SpectralLibraryWidget(QMainWindow):
         self.mDualView.showContextMenuExternally.connect(self.onShowContextMenuExternally)
         self.mDualView.tableView().willShowContextMenu.connect(self.onWillShowContextMenu)
 
-        self.mPlotWidget : SpectralLibraryPlotWidget
+        self.mPlotWidget: SpectralLibraryPlotWidget
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mPlotWidget.setDualView(self.mDualView)
         self.mPlotWidget.mUpdateTimer.timeout.connect(self.updateStatusBar)
@@ -2269,6 +2209,7 @@ class SpectralLibraryWidget(QMainWindow):
         self.spectraLibrary = self.speclib
         self.clearTable = self.clearSpectralLibrary
 
+        self.mIODialogs = list()
     def closeEvent(self, *args, **kwargs):
 
         super(SpectralLibraryWidget, self).closeEvent(*args, **kwargs)
@@ -2297,22 +2238,34 @@ class SpectralLibraryWidget(QMainWindow):
     def onShowContextMenuExternally(self, menu:QgsActionMenu, fid):
         s = ""
 
+    def onImportFromRasterSource(self):
+        from .io.rastersources import SpectralProfileImportPointsDialog
+        d = SpectralProfileImportPointsDialog(parent=self)
+        d.finished.connect(lambda *args, d=d: self.onIODialogFinished(d))
+        d.show()
+        self.mIODialogs.append(d)
 
 
-    def onImportFromVectorSource(self):
+    def onIODialogFinished(self, w:QWidget):
+        from .io.rastersources import SpectralProfileImportPointsDialog
+        if isinstance(w, SpectralProfileImportPointsDialog):
+            if w.result() == QDialog.Accepted:
+                b = self.mSpeclib.isEditable()
+                profiles = w.profiles()
+                self.mSpeclib.startEditing()
+                self.mSpeclib.beginEditCommand('Add {} profiles from {}'.format(len(profiles), w.rasterSource().name()))
+                self.mSpeclib.addProfiles(profiles, addMissingFields=False)
+                self.mSpeclib.endEditCommand()
+                self.mSpeclib.commitChanges()
 
-        d = SpectralProfileImportPointsDialog()
-        d.exec_()
-        if d.result() == QDialog.Accepted:
-            sl = d.speclib()
-            n = len(sl)
-            if isinstance(sl, SpectralLibrary) and n > 0:
+                if b:
+                    self.mSpeclib.startEditing()
+            else:
+                s = ""
 
-                b = self.speclib().isEditable()
-
-                self.addSpeclib(sl)
-
-
+        if w in self.mIODialogs:
+            self.mIODialogs.remove(w)
+        w.close()
 
     def canvas(self)->QgsMapCanvas:
         """
@@ -2468,7 +2421,7 @@ class SpectralLibraryWidget(QMainWindow):
 
         self.actionImportSpeclib.triggered.connect(self.onImportSpeclib)
         self.actionImportSpeclib.setMenu(self.importSpeclibMenu())
-        self.actionImportVectorSource.triggered.connect(self.onImportFromVectorSource)
+        self.actionImportVectorSource.triggered.connect(self.onImportFromRasterSource)
         self.actionAddProfiles.triggered.connect(self.addCurrentSpectraToSpeclib)
         self.actionReloadProfiles.triggered.connect(self.onReloadProfiles)
 

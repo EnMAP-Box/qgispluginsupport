@@ -342,7 +342,7 @@ class TestSpeclibWidgets(TestCase):
         pd = QProgressDialog()
         speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
         slw = SpectralLibraryWidget(speclib=speclib)
-
+        pd.close()
         QgsProject.instance().addMapLayer(slw.speclib())
 
         self.assertEqual(slw.speclib(), speclib)
@@ -545,6 +545,8 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryWidget()
         self.showGui(w)
 
+
+
     def test_SpectralProfileImportPointsDialog(self):
 
         lyrRaster = QgsRasterLayer(enmap)
@@ -561,22 +563,43 @@ class TestSpeclibWidgets(TestCase):
         vl1 = TestObjects.createVectorLayer(QgsWkbTypes.Polygon)
         vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
         vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
-        QgsProject.instance().addMapLayers([speclib1, lyrRaster, vl1, vl2, vl3])
 
-        d = SpectralProfileImportPointsDialog()
-        self.assertIsInstance(d, SpectralProfileImportPointsDialog)
-        d.setRasterSource(lyrRaster)
-        d.setVectorSource(speclib1)
-        d.show()
-        self.assertEqual(lyrRaster, d.rasterSource())
-        self.assertEqual(speclib1, d.vectorSource())
+        layers = [speclib1, vl1, vl2, vl3]
+        layers = [speclib1]
 
-        d.run()
+        QgsProject.instance().addMapLayers(layers)
+        from qps.speclib.io.rastersources import SpectralProfileImportPointsDialog
 
-        slib = d.speclib()
-        self.assertIsInstance(slib, SpectralLibrary)
-        print('TEST ENDED', file=sys.stderr)
-        self.showGui(d)
+        def onFinished(code):
+            self.assertTrue(code in [QDialog.Accepted, QDialog.Rejected])
+
+            if code == QDialog.Accepted:
+                slib = d.speclib()
+                self.assertTrue(d.isFinished())
+                self.assertIsInstance(slib, SpectralLibrary)
+                self.assertIsInstance(d.profiles(), list)
+                self.assertTrue(len(d.profiles()) == len(slib))
+                print('Returned {} profiles from {} and {}'.format(len(slib), d.vectorSource().source(), d.rasterSource().source()))
+
+
+        for vl in layers:
+            d = SpectralProfileImportPointsDialog()
+            self.assertIsInstance(d, SpectralProfileImportPointsDialog)
+            d.setRasterSource(lyrRaster)
+            d.setVectorSource(vl)
+            d.show()
+            self.assertEqual(lyrRaster, d.rasterSource())
+            self.assertEqual(vl, d.vectorSource())
+
+            d.finished.connect(onFinished)
+            d.run()
+            while not d.isFinished():
+                QApplication.processEvents()
+            d.hide()
+            d.close()
+
+
+        #self.showGui(d)
 
 
     def test_AttributeDialog(self):
