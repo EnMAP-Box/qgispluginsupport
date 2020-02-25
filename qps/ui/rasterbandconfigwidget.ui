@@ -122,14 +122,14 @@
           <item>
            <widget class="QToolButton" name="btnSetSBBand_NIR">
             <property name="text">
-             <string>nIR</string>
+             <string>NIR</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QToolButton" name="btnSetSBBand_SWIR">
             <property name="text">
-             <string>swIR</string>
+             <string>SWIR</string>
             </property>
            </widget>
           </item>
@@ -278,14 +278,14 @@
           <item row="1" column="4">
            <widget class="QToolButton" name="btnSetMBBands_SWIRNIRR">
             <property name="text">
-             <string>swIR-nIR-R</string>
+             <string>SWIR-NIR-R</string>
             </property>
            </widget>
           </item>
           <item row="1" column="3">
            <widget class="QToolButton" name="btnSetMBBands_NIRRG">
             <property name="text">
-             <string>nIR-R-G</string>
+             <string>NIR-R-G</string>
             </property>
            </widget>
           </item>

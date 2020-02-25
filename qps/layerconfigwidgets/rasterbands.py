@@ -167,6 +167,14 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
             self.widgetChanged.emit()
 
     def wlBand(self, wlKey:str)->int:
+        """
+        Returns the band number for a wavelength
+        :param wlKey:
+        :type wlKey:
+        :return:
+        :rtype:
+        """
+        from ..utils import LUT_WAVELENGTH
         if isinstance(self.mWL, np.ndarray):
             targetWL = float(LUT_WAVELENGTH[wlKey])
             return int(np.argmin(np.abs(self.mWL - targetWL)))+1

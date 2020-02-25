@@ -207,8 +207,6 @@ METRIC_EXPONENTS['meters'] = METRIC_EXPONENTS['m']
 METRIC_EXPONENTS['hectometers'] = METRIC_EXPONENTS['hm']
 METRIC_EXPONENTS['kilometers'] = METRIC_EXPONENTS['km']
 
-
-
 LUT_WAVELENGTH = dict({'B': 480,
                        'G': 570,
                        'R': 660,
