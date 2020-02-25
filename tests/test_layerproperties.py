@@ -94,9 +94,6 @@ class LayerPropertyTests(TestCase):
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
-
-
-
     def test_LayerPropertiesDialog_Vector(self):
         registerMapLayerConfigWidgetFactories()
         lyr = TestObjects.createVectorLayer()
@@ -108,6 +105,9 @@ class LayerPropertyTests(TestCase):
             self.assertIsInstance(p, QgsMapLayerConfigWidget)
             p.apply()
             d.setPage(p)
+
+        w2 = QgsTextFormatPanelWidget(QgsTextFormat(), d.canvas(), None, lyr)
+        w2.show()
 
         w = QWidget()
         w.setLayout(QHBoxLayout())

@@ -108,7 +108,37 @@ class LayerConfigWidgetsTests(TestCase):
         pass
 
     def test_labels(self):
-        pass
+
+        from qps.layerconfigwidgets.vectorlabeling import LabelingConfigWidgetFactory, LabelingConfigWidget
+
+        lyrV = TestObjects.createVectorLayer()
+        lyrR = TestObjects.createRasterLayer()
+        canvas = self.canvasWithLayer(lyrV)
+
+        f = LabelingConfigWidgetFactory()
+        self.assertTrue(f.supportsLayer(lyrV))
+        self.assertFalse(f.supportsLayer(lyrR))
+
+        w = f.createWidget(lyrV, canvas)
+        self.assertIsInstance(w, LabelingConfigWidget)
+        self.assertIsInstance(lyrV, QgsVectorLayer)
+
+        self.assertTrue(w.mapLayer() == lyrV)
+        for i in range(w.comboBox.count()):
+            w.comboBox.setCurrentIndex(i)
+            if i == 0:
+                self.assertTrue(w.labeling() == None)
+                w.apply()
+                self.assertFalse(lyrV.labelsEnabled())
+                self.assertEqual(lyrV.labeling(), None)
+            else:
+                if not w.labeling() is None:
+                    self.assertIsInstance(w.labeling(), QgsAbstractVectorLayerLabeling)
+                    w.apply()
+                    self.assertTrue(lyrV.labelsEnabled())
+                    self.assertEquals(type(lyrV.labeling()), type(w.labeling()))
+
+        self.showGui(w)
 
     def test_transparency(self):
         pass

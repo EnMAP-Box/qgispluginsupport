@@ -470,7 +470,7 @@ class LayerAttributeFormConfigWidget(QpsMapLayerConfigWidget):
 
 
 class LayerAttributeFormConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
-    def __init__(self, title='Source', icon=QIcon(':/images/themes/default/mActionFormView.svg')):
+    def __init__(self, title='Attributes Form', icon=QIcon(':/images/themes/default/mActionFormView.svg')):
         super().__init__(title, icon)
         self.setSupportLayerPropertiesDialog(True)
         self.setSupportsStyleDock(False)

@@ -597,6 +597,38 @@ def subLayers(mapLayer:QgsMapLayer, subLayers:list=None)->typing.List[QgsMapLaye
 
 class LayerPropertiesDialog(QgsOptionsDialogBase):
 
+    @staticmethod
+    def defaultFactories()->typing.List[QgsMapLayerConfigWidgetFactory]:
+        """
+        Returns a list of default QgsMapLayerConfigWidgetFactory
+        """
+        from .layerconfigwidgets.core import \
+            MetadataConfigWidgetFactory, \
+            SourceConfigWidgetFactory, \
+            SymbologyConfigWidgetFactory, \
+            TransparencyConfigWidgetFactory, \
+            RenderingConfigWidgetFactory, LegendConfigWidgetFactory
+        from .layerconfigwidgets.vectorlabeling import LabelingConfigWidgetFactory
+        from .layerconfigwidgets.rasterbands import RasterBandConfigWidgetFactory
+        from .layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
+        from .layerconfigwidgets.vectorlayerfields import \
+            LayerAttributeFormConfigWidgetFactory, \
+            LayerFieldsConfigWidgetFactory
+        factories = [
+            MetadataConfigWidgetFactory(),
+            SourceConfigWidgetFactory(),
+            SymbologyConfigWidgetFactory(),
+            RasterBandConfigWidgetFactory(),
+            LabelingConfigWidgetFactory(),
+            TransparencyConfigWidgetFactory(),
+            RenderingConfigWidgetFactory(),
+            GDALMetadataConfigWidgetFactory(),
+            LayerFieldsConfigWidgetFactory(),
+            LayerAttributeFormConfigWidgetFactory(),
+            LegendConfigWidgetFactory()
+        ]
+        return factories
+
     def __init__(self,
                  lyr:typing.Union[QgsRasterLayer, QgsVectorLayer],
                  canvas:QgsMapCanvas=None,
@@ -640,30 +672,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         assert isinstance(self.mOptionsListWidget, QListWidget)
 
         if mapLayerConfigFactories is None:
-            from .layerconfigwidgets.core import \
-                MetadataConfigWidgetFactory, \
-                SourceConfigWidgetFactory, \
-                SymbologyConfigWidgetFactory, \
-                LabelsConfigWidgetFactory, \
-                TransparencyConfigWidgetFactory,\
-                RenderingConfigWidgetFactory, LegendConfigWidgetFactory
-
-            from .layerconfigwidgets.rasterbands import RasterBandConfigWidgetFactory
-            from .layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
-            from .layerconfigwidgets.vectorlayerfields import LayerAttributeFormConfigWidgetFactory, LayerFieldsConfigWidgetFactory
-            mapLayerConfigFactories = [
-                MetadataConfigWidgetFactory(),
-                SourceConfigWidgetFactory(),
-                SymbologyConfigWidgetFactory(),
-                RasterBandConfigWidgetFactory(),
-                LabelsConfigWidgetFactory(),
-                TransparencyConfigWidgetFactory(),
-                RenderingConfigWidgetFactory(),
-                GDALMetadataConfigWidgetFactory(),
-                LayerFieldsConfigWidgetFactory(),
-                LayerAttributeFormConfigWidgetFactory(),
-                LegendConfigWidgetFactory()
-            ]
+            mapLayerConfigFactories = LayerPropertiesDialog.defaultFactories()
 
         for f in mapLayerConfigFactories:
             assert isinstance(f, QgsMapLayerConfigWidgetFactory)

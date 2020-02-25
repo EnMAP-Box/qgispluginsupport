@@ -1,4 +1,4 @@
-import typing, pathlib
+import typing, pathlib, enum
 from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtWidgets import *
@@ -253,32 +253,6 @@ class SymbologyConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def supportLayerPropertiesDialog(self):
         return True
 
-    def supportsStyleDock(self):
-        return True
-
-class LabelsConfigWidget(QpsMapLayerConfigWidget):
-    """
-    Emulates the QGS Layer Property Dialogs "Labels" page
-    """
-    def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
-        super().__init__(layer, canvas, parent=parent)
-        loadUi(configWidgetUi('labelsconfigwidget.ui'), self)
-        self.syncToLayer()
-
-class LabelsConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
-    def __init__(self, title='Labels', icon=QIcon(':/images/themes/default/mActionLabeling.svg')):
-        super().__init__(title, icon)
-        self.setSupportLayerPropertiesDialog(True)
-        self.setSupportsStyleDock(True)
-
-    def createWidget(self, layer, canvas, dockWidget=False, parent=None):
-        return LabelsConfigWidget(layer, canvas, parent=parent)
-
-    def supportsLayer(self, layer):
-        return isinstance(layer, QgsVectorLayer)
-
-    def supportLayerPropertiesDialog(self):
-        return True
     def supportsStyleDock(self):
         return True
 
