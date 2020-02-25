@@ -40,8 +40,8 @@ class TestSpeclibWidgets(TestCase):
 
         super(TestSpeclibWidgets, cls).setUpClass(*args, options=options)
 
-        from qps import initResources
-        initResources()
+        from qps import initAll
+        initAll()
 
         gdal.UseExceptions()
         gdal.PushErrorHandler(TestSpeclibWidgets.gdal_error_handler)
@@ -328,6 +328,19 @@ class TestSpeclibWidgets(TestCase):
         self.assertTrue(vl.updateFeature(f))
 
         self.showGui([w, configWidget])
+
+    @unittest.skipIf(False, '')
+    def test_SpectralLibraryWidget_ClassFields(self):
+        from qps import registerEditorWidgets
+        registerEditorWidgets()
+        w = SpectralLibraryWidget()
+        from qpstestdata import speclib_labeled
+        sl = SpectralLibrary.readFrom(speclib_labeled)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
+        w.addSpeclib(sl)
+        self.showGui(w)
+
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):

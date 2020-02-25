@@ -1636,7 +1636,7 @@ class SpectralLibrary(QgsVectorLayer):
     def readJSONProperties(self, pathJSON:str):
         """
         Reads additional SpectralLibrary properties from a JSON definition according to
-        https://enmap-box.readthedocs.io/en/latest/usr_section/usr_manual.html#labelled-spectral-library
+        https://enmap-box.readthedocs.io/en/latest/usr_section/usr_manual/processing_datatypes.html#labelled-spectral-library
 
         :param pathJSON: file path (any) | JSON dictionary | str
 
@@ -1658,6 +1658,7 @@ class SpectralLibrary(QgsVectorLayer):
                     jsonData = json.loads(pathJSON)
 
         except Exception as ex:
+            print(ex, file=sys.stderr)
             pass
 
         if not isinstance(jsonData, dict):
@@ -1674,7 +1675,7 @@ class SpectralLibrary(QgsVectorLayer):
                     fieldProperties = jsonData[fieldName]
                     assert isinstance(fieldProperties, dict)
 
-                    # see https://enmap-box.readthedocs.io/en/latest/usr_section/usr_manual.html#labelled-spectral-library
+                    # see https://enmap-box.readthedocs.io/en/latest/usr_section/usr_manual/processing_datatypes.html#labelled-spectral-library
                     # for details
                     if 'categories' in fieldProperties.keys():
                         from ..classification.classificationscheme import ClassificationScheme, ClassInfo, classSchemeToConfig
@@ -1717,6 +1718,38 @@ class SpectralLibrary(QgsVectorLayer):
             self.startEditing()
 
         return jsonData
+
+    def copyEditorWidgetSetup(self, vectorLayer:QgsVectorLayer):
+        """Copies the editor widget setup from another vector layer"""
+        assert isinstance(vectorLayer, QgsVectorLayer)
+
+        for i in range(vectorLayer.fields().count()):
+            fieldVector = vectorLayer.fields().at(i)
+            assert isinstance(fieldVector, QgsField)
+
+            j = self.fields().indexOf(fieldVector.name())
+            # field does not exist
+            if j == -1:
+                continue
+            fieldSpeclib = self.fields().at(i)
+            assert isinstance(fieldSpeclib, QgsField)
+
+            # field have different data type
+            if not fieldVector.type() == fieldSpeclib.type():
+                continue
+
+            setupNew = vectorLayer.editorWidgetSetup(i)
+            setupNow = self.editorWidgetSetup(j)
+            assert isinstance(setupNew, QgsEditorWidgetSetup)
+            assert isinstance(setupNow, QgsEditorWidgetSetup)
+            if not setupNew.isNull():
+                if setupNew.type() != '' and setupNew.type() != setupNow.type():
+                    setup = QgsEditorWidgetSetup(setupNew.type(), setupNew.config().copy())
+                    self.setEditorWidgetSetup(i, setup)
+
+                    s = ""
+
+
 
     def writeJSONProperties(self, pathSPECLIB:str):
         """
@@ -2017,7 +2050,10 @@ class SpectralLibrary(QgsVectorLayer):
         #    self.dataProvider().addAttributes(missingFields)
 
 
-    def addSpeclib(self, speclib, addMissingFields=True, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    def addSpeclib(self, speclib,
+                   addMissingFields:bool=True,
+                   copyEditorWidgetSetup:bool=True,
+                   progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
         """
         Adds another SpectraLibrary
         :param speclib: SpectralLibrary
@@ -2026,7 +2062,12 @@ class SpectralLibrary(QgsVectorLayer):
         assert isinstance(speclib, SpectralLibrary)
 
         self.addProfiles(speclib, addMissingFields=addMissingFields, progressDialog=progressDialog)
-        s = ""
+
+
+        if copyEditorWidgetSetup:
+            self.copyEditorWidgetSetup(speclib)
+
+
 
     def addProfiles(self, profiles:typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
                     addMissingFields:bool=None,

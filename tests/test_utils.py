@@ -101,6 +101,17 @@ class TestUtils(TestCase):
                 size = gdalFileSize(path)
                 self.assertTrue(size > 0)
 
+    def test_findmaplayerstores(self):
+
+        ref = [QgsProject.instance(), QgsMapLayerStore(), QgsMapLayerStore()]
+
+        found = list(findMapLayerStores())
+        self.assertTrue(len(ref) <= len(found))
+        for s in found:
+            self.assertIsInstance(s, (QgsProject, QgsMapLayerStore))
+        for s in ref:
+            self.assertTrue(s in found)
+
 
     def test_file_search(self):
 

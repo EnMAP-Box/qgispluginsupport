@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy, shutil, typing
+import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy, shutil, typing, gc, sip
 
 from qgis.core import *
 from qgis.gui import *
@@ -254,6 +254,14 @@ def nextColor(color, mode='cat')->QColor:
     return QColor.fromHsl(hue, sat, value, alpha)
 
 
+def findMapLayerStores()->typing.List[typing.Union[QgsProject, QgsMapLayerStore]]:
+
+    import gc
+    yield QgsProject.instance()
+    for obj in gc.get_objects():
+        if isinstance(obj, QgsMapLayerStore):
+            yield obj
+
 
 
 def findMapLayer(layer)->QgsMapLayer:
@@ -265,17 +273,21 @@ def findMapLayer(layer)->QgsMapLayer:
     assert isinstance(layer, (QgsMapLayer, str))
     if isinstance(layer, QgsMapLayer):
         return layer
+
     elif isinstance(layer, str):
-        #check for IDs
-        for store in MAP_LAYER_STORES:
-            l = store.mapLayer(layer)
-            if isinstance(l, QgsMapLayer):
-                return l
-        #check for name
-        for store in MAP_LAYER_STORES:
-            l = store.mapLayersByName(layer)
-            if len(l) > 0:
-                return l[0]
+        for store in findMapLayerStores():
+            lyr = store.mapLayer(layer)
+            if isinstance(lyr, QgsMapLayer):
+                return lyr
+            layers = store.mapLayersByName(layer)
+            if len(layers) > 0:
+                return layers[0]
+
+    for lyr in gc.get_objects():
+        if isinstance(lyr, QgsMapLayer):
+            if lyr.id() == layer or lyr.source() == layer:
+                return lyr
+
     return None
 
 

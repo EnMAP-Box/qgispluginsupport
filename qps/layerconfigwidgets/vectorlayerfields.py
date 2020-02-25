@@ -288,11 +288,12 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
 
 
         conf = self.currentFieldConfig()
+        self.mInitialFactoryKey = None
+        self.mInitialConf = None
         if isinstance(conf, LayerAttributeFormConfigEditorWidget.ConfigInfo):
             self.mInitialFactoryKey = conf.factoryKey()
             self.mInitialConf = conf.config()
-        else:
-            s = ""
+
 
 
     def setFactory(self, factoryKey:str):

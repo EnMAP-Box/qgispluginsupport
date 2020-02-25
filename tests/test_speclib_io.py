@@ -688,6 +688,53 @@ class TestIO(TestCase):
             self.assertEqual(p1, p2)
 
 
+
+    def test_ENVILabeled(self):
+
+        from qpstestdata import speclib_labeled as pathESL
+        from qps import registerEditorWidgets
+        registerEditorWidgets()
+        csv = readCSVMetadata(pathESL)
+
+        sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=QProgressDialog())
+
+        self.assertIsInstance(sl1, SpectralLibrary)
+        p0 = sl1[0]
+        self.assertIsInstance(p0, SpectralProfile)
+        self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
+
+        setupTypes = []
+        setupConfigs = []
+        for i in range(sl1.fields().count()):
+            setup = sl1.editorWidgetSetup(i)
+            self.assertIsInstance(setup, QgsEditorWidgetSetup)
+            setupTypes.append(setup.type())
+            setupConfigs.append(setup.config())
+
+        sl = SpectralLibrary()
+        sl.startEditing()
+        sl.addSpeclib(sl1)
+        self.assertTrue(sl.commitChanges())
+
+
+        i = sl.fields().indexOf('level_1')
+        from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY
+        self.assertEqual(sl.editorWidgetSetup(i).type(), EDITOR_WIDGET_REGISTRY_KEY)
+        #self.assertTrue(sl.commitChanges())
+        self.assertEqual(sl.editorWidgetSetup(i).type(), EDITOR_WIDGET_REGISTRY_KEY)
+
+        for name in ['level_1', 'level_2', 'level_3']:
+            i = sl.fields().indexFromName(name)
+            j = sl1.fields().indexFromName(name)
+            self.assertTrue(i > 0)
+            setupNew = sl.editorWidgetSetup(i)
+            setupOld = sl1.editorWidgetSetup(j)
+            self.assertEqual(setupOld.type(), EDITOR_WIDGET_REGISTRY_KEY)
+            self.assertEqual(setupNew.type(), EDITOR_WIDGET_REGISTRY_KEY)
+
+        s = ""
+
+
 if __name__ == '__main__':
     unittest.main()
 
