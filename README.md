@@ -39,8 +39,12 @@ your application, e.g. by calling:
     initAll()
     ```
 
+## Examples ###
 
-### Example: Spectral Library Widget ###
+Examples can be found in the `examples` folder.
+
+### Spectral Library Widget ###
+
 The following example shows you how to initialize (for testing) a mocked QGIS Application and to open the Spectral Library  Wdiget: 
 
 ```python
@@ -49,7 +53,7 @@ QGIS_APP = initQgisApplication()
 
 
 from mymodule.qps import initAll 
-from mymodule.qps.speclib.spectrallibraries import SpectralLibraryWidget
+from mymodule.qps.speclib.core import SpectralLibraryWidget
 initAll()
 
 widget = SpectralLibraryWidget()
@@ -59,6 +63,118 @@ QGIS_APP.exec_()
 ```
 
 Note that the first two lines and the last line are not required if QGIS is already started. 
+
+### QGIS Resource files
+
+Many QGIS icons are available as resource strings. Based on the Qt reosurce system, theses icons
+can be used in own QGIS plugins, which reduces the need to provide own `*.png` or `*.svg` files and 
+reduces the plugin size. 
+
+For development, you might load the QGIS repository `images/images.qrc` to your reosurce files in the Qt Designer.
+
+1. Clone the QGIS Repository to access its `images/images.qrc` 
+   To donwload the `/images` folder only, you can do a sparse checkout:
+    
+    
+    ```
+    mkdir QGIS_Images
+    cd QGIS_Images
+    git init
+    git config core.sparseCheckout true
+    git remote add -t master origin https://github.com/qgis/QGIS.git
+    echo '/images/' > .git/info/sparse-checkout
+    git pull origin master
+    ```
+
+2. Open the `images/images.qrc` to your Qt Designer / Qt Creator to visualize icons and copy & paste their resource
+   paths. E.g. `':/images/icons/qgis_icon.svg'` for the QGIS icon.
+   
+ 
+
+### Example: unit tests
+
+QPS helps to initialize QgsApplications and to test them without starting an entire QGIS Desktop Application.
+
+See `tests/test_example.py`
+
+```python
+import os, pathlib, unittest
+from qps.testing import TestCase, StartOptions, start_app
+
+from PyQt5.QtWidgets import QLabel
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtCore import QSize, QFile, QDir
+from qgis.core import QgsApplication
+
+qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
+
+class Example1(unittest.TestCase):
+
+    @unittest.skipIf(not qgis_images_resources.is_file(), 'Resource file does not exist: {}'.format(qgis_images_resources))
+    def test_startQgsApplication(self):
+        """
+        This example shows how to initialize a QgsApplication on TestCase start up
+        """
+        resource_path = ':/images/icons/qgis_icon.svg'
+        self.assertFalse(QFile(resource_path).exists())
+
+        # StartOptions:
+        # Minimized = just the QgsApplication
+        # EditorWidgets = initializes EditorWidgets to manipulate vector attributes
+        # ProcessingFramework = initializes teh QGIS Processing Framework
+        # PythonRunner = initializes a PythonRunner, which is required to run expressions on vector layer fields
+        # PrintProviders = prints the QGIS data providers
+        # All = EditorWidgets | ProcessingFramework | PythonRunner | PrintProviders
+
+        app = start_app(options=StartOptions.Minimized, resources=[qgis_images_resources])
+        self.assertIsInstance(app, QgsApplication)
+        self.assertTrue(QFile(resource_path).exists())
+
+
+class ExampleCase(TestCase):
+    """
+    This example shows how to run unit tests using a QgsApplication
+    that has the QGIS resource icons loaded
+    """
+    @classmethod
+    def setUpClass(cls) -> None:
+        # this initializes the QgsApplication with resources from images loaded
+        resources = []
+        if qgis_images_resources.is_file():
+            resources.append(qgis_images_resources)
+        super().setUpClass(cleanup=True, options=StartOptions.Minimized, resources=resources)
+
+    @unittest.skipIf(not qgis_images_resources.is_file(),
+                     'Resource file does not exist: {}'.format(qgis_images_resources))
+    def test_show_raster_icon(self):
+        """
+        This example show the QGIS Icon in a 200x200 px label.
+        """
+        icon = QIcon(':/images/icons/qgis_icon.svg')
+        self.assertIsInstance(icon, QIcon)
+
+        label = QLabel()
+        label.setPixmap(icon.pixmap(QSize(200,200)))
+
+        # In case the the environmental variable 'CI' is not set,
+        # .showGui([list-of-widgets]) function will show and calls QApplication.exec_()
+        # to keep the widget open
+        self.showGui(label)
+
+
+
+if __name__ == '__main__':
+
+    unittest.main()
+
+```
+
+## Update pyqtgraph
+
+Run the the following command to the qps internal [pyqtgraph](http://pyqtgraph.org) version
+```
+git read-tree --prefix=qps/externals/pyqtgraph/ -u pyqtgraph-0.11.0rc0:pyqtgraph
+```
 
 
 

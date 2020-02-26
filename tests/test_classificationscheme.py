@@ -6,26 +6,35 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
-import unittest
+import unittest, sys
 import tempfile
 from qgis.core import *
 from qgis.gui import *
 
-from qps.testing import initQgisApplication, TestObjects
-QGIS_APP = initQgisApplication()
+
+print('PYTHONPATH:')
+for p in sorted(sys.path):
+    print(p)
+print('')
+
+from qps.testing import start_app, TestObjects, TestCase
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
-SHOW_GUI = False and os.environ.get('CI') is None
 
-
-
-
-from unittest import TestCase
 class TestsClassificationScheme(TestCase):
 
-    def setUp(self):
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        super(TestsClassificationScheme, cls).setUpClass(cls)
+
+        import qps
+        qps.initResources()
+
+
+    def setUp(self):
+        super().setUp()
         self.nameL1 = 'Level 1 (int)'
         self.nameL2 = 'Level 2 (str)'
         for store in MAP_LAYER_STORES:
@@ -196,12 +205,9 @@ class TestsClassificationScheme(TestCase):
         w.setCurrentIndex(2)
         self.assertIsInstance(w.currentClassInfo(), ClassInfo)
         self.assertEqual(w.currentClassInfo(), scheme[2])
-        w.show()
 
-        if SHOW_GUI:
 
-            QGIS_APP.exec_()
-
+        self.showGui(w)
 
     def test_ClassificationSchemeEditorWidgetFactory(self):
 
@@ -244,7 +250,7 @@ class TestsClassificationScheme(TestCase):
         vl.startEditing()
 
         w.resize(QSize(300, 250))
-        print(vl.fields().names())
+        #print(vl.fields().names())
         look = vl.fields().lookupField
         score = factory.fieldScore(vl, look(self.nameL1))
         #self.assertTrue(factory.fieldScore(vl, look(self.nameL1)) == 20)
@@ -261,15 +267,10 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(eww, ClassificationSchemeEditorWidgetWrapper)
         self.assertIsInstance(eww.widget(), ClassificationSchemeComboBox)
 
-        eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
+        #eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
-        configWidget.show()
-        dv.show()
-        w.show()
 
-        if SHOW_GUI:
-            QGIS_APP.exec_()
-
+        self.showGui([configWidget, dv, w])
 
     def test_findMapLayerWithClassInfo(self):
 
@@ -302,12 +303,8 @@ class TestsClassificationScheme(TestCase):
         self.assertTrue(rl in lyrs)
 
         w = ClassificationSchemeWidget()
-        w.show()
 
-
-        if SHOW_GUI:
-            w.onLoadClasses('layer')
-            QGIS_APP.exec_()
+        self.showGui(w)
 
     def test_ClassificationSchemeWidget(self):
 
@@ -318,10 +315,8 @@ class TestsClassificationScheme(TestCase):
         w.btnAddClasses.click()
 
         self.assertTrue(len(w.classificationScheme()) == 2)
-        w.show()
 
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui(w)
 
     def test_ClassificationSchemeComboBox(self):
 
@@ -419,11 +414,7 @@ class TestsClassificationScheme(TestCase):
         ci = cbox.currentClassInfo()
         self.assertEqual(ci, None)
 
-        w.show()
-        w2.show()
-
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui([w, w2])
 
 
     def test_io_CSV(self):
@@ -479,7 +470,7 @@ class TestsClassificationScheme(TestCase):
         cs  = ClassificationScheme.create(5)
 
         md = cs.mimeData(None)
-        print(md.data(MIMEDATA_KEY_QGIS_STYLE))
+        #print(md.data(MIMEDATA_KEY_QGIS_STYLE))
         self.assertIsInstance(md, QMimeData)
 
         from qps.layerproperties import pasteStyleToClipboard
@@ -523,7 +514,6 @@ class TestsClassificationScheme(TestCase):
 
 if __name__ == "__main__":
 
-    SHOW_GUI = False
     unittest.main()
 
 

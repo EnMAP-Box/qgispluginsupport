@@ -12,47 +12,84 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
-import unittest, pickle
+import unittest, pickle, os
+import xml.etree.ElementTree as ET
 from qgis import *
 from qgis.core import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
+from qgis.PyQt.QtGui import *
+from qgis.PyQt.Qt import *
+from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
-from qps.testing import initQgisApplication, TestObjects
-SHOW_GUI = False and os.environ.get('CI') is None
-QGIS_APP = initQgisApplication()
+from qps.testing import TestObjects
+
 from qps.utils import *
+from qps.testing import TestCase
 
-
-
-
-class testClassUtils(unittest.TestCase):
-    """Test rerources work."""
-
+class TestUtils(TestCase):
     def setUp(self):
-        self.w = QMainWindow()
-        self.cw = QWidget()
-        self.cw.setLayout(QVBoxLayout())
-        self.w.setCentralWidget(self.cw)
-        self.w.show()
-        self.menuBar = self.w.menuBar()
+        super().setUp()
 
         self.wmsUri = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
         self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
 
     def tearDown(self):
-        self.w.close()
 
 
-    def test_loadformClasses(self):
+        super().tearDown()
+
+    def test_loadUi(self):
 
         import qps
         sources = list(file_search(dn(qps.__file__), '*.ui', recursive=True))
-        for pathUi in sources[4:5]:
-            print('Test "{}"'.format(pathUi))
-            t = loadUIFormClass(pathUi)
-            self.assertIsInstance(t, object)
+        sources = [s for s in sources if not 'pyqtgraph' in s]
+        for pathUi in sources:
+            tree = ET.parse(pathUi)
+            root = tree.getroot()
+            self.assertEqual(root.tag, 'ui')
+            baseClass = root.find('widget').attrib['class']
+
+            print('Try to load {} as {}'.format(pathUi, baseClass))
+            self.assertIsInstance(baseClass, str)
+
+            if baseClass == 'QDialog':
+                class TestWidget(QDialog):
+
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+
+            elif baseClass == 'QWidget':
+                class TestWidget(QWidget):
+
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+
+            elif baseClass == 'QMainWindow':
+                class TestWidget(QMainWindow):
+
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+            elif baseClass == 'QDockWidget':
+                class TestWidget(QDockWidget):
+                    def __init__(self):
+                        super().__init__()
+                        loadUi(pathUi, self)
+            else:
+                warnings.warn('BaseClass {} not implemented\nto test {}'.format(baseClass, pathUi), Warning)
+                continue
+
+
+            w = None
+            try:
+                w = TestWidget()
+                s = ""
+
+            except Exception as ex:
+                info = 'Failed to load {}'.format(pathUi)
+                info += '\n' + str(ex)
+                self.fail(info)
 
 
     def test_gdal_filesize(self):
@@ -64,18 +101,29 @@ class testClassUtils(unittest.TestCase):
                 size = gdalFileSize(path)
                 self.assertTrue(size > 0)
 
+    def test_findmaplayerstores(self):
+
+        ref = [QgsProject.instance(), QgsMapLayerStore(), QgsMapLayerStore()]
+
+        found = list(findMapLayerStores())
+        self.assertTrue(len(ref) <= len(found))
+        for s in found:
+            self.assertIsInstance(s, (QgsProject, QgsMapLayerStore))
+        for s in ref:
+            self.assertTrue(s in found)
+
 
     def test_file_search(self):
 
 
-        rootQps = os.path.join(os.path.dirname(__file__), *['..','qps'])
-        self.assertTrue(os.path.isdir(rootQps))
+        rootQps = pathlib.Path(__file__).parents[1]
+        self.assertTrue(rootQps.is_dir())
 
-        results = list(file_search(rootQps, 'spectrallibraries.py', recursive=False))
+        results = list(file_search(rootQps, 'test_utils.py', recursive=False))
         self.assertIsInstance(results, list)
         self.assertTrue(len(results) == 0)
 
-        for pattern in ['spectrallibraries.py', 'spectrallib*.py', re.compile(r'spectrallibraries\.py')]:
+        for pattern in ['test_utils.py', 'test_utils*.py', re.compile(r'test_utils\.py')]:
 
             results = list(file_search(rootQps, pattern, recursive=True))
             self.assertIsInstance(results, list)
@@ -109,7 +157,7 @@ class testClassUtils(unittest.TestCase):
 
     def test_gdalDataset(self):
 
-        ds = TestObjects.inMemoryImage()
+        ds = TestObjects.createRasterDataset()
         path = ds.GetDescription()
         ds1 = gdalDataset(path)
         self.assertIsInstance(ds1, gdal.Dataset)
@@ -119,7 +167,7 @@ class testClassUtils(unittest.TestCase):
 
     def test_bandNames(self):
 
-        ds = TestObjects.inMemoryImage()
+        ds = TestObjects.createRasterDataset()
         pathRaster = ds.GetDescription()
 
         validSources = [QgsRasterLayer(self.wmsUri, '', 'wms'),
@@ -135,7 +183,7 @@ class testClassUtils(unittest.TestCase):
 
     def test_coordinateTransformations(self):
 
-        ds = TestObjects.inMemoryImage(300, 500)
+        ds = TestObjects.createRasterDataset(300, 500)
         lyr = QgsRasterLayer(ds.GetDescription())
 
         self.assertEqual(ds.GetGeoTransform(), layerGeoTransform(lyr))
@@ -190,6 +238,7 @@ class testClassUtils(unittest.TestCase):
 
     def test_convertMetricUnits(self):
 
+        print('DONE', flush=True)
         self.assertEqual(convertMetricUnit(100, 'm', 'km'), 0.1)
         self.assertEqual(convertMetricUnit(0.1, 'km', 'm'), 100)
 
@@ -198,9 +247,10 @@ class testClassUtils(unittest.TestCase):
 
         self.assertEqual(convertMetricUnit(400, 'nm', 'km'), 4e-10)
 
-    def test_appendItemsToMenu(self):
 
+    def test_appendItemsToMenu(self):
         B = QMenu()
+
         action = B.addAction('Do something')
         menuA = QMenu()
         appendItemsToMenu(menuA, B)
@@ -250,15 +300,11 @@ class testClassUtils(unittest.TestCase):
         d.addLayerDescription('A Vector Layer', QgsMapLayerProxyModel.VectorLayer)
         d.addLayerDescription('A Raster Layer', QgsMapLayerProxyModel.RasterLayer)
 
-
-        if SHOW_GUI:
-            d.show()
-            QGIS_APP.exec_()
-
+        self.showGui(d)
 
     def test_defaultBands(self):
 
-        ds = TestObjects.inMemoryImage(nb=10)
+        ds = TestObjects.createRasterDataset(nb=10)
         self.assertIsInstance(ds, gdal.Dataset)
 
         self.assertListEqual([0, 1, 2], defaultBands(ds))
@@ -287,8 +333,5 @@ class testClassUtils(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    SHOW_GUI = False
     unittest.main()
-
-QGIS_APP.quit()
 

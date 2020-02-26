@@ -1,15 +1,16 @@
-from os.path import join, dirname
-enmap = join(dirname(__file__), 'enmap.tif')
-hymap = join(dirname(__file__), 'hymap.tif')
-speclib = join(dirname(__file__), 'speclib.sli')
-testvectordata = join(dirname(__file__), 'testvectordata.gpkg')
+import pathlib
+enmap = (pathlib.Path(__file__).parent / 'enmap.tif').as_posix()
+hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()
+speclib = (pathlib.Path(__file__).parent /  'speclib.sli').as_posix()
+speclib_labeled = (pathlib.Path(__file__).parent / 'library_berlin.sli').as_posix()
+testvectordata = (pathlib.Path(__file__).parent / 'testvectordata.gpkg').as_posix()
 landcover = testvectordata + '|layername=landcover'
 enmap_pixel = testvectordata + '|layername=enmap_pixel'
 
 
-DIR_ECOSIS = join(dirname(__file__), 'ecosis')
-DIR_SPECCHIO = join(dirname(__file__), 'specchio')
-ecosis_csv = join(DIR_ECOSIS, 'ecosis.csv')
-DIR_ASD_BIN = join(dirname(__file__), *['asd', 'bin'])
-DIR_ASD_TXT = join(dirname(__file__), *['asd', 'txt'])
-DIR_ARTMO = join(dirname(__file__), 'artmo')
+DIR_ECOSIS = (pathlib.Path(__file__).parent /  'ecosis').as_posix()
+DIR_SPECCHIO = (pathlib.Path(__file__).parent /  'specchio').as_posix()
+ecosis_csv = (pathlib.Path(__file__).parent / 'ecosis.csv').as_posix()
+DIR_ASD_BIN = (pathlib.Path(__file__).parent / 'asd' / 'bin').as_posix()
+DIR_ASD_TXT = (pathlib.Path(__file__).parent / 'asd' / 'txt').as_posix()
+DIR_ARTMO = (pathlib.Path(__file__).parent /  'artmo').as_posix()

@@ -12,6 +12,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 import numpy as np
 
+from .. import DIR_UI_FILES
 from ..utils import *
 
 class CrosshairStyle(object):
@@ -393,7 +394,7 @@ def nicePredecessor(l):
         return 0.0
 
 
-class CrosshairWidget(QWidget, loadUI('crosshairwidget.ui')):
+class CrosshairWidget(QWidget):
     """
     A widget to configurate a CrossHair
     """
@@ -401,7 +402,7 @@ class CrosshairWidget(QWidget, loadUI('crosshairwidget.ui')):
 
     def __init__(self, title='<#>', parent=None):
         super(CrosshairWidget, self).__init__(parent)
-        self.setupUi(self)
+        loadUi(DIR_UI_FILES / 'crosshairwidget.ui')
 
         self.mapCanvas.setExtent(QgsRectangle(0, 0, 1, 1))  #
 

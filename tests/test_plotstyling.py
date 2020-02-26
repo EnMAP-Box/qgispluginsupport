@@ -23,24 +23,17 @@ from qgis.gui import *
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import *
-from qps.testing import initQgisApplication
-
+from qps.testing import TestCase
 from qps.plotstyling.plotstyling import *
 
-print('INIT QGIS APPLICATION')
-QAPP = initQgisApplication()
-SHOW_GUI = False and os.environ.get('CI') is None
+class PlotStyleTests(TestCase):
 
-class PlotStyleTests(unittest.TestCase):
-
-    def setUp(self):
-        pass
 
     def create_vectordataset(self)->QgsVectorLayer:
         vl = QgsVectorLayer("Point?crs=EPSG:4326", 'test', "memory")
         vl.startEditing()
 
-        vl.addAttribute(QgsField(name='fStyle', type=QVariant.String,typeName='varchar',len=500))
+        vl.addAttribute(QgsField(name='fStyle', type=QVariant.String,typeName='varchar', len=500))
         vl.addAttribute(QgsField(name='fString', type=QVariant.String, typeName='varchar', len=50))
         vl.addAttribute(QgsField(name='fInt', type=QVariant.Int, typeName='int'))
         vl.addAttribute(QgsField(name='fDouble', type=QVariant.Double))
@@ -57,11 +50,7 @@ class PlotStyleTests(unittest.TestCase):
 
         bt.sigPlotStyleChanged.connect(onChanged)
 
-
-
-        if SHOW_GUI:
-            bt.show()
-            QAPP.exec_()
+        self.showGui(bt)
 
     def test_json(self):
 
@@ -91,10 +80,8 @@ class PlotStyleTests(unittest.TestCase):
     def test_PlotStyleWidget(self):
         from qps.plotstyling.plotstyling import PlotStyleWidget
         w = PlotStyleWidget()
-        w.show()
 
-        if SHOW_GUI:
-            QAPP.exec_()
+        self.showGui(w)
 
     def test_PlotStyleQgsAction(self):
 
@@ -154,9 +141,7 @@ class PlotStyleTests(unittest.TestCase):
         dualView.init(layer, canvas)
         dualView.setAttributeTableConfig(layer.attributeTableConfig())
 
-        if SHOW_GUI:
-            myWidget.show()
-            QAPP.exec_()
+        self.showGui(myWidget)
 
     def test_PlotStyleEditorWidgetFactory(self):
 
@@ -228,19 +213,11 @@ class PlotStyleTests(unittest.TestCase):
         f.setAttribute('fStyle', value)
         self.assertTrue(vl.updateFeature(f))
 
-        if SHOW_GUI:
-            w.show()
-            QAPP.exec_()
-
-
-       # qApp.exec_()
+        self.showGui(w)
 
 
 
 
 if __name__ == '__main__':
-    SHOW_GUI = False
     unittest.main()
 
-
-QAPP.quit()

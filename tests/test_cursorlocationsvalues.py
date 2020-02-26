@@ -20,14 +20,11 @@ from qgis.core import *
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
-from qps.testing import initQgisApplication, TestObjects
-QGIS_APP = initQgisApplication()
-from qps.utils import *
+from qps.testing import TestObjects, TestCase
+
 from qps.cursorlocationvalue import *
 
-SHOW_GUI = False and os.environ.get('CI') is None
-
-class CursorLocationTest(unittest.TestCase):
+class CursorLocationTest(TestCase):
 
     def setUp(self):
         self.wmsUri1 = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
@@ -76,17 +73,14 @@ class CursorLocationTest(unittest.TestCase):
             store.addMapLayer(lyr)
             canvas.setLayers([lyr])
             cldock = CursorLocationInfoDock()
-            cldock.show()
+
             self.assertIsInstance(cldock, CursorLocationInfoDock)
             cldock.cursorLocation() == center
             cldock.loadCursorLocation(center, canvas)
             point = cldock.cursorLocation()
             self.assertIsInstance(point, SpatialPoint)
 
-
-        if SHOW_GUI:
-
-            QGIS_APP.exec_()
+        self.showGui(cldock)
 
     def test_weblayertest(self):
 
@@ -103,7 +97,7 @@ class CursorLocationTest(unittest.TestCase):
         canvas.setLayers(layers)
         canvas.setCenter(center)
         cldock = CursorLocationInfoDock()
-        cldock.show()
+
 
         self.assertIsInstance(cldock, CursorLocationInfoDock)
 
@@ -111,17 +105,11 @@ class CursorLocationTest(unittest.TestCase):
         point = cldock.cursorLocation()
         self.assertIsInstance(point, SpatialPoint)
 
-
-        if SHOW_GUI:
-            QGIS_APP.exec_()
+        self.showGui([cldock, canvas])
 
 
 
 if __name__ == "__main__":
-    SHOW_GUI = False
 
     unittest.main()
 
-
-
-QGIS_APP.quit()

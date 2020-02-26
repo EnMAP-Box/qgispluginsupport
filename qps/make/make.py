@@ -1,11 +1,6 @@
-
-import xml.etree.ElementTree as ET
-#from ..testing import initQgisApplication
-#app = initQgisApplication()
-import qgis.testing
-qgis.testing.start_app()
 from ..utils import *
 from osgeo import gdal, ogr, osr
+import PyQt5.pyrcc_main
 
 DIR_QGIS_REPO = os.environ.get('DIR_QGIS_REPO')
 
@@ -179,7 +174,7 @@ def getDOMAttributes(elem):
     return values
 
 
-def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None):
+def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
     """
     Searches for *.ui files and compiles the *.qrc files they use.
     :param dirRoot: str, root directory, in which to search for *.qrc files or a list of *.ui file paths.
@@ -187,72 +182,105 @@ def searchAndCompileResourceFiles(dirRoot:str, targetDir:str=None):
            Defaults to the *.qrc's directory
     """
     # find ui files
-    assert os.path.isdir(dirRoot), '"dirRoot" is not a directory: {}'.format(dirRoot)
+    if not isinstance(dirRoot, pathlib.Path):
+        dirRoot = pathlib.Path(dirRoot)
+    assert dirRoot.is_dir(), '"dirRoot" is not a directory: {}'.format(dirRoot)
+    dirRoot = dirRoot.resolve()
+
     ui_files = list(file_search(dirRoot, '*.ui', recursive=True))
 
-    qrcs = set()
-
+    qrc_files = []
+    qrc_files_skipped = []
     doc = QDomDocument()
-    reg = re.compile(r'(?<=resource=")[^"]+\.qrc(?=")')
 
     for ui_file in ui_files:
-        pathDir = os.path.dirname(ui_file)
+        qrc_dir = pathlib.Path(ui_file).parent
         doc.setContent(QFile(ui_file))
         includeNodes = doc.elementsByTagName('include')
         for i in range(includeNodes.count()):
             attr = getDOMAttributes(includeNodes.item(i).toElement())
             if 'location' in attr.keys():
-                print((ui_file, str(attr['location'])))
-                qrcs.add((pathDir, str(attr['location'])))
+                location = attr['location']
+                qrc_path = (qrc_dir / pathlib.Path(location)).resolve()
+                if not qrc_path.exists():
+                    info = ['Broken *.qrc location in {}'.format(ui_file),
+                            ' `location="{}"`'.format(location)]
+                    print('\n'.join(info), file=sys.stderr)
+                    continue
 
-    #compile Qt resource files
-    #resourcefiles = file_search(ROOT, '*.qrc', recursive=True)
-    resourcefiles = list(qrcs)
-    assert len(resourcefiles) > 0
+                elif not qrc_path.as_posix().startswith(dirRoot.as_posix()):
+                    # skip resource files out of the root directory
+                    if not qrc_path in qrc_files_skipped:
+                        qrc_files_skipped.append(qrc_path)
 
-    qrcFiles = []
+                    continue
+                elif qrc_path not in qrc_files:
+                    qrc_files.append(qrc_path)
 
-    for root_dir, f in resourcefiles:
+    if len(qrc_files) == 0:
+        print('Did not find any *.qrc files in {}'.format(dirRoot), file=sys.stderr)
+        return
 
-        pathQrc = os.path.normpath(jp(root_dir, f))
-        if not os.path.exists(pathQrc):
-            print('Resource file does not exist: {}'.format(pathQrc))
-            continue
-        if pathQrc not in qrcFiles:
-            qrcFiles.append(pathQrc)
+    print('Compile {} *.qrc files:'.format(len(qrc_files)))
+    for qrcFile in qrc_files:
+        compileResourceFile(qrcFile, targetDir=targetDir, suffix=suffix)
 
-    print('Compile {} *.qrc files'.format(len(qrcFiles)))
-    for qrcFiles in qrcFiles:
-        compileResourceFile(qrcFiles, targetDir=targetDir)
+    if len(qrc_files_skipped) > 0:
+        print('Skipped *.qrc files (out of root directory):')
+        for qrcFile in qrc_files_skipped:
+            print(qrcFile.as_posix())
 
-
-def compileResourceFile(pathQrc:str, targetDir:str=None):
+def compileResourceFile(pathQrc, targetDir=None, suffix:str='_rc.py', compressLevel=7, compressThreshold=100):
     """
     Compiles a *.qrc file
     :param pathQrc:
     :return:
     """
-    assert isinstance(pathQrc, str)
-    assert os.path.isfile(pathQrc)
-    assert pathQrc.endswith('.qrc')
+    if not isinstance(pathQrc, pathlib.Path):
+        pathQrc = pathlib.Path(pathQrc)
 
-    bn = os.path.basename(pathQrc)
-    if isinstance(targetDir, str):
-        os.makedirs(targetDir, exist_ok=True)
-        dn = targetDir
+    assert isinstance(pathQrc, pathlib.Path)
+    assert pathQrc.name.endswith('.qrc')
+
+    if targetDir is None:
+        targetDir = pathQrc.parent
+    elif not isinstance(targetDir, pathlib.Path):
+        targetDir = pathlib.Path(targetDir)
+
+    assert isinstance(targetDir, pathlib.Path)
+    targetDir = targetDir.resolve()
+
+
+    cwd = pathlib.Path(pathQrc).parent
+
+    pathPy = targetDir / (os.path.splitext(pathQrc.name)[0] + suffix)
+
+    last_cwd = os.getcwd()
+    os.chdir(cwd)
+
+    cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
+    cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
+    #print(cmd)
+
+    if True:
+        last_level = PyQt5.pyrcc_main.compressLevel
+        last_threshold = PyQt5.pyrcc_main.compressThreshold
+
+        # increase compression level and move to *.qrc's directory
+        PyQt5.pyrcc_main.compressLevel = compressLevel
+        PyQt5.pyrcc_main.compressThreshold = compressThreshold
+
+        assert PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)
+
+        # restore previous settings
+        PyQt5.pyrcc_main.compressLevel = last_level
+        PyQt5.pyrcc_main.compressThreshold = last_threshold
     else:
-        dn = os.path.dirname(pathQrc)
+        print(cmd2)
+        os.system(cmd2)
 
-    bn = os.path.splitext(bn)[0]
-    pathPy = os.path.join(dn, bn + '.py')
+    os.chdir(last_cwd)
 
-    try:
-        from PyQt5.pyrcc_main import processResourceFile
-        assert processResourceFile([pathQrc], pathPy, False)
-    except Exception as ex:
-        cmd = 'pyrcc5 -o {} {}'.format(pathPy, pathQrc)
-        print(cmd)
-        os.system(cmd)
 
 def fileNeedsUpdate(file1, file2):
     """
@@ -270,22 +298,25 @@ def fileNeedsUpdate(file1, file2):
             return os.path.getmtime(file1) > os.path.getmtime(file2)
 
 
-def compileQGISResourceFiles(pathQGISRepo:str, target:str=None):
+def compileQGISResourceFiles(qgis_repo:str, target:str=None):
     """
     Searches for *qrc file in QGIS repository, compile them into <DIR_REPO>/qgisresources
-    :param pathQGISRepo: str, path to local QGIS repository
+    :param qgis_repo: str, path to local QGIS repository
     :param target: str, path to directory that contains the compiled QGIS resources. By default it will be
             `<REPOSITORY_ROOT>/qgisresources`
     """
-    if pathQGISRepo is None:
-        pathQGISRepo = os.environ.get('QGIS_REPOSITORY')
-        if isinstance(pathQGISRepo, str):
-            pathQGISRepo = pathQGISRepo.strip("'").strip('"')
+    if not isinstance(qgis_repo, pathlib.Path):
+        qgis_repo = pathlib.Path(qgis_repo)
+    assert isinstance(qgis_repo, pathlib.Path)
+    assert qgis_repo.is_dir()
+    assert (qgis_repo / 'images' /'images.qrc').is_file(), '{} is not the QGIS repository root'.format(qgis_repo.as_posix())
 
+    if target is None:
+        target = DIR_REPO / 'qgisresources'
 
-    if os.path.isdir(pathQGISRepo):
-        if not isinstance(target, str):
-            target = jp(DIR_REPO, 'qgisresources')
-        searchAndCompileResourceFiles(pathQGISRepo, targetDir=target)
-    else:
-        print('Unable to find local QGIS_REPOSITORY')
+    if not isinstance(target, pathlib.Path):
+        target = pathlib.Path(target)
+
+    os.makedirs(target, exist_ok=True)
+    compileResourceFiles(qgis_repo, targetDir=target)
+

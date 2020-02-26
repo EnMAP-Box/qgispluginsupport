@@ -1,21 +1,36 @@
 
 :: use this script to run unit tests locally
 ::
+@echo off
 set CI=True
-python3 runfirst.py
+
+WHERE python3 >nul 2>&1 && (
+    echo Found "python3" command
+    set PYTHON=python3
+) || (
+    echo Did not found "python3" command. use "python" instead
+    set PYTHON=python
+)
+
+start %PYTHON% runfirst.py
 
 mkdir test-reports
 mkdir test-reports\today
-python -m nose2 -s tests test_classificationscheme & move nose2-junit.xml test-reports/today/test_classificationscheme.xml
-python -m nose2 -s tests test_crosshair & move nose2-junit.xml test-reports/today/test_crosshair.xml
-python -m nose2 -s tests test_cursorlocationsvalues & move nose2-junit.xml test-reports/today/test_cursorlocationsvalues.xml
-python -m nose2 -s tests test_init & move nose2-junit.xml test-reports/today/test_init.xml
-python -m nose2 -s tests test_layerproperties & move nose2-junit.xml test-reports/today/test_layerproperties.xml
-python -m nose2 -s tests test_maptools & move nose2-junit.xml test-reports/today/test_maptools.xml
-python -m nose2 -s tests test_models & move nose2-junit.xml test-reports/today/test_models.xml
-python -m nose2 -s tests test_plotstyling & move nose2-junit.xml test-reports/today/test_plotstyling.xml
-python -m nose2 -s tests test_qgisinstance & move nose2-junit.xml test-reports/today/test_qgisinstance.xml
-python -m nose2 -s tests test_qgisissues & move nose2-junit.xml test-reports/today/test_qgisissues.xml
-python -m nose2 -s tests test_spectrallibraries & move nose2-junit.xml test-reports/today/test_spectrallibraries.xml
-python -m nose2 -s tests test_testing & move nose2-junit.xml test-reports/today/test_testing.xml
-python -m nose2 -s tests test_utils & move nose2-junit.xml test-reports/today/test_utils.xml
+%PYTHON% -m coverage run --rcfile=.coveragec   tests/test_classificationscheme.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_crosshair.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_cursorlocationsvalues.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_example.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_init.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_layerconfigwidgets.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_layerproperties.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_maptools.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_models.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_plotstyling.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_qgisissues.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_resources.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_speclib_core.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_speclib_gui.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_speclib_io.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_testing.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_utils.py
+%PYTHON% -m coverage report

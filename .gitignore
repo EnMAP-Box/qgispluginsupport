@@ -8,6 +8,7 @@ doc/build/
 .idea/*.*
 deploy/*
 temp/
+*/temp/
 doc/build/*
 vrtbuilder/ui/resources.py
 vrtbuilder/externals/qps/qpsresources.py
@@ -18,7 +19,8 @@ test-results/
 qgisresources/
 qgisresources/*
 qgisresources.zip
-
+*_rc.py
+.coverage
 qps/qpsresources.py
 qgisresources
 enmapboxtestdata/

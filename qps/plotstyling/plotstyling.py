@@ -22,8 +22,9 @@
 
 import os, json, sys
 
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ..utils import *
@@ -492,12 +493,16 @@ class PlotStyle(QObject):
         self.__dict__.update(state)
 
 
-class PlotStyleWidget(QWidget, loadUI('plotstylewidget.ui')):
+class PlotStyleWidget(QWidget):
     sigPlotStyleChanged = pyqtSignal(PlotStyle)
 
     def __init__(self, title='<#>', parent=None, x=None, y=None, plotStyle:PlotStyle=PlotStyle()):
         super(PlotStyleWidget, self).__init__(parent)
-        self.setupUi(self)
+
+        ui_file = pathlib.Path(__file__).parent / 'plotstylewidget.ui'
+        assert ui_file.is_file()
+        loadUi(ui_file, self)
+
         assert isinstance(self.plotWidget, pg.PlotWidget)
 
         self.mBlockUpdates = False

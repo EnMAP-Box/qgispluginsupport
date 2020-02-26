@@ -6,49 +6,33 @@
 image: qgis/qgis
 
 pipelines:
-  default:
+  branches:
+    master, develop:
     - step:
-        services:
-          - docker
-        caches:
-          - docker
-          - pip
-        script: # Modify the commands below to build your repository.
-          - python3 -m pip install -r requirements.txt
-          # - Xvfb :1
-          # - xvfb-run
-          # - startx
-          # - pushd /usr/src
-          # - xvfb-run nose2-3
-          # - popd
+          services:
+            - docker
+          caches:
+            - docker
+            - pip
+            - qgisicons
+          script: # Modify the commands below to build your repository.
+            - python3 -m pip install -r requirements.txt
+            - apt-get update
+            - apt-get install -y xvfb
+            - apt-get install -y wget
+            - apt-get install -y unzip
+            - Xvfb :1 -screen 0 1024x768x16 &> xvfb.log  &
+            - ps aux | grep X
+            - DISPLAY=:1.0
+            - export DISPLAY
+            - python3 -m pip install -r requirements.txt
+            - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
+            - unzip qgisresources.zip
+            - ls
+            - python3 runfirst.py
+            - /bin/bash runtests.sh
 
-          - apt-get update
-          - apt-get install xvfb
-          - apt-get install -y wget
-          - apt-get install -y unzip
-          - Xvfb :1 -screen 0 1024x768x16 &> xvfb.log  &
-          - ps aux | grep X
-          - DISPLAY=:1.0
-          - export DISPLAY
-          - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
-          - unzip qgisresources.zip
 
-          #- python -m unittest discover tests "test_classificationscheme.py"
-          #- python -m unittest discover tests "test_crosshair.py"
-          #- python -m unittest discover tests "test_cursorlocationvalues.py"
-          #- python -m unittest discover tests "test_init.py"
-          #- python -m unittest discover tests "test_layerproperties.py"
-          #- python -m unittest discover tests "test_maptools.py"
-          #- python -m unittest discover tests "test_models.py"
-          #- python -m unittest discover tests "test_plotstyling.py"
-          #- python -m unittest discover tests "test_spectrallibraries.py"
-          #- python -m unittest discover tests "test_testing.py"
-          #- python -m unittest discover tests "test_utils.py"
-          # - python -m pip install pytest-cov
-          # - py.test --cov enmapbox --cov-report term-missing enmapboxtesting
-          #- python -m runfirst
-          #- python -m nose2 --verbose > test-results/reports_all_tests.txt
-          #- set +e
-          - python3 runfirst.py
-          - /bin/bash runtests.sh
-          #- set -e
+definitions:
+  caches:
+    qgisicons: qgisresources

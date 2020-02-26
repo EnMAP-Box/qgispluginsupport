@@ -1,30 +1,32 @@
+import pathlib, sys, site
+
 def setupRepository():
 
     import os
-    from qps.utils import file_search, dn, jp
-    from qps.make.make import searchAndCompileResourceFiles
-    root = os.path.dirname(os.path.realpath(__file__))
-    assert os.path.isdir(root), 'Unable to find root / repository directory: "{}" __file__ = {}'.format(root, __file__)
+    DIR_REPO = pathlib.Path(__file__).parent.resolve()
+    site.addsitedir(DIR_REPO)
+
+    from qps.make.make import compileResourceFiles
+
     makeQrc = False
     try:
         import os.path
         import qps.qpsresources
 
-        pathQrc = jp(root, *['qps', 'qpsresources.qrc'])
-        pathPy  = jp(root, *['qps', 'qpsresources.py'])
+        pathQrc = DIR_REPO / 'qps' / 'qpsresources.qrc'
+        pathPy  = DIR_REPO / 'qps' / 'qpsresources.py'
 
-        if not os.path.isfile(pathPy) or os.path.getmtime(pathPy) < os.path.getmtime(pathQrc):
+        if not pathPy.is_file() or os.path.getmtime(pathPy) < os.path.getmtime(pathQrc):
             makeQrc = True
-        else:
-            qps.qpsresources.qInitResources()
+
     except Exception as ex:
         # compile resources
         makeQrc = True
 
     if makeQrc:
         print('Need to create qpsresources.py')
-        print('Start *.qrc search  in {}'.format(root))
-        searchAndCompileResourceFiles(root)
+        print('Start *.qrc search  in {}'.format(DIR_REPO))
+        compileResourceFiles(DIR_REPO)
     else:
         print('qpsresources.py exists and is up-to-date')
 
