@@ -65,7 +65,7 @@ def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
                     qrc_files.append(qrc_path)
 
     for file in file_search(dirRoot, '*.qrc', recursive=True):
-        file = pathlib.Path(file).as_posix()
+        file = pathlib.Path(file)
         if file not in qrc_files:
             qrc_files.append(file)
 
@@ -74,8 +74,27 @@ def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
         return
 
     print('Compile {} *.qrc files:'.format(len(qrc_files)))
+    targetDirOutputNames = []
     for qrcFile in qrc_files:
-        compileResourceFile(qrcFile, targetDir=targetDir, suffix=suffix)
+        assert isinstance(qrcFile, pathlib.Path)
+        # in case of similar base names, use different output names
+        # e.g. make
+        #  src/images.qrc
+        #  src/sub/images.qrc
+        # to
+        #  targetDir/images_rc.py
+        #  targetDir/images2_rc.py
+        bn = os.path.splitext(qrcFile.name)[0]
+        s = suffix
+        i = 1
+        outName = '{}{}'.format(bn, s)
+        while outName in targetDirOutputNames:
+            i += 1
+            s = '{}{}'.format(i, suffix)
+            outName = '{}{}'.format(bn, s)
+
+        compileResourceFile(qrcFile, targetDir=targetDir, suffix=s)
+        targetDirOutputNames.append(outName)
 
     if len(qrc_files_skipped) > 0:
         print('Skipped *.qrc files (out of root directory):')
@@ -270,7 +289,7 @@ def printResources():
 
 
 
-def showResources():
+def showResources()->QWidget:
     """
     A simple way to list available Qt resources
     :return:
@@ -278,16 +297,33 @@ def showResources():
     """
     needQApp = not isinstance(QApplication.instance(), QApplication)
     if needQApp:
-        from .testing import start_app
-        start_app()
+        app = QApplication([])
+    scrollArea = QScrollArea()
 
-    global browser
-    browser = ResourceBrowser()
-    browser.show()
+    widget = QFrame()
+    grid = QGridLayout()
+    iconSize = QSize(25, 25)
+    row = 0
+    for resourcePath in scanResources(':'):
+        labelText = QLabel(resourcePath)
+        labelText.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        labelIcon = QLabel()
+        icon = QIcon(resourcePath)
+        assert not icon.isNull()
 
+        labelIcon.setPixmap(icon.pixmap(iconSize))
+
+        grid.addWidget(labelText, row, 0)
+        grid.addWidget(labelIcon, row, 1)
+        row += 1
+
+    widget.setLayout(grid)
+    widget.setMinimumSize(widget.sizeHint())
+    scrollArea.setWidget(widget)
+    scrollArea.show()
     if needQApp:
         QApplication.instance().exec_()
-
+    return scrollArea
 
 
 
