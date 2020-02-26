@@ -53,22 +53,21 @@ URL_WIKI = r'https://api.bitbucket.org/2.0/repositories/hu-geomatics/enmap-box/w
 class QGISMetadataFileWriter(object):
 
     def __init__(self):
-        self.mName = None
-
-        self.mDescription = None
-        self.mVersion = None
+        self.mName = ''
+        self.mDescription = ''
+        self.mVersion = ''
         self.mQgisMinimumVersion = '3.8'
         self.mQgisMaximumVersion = '3.99'
-        self.mAuthor = None
-        self.mAbout = None
-        self.mEmail = None
-        self.mHomepage = None
-        self.mIcon = None
-        self.mTracker = None
-        self.mRepository = None
-        self.mIsExperimental = False
-        self.mTags = None
-        self.mCategory = None
+        self.mAuthor = ''
+        self.mAbout = ''
+        self.mEmail = ''
+        self.mHomepage = ''
+        self.mIcon = ''
+        self.mTracker = ''
+        self.mRepository = ''
+        self.mIsExperimental = ''
+        self.mTags = ''
+        self.mCategory = ''
         self.mChangelog = ''
 
     def validate(self)->bool:
@@ -132,17 +131,6 @@ class QGISMetadataFileWriter(object):
     def writeMetadataTxt(self, path:str):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(self.metadataString())
-        # read again and run checks
-        import pyplugin_installer.installer_data
-
-        # test if we could read the plugin
-        import pyplugin_installer.installer_data
-        P = pyplugin_installer.installer_data.Plugins()
-        plugin = P.getInstalledPlugin(self.mName, os.path.dirname(path), True)
-
-        #if hasattr(pyplugin_installer.installer_data, 'errorDetails'):
-        #    raise Exception('plugin structure/metadata error:\n{}'.format(pyplugin_installer.installer_data.errorDetails))
-        s = ""
 
 
 
