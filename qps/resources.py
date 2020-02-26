@@ -3,9 +3,170 @@ import sys, os, pathlib, typing, re
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtCore import *
+from qgis.PyQt.QtXml import *
 from qgis.PyQt.QtSvg import QGraphicsSvgItem
 
+from .utils import file_search, findUpwardPath
 REGEX_FILEXTENSION_IMAGE = re.compile(r'\.([^.]+)$')
+
+
+def getDOMAttributes(elem):
+    assert isinstance(elem, QDomElement)
+    values = dict()
+    attributes = elem.attributes()
+    for a in range(attributes.count()):
+        attr = attributes.item(a)
+        values[str(attr.nodeName())] = attr.nodeValue()
+    return values
+
+
+
+def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
+    """
+    Searches for *.ui files and compiles the *.qrc files they use.
+    :param dirRoot: str, root directory, in which to search for *.qrc files or a list of *.ui file paths.
+    :param targetDir: str, output directory to write the compiled *.py files to.
+           Defaults to the *.qrc's directory
+    """
+    # find ui files
+    if not isinstance(dirRoot, pathlib.Path):
+        dirRoot = pathlib.Path(dirRoot)
+    assert dirRoot.is_dir(), '"dirRoot" is not a directory: {}'.format(dirRoot)
+    dirRoot = dirRoot.resolve()
+
+    ui_files = list(file_search(dirRoot, '*.ui', recursive=True))
+
+    qrc_files = []
+    qrc_files_skipped = []
+    doc = QDomDocument()
+
+    for ui_file in ui_files:
+        qrc_dir = pathlib.Path(ui_file).parent
+        doc.setContent(QFile(ui_file))
+        includeNodes = doc.elementsByTagName('include')
+        for i in range(includeNodes.count()):
+            attr = getDOMAttributes(includeNodes.item(i).toElement())
+            if 'location' in attr.keys():
+                location = attr['location']
+                qrc_path = (qrc_dir / pathlib.Path(location)).resolve()
+                if not qrc_path.exists():
+                    info = ['Broken *.qrc location in {}'.format(ui_file),
+                            ' `location="{}"`'.format(location)]
+                    print('\n'.join(info), file=sys.stderr)
+                    continue
+
+                elif not qrc_path.as_posix().startswith(dirRoot.as_posix()):
+                    # skip resource files out of the root directory
+                    if not qrc_path in qrc_files_skipped:
+                        qrc_files_skipped.append(qrc_path)
+
+                    continue
+                elif qrc_path not in qrc_files:
+                    qrc_files.append(qrc_path)
+
+    for file in file_search(dirRoot, '*.qrc', recursive=True):
+        file = pathlib.Path(file).as_posix()
+        if file not in qrc_files:
+            qrc_files.append(file)
+
+    if len(qrc_files) == 0:
+        print('Did not find any *.qrc files in {}'.format(dirRoot), file=sys.stderr)
+        return
+
+    print('Compile {} *.qrc files:'.format(len(qrc_files)))
+    for qrcFile in qrc_files:
+        compileResourceFile(qrcFile, targetDir=targetDir, suffix=suffix)
+
+    if len(qrc_files_skipped) > 0:
+        print('Skipped *.qrc files (out of root directory):')
+        for qrcFile in qrc_files_skipped:
+            print(qrcFile.as_posix())
+
+def compileResourceFile(pathQrc, targetDir=None, suffix:str='_rc.py', compressLevel=7, compressThreshold=100):
+    """
+    Compiles a *.qrc file
+    :param pathQrc:
+    :return:
+    """
+    if not isinstance(pathQrc, pathlib.Path):
+        pathQrc = pathlib.Path(pathQrc)
+
+    assert isinstance(pathQrc, pathlib.Path)
+    assert pathQrc.name.endswith('.qrc')
+    print('Compile {}...'.format(pathQrc))
+    if targetDir is None:
+        targetDir = pathQrc.parent
+    elif not isinstance(targetDir, pathlib.Path):
+        targetDir = pathlib.Path(targetDir)
+
+    assert isinstance(targetDir, pathlib.Path)
+    targetDir = targetDir.resolve()
+
+
+    cwd = pathlib.Path(pathQrc).parent
+
+    pathPy = targetDir / (os.path.splitext(pathQrc.name)[0] + suffix)
+
+    last_cwd = os.getcwd()
+    os.chdir(cwd)
+
+    cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
+    cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
+    #print(cmd)
+
+    import PyQt5.pyrcc_main
+
+    if True:
+        last_level = PyQt5.pyrcc_main.compressLevel
+        last_threshold = PyQt5.pyrcc_main.compressThreshold
+
+        # increase compression level and move to *.qrc's directory
+        PyQt5.pyrcc_main.compressLevel = compressLevel
+        PyQt5.pyrcc_main.compressThreshold = compressThreshold
+
+        assert PyQt5.pyrcc_main.processResourceFile([pathQrc.name], pathPy.as_posix(), False)
+
+        # restore previous settings
+        PyQt5.pyrcc_main.compressLevel = last_level
+        PyQt5.pyrcc_main.compressThreshold = last_threshold
+    else:
+        print(cmd2)
+        os.system(cmd2)
+
+    os.chdir(last_cwd)
+
+
+def compileQGISResourceFiles(qgis_repo:str, target:str=None):
+    """
+    Searches for *.qrc files in the QGIS repository and compile them to <target>
+
+    :param qgis_repo: str, path to local QGIS repository.
+    :param target: str, path to directory that contains the compiled QGIS resources. By default it will be
+            `<REPOSITORY_ROOT>/qgisresources`.
+    """
+
+    if qgis_repo is None:
+        for k in ['QGIS_REPO', 'QGIS_REPOSITORY']:
+            if k in os.environ.keys():
+                qgis_repo = pathlib.Path(os.environ[k])
+                break
+
+    if not isinstance(qgis_repo, pathlib.Path):
+        qgis_repo = pathlib.Path(qgis_repo)
+    assert isinstance(qgis_repo, pathlib.Path)
+    assert qgis_repo.is_dir()
+    assert (qgis_repo / 'images' /'images.qrc').is_file(), '{} is not the QGIS repository root'.format(qgis_repo.as_posix())
+
+    if target is None:
+        DIR_REPO = findUpwardPath(__file__, '.git')
+        target = DIR_REPO / 'qgisresources'
+
+    if not isinstance(target, pathlib.Path):
+        target = pathlib.Path(target)
+
+    os.makedirs(target, exist_ok=True)
+    compileResourceFiles(qgis_repo, targetDir=target)
+
 
 def initQtResources(roots: list = []):
     """
@@ -343,4 +504,5 @@ class ResourceBrowser(QWidget):
 
     def useFilterRegex(self)->bool:
         return self.optionUseRegex.isChecked()
+
 

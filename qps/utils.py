@@ -62,8 +62,7 @@ def mkDir(d, delete=False):
         os.makedirs(d)
 
 
-# for python development only. try to find a qgisresources directory
-DIR_QGISRESOURCES = None
+
 
 # a QPS internal map layer store
 QPS_MAPLAYER_STORE = QgsMapLayerStore()
@@ -72,8 +71,9 @@ QPS_MAPLAYER_STORE = QgsMapLayerStore()
 MAP_LAYER_STORES = [QPS_MAPLAYER_STORE, QgsProject.instance()]
 
 
-def findUpwardPath(basepath, name, isDirectory=True):
+def findUpwardPath(basepath, name, isDirectory=True)->pathlib.Path:
     """
+    Searches for an file or directory in an upward path of the base path
 
     :param basepath:
     :param name:
@@ -84,13 +84,10 @@ def findUpwardPath(basepath, name, isDirectory=True):
     while tmp != pathlib.Path(tmp.anchor):
         if (isDirectory and os.path.isdir(tmp / name)) or \
             os.path.isfile(tmp / name):
-            return str(tmp / name)
+            return tmp / name
         else:
             tmp = tmp.parent
     return None
-
-
-DIR_QGISRESOURCES = findUpwardPath(__file__, 'qgisresources')
 
 
 def file_search(rootdir, pattern, recursive=False, ignoreCase=False, directories=False, fullpath=False):

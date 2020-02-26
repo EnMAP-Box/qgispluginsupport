@@ -1,25 +1,19 @@
 import pathlib, os, zipfile, sys
 
-if __name__ == '__main__':
+def create_qgis_resource_file(qgis_repo=None):
 
-    import getopt
-    try:
-        print(sys.argv)
-        opts, qgis_repo = getopt.getopt(sys.argv[1:], "")
-    except getopt.GetoptError as err:
-        print(err)
-    if len(qgis_repo) == 0:
-        assert 'QGIS_REPO' in os.environ.keys(), 'QGIS_REPO is not specified'
-        qgis_repo = os.environ['QGIS_REPO']
-    else:
-        qgis_repo = qgis_repo[0]
 
-    QGIS_REPO = pathlib.Path(qgis_repo)
-    from qps.make.make import compileQGISResourceFiles
+    from qps.utils import findUpwardPath
+    from qps.resources import compileQGISResourceFiles
+    REPO = findUpwardPath(pathlib.Path(__file__).resolve(), '.git')
+
+    assert isinstance(REPO, pathlib.Path) and REPO.is_dir()
+    REPO = REPO.parent
+
     TARGET_DIR = pathlib.Path(__file__).parents[1] / 'qgisresources'
     TARGET_ZIP = pathlib.Path(__file__).parents[1] / 'qgisresources.zip'
 
-    compileQGISResourceFiles(QGIS_REPO, TARGET_DIR)
+    compileQGISResourceFiles(qgis_repo, TARGET_DIR)
 
     # create the zip file that contains all PLUGIN_FILES
     with zipfile.ZipFile(TARGET_ZIP, 'w', compression=zipfile.ZIP_DEFLATED) as f:
@@ -28,3 +22,15 @@ if __name__ == '__main__':
                 path = pathlib.Path(entry.path)
                 arcName = path.relative_to(TARGET_DIR).as_posix()
                 f.write(path, arcname=arcName)
+
+if __name__ == '__main__':
+
+    import getopt
+    try:
+        print(sys.argv)
+        opts, qgis_repo = getopt.getopt(sys.argv[1:], "")
+    except getopt.GetoptError as err:
+        print(err)
+
+    create_qgis_resource_file()
+
