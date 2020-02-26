@@ -217,6 +217,11 @@ def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
                 elif qrc_path not in qrc_files:
                     qrc_files.append(qrc_path)
 
+    for file in file_search(dirRoot, '*.qrc', recursive=True):
+        file = pathlib.Path(file).as_posix()
+        if file not in qrc_files:
+            qrc_files.append(file)
+
     if len(qrc_files) == 0:
         print('Did not find any *.qrc files in {}'.format(dirRoot), file=sys.stderr)
         return
