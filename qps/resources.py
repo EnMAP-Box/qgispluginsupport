@@ -270,7 +270,7 @@ def printResources():
 
 
 
-def showResources()->QWidget:
+def showResources():
     """
     A simple way to list available Qt resources
     :return:
@@ -278,33 +278,16 @@ def showResources()->QWidget:
     """
     needQApp = not isinstance(QApplication.instance(), QApplication)
     if needQApp:
-        app = QApplication([])
-    scrollArea = QScrollArea()
+        from .testing import start_app
+        start_app()
 
-    widget = QFrame()
-    grid = QGridLayout()
-    iconSize = QSize(25, 25)
-    row = 0
-    for resourcePath in scanResources(':'):
-        labelText = QLabel(resourcePath)
-        labelText.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        labelIcon = QLabel()
-        icon = QIcon(resourcePath)
-        assert not icon.isNull()
+    global browser
+    browser = ResourceBrowser()
+    browser.show()
 
-        labelIcon.setPixmap(icon.pixmap(iconSize))
-
-        grid.addWidget(labelText, row, 0)
-        grid.addWidget(labelIcon, row, 1)
-        row += 1
-
-    widget.setLayout(grid)
-    widget.setMinimumSize(widget.sizeHint())
-    scrollArea.setWidget(widget)
-    scrollArea.show()
     if needQApp:
         QApplication.instance().exec_()
-    return scrollArea
+
 
 
 
