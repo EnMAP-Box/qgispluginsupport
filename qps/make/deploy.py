@@ -36,7 +36,7 @@ class QGISMetadataFileWriter(object):
         self.mTracker = ''
         self.mRepository = ''
         self.mIsExperimental = ''
-        self.mTags = ''
+        self.mTags = []
         self.mCategory = ''
         self.mChangelog = ''
 
