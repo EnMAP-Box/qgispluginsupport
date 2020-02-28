@@ -37,7 +37,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
     @staticmethod
-    def readFrom(path, progressDialog:QProgressDialog=None, addAttributes:bool = True)->SpectralLibrary:
+    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, addAttributes:bool = True)->SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -75,7 +75,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         return speclib
 
     @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:QProgressDialog=None, options:QgsVectorFileWriter.SaveVectorOptions=None):
+    def write(speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, options:QgsVectorFileWriter.SaveVectorOptions=None):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """

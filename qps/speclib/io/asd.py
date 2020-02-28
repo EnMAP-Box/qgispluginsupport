@@ -174,8 +174,6 @@ class ASDBinaryFile(object):
     Wrapper class to access a ASD File Format binary file.
     See ASD File Format, version 8, revision B, ASD Inc., a PANalytical company, 2555 55th Street, Suite 100 Boulder, CO 80301.
     """
-
-
     def __init__(self):
         super(ASDBinaryFile, self).__init__()
 
@@ -226,7 +224,6 @@ class ASDBinaryFile(object):
         self.SmartDetectorType = None
         self.spare = None
 
-
         self.Spectrum = None
         self.ReferenceFlag = None
         self.ReferenceTime = None
@@ -234,24 +231,18 @@ class ASDBinaryFile(object):
         self.SpectrumDescription = None
         self.Reference = None
 
-
-    def xValues(self)->np.ndarray:
+    def xValues(self) -> np.ndarray:
         values = np.linspace(self.ch1_wavel, self.ch1_wavel + self.channels * self.wavel_step - 1, self.channels)
         return values
 
-
-    def yValues(self)->np.ndarray:
+    def yValues(self) -> np.ndarray:
         return self.Spectrum
-
 
     def readFromBinaryFile(self, path: str):
         with open(path, 'rb') as f:
-
             DATA = f.read()
-
             def sub(start, len):
                 return DATA[start:start + len]
-
 
             self.co = DATA[0:3].decode('utf-8')
             self.comments = DATA[3:(3 + 157)].decode('utf-8')
@@ -321,7 +312,6 @@ class ASDBinaryFile(object):
 
 class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
 
-
     @staticmethod
     def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
@@ -342,7 +332,6 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
         a = menu.addAction('ASD')
         a.setToolTip('Loads ASD FieldSpec files (binary or text)')
         a.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
-
 
     @staticmethod
     def canRead(path, binary:bool=None)->bool:
@@ -399,7 +388,7 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
     @staticmethod
-    def readFrom(pathes:typing.Union[str, list], asdFields:typing.Iterable[str] = None, progressDialog:QProgressDialog=None)->SpectralLibrary:
+    def readFrom(pathes:typing.Union[str, list], asdFields:typing.Iterable[str] = None, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
         """
         :param pathes: list of source paths
         :param asdFields: list of header information to be extracted from ASD binary files
@@ -453,7 +442,6 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
                     p.setValues(asd.xValues(), asd.yValues(), xUnit='nm')
                     profiles.append(p)
             elif ASDSpectralLibraryIO.canRead(filePath, binary=False):
-
 
                 with open(filePath, 'r', encoding='utf-8') as f:
                     profiles = []

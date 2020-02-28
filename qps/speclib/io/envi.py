@@ -32,29 +32,29 @@ from osgeo import gdal, gdal_array
 from ..core import *
 
 #lookup GDAL Data Type and its size in bytes
-LUT_GDT_SIZE = {gdal.GDT_Byte:1,
-                gdal.GDT_UInt16:2,
-                gdal.GDT_Int16:2,
-                gdal.GDT_UInt32:4,
-                gdal.GDT_Int32:4,
-                gdal.GDT_Float32:4,
-                gdal.GDT_Float64:8,
-                gdal.GDT_CInt16:2,
-                gdal.GDT_CInt32:4,
-                gdal.GDT_CFloat32:4,
-                gdal.GDT_CFloat64:8}
+LUT_GDT_SIZE = {gdal.GDT_Byte: 1,
+                gdal.GDT_UInt16: 2,
+                gdal.GDT_Int16: 2,
+                gdal.GDT_UInt32: 4,
+                gdal.GDT_Int32: 4,
+                gdal.GDT_Float32: 4,
+                gdal.GDT_Float64: 8,
+                gdal.GDT_CInt16: 2,
+                gdal.GDT_CInt32: 4,
+                gdal.GDT_CFloat32: 4,
+                gdal.GDT_CFloat64: 8}
 
-LUT_GDT_NAME = {gdal.GDT_Byte:'Byte',
-                gdal.GDT_UInt16:'UInt16',
-                gdal.GDT_Int16:'Int16',
-                gdal.GDT_UInt32:'UInt32',
-                gdal.GDT_Int32:'Int32',
-                gdal.GDT_Float32:'Float32',
-                gdal.GDT_Float64:'Float64',
-                gdal.GDT_CInt16:'Int16',
-                gdal.GDT_CInt32:'Int32',
-                gdal.GDT_CFloat32:'Float32',
-                gdal.GDT_CFloat64:'Float64'}
+LUT_GDT_NAME = {gdal.GDT_Byte: 'Byte',
+                gdal.GDT_UInt16: 'UInt16',
+                gdal.GDT_Int16: 'Int16',
+                gdal.GDT_UInt32: 'UInt32',
+                gdal.GDT_Int32: 'Int32',
+                gdal.GDT_Float32: 'Float32',
+                gdal.GDT_Float64: 'Float64',
+                gdal.GDT_CInt16: 'Int16',
+                gdal.GDT_CInt32: 'Int32',
+                gdal.GDT_CFloat32: 'Float32',
+                gdal.GDT_CFloat64: 'Float64'}
 
 FILTER_SLI = 'ENVI Spectral Library (*.sli)'
 
@@ -62,7 +62,7 @@ CSV_PROFILE_NAME_COLUMN_NAMES = ['spectra names', 'name']
 CSV_GEOMETRY_COLUMN = 'wkt'
 
 
-def flushCacheWithoutException(dataset:gdal.Dataset):
+def flushCacheWithoutException(dataset: gdal.Dataset):
     """
     Tries to flush the gdal.Dataset cache up to 5 times, waiting 1 second in between.
     :param dataset: gdal.Dataset
@@ -358,7 +358,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         return 0
 
     @staticmethod
-    def readFrom(path, progressDialog:QProgressDialog=None):
+    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
         """
         Reads an ENVI Spectral Library (ESL).
         :param path: path to ENVI Spectral Library
@@ -496,7 +496,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         return SLIB
 
     @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:QProgressDialog):
+    def write(speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
         """
         Writes a SpectralLibrary as ENVI Spectral Library (ESL).
         See http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for ESL definition

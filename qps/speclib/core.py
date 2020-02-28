@@ -139,7 +139,10 @@ def speclibUiPath(name:str)->str:
 
 
 class ProgressHandler(QObject):
-
+    """
+    A class that mimics the QProgressDialog's functions to report progress.
+    Can be used e.g. in parallel threads if progress needs to be reported outside the main gui thread.
+    """
     canceled = pyqtSignal()
     progressChanged = pyqtSignal([int], [int, int, int])
 
@@ -1113,9 +1116,9 @@ class SpectralLibrary(QgsVectorLayer):
 
     # thanks to Ann for providing https://bitbucket.org/jakimowb/qgispluginsupport/issues/6/speclib-spectrallibrariespy
     @staticmethod
-    def readFromVector(vector_qgs_layer:QgsVectorLayer=None,
-                       raster_qgs_layer:QgsRasterLayer=None,
-                       progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None,
+    def readFromVector(vector_qgs_layer: QgsVectorLayer = None,
+                       raster_qgs_layer: QgsRasterLayer = None,
+                       progressDialog: typing.Union[QProgressDialog, ProgressHandler]=None,
                        nameField=None,
                        all_touched=False,
                        returnProfileList=False):
@@ -2426,7 +2429,7 @@ class AbstractSpectralLibraryIO(object):
         return False
 
     @staticmethod
-    def readFrom(path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
+    def readFrom(path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None)->SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of Spectral Library
