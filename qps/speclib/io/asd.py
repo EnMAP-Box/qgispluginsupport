@@ -404,7 +404,7 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
         sl = SpectralLibrary()
 
         profiles = []
-        asddFieldsInitialized = False
+        asdFieldsInitialized = False
 
         for filePath in pathes:
             bn = os.path.basename(filePath)
@@ -413,7 +413,7 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
                 asd = ASDBinaryFile().readFromBinaryFile(filePath)
                 if isinstance(asd, ASDBinaryFile):
 
-                    if not asddFieldsInitialized:
+                    if not asdFieldsInitialized:
                         sl.startEditing()
 
                         asdFields = [n for n in asdFields if n not in sl.fieldNames() and n in asd.__dict__.keys()]
@@ -424,7 +424,7 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
                             else:
                                 sl.addAttribute(createQgsField(n, v))
 
-                        asddFieldsInitialized = True
+                        asdFieldsInitialized = True
                         sl.commitChanges()
                         sl.startEditing()
 

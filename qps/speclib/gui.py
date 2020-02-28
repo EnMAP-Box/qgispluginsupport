@@ -2396,11 +2396,7 @@ class SpectralLibraryWidget(QMainWindow):
         if containsSpeclib(mimeData):
             dragEnterEvent.accept()
 
-
-
-
     def initActions(self):
-
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
         def onSetBlocked(isBlocked):
@@ -2424,7 +2420,6 @@ class SpectralLibraryWidget(QMainWindow):
         self.actionImportVectorSource.triggered.connect(self.onImportFromRasterSource)
         self.actionAddProfiles.triggered.connect(self.addCurrentSpectraToSpeclib)
         self.actionReloadProfiles.triggered.connect(self.onReloadProfiles)
-
 
         m = QMenu()
         #m.addAction(self.actionImportSpeclib)
