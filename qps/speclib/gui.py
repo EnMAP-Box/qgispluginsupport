@@ -2096,7 +2096,7 @@ class SpectralLibraryWidget(QMainWindow):
         automatically = 1
         block = 2
 
-    def __init__(self, *args, speclib:SpectralLibrary=None, mapCanvas=QgsMapCanvas, **kwds):
+    def __init__(self, *args, speclib:SpectralLibrary = None, mapCanvas:QgsMapCanvas = None, **kwds):
 
         """
         Constructor
