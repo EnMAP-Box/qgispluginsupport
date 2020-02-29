@@ -82,8 +82,9 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
 
     def renderer(self)->QgsRasterRenderer:
         oldRenderer = self.mLayer.renderer()
+        newRenderer = None
         if isinstance(oldRenderer, QgsSingleBandGrayRenderer):
-            newRenderer = self.renderer().clone()
+            newRenderer = oldRenderer.clone()
             newRenderer.setGrayBand(self.cbSingleBand.currentBand())
 
         elif isinstance(oldRenderer, QgsSingleBandPseudoColorRenderer):
