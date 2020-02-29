@@ -679,15 +679,8 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             if f.supportsLayer(self.mapLayer()) and f.supportLayerPropertiesDialog():
                 pageWidget = f.createWidget(self.mapLayer(), self.canvas(), dockWidget=False)
                 assert isinstance(pageWidget, QgsMapLayerConfigWidget)
-
-                # prefer panel widget's title or icon, as they might consider the type of QgsMapLayer
-                title = pageWidget.panelTitle()
-                if title in [None, '']:
-                    title = f.title()
-                icon = pageWidget.windowIcon()
-                if icon.isNull():
-                    icon = f.icon()
-
+                title = f.title()
+                icon = f.icon()
                 pageItem = QListWidgetItem(icon, title)
                 assert isinstance(pageItem, QListWidgetItem)
                 pageItem.setToolTip(pageWidget.toolTip())

@@ -202,11 +202,22 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def __init__(self):
         super(GDALMetadataConfigWidgetFactory, self).__init__('GDAL/OGR Metadata', QIcon(':/qps/ui/icons/edit_gdal_metadata.svg'))
+        self.mIsGDAL = False
+        self.mIsOGR = False
 
+        self.mIconGDAL = QIcon(':/qps/ui/icons/edit_gdal_metadata.svg')
+        self.mIconOGR  = QIcon(':/qps/ui/icons/edit_ogr_metadata.svg')
     def supportsLayer(self, layer):
-        is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
-        is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
-        return is_gdal or is_ogr
+        self.mIsGDAL = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
+        self.mIsOGR = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
+        return self.mIsGDAL or self.mIsOGR
+
+    def icon(self)->QIcon:
+        if self.mIsGDAL:
+            return QIcon(self.mIconGDAL)
+        if self.mIsOGR:
+            return QIcon(self.mIconOGR)
+        return QIcon()
 
     def supportLayerPropertiesDialog(self):
         return True
@@ -216,8 +227,13 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def createWidget(self, layer, canvas, dockWidget=True, parent=None)->GDALMetadataModelConfigWidget:
         w = GDALMetadataModelConfigWidget(layer, canvas, parent=parent)
+        w.setWindowTitle(self.title())
+        w.setWindowIcon(self.icon())
         return w
 
     def title(self)->str:
-        return 'GDAL Metadata'
-
+        if self.mIsGDAL:
+            return 'GDAL Metadata'
+        if self.mIsOGR:
+            return 'OGR Metadata'
+        return 'Metadata'
