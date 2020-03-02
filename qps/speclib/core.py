@@ -2029,8 +2029,11 @@ class SpectralLibrary(QgsVectorLayer):
         styles.setRowStyles([red])
     """
 
-    def addMissingFields(self, fields:QgsFields, copyEditorWidgetSetup:bool=True,):
-        """Adds missing fields"""
+    def addMissingFields(self, fields:QgsFields, copyEditorWidgetSetup:bool=True):
+        """
+        :param fields: list of QgsFields
+        :param copyEditorWidgetSetup: if True (default), the editor widget setup is copied for each field
+        """
         missingFields = []
         for field in fields:
             assert isinstance(field, QgsField)
