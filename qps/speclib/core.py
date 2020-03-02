@@ -35,7 +35,7 @@
 import json, enum, pickle, typing, pathlib
 from osgeo import osr
 from PyQt5.QtWidgets import *
-
+from qgis.gui import QgsGui
 from ..utils import *
 from ..speclib import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
 
@@ -1722,37 +1722,31 @@ class SpectralLibrary(QgsVectorLayer):
 
         return jsonData
 
-    def copyEditorWidgetSetup(self, vectorLayer:QgsVectorLayer):
-        """Copies the editor widget setup from another vector layer"""
-        assert isinstance(vectorLayer, QgsVectorLayer)
+    def copyEditorWidgetSetup(self, fields:typing.Union[QgsVectorLayer, typing.List[QgsField]]):
+        """
 
-        for i in range(vectorLayer.fields().count()):
-            fieldVector = vectorLayer.fields().at(i)
-            assert isinstance(fieldVector, QgsField)
+        :param fields:
+        :type fields:
+        :return:
+        :rtype:
+        """
+        """Copies the editor widget setup from another vector layer or list of QgsField"""
+        if isinstance(fields, QgsVectorLayer):
+            fields = fields.fields()
 
-            j = self.fields().indexOf(fieldVector.name())
-            # field does not exist
-            if j == -1:
+        for fSrc in fields:
+            assert isinstance(fSrc, QgsField)
+            idx = self.fields().indexOf(fSrc.name())
+
+            if idx == -1:
+                # field name does not exist
                 continue
-            fieldSpeclib = self.fields().at(i)
-            assert isinstance(fieldSpeclib, QgsField)
+            fDst = self.fields().at(idx)
+            assert isinstance(fDst, QgsField)
 
-            # field have different data type
-            if not fieldVector.type() == fieldSpeclib.type():
-                continue
-
-            setupNew = vectorLayer.editorWidgetSetup(i)
-            setupNow = self.editorWidgetSetup(j)
-            assert isinstance(setupNew, QgsEditorWidgetSetup)
-            assert isinstance(setupNow, QgsEditorWidgetSetup)
-            if not setupNew.isNull():
-                if setupNew.type() != '' and setupNew.type() != setupNow.type():
-                    setup = QgsEditorWidgetSetup(setupNew.type(), setupNew.config().copy())
-                    self.setEditorWidgetSetup(i, setup)
-
-                    s = ""
-
-
+            setup = fSrc.editorWidgetSetup()
+            if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(self, idx):
+                self.setEditorWidgetSetup(idx, setup)
 
     def writeJSONProperties(self, pathSPECLIB:str):
         """
@@ -2035,7 +2029,7 @@ class SpectralLibrary(QgsVectorLayer):
         styles.setRowStyles([red])
     """
 
-    def addMissingFields(self, fields:QgsFields):
+    def addMissingFields(self, fields:QgsFields, copyEditorWidgetSetup:bool=True,):
         """Adds missing fields"""
         missingFields = []
         for field in fields:
@@ -2044,13 +2038,12 @@ class SpectralLibrary(QgsVectorLayer):
             if i == -1:
                 missingFields.append(field)
 
-        for f in missingFields:
-            self.addAttribute(f)
-            s = ""
+        if len(missingFields) > 0:
+            for fOld in missingFields:
+                self.addAttribute(QgsField(fOld))
 
-        s = ""
-        #if len(missingFields) > 0:
-        #    self.dataProvider().addAttributes(missingFields)
+            if copyEditorWidgetSetup:
+                self.copyEditorWidgetSetup(missingFields)
 
 
     def addSpeclib(self, speclib,
@@ -2058,22 +2051,22 @@ class SpectralLibrary(QgsVectorLayer):
                    copyEditorWidgetSetup:bool=True,
                    progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
         """
-        Adds another SpectraLibrary
+        Adds profiles from another SpectraLibrary
         :param speclib: SpectralLibrary
-        :param addMissingFields: if True, add missing field
+        :param addMissingFields: if True (default), missing fields / attributes will be added automatically
+        :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied for each added field
+        :param progressDialog: QProgressDialog or qps.speclib.core.ProgressHandler
         """
         assert isinstance(speclib, SpectralLibrary)
 
-        self.addProfiles(speclib, addMissingFields=addMissingFields, progressDialog=progressDialog)
-
-
-        if copyEditorWidgetSetup:
-            self.copyEditorWidgetSetup(speclib)
-
-
+        self.addProfiles(speclib,
+                         addMissingFields=addMissingFields,
+                         copyEditorWidgetSetup=copyEditorWidgetSetup,
+                         progressDialog=progressDialog)
 
     def addProfiles(self, profiles:typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
-                    addMissingFields:bool=None,
+                    addMissingFields:bool=None, \
+                    copyEditorWidgetSetup: bool = True, \
                     progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
 
         if isinstance(profiles, SpectralProfile):
@@ -2111,10 +2104,9 @@ class SpectralLibrary(QgsVectorLayer):
                 progressDialog.setValue(nAdded)
 
         for i, pSrc in enumerate(profiles):
-            #print(i)
             if i == 0:
                 if addMissingFields:
-                    self.addMissingFields(pSrc.fields())
+                    self.addMissingFields(pSrc.fields(), copyEditorWidgetSetup=copyEditorWidgetSetup)
 
                 for iSrc, srcName in enumerate(pSrc.fields().names()):
                     if srcName == FIELD_FID:

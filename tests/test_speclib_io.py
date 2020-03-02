@@ -724,7 +724,6 @@ class TestIO(TestCase):
         sl.addSpeclib(sl1)
         self.assertTrue(sl.commitChanges())
 
-
         for name in classValueFields:
             i = sl.fields().indexFromName(name)
             j = sl1.fields().indexFromName(name)
@@ -736,7 +735,21 @@ class TestIO(TestCase):
             self.assertEqual(setupNew.type(), RasterClassificationKey,
                              msg='EditorWidget type is "{}" not "{}"'.format(setupNew.type(), setupOld.type()))
 
-        s = ""
+        sl = SpectralLibrary()
+        sl.startEditing()
+        sl.addSpeclib(sl1, copyEditorWidgetSetup=False)
+        self.assertTrue(sl.commitChanges())
+
+        for name in classValueFields:
+            i = sl.fields().indexFromName(name)
+            j = sl1.fields().indexFromName(name)
+            self.assertTrue(i > 0)
+            self.assertTrue(j > 0)
+            setupNew = sl.editorWidgetSetup(i)
+            setupOld = sl1.editorWidgetSetup(j)
+            self.assertEqual(setupOld.type(), RasterClassificationKey)
+            self.assertNotEqual(setupNew.type(), RasterClassificationKey)
+
 
 
 if __name__ == '__main__':
