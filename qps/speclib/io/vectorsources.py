@@ -1,12 +1,14 @@
 
-import os, sys, re, pathlib, json, io, re, linecache
+import os, sys, re, pathlib, json, io, re, linecache, typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.core import *
 
 
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, OGR_EXTENSION2DRIVER
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
+    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, OGR_EXTENSION2DRIVER, \
+    ProgressHandler
 
 class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     """

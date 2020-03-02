@@ -693,8 +693,9 @@ class TestIO(TestCase):
 
         from qpstestdata import speclib_labeled as pathESL
         from qps import registerEditorWidgets
+        from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY as RasterClassificationKey
         registerEditorWidgets()
-        csv = readCSVMetadata(pathESL)
+
 
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=QProgressDialog())
 
@@ -702,6 +703,7 @@ class TestIO(TestCase):
         p0 = sl1[0]
         self.assertIsInstance(p0, SpectralProfile)
         self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
+
 
         setupTypes = []
         setupConfigs = []
@@ -711,26 +713,28 @@ class TestIO(TestCase):
             setupTypes.append(setup.type())
             setupConfigs.append(setup.config())
 
+
+        classValueFields = ['level_1', 'level_2', 'level_3']
+        for name in classValueFields:
+            i = sl1.fields().indexFromName(name)
+            self.assertEqual(setupTypes[i], RasterClassificationKey)
+
         sl = SpectralLibrary()
         sl.startEditing()
         sl.addSpeclib(sl1)
         self.assertTrue(sl.commitChanges())
 
 
-        i = sl.fields().indexOf('level_1')
-        from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY
-        self.assertEqual(sl.editorWidgetSetup(i).type(), EDITOR_WIDGET_REGISTRY_KEY)
-        #self.assertTrue(sl.commitChanges())
-        self.assertEqual(sl.editorWidgetSetup(i).type(), EDITOR_WIDGET_REGISTRY_KEY)
-
-        for name in ['level_1', 'level_2', 'level_3']:
+        for name in classValueFields:
             i = sl.fields().indexFromName(name)
             j = sl1.fields().indexFromName(name)
             self.assertTrue(i > 0)
+            self.assertTrue(j > 0)
             setupNew = sl.editorWidgetSetup(i)
             setupOld = sl1.editorWidgetSetup(j)
-            self.assertEqual(setupOld.type(), EDITOR_WIDGET_REGISTRY_KEY)
-            self.assertEqual(setupNew.type(), EDITOR_WIDGET_REGISTRY_KEY)
+            self.assertEqual(setupOld.type(), RasterClassificationKey)
+            self.assertEqual(setupNew.type(), RasterClassificationKey,
+                             msg='EditorWidget type is "{}" not "{}"'.format(setupNew.type(), setupOld.type()))
 
         s = ""
 

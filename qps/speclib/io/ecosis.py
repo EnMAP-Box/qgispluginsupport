@@ -1,5 +1,5 @@
 
-import os, sys, re, pathlib, json, io, re, linecache
+import os, sys, re, pathlib, json, io, re, linecache, typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
@@ -7,7 +7,8 @@ from qgis.core import *
 
 
 import csv as pycsv
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
+    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, ProgressHandler
 
 class EcoSISCSVDialect(pycsv.Dialect):
     delimiter = ','

@@ -1,5 +1,5 @@
 
-import os, sys, re, pathlib, json, collections
+import os, sys, re, pathlib, json, collections, typing
 import csv as pycsv
 from ..core import *
 

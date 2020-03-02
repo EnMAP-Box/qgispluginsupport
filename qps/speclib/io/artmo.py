@@ -1,10 +1,12 @@
 
-import os, sys, re, pathlib, json, io, re, linecache, collections
+import os, sys, re, pathlib, json, io, re, linecache, collections, typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 import csv as pycsv
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
+    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, \
+    ProgressHandler
 
 class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
     """

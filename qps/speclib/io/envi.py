@@ -27,7 +27,7 @@
 *                                                                         *
 ***************************************************************************
 """
-import os, csv, tempfile, uuid, time
+import os, csv, tempfile, uuid, time, typing
 from osgeo import gdal, gdal_array
 from ..core import *
 

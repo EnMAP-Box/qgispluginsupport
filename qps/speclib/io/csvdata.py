@@ -28,7 +28,7 @@
 *                                                                         *
 ***************************************************************************
 """
-import os, sys, re, pathlib, json
+import os, sys, re, pathlib, json, typing
 from qgis.core import *
 import csv as pycsv
 from ..core import *
