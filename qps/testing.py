@@ -159,6 +159,12 @@ class QgisMockup(QgisInterface):
         self.mPluginManager = QgsPluginManagerMockup()
 
         self.ui = QMainWindow()
+
+        self.mViewMenu = self.ui.menuBar().addMenu('View')
+        self.mVectorMenu = self.ui.menuBar().addMenu('Vector')
+        self.mRasterMenu = self.ui.menuBar().addMenu('Raster')
+        self.mWindowMenu = self.ui.menuBar().addMenu('Window')
+
         self.mMessageBar = QgsMessageBar()
         mainFrame = QFrame()
         self.ui.setCentralWidget(mainFrame)
@@ -267,26 +273,27 @@ class QgisMockup(QgisInterface):
     def mapCanvas(self):
         return self.mCanvas
 
-    def mapNavToolToolBar(self):
-        super().mapNavToolToolBar()
+    def mapNavToolToolBar(self)->QToolBar:
+        return self.mMapNavToolBar
 
     def messageBar(self, *args, **kwargs):
         return self.mMessageBar
 
     def rasterMenu(self):
-        super().rasterMenu()
+        return self.mRasterMenu
 
     def vectorMenu(self):
-        super().vectorMenu()
+        return self.mVectorMenu
 
-    def viewMenu(self):
-        super().viewMenu()
+    def viewMenu(self)->QMenu:
+        return self.mViewMenu
 
-    def windowMenu(self):
-        super().windowMenu()
+    def windowMenu(self)->QMenu:
+        return self.mWindowMenu
 
     def zoomFull(self, *args, **kwargs):
-        super().zoomFull(*args, **kwargs)
+        self.mCanvas.zoomToFullExtent()
+
 
 
 
