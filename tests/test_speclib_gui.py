@@ -159,6 +159,24 @@ class TestSpeclibWidgets(TestCase):
         pw.setXUnit('nm')
         self.showGui(w)
 
+
+    def test_SpectralLibraryPlotWidget_units(self):
+
+        slib = SpectralLibrary()
+
+        p1 = SpectralProfile()
+        p2 = SpectralProfile()
+        p1.setValues(x = [.1, .2, .3, .4], y = [20,30,40,30], xUnit='um')
+        p2.setValues(x = [100, 200, 300, 400], y=[21, 31, 41, 31], xUnit='nm')
+        slib.startEditing()
+        slib.addProfiles([p1, p2])
+        slib.commitChanges()
+        pw = SpectralLibraryPlotWidget()
+        pw.setSpeclib(slib)
+
+
+        self.showGui(pw)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidgetSimple(self):
 

@@ -1243,6 +1243,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.viewport().update()
     """
 
+    FUNC_BAND_INDEX = lambda x, *args: list(range(len(x)))
 
     def unitConversionFunction(self, unitSrc, unitDst):
         """
@@ -1255,6 +1256,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             unitSrc = unitSrc.lower()
         if isinstance(unitDst, str):
             unitDst = unitDst.lower()
+
+        if unitDst == BAND_INDEX.lower():
+            return SpectralLibraryPlotWidget.FUNC_BAND_INDEX
 
         key = (unitSrc, unitDst)
         func = self.mLUT_UnitConversions.get(key)
@@ -1282,7 +1286,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.mXUnit = unit
             self.updateXUnit()
 
-            self.getPlotItem().update()
+            #self.getPlotItem().update()
 
     def xUnit(self) -> str:
         """
@@ -1313,15 +1317,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # update x values
         pdis = self.allSpectralProfilePlotDataItems()
-        if unit == BAND_INDEX:
-            func = lambda x, *args: list(range(len(x)))
-            for pdi in pdis:
-                pdi.setMapFunctionX(func)
-                pdi.applyMapFunctions()
-        else:
-            for pdi in pdis:
-                pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, unit))
-                pdi.applyMapFunctions()
+        for pdi in pdis:
+            pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, unit))
+
+            pdi.applyMapFunctions()
 
         s = ""
 
@@ -1352,6 +1351,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 defaultPlotStyle.apply(pdi)
                 pdi.setClickable(True)
                 pdi.setVisible(True)
+                pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, self.xUnit()))
+                pdi.applyMapFunctions()
                 pdi.sigClicked.connect(self.onProfileClicked)
                 self.mPlotDataItems[profile.id()] = pdi
                 addedPDIs.append(pdi)
