@@ -345,23 +345,24 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
         if isinstance(binary, bool):
-            if binary:
-                st = os.stat(path)
 
-                if st.st_size < 484 + 1 or st.st_size > 2 ** 20:
-                    return False
+            try:
+                if binary:
+                    st = os.stat(path)
 
-                with open(path, 'rb') as f:
-                    DATA = f.read(3)
-                    co = DATA[0:3].decode('utf-8')
-                    if co not in ASD_VERSIONS:
+                    if st.st_size < 484 + 1 or st.st_size > 2 ** 20:
                         return False
-                    else:
-                        return True
 
-                return False
-            else:
-                try:
+                    with open(path, 'rb') as f:
+                        DATA = f.read(3)
+                        co = DATA[0:3].decode('utf-8')
+                        if co not in ASD_VERSIONS:
+                            return False
+                        else:
+                            return True
+
+                    return False
+                else:
                     with open(path, 'r', encoding='utf-8') as f:
                         lines = []
                         for line in f:
@@ -376,8 +377,9 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
                                    and re.search(r'^\d+(\.\d+)?[;]', lines[1]) is not None
 
                         return False
-                except Exception as ex:
                     return False
+            except Exception as ex:
+                return False
 
         else:
             if ASDSpectralLibraryIO.canRead(path, binary=True):

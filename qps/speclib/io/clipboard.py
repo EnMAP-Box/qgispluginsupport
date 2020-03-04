@@ -48,7 +48,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
             return [a for a in dir(self) if not callable(getattr(self, a)) and not a.startswith("__")]
 
     @staticmethod
-    def canRead(path=None):
+    def canRead(path=None)->bool:
         clipboard = QApplication.clipboard()
         mimeData = clipboard.mimeData()
         assert isinstance(mimeData, QMimeData)

@@ -14,7 +14,7 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
     See https://artmotoolbox.com/tools.html for details.
     """
     @staticmethod
-    def canRead(path:str):
+    def canRead(path:str)->bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -22,16 +22,18 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
         """
         if not isinstance(path, str) and os.path.isfile(path):
             return False
+        try:
+            # check if an _meta.txt exists
+            pathMeta = os.path.splitext(path)[0] + '_meta.txt'
+            if not os.path.isfile(pathMeta):
+                return False
 
-        # check if an _meta.txt exists
-        pathMeta = os.path.splitext(path)[0] + '_meta.txt'
-        if not os.path.isfile(pathMeta):
+            with open(pathMeta, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if re.search(r'Line 1, Column \d \.{3} end:', line, re.I):
+                        return True
+        except Exception:
             return False
-
-        with open(pathMeta, 'r', encoding='utf-8') as f:
-            for line in f:
-                if re.search(r'Line 1, Column \d \.{3} end:', line, re.I):
-                    return True
 
         return False
 

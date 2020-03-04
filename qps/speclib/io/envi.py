@@ -338,7 +338,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
 
     @staticmethod
-    def canRead(pathESL):
+    def canRead(pathESL)->bool:
         """
         Checks if a file can be read as SpectraLibrary
         :param pathESL: path to ENVI Spectral Library (ESL)

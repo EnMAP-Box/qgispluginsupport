@@ -48,7 +48,7 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
     See https://ecosis.org for details.
     """
     @staticmethod
-    def canRead(path:str):
+    def canRead(path:str)->bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri

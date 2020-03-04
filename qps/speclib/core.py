@@ -2401,7 +2401,8 @@ class AbstractSpectralLibraryIO(object):
     @staticmethod
     def canRead(path: str) -> bool:
         """
-        Returns true if it can read the source defined by path
+        Returns true if it can read the source defined by path.
+        Well behaving implementations use a try-catch block and return False in case of errors.
         :param path: source uri
         :return: True, if source is readable.
         """
