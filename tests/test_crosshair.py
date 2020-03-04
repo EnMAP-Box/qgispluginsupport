@@ -85,11 +85,15 @@ class CrosshairTests(TestCase):
         mc = CrosshairMapCanvasItem(canvas)
 
         lyr = TestObjects.createRasterLayer()
-        mc.setRasterGridLayer(lyr)
 
+        lyr2 = TestObjects.createRasterLayer()
+        mc.setRasterGridLayer(lyr)
         self.assertEqual(mc.rasterGridLayer(), lyr)
+        mc.setRasterGridLayer(lyr2)
+        self.assertEqual(mc.rasterGridLayer(), lyr2)
 
         lyr.willBeDeleted.emit()
+        lyr2.willBeDeleted.emit()
         self.assertTrue(mc.rasterGridLayer() == None)
 
 

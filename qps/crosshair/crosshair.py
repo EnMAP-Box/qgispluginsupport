@@ -162,7 +162,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
             return
 
         if isinstance(self.mRasterGridLayer, QgsRasterLayer):
-            self.mRasterGridLayer.disconnect(self.onLayerWillBeDeleted)
+            self.mRasterGridLayer.willBeDeleted.disconnect(self.onLayerWillBeDeleted)
 
         if isinstance(qgsRasterLayer, QgsRasterLayer):
             self.mRasterGridLayer = qgsRasterLayer
