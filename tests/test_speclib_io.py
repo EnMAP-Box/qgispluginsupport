@@ -522,6 +522,8 @@ class TestIO(TestCase):
 
     def test_CSV(self):
         # TEST CSV writing
+
+
         speclib = TestObjects.createSpectralLibrary()
 
         # txt = CSVSpectralLibraryIO.asString(speclib)
@@ -561,6 +563,16 @@ class TestIO(TestCase):
             os.remove(pathCSV)
         except:
             pass
+
+    def test_csv_from_string(self):
+        from qps.speclib.io.csvdata import CSVSpectralLibraryIO
+        # see https://bitbucket.org/hu-geomatics/enmap-box/issues/321/error-when-dropping-a-raster-eg
+        # test if CSVSpectralLibraryIO.fromString() handles obviously none-CSV data
+
+        p = str(QUrl.fromLocalFile(pathlib.Path(__file__).resolve().as_posix()))
+        result = CSVSpectralLibraryIO.fromString(p)
+        self.assertTrue(result == None)
+
 
     def test_findEnviHeader(self):
 

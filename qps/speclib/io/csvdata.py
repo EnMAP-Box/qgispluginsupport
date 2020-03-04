@@ -152,7 +152,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         # lines = [l for l in lines if len(l) > 0 and not l.startswith('#')]
         BLOCKDATA = []
         BLOCKMETADATA = []
-        currentBlock = ''
+        currentBlock = None
         iBlockStart = None
 
         def headerLineMetadata(iLine)->dict:
@@ -174,19 +174,24 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
                 continue
 
             if CSVSpectralLibraryIO.isHeaderLine(line):
-                if len(currentBlock) > 1:
+                # found new header line.
+                # add last block to list
+                if currentBlock not in [None, '']:
                     BLOCKMETADATA.append(headerLineMetadata(iBlockStart))
                     BLOCKDATA.append(currentBlock)
 
                 # start new block
                 iBlockStart = iLine
                 currentBlock = line
-            else:
+
+            elif isinstance(currentBlock, str):
+                # expand current block with new line
                 if not currentBlock.endswith('\n'):
                     currentBlock += '\n'
                 currentBlock += line
 
-        if len(currentBlock) > 1:
+        # add last block to list
+        if currentBlock not in [None, ''] :
             BLOCKMETADATA.append(headerLineMetadata(iBlockStart))
             BLOCKDATA.append(currentBlock)
 
@@ -194,7 +199,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         return BLOCKDATA, BLOCKMETADATA
 
     @staticmethod
-    def fromString(text:str, dialect=pycsv.excel_tab):
+    def fromString(text:str, dialect=pycsv.excel_tab)->SpectralLibrary:
         """
         Reads oneCSV
         :param text:
@@ -202,6 +207,9 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         :return:
         """
         BLOCKDATA, BLOCKMETADATA = CSVSpectralLibraryIO.extractDataBlocks(text)
+
+        if len(BLOCKDATA) == 0:
+            return None
 
         SLIB = SpectralLibrary()
         SLIB.startEditing()
