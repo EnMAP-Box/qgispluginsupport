@@ -535,7 +535,7 @@ class TestObjects():
         else:
             # fill with test data
 
-            coredata, wl, wlu = TestObjects.coreData()
+            coredata, core_wl, wlu = TestObjects.coreData()
             coredata = coredata.astype(dt_out)
             cb, cl, cs = coredata.shape
             if nb > coredata.shape[0]:
@@ -555,6 +555,17 @@ class TestObjects():
                     ds.WriteRaster(xoff, yoff, xsize, ysize, coredata[:, 0:ysize, 0:xsize].tobytes())
                     yoff += ysize
                 xoff += xsize
+
+            wl = []
+            if nb > cb:
+                wl.extend(core_wl.tolist())
+                for b in range(cb, nb):
+                    wl.append(core_wl[-1])
+            else:
+                wl = core_wl[:nb].tolist()
+            assert len(wl) == nb
+            ds.SetMetadataItem('wavelength units', wlu)
+            ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]))
 
         ds.FlushCache()
         return ds

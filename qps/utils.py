@@ -1006,7 +1006,7 @@ def parseBadBandList(dataset)->typing.List[int]:
     return bbl
 
 
-def parseWavelength(dataset):
+def parseWavelength(dataset)->typing.Tuple[np.ndarray, str]:
     """
     Returns the wavelength + wavelength unit of a dataset
     :param dataset:

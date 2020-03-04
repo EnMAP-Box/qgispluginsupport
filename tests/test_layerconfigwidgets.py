@@ -184,10 +184,10 @@ class LayerConfigWidgetsTests(TestCase):
     def test_rasterbandselection(self):
         from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
 
-        lyrR = TestObjects.createRasterLayer(nb=100)
+        from qpstestdata import enmap
+        lyrR = TestObjects.createRasterLayer(nb=200)
         lyrV = TestObjects.createVectorLayer()
         cR = self.canvasWithLayer(lyrR)
-
 
         f = RasterBandConfigWidgetFactory()
         self.assertIsInstance(f, QgsMapLayerConfigWidgetFactory)

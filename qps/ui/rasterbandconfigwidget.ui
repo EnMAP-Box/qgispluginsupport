@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>386</width>
-    <height>248</height>
+    <width>320</width>
+    <height>299</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,7 +24,7 @@
    <item>
     <widget class="QStackedWidget" name="renderBandWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="pageSingleBand">
       <layout class="QGridLayout" name="gridLayout_2">
@@ -91,7 +91,7 @@
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>50</height>
+           <height>0</height>
           </size>
          </property>
          <property name="title">
@@ -100,6 +100,12 @@
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <widget class="QToolButton" name="btnSetSBBand_B">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
             <property name="text">
              <string>B</string>
             </property>
@@ -107,6 +113,12 @@
           </item>
           <item>
            <widget class="QToolButton" name="btnSetSBBand_G">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
             <property name="text">
              <string>G</string>
             </property>
@@ -114,6 +126,12 @@
           </item>
           <item>
            <widget class="QToolButton" name="btnSetSBBand_R">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
             <property name="text">
              <string>R</string>
             </property>
@@ -121,15 +139,40 @@
           </item>
           <item>
            <widget class="QToolButton" name="btnSetSBBand_NIR">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
             <property name="text">
              <string>NIR</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="btnSetSBBand_SWIR">
+           <widget class="QToolButton" name="btnSetSBBand_SWIR1">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
             <property name="text">
-             <string>SWIR</string>
+             <string>SWIR1</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="btnSetSBBand_SWIR2">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>SWIR2</string>
             </property>
            </widget>
           </item>
@@ -261,35 +304,27 @@
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>50</height>
+           <height>0</height>
           </size>
          </property>
          <property name="title">
           <string>Wavelength Combination</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_3">
-          <item row="1" column="2">
-           <widget class="QToolButton" name="btnSetMBBands_RGB">
-            <property name="text">
-             <string>R-G-B</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="4">
-           <widget class="QToolButton" name="btnSetMBBands_SWIRNIRR">
-            <property name="text">
-             <string>SWIR-NIR-R</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="3">
+          <item row="2" column="3">
            <widget class="QToolButton" name="btnSetMBBands_NIRRG">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
             <property name="text">
              <string>NIR-R-G</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="5">
+          <item row="2" column="6">
            <spacer name="horizontalSpacer_2">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -301,6 +336,45 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item row="2" column="2">
+           <widget class="QToolButton" name="btnSetMBBands_RGB">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>R-G-B</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="5">
+           <widget class="QToolButton" name="btnSetMBBands_NIRSWIRR">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>SWIR-NIR-R</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="4">
+           <widget class="QToolButton" name="btnSetMBBands_SWIRNIRR">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>23</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>SWIR-NIR-R</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
