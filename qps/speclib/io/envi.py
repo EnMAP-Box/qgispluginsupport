@@ -87,15 +87,19 @@ def findENVIHeader(path:str)->(str, str):
     :param path: str
     :return: (str, str), e.g. ('pathESL.hdr', 'pathESL.sli')
     """
+    # the two file names we want to extract
+    pathHdr = None
+    pathSLI = None
+
     # 1. find header file
     paths = [os.path.splitext(path)[0] + '.hdr', path + '.hdr']
-    pathHdr = None
     for p in paths:
         if os.path.exists(p):
             pathHdr = p
             break
 
     if pathHdr is None:
+        # no header file, no ENVI file
         return None, None
 
     # 2. find binary file
