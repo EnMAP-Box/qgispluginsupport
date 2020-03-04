@@ -157,10 +157,26 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :param qgsRasterLayer:
         :return:
         """
+
+        if qgsRasterLayer == self.mRasterGridLayer:
+            return
+
+        if isinstance(self.mRasterGridLayer, QgsRasterLayer):
+            self.mRasterGridLayer.disconnect(self.onLayerWillBeDeleted)
+
         if isinstance(qgsRasterLayer, QgsRasterLayer):
             self.mRasterGridLayer = qgsRasterLayer
+            self.mRasterGridLayer.willBeDeleted.connect(self.onLayerWillBeDeleted)
         else:
             self.mRasterGridLayer = None
+
+    def onLayerWillBeDeleted(self):
+        """
+        Removes the reference to the map layer
+        :return:
+        :rtype:
+        """
+        self.mRasterGridLayer = None
 
     def rasterGridLayer(self)->QgsRasterLayer:
         """

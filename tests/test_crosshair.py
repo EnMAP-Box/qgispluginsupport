@@ -79,6 +79,20 @@ class CrosshairTests(TestCase):
         func = lambda: getCrosshairStyle(mapCanvas=refCanvas)
         self.showGui(func)
 
+    def test_crosshair_maplayer(self):
+
+        canvas = QgsMapCanvas()
+        mc = CrosshairMapCanvasItem(canvas)
+
+        lyr = TestObjects.createRasterLayer()
+        mc.setRasterGridLayer(lyr)
+
+        self.assertEqual(mc.rasterGridLayer(), lyr)
+
+        lyr.willBeDeleted.emit()
+        self.assertTrue(mc.rasterGridLayer() == None)
+
+
 if __name__ == "__main__":
     unittest.main()
 
