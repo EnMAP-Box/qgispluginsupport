@@ -16,12 +16,13 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         :param path: source uri
         :return: True, if source is readable.
         """
-
-        with open(path, 'r', encoding='utf-8') as f:
-            for line in f:
-                if re.search(r'^\d+(\.\d+)?.+', line):
-                    return True
-
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if re.search(r'^\d+(\.\d+)?.+', line):
+                        return True
+        except Exception as ex:
+            return False
         return False
 
     @staticmethod
