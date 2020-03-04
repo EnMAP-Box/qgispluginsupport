@@ -359,6 +359,38 @@ class TestSpeclibWidgets(TestCase):
         w.addSpeclib(sl)
         self.showGui(w)
 
+    def test_dropping_speclibs(self):
+
+        files = []
+
+        for root, dirs, f in os.walk(pathlib.Path(__file__).parents[1] / 'qpstestdata'):
+            for file in f:
+                files.append(pathlib.Path(root) / file)
+
+        slw = SpectralLibraryWidget()
+        # drop a valid speclib
+        md = QMimeData()
+        from qpstestdata import speclib
+        sl = SpectralLibrary.readFrom(speclib)
+        self.assertIsInstance(sl, SpectralLibrary) and len(sl) > 0
+        md.setUrls([QUrl.fromLocalFile(speclib)])
+        event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+        slw.dropEvent(event)
+        self.assertEqual(len(slw.speclib()), len(sl))
+
+        # drop random files
+        slw = SpectralLibraryWidget()
+        self.assertTrue(len(slw.speclib()) == 0)
+        for file in files:
+            md = QMimeData()
+            md.setUrls([QUrl.fromLocalFile(file.as_posix())])
+            print('Drop {}'.format(file.name))
+            event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+            slw.dropEvent(event)
+        self.assertTrue(len(slw.speclib()) > 0)
+
+        self.showGui(slw)
+
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):

@@ -48,8 +48,10 @@ for name, module in sys.modules.items():
 MIMEDATA_SPECLIB = 'application/hub-spectrallibrary'
 MIMEDATA_SPECLIB_LINK = 'application/hub-spectrallibrary-link'
 MIMEDATA_XQT_WINDOWS_CSV = 'application/x-qt-windows-mime;value="Csv"'
+
+# see https://doc.qt.io/qt-5/qwinmime.html
 MIMEDATA_TEXT = 'text/plain'
-MIMEDATA_URL = 'text/url'
+MIMEDATA_URL = 'text/uri-list'
 
 SPECLIB_EPSG_CODE = 4326
 SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))
@@ -1041,18 +1043,23 @@ class SpectralLibrary(QgsVectorLayer):
             sl = SPECLIB_CLIPBOARD.get(sid)
             if isinstance(sl, SpectralLibrary) and id(sl) == sid:
                 return sl
-            else:
-                return None
-        elif MIMEDATA_SPECLIB in mimeData.formats():
-            return SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
 
-        elif MIMEDATA_TEXT in mimeData.formats():
+        if MIMEDATA_SPECLIB in mimeData.formats():
+            sl = SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
+            if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+                return sl
+
+        if mimeData.hasUrls():
+            sl = SpectralLibrary.readFrom(mimeData.urls()[0])
+            if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+                return sl
+
+        if MIMEDATA_TEXT in mimeData.formats():
             txt = mimeData.text()
             from ..speclib.io.csvdata import CSVSpectralLibraryIO
-            return CSVSpectralLibraryIO.fromString(txt)
-
-        elif MIMEDATA_URL in mimeData.formats():
-            return SpectralLibrary.readFrom(mimeData.urls()[0])
+            sl = CSVSpectralLibraryIO.fromString(txt)
+            if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+                return sl
 
         return None
 
@@ -1802,6 +1809,12 @@ class SpectralLibrary(QgsVectorLayer):
         :param uri: path or uri of the source from which to read SpectralProfiles and return them in a SpectralLibrary
         :return: SpectralLibrary
         """
+        if isinstance(uri, QUrl):
+            if uri.isLocalFile():
+                uri = uri.toLocalFile()
+            else:
+                uri.toString()
+
         if isinstance(uri, str) and uri.endswith('.gpkg'):
             try:
                 return SpectralLibrary(uri=uri)
