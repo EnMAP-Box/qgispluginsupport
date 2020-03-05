@@ -359,6 +359,7 @@ class TestSpeclibWidgets(TestCase):
         w.addSpeclib(sl)
         self.showGui(w)
 
+
     def test_dropping_speclibs(self):
 
         files = []
@@ -390,7 +391,10 @@ class TestSpeclibWidgets(TestCase):
             event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
             slw.dropEvent(event)
             QApplication.processEvents()
-        self.assertTrue(len(slw.speclib()) > 0)
+            # delete dropped spectra
+            slw.speclib().startEditing()
+            slw.speclib().deleteFeatures(slw.speclib().allFeatureIds())
+            slw.speclib().commitChanges()
 
         self.showGui(slw)
 
