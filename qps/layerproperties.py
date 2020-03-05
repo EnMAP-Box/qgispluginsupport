@@ -284,7 +284,7 @@ def rendererFromXml(xml):
                 s =""
     return None
 
-def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSize:int=256)->QgsRasterRenderer:
+def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSize:int=256, readQml:bool=True)->QgsRasterRenderer:
     """
     Returns a default Raster Renderer.
     See https://bitbucket.org/hu-geomatics/enmap-box/issues/166/default-raster-visualization
@@ -301,6 +301,7 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSiz
 
     nb = layer.bandCount()
 
+    # band names are defined explicitley
     if isinstance(bandIndices, list):
         bandIndices = [b for b in bandIndices if b >=0 and b < nb]
         l = len(bandIndices)
@@ -312,6 +313,19 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSiz
             bandIndices = bandIndices[0:1]
 
     if not isinstance(bandIndices, list):
+
+        # check for *.qml file with default styling information
+        if readQml:
+            qmlUri = pathlib.Path(layer.styleURI())
+            if qmlUri.is_file() and re.search(r'\.(qml)$', qmlUri.name):
+                msg, success = layer.loadDefaultStyle()
+                if success:
+                    r = layer.renderer().clone()
+                    r.setInput(layer.dataProvider())
+                    return r
+                else:
+                    print(msg, file=sys.stderr)
+
         if nb >= 3:
 
             if isinstance(defaultRenderer, QgsMultiBandColorRenderer):
