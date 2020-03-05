@@ -375,7 +375,9 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(sl, SpectralLibrary) and len(sl) > 0
         md.setUrls([QUrl.fromLocalFile(speclib)])
         event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+        print('Drop {}'.format(speclib), flush=True)
         slw.dropEvent(event)
+        QApplication.processEvents()
         self.assertEqual(len(slw.speclib()), len(sl))
 
         # drop random files
@@ -384,9 +386,10 @@ class TestSpeclibWidgets(TestCase):
         for file in files:
             md = QMimeData()
             md.setUrls([QUrl.fromLocalFile(file.as_posix())])
-            print('Drop {}'.format(file.name))
+            print('Drop {}'.format(file.name), flush=True)
             event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
             slw.dropEvent(event)
+            QApplication.processEvents()
         self.assertTrue(len(slw.speclib()) > 0)
 
         self.showGui(slw)
