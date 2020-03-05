@@ -1132,8 +1132,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # remove old spectra
         if isinstance(self.speclib(), SpectralLibrary):
-            self.removeSpectralProfilePDIs(self.speclib().allFeatureIds())
-            self.disconnectSpeclibSignals()
+            self.removeSpectralProfilePDIs(self.mPlotDataItems.keys())
+            #self.disconnectSpeclibSignals()
         self.mSpeclib = None
 
         if isinstance(speclib, SpectralLibrary):
@@ -1161,7 +1161,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.mSpeclib.committedAttributeValuesChanges.connect(self.onCommittedAttributeValuesChanges)
             self.mSpeclib.rendererChanged.connect(self.onRendererChanged)
             #additional security to disconnect
-            self.mSpeclib.willBeDeleted.connect(lambda : self.setSpeclib(None))
+            self.mSpeclib.willBeDeleted.connect(lambda: self.setSpeclib(None))
 
 
     def disconnectSpeclibSignals(self):

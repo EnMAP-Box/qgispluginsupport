@@ -130,25 +130,33 @@ class AddAttributeDialog(QDialog):
         self.tbValidationInfo.setStyleSheet("QLabel { color : red}")
         l.addWidget(self.tbValidationInfo, 5, 0, 1, 2)
 
-
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
         self.buttons.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
         l.addWidget(self.buttons, 6, 1)
         self.setLayout(l)
-
         self.mLayer = layer
-
         self.onTypeChanged()
 
+        self.validate()
+
+    def setName(self, name:str):
+        """
+        Returns the field name
+        """
+        self.tbName.setText(name)
+
+    def name(self)->str:
+        return self.tbName.text()
+
+
     def accept(self):
-
-        msg = self.validate()
-
-        if len(msg) > 0:
-            QMessageBox.warning(self, "Add Field", msg)
-        else:
+        isValid, msg = self.validate()
+        if isValid:
             super(AddAttributeDialog, self).accept()
+        else:
+            QMessageBox.warning(self, "Add Field", msg)
+
 
     def field(self):
         """
@@ -162,9 +170,6 @@ class AddAttributeDialog(QDialog):
                         len=self.sbLength.value(),
                         prec=self.sbPrecision.value(),
                         comment=self.tbComment.text())
-
-
-
 
     def currentNativeType(self):
         return self.cbType.currentData().value()
@@ -200,24 +205,24 @@ class AddAttributeDialog(QDialog):
         elif value < vMin:
             sb.setValue(vMin)
 
-
-    def validate(self):
-
-        msg = []
+    def validate(self, *args)->typing.Union[bool, str]:
+        """
+        Validates the inputs
+        :return: (bool, str with error message(s))
+        """
+        errors = []
         name = self.tbName.text()
         if name in self.mLayer.fields().names():
-            msg.append('Field name "{}" already exists.'.format(name))
+            errors.append('Field name "{}" already exists.'.format(name))
         elif name == '':
-            msg.append('Missing field name')
+            errors.append('Missing field name')
         elif name == 'shape':
-            msg.append('Field name "{}" already reserved.'.format(name))
+            errors.append('Field name "{}" already reserved.'.format(name))
+        errors = '\n'.join(errors)
+        self.buttons.button(QDialogButtonBox.Ok).setEnabled(len(errors) == 0)
+        self.tbValidationInfo.setText(errors)
 
-        msg = '\n'.join(msg)
-        self.buttons.button(QDialogButtonBox.Ok).setEnabled(len(msg) == 0)
-
-        self.tbValidationInfo.setText(msg)
-
-        return msg
+        return len(errors) == 0, errors
 
 
 def openRasterLayerSilent(uri, name, provider)->QgsRasterLayer:

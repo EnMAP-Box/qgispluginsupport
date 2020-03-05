@@ -153,6 +153,16 @@ class LayerPropertyTests(TestCase):
             dialog.btnOk.click()
             self.assertTrue(dialog.result() == QDialog.Accepted)
 
+    def test_add_attributes(self):
+
+        vl = TestObjects.createVectorLayer()
+        names = vl.fields().names()
+        d = AddAttributeDialog(vl)
+        self.assertIsInstance(d, AddAttributeDialog)
+
+        d.show()
+
+        self.showGui(d)
 
     def test_p(self):
 

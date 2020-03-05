@@ -172,7 +172,7 @@ def compileQGISResourceFiles(qgis_repo:str, target:str=None):
 
     if qgis_repo is None:
         print('QGIS_REPO location undefined', file=sys.stderr)
-        return 
+        return
 
     if not isinstance(qgis_repo, pathlib.Path):
         qgis_repo = pathlib.Path(qgis_repo)
