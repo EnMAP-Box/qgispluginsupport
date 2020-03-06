@@ -188,7 +188,8 @@ def compileQGISResourceFiles(qgis_repo:str, target:str=None):
         target = pathlib.Path(target)
 
     os.makedirs(target, exist_ok=True)
-    compileResourceFiles(qgis_repo, targetDir=target)
+    compileResourceFiles(qgis_repo / 'src', targetDir=target)
+    compileResourceFiles(qgis_repo / 'images', targetDir=target)
 
 
 def initQtResources(roots: list = []):
