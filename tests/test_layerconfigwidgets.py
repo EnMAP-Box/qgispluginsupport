@@ -209,7 +209,7 @@ class LayerConfigWidgetsTests(TestCase):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
         cb= QgsMapLayerComboBox()
         c = QgsMapCanvas()
-        md = GDALMetadataModelConfigWidget(lyrE, c)
+        md = GDALMetadataModelConfigWidget()
         cb.layerChanged.connect(md.setLayer)
         l = QVBoxLayout()
         l.addWidget(cb)

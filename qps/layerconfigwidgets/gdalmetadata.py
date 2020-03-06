@@ -146,7 +146,13 @@ class GDALMetadataModelTreeView(QTreeView):
 class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
 
-    def __init__(self, layer:QgsMapLayer, canvas:QgsMapCanvas, parent:QWidget=None):
+    def __init__(self, layer:QgsMapLayer=None, canvas:QgsMapCanvas=None, parent:QWidget=None):
+
+        if layer is None:
+            layer = QgsRasterLayer()
+        if canvas is None:
+            canvas = QgsMapCanvas()
+
         super(GDALMetadataModelConfigWidget, self).__init__(layer, canvas, parent=parent)
         pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
