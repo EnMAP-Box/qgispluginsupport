@@ -1071,8 +1071,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             assert pdi not in plotItem.dataItems
             if pdi.id() in self.mPlotDataItems.keys():
                 self.mPlotDataItems.pop(pdi.id(), None)
-                # remove fid from profile styles
-                self.mSPECIFIC_PROFILE_STYLES.pop(pdi.id(), None)
+
+        # remove fid from profile styles
+        for fid in fidsToRemove:
+            self.mSPECIFIC_PROFILE_STYLES.pop(fid, None)
+
         if updateScene:
             self.scene().update()
         s = ""
@@ -1130,9 +1133,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mUpdateTimer.stop()
 
         # remove old spectra
-        if isinstance(self.speclib(), SpectralLibrary):
-            self.removeSpectralProfilePDIs(self.mPlotDataItems.keys())
-            #self.disconnectSpeclibSignals()
+        self.removeSpectralProfilePDIs(self.mPlotDataItems.keys())
         self.mSpeclib = None
 
         if isinstance(speclib, SpectralLibrary):
