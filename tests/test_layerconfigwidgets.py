@@ -57,6 +57,7 @@ class LayerConfigWidgetsTests(TestCase):
             w.syncToLayer()
             w.apply()
 
+
             self.showGui([c, w])
 
     def test_source(self):
@@ -213,8 +214,9 @@ class LayerConfigWidgetsTests(TestCase):
         self.assertTrue(f.supportsLayer(lyrV))
         wR = f.createWidget(lyrR, cR, dockWidget=False)
         self.assertIsInstance(wR, GDALMetadataModelConfigWidget)
-
+        self.assertTrue(wR.metadataModel.rowCount(None) > 0)
         wV = f.createWidget(lyrV, cV, dockWidget=False)
+        self.assertTrue(wR.metadataModel.rowCount(None) > 0)
         self.assertIsInstance(wR, GDALMetadataModelConfigWidget)
 
         self.showGui([wR, wV])

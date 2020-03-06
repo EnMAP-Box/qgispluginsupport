@@ -161,6 +161,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.btnRegex.setDefaultAction(self.optionRegex)
 
         self.metadataModel = GDALMetadataModel()
+        self.metadataModel.setLayer(layer)
         self.metadataProxyModel = QSortFilterProxyModel()
         self.metadataProxyModel.setSourceModel(self.metadataModel)
         self.metadataProxyModel.setFilterKeyColumn(-1)
