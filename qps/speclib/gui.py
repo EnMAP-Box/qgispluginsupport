@@ -2225,6 +2225,9 @@ class SpectralLibraryWidget(QMainWindow):
         import collections
 
         speclib = self.speclib()
+
+        all_names = speclib.fields().names()
+
         # as it should be
         shouldBeVisible = []
         tableConfig = speclib.attributeTableConfig()
@@ -2235,6 +2238,11 @@ class SpectralLibraryWidget(QMainWindow):
             assert isinstance(c, QgsAttributeTableConfig.ColumnConfig)
             names.append(c.name)
             hidden.append(c.hidden)
+        missing = [n for n in all_names if n not in names and n not in [FIELD_VALUES, FIELD_FID]]
+
+        if len(missing) > 0:
+            self.mDualView.setAttributeTableConfig(QgsAttributeTableConfig())
+
 
     def closeEvent(self, *args, **kwargs):
 
