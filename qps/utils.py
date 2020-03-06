@@ -2,6 +2,7 @@
 
 
 import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy, shutil, typing, gc, sip
+import traceback
 
 from qgis.core import *
 from qgis.gui import *
@@ -656,7 +657,8 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
     """
     Backport, deprecated
     """
-    warnings.warn('Use loadUi(... , loadUiType=True) instead.', DeprecationWarning)
+    info = ''.join(traceback.format_stack()) + '\nUse loadUi(... , loadUiType=True) instead.'
+    warnings.warn(info, DeprecationWarning)
     return loadUi(pathUi, resource_suffix=resourceSuffix, loadUiType=True)[0]
 
 def typecheck(variable, type_):
