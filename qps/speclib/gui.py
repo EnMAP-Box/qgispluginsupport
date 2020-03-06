@@ -41,7 +41,6 @@ from ..layerproperties import AddAttributeDialog
 BAND_INDEX = 'Band Index'
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY : None
 
-
 def defaultCurvePlotStyle()->PlotStyle:
     ps = PlotStyle()
     ps.setLineColor('white')
@@ -2176,6 +2175,9 @@ class SpectralLibraryWidget(QMainWindow):
         self.mDualView.showContextMenuExternally.connect(self.onShowContextMenuExternally)
         self.mDualView.tableView().willShowContextMenu.connect(self.onWillShowContextMenu)
 
+        self.mSpeclib.attributeAdded.connect(self.onAttributesChanges)
+        self.mSpeclib.attributeDeleted.connect(self.onAttributesChanges)
+
         self.mPlotWidget: SpectralLibraryPlotWidget
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mPlotWidget.setDualView(self.mDualView)
@@ -2218,6 +2220,22 @@ class SpectralLibraryWidget(QMainWindow):
         self.clearTable = self.clearSpectralLibrary
 
         self.mIODialogs = list()
+
+    def onAttributesChanges(self):
+        import collections
+
+        speclib = self.speclib()
+        # as it should be
+        shouldBeVisible = []
+        tableConfig = speclib.attributeTableConfig()
+        assert isinstance(tableConfig, QgsAttributeTableConfig)
+        names = []
+        hidden = []
+        for c in tableConfig.columns():
+            assert isinstance(c, QgsAttributeTableConfig.ColumnConfig)
+            names.append(c.name)
+            hidden.append(c.hidden)
+
     def closeEvent(self, *args, **kwargs):
 
         super(SpectralLibraryWidget, self).closeEvent(*args, **kwargs)
@@ -2616,13 +2634,13 @@ class SpectralLibraryWidget(QMainWindow):
         """
         Slot to add an optional QgsField / attribute
         """
-
-        if self.mSpeclib.isEditable():
+        speclib = self.speclib()
+        if speclib.isEditable():
             d = AddAttributeDialog(self.mSpeclib)
             d.exec_()
             if d.result() == QDialog.Accepted:
                 field = d.field()
-                self.mSpeclib.addAttribute(field)
+                speclib.addAttribute(field)
         else:
             log('call SpectralLibrary().startEditing before adding attributes')
 
@@ -2917,8 +2935,3 @@ class SpectralLibraryPanel(QgsDockWidget):
         :param mode: SpectralLibraryWidget.CurrentProfilesMode
         """
         self.SLW.setCurrentProfilesMode(mode)
-
-class SpectralLibraryLayerStyleWidget(QgsMapLayerConfigWidget):
-
-    pass
-

@@ -524,6 +524,34 @@ class TestSpeclibWidgets(TestCase):
         self.showGui([slw, propertiesDialog])
 
 
+    def test_addAttribute(self):
+
+        slw = SpectralLibraryWidget()
+        self.assertIsInstance(slw, SpectralLibraryWidget)
+        sl = slw.spectraLibrary()
+        self.assertIsInstance(sl, SpectralLibrary)
+        sl.startEditing()
+
+        attr = QgsField(name='test',
+                        type=QVariant.Int,
+                        typeName='Int')
+
+        sl.addAttribute(attr)
+        conf1 = sl.attributeTableConfig()
+        conf2 = slw.mDualView.attributeTableConfig()
+
+        self.assertEqual(len(conf1.columns()), len(conf2.columns()))
+        names = []
+        for c1, c2 in zip(conf1.columns(), conf2.columns()):
+            self.assertEqual(c1.name, c2.name)
+            self.assertEqual(c1.type, c2.type)
+            self.assertEqual(c1.hidden, c2.hidden)
+            names.append(c1.name)
+        self.assertTrue(attr.name() in names)
+        s = ""
+
+
+
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidgetThousands(self):
