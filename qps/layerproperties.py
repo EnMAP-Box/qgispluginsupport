@@ -322,7 +322,13 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSiz
         # check for *.qml file with default styling information
         if readQml:
             qmlUri = pathlib.Path(layer.styleURI())
-            if qmlUri.is_file() and re.search(r'\.(qml)$', qmlUri.name):
+            is_file = False
+            try:
+                is_file = qmlUri.is_file()
+            except OSError:
+                is_file = False
+
+            if is_file and re.search(r'\.(qml)$', qmlUri.name):
                 msg, success = layer.loadDefaultStyle()
                 if success:
                     r = layer.renderer().clone()
