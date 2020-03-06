@@ -314,6 +314,8 @@ class TestsClassificationScheme(TestCase):
         w.btnAddClasses.click()
         w.btnAddClasses.click()
 
+        w.setIsEditable(False)
+        w.setIsEditable(True)
         self.assertTrue(len(w.classificationScheme()) == 2)
 
         self.showGui(w)

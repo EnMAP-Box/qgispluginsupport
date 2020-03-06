@@ -120,12 +120,13 @@ class LayerPropertyTests(TestCase):
     def test_LayerPropertiesDialog_Raster(self):
 
         registerMapLayerConfigWidgetFactories()
-        lyr = TestObjects.createRasterLayer(nb=100)
+        lyr = TestObjects.createRasterLayer(nb=1, eType=gdal.GDT_UInt16)
         d = LayerPropertiesDialog(lyr)
         d.sync()
         self.assertIsInstance(d, LayerPropertiesDialog)
         for p in d.pages():
             self.assertIsInstance(p, QgsMapLayerConfigWidget)
+
             p.apply()
             d.setPage(p)
 

@@ -237,6 +237,8 @@ class ClassificationScheme(QAbstractTableModel):
     sigClassesAdded = pyqtSignal(list)
     sigNameChanged = pyqtSignal(str)
 
+    sigIsEditableChanged = pyqtSignal(bool)
+
     def __init__(self, name : str = None):
         super(ClassificationScheme, self).__init__()
         self.mClasses = []
@@ -250,15 +252,16 @@ class ClassificationScheme(QAbstractTableModel):
         self.mColName = 'Name'
         self.mColLabel = 'Label'
 
-    def setIsEditable(self, b:bool):
+    def setIsEditable(self, b: bool):
         """
         Sets if class names and colors can be changed
         :param b: bool
         """
         if b != self.mIsEditable:
-            self.mIsEditable = True
-            self.dataChanged(self.createIndex(0,0),
+            self.mIsEditable = b
+            self.dataChanged.emit(self.createIndex(0, 0),
                              self.createIndex(self.rowCount()-1, self.columnCount()-1))
+            self.sigIsEditableChanged.emit(self.mIsEditable)
 
     def isEditable(self)->bool:
         """
@@ -450,7 +453,7 @@ class ClassificationScheme(QAbstractTableModel):
         flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
         if self.mIsEditable:
             flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
-            if col == 1:
+            if col == 1 and self.isEditable():
                 flags |= Qt.ItemIsEditable
         return flags
 
@@ -610,7 +613,7 @@ class ClassificationScheme(QAbstractTableModel):
     @staticmethod
     def fromFeatureRenderer(renderer:QgsCategorizedSymbolRenderer):
         """
-        Extracts a ClassificatonScheme from a QgsCategorizedSymbolRenderer
+        Extracts a ClassificationScheme from a QgsCategorizedSymbolRenderer
         :param renderer: QgsCategorizedSymbolRenderer
         :return: ClassificationScheme
         """
@@ -899,8 +902,10 @@ class ClassificationScheme(QAbstractTableModel):
         :param band: gdal.Band
         """
         assert isinstance(band, gdal.Band)
+
         ct = gdal.ColorTable()
         cat = []
+
         for i, classInfo in enumerate(self.mClasses):
             c = classInfo.mColor
             cat.append(classInfo.mName)
@@ -908,29 +913,32 @@ class ClassificationScheme(QAbstractTableModel):
             rgba = (c.red(), c.green(), c.blue(), c.alpha())
             ct.SetColorEntry(i, rgba)
 
-        band.SetColorTable(ct)
-        band.SetCategoryNames(cat)
+        try:
+            band.SetCategoryNames(cat)
+        except Exception as ex:
+            print(ex, file=sys.stderr)
+
+        try:
+            band.SetColorTable(ct)
+        except Exception as ex:
+            print(ex, file=sys.stderr)
 
 
-    def saveToRaster(self, path, bandIndex=0):
+
+    def saveToRaster(self, raster:typing.Union[str, gdal.Dataset, QgsRasterLayer], bandIndex=0):
         """
         Saves this ClassificationScheme to an raster image
-        :param path: path (str) of raster image or gdal.Dataset instance
+        :param raster: path (str) of raster image or gdal.Dataset instance
         :param bandIndex: band index of raster band to set this ClassificationScheme.
                           Defaults to 0 = the first band
         """
-        if isinstance(path, str):
-            ds = gdal.Open(path)
-        elif isinstance(path, gdal.Dataset):
-            ds = path
-
+        from ..utils import gdalDataset
+        ds = gdalDataset(raster)
         assert isinstance(ds, gdal.Dataset)
-        assert ds.RasterCount < bandIndex
+        assert ds.RasterCount > bandIndex
         band = ds.GetRasterBand(bandIndex + 1)
         self.saveToRasterBand(band)
-
-
-        ds = None
+        ds.FlushCache()
 
     def toString(self, sep=';')->str:
         """
@@ -1044,7 +1052,6 @@ class ClassificationScheme(QAbstractTableModel):
     @staticmethod
     def fromMapLayer(layer:QgsMapLayer):
         """
-
         :param layer:
         :return:
         """
@@ -1395,29 +1402,59 @@ class ClassificationSchemeWidget(QWidget):
 
     sigValuesChanged = pyqtSignal()
 
-    def __init__(self, parent=None, classificationScheme=None):
+    def __init__(self, parent=None, classificationScheme:ClassificationScheme=None):
         super(ClassificationSchemeWidget, self).__init__(parent)
         pathUi = pathlib.Path(__file__).parent / 'classificationscheme.ui'
         loadUi(pathUi, self)
 
         self.mScheme = ClassificationScheme()
+        self.mScheme.sigClassesAdded.connect(self.validateButtons)
+        self.mScheme.sigClassesRemoved.connect(self.validateButtons)
         if classificationScheme is not None:
             self.setClassificationScheme(classificationScheme)
-
+        self.mScheme.sigIsEditableChanged.connect(self.onIsEditableChanged)
         assert isinstance(self.tableClassificationScheme, QTableView)
         self.tableClassificationScheme.setModel(self.mScheme)
         self.tableClassificationScheme.doubleClicked.connect(self.onTableDoubleClick)
         self.tableClassificationScheme.resizeColumnsToContents()
         self.selectionModel = QItemSelectionModel(self.mScheme)
-        self.selectionModel.selectionChanged.connect(self.onSelectionChanged)
-        self.onSelectionChanged()  # enable/disable widgets depending on a selection
+        self.selectionModel.selectionChanged.connect(self.validateButtons)
+
         self.tableClassificationScheme.setSelectionModel(self.selectionModel)
 
         self.initActions()
+        self.setIsEditable(True)
+        self.validateButtons()  # enable/disable widgets depending on a selection and state of classification scheme
+
+    def isEditable(self)->bool:
+        return self.mScheme.isEditable()
+
+    def setIsEditable(self, b:bool):
+        self.mScheme.setIsEditable(b)
+
+    def onIsEditableChanged(self, b:bool):
+
+        # hide/show buttons to edit the scheme
+        setE = True
+        setV = True
+
+        buttons = [self.btnAddClasses, self.btnLoadClasses, self.btnPasteClasses, self.btnRemoveClasses]
+
+        if setE:
+            for btn in buttons:
+                btn.setEnabled(b)
+
+                a = btn.defaultAction()
+                if isinstance(a, QAction):
+                    a.setEnabled(b)
+
+        if setV:
+            for btn in buttons:
+                btn.setVisible(b)
+
 
     def onCopyClasses(self):
-
-        classes = self.selectedClasses()
+        classes = self.selectedClasses(allIfNone=True)
         if len(classes) == 0:
             return
         cs = ClassificationScheme()
@@ -1436,8 +1473,7 @@ class ClassificationSchemeWidget(QWidget):
             self.mScheme.insertClasses(cs[:])
 
     def onSaveClasses(self):
-
-        classes = self.selectedClasses()
+        classes = self.selectedClasses(allIfNone=True)
         if len(classes) == 0:
             return
 
@@ -1477,7 +1513,7 @@ class ClassificationSchemeWidget(QWidget):
             self.mScheme.insertClasses(cs[:])
         pass
 
-    def onLoadClasses(self, mode:str):
+    def onLoadClasses(self, mode: str):
         """
         Opens a dialog to add ClassInfos from other sources, like raster images, text files and QgsMapLayers.
         :param mode: 'raster', 'layer', 'textfile'
@@ -1491,7 +1527,6 @@ class ClassificationSchemeWidget(QWidget):
                 cs = ClassificationScheme.fromRasterImage(path)
                 if isinstance(cs, ClassificationScheme):
                     self.mScheme.insertClasses(cs[:])
-
 
         if mode == 'layer':
             possibleLayers = findMapLayersWithClassInfo()
@@ -1540,7 +1575,6 @@ class ClassificationSchemeWidget(QWidget):
         a = m.addAction('Load from other textfile')
         a.triggered.connect(lambda: self.onLoadClasses('textfile'))
 
-
         parent = self.parent()
         if isinstance(parent, ClassificationSchemeEditorConfigWidget):
             layer = parent.layer()
@@ -1553,14 +1587,13 @@ class ClassificationSchemeWidget(QWidget):
                 a.triggered.connect(lambda _, lyr=layer, f=idx: self.onLoadClassesFromField(lyr, idx))
 
                 if isinstance(layer.renderer(), QgsCategorizedSymbolRenderer):
-                    a = m.addAction('Current Symbols'.format(layer.name()))
+                    a = m.addAction('Current Symbol Renderer'.format(layer.name()))
                     a.triggered.connect(lambda _, lyr=layer: self.onLoadClassesFromRenderer(lyr))
-
 
         self.btnLoadClasses.setMenu(m)
 
         self.actionRemoveClasses.triggered.connect(self.removeSelectedClasses)
-        self.actionAddClasses.triggered.connect(lambda : self.createClasses(1))
+        self.actionAddClasses.triggered.connect(lambda: self.createClasses(1))
 
         self.actionSaveClasses.setIcon(QIcon(r'://images/themes/default/mActionFileSaveAs.svg'))
         self.actionSaveClasses.triggered.connect(self.onSaveClasses)
@@ -1595,25 +1628,39 @@ class ClassificationSchemeWidget(QWidget):
                                       'Set color for "{}"'.format(classInfo.name()))
             model.setData(idx, c, role=Qt.EditRole)
 
-    def onSelectionChanged(self, *args):
-        b = self.selectionModel is not None and len(self.selectionModel.selectedRows()) > 0
+    def validateButtons(self, *args):
+        n = len(self.selectionModel.selectedRows())
+
+        self.actionRemoveClasses.setEnabled(n > 0)
+
+        infix = '{} selected class(es)'.format(n) if n > 0 else 'all classes'
+
+        self.actionRemoveClasses.setToolTip('Remove {}'.format(infix))
+        self.actionCopyClasses.setToolTip('Copy {}'.format(infix))
+        self.actionSaveClasses.setToolTip('Save {}'.format(infix))
+
+        b = len(self.mScheme) > 0
         self.actionRemoveClasses.setEnabled(b)
         self.actionCopyClasses.setEnabled(b)
         self.actionSaveClasses.setEnabled(b)
 
-    def createClasses(self, n):
+
+    def createClasses(self, n)->typing.List[ClassInfo]:
         self.mScheme.createClasses(n)
 
-
-
-
-    def selectedClasses(self)->list:
+    def selectedClasses(self, allIfNone:bool=False)->typing.List[ClassInfo]:
         """
         Returns the list of selected ClassInfos
         :return: [list-of-ClassInfo]
+        :param allIfNone: if True, returns all classes in case none is selected.
+        :return: [list-of-ClassInfo]
+        :rtype:
         """
-        indices = reversed(self.selectionModel.selectedRows())
-        return [self.mScheme.index2ClassInfo(idx) for idx in indices]
+        indices = list(reversed(self.selectionModel.selectedRows()))
+        if len(indices) == 0 and allIfNone:
+            return self.mScheme[:]
+        else:
+            return [self.mScheme.index2ClassInfo(idx) for idx in indices]
 
     def removeSelectedClasses(self):
         classes = self.selectedClasses()

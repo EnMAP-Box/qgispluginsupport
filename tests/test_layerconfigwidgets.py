@@ -203,7 +203,7 @@ class LayerConfigWidgetsTests(TestCase):
 
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
 
-        lyrR = TestObjects.createRasterLayer(nb=100)
+        lyrR = TestObjects.createRasterLayer(nb=100, eType=gdal.GDT_Byte)
         lyrV = TestObjects.createVectorLayer()
 
         cR = self.canvasWithLayer(lyrR)
@@ -219,7 +219,14 @@ class LayerConfigWidgetsTests(TestCase):
         self.assertTrue(wR.metadataModel.rowCount(None) > 0)
         self.assertIsInstance(wR, GDALMetadataModelConfigWidget)
 
-        self.showGui([wR, wV])
+        lyrC = TestObjects.createRasterLayer(nc=5)
+        canvas = self.canvasWithLayer(lyrC)
+        wC = f.createWidget(lyrC, canvas)
+
+
+        self.showGui([wR, wV, wC])
+
+
 
 
     def test_vectorfieldmodels(self):

@@ -1,4 +1,4 @@
-import typing, pathlib
+import typing, pathlib, sys
 from qgis.core import QgsRasterLayer, QgsRasterRenderer
 from qgis.core import *
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsRasterBandComboBox
@@ -6,9 +6,10 @@ from qgis.gui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
-from ..utils import loadUi
+from ..utils import loadUi, gdalDataset, ogrDataSource
 import numpy as np
 from .core import QpsMapLayerConfigWidget
+from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget, ClassInfo
 from osgeo import gdal, ogr
 
 class GDALMetadataModel(QAbstractTableModel):
@@ -146,10 +147,13 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
 
+
         if isinstance(layer, QgsRasterLayer):
             self.setPanelTitle('GDAL Metadata')
             self.setToolTip('Layer metadata according to the GDAL Metadata model')
             self.setWindowIcon(QIcon(':/qps/ui/icons/edit_gdal_metadata.svg'))
+
+
         elif isinstance(layer, QgsVectorLayer):
             self.setPanelTitle('OGR Metadata')
             self.setToolTip('Layer metadata according to the OGR Metadata model')
@@ -171,15 +175,46 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.optionMatchCase.changed.connect(self.updateFilter)
         self.optionRegex.changed.connect(self.updateFilter)
 
-        is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
-        is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
+        self.is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
+        self.is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
+
+        assert isinstance(self.classificationSchemeWidget, ClassificationSchemeWidget)
+        self._cs = None
+        self.supportsGDALClassification = \
+            self.is_gdal and layer.dataProvider().dataType(1) in \
+            [Qgis.Byte, Qgis.UInt16, Qgis.Int16, Qgis.UInt32, Qgis.Int32, Qgis.Int32]
+
+        self.classificationSchemeWidget.setIsEditable(False)
+
+
+
 
     def apply(self):
-        #todo: apply changes to vector layer
-        pass
+        if self.is_gdal:
+            ds = gdalDataset(self.mapLayer(), gdal.GA_Update)
+            assert isinstance(ds, gdal.Dataset)
+
+            if self.supportsGDALClassification:
+                cs = self.classificationSchemeWidget.classificationScheme()
+                if isinstance(cs, ClassificationScheme):
+                    self.mapLayer().dataProvider().setEditable(True)
+                    cs.saveToRaster(ds)
+                    ds.FlushCache()
+
 
     def syncToLayer(self):
         self.metadataModel.syncToLayer()
+
+        if self.supportsGDALClassification:
+            self._cs = ClassificationScheme.fromMapLayer(self.mapLayer())
+
+        if isinstance(self._cs, ClassificationScheme) and len(self._cs) > 0:
+            self.gbClassificationScheme.setVisible(True)
+            self.classificationSchemeWidget.setClassificationScheme(self._cs)
+        else:
+            self.classificationSchemeWidget.classificationScheme().clear()
+            self.gbClassificationScheme.setVisible(False)
+
 
     def updateFilter(self, *args):
 
@@ -208,6 +243,8 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
         self.mIconGDAL = QIcon(':/qps/ui/icons/edit_gdal_metadata.svg')
         self.mIconOGR  = QIcon(':/qps/ui/icons/edit_ogr_metadata.svg')
+
+
     def supportsLayer(self, layer):
         self.mIsGDAL = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
         self.mIsOGR = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
