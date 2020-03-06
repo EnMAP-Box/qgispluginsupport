@@ -57,6 +57,7 @@ SPECLIB_EPSG_CODE = 4326
 SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))
 
 SPECLIB_CLIPBOARD = weakref.WeakValueDictionary()
+DEFAULT_NAME = 'SpectralLibrary'
 
 OGR_EXTENSION2DRIVER = dict()
 OGR_EXTENSION2DRIVER[''] = []  # list all drivers without specific extension
@@ -1827,7 +1828,12 @@ class SpectralLibrary(QgsVectorLayer):
         for cls in sorted(readers, key=lambda r: r.score(uri)):
             try:
                 if cls.canRead(uri):
-                    return cls.readFrom(uri, progressDialog=progressDialog)
+                    sl = cls.readFrom(uri, progressDialog=progressDialog)
+                    if isinstance(sl, SpectralLibrary):
+
+                        if sl.name() in [DEFAULT_NAME, '']:
+                            sl.setName(os.path.basename(uri))
+                        return sl
             except Exception as ex:
                 s = ""
         return None
@@ -1848,7 +1854,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     sigProgressInfo = pyqtSignal(int, int, str)
 
-    def __init__(self, name='SpectralLibrary', uri=None):
+    def __init__(self, name=DEFAULT_NAME, uri=None):
 
         lyrOptions = QgsVectorLayer.LayerOptions(loadDefaultStyle=False, readExtentFromXml=False)
 
