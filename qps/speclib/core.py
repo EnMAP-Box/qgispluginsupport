@@ -565,9 +565,7 @@ class SpectralProfile(QgsFeature):
         wl, wlu = parseWavelength(layer)
 
         y = list(results.values())
-        for v in y:
-            if not isinstance(v, (float, int)):
-                return None
+        y = [v if isinstance(v, (int, float)) else float('NaN') for v in y]
 
         profile = SpectralProfile()
         profile.setName(SpectralProfile.profileName(layer.name(), geoPosition=position))

@@ -440,7 +440,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                 pass
 
         if success:
-            self.setData(x=x, y=y)
+            self.setData(x=x, y=y, connect='finite')
             self.setVisible(True)
         else:
             # self.setData(x=[], y=[])
@@ -2349,12 +2349,12 @@ class SpectralLibraryWidget(QMainWindow):
                     plotStyle = PlotStyle.fromPlotDataItem(spi)
 
             btnResetProfileStyles.setText('Reset Selected')
-            btnResetProfileStyles.clicked.connect(lambda *args, fids=selectedFIDs: self.plotWidget().setProfileStyles((None, fids)))
+            btnResetProfileStyles.clicked.connect(lambda *args, fids=selectedFIDs: self.plotWidget().setProfileStyles([(None, fids)]))
 
         psw = PlotStyleWidget(plotStyle=plotStyle)
         psw.setPreviewVisible(False)
         psw.cbIsVisible.setVisible(False)
-        psw.sigPlotStyleChanged.connect(lambda style, fids=selectedFIDs : self.plotWidget().setProfileStyles((style, fids)))
+        psw.sigPlotStyleChanged.connect(lambda style, fids=selectedFIDs : self.plotWidget().setProfileStyles([(style, fids)]))
 
         frame = QFrame()
         l = QVBoxLayout()
