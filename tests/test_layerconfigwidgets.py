@@ -199,6 +199,29 @@ class LayerConfigWidgetsTests(TestCase):
 
         self.showGui([cR, w])
 
+    def test_empty_gdalmetadata(self):
+
+        lyrR = TestObjects.createRasterLayer(nb=100, eType=gdal.GDT_Byte)
+        lyrV = TestObjects.createVectorLayer()
+        lyrE = QgsRasterLayer()
+
+        QgsProject.instance().addMapLayers([lyrR, lyrV, lyrE])
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
+        cb= QgsMapLayerComboBox()
+        c = QgsMapCanvas()
+        md = GDALMetadataModelConfigWidget(lyrE, c)
+        cb.layerChanged.connect(md.setLayer)
+        l = QVBoxLayout()
+        l.addWidget(cb)
+        l.addWidget(md)
+        w = QWidget()
+        w.setLayout(l)
+        self.showGui(w)
+
+
+
+
+
     def test_gdalmetadata(self):
 
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
@@ -208,6 +231,17 @@ class LayerConfigWidgetsTests(TestCase):
 
         cR = self.canvasWithLayer(lyrR)
         cV = self.canvasWithLayer(lyrV)
+
+        # no layer
+        c = QgsMapCanvas()
+        l = QgsRasterLayer()
+        w = GDALMetadataModelConfigWidget(l, c)
+        self.assertIsInstance(w, GDALMetadataModelConfigWidget)
+        w.show()
+
+        w.setLayer(lyrR)
+
+
         f = GDALMetadataConfigWidgetFactory()
         self.assertIsInstance(f, GDALMetadataConfigWidgetFactory)
         self.assertTrue(f.supportsLayer(lyrR))
@@ -224,7 +258,7 @@ class LayerConfigWidgetsTests(TestCase):
         wC = f.createWidget(lyrC, canvas)
 
 
-        self.showGui([wR, wV, wC])
+        self.showGui([w, wR, wV, wC])
 
 
 
