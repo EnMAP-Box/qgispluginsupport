@@ -210,6 +210,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                 self.setToolTip('Layer metadata according to the OGR Metadata model')
                 self.setWindowIcon(QIcon(':/qps/ui/icons/edit_ogr_metadata.svg'))
 
+        self.gbClassificationScheme.setVisible(self.supportsGDALClassification)
+
     def apply(self):
         if self.is_gdal:
             ds = gdalDataset(self.mapLayer(), gdal.GA_Update)
