@@ -322,7 +322,7 @@ class PlotStyle(QObject):
         self.markerBrush.setColor(Qt.green)
         self.markerBrush.setStyle(Qt.SolidPattern)
 
-        self.backgroundColor : QColor = QColor(Qt.black)
+        self.backgroundColor: QColor = QColor(Qt.black)
 
         self.markerPen: QPen = QPen()
         self.markerPen.setCosmetic(True)

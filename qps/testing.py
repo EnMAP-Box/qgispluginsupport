@@ -218,7 +218,6 @@ class QgisMockup(QgisInterface):
     def pasteFromClipboard(self, pasteVectorLayer: QgsMapLayer):
         if not isinstance(pasteVectorLayer, QgsVectorLayer):
             return
-
         return
         # todo: implement
         pasteVectorLayer.beginEditCommand('Features pasted')

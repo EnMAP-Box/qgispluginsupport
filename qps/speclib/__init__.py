@@ -42,6 +42,7 @@ class SpectralLibrarySettingsKey(enum.Enum):
     FOREGROUND_COLOR = 4
     INFO_COLOR = 5
     USE_VECTOR_RENDER_COLORS = 6
+    SELECTION_COLOR = 7
 
 
 
