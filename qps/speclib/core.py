@@ -37,6 +37,7 @@ from qgis.gui import QgsGui
 from ..utils import *
 from ..speclib import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
 
+
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
 
@@ -922,19 +923,26 @@ class SpectralProfile(QgsFeature):
         """
         return self.__copy__()
 
-    def plot(self):
+    def plot(self)->QWidget:
         """
         Plots this profile to an new PyQtGraph window
         :return:
         """
-        from .plotting import SpectralProfilePlotDataItem
+        from .gui import SpectralProfilePlotDataItem
+        from ..plotstyling.plotstyling import PlotStyle
         from ..externals import pyqtgraph as pg
-        pi = SpectralProfilePlotDataItem(self)
-        pi.setClickable(True)
+        pdi = SpectralProfilePlotDataItem(self)
+        pdi.setClickable(True)
         pw = pg.plot(title=self.name())
-        pw.getPlotItem().addItem(pi)
+        pw.getPlotItem().addItem(pdi)
 
-        pi.setColor('green')
+        style = PlotStyle.fromPlotDataItem(pdi)
+        style.setLineColor('green')
+        style.setMarkerSymbol('Triangle')
+        style.setMarkerColor('green')
+        style.apply(pdi)
+
+        return pw
         # pg.QAPP.exec_()
 
     def __reduce_ex__(self, protocol):

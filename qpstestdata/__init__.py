@@ -6,7 +6,7 @@ speclib_labeled = (pathlib.Path(__file__).parent / 'library_berlin.sli').as_posi
 testvectordata = (pathlib.Path(__file__).parent / 'testvectordata.gpkg').as_posix()
 landcover = testvectordata + '|layername=landcover'
 enmap_pixel = testvectordata + '|layername=enmap_pixel'
-
+ndvi_ts = (pathlib.Path(__file__).parent / 'ndvi_ts.tif').as_posix()
 
 DIR_ECOSIS = (pathlib.Path(__file__).parent /  'ecosis').as_posix()
 DIR_SPECCHIO = (pathlib.Path(__file__).parent /  'specchio').as_posix()

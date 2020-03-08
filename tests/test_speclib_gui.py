@@ -17,10 +17,10 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest
+import unittest, math
 from qps.testing import TestObjects, TestCase, StartOptions
-
-
+import numpy as np
+import numpy as np
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
@@ -103,16 +103,45 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_SpectraLibraryPlotDataItem(self):
 
-        sl = TestObjects.createSpectralLibrary(10)
-        profile = sl[0]
-        sp = SpectralProfilePlotDataItem(profile)
+        profile = SpectralProfile()
+        self.assertIsInstance(profile, SpectralProfile)
+        import numpy as np
+        yValues = np.asarray([np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan])
+        xValues = np.arange(len(yValues)) + 1
+
+        profile.setValues(xValues, yValues)
+
+        yValues = profile.yValues()
+        xValues = profile.xValues()
+        for i in range(len(xValues)-1):
+            assert xValues[i] < xValues[i+1]
+
+        self.assertTrue(any([math.isnan(v) for v in yValues]))
+
+        print('plot {}'.format(yValues))
+        import qps.externals.pyqtgraph as pg
+        import numpy as np
+        #w0 = pg.plot(yValues, connect='finite')
+
+        pdi = SpectralProfilePlotDataItem(profile)
+        self.assertIsInstance(pdi, SpectralProfilePlotDataItem)
+
+        style = PlotStyle.fromPlotDataItem(pdi)
 
         plotStyle = defaultCurvePlotStyle()
-        plotStyle.apply(sp)
+        plotStyle.setLineWidth(10)
+        plotStyle.setLineColor('red')
+        plotStyle.setMarkerColor('green')
+        plotStyle.setMarkerLinecolor('blue')
+        plotStyle.setMarkerSymbol('Triangle')
+        plotStyle.apply(pdi)
 
-        ps2 = PlotStyle.fromPlotDataItem(sp)
-
+        ps2 = PlotStyle.fromPlotDataItem(pdi)
         self.assertEqual(plotStyle, ps2)
+
+        w1 = profile.plot()
+        w2 = pdi.plot()
+        self.showGui([w1])
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidget(self):

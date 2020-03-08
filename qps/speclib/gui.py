@@ -29,7 +29,7 @@
 """
 from .core import *
 from ..speclib import SpectralLibrarySettingsKey
-from ..externals.pyqtgraph import PlotItem
+from ..externals.pyqtgraph import PlotItem, PlotWindow
 from ..externals.pyqtgraph.functions import mkPen
 from ..externals import pyqtgraph as pg
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
@@ -39,7 +39,7 @@ from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle
 from ..layerproperties import AddAttributeDialog
 
 BAND_INDEX = 'Band Index'
-SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY : None
+SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 
 def defaultCurvePlotStyle()->PlotStyle:
     ps = PlotStyle()
@@ -353,7 +353,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.mDefaultStyle = PlotStyle()
 
 
-        self.mProfile:SpectralProfile
+        self.mProfile: SpectralProfile
         self.mProfile = None
         self.mInitialDataX = None
         self.mInitialDataY = None
@@ -422,7 +422,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
     def applyMapFunctions(self) -> bool:
         """
-        Applies the two functions defined with `.setMapFunctionX` and `.setMapFunctionY`.
+        Applies the two functions defined with `.setMapFunctionX` and `.setMapFunctionY` and updates the plotted values.
         :return: bool, True in case of success
         """
         success = False
@@ -440,13 +440,39 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                 pass
 
         if success:
-            self.setData(x=x, y=y, connect='finite')
+            if True:
+                # handle failed removal of NaN
+                # see https://github.com/pyqtgraph/pyqtgraph/issues/1057
+                if not isinstance(y, np.ndarray):
+                    y = np.asarray(y, dtype=np.float)
+                if not isinstance(x, np.ndarray):
+                    x = np.asarray(x)
+
+                is_finite = np.isfinite(y)
+                connected = np.logical_and(is_finite, np.roll(is_finite, -1))
+                keep = is_finite + connected
+                y = y[keep]
+                x = x[keep]
+                connected = connected[keep]
+                self.setData(x=x, y=y, connect=connected)
+            else:
+                self.setData(x=x, y=y, connect='finite')
             self.setVisible(True)
         else:
             # self.setData(x=[], y=[])
             self.setVisible(False)
 
         return success
+
+    def plot(self)->PlotWindow:
+        """
+        Opens a PlotWindow and plots this SpectralProfilePlotDataItem to
+        :return:
+        :rtype:
+        """
+        pw = pg.plot(title=self.name())
+        pw.getPlotItem().addItem(self)
+        return pw
 
     def id(self) -> int:
         """
@@ -465,7 +491,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         assert isinstance(b, bool)
         self.curve.setClickable(b, width=width)
 
-    def setSelected(self, b: bool):
+    def depr_setSelected(self, b: bool):
         """
         Sets if this profile should appear as "selected"
         :param b: bool
@@ -479,7 +505,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
             self.setLineWidth(self.mDefaultStyle.lineWidth())
             self.setZValue(1)
 
-    def setPlotStyle(self, plotStyle:PlotStyle, updateItem=True):
+    def depr_setPlotStyle(self, plotStyle:PlotStyle, updateItem=True):
         """
         Applies a PlotStyle to this SpectralProfilePlotDataItem
         :param plotStyle:
@@ -490,7 +516,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         assert isinstance(plotStyle, PlotStyle)
         plotStyle.apply(self, updateItem=updateItem)
 
-    def plotStyle(self)->PlotStyle:
+    def depr_plotStyle(self)->PlotStyle:
         """
         Returns the SpectralProfilePlotDataItems' PlotStyle
         :return: PlotStyle
@@ -498,34 +524,34 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         """
         return PlotStyle.fromPlotDataItem(self)
 
-    def setColor(self, color: QColor):
+    def depr_setColor(self, color: QColor):
         """
-        Sets the profile plotStyle
+        Sets the profile line + marker color
         :param color: QColor
         """
         if not isinstance(color, QColor):
             color = QColor(color)
 
+        self.lineWidth()
         style = self.profileStyle()
         style.linePen.setColor(color)
         self.setProfileStyle(style)
 
-    def pen(self) -> QPen:
+    def depr_pen(self) -> QPen:
         """
         Returns the QPen of the profile
         :return: QPen
         """
         return mkPen(self.opts['pen'])
 
-    def color(self) -> QColor:
+    def depr_color(self) -> QColor:
         """
         Returns the profile plotStyle
         :return: QColor
         """
         return self.pen().color()
 
-
-    def setLineWidth(self, width:int):
+    def depr_setLineWidth(self, width:int):
         """
         Set the profile width in px
         :param width: int
@@ -535,7 +561,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         pen.setWidth(width)
         self.setPen(pen)
 
-    def lineWidth(self)->int:
+    def depr_lineWidth(self)->int:
         """
         Returns the line width
         :return: line width in pixel
