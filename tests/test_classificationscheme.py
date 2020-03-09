@@ -21,7 +21,9 @@ from qps.testing import start_app, TestObjects, TestCase
 from qps.utils import *
 from qps.classification.classificationscheme import *
 
+"""
 
+"""
 class TestsClassificationScheme(TestCase):
 
 
@@ -443,12 +445,34 @@ class TestsClassificationScheme(TestCase):
 
         r = cs.rasterRenderer()
         self.assertIsInstance(r, QgsPalettedRasterRenderer)
-
-
-
         cs2 = ClassificationScheme.fromRasterRenderer(r)
         self.assertIsInstance(cs2, ClassificationScheme)
         self.assertEqual(cs, cs2)
+
+
+        path = pathlib.Path(__file__).resolve().parent / 'QgsPalettedRasterRenderer.xml'
+        self.assertTrue(path.is_file())
+
+        dom = QDomDocument()
+        dom.setContent(QFile(path.as_posix()))
+        node = dom.elementsByTagName('rasterrenderer').at(0).toElement()
+        r1 = QgsPalettedRasterRenderer.create(node, None)
+        md = QMimeData()
+        md.setData(MIMEDATA_KEY_QGIS_STYLE, dom.toByteArray())
+        cs3 = ClassificationScheme.fromMimeData(md)
+        self.assertIsInstance(cs3, ClassificationScheme)
+        r2 = cs3.rasterRenderer()
+        self.assertIsInstance(r2, QgsPalettedRasterRenderer)
+
+        names = [c.label for c in r2.classes()]
+        colors = [QColor(c.color) for c in r2.classes()]
+        labels = [c.value for c in r2.classes()]
+
+        self.assertListEqual(names, cs3.classNames())
+        self.assertListEqual(labels, cs3.classLabels())
+        self.assertListEqual(colors, cs3.classColors())
+
+
 
     def test_io_FeatureRenderer(self):
 
@@ -467,12 +491,37 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(cs2, ClassificationScheme)
         self.assertEqual(cs, cs2)
 
+        path = pathlib.Path(__file__).resolve().parent / 'QgsCategorizedSymbolRenderer.xml'
+        self.assertTrue(path.is_file())
+
+        dom = QDomDocument()
+        dom.setContent(QFile(path.as_posix()))
+        node = dom.elementsByTagName('renderer-v2').at(0).toElement()
+        r1 = QgsCategorizedSymbolRenderer.create(node, QgsReadWriteContext())
+        md = QMimeData()
+        md.setData(MIMEDATA_KEY_QGIS_STYLE, dom.toByteArray())
+        cs3 = ClassificationScheme.fromMimeData(md)
+        self.assertIsInstance(cs3, ClassificationScheme)
+        r2 = cs3.featureRenderer()
+
+        names = cs3.classNames()
+        self.assertIsInstance(r2, QgsCategorizedSymbolRenderer)
+        for cat in r2.categories():
+            self.assertIsInstance(cat, QgsRendererCategory)
+            if len(cat.label()) > 0:
+                self.assertTrue(cat.label() in names)
+
+        md = cs3.mimeData(None)
+        self.assertIsInstance(md, QMimeData)
+        self.assertTrue(MIMEDATA_KEY_QGIS_STYLE in md.formats())
+        cs4 = ClassificationScheme.fromMimeData(md)
+
+        self.assertEqual(cs3, cs4)
+
     def test_io_clipboard(self):
 
-        cs  = ClassificationScheme.create(5)
-
+        cs = ClassificationScheme.create(5)
         md = cs.mimeData(None)
-        #print(md.data(MIMEDATA_KEY_QGIS_STYLE))
         self.assertIsInstance(md, QMimeData)
 
         from qps.layerproperties import pasteStyleToClipboard

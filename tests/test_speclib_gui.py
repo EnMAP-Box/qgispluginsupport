@@ -106,7 +106,7 @@ class TestSpeclibWidgets(TestCase):
         profile = SpectralProfile()
         self.assertIsInstance(profile, SpectralProfile)
         import numpy as np
-        yValues = np.asarray([np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan])
+        yValues = np.asarray([700., np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan, 800.])
         xValues = np.arange(len(yValues)) + 1
 
         profile.setValues(xValues, yValues)

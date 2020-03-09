@@ -467,6 +467,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                 is_finite = np.isfinite(y)
                 connected = np.logical_and(is_finite, np.roll(is_finite, -1))
                 keep = is_finite + connected
+                #y[np.logical_not(is_finite)] = np.nanmin(y)
                 y = y[keep]
                 x = x[keep]
                 connected = connected[keep]
@@ -1827,7 +1828,7 @@ class SpectralProfileEditorWidget(QWidget):
         loadUi(speclibUiPath('spectralprofileeditorwidget.ui'), self)
         self.mDefault = None
         self.mModel = SpectralProfileValueTableModel(parent=self)
-        self.mModel.dataChanged.connect(lambda :self.sigProfileValuesChanged.emit(self.profileValues()))
+        self.mModel.dataChanged.connect(lambda: self.sigProfileValuesChanged.emit(self.profileValues()))
         self.mModel.sigColumnValueUnitChanged.connect(self.onValueUnitChanged)
         self.mModel.sigColumnDataTypeChanged.connect(self.onDataTypeChanged)
 

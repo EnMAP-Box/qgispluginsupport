@@ -36,7 +36,7 @@ DEFAULT_FIRST_COLOR = QColor('#a6cee3')
 MIMEDATA_KEY = 'hub-classscheme'
 MIMEDATA_KEY_TEXT = 'text/plain'
 MIMEDATA_INTERNAL_IDs = 'classinfo_ids'
-MIMEDATA_KEY_QGIS_STYLE = 'application/qgis.style'
+MIMEDATA_KEY_QGIS_STYLE = QGSCLIPBOARD_STYLE_MIME =  'application/qgis.style'
 MAX_UNIQUE_CLASSES = 100
 
 def findMapLayersWithClassInfo()->list:
@@ -305,7 +305,7 @@ class ClassificationScheme(QAbstractTableModel):
 
         return False
 
-    def mimeData(self, indexes)->QMimeData:
+    def mimeData(self, indexes, vector_layer: bool = True, vector_attr:str = None)->QMimeData:
         """
         Returns class infos as QMimeData.
         :param indexes:
@@ -323,17 +323,27 @@ class ClassificationScheme(QAbstractTableModel):
         mimeData.setData(MIMEDATA_INTERNAL_IDs, QByteArray(pickle.dumps([id(c) for c in classes])))
         mimeData.setText(cs.toString())
 
-        renderer = self.featureRenderer()
+        featureRenderer = self.featureRenderer()
+        rasterRenderer = self.rasterRenderer()
 
-        doc = QDomDocument()
-        err = ''
-        for typeName in ['POLYGON']:
-            lyr = QgsVectorLayer('{}?crs=epsg:4326&field=id:integer'.format(typeName), cs.name(), 'memory')
-            assert isinstance(lyr, QgsVectorLayer) and lyr.isValid()
-            lyr.setRenderer(renderer.clone())
-            err = lyr.exportNamedStyle(doc)
-            xml = doc.toString()
-            s = ""
+        docType = QDomImplementation().createDocumentType('qgis', 'http://mrcc.com/qgis.dtd', 'SYSTEM')
+        doc = QDomDocument(docType)
+        root = doc.createElement('qgis')
+        root.setAttribute('version', Qgis.QGIS_VERSION)
+        doc.appendChild(root)
+
+        if vector_layer:
+            root.setAttribute('styleCategories', "Symbology")
+
+            node = featureRenderer.save(doc, QgsReadWriteContext())
+            if isinstance(vector_attr, str):
+                node.setAttribute('attr', vector_attr)
+            root.appendChild(node)
+        else:
+            pipe = doc.createElement('pipe')
+            root.appendChild(pipe)
+            rasterRenderer.writeXml(doc, pipe)
+
         mimeData.setData(MIMEDATA_KEY_QGIS_STYLE, doc.toByteArray())
         mimeData.setText(doc.toString())
         return mimeData
@@ -552,15 +562,11 @@ class ClassificationScheme(QAbstractTableModel):
             print(ex, file=sys.stderr)
             return None
 
-
-    def rasterRenderer(self, band=0)->QgsPalettedRasterRenderer:
+    def rasterRenderer(self, band: int = 1)->QgsPalettedRasterRenderer:
         """
         Returns the ClassificationScheme as QgsPalettedRasterRenderer
         :return: ClassificationScheme
         """
-        #DUMMY_RASTERINTERFACE = QgsSingleBandGrayRenderer(None, 0)
-
-
         classes = []
         for classInfo in self:
             qgsClass = QgsPalettedRasterRenderer.Class(
@@ -622,20 +628,31 @@ class ClassificationScheme(QAbstractTableModel):
         classes = []
 
         # move a None element to first position
-        categories = renderer.categories()
-        cNames = [c.value() for c in categories]
-        if None in cNames:
-            i = cNames.index(None)
-            categories.insert(0, categories.pop(i))
 
-        for cat in categories:
+
+        no_data_class = None
+        classes = []
+        class_values = []
+        for cat in renderer.categories():
             assert isinstance(cat, QgsRendererCategory)
-            c = ClassInfo(name=cat.label(), color=QColor(cat.symbol().color()))
-            classes.append(c)
+            name = cat.label()
+            value = cat.value()
+            color = QColor(cat.symbol().color())
+            class_values.append(value)
+            if name.lower().strip() in [None, '', 'unclassified'] and value in [None, '', 0]:
+                if no_data_class is None:
+                    no_data_class = ClassInfo(0, name, color)
+            else:
+                c = ClassInfo(value, name, color)
+                classes.append(c)
+
+        if no_data_class is None:
+            no_data_class = ClassInfo(0, 'Unclassified', QColor('black'))
+
+        classes.insert(0, no_data_class)
         cs = ClassificationScheme()
         cs.insertClasses(classes)
         return cs
-
 
     def clear(self):
         """
@@ -830,7 +847,6 @@ class ClassificationScheme(QAbstractTableModel):
         #negative index? insert to beginning
         index = max(index, 0)
 
-
         self.beginInsertRows(QModelIndex(), index, index+len(classes)-1)
         for i, c in enumerate(classes):
             assert isinstance(c, ClassInfo)
@@ -1008,12 +1024,31 @@ class ClassificationScheme(QAbstractTableModel):
             ba = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY))
             if isinstance(ba, ClassificationScheme):
                 return ba
+
+        if MIMEDATA_KEY_QGIS_STYLE in mimeData.formats():
+
+            ba = mimeData.data(MIMEDATA_KEY_QGIS_STYLE)
+            doc = QDomDocument()
+            doc.setContent(ba)
+            #print(doc.toString())
+            rasterRenderers = doc.elementsByTagName('rasterrenderer')
+            for i in range(rasterRenderers.count()):
+                node = rasterRenderers.at(i).toElement()
+                if node.attribute('type') == 'paletted':
+                    return ClassificationScheme.fromRasterRenderer(QgsPalettedRasterRenderer.create(node, None))
+
+            vectorRenderers = doc.elementsByTagName('renderer-v2')
+            for i in range(vectorRenderers.count()):
+                node = vectorRenderers.at(i).toElement()
+                if node.attribute('type') == 'categorizedSymbol':
+                    context = QgsReadWriteContext()
+                    return ClassificationScheme.fromFeatureRenderer(QgsCategorizedSymbolRenderer.create(node, context))
+
         if MIMEDATA_KEY_TEXT in mimeData.formats():
             ba = ClassificationScheme.fromQByteArray(mimeData.data(MIMEDATA_KEY_TEXT))
             if isinstance(ba, ClassificationScheme):
                 return ba
-        if MIMEDATA_KEY_QGIS_STYLE in mimeData.formats():
-            s = ""
+
 
         return None
 
@@ -1453,7 +1488,7 @@ class ClassificationSchemeWidget(QWidget):
                 btn.setVisible(b)
 
 
-    def onCopyClasses(self):
+    def copyClassesToClipboard(self, vector_layer:bool = False):
         classes = self.selectedClasses(allIfNone=True)
         if len(classes) == 0:
             return
@@ -1461,7 +1496,7 @@ class ClassificationSchemeWidget(QWidget):
         cs.insertClasses(classes)
         cb = QApplication.clipboard()
         assert isinstance(cb, QClipboard)
-        cb.setMimeData(cs.mimeData(None))
+        cb.setMimeData(cs.mimeData(None, vector_layer=vector_layer))
 
     def onPasteClasses(self):
         cb = QApplication.clipboard()
@@ -1568,12 +1603,14 @@ class ClassificationSchemeWidget(QWidget):
 
         m = QMenu('Load classes')
         m.setToolTip('Load classes ...')
-        a = m.addAction('Load from raster')
-        a.triggered.connect(lambda: self.onLoadClasses('raster'))
-        a = m.addAction('Load from map layer')
-        a.triggered.connect(lambda: self.onLoadClasses('layer'))
-        a = m.addAction('Load from other textfile')
-        a.triggered.connect(lambda: self.onLoadClasses('textfile'))
+        self.actionLoadFromRasterFile.triggered.connect(lambda: self.onLoadClasses('raster'))
+        m.addAction(self.actionLoadFromRasterFile)
+
+        self.actionLoadFromMapLayer.triggered.connect(lambda: self.onLoadClasses('layer'))
+        m.addAction(self.actionLoadFromMapLayer)
+
+        self.actionLoadfromTextFile.triggered.connect(lambda: self.onLoadClasses('textfile'))
+        m.addAction(self.actionLoadfromTextFile)
 
         parent = self.parent()
         if isinstance(parent, ClassificationSchemeEditorConfigWidget):
@@ -1587,7 +1624,7 @@ class ClassificationSchemeWidget(QWidget):
                 a.triggered.connect(lambda _, lyr=layer, f=idx: self.onLoadClassesFromField(lyr, idx))
 
                 if isinstance(layer.renderer(), QgsCategorizedSymbolRenderer):
-                    a = m.addAction('Current Symbol Renderer'.format(layer.name()))
+                    a = m.addAction('Current Renderer'.format(layer.name()))
                     a.triggered.connect(lambda _, lyr=layer: self.onLoadClassesFromRenderer(lyr))
 
         self.btnLoadClasses.setMenu(m)
@@ -1602,12 +1639,20 @@ class ClassificationSchemeWidget(QWidget):
         self.actionPasteClasses.setIcon(QIcon(r'://images/themes/default/mActionEditPaste.svg'))
         self.actionPasteClasses.triggered.connect(self.onPasteClasses)
 
-        self.actionCopyClasses.setIcon(QIcon(r'://images/themes/default/mActionEditCopy.svg'))
-        self.actionCopyClasses.triggered.connect(self.onCopyClasses)
+
 
         self.btnSaveClasses.setDefaultAction(self.actionSaveClasses)
         self.btnRemoveClasses.setDefaultAction(self.actionRemoveClasses)
         self.btnAddClasses.setDefaultAction(self.actionAddClasses)
+
+        self.actionCopyClasses.triggered.connect(lambda *args: self.copyClassesToClipboard(vector_layer=False))
+        self.actionCopyToVectorLayer.triggered.connect(lambda *args: self.copyClassesToClipboard(vector_layer=True))
+        self.actionCopyToRasterLayer.triggered.connect(lambda *args: self.copyClassesToClipboard(vector_layer=False))
+        m = QMenu('Copy classes')
+        m.addAction(self.actionCopyToVectorLayer)
+        m.addAction(self.actionCopyToRasterLayer)
+
+        self.btnCopyClasses.setMenu(m)
         self.btnCopyClasses.setDefaultAction(self.actionCopyClasses)
         self.btnPasteClasses.setDefaultAction(self.actionPasteClasses)
 
