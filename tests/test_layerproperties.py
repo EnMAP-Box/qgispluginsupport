@@ -157,12 +157,25 @@ class LayerPropertyTests(TestCase):
     def test_add_attributes(self):
 
         vl = TestObjects.createVectorLayer()
-        names = vl.fields().names()
-        d = AddAttributeDialog(vl)
+        vl.startEditing()
+        vl.addAttribute(createQgsField('test', 42))
+        self.assertTrue(vl.commitChanges())
+
+        d = AddAttributeDialog(vl, case_sensitive=False)
         self.assertIsInstance(d, AddAttributeDialog)
+        d.setName('Test')
+        is_valid, errors = d.validate()
+        self.assertFalse(is_valid)
+        self.assertIsInstance(errors, str)
+        self.assertTrue(len(errors) > 0)
 
-        d.show()
+        d.setCaseSensitive(True)
+        is_valid, errors = d.validate()
+        self.assertTrue(is_valid)
+        self.assertIsInstance(errors, str)
+        self.assertTrue(len(errors) == 0)
 
+        d.setName('test')
         self.showGui(d)
 
     def test_p(self):

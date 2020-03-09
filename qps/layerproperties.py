@@ -79,13 +79,13 @@ class AddAttributeDialog(QDialog):
     """
     A dialog to set up a new QgsField.
     """
-    def __init__(self, layer, parent=None):
+    def __init__(self, layer, parent=None, case_sensitive: bool = False):
         assert isinstance(layer, QgsVectorLayer)
         super(AddAttributeDialog, self).__init__(parent)
 
         assert isinstance(layer, QgsVectorLayer)
         self.mLayer = layer
-
+        self.mCaseSensitive = case_sensitive
         self.setWindowTitle('Add Field')
         l = QGridLayout()
 
@@ -140,15 +140,23 @@ class AddAttributeDialog(QDialog):
 
         self.validate()
 
-    def setName(self, name:str):
+    def setCaseSensitive(self, is_sensitive: bool):
+        assert isinstance(is_sensitive, bool)
+        self.mCaseSensitive = is_sensitive
+        self.validate()
+
+    def setName(self, name: str):
         """
-        Returns the field name
+        Sets the field name
         """
         self.tbName.setText(name)
 
-    def name(self)->str:
+    def name(self) -> str:
+        """
+        Returns the field name
+        :return: str
+        """
         return self.tbName.text()
-
 
     def accept(self):
         isValid, msg = self.validate()
@@ -205,14 +213,16 @@ class AddAttributeDialog(QDialog):
         elif value < vMin:
             sb.setValue(vMin)
 
-    def validate(self, *args)->typing.Union[bool, str]:
+    def validate(self, *args) -> typing.Union[bool, str]:
         """
         Validates the inputs
         :return: (bool, str with error message(s))
         """
         errors = []
         name = self.tbName.text()
-        if name in self.mLayer.fields().names():
+        existing_names = self.mLayer.fields().names()
+        if self.mCaseSensitive and name in existing_names or \
+           not self.mCaseSensitive and name.lower() in [n.lower() for n in existing_names]:
             errors.append('Field name "{}" already exists.'.format(name))
         elif name == '':
             errors.append('Missing field name')

@@ -324,9 +324,9 @@ def qgisLayerTreeLayers() -> list:
         return []
 
 
-def createQgsField(name : str, exampleValue, comment:str=None):
+def createQgsField(name: str, exampleValue: typing.Any, comment: str = None) -> QgsField:
     """
-    Create a QgsField using a Python-datatype exampleValue
+    Creates a QgsField based on the type properties of an Python-datatype exampleValue
     :param name: field name
     :param exampleValue: value, can be any type
     :param comment: (optional) field comment.
