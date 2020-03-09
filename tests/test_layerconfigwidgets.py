@@ -227,20 +227,21 @@ class LayerConfigWidgetsTests(TestCase):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
 
         lyrR = TestObjects.createRasterLayer(nb=100, eType=gdal.GDT_Byte)
+        from qpstestdata import enmap
+        lyrR = QgsRasterLayer(enmap)
+        self.assertTrue(lyrR.isValid())
         lyrV = TestObjects.createVectorLayer()
 
         cR = self.canvasWithLayer(lyrR)
         cV = self.canvasWithLayer(lyrV)
 
         # no layer
-        c = QgsMapCanvas()
-        l = QgsRasterLayer()
-        w = GDALMetadataModelConfigWidget(l, c)
-        self.assertIsInstance(w, GDALMetadataModelConfigWidget)
-        w.show()
-
+        #c = QgsMapCanvas()
+        #l = QgsRasterLayer()
+        #w = GDALMetadataModelConfigWidget(l, c)
+        #self.assertIsInstance(w, GDALMetadataModelConfigWidget)
+        w = GDALMetadataModelConfigWidget(lyrR, cR)
         w.setLayer(lyrR)
-
 
         f = GDALMetadataConfigWidgetFactory()
         self.assertIsInstance(f, GDALMetadataConfigWidgetFactory)
@@ -257,11 +258,7 @@ class LayerConfigWidgetsTests(TestCase):
         canvas = self.canvasWithLayer(lyrC)
         wC = f.createWidget(lyrC, canvas)
 
-
-        self.showGui([w, wR, wV, wC])
-
-
-
+        self.showGui([w])
 
     def test_vectorfieldmodels(self):
 

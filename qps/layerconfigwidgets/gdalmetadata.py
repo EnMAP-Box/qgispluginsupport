@@ -95,15 +95,19 @@ class GDALMetadataModel(QAbstractTableModel):
         if not isinstance(self.mLayer, QgsMapLayer) or not self.mLayer.isValid():
             return items
 
+
+
         if isinstance(self.mLayer, QgsRasterLayer) and self.mLayer.dataProvider().name() == 'gdal':
             ds = gdal.Open(self.mLayer.source())
+
             if isinstance(ds, gdal.Dataset):
+                z = len(str(ds.RasterCount))
                 for (domain, key, value) in self._read_majorobject(ds):
                     items.append(GDALMetadataModel.MDItem('Dataset', domain, key, value))
                 for b in range(ds.RasterCount):
                     band = ds.GetRasterBand(b + 1)
                     assert isinstance(band, gdal.Band)
-                    bandKey = 'Band{}'.format(b + 1)
+                    bandKey = 'Band{}'.format(str(b + 1).zfill(z))
                     for (domain, key, value) in self._read_majorobject(band):
                         items.append(GDALMetadataModel.MDItem(bandKey, domain, key, value))
 
@@ -112,10 +116,11 @@ class GDALMetadataModel(QAbstractTableModel):
             if isinstance(ds, ogr.DataSource):
                 for (domain, key, value) in self._read_majorobject(ds):
                     items.append(GDALMetadataModel.MDItem('Datasource', domain, key, value))
+                z = len(str(ds.GetLayerCount()))
                 for b in range(ds.GetLayerCount()):
                     lyr = ds.GetLayer(b)
                     assert isinstance(lyr, ogr.Layer)
-                    lyrKey = 'Layer{}'.format(b + 1)
+                    lyrKey = 'Layer{}'.format(str(b + 1).zfill(z))
                     for (domain, key, value) in self._read_majorobject(lyr):
                         items.append(GDALMetadataModel.MDItem(lyrKey, domain, key, value))
 
@@ -186,7 +191,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         :return:
         :rtype:
         """
-        self.metadataModel.setLayer(layer)
 
         if not (isinstance(layer, QgsMapLayer) and layer.isValid()):
             self.is_gdal = self.is_ogr = self.supportsGDALClassification = False
@@ -194,15 +198,14 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
             self.is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
             self.is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
-            self.supportsGDALClassification = \
-                self.is_gdal and layer.dataProvider().dataType(1) in \
-                [Qgis.Byte, Qgis.UInt16, Qgis.Int16, Qgis.UInt32, Qgis.Int32, Qgis.Int32]
-
 
             if isinstance(layer, QgsRasterLayer):
                 self.setPanelTitle('GDAL Metadata')
                 self.setToolTip('Layer metadata according to the GDAL Metadata model')
                 self.setWindowIcon(QIcon(':/qps/ui/icons/edit_gdal_metadata.svg'))
+                self.supportsGDALClassification = \
+                    self.is_gdal and layer.dataProvider().dataType(1) in \
+                    [Qgis.Byte, Qgis.UInt16, Qgis.Int16, Qgis.UInt32, Qgis.Int32, Qgis.Int32]
 
 
             elif isinstance(layer, QgsVectorLayer):
@@ -210,7 +213,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                 self.setToolTip('Layer metadata according to the OGR Metadata model')
                 self.setWindowIcon(QIcon(':/qps/ui/icons/edit_ogr_metadata.svg'))
 
-        self.gbClassificationScheme.setVisible(self.supportsGDALClassification)
+            self.syncToLayer()
 
     def apply(self):
         if self.is_gdal:
@@ -226,10 +229,11 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
 
     def syncToLayer(self):
-        self.metadataModel.syncToLayer()
 
+        lyr = self.mapLayer()
+        self.metadataModel.setLayer(lyr)
         if self.supportsGDALClassification:
-            self._cs = ClassificationScheme.fromMapLayer(self.mapLayer())
+            self._cs = ClassificationScheme.fromMapLayer(lyr)
 
         if isinstance(self._cs, ClassificationScheme) and len(self._cs) > 0:
             self.gbClassificationScheme.setVisible(True)
