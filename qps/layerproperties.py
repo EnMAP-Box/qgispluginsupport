@@ -818,7 +818,12 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         w = self.currentPage()
 
         if isinstance(w, QgsMapLayerConfigWidget) and hasattr(w, 'syncToLayer'):
-            w.syncToLayer()
+            if isinstance(w, QgsRasterTransparencyWidget):
+                # skip, until this issue is solved in QGIS https://github.com/qgis/QGIS/pull/34969
+                # w.syncToLayer()
+                pass
+            else:
+                w.syncToLayer()
 
         for page in self.pages():
             if page != w:

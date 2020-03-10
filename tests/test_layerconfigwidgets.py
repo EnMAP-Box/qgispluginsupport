@@ -142,7 +142,46 @@ class LayerConfigWidgetsTests(TestCase):
         self.showGui(w)
 
     def test_transparency(self):
-        pass
+
+        lyr = TestObjects.createRasterLayer()
+        c = QgsMapCanvas()
+        c.setLayers([lyr])
+
+        w1 = QgsRasterTransparencyWidget(lyr, c)
+
+        btnApply = QPushButton('Apply')
+        btnSync = QPushButton('Sync')
+
+
+        def onApply():
+            ndv1 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            w1.apply()
+            ndv2 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+
+            s = ""
+
+        def onSync():
+            ndv1 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            w1.apply()
+            ndv2 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            w1.syncToLayer()
+            ndv3 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+
+            s = ""
+        btnApply.clicked.connect(onApply)
+        btnSync.clicked.connect(onSync)
+
+
+        w  = QWidget()
+        l = QVBoxLayout()
+        lh = QHBoxLayout()
+        lh.addWidget(btnApply)
+        lh.addWidget(btnSync)
+        l.addLayout(lh)
+        l.addWidget(w1)
+        w.setLayout(l)
+        self.showGui(w)
+
 
     def test_histogram(self):
         pass
