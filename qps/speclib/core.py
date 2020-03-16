@@ -2444,13 +2444,15 @@ class AbstractSpectralLibraryIO(object):
         return None
 
     @staticmethod
-    def write(speclib: SpectralLibrary, path: str, progressDialog: typing.Union[QProgressDialog, ProgressHandler]) -> \
+    def write(speclib: SpectralLibrary,
+              path: str,
+              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> \
     typing.List[str]:
         """
         Writes the SpectralLibrary.
         :param speclib: SpectralLibrary to write
         :param path: file path to write the SpectralLibrary to
-        :param progressDialog:  QProgressDialog, which well-behave implementations can use to show the writting progress.
+        :param progressDialog:  QProgressDialog, which well-behave implementations can use to show the writing progress.
         :return: a list of paths that can be used to re-open all written profiles
         """
         assert isinstance(speclib, SpectralLibrary)

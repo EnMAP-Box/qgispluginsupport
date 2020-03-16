@@ -361,7 +361,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         return 0
 
     @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None)->SpectralLibrary:
         """
         Reads an ENVI Spectral Library (ESL).
         :param path: path to ENVI Spectral Library
@@ -494,12 +494,11 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         assert SLIB.commitChanges()
         assert SLIB.featureCount() == nSpectra
 
-
         SLIB.readJSONProperties(pathESL)
         return SLIB
 
     @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    def write(speclib: SpectralLibrary, path: str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None):
         """
         Writes a SpectralLibrary as ENVI Spectral Library (ESL).
         See http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for ESL definition

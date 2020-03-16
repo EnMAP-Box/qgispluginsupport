@@ -10,7 +10,7 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
     See https://ecosis.org for details.
     """
     @staticmethod
-    def canRead(path)->bool:
+    def canRead(path) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -26,13 +26,23 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return False
 
     @staticmethod
-    def readFrom(path, wlu='nm', delimiter=',', progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
+    def readFrom(path: str,
+                 wlu='nm',
+                 delimiter=',',
+                 progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
-        Returns the SpectralLibrary read from "path"
-        :param path: source of SpectralLibrary
-        :return: SpectralLibrary
+         Returns the SpectralLibrary read from "path"
+        :param path:
+        :type path:
+        :param wlu:
+        :type wlu:
+        :param delimiter:
+        :type delimiter:
+        :param progressDialog:
+        :type progressDialog:
+        :return:
+        :rtype:
         """
-
         sl = SpectralLibrary()
         sl.startEditing()
         bn = os.path.basename(path)

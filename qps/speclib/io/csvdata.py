@@ -120,7 +120,10 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
     @staticmethod
-    def write(speclib, path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, dialect=pycsv.excel_tab)->list:
+    def write(speclib: SpectralLibrary,
+              path: str,
+              progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None,
+              dialect=pycsv.excel_tab) -> list:
         """
         Writes the speclib into a CSv file
         :param speclib: SpectralLibrary

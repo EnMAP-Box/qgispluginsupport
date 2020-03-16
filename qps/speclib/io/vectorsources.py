@@ -16,7 +16,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     See https://ecosis.org for details.
     """
     @staticmethod
-    def canRead(path:str)->bool:
+    def canRead(path: str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -39,7 +39,9 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
     @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, addAttributes:bool = True)->SpectralLibrary:
+    def readFrom(path,
+                 progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+                 addAttributes: bool = True) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -79,8 +81,8 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     @staticmethod
     def write(speclib:SpectralLibrary,
               path: str,
-              progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None,
-              options:QgsVectorFileWriter.SaveVectorOptions=None):
+              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+              options: QgsVectorFileWriter.SaveVectorOptions = None):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """

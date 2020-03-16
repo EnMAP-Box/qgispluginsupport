@@ -361,7 +361,7 @@ class TestIO(TestCase):
 
         pathCSV = os.path.join(TEST_DIR, 'speclib.ecosys.csv')
         csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=QProgressDialog())
-
+        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=None)
         n = 0
         for p in csvFiles:
             self.assertTrue(os.path.isfile(p))

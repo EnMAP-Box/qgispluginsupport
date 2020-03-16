@@ -154,7 +154,7 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         return speclib
 
     @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:QProgressDialog, delimiter:str=';'):
+    def write(speclib:SpectralLibrary, path:str, progressDialog:QProgressDialog = None, delimiter:str=';'):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """

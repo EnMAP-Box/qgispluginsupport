@@ -14,7 +14,7 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
     See https://artmotoolbox.com/tools.html for details.
     """
     @staticmethod
-    def canRead(path:str)->bool:
+    def canRead(path: str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -38,7 +38,7 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return False
 
     @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
+    def readFrom(path: str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
