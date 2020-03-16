@@ -2340,10 +2340,9 @@ class SpectralLibraryWidget(QMainWindow):
     def onImportFromRasterSource(self):
         from .io.rastersources import SpectralProfileImportPointsDialog
         d = SpectralProfileImportPointsDialog(parent=self)
-        d.finished.connect(lambda *args, d=d: self.onIODialogFinished(d))
+        d.finished.connect(lambda *args, d = d: self.onIODialogFinished(d))
         d.show()
         self.mIODialogs.append(d)
-
 
     def onIODialogFinished(self, w:QWidget):
         from .io.rastersources import SpectralProfileImportPointsDialog
@@ -2353,7 +2352,7 @@ class SpectralLibraryWidget(QMainWindow):
                 profiles = w.profiles()
                 self.mSpeclib.startEditing()
                 self.mSpeclib.beginEditCommand('Add {} profiles from {}'.format(len(profiles), w.rasterSource().name()))
-                self.mSpeclib.addProfiles(profiles, addMissingFields=False)
+                self.mSpeclib.addProfiles(profiles, addMissingFields=w.allAttributes())
                 self.mSpeclib.endEditCommand()
                 self.mSpeclib.commitChanges()
 

@@ -1118,9 +1118,10 @@ class SpectralLibrary(QgsVectorLayer):
     def readFromVector(vector_qgs_layer: QgsVectorLayer = None,
                        raster_qgs_layer: QgsRasterLayer = None,
                        progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
-                       nameField=None,
-                       all_touched=False,
-                       returnProfileList=False):
+                       nameField: str = None,
+                       all_touched: bool =False,
+                       copy_attributes: bool = False,
+                       returnProfileList: bool =False):
         """
         Reads SpectraProfiles from a raster source, based on the locations specified in a vector data set.
         Opens a Select Polygon Layer dialog to select the correct polygon and returns a Spectral Library with
@@ -1139,8 +1140,7 @@ class SpectralLibrary(QgsVectorLayer):
         :return: Spectral Library | [list-of-profiles]
         """
 
-        # the SpectralLibrary to be returned
-        spectral_library = SpectralLibrary()
+
 
         # homogenize source file formats
         try:
@@ -1163,20 +1163,23 @@ class SpectralLibrary(QgsVectorLayer):
                 if not isinstance(vector_qgs_layer, QgsVectorLayer) or not isinstance(raster_qgs_layer, QgsRasterLayer):
                     return
 
-        # get the shapefile fields and check the minimum requirements
 
+        # the SpectralLibrary to be returned
+        spectral_library = SpectralLibrary()
+
+        # get the shapefile fields and check the minimum requirements
         # field in the vector source
         vector_fields = vector_qgs_layer.fields()
-
-        # fields in the output-spectral library
-        speclib_fields = createStandardFields()
+        fields_to_copy = []
+        if copy_attributes:
+            assert spectral_library.startEditing()
+            for field in vector_fields:
+                if spectral_library.fields().indexOf(field.name()) == -1:
+                    spectral_library.addAttribute(QgsField(field))
+                    fields_to_copy.append(field.name())
+            assert spectral_library.commitChanges()
 
         # fields we need to copy values from the vector source to each SpectralProfile
-        fields_to_copy = []
-        for field in vector_fields:
-            if speclib_fields.indexOf(field.name()) == -1:
-                speclib_fields.append(QgsField(field))
-                fields_to_copy.append(field.name())
         options = QgsVectorFileWriter.SaveVectorOptions()
         options.driverName = 'GPKG'
         # set spatial filter in destination CRS
@@ -1188,10 +1191,23 @@ class SpectralLibrary(QgsVectorLayer):
         ct.setSourceCrs(vector_qgs_layer.crs())
         ct.setDestinationCrs(raster_qgs_layer.crs())
         options.ct = ct
-        error = QgsVectorFileWriter.writeAsVectorFormat(layer=vector_qgs_layer,
-                                                        fileName=tmpPath,
-                                                        options=options)
-        vector_qgs_layer.disconnect()
+
+        if False:
+            # todo: remove deprecation warning
+            writer = QgsVectorFileWriter(tmpPath,
+                                         'UTF-8',
+                                         vector_qgs_layer.fields(),
+                                         vector_qgs_layer.wkbType(),
+                                         vector_qgs_layer.crs(),
+                                         'GPKG')
+            for f in vector_qgs_layer:
+                writer.addFeature(f)
+            del writer
+        else:
+            error = QgsVectorFileWriter.writeAsVectorFormat(layer=vector_qgs_layer,
+                                                            fileName=tmpPath,
+                                                            options=options)
+        #vector_qgs_layer.disconnect()
         del vector_qgs_layer
 
         # make the internal FID a normal attribute which gdal can rasterize
@@ -1316,12 +1332,12 @@ class SpectralLibrary(QgsVectorLayer):
 
         attr_idx_profile = []
         attr_idx_feature = []
-        tmpProfile = SpectralProfile(fields=speclib_fields)
+        tmpProfile = SpectralProfile(fields=spectral_library.fields())
         for fieldName in fields_to_copy:
             attr_idx_profile.append(tmpProfile.fields().indexOf(fieldName))
             attr_idx_feature.append(vector_fields.indexOf(fieldName))
 
-        # store relevant features in memory for faster accesss
+        # store relevant features in memory for faster access
         features = {}
         featureAttributes = {}
         for f in tmp_qgs_layer.getFeatures(unique_fids):
@@ -1394,7 +1410,7 @@ class SpectralLibrary(QgsVectorLayer):
 
             feature = features[fid]
             assert isinstance(feature, QgsFeature)
-            profile = SpectralProfile(fields=speclib_fields)
+            profile = SpectralProfile(fields=spectral_library.fields())
 
             # 2.1 set profile id
             profile.setId(iProfile)
@@ -1420,7 +1436,7 @@ class SpectralLibrary(QgsVectorLayer):
             g = geo_coordinates[iProfile]
             profile.setGeometry(QgsPoint(g[0], g[1]))
 
-            # 2.4 copy vector feature attribute
+            # 2.4 copy vector feature attributes
             for idx_p, idx_f in zip(attr_idx_profile, attr_idx_feature):
                 profile.setAttribute(idx_p, feature.attribute(idx_f))
 
@@ -1434,9 +1450,6 @@ class SpectralLibrary(QgsVectorLayer):
         if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
             progressDialog.setLabelText('Create speclib...')
 
-        assert spectral_library.startEditing()
-        spectral_library.addMissingFields(vector_fields)
-        assert spectral_library.commitChanges()
         assert spectral_library.startEditing()
 
         # spectral_library.addProfiles(profiles)

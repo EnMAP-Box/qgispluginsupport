@@ -21,7 +21,7 @@ import unittest
 from qps.testing import TestObjects, TestCase
 
 
-from qpstestdata import enmap
+from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
 
 from qps.speclib.io.csvdata import *
@@ -265,18 +265,20 @@ class TestIO(TestCase):
             self.assertListEqual(p1.yValues(), p2.yValues())
             self.assertTrue(p1.geometry().equals(p2.geometry()))
 
-        uri = "MultiPoint?crs=epsg:4326";
-        pathMultiPointLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
-        pathRasterLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
-        vlMultiPoint = None
 
-        if os.path.isfile(pathMultiPointLayer) and os.path.isfile(pathRasterLayer):
-            vlMultiPoint = QgsVectorLayer(pathMultiPointLayer)
-            rlEnMAP = QgsRasterLayer(pathRasterLayer)
-            speclib3 = SpectralLibrary.readFromVector(vlMultiPoint, rlEnMAP, progressDialog=progress)
+        vlLandCover = QgsVectorLayer(landcover)
+        rlEnMAP = QgsRasterLayer(enmap)
+        speclib3 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, progressDialog=progress)
 
-            self.assertIsInstance(speclib3, SpectralLibrary)
-            self.assertTrue(len(speclib3) > 0)
+        self.assertIsInstance(speclib3, SpectralLibrary)
+        self.assertTrue(len(speclib3) > 0)
+
+        speclib4 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, copy_attributes=True, progressDialog=progress)
+        self.assertIsInstance(speclib3, SpectralLibrary)
+        self.assertTrue(len(speclib3) > 0)
+        self.assertTrue(len(speclib3.fieldNames()) < len(speclib4.fieldNames()))
+        for fieldName in vlLandCover.fields().names():
+            self.assertTrue(fieldName in speclib4.fieldNames())
 
     def test_reloadProfiles(self):
         lyr = QgsRasterLayer(enmap)
