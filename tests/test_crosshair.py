@@ -75,9 +75,9 @@ class CrosshairTests(TestCase):
 
         refCanvas = QgsMapCanvas()
         refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
+        QTimer.singleShot(500, QApplication.closeAllWindows)
+        style = getCrosshairStyle(mapCanvas=refCanvas)
 
-        func = lambda: getCrosshairStyle(mapCanvas=refCanvas)
-        self.showGui(func)
 
     def test_crosshair_maplayer(self):
 

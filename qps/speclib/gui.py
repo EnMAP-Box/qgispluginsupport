@@ -29,7 +29,7 @@
 """
 from .core import *
 from ..speclib import SpectralLibrarySettingsKey
-from ..externals.pyqtgraph import PlotItem, PlotWindow
+from ..externals.pyqtgraph import PlotItem, PlotWindow, PlotCurveItem
 from ..externals.pyqtgraph.functions import mkPen
 from ..externals import pyqtgraph as pg
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
@@ -498,93 +498,22 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         """
         return self.mProfile.id()
 
+    def name(self) -> str:
+        """
+        Returns the profile name
+        :return:
+        :rtype:
+        """
+        return self.mProfile.name()
+
     def setClickable(self, b: bool, width=None):
         """
-
         :param b:
         :param width:
         :return:
         """
         assert isinstance(b, bool)
         self.curve.setClickable(b, width=width)
-
-    def depr_setSelected(self, b: bool):
-        """
-        Sets if this profile should appear as "selected"
-        :param b: bool
-        """
-
-        if b:
-            self.setLineWidth(self.mDefaultStyle.lineWidth() + 3)
-            self.setZValue(999999)
-            # self.setColor(Qgis.DEFAULT_HIGHLIGHT_COLOR)
-        else:
-            self.setLineWidth(self.mDefaultStyle.lineWidth())
-            self.setZValue(1)
-
-    def depr_setPlotStyle(self, plotStyle:PlotStyle, updateItem=True):
-        """
-        Applies a PlotStyle to this SpectralProfilePlotDataItem
-        :param plotStyle:
-        :type plotStyle:
-        :param updateItem: set True (default) to apply changes immediately.
-        :type updateItem: bool
-        """
-        assert isinstance(plotStyle, PlotStyle)
-        plotStyle.apply(self, updateItem=updateItem)
-
-    def depr_plotStyle(self)->PlotStyle:
-        """
-        Returns the SpectralProfilePlotDataItems' PlotStyle
-        :return: PlotStyle
-        :rtype: PlotStyle
-        """
-        return PlotStyle.fromPlotDataItem(self)
-
-    def depr_setColor(self, color: QColor):
-        """
-        Sets the profile line + marker color
-        :param color: QColor
-        """
-        if not isinstance(color, QColor):
-            color = QColor(color)
-
-        self.lineWidth()
-        style = self.profileStyle()
-        style.linePen.setColor(color)
-        self.setProfileStyle(style)
-
-    def depr_pen(self) -> QPen:
-        """
-        Returns the QPen of the profile
-        :return: QPen
-        """
-        return mkPen(self.opts['pen'])
-
-    def depr_color(self) -> QColor:
-        """
-        Returns the profile plotStyle
-        :return: QColor
-        """
-        return self.pen().color()
-
-    def depr_setLineWidth(self, width:int):
-        """
-        Set the profile width in px
-        :param width: int
-        """
-        pen = mkPen(self.opts['pen'])
-        assert isinstance(pen, QPen)
-        pen.setWidth(width)
-        self.setPen(pen)
-
-    def depr_lineWidth(self)->int:
-        """
-        Returns the line width
-        :return: line width in pixel
-        :rtype: int
-        """
-        return self.pen().width()
 
     def mouseClickEvent(self, ev):
         if ev.button() == Qt.RightButton:
@@ -833,10 +762,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         pi = self.getPlotItem()
         assert isinstance(pi, SpectralLibraryPlotItem) and pi == plotItem and pi == self.plotItem
-        #pi.disableAutoRange()
 
-
-        self.mSpeclib:SpectralLibrary
+        self.mSpeclib: SpectralLibrary
         self.mSpeclib = None
         self.mSpeclibSignalConnections = []
 
@@ -846,23 +773,23 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # describe function to convert length units from unit a to unit b
         self.mLUT_UnitConversions = dict()
-        returnNone = lambda v, *args: None
-        returnSame = lambda v, *args: v
-        self.mLUT_UnitConversions[(None, None)] = returnSame
+        func_return_none = lambda v, *args: None
+        func_return_same = lambda v, *args: v
+        self.mLUT_UnitConversions[(None, None)] = func_return_same
         keys = list(METRIC_EXPONENTS.keys())
         exponents = list(METRIC_EXPONENTS.values())
 
         for key in keys:
-            self.mLUT_UnitConversions[(None, key)] = returnNone
-            self.mLUT_UnitConversions[(key, None)] = returnNone
-            self.mLUT_UnitConversions[(key, key)] = returnSame
+            self.mLUT_UnitConversions[(None, key)] = func_return_none
+            self.mLUT_UnitConversions[(key, None)] = func_return_none
+            self.mLUT_UnitConversions[(key, key)] = func_return_same
 
         for i, key1 in enumerate(keys[0:]):
             e1 = exponents[i]
             for key2 in keys[i + 1:]:
                 e2 = exponents[keys.index(key2)]
                 if e1 == e2:
-                    self.mLUT_UnitConversions[(key1, key2)] = returnSame
+                    self.mLUT_UnitConversions[(key1, key2)] = func_return_same
 
         self.mViewBox.sigXUnitChanged.connect(self.setXUnit)
 
@@ -1013,22 +940,57 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         plotItem = self.getPlotItem()
         assert isinstance(plotItem, SpectralLibraryPlotItem)
+        vb = plotItem.vb
+        assert isinstance(vb, SpectralViewBox)
         if plotItem.sceneBoundingRect().contains(pos) and self.underMouse():
-            vb = plotItem.vb
-            assert isinstance(vb, SpectralViewBox)
             mousePoint = vb.mapSceneToView(pos)
             x = mousePoint.x()
             y = mousePoint.y()
 
-            # todo: add infos about plot data below mouse, e.g. profile band number
-            rect = QRectF(pos.x() - 2, pos.y() - 2, 5, 5)
-            itemsBelow = plotItem.scene().items(rect)
-            if SpectralProfilePlotDataItem in itemsBelow:
-                s = ""
+            nearest_item = None
+            nearest_index = -1
+            nearest_distance = sys.float_info.max
 
+            if False: # todo: find profile closes to mouse curso
+                def closestDistance(path: QPainterPath):
+                    if path.isEmpty() or path.elementCount() == 0:
+                        return None
+                    min_length = sys.float_info.max
+                    min_index = 0
+                    elem = path.elementAt(0)
+                    for i in range(1, path.elementCount()):
+                        e = path.elementAt(i)
+                        distance = QPointF(mousePoint - QPointF(e.x, e.y))
+                        length = distance.manhattanLength()
+                        if length < min_length:
+                            min_length = length
+                            elem = e
+                            min_index = i
+
+                    return min_length, min_index, elem
+
+
+                for item in self.items(pos.x(), pos.y(), 1, 1, Qt.IntersectsItemShape):
+                    if isinstance(item, PlotCurveItem) and isinstance(item.parentItem(), SpectralProfilePlotDataItem):
+
+                        dist, index, elem = closestDistance(item.path)
+                        if dist < nearest_distance:
+                            nearest_distance = dist
+                            nearest_index = index
+                            nearest_item = item
+
+            positionInfo = 'x:{:0.5f}\ny:{:0.5f}'.format(x, y)
+
+            if isinstance(nearest_item, PlotCurveItem):
+                positionInfo += '\n' + nearest_item.parentItem().name()
+                profile = nearest_item.parentItem().spectralProfile()
+                if isinstance(profile, SpectralProfile) and nearest_index >= 0:
+
+                    positionInfo += '\nBand {}'.format(nearest_index+1)
 
             vb.updateCurrentPosition(x, y)
-            self.mInfoLabelCursor.setText('x:{:0.5f}\ny:{:0.5f}'.format(x, y))
+
+            self.mInfoLabelCursor.setText(positionInfo)
 
             s = self.size()
             pos = QPointF(s.width(), 0)
@@ -1041,6 +1003,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.mCrosshairLineV.setPos(mousePoint.x())
             self.mCrosshairLineH.setPos(mousePoint.y())
         else:
+            vb.setToolTip('')
             self.mCrosshairLineH.setVisible(False)
             self.mCrosshairLineV.setVisible(False)
             self.mInfoLabelCursor.setVisible(False)
@@ -1403,6 +1366,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, self.xUnit()))
                 pdi.applyMapFunctions()
                 pdi.sigClicked.connect(self.onProfileClicked)
+                pdi.sigPointsClicked.connect(self.onPointsClicked)
                 self.mPlotDataItems[profile.id()] = pdi
                 addedPDIs.append(pdi)
             pi.addItems(addedPDIs)
@@ -1506,9 +1470,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.setXUnit(xUnit)
             self.mXUnitInitialized = True
 
+    def onPointsClicked(self, *args):
+
+        s = ""
+
     def onProfileClicked(self, pdi: SpectralProfilePlotDataItem):
         """
-        Slot to react mouse-click on a SpectralProfilePlotDataItem
+        Slot to react to mouse-clicks on SpectralProfilePlotDataItems
         :param pdi: SpectralProfilePlotDataItem
         """
         if isinstance(pdi, SpectralProfilePlotDataItem) and pdi in self.mPlotDataItems.values():

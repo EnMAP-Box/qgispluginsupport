@@ -412,13 +412,13 @@ def nicePredecessor(l):
 
 class CrosshairWidget(QWidget):
     """
-    A widget to configurate a CrossHair
+    A widget to configure a CrossHair
     """
     sigCrosshairStyleChanged = pyqtSignal(CrosshairStyle)
 
     def __init__(self, title='<#>', parent=None):
         super(CrosshairWidget, self).__init__(parent)
-        loadUi(DIR_UI_FILES / 'crosshairwidget.ui')
+        loadUi(pathlib.Path(__file__).parent / 'crosshairwidget.ui', self)
 
         self.mapCanvas.setExtent(QgsRectangle(0, 0, 1, 1))  #
 
