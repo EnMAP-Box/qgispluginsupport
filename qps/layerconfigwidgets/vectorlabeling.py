@@ -12,17 +12,14 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
     QGIS APP
     """
     class Mode(enum.IntEnum):
-        NoLabels=enum.auto()
-        Single=enum.auto()
-        RuleBased=enum.auto()
-        Blocking=enum.auto()
-
-
+        NoLabels = enum.auto()
+        Single = enum.auto()
+        RuleBased = enum.auto()
+        Blocking = enum.auto()
 
     def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
         super().__init__(layer, canvas, parent=parent)
         loadUi(configWidgetUi('labelsconfigwidget.ui'), self)
-
 
         self.pageNoLabels: QWidget
         self.pageSingleLabels: QWidget
@@ -76,23 +73,6 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
         return self.stackedWidget.currentWidget()
 
 
-    def setLabeling(self, labeling:QgsAbstractVectorLayerLabeling):
-        if labeling is None:
-            mode = LabelingConfigWidget.Mode.NoLabels
-        else:
-            assert isinstance(labeling, QgsAbstractVectorLayerLabeling)
-            labelType = labeling.type()
-            if labelType == 'rule-based':
-                mode = LabelingConfigWidget.Mode.RuleBased
-            elif labelType == 'simple':
-                settings = labeling.settings()
-                if isinstance(settings, QgsPalLayerSettings):
-                    if settings.drawLabels:
-                        mode = LabelingConfigWidget.Mode.Single
-                    else:
-                        mode = LabelingConfigWidget.Mode.Blocking
-
-        self.comboBox.setCurrentIndex(self.comboBox.findData(mode))
 
     def labeling(self)->QgsAbstractVectorLayerLabeling:
         page = self.labelingGui()
@@ -111,6 +91,29 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
 
         return labeling
 
+    def setLabeling(self, labeling: QgsAbstractVectorLayerLabeling):
+        if labeling is None:
+            mode = LabelingConfigWidget.Mode.NoLabels
+        else:
+            assert isinstance(labeling, QgsAbstractVectorLayerLabeling)
+            labelType = labeling.type()
+            if labelType == 'rule-based':
+
+                mode = LabelingConfigWidget.Mode.RuleBased
+                self.set_labeling_rulebased(labeling)
+
+            elif labelType == 'simple':
+                settings = labeling.settings()
+                if isinstance(settings, QgsPalLayerSettings):
+                    if settings.drawLabels:
+                        mode = LabelingConfigWidget.Mode.Single
+                        self.set_labeling_single(labeling)
+                    else:
+                        mode = LabelingConfigWidget.Mode.Blocking
+                        self.set_labeling_blocking(labeling)
+
+        self.comboBox.setCurrentIndex(self.comboBox.findData(mode))
+
     def labeling_single(self)->QgsVectorLayerSimpleLabeling:
         p = self.panelSingleLabels
         assert isinstance(p, QgsTextFormatPanelWidget)
@@ -120,16 +123,39 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
         settings.dist = 0
         settings.placementFlags = 0
         settings.setFormat(self.panelSingleLabels.format())
-
         settings.layerType = self.mapLayer().type()
 
         return QgsVectorLayerSimpleLabeling(settings)
 
+    def set_labeling_single(self, labeling: QgsVectorLayerSimpleLabeling):
+        assert isinstance(labeling, QgsVectorLayerSimpleLabeling)
+        assert labeling.type() == 'simple'
+
+        page = self.pageSingleLabels
+
+        self.panelSingleLabels.setParent(None)
+        page.layout().removeWidget(self.panelSingleLabels)
+        self.panelSingleLabels.deleteLater()
+
+
+        self.panelSingleLabels = QgsTextFormatPanelWidget(labeling.settings().format(), self.canvas(), None, self.mapLayer())
+        self.pageSingleLabels.layout().insertWidget(1, self.panelSingleLabels)
+
+
+        s = ""
+
+
     def labeling_rulebased(self)->QgsRuleBasedLabeling:
         return None
 
+    def set_labeling_rulebased(self, labeling:QgsRuleBasedLabeling):
+        pass
+
     def labeling_blocking(self)->QgsVectorLayerSimpleLabeling:
         return None
+
+    def set_labeling_blocking(self, labeling:QgsVectorLayerSimpleLabeling):
+        pass
 
     def writeSettingsToLayer(self):
         lyr = self.mapLayer()

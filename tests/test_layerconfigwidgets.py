@@ -145,6 +145,9 @@ class LayerConfigWidgetsTests(TestCase):
                     self.assertTrue(lyrV.labelsEnabled())
                     self.assertEquals(type(lyrV.labeling()), type(w.labeling()))
 
+            labeling = w.labeling()
+            w.setLabeling(labeling)
+
         self.showGui(w)
 
     def test_transparency(self):
