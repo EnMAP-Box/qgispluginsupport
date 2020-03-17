@@ -137,8 +137,14 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
         page.layout().removeWidget(self.panelSingleLabels)
         self.panelSingleLabels.deleteLater()
 
+        settings = labeling.settings()
 
-        self.panelSingleLabels = QgsTextFormatPanelWidget(labeling.settings().format(), self.canvas(), None, self.mapLayer())
+        if settings.isExpression:
+            self.mFieldExpressionWidget.setExpression(settings.getLabelExpression())
+        else:
+            self.mFieldExpressionWidget.setField(settings.fieldName)
+
+        self.panelSingleLabels = QgsTextFormatPanelWidget(settings.format(), self.canvas(), None, self.mapLayer())
         self.pageSingleLabels.layout().insertWidget(1, self.panelSingleLabels)
 
 
