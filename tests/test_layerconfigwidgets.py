@@ -10,7 +10,9 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest, time
+import unittest
+import time
+import tempfile
 from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtGui import *
@@ -87,13 +89,14 @@ class LayerConfigWidgetsTests(TestCase):
         c = QgsMapCanvas()
 
         f = SymbologyConfigWidgetFactory()
-
+        style_file = (pathlib.Path(tempfile.gettempdir()) / 'stylefile.qml').as_posix()
         for lyr in [lyrR, lyrV]:
             c.setLayers([lyr])
             c.setDestinationCrs(lyr.crs())
             c.setExtent(lyr.extent())
             self.assertTrue(f.supportsLayer(lyr))
             w = f.createWidget(lyr, c)
+            w.show()
             self.assertIsInstance(w, SymbologyConfigWidget)
             w.apply()
 
@@ -103,7 +106,10 @@ class LayerConfigWidgetsTests(TestCase):
                 r2.setInput(lyr.dataProvider())
                 lyr.setRenderer(r2)
             w.syncToLayer()
-
+            w.saveStyleAsDefault()
+            w.loadDefaultStyle()
+            w.saveStyle(style_file)
+            w.loadStyle(style_file)
 
             self.showGui([c, w])
         pass
