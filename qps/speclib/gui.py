@@ -387,12 +387,18 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         """
         assert isinstance(spectralProfile, SpectralProfile)
         self.mProfile = spectralProfile
-        self.mInitialDataX = spectralProfile.xValues()
-        self.mInitialDataY = spectralProfile.yValues()
+        self.mInitialDataX = np.asarray(spectralProfile.xValues())
+        self.mInitialDataY = np.asarray(spectralProfile.yValues())
+
+        # sort by X value
+        idx = np.argsort(self.mInitialDataX)
+        self.mInitialDataX = self.mInitialDataX[idx]
+        self.mInitialDataY = self.mInitialDataY[idx]
+
         self.mInitialUnitX = spectralProfile.xUnit()
         self.mInitialUnitY = spectralProfile.yUnit()
         for v in [self.mInitialDataX, self.mInitialDataY]:
-            assert isinstance(v, list)
+            assert isinstance(v, np.ndarray)
 
     def resetSpectralProfile(self, spectralProfile: SpectralProfile = None):
         """

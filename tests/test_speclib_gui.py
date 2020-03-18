@@ -107,14 +107,12 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(profile, SpectralProfile)
         import numpy as np
         yValues = np.asarray([700., np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan, 800.])
-        xValues = np.arange(len(yValues)) + 1
+        xValues = np.asarray([0   , 2     , 3    , 4     , 5     , 6     , 7     , 8     , 9     , 10    , 11    , 12    , 1  ])
 
         profile.setValues(xValues, yValues)
 
         yValues = profile.yValues()
         xValues = profile.xValues()
-        for i in range(len(xValues)-1):
-            assert xValues[i] < xValues[i+1]
 
         self.assertTrue(any([math.isnan(v) for v in yValues]))
 
@@ -125,6 +123,10 @@ class TestSpeclibWidgets(TestCase):
 
         pdi = SpectralProfilePlotDataItem(profile)
         self.assertIsInstance(pdi, SpectralProfilePlotDataItem)
+
+        if xValues != sorted(xValues):
+            self.assertListEqual(list(pdi.mInitialDataX), sorted(list(pdi.mInitialDataX)),
+                                 msg='SpectralProfilePlotDataItem values need to be ordered by X value dimension')
 
         style = PlotStyle.fromPlotDataItem(pdi)
 
