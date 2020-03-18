@@ -31,15 +31,12 @@ class LayerConfigWidgetsTests(TestCase):
         super(LayerConfigWidgetsTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initQtResources()
 
-
-
     def canvasWithLayer(self, lyr)->QgsMapCanvas:
         c = QgsMapCanvas()
         c.setLayers([lyr])
         c.setDestinationCrs(lyr.crs())
         c.setExtent(lyr.extent())
         return c
-
 
     def test_metadata(self):
         from qps.layerconfigwidgets.core import MetadataConfigWidgetFactory, MetadataConfigWidget
@@ -267,7 +264,49 @@ class LayerConfigWidgetsTests(TestCase):
         self.showGui(w)
 
 
+    def test_GDALMetadataModel(self):
+        from qpstestdata import enmap
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
 
+        c = QgsMapCanvas()
+        lyr = QgsRasterLayer(enmap)
+        model = GDALMetadataModel()
+        model.setIsEditable(True)
+        fm = QSortFilterProxyModel()
+        fm.setSourceModel(model)
+
+        tv = QTableView()
+        tv.setSortingEnabled(True)
+        tv.setModel(fm)
+        model.setLayer(lyr)
+
+        self.showGui(tv)
+
+
+    def test_GDALMetadataModelConfigWidget(self):
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
+        from qpstestdata import enmap
+
+        lyrR = QgsRasterLayer(enmap)
+        canvas = QgsMapCanvas()
+        w = GDALMetadataModelConfigWidget(lyrR, canvas)
+        w.metadataModel.setIsEditable(True)
+        w.widgetChanged.connect(lambda: print('Changed'))
+        self.assertIsInstance(w, QWidget)
+        self.assertTrue(w.is_gdal)
+
+
+        btnApply = QPushButton('Apply')
+        btnApply.clicked.connect(w.apply)
+        btnReload = QPushButton('Reload')
+        btnReload.clicked.connect(w.syncToLayer)
+        l = QVBoxLayout()
+        l.addWidget(btnApply)
+        l.addWidget(btnReload)
+        l.addWidget(w)
+        m = QWidget()
+        m.setLayout(l)
+        self.showGui(m)
 
 
     def test_gdalmetadata(self):
@@ -323,18 +362,6 @@ class LayerConfigWidgetsTests(TestCase):
         lyr.addAttribute(f)
         self.assertTrue(lyr.commitChanges())
         self.showGui(v)
-
-    def test_metadatatable(self):
-
-        lyr = TestObjects.createVectorLayer()
-        #lyr = TestObjects.createRasterLayer()
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
-        model = GDALMetadataModel()
-        tv = QTableView()
-        tv.setModel(model)
-        model.setLayer(lyr)
-
-        self.showGui(tv)
 
 
 

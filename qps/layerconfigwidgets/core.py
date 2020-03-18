@@ -23,26 +23,26 @@ def configWidgetUi(name:str)->str:
 
 class QpsMapLayerConfigWidget(QgsMapLayerConfigWidget):
 
-    def __init__(self, mapLayer:QgsMapLayer, canvas:QgsMapCanvas, *args, **kwds):
+    def __init__(self, mapLayer: QgsMapLayer, canvas: QgsMapCanvas, *args, **kwds):
         assert isinstance(mapLayer, QgsMapLayer)
         assert isinstance(canvas, QgsMapCanvas)
         super().__init__(mapLayer, canvas, *args, **kwds)
         self.mMapLayer = mapLayer
         self.mCanvas = canvas
 
-    def canvas(self)->QgsMapCanvas:
+    def canvas(self) -> QgsMapCanvas:
         """
         Returns the QgsMapCanvas
         """
         return self.mCanvas
 
-    def mapLayer(self)->QgsMapLayer:
+    def mapLayer(self) -> QgsMapLayer:
         """
         Returns the map layer
         """
         return self.mMapLayer
 
-    def menuButtonMenu(self)->QMenu:
+    def menuButtonMenu(self) -> QMenu:
         return None
 
     def menuButtonToolTip(self):

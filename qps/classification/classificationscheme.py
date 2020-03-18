@@ -348,15 +348,14 @@ class ClassificationScheme(QAbstractTableModel):
         mimeData.setText(doc.toString())
         return mimeData
 
-    def mimeTypes(self)->list:
+    def mimeTypes(self) -> list:
         """
         Returns a list of supported mimeTypes.
         :return: [list-of-str]
         """
         return [MIMEDATA_KEY, MIMEDATA_INTERNAL_IDs, MIMEDATA_KEY_TEXT]
 
-
-    def rowCount(self, parent:QModelIndex=None):
+    def rowCount(self, parent: QModelIndex = None):
         """
         Returns the number of row / ClassInfos.
         :param parent: QModelIndex
@@ -364,16 +363,15 @@ class ClassificationScheme(QAbstractTableModel):
         """
         return len(self.mClasses)
 
-    def columnCount(self, parent: QModelIndex=None):
+    def columnCount(self, parent: QModelIndex = None):
         return len(self.columnNames())
 
-
-    def index2ClassInfo(self, index)->ClassInfo:
+    def index2ClassInfo(self, index) -> ClassInfo:
         if isinstance(index, QModelIndex):
             index = index.row()
         return self.mClasses[index]
 
-    def classInfo2index(self, classInfo:ClassInfo)->QModelIndex:
+    def classInfo2index(self, classInfo: ClassInfo) -> QModelIndex:
         row = self.mClasses.index(classInfo)
         return self.createIndex(row, 0)
 

@@ -1,4 +1,4 @@
-import typing, pathlib, sys
+import typing, pathlib, sys, re
 from qgis.core import QgsRasterLayer, QgsRasterRenderer
 from qgis.core import *
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsRasterBandComboBox
@@ -12,14 +12,66 @@ from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget, ClassInfo
 from osgeo import gdal, ogr
 
-class GDALMetadataModel(QAbstractTableModel):
-    class MDItem(object):
-        def __init__(self, major_object: str, domain: str, key: str, value: str):
-            self.major_object: str = major_object
-            self.domain: str = domain
-            self.key: str = key
-            self.value: str = value
+TYPE_LOOKUP = {
+    ':STATISTICS_MAXIMUM': float,
+    ':STATISTICS_MEAN': float,
+    ':STATISTICS_MINIMUM': float,
+    ':STATISTICS_STDDEV': float,
+    ':STATISTICS_VALID_PERCENT': float,
 
+               }
+
+PROTECTED = [
+    'IMAGE_STRUCTURE:INTERLEAVE',
+    'DERIVED_SUBDATASETS:DERIVED_SUBDATASET_1_NAME',
+    'DERIVED_SUBDATASETS:DERIVED_SUBDATASET_1_DESC'
+    ':AREA_OR_POINT'
+]
+
+class GDALMetadataItem(object):
+    """
+    A light-weight object to describe a GDAL/OGR metadata item
+    """
+    def __init__(self, major_object: str, domain: str, key: str, value: str):
+        self.major_object: str = major_object
+        self.domain: str = domain
+        self.key: str = key
+        self.value: str = value
+        self.initialValue: str = value
+
+    def editorValue(self):
+        """
+        Converts the value string into a numeric/other type, if specified in TYPE_LOOKUP
+        :return: any
+        """
+        t = TYPE_LOOKUP.get(self.keyDK())
+        if t:
+            return t(self.value)
+        else:
+            self.value
+
+    def setEditorValue(self, value):
+        t = TYPE_LOOKUP.get(self.keyDK())
+        if t:
+            self.value = str(t(value))
+        else:
+            self.value = str(value)
+
+    def isModified(self) -> bool:
+        """
+        Returns True if the MDItems' value was modified
+        :return: bool
+        """
+        return self.initialValue != self.value
+
+    def keyDK(self) -> str:
+        return '{}:{}'.format(self.domain, self.key)
+
+    def keyMDK(self) -> str:
+        return '{}:'.format(self.major_object) + self.keyDK()
+
+
+class GDALMetadataModel(QAbstractTableModel):
     def __init__(self, parent=None):
         super(GDALMetadataModel, self).__init__(parent)
 
@@ -30,25 +82,63 @@ class GDALMetadataModel(QAbstractTableModel):
         self.cnKey = 'Key'
         self.cnValue = 'Value(s)'
 
-        # level0 = gdal.Dataset | ogr.DataSource
-        # level1 = gdal.Band | ogr.Layer
-        self.MD = []
+        self._column_names = [self.cnItem, self.cnDomain, self.cnKey, self.cnValue]
+
+        self._isEditable = False
+
+        self._MDItems = []
+
+    def setIsEditable(self, b: bool):
+        assert isinstance(b, bool)
+        self._isEditable = b
+
+    def isEditable(self) -> bool:
+        return self._isEditable
 
     def rowCount(self, parent=None, *args, **kwargs):
-        return len(self.MD)
+        return len(self._MDItems)
 
     def columnNames(self) -> typing.List[str]:
-        return [self.cnItem, self.cnDomain, self.cnKey, self.cnValue]
+        """
+        Returns the column names
+        :return: list
+        """
+        return self._column_names
 
-    def columnCount(self, parent=None, *args, **kwargs):
-        return len(self.columnNames())
+    def columnCount(self, parent=None, *args, **kwargs) -> int:
+        """
+        Returns the number of columns
+        :param parent:
+        :type parent:
+        :param args:
+        :type args:
+        :param kwargs:
+        :type kwargs:
+        :return:
+        :rtype:
+        """
+
+        return len(self._column_names)
 
     def headerData(self, col, orientation, role=None):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return self.columnNames()[col]
+            return self._column_names[col]
         elif orientation == Qt.Vertical and role == Qt.DisplayRole:
             return col
         return None
+
+    def index(self, row: int, column: int, parent: QModelIndex = ...) -> QModelIndex:
+        md = self._MDItems[row]
+        return self.createIndex(row, column, md)
+
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        if not index.isValid():
+            return Qt.NoItemFlags
+
+        if index.column() == 3 and self.isEditable() and self.index2MDItem(index).keyDK() not in PROTECTED:
+            return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
+        else:
+            return Qt.ItemIsSelectable | Qt.ItemIsEnabled
 
     def setLayer(self, layer: QgsMapLayer):
         assert isinstance(layer, (QgsRasterLayer, QgsVectorLayer))
@@ -57,17 +147,66 @@ class GDALMetadataModel(QAbstractTableModel):
 
     def syncToLayer(self):
         self.beginResetModel()
-        self.MD = self._read_maplayer()
+        self._MDItems = self._read_maplayer()
         self.endResetModel()
+
+    def applyToLayer(self):
+
+        changed = [md for md in self._MDItems if md.isModified()]
+
+        major_objects = dict()
+        for md in changed:
+            assert isinstance(md, GDALMetadataItem)
+            if md.major_object not in major_objects.keys():
+                major_objects[md.major_object] = dict()
+
+            if md.domain not in major_objects[md.major_object].keys():
+                major_objects[md.major_object] = []
+            major_objects[md.major_object].append(md)
+
+
+
+        lyr = self.mLayer
+        if isinstance(self.mLayer, QgsRasterLayer) and self.mLayer.dataProvider().name() == 'gdal':
+            ds = gdal.Open(self.mLayer.source(), gdal.GA_Update)
+            if isinstance(ds, gdal.Dataset):
+                for objID, items in major_objects.items():
+                    if objID == 'Dataset':
+                        majorObject = ds
+                    elif objID.startswith('Band'):
+                        majorObject = ds.GetRasterBand(int(objID[4:]))
+
+                    if isinstance(majorObject, gdal.MajorObject):
+                        for item in items:
+                            assert isinstance(item, GDALMetadataItem)
+                            majorObject.SetMetadataItem(item.key, item.value, item.domain)
+                ds.FlushCache()
+                del ds
+
+            #self.syncToLayer()
+
+        if isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.dataProvider().name() == 'ogr':
+            s = ""
+            #self.syncToLayer()
+
+        QTimer.singleShot(1000, self.syncToLayer)
+
+    def index2MDItem(self, index: QModelIndex) -> GDALMetadataItem:
+        """
+        Converts a model index into the corresponding MDItem
+        :param index:
+        :type index:
+        :return:
+        :rtype:
+        """
+        return self._MDItems[index.row()]
 
     def data(self, index: QModelIndex, role=None):
         if not index.isValid():
             return None
 
-        item = self.MD[index.row()]
-        assert isinstance(item, GDALMetadataModel.MDItem)
-
-        cname = self.columnNames()[index.column()]
+        item = self.index2MDItem(index)
+        cname = self._column_names[index.column()]
 
         if role == Qt.DisplayRole:
             if cname == self.cnItem:
@@ -79,12 +218,44 @@ class GDALMetadataModel(QAbstractTableModel):
             elif cname == self.cnValue:
                 return item.value
 
+        if role == Qt.FontRole and cname == self.cnValue:
+            if item.isModified():
+                f = QFont()
+                f.setItalic(True)
+                return f
+
+        if role == Qt.EditRole:
+            if cname == self.cnValue:
+                return item.value
+
+        if role == Qt.UserRole:
+            return item
+
         return None  # super(GDALMetadataModel, self).data(index, role)
+
+    def setData(self, index: QModelIndex, value, role=None):
+
+        item = self.index2MDItem(index)
+        cname = self._column_names[index.column()]
+
+        changed = False
+
+        if role == Qt.EditRole:
+            if cname == self.cnValue:
+                try:
+                    item.setEditorValue(value)
+                    changed = True
+                except:
+                    pass
+        if changed:
+            self.dataChanged.emit(index, index, [role])
+        return False
 
     def _read_majorobject(self, obj):
         assert isinstance(obj, (gdal.MajorObject, ogr.MajorObject))
         domains = obj.GetMetadataDomainList()
         if isinstance(domains, list):
+            domains = list(set(domains))
             for domain in domains:
                 for key, value in obj.GetMetadata(domain).items():
                     yield domain, key, value
@@ -95,39 +266,37 @@ class GDALMetadataModel(QAbstractTableModel):
         if not isinstance(self.mLayer, QgsMapLayer) or not self.mLayer.isValid():
             return items
 
-
-
         if isinstance(self.mLayer, QgsRasterLayer) and self.mLayer.dataProvider().name() == 'gdal':
             ds = gdal.Open(self.mLayer.source())
 
             if isinstance(ds, gdal.Dataset):
                 z = len(str(ds.RasterCount))
                 for (domain, key, value) in self._read_majorobject(ds):
-                    items.append(GDALMetadataModel.MDItem('Dataset', domain, key, value))
+                    items.append(GDALMetadataItem('Dataset', domain, key, value))
                 for b in range(ds.RasterCount):
                     band = ds.GetRasterBand(b + 1)
                     assert isinstance(band, gdal.Band)
                     bandKey = 'Band{}'.format(str(b + 1).zfill(z))
                     for (domain, key, value) in self._read_majorobject(band):
-                        items.append(GDALMetadataModel.MDItem(bandKey, domain, key, value))
+                        items.append(GDALMetadataItem(bandKey, domain, key, value))
 
         if isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.dataProvider().name() == 'ogr':
             ds = ogr.Open(self.mLayer.source())
             if isinstance(ds, ogr.DataSource):
                 for (domain, key, value) in self._read_majorobject(ds):
-                    items.append(GDALMetadataModel.MDItem('Datasource', domain, key, value))
+                    items.append(GDALMetadataItem('Datasource', domain, key, value))
                 z = len(str(ds.GetLayerCount()))
                 for b in range(ds.GetLayerCount()):
                     lyr = ds.GetLayer(b)
                     assert isinstance(lyr, ogr.Layer)
                     lyrKey = 'Layer{}'.format(str(b + 1).zfill(z))
                     for (domain, key, value) in self._read_majorobject(lyr):
-                        items.append(GDALMetadataModel.MDItem(lyrKey, domain, key, value))
+                        items.append(GDALMetadataItem(lyrKey, domain, key, value))
 
         return items
 
 
-class GDALMetadataModelTreeView(QTreeView):
+class GDALMetadataModelTableView(QTableView):
     """
     A QTreeView for the GDALMetadataModel
     """
@@ -141,17 +310,30 @@ class GDALMetadataModelTreeView(QTreeView):
         """
         index = self.indexAt(event.pos())
         if index.isValid():
-            value = str(index.data(Qt.DisplayRole))
+
+            item = index.data(Qt.UserRole)
+            value = item.value
             m = QMenu()
             a = m.addAction('Copy Value')
-            a.triggered.connect(lambda *args, value=value: QApplication.clipboard().setText(value))
+            a.triggered.connect(lambda *args, v=value: QApplication.clipboard().setText(v))
+
+            if self.model().sourceModel().isEditable() and item.isModified():
+                a = m.addAction('Reset')
+                a.triggered.connect(lambda *args, v=item.initialValue: self.model().setData(index, v, Qt.EditRole))
+
             m.exec_(event.globalPos())
 
 
 class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
-
-    def __init__(self, layer:QgsMapLayer=None, canvas:QgsMapCanvas=None, parent:QWidget=None):
+    def __init__(self, layer: QgsMapLayer = None, canvas: QgsMapCanvas = None, parent: QWidget = None):
+        """
+        Constructor
+        :param layer: QgsMapLayer
+        :param canvas: QgsMapCanvas
+        :param parent:
+        :type parent:
+        """
 
         if layer is None:
             layer = QgsRasterLayer()
@@ -162,7 +344,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
 
-        self.tvMetadata: QTableView
         self.tbFilter: QLineEdit
         self.btnMatchCase.setDefaultAction(self.optionMatchCase)
         self.btnRegex.setDefaultAction(self.optionRegex)
@@ -171,8 +352,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.metadataProxyModel = QSortFilterProxyModel()
         self.metadataProxyModel.setSourceModel(self.metadataModel)
         self.metadataProxyModel.setFilterKeyColumn(-1)
+        assert isinstance(self.tableView, GDALMetadataModelTableView)
         self.tableView.setModel(self.metadataProxyModel)
-
         self.tbFilter.textChanged.connect(self.updateFilter)
         self.optionMatchCase.changed.connect(self.updateFilter)
         self.optionRegex.changed.connect(self.updateFilter)
@@ -226,10 +407,9 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                     self.mapLayer().dataProvider().setEditable(True)
                     cs.saveToRaster(ds)
                     ds.FlushCache()
-
+        self.metadataModel.applyToLayer()
 
     def syncToLayer(self):
-
         lyr = self.mapLayer()
         self.metadataModel.setLayer(lyr)
         if self.supportsGDALClassification:
@@ -241,7 +421,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         else:
             self.classificationSchemeWidget.classificationScheme().clear()
             self.gbClassificationScheme.setVisible(False)
-
 
     def updateFilter(self, *args):
 
@@ -269,8 +448,7 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         self.mIsOGR = False
 
         self.mIconGDAL = QIcon(':/qps/ui/icons/edit_gdal_metadata.svg')
-        self.mIconOGR  = QIcon(':/qps/ui/icons/edit_ogr_metadata.svg')
-
+        self.mIconOGR = QIcon(':/qps/ui/icons/edit_ogr_metadata.svg')
 
     def supportsLayer(self, layer):
         self.mIsGDAL = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
@@ -292,6 +470,7 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def createWidget(self, layer, canvas, dockWidget=True, parent=None)->GDALMetadataModelConfigWidget:
         w = GDALMetadataModelConfigWidget(layer, canvas, parent=parent)
+        w.metadataModel.setIsEditable(True)
         w.setWindowTitle(self.title())
         w.setWindowIcon(self.icon())
         return w
