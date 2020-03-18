@@ -88,8 +88,13 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
                 else:
                     metadataKeys.append(k)
 
-            numericValueKeys = sorted(numericValueKeys)
-            xValues = [float(v) for v in numericValueKeys]
+            # sort by wavelength
+            numericValueKeys = np.asarray(numericValueKeys, dtype=np.str)
+            xValues = np.asarray(numericValueKeys, dtype=np.float)
+            s = np.argsort(xValues)
+            numericValueKeys = numericValueKeys[s]
+            xValues = xValues[s]
+
             nProfiles = len(DATA[numericValueKeys[0]])
 
             sl.beginEditCommand('Set metadata columns')

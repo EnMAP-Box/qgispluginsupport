@@ -30,8 +30,6 @@ from qps.speclib.io.asd import *
 from qps.speclib.gui import *
 
 
-os.environ['CI'] = 'True'
-
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
 class TestIO(TestCase):
@@ -391,7 +389,9 @@ class TestIO(TestCase):
             sl = SPECCHIOSpectralLibraryIO.readFrom(path, progressDialog=QProgressDialog())
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) > 0)
-
+            for p in sl:
+                self.assertIsInstance(p, SpectralProfile)
+                self.assertListEqual(p.xValues(), sorted(p.xValues()))
         # 2. write
         speclib = TestObjects.createSpectralLibrary(50, nEmpty=1)
         pathCSV = os.path.join(TEST_DIR, 'speclib.specchio.csv')
@@ -404,7 +404,9 @@ class TestIO(TestCase):
 
             slPart = SPECCHIOSpectralLibraryIO.readFrom(p, progressDialog=QProgressDialog())
             self.assertIsInstance(slPart, SpectralLibrary)
-
+            for p in slPart:
+                self.assertIsInstance(p, SpectralProfile)
+                self.assertListEqual(p.xValues(), sorted(p.xValues()))
 
             n += len(slPart)
 
