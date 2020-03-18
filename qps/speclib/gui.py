@@ -425,6 +425,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         Sets the function `func` to get the values to be plotted on x-axis.
         The function must have the pattern mappedXValues = func(originalXValues, SpectralProfilePlotDataItem),
         The default function `func = lambda v, *args : v` returns the unchanged x-values in `v`
+        The returned value can by of type list or np.ndarray (preferred)
         :param func: callable, mapping function
         """
         assert callable(func)
@@ -437,6 +438,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         The default function `func = lambda v, *args : v` returns the unchanged y-values in `v`
         The second argument `plotDataItem` provides a handle to SpectralProfilePlotDataItem instance which uses this
         function when running its `.applyMapFunctions()`.
+        The returned value can by of type list or np.ndarray (preferred)
         :param func: callable, mapping function
         """
         assert callable(func)
@@ -455,7 +457,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
             try:
                 x = self.mXValueConversionFunction(self.mInitialDataX, self)
                 y = self.mYValueConversionFunction(self.mInitialDataY, self)
-                if isinstance(x, list) and isinstance(y, list) and len(x) > 0 and len(y) > 0:
+                if isinstance(x, (list, np.ndarray)) and isinstance(y, (list, np.ndarray)) and len(x) > 0 and len(y) > 0:
                     success = True
             except Exception as ex:
                 print(ex)
