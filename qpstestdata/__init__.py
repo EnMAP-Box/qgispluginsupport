@@ -1,7 +1,7 @@
 import pathlib
 enmap = (pathlib.Path(__file__).parent / 'enmap.tif').as_posix()
 hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()
-speclib = (pathlib.Path(__file__).parent /  'speclib.sli').as_posix()
+speclib = (pathlib.Path(__file__).parent / 'speclib.sli').as_posix()
 speclib_labeled = (pathlib.Path(__file__).parent / 'library_berlin.sli').as_posix()
 testvectordata = (pathlib.Path(__file__).parent / 'testvectordata.gpkg').as_posix()
 landcover = testvectordata + '|layername=landcover'

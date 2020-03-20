@@ -410,7 +410,6 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         PROFILE2CSVLine = {}
 
-
         if CSV_METADATA is not None:
             CSV_DATA, CSV_FIELDS = CSV_METADATA
 

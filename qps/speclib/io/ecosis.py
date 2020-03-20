@@ -59,7 +59,7 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 for line in f:
-                    line = f.readline().strip()
+                    line = line.strip()
                     if len(line) > 0:
                         # most-right header name must be a number
                         lastColumn = [c for c in re.split(r'[\t\n;,]', line) if c != ''][-1]

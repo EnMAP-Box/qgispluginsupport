@@ -36,7 +36,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
     """
     Reads and write SpectralLibrary from/to system clipboard.
     """
-    FORMATS = [MIMEDATA_SPECLIB, MIMEDATA_XQT_WINDOWS_CSV, MIMEDATA_TEXT]
+    FORMATS = [MIMEDATA_SPECLIB, MIMEDATA_XQT_WINDOWS_CSV]
 
     class WritingModes(object):
 
@@ -71,7 +71,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
             assert isinstance(speclib, SpectralLibrary)
             return speclib
 
-        return SpectralLibrary()
+        return None
 
     @staticmethod
     def write(speclib,

@@ -334,8 +334,9 @@ class TestIO(TestCase):
 
     def test_EcoSIS(self):
 
-
         from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
+        from qpstestdata import speclib
+        self.assertFalse(EcoSISSpectralLibraryIO.canRead(speclib))
 
         # 1. read
         from qpstestdata import DIR_ECOSIS
@@ -620,8 +621,19 @@ class TestIO(TestCase):
 
         pathESL = speclibpath
 
+        from qpstestdata import speclib
 
+        self.assertTrue(EnviSpectralLibraryIO.canRead(speclib))
+
+        sl = EnviSpectralLibraryIO.readFrom(speclib)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
+
+        sl = SpectralLibrary.readFrom(speclib)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
         csv = readCSVMetadata(pathESL)
+
 
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=QProgressDialog())
 
