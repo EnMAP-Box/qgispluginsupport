@@ -50,33 +50,35 @@ def pens_equal(p1, p2):
 
     assert isinstance(p1, QPen)
     assert isinstance(p2, QPen)
-
-    if p1.brush() != p2.brush():
+    if p1 == p2:
+        return True
+    elif p1.brush() != p2.brush():
         return False
-    if p1.capStyle() != p2.capStyle():
+    elif p1.capStyle() != p2.capStyle():
         return False
-    if p1.color() != p2.color():
+    elif p1.color() != p2.color():
         return False
-    if p1.dashPattern() != p2.dashPattern():
+    elif p1.dashPattern() != p2.dashPattern():
         return False
-    if p1.dashOffset() != p2.dashOffset():
+    elif p1.dashOffset() != p2.dashOffset():
         return False
-    if p1.isCosmetic() != p2.isCosmetic():
+    elif p1.isCosmetic() != p2.isCosmetic():
         return False
-    if p1.isSolid() != p2.isSolid():
+    elif p1.isSolid() != p2.isSolid():
         return False
-    if p1.joinStyle() != p2.joinStyle():
+    elif p1.joinStyle() != p2.joinStyle():
         return False
-    if p1.miterLimit() != p2.miterLimit():
+    elif p1.miterLimit() != p2.miterLimit():
         return False
-    if p1.style() != p2.style():
+    elif p1.style() != p2.style():
         return False
-    if p1.width() != p2.width():
+    elif p1.width() != p2.width():
         return False
-    if p1.widthF() != p2.widthF():
+    elif p1.widthF() != p2.widthF():
         return False
-
-    return True
+    else:
+        # it is totally unclear why the inital p1 == p2 returns False!!!
+        return True
 
 class MarkerSymbol(enum.Enum):
     
@@ -612,7 +614,15 @@ class PlotStyle(QObject):
                   'linePen',
                   'mIsVisible']:
             if self.__dict__[k] != other.__dict__[k]:
-                return False
+
+                a = self.__dict__[k]
+                b = other.__dict__[k]
+                if a != b:
+                    if isinstance(a, QPen):
+                        if not pens_equal(a, b):
+                            return False
+                    else:
+                        return False
         return True
 
     def __reduce_ex__(self, protocol):

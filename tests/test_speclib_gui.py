@@ -764,6 +764,7 @@ class TestSpeclibWidgets(TestCase):
         sw.setCurrentProfiles([sp])
         sw.applyAllPlotUpdates()
 
+
 if __name__ == '__main__':
 
     unittest.main()

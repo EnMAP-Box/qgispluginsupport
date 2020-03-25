@@ -19,12 +19,14 @@ from osgeo import gdal, ogr, osr
 from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
 from qps.layerproperties import *
 from qps import registerMapLayerConfigWidgetFactories
+from qps.resources import findQGISResourceFiles
 LAYER_WIDGET_REPS = 5
 
 class LayerPropertyTests(TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.EditorWidgets, resources=[]) -> None:
+        resources += findQGISResourceFiles()
         super(LayerPropertyTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initQtResources()
 
@@ -191,6 +193,12 @@ class LayerPropertyTests(TestCase):
         self.showGui([vd, rd, wtrans,style])
 
 
+    def test_AttributeTableWidget(self):
+
+        w = AttributeTableWidget()
+
+
+        self.showGui(w)
 
 
 if __name__ == "__main__":

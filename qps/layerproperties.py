@@ -893,3 +893,8 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
 
 
 
+class AttributeTableWidget(QMainWindow):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        loadUi(pathlib.Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)

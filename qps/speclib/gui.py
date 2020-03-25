@@ -147,6 +147,7 @@ class SpectralLibraryPlotColorScheme(object):
         scheme.backgroundColor = settings.value(SpectralLibrarySettingsKey.BACKGROUND_COLOR.name, scheme.backgroundColor)
         scheme.foregroundColor = settings.value(SpectralLibrarySettingsKey.FOREGROUND_COLOR.name, scheme.foregroundColor)
         scheme.infoColor = settings.value(SpectralLibrarySettingsKey.INFO_COLOR.name, scheme.infoColor)
+        scheme.selectionColor = settings.value(SpectralLibrarySettingsKey.SELECTION_COLOR.name, scheme.selectionColor)
         scheme.useRendererColors = settings.value(SpectralLibrarySettingsKey.USE_VECTOR_RENDER_COLORS.name, scheme.useRendererColors) in ['True', 'true', True]
 
         return scheme
@@ -184,14 +185,15 @@ class SpectralLibraryPlotColorScheme(object):
             sc=QColor('red'),
             ps=ps, cs=cs, useRendererColors=False)
 
-    def __init__(self, name:str='color_scheme',
+    def __init__(self,
+                 name: str = 'color_scheme',
                  fg: QColor = QColor('white'),
                  bg: QColor = QColor('black'),
                  ps: PlotStyle = None,
                  cs: PlotStyle = None,
                  ic: QColor = QColor('yellow'),
                  sc: QColor = QColor('yellow'),
-                 useRendererColors:bool=True):
+                 useRendererColors: bool = True):
         """
         :param name: name of color scheme
         :type name: str
@@ -216,7 +218,6 @@ class SpectralLibraryPlotColorScheme(object):
             cs = defaultCurvePlotStyle()
             cs.setLineColor('green')
 
-
         self.name: str
         self.name = name
 
@@ -235,7 +236,7 @@ class SpectralLibraryPlotColorScheme(object):
         self.infoColor: QColor
         self.infoColor = ic
 
-        self.selectionColor : QColor
+        self.selectionColor: QColor
         self.selectionColor = sc
         self.useRendererColors: bool
         self.useRendererColors = useRendererColors
@@ -262,19 +263,17 @@ class SpectralLibraryPlotColorScheme(object):
         settings.setValue(SpectralLibrarySettingsKey.SELECTION_COLOR.name, self.selectionColor)
         settings.setValue(SpectralLibrarySettingsKey.USE_VECTOR_RENDER_COLORS.name, self.useRendererColors)
 
-
     def __eq__(self, other):
         if not isinstance(other, SpectralLibraryPlotColorScheme):
             return False
         else:
-
-            return self.backgroundColor == other.backgroundColor and \
-                   self.foregroundColor == other.foregroundColor and \
-                   self.infoColor == other.infoColor and \
-                   self.selectionColor == other.selectionColor and \
-                   self.profileStyle == other.profileStyle and \
-                   self.temporaryProfileStyle == other.temporaryProfileStyle and \
-                   self.useRendererColors == other.useRendererColors
+            keys = [k for k in self.__dict__.keys()
+                    if not k.startswith('_') and
+                    k not in ['name']]
+            for k in keys:
+                if self.__dict__[k] != other.__dict__[k]:
+                    return False
+            return True
 
 class SpectralLibraryPlotColorSchemeWidget(QWidget):
 
@@ -1177,8 +1176,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.mSpeclib.committedAttributeValuesChanges.connect(self.onCommittedAttributeValuesChanges)
             self.mSpeclib.rendererChanged.connect(self.onRendererChanged)
             #additional security to disconnect
-            self.mSpeclib.willBeDeleted.connect(lambda: self.setSpeclib(None))
-
+            #self.mSpeclib.willBeDeleted.connect(lambda: self.setSpeclib(None))
 
     def disconnectSpeclibSignals(self):
         """
