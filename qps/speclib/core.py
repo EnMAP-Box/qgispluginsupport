@@ -557,10 +557,13 @@ class SpectralProfile(QgsFeature):
         Reads a SpectralProfile from a QgsRasterLayer
         :param layer: QgsRasterLayer
         :param position: SpatialPoint
-        :return: SpectralProfile
+        :return: SpectralProfile or None, if profile is out of layer bounds.
         """
 
         position = position.toCrs(layer.crs())
+        if not layer.extent().contains(position):
+            return None
+
         results = layer.dataProvider().identify(position, QgsRaster.IdentifyFormatValue).results()
         wl, wlu = parseWavelength(layer)
 

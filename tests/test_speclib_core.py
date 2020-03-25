@@ -27,6 +27,7 @@ from qps.speclib.io.csvdata import *
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps import initResources
+import numpy as np
 
 class TestCore(TestCase):
 
@@ -300,9 +301,9 @@ class TestCore(TestCase):
 
         center = SpatialPoint.fromMapLayerCenter(lyr)
         extent = SpatialExtent.fromLayer(lyr)
-        x,y = extent.upperLeft()
+        x, y = extent.upperLeft()
 
-        outOfImage = SpatialPoint(center.crs(), x - 10, y + 10)
+        outOfImage = SpatialPoint(extent.crs(), extent.xMinimum() - 10, extent.yMaximum() + 10)
 
         sp = SpectralProfile.fromRasterLayer(lyr, center)
         self.assertIsInstance(sp, SpectralProfile)
@@ -587,7 +588,7 @@ class TestCore(TestCase):
               'Raster: {}\n'.format(rl.crs().description())
         print(info)
 
-        sl = SpectralLibrary.readFromVector(vl, rl, progressDialog=progressDialog)
+        sl = SpectralLibrary.readFromVector(vl, rl, copy_attributes=True, progressDialog=progressDialog)
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertTrue(len(sl) > 0, msg='Failed to read SpectralProfiles')
         self.assertEqual(len(sl), rl.width() * rl.height())
@@ -616,7 +617,7 @@ class TestCore(TestCase):
         print(info)
 
 
-        sl2 = SpectralLibrary.readFromVector(sl, rl)
+        sl2 = SpectralLibrary.readFromVector(sl, rl, copy_attributes=True)
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertTrue(len(sl2) > 0, msg='Failed to re-read SpectralProfiles')
         self.assertEqual(sl, sl2)
@@ -653,11 +654,7 @@ class TestCore(TestCase):
         sl2.commitChanges()
 
         self.assertEqual(len(sl2), n*2)
-
-
-
         s = ""
-
 
 
 if __name__ == '__main__':
