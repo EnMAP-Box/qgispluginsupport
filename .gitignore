@@ -9,6 +9,7 @@ doc/build/
 deploy/*
 temp/
 */temp/
+.coverage
 doc/build/*
 vrtbuilder/ui/resources.py
 vrtbuilder/externals/qps/qpsresources.py
