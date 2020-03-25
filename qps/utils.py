@@ -2,6 +2,7 @@
 
 
 import os, sys, importlib, re, fnmatch, io, zipfile, pathlib, warnings, collections, copy, shutil, typing, gc, sip
+import traceback
 
 from qgis.core import *
 from qgis.gui import *
@@ -323,9 +324,9 @@ def qgisLayerTreeLayers() -> list:
         return []
 
 
-def createQgsField(name : str, exampleValue, comment:str=None):
+def createQgsField(name: str, exampleValue: typing.Any, comment: str = None) -> QgsField:
     """
-    Create a QgsField using a Python-datatype exampleValue
+    Creates a QgsField based on the type properties of an Python-datatype exampleValue
     :param name: field name
     :param exampleValue: value, can be any type
     :param comment: (optional) field comment.
@@ -656,7 +657,8 @@ def loadUIFormClass(pathUi:str, from_imports=False, resourceSuffix:str='', fixQG
     """
     Backport, deprecated
     """
-    warnings.warn('Use loadUi(... , loadUiType=True) instead.', DeprecationWarning)
+    info = ''.join(traceback.format_stack()) + '\nUse loadUi(... , loadUiType=True) instead.'
+    warnings.warn(info, DeprecationWarning)
     return loadUi(pathUi, resource_suffix=resourceSuffix, loadUiType=True)[0]
 
 def typecheck(variable, type_):
@@ -1006,7 +1008,7 @@ def parseBadBandList(dataset)->typing.List[int]:
     return bbl
 
 
-def parseWavelength(dataset):
+def parseWavelength(dataset)->typing.Tuple[np.ndarray, str]:
     """
     Returns the wavelength + wavelength unit of a dataset
     :param dataset:

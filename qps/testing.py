@@ -159,6 +159,12 @@ class QgisMockup(QgisInterface):
         self.mPluginManager = QgsPluginManagerMockup()
 
         self.ui = QMainWindow()
+
+        self.mViewMenu = self.ui.menuBar().addMenu('View')
+        self.mVectorMenu = self.ui.menuBar().addMenu('Vector')
+        self.mRasterMenu = self.ui.menuBar().addMenu('Raster')
+        self.mWindowMenu = self.ui.menuBar().addMenu('Window')
+
         self.mMessageBar = QgsMessageBar()
         mainFrame = QFrame()
         self.ui.setCentralWidget(mainFrame)
@@ -212,7 +218,6 @@ class QgisMockup(QgisInterface):
     def pasteFromClipboard(self, pasteVectorLayer: QgsMapLayer):
         if not isinstance(pasteVectorLayer, QgsVectorLayer):
             return
-
         return
         # todo: implement
         pasteVectorLayer.beginEditCommand('Features pasted')
@@ -267,26 +272,27 @@ class QgisMockup(QgisInterface):
     def mapCanvas(self):
         return self.mCanvas
 
-    def mapNavToolToolBar(self):
-        super().mapNavToolToolBar()
+    def mapNavToolToolBar(self)->QToolBar:
+        return self.mMapNavToolBar
 
     def messageBar(self, *args, **kwargs):
         return self.mMessageBar
 
     def rasterMenu(self):
-        super().rasterMenu()
+        return self.mRasterMenu
 
     def vectorMenu(self):
-        super().vectorMenu()
+        return self.mVectorMenu
 
-    def viewMenu(self):
-        super().viewMenu()
+    def viewMenu(self)->QMenu:
+        return self.mViewMenu
 
-    def windowMenu(self):
-        super().windowMenu()
+    def windowMenu(self)->QMenu:
+        return self.mWindowMenu
 
     def zoomFull(self, *args, **kwargs):
-        super().zoomFull(*args, **kwargs)
+        self.mCanvas.zoomToFullExtent()
+
 
 
 
@@ -528,7 +534,7 @@ class TestObjects():
         else:
             # fill with test data
 
-            coredata, wl, wlu = TestObjects.coreData()
+            coredata, core_wl, wlu = TestObjects.coreData()
             coredata = coredata.astype(dt_out)
             cb, cl, cs = coredata.shape
             if nb > coredata.shape[0]:
@@ -548,6 +554,17 @@ class TestObjects():
                     ds.WriteRaster(xoff, yoff, xsize, ysize, coredata[:, 0:ysize, 0:xsize].tobytes())
                     yoff += ysize
                 xoff += xsize
+
+            wl = []
+            if nb > cb:
+                wl.extend(core_wl.tolist())
+                for b in range(cb, nb):
+                    wl.append(core_wl[-1])
+            else:
+                wl = core_wl[:nb].tolist()
+            assert len(wl) == nb
+            ds.SetMetadataItem('wavelength units', wlu)
+            ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]))
 
         ds.FlushCache()
         return ds

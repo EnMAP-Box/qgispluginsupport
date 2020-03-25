@@ -1,10 +1,12 @@
 
-import os, sys, re, pathlib, json, io, re, linecache, collections
+import os, sys, re, pathlib, json, io, re, linecache, collections, typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 import csv as pycsv
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
+    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, \
+    ProgressHandler
 
 class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
     """
@@ -12,7 +14,7 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
     See https://artmotoolbox.com/tools.html for details.
     """
     @staticmethod
-    def canRead(path:str):
+    def canRead(path: str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -20,21 +22,23 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
         """
         if not isinstance(path, str) and os.path.isfile(path):
             return False
+        try:
+            # check if an _meta.txt exists
+            pathMeta = os.path.splitext(path)[0] + '_meta.txt'
+            if not os.path.isfile(pathMeta):
+                return False
 
-        # check if an _meta.txt exists
-        pathMeta = os.path.splitext(path)[0] + '_meta.txt'
-        if not os.path.isfile(pathMeta):
+            with open(pathMeta, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if re.search(r'Line 1, Column \d \.{3} end:', line, re.I):
+                        return True
+        except Exception:
             return False
-
-        with open(pathMeta, 'r', encoding='utf-8') as f:
-            for line in f:
-                if re.search(r'Line 1, Column \d \.{3} end:', line, re.I):
-                    return True
 
         return False
 
     @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
+    def readFrom(path: str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary

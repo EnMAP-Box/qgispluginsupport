@@ -334,34 +334,36 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
         a.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
     @staticmethod
-    def canRead(path, binary:bool=None)->bool:
+    def canRead(path, binary: bool = None) -> bool:
         """
         Returns true if it can read the source defined by path
-        :param path: source uri
-        :return: True, if source is readable.
+        :param path:
+        :type path:
+        :param binary: if True, will test if the file can be read as ASD binary.
+        :type binary:
+        :return:
+        :rtype:
         """
         if not os.path.isfile(path):
             return False
-
-
         if isinstance(binary, bool):
-            if binary:
-                st = os.stat(path)
+            try:
+                if binary:
+                    st = os.stat(path)
 
-                if st.st_size < 484 + 1 or st.st_size > 2 ** 20:
-                    return False
-
-                with open(path, 'rb') as f:
-                    DATA = f.read(3)
-                    co = DATA[0:3].decode('utf-8')
-                    if co not in ASD_VERSIONS:
+                    if st.st_size < 484 + 1 or st.st_size > 2 ** 20:
                         return False
-                    else:
-                        return True
 
-                return False
-            else:
-                try:
+                    with open(path, 'rb') as f:
+                        DATA = f.read(3)
+                        co = DATA[0:3].decode('utf-8')
+                        if co not in ASD_VERSIONS:
+                            return False
+                        else:
+                            return True
+
+                    return False
+                else:
                     with open(path, 'r', encoding='utf-8') as f:
                         lines = []
                         for line in f:
@@ -376,8 +378,9 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
                                    and re.search(r'^\d+(\.\d+)?[;]', lines[1]) is not None
 
                         return False
-                except Exception as ex:
                     return False
+            except Exception as ex:
+                return False
 
         else:
             if ASDSpectralLibraryIO.canRead(path, binary=True):
@@ -388,9 +391,11 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
     @staticmethod
-    def readFrom(pathes:typing.Union[str, list], asdFields:typing.Iterable[str] = None, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
+    def readFrom(paths:typing.Union[str, list],
+                 asdFields:typing.Iterable[str] = None,
+                 progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
-        :param pathes: list of source paths
+        :param paths: list of source paths
         :param asdFields: list of header information to be extracted from ASD binary files
         :return: SpectralLibrary
         """
@@ -398,15 +403,15 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
             #default fields to add as meta data
             asdFields = ['when', 'ref_time', 'dc_time', 'dc_corr', 'it', 'sample_count', 'instrument_num', 'spec_type']
 
-        if not isinstance(pathes, list):
-            pathes = [pathes]
+        if not isinstance(paths, list):
+            paths = [paths]
 
         sl = SpectralLibrary()
 
         profiles = []
         asdFieldsInitialized = False
 
-        for filePath in pathes:
+        for filePath in paths:
             bn = os.path.basename(filePath)
 
             if ASDSpectralLibraryIO.canRead(filePath, binary=True):

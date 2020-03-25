@@ -170,6 +170,10 @@ def compileQGISResourceFiles(qgis_repo:str, target:str=None):
                 qgis_repo = pathlib.Path(os.environ[k])
                 break
 
+    if qgis_repo is None:
+        print('QGIS_REPO location undefined', file=sys.stderr)
+        return
+
     if not isinstance(qgis_repo, pathlib.Path):
         qgis_repo = pathlib.Path(qgis_repo)
     assert isinstance(qgis_repo, pathlib.Path)
@@ -184,7 +188,8 @@ def compileQGISResourceFiles(qgis_repo:str, target:str=None):
         target = pathlib.Path(target)
 
     os.makedirs(target, exist_ok=True)
-    compileResourceFiles(qgis_repo, targetDir=target)
+    compileResourceFiles(qgis_repo / 'src', targetDir=target)
+    compileResourceFiles(qgis_repo / 'images', targetDir=target)
 
 
 def initQtResources(roots: list = []):
@@ -286,44 +291,6 @@ def printResources():
     res = sorted(list(scanResources()))
     for r in res:
         print(r)
-
-
-
-def showResources()->QWidget:
-    """
-    A simple way to list available Qt resources
-    :return:
-    :rtype:
-    """
-    needQApp = not isinstance(QApplication.instance(), QApplication)
-    if needQApp:
-        app = QApplication([])
-    scrollArea = QScrollArea()
-
-    widget = QFrame()
-    grid = QGridLayout()
-    iconSize = QSize(25, 25)
-    row = 0
-    for resourcePath in scanResources(':'):
-        labelText = QLabel(resourcePath)
-        labelText.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        labelIcon = QLabel()
-        icon = QIcon(resourcePath)
-        assert not icon.isNull()
-
-        labelIcon.setPixmap(icon.pixmap(iconSize))
-
-        grid.addWidget(labelText, row, 0)
-        grid.addWidget(labelIcon, row, 1)
-        row += 1
-
-    widget.setLayout(grid)
-    widget.setMinimumSize(widget.sizeHint())
-    scrollArea.setWidget(widget)
-    scrollArea.show()
-    if needQApp:
-        QApplication.instance().exec_()
-    return scrollArea
 
 
 
@@ -525,3 +492,18 @@ class ResourceBrowser(QWidget):
         return self.optionUseRegex.isChecked()
 
 
+
+def showResources()->ResourceBrowser:
+    """
+    A simple way to list available Qt resources
+    :return:
+    :rtype:
+    """
+    needQApp = not isinstance(QApplication.instance(), QApplication)
+    if needQApp:
+        app = QApplication([])
+    browser = ResourceBrowser()
+    browser.show()
+    if needQApp:
+        QApplication.instance().exec_()
+    return browser

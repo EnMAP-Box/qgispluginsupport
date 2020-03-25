@@ -1,5 +1,5 @@
 
-import os, sys, re, pathlib, json, collections
+import os, sys, re, pathlib, json, collections, typing
 import csv as pycsv
 from ..core import *
 
@@ -10,28 +10,39 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
     See https://ecosis.org for details.
     """
     @staticmethod
-    def canRead(path)->bool:
+    def canRead(path) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
         :return: True, if source is readable.
         """
-
-        with open(path, 'r', encoding='utf-8') as f:
-            for line in f:
-                if re.search(r'^\d+(\.\d+)?.+', line):
-                    return True
-
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if re.search(r'^\d+(\.\d+)?.+', line):
+                        return True
+        except Exception as ex:
+            return False
         return False
 
     @staticmethod
-    def readFrom(path, wlu='nm', delimiter=',', progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
+    def readFrom(path: str,
+                 wlu='nm',
+                 delimiter=',',
+                 progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
-        Returns the SpectralLibrary read from "path"
-        :param path: source of SpectralLibrary
-        :return: SpectralLibrary
+         Returns the SpectralLibrary read from "path"
+        :param path:
+        :type path:
+        :param wlu:
+        :type wlu:
+        :param delimiter:
+        :type delimiter:
+        :param progressDialog:
+        :type progressDialog:
+        :return:
+        :rtype:
         """
-
         sl = SpectralLibrary()
         sl.startEditing()
         bn = os.path.basename(path)
@@ -77,8 +88,13 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
                 else:
                     metadataKeys.append(k)
 
-            numericValueKeys = sorted(numericValueKeys)
-            xValues = [float(v) for v in numericValueKeys]
+            # sort by wavelength
+            numericValueKeys = np.asarray(numericValueKeys, dtype=np.str)
+            xValues = np.asarray(numericValueKeys, dtype=np.float)
+            s = np.argsort(xValues)
+            numericValueKeys = numericValueKeys[s]
+            xValues = xValues[s]
+
             nProfiles = len(DATA[numericValueKeys[0]])
 
             sl.beginEditCommand('Set metadata columns')

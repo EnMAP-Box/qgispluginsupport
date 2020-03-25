@@ -120,12 +120,13 @@ class LayerPropertyTests(TestCase):
     def test_LayerPropertiesDialog_Raster(self):
 
         registerMapLayerConfigWidgetFactories()
-        lyr = TestObjects.createRasterLayer(nb=100)
+        lyr = TestObjects.createRasterLayer(nb=1, eType=gdal.GDT_UInt16)
         d = LayerPropertiesDialog(lyr)
         d.sync()
         self.assertIsInstance(d, LayerPropertiesDialog)
         for p in d.pages():
             self.assertIsInstance(p, QgsMapLayerConfigWidget)
+
             p.apply()
             d.setPage(p)
 
@@ -153,6 +154,29 @@ class LayerPropertyTests(TestCase):
             dialog.btnOk.click()
             self.assertTrue(dialog.result() == QDialog.Accepted)
 
+    def test_add_attributes(self):
+
+        vl = TestObjects.createVectorLayer()
+        vl.startEditing()
+        vl.addAttribute(createQgsField('test', 42))
+        self.assertTrue(vl.commitChanges())
+
+        d = AddAttributeDialog(vl, case_sensitive=False)
+        self.assertIsInstance(d, AddAttributeDialog)
+        d.setName('Test')
+        is_valid, errors = d.validate()
+        self.assertFalse(is_valid)
+        self.assertIsInstance(errors, str)
+        self.assertTrue(len(errors) > 0)
+
+        d.setCaseSensitive(True)
+        is_valid, errors = d.validate()
+        self.assertTrue(is_valid)
+        self.assertIsInstance(errors, str)
+        self.assertTrue(len(errors) == 0)
+
+        d.setName('test')
+        self.showGui(d)
 
     def test_p(self):
 

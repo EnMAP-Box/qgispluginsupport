@@ -21,7 +21,7 @@ import unittest
 from qps.testing import TestObjects, TestCase
 
 
-from qpstestdata import enmap
+from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
 
 from qps.speclib.io.csvdata import *
@@ -29,8 +29,6 @@ from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.speclib.gui import *
 
-
-os.environ['CI'] = 'True'
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
@@ -265,18 +263,20 @@ class TestIO(TestCase):
             self.assertListEqual(p1.yValues(), p2.yValues())
             self.assertTrue(p1.geometry().equals(p2.geometry()))
 
-        uri = "MultiPoint?crs=epsg:4326";
-        pathMultiPointLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
-        pathRasterLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
-        vlMultiPoint = None
 
-        if os.path.isfile(pathMultiPointLayer) and os.path.isfile(pathRasterLayer):
-            vlMultiPoint = QgsVectorLayer(pathMultiPointLayer)
-            rlEnMAP = QgsRasterLayer(pathRasterLayer)
-            speclib3 = SpectralLibrary.readFromVector(vlMultiPoint, rlEnMAP, progressDialog=progress)
+        vlLandCover = QgsVectorLayer(landcover)
+        rlEnMAP = QgsRasterLayer(enmap)
+        speclib3 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, progressDialog=progress)
 
-            self.assertIsInstance(speclib3, SpectralLibrary)
-            self.assertTrue(len(speclib3) > 0)
+        self.assertIsInstance(speclib3, SpectralLibrary)
+        self.assertTrue(len(speclib3) > 0)
+
+        speclib4 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, copy_attributes=True, progressDialog=progress)
+        self.assertIsInstance(speclib3, SpectralLibrary)
+        self.assertTrue(len(speclib3) > 0)
+        self.assertTrue(len(speclib3.fieldNames()) < len(speclib4.fieldNames()))
+        for fieldName in vlLandCover.fields().names():
+            self.assertTrue(fieldName in speclib4.fieldNames())
 
     def test_reloadProfiles(self):
         lyr = QgsRasterLayer(enmap)
@@ -334,8 +334,9 @@ class TestIO(TestCase):
 
     def test_EcoSIS(self):
 
-
         from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
+        from qpstestdata import speclib
+        self.assertFalse(EcoSISSpectralLibraryIO.canRead(speclib))
 
         # 1. read
         from qpstestdata import DIR_ECOSIS
@@ -359,7 +360,7 @@ class TestIO(TestCase):
 
         pathCSV = os.path.join(TEST_DIR, 'speclib.ecosys.csv')
         csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=QProgressDialog())
-
+        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=None)
         n = 0
         for p in csvFiles:
             self.assertTrue(os.path.isfile(p))
@@ -389,7 +390,9 @@ class TestIO(TestCase):
             sl = SPECCHIOSpectralLibraryIO.readFrom(path, progressDialog=QProgressDialog())
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) > 0)
-
+            for p in sl:
+                self.assertIsInstance(p, SpectralProfile)
+                self.assertListEqual(p.xValues(), sorted(p.xValues()))
         # 2. write
         speclib = TestObjects.createSpectralLibrary(50, nEmpty=1)
         pathCSV = os.path.join(TEST_DIR, 'speclib.specchio.csv')
@@ -402,7 +405,9 @@ class TestIO(TestCase):
 
             slPart = SPECCHIOSpectralLibraryIO.readFrom(p, progressDialog=QProgressDialog())
             self.assertIsInstance(slPart, SpectralLibrary)
-
+            for p in slPart:
+                self.assertIsInstance(p, SpectralProfile)
+                self.assertListEqual(p.xValues(), sorted(p.xValues()))
 
             n += len(slPart)
 
@@ -522,6 +527,8 @@ class TestIO(TestCase):
 
     def test_CSV(self):
         # TEST CSV writing
+
+
         speclib = TestObjects.createSpectralLibrary()
 
         # txt = CSVSpectralLibraryIO.asString(speclib)
@@ -561,6 +568,16 @@ class TestIO(TestCase):
             os.remove(pathCSV)
         except:
             pass
+
+    def test_csv_from_string(self):
+        from qps.speclib.io.csvdata import CSVSpectralLibraryIO
+        # see https://bitbucket.org/hu-geomatics/enmap-box/issues/321/error-when-dropping-a-raster-eg
+        # test if CSVSpectralLibraryIO.fromString() handles obviously none-CSV data
+
+        p = str(QUrl.fromLocalFile(pathlib.Path(__file__).resolve().as_posix()))
+        result = CSVSpectralLibraryIO.fromString(p)
+        self.assertTrue(result == None)
+
 
     def test_findEnviHeader(self):
 
@@ -604,8 +621,19 @@ class TestIO(TestCase):
 
         pathESL = speclibpath
 
+        from qpstestdata import speclib
 
+        self.assertTrue(EnviSpectralLibraryIO.canRead(speclib))
+
+        sl = EnviSpectralLibraryIO.readFrom(speclib)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
+
+        sl = SpectralLibrary.readFrom(speclib)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
         csv = readCSVMetadata(pathESL)
+
 
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=QProgressDialog())
 
@@ -693,8 +721,9 @@ class TestIO(TestCase):
 
         from qpstestdata import speclib_labeled as pathESL
         from qps import registerEditorWidgets
+        from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY as RasterClassificationKey
         registerEditorWidgets()
-        csv = readCSVMetadata(pathESL)
+
 
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=QProgressDialog())
 
@@ -702,6 +731,7 @@ class TestIO(TestCase):
         p0 = sl1[0]
         self.assertIsInstance(p0, SpectralProfile)
         self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
+
 
         setupTypes = []
         setupConfigs = []
@@ -711,28 +741,43 @@ class TestIO(TestCase):
             setupTypes.append(setup.type())
             setupConfigs.append(setup.config())
 
+
+        classValueFields = ['level_1', 'level_2', 'level_3']
+        for name in classValueFields:
+            i = sl1.fields().indexFromName(name)
+            self.assertEqual(setupTypes[i], RasterClassificationKey)
+
         sl = SpectralLibrary()
         sl.startEditing()
         sl.addSpeclib(sl1)
         self.assertTrue(sl.commitChanges())
 
-
-        i = sl.fields().indexOf('level_1')
-        from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY
-        self.assertEqual(sl.editorWidgetSetup(i).type(), EDITOR_WIDGET_REGISTRY_KEY)
-        #self.assertTrue(sl.commitChanges())
-        self.assertEqual(sl.editorWidgetSetup(i).type(), EDITOR_WIDGET_REGISTRY_KEY)
-
-        for name in ['level_1', 'level_2', 'level_3']:
+        for name in classValueFields:
             i = sl.fields().indexFromName(name)
             j = sl1.fields().indexFromName(name)
             self.assertTrue(i > 0)
+            self.assertTrue(j > 0)
             setupNew = sl.editorWidgetSetup(i)
             setupOld = sl1.editorWidgetSetup(j)
-            self.assertEqual(setupOld.type(), EDITOR_WIDGET_REGISTRY_KEY)
-            self.assertEqual(setupNew.type(), EDITOR_WIDGET_REGISTRY_KEY)
+            self.assertEqual(setupOld.type(), RasterClassificationKey)
+            self.assertEqual(setupNew.type(), RasterClassificationKey,
+                             msg='EditorWidget type is "{}" not "{}"'.format(setupNew.type(), setupOld.type()))
 
-        s = ""
+        sl = SpectralLibrary()
+        sl.startEditing()
+        sl.addSpeclib(sl1, copyEditorWidgetSetup=False)
+        self.assertTrue(sl.commitChanges())
+
+        for name in classValueFields:
+            i = sl.fields().indexFromName(name)
+            j = sl1.fields().indexFromName(name)
+            self.assertTrue(i > 0)
+            self.assertTrue(j > 0)
+            setupNew = sl.editorWidgetSetup(i)
+            setupOld = sl1.editorWidgetSetup(j)
+            self.assertEqual(setupOld.type(), RasterClassificationKey)
+            self.assertNotEqual(setupNew.type(), RasterClassificationKey)
+
 
 
 if __name__ == '__main__':

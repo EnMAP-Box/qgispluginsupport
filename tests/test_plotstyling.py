@@ -77,10 +77,21 @@ class PlotStyleTests(TestCase):
         self.assertTrue(PlotStyle.fromJSON(None) == None)
         self.assertTrue(PlotStyle.fromJSON('') == None)
 
+    def test_PlotStyle(self):
+
+        s1 = PlotStyle()
+        s2 = PlotStyle()
+
+        self.assertEqual(s1, s2)
+
+        s3 = PlotStyle()
+        s3.setLineColor('red')
+
+        self.assertNotEqual(s1, s3)
+
     def test_PlotStyleWidget(self):
         from qps.plotstyling.plotstyling import PlotStyleWidget
         w = PlotStyleWidget()
-
         self.showGui(w)
 
     def test_PlotStyleQgsAction(self):
@@ -215,7 +226,40 @@ class PlotStyleTests(TestCase):
 
         self.showGui(w)
 
+    def test_marker_symbols(self):
 
+
+
+
+        symbols = []
+        symbol_text = []
+        for s in MarkerSymbol:
+            self.assertIsInstance(s, MarkerSymbol)
+            encoded = MarkerSymbol.encode(s)
+            decoded = MarkerSymbol.decode(encoded)
+            symbols.append(s)
+            symbol_text.append(encoded)
+            self.assertEqual(s, decoded, msg='Failed to decode {} to {}'.format(encoded, s))
+
+        n = len(MarkerSymbol)
+        cb = MarkerSymbolComboBox()
+        self.assertIsInstance(cb, QComboBox)
+        self.assertEqual(cb.count(), n)
+
+        for i in range(cb.count()):
+            cb.setCurrentIndex(i)
+            s = cb.markerSymbol()
+            self.assertEqual(cb.markerSymbol(), symbols[i])
+            self.assertEqual(cb.currentText(), symbol_text[i])
+            self.assertEqual(cb.markerSymbolString(), s.value)
+
+        cb = MarkerSymbolComboBox()
+
+        for s in MarkerSymbol:
+            cb.setMarkerSymbol(s)
+            self.assertEqual(cb.markerSymbol(), s)
+
+        self.showGui(cb)
 
 
 if __name__ == '__main__':

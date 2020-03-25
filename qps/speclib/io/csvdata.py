@@ -28,7 +28,7 @@
 *                                                                         *
 ***************************************************************************
 """
-import os, sys, re, pathlib, json
+import os, sys, re, pathlib, json, typing
 from qgis.core import *
 import csv as pycsv
 from ..core import *
@@ -94,7 +94,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         return None
 
     @staticmethod
-    def canRead(path=None):
+    def canRead(path=None)->bool:
         if not isinstance(path, str):
             return False
 
@@ -120,7 +120,10 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
     @staticmethod
-    def write(speclib, path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, dialect=pycsv.excel_tab)->list:
+    def write(speclib: SpectralLibrary,
+              path: str,
+              progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None,
+              dialect=pycsv.excel_tab) -> list:
         """
         Writes the speclib into a CSv file
         :param speclib: SpectralLibrary
@@ -152,7 +155,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         # lines = [l for l in lines if len(l) > 0 and not l.startswith('#')]
         BLOCKDATA = []
         BLOCKMETADATA = []
-        currentBlock = ''
+        currentBlock = None
         iBlockStart = None
 
         def headerLineMetadata(iLine)->dict:
@@ -174,19 +177,24 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
                 continue
 
             if CSVSpectralLibraryIO.isHeaderLine(line):
-                if len(currentBlock) > 1:
+                # found new header line.
+                # add last block to list
+                if currentBlock not in [None, '']:
                     BLOCKMETADATA.append(headerLineMetadata(iBlockStart))
                     BLOCKDATA.append(currentBlock)
 
                 # start new block
                 iBlockStart = iLine
                 currentBlock = line
-            else:
+
+            elif isinstance(currentBlock, str):
+                # expand current block with new line
                 if not currentBlock.endswith('\n'):
                     currentBlock += '\n'
                 currentBlock += line
 
-        if len(currentBlock) > 1:
+        # add last block to list
+        if currentBlock not in [None, ''] :
             BLOCKMETADATA.append(headerLineMetadata(iBlockStart))
             BLOCKDATA.append(currentBlock)
 
@@ -194,7 +202,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         return BLOCKDATA, BLOCKMETADATA
 
     @staticmethod
-    def fromString(text:str, dialect=pycsv.excel_tab):
+    def fromString(text:str, dialect=pycsv.excel_tab)->SpectralLibrary:
         """
         Reads oneCSV
         :param text:
@@ -202,6 +210,9 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         :return:
         """
         BLOCKDATA, BLOCKMETADATA = CSVSpectralLibraryIO.extractDataBlocks(text)
+
+        if len(BLOCKDATA) == 0:
+            return None
 
         SLIB = SpectralLibrary()
         SLIB.startEditing()
@@ -224,7 +235,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
 
             # find missing fields, detect data type for and them to the SpectralLibrary
             bandValueColumnNames = [n for n in R.fieldnames if re.search(r'^b\d+$', n, re.I)]
-            bandValueColumnNames = sorted(bandValueColumnNames, key = lambda n: int(n[1:]))
+            bandValueColumnNames = sorted(bandValueColumnNames, key=lambda n: int(n[1:]))
             specialHandlingColumns = bandValueColumnNames + ['WKT']
             addGeometry = 'WKT' in R.fieldnames
             addYValues = False

@@ -1,12 +1,14 @@
 
-import os, sys, re, pathlib, json, io, re, linecache
+import os, sys, re, pathlib, json, io, re, linecache, typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.core import *
 
 
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, OGR_EXTENSION2DRIVER
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
+    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, OGR_EXTENSION2DRIVER, \
+    ProgressHandler
 
 class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     """
@@ -14,7 +16,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     See https://ecosis.org for details.
     """
     @staticmethod
-    def canRead(path:str):
+    def canRead(path: str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -37,7 +39,9 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
     @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, addAttributes:bool = True)->SpectralLibrary:
+    def readFrom(path,
+                 progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+                 addAttributes: bool = True) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -75,7 +79,10 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         return speclib
 
     @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, options:QgsVectorFileWriter.SaveVectorOptions=None):
+    def write(speclib:SpectralLibrary,
+              path: str,
+              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+              options: QgsVectorFileWriter.SaveVectorOptions = None):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """
@@ -95,6 +102,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         if options.layerName in [None, '']:
             options.layerName = speclib.name()
+
 
         errors = QgsVectorFileWriter.writeAsVectorFormat(layer=speclib,
                                                          fileName=path,

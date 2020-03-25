@@ -61,15 +61,17 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         self.gbMultiBandWavelength.setEnabled(hasWL)
         self.gbSingleBandWavelength.setEnabled(hasWL)
 
-        self.btnSetSBBand_B.clicked.connect(lambda : self.setWL(('B',)))
+        self.btnSetSBBand_B.clicked.connect(lambda: self.setWL(('B',)))
         self.btnSetSBBand_G.clicked.connect(lambda: self.setWL(('G',)))
         self.btnSetSBBand_R.clicked.connect(lambda: self.setWL(('R',)))
         self.btnSetSBBand_NIR.clicked.connect(lambda: self.setWL(('NIR',)))
-        self.btnSetSBBand_SWIR.clicked.connect(lambda: self.setWL(('SWIR',)))
+        self.btnSetSBBand_SWIR1.clicked.connect(lambda: self.setWL(('SWIR1',)))
+        self.btnSetSBBand_SWIR2.clicked.connect(lambda: self.setWL(('SWIR2',)))
 
-        self.btnSetMBBands_RGB.clicked.connect(lambda : self.setWL(('R', 'G', 'B')))
+        self.btnSetMBBands_RGB.clicked.connect(lambda: self.setWL(('R', 'G', 'B')))
         self.btnSetMBBands_NIRRG.clicked.connect(lambda: self.setWL(('NIR', 'R', 'G')))
         self.btnSetMBBands_SWIRNIRR.clicked.connect(lambda: self.setWL(('SWIR', 'NIR', 'R')))
+        self.btnSetMBBands_NIRSWIRR.clicked.connect(lambda: self.setWL(('NIR', 'SWIR', 'R')))
 
         self.syncToLayer()
 

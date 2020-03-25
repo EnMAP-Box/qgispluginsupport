@@ -79,13 +79,13 @@ class AddAttributeDialog(QDialog):
     """
     A dialog to set up a new QgsField.
     """
-    def __init__(self, layer, parent=None):
+    def __init__(self, layer, parent=None, case_sensitive: bool = False):
         assert isinstance(layer, QgsVectorLayer)
         super(AddAttributeDialog, self).__init__(parent)
 
         assert isinstance(layer, QgsVectorLayer)
         self.mLayer = layer
-
+        self.mCaseSensitive = case_sensitive
         self.setWindowTitle('Add Field')
         l = QGridLayout()
 
@@ -130,25 +130,41 @@ class AddAttributeDialog(QDialog):
         self.tbValidationInfo.setStyleSheet("QLabel { color : red}")
         l.addWidget(self.tbValidationInfo, 5, 0, 1, 2)
 
-
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
         self.buttons.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
         l.addWidget(self.buttons, 6, 1)
         self.setLayout(l)
-
         self.mLayer = layer
-
         self.onTypeChanged()
 
+        self.validate()
+
+    def setCaseSensitive(self, is_sensitive: bool):
+        assert isinstance(is_sensitive, bool)
+        self.mCaseSensitive = is_sensitive
+        self.validate()
+
+    def setName(self, name: str):
+        """
+        Sets the field name
+        """
+        self.tbName.setText(name)
+
+    def name(self) -> str:
+        """
+        Returns the field name
+        :return: str
+        """
+        return self.tbName.text()
+
     def accept(self):
-
-        msg = self.validate()
-
-        if len(msg) > 0:
-            QMessageBox.warning(self, "Add Field", msg)
-        else:
+        isValid, msg = self.validate()
+        if isValid:
             super(AddAttributeDialog, self).accept()
+        else:
+            QMessageBox.warning(self, "Add Field", msg)
+
 
     def field(self):
         """
@@ -162,9 +178,6 @@ class AddAttributeDialog(QDialog):
                         len=self.sbLength.value(),
                         prec=self.sbPrecision.value(),
                         comment=self.tbComment.text())
-
-
-
 
     def currentNativeType(self):
         return self.cbType.currentData().value()
@@ -200,24 +213,26 @@ class AddAttributeDialog(QDialog):
         elif value < vMin:
             sb.setValue(vMin)
 
-
-    def validate(self):
-
-        msg = []
+    def validate(self, *args) -> typing.Union[bool, str]:
+        """
+        Validates the inputs
+        :return: (bool, str with error message(s))
+        """
+        errors = []
         name = self.tbName.text()
-        if name in self.mLayer.fields().names():
-            msg.append('Field name "{}" already exists.'.format(name))
+        existing_names = self.mLayer.fields().names()
+        if self.mCaseSensitive and name in existing_names or \
+           not self.mCaseSensitive and name.lower() in [n.lower() for n in existing_names]:
+            errors.append('Field name "{}" already exists.'.format(name))
         elif name == '':
-            msg.append('Missing field name')
+            errors.append('Missing field name')
         elif name == 'shape':
-            msg.append('Field name "{}" already reserved.'.format(name))
+            errors.append('Field name "{}" already reserved.'.format(name))
+        errors = '\n'.join(errors)
+        self.buttons.button(QDialogButtonBox.Ok).setEnabled(len(errors) == 0)
+        self.tbValidationInfo.setText(errors)
 
-        msg = '\n'.join(msg)
-        self.buttons.button(QDialogButtonBox.Ok).setEnabled(len(msg) == 0)
-
-        self.tbValidationInfo.setText(msg)
-
-        return msg
+        return len(errors) == 0, errors
 
 
 def openRasterLayerSilent(uri, name, provider)->QgsRasterLayer:
@@ -284,7 +299,7 @@ def rendererFromXml(xml):
                 s =""
     return None
 
-def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSize:int=256)->QgsRasterRenderer:
+def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSize:int=256, readQml:bool=True)->QgsRasterRenderer:
     """
     Returns a default Raster Renderer.
     See https://bitbucket.org/hu-geomatics/enmap-box/issues/166/default-raster-visualization
@@ -301,6 +316,7 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSiz
 
     nb = layer.bandCount()
 
+    # band names are defined explicitley
     if isinstance(bandIndices, list):
         bandIndices = [b for b in bandIndices if b >=0 and b < nb]
         l = len(bandIndices)
@@ -312,6 +328,25 @@ def defaultRasterRenderer(layer:QgsRasterLayer, bandIndices:list=None, sampleSiz
             bandIndices = bandIndices[0:1]
 
     if not isinstance(bandIndices, list):
+
+        # check for *.qml file with default styling information
+        if readQml:
+            qmlUri = pathlib.Path(layer.styleURI())
+            is_file = False
+            try:
+                is_file = qmlUri.is_file()
+            except OSError:
+                is_file = False
+
+            if is_file and re.search(r'\.(qml)$', qmlUri.name):
+                msg, success = layer.loadDefaultStyle()
+                if success:
+                    r = layer.renderer().clone()
+                    r.setInput(layer.dataProvider())
+                    return r
+                else:
+                    print(msg, file=sys.stderr)
+
         if nb >= 3:
 
             if isinstance(defaultRenderer, QgsMultiBandColorRenderer):
@@ -783,7 +818,12 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         w = self.currentPage()
 
         if isinstance(w, QgsMapLayerConfigWidget) and hasattr(w, 'syncToLayer'):
-            w.syncToLayer()
+            if isinstance(w, QgsRasterTransparencyWidget):
+                # skip, until this issue is solved in QGIS https://github.com/qgis/QGIS/pull/34969
+                # w.syncToLayer()
+                pass
+            else:
+                w.syncToLayer()
 
         for page in self.pages():
             if page != w:

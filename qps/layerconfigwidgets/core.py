@@ -197,6 +197,54 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
             fileName = str(fileName.resolve())
 
         if fileName is None:
+            fileName = QFileDialog.getOpenFileName(self,
+                                                   'Load layer properties from style file',
+                                                   lastUsedDir,
+                                                   'QGIS Layer Style file (*.qml)')
+        if len(fileName) == 0:
+            return
+        if not re.search(r'\.qml$', fileName, re.I):
+            fileName += '.qml'
+
+        oldStyle = self.mapLayer().styleManager().style(self.mapLayer().styleManager().currentStyle())
+        msg, success = self.mapLayer().loadNamedStyle(fileName)
+
+        if success:
+            self.syncToLayer()
+            QgsSettings().setValue('style/lastStyleDir', os.path.dirname(fileName))
+        else:
+            QMessageBox.information(self, 'Load Style', msg)
+
+
+    def saveStyle(self, fileName:str=None):
+        lastUsedDir = QgsSettings().value("style/lastStyleDir")
+
+        if isinstance(fileName, pathlib.Path):
+            fileName = str(fileName.resolve())
+
+        if fileName is None:
+            fileName = QFileDialog.getSaveFileName(self,
+                                                   'Save layer properties as style file',
+                                                   lastUsedDir,
+                                                   'QGIS Layer Style file (*.qml);;Styled Layer Descriptor (*.sld)'
+                                                   )
+        if len(fileName) == 0:
+            return
+
+        styleType = 'QML'
+        if re.search(r'\.sld$', fileName, re.I):
+            styleType = 'SLD'
+        else:
+            fileName = QgsFileUtils.ensureFileNameHasExtension(fileName, ['qml'])
+
+        self.apply()
+    def loadStyle(self, fileName:str=None):
+        lastUsedDir = QgsSettings().value("style/lastStyleDir")
+
+        if isinstance(fileName, pathlib.Path):
+            fileName = str(fileName.resolve())
+
+        if fileName is None:
             fileName, filter = QFileDialog.getOpenFileName(self,
                                                    'Load layer properties from style file',
                                                    lastUsedDir,

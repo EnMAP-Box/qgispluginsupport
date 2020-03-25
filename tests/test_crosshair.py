@@ -75,9 +75,26 @@ class CrosshairTests(TestCase):
 
         refCanvas = QgsMapCanvas()
         refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
+        QTimer.singleShot(500, QApplication.closeAllWindows)
+        style = getCrosshairStyle(mapCanvas=refCanvas)
 
-        func = lambda: getCrosshairStyle(mapCanvas=refCanvas)
-        self.showGui(func)
+
+    def test_crosshair_maplayer(self):
+
+        canvas = QgsMapCanvas()
+        mc = CrosshairMapCanvasItem(canvas)
+
+        lyr = TestObjects.createRasterLayer()
+
+        lyr2 = TestObjects.createRasterLayer()
+        mc.setRasterGridLayer(lyr)
+        self.assertEqual(mc.rasterGridLayer(), lyr)
+        mc.setRasterGridLayer(lyr2)
+        self.assertEqual(mc.rasterGridLayer(), lyr2)
+
+        lyr.willBeDeleted.emit()
+        lyr2.willBeDeleted.emit()
+        self.assertTrue(mc.rasterGridLayer() == None)
 
 if __name__ == "__main__":
     unittest.main()

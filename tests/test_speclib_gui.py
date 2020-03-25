@@ -17,10 +17,10 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest
+import unittest, math
 from qps.testing import TestObjects, TestCase, StartOptions
-
-
+import numpy as np
+import numpy as np
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
@@ -103,16 +103,47 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_SpectraLibraryPlotDataItem(self):
 
-        sl = TestObjects.createSpectralLibrary(10)
-        profile = sl[0]
-        sp = SpectralProfilePlotDataItem(profile)
+        profile = SpectralProfile()
+        self.assertIsInstance(profile, SpectralProfile)
+        import numpy as np
+        yValues = np.asarray([700., np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan, 800.])
+        xValues = np.asarray([0   , 2     , 3    , 4     , 5     , 6     , 7     , 8     , 9     , 10    , 11    , 12    , 1  ])
+
+        profile.setValues(xValues, yValues)
+
+        yValues = profile.yValues()
+        xValues = profile.xValues()
+
+        self.assertTrue(any([math.isnan(v) for v in yValues]))
+
+        print('plot {}'.format(yValues))
+        import qps.externals.pyqtgraph as pg
+        import numpy as np
+        #w0 = pg.plot(yValues, connect='finite')
+
+        pdi = SpectralProfilePlotDataItem(profile)
+        self.assertIsInstance(pdi, SpectralProfilePlotDataItem)
+
+        if xValues != sorted(xValues):
+            self.assertListEqual(list(pdi.mInitialDataX), sorted(list(pdi.mInitialDataX)),
+                                 msg='SpectralProfilePlotDataItem values need to be ordered by X value dimension')
+
+        style = PlotStyle.fromPlotDataItem(pdi)
 
         plotStyle = defaultCurvePlotStyle()
-        plotStyle.apply(sp)
+        plotStyle.setLineWidth(10)
+        plotStyle.setLineColor('red')
+        plotStyle.setMarkerColor('green')
+        plotStyle.setMarkerLinecolor('blue')
+        plotStyle.setMarkerSymbol('Triangle')
+        plotStyle.apply(pdi)
 
-        ps2 = PlotStyle.fromPlotDataItem(sp)
-
+        ps2 = PlotStyle.fromPlotDataItem(pdi)
         self.assertEqual(plotStyle, ps2)
+
+        w1 = profile.plot()
+        w2 = pdi.plot()
+        self.showGui([w1])
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidget(self):
@@ -158,6 +189,24 @@ class TestSpeclibWidgets(TestCase):
 
         pw.setXUnit('nm')
         self.showGui(w)
+
+
+    def test_SpectralLibraryPlotWidget_units(self):
+
+        slib = SpectralLibrary()
+
+        p1 = SpectralProfile()
+        p2 = SpectralProfile()
+        p1.setValues(x = [.1, .2, .3, .4], y = [20,30,40,30], xUnit='um')
+        p2.setValues(x = [100, 200, 300, 400], y=[21, 31, 41, 31], xUnit='nm')
+        slib.startEditing()
+        slib.addProfiles([p1, p2])
+        slib.commitChanges()
+        pw = SpectralLibraryPlotWidget()
+        pw.setSpeclib(slib)
+
+
+        self.showGui(pw)
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidgetSimple(self):
@@ -342,6 +391,44 @@ class TestSpeclibWidgets(TestCase):
         self.showGui(w)
 
 
+    def test_dropping_speclibs(self):
+
+        files = []
+
+        for root, dirs, f in os.walk(pathlib.Path(__file__).parents[1] / 'qpstestdata'):
+            for file in f:
+                files.append(pathlib.Path(root) / file)
+
+        slw = SpectralLibraryWidget()
+        # drop a valid speclib
+        md = QMimeData()
+        from qpstestdata import speclib
+        sl = SpectralLibrary.readFrom(speclib)
+        self.assertIsInstance(sl, SpectralLibrary) and len(sl) > 0
+        md.setUrls([QUrl.fromLocalFile(speclib)])
+        event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+        print('Drop {}'.format(speclib), flush=True)
+        slw.dropEvent(event)
+        QApplication.processEvents()
+        self.assertEqual(len(slw.speclib()), len(sl))
+
+        # drop random files
+        slw = SpectralLibraryWidget()
+        self.assertTrue(len(slw.speclib()) == 0)
+        for file in files:
+            md = QMimeData()
+            md.setUrls([QUrl.fromLocalFile(file.as_posix())])
+            print('Drop {}'.format(file.name), flush=True)
+            event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+            slw.dropEvent(event)
+            QApplication.processEvents()
+            # delete dropped spectra
+            slw.speclib().startEditing()
+            slw.speclib().deleteFeatures(slw.speclib().allFeatureIds())
+            slw.speclib().commitChanges()
+
+        self.showGui(slw)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 
@@ -385,20 +472,16 @@ class TestSpeclibWidgets(TestCase):
         slw.setCurrentSpectra(cs)
         self.assertTrue(len(slw.currentSpectra()) == 3)
 
-        speclib.selectByIds([1, 2, 3])
+        if False:
+            speclib.selectByIds([1, 2, 3])
 
-        n = len(speclib)
-        sids = speclib.selectedFeatureIds()
-
-        self.assertTrue(len(sids) > 0)
-        slw.copySelectedFeatures()
-        slw.cutSelectedFeatures()
-        slw.pasteFeatures()
-
-        self.assertEqual(n, len(speclib))
-
-
-
+            n = len(speclib)
+            sids = speclib.selectedFeatureIds()
+            self.assertTrue(len(sids) > 0)
+            slw.copySelectedFeatures()
+            slw.cutSelectedFeatures()
+            slw.pasteFeatures()
+            self.assertEqual(n, len(speclib))
         self.showGui(slw)
 
     @unittest.skipIf(False, '')
@@ -465,6 +548,35 @@ class TestSpeclibWidgets(TestCase):
         propertiesDialog = qps.layerproperties.LayerPropertiesDialog(speclib, None)
         self.assertIsInstance(propertiesDialog, QgsOptionsDialogBase)
         self.showGui([slw, propertiesDialog])
+
+
+    def test_addAttribute(self):
+
+        slw = SpectralLibraryWidget()
+        self.assertIsInstance(slw, SpectralLibraryWidget)
+        sl = slw.spectraLibrary()
+        self.assertIsInstance(sl, SpectralLibrary)
+        sl.startEditing()
+
+        attr = QgsField(name='test',
+                        type=QVariant.Int,
+                        typeName='Int')
+
+        sl.addAttribute(attr)
+        conf1 = sl.attributeTableConfig()
+        conf2 = slw.mDualView.attributeTableConfig()
+
+        self.assertEqual(len(conf1.columns()), len(conf2.columns()))
+        names = []
+        for c1, c2 in zip(conf1.columns(), conf2.columns()):
+            self.assertEqual(c1.name, c2.name)
+            self.assertEqual(c1.type, c2.type)
+            self.assertEqual(c1.hidden, c2.hidden)
+            names.append(c1.name)
+        #self.assertTrue(attr.name() in names)
+        s = ""
+
+        self.showGui(slw)
 
 
 

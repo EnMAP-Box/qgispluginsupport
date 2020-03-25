@@ -392,6 +392,7 @@ class TestCore(TestCase):
             for p in profiles:
                 self.assertEqual(l, len(p.xValues()))
 
+
     def test_SpectralLibrary(self):
 
         self.assertListEqual(vsiSpeclibs(), [])
@@ -553,6 +554,7 @@ class TestCore(TestCase):
         n = len(sp1)
         with self.assertRaises(Exception):
             sp1.addSpeclib(sp2)
+            s = ""
         self.assertTrue(len(sp1), n)
 
         sp1.startEditing()

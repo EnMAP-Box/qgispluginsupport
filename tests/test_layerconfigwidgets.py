@@ -10,7 +10,9 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest, time
+import unittest
+import time
+import tempfile
 from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtGui import *
@@ -29,15 +31,12 @@ class LayerConfigWidgetsTests(TestCase):
         super(LayerConfigWidgetsTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initQtResources()
 
-
-
     def canvasWithLayer(self, lyr)->QgsMapCanvas:
         c = QgsMapCanvas()
         c.setLayers([lyr])
         c.setDestinationCrs(lyr.crs())
         c.setExtent(lyr.extent())
         return c
-
 
     def test_metadata(self):
         from qps.layerconfigwidgets.core import MetadataConfigWidgetFactory, MetadataConfigWidget
@@ -56,6 +55,7 @@ class LayerConfigWidgetsTests(TestCase):
             self.assertIsInstance(w, MetadataConfigWidget)
             w.syncToLayer()
             w.apply()
+
 
             self.showGui([c, w])
 
@@ -86,13 +86,14 @@ class LayerConfigWidgetsTests(TestCase):
         c = QgsMapCanvas()
 
         f = SymbologyConfigWidgetFactory()
-
+        style_file = (pathlib.Path(tempfile.gettempdir()) / 'stylefile.qml').as_posix()
         for lyr in [lyrR, lyrV]:
             c.setLayers([lyr])
             c.setDestinationCrs(lyr.crs())
             c.setExtent(lyr.extent())
             self.assertTrue(f.supportsLayer(lyr))
             w = f.createWidget(lyr, c)
+            w.show()
             self.assertIsInstance(w, SymbologyConfigWidget)
             w.apply()
 
@@ -102,7 +103,10 @@ class LayerConfigWidgetsTests(TestCase):
                 r2.setInput(lyr.dataProvider())
                 lyr.setRenderer(r2)
             w.syncToLayer()
-
+            w.saveStyleAsDefault()
+            w.loadDefaultStyle()
+            w.saveStyle(style_file)
+            w.loadStyle(style_file)
 
             self.showGui([c, w])
         pass
@@ -138,10 +142,52 @@ class LayerConfigWidgetsTests(TestCase):
                     self.assertTrue(lyrV.labelsEnabled())
                     self.assertEquals(type(lyrV.labeling()), type(w.labeling()))
 
+            labeling = w.labeling()
+            w.setLabeling(labeling)
+
         self.showGui(w)
 
     def test_transparency(self):
-        pass
+
+        lyr = TestObjects.createRasterLayer()
+        c = QgsMapCanvas()
+        c.setLayers([lyr])
+
+        w1 = QgsRasterTransparencyWidget(lyr, c)
+
+        btnApply = QPushButton('Apply')
+        btnSync = QPushButton('Sync')
+
+
+        def onApply():
+            ndv1 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            w1.apply()
+            ndv2 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+
+            s = ""
+
+        def onSync():
+            ndv1 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            w1.apply()
+            ndv2 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+            w1.syncToLayer()
+            ndv3 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
+
+            s = ""
+        btnApply.clicked.connect(onApply)
+        btnSync.clicked.connect(onSync)
+
+
+        w  = QWidget()
+        l = QVBoxLayout()
+        lh = QHBoxLayout()
+        lh.addWidget(btnApply)
+        lh.addWidget(btnSync)
+        l.addLayout(lh)
+        l.addWidget(w1)
+        w.setLayout(l)
+        self.showGui(w)
+
 
     def test_histogram(self):
         pass
@@ -184,10 +230,10 @@ class LayerConfigWidgetsTests(TestCase):
     def test_rasterbandselection(self):
         from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
 
-        lyrR = TestObjects.createRasterLayer(nb=100)
+        from qpstestdata import enmap
+        lyrR = TestObjects.createRasterLayer(nb=200)
         lyrV = TestObjects.createVectorLayer()
         cR = self.canvasWithLayer(lyrR)
-
 
         f = RasterBandConfigWidgetFactory()
         self.assertIsInstance(f, QgsMapLayerConfigWidgetFactory)
@@ -198,27 +244,108 @@ class LayerConfigWidgetsTests(TestCase):
 
         self.showGui([cR, w])
 
+    def test_empty_gdalmetadata(self):
+
+        lyrR = TestObjects.createRasterLayer(nb=100, eType=gdal.GDT_Byte)
+        lyrV = TestObjects.createVectorLayer()
+        lyrE = QgsRasterLayer()
+
+        QgsProject.instance().addMapLayers([lyrR, lyrV, lyrE])
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
+        cb= QgsMapLayerComboBox()
+        c = QgsMapCanvas()
+        md = GDALMetadataModelConfigWidget()
+        cb.layerChanged.connect(md.setLayer)
+        l = QVBoxLayout()
+        l.addWidget(cb)
+        l.addWidget(md)
+        w = QWidget()
+        w.setLayout(l)
+        self.showGui(w)
+
+
+    def test_GDALMetadataModel(self):
+        from qpstestdata import enmap
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
+
+        c = QgsMapCanvas()
+        lyr = QgsRasterLayer(enmap)
+        model = GDALMetadataModel()
+        model.setIsEditable(True)
+        fm = QSortFilterProxyModel()
+        fm.setSourceModel(model)
+
+        tv = QTableView()
+        tv.setSortingEnabled(True)
+        tv.setModel(fm)
+        model.setLayer(lyr)
+
+        self.showGui(tv)
+
+
+    def test_GDALMetadataModelConfigWidget(self):
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
+        from qpstestdata import enmap
+
+        lyrR = QgsRasterLayer(enmap)
+        canvas = QgsMapCanvas()
+        w = GDALMetadataModelConfigWidget(lyrR, canvas)
+        w.metadataModel.setIsEditable(True)
+        w.widgetChanged.connect(lambda: print('Changed'))
+        self.assertIsInstance(w, QWidget)
+        self.assertTrue(w.is_gdal)
+
+
+        btnApply = QPushButton('Apply')
+        btnApply.clicked.connect(w.apply)
+        btnReload = QPushButton('Reload')
+        btnReload.clicked.connect(w.syncToLayer)
+        l = QVBoxLayout()
+        l.addWidget(btnApply)
+        l.addWidget(btnReload)
+        l.addWidget(w)
+        m = QWidget()
+        m.setLayout(l)
+        self.showGui(m)
+
+
     def test_gdalmetadata(self):
 
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
 
-        lyrR = TestObjects.createRasterLayer(nb=100)
+        lyrR = TestObjects.createRasterLayer(nb=100, eType=gdal.GDT_Byte)
+        from qpstestdata import enmap
+        lyrR = QgsRasterLayer(enmap)
+        self.assertTrue(lyrR.isValid())
         lyrV = TestObjects.createVectorLayer()
 
         cR = self.canvasWithLayer(lyrR)
         cV = self.canvasWithLayer(lyrV)
+
+        # no layer
+        c = QgsMapCanvas()
+        l = QgsRasterLayer()
+        w = GDALMetadataModelConfigWidget(l, c)
+        self.assertIsInstance(w, GDALMetadataModelConfigWidget)
+        w = GDALMetadataModelConfigWidget(lyrR, cR)
+        w.setLayer(lyrR)
+
         f = GDALMetadataConfigWidgetFactory()
         self.assertIsInstance(f, GDALMetadataConfigWidgetFactory)
         self.assertTrue(f.supportsLayer(lyrR))
         self.assertTrue(f.supportsLayer(lyrV))
         wR = f.createWidget(lyrR, cR, dockWidget=False)
         self.assertIsInstance(wR, GDALMetadataModelConfigWidget)
-
+        self.assertTrue(wR.metadataModel.rowCount(None) > 0)
         wV = f.createWidget(lyrV, cV, dockWidget=False)
+        self.assertTrue(wR.metadataModel.rowCount(None) > 0)
         self.assertIsInstance(wR, GDALMetadataModelConfigWidget)
 
-        self.showGui([wR, wV])
+        lyrC = TestObjects.createRasterLayer(nc=5)
+        canvas = self.canvasWithLayer(lyrC)
+        wC = f.createWidget(lyrC, canvas)
 
+        self.showGui([w, wC])
 
     def test_vectorfieldmodels(self):
 
@@ -235,18 +362,6 @@ class LayerConfigWidgetsTests(TestCase):
         lyr.addAttribute(f)
         self.assertTrue(lyr.commitChanges())
         self.showGui(v)
-
-    def test_metadatatable(self):
-
-        lyr = TestObjects.createVectorLayer()
-        #lyr = TestObjects.createRasterLayer()
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
-        model = GDALMetadataModel()
-        tv = QTableView()
-        tv.setModel(model)
-        model.setLayer(lyr)
-
-        self.showGui(tv)
 
 
 

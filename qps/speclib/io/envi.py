@@ -27,7 +27,7 @@
 *                                                                         *
 ***************************************************************************
 """
-import os, csv, tempfile, uuid, time
+import os, csv, tempfile, uuid, time, typing
 from osgeo import gdal, gdal_array
 from ..core import *
 
@@ -87,15 +87,19 @@ def findENVIHeader(path:str)->(str, str):
     :param path: str
     :return: (str, str), e.g. ('pathESL.hdr', 'pathESL.sli')
     """
+    # the two file names we want to extract
+    pathHdr = None
+    pathSLI = None
+
     # 1. find header file
     paths = [os.path.splitext(path)[0] + '.hdr', path + '.hdr']
-    pathHdr = None
     for p in paths:
         if os.path.exists(p):
             pathHdr = p
             break
 
     if pathHdr is None:
+        # no header file, no ENVI file
         return None, None
 
     # 2. find binary file
@@ -311,8 +315,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
                 if isinstance(sl, SpectralLibrary):
                     speclib.startEditing()
                     speclib.beginEditCommand('Add ENVI Spectral Library from {}'.format(path))
-                    speclib.copyEditorWidgetSetup(sl)
-                    speclib.addSpeclib(sl, True)
+                    speclib.addSpeclib(sl, addMissingFields=True)
                     speclib.endEditCommand()
                     speclib.commitChanges()
 
@@ -335,7 +338,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
 
     @staticmethod
-    def canRead(pathESL):
+    def canRead(pathESL)->bool:
         """
         Checks if a file can be read as SpectraLibrary
         :param pathESL: path to ENVI Spectral Library (ESL)
@@ -358,7 +361,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         return 0
 
     @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None)->SpectralLibrary:
         """
         Reads an ENVI Spectral Library (ESL).
         :param path: path to ENVI Spectral Library
@@ -406,7 +409,6 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             print(str(ex), file=sys.stderr)
 
         PROFILE2CSVLine = {}
-
 
         if CSV_METADATA is not None:
             CSV_DATA, CSV_FIELDS = CSV_METADATA
@@ -491,12 +493,11 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         assert SLIB.commitChanges()
         assert SLIB.featureCount() == nSpectra
 
-
         SLIB.readJSONProperties(pathESL)
         return SLIB
 
     @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    def write(speclib: SpectralLibrary, path: str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None):
         """
         Writes a SpectralLibrary as ENVI Spectral Library (ESL).
         See http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for ESL definition

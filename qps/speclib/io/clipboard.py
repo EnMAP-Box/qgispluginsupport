@@ -27,7 +27,7 @@
 *                                                                         *
 ***************************************************************************
 """
-
+import typing
 from ..core import *
 from PyQt5.QtWidgets import QProgressDialog
 import locale
@@ -36,7 +36,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
     """
     Reads and write SpectralLibrary from/to system clipboard.
     """
-    FORMATS = [MIMEDATA_SPECLIB, MIMEDATA_XQT_WINDOWS_CSV, MIMEDATA_TEXT]
+    FORMATS = [MIMEDATA_SPECLIB, MIMEDATA_XQT_WINDOWS_CSV]
 
     class WritingModes(object):
 
@@ -48,7 +48,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
             return [a for a in dir(self) if not callable(getattr(self, a)) and not a.startswith("__")]
 
     @staticmethod
-    def canRead(path=None):
+    def canRead(path=None) -> bool:
         clipboard = QApplication.clipboard()
         mimeData = clipboard.mimeData()
         assert isinstance(mimeData, QMimeData)
@@ -58,7 +58,9 @@ class ClipboardIO(AbstractSpectralLibraryIO):
         return False
 
     @staticmethod
-    def readFrom(path=None, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    def readFrom(path=None,
+                 progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None) -> SpectralLibrary:
+
         clipboard = QApplication.clipboard()
         mimeData = clipboard.mimeData()
         assert isinstance(mimeData, QMimeData)
@@ -69,10 +71,16 @@ class ClipboardIO(AbstractSpectralLibraryIO):
             assert isinstance(speclib, SpectralLibrary)
             return speclib
 
-        return SpectralLibrary()
+        return None
 
     @staticmethod
-    def write(speclib, path=None, mode=None, sep=None, newline=None, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    def write(speclib,
+              path=None,
+              mode=None,
+              sep=None,
+              newline=None,
+              progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+
         if mode is None:
             mode = ClipboardIO.WritingModes.ALL
         assert isinstance(speclib, SpectralLibrary)

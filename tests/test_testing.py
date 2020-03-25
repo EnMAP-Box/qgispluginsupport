@@ -40,6 +40,7 @@ class testClassTesting(unittest.TestCase):
 
         qgis_app.quit()
 
+
     def test_init_minimal(self):
         import qps.testing
         from qgis.core import QgsApplication
@@ -90,6 +91,16 @@ class test_TestObject(qps.testing.TestCase):
         self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
         self.assertTrue(lyr.crs().isValid())
 
+    def test_coredata(self):
+        from qps.testing import TestObjects
+        import numpy as np
+        array, wl, wlu = TestObjects.coreData()
+        self.assertIsInstance(array, np.ndarray)
+        self.assertIsInstance(wl, np.ndarray)
+        self.assertTrue(len(wl) > 0)
+        self.assertIsInstance(wlu, str)
+
+
     def test_RasterData(self):
 
         from qps.testing import TestObjects
@@ -100,15 +111,26 @@ class test_TestObject(qps.testing.TestCase):
         self.assertEqual(cl.RasterXSize, 10)
         self.assertEqual(cl.RasterYSize, 20)
 
+
         classNames = cl.GetRasterBand(1).GetCategoryNames()
         self.assertEqual(len(classNames), 7)
 
         ds = TestObjects.createRasterDataset(1000, 2000, nb=100, eType=gdal.GDT_Float32)
+
+        from qps.utils import parseWavelength
+        wl, wlu = parseWavelength(cl)
+        self.assertIsInstance(wl, np.ndarray)
+        self.assertIsInstance(wlu, str)
+
         self.assertIsInstance(ds, gdal.Dataset)
         self.assertEqual(ds.RasterCount, 100)
         self.assertEqual(ds.RasterXSize, 1000)
         self.assertEqual(ds.RasterYSize, 2000)
         self.assertEqual(ds.GetRasterBand(1).DataType, gdal.GDT_Float32)
+
+
+
+
 
     def test_Speclibs(self):
 

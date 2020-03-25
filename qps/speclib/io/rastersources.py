@@ -13,14 +13,15 @@ from ...utils import SelectMapLayersDialog
 
 class SpectralProfileLoadingTask(QgsTask):
 
-    def __init__(self, path_vector, path_raster, all_touched=True):
+    def __init__(self, path_vector: str, path_raster: str, all_touched: bool = True, copy_attributes: bool =False):
         super().__init__('Load spectral profiles', QgsTask.CanCancel)
         assert isinstance(path_vector, str)
         assert isinstance(path_raster, str)
 
         self.path_vector = path_vector
         self.path_raster = path_raster
-        self.all_toched = all_touched
+        self.all_touched = all_touched
+        self.copy_attributes = copy_attributes
         self.exception = None
         self.profiles = None
         from ..gui import ProgressHandler
@@ -33,10 +34,11 @@ class SpectralProfileLoadingTask(QgsTask):
             vector = QgsVectorLayer(self.path_vector)
             raster = QgsRasterLayer(self.path_raster)
             profiles = SpectralLibrary.readFromVector(vector,
-                                                  raster,
-                                                  all_touched=self.all_toched,
-                                                  progressDialog=self.progress_handler,
-                                                  returnProfileList=True)
+                                                      raster,
+                                                      all_touched=self.all_touched,
+                                                      copy_attributes=self.copy_attributes,
+                                                      progressDialog=self.progress_handler,
+                                                      returnProfileList=True)
             self.profiles = profiles
         except Exception as ex:
             self.exception = ex
@@ -68,7 +70,7 @@ class SpectralProfileLoadingTask(QgsTask):
 
 class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
 
-    def __init__(self, parent=None, f:Qt.WindowFlags=None):
+    def __init__(self, parent=None, f: Qt.WindowFlags = None):
         super(SpectralProfileImportPointsDialog, self).__init__()
 
         self.setWindowTitle('Read Spectral Profiles')
@@ -80,9 +82,20 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
 
         self.mCbTouched = QCheckBox(self)
         self.mCbTouched.setText('All touched')
-        self.mCbTouched.setToolTip('Activate to extract all touched pixels, not only thoose entirel covered by a geometry.')
+        self.mCbTouched.setToolTip(
+            'Activate to extract all touched pixels, not only those entirely covered by a geometry.')
+
+        self.mCbAllAttributes = QCheckBox(self)
+        self.mCbAllAttributes.setText('Copy Attributes')
+        self.mCbAllAttributes.setToolTip(
+            'Activate to copy vector attributes into the Spectral Library'
+        )
+
+        l = QHBoxLayout()
+        l.addWidget(self.mCbTouched)
+        l.addWidget(self.mCbAllAttributes)
         i = self.mGrid.rowCount()
-        self.mGrid.addWidget(self.mCbTouched, i, 1)
+        self.mGrid.addLayout(l, i, 1)
 
         self.mProgressBar = QProgressBar(self)
         self.mProgressBar.setRange(0, 100)
@@ -108,10 +121,10 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer) and
                                    QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
 
-    def profiles(self)->typing.List[SpectralProfile]:
+    def profiles(self) -> typing.List[SpectralProfile]:
         return self.mProfiles[:]
 
-    def speclib(self)->SpectralLibrary:
+    def speclib(self) -> SpectralLibrary:
         slib = SpectralLibrary()
         slib.startEditing()
         if len(self.mProfiles) > 0:
@@ -136,7 +149,7 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
     def onProgressChanged(self, progress):
         self.mProgressBar.setValue(int(progress))
 
-    def onCompleted(self, task:SpectralProfileLoadingTask):
+    def onCompleted(self, task: SpectralProfileLoadingTask):
         if isinstance(task, SpectralProfileLoadingTask) and not sip.isdeleted(task):
             self.mProfiles = task.profiles[:]
             self.mTasks.clear()
@@ -144,9 +157,8 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
             self.mIsFinished = True
             self.accept()
 
-    def isFinished(self)->bool:
+    def isFinished(self) -> bool:
         return self.mIsFinished
-
 
     def onTerminated(self, *args):
         s  =""
@@ -155,9 +167,14 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.reject()
 
     def run(self):
-
-        task = SpectralProfileLoadingTask(self.vectorSource().source(), self.rasterSource().source(),
-                                          all_touched=self.allTouched())
+        """
+        Call this to start loading the profiles in a background process
+        """
+        task = SpectralProfileLoadingTask(self.vectorSource().source(),
+                                          self.rasterSource().source(),
+                                          all_touched=self.allTouched(),
+                                          copy_attributes=self.allAttributes()
+                                          )
 
         mgr = QgsApplication.taskManager()
         assert isinstance(mgr, QgsTaskManager)
@@ -169,12 +186,30 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
 
         QgsApplication.taskManager().addTask(task)
 
+    def allAttributes(self) -> bool:
+        """
+        Returns True if the "All Attributes" combo box is enabled and checked.
+        :return: bool
+        """
+        return self.mCbAllAttributes.isEnabled() and self.mCbAllAttributes.isChecked()
 
-    def allTouched(self)->bool:
+    def allTouched(self) -> bool:
+        """
+        Returns True if the "All Touched" combo box is enabled and checked.
+        :return: bool
+        """
         return self.mCbTouched.isEnabled() and self.mCbTouched.isChecked()
 
-    def rasterSource(self)->QgsVectorLayer:
+    def rasterSource(self) -> QgsRasterLayer:
+        """
+        Returns the selected QgsRasterLayer
+        :return: QgsRasterLayer
+        """
         return self.mapLayers()[0]
 
-    def vectorSource(self)->QgsVectorLayer:
+    def vectorSource(self) -> QgsVectorLayer:
+        """
+        Returns the selected QgsVectorLayer
+        :return: QgsVectorLayer
+        """
         return self.mapLayers()[1]

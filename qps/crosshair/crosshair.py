@@ -157,10 +157,26 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :param qgsRasterLayer:
         :return:
         """
+
+        if qgsRasterLayer == self.mRasterGridLayer:
+            return
+
+        if isinstance(self.mRasterGridLayer, QgsRasterLayer):
+            self.mRasterGridLayer.willBeDeleted.disconnect(self.onLayerWillBeDeleted)
+
         if isinstance(qgsRasterLayer, QgsRasterLayer):
             self.mRasterGridLayer = qgsRasterLayer
+            self.mRasterGridLayer.willBeDeleted.connect(self.onLayerWillBeDeleted)
         else:
             self.mRasterGridLayer = None
+
+    def onLayerWillBeDeleted(self):
+        """
+        Removes the reference to the map layer
+        :return:
+        :rtype:
+        """
+        self.mRasterGridLayer = None
 
     def rasterGridLayer(self)->QgsRasterLayer:
         """
@@ -396,13 +412,13 @@ def nicePredecessor(l):
 
 class CrosshairWidget(QWidget):
     """
-    A widget to configurate a CrossHair
+    A widget to configure a CrossHair
     """
     sigCrosshairStyleChanged = pyqtSignal(CrosshairStyle)
 
     def __init__(self, title='<#>', parent=None):
         super(CrosshairWidget, self).__init__(parent)
-        loadUi(DIR_UI_FILES / 'crosshairwidget.ui')
+        loadUi(pathlib.Path(__file__).parent / 'crosshairwidget.ui', self)
 
         self.mapCanvas.setExtent(QgsRectangle(0, 0, 1, 1))  #
 
