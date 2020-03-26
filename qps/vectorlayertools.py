@@ -3,7 +3,7 @@ from qgis.core import *
 from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtWidgets import *
 
-from .maptools import QgsFeatureAction
+
 from .utils import SpatialExtent, SpatialPoint
 class VectorLayerTools(QgsVectorLayerTools):
     """
@@ -28,6 +28,7 @@ class VectorLayerTools(QgsVectorLayerTools):
         """
         This method should/will be called, whenever a new feature will be added to the layer.
         """
+        from .maptools import QgsFeatureAction
         a = QgsFeatureAction(action_name, f, layer, None, None)
         return a.addFeature(defaultValues)
 

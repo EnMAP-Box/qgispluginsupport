@@ -33,7 +33,7 @@ from qgis.PyQt.QtWidgets import *
 
 import numpy as np
 from .utils import *
-
+from .vectorlayertools import VectorLayerTools
 
 def tr(t: str) -> str:
     return t
@@ -549,6 +549,16 @@ class QgsFeatureAction(QAction):
         self.mIdx = defaultAttr
         self.mFeatureSaved = False
         self.mForceSuppressFormPopup = False
+        self.mAttributeEditorContext = QgsAttributeEditorContext()
+        self.mVectorLayerTools = VectorLayerTools()
+
+    def setVectorLayerTools(self, tools: QgsVectorLayerTools):
+        assert isinstance(VectorLayerTools, QgsVectorLayerTools)
+        self.mVectorLayerTools = tools
+
+    def setAttributeEditorContext(self, context: QgsAttributeEditorContext):
+        assert isinstance(context, QgsAttributeEditorContext)
+        self.mAttributeEditorContext = context
 
     def execute(self):
         self.mLayer.actions().doAction(self.mActionId, self.mFeature, self.mIdx)
@@ -564,9 +574,9 @@ class QgsFeatureAction(QAction):
         myDa = QgsDistanceArea()
         myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
         myDa.setEllipsoid(QgsProject.instance().ellipsoid())
-        context = QgsAttributeEditorContext(self.mOuterContext, QgsAttributeEditorContext.StandaloneDialog)
+        context = QgsAttributeEditorContext(self.mAttributeEditorContext)
         context.setDistanceArea(myDa)
-        # context.setVectorLayerTools()
+        context.setVectorLayerTools(self.mVectorLayerTools)
         # context.setMapCanvas()
         context.setFormMode(QgsAttributeEditorContext.StandaloneDialog)
 
