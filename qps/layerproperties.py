@@ -34,7 +34,7 @@ from . import DIR_UI_FILES
 from .utils import *
 from .models import OptionListModel, Option
 from .classification.classificationscheme import ClassificationScheme, ClassInfo
-
+from .vectorlayertools import VectorLayerTools
 """
 class RasterLayerProperties(QgsOptionsDialogBase):
     def __init__(self, lyr, canvas, parent, fl=Qt.Widget):
@@ -234,6 +234,53 @@ class AddAttributeDialog(QDialog):
 
         return len(errors) == 0, errors
 
+
+class RemoveAttributeDialog(QDialog):
+
+    def __init__(self, layer:QgsVectorLayer, *args, fieldNames = None, **kwds):
+        super().__init__(*args, **kwds)
+        assert isinstance(layer, QgsVectorLayer)
+        self.mLayer = layer
+        self.setWindowTitle('Remove Field')
+
+        from .layerconfigwidgets.vectorlayerfields import LayerFieldsListModel
+        self.fieldModel = LayerFieldsListModel()
+        self.fieldModel.setLayer(self.mLayer)
+        self.fieldModel.setAllowEmptyFieldName(False)
+        self.fieldModel.setAllowExpression(False)
+
+        self.tvFieldNames = QTableView()
+        self.tvFieldNames.setModel(self.fieldModel)
+
+        self.btnBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self)
+        self.btnBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+        self.btnBox.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
+
+        self.label = QLabel('Select')
+
+        l = QVBoxLayout()
+        l.addWidget(self.label)
+        l.addWidget(self.tvFieldNames)
+        l.addWidget(self.btnBox)
+        self.setLayout(l)
+
+    def fields(self) -> typing.List[QgsField]:
+        """
+        Returns the selected QgsFields
+        """
+        fields = []
+        for idx in self.tvFieldNames.selectionModel().selectedRows():
+            i = idx.data(Qt.UserRole + 2)
+            fields.append(self.mLayer.fields().at(i))
+
+        return fields
+
+    def fieldIndices(self) -> typing.List[int]:
+        return [self.mLayer.fields().lookupField(f.name()) for f in self.fields()]
+
+    def fieldNames(self) -> typing.List[str]:
+
+        return [f.name() for f in self.fields()]
 
 def openRasterLayerSilent(uri, name, provider)->QgsRasterLayer:
     """
@@ -892,9 +939,630 @@ def showLayerPropertiesDialog(layer:QgsMapLayer,
     return None
 
 
+def tr(t:str) -> str:
+    return t
 
-class AttributeTableWidget(QMainWindow):
+class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, mLayer: QgsVectorLayer, *args,
+                 initialMode: QgsAttributeTableFilterModel.FilterMode=QgsAttributeTableFilterModel.ShowVisible, **kwds):
         super().__init__(*args, **kwds)
         loadUi(pathlib.Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)
+        settings = QgsSettings()
+
+        self.mActionCutSelectedRows.triggered.connect(self.mActionCutSelectedRows_triggered)
+        self.mActionCopySelectedRows.triggered.connect(self.mActionCopySelectedRows_triggered)
+        self.mActionPasteFeatures.triggered.connect(self.mActionPasteFeatures_triggered)
+        self.mActionToggleEditing.toggled.connect(self.mActionToggleEditing_toggled)
+        self.mActionSaveEdits.triggered.connect(self.mActionSaveEdits_triggered)
+        self.mActionReload.triggered.connect(self.mActionReload_triggered)
+        self.mActionInvertSelection.triggered.connect(self.mActionInvertSelection_triggered)
+        self.mActionRemoveSelection.triggered.connect(self.mActionRemoveSelection_triggered)
+        self.mActionSelectAll.triggered.connect(self.mActionSelectAll_triggered)
+        self.mActionZoomMapToSelectedRows.triggered.connect(self.mActionZoomMapToSelectedRows_triggered)
+        self.mActionPanMapToSelectedRows.triggered.connect(self.mActionPanMapToSelectedRows_triggered)
+        self.mActionSelectedToTop.toggled.connect(self.mMainView.setSelectedOnTop)
+        self.mActionAddAttribute.triggered.connect(self.mActionAddAttribute_triggered)
+        self.mActionRemoveAttribute.triggered.connect(self.mActionRemoveAttribute_triggered)
+        #self.mActionOpenFieldCalculator.triggered.connect(self.mActionOpenFieldCalculator_triggered)
+        self.mActionDeleteSelected.triggered.connect(self.mActionDeleteSelected_triggered)
+        self.mMainView.currentChanged.connect(self.mMainView_currentChanged)
+        self.mActionAddFeature.triggered.connect(self.mActionAddFeature_triggered)
+        self.mActionExpressionSelect.triggered.connect(self.mActionExpressionSelect_triggered)
+        self.mMainView.showContextMenuExternally.connect(self.showContextMenu)
+
+        assert isinstance(self.mMainView, QgsDualView)
+        pal = self.mMainView.tableView().palette()
+        css = r"""QTableView {{
+                       selection-background-color: {};
+                       selection-color: {};
+                        }}""".format(pal.highlight().color().name(),
+                                     pal.highlightedText().color().name())
+        self.mMainView.setStyleSheet(css)
+        self.mDock: QgsDockWidget = None
+        self.mEditorContext = QgsAttributeEditorContext()
+        self.mLayer: QgsVectorLayer = mLayer
+
+        self.mMapCanvas = QgsMapCanvas()
+        self.mMapCanvas.setLayers([self.mLayer])
+        # Initialize the window geometry
+        #geom = settings.value("Windows/BetterAttributeTable/geometry")
+        #self.restoreGeometry(geom)
+        
+        da = QgsDistanceArea()
+        da.setSourceCrs(mLayer.crs(), QgsProject.instance().transformContext())
+        da.setEllipsoid(QgsProject.instance().ellipsoid())
+
+        self.mEditorContext.setDistanceArea(da)
+        self.mVectorLayerTools: VectorLayerTools = None
+        self.setVectorLayerTools(VectorLayerTools())
+
+        r = QgsFeatureRequest()
+        needsGeom = False
+        if mLayer.geometryType() != QgsWkbTypes.NullGeometry and \
+            initialMode == QgsAttributeTableFilterModel.ShowVisible:
+            mc = self.mMapCanvas
+            extent = QgsRectangle(mc.mapSettings().mapToLayerCoordinates(mLayer, mc.extent()))
+            r.setFilterRect(extent)
+            needsGeom = True
+        elif initialMode == QgsAttributeTableFilterModel.ShowSelected:
+
+            r.setFilterFids(mLayer.selectedFeatureIds())
+
+        if not needsGeom:
+            r.setFlags(QgsFeatureRequest.NoGeometry)
+        
+        # Initialize dual view
+        #self.mMainView.init(mLayer, self.mMapCanvas, r, self.mEditorContext, False)
+        self.mMainView.init(mLayer, self.mMapCanvas)
+        
+        config = mLayer.attributeTableConfig()
+        self.mMainView.setAttributeTableConfig(config)
+        
+        #self.mFeatureFilterWidget.init(mLayer, self.mEditorContext, self.mMainView, None, QgisApp.instance().messageTimeout())
+        
+        self.mActionFeatureActions = QToolButton()
+        self.mActionFeatureActions.setAutoRaise(False)
+        self.mActionFeatureActions.setPopupMode(QToolButton.InstantPopup)
+        self.mActionFeatureActions.setIcon(QgsApplication.getThemeIcon("/mAction.svg"))
+        self.mActionFeatureActions.setText(tr("Actions"))
+        self.mActionFeatureActions.setToolTip(tr("Actions"))
+        
+        self.mToolbar.addWidget(self.mActionFeatureActions)
+        self.mActionSetStyles.triggered.connect(self.openConditionalStyles)
+
+
+
+        # info from layer to table
+        mLayer.editingStarted.connect(self.editingToggled)
+        mLayer.editingStopped.connect(self.editingToggled)
+        mLayer.destroyed.connect(self.mMainView.cancelProgress)
+        mLayer.selectionChanged.connect(self.updateTitle)
+        mLayer.featureAdded.connect(self.updateTitle)
+        mLayer.featuresDeleted.connect(self.updateTitle)
+        mLayer.editingStopped.connect(self.updateTitle)
+        mLayer.readOnlyChanged.connect(self.editingToggled)
+        
+        # connect table info to window
+        self.mMainView.filterChanged.connect(self.updateTitle)
+        self.mMainView.filterExpressionSet.connect(self.formFilterSet)
+        self.mMainView.formModeChanged.connect(self.viewModeChanged)
+        
+        # info from table to application
+        #self.saveEdits.connect(QgisApp::instance()->saveEdits() })
+
+        """
+        dockTable: bool = bool(settings.value("qgis/dockAttributeTable" , False )
+        if dockTable:
+            self.mDock = new QgsAttributeTableDock( QString(), QgisApp::instance() );
+            mDock->setWidget( this );
+            connect( this, &QObject::destroyed, mDock, &QWidget::close );
+            QgisApp::instance()->addDockWidget( Qt::BottomDockWidgetArea, mDock );
+        mActionDockUndock->setChecked( dockTable );
+        connect( mActionDockUndock, &QAction::toggled, this, &QgsAttributeTableDialog::toggleDockMode );
+        installEventFilter( this );
+        """
+
+        self.updateTitle()
+
+        # set icons
+        self.mActionRemoveSelection.setIcon(QgsApplication.getThemeIcon("/mActionDeselectAll.svg"))
+        self.mActionSelectAll.setIcon(QgsApplication.getThemeIcon("/mActionSelectAll.svg"))
+        self.mActionSelectedToTop.setIcon(QgsApplication.getThemeIcon("/mActionSelectedToTop.svg"))
+        self.mActionCopySelectedRows.setIcon(QgsApplication.getThemeIcon("/mActionEditCopy.svg"))
+        self.mActionPasteFeatures.setIcon(QgsApplication.getThemeIcon("/mActionEditPaste.svg"))
+        self.mActionZoomMapToSelectedRows.setIcon(QgsApplication.getThemeIcon("/mActionZoomToSelected.svg"))
+        self.mActionPanMapToSelectedRows.setIcon(QgsApplication.getThemeIcon("/mActionPanToSelected.svg"))
+        self.mActionInvertSelection.setIcon(QgsApplication.getThemeIcon("/mActionInvertSelection.svg"))
+        self.mActionToggleEditing.setIcon(QgsApplication.getThemeIcon("/mActionToggleEditing.svg"))
+        self.mActionSaveEdits.setIcon(QgsApplication.getThemeIcon("/mActionSaveEdits.svg"))
+        self.mActionDeleteSelected.setIcon(QgsApplication.getThemeIcon("/mActionDeleteSelectedFeatures.svg"))
+        self.mActionOpenFieldCalculator.setIcon(QgsApplication.getThemeIcon("/mActionCalculateField.svg"))
+        self.mActionAddAttribute.setIcon(QgsApplication.getThemeIcon("/mActionNewAttribute.svg"))
+        self.mActionRemoveAttribute.setIcon(QgsApplication.getThemeIcon("/mActionDeleteAttribute.svg"))
+        self.mTableViewButton.setIcon(QgsApplication.getThemeIcon("/mActionOpenTable.svg"))
+        self.mAttributeViewButton.setIcon(QgsApplication.getThemeIcon("/mActionFormView.svg"))
+        self.mActionExpressionSelect.setIcon(QgsApplication.getThemeIcon("/mIconExpressionSelect.svg"))
+        self.mActionAddFeature.setIcon(QgsApplication.getThemeIcon("/mActionNewTableRow.svg"))
+        self.mActionFeatureActions.setIcon(QgsApplication.getThemeIcon("/mAction.svg"))
+
+        # toggle editing
+        canChangeAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.ChangeAttributeValues
+        canDeleteFeatures = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteFeatures
+        canAddAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.AddAttributes
+        canDeleteAttributes = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteAttributes
+        canAddFeatures = mLayer.dataProvider().capabilities() & QgsVectorDataProvider.AddFeatures
+        
+        self.mActionToggleEditing.blockSignals(True)
+        self.mActionToggleEditing.setCheckable(True)
+        self.mActionToggleEditing.setChecked(mLayer.isEditable())
+        self.mActionToggleEditing.blockSignals(False)
+        
+        self.mActionSaveEdits.setEnabled(self.mActionToggleEditing.isEnabled() and mLayer.isEditable())
+        self.mActionReload.setEnabled(not mLayer.isEditable())
+        self.mActionAddAttribute.setEnabled((canChangeAttributes or canAddAttributes) and mLayer.isEditable())
+        self.mActionRemoveAttribute.setEnabled(canDeleteAttributes and mLayer.isEditable())
+        if not canDeleteFeatures:
+            self.mToolbar.removeAction(self.mActionDeleteSelected)
+            self.mToolbar.removeAction(self.mActionCutSelectedRows)
+
+        self.mActionAddFeature.setEnabled(canAddFeatures and mLayer.isEditable())
+        self.mActionPasteFeatures.setEnabled(canAddFeatures and mLayer.isEditable())
+        if not canAddFeatures:
+            self.mToolbar.removeAction(self.mActionAddFeature)
+            self.mToolbar.removeAction(self.mActionPasteFeatures)
+
+        assert isinstance(self.mMainViewButtonGroup, QButtonGroup)
+        self.mMainViewButtonGroup.setId(self.mTableViewButton, QgsDualView.AttributeTable)
+        self.mMainViewButtonGroup.setId(self.mAttributeViewButton, QgsDualView.AttributeEditor)
+        self.mTableViewButton.clicked.connect(lambda: self.setViewMode(QgsDualView.AttributeTable))
+        self.mAttributeViewButton.clicked.connect(lambda: self.setViewMode(QgsDualView.AttributeEditor))
+
+        self.setFilterMode(initialMode)
+
+        if isinstance(mLayer, QgsVectorLayer) and mLayer.isValid():
+
+            #self.mUpdateExpressionText.registerExpressionContextGenerator(self)
+            self.mFieldCombo.setFilters(QgsFieldProxyModel.AllTypes | QgsFieldProxyModel.HideReadOnly)
+            self.mFieldCombo.setLayer(mLayer)
+
+            self.mRunFieldCalc.clicked.connect(self.updateFieldFromExpression)
+            self.mRunFieldCalcSelected.clicked.connect(self.updateFieldFromExpressionSelected)
+            self.mUpdateExpressionText.fieldChanged.connect(lambda fieldName: self.updateButtonStatus(fieldName, True))
+            self.mUpdateExpressionText.setLayer(mLayer)
+            self.mUpdateExpressionText.setLeftHandButtonStyle(True)
+
+            initialView = int(settings.value("qgis/attributeTableView", -1))
+            if initialView < 0:
+                initialView = int(settings.value("qgis/attributeTableLastView", int(QgsDualView.AttributeTable)))
+            for m in [QgsDualView.AttributeTable, QgsDualView.AttributeEditor]:
+                if initialView == int(m):
+                    self.setViewMode(m)
+
+            self.mActionToggleMultiEdit.toggled.connect(self.mMainView.setMultiEditEnabled)
+            self.mActionSearchForm.toggled.connect(self.mMainView.toggleSearchMode)
+            self.updateMultiEditButtonState()
+
+            if mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout:
+                #not supported with custom UI
+                self.mActionToggleMultiEdit.setEnabled(false)
+                self.mActionToggleMultiEdit.setToolTip(tr("Multiedit is not supported when using custom UI forms"))
+                self.mActionSearchForm.setEnabled(False)
+                self.mActionSearchForm.setToolTip(tr("Search is not supported when using custom UI forms"))
+
+            self.editingToggled();
+
+        self._hide_unconnected_widgets()
+
+    def setVectorLayerTools(self, tools:VectorLayerTools):
+        assert isinstance(tools, VectorLayerTools)
+        self.mVectorLayerTools = tools
+
+        self.mEditorContext.setVectorLayerTools(tools)
+
+    def vectorLayerTools(self) -> VectorLayerTools:
+        return self.mVectorLayerTools
+        #return self.mEditorContext.vectorLayerTools()
+
+    def setMapCanvas(self, canvas: QgsMapCanvas):
+        self.mEditorContext.setMapCanvas(canvas)
+
+    def createExpressionContext(self) -> QgsExpressionContext:
+        return QgsExpressionContext()
+
+    def updateButtonStatus(self, fieldName: str, isValid: bool):
+        self.mRunFieldCalc.setEnabled(isValid)
+
+    def updateMultiEditButtonState(self):
+        if not isinstance(self.mLayer, QgsVectorLayer) or \
+                (self.mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout):
+            return
+
+        self.mActionToggleMultiEdit.setEnabled(self.mLayer.isEditable() )
+
+        if not self.mLayer.isEditable() or \
+              ( self.mLayer.isEditable() and self.mMainView.view() != QgsDualView.AttributeEditor ):
+            self.mActionToggleMultiEdit.setChecked( False )
+
+    def openConditionalStyles(self):
+        self.mMainView.openConditionalStyles()
+
+    def mActionCutSelectedRows_triggered(self):
+
+        pass
+
+        #QgisApp:: instance()->cutSelectionToClipboard(mLayer);
+    
+    def mActionCopySelectedRows_triggered(self):
+        self.vectorLayerTools().copySelectionToClipboard(self.mLayer)
+
+    def setMainMessageBar(self, messageBar: QgsMessageBar):
+        self.mEditorContext.setMainMessageBar(messageBar)
+
+    def mainMessageBar(self) -> QgsMessageBar:
+        return self.mEditorContext.mainMessageBar()
+
+    def updateFieldFromExpression(self):
+
+        filtered = self.mMainView.filterMode() != QgsAttributeTableFilterModel.ShowAll
+        filteredIds = self.mMainView.filteredFeatures() if filtered else []
+        self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(), self.mUpdateExpressionText.asExpression(), filteredIds )
+
+
+    def updateFieldFromExpressionSelected(self):
+
+        filteredIds = self.mLayer.selectedFeatureIds()
+        self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
+                                 self.mUpdateExpressionText.asExpression(), filteredIds )
+
+
+    def runFieldCalculation(self, layer: QgsVectorLayer, 
+                            fieldName: str,
+                            expression: str,
+                            filteredIds: list):
+        fieldindex = layer.fields().indexFromName(fieldName)
+        if fieldindex < 0:
+
+            #// this shouldn't happen... but it did. There's probably some deeper underlying issue
+            #// but we may as well play it safe here.
+            QMessageBox.critical(None, tr("Update Attributes" ), "An error occurred while trying to update the field {}".format(fieldName ) )
+            return
+
+        #cursorOverride = QgsTemporaryCursorOverride(Qt.WaitCursor)
+        self.mLayer.beginEditCommand("Field calculator" )
+        
+        calculationSuccess = True
+        error = None
+
+        exp = QgsExpression(expression)
+        da = QgsDistanceArea()
+        da.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
+        da.setEllipsoid(QgsProject.instance().ellipsoid())
+        exp.setGeomCalculator(da)
+        exp.setDistanceUnits(QgsProject.instance().distanceUnits())
+        exp.setAreaUnits(QgsProject.instance().areaUnits())
+        useGeometry: bool = exp.needsGeometry()
+
+        request = QgsFeatureRequest (self.mMainView.masterModel().request())
+        useGeometry = useGeometry or not request.filterRect().isNull()
+        request.setFlags(QgsFeatureRequest.NoFlags if useGeometry else QgsFeatureRequest.NoGeometry )
+        
+        rownum = 1
+        
+        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(layer))
+        exp.prepare(context)
+
+        fld:QgsField = layer.fields().at(fieldindex)
+
+        referencedColumns = exp.referencedColumns()
+        referencedColumns.add(fld.name()) # need existing column value to store old attribute when changing field values
+        request.setSubsetOfAttributes(referencedColumns, layer.fields())
+
+        task = QgsScopedProxyProgressTask(tr("Calculating field" ))
+
+        count = len(filteredIds) if len(filteredIds) > 0 else layer.featureCount()
+        i = 0
+
+        for feature in layer.getFeatures(request):
+
+            if len(filteredIds) > 0 and feature.id() not in filteredIds:
+                continue
+
+            i += 1
+            task.setProgress(i / count * 100)
+            context.setFeature(feature )
+            context.lastScope().addVariable(QgsExpressionContextScope.StaticVariable("row_number", rownum, True))
+        
+            value = exp.evaluate(context)
+            convertError = None
+            try:
+                value = fld.convertCompatible(value)
+            except SystemError as ex:
+                error = 'Unable to convert "{}" to type {}'.format(value, fld.typeName())
+            # Bail if we have a update error
+            if exp.hasEvalError():
+                calculationSuccess = False
+                error = exp.evalErrorString()
+                break
+            elif isinstance(error, str):
+                calculationSuccess = False
+                break
+            else:
+                oldvalue = feature.attributes()[fieldindex]
+                self.mLayer.changeAttributeValue(feature.id(), fieldindex, value, oldvalue)
+            rownum += 1
+
+        #cursorOverride.release()
+        #task.reset()
+        
+        if not calculationSuccess:
+            QMessageBox.critical(None,
+                                 tr("Update Attributes" ),
+                                 "An error occurred while evaluating the calculation string:\n{}".format(error))
+            self.mLayer.destroyEditCommand()
+
+        else:
+            self.mLayer.endEditCommand()
+        
+            # refresh table with updated values
+            # fixes https:#github.com/qgis/QGIS/issues/25210
+            masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
+            modelColumn: int = masterModel.fieldCol(fieldindex )
+            masterModel.reload(masterModel.index(0, modelColumn ), masterModel.index(masterModel.rowCount() - 1, modelColumn ))
+
+    def layerActionTriggered(self):
+        action = self.sender()
+        if isinstance(action, QAction):
+        
+            action : QgsAction  = action.data()
+        
+            context: QgsExpressionContext = self.mLayer.createExpressionContext()
+            scope = QgsExpressionContextScope()
+            scope.addVariable(QgsExpressionContextScope.StaticVariable("action_scope" , "AttributeTable" ))
+            context.appendScope(scope)
+            action.run(context)
+
+
+    def formFilterSet(self, filter: str, filterType: QgsAttributeForm.FilterType):
+        self.setFilterExpression(filter, filterType, True)
+
+    def setFilterExpression(self, filterString: str, filterType: QgsAttributeForm.FilterType, alwaysShowFilter: bool):
+        pass
+        #mFeatureFilterWidget->setFilterExpression(filterString, type, alwaysShowFilter );
+
+    def viewModeChanged(self, mode: QgsAttributeEditorContext.Mode):
+        if mode != QgsAttributeEditorContext.SearchMode:
+            self.mActionSearchForm.setChecked(False)
+
+    def updateTitle(self):
+        if not isinstance(self.mLayer, QgsVectorLayer):
+            return 
+        
+        w = self.mDock if isinstance(self.mDock, QWidget) else self
+        w.setWindowTitle(" {0} :: Features Total: {1} Filtered: {2}, Selected: {3}".format(
+                         self.mLayer.name(),
+                         max(self.mMainView.featureCount(), self.mLayer.featureCount()),
+                         self.mMainView.filteredFeatureCount(),
+                         self.mLayer.selectedFeatureCount())
+                         )
+
+        if self.mMainView.filterMode() == QgsAttributeTableFilterModel.ShowAll:
+            self.mRunFieldCalc.setText(tr("Update All"))
+        else:
+            self.mRunFieldCalc.setText(tr("Update Filtered"))
+
+        canDeleteFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteFeatures
+        enabled = self.mLayer.selectedFeatureCount() > 0
+        self.mRunFieldCalcSelected.setEnabled(enabled)
+        self.mActionDeleteSelected.setEnabled(canDeleteFeatures and self.mLayer.isEditable() and enabled )
+        self.mActionCutSelectedRows.setEnabled(canDeleteFeatures and self.mLayer.isEditable() and enabled )
+        self.mActionCopySelectedRows.setEnabled(enabled )
+
+    def editingToggled(self):
+        self.mActionToggleEditing.blockSignals(True)
+        self.mActionToggleEditing.setChecked(self.mLayer.isEditable())
+        self.mActionSaveEdits.setEnabled(self.mLayer.isEditable())
+        self.mActionReload.setEnabled(not self.mLayer.isEditable())
+        self.updateMultiEditButtonState()
+        if self.mLayer.isEditable():
+            self.mActionSearchForm.setChecked(False)
+
+        self.mActionToggleEditing.blockSignals(False)
+
+        canChangeAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.ChangeAttributeValues
+        canDeleteFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteFeatures
+        canAddAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.AddAttributes
+        canDeleteAttributes = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteAttributes
+        canAddFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.AddFeatures
+        self.mActionAddAttribute.setEnabled((canChangeAttributes or canAddAttributes) and self.mLayer.isEditable())
+        self.mActionRemoveAttribute.setEnabled(canDeleteAttributes and self.mLayer.isEditable())
+        self.mActionDeleteSelected.setEnabled(canDeleteFeatures and self.mLayer.isEditable() and self.mLayer.selectedFeatureCount() > 0)
+        self.mActionCutSelectedRows.setEnabled(canDeleteFeatures and self.mLayer.isEditable() and self.mLayer.selectedFeatureCount() > 0)
+        self.mActionAddFeature.setEnabled(canAddFeatures and self.mLayer.isEditable())
+        self.mActionPasteFeatures.setEnabled(canAddFeatures and self.mLayer.isEditable())
+        self.mActionToggleEditing.setEnabled((canChangeAttributes or
+                                            canDeleteFeatures or
+                                            canAddAttributes or
+                                            canDeleteAttributes or
+                                            canAddFeatures) and not self.mLayer.readOnly())
+
+        self.mUpdateExpressionBox.setVisible(self.mLayer.isEditable())
+        if self.mLayer.isEditable() and self.mFieldCombo.currentIndex() == -1:
+            self.mFieldCombo.setCurrentIndex(0)
+
+        # not necessary to set table read only if layer is not editable
+        # because model always reflects actual state when returning item flags
+        actions = self.mLayer.actions().actions("Layer")
+
+        if len(actions) == 0:
+            self.mActionFeatureActions.setVisible(True)
+        else:
+            actionMenu = QMenu()
+            constActions = actions
+            for action in constActions:
+
+                if not self.mLayer.isEditable() and action.isEnabledOnlyWhenEditable():
+                    continue
+
+                    qAction: QAction = actionMenu.addAction(action.icon(), action.shortTitle())
+                    qAction.setToolTip(action.name())
+                    qAction.setData(QVariant.fromValue<QgsAction>(action))
+                    qAction.triggered.connect(selflayerActionTriggered)
+
+            self.mActionFeatureActions.setMenu(actionMenu)
+        
+    def setCadDockWidget(self, cadDockWidget):
+        self.mEditorContext.setCadDockWidget(cadDockWidget)
+
+    def mActionPasteFeatures_triggered(self):
+        self.vectorLayerTools().pasteFromClipboard(self.mLayer)
+
+    def mActionReload_triggered(self):
+        self.mMainView.masterModel().layer().dataProvider().reloadData()
+
+    def mActionInvertSelection_triggered(self):
+        self.vectorLayerTools().invertSelection(self.mLayer)
+
+    def mActionRemoveSelection_triggered(self):
+        self.vectorLayerTools().removeSelection(self.mLayer)
+
+    def mActionSelectAll_triggered(self):
+        self.vectorLayerTools().selectAll(self.mLayer)
+
+    def mActionZoomMapToSelectedRows_triggered(self):
+        self.vectorLayerTools().zoomToSelected(self.mLayer)
+
+    def mActionPanMapToSelectedRows_triggered(self):
+        self.vectorLayerTools().panToSelected(self.mLayer)
+
+    def mActionDeleteSelected_triggered(self):
+        self.vectorLayerTools().deleteSelected(self.mLayer)
+
+    def reloadModel(self):
+        """
+        Reloads the table model
+        """
+        masterModel = self.mMainView.masterModel()
+        # // update model - a field has been added or updated
+        masterModel.reload(masterModel.index(0, 0),
+                           masterModel.index(masterModel.rowCount() - 1,
+                                             masterModel.columnCount() - 1))
+
+    def mActionAddAttribute_triggered(self):
+        if isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.isEditable():
+            d = AddAttributeDialog(self.mLayer)
+            d.exec_()
+            if d.result() == QDialog.Accepted:
+                field = d.field()
+                self.mLayer.addAttribute(field)
+                self.reloadModel()
+
+    def mActionRemoveAttribute_triggered(self):
+        if not (isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.isEditable()):
+            return
+
+        d = RemoveAttributeDialog(self.mLayer)
+
+        if d.exec_() == QDialog.Accepted:
+            fieldIndices = d.fieldIndices()
+            self.mLayer.beginEditCommand('Delete attributes')
+            if self.mLayer.deleteAttributes(fieldIndices):
+                self.mLayer.endEditCommand()
+            else:
+                self.mainMessageBar().pushMessage(tr("Attribute error"),
+                                                  tr("The attribute(s) could not be deleted"),
+                                                  Qgis.Warning)
+            self.reloadModel()
+
+    def mMainView_currentChanged(self, viewMode: QgsDualView.ViewMode):
+        if isinstance(viewMode, int):
+            for m in [QgsDualView.AttributeTable, QgsDualView.AttributeEditor]:
+                if int(m) == viewMode:
+                    viewMode = m
+                    break
+
+        assert isinstance(viewMode, QgsDualView.ViewMode)
+        self.mMainViewButtonGroup.button(viewMode).click()
+        self.updateMultiEditButtonState()
+
+        if viewMode == QgsDualView.AttributeTable:
+            self.mActionSearchForm.setChecked(False)
+
+        s = QgsSettings()
+        s.setValue("/qgis/attributeTableLastView", int(viewMode))
+
+    def showContextMenu(self, menu: QgsActionMenu, fid: int):
+        if self.mLayer.isEditable():
+            qAction = menu.addAction( QgsApplication.getThemeIcon("/mActionDeleteSelectedFeatures.svg"),
+                                                                  tr( "Delete Feature" ) )
+            qAction.triggered.connect(lambda *args, f=fid: self.deleteFeature(fid))
+
+    def deleteFeature(self, fid: int):
+        self.mLayer.deleteFeature(fid)
+
+    def mActionAddFeature_triggered(self):
+
+        if not self.mLayer.isEditable():
+            return
+
+        masterModel = self.mMainView.masterModel()
+        f = QgsFeature(self.mLayer.fields())
+        if self.vectorLayerTools().addFeature(
+            self.mLayer,
+            f=f
+        ):
+            masterModel.reload(masterModel.index(0, 0), masterModel.index(
+                masterModel.rowCount() - 1, masterModel.columnCount() - 1 ) )
+
+
+    def mActionExpressionSelect_triggered(self):
+        dlg = QgsExpressionSelectionDialog(self.mLayer)
+        dlg.setMessageBar(self.mainMessageBar())
+        dlg.setAttribute(Qt.WA_DeleteOnClose)
+        dlg.exec_()
+
+
+    def mActionCutSelectedRows_triggered(self):
+        self.vectorLayerTools().cutSelectionToClipboard(self.mLayer)
+
+
+    def mActionToggleEditing_toggled(self, b:bool):
+        if not isinstance(self.mLayer, QgsVectorLayer):
+            return
+
+        # this has to be done, because in case only one cell has been changed and is still enabled, the change
+        # would not be added to the mEditBuffer. By disabling, it looses focus and the change will be stored.
+        s = ""
+        if self.mLayer.isEditable() and \
+            self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()) is not None:
+
+            self.mMainView.tableView().indexWidget(self.mMainView.tableView().currentIndex()).setEnabled(False)
+
+        self.vectorLayerTools().toggleEditing(self.mLayer)
+        self.editingToggled()
+
+    def mActionSaveEdits_triggered(self):
+        self.vectorLayerTools().saveEdits(self.mLayer, leave_editable=True, trigger_repaint=True)
+
+    def setViewMode(self, mode: QgsDualView.ViewMode):
+        assert isinstance(mode, QgsDualView.ViewMode)
+        self.mMainView.setView(mode)
+        for m in [QgsDualView.AttributeEditor, QgsDualView.AttributeTable]:
+            self.mMainViewButtonGroup.button(m).setChecked(m == mode)
+
+    def setFilterMode(self, mode: QgsAttributeTableFilterModel.FilterMode):
+
+        return
+        #todo: re-implement QgsFeatureFilterWidget
+
+        if mode == QgsAttributeTableFilterModel.ShowVisible:
+            self.mFeatureFilterWidget.filterVisible()
+        elif mode == QgsAttributeTableFilterModel.ShowSelected:
+            self.mFeatureFilterWidget.filterSelected()
+        else:
+            self.mFeatureFilterWidget.filterShowAll()
+
+
+    def _hide_unconnected_widgets(self):
+        self.mActionOpenFieldCalculator.setVisible(False)
+        self.mActionDockUndock.setVisible(False)

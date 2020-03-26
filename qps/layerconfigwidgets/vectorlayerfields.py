@@ -109,7 +109,7 @@ class LayerFieldsListModel(QgsFieldModel):
     A model to show the QgsFields of an QgsVectorLayer as vertical list
     Inherits QgsFieldModel and allows to change the name of the 1st column.
     """
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         """
         Constructor
         :param parent:

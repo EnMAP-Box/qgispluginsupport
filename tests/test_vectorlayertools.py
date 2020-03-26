@@ -1,5 +1,5 @@
 from qps.testing import TestObjects, TestCase
-from qps.vectorlayertools import VectorTools
+from qps.vectorlayertools import VectorLayerTools
 
 class TestCasesVectorLayerTools(TestCase):
 
@@ -9,7 +9,7 @@ class TestCasesVectorLayerTools(TestCase):
         lyr = TestObjects.createVectorLayer()
 
         f0 = lyr0.getFeature(0)
-        tools = VectorTools()
+        tools = VectorLayerTools()
 
         self.cntEdits = 0
         messages = []

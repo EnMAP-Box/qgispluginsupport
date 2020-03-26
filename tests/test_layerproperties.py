@@ -193,10 +193,23 @@ class LayerPropertyTests(TestCase):
         self.showGui([vd, rd, wtrans,style])
 
 
+    def test_RemoveAttributeDialog(self):
+        vl = TestObjects.createVectorLayer()
+        d = RemoveAttributeDialog(vl)
+        d.tvFieldNames.selectAll()
+        self.assertListEqual(d.fieldNames(), vl.fields().names())
+        d.tvFieldNames.clearSelection()
+        self.assertListEqual(d.fieldNames(), [])
+        self.showGui(d)
+
+
     def test_AttributeTableWidget(self):
+        vl = TestObjects.createVectorLayer()
+        w = AttributeTableWidget(vl)
+        vl.startEditing()
 
-        w = AttributeTableWidget()
 
+        w.mUpdateExpressionText.setExpression("'dummy'")
 
         self.showGui(w)
 

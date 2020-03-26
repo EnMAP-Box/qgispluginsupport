@@ -655,7 +655,7 @@ class QgsFeatureAction(QAction):
         return True
 
     def addFeature(self,
-                   defaultAttributes: dict = dict(),
+                   initialAttributeValues: dict = dict(),
                    showModal: bool = True,
                    scope: QgsExpressionContextScope = None) -> bool:
 
@@ -665,7 +665,6 @@ class QgsFeatureAction(QAction):
         reuseLastValues = bool(QgsSettings().value('qgis/digitizing/reuseLastValues', False))
 
         fields = self.mLayer.fields()
-        initialAttributeValues = dict()
 
         context = self.mLayer.createExpressionContext()
         if scope:
