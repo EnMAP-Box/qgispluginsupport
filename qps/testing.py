@@ -380,10 +380,10 @@ class TestObjects():
     Creates objects to be used for testing. It is preferred to generate objects in-memory.
     """
 
-    _coreData = _coreDataWL = _coreDataWLU = None
+    _coreData = _coreDataWL = _coreDataWLU = _coreDataWkt = _coreDataGT = None
 
     @staticmethod
-    def coreData()->typing.Tuple[np.ndarray, typing.List[float], str]:
+    def coreData() -> typing.Tuple[np.ndarray, typing.List[float], str]:
         if TestObjects._coreData is None:
             source_raster = pathlib.Path(__file__).parent / 'enmap.tif'
             assert source_raster.is_file()
@@ -391,11 +391,13 @@ class TestObjects():
             ds = gdal.Open(source_raster.as_posix())
             assert isinstance(ds, gdal.Dataset)
             TestObjects._coreData = ds.ReadAsArray()
-
+            TestObjects._coreDataGT = ds.GetGeoTransform()
+            TestObjects._coreDataWkt = ds.GetProjection()
             from .utils import parseWavelength
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
-        return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU
+        return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
+               TestObjects._coreDataGT, TestObjects._coreDataWkt
 
 
     @staticmethod
@@ -412,7 +414,7 @@ class TestObjects():
         :return: lost of (N,3) array of floats specifying point locations.
         """
 
-        coredata, wl, wlu = TestObjects.coreData()
+        coredata, wl, wlu, gt, wkt = TestObjects.coreData()
 
         results = []
         import random
@@ -473,12 +475,15 @@ class TestObjects():
         return TestObjects.createRasterDataset(*args, **kwds)
 
     @staticmethod
-    def createRasterDataset(ns=10, nl=20, nb=1, crs='EPSG:32632',
+    def createRasterDataset(ns=10, nl=20, nb=1,
+                            crs=None, gt=None,
                             eType:int = gdal.GDT_Int16, nc: int = 0, path: str = None) -> gdal.Dataset:
         """
         Generates a gdal.Dataset of arbitrary size based on true data from a smaller EnMAP raster image
         """
         from .classification.classificationscheme import ClassificationScheme
+
+
 
         scheme = None
         if nc is None:
@@ -500,15 +505,19 @@ class TestObjects():
                 path = '/vsimem/testImage.{}.tif'.format(str(uuid.uuid4()))
 
         ds = drv.Create(path, ns, nl, bands=nb, eType=eType)
-        dt_out = gdal_array.flip_code(eType)
         assert isinstance(ds, gdal.Dataset)
-        if isinstance(crs, str):
+        coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
+
+        dt_out = gdal_array.flip_code(eType)
+        if isinstance(crs, str) or gt is not None:
+            assert isinstance(gt, list) and len(gt) == 6
+            assert isinstance(crs, str) and len(crs) > 0
             c = QgsCoordinateReferenceSystem(crs)
             ds.SetProjection(c.toWkt())
-        ds.SetGeoTransform([0, 1.0, 0, \
-                            0, 0, -1.0])
-
-        assert isinstance(ds, gdal.Dataset)
+            ds.SetGeoTransform(gt)
+        else:
+            ds.SetProjection(core_wkt)
+            ds.SetGeoTransform(core_gt)
 
         if nc > 0:
             for b in range(nb):
@@ -534,7 +543,6 @@ class TestObjects():
         else:
             # fill with test data
 
-            coredata, core_wl, wlu = TestObjects.coreData()
             coredata = coredata.astype(dt_out)
             cb, cl, cs = coredata.shape
             if nb > coredata.shape[0]:
@@ -563,7 +571,7 @@ class TestObjects():
             else:
                 wl = core_wl[:nb].tolist()
             assert len(wl) == nb
-            ds.SetMetadataItem('wavelength units', wlu)
+            ds.SetMetadataItem('wavelength units', core_wlu)
             ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]))
 
         ds.FlushCache()

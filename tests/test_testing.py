@@ -9,6 +9,7 @@ import unittest, pickle
 import qgis.testing
 import qps.testing
 from osgeo import gdal, gdal_array, ogr, osr
+import numpy as np
 
 class testClassTesting(unittest.TestCase):
 
@@ -94,12 +95,13 @@ class test_TestObject(qps.testing.TestCase):
     def test_coredata(self):
         from qps.testing import TestObjects
         import numpy as np
-        array, wl, wlu = TestObjects.coreData()
+        array, wl, wlu, gt, wkt = TestObjects.coreData()
         self.assertIsInstance(array, np.ndarray)
         self.assertIsInstance(wl, np.ndarray)
         self.assertTrue(len(wl) > 0)
         self.assertIsInstance(wlu, str)
-
+        self.assertTrue(len(gt) == 6)
+        self.assertIsInstance(wkt, str)
 
     def test_RasterData(self):
 
@@ -115,20 +117,28 @@ class test_TestObject(qps.testing.TestCase):
         classNames = cl.GetRasterBand(1).GetCategoryNames()
         self.assertEqual(len(classNames), 7)
 
-        ds = TestObjects.createRasterDataset(1000, 2000, nb=100, eType=gdal.GDT_Float32)
-
+        ns = 250
+        nl = 100
+        nb = 10
+        ds = TestObjects.createRasterDataset(ns, nl, nb=nb, eType=gdal.GDT_Float32)
+        self.assertIsInstance(ds, gdal.Dataset)
         from qps.utils import parseWavelength
-        wl, wlu = parseWavelength(cl)
+        wl, wlu = parseWavelength(ds)
         self.assertIsInstance(wl, np.ndarray)
         self.assertIsInstance(wlu, str)
 
-        self.assertIsInstance(ds, gdal.Dataset)
-        self.assertEqual(ds.RasterCount, 100)
-        self.assertEqual(ds.RasterXSize, 1000)
-        self.assertEqual(ds.RasterYSize, 2000)
+        self.assertEqual(ds.RasterCount, nb)
+        self.assertEqual(ds.RasterXSize, ns)
+        self.assertEqual(ds.RasterYSize, nl)
         self.assertEqual(ds.GetRasterBand(1).DataType, gdal.GDT_Float32)
 
 
+        dsSrc = TestObjects.createRasterDataset(100, 100, 1)
+        from qpstestdata import enmap
+        woptions = gdal.WarpOptions(dstSRS='EPSG:4326')
+        pathDst = '/vsimem/warpDest.tif'
+        dsDst = gdal.Warp(pathDst, dsSrc, options=woptions)
+        self.assertIsInstance(dsDst, gdal.Dataset)
 
 
 
