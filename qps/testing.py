@@ -313,7 +313,7 @@ class TestCase(qgis.testing.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        if True and isinstance(QgsApplication.instance(), QgsApplication):
+        if False and isinstance(QgsApplication.instance(), QgsApplication):
             QgsApplication.exitQgis()
             QApplication.quit()
             import gc
@@ -605,7 +605,9 @@ class TestObjects():
         pkgPath = QgsApplication.instance().pkgDataPath()
         assert os.path.isdir(pkgPath)
 
-        pathSrc = None
+        pathSrc = pathlib.Path(__file__).parent / 'landcover_polygons.geojson'
+        assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
+        """
         potentialPathes = [
             os.path.join(os.path.dirname(__file__), 'testpolygons.geojson'),
             os.path.join(pkgPath, *['resources', 'data', 'world_map.shp']),
@@ -614,10 +616,11 @@ class TestObjects():
             if os.path.isfile(p):
                 pathSrc = p
                 break
-
         assert os.path.isfile(pathSrc), 'Unable to find QGIS "world_map.shp". QGIS Pkg path = {}'.format(pkgPath)
 
-        dsSrc = ogr.Open(pathSrc)
+        """
+
+        dsSrc = ogr.Open(pathSrc.as_posix())
         assert isinstance(dsSrc, ogr.DataSource)
         lyrSrc = dsSrc.GetLayer(0)
         assert isinstance(lyrSrc, ogr.Layer)
