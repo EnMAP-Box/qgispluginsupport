@@ -1359,19 +1359,29 @@ class ClassificationSchemeComboBoxModel(QAbstractListModel):
         return Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
 
-class ClassificationSourceComboBox(QgsMapLayerComboBox):
+class ClassificationMapLayerComboBox(QgsMapLayerComboBox):
     """
     A QgsMapLayerComboBox that shows map layers from which a ClassificationScheme can be derived.
     """
 
-    def __init__(self, parent):
-        super(ClassificationSourceComboBox, self).__init__(parent)
+    def __init__(self, parent=None):
+        super(ClassificationMapLayerComboBox, self).__init__(parent)
 
-    def updateExlusionList(self):
+        self.updateExceptedLayerList()
+
+    def updateExceptedLayerList(self):
 
         toExclude = [l for l in QgsProject.instance().mapLayers().values()
-                     if ClassificationScheme.fromMapLayer()
+                     if ClassificationScheme.fromMapLayer(l) is None
                      ]
+        self.setExceptedLayerList(toExclude)
+
+    def currentClassification(self) -> ClassificationScheme:
+        lyr = self.currentLayer()
+        if isinstance(lyr, QgsMapLayer):
+            return ClassificationScheme.fromMapLayer(self.currentLayer())
+        else:
+            return None
 
 
 class ClassificationSchemeComboBox(QComboBox):

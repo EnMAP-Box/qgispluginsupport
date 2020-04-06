@@ -136,6 +136,23 @@ class TestsClassificationScheme(TestCase):
             self.assertIsInstance(cs, ClassificationScheme)
             self.assertTrue(len(cs) > 0)
 
+    def test_classificationmaplayercombobox(self):
+
+        QgsProject.instance().removeAllMapLayers()
+        layers = [TestObjects.createVectorLayer(),
+                  TestObjects.createRasterLayer(nc=10),
+                  TestObjects.createRasterLayer(nb=4)]
+
+        n = len([l for l in layers if isinstance(ClassificationScheme.fromMapLayer(l), ClassificationScheme)])
+        QgsProject.instance().addMapLayers(layers, True)
+        cb = ClassificationMapLayerComboBox()
+        self.assertIsInstance(cb, QgsMapLayerComboBox)
+
+        cs = cb.currentClassification()
+
+        self.assertIsInstance(cs, ClassificationScheme)
+        self.assertTrue(len(cs) > 0)
+        self.assertEqual(cb.count(), n)
 
     def test_ClassificationScheme(self):
         cs = ClassificationScheme.create(3)
