@@ -131,13 +131,10 @@ class TestsClassificationScheme(TestCase):
     def test_ClassificationSchemeFromField(self):
 
         lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point)
-
-        cs = ClassificationScheme.fromUniqueFieldValues(lyr, 'name')
-        cs1 = ClassificationScheme.fromUniqueFieldValues(lyr, 'id')
-
-        names = set(cs.classNames())
-        for name in ['impervious', 'vegetation']:
-            self.assertTrue(name in names)
+        for name in lyr.fields().names():
+            cs = ClassificationScheme.fromUniqueFieldValues(lyr, name)
+            self.assertIsInstance(cs, ClassificationScheme)
+            self.assertTrue(len(cs) > 0)
 
 
     def test_ClassificationScheme(self):
