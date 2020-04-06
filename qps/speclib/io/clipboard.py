@@ -51,10 +51,10 @@ class ClipboardIO(AbstractSpectralLibraryIO):
     def canRead(path=None) -> bool:
         clipboard = QApplication.clipboard()
         mimeData = clipboard.mimeData()
-        assert isinstance(mimeData, QMimeData)
-        for format in mimeData.formats():
-            if format in ClipboardIO.FORMATS:
-                return True
+        if isinstance(mimeData, QMimeData):
+            for format in mimeData.formats():
+                if format in ClipboardIO.FORMATS:
+                    return True
         return False
 
     @staticmethod
@@ -63,7 +63,8 @@ class ClipboardIO(AbstractSpectralLibraryIO):
 
         clipboard = QApplication.clipboard()
         mimeData = clipboard.mimeData()
-        assert isinstance(mimeData, QMimeData)
+        if not isinstance(mimeData, QMimeData):
+            return None
 
         if MIMEDATA_SPECLIB in mimeData.formats():
             b = mimeData.data(MIMEDATA_SPECLIB)
