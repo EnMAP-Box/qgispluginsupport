@@ -200,6 +200,9 @@ class ClassInfo(QObject):
         """
         return ClassInfo(name=self.mName, color=self.mColor)
 
+    def __hash__(self):
+        return hash(id(self))
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
