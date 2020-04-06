@@ -1059,9 +1059,11 @@ class SpectralLibrary(QgsVectorLayer):
                 return sl
 
         if mimeData.hasUrls():
-            sl = SpectralLibrary.readFrom(mimeData.urls()[0])
-            if isinstance(sl, SpectralLibrary) and len(sl) > 0:
-                return sl
+            urls = mimeData.urls()
+            if isinstance(urls, list) and len(urls) > 0:
+                sl = SpectralLibrary.readFrom(urls[0])
+                if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+                    return sl
 
         if MIMEDATA_TEXT in mimeData.formats():
             txt = mimeData.text()
