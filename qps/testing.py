@@ -98,7 +98,7 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources:list=[])->
         con = sqlite3.connect(QgsApplication.qgisUserDatabaseFilePath())
         cursor = con.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = [v[0] for v in cursor.fetchall() if v[0] != 'sqlite_sequence']
-        if not 'tbl_srs' in tables:
+        if 'tbl_srs' not in tables:
             info = ['{} misses "tbl_srs"'.format(QgsApplication.qgisSettingsDirPath())]
             info.append('Settings directory might be outdated: {}'.format(QgsApplication.instance().qgisSettingsDirPath()))
             print('\n'.join(info), file=sys.stderr)
@@ -151,11 +151,12 @@ class QgisMockup(QgisInterface):
         self.mCanvas.setCanvasColor(Qt.black)
         self.mLayerTreeView = QgsLayerTreeView()
         self.mRootNode = QgsLayerTree()
+        self.mLayerTreeRegistryBridge = QgsLayerTreeRegistryBridge(self.mRootNode, QgsProject.instance())
         self.mLayerTreeModel = QgsLayerTreeModel(self.mRootNode)
         self.mLayerTreeView.setModel(self.mLayerTreeModel)
         self.mLayerTreeMapCanvasBridge = QgsLayerTreeMapCanvasBridge(self.mRootNode, self.mCanvas)
         self.mLayerTreeMapCanvasBridge.setAutoSetupOnFirstLayer(True)
-
+        #QgsProject.instance().legendLayersAdded.connect(self.addLegendLayers)
         self.mPluginManager = QgsPluginManagerMockup()
 
         self.ui = QMainWindow()
@@ -192,6 +193,9 @@ class QgisMockup(QgisInterface):
                 except:
                     setattr(self, n, getattr(self._mock, n))
 
+    def addLegendLayers(self, mapLayers:typing.List[QgsMapLayer]):
+        for l in mapLayers:
+            self.mRootNode.addLayer(l)
 
     def pluginManagerInterface(self) -> QgsPluginManagerInterface:
         return self.mPluginManager

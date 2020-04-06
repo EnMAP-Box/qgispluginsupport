@@ -5,6 +5,7 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 from qgis.core import *
+from qgis.gui import *
 import unittest, pickle
 import qgis.testing
 import qps.testing
@@ -32,7 +33,36 @@ class testClassTesting(unittest.TestCase):
         self.assertTrue(len(qgis_app.processingRegistry().algorithms()) > 0)
 
         self.assertIsInstance(QgsGui.instance(), QgsGui)
-        self.assertTrue(len(QgsGui.instance().editorWidgetRegistry().factories()) > 0, msg='Standard QgsEditorWidgetWrapper not initialized')
+        self.assertTrue(len(QgsGui.instance().editorWidgetRegistry().factories()) > 0,
+                        msg='Standard QgsEditorWidgetWrapper not initialized')
+
+        # test iface
+        import qgis.utils
+        iface = qgis.utils.iface
+
+        self.assertIsInstance(iface, QgisInterface)
+        self.assertIsInstance(iface, qps.testing.QgisMockup)
+
+        lyr1 = qps.testing.TestObjects.createVectorLayer()
+        lyr2 = qps.testing.TestObjects.createVectorLayer()
+
+        self.assertIsInstance(iface.layerTreeView(), QgsLayerTreeView)
+        self.assertIsInstance(iface.layerTreeView().model(), QgsLayerTreeModel)
+        root = iface.layerTreeView().model().rootGroup()
+        self.assertIsInstance(root, QgsLayerTree)
+        self.assertEqual(len(root.findLayers()), 0)
+
+        #QgsProject.instance().layersAdded.connect(lambda : print('ADDED'))
+        #QgsProject.instance().legendLayersAdded.connect(lambda: print('ADDED LEGEND'))
+
+        QgsProject.instance().addMapLayer(lyr1, False)
+        QgsProject.instance().addMapLayer(lyr2, True)
+
+        QgsApplication.processEvents()
+
+        self.assertTrue(lyr1.id() not in root.findLayerIds())
+        self.assertTrue(lyr2.id() in root.findLayerIds())
+
 
         app = QgsApplication.instance()
         ENV = app.systemEnvVars()
@@ -40,7 +70,6 @@ class testClassTesting(unittest.TestCase):
             print('{}={}'.format(k, ENV[k]))
 
         qgis_app.quit()
-
 
     def test_init_minimal(self):
         import qps.testing
