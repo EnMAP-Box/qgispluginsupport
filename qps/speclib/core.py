@@ -1313,8 +1313,9 @@ class SpectralLibrary(QgsVectorLayer):
         # GDAL 3.0 considers authority specific axis order
         # see https://github.com/OSGeo/gdal/issues/1974
         #     https://gdal.org/tutorials/osr_api_tut.html
-        rasterSRS.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        speclibSRS.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        if gdal.__version__ >= '3.0':
+            rasterSRS.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+            speclibSRS.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
         # transform many coordinates fast!
         transSRS = osr.CoordinateTransformation(rasterSRS, speclibSRS)
