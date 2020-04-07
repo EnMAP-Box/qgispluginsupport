@@ -290,8 +290,11 @@ class TestIO(TestCase):
 
         print('load speclibA', flush=True)
         speclibA = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
+        self.assertIsInstance(speclibA, SpectralLibrary)
+        
         print('load speclibREF', flush=True)
         speclibREF = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
+        self.assertIsInstance(speclibREF, SpectralLibrary)
         speclibREF.setName('REF SPECLIB')
         self.assertIsInstance(speclibA, SpectralLibrary)
         self.assertTrue(len(locations) == len(speclibA))
