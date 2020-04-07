@@ -328,10 +328,12 @@ class TestIO(TestCase):
 
         QApplication.processEvents()
         # re-read values
-        print('re-read values', flush=True)
-
+        print('select all', flush=True)
         speclibA.selectAll()
+        print('start editing', flush=True)
         speclibA.startEditing()
+        QApplication.processEvents()
+        print('reload spectral values', flush=True)
         speclibA.reloadSpectralValues(enmap)
         self.assertTrue(speclibA.commitChanges())
 
