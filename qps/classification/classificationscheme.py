@@ -1445,6 +1445,18 @@ class ClassificationSchemeComboBox(QComboBox):
             classInfo = self.itemData(i, role=Qt.UserRole)
         return classInfo
 
+    def setCurrentClassInfo(self, classInfo: ClassInfo) -> bool:
+        """
+        Sets the current ClassInfo
+        :param classInfo: ClassInfo
+        :return: bool, True, if class was found and set.
+        """
+        for i in range(self.count()):
+            if self.itemData(i, role=Qt.UserRole) == classInfo:
+                self.setCurrentIndex(i)
+                return True
+        return False
+
 class ClassificationSchemeWidget(QWidget):
 
     sigValuesChanged = pyqtSignal()
