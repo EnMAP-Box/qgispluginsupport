@@ -291,14 +291,13 @@ class TestIO(TestCase):
         print('load speclibA', flush=True)
         speclibA = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
         self.assertIsInstance(speclibA, SpectralLibrary)
-        
+
         print('load speclibREF', flush=True)
         speclibREF = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
         self.assertIsInstance(speclibREF, SpectralLibrary)
         speclibREF.setName('REF SPECLIB')
         self.assertIsInstance(speclibA, SpectralLibrary)
         self.assertTrue(len(locations) == len(speclibA))
-
 
         self.assertFalse(speclibA.isEditable())
         print('speclibA is editable', flush=True)
@@ -316,14 +315,21 @@ class TestIO(TestCase):
             self.assertIsInstance(p, SpectralProfile)
             speclibA.changeAttributeValue(p.id(), idx, None)
             QApplication.processEvents()
+
+        print('Commit changes', flush=True)
         self.assertTrue(speclibA.commitChanges())
+
+        print('Check yValues(', flush=True)
 
         for p in speclibA:
             self.assertIsInstance(p, SpectralProfile)
-            self.assertEqual(p.yValues(), [])
+            self.assertListEqual(p.yValues(), [])
+            QApplication.processEvents()
 
         QApplication.processEvents()
         # re-read values
+        print('re-read values', flush=True)
+
         speclibA.selectAll()
         speclibA.startEditing()
         speclibA.reloadSpectralValues(enmap)
