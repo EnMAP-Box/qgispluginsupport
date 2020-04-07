@@ -296,14 +296,23 @@ class TestIO(TestCase):
         self.assertIsInstance(speclibA, SpectralLibrary)
         self.assertTrue(len(locations) == len(speclibA))
 
+
         self.assertFalse(speclibA.isEditable())
+        print('speclibA is editable', flush=True)
 
         # clean values
         self.assertTrue(speclibA.startEditing())
         idx = speclibA.fields().indexOf(FIELD_VALUES)
+
+        n = 0
         for p in speclibA:
+            n += 1
+            #if n > 10:
+            #    break
+            print('Change attribute values profile {}'.format(p.id()), flush=True)
             self.assertIsInstance(p, SpectralProfile)
             speclibA.changeAttributeValue(p.id(), idx, None)
+            QApplication.processEvents()
         self.assertTrue(speclibA.commitChanges())
 
         for p in speclibA:
@@ -316,6 +325,8 @@ class TestIO(TestCase):
         speclibA.startEditing()
         speclibA.reloadSpectralValues(enmap)
         self.assertTrue(speclibA.commitChanges())
+
+        print('Compare speclibA with speclibREF', flush=True)
         for a, b in zip(speclibA[:], speclibREF[:]):
             self.assertIsInstance(a, SpectralProfile)
             self.assertIsInstance(b, SpectralProfile)
