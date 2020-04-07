@@ -288,17 +288,18 @@ class TestIO(TestCase):
             for y in range(lyr.height()):
                 locations.append(QPoint(x, y))
 
+        print('load speclibA', flush=True)
         speclibA = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
-
+        print('load speclibREF', flush=True)
         speclibREF = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
         speclibREF.setName('REF SPECLIB')
         self.assertIsInstance(speclibA, SpectralLibrary)
         self.assertTrue(len(locations) == len(speclibA))
 
-        self.assertTrue(speclibA.isEditable() == False)
+        self.assertFalse(speclibA.isEditable())
 
         # clean values
-        speclibA.startEditing()
+        self.assertTrue(speclibA.startEditing())
         idx = speclibA.fields().indexOf(FIELD_VALUES)
         for p in speclibA:
             self.assertIsInstance(p, SpectralProfile)
@@ -309,6 +310,7 @@ class TestIO(TestCase):
             self.assertIsInstance(p, SpectralProfile)
             self.assertEqual(p.yValues(), [])
 
+        QApplication.processEvents()
         # re-read values
         speclibA.selectAll()
         speclibA.startEditing()
@@ -320,7 +322,9 @@ class TestIO(TestCase):
             self.assertListEqual(a.xValues(), b.xValues())
             self.assertListEqual(a.yValues(), b.yValues())
 
+        print('load SpectralLibraryWidget', flush=True)
         slw = SpectralLibraryWidget(speclib=speclibA)
+        QApplication.processEvents()
 
         # clean values
         speclibA.startEditing()
@@ -329,7 +333,7 @@ class TestIO(TestCase):
             self.assertIsInstance(p, SpectralProfile)
             speclibA.changeAttributeValue(p.id(), idx, None)
         self.assertTrue(speclibA.commitChanges())
-
+        QApplication.processEvents()
         self.showGui(slw)
 
     def test_EcoSIS(self):
@@ -777,7 +781,6 @@ class TestIO(TestCase):
             setupOld = sl1.editorWidgetSetup(j)
             self.assertEqual(setupOld.type(), RasterClassificationKey)
             self.assertNotEqual(setupNew.type(), RasterClassificationKey)
-
 
 
 if __name__ == '__main__':
