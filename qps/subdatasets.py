@@ -216,7 +216,7 @@ class SubDatasetDescriptionModel(QAbstractTableModel):
             self.dataChanged.emit(index, index, [role])
         return b
 
-    def subDatasetDescriptions(self, checked: bool =None) -> typing.List[SubDatasetDescription]:
+    def subDatasetDescriptions(self, checked: bool = None) -> typing.List[SubDatasetDescription]:
         subs = self.mSubDatasetDescriptions[:]
         if isinstance(checked, bool):
             subs = [s for s in subs if s.checked == checked]
