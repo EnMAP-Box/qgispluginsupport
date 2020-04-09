@@ -1,3 +1,5 @@
+
+import unittest
 from qps.testing import TestObjects, TestCase
 from qps.vectorlayertools import VectorLayerTools
 
@@ -31,5 +33,7 @@ class TestCasesVectorLayerTools(TestCase):
         tools.commitError(lyr)
 
 
+if __name__ == "__main__":
+    unittest.main()
 
 

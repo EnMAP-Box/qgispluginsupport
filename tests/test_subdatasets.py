@@ -10,15 +10,18 @@ class TestSubDataSets(TestCase):
     @unittest.skipIf(not os.path.isfile(ref_file), 'Missing S2 Testfile')
     def test_subdataset_info(self):
 
-        info = SubDatasetInfo.fromRaster(TestSubDataSets.ref_file)
+        info = DatasetInfo.fromRaster(TestSubDataSets.ref_file)
 
-        self.assertIsInstance(info, SubDatasetInfo)
-        for name, descr in zip(info.subset_names(), info.subset_descriptions()):
+        self.assertIsInstance(info, DatasetInfo)
+        s = ""
+        for name, descr, sdtype in zip(info.subdataset_names(), info.subdataset_descriptions(), info.subdataset_types()):
             self.assertIsInstance(name, str)
             self.assertIsInstance(descr, str)
-            #print('{}###{}'.format(name, descr))
-        s = ""
-    def create_subset_infos(self) -> typing.List[SubDatasetInfo]:
+            self.assertIsInstance(sdtype, SubDatasetType)
+            self.assertEqual(sdtype.name, descr)
+
+
+    def create_subset_infos(self) -> typing.List[DatasetInfo]:
 
         subs = r"""
 SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml:10m:EPSG_32631###Bands B2, B3, B4, B8 with 10m resolution, UTM 31N
@@ -31,7 +34,7 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
         subs = [(l[0], l[1]) for l in subs]
         results = []
         path = r'D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml'
-        results.append(SubDatasetInfo(path, subs))
+        results.append(DatasetInfo(path, subs))
         return results
 
     def create_references_filelist(self) -> typing.List[str]:
@@ -40,7 +43,7 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
 
 
     def test_subdatasetdescription(self):
-        d = SubDatasetDescription('a', False)
+        d = SubDatasetType('a', False)
         self.assertEqual(d.checked, False)
         self.assertEqual(d.name, 'a')
 
@@ -48,10 +51,10 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
         files = self.create_references_filelist()
 
         foundInfos = []
-        def onSubDatasetsFound(infos: typing.List[SubDatasetInfo]):
+        def onSubDatasetsFound(infos: typing.List[DatasetInfo]):
             self.assertIsInstance(infos, list)
             for info in infos:
-                self.assertIsInstance(info, SubDatasetInfo)
+                self.assertIsInstance(info, DatasetInfo)
                 foundInfos.append(info)
         task = SubDatasetLoadingTask(files)
         task.sigFoundSubDataSets.connect(onSubDatasetsFound)
@@ -61,20 +64,19 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
 
     def test_subdatasetdialog(self):
         files = self.create_references_filelist()
-        for i in range(3):
-            files.append(files[i])
-
-
+        filesString = r'"H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20191208T140049_N0208_R067_T21LWL_20191208T153903.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20191211T141039_N0208_R110_T21LWL_20191211T154826.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20200107T140049_N0208_R067_T21LWL_20200107T153927.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20191218T140049_N0208_R067_T21LWL_20191218T153923.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20191221T141039_N0208_R110_T21LWL_20191221T154811.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20200110T141039_N0208_R110_T21LWL_20200110T154843.SAFE\MTD_MSIL1C.xml"'
 
         d = SubDatasetSelectionDialog()
         d.setWindowTitle('Select Sentinel2 Images')
         d.setFileFilter('*.xml')
-        d.setFiles(files)
+        d.fileWidget.setFilePath(filesString)
+
 
         def onAccepted():
             files = d.selectedSubDatasets()
 
             for file in files:
+                print('Load {}'.format(file))
                 self.assertIsInstance(file, str)
                 lyr = QgsRasterLayer(file)
                 self.assertIsInstance(lyr, QgsRasterLayer)
