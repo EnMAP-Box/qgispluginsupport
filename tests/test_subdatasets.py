@@ -71,7 +71,6 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
         d.setFileFilter('*.xml')
         d.fileWidget.setFilePath(filesString)
 
-
         def onAccepted():
             files = d.selectedSubDatasets()
 
