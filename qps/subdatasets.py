@@ -403,6 +403,12 @@ class SubDatasetSelectionDialog(QDialog):
         assert isinstance(tm, QgsTaskManager)
         tm.addTask(qgsTask)
 
+    def setDefaultRoot(self, root: str):
+        self.fileWidget.setDefaultRoot(root)
+
+    def defaultRoot(self) -> str:
+        return self.fileWidget.defaultRoot()
+
     def onCompleted(self, result: bool, task: QgsTask):
         if isinstance(task, SubDatasetLoadingTask) and not sip.isdeleted(task):
             self.onRemoveTask(id(task))
