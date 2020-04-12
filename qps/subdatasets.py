@@ -392,6 +392,7 @@ class SubDatasetSelectionDialog(QDialog):
     def startTask(self, qgsTask:QgsTask):
         self.setCursor(Qt.WaitCursor)
         self.fileWidget.setEnabled(False)
+        self.fileWidget.lineEdit().setShowSpinner(True)
         tid = id(qgsTask)
         qgsTask.progressChanged.connect(lambda p: self.setInfo('Loaded {:0.2f} %'.format(p)))
         qgsTask.taskCompleted.connect(lambda *args, t=tid: self.onRemoveTask(t))
@@ -417,6 +418,7 @@ class SubDatasetSelectionDialog(QDialog):
     def onRemoveTask(self, tid):
         self.setCursor(Qt.ArrowCursor)
         self.fileWidget.setEnabled(True)
+        self.fileWidget.lineEdit().setShowSpinner(False)
         if isinstance(tid, QgsTask):
             tid = id(tid)
         if tid in self.mTasks.keys():
