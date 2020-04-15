@@ -316,6 +316,29 @@ class TestUtils(TestCase):
         ds.SetMetadataItem('default_bands', '{4,3,1}', 'ENVI')
         self.assertListEqual([4, 3, 1], defaultBands(ds))
 
+    def test_relativePath(self):
+
+        refDir = '/data/foo/'
+        absPath = '/data/foo/bar/file.txt'
+        relPath = relativePath(absPath, refDir).as_posix()
+        self.assertEqual(relPath, 'bar/file.txt')
+
+        refDir = r'C:\data\foo'
+        absPath = r'C:\data\foo\bar\file.txt'
+        relPath = relativePath(absPath, refDir)
+        self.assertEqual(relPath.as_posix(), 'bar/file.txt')
+
+        refDir = r'D:\data\foo'
+        absPath = r'C:\data\foo\bar\file.txt'
+        relPath = relativePath(absPath, refDir)
+        self.assertEqual(relPath, pathlib.Path(absPath))
+
+        refDir = '/data/foo/bar/sub/sub/sub'
+        absPath = '/data/foo/bar/file.txt'
+        relPath = relativePath(absPath, refDir)
+        self.assertEqual(relPath.as_posix(), '../../../file.txt')
+        #self.assertEqual((pathlib.Path(refDir) / relPath).resolve(), pathlib.Path(absPath))
+
 
     def test_nextColor(self):
 

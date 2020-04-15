@@ -40,6 +40,40 @@ def rm(p):
         shutil.rmtree(p)
 
 
+def relativePath(absPath:pathlib.Path, parentDir:pathlib.Path) -> pathlib.Path:
+    """
+    Returns the path relative to a parent directory
+    :param absPath: absolute path to be converted into a relative path
+    :param parentDir: the reference directory, from which the relative path will be calculated
+                      if both paths are in the same directory, absPath = parentDir / relativePath
+    :return: relative path
+    """
+    if isinstance(absPath, str):
+        absPath = pathlib.Path(absPath)
+    if isinstance(parentDir, str):
+        parentDir = pathlib.Path(parentDir)
+
+    assert isinstance(parentDir, pathlib.Path)
+    assert isinstance(absPath, pathlib.Path)
+    n = min(len(parentDir.parts), len(absPath.parts))
+    i = 0
+
+    relPath = pathlib.Path()
+    while i < n:
+        if parentDir.parts[i] == absPath.parts[i]:
+            i += 1
+        else:
+            break
+    if i > 0:
+        for _ in range(len(parentDir.parts[i:])):
+            relPath = relPath / '..'
+
+    for part in absPath.parts[i:]:
+        relPath = relPath / part
+
+    return relPath
+
+
 def cleanDir(d):
     """
     Remove content from directory 'd'
