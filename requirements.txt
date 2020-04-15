@@ -10,4 +10,5 @@ scikit-learn>=0.19.2
 
 # for unit testing only
 coverage
+xmlrunnner
 
