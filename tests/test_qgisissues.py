@@ -73,5 +73,6 @@ class TestQgsFeature(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    import xmlrunner
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 

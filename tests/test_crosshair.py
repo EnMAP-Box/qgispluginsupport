@@ -14,9 +14,6 @@ import unittest, os
 from qps.testing import TestObjects, TestCase
 from qps.crosshair.crosshair import *
 
-os.environ['CI'] = '1' # un-comment or set to 'False' to popup GUIs
-
-
 class CrosshairTests(TestCase):
 
     def test_crosshair(self):
@@ -97,6 +94,7 @@ class CrosshairTests(TestCase):
         self.assertTrue(mc.rasterGridLayer() == None)
 
 if __name__ == "__main__":
-    unittest.main()
+    import xmlrunner
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
 
