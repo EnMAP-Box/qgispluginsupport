@@ -125,7 +125,12 @@ def findUpwardPath(basepath, name, isDirectory=True) -> pathlib.Path:
     return None
 
 
-def file_search(rootdir, pattern, recursive=False, ignoreCase=False, directories=False, fullpath=False):
+def file_search(rootdir,
+                pattern,
+                recursive: bool = False,
+                ignoreCase: bool = False,
+                directories: bool =False,
+                fullpath: bool = False):
     """
     Searches for files or folders
     :param rootdir: root directory to search in
@@ -173,33 +178,6 @@ def file_search(rootdir, pattern, recursive=False, ignoreCase=False, directories
                 elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
                         or fnmatch.fnmatch(name, pattern):
                     yield entry.path.replace('\\', '/')
-
-
-"""
-def file_search(rootdir, pattern, recursive=False, ignoreCase=False):
-    assert os.path.isdir(rootdir), "Path is not a directory:{}".format(rootdir)
-    regType = type(re.compile('.*'))
-    results = []
-
-    for root, dirs, files in os.walk(rootdir):
-        for file in files:
-            if isinstance(pattern, regType):
-                if pattern.search(file):
-                    path = os.path.join(root, file)
-                    results.append(path)
-
-            elif (ignoreCase and fnmatch.fnmatch(file.lower(), pattern.lower())) \
-                    or fnmatch.fnmatch(file, pattern):
-
-                path = os.path.join(root, file)
-                results.append(path)
-        if not recursive:
-            break
-            pass
-
-    return results
-"""
-
 
 
 def registerMapLayerStore(store):
@@ -254,9 +232,9 @@ def mkdir(path):
         os.mkdir(path)
 
 
-
 NEXT_COLOR_HUE_DELTA_CON = 10
 NEXT_COLOR_HUE_DELTA_CAT = 100
+
 
 def nextColor(color, mode='cat') -> QColor:
     """
@@ -291,7 +269,6 @@ def findMapLayerStores() -> typing.List[typing.Union[QgsProject, QgsMapLayerStor
     for obj in gc.get_objects():
         if isinstance(obj, QgsMapLayerStore):
             yield obj
-
 
 
 def findMapLayer(layer) -> QgsMapLayer:
@@ -366,16 +343,15 @@ def createQgsField(name: str, exampleValue: typing.Any, comment: str = None) -> 
     :param comment: (optional) field comment.
     :return: QgsField
     """
-    t = type(exampleValue)
-    if t in [str]:
+    if isinstance(exampleValue, str):
         return QgsField(name, QVariant.String, 'varchar', comment=comment)
-    elif t in [bool]:
+    elif isinstance(exampleValue, bool):
         return QgsField(name, QVariant.Bool, 'int', len=1, comment=comment)
-    elif t in [int, np.int, np.int8, np.int16, np.int32, np.int64]:
+    elif isinstance(exampleValue, (int, np.int, np.int8, np.int16, np.int32, np.int64)):
         return QgsField(name, QVariant.Int, 'int', comment=comment)
-    elif t in [np.uint, np.uint8, np.uint16, np.uint32, np.uint64]:
+    elif isinstance(exampleValue, (np.uint, np.uint8, np.uint16, np.uint32, np.uint64)):
         return QgsField(name, QVariant.UInt, 'uint', comment=comment)
-    elif t in [float, np.double, np.float, np.double, np.float16, np.float32, np.float64]:
+    elif isinstance(exampleValue, (float, np.double, np.float, np.double, np.float16, np.float32, np.float64)):
         return QgsField(name, QVariant.Double, 'double', comment=comment)
     elif isinstance(exampleValue, np.ndarray):
         return QgsField(name, QVariant.String, 'varchar', comment=comment)
