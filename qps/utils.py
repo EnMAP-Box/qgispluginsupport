@@ -437,10 +437,7 @@ def setQgsFieldValue(feature:QgsFeature, field, value):
         value = int(value)
     elif field.type() in [QVariant.Double]:
         value = float(value)
-    else:
-        raise NotImplementedError()
 
-   # i = feature.fieldNameIndex(field.name())
     feature.setAttribute(field.name(), value)
 
 
