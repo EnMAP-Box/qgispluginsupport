@@ -1719,16 +1719,12 @@ class SelectMapLayersDialog(QgsDialog):
 
         return layerbox
 
-
-
-
     def mapLayers(self) -> list:
         """
         Returns the user's list of map layers
         :return: [list-of-QgsMapLayers]
         """
         return [b.currentLayer() for b in self.mMapLayerBoxes]
-
 
 
 class QgsTaskMock(QgsTask):
