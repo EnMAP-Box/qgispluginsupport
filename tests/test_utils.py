@@ -112,6 +112,22 @@ class TestUtils(TestCase):
         for s in ref:
             self.assertTrue(s in found)
 
+    def test_findwavelength(self):
+        from qpstestdata import enmap
+
+        lyr = TestObjects.createRasterLayer()
+        paths = [lyr.source(),
+                 r'J:\diss_bj\level2\s-america\X0048_Y0029\20160624_LEVEL2_SEN2A_BOA.tif',
+                 r'J:\diss_bj\level2\s-america\X0048_Y0029\20180721_LEVEL2_LND08_BOA.tif',
+                 ]
+        for p in paths:
+            if os.path.isfile(p):
+                ds = gdal.Open(p)
+                self.assertIsInstance(ds, gdal.Dataset)
+                wl, wlu = parseWavelength(ds)
+                self.assertIsInstance(wl, np.ndarray)
+                self.assertTrue(len(wl), ds.RasterCount)
+                self.assertIsInstance(wlu, str)
 
     def test_file_search(self):
 
@@ -163,6 +179,13 @@ class TestUtils(TestCase):
         self.assertIsInstance(ds1, gdal.Dataset)
         ds2 = gdalDataset(ds1)
         self.assertEqual(ds1, ds2)
+
+    def test_search_files_dialog(self):
+
+
+        d = SearchFilesDialog()
+
+        self.showGui(d)
 
 
     def test_bandNames(self):
