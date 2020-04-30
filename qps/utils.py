@@ -14,7 +14,7 @@ from qgis.PyQt import uic
 from osgeo import gdal, ogr
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
-from qps import DIR_UI_FILES
+from . import DIR_UI_FILES
 # dictionary to store form classes and avoid multiple calls to read <myui>.ui
 QGIS_RESOURCE_WARNINGS = set()
 
