@@ -106,13 +106,13 @@ class PlotStyleTests(TestCase):
         mgr.addAction(action)
         # fill some testdata
         layer.startEditing()
-        for i, o in enumerate(MARKERSYMBOLS):
-            assert isinstance(o, Option)
+        for i, symbol in enumerate(MarkerSymbol):
+            self.assertIsInstance(symbol, MarkerSymbol)
             f = QgsFeature(layer.fields())
             f.setAttribute('fldint', i)
-            f.setAttribute('fldtxt', o.name())
+            f.setAttribute('fldtxt', symbol.name)
             style = PlotStyle()
-            style.markerSymbol = o.value()
+            style.markerSymbol = symbol.value
             f.setAttribute('fldstyle', style.json())
             layer.addFeature(f)
         layer.commitChanges()

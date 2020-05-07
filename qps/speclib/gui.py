@@ -58,7 +58,7 @@ class UnitConverterFunctionModel(object):
         self.func_return_band_index = lambda v, *args: np.arange(len(v))
         self.func_return_none = lambda v, *args: None
         self.func_return_same = lambda v, *args: v
-        self.func_return_decimalyear = lambda v, *args: convertDateUnit(v, 'DecimalYear')
+        self.func_return_decimalyear = lambda v, *args: UnitLookup.convertDateUnit(v, 'DecimalYear')
 
         # metric units
         metric_keys = list(METRIC_EXPONENTS.keys())
@@ -70,12 +70,12 @@ class UnitConverterFunctionModel(object):
                 if e1 == e2:
                     self.mLUT[(key1, key2)] = self.func_return_same
                 else:
-                    self.mLUT[(key1, key2)] = lambda v, *args, k1=key1, k2=key2: convertMetricUnit(v, k1, k2)
+                    self.mLUT[(key1, key2)] = lambda v, *args, k1=key1, k2=key2: UnitLookup.convertMetricUnit(v, k1, k2)
         # time units
         # self.mLUT[('DecimalYear', 'DateTime')] = lambda v, *args: datetime64(v)
-        self.mLUT[('DecimalYear', 'DOY')] = lambda v, *args: convertDateUnit(v, 'DOY')
-        self.mLUT[('DateTime', 'DOY')] = lambda v, *args: convertDateUnit(v, 'DOY')
-        self.mLUT[('DateTime', 'DecimalYear')] = lambda v, *args: convertDateUnit(v, 'DecimalYear')
+        self.mLUT[('DecimalYear', 'DOY')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DOY')
+        self.mLUT[('DateTime', 'DOY')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DOY')
+        self.mLUT[('DateTime', 'DecimalYear')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DecimalYear')
 
     def convertFunction(self, unitSrc: str, unitDst: str):
         if unitDst == BAND_INDEX:
@@ -156,14 +156,19 @@ class XUnitModel(UnitModel):
         super().__init__(*args, **kwds)
 
         self.addUnit(BAND_INDEX, description=BAND_INDEX)
+        for u in ['Nanometers',
+                  'Micrometers',
+                  'Millimeters',
+                  'Meters',
+                  'Kilometers']:
 
-        for k in METRIC_EXPONENTS.keys():
-            self.addUnit(k, description=k)
+            baseUnit = UnitLookup.baseUnit(u)
+            assert isinstance(baseUnit, str), u
+            self.addUnit(baseUnit, description='{} [{}]'.format(u, baseUnit))
 
-        # add time
-        self.addUnit('DecimalYear', description='Decimal Year')
-        self.addUnit('DOY', description='Day of Year (DOY)')
-        self.addUnit('DateTime', description='Date-Time-Group')
+        self.addUnit('DateTime', description='Date')
+        self.addUnit('DecimalYear', description='Date [Decimal Year]')
+        self.addUnit('DOY', description='Day of Year [DOY]')
 
 
 class SpectralXAxis(pg.AxisItem):
@@ -1434,6 +1439,18 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         unit = self.mViewBox.mCBXAxisUnit.currentData(Qt.UserRole)
         label =self.mViewBox.mCBXAxisUnit.currentData(Qt.DisplayRole)
         # update axis label
+
+        if unit in UnitLookup.metric_units():
+            label = 'Wavelength [{}]'.format(unit)
+        elif unit in UnitLookup.time_units():
+            label = 'Time [{}]'.format(unit)
+
+        elif unit in UnitLookup.date_units():
+            if unit == 'DateTime':
+                label = 'Date'
+            else:
+                label = 'Date [{}]'.format(unit)
+
         self.mXAxis.setUnit(unit, label)
 
         # update x values

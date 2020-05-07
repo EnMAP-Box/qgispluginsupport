@@ -211,29 +211,209 @@ def registeredMapLayers() -> list:
     :return: [list-of-QgsMapLayers]
     """
     layers = []
-    for store in MAP_LAYER_STORES:
+    for store in [QgsProject.instance()] + MAP_LAYER_STORES:
         for layer in store.mapLayers().values():
             if layer not in layers:
                 layers.append(layer)
     return layers
 
 
-# Lookup tables
-METRIC_EXPONENTS = {
-    "nm": -9, "um": -6, u"µm": -6, "mm": -3, "cm": -2, "dm": -1, "m": 0, "hm": 2, "km": 3
-}
+class UnitLookup(object):
+    METRIC_EXPONENTS = {
+        'nm': -9, 'μm': -6, 'mm': -3, 'cm': -2, 'dm': -1, 'm': 0, 'hm': 2, 'km': 3
+    }
 
-# add synonyms (lower-case)
-METRIC_EXPONENTS['Nanometers'] = METRIC_EXPONENTS['nm']
-METRIC_EXPONENTS['Micrometers'] = METRIC_EXPONENTS['μm'] = METRIC_EXPONENTS['um']
-METRIC_EXPONENTS['Millimeters'] = METRIC_EXPONENTS['mm']
-METRIC_EXPONENTS['Centimeters'] = METRIC_EXPONENTS['cm']
-METRIC_EXPONENTS['Decimeters'] = METRIC_EXPONENTS['dm']
-METRIC_EXPONENTS['Meters'] = METRIC_EXPONENTS['m']
-METRIC_EXPONENTS['Hectometers'] = METRIC_EXPONENTS['hm']
-METRIC_EXPONENTS['Kilometers'] = METRIC_EXPONENTS['km']
+    DATE_UNITS = ['DateTime', 'DOY', 'DecimalYear', 'DecimalYear[366]', 'DecimalYear[365]', 'Y', 'M', 'W', 'D']
+    TIME_UNITS = ['h', 'm', 's', 'ms', 'us', 'ns', 'ps', 'fs', 'as']
+
+    @staticmethod
+    def metric_units() -> typing.List[str]:
+        return list(UnitLookup.METRIC_EXPONENTS.keys())
+
+    @staticmethod
+    def date_units() -> typing.List[str]:
+        return list(UnitLookup.DATE_UNITS)
+
+    @staticmethod
+    def time_units() -> typing.List[str]:
+        return list(UnitLookup.TIME_UNITS)
+
+    @staticmethod
+    def baseUnit(unit: str) -> str:
+
+        if not isinstance(unit, str):
+            return None
+
+        unit = unit.strip()
+
+        if unit in \
+                UnitLookup.metric_units() + \
+                UnitLookup.date_units() + \
+                UnitLookup.time_units():
+            return unit
+
+        # metric units
+        if re.search(r'^(Nanomet(er|re)s?)$', unit, re.I):
+            return 'nm'
+        if re.search(r'^(Micromet(er|re)s?|um)$', unit, re.I):
+            return 'μm'
+        if re.search(r'^(Millimet(er|re)s?)$', unit, re.I):
+            return 'mm'
+        if re.search(r'^(Centimet(er|re)s?)$', unit, re.I):
+            return 'cm'
+        if re.search(r'^(Decimet(er|re)s?)$', unit, re.I):
+            return 'dm'
+        if re.search(r'^(Met(er|re)s?)$', unit, re.I):
+            return 'm'
+        if re.search(r'^(Hectomet(er|re)s?)$', unit, re.I):
+            return 'hm'
+        if re.search(r'^(Kilomet(er|re)s?)$', unit, re.I):
+            return 'km'
+
+        # date units
+        if re.search(r'(Date([_\- ]?Time)?([_\- ]?Group)?|DTG)$', unit, re.I):
+            return 'DateTime'
+        if re.search(r'^(doy|Day[-_ ]?Of[-_ ]?Year?)$', unit, re.I):
+            return 'DOY'
+        if re.search(r'decimal[_\- ]?years?$', unit, re.I):
+            return 'DecimalYear'
+        if re.search(r'decimal[_\- ]?years?\[356\]$', unit, re.I):
+            return 'DecimalYear[365]'
+        if re.search(r'decimal[_\- ]?years?\[366\]$', unit, re.I):
+            return 'DecimalYear[366]'
+        if re.search(r'^Years?$', unit, re.I):
+            return 'Y'
+        if re.search(r'^Months?$', unit, re.I):
+            return 'M'
+        if re.search(r'^Weeks?$', unit, re.I):
+            return 'W'
+        if re.search(r'^Days?$', unit, re.I):
+            return 'D'
+        if re.search(r'^Hours?$', unit, re.I):
+            return 'h'
+        if re.search(r'^Minutes?$', unit, re.I):
+            return 'm'
+        if re.search(r'^Seconds?$', unit, re.I):
+            return 's'
+        if re.search(r'^MilliSeconds?$', unit, re.I):
+            return 'ms'
+        if re.search(r'^MicroSeconds?$', unit, re.I):
+            return 'us'
+        if re.search(r'^NanoSeconds?$', unit, re.I):
+            return 'ns'
+        if re.search(r'^Picoseconds?$', unit, re.I):
+            return 'ps'
+        if re.search(r'^Femtoseconds?$', unit, re.I):
+            return 'fs'
+        if re.search(r'^Attoseconds?$', unit, re.I):
+            return 'as'
+
+        return None
+
+    @staticmethod
+    def isMetricUnit(unit: str) -> bool:
+        baseUnit = UnitLookup.baseUnit(unit)
+        return baseUnit in UnitLookup.metric_units()
+
+    @staticmethod
+    def isTemporalUnit(unit: str) -> bool:
+        baseUnit = UnitLookup.baseUnit(unit)
+        return baseUnit in UnitLookup.time_units() + UnitLookup.date_units()
+
+    @staticmethod
+    def convertMetricUnit(value: float, u1: str, u2: str) -> float:
+        """
+        Converts value `value` from unit `u1` into unit `u2`
+        :param value: float | int | might work with numpy.arrays as well
+        :param u1: str, identifier of unit 1
+        :param u2: str, identifier of unit 2
+        :return: float | numpy.array, converted values
+                 or None in case conversion is not possible
+        """
+
+        u1 = UnitLookup.baseUnit(u1)
+        u2 = UnitLookup.baseUnit(u2)
+
+        e1 = UnitLookup.METRIC_EXPONENTS.get(u1)
+        e2 = UnitLookup.METRIC_EXPONENTS.get(u2)
+
+        if all([arg is not None for arg in [value, e1, e2]]):
+            if e1 == e2:
+                return copy.copy(value)
+            elif isinstance(value, list):
+                return [v * 10 ** (e1 - e2) for v in value]
+            else:
+                return value * 10 ** (e1 - e2)
+        else:
+            return None
+
+    @staticmethod
+    def convertDateUnit(value: np.datetime64, unit: str):
+        """
+        Converts a
+        :param value: numpy.datetime64 | datetime.date | datetime.datetime | float | int
+                      int values are interpreted as year
+                      float values are interpreted as decimal year
+        :param unit: output unit
+                    (integer) Y - Year, M - Month, W - Week, D - Day, DOY - Day-of-Year
+                    (float) DecimalYear (based on True number of days per year)
+                    (float) DecimalYear[365] (based on 365 days per year, i.e. wrong for leap years)
+                    (float) DecimalYear[366] (based on 366 days per year, i.e. wrong for none-leap years)
+
+        :return: float (if unit is decimal year), int else
+        """
+        unit = UnitLookup.baseUnit(unit)
+        if not UnitLookup.isTemporalUnit(unit):
+            return None
+        # see https://numpy.org/doc/stable/reference/arrays.datetime.html#arrays-dtypes-dateunits
+        # for valid date units
+        if isinstance(value, np.ndarray):
+            func = np.vectorize(UnitLookup.convertDateUnit)
+            return func(value, unit)
+
+        value = datetime64(value)
+        if unit == 'Y':
+            return value.astype(object).year
+        elif unit == 'M':
+            return value.astype(object).month
+        elif unit == 'D':
+            return value.astype(object).day
+        elif unit == 'W':
+            return value.astype(object).week
+        elif unit == 'DOY':
+            return int(((value - value.astype('datetime64[Y]')).astype('timedelta64[D]') + 1).astype(int))
+
+        elif unit.startswith('DecimalYear'):
+            year = value.astype(object).year
+            year64 = value.astype('datetime64[Y]')
+
+            # second of year
+            soy = (value - year64).astype('timedelta64[s]').astype(np.float64)
+
+            # seconds per year
+            if unit == 'DecimalYear[366]':
+                spy = 366 * 86400
+            elif unit == 'DecimalYear[365]':
+                spy = 365 * 86400
+            else:
+                spy = 366 if calendar.isleap(year) else 365
+                spy *= 86400
+            spy2 = np.datetime64('{:04}-01-01T00:00:00'.format(year + 1)) - np.datetime64(
+                '{:04}-01-01T00:00:00'.format(year))
+            spy2 = int(spy2.astype(int))
+            if spy != spy2:
+                s = ""
+            return float(year + soy / spy)
+        else:
+            raise NotImplementedError()
 
 
+convertMetricUnit = UnitLookup.convertMetricUnit
+convertDateUnit = UnitLookup.convertDateUnit
+
+METRIC_EXPONENTS = UnitLookup.METRIC_EXPONENTS
+
+# contains the wavelenghts
 LUT_WAVELENGTH = dict({'B': 480,
                        'G': 570,
                        'R': 660,
@@ -920,89 +1100,7 @@ def days_per_year(year):
     #is_leap = (year % 4 == 0 and not year % 100 == 0) or (year % 100 == 0 and year % 400 == 0)
     #return np.where(is_leap, 366, 365)
 
-def convertDateUnit(value:np.datetime64, unit:str):
-    """
-    Converts a
-    :param value: numpy.datetime64 | datetime.date | datetime.datetime | float | int
-                  int values are interpreted as year
-                  float values are interpreted as decimal year
-    :param unit: output unit
-                (integer) Y - Year, M - Month, W - Week, D - Day, DOY - Day-of-Year
-                (float) DecimalYear (based on True number of days per year)
-                (float) DecimalYear[365] (based on 365 days per year, i.e. wrong for leap years)
-                (float) DecimalYear[366] (based on 366 days per year, i.e. wrong for none-leap years)
 
-    :return: float (if unit is decimal year), int else
-    """
-    # see https://numpy.org/doc/stable/reference/arrays.datetime.html#arrays-dtypes-dateunits
-    # for valid date units
-    if isinstance(value, np.ndarray):
-        func = np.vectorize(convertDateUnit)
-        return func(value, unit)
-
-    value = datetime64(value)
-    if unit == 'Y':
-        return value.astype(object).year
-    elif unit == 'M':
-        return value.astype(object).month
-    elif unit == 'D':
-        return value.astype(object).day
-    elif unit == 'W':
-        return value.astype(object).week
-    elif unit == 'DOY':
-        return int(((value - value.astype('datetime64[Y]')).astype('timedelta64[D]') + 1).astype(int))
-
-    elif unit.startswith('DecimalYear'):
-        year = value.astype(object).year
-        year64 = value.astype('datetime64[Y]')
-
-        # second of year
-        soy = (value - year64).astype('timedelta64[s]').astype(np.float64)
-
-        # seconds per year
-        if unit == 'DecimalYear[366]':
-            spy = 366 * 86400
-        elif unit == 'DecimalYear[365]':
-            spy = 365 * 86400
-        else:
-            spy = 366 if calendar.isleap(year) else 365
-            spy *= 86400
-        spy2 = np.datetime64('{:04}-01-01T00:00:00'.format(year+1)) - np.datetime64('{:04}-01-01T00:00:00'.format(year))
-        spy2 = int(spy2.astype(int))
-        if spy != spy2:
-            s = ""
-        return float(year + soy / spy)
-    else:
-        raise NotImplementedError()
-
-def convertMetricUnit(value: float, u1: str, u2: str) -> float:
-    """
-    Converts value `value` from unit `u1` into unit `u2`
-    :param value: float | int | might work with numpy.arrays as well
-    :param u1: str, identifier of unit 1
-    :param u2: str, identifier of unit 2
-    :return: float | numpy.array, converted values
-             or None in case conversion is not possible
-    """
-
-    assert isinstance(u1, str)
-    assert isinstance(u2, str)
-
-    u1 = u1.lower()
-    u2 = u2.lower()
-
-    e1 = METRIC_EXPONENTS.get(u1)
-    e2 = METRIC_EXPONENTS.get(u2)
-
-    if all([arg is not None for arg in [value, e1, e2]]):
-        if e1 == e2:
-            return copy.copy(value)
-        elif isinstance(value, list):
-            return [v * 10 ** (e1-e2) for v in value]
-        else:
-            return value * 10 ** (e1 - e2)
-    else:
-        return None
 
 
 def displayBandNames(rasterSource, bands=None, leadingBandNumber=True):
@@ -1124,9 +1222,8 @@ def bandClosestToWavelength(dataset, wl, wl_unit='nm') -> int:
             if ds_wl is None or ds_wlu is None:
                 return 0
 
-
             if ds_wlu != wl_unit:
-                wl = convertMetricUnit(wl, wl_unit, ds_wlu)
+                wl = UnitLookup.convertMetricUnit(wl, wl_unit, ds_wlu)
             return int(np.argmin(np.abs(ds_wl - wl)))
         except:
             pass
@@ -1281,7 +1378,7 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
             wl = np.asarray(wl)
             if domain == 'FORCE' and wlu == 'DecimalYear':
                 # make decimal-year values leap-year sensitive
-                wl = convertDateUnit(datetime64(wl, dpy=365), 'DecimalYear')
+                wl = UnitLookup.convertDateUnit(datetime64(wl, dpy=365), 'DecimalYear')
 
     return wl, wlu
 

@@ -7,7 +7,7 @@ from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import QIcon
 import numpy as np
 
-from ..utils import loadUi, parseWavelength, convertMetricUnit
+from ..utils import loadUi, parseWavelength, UnitLookup
 class RasterBandConfigWidget(QgsMapLayerConfigWidget):
 
     @staticmethod
@@ -35,7 +35,6 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         self.cbMultiBandGreen.bandChanged.connect(self.widgetChanged)
         self.cbMultiBandBlue.bandChanged.connect(self.widgetChanged)
 
-
         assert isinstance(self.sliderSingleBand, QSlider)
         self.sliderSingleBand.setRange(1, self.mLayer.bandCount())
         self.sliderMultiBandRed.setRange(1, self.mLayer.bandCount())
@@ -46,18 +45,21 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         if isinstance(mWL, list):
             mWL = np.asarray(mWL)
 
-        if isinstance(mWLUnit, str) and mWLUnit != 'nm':
-            try:
-                # convert to nanometers
-                mWL = np.asarray([convertMetricUnit(v, mWLUnit, 'nm') for v in mWL])
-            except:
-                mWL = None
-                mWLUnit = None
+        if UnitLookup.isMetricUnit(mWLUnit):
+            mWLUnit = UnitLookup.baseUnit(mWLUnit)
+            # convert internally to nanometers
+            if mWLUnit != 'nm':
+                try:
+                    mWL = UnitLookup.convertMetricUnit(mWL, mWLUnit, 'nm')
+                    mWLUnit = 'nm'
+                except:
+                    mWL = None
+                    mWLUnit = None
 
         self.mWL = mWL
         self.mWLUnit = mWLUnit
 
-        hasWL = self.mWL is not None
+        hasWL = UnitLookup.isMetricUnit(self.mWLUnit)
         self.gbMultiBandWavelength.setEnabled(hasWL)
         self.gbSingleBandWavelength.setEnabled(hasWL)
 
@@ -154,14 +156,10 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         else:
             w.setCurrentWidget(self.pageUnknown)
 
-
-
-
     def shouldTriggerLayerRepaint(self) -> bool:
         return True
 
     def apply(self):
-
         newRenderer = self.renderer()
 
         if isinstance(newRenderer, QgsRasterRenderer) and isinstance(self.mLayer, QgsRasterLayer):

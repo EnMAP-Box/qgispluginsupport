@@ -187,6 +187,14 @@ class TestUtils(TestCase):
 
         self.showGui(d)
 
+    def test_UnitLookup(self):
+
+        for u in ['nm', 'm', 'km', 'um', 'μm', u'μm']:
+            self.assertTrue(UnitLookup.isMetricUnit(u), msg='Not detected as metric unit:{}'.format(u))
+            bu = UnitLookup.baseUnit(u)
+            self.assertIsInstance(bu, str)
+            self.assertTrue(len(bu) > 0)
+
 
     def test_bandNames(self):
 

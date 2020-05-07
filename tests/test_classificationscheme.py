@@ -39,8 +39,8 @@ class TestsClassificationScheme(TestCase):
         super().setUp()
         self.nameL1 = 'Level 1 (int)'
         self.nameL2 = 'Level 2 (str)'
-        for store in MAP_LAYER_STORES:
-            store.removeMapLayers(store.mapLayers().values())
+        QgsProject.instance().removeAllMapLayers()
+        MAP_LAYER_STORES.clear()
 
     def createClassSchemeA(self)->ClassificationScheme:
 
@@ -486,11 +486,7 @@ class TestsClassificationScheme(TestCase):
         self.assertListEqual(labels, cs3.classLabels())
         self.assertListEqual(colors, cs3.classColors())
 
-
-
     def test_io_FeatureRenderer(self):
-
-
         cs = self.createClassSchemeA()
         self.assertIsInstance(cs, ClassificationScheme)
 
