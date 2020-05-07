@@ -1243,6 +1243,10 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
                     if wlu is None:
                         wlu = checkWavelengthUnit(key, values)
                     if wl is not None and wlu is not None:
+                        # domain-specific check
+                        if domain == 'FORCE' and wlu == 'DecimalYear':
+                            # make decimal-year values leap-year sensitive
+                            wl = convertDateUnit(datetime64(wl, dpy=365), 'DecimalYear')
                         break
 
         if wl is not None and wlu is not None:
@@ -1275,6 +1279,9 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
             wl = None
         else:
             wl = np.asarray(wl)
+            if domain == 'FORCE' and wlu == 'DecimalYear':
+                # make decimal-year values leap-year sensitive
+                wl = convertDateUnit(datetime64(wl, dpy=365), 'DecimalYear')
 
     return wl, wlu
 

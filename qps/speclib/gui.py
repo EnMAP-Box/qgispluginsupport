@@ -55,10 +55,10 @@ class UnitConverterFunctionModel(object):
 
         self.mLUT = dict()
 
-        self.func_band_index = lambda v, *args: np.arange(len(v))
+        self.func_return_band_index = lambda v, *args: np.arange(len(v))
         self.func_return_none = lambda v, *args: None
         self.func_return_same = lambda v, *args: v
-        self.funct_return_decimalyear = lambda v, *args: convertDateUnit(v, 'DecimalYear')
+        self.func_return_decimalyear = lambda v, *args: convertDateUnit(v, 'DecimalYear')
 
         # metric units
         metric_keys = list(METRIC_EXPONENTS.keys())
@@ -79,9 +79,9 @@ class UnitConverterFunctionModel(object):
 
     def convertFunction(self, unitSrc: str, unitDst: str):
         if unitDst == BAND_INDEX:
-            return self.func_band_index
+            return self.func_return_band_index
         if unitDst == 'DateTime':
-            return self.funct_return_decimalyear
+            return self.func_return_decimalyear
         if unitSrc is None or unitDst is None:
             return self.func_return_none
         if unitSrc == unitDst:
@@ -174,7 +174,7 @@ class SpectralXAxis(pg.AxisItem):
         self.enableAutoSIPrefix(True)
         self.labelAngle = 0
 
-        self.mUnit:str = ''
+        self.mUnit: str = ''
 
     def tickStrings(self, values, scale, spacing):
 
@@ -200,11 +200,18 @@ class SpectralXAxis(pg.AxisItem):
         else:
             return super(SpectralXAxis, self).tickStrings(values, scale, spacing)
 
-
-    def setUnit(self, unit:str):
+    def setUnit(self, unit: str, labelName: str = None):
+        """
+        Sets the unit of this axis
+        :param unit: str
+        :param labelName: str, defaults to unit
+        """
         self.mUnit = unit
 
-        self.setLabel(unit)
+        if isinstance(labelName, str):
+            self.setLabel(labelName)
+        else:
+            self.setLabel(unit)
 
 
 class SpectralLibraryPlotItem(pg.PlotItem):
@@ -1275,6 +1282,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.mSpeclib = speclib
             self.connectSpeclibSignals()
 
+        self.mUpdateTimer.start()
+
+
     def setDualView(self, dualView: QgsDualView):
         assert isinstance(dualView, QgsDualView)
         speclib = dualView.masterModel().layer()
@@ -1380,7 +1390,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.viewport().update()
     """
 
-    FUNC_BAND_INDEX = lambda x, *args: list(range(len(x)))
+
 
     def unitConversionFunction(self, unitSrc, unitDst):
         """
@@ -1389,8 +1399,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :param unitDst: str, e.g. `nanometers` or `nm` (case insensitive)
         :return: callable, a function of pattern `mappedValues = func(value:list, pdi:SpectralProfilePlotDataItem)`
         """
-        if unitDst == BAND_INDEX.lower():
-            return SpectralLibraryPlotWidget.FUNC_BAND_INDEX
 
         return self.mUnitConverter.convertFunction(unitSrc, unitDst)
 
@@ -1423,17 +1431,16 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         return [pdi for pdi in self.allPlotDataItems() if isinstance(pdi, SpectralProfilePlotDataItem)]
 
     def updateXUnit(self):
-        unit = self.xUnit()
-        self.mXAxis.setUnit(unit)
+        unit = self.mViewBox.mCBXAxisUnit.currentData(Qt.UserRole)
+        label =self.mViewBox.mCBXAxisUnit.currentData(Qt.DisplayRole)
         # update axis label
+        self.mXAxis.setUnit(unit, label)
 
         # update x values
         pdis = self.allSpectralProfilePlotDataItems()
         for pdi in pdis:
             pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, unit))
             pdi.applyMapFunctions()
-
-        s = ""
 
     def updateSpectralProfilePlotItems(self):
         pi = self.getPlotItem()
