@@ -49,6 +49,122 @@ def defaultCurvePlotStyle() -> PlotStyle:
     ps.linePen.setStyle(Qt.SolidLine)
     return ps
 
+class UnitConverterFunctionModel(object):
+
+    def __init__(self):
+
+        self.mLUT = dict()
+
+        self.func_band_index = lambda v, *args: np.arange(len(v))
+        self.func_return_none = lambda v, *args: None
+        self.func_return_same = lambda v, *args: v
+        self.funct_return_decimalyear = lambda v, *args: convertDateUnit(v, 'DecimalYear')
+
+        # metric units
+        metric_keys = list(METRIC_EXPONENTS.keys())
+        metric_exponents = list(METRIC_EXPONENTS.values())
+        for i, key1 in enumerate(metric_keys[0:]):
+            e1 = metric_exponents[i]
+            for key2 in metric_keys[i + 1:]:
+                e2 = metric_exponents[metric_keys.index(key2)]
+                if e1 == e2:
+                    self.mLUT[(key1, key2)] = self.func_return_same
+                else:
+                    self.mLUT[(key1, key2)] = lambda v, *args, k1=key1, k2=key2: convertMetricUnit(v, k1, k2)
+        # time units
+        # self.mLUT[('DecimalYear', 'DateTime')] = lambda v, *args: datetime64(v)
+        self.mLUT[('DecimalYear', 'DOY')] = lambda v, *args: convertDateUnit(v, 'DOY')
+        self.mLUT[('DateTime', 'DOY')] = lambda v, *args: convertDateUnit(v, 'DOY')
+        self.mLUT[('DateTime', 'DecimalYear')] = lambda v, *args: convertDateUnit(v, 'DecimalYear')
+
+    def convertFunction(self, unitSrc: str, unitDst: str):
+        if unitDst == BAND_INDEX:
+            return self.func_band_index
+        if unitDst == 'DateTime':
+            return self.funct_return_decimalyear
+        if unitSrc is None or unitDst is None:
+            return self.func_return_none
+        if unitSrc == unitDst:
+            return self.func_return_same
+
+        return self.mLUT.get((unitSrc, unitDst), self.func_return_none)
+
+
+class UnitModel(QAbstractListModel):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.mUnits = []
+        self.mDescription = dict()
+        self.mToolTips = dict()
+
+    def rowCount(self, parent=None, *args, **kwargs):
+        return len(self.mUnits)
+
+    def findUnit(self, value:str) -> str:
+        """
+        Returns a matching unit string, e.g. nm for Nanometers
+        :param value:
+        :return:
+        """
+        if not isinstance(value, str):
+            return None
+
+        if value in self.mUnits:
+            return value
+
+        value = value.lower()
+        for u, v in self.mDescription.items():
+            if v.lower() == value:
+                return u
+
+        for u, v in self.mToolTips.items():
+            if v.lower() == value:
+                return u
+
+    def addUnit(self, unit: str, description: str=None, tooltip: str=None):
+
+        if unit not in self.mUnits:
+
+            r = len(self.mUnits)
+            self.beginInsertRows(QModelIndex(), r, r)
+            self.mUnits.append(unit)
+            if isinstance(description, str):
+                self.mDescription[unit] = description
+            if isinstance(tooltip, str):
+                self.mToolTips[unit] = tooltip
+
+            self.endInsertRows()
+
+    def data(self, index:QModelIndex, role=None):
+        if not index.isValid():
+            return None
+
+        unit = self.mUnits[index.row()]
+
+        if role == Qt.DisplayRole:
+            return self.mDescription.get(unit, unit)
+        if role == Qt.ToolTipRole:
+            return self.mToolTips.get(unit, unit)
+        if role == Qt.UserRole:
+            return unit
+
+class XUnitModel(UnitModel):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.addUnit(BAND_INDEX, description=BAND_INDEX)
+
+        for k in METRIC_EXPONENTS.keys():
+            self.addUnit(k, description=k)
+
+        # add time
+        self.addUnit('DecimalYear', description='Decimal Year')
+        self.addUnit('DOY', description='Day of Year (DOY)')
+        self.addUnit('DateTime', description='Date-Time-Group')
+
 
 class SpectralXAxis(pg.AxisItem):
 
@@ -57,6 +173,38 @@ class SpectralXAxis(pg.AxisItem):
         self.setRange(1, 3000)
         self.enableAutoSIPrefix(True)
         self.labelAngle = 0
+
+        self.mUnit:str = ''
+
+    def tickStrings(self, values, scale, spacing):
+
+        if len(values) == 0:
+            return []
+
+        if self.mUnit == 'DateTime':
+
+            values = datetime64(np.asarray(values)).astype('datetime64[D]')
+
+            rng = max(values) - min(values)
+            ndays = rng.astype(int)
+
+            strns = []
+
+            for v in values:
+                if ndays == 0:
+                    strns.append(v.astype(str))
+                else:
+                    strns.append(v.astype(str))
+
+            return strns
+        else:
+            return super(SpectralXAxis, self).tickStrings(values, scale, spacing)
+
+
+    def setUnit(self, unit:str):
+        self.mUnit = unit
+
+        self.setLabel(unit)
 
 
 class SpectralLibraryPlotItem(pg.PlotItem):
@@ -371,6 +519,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         self.mXValueConversionFunction = lambda v, *args: v
         self.mYValueConversionFunction = lambda v, *args: v
+        self.mSortByXValues: bool = False
 
         self.mDefaultStyle = PlotStyle()
 
@@ -477,6 +626,11 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                 if not isinstance(x, np.ndarray):
                     x = np.asarray(x)
 
+                if self.mSortByXValues:
+                    idx = np.argsort(x)
+                    x = x[idx]
+                    y = y[idx]
+
                 is_finite = np.isfinite(y)
                 connected = np.logical_and(is_finite, np.roll(is_finite, -1))
                 keep = is_finite + connected
@@ -578,7 +732,7 @@ class SpectralViewBox(pg.ViewBox):
     """
     Subclass of ViewBox
     """
-    sigXUnitChanged = pyqtSignal(str)
+    #sigXUnitChanged = pyqtSignal(str)
     sigColorSchemeChanged = pyqtSignal(SpectralLibraryPlotColorScheme)
     sigMaxNumberOfProfilesChanged = pyqtSignal(int)
 
@@ -636,30 +790,10 @@ class SpectralViewBox(pg.ViewBox):
         l.addWidget(self.rbXAutoRange, 1, 0)
 
         self.mCBXAxisUnit = QComboBox()
-
-        # Order of X units:
-        # 1. long names
-        # 2. short si names
-        # 3. within these groups: by exponent
-        items = sorted(METRIC_EXPONENTS.items(), key=lambda item: item[1])
-        fullNames = []
-        siNames = []
-        for item in items:
-            if len(item[0]) > 5:
-                # make centimeters to Centimeters
-                item = (item[0].title(), item[1])
-                fullNames.append(item)
-            else:
-                siNames.append(item)
-
-        self.mCBXAxisUnit.addItem(BAND_INDEX, userData='')
-        for item in fullNames + siNames:
-            name, exponent = item
-            self.mCBXAxisUnit.addItem(name, userData=name)
-        self.mCBXAxisUnit.setCurrentIndex(0)
-
-        self.mCBXAxisUnit.currentIndexChanged.connect(
-            lambda: self.sigXUnitChanged.emit(self.mCBXAxisUnit.currentText()))
+        self.mCBXAxisUnitModel:XUnitModel = XUnitModel()
+        self.mCBXAxisUnit.setModel(self.mCBXAxisUnitModel)
+        #self.mCBXAxisUnit.currentIndexChanged.connect(
+        #    lambda: self.sigXUnitChanged.emit(self.mCBXAxisUnit.currentData(Qt.UserRole)))
 
         l.addWidget(QLabel('Unit'), 2, 0)
         l.addWidget(self.mCBXAxisUnit, 2, 1)
@@ -714,7 +848,7 @@ class SpectralViewBox(pg.ViewBox):
         Returns unit of X-Axis values
         :return: str
         """
-        return self.mCBXAxisUnit.currentText()
+        return self.mCBXAxisUnit.currentData(Qt.UserRole)
 
     def addItems(self, pdis: list, ignoreBounds=False):
         """
@@ -774,36 +908,21 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         pi = self.getPlotItem()
         assert isinstance(pi, SpectralLibraryPlotItem) and pi == plotItem and pi == self.plotItem
+        self.mXAxis: SpectralXAxis = pi.getAxis('bottom')
+        assert isinstance(self.mXAxis, SpectralXAxis)
 
         self.mSpeclib: SpectralLibrary
         self.mSpeclib = None
         self.mSpeclibSignalConnections = []
 
         self.mXUnitInitialized = False
-        self.mXUnit = BAND_INDEX
+        self.setXUnit(BAND_INDEX)
         self.mYUnit = None
 
-        # describe function to convert length units from unit a to unit b
-        self.mLUT_UnitConversions = dict()
-        func_return_none = lambda v, *args: None
-        func_return_same = lambda v, *args: v
-        self.mLUT_UnitConversions[(None, None)] = func_return_same
-        keys = list(METRIC_EXPONENTS.keys())
-        exponents = list(METRIC_EXPONENTS.values())
+        # describe functions to convert wavelength units from unit a to unit b
+        self.mUnitConverter = UnitConverterFunctionModel()
 
-        for key in keys:
-            self.mLUT_UnitConversions[(None, key)] = func_return_none
-            self.mLUT_UnitConversions[(key, None)] = func_return_none
-            self.mLUT_UnitConversions[(key, key)] = func_return_same
-
-        for i, key1 in enumerate(keys[0:]):
-            e1 = exponents[i]
-            for key2 in keys[i + 1:]:
-                e2 = exponents[keys.index(key2)]
-                if e1 == e2:
-                    self.mLUT_UnitConversions[(key1, key2)] = func_return_same
-
-        self.mViewBox.sigXUnitChanged.connect(self.setXUnit)
+        #self.mViewBox.sigXUnitChanged.connect(self.setXUnit)
 
         self.mPlotDataItems = dict()
         self.setAntialiasing(True)
@@ -833,10 +952,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.proxy2D = pg.SignalProxy(self.scene().sigMouseMoved, rateLimit=100, slot=self.onMouseMoved2D)
 
         # set default axis unit
-        self.setXLabel(self.mViewBox.xAxisUnit())
+        self.updateXUnit()
         self.setYLabel('Y (Spectral Value)')
 
-        self.mViewBox.sigXUnitChanged.connect(self.updateXUnit)
+        self.mViewBox.mCBXAxisUnit.currentIndexChanged.connect(self.updateXUnit)
         self.mSPECIFIC_PROFILE_STYLES = dict()
         self.mDefaultColorScheme: SpectralLibraryPlotColorScheme
         self.mDefaultColorScheme = SpectralLibraryPlotColorScheme.default()
@@ -958,7 +1077,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             nearest_index = -1
             nearest_distance = sys.float_info.max
 
-            if False:  # todo: find profile closes to mouse curso
+            if False:  # todo: find profile closes to mouse cursoo
                 def closestDistance(path: QPainterPath):
                     if path.isEmpty() or path.elementCount() == 0:
                         return None
@@ -985,7 +1104,12 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                             nearest_index = index
                             nearest_item = item
 
-            positionInfo = 'x:{:0.5f}\ny:{:0.5f}'.format(x, y)
+            if self.mXAxis.mUnit == 'DateTime':
+                positionInfo = 'x:{}\ny:{:0.5f}'.format(datetime64(x), y)
+            elif self.mXAxis.mUnit == 'DOY':
+                positionInfo = 'x:{}\ny:{:0.5f}'.format(int(x), y)
+            else:
+                positionInfo = 'x:{:0.5f}\ny:{:0.5f}'.format(x, y)
 
             if isinstance(nearest_item, PlotCurveItem):
                 positionInfo += '\n' + nearest_item.parentItem().name()
@@ -1265,48 +1389,24 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :param unitDst: str, e.g. `nanometers` or `nm` (case insensitive)
         :return: callable, a function of pattern `mappedValues = func(value:list, pdi:SpectralProfilePlotDataItem)`
         """
-        if isinstance(unitSrc, str):
-            unitSrc = unitSrc.lower()
-        if isinstance(unitDst, str):
-            unitDst = unitDst.lower()
-
         if unitDst == BAND_INDEX.lower():
             return SpectralLibraryPlotWidget.FUNC_BAND_INDEX
 
-        key = (unitSrc, unitDst)
-        func = self.mLUT_UnitConversions.get(key)
-        if callable(func):
-            return func
-        else:
-            if isinstance(unitSrc, str) and isinstance(unitDst, str) and convertMetricUnit(1, unitSrc,
-                                                                                           unitDst) is not None:
-                func = lambda values, pdi, a=unitSrc, b=unitDst: convertMetricUnit(values, a, b)
-            else:
-                func = lambda values, pdi: None
-
-            self.mLUT_UnitConversions[key] = func
-
-            return self.mLUT_UnitConversions[key]
+        return self.mUnitConverter.convertFunction(unitSrc, unitDst)
 
     def setXUnit(self, unit: str):
         """
         Sets the unit or mapping function to be shown on x-axis.
         :param unit: str, e.g. `nanometers`
         """
-
-        if self.mXUnit != unit:
-            self.mViewBox.setXAxisUnit(unit)
-            self.mXUnit = unit
-            self.updateXUnit()
-
-            # self.getPlotItem().update()
+        self.mViewBox.setXAxisUnit(unit)
 
     def xUnit(self) -> str:
         """
         Returns the unit to be shown on x-axis
         :return: str
         """
-        return self.mXUnit
+        return self.mViewBox.xAxisUnit()
 
     def allPlotDataItems(self) -> typing.List[PlotDataItem]:
         """
@@ -1324,15 +1424,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
     def updateXUnit(self):
         unit = self.xUnit()
-
+        self.mXAxis.setUnit(unit)
         # update axis label
-        self.setXLabel(unit)
 
         # update x values
         pdis = self.allSpectralProfilePlotDataItems()
         for pdi in pdis:
             pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, unit))
-
             pdi.applyMapFunctions()
 
         s = ""
@@ -1354,6 +1452,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.removeSpectralProfilePDIs(toBeRemoved)
 
         if len(toBeAdded) > 0:
+            sort_x_values = self.xUnit() in ['DOI']
             addedPDIs = []
             addedProfiles = self.speclib().profiles(toBeAdded)
             for profile in addedProfiles:
@@ -1362,6 +1461,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setClickable(True)
                 pdi.setVisible(True)
                 pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, self.xUnit()))
+                pdi.mSortByXValues = sort_x_values
                 pdi.applyMapFunctions()
                 pdi.sigClicked.connect(self.onProfileClicked)
                 pdi.sigPointsClicked.connect(self.onPointsClicked)
@@ -1493,14 +1593,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 speclib.selectByIds(fids)
             else:
                 speclib.selectByIds([fid])
-
-    def setXLabel(self, label: str):
-        """
-        Sets the name of the X axis
-        :param label: str, name
-        """
-        pi = self.getPlotItem()
-        pi.getAxis('bottom').setLabel(label)
 
     def setYLabel(self, label: str):
         """
@@ -1867,32 +1959,6 @@ class SpectralProfileEditorWidget(QWidget):
         """
         return self.mModel.values()
 
-
-class UnitComboBoxItemModel(OptionListModel):
-    def __init__(self, parent=None):
-        super(UnitComboBoxItemModel, self).__init__(parent)
-
-    def addUnit(self, unit):
-
-        o = Option(unit, unit)
-        self.addOption(o)
-
-    def getUnitFromIndex(self, index):
-        o = self.idx2option(index)
-        assert isinstance(o, Option)
-        return o.mValue
-
-    def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid():
-            return None
-
-        if (index.row() >= len(self.mUnits)) or (index.row() < 0):
-            return None
-        unit = self.getUnitFromIndex(index)
-        value = None
-        if role == Qt.DisplayRole:
-            value = '{}'.format(unit)
-        return value
 
 
 class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):

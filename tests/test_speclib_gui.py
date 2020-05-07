@@ -309,6 +309,17 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(tb)
 
+    def test_UnitComboBox(self):
+
+        cb = QComboBox()
+        model = XUnitModel()
+        for k in METRIC_EXPONENTS.keys():
+            model.addUnit(k)
+
+        cb.setModel(model)
+
+        self.showGui(cb)
+
     @unittest.skipIf(False, '')
     def test_SpectralProfileEditorWidgetFactory(self):
 

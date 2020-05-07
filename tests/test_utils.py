@@ -261,7 +261,6 @@ class TestUtils(TestCase):
 
     def test_convertMetricUnits(self):
 
-        print('DONE', flush=True)
         self.assertEqual(convertMetricUnit(100, 'm', 'km'), 0.1)
         self.assertEqual(convertMetricUnit(0.1, 'km', 'm'), 100)
 
@@ -269,6 +268,117 @@ class TestUtils(TestCase):
         self.assertEqual(convertMetricUnit(0.4, 'μm', 'nm'), 400)
 
         self.assertEqual(convertMetricUnit(400, 'nm', 'km'), 4e-10)
+
+    def test_decimalYearConversions(self):
+        baseDate = np.datetime64('2020-01-01')
+        for seconds in range(0, 200000, 13):
+            dateA = baseDate + np.timedelta64(seconds, 's')
+            decimalDate = convertDateUnit(dateA, 'DecimalYear')
+            DOY = convertDateUnit(decimalDate, 'DOY')
+            self.assertTrue(DOY >= 1)
+
+            is_leap_year = calendar.isleap(dateA.astype(object).year)
+            if is_leap_year:
+                self.assertTrue(DOY <= 366)
+            else:
+                self.assertTrue(DOY <= 365)
+
+            self.assertIsInstance(decimalDate, float)
+            dateB = datetime64(decimalDate)
+            self.assertIsInstance(dateB, np.datetime64)
+            self.assertEqual(dateA, dateB)
+
+        for days in range(0, 5000):
+            dateA = baseDate + np.timedelta64(days, 'D')
+            decimalDate = convertDateUnit(dateA, 'DecimalYear')
+            self.assertIsInstance(decimalDate, float)
+            dateB = datetime64(decimalDate)
+            self.assertIsInstance(dateB, np.datetime64)
+            self.assertEqual(dateA, dateB)
+
+
+    def test_convertTimeUnits(self):
+
+        refDate = np.datetime64('2020-01-01')
+        self.assertEqual(datetime64(refDate), refDate) ## datetime64 to datetime64
+        self.assertEqual(datetime64('2020-01-01'), refDate) # string to datetime64
+        self.assertEqual(datetime64(datetime.date(year=2020, month=1, day=1)), refDate)
+        self.assertEqual(datetime64(datetime.datetime(year=2020, month=1, day=1)), refDate)
+        self.assertEqual(datetime64(2020), refDate) # decimal year to datetime64
+
+        date_arrays = [np.asarray(['2020-01-01', '2019-01-01'], dtype=np.datetime64),
+                       np.asarray([2020, 2019]),
+                       np.asarray([2020.023, 2019.023]),
+                       ]
+        for array in date_arrays:
+            dpy = days_per_year(array)
+            self.assertIsInstance(dpy, np.ndarray)
+            self.assertTrue(np.array_equal(dpy, np.asarray([366, 365])))
+
+        leap_years = [2020,
+                      2020.034,
+                      np.datetime64('2020', 'Y'),
+                      datetime.date(year=2020, month=1, day=1),
+                      datetime.date(year=2020, month=12, day=31),
+                      datetime.datetime(year=2020, month=1, day=1, hour=0, minute=0, second=0),
+                      datetime.datetime(year=2020, month=12, day=31, hour=23, minute=59, second=59)
+                      ]
+        non_leap_years = [2019,
+                          2019.034,
+                          np.datetime64('2019', 'Y'),
+                          datetime.date(year=2019, month=1, day=1),
+                          datetime.date(year=2019, month=12, day=31),
+                          datetime.datetime(year=2019, month=1, day=1, hour=0, minute=0, second=0),
+                          datetime.datetime(year=2019, month=12, day=31, hour=23, minute=59, second=59)
+                          ]
+
+        for y in leap_years:
+            dpy = days_per_year(y)
+            if not dpy == 366:
+                s = ""
+            self.assertEqual(dpy, 366)
+
+        for y in non_leap_years:
+            dpy = days_per_year(y)
+            self.assertEqual(dpy, 365)
+
+
+        self.assertEqual(convertDateUnit('2020-01-01', 'DOY'), 1)
+        self.assertEqual(convertDateUnit('2020-12-31', 'DOY'), 366)
+        self.assertEqual(convertDateUnit('2020-12-31', 'Y'), 2020)
+
+        self.assertEqual(convertDateUnit('2019-01-01', 'DOY'), 1)
+        self.assertEqual(convertDateUnit('2019-12-31', 'DOY'), 365)
+
+        self.assertEqual(convertDateUnit('2019-01-01', 'M'), 1)
+        self.assertEqual(convertDateUnit('2019-01-01', 'D'), 1)
+        self.assertEqual(convertDateUnit('2019-07-08', 'M'), 7)
+        self.assertEqual(convertDateUnit('2019-07-08', 'D'), 8)
+        self.assertEqual(convertDateUnit('2019-07-08', 'Y'), 2019)
+
+        for dtg in ['2019-01-01T00:00:00',
+                    '2019-12-31T23:59:59',
+                    '2020-01-01T00:00:00',
+                    '2020-12-31T23:59:59']:
+
+            dj0a = convertDateUnit(dtg, 'DecimalYear')
+            dj0b = convertDateUnit(dtg, 'DecimalYear[365]')
+            dj0c = convertDateUnit(dtg, 'DecimalYear[366]')
+
+            year = np.datetime64(dtg).astype(object).year
+            doy = int((np.datetime64(dtg) - np.datetime64('{:04}-01-01'.format(year)))
+                      .astype('timedelta64[D]')
+                      .astype(int)) + 1
+
+            self.assertEqual(year, int(dj0a))
+
+            if not calendar.isleap(year):
+                self.assertEqual(dj0a, dj0b)
+                self.assertEqual(int((dj0a - int(dj0a))*365 + 1), doy)
+
+            else:
+                self.assertEqual(dj0a, dj0c)
+                self.assertEqual(int((dj0a - int(dj0a)) * 366 + 1), doy)
 
 
     def test_appendItemsToMenu(self):

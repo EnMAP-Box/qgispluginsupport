@@ -85,8 +85,7 @@ class TestCore(TestCase):
             self.assertEqual(f1.typeName(), f2.typeName())
 
 
-
-    def test_SpectralProfile_BandBandList(self):
+    def test_SpectralProfile_BadBandList(self):
 
         sp = SpectralProfile()
         xvals = [1, 2, 3, 4, 5]
@@ -293,6 +292,29 @@ class TestCore(TestCase):
         self.assertEqual(sp1.values(), r1.values())
         self.assertEqual(sp2.values(), r2.values())
         self.assertEqual(sp2.geometry().asWkt(), r2.geometry().asWkt())
+
+    def test_read_temporal_wavelength(self):
+        
+        p = r'D:\Repositories\qgispluginsupport\qpstestdata\2010-2020_001-365_HL_TSA_LNDLG_NBR_TSS.tif'
+        if os.path.isfile(p):
+            lyr = QgsRasterLayer(p)
+            self.assertIsInstance(lyr, QgsRasterLayer)
+            self.assertTrue(lyr.isValid())
+            center = SpatialPoint.fromMapLayerCenter(lyr)
+            p = SpectralProfile.fromRasterLayer(lyr, center)
+            p.setName('Test Profile')
+            self.assertIsInstance(p, SpectralProfile)
+
+
+            speclib = SpectralLibrary()
+            speclib.startEditing()
+            speclib.addProfiles([p])
+            speclib.commitChanges()
+
+            from qps.speclib.gui import SpectralLibraryWidget
+            w = SpectralLibraryWidget(speclib=speclib)
+            self.showGui(w)
+
 
     def test_SpectralProfileReading(self):
 
