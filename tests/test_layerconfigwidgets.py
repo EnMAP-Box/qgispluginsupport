@@ -380,7 +380,6 @@ class LayerConfigWidgetsTests(TestCase):
         self.showGui(v)
 
 
-
 if __name__ == "__main__":
     import xmlrunner
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

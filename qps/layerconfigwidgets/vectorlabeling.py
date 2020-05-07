@@ -140,7 +140,7 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
         settings = labeling.settings()
 
         if settings.isExpression:
-            self.mFieldExpressionWidget.setExpression(settings.getLabelExpression())
+            self.mFieldExpressionWidget.setExpression(settings.getLabelExpression().expression())
         else:
             self.mFieldExpressionWidget.setField(settings.fieldName)
 
@@ -198,5 +198,6 @@ class LabelingConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def supportLayerPropertiesDialog(self):
         return True
+
     def supportsStyleDock(self):
         return True
