@@ -2080,13 +2080,15 @@ class SpectralLibrary(QgsVectorLayer):
     def addSpeclib(self, speclib,
                    addMissingFields: bool = True,
                    copyEditorWidgetSetup: bool = True,
-                   progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None):
+                   progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> typing.Set[int]:
         """
         Adds profiles from another SpectraLibrary
         :param speclib: SpectralLibrary
         :param addMissingFields: if True (default), missing fields / attributes will be added automatically
         :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied for each added field
         :param progressDialog: QProgressDialog or qps.speclib.core.ProgressHandler
+
+        :returns: set of added feature ids
         """
         assert isinstance(speclib, SpectralLibrary)
 
@@ -2098,7 +2100,7 @@ class SpectralLibrary(QgsVectorLayer):
     def addProfiles(self, profiles: typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
                     addMissingFields: bool = None, \
                     copyEditorWidgetSetup: bool = True, \
-                    progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None):
+                    progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> typing.Set[int]:
 
         if isinstance(profiles, SpectralProfile):
             profiles = [profiles]
@@ -2121,6 +2123,8 @@ class SpectralLibrary(QgsVectorLayer):
 
         bufferLength = 500
         profileBuffer = []
+
+        oldIDs = set(self.allFeatureIds())
 
         nAdded = 0
 
@@ -2164,7 +2168,8 @@ class SpectralLibrary(QgsVectorLayer):
 
         flushBuffer()
 
-        # s = ""
+        addedIDs = set(self.allFeatureIds()).difference(oldIDs)
+        return addedIDs
 
     def speclibFromFeatureIDs(self, fids):
         if isinstance(fids, int):

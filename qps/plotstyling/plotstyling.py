@@ -603,6 +603,9 @@ class PlotStyle(QObject):
         p.end()
         return pm
 
+    def __hash__(self):
+        return hash(id(self))
+
     def __eq__(self, other):
         if not isinstance(other, PlotStyle):
             return False

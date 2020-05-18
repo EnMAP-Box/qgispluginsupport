@@ -1234,29 +1234,32 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """
         self.mSPECIFIC_PROFILE_STYLES.clear()
 
-    def setProfileStyles(self, styles: typing.List[typing.Tuple[PlotStyle, typing.List[int]]]):
+    def setProfileStyles(self,
+                         style:PlotStyle,
+                         fids: typing.List[int],
+                         fid2style: typing.Dict[int, PlotStyle] = dict()):
         """
-        Sets the styles of features
-        :param style: list of (PlotStyle, [feature ids])
-        :type style:
-        :param fids:
-        :type fids:
+        Sets the style of single features
+        :param fid2style:
         :return:
-        :rtype:
         """
-        if styles is None:
-            return
+
+        if not isinstance(fid2style, dict):
+            if isinstance(style, PlotStyle) and isinstance(fids, list):
+                fid2style = dict()
+                for fid in fids:
+                    fid2style[fid] = style
+            else:
+                return
+
         updatedFIDs = []
-        for style, fids in styles:
-            if isinstance(fids, (list, set)):
-                if isinstance(style, PlotStyle):
-                    for fid in fids:
-                        self.mSPECIFIC_PROFILE_STYLES[fid] = style
-                elif style is None:
-                    # delete existing
-                    for fid in fids:
-                        self.mSPECIFIC_PROFILE_STYLES.pop(fid, None)
-                updatedFIDs.extend(fids)
+        for fid, style in fid2style.items():
+            if style != self.mSPECIFIC_PROFILE_STYLES.get(fid):
+                updatedFIDs.append(fid)
+                if style is None:
+                    self.mSPECIFIC_PROFILE_STYLES.pop(fid)
+                else:
+                    self.mSPECIFIC_PROFILE_STYLES[fid] = style
         self.updateProfileStyles(updatedFIDs)
 
     def setMaxProfiles(self, n: int):
@@ -1519,13 +1522,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def updateProfileStyles(self, fids: typing.List[int] = None):
         """
         Updates the styles for a set of SpectralProfilePlotDataItems specified by its feature ids
-        :param listOfProfiles: [list-of-SpectralProfiles IDs]
+        :param fids: profile ids to update
         """
 
         if not isinstance(self.speclib(), SpectralLibrary):
             return
 
-        cs = self.mColorScheme
+        cs = self.colorScheme()
 
         xUnit = None
         renderContext = QgsRenderContext()
@@ -2470,13 +2473,13 @@ class SpectralLibraryWidget(QMainWindow):
 
             btnResetProfileStyles.setText('Reset Selected')
             btnResetProfileStyles.clicked.connect(
-                lambda *args, fids=selectedFIDs: self.plotWidget().setProfileStyles([(None, fids)]))
+                lambda *args, fids=selectedFIDs: self.plotWidget().setProfileStyles(None, fids))
 
         psw = PlotStyleWidget(plotStyle=plotStyle)
         psw.setPreviewVisible(False)
         psw.cbIsVisible.setVisible(False)
         psw.sigPlotStyleChanged.connect(
-            lambda style, fids=selectedFIDs: self.plotWidget().setProfileStyles([(style, fids)]))
+            lambda style, fids=selectedFIDs: self.plotWidget().setProfileStyles(style, fids))
 
         frame = QFrame()
         l = QVBoxLayout()
@@ -2948,7 +2951,7 @@ class SpectralLibraryWidget(QMainWindow):
         """
         Adds all current spectral profiles to the "persistent" SpectralLibrary
         """
-        self.plotWidget().setProfileStyles([(None, self.mCurrentProfileIDs)])
+        self.plotWidget().setProfileStyles(None, self.mCurrentProfileIDs)
         self.mCurrentProfileIDs.clear()
 
     sigCurrentSpectraChanged = pyqtSignal(list)
@@ -2956,12 +2959,17 @@ class SpectralLibraryWidget(QMainWindow):
     def setCurrentSpectra(self, profiles: list):
         self.setCurrentProfiles(profiles)
 
-    def setCurrentProfiles(self, currentProfiles: list):
+    def setCurrentProfiles(self,
+                           currentProfiles: list,
+                           profileStyles:typing.Dict[SpectralProfile, PlotStyle] = None):
         assert isinstance(currentProfiles, list)
+
+        if not isinstance(profileStyles, dict):
+            profileStyles = dict()
 
         speclib: SpectralLibrary = self.speclib()
         plotWidget: SpectralLibraryPlotWidget = self.plotWidget()
-        colorScheme = plotWidget.colorScheme()
+        colorScheme: SpectralLibraryPlotColorScheme = plotWidget.colorScheme()
 
         mode = self.currentProfilesMode()
         if mode == SpectralLibraryWidget.CurrentProfilesMode.block:
@@ -3000,16 +3008,24 @@ class SpectralLibraryWidget(QMainWindow):
 
         # add current profiles to speclib
         oldIDs = set(speclib.allFeatureIds())
-        speclib.addProfiles(currentProfiles)
+        res = speclib.addProfiles(currentProfiles)
+        addedIDs0 = sorted(set(speclib.allFeatureIds()).difference(oldIDs))
         self.mSpeclib.commitChanges()
         if restart_editing:
             speclib.startEditing()
-        addedIDs = set(speclib.allFeatureIds()).difference(oldIDs)
+        addedIDs = sorted(set(speclib.allFeatureIds()).difference(oldIDs))
+
+        PROFILE2FID = dict()
+        FID2STYLE = dict()
+        for p, fid in zip(currentProfiles, addedIDs):
+            PROFILE2FID[p] = fid
+            FID2STYLE[fid] = profileStyles.get(p,
+                                               colorScheme.temporaryProfileStyle)
 
         if mode == SpectralLibraryWidget.CurrentProfilesMode.normal:
             # give current spectral the current spectral style
             self.mCurrentProfileIDs.extend(addedIDs)
-            plotWidget.setProfileStyles([(colorScheme.temporaryProfileStyle, addedIDs)])
+            plotWidget.setProfileStyles(None, None, fid2style=FID2STYLE)
 
         plotWidget.mUpdateTimer.start()
 

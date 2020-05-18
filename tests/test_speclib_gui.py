@@ -440,6 +440,33 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(slw)
 
+    def test_CurrentProfiles(self):
+
+        w = SpectralLibraryWidget()
+
+        sl = TestObjects.createSpectralLibrary(10)
+        p1 = sl[0]
+        p2 = sl[1]
+        p3 = sl[2]
+        p1.setName('Default Style')
+        p2.setName('Style Red')
+        p3.setName('Style Blue')
+
+        styleA = PlotStyle()
+        styleA.setLineColor(QColor('red'))
+        styleA.setMarkerColor(QColor('red'))
+        styleB = PlotStyle()
+        styleB.setLineColor(QColor('blue'))
+        styleB.setMarkerColor(QColor('blue'))
+
+        styles = dict()
+        styles[p2] = styleA
+        styles[p3] = styleB
+
+        w.setCurrentProfiles([p1, p2, p3], profileStyles=styles)
+
+        self.showGui(w)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 
