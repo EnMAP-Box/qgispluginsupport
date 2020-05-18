@@ -92,15 +92,6 @@ class TestSpeclibWidgets(TestCase):
         self.showGui(plotWidget)
 
     @unittest.skipIf(False, '')
-    def test_SpectralLibraryPlotWidgetSimple(self):
-
-        speclib = TestObjects.createSpectralLibrary(10)
-        w = SpectralLibraryPlotWidget()
-        w.setSpeclib(speclib)
-
-        self.showGui(w)
-
-    @unittest.skipIf(False, '')
     def test_SpectraLibraryPlotDataItem(self):
 
         profile = SpectralProfile()
@@ -198,12 +189,8 @@ class TestSpeclibWidgets(TestCase):
             r = f(v, 'X')
             self.assertListEqual(list(r), [0.1, 0.2, 0.3], msg='Failed to convert from nm to {}'.format(dst))
 
-
         r = m.convertFunction('nm', 'nm')(v, 'X')
         self.assertListEqual(list(r), [100, 200, 300])
-
-
-
 
     def test_SpectralLibraryPlotWidget_units(self):
 

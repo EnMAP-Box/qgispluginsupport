@@ -981,6 +981,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         self.mViewBox.mCBXAxisUnit.currentIndexChanged.connect(self.updateXUnit)
         self.mSPECIFIC_PROFILE_STYLES = dict()
+        self.mTEMPORARY_HIGHLIGHTED = set()
         self.mDefaultColorScheme: SpectralLibraryPlotColorScheme
         self.mDefaultColorScheme = SpectralLibraryPlotColorScheme.default()
         self.mColorScheme: SpectralLibraryPlotColorScheme
@@ -1256,13 +1257,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :return:
         """
 
-        if not isinstance(fid2style, dict):
-            if isinstance(style, PlotStyle) and isinstance(fids, list):
-                fid2style = dict()
-                for fid in fids:
-                    fid2style[fid] = style
-            else:
-                return
+        if isinstance(style, PlotStyle) and isinstance(fids, list):
+            for fid in fids:
+                fid2style[fid] = style
+        if len(fid2style) == 0:
+            return
 
         updatedFIDs = []
         for fid, style in fid2style.items():
@@ -1586,17 +1585,25 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # update selection color
         sc = self.colorScheme().selectionColor
-        for pdi in [pdi for pdi in pdis if pdi.id() in self.speclib().selectedFeatureIds()]:
-            line_increase = 2
+        selectedFeatureIDs = self.speclib().selectedFeatureIds()
+        nonSelectedTemporaryIDs = [fid for fid in self.mTEMPORARY_HIGHLIGHTED if fid not in selectedFeatureIDs]
+
+        line_increase_selected = 2
+        line_increase_temp = 3
+
+        for pdi in [pdi for pdi in pdis if pdi.id() in selectedFeatureIDs]:
             linePen = QPen(pdi.opts['pen'])
             linePen.setColor(sc)
-            linePen.setWidth(linePen.width() + line_increase)
+            linePen.setWidth(linePen.width() + line_increase_selected)
             pdi.opts['pen'] = linePen
             pdi.opts['symbolPen'].setColor(sc)
             pdi.opts['symbolBrush'].setColor(sc)
-            pdi.opts['symbolSize'] = pdi.opts['symbolSize'] + line_increase
-        for pdi in [pdi for pdi in pdis if pdi.id() not in self.speclib().selectedFeatureIds()]:
-            s = ""
+            pdi.opts['symbolSize'] = pdi.opts['symbolSize'] + line_increase_selected
+        for pdi in [pdi for pdi in pdis if pdi.id() in nonSelectedTemporaryIDs]:
+            linePen = QPen(pdi.opts['pen'])
+            linePen.setWidth(linePen.width() + line_increase_temp)
+            pdi.opts['pen'] = linePen
+            pdi.opts['symbolSize'] = pdi.opts['symbolSize'] + line_increase_temp
 
         # finally, update items
         for pdi in pdis:
@@ -1685,8 +1692,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         dualView = self.dualView()
 
         # overlaided features / current spectral
-        priority0 = [fid for fid, v in self.mSPECIFIC_PROFILE_STYLES.items() if
-                     v == self.colorScheme().temporaryProfileStyle]
+        priority0 = sorted(self.mTEMPORARY_HIGHLIGHTED)
         priority1 = []  # visible features
         priority2 = []  # selected features
         priority3 = []  # any other : not visible / not selected
@@ -2336,9 +2342,6 @@ class SpectralLibraryWidget(QMainWindow):
         self.mCurrentProfilesMode: SpectralLibraryWidget.CurrentProfilesMode
         self.mCurrentProfilesMode = SpectralLibraryWidget.CurrentProfilesMode.normal
         self.setCurrentProfilesMode(self.mCurrentProfilesMode)
-
-        self.mCurrentProfileIDs: list = []
-
         self.initActions()
 
         self.mMapInteraction = True
@@ -2477,9 +2480,10 @@ class SpectralLibraryWidget(QMainWindow):
             btnResetProfileStyles.setToolTip('Resets all profile styles')
         else:
             for fid in selectedFIDs:
-                spi = self.plotWidget().spectralProfilePlotDataItem(fid)
-                if isinstance(spi, SpectralProfilePlotDataItem):
-                    plotStyle = PlotStyle.fromPlotDataItem(spi)
+                ps = self.plotWidget().mSPECIFIC_PROFILE_STYLES.get(fid)
+                if isinstance(ps, PlotStyle):
+                    plotStyle = ps.clone()
+                break
 
             btnResetProfileStyles.setText('Reset Selected')
             btnResetProfileStyles.clicked.connect(
@@ -2960,8 +2964,9 @@ class SpectralLibraryWidget(QMainWindow):
         """
         Adds all current spectral profiles to the "persistent" SpectralLibrary
         """
-        self.plotWidget().setProfileStyles(None, self.mCurrentProfileIDs)
-        self.mCurrentProfileIDs.clear()
+        fids = self.currentProfileIds()
+        self.plotWidget().mTEMPORARY_HIGHLIGHTED.clear()
+        self.plotWidget().updateProfileStyles(fids)
 
     sigCurrentSpectraChanged = pyqtSignal(list)
 
@@ -2988,25 +2993,18 @@ class SpectralLibraryWidget(QMainWindow):
         #  stop plot updates
         plotWidget.mUpdateTimer.stop()
         restart_editing = not speclib.startEditing()
-        oldCurrentIds = self.mCurrentProfileIDs[:]
+        oldCurrentIds = self.currentProfileIds()
 
         if mode == SpectralLibraryWidget.CurrentProfilesMode.normal:
             # delete previous current profiles from speclib
             speclib.deleteFeatures(oldCurrentIds)
             plotWidget.removeSpectralProfilePDIs(oldCurrentIds, updateScene=False)
             # now there should'nt be any PDI or style ref related to an old ID
-            if True:
-                all_lyr = speclib.allFeatureIds()
-                all_style = plotWidget.mSPECIFIC_PROFILE_STYLES.keys()
-                for id in oldCurrentIds:
-                    if id in all_lyr:
-                        s = ""
-                    assert id not in all_lyr
-                    assert id not in all_style
+
         if mode == SpectralLibraryWidget.CurrentProfilesMode.automatically:
             self.addCurrentSpectraToSpeclib()
 
-        self.mCurrentProfileIDs.clear()
+        self.plotWidget().mTEMPORARY_HIGHLIGHTED.clear()
         # if necessary, convert QgsFeatures to SpectralProfiles
         for i in range(len(currentProfiles)):
             p = currentProfiles[i]
@@ -3019,21 +3017,24 @@ class SpectralLibraryWidget(QMainWindow):
         oldIDs = set(speclib.allFeatureIds())
         res = speclib.addProfiles(currentProfiles)
         addedIDs0 = sorted(set(speclib.allFeatureIds()).difference(oldIDs))
+
         self.mSpeclib.commitChanges()
         if restart_editing:
             speclib.startEditing()
+
         addedIDs = sorted(set(speclib.allFeatureIds()).difference(oldIDs))
 
         PROFILE2FID = dict()
         FID2STYLE = dict()
         for p, fid in zip(currentProfiles, addedIDs):
             PROFILE2FID[p] = fid
-            FID2STYLE[fid] = profileStyles.get(p,
-                                               colorScheme.temporaryProfileStyle)
+            style = profileStyles.get(p)
+            if isinstance(style, PlotStyle):
+                FID2STYLE[fid] = style
 
         if mode == SpectralLibraryWidget.CurrentProfilesMode.normal:
             # give current spectral the current spectral style
-            self.mCurrentProfileIDs.extend(addedIDs)
+            self.plotWidget().mTEMPORARY_HIGHLIGHTED.update(addedIDs)
             plotWidget.setProfileStyles(None, None, fid2style=FID2STYLE)
 
         plotWidget.mUpdateTimer.start()
@@ -3041,13 +3042,15 @@ class SpectralLibraryWidget(QMainWindow):
     def currentSpectra(self) -> list:
         return self.currentProfiles()
 
-    def currentProfiles(self) -> list:
+    def currentProfileIds(self) -> typing.List[int]:
+        return sorted(self.plotWidget().mTEMPORARY_HIGHLIGHTED)
+
+    def currentProfiles(self) -> typing.List[SpectralProfile]:
         """
         Returns the SpectralProfiles which are not added to the SpectralLibrary but shown as over-plot items
         :return: [list-of-SpectralProfiles]
         """
-        fids = self.mCurrentProfileIDs[:]
-        return list(self.mSpeclib.profiles(fids))
+        return list(self.mSpeclib.profiles(self.currentProfileIds()))
 
 
 class SpectralLibraryPanel(QgsDockWidget):
