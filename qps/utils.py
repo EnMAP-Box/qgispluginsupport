@@ -20,12 +20,18 @@ import traceback
 import calendar
 import datetime
 from qgis.core import *
+from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
+    QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
+    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask
 from qgis.gui import *
+from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
+
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtXml import *
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.PyQt import uic
+from qgis.PyQt.QtWidgets import QPlainTextEdit
 from osgeo import gdal, ogr
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
@@ -43,6 +49,7 @@ except:
 
 jp = os.path.join
 dn = os.path.dirname
+
 
 def rm(p):
     """
@@ -132,8 +139,7 @@ def findUpwardPath(basepath, name, isDirectory=True) -> pathlib.Path:
     """
     tmp = pathlib.Path(basepath)
     while tmp != pathlib.Path(tmp.anchor):
-        if (isDirectory and os.path.isdir(tmp / name)) or \
-            os.path.isfile(tmp / name):
+        if (isDirectory and os.path.isdir(tmp / name)) or os.path.isfile(tmp / name):
             return tmp / name
         else:
             tmp = tmp.parent
@@ -524,9 +530,6 @@ def gdalFileSize(path) -> int:
         return size
 
 
-        s = ""
-
-
 def qgisLayerTreeLayers() -> list:
     """
     Returns the layers shown in the QGIS LayerTree
@@ -620,7 +623,7 @@ def value2str(value, sep:str=None, delimiter:str=' '):
     return value
 
 
-def setQgsFieldValue(feature:QgsFeature, field, value):
+def setQgsFieldValue(feature: QgsFeature, field, value):
     """
     Wrties the Python value v into a QgsFeature field, taking care of required conversions
     :param feature: QgsFeature

@@ -33,7 +33,21 @@
 import json, enum, pickle, typing, pathlib
 from osgeo import osr
 from PyQt5.QtWidgets import *
-from qgis.gui import QgsGui
+from qgis.core import \
+    QgsRenderContext, QgsFeature, QgsVectorLayer, QgsMapLayer, QgsRasterLayer, \
+    QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
+    QgsVectorFileWriter, QgsActionManager, QgsFeatureIterator, QgsFeatureRequest, \
+    QgsGeometry, QgsPointXY, QgsPoint, QgsMultiPoint, \
+    QgsRaster, QgsDefaultValue, \
+    QgsCategorizedSymbolRenderer, QgsMapLayerProxyModel, \
+    QgsSymbol, QgsNullSymbolRenderer, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
+    QgsEditorWidgetSetup, QgsAction
+
+from qgis.gui import \
+    QgsGui, QgsMapCanvas, QgsDualView, QgisInterface, QgsEditorConfigWidget, \
+    QgsEditorWidgetWrapper, QgsActionMenu, QgsEditorWidgetFactory,  QgsDockWidget
+
+
 from ..utils import *
 from ..speclib import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
 
@@ -1778,7 +1792,6 @@ class SpectralLibrary(QgsVectorLayer):
         if isinstance(self.renderer(), QgsCategorizedSymbolRenderer):
             rendererCategories = []
             for i, c in enumerate(self.renderer().categories()):
-                assert isinstance(c, QgsRendererCategory)
                 symbol = c.symbol()
                 assert isinstance(symbol, QgsSymbol)
                 try:

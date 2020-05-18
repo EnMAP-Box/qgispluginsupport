@@ -559,7 +559,6 @@ class TestCore(TestCase):
             self.assertEqual(match.group('xvalue'), None)
             self.assertEqual(match.group('xunit'), None)
 
-
         match = regex.match('b1 23.34 nm')
         self.assertEqual(match.group('band'), '1')
         self.assertEqual(match.group('xvalue'), '23.34')

@@ -37,6 +37,15 @@ from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ..models import Option, OptionListModel
 from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle
 from ..layerproperties import AddAttributeDialog
+from qgis.core import \
+    QgsFeature, QgsRenderContext, QgsNullSymbolRenderer, \
+    QgsRasterLayer, QgsMapLayer, QgsVectorLayer, \
+    QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
+    QgsAttributeTableConfig, QgsField, QgsMapLayerProxyModel
+from qgis.gui import \
+    QgsEditorWidgetWrapper, \
+    QgsActionMenu, QgsEditorWidgetFactory, \
+    QgsDualView, QgsGui, QgisInterface, QgsMapCanvas, QgsDockWidget, QgsEditorConfigWidget
 
 BAND_INDEX = 'Band Index'
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
@@ -53,6 +62,8 @@ class UnitConverterFunctionModel(object):
 
     def __init__(self):
 
+        # look-up table with functions to conver from unit1 to unit2, with unit1 != unit2 and
+        # unit1 != None and unit2 != None
         self.mLUT = dict()
 
         self.func_return_band_index = lambda v, *args: np.arange(len(v))
@@ -61,29 +72,27 @@ class UnitConverterFunctionModel(object):
         self.func_return_decimalyear = lambda v, *args: UnitLookup.convertDateUnit(v, 'DecimalYear')
 
         # metric units
-        metric_keys = list(METRIC_EXPONENTS.keys())
-        metric_exponents = list(METRIC_EXPONENTS.values())
-        for i, key1 in enumerate(metric_keys[0:]):
-            e1 = metric_exponents[i]
-            for key2 in metric_keys[i + 1:]:
-                e2 = metric_exponents[metric_keys.index(key2)]
-                if e1 == e2:
-                    self.mLUT[(key1, key2)] = self.func_return_same
-                else:
-                    self.mLUT[(key1, key2)] = lambda v, *args, k1=key1, k2=key2: UnitLookup.convertMetricUnit(v, k1, k2)
+        for u1, e1 in METRIC_EXPONENTS.items():
+            for u2, e2 in METRIC_EXPONENTS.items():
+                key = (u1, u2)
+                if key not in self.mLUT.keys():
+                    if u1 != u2:
+                        self.mLUT[key] = lambda v, *args, k1=u1, k2=u2: UnitLookup.convertMetricUnit(v, k1, k2)
+
         # time units
-        # self.mLUT[('DecimalYear', 'DateTime')] = lambda v, *args: datetime64(v)
-        self.mLUT[('DecimalYear', 'DOY')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DOY')
-        self.mLUT[('DateTime', 'DOY')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DOY')
+        # convert between DecimalYear and DateTime stamp
+        self.mLUT[('DecimalYear', 'DateTime')] = lambda v, *args: datetime64(v)
         self.mLUT[('DateTime', 'DecimalYear')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DecimalYear')
 
+        # convert to DOY (reversed operation is not possible)
+        self.mLUT[('DecimalYear', 'DOY')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DOY')
+        self.mLUT[('DateTime', 'DOY')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DOY')
+
     def convertFunction(self, unitSrc: str, unitDst: str):
-        unitSrc = UnitLookup.baseUnit(unitSrc)
-        unitDst = UnitLookup.baseUnit(unitDst)
         if unitDst == BAND_INDEX:
             return self.func_return_band_index
-        if unitDst == 'DateTime':
-            return self.func_return_decimalyear
+        unitSrc = UnitLookup.baseUnit(unitSrc)
+        unitDst = UnitLookup.baseUnit(unitDst)
         if unitSrc is None or unitDst is None:
             return self.func_return_none
         if unitSrc == unitDst:
@@ -748,7 +757,6 @@ class SpectralViewBox(pg.ViewBox):
     """
     Subclass of ViewBox
     """
-    #sigXUnitChanged = pyqtSignal(str)
     sigColorSchemeChanged = pyqtSignal(SpectralLibraryPlotColorScheme)
     sigMaxNumberOfProfilesChanged = pyqtSignal(int)
 
@@ -1402,8 +1410,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.viewport().update()
     """
 
-
-
     def unitConversionFunction(self, unitSrc, unitDst):
         """
         Returns a function to convert a numeric value from unitSrc to unitDst.
@@ -1444,9 +1450,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
     def updateXUnit(self):
         unit = self.mViewBox.mCBXAxisUnit.currentData(Qt.UserRole)
-        label =self.mViewBox.mCBXAxisUnit.currentData(Qt.DisplayRole)
-        # update axis label
+        label = self.mViewBox.mCBXAxisUnit.currentData(Qt.DisplayRole)
 
+        # update axis label
         if unit in UnitLookup.metric_units():
             label = 'Wavelength [{}]'.format(unit)
         elif unit in UnitLookup.time_units():
@@ -2743,7 +2749,6 @@ class SpectralLibraryWidget(QMainWindow):
                 print('Can not edit spectral library')
 
     def onReloadProfiles(self):
-
         cnt = self.speclib().selectedFeatureCount()
         if cnt > 0 and self.speclib().isEditable():
             # ask for profile source raster
