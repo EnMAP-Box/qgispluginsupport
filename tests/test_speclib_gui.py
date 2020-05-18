@@ -172,12 +172,9 @@ class TestSpeclibWidgets(TestCase):
         w.layout().addWidget(pw)
         w.layout().addWidget(btn)
 
-
         self.assertIsInstance(pw.plotItem, pg.PlotItem)
         self.assertIsInstance(pw.plotItem.getViewBox(), SpectralViewBox)
         self.assertIsInstance(pw.plotItem.getAxis('bottom'), SpectralXAxis)
-
-
 
         plotItem = pw.getPlotItem()
         self.assertIsInstance(plotItem, pg.PlotItem)
@@ -190,6 +187,23 @@ class TestSpeclibWidgets(TestCase):
         pw.setXUnit('nm')
         self.showGui(w)
 
+    def test_UnitConverterFunctionModel(self):
+
+        m = UnitConverterFunctionModel()
+
+        v = np.asarray([100, 200, 300])
+
+        for dst in ['um', 'μm', u'μm']:
+            f = m.convertFunction('nm', dst)
+            r = f(v, 'X')
+            self.assertListEqual(list(r), [0.1, 0.2, 0.3], msg='Failed to convert from nm to {}'.format(dst))
+
+
+        r = m.convertFunction('nm', 'nm')(v, 'X')
+        self.assertListEqual(list(r), [100, 200, 300])
+
+
+
 
     def test_SpectralLibraryPlotWidget_units(self):
 
@@ -197,6 +211,7 @@ class TestSpeclibWidgets(TestCase):
 
         p1 = SpectralProfile()
         p2 = SpectralProfile()
+
         p1.setValues(x = [.1, .2, .3, .4], y = [20,30,40,30], xUnit='um')
         p2.setValues(x = [100, 200, 300, 400], y=[21, 31, 41, 31], xUnit='nm')
         slib.startEditing()
@@ -204,7 +219,6 @@ class TestSpeclibWidgets(TestCase):
         slib.commitChanges()
         pw = SpectralLibraryPlotWidget()
         pw.setSpeclib(slib)
-
 
         self.showGui(pw)
 

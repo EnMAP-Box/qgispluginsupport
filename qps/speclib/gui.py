@@ -78,6 +78,8 @@ class UnitConverterFunctionModel(object):
         self.mLUT[('DateTime', 'DecimalYear')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DecimalYear')
 
     def convertFunction(self, unitSrc: str, unitDst: str):
+        unitSrc = UnitLookup.baseUnit(unitSrc)
+        unitDst = UnitLookup.baseUnit(unitDst)
         if unitDst == BAND_INDEX:
             return self.func_return_band_index
         if unitDst == 'DateTime':
@@ -86,7 +88,9 @@ class UnitConverterFunctionModel(object):
             return self.func_return_none
         if unitSrc == unitDst:
             return self.func_return_same
-
+        key = (unitSrc, unitDst)
+        if key not in self.mLUT.keys():
+            s = ""
         return self.mLUT.get((unitSrc, unitDst), self.func_return_none)
 
 

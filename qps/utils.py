@@ -226,6 +226,8 @@ class UnitLookup(object):
     DATE_UNITS = ['DateTime', 'DOY', 'DecimalYear', 'DecimalYear[366]', 'DecimalYear[365]', 'Y', 'M', 'W', 'D']
     TIME_UNITS = ['h', 'm', 's', 'ms', 'us', 'ns', 'ps', 'fs', 'as']
 
+    UNIT_LOOKUP = {}
+
     @staticmethod
     def metric_units() -> typing.List[str]:
         return list(UnitLookup.METRIC_EXPONENTS.keys())
@@ -246,69 +248,75 @@ class UnitLookup(object):
 
         unit = unit.strip()
 
-        if unit in \
-                UnitLookup.metric_units() + \
-                UnitLookup.date_units() + \
-                UnitLookup.time_units():
-            return unit
+        if unit in UnitLookup.UNIT_LOOKUP.keys():
+            return UnitLookup.UNIT_LOOKUP[unit]
 
-        # metric units
-        if re.search(r'^(Nanomet(er|re)s?)$', unit, re.I):
-            return 'nm'
-        if re.search(r'^(Micromet(er|re)s?|um)$', unit, re.I):
-            return 'μm'
-        if re.search(r'^(Millimet(er|re)s?)$', unit, re.I):
-            return 'mm'
-        if re.search(r'^(Centimet(er|re)s?)$', unit, re.I):
-            return 'cm'
-        if re.search(r'^(Decimet(er|re)s?)$', unit, re.I):
-            return 'dm'
-        if re.search(r'^(Met(er|re)s?)$', unit, re.I):
-            return 'm'
-        if re.search(r'^(Hectomet(er|re)s?)$', unit, re.I):
-            return 'hm'
-        if re.search(r'^(Kilomet(er|re)s?)$', unit, re.I):
-            return 'km'
+        # so far this unit is unknown. Try to find the base unit
+        # store unit string in Lookup table for fast conversion into its base unit
+        # e.g. to convert string like "MiKrOMetErS" to "μm"
+        baseUnit = None
 
+        if unit in UnitLookup.metric_units() + \
+                   UnitLookup.date_units() + \
+                   UnitLookup.time_units():
+            baseUnit = unit
+        elif re.search(r'^(Nanomet(er|re)s?)$', unit, re.I):
+            baseUnit = 'nm'
+        elif re.search(r'^(Micromet(er|re)s?|um|μm)$', unit, re.I):
+            baseUnit = 'μm'
+        elif re.search(r'^(Millimet(er|re)s?)$', unit, re.I):
+            baseUnit = 'mm'
+        elif re.search(r'^(Centimet(er|re)s?)$', unit, re.I):
+            baseUnit = 'cm'
+        elif re.search(r'^(Decimet(er|re)s?)$', unit, re.I):
+            baseUnit = 'dm'
+        elif re.search(r'^(Met(er|re)s?)$', unit, re.I):
+            baseUnit = 'm'
+        elif re.search(r'^(Hectomet(er|re)s?)$', unit, re.I):
+            baseUnit = 'hm'
+        elif re.search(r'^(Kilomet(er|re)s?)$', unit, re.I):
+            baseUnit = 'km'
         # date units
-        if re.search(r'(Date([_\- ]?Time)?([_\- ]?Group)?|DTG)$', unit, re.I):
-            return 'DateTime'
-        if re.search(r'^(doy|Day[-_ ]?Of[-_ ]?Year?)$', unit, re.I):
-            return 'DOY'
-        if re.search(r'decimal[_\- ]?years?$', unit, re.I):
-            return 'DecimalYear'
-        if re.search(r'decimal[_\- ]?years?\[356\]$', unit, re.I):
-            return 'DecimalYear[365]'
-        if re.search(r'decimal[_\- ]?years?\[366\]$', unit, re.I):
-            return 'DecimalYear[366]'
-        if re.search(r'^Years?$', unit, re.I):
-            return 'Y'
-        if re.search(r'^Months?$', unit, re.I):
-            return 'M'
-        if re.search(r'^Weeks?$', unit, re.I):
-            return 'W'
-        if re.search(r'^Days?$', unit, re.I):
-            return 'D'
-        if re.search(r'^Hours?$', unit, re.I):
-            return 'h'
-        if re.search(r'^Minutes?$', unit, re.I):
-            return 'm'
-        if re.search(r'^Seconds?$', unit, re.I):
-            return 's'
-        if re.search(r'^MilliSeconds?$', unit, re.I):
-            return 'ms'
-        if re.search(r'^MicroSeconds?$', unit, re.I):
-            return 'us'
-        if re.search(r'^NanoSeconds?$', unit, re.I):
-            return 'ns'
-        if re.search(r'^Picoseconds?$', unit, re.I):
-            return 'ps'
-        if re.search(r'^Femtoseconds?$', unit, re.I):
-            return 'fs'
-        if re.search(r'^Attoseconds?$', unit, re.I):
-            return 'as'
+        elif re.search(r'(Date([_\- ]?Time)?([_\- ]?Group)?|DTG)$', unit, re.I):
+            baseUnit = 'DateTime'
+        elif re.search(r'^(doy|Day[-_ ]?Of[-_ ]?Year?)$', unit, re.I):
+            baseUnit = 'DOY'
+        elif re.search(r'decimal[_\- ]?years?$', unit, re.I):
+            baseUnit = 'DecimalYear'
+        elif re.search(r'decimal[_\- ]?years?\[356\]$', unit, re.I):
+            baseUnit = 'DecimalYear[365]'
+        elif re.search(r'decimal[_\- ]?years?\[366\]$', unit, re.I):
+            baseUnit = 'DecimalYear[366]'
+        elif re.search(r'^Years?$', unit, re.I):
+            baseUnit = 'Y'
+        elif re.search(r'^Months?$', unit, re.I):
+            baseUnit = 'M'
+        elif re.search(r'^Weeks?$', unit, re.I):
+            baseUnit = 'W'
+        elif re.search(r'^Days?$', unit, re.I):
+            baseUnit = 'D'
+        elif re.search(r'^Hours?$', unit, re.I):
+            baseUnit = 'h'
+        elif re.search(r'^Minutes?$', unit, re.I):
+            baseUnit = 'm'
+        elif re.search(r'^Seconds?$', unit, re.I):
+            baseUnit = 's'
+        elif re.search(r'^MilliSeconds?$', unit, re.I):
+            baseUnit = 'ms'
+        elif re.search(r'^MicroSeconds?$', unit, re.I):
+            baseUnit = 'us'
+        elif re.search(r'^NanoSeconds?$', unit, re.I):
+            baseUnit = 'ns'
+        elif re.search(r'^Picoseconds?$', unit, re.I):
+            baseUnit = 'ps'
+        elif re.search(r'^Femtoseconds?$', unit, re.I):
+            baseUnit = 'fs'
+        elif re.search(r'^Attoseconds?$', unit, re.I):
+            baseUnit = 'as'
 
-        return None
+        if baseUnit:
+            UnitLookup.UNIT_LOOKUP[unit] = baseUnit
+        return baseUnit
 
     @staticmethod
     def isMetricUnit(unit: str) -> bool:
