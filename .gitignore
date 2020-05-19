@@ -27,6 +27,7 @@ qgisresources
 enmapboxtestdata/
 testdata/
 test-reports/
+test-outputs/
 
 *.gpkg-shm
 *.gpkg-wal

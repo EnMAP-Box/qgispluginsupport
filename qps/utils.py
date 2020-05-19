@@ -128,18 +128,18 @@ QPS_MAPLAYER_STORE = QgsMapLayerStore()
 MAP_LAYER_STORES = [QPS_MAPLAYER_STORE, QgsProject.instance()]
 
 
-def findUpwardPath(basepath, name, isDirectory=True) -> pathlib.Path:
+def findUpwardPath(basepath, name, is_directory:bool=True) -> pathlib.Path:
     """
     Searches for an file or directory in an upward path of the base path
 
     :param basepath:
     :param name:
-    :param isDirectory:
+    :param is_directory:
     :return:
     """
-    tmp = pathlib.Path(basepath)
+    tmp = pathlib.Path(basepath).resolve()
     while tmp != pathlib.Path(tmp.anchor):
-        if (isDirectory and os.path.isdir(tmp / name)) or os.path.isfile(tmp / name):
+        if (is_directory and os.path.isdir(tmp / name)) or os.path.isfile(tmp / name):
             return tmp / name
         else:
             tmp = tmp.parent

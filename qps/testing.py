@@ -1,6 +1,22 @@
-import os, sys, re, io, importlib, typing, traceback, sqlite3
-import uuid, warnings, pathlib, time, site, mock, inspect, types, enum
+import os
+import sys
+import re
+import io
+import importlib
+import typing
+import traceback
+import sqlite3
+import uuid
+import warnings
+import pathlib
+import time
+import site
+import mock
+import inspect
+import types
+import enum
 import sip
+import random
 from qgis.core import *
 from qgis.gui import *
 from qgis.PyQt.QtCore import *
@@ -321,6 +337,18 @@ class TestCase(qgis.testing.TestCase):
             import gc
             gc.collect()
 
+
+    def testOutputDirectory(self, name:str='test-outputs') -> pathlib.Path:
+        """
+        Returns the path to a test output directory
+        :return:
+        """
+        repo = findUpwardPath(__file__, '.git').parent
+
+        testDir = repo / name
+        os.makedirs(testDir, exist_ok=True)
+        return testDir
+
     def setUp(self):
 
         print('\nSET UP {}'.format(self.id()))
@@ -408,7 +436,7 @@ class TestObjects():
         return QDropEvent(QPointF(0, 0), Qt.CopyAction, mimeData, Qt.LeftButton, Qt.NoModifier)
 
     @staticmethod
-    def spectralProfileData(n=10):
+    def spectralProfileData(n:int=10, n_bands:int=None):
         """
         Returns n random spectral profiles from the test data
         :return: lost of (N,3) array of floats specifying point locations.
@@ -417,7 +445,6 @@ class TestObjects():
         coredata, wl, wlu, gt, wkt = TestObjects.coreData()
 
         results = []
-        import random
         assert n > 0
         i = 0
         while i < n:
