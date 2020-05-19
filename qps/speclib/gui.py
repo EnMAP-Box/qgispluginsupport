@@ -3024,6 +3024,7 @@ class SpectralLibraryWidget(QMainWindow):
 
         addedIDs = sorted(set(speclib.allFeatureIds()).difference(oldIDs))
 
+        # set profile style
         PROFILE2FID = dict()
         FID2STYLE = dict()
         for p, fid in zip(currentProfiles, addedIDs):
@@ -3031,11 +3032,12 @@ class SpectralLibraryWidget(QMainWindow):
             style = profileStyles.get(p)
             if isinstance(style, PlotStyle):
                 FID2STYLE[fid] = style
+        plotWidget.setProfileStyles(None, None, fid2style=FID2STYLE)
 
+        # set current profiles highlighted
         if mode == SpectralLibraryWidget.CurrentProfilesMode.normal:
             # give current spectral the current spectral style
             self.plotWidget().mTEMPORARY_HIGHLIGHTED.update(addedIDs)
-            plotWidget.setProfileStyles(None, None, fid2style=FID2STYLE)
 
         plotWidget.mUpdateTimer.start()
 

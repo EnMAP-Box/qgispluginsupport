@@ -377,7 +377,7 @@ def toType(t, arg, empty2None=True):
             return t(arg)
 
 
-def encodeProfileValueDict(d: dict) -> str:
+def encodeProfileValueDict(d: dict, mode:SerializationMode=SerializationMode.PICKLE) -> str:
     """
     Converts a SpectralProfile value dictionary into a compact JSON string, which can be
     extracted with `decodeProfileValueDict`.
@@ -392,15 +392,15 @@ def encodeProfileValueDict(d: dict) -> str:
         # save keys with information only
         if v is not None:
             d2[k] = v
-    if SERIALIZATION == SerializationMode.JSON:
+    if mode == SerializationMode.JSON:
         return json.dumps(d2, sort_keys=True, separators=(',', ':'))
-    elif SERIALIZATION == SerializationMode.PICKLE:
+    elif mode == SerializationMode.PICKLE:
         return QByteArray(pickle.dumps(d2))
     else:
         raise NotImplementedError()
 
 
-def decodeProfileValueDict(dump):
+def decodeProfileValueDict(dump, mode:SerializationMode=SerializationMode.PICKLE):
     """
     Converts a json / pickle dump  into a SpectralProfile value dictionary
     :param dump: str
@@ -410,9 +410,9 @@ def decodeProfileValueDict(dump):
 
     if dump not in EMPTY_VALUES:
         d2 = None
-        if SERIALIZATION == SerializationMode.JSON:
+        if mode == SerializationMode.JSON:
             d2 = json.loads(dump)
-        elif SERIALIZATION == SerializationMode.PICKLE:
+        elif mode == SerializationMode.PICKLE:
             d2 = pickle.loads(dump)
         else:
             raise NotImplementedError()
