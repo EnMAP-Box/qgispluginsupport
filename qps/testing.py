@@ -436,57 +436,70 @@ class TestObjects():
         return QDropEvent(QPointF(0, 0), Qt.CopyAction, mimeData, Qt.LeftButton, Qt.NoModifier)
 
     @staticmethod
-    def spectralProfileData(n:int=10, n_bands:int=None):
+    def spectralProfileData(n: int = 10,
+                            n_bands: typing.List[int] = [-1]):
         """
         Returns n random spectral profiles from the test data
         :return: lost of (N,3) array of floats specifying point locations.
         """
 
         coredata, wl, wlu, gt, wkt = TestObjects.coreData()
-
-        results = []
+        cnb, cnl, cns = coredata.shape
         assert n > 0
-        i = 0
-        while i < n:
-            x = random.randint(0, coredata.shape[2] - 1)
-            y = random.randint(0, coredata.shape[1] - 1)
-            profile = coredata[:, y, x]
-            yield profile, wl, wlu
-            i += 1
+        assert isinstance(n_bands, list)
+        for nb in n_bands:
+            assert nb == -1 or nb > 0 and nb <= cnb
+        n_bands = [nb if nb > 0 else cnb for nb in n_bands]
+
+        for nb in n_bands:
+            band_indices = np.linspace(0, cnb-1, num=nb, dtype=np.int16)
+            i = 0
+            while i < n:
+                x = random.randint(0, coredata.shape[2] - 1)
+                y = random.randint(0, coredata.shape[1] - 1)
+                yield coredata[band_indices, y, x], wl[band_indices], wlu
+                i += 1
 
     @staticmethod
-    def spectralProfiles(n=10, fields: QgsFields = None):
+    def spectralProfiles(n=10,
+                         fields: QgsFields = None,
+                         n_bands: typing.List[int] = [-1]):
         from .speclib.core import SpectralProfile
-        for (data, wl, wlu) in TestObjects.spectralProfileData(n):
+        i = 1
+        for (data, wl, wlu) in TestObjects.spectralProfileData(n, n_bands=n_bands):
             profile = SpectralProfile(fields=fields)
+            profile.setName(f'Profile {i}')
             profile.setValues(y=data, x=wl, xUnit=wlu)
             yield profile
+            i += 1
 
     """
     Class with static routines to create test objects
     """
 
     @staticmethod
-    def createSpectralLibrary(n: int = 10, nEmpty: int = 0):
+    def createSpectralLibrary(n: int = 10,
+                              n_empty: int = 0,
+                              n_bands: typing.List[int] = [-1]):
         """
         Creates an Spectral Library
         :param n: total number of profiles
         :type n: int
-        :param nEmpty: number of empty profiles, SpectralProfiles with empty x/y values
-        :type nEmpty: int
+        :param n_empty: number of empty profiles, SpectralProfiles with empty x/y values
+        :type n_empty: int
         :return: SpectralLibrary
         :rtype: SpectralLibrary
         """
         assert n > 0
-        assert nEmpty >= 0 and nEmpty <= n
+        assert n_empty >= 0 and n_empty <= n
 
         from .speclib.core import SpectralLibrary
         slib = SpectralLibrary()
         assert slib.startEditing()
-        profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields()))
+        profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields(), n_bands=n_bands))
         slib.addProfiles(profiles, addMissingFields=False)
 
-        for i in range(nEmpty):
+        for i in range(n_empty):
             p = slib[i]
             p.setValues([], [])
             assert slib.updateFeature(p)

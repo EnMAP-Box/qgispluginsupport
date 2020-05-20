@@ -110,10 +110,7 @@ class TestCore(TestCase):
         xUnit = 'nm'
         yUnit = None
 
-        reminder = qps.speclib.core.SERIALIZATION
-
         for mode in [SerializationMode.JSON, SerializationMode.PICKLE]:
-            qps.speclib.core.SERIALIZATION = mode
 
             sl = SpectralLibrary()
             self.assertTrue(sl.startEditing())
@@ -121,14 +118,14 @@ class TestCore(TestCase):
             sp.setValues(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
 
             vd1 = sp.values()
-            dump = encodeProfileValueDict(vd1)
+            dump = encodeProfileValueDict(vd1, mode=mode)
 
             if mode == SerializationMode.JSON:
                 self.assertIsInstance(dump, str)
             elif mode == SerializationMode.PICKLE:
                 self.assertIsInstance(dump, QByteArray)
 
-            vd2 = decodeProfileValueDict(dump)
+            vd2 = decodeProfileValueDict(dump, mode=mode)
             self.assertIsInstance(vd2, dict)
             self.assertEqual(vd1, vd2)
             sl.addProfiles([sp])
@@ -141,9 +138,6 @@ class TestCore(TestCase):
             elif mode == SerializationMode.PICKLE:
                 self.assertIsInstance(rawValues, QByteArray)
 
-
-
-        qps.speclib.core.SERIALIZATION = reminder
 
 
     def test_SpectralProfile(self):

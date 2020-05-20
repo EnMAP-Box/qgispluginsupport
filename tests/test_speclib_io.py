@@ -33,7 +33,6 @@ from qps.speclib.gui import *
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
 class TestIO(TestCase):
-
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         os.makedirs(TEST_DIR, exist_ok=True)
@@ -278,6 +277,7 @@ class TestIO(TestCase):
         for fieldName in vlLandCover.fields().names():
             self.assertTrue(fieldName in speclib4.fieldNames())
 
+
     def test_reloadProfiles(self):
         lyr = QgsRasterLayer(enmap)
         QgsProject.instance().addMapLayer(lyr)
@@ -420,7 +420,7 @@ class TestIO(TestCase):
                 self.assertIsInstance(p, SpectralProfile)
                 self.assertListEqual(p.xValues(), sorted(p.xValues()))
         # 2. write
-        speclib = TestObjects.createSpectralLibrary(50, nEmpty=1)
+        speclib = TestObjects.createSpectralLibrary(50, n_empty=1)
         pathCSV = os.path.join(TEST_DIR, 'speclib.specchio.csv')
         csvFiles = SPECCHIOSpectralLibraryIO.write(speclib, pathCSV, progressDialog=QProgressDialog())
 
@@ -474,33 +474,47 @@ class TestIO(TestCase):
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), len(textFiles))
 
-    def test_vectorlayer(self):
+    def test_speclib2vector(self):
 
-        slib = TestObjects.createSpectralLibrary()
-
+        testDir = self.testOutputDirectory() / 'speclib2vector'
+        os.makedirs(testDir, exist_ok=True)
 
         from qps.speclib.io.vectorsources import VectorSourceSpectralLibraryIO
 
-        extensions = ['.csv', '.gpkg', '.shp', '.kml', '.gpx']
+        slib = TestObjects.createSpectralLibrary(2, n_bands=[-1, 3, 24])
+        self.assertTrue(len(slib) == 6)
+
+        extensions = ['.json', '.geojson', '.geojsonl', '.csv', '.gpkg']
+
+        hasLIBKML = isinstance(ogr.GetDriverByName('LIBKML'), ogr.Driver)
+        if hasLIBKML:
+            extensions.append('.kml')
+
         for ext in extensions:
             print('Test vector file type {}'.format(ext))
-            path = tempfile.mktemp(suffix=ext, prefix='tmpSpeclib')
+            path = testDir / f'speclib_{ext[1:]}{ext}'
 
             # write
             writtenFiles = VectorSourceSpectralLibraryIO.write(slib, path, progressDialog=QProgressDialog())
-            self.assertTrue(len(writtenFiles) > 0)
+            self.assertTrue(len(writtenFiles) == 1)
 
             # read
-            results = []
-            n = 0
-            for file in writtenFiles:
-                self.assertTrue(VectorSourceSpectralLibraryIO.canRead(file), msg='Failed to read speclib from {}'.format(file))
-                sl = VectorSourceSpectralLibraryIO.readFrom(file, progressDialog=QProgressDialog())
-                n += len(sl)
-                self.assertIsInstance(sl, SpectralLibrary)
-                results.append(sl)
+            file = writtenFiles[0]
+            self.assertTrue(VectorSourceSpectralLibraryIO.canRead(file),
+                            msg='Failed to read speclib from {}'.format(file))
+            sl = VectorSourceSpectralLibraryIO.readFrom(file, progressDialog=QProgressDialog())
+            self.assertIsInstance(sl, SpectralLibrary)
+            self.assertEqual(len(sl), len(slib))
 
-            self.assertEqual(n, len(slib))
+            for p1, p2 in zip(slib[:], sl[:]):
+                self.assertIsInstance(p1, SpectralProfile)
+                self.assertIsInstance(p2, SpectralProfile)
+                self.assertEqual(p1.name(), p2.name())
+                self.assertEqual(p1.xUnit(), p2.xUnit())
+                self.assertEqual(p1.yUnit(), p2.yUnit())
+                self.assertListEqual(p1.xValues(), p2.xValues())
+                self.assertListEqual(p1.yValues(), p2.yValues())
+
 
 
 

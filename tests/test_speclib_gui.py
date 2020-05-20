@@ -17,10 +17,12 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest, math
+import unittest
+import random
+import math
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
-import numpy as np
+
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
@@ -304,7 +306,6 @@ class TestSpeclibWidgets(TestCase):
 
         setToolButtonDefaultActionMenu(a2, [a21, a22])
 
-
         btn2 = tb.findChildren(QToolButton)[2]
         self.assertIsInstance(btn2, QToolButton)
 
@@ -511,17 +512,26 @@ class TestSpeclibWidgets(TestCase):
         slw.setCurrentSpectra(cs)
         self.assertTrue(len(slw.currentSpectra()) == 3)
 
-        if False:
-            speclib.selectByIds([1, 2, 3])
+        def onAddRandomProfile():
+            ext = l1.extent()
+            x = random.uniform(ext.xMinimum(), ext.xMaximum())
+            y = random.uniform(ext.yMinimum(), ext.yMaximum())
+            p = SpectralProfile.fromRasterLayer(l1, SpatialPoint(l1.crs(), x, y))
+            slw.setCurrentProfiles([p])
 
-            n = len(speclib)
-            sids = speclib.selectedFeatureIds()
-            self.assertTrue(len(sids) > 0)
-            slw.copySelectedFeatures()
-            slw.cutSelectedFeatures()
-            slw.pasteFeatures()
-            self.assertEqual(n, len(speclib))
-        self.showGui(slw)
+        btnAddRandomProfile = QPushButton('Add Profile')
+        btnAddRandomProfile.clicked.connect(onAddRandomProfile)
+
+
+        lh = QHBoxLayout()
+
+        lh.addWidget(btnAddRandomProfile)
+        lv = QVBoxLayout()
+        lv.addLayout(lh)
+        lv.addWidget(slw)
+        w = QWidget()
+        w.setLayout(lv)
+        self.showGui(w)
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPanel(self):
