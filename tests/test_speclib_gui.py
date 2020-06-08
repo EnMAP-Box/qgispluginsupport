@@ -223,17 +223,53 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorScheme(self):
 
-        self.assertIsInstance(SpectralLibraryPlotColorScheme.default(), SpectralLibraryPlotColorScheme)
-        self.assertIsInstance(SpectralLibraryPlotColorScheme.dark(), SpectralLibraryPlotColorScheme)
-        self.assertIsInstance(SpectralLibraryPlotColorScheme.bright(), SpectralLibraryPlotColorScheme)
-        self.assertIsInstance(SpectralLibraryPlotColorScheme.fromUserSettings(), SpectralLibraryPlotColorScheme)
 
-        b = SpectralLibraryPlotColorScheme.bright()
+        self.assertIsInstance(SpectralProfileRenderer.default(), SpectralProfileRenderer)
+        self.assertIsInstance(SpectralProfileRenderer.dark(), SpectralProfileRenderer)
+        self.assertIsInstance(SpectralProfileRenderer.bright(), SpectralProfileRenderer)
+        self.assertIsInstance(SpectralProfileRenderer.fromUserSettings(), SpectralProfileRenderer)
+
+        b = SpectralProfileRenderer.bright()
         b.saveToUserSettings()
-        self.assertEqual(b, SpectralLibraryPlotColorScheme.fromUserSettings())
-        d = SpectralLibraryPlotColorScheme.default()
-        d.saveToUserSettings()
-        self.assertEqual(d, SpectralLibraryPlotColorScheme.fromUserSettings())
+        self.assertEqual(b, SpectralProfileRenderer.fromUserSettings())
+        profileRenderer = SpectralProfileRenderer.default()
+        profileRenderer.saveToUserSettings()
+        self.assertEqual(profileRenderer, SpectralProfileRenderer.fromUserSettings())
+
+        testDir = self.testOutputDirectory() / 'speclibColorScheme'
+        os.makedirs(testDir, exist_ok=True)
+        pathXML = testDir / 'colorscheme.xml'
+
+        ps1 = PlotStyle()
+        ps1.setLineColor('red')
+        ps2 = PlotStyle()
+        ps2.setLineColor('green')
+        profileRenderer.setProfilePlotStyle(ps1, [0, 2])
+        profileRenderer.setProfilePlotStyle(ps2, [1, 3])
+
+        custom_styles = profileRenderer.nonDefaultPlotStyles()
+        for c in custom_styles:
+            self.assertIsInstance(c, PlotStyle)
+        self.assertTrue(len(custom_styles) == 2)
+
+        doc = QDomDocument()
+        node = doc.createElement('qgis')
+        profileRenderer.writeXml(node, doc)
+        doc.appendChild(node)
+
+        with open(pathXML, 'w', encoding='utf-8') as f:
+            f.write(doc.toString())
+
+        with open(pathXML, 'r', encoding='utf-8') as f:
+            xml = f.read()
+        dom = QDomDocument()
+        dom.setContent(xml)
+        root = dom.documentElement()
+        node = root.firstChildElement(XMLNODE_PROFILE_RENDERER)
+        profileRenderer2 = SpectralProfileRenderer.readXml(node)
+        self.assertIsInstance(profileRenderer2, SpectralProfileRenderer)
+        self.assertEqual(profileRenderer, profileRenderer2)
+
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorSchemeWidget(self):

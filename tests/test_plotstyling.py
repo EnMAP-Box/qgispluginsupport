@@ -26,6 +26,8 @@ from qgis.PyQt.QtGui import *
 from qps.testing import TestCase
 from qps.plotstyling.plotstyling import *
 
+
+
 class PlotStyleTests(TestCase):
 
 
@@ -76,6 +78,43 @@ class PlotStyleTests(TestCase):
 
         self.assertTrue(PlotStyle.fromJSON(None) == None)
         self.assertTrue(PlotStyle.fromJSON('') == None)
+
+    def test_XML_IO(self):
+        testDir = self.testOutputDirectory() / 'plotStyle'
+        os.makedirs(testDir, exist_ok=True)
+        path = testDir / 'plotstyle.xml'
+        doc = QDomDocument()
+
+        style = PlotStyle()
+        style.setMarkerColor('red')
+        style.setLineColor('green')
+
+        stylesIn = [style]
+        node = doc.createElement('PlotStyles')
+        for style in stylesIn:
+            style.writeXml(node, doc)
+        doc.appendChild(node)
+
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(doc.toString())
+
+        with open(path, 'r', encoding='utf-8') as f:
+            xml = f.read()
+        dom = QDomDocument()
+        dom.setContent(xml)
+        stylesOut = []
+        stylesNode = doc.firstChildElement('PlotStyles').toElement()
+        self.assertFalse(stylesNode.isNull())
+        childs = stylesNode.childNodes()
+        for i in range(childs.count()):
+            node = childs.at(i).toElement()
+            self.assertEqual(node.tagName(), XMLTAG_PLOTSTYLENODE)
+            style = PlotStyle.readXml(node)
+            self.assertIsInstance(style, PlotStyle)
+            stylesOut.append(style)
+
+        for A, B in zip(stylesIn, stylesOut):
+            self.assertEqual(A, B, msg='XML Export/Import changed style property')
 
     def test_PlotStyle(self):
 

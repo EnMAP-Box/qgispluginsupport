@@ -49,9 +49,6 @@ class TestIO(TestCase):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
-        for s in SpectralLibrary.instances():
-            del s
-
         for file in vsiSpeclibs():
             gdal.Unlink(file)
 
@@ -219,6 +216,7 @@ class TestIO(TestCase):
             self.assertIsInstance(p, SpectralProfile)
             self.assertEqual(p.yValues()[0], 42)
             self.assertEqual(p.yValues()[99], 42)
+
 
     def test_vector2speclib(self):
 

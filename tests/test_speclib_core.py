@@ -42,10 +42,6 @@ class TestCore(TestCase):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
-        for s in SpectralLibrary.instances():
-            del s
-        SpectralLibrary.__refs__.clear()
-
         for file in vsiSpeclibs():
             gdal.Unlink(file)
 
@@ -130,13 +126,6 @@ class TestCore(TestCase):
             self.assertEqual(vd1, vd2)
             sl.addProfiles([sp])
             self.assertTrue(sl.commitChanges())
-
-            rawValues = sl.getFeature(sl.allFeatureIds()[0]).attribute(FIELD_VALUES)
-
-            if mode == SerializationMode.JSON:
-                self.assertIsInstance(rawValues, str)
-            elif mode == SerializationMode.PICKLE:
-                self.assertIsInstance(rawValues, QByteArray)
 
 
 
@@ -423,24 +412,20 @@ class TestCore(TestCase):
         sp2.setValues(y=[2, 2, 2, 2, 2], x=[450, 500, 750, 1000, 1500])
 
         SLIB = SpectralLibrary()
-        self.assertEqual(len(vsiSpeclibs()), 1)
-        self.assertEqual(len(SpectralLibrary.instances()), 1)
-        self.assertEqual(len(SpectralLibrary.instances()), 1)
 
-        sl2 = SpectralLibrary()
-        self.assertEqual(len(vsiSpeclibs()), 2)
-        self.assertEqual(len(SpectralLibrary.instances()), 2)
-        self.assertEqual(len(SpectralLibrary.instances()), 2)
-
-        del sl2
-        self.assertEqual(len(SpectralLibrary.instances()), 1)
 
         self.assertEqual(SLIB.name(), 'SpectralLibrary')
         SLIB.setName('MySpecLib')
         self.assertEqual(SLIB.name(), 'MySpecLib')
 
         SLIB.startEditing()
-        SLIB.addProfiles([sp1, sp2])
+        profiles = [sp1, sp2]
+        addedFIDs = SLIB.addProfiles(profiles)
+        self.assertTrue(len(addedFIDs) == len(profiles))
+        for i, fid in enumerate(addedFIDs):
+            f = SLIB.getFeature(fid)
+            self.assertEqual(f.attribute('name'), profiles[i].name())
+
         SLIB.rollBack()
         self.assertEqual(len(SLIB), 0)
 
@@ -472,9 +457,6 @@ class TestCore(TestCase):
         slSubset = SLIB.speclibFromFeatureIDs(fids=2)
         self.assertEqual(set(SLIB.allFeatureIds()), set([1, 2]))
         self.assertIsInstance(slSubset, SpectralLibrary)
-
-        refs = list(SpectralLibrary.instances())
-        self.assertTrue(len(refs) == 2)
 
         self.assertEqual(len(slSubset), 1)
         self.assertEqual(slSubset[0].values(), SLIB[1].values())
@@ -577,7 +559,89 @@ class TestCore(TestCase):
         sp1.addSpeclib(sp2)
         self.assertTrue(len(sp1), n+len(sp2))
 
+    def test_merge(self):
 
+        sl1: SpectralLibrary = TestObjects.createSpectralLibrary(10)
+        self.assertIsInstance(sl1, SpectralLibrary)
+
+
+        profiles = []
+        for i in range(20):
+            p = SpectralProfile()
+            p.setName(f'N{i+1}')
+            profiles.append(p)
+
+        import random
+        profiles = random.choices(profiles, k=len(profiles))
+        names = [p.name() for p in profiles]
+        sl1.startEditing()
+        added_fids = sl1.addProfiles(profiles)
+        for fid, name in zip(added_fids, names):
+            p = sl1.profile(fid)
+            self.assertIsInstance(p, SpectralProfile)
+            self.assertEqual(name, p.name())
+
+
+    def test_merge_profileStyles(self):
+        from qps.plotstyling.plotstyling import PlotStyle
+
+
+        sl1: SpectralLibrary = TestObjects.createSpectralLibrary(3)
+        sl2: SpectralLibrary = TestObjects.createSpectralLibrary(2)
+
+        sl1.startEditing()
+        for p in sl1:
+            p.setName(f'A{p.id()}')
+            sl1.updateFeature(p)
+        sl1.commitChanges()
+        for i, p in enumerate(sl1):
+            style = PlotStyle()
+            style.setLineColor(f'#a{i}00ff')
+            sl1.profileRenderer().setProfilePlotStyle(style, p.id())
+
+        sl2.startEditing()
+        for p in sl1:
+            p.setName(f'B{p.id()}')
+            sl2.updateFeature(p)
+        sl2.commitChanges()
+        style = PlotStyle()
+        style.setLineColor('#ffffff')
+        sl2.profileRenderer().setProfilePlotStyle(style, sl2.allFeatureIds())
+
+        n = len(sl2)
+
+        oldFids = sl2.allFeatureIds()
+
+        sl2.startEditing()
+        newFids = sl2.addSpeclib(sl1)
+        self.assertTrue(len(sl2) == n + len(sl1))
+        STYLES = sl2.profileRenderer().profilePlotStyles(sl2.allFeatureIds())
+        print(newFids)
+        for i, p in enumerate(sl2.profiles(newFids)):
+            self.assertEqual(p.id(), newFids[i])
+            cname = STYLES[p.id()].lineColor().name()
+            self.assertEqual(p.name(), f'A{i + 1}')
+            print(f'fid{p.id()} name:{p.name()} color:{cname}')
+            self.assertTrue(cname.startswith(f'#a{i}'))
+            s = ""
+
+        all0 = sl2.allFeatureIds()
+        sl2.commitChanges()
+        all1 = sl2.allFeatureIds()
+
+        newFids = sorted([fid for fid in sl2.allFeatureIds() if fid not in oldFids])
+        STYLES = sl2.profileRenderer().profilePlotStyles(sl2.allFeatureIds())
+        for fid in oldFids:
+            style = STYLES[fid]
+            self.assertIsInstance(style, PlotStyle)
+            lineColor = style.lineColor().name()
+            self.assertEqual(lineColor, '#ffffff')
+
+        for i, fid in enumerate(newFids):
+            style = STYLES[fid]
+            self.assertIsInstance(style, PlotStyle)
+            lineColor = style.lineColor().name()
+            self.assertEqual(lineColor, f'#a{i}00ff')
 
     def test_multiinstances(self):
 

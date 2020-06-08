@@ -130,6 +130,11 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         speclib.addProfiles(profiles, addMissingFields=False)
 
         assert speclib.commitChanges()
+
+        # load style
+        pathStyle = os.path.splitext(path)[0] + '.qml'
+        if os.path.isfile(pathStyle):
+            r = speclib.loadNamedStyle(pathStyle)
         return speclib
 
     @staticmethod
@@ -185,16 +190,17 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         if len(errMsg) > 0:
             raise Exception(errMsg)
 
-        writtenFiles = []
-        if path.is_file():
-            writtenFiles.append(path)
-        else:
-            if filterFormat.driverName.startswith('GeoJSON'):
-                p2 = path.parent / f'{path.name}.json'
-                if p2.is_file():
-                    writtenFiles.append(p2)
-            s = ""
-        return writtenFiles
+        if not path.is_file() and filterFormat.driverName.startswith('GeoJSON'):
+            path = path.parent / f'{path.name}.json'
+
+        pathStyle = os.path.splitext(path)[0] + '.qml'
+        msg, success = speclib.saveNamedStyle(pathStyle)
+        print(msg)
+
+        pathMD = os.path.splitext(path)[0] + '.qmd'
+        msg, success = speclib.saveNamedMetadata(pathMD)
+        print(msg)
+        return [path]
 
     @staticmethod
     def score(uri:str) -> int:
