@@ -566,82 +566,58 @@ class TestCore(TestCase):
 
 
         profiles = []
+
+        NAME2NAME = dict()
+        color = QColor('green')
         for i in range(20):
             p = SpectralProfile()
-            p.setName(f'N{i+1}')
+            name = f'N{i+1}'
+            color = nextColor(color, mode='cat')
+            NAME2NAME[name] = color.name()
+            p.setName(name)
             profiles.append(p)
+
+        def checkColorNames(sl:SpectralLibrary):
+            STYLES = sl.profileRenderer().profilePlotStyles(sl.allFeatureIds())
+            for p in sl:
+                self.assertIsInstance(p, SpectralProfile)
+                if p.name() in NAME2NAME.keys():
+                    print(p.name())
+                    cNameRef = NAME2NAME[p.name()]
+                    cNameNow = STYLES[p.id()].lineColor().name()
+                    self.assertEqual(cNameRef, cNameNow)
 
         import random
         profiles = random.choices(profiles, k=len(profiles))
         names = [p.name() for p in profiles]
         sl1.startEditing()
         added_fids = sl1.addProfiles(profiles)
+
         for fid, name in zip(added_fids, names):
             p = sl1.profile(fid)
             self.assertIsInstance(p, SpectralProfile)
             self.assertEqual(name, p.name())
 
-
-    def test_merge_profileStyles(self):
-        from qps.plotstyling.plotstyling import PlotStyle
-
-
-        sl1: SpectralLibrary = TestObjects.createSpectralLibrary(3)
-        sl2: SpectralLibrary = TestObjects.createSpectralLibrary(2)
-
-        sl1.startEditing()
+        # assign styles
         for p in sl1:
-            p.setName(f'A{p.id()}')
-            sl1.updateFeature(p)
+            self.assertIsInstance(p, SpectralProfile)
+            if p.name() in NAME2NAME.keys():
+                style = PlotStyle()
+                style.setLineColor(QColor(NAME2NAME[p.name()]))
+                sl1.profileRenderer().setProfilePlotStyle(style, p.id())
+
+
+
+        # test line color before commit
+        checkColorNames(sl1)
+
+        # remove features before commit
+        sl1.deleteFeatures([5,9])
+        checkColorNames(sl1)
+
         sl1.commitChanges()
-        for i, p in enumerate(sl1):
-            style = PlotStyle()
-            style.setLineColor(f'#a{i}00ff')
-            sl1.profileRenderer().setProfilePlotStyle(style, p.id())
-
-        sl2.startEditing()
-        for p in sl1:
-            p.setName(f'B{p.id()}')
-            sl2.updateFeature(p)
-        sl2.commitChanges()
-        style = PlotStyle()
-        style.setLineColor('#ffffff')
-        sl2.profileRenderer().setProfilePlotStyle(style, sl2.allFeatureIds())
-
-        n = len(sl2)
-
-        oldFids = sl2.allFeatureIds()
-
-        sl2.startEditing()
-        newFids = sl2.addSpeclib(sl1)
-        self.assertTrue(len(sl2) == n + len(sl1))
-        STYLES = sl2.profileRenderer().profilePlotStyles(sl2.allFeatureIds())
-        print(newFids)
-        for i, p in enumerate(sl2.profiles(newFids)):
-            self.assertEqual(p.id(), newFids[i])
-            cname = STYLES[p.id()].lineColor().name()
-            self.assertEqual(p.name(), f'A{i + 1}')
-            print(f'fid{p.id()} name:{p.name()} color:{cname}')
-            self.assertTrue(cname.startswith(f'#a{i}'))
-            s = ""
-
-        all0 = sl2.allFeatureIds()
-        sl2.commitChanges()
-        all1 = sl2.allFeatureIds()
-
-        newFids = sorted([fid for fid in sl2.allFeatureIds() if fid not in oldFids])
-        STYLES = sl2.profileRenderer().profilePlotStyles(sl2.allFeatureIds())
-        for fid in oldFids:
-            style = STYLES[fid]
-            self.assertIsInstance(style, PlotStyle)
-            lineColor = style.lineColor().name()
-            self.assertEqual(lineColor, '#ffffff')
-
-        for i, fid in enumerate(newFids):
-            style = STYLES[fid]
-            self.assertIsInstance(style, PlotStyle)
-            lineColor = style.lineColor().name()
-            self.assertEqual(lineColor, f'#a{i}00ff')
+        # test line color after commit
+        checkColorNames(sl1)
 
     def test_multiinstances(self):
 

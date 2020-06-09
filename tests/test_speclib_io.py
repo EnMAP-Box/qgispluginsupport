@@ -480,6 +480,7 @@ class TestIO(TestCase):
         from qps.speclib.io.vectorsources import VectorSourceSpectralLibraryIO
 
         slib = TestObjects.createSpectralLibrary(2, n_bands=[-1, 3, 24])
+        self.assertIsInstance(slib, SpectralLibrary)
         self.assertTrue(len(slib) == 6)
 
         extensions = ['.json', '.geojson', '.geojsonl', '.csv', '.gpkg']

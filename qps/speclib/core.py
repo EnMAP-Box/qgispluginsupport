@@ -116,7 +116,7 @@ def containsSpeclib(mimeData: QMimeData) -> bool:
     return False
 
 
-FILTERS = 'ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;Geopackage (*.gpkg)'
+FILTERS = 'ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;Geopackage (*.gpkg);;GeoJSON (*.geojson)'
 
 PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 # CURRENT_SPECTRUM_STYLE = PlotStyle()
@@ -1329,6 +1329,8 @@ class SpectralProfileRenderer(object):
             renderer.stopRender(renderContext)
         else:
             for fid in fids:
+                if fid not in self.mFID2Style.keys():
+                    s = ""
                 profileStyles[fid] = self.mFID2Style.get(fid, self.profileStyle).clone()
 
 
@@ -2284,31 +2286,27 @@ class SpectralLibrary(QgsVectorLayer):
         f = self.fields().at(self.fields().lookupField(FIELD_VALUES))
         assert f.type() == QVariant.ByteArray, 'Field {} not of type ByteArray / BLOB'
 
-
-        self.mBeforeCommitFIDs: typing.List[int] = []
-
-        self.beforeCommitChanges.connect(self.onBeforeCommitChanges)
+        #self.beforeCommitChanges.connect(self.onBeforeCommitChanges)
         self.committedFeaturesAdded.connect(self.onCommittedFeaturesAdded)
         self.mProfileRenderer: SpectralProfileRenderer = SpectralProfileRenderer()
         self.mProfileRenderer.setInput(self)
         self.initTableConfig()
         self.initRenderer()
 
-    def onBeforeCommitChanges(self):
-        self.mBeforeCommitFIDs = self.allFeatureIds()
-
-
     def onCommittedFeaturesAdded(self, id, features):
 
         if id != self.id():
             return
-        #fidsNow = self.allFeatureIds()
-        #fidsAdded0 = [fid for fid in fidsNow if fid not in self.mBeforeCommitFIDs]
 
+        newFIDs = [f.id() for f in features]
+        # see qgsvectorlayereditbuffer.cpp
+        oldFIDs = list(reversed(self.editBuffer().addedFeatures().keys()))
         mFID2Style = self.profileRenderer().mFID2Style
-        for oldFID, f in self.editBuffer().addedFeatures().items():
-            if oldFID != f.id() and oldFID in mFID2Style.keys():
-                mFID2Style[f.id()] = mFID2Style.pop(oldFID)
+        updates = dict()
+        for fidOld, fidNew in zip(oldFIDs, newFIDs):
+            if fidOld in mFID2Style.keys():
+                updates[fidNew] = mFID2Style.pop(fidOld)
+        mFID2Style.update(updates)
 
     def setProfileRenderer(self, profileRenderer:SpectralProfileRenderer):
         assert isinstance(profileRenderer, SpectralProfileRenderer)
@@ -2702,19 +2700,22 @@ class SpectralLibrary(QgsVectorLayer):
         """
 
         if path is None:
-            path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'), caption='Save Spectral Library',
-                                                       directory='speclib', filter=FILTERS)
+            path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'),
+                                                       caption='Save Spectral Library',
+                                                       directory='speclib',
+                                                       filter=FILTERS)
 
         if len(path) > 0:
             ext = os.path.splitext(path)[-1].lower()
-            if ext in ['.sli', '.esl']:
-                from .io.envi import EnviSpectralLibraryIO
-                return EnviSpectralLibraryIO.write(self, path)
+            from .io.csvdata import CSVSpectralLibraryIO
+            from .io.vectorsources import VectorSourceSpectralLibraryIO
+            from .io.envi import EnviSpectralLibraryIO
 
-            if ext in ['.csv']:
-                from .io.csvdata import CSVSpectralLibraryIO
-                from csv import excel_tab
-                return CSVSpectralLibraryIO.write(self, path, dialect=kwds.get('dialect', excel_tab))
+            if ext in ['.sli', '.esl']:
+                return EnviSpectralLibraryIO.write(self, path, **kwds)
+
+            elif ext in ['.json', '.geojson', '.geojsonl', '.csv', '.gpkg']:
+                return VectorSourceSpectralLibraryIO.write(self, path, **kwds)
 
         return []
 
