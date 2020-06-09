@@ -1,3 +1,31 @@
+# -*- coding: utf-8 -*-
+# noinspection PyPep8Naming
+"""
+***************************************************************************
+    runfirst.py
+
+    run this script to setup the QPS repository.
+    It compiles *.svg icons into corresponding *_rc.py files
+    that make icons available to the Qt resource system.
+    ---------------------
+    Beginning            : 2019-01-24
+    Copyright            : (C) 2020 by Benjamin Jakimow
+    Email                : benjamin.jakimow@geo.hu-berlin.de
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
 import pathlib, sys, site
 
 def setupRepository():
@@ -6,7 +34,7 @@ def setupRepository():
     DIR_REPO = pathlib.Path(__file__).parent.resolve()
     site.addsitedir(DIR_REPO)
 
-    from qps.make.make import compileResourceFiles
+    from qps.resources import compileResourceFiles
 
     makeQrc = False
     try:
@@ -29,6 +57,7 @@ def setupRepository():
         compileResourceFiles(DIR_REPO)
     else:
         print('qpsresources.py exists and is up-to-date')
+
 
 if __name__ == "__main__":
     setupRepository()
