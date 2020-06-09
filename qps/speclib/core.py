@@ -39,7 +39,7 @@ from qgis.core import \
     QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsVectorFileWriter, QgsActionManager, QgsFeatureIterator, QgsFeatureRequest, \
     QgsGeometry, QgsPointXY, QgsPoint, QgsMultiPoint, \
-    QgsRaster, QgsDefaultValue, \
+    QgsRaster, QgsDefaultValue, QgsReadWriteContext, \
     QgsCategorizedSymbolRenderer, QgsMapLayerProxyModel, \
     QgsSymbol, QgsNullSymbolRenderer, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
     QgsEditorWidgetSetup, QgsAction
@@ -2501,6 +2501,10 @@ class SpectralLibrary(QgsVectorLayer):
         assert self.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(self.name())
 
         keysBefore = set(self.editBuffer().addedFeatures().keys())
+
+        lastTime = datetime.datetime.now()
+        dt = datetime.timedelta(seconds=2)
+
         if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
             progressDialog.setLabelText('Add {} profiles'.format(len(profiles)))
             progressDialog.setValue(0)
@@ -2509,22 +2513,24 @@ class SpectralLibrary(QgsVectorLayer):
         iSrcList = []
         iDstList = []
 
-        bufferLength = 500
+        bufferLength = 1000
         profileBuffer = []
 
-        oldIDs = self.allFeatureIds()
 
         nAdded = 0
 
-        def flushBuffer():
-            nonlocal self, nAdded, profileBuffer, progressDialog
+        def flushBuffer(triggerProgressBar:bool = False):
+            nonlocal self, nAdded, profileBuffer, progressDialog, lastTime, dt
             if not self.addFeatures(profileBuffer):
                 self.raiseError()
             nAdded += len(profileBuffer)
             profileBuffer.clear()
 
             if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
-                progressDialog.setValue(nAdded)
+                # update progressbar in intervals of dt
+                if triggerProgressBar or (lastTime + dt) < datetime.datetime.now():
+                    progressDialog.setValue(nAdded)
+                    lastTime = datetime.datetime.now()
 
         for i, pSrc in enumerate(profiles):
             if i == 0:
@@ -2554,7 +2560,10 @@ class SpectralLibrary(QgsVectorLayer):
             if len(profileBuffer) >= bufferLength:
                 flushBuffer()
 
-        flushBuffer()
+        # final buffer call
+        flushBuffer(triggerProgressBar=True)
+
+        # return the edited features
         MAP = self.editBuffer().addedFeatures()
         fids_inserted = [MAP[k].id() for k in reversed(MAP.keys()) if k not in keysBefore]
         return fids_inserted

@@ -139,7 +139,7 @@ class UnitModel(QAbstractListModel):
 
             self.endInsertRows()
 
-    def data(self, index:QModelIndex, role=None):
+    def data(self, index: QModelIndex, role=None):
         if not index.isValid():
             return None
 
@@ -151,6 +151,7 @@ class UnitModel(QAbstractListModel):
             return self.mToolTips.get(unit, unit)
         if role == Qt.UserRole:
             return unit
+
 
 class XUnitModel(UnitModel):
 
@@ -396,17 +397,25 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         if ev.accepted:
             idx, x, y, pxDistance = self.closestDataPoint(ev.pos())
-            data = {'idx': idx, 'xValue': x, 'yValue': y, 'pxDistance': pxDistance}
+            data = {'idx': idx,
+                    'xValue': x,
+                    'yValue': y,
+                    'pxDistance': pxDistance,
+                    'pdi': self}
             self.sigProfileClicked.emit(self.id(), data)
 
-    def onScatterMouseClicked(self, pts:pg.ScatterPlotItem):
+    def onScatterMouseClicked(self, pts: pg.ScatterPlotItem):
 
         if isinstance(pts, pg.ScatterPlotItem):
             pdi = pts.parentItem()
             if isinstance(pdi, SpectralProfilePlotDataItem):
                 pt = pts.ptsClicked[0]
                 i = pt.index()
-                data = {'idx': i, 'xValue': pdi.xData[i], 'yValue': pdi.yData[i], 'pxDistance': 0}
+                data = {'idx': i,
+                        'xValue': pdi.xData[i],
+                        'yValue': pdi.yData[i],
+                        'pxDistance': 0,
+                        'pdi': self}
                 self.sigProfileClicked.emit(self.id(), data)
        #ev.accept()
 
