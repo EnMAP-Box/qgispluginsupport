@@ -160,7 +160,9 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         # load style
         pathStyle = os.path.splitext(path)[0] + '.qml'
         if os.path.isfile(pathStyle):
-            r = speclib.loadNamedStyle(pathStyle)
+            success, errorMsg = speclib.loadNamedStyle(pathStyle)
+            if not success:
+                print(errorMsg, file=sys.stderr)
         return speclib
 
     @staticmethod

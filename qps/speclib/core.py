@@ -2697,7 +2697,7 @@ class SpectralLibrary(QgsVectorLayer):
                 if isinstance(scheme, SpectralProfileRenderer):
                     self.mProfileRenderer = scheme
                     self.mProfileRenderer.setInput(self)
-        return success
+        return success, errorMsg
 
     def exportProfiles(self, path: str, **kwds) -> list:
         """
@@ -2714,6 +2714,8 @@ class SpectralLibrary(QgsVectorLayer):
                                                        directory='speclib',
                                                        filter=FILTERS)
 
+        if isinstance(path, pathlib.Path):
+            path = path.as_posix()
         if len(path) > 0:
             ext = os.path.splitext(path)[-1].lower()
             from .io.csvdata import CSVSpectralLibraryIO
@@ -2875,6 +2877,7 @@ class AbstractSpectralLibraryIO(object):
     @staticmethod
     def subClasses():
 
+        from .io.vectorsources import VectorSourceSpectralLibraryIO
         from .io.artmo import ARTMOSpectralLibraryIO
         from .io.asd import ASDSpectralLibraryIO
         from .io.clipboard import ClipboardIO
@@ -2884,6 +2887,7 @@ class AbstractSpectralLibraryIO(object):
         from .io.specchio import SPECCHIOSpectralLibraryIO
 
         subClasses = [
+            VectorSourceSpectralLibraryIO, # this is the prefered way to save/load speclibs
             EnviSpectralLibraryIO,
             ASDSpectralLibraryIO,
             CSVSpectralLibraryIO,
@@ -2892,6 +2896,8 @@ class AbstractSpectralLibraryIO(object):
             SPECCHIOSpectralLibraryIO,
             ClipboardIO,
         ]
+
+        # other sub-classes
         for c in AbstractSpectralLibraryIO.__subclasses__():
             if c not in subClasses:
                 subClasses.append(c)

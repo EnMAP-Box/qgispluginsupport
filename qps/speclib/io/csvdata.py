@@ -91,8 +91,6 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
 
     @staticmethod
     def canRead(path=None) -> bool:
-        if not isinstance(path, str):
-            return False
 
         if not os.path.isfile(path):
             return False
