@@ -39,8 +39,8 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
     I/O Interface for ARTMO CSV profile outputs.
     See https://artmotoolbox.com/tools.html for details.
     """
-    @staticmethod
-    def canRead(path: str) -> bool:
+    @classmethod
+    def canRead(cls, path: str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -63,8 +63,8 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         return False
 
-    @staticmethod
-    def readFrom(path: str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
+    @classmethod
+    def readFrom(cls, path: str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -143,8 +143,8 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return speclib
 
 
-    @staticmethod
-    def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    @classmethod
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def read(speclib: SpectralLibrary):
 

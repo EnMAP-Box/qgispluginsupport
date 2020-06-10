@@ -171,7 +171,7 @@ class TestSpeclibWidgets(TestCase):
 
         plotItem = pw.getPlotItem()
         self.assertIsInstance(plotItem, pg.PlotItem)
-        self.assertTrue(len(plotItem.dataItems) == 0)
+
         pw.setSpeclib(speclib)
         pw.updateSpectralProfilePlotItems()
         n = len([sp for sp in plotItem.dataItems if isinstance(sp, SpectralProfilePlotDataItem)])
@@ -548,12 +548,19 @@ class TestSpeclibWidgets(TestCase):
         slw.setCurrentSpectra(cs)
         self.assertTrue(len(slw.currentSpectra()) == 3)
 
+        from qps.plotstyling.plotstyling import MarkerSymbol
         def onAddRandomProfile():
             ext = l1.extent()
             x = random.uniform(ext.xMinimum(), ext.xMaximum())
             y = random.uniform(ext.yMinimum(), ext.yMaximum())
             p = SpectralProfile.fromRasterLayer(l1, SpatialPoint(l1.crs(), x, y))
-            slw.setCurrentProfiles([p])
+            style = PlotStyle()
+            style.setLineColor(QColor('blue'))
+            style.setLineWidth(2)
+            style.setMarkerSymbol(MarkerSymbol.Diamond)
+            style.setMarkerColor('blue')
+
+            slw.setCurrentProfiles([p], {p:style})
 
         btnAddRandomProfile = QPushButton('Add Profile')
         btnAddRandomProfile.clicked.connect(onAddRandomProfile)

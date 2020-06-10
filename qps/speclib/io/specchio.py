@@ -35,8 +35,8 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
     I/O Interface for the SPECCHIO spectral library .
     See https://ecosis.org for details.
     """
-    @staticmethod
-    def canRead(path) -> bool:
+    @classmethod
+    def canRead(cls, path) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -51,8 +51,8 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
             return False
         return False
 
-    @staticmethod
-    def readFrom(path: str,
+    @classmethod
+    def readFrom(cls, path: str,
                  wlu='nm',
                  delimiter=',',
                  progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
@@ -161,8 +161,8 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         sl.commitChanges()
         return sl
 
-    @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, delimiter:str=',') -> list:
+    @classmethod
+    def write(cls, speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, delimiter:str=',') -> list:
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom(...)
         :param speclib: SpectralLibrary
@@ -222,19 +222,8 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         return writtenFiles
 
-    @staticmethod
-    def score(uri:str) -> int:
-        """
-        Returns a score value for the give uri. E.g. 0 for unlikely/unknown, 20 for yes, probalby thats the file format the reader can read.
-
-        :param uri: str
-        :return: int
-        """
-        return 0
-
-
-    @staticmethod
-    def addExportActions(spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
+    @classmethod
+    def addExportActions(cls, spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
 
         def write(speclib: SpectralLibrary):
 
@@ -247,8 +236,8 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         m.setToolTip('Exports the profiles into the SPECCIO text file format.')
         m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
 
-    @staticmethod
-    def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    @classmethod
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def read(speclib: SpectralLibrary):
 

@@ -79,8 +79,8 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     I/O Interface for the EcoSIS spectral library format.
     See https://ecosis.org for details.
     """
-    @staticmethod
-    def canRead(path: str) -> bool:
+    @classmethod
+    def canRead(cls, path: str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -105,9 +105,8 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
             return False
         return False
 
-
-    @staticmethod
-    def readFrom(path,
+    @classmethod
+    def readFrom(cls, path,
                  progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
                  addAttributes: bool = True) -> SpectralLibrary:
         """
@@ -165,8 +164,8 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
                 print(errorMsg, file=sys.stderr)
         return speclib
 
-    @staticmethod
-    def write(speclib:SpectralLibrary,
+    @classmethod
+    def write(cls, speclib:SpectralLibrary,
               path: str,
               progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
               options: QgsVectorFileWriter.SaveVectorOptions = None,
@@ -230,18 +229,19 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         print(msg)
         return [path]
 
-    @staticmethod
-    def score(uri:str) -> int:
-        """
-        Returns a score value for the give uri. E.g. 0 for unlikely/unknown, 20 for yes, probably thats the file format the reader can read.
+    @classmethod
+    def supportedFileExtensions(cls) -> typing.Dict[str, str]:
 
-        :param uri: str
-        :return: int
-        """
-        return 0
+        filters = {'.gpkg': 'Geopackage',
+                   '.shp': 'ESRI Shapefile',
+                   '.kml': 'Keyhole Markup Language',
+                   '.csv': 'Character Separated Value'
+                   }
 
-    @staticmethod
-    def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+        return filters
+
+    @classmethod
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def read(speclib: SpectralLibrary):
 
@@ -260,9 +260,8 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         m.setToolTip('Adds profiles from another vector source\'s "{}" and "{}" attributes.'.format(FIELD_VALUES, FIELD_NAME))
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
-
-    @staticmethod
-    def addExportActions(spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
+    @classmethod
+    def addExportActions(cls, spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
 
         def write(speclib: SpectralLibrary):
             options = QgsVectorLayerSaveAsDialog.Symbology | \

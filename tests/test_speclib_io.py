@@ -24,6 +24,7 @@ from qps.testing import TestObjects, TestCase
 from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
 
+from qps.speclib.io.vectorsources import *
 from qps.speclib.io.csvdata import *
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
@@ -529,10 +530,11 @@ class TestIO(TestCase):
             if len(p.yValues()) > 0:
                 nProfiles += 1
 
-        pd = QProgressDialog()
+
         for c in allSubclasses(AbstractSpectralLibraryIO):
             print('Test {}'.format(c.__name__))
             path = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+            pd = QProgressDialog()
             writtenFiles = c.write(slib, path, progressDialog=pd)
 
             # if it can write, it should read the profiles too
@@ -546,8 +548,6 @@ class TestIO(TestCase):
                     n += len(sl)
 
                 self.assertTrue(n == nProfiles or n == nFeatures)
-            pass
-
 
     def test_ARTMO(self):
 
@@ -570,41 +570,55 @@ class TestIO(TestCase):
 
         speclib = TestObjects.createSpectralLibrary()
 
+        dirTMP = self.testOutputDirectory() / 'speclib-tests'
+        os.makedirs(dirTMP, exist_ok=True)
         # txt = CSVSpectralLibraryIO.asString(speclib)
-        pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs3.out.csv')
-        writtenFiles = speclib.exportProfiles(pathCSV)
+        pathCSV1 = dirTMP / 'speclib1.csv'
+        pathCSV2 = dirTMP / 'speclib2.csv'
+
+        writtenFiles = CSVSpectralLibraryIO.write(speclib, pathCSV1, progressDialog=QProgressDialog())
         self.assertIsInstance(writtenFiles, list)
         self.assertTrue(len(writtenFiles) == 1)
 
-        path = writtenFiles[0]
-        lines = None
-        with open(path, 'r') as f:
-            lines = f.read()
-        self.assertTrue(CSVSpectralLibraryIO.canRead(path), msg='Unable to read {}'.format(path))
-        sl_read1 = CSVSpectralLibraryIO.readFrom(path, progressDialog=QProgressDialog())
-        sl_read2 = SpectralLibrary.readFrom(path, progressDialog=QProgressDialog())
+        writtenFiles = speclib.write(pathCSV2)
+        self.assertIsInstance(writtenFiles, list)
+        self.assertTrue(len(writtenFiles) == 1)
+
+        self.assertTrue(CSVSpectralLibraryIO.canRead(pathCSV1), msg='Unable to read {}'.format(pathCSV1))
+        sl_read1 = CSVSpectralLibraryIO.readFrom(pathCSV1, progressDialog=QProgressDialog())
+
+        self.assertTrue(VectorSourceSpectralLibraryIO.canRead(pathCSV2), msg='Unable to read {}'.format(pathCSV2))
+        sl_read2 = SpectralLibrary.readFrom(pathCSV2, progressDialog=QProgressDialog())
 
         self.assertTrue(len(sl_read1) > 0)
         self.assertIsInstance(sl_read1, SpectralLibrary)
         self.assertIsInstance(sl_read2, SpectralLibrary)
 
-        self.assertEqual(len(sl_read1), len(speclib), msg='Should return {} instead of {} SpectralProfiles'.format(len(speclib), len(sl_read1)))
+        self.assertEqual(len(sl_read1), len(speclib),
+                         msg='Should return {} instead of {} SpectralProfiles'.format(len(speclib), len(sl_read1)))
 
-        profilesA = sorted(speclib.profiles(), key=lambda p: p.id())
-        profilesB = sorted(sl_read1.profiles(), key=lambda p: p.attribute('fid'))
+        self.assertEqual(len(sl_read2), len(speclib),
+                         msg='Should return {} instead of {} SpectralProfiles'.format(len(speclib), len(sl_read2)))
 
-        for p1, p2 in zip(profilesA, profilesB):
+        profilesR = sorted(speclib.profiles(), key=lambda p: p.id())
+        profiles1 = sorted(sl_read1.profiles(), key=lambda p: p.attribute('fid'))
+        profiles2 = sorted(sl_read2.profiles(), key=lambda p: p.attribute('fid'))
+
+        for pR, p1, p2 in zip(profilesR, profiles1, profiles2):
+            self.assertIsInstance(pR, SpectralProfile)
             self.assertIsInstance(p1, SpectralProfile)
             self.assertIsInstance(p2, SpectralProfile)
-            self.assertEqual(p1.name(), p2.name())
-            self.assertEqual(p1.xUnit(), p2.xUnit())
-            self.assertEqual(p1.yUnit(), p2.yUnit())
+            self.assertEqual(pR.name(), p1.name())
+            self.assertEqual(pR.name(), p2.name())
+            self.assertEqual(pR.xUnit(), p1.xUnit())
+            self.assertEqual(pR.xUnit(), p2.xUnit())
+            self.assertEqual(pR.yUnit(), p1.yUnit())
+            self.assertEqual(pR.yUnit(), p2.yUnit())
 
         self.SPECLIB = speclib
 
         try:
-            os.remove(pathCSV)
+            os.remove(pathCSV1)
         except:
             pass
 

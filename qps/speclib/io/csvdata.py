@@ -41,8 +41,8 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
     REGEX_HEADERLINE = re.compile('^'+'[\t;,]'.join(STD_NAMES)+'\\t.*')
     REGEX_BANDVALUE_COLUMN = re.compile(r'^(?P<bandprefix>\D+)?(?P<band>\d+)[ _]*(?P<xvalue>-?\d+\.?\d*)?[ _]*(?P<xunit>\D+)?', re.IGNORECASE)
 
-    @staticmethod
-    def addImportActions(spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
+    @classmethod
+    def addImportActions(cls, spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
 
         def read(speclib:SpectralLibrary, dialect):
 
@@ -62,8 +62,8 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         a.setToolTip('Imports Spectral Profiles from a Excel CSV sheet.')
         a.triggered.connect(lambda *args, sl=spectralLibrary: read(sl, pycsv.excel))
 
-    @staticmethod
-    def addExportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    @classmethod
+    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def write(speclib: SpectralLibrary):
             path, filter = QFileDialog.getSaveFileName(caption='Write to CSV File',
@@ -75,8 +75,8 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         m = menu.addAction('CSV Table')
         m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
 
-    @staticmethod
-    def isHeaderLine(line: str) -> str:
+    @classmethod
+    def isHeaderLine(cls, line: str) -> str:
         """
         Returns True if str ``line`` could be a CSV header
         :param line: str
@@ -89,8 +89,8 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
                     return dialect
         return None
 
-    @staticmethod
-    def canRead(path=None) -> bool:
+    @classmethod
+    def canRead(cls, path=None) -> bool:
 
         if not os.path.isfile(path):
             return False
@@ -111,10 +111,8 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
             return None
         return None
 
-
-
-    @staticmethod
-    def write(speclib: SpectralLibrary,
+    @classmethod
+    def write(cls, speclib: SpectralLibrary,
               path: str,
               progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None,
               dialect=pycsv.excel_tab) -> list:
@@ -133,16 +131,16 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         file.close()
         return [path]
 
-    @staticmethod
-    def readFrom(path=None, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, dialect=pycsv.excel_tab):
+    @classmethod
+    def readFrom(cls, path=None, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, dialect=pycsv.excel_tab):
         f = open(path, 'r', encoding='utf-8')
         text = f.read()
         f.close()
 
         return CSVSpectralLibraryIO.fromString(text, dialect=dialect)
 
-    @staticmethod
-    def extractDataBlocks(text:str) -> (list, list):
+    @classmethod
+    def extractDataBlocks(cls, text:str) -> (list, list):
         # divides a text into blocks of CSV rows with same column structure
         lines = text.splitlines(keepends=True)
         # lines = [l.strip() for l in lines]
@@ -195,8 +193,8 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         assert len(BLOCKDATA) == len(BLOCKMETADATA)
         return BLOCKDATA, BLOCKMETADATA
 
-    @staticmethod
-    def fromString(text:str, dialect=pycsv.excel_tab) -> SpectralLibrary:
+    @classmethod
+    def fromString(cls, text:str, dialect=pycsv.excel_tab) -> SpectralLibrary:
         """
         Reads oneCSV
         :param text:
@@ -301,9 +299,8 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         SLIB.commitChanges()
         return SLIB
 
-
-    @staticmethod
-    def asString(speclib:SpectralLibrary, dialect=pycsv.excel_tab, skipValues=False, skipGeometry=False) -> str:
+    @classmethod
+    def asString(cls, speclib:SpectralLibrary, dialect=pycsv.excel_tab, skipValues=False, skipGeometry=False) -> str:
         """
         Returns a SpectralLibrary as CSV string
         :param speclib:

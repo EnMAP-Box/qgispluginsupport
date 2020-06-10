@@ -327,8 +327,8 @@ class ASDBinaryFile(object):
 
 class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
 
-    @staticmethod
-    def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    @classmethod
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def read(speclib: SpectralLibrary):
 
@@ -348,8 +348,8 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
         a.setToolTip('Loads ASD FieldSpec files (binary or text)')
         a.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
-    @staticmethod
-    def canRead(path, binary: bool = None) -> bool:
+    @classmethod
+    def canRead(cls, path, binary: bool = None) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path:
@@ -403,10 +403,8 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
             else:
                 return ASDSpectralLibraryIO.canRead(path, binary=False)
 
-
-
-    @staticmethod
-    def readFrom(paths:typing.Union[str, list],
+    @classmethod
+    def readFrom(cls, paths:typing.Union[str, list],
                  asdFields:typing.Iterable[str] = None,
                  progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """

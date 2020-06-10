@@ -2118,6 +2118,7 @@ class SpectralLibrary(QgsVectorLayer):
         :param pathSPECLIB:
         :return:
         """
+        warnings.warn('will be removed in future', DeprecationWarning)
         assert isinstance(pathSPECLIB, str)
         if not pathSPECLIB.endswith('.json'):
             pathJSON = os.path.splitext(pathSPECLIB)[0] + '.json'
@@ -2201,7 +2202,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         readers = AbstractSpectralLibraryIO.subClasses()
 
-        for cls in sorted(readers, key=lambda r: r.score(uri)):
+        for cls in sorted(readers, key=lambda r: r.score(uri), reverse=True):
             try:
                 if cls.canRead(uri):
                     sl = cls.readFrom(uri, progressDialog=progressDialog)
@@ -2699,10 +2700,17 @@ class SpectralLibrary(QgsVectorLayer):
                     self.mProfileRenderer.setInput(self)
         return success, errorMsg
 
-    def exportProfiles(self, path: str, **kwds) -> list:
+    def exportProfiles(self, *args, **kwds) -> list:
+        warnings.warn('Use SpectralLibrary.write() instead', DeprecationWarning)
+        return self.write(*args, **kwds)
+
+    def write(self, path:str, **kwds) -> typing.List[str]:
         """
-        Exports profiles to a file. This wrapper tries to identify the required SpectralLibraryIO from the file-path suffix.
-        in `path`.
+        Exports profiles to a file.
+        This wrapper tries to identify a fitting AbstractSpectralLibraryIO from the
+        file extension in `path`.
+        To ensure the way how the SpectralLibrary is written into file data, use
+        a AbstractSpectralLibraryIO implementation of choice.
         :param path: str, filepath
         :param kwds: keywords to be used in specific `AbstractSpectralLibraryIO.write(...)` methods.
         :return: list of written files
@@ -2716,12 +2724,14 @@ class SpectralLibrary(QgsVectorLayer):
 
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
+
         if len(path) > 0:
             ext = os.path.splitext(path)[-1].lower()
             from .io.csvdata import CSVSpectralLibraryIO
             from .io.vectorsources import VectorSourceSpectralLibraryIO
             from .io.envi import EnviSpectralLibraryIO
 
+            # todo: implement filter strings in AbstractSpectralLibraryIOs to auto-match file extensions
             if ext in ['.sli', '.esl']:
                 return EnviSpectralLibraryIO.write(self, path, **kwds)
 
@@ -2904,8 +2914,8 @@ class AbstractSpectralLibraryIO(object):
 
         return subClasses
 
-    @staticmethod
-    def canRead(path: str) -> bool:
+    @classmethod
+    def canRead(cls, path: str) -> bool:
         """
         Returns true if it can read the source defined by path.
         Well behaving implementations use a try-catch block and return False in case of errors.
@@ -2914,8 +2924,8 @@ class AbstractSpectralLibraryIO(object):
         """
         return False
 
-    @staticmethod
-    def readFrom(path: str, progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
+    @classmethod
+    def readFrom(cls, path: str, progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of Spectral Library
@@ -2924,8 +2934,9 @@ class AbstractSpectralLibraryIO(object):
         """
         return None
 
-    @staticmethod
-    def write(speclib: SpectralLibrary,
+    @classmethod
+    def write(cls,
+              speclib: SpectralLibrary,
               path: str,
               progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> \
             typing.List[str]:
@@ -2939,42 +2950,56 @@ class AbstractSpectralLibraryIO(object):
         assert isinstance(speclib, SpectralLibrary)
         return []
 
-    @staticmethod
-    def score(uri: str) -> int:
+    @classmethod
+    def supportedFileExtensions(cls) -> typing.Dict[str, str]:
         """
-        Returns a score value for the give uri. E.g. 0 for unlikely/unknown, 20 for yes, probably that's the file format
-        the reader can read.
+        Returns a dictionary of file extensions (key) and descriptions (values)
+        that can be read/written by the AbstractSpectralLibraryIO implementation.
+        :return: dict[str,str]
+        """
+        return dict()
+
+
+    @classmethod
+    def filterString(cls) -> str:
+        """
+        Returns a filter string to be used in QFileDialogs
+        :return: str
+        """
+        return ';;'.join([f'{descr} (*{ext})' for ext, descr
+                          in cls.supportedFileExtensions().items()])
+
+    @classmethod
+    def score(cls, uri: str) -> int:
+        uri = str(uri)
+        """
+        Returns a score value for the give uri. E.g. 0 for unlikely/unknown, 20 for yes, probably thats the file format the reader can read.
 
         :param uri: str
         :return: int
         """
+        for ext in cls.supportedFileExtensions().keys():
+            if uri.endswith(ext):
+                return 20
         return 0
 
-    @staticmethod
-    def filterString() -> str:
-        """
-        Returns a Qt file filter string
-        :return:
-        :rtype:
-        """
-
-        return None
-
-    @staticmethod
-    def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu):
+    @classmethod
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu):
         """
         Returns a list of QActions or QMenus that can be called to read/import SpectralProfiles from a certain file format into a SpectralLibrary
         :param spectralLibrary: SpectralLibrary to import SpectralProfiles to
         :return: [list-of-QAction-or-QMenus]
         """
+        return []
 
-    @staticmethod
-    def addExportActions(spectralLibrary: SpectralLibrary, menu: QMenu):
+    @classmethod
+    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu):
         """
         Returns a list of QActions or QMenus that can be called to write/export SpectralProfiles into certain file format
         :param spectralLibrary: SpectralLibrary to export SpectralProfiles from
         :return: [list-of-QAction-or-QMenus]
         """
+        return []
 
 
 def deleteSelected(layer):
