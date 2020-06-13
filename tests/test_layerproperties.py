@@ -96,6 +96,13 @@ class LayerPropertyTests(TestCase):
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
+    def test_enmapboxbug_452(self):
+        lyr = TestObjects.createVectorLayer()
+        rlr = TestObjects.createRasterLayer()
+        style = QgsStyle()
+        d = QgsRendererPropertiesDialog(lyr, style, embedded=True)
+        self.showGui(d)
+
     def test_LayerPropertiesDialog_Vector(self):
         registerMapLayerConfigWidgetFactories()
         lyr = TestObjects.createVectorLayer()

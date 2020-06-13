@@ -1155,6 +1155,20 @@ def check_package(name, package=None, stop_on_error=False):
     return True
 
 
+def as_py_value(value, datatype:Qgis.DataType):
+    """
+    Converts values into a corresponding python_typee
+    :param value:
+    :param datatype:
+    :return:
+    """
+    if datatype in [Qgis.Byte, Qgis.Int16, Qgis.Int32, Qgis.UInt16, Qgis.UInt32]:
+        return int(value)
+    elif datatype in [Qgis.Float32, Qgis.Float64, Qgis.CFloat32, Qgis.CFloat64]:
+        return float(value)
+    return value
+
+
 def zipdir(pathDir, pathZip):
     """
     :param pathDir: directory to compress

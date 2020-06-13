@@ -87,7 +87,7 @@ class LayerConfigWidgetsTests(TestCase):
 
         f = SymbologyConfigWidgetFactory()
         style_file = (pathlib.Path(tempfile.gettempdir()) / 'stylefile.qml').as_posix()
-        for lyr in [lyrR, lyrV]:
+        for lyr in [lyrV]:
             c.setLayers([lyr])
             c.setDestinationCrs(lyr.crs())
             c.setExtent(lyr.extent())

@@ -43,15 +43,14 @@ class CursorLocationTest(TestCase):
             self.assertTrue(l.isValid())
         return layers
 
-
-
-
-
     def test_locallayers(self):
 
         canvas = QgsMapCanvas()
 
-        layers = [TestObjects.createRasterLayer(nc=3), TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
+        layers = [#TestObjects.createRasterLayer(nc=3),
+                  TestObjects.createRasterLayer(nb=5, eType= gdal.GDT_Int16),
+                  #TestObjects.createVectorLayer()
+        ]
 
         for lyr in layers:
             self.assertIsInstance(lyr, QgsMapLayer)
@@ -81,6 +80,7 @@ class CursorLocationTest(TestCase):
             self.assertIsInstance(point, SpatialPoint)
 
         self.showGui(cldock)
+
 
     def test_weblayertest(self):
 

@@ -26,11 +26,15 @@
 """
 
 
-import os, collections
-
+import os
+import collections
 import numpy as np
 from qgis.core import *
+from qgis.core import QgsCoordinateReferenceSystem, QgsWkbTypes, QgsField, QgsFeature, \
+    QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsPointXY, QgsRectangle, QgsTolerance, \
+    QgsFeatureRequest, QgsRasterBlock, QgsPalettedRasterRenderer, QgsRaster
 from qgis.gui import *
+from qgis.gui import QgsMapCanvas
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
@@ -206,7 +210,6 @@ class CursorLocationInfoModel(TreeModel):
 
                 fieldNode = gocn(root, name=field.name())
 
-
                 for i, feature in enumerate(sourceValueSet.features):
                     assert isinstance(feature, QgsFeature)
                     nf = gocn(fieldNode, name='{}'.format(feature.id()))
@@ -261,7 +264,7 @@ class ComboBoxOptionModel(QAbstractListModel):
     def rowCount(self, parent=None, *args, **kwargs):
         return len(self.mOptions)
 
-    def columnCount(self, QModelIndex_parent=None, *args, **kwargs):
+    def columnCount(self, index=None, *args, **kwargs):
         return 1
 
     def index2option(self, index):
@@ -366,14 +369,14 @@ class CursorLocationInfoDock(QDockWidget):
         if not isinstance(ptInfo, SpatialPoint) or len(self.mCanvases) == 0:
             return
 
-        mode, type, rasterbands = self.options()
+        mode, lyrtype, rasterbands = self.options()
 
         def layerFilter(canvas):
             assert isinstance(canvas, QgsMapCanvas)
             lyrs = canvas.layers()
-            if type == 'VECTOR':
+            if lyrtype == 'VECTOR':
                 lyrs = [l for l in lyrs if isinstance(l, QgsVectorLayer)]
-            if type == 'RASTER':
+            if lyrtype == 'RASTER':
                 lyrs = [l for l in lyrs if isinstance(l, QgsRasterLayer)]
 
             return lyrs
@@ -405,7 +408,7 @@ class CursorLocationInfoDock(QDockWidget):
                 if rasterbands == 'VISIBLE':
                     if isinstance(renderer, QgsPalettedRasterRenderer):
                         bandNumbers = renderer.usesBands()
-                        # sometime the rendere is set to band 0 (which does not exist)
+                        # sometime the renderer is set to band 0 (which does not exist)
                         # QGIS bug
                         if bandNumbers == [0] and l.bandCount() > 0:
                             bandNumbers = [1]
@@ -433,7 +436,7 @@ class CursorLocationInfoDock(QDockWidget):
                         classScheme = ClassificationScheme.fromRasterRenderer(l.renderer())
                     for b in bandNumbers:
                         if b in results.keys():
-                            bandValue = results[b]
+                            bandValue = as_py_value(results[b], l.dataProvider().dataType(b))
 
                             classInfo = None
                             if isinstance(bandValue, (int, float)) \
@@ -528,6 +531,7 @@ class CursorLocationInfoDock(QDockWidget):
             self.mCrs = crs
             self.btnCrs.setCrs(crs)
         self.updateCursorLocationInfo()
+
 
     def cursorLocation(self) -> SpatialPoint:
         """
