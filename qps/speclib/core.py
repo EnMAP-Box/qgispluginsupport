@@ -144,10 +144,10 @@ Y_UNITS = ['DN', 'Reflectance', 'Radiance', '']
 
 def speclibUiPath(name: str) -> str:
     """
-    Returns the data_source to a spectral library *.ui file
+    Returns the path to a spectral library *.ui file
     :param name: name
     :type name: str
-    :return: absolute data_source to *.ui file
+    :return: absolute path to *.ui file
     :rtype: str
     """
     path = pathlib.Path(__file__).parent / name
@@ -1736,7 +1736,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     def reloadSpectralValues(self, raster, selectedOnly: bool = True):
         """
-        Reloads the spectral values for each point based on the spectral values found in raster image "data_source-raster"
+        Reloads the spectral values for each point based on the spectral values found in raster image "raster"
         :param raster: str | QgsRasterLayer | gdal.Dataset
         :param selectedOnly: bool, if True (default) spectral values will be retireved for selected features only.
         """
