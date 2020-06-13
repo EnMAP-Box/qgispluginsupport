@@ -180,11 +180,11 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
     """
     Emulates the QGS Layer Property Dialogs "Source" page
     """
-    def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
+    def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, style:QgsStyle=QgsStyle(), parent=None):
         super().__init__(layer, canvas, parent=parent)
         loadUi(configWidgetUi('symbologyconfigwidget.ui'), self)
         self.mSymbologyWidget = None
-
+        self.mStyle: QgsStyle = style
         self.mDefaultRenderer = None
         if isinstance(layer, (QgsRasterLayer, QgsVectorLayer)):
             self.mDefaultRenderer = layer.renderer().clone()
@@ -193,6 +193,9 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
 
     def symbologyWidget(self) -> typing.Union[QgsRendererRasterPropertiesWidget, QgsRendererPropertiesDialog]:
         return self.scrollArea.widget()
+
+    def style(self) -> QgsStyle:
+        return self.mStyle
 
     def menuButtonMenu(self) ->QMenu:
         m = QMenu('Style')
@@ -363,7 +366,7 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
 
         elif isinstance(lyr, QgsVectorLayer):
             if not isinstance(w, QgsRendererPropertiesDialog):
-                w = QgsRendererPropertiesDialog(lyr, QgsStyle(), embedded=True)
+                w = QgsRendererPropertiesDialog(lyr, self.style(), embedded=True)
                 self.setSymbologyWidget(w)
             else:
                 s = ""
