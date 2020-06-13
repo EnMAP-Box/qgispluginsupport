@@ -17,7 +17,7 @@ from qps.crosshair.crosshair import *
 class CrosshairTests(TestCase):
 
     def test_crosshair(self):
-        # add site-packages to sys.path as done by enmapboxplugin.py
+        # add site-packages to sys.data_source as done by enmapboxplugin.py
 
         lyr = TestObjects.createRasterLayer()
         lyr2 = TestObjects.createRasterLayer(ns=2000, nl=3000, nb=3)

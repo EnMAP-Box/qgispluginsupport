@@ -20,7 +20,8 @@
 import unittest
 from qps.testing import TestObjects, TestCase
 
-
+from qgis._gui import *
+from qgis._core import *
 from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
 
@@ -107,6 +108,70 @@ class TestIO(TestCase):
         data = slib.readJSONProperties(pathJSON)
         s = ""
 
+    def test_readFromVector(self):
+
+        from qpstestdata import enmap_pixel, landcover, enmap
+
+        rl = QgsRasterLayer(enmap)
+        vl = QgsVectorLayer(enmap_pixel)
+
+        progressDialog = QProgressDialog()
+        #progress_handler.show()
+
+        info ='Test read from \n'+ \
+              'Vector: {}\n'.format(vl.crs().description()) + \
+              'Raster: {}\n'.format(rl.crs().description())
+        print(info)
+
+        sl = SpectralLibrary.readFromVector(vl, rl,
+                                            all_touched=True,
+                                            copy_attributes=True, progress_handler=progressDialog)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0, msg='Failed to read SpectralProfiles')
+        n_pr = len(sl)
+        n_px = rl.width() * rl.height()
+        self.assertEqual(n_px, n_pr, msg=f'Expected {n_px} profiles but got {n_pr}')
+
+        self.assertTrue(progressDialog.value(), [-1, progressDialog.maximum()])
+
+        data = gdal.Open(enmap).ReadAsArray()
+        nb, nl, ns = data.shape
+
+        for p in sl:
+            self.assertIsInstance(p, SpectralProfile)
+
+            x = p.attribute('px_x')
+            y = p.attribute('px_y')
+            yValues = p.values()['y']
+            yValues2 = list(data[:, y, x])
+            self.assertListEqual(yValues, yValues2)
+            s = ""
+
+        self.assertTrue(sl.crs() != vl.crs())
+
+
+        info ='Test read from \n'+ \
+              'Vector: {} (speclib)\n'.format(sl.crs().description()) + \
+              'Raster: {}\n'.format(rl.crs().description())
+        print(info)
+
+
+        sl2 = SpectralLibrary.readFromVector(sl, rl, copy_attributes=True)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl2) > 0, msg='Failed to re-read SpectralProfiles')
+        for p1, p2 in zip(sl[:], sl2[:]):
+            self.assertIsInstance(p1, SpectralProfile)
+            self.assertIsInstance(p2, SpectralProfile)
+            self.assertTrue(p1.geometry().equals(p2.geometry()))
+            self.assertListEqual(p1.yValues(), p2.yValues())
+
+        rl = QgsRasterLayer(enmap)
+        vl = QgsVectorLayer(landcover)
+        sl = SpectralLibrary.readFromVector(vl, rl)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
+
+
     def test_CSV2(self):
         from qpstestdata import speclib
         from qps.speclib.io.csvdata import CSVSpectralLibraryIO
@@ -128,7 +193,7 @@ class TestIO(TestCase):
             self.assertEqual(p1, p2)
 
         SLIB = TestObjects.createSpectralLibrary()
-        #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs2.out.csv')
+        #pathCSV = os.data_source.join(os.data_source.dirname(__file__), 'speclibcvs2.out.csv')
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
         print(pathCSV)
         CSVSpectralLibraryIO.write(SLIB, pathCSV, progressDialog=QProgressDialog())
@@ -247,7 +312,7 @@ class TestIO(TestCase):
 
         progress = QProgressDialog()
 
-        speclib2 = SpectralLibrary.readFromVector(speclib1, lyrRaster, progressDialog=progress)
+        speclib2 = SpectralLibrary.readFromVector(speclib1, lyrRaster, progress_handler=progress)
         self.assertIsInstance(speclib2, SpectralLibrary)
         self.assertEqual(len(speclib1), len(speclib2))
         self.assertTrue(speclib1.crs().toWkt() == speclib2.crs().toWkt())
@@ -264,12 +329,12 @@ class TestIO(TestCase):
 
         vlLandCover = QgsVectorLayer(landcover)
         rlEnMAP = QgsRasterLayer(enmap)
-        speclib3 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, progressDialog=progress)
+        speclib3 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, progress_handler=progress)
 
         self.assertIsInstance(speclib3, SpectralLibrary)
         self.assertTrue(len(speclib3) > 0)
 
-        speclib4 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, copy_attributes=True, progressDialog=progress)
+        speclib4 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, copy_attributes=True, progress_handler=progress)
         self.assertIsInstance(speclib3, SpectralLibrary)
         self.assertTrue(len(speclib3) > 0)
         self.assertTrue(len(speclib3.fieldNames()) < len(speclib4.fieldNames()))
@@ -621,6 +686,65 @@ class TestIO(TestCase):
             os.remove(pathCSV1)
         except:
             pass
+
+    def test_enmapbox_issue_463(self):
+        # see https://bitbucket.org/hu-geomatics/enmap-box/issues/463/string-attributes-not-correctly-imported
+        # for details
+
+        TESTDATA = pathlib.Path(r'D:\Repositories\enmap-box\enmapboxtestdata')
+
+        landcover_points = TESTDATA / 'landcover_berlin_point.shp'
+        enmap = TESTDATA / 'enmap_berlin.bsq'
+
+        if os.path.isfile(landcover_points) and os.path.isfile(enmap):
+            lyrV = QgsVectorLayer(landcover_points.as_posix())
+            lyrR = QgsRasterLayer(enmap.as_posix())
+
+            slib = SpectralLibrary.readFromVector(lyrV, lyrR,
+                                                  copy_attributes=True
+                                                  )
+
+            for profile in slib:
+                value = profile.attribute('level_2')
+                self.assertIsInstance(value, str)
+                self.assertTrue(len(value) > 0)
+
+            # test speed by
+            uri = '/vsimem/temppoly.gpkg'
+            drv: ogr.Driver = ogr.GetDriverByName('GPKG')
+            ds: ogr.DataSource = drv.CreateDataSource(uri)
+
+            lyr: ogr.Layer = ds.CreateLayer('polygon',
+                                            srs=osrSpatialReference(lyrR.crs()),
+                                            geom_type=ogr.wkbPolygon)
+
+            pd = QProgressDialog()
+
+            f = ogr.Feature(lyr.GetLayerDefn())
+            ext = SpatialExtent.fromLayer(lyrR)
+            g = ogr.CreateGeometryFromWkt(ext.asWktPolygon())
+            f.SetGeometry(g)
+            lyr.CreateFeature(f)
+            ds.FlushCache()
+
+
+            t0 = datetime.datetime.now()
+            slib = SpectralLibrary.readFromVector(uri, lyrR, progress_handler=pd)
+            self.assertIsInstance(slib, SpectralLibrary)
+            dt = datetime.datetime.now() - t0
+            print(f'Loaded {len(slib)} speclib profiles in {dt}')
+
+            self.assertTrue(pd.value() == -1)
+
+            pd.setValue(0)
+
+            t0 = datetime.datetime.now()
+            profiles = SpectralLibrary.readFromVector(uri, lyrR, return_profile_list=True)
+
+            self.assertIsInstance(profiles, list)
+            dt = datetime.datetime.now() - t0
+            print(f'Loaded {len(profiles)} profiles in {dt}')
+            s = ""
 
     def test_csv_from_string(self):
         from qps.speclib.io.csvdata import CSVSpectralLibraryIO

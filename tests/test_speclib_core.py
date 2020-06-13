@@ -628,62 +628,6 @@ class TestCore(TestCase):
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertNotEqual(id(sl1), id(sl2))
 
-    def test_SpectralLibrary_readFromVector(self):
-
-        from qpstestdata import enmap_pixel, landcover, enmap
-
-        rl = QgsRasterLayer(enmap)
-        vl = QgsVectorLayer(enmap_pixel)
-
-        progressDialog = QProgressDialog()
-        #progressDialog.show()
-
-        info ='Test read from \n'+ \
-              'Vector: {}\n'.format(vl.crs().description()) + \
-              'Raster: {}\n'.format(rl.crs().description())
-        print(info)
-
-        sl = SpectralLibrary.readFromVector(vl, rl, copy_attributes=True, progressDialog=progressDialog)
-        self.assertIsInstance(sl, SpectralLibrary)
-        self.assertTrue(len(sl) > 0, msg='Failed to read SpectralProfiles')
-        self.assertEqual(len(sl), rl.width() * rl.height())
-
-        self.assertTrue(progressDialog.value(), [-1, progressDialog.maximum()])
-
-        data = gdal.Open(enmap).ReadAsArray()
-        nb, nl, ns = data.shape
-
-        for p in sl:
-            self.assertIsInstance(p, SpectralProfile)
-
-            x = p.attribute('px_x')
-            y = p.attribute('px_y')
-            yValues = p.values()['y']
-            yValues2 = list(data[:, y, x])
-            self.assertListEqual(yValues, yValues2)
-            s = ""
-
-        self.assertTrue(sl.crs() != vl.crs())
-
-
-        info ='Test read from \n'+ \
-              'Vector: {} (speclib)\n'.format(sl.crs().description()) + \
-              'Raster: {}\n'.format(rl.crs().description())
-        print(info)
-
-
-        sl2 = SpectralLibrary.readFromVector(sl, rl, copy_attributes=True)
-        self.assertIsInstance(sl, SpectralLibrary)
-        self.assertTrue(len(sl2) > 0, msg='Failed to re-read SpectralProfiles')
-        self.assertEqual(sl, sl2)
-
-        rl = QgsRasterLayer(enmap)
-        vl = QgsVectorLayer(landcover)
-        sl = SpectralLibrary.readFromVector(vl, rl)
-        self.assertIsInstance(sl, SpectralLibrary)
-        self.assertTrue(len(sl) > 0)
-
-
 
     def test_mergeSpeclibSpeed(self):
 

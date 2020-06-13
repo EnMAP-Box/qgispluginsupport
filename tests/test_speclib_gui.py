@@ -714,7 +714,7 @@ class TestSpeclibWidgets(TestCase):
                 return
 
         progressDialog = QProgressDialog()
-        # progressDialog.show()
+        # progress_handler.show()
         vl = QgsVectorLayer(pathPoly)
         vl.setName('Polygons')
         rl = QgsRasterLayer(pathRaster)
@@ -732,7 +732,7 @@ class TestSpeclibWidgets(TestCase):
             return dt, spp, pps
 
         t0 = time.time()
-        sl = SpectralLibrary.readFromVector(vl, rl, progressDialog=progressDialog)
+        sl = SpectralLibrary.readFromVector(vl, rl, progress_handler=progressDialog)
         dt, spp, pps = timestats(t0, sl, info='read profiles')
         self.assertTrue(spp <= max_spp, msg='{} seconds per profile are too much!')
 

@@ -170,6 +170,69 @@ class TestUtils(TestCase):
 
         self.assertEqual(pt1, pt2)
 
+    def testOutputDirectory(self, name:str='test-outputs') -> pathlib.Path:
+
+        DIR = super().testOutputDirectory(name) / 'utils'
+        os.makedirs(DIR, exist_ok=True)
+        return DIR
+
+    def test_fid2pixelIndices(self):
+
+        # create test datasets
+        from qpstestdata import enmap_pixel, landcover, enmap, enmap_polygon
+        rl = QgsRasterLayer(enmap)
+        vl = QgsVectorLayer(enmap_pixel)
+
+        DIR_TEST = self.testOutputDirectory()
+        burned, no_data = fid2pixelindices(rl, vl,
+                                           layer=vl.dataProvider().subLayers()[0].split('!!::!!')[1],
+                                           all_touched=True)
+
+        self.assertIsInstance(no_data, int)
+
+        pathDst = DIR_TEST / 'fid2{}.tif'.format(pathlib.Path(vl.source().split('|')[0]).name)
+
+        gdal_array.SaveArray(burned, pathDst.as_posix(), prototype=enmap)
+        self.assertIsInstance(burned, np.ndarray)
+        fidsA = set(vl.allFeatureIds())
+        fidsB = set([fid for fid in np.unique(burned) if fid != no_data])
+        self.assertEqual(fidsA, fidsB)
+        self.assertEqual(burned.shape[1], rl.width())
+        self.assertEqual(burned.shape[0], rl.height())
+
+
+    def test_block_size(self):
+
+
+        ds = TestObjects.createRasterDataset(200, 300, 100, eType=gdal.GDT_Int16)
+
+        for cache in [10,
+                      2*100,
+                      10*2**20,
+                      100*2**20]:
+            bs = optimize_block_size(ds, cache=cache)
+            self.assertIsInstance(bs, list)
+            self.assertTrue(len(bs) == 2)
+            self.assertTrue(0 < bs[0] <= ds.RasterXSize)
+            self.assertTrue(0 < bs[1] <= ds.RasterYSize)
+            s = ""
+
+    def test_osrSpatialReference(self):
+
+        for input in ['EPSG:32633',
+                      QgsCoordinateReferenceSystem('EPSG:32633')
+                    ]:
+            srs = osrSpatialReference(input)
+            self.assertIsInstance(srs, osr.SpatialReference)
+            self.assertTrue(srs.Validate() == ogr.OGRERR_NONE)
+
+    def test_geo_coordinates(self):
+
+        lyrR = TestObjects.createRasterLayer()
+
+        gx1, gy1 = px2geocoordinates(lyrR)
+        gx2, gy2 = px2geocoordinates(lyrR, 'EPSG:4326')
+        s = ""
 
     def test_gdalDataset(self):
 

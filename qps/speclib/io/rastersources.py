@@ -63,8 +63,8 @@ class SpectralProfileLoadingTask(QgsTask):
                                                       raster,
                                                       all_touched=self.all_touched,
                                                       copy_attributes=self.copy_attributes,
-                                                      progressDialog=self.progress_handler,
-                                                      returnProfileList=True)
+                                                      progress_handler=self.progress_handler,
+                                                      return_profile_list=True)
             self.profiles = profiles
         except Exception as ex:
             self.exception = ex
