@@ -2124,7 +2124,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         newFIDs = [f.id() for f in features]
         # see qgsvectorlayereditbuffer.cpp
-        oldFIDs = list(reversed(self.editBuffer().addedFeatures().keys()))
+        oldFIDs = list(reversed(list(self.editBuffer().addedFeatures().keys())))
         mFID2Style = self.profileRenderer().mFID2Style
         updates = dict()
         for fidOld, fidNew in zip(oldFIDs, newFIDs):
@@ -2388,7 +2388,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         # return the edited features
         MAP = self.editBuffer().addedFeatures()
-        fids_inserted = [MAP[k].id() for k in reversed(MAP.keys()) if k not in keysBefore]
+        fids_inserted = [MAP[k].id() for k in reversed(list(MAP.keys())) if k not in keysBefore]
         return fids_inserted
 
     def speclibFromFeatureIDs(self, fids):
