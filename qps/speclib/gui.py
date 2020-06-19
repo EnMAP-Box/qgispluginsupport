@@ -1180,9 +1180,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # set Foreground color
         for axis in self.plotItem.axes.values():
-            ai = axis['item']
+            ai: pg.AxisItem = axis['item']
             if isinstance(ai, pg.AxisItem):
                 ai.setPen(profileRenderer.foregroundColor)
+                ai.setTextPen(profileRenderer.foregroundColor)
 
                 # set info color
                 self.mInfoLabelCursor.setColor(profileRenderer.infoColor)
