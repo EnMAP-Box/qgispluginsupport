@@ -701,7 +701,8 @@ class TestIO(TestCase):
             lyrR = QgsRasterLayer(enmap.as_posix())
 
             slib = SpectralLibrary.readFromVector(lyrV, lyrR,
-                                                  copy_attributes=True
+                                                  copy_attributes=True,
+                                                  name_field='level_1',
                                                   )
 
             for profile in slib:

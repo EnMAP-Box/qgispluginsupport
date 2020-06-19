@@ -46,7 +46,12 @@ class PlotStyleTests(TestCase):
     def test_PlotStyleButton(self):
 
         bt = PlotStyleButton()
+        bt.setStyleSheet("""
+        QToolButton[popupMode="1"] { /* only for MenuButtonPopup */
+    padding-left: 20px; /* make way for the popup button */
+}
 
+        """)
         def onChanged(*args):
             print(args)
 

@@ -858,7 +858,7 @@ class PlotStyleButton(QToolButton):
         # self.clicked.connect(self.showDialog)
         # self.setPlotStyle(PlotStyle())
         self._updateIcon()
-
+        self.setMinimumSize(5, 5)
         self.mMenu = QMenu(parent=self)
         self.mMenu.triggered.connect(self.onAboutToShowMenu)
         # self.mWidget = PlotStyleWidget()
@@ -924,7 +924,7 @@ class PlotStyleButton(QToolButton):
             s = self.mInitialButtonSize
             s = self.sizeHint()
             # s = QSize()
-            icon = self.mPlotStyle.createIcon(self.mInitialButtonSize)
+            icon = self.mPlotStyle.createIcon(self.size())
             self.setIcon(icon)
         self.update()
 

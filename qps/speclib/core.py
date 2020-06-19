@@ -1518,8 +1518,14 @@ class SpectralLibrary(QgsVectorLayer):
         raster: QgsRasterLayer = qgsRasterLayer(raster)
 
         if name_field:
-            assert name in vector.fields().names(), \
-                f'invalid name field. possible values are {";".join(vector.fields().names())}'
+            assert name_field in vector.fields().names(), \
+                f'invalid field name "{name_field}". Allowed values are {", ".join(vector.fields().names())}'
+        else:
+            for i in range(vector.fields().count()):
+                field:QgsField = vector.fields().at(i)
+                if field.type() == QVariant.String and re.search('name', field.name(), re.I):
+                    name_field = field.name()
+                    break
 
         ds: gdal.Dataset = gdalDataset(raster)
         assert isinstance(ds, gdal.Dataset), f'Unable to open {raster.source()} as gdal.Dataset'
