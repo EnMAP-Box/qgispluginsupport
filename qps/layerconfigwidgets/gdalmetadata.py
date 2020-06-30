@@ -222,7 +222,7 @@ class GDALMetadataModel(QAbstractTableModel):
 
         lyr = self.mLayer
         if isinstance(self.mLayer, QgsRasterLayer) and self.mLayer.dataProvider().name() == 'gdal':
-            ds = gdal.Open(self.mLayer.source(), gdal.GA_Update)
+            ds = gdal.Open(self.mLayer.source(), gdal.GA_ReadOnly)
             if isinstance(ds, gdal.Dataset):
                 for item in changed:
                     assert isinstance(item, GDALMetadataItem)
