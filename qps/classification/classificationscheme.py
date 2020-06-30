@@ -921,7 +921,6 @@ class ClassificationScheme(QAbstractTableModel):
         assert isinstance(c, ClassInfo)
         self.insertClasses([c], index=index)
 
-
     def saveToRasterBand(self, band:gdal.Band):
         """
         Saves the ClassificationScheme to the gdal.Band.
@@ -949,8 +948,6 @@ class ClassificationScheme(QAbstractTableModel):
             band.SetColorTable(ct)
         except Exception as ex:
             print(ex, file=sys.stderr)
-
-
 
     def saveToRaster(self, raster:typing.Union[str, gdal.Dataset, QgsRasterLayer], bandIndex=0):
         """

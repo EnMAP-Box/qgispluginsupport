@@ -21,19 +21,20 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import typing, pathlib, sys, re
-from qgis.core import QgsRasterLayer, QgsRasterRenderer
-from qgis.core import *
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsRasterBandComboBox
-from qgis.gui import *
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtCore import *
-from ..utils import loadUi, gdalDataset, ogrDataSource
-import numpy as np
-from .core import QpsMapLayerConfigWidget
-from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget, ClassInfo
+import pathlib
+import typing
+
 from osgeo import gdal, ogr
+
+from qgis.PyQt.QtCore import *
+from qgis.PyQt.QtGui import *
+from qgis.PyQt.QtWidgets import *
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
+    QgsVectorDataProvider, QgsRasterDataProvider, Qgis
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory
+from .core import QpsMapLayerConfigWidget
+from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
+from ..utils import loadUi, gdalDataset
 
 TYPE_LOOKUP = {
     ':STATISTICS_MAXIMUM': float,
@@ -221,27 +222,30 @@ class GDALMetadataModel(QAbstractTableModel):
         changed: typing.List[GDALMetadataItem] = [md for md in self._MDItems if md.isModified()]
 
         lyr = self.mLayer
-        if isinstance(self.mLayer, QgsRasterLayer) and self.mLayer.dataProvider().name() == 'gdal':
-            ds = gdal.Open(self.mLayer.source(), gdal.GA_ReadOnly)
-            if isinstance(ds, gdal.Dataset):
-                for item in changed:
-                    assert isinstance(item, GDALMetadataItem)
-                    if item.major_object == 'Dataset':
-                        majorObject:gdal.MajorObject = ds
-                    elif item.major_object.startswith('Band'):
-                        majorObject:gdal.MajorObject = ds.GetRasterBand(int(item.major_object[4:]))
+        if isinstance(self.mLayer, QgsRasterLayer) and isinstance(self.mLayer.dataProvider(), QgsRasterDataProvider):
 
-                    if isinstance(majorObject, gdal.MajorObject):
-                        majorObject.SetMetadataItem(item.key, item.value, item.domain)
+            if self.mLayer.dataProvider().name() == 'gdal':
+                ds = gdal.Open(self.mLayer.source(), gdal.GA_ReadOnly)
+                if isinstance(ds, gdal.Dataset):
+                    for item in changed:
+                        assert isinstance(item, GDALMetadataItem)
+                        if item.major_object == 'Dataset':
+                            majorObject:gdal.MajorObject = ds
+                        elif item.major_object.startswith('Band'):
+                            majorObject:gdal.MajorObject = ds.GetRasterBand(int(item.major_object[4:]))
 
-                ds.FlushCache()
-                del ds
-        lyr.reload()
+                        if isinstance(majorObject, gdal.MajorObject):
+                            majorObject.SetMetadataItem(item.key, item.value, item.domain)
+
+                    ds.FlushCache()
+                    del ds
+        #lyr.reload()
             #self.syncToLayer()
 
-        if isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.dataProvider().name() == 'ogr':
-            s = ""
-            #self.syncToLayer()
+        if isinstance(self.mLayer, QgsVectorLayer) and isinstance(self.mLayer.dataProvider(), QgsVectorDataProvider):
+            if self.mLayer.dataProvider().name() == 'ogr':
+                pass
+                #self.syncToLayer()
 
         QTimer.singleShot(1000, self.syncToLayer)
 
@@ -587,7 +591,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             if self.supportsGDALClassification:
                 cs = self.classificationSchemeWidget.classificationScheme()
                 if isinstance(cs, ClassificationScheme):
-                    self.mapLayer().dataProvider().setEditable(True)
+                    #self.mapLayer().dataProvider().setEditable(True)
                     cs.saveToRaster(ds)
                     ds.FlushCache()
         self.metadataModel.applyToLayer()
