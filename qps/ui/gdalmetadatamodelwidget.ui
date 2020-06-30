@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>471</width>
-    <height>409</height>
+    <width>621</width>
+    <height>462</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -112,7 +112,10 @@
         <item>
          <widget class="QToolButton" name="btnMatchCase">
           <property name="text">
-           <string>...</string>
+           <string>Aa</string>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -120,6 +123,47 @@
          <widget class="QToolButton" name="btnRegex">
           <property name="text">
            <string>.*$</string>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnAddItem">
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnRemoveItem">
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnReset">
+          <property name="text">
+           <string>R</string>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -153,7 +197,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Regex</string>
+    <string>.*</string>
    </property>
    <property name="toolTip">
     <string>Activate to interprete the filter expression as regular expression</string>
@@ -164,10 +208,37 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Match Case</string>
+    <string>Aa</string>
    </property>
    <property name="toolTip">
     <string>Activate for case-sensitive filtering</string>
+   </property>
+  </action>
+  <action name="actionAddItem">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
+   </property>
+   <property name="text">
+    <string>addItem</string>
+   </property>
+  </action>
+  <action name="actionRemoveItem">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
+   </property>
+   <property name="text">
+    <string>RemoveItem</string>
+   </property>
+  </action>
+  <action name="actionReset">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mIconClearText.svg</normaloff>:/images/themes/default/mIconClearText.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Reset</string>
    </property>
   </action>
  </widget>
@@ -197,6 +268,7 @@
  </customwidgets>
  <resources>
   <include location="../qpsresources.qrc"/>
+  <include location="../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>
 </ui>

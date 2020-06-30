@@ -298,6 +298,28 @@ class LayerConfigWidgetsTests(TestCase):
 
         self.showGui(tv)
 
+    def test_GDALMetadataModelItemWidget(self):
+
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataItemDialog, GDALMetadataItem
+
+        items = ['dataset', 'band1', 'band2']
+        domains = ['Domains 1', 'domains2', 'MyDomain']
+        d = GDALMetadataItemDialog(major_objects=items, domains=domains)
+        d.setKey('MyKey')
+        d.setValue('MyValue')
+        d.setDomain('MyDomain')
+        d.setMajorObject('band1')
+
+        item = d.metadataItem()
+        self.assertIsInstance(item, GDALMetadataItem)
+        self.assertEqual(item.major_object, 'band1')
+        self.assertEqual(item.domain, 'MyDomain')
+        self.assertEqual(item.key, 'MyKey')
+        self.assertEqual(item.value, 'MyValue')
+
+
+
+        self.showGui(d)
 
     def test_GDALMetadataModelConfigWidget(self):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory

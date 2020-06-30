@@ -74,11 +74,14 @@ class GDALMetadataItem(object):
             self.value
 
     def setEditorValue(self, value):
-        t = TYPE_LOOKUP.get(self.keyDK())
-        if t:
-            self.value = str(t(value))
+        if value in [None, '']:
+            self.value = None
         else:
-            self.value = str(value)
+            t = TYPE_LOOKUP.get(self.keyDK())
+            if t:
+                self.value = str(t(value))
+            else:
+                self.value = str(value)
 
     def isModified(self) -> bool:
         """
@@ -95,9 +98,11 @@ class GDALMetadataItem(object):
 
 
 class GDALMetadataModel(QAbstractTableModel):
+
+    sigEditable = pyqtSignal(bool)
+
     def __init__(self, parent=None):
         super(GDALMetadataModel, self).__init__(parent)
-
         self.mLayer: QgsMapLayer = None
 
         self.cnItem = 'Item'
@@ -106,14 +111,36 @@ class GDALMetadataModel(QAbstractTableModel):
         self.cnValue = 'Value(s)'
 
         self._column_names = [self.cnItem, self.cnDomain, self.cnKey, self.cnValue]
-
         self._isEditable = False
+        self._MDItems: typing.List[GDALMetadataItem] = []
 
-        self._MDItems = []
+
+    def resetChanges(self):
+        c = self._column_names.index(self.cnValue)
+        for r, item in enumerate(self._MDItems):
+            if item.isModified():
+                idx = self.createIndex(r, c, None)
+                self.setData(idx, item.initialValue, Qt.EditRole)
+
+
+    def domains(self) -> typing.List[str]:
+
+        domains = set()
+        for item in self._MDItems:
+            domains.add(item.domain)
+        return sorted(domains)
+
+    def major_objects(self) -> typing.List[str]:
+        mobjs = set()
+        for item in self._MDItems:
+            mobjs.add(item.major_object)
+        return sorted(mobjs, key=lambda k: (k.startswith('Band'), k))
 
     def setIsEditable(self, b: bool):
         assert isinstance(b, bool)
-        self._isEditable = b
+        if b != self._isEditable:
+            self._isEditable = b
+            self.sigEditable.emit(self.isEditable())
 
     def isEditable(self) -> bool:
         return self._isEditable
@@ -173,39 +200,43 @@ class GDALMetadataModel(QAbstractTableModel):
         self._MDItems = self._read_maplayer()
         self.endResetModel()
 
+    def removeItem(self, item:GDALMetadataItem):
+        assert isinstance(item, GDALMetadataItem)
+        assert item in self._MDItems
+
+        r = self._MDItems.index(item)
+        idx = self.index(r, self._column_names.index(self.cnValue), None)
+        self.setData(idx, None, role=Qt.EditRole)
+
+    def addItem(self, item: GDALMetadataItem):
+        assert isinstance(item, GDALMetadataItem)
+        if item not in self._MDItems:
+            r = self.rowCount()
+            self.beginInsertRows(QModelIndex(), r, r)
+            self._MDItems.append(item)
+            self.endInsertRows()
+
     def applyToLayer(self):
 
-        changed = [md for md in self._MDItems if md.isModified()]
-
-        major_objects = dict()
-        for md in changed:
-            assert isinstance(md, GDALMetadataItem)
-            if md.major_object not in major_objects.keys():
-                major_objects[md.major_object] = dict()
-
-            if md.domain not in major_objects[md.major_object].keys():
-                major_objects[md.major_object] = []
-            major_objects[md.major_object].append(md)
-
-
+        changed: typing.List[GDALMetadataItem] = [md for md in self._MDItems if md.isModified()]
 
         lyr = self.mLayer
         if isinstance(self.mLayer, QgsRasterLayer) and self.mLayer.dataProvider().name() == 'gdal':
             ds = gdal.Open(self.mLayer.source(), gdal.GA_Update)
             if isinstance(ds, gdal.Dataset):
-                for objID, items in major_objects.items():
-                    if objID == 'Dataset':
-                        majorObject = ds
-                    elif objID.startswith('Band'):
-                        majorObject = ds.GetRasterBand(int(objID[4:]))
+                for item in changed:
+                    assert isinstance(item, GDALMetadataItem)
+                    if item.major_object == 'Dataset':
+                        majorObject:gdal.MajorObject = ds
+                    elif item.major_object.startswith('Band'):
+                        majorObject:gdal.MajorObject = ds.GetRasterBand(int(item.major_object[4:]))
 
                     if isinstance(majorObject, gdal.MajorObject):
-                        for item in items:
-                            assert isinstance(item, GDALMetadataItem)
-                            majorObject.SetMetadataItem(item.key, item.value, item.domain)
+                        majorObject.SetMetadataItem(item.key, item.value, item.domain)
+
                 ds.FlushCache()
                 del ds
-
+        lyr.reload()
             #self.syncToLayer()
 
         if isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.dataProvider().name() == 'ogr':
@@ -241,6 +272,10 @@ class GDALMetadataModel(QAbstractTableModel):
             elif cname == self.cnValue:
                 return item.value
 
+        if role == Qt.TextColorRole:
+            if item.value in ['', None]:
+                return QColor('red')
+
         if role == Qt.FontRole and cname == self.cnValue:
             if item.isModified():
                 f = QFont()
@@ -270,8 +305,12 @@ class GDALMetadataModel(QAbstractTableModel):
                     changed = True
                 except:
                     pass
+
         if changed:
-            self.dataChanged.emit(index, index, [role])
+            idx0 = self.createIndex(index.row(), 0)
+            idx1 = self.createIndex(index.row(), self.columnCount()-1)
+            self.dataChanged.emit(idx0, idx1, [role, Qt.TextColorRole])
+
         return False
 
     def _read_majorobject(self, obj):
@@ -347,6 +386,76 @@ class GDALMetadataModelTableView(QTableView):
             m.exec_(event.globalPos())
 
 
+class GDALMetadataItemDialog(QDialog):
+
+    def __init__(self, *args,
+                 major_objects: typing.List[str] = [],
+                 domains: typing.List[str] = [],
+                 **kwds):
+        super().__init__(*args, **kwds)
+        pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelitemwidget.ui'
+        loadUi(pathUi, self)
+
+        self.tbKey: QLineEdit
+        self.tbValue: QLineEdit
+        self.cbDomain: QComboBox
+        self.cbMajorObject: QComboBox
+
+        self.cbMajorObject.addItems(major_objects)
+        self.cbDomain.addItems(domains)
+
+        self.tbKey.textChanged.connect(self.validate)
+        self.tbValue.textChanged.connect(self.validate)
+        self.cbDomain.currentTextChanged.connect(self.validate)
+        self.cbMajorObject.currentTextChanged.connect(self.validate)
+
+
+        self.validate()
+
+    def validate(self, *args):
+        errors = []
+
+        item = self.metadataItem()
+        if item.key == '':
+            errors.append('missing key')
+        if item.value == '':
+            errors.append('missing value')
+        if item.major_object in ['', None]:
+            errors.append('missing item')
+
+        self.infoLabel.setText('\n'.join(errors))
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(len(errors) == 0)
+
+    def setKey(self, name:str):
+        self.tbKey.setText(str(name))
+
+    def setValue(self, value:str):
+        self.tbValue.setText(str(value))
+
+    def setDomain(self, domain: str):
+
+        idx = self.cbDomain.findText(domain)
+        if idx >= 0:
+            self.cbDomain.setCurrentIndex(idx)
+        else:
+            self.cbDomain.setCurrentText(domain)
+
+    def setMajorObject(self, major_object: str):
+
+        idx = self.cbMajorObject.findText(major_object)
+        assert idx >= 0, f'major_object does not exist: {major_object}'
+        self.cbMajorObject.setCurrentIndex(idx)
+
+    def metadataItem(self) -> GDALMetadataItem:
+
+        key = self.tbKey.text()
+        value = self.tbValue.text()
+        domain = self.cbDomain.currentText()
+        major_object = self.cbMajorObject.currentText()
+        item = GDALMetadataItem(major_object, domain, key, value)
+        item.initialValue = None
+        return item
+
 class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
     def __init__(self, layer: QgsMapLayer = None, canvas: QgsMapCanvas = None, parent: QWidget = None):
@@ -372,11 +481,14 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.btnRegex.setDefaultAction(self.optionRegex)
         self._cs = None
         self.metadataModel = GDALMetadataModel()
+        self.metadataModel.sigEditable.connect(self.onEditableChanged)
         self.metadataProxyModel = QSortFilterProxyModel()
         self.metadataProxyModel.setSourceModel(self.metadataModel)
         self.metadataProxyModel.setFilterKeyColumn(-1)
+
         assert isinstance(self.tableView, GDALMetadataModelTableView)
         self.tableView.setModel(self.metadataProxyModel)
+        self.tableView.selectionModel().selectionChanged.connect(self.onSelectionChanged)
         self.tbFilter.textChanged.connect(self.updateFilter)
         self.optionMatchCase.changed.connect(self.updateFilter)
         self.optionRegex.changed.connect(self.updateFilter)
@@ -386,6 +498,54 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.classificationSchemeWidget.setIsEditable(False)
 
         self.setLayer(layer)
+
+        self.btnAddItem.setDefaultAction(self.actionAddItem)
+        self.btnRemoveItem.setDefaultAction(self.actionRemoveItem)
+        self.btnReset.setDefaultAction(self.actionReset)
+
+        self.actionReset.triggered.connect(self.onReset)
+        self.actionRemoveItem.setEnabled(False)
+        self.actionAddItem.triggered.connect(self.onAddItem)
+        self.actionRemoveItem.triggered.connect(self.onRemoveSelectedItems)
+        self.onEditableChanged(self.metadataModel.isEditable())
+
+    def onReset(self):
+
+        self.metadataModel.resetChanges()
+
+
+    def onAddItem(self):
+        protectedDomains = [p.split(':')[0] for p in PROTECTED if not p.startswith(':')]
+        domains = [d for d in self.metadataModel.domains() if d not in protectedDomains]
+        d = GDALMetadataItemDialog(parent=self,
+                                   domains=domains,
+                                   major_objects=self.metadataModel.major_objects())
+
+        if d.exec_() == QDialog.Accepted:
+            item = d.metadataItem()
+            self.metadataModel.addItem(item)
+
+    def onRemoveSelectedItems(self):
+
+        rows = self.tableView.selectionModel().selectedRows()
+
+        items = [self.tableView.model().data(row, role=Qt.UserRole) for row in rows]
+        for item in items:
+            self.metadataModel.removeItem(item)
+
+    def onSelectionChanged(self, *args):
+
+        rows = self.tableView.selectionModel().selectedRows()
+        self.actionRemoveItem.setEnabled(len(rows) > 0)
+
+    def onEditableChanged(self, *args):
+        isEditable = self.metadataModel.isEditable()
+        self.btnAddItem.setVisible(isEditable)
+        self.btnRemoveItem.setVisible(isEditable)
+        self.btnReset.setVisible(isEditable)
+        self.actionReset.setEnabled(isEditable)
+        self.actionAddItem.setEnabled(isEditable)
+        self.onSelectionChanged() # this sets the actionRemoveItem
 
     def setLayer(self, layer:QgsMapLayer):
         """
