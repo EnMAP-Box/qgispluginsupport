@@ -63,11 +63,10 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
         self.mFieldExpressionWidget.setLayer(layer)
         self.panelSingleLabels = QgsTextFormatPanelWidget(textFormat, canvas, None, layer)
         self.pageSingleLabels.layout().insertWidget(1, self.panelSingleLabels)
-
-
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         self.setLayer(self.mapLayer())
 
     def setLayer(self, layer):

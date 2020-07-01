@@ -596,7 +596,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                     ds.FlushCache()
         self.metadataModel.applyToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         lyr = self.mapLayer()
         self.metadataModel.setLayer(lyr)
         if self.supportsGDALClassification:

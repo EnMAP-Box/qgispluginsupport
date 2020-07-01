@@ -72,11 +72,13 @@ class QpsMapLayerConfigWidget(QgsMapLayerConfigWidget):
     def menuButtonToolTip(self):
         return ''
 
-    def syncToLayer(self):
+    def syncToLayer(self, mapLayer:QgsMapLayer=None):
         """
         Implement this method to take up changes from the underlying map layer.
         """
-        pass
+        if isinstance(mapLayer, QgsMapLayer):
+            self.mMapLayer = mapLayer
+
 
     def reset(self):
         """
@@ -102,7 +104,8 @@ class MetadataConfigWidget(QpsMapLayerConfigWidget):
 
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         lyr = self.mapLayer()
         if isinstance(lyr, QgsMapLayer):
             style = QgsApplication.reportStyleSheet(QgsApplication.WebBrowser)
@@ -140,7 +143,8 @@ class SourceConfigWidget(QpsMapLayerConfigWidget):
         self.tbLayerName.textChanged.connect(lambda txt: self.tbLayerDisplayName.setText(layer.formatLayerName(txt)))
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         lyr = self.mapLayer()
         if isinstance(lyr, QgsMapLayer):
             self.tbLayerName.setText(lyr.name())
@@ -348,10 +352,11 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
                 self.scrollArea.setWidget(w)
             self.mSymbologyWidget = w
 
-    def syncToLayer(self):
-        lyr = self.mapLayer()
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
 
         w = self.symbologyWidget()
+        lyr = self.mapLayer()
         if isinstance(lyr, QgsRasterLayer):
             r = lyr.renderer()
             if isinstance(w, QgsRendererRasterPropertiesWidget):
@@ -441,8 +446,8 @@ class HistogramConfigWidget(QpsMapLayerConfigWidget):
 
         self.syncToLayer()
 
-    def syncToLayer(self):
-        lyr = self.mapLayer()
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         if isinstance(lyr, QgsRasterLayer):
             w = self.mScrollArea.widget()
             if not isinstance(w, QgsRasterHistogramWidget):
@@ -504,7 +509,8 @@ class LegendConfigWidget(QpsMapLayerConfigWidget):
         self.layout().addWidget(self.mEmbeddedConfigWidget)
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         self.mEmbeddedConfigWidget.setLayer(self.mapLayer())
 
     def apply(self):
@@ -545,8 +551,8 @@ class RenderingConfigWidget(QpsMapLayerConfigWidget):
         loadUi(configWidgetUi('renderingconfigwidget.ui'), self)
         self.syncToLayer()
 
-    def syncToLayer(self):
-
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         lyr = self.mapLayer()
         if isinstance(lyr, QgsMapLayer):
             self.gbRenderingScale.setChecked(lyr.hasScaleBasedVisibility())

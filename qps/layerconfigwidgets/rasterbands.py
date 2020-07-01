@@ -30,9 +30,9 @@ from qgis.gui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import QIcon
 import numpy as np
-
+from .core import QpsMapLayerConfigWidget
 from ..utils import loadUi, parseWavelength, UnitLookup
-class RasterBandConfigWidget(QgsMapLayerConfigWidget):
+class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
     @staticmethod
     def icon() -> QIcon:
@@ -103,8 +103,8 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
 
         self.setPanelTitle('Band Selection')
 
-    def syncToLayer(self):
-
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         renderer = self.mLayer.renderer()
         self.setRenderer(renderer)
 

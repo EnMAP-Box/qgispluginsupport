@@ -616,7 +616,8 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
             lyr.commitChanges()
             lyr.startEditing()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         self.mFieldModel.setLayer(self.mapLayer())
 
 
