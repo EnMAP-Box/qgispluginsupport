@@ -279,13 +279,52 @@ class LayerConfigWidgetsTests(TestCase):
         w.setLayout(l)
         self.showGui(w)
 
+    def test_GDALBandNameModel(self):
+
+        from qpstestdata import enmap
+        path = enmap
+
+        ds:gdal.Dataset = gdal.Open(path)
+        old_name = ds.GetRasterBand(1).GetDescription()
+        del ds
+
+        lyrR = QgsRasterLayer(path)
+        from qps.layerconfigwidgets.gdalmetadata import GDALBandNameModel
+        model = GDALBandNameModel()
+        model.setLayer(lyrR)
+
+        self.assertEqual(model.rowCount(), lyrR.bandCount())
+
+        fm = QSortFilterProxyModel()
+        fm.setSourceModel(model)
+
+        tv = QTableView()
+        tv.setSortingEnabled(True)
+        tv.setModel(fm)
+
+        new_name = old_name + 'XYZ'
+        changed = model.setData(model.index(0, 1), new_name, role=Qt.EditRole)
+        self.assertTrue(changed)
+        model.applyToLayer()
+        model.syncToLayer()
+        self.assertEqual(model.data(model.index(0, 1), role=Qt.DisplayRole), new_name)
+
+        ds: gdal.Dataset = gdal.Open(path)
+        new_name2 = ds.GetRasterBand(1).GetDescription()
+        del ds
+        self.assertEqual(new_name, new_name2)
+
+
+        self.showGui(tv)
+
 
     def test_GDALMetadataModel(self):
-        from qpstestdata import enmap
+        from qpstestdata import enmap, landcover
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
 
         c = QgsMapCanvas()
         lyr = QgsRasterLayer(enmap)
+        lyr = QgsVectorLayer(landcover)
         model = GDALMetadataModel()
         model.setIsEditable(True)
         fm = QSortFilterProxyModel()
@@ -323,27 +362,58 @@ class LayerConfigWidgetsTests(TestCase):
 
     def test_GDALMetadataModelConfigWidget(self):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
-        from qpstestdata import enmap
+        from qpstestdata import enmap, landcover
 
         lyrR = QgsRasterLayer(enmap)
+        lyrV = QgsVectorLayer(landcover)
         canvas = QgsMapCanvas()
-        w = GDALMetadataModelConfigWidget(lyrR, canvas)
+        w = GDALMetadataModelConfigWidget(lyrV, canvas)
         w.metadataModel.setIsEditable(True)
         w.widgetChanged.connect(lambda: print('Changed'))
         self.assertIsInstance(w, QWidget)
-        self.assertTrue(w.is_gdal)
 
-
+        QgsProject.instance().addMapLayer(w.mapLayer())
+        canvas.setLayers([w.mapLayer()])
+        canvas.mapSettings().setDestinationCrs(w.mapLayer().crs())
+        canvas.zoomToFullExtent()
         btnApply = QPushButton('Apply')
         btnApply.clicked.connect(w.apply)
+        btnZoom = QPushButton('Center')
+        btnZoom.clicked.connect(canvas.zoomToFullExtent)
         btnReload = QPushButton('Reload')
         btnReload.clicked.connect(w.syncToLayer)
-        l = QVBoxLayout()
-        l.addWidget(btnApply)
-        l.addWidget(btnReload)
-        l.addWidget(w)
+        cb = QgsRasterBandComboBox()
+        cb.setLayer(w.mapLayer())
+
+        l = QGridLayout()
+        l.addWidget(btnApply, 0, 0)
+        l.addWidget(btnReload, 0, 1)
+        l.addWidget(btnZoom, 0, 2)
+        l.addWidget(cb, 0, 3, 1, 2)
+        l.addWidget(w, 1, 0, 2, 3)
+        l.addWidget(canvas, 1, 4, 3, 2)
         m = QWidget()
         m.setLayout(l)
+
+        if isinstance(w.mapLayer(), QgsVectorLayer):
+            from qps.layerconfigwidgets.gdalmetadata import GDALMetadataItem
+            item = GDALMetadataItem('DataSource', '', 'MyKey', 'MyValue')
+            item.initialValue = ''
+            w.metadataModel.addItem(item)
+
+            item = GDALMetadataItem('DataSource', 'MyDomain', 'MyKey1', 'MyValue1')
+            item.initialValue = ''
+            w.metadataModel.addItem(item)
+
+            item = GDALMetadataItem('Layer1', '', 'MyKey1', 'MyValue1')
+            item.initialValue = ''
+            w.metadataModel.addItem(item)
+
+            item = GDALMetadataItem('Layer1', 'MyDomain', 'MyKey1', 'MyValue1')
+            item.initialValue = ''
+            w.metadataModel.addItem(item)
+
+            w.apply()
         self.showGui(m)
 
 

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>621</width>
-    <height>462</height>
+    <height>517</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,7 +17,7 @@
    <iconset resource="../qpsresources.qrc">
     <normaloff>:/qps/ui/icons/rasterband_select.svg</normaloff>:/qps/ui/icons/rasterband_select.svg</iconset>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0">
    <property name="spacing">
     <number>2</number>
    </property>
@@ -34,60 +34,108 @@
     <number>2</number>
    </property>
    <item>
-    <widget class="QGroupBox" name="gbMetadata">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>1</verstretch>
-      </sizepolicy>
+    <widget class="QgsCollapsibleGroupBox" name="gbBandNames">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Band Names</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_4">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>6</number>
+      </property>
+      <property name="topMargin">
+       <number>6</number>
+      </property>
+      <property name="rightMargin">
+       <number>6</number>
+      </property>
+      <property name="bottomMargin">
+       <number>6</number>
+      </property>
+      <item>
+       <widget class="QTableView" name="tvBandNames"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QgsCollapsibleGroupBox" name="gbClassificationScheme">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="title">
+      <string>Categories / Classification Scheme</string>
+     </property>
+     <property name="checkable">
+      <bool>false</bool>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>6</number>
+      </property>
+      <property name="topMargin">
+       <number>6</number>
+      </property>
+      <property name="rightMargin">
+       <number>6</number>
+      </property>
+      <property name="bottomMargin">
+       <number>6</number>
+      </property>
+      <item>
+       <widget class="ClassificationSchemeWidget" name="classificationSchemeWidget" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>75</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QgsCollapsibleGroupBox" name="gbGDALMetadata">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
      </property>
      <property name="title">
       <string>GDAL/OGR Metadata Model</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_22">
-      <item>
-       <widget class="QgsCollapsibleGroupBox" name="gbClassificationScheme">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="title">
-         <string>Categories / Classification Scheme</string>
-        </property>
-        <property name="checkable">
-         <bool>false</bool>
-        </property>
-        <layout class="QVBoxLayout" name="verticalLayout_2">
-         <property name="spacing">
-          <number>0</number>
-         </property>
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <property name="topMargin">
-          <number>0</number>
-         </property>
-         <property name="rightMargin">
-          <number>0</number>
-         </property>
-         <property name="bottomMargin">
-          <number>0</number>
-         </property>
-         <item>
-          <widget class="ClassificationSchemeWidget" name="classificationSchemeWidget" native="true">
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>75</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </item>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>6</number>
+      </property>
+      <property name="topMargin">
+       <number>6</number>
+      </property>
+      <property name="rightMargin">
+       <number>6</number>
+      </property>
+      <property name="bottomMargin">
+       <number>6</number>
+      </property>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <property name="topMargin">
@@ -170,7 +218,7 @@
        </layout>
       </item>
       <item>
-       <widget class="GDALMetadataModelTableView" name="tableView">
+       <widget class="GDALMetadataModelTableView" name="tvGDALMetadata">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
           <horstretch>0</horstretch>
@@ -190,6 +238,19 @@
       </item>
      </layout>
     </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>0</height>
+      </size>
+     </property>
+    </spacer>
    </item>
   </layout>
   <action name="optionRegex">
