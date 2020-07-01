@@ -717,7 +717,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         rows = self.tvGDALMetadata.selectionModel().selectedRows()
 
-        items = [self.tableView.model().data(row, role=Qt.UserRole) for row in rows]
+        items = [self.tvGDALMetadata.model().data(row, role=Qt.UserRole) for row in rows]
         for item in items:
             self.metadataModel.removeItem(item)
 
