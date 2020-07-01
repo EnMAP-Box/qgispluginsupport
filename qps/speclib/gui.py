@@ -1308,10 +1308,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         toBeRemoved = [fid for fid in visualized if fid not in toBeVisualized]
         toBeAdded = [fid for fid in toBeVisualized if fid not in visualized]
 
-        selectedNow = set(self.speclib().selectedFeatureIds())
+        if isinstance(self.speclib(), SpectralLibrary):
+            selectedNow = set(self.speclib().selectedFeatureIds())
+        else:
+            selectedNow = set()
 
-        if selectedNow != self.mSelectedIds:
-            s = ""
         selectionChanged = list(selectedNow.symmetric_difference(self.mSelectedIds))
         self.mSelectedIds = selectedNow
 
