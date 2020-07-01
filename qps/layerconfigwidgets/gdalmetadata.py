@@ -350,10 +350,20 @@ class GDALMetadataModel(QAbstractTableModel):
 
         changed: typing.List[GDALMetadataItem] = [md for md in self._MDItems if md.isModified()]
 
-        lyr = self.mLayer
         if isinstance(self.mLayer, QgsRasterLayer) and isinstance(self.mLayer.dataProvider(), QgsRasterDataProvider):
 
             if self.mLayer.dataProvider().name() == 'gdal':
+                gdal.PushErrorHandler(self.mErrorHandler.handler)
+                try:
+                    ds = gdal.Open(self.mLayer.source(), gdal.GA_ReadOnly)
+                    if isinstance(ds, gdal.Dataset):
+                        for item in changed:
+                            mo: gdal.MajorObject = None
+                            assert isinstance(item, GDALMetadataItem)
+                            if item.major_object == 'Dataset':
+                                mo = ds
+                            elif item.major_object.startswith('Band'):
+                                mo = ds.GetRasterBand(int(item.major_object[4:]))
 
                 gdal.PushErrorHandler(self.mErrorHandler.handler)
                 try:
@@ -367,9 +377,21 @@ class GDALMetadataModel(QAbstractTableModel):
                             elif item.major_object.startswith('Band'):
                                 majorObject = ds.GetRasterBand(int(item.major_object[4:]))
 
+                            if isinstance(mo, gdal.MajorObject):
+                                mo.SetMetadataItem(item.key, item.value, item.domain)
                             if isinstance(majorObject, gdal.MajorObject):
                                 majorObject.SetMetadataItem(item.key, item.value, item.domain)
 
+                        ds.FlushCache()
+                        del ds
+                    if self.mErrorHandler.err_level >= gdal.CE_Warning:
+                        raise RuntimeError(self.mErrorHandler.err_level,
+                                           self.mErrorHandler.err_no,
+                                           self.mErrorHandler.err_msg)
+                except Exception as ex:
+                    print(ex, file=sys.stderr)
+                finally:
+                    gdal.PopErrorHandler()
                         ds.FlushCache()
                         del ds
                     if self.mErrorHandler.err_level >= gdal.CE_Warning:
@@ -421,7 +443,31 @@ class GDALMetadataModel(QAbstractTableModel):
                 #if not ogrExceptions:
                 #    ogr.DontUseExceptions()
                 #self.syncToLayer()
+                path = self.mLayer.source().split('|')[0]
+                gdal.PushErrorHandler(self.mErrorHandler.handler)
+                try:
+                    ds: ogr.DataSource = ogr.Open(path, update=1)
+                    if isinstance(ds, ogr.DataSource):
+                        for item in changed:
+                            assert isinstance(item, GDALMetadataItem)
+                            mo: ogr.MajorObject = None
+                            if item.major_object == 'DataSource':
+                                mo = ds
+                            elif item.major_object.startswith('Layer'):
+                                mo = ds.GetLayer(int(item.major_object[5:])-1)
 
+                            if isinstance(mo, ogr.MajorObject):
+                                mo.SetMetadataItem(item.key, item.value, item.domain)
+
+                        ds.FlushCache()
+                    if self.mErrorHandler.err_level >= gdal.CE_Warning:
+                        raise RuntimeError(self.mErrorHandler.err_level,
+                                           self.mErrorHandler.err_no,
+                                           self.mErrorHandler.err_msg)
+                except Exception as ex:
+                    print(ex, file=sys.stderr)
+                finally:
+                    gdal.PopErrorHandler()
 
     def index2MDItem(self, index: QModelIndex) -> GDALMetadataItem:
         """
