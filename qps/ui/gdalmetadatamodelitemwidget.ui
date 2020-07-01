@@ -11,7 +11,13 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Add Metadata Entry</string>
+  </property>
+  <property name="sizeGripEnabled">
+   <bool>true</bool>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
   </property>
   <layout class="QFormLayout" name="formLayout">
    <property name="horizontalSpacing">
@@ -41,6 +47,9 @@
    </item>
    <item row="0" column="1">
     <widget class="QLineEdit" name="tbKey">
+     <property name="whatsThis">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use this textbox to enter the key that is used to access the metadata entry, e.g. &lt;/p&gt;&lt;p&gt;as in&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-family:'Courier New';&quot;&gt;gdalDataset.GetMetadataItem('MyKey')&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="placeholderText">
       <string>Keys</string>
      </property>
@@ -55,6 +64,9 @@
    </item>
    <item row="1" column="1">
     <widget class="QLineEdit" name="tbValue">
+     <property name="whatsThis">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use this textbox to enter the metadata value that will be returned in GDAL e.g. calling &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-family:'Courier New';&quot;&gt;gdalDataset.GetMetadataItem('MyKey')&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="placeholderText">
       <string>Value</string>
      </property>
@@ -69,6 +81,9 @@
    </item>
    <item row="4" column="1">
     <widget class="QComboBox" name="cbDomain">
+     <property name="whatsThis">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Here you can enter an optional domain under which the metadata entry is stored.&lt;br/&gt;The metadata entry will then become accessible by&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-family:'Courier New';&quot;&gt;gdalDataset.GetMetadataItem('MyKey', 'MyDomain')&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="editable">
       <bool>true</bool>
      </property>
@@ -83,6 +98,9 @@
    </item>
    <item row="5" column="1">
     <widget class="QComboBox" name="cbMajorObject">
+     <property name="whatsThis">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Here you can select the dataset location the metadata entry will be linked to,&lt;/p&gt;&lt;p&gt;e.g. the entire dataset or a specific raster band.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="editable">
       <bool>false</bool>
      </property>

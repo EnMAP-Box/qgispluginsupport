@@ -220,7 +220,10 @@
      <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
    </property>
    <property name="text">
-    <string>addItem</string>
+    <string>Add Item</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a new metadata item</string>
    </property>
   </action>
   <action name="actionRemoveItem">
@@ -229,7 +232,10 @@
      <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
    </property>
    <property name="text">
-    <string>RemoveItem</string>
+    <string>Remove Items</string>
+   </property>
+   <property name="toolTip">
+    <string>Remove selected metadata items</string>
    </property>
   </action>
   <action name="actionReset">
