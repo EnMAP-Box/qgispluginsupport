@@ -1079,7 +1079,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Sets the SpectralLibrary to be visualized
         :param speclib: SpectralLibrary
         """
-        if speclib == self.speclib():
+        if isinstance(speclib, SpectralLibrary) and speclib == self.speclib():
             return
         self.mUpdateTimer.stop()
 
@@ -1120,13 +1120,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.mSpeclib.willBeDeleted.connect(self.onWillBeDeleted)
 
     def onWillBeDeleted(self):
-        self.setSpectlib(None)
+        self.setSpeclib(None)
 
     def disconnectSpeclibSignals(self):
         """
         Savely disconnects all signals from the linked SpectralLibrary
         """
-        if isinstance(self.mSpeclib, SpectralLibrary):
+        if isinstance(self.mSpeclib, SpectralLibrary) and not sip.isdeleted(self.mSpeclib):
             def disconnect(sig, slot):
                 while True:
                     try:
@@ -1474,6 +1474,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Order of returned fids is equal to its importance.
         1st position = most important, should be plottet on top of all other profiles
         """
+        if not isinstance(self.speclib(), SpectralLibrary):
+            return []
+
         nMax = len(self.speclib())
         selectedOnly = self.viewBox().mActionShowSelectedProfilesOnly.isChecked()
         selectedIds = self.speclib().selectedFeatureIds()

@@ -700,7 +700,16 @@ class TestSpeclibWidgets(TestCase):
 
 
 
+    def test_delete_speclib(self):
 
+        speclib = TestObjects.createSpectralLibrary(10)
+        QgsProject.instance().addMapLayer(speclib)
+        w = SpectralLibraryWidget(speclib=speclib)
+        w.show()
+
+        QgsProject.instance().removeAllMapLayers()
+        del speclib
+        assert w.plotWidget().speclib() is None
 
 
     def test_speclibImportSpeed(self):
