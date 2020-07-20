@@ -1218,11 +1218,19 @@ def scanResources(path=':') -> typing.Iterator[str]:
 def datetime64(value, dpy: int = None) -> np.datetime64:
     """
     Converts an input value into a numpy.datetime64 value.
-    :param value:
-    :return:
+    :param value: the value to be converted into a numpy.datetime64 value
+    :param dpy: days per year. If `value` is a float, it is considered to be a decimal year value.
+                    By default it is assumed that the year fraction is calculated on 366 year in leap years and 365
+                    in none-leap year. However, dpy can be used to use any other number of days per year to convert
+                    the fraction back into days.
+    :return: numpy.datetime64
     """
     if isinstance(value, np.datetime64):
         return value
+    elif isinstance(value, QDate):
+        return np.datetime64(value.toPyDate())
+    elif isinstance(value, QDateTime):
+        return np.datetime64(value.toPyDateTime())
     elif isinstance(value, (str, datetime.date, datetime.datetime)):
         return np.datetime64(value)
     elif isinstance(value, int):

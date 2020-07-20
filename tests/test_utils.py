@@ -373,6 +373,8 @@ class TestUtils(TestCase):
         refDate = np.datetime64('2020-01-01')
         self.assertEqual(datetime64(refDate), refDate) ## datetime64 to datetime64
         self.assertEqual(datetime64('2020-01-01'), refDate) # string to datetime64
+        self.assertEqual(datetime64(QDate(2020, 1, 1,)), refDate)
+        self.assertEqual(datetime64(QDateTime(2020, 1, 1, 0, 0)), refDate)
         self.assertEqual(datetime64(datetime.date(year=2020, month=1, day=1)), refDate)
         self.assertEqual(datetime64(datetime.datetime(year=2020, month=1, day=1)), refDate)
         self.assertEqual(datetime64(2020), refDate) # decimal year to datetime64
