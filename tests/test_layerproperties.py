@@ -31,6 +31,14 @@ class LayerPropertyTests(TestCase):
         initQtResources()
 
 
+    def test_equal_styles(self):
+
+        lyr1 = TestObjects.createRasterLayer(nb=1, nc=5)
+        lyr2 = TestObjects.createRasterLayer(nb=10)
+
+        self.assertTrue(equal_styles(lyr1, lyr1))
+        self.assertFalse(equal_styles(lyr1, lyr2))
+
     def test_SubLayerSelection(self):
 
         p = r'F:\Temp\Hajo\S3A_OL_2_EFR____20160614T082507_20160614T082707_20170930T190837_0119_005_178______MR1_R_NT_002_vical_c2rcc015nets20170704.nc'

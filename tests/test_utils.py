@@ -162,13 +162,28 @@ class TestUtils(TestCase):
 
     def test_spatialObjects(self):
 
-        pt1 = SpatialPoint('EPSG:4326', 300,300)
+        pt1 = SpatialPoint('EPSG:4326', 300, 300)
         self.assertIsInstance(pt1, SpatialPoint)
         d = pickle.dumps(pt1)
         pt2 = pickle.loads(d)
-
-
         self.assertEqual(pt1, pt2)
+
+        doc = QDomDocument('qps')
+        node = doc.createElement('POINT_NODE')
+        pt1.writeXml(node, doc)
+        pt3 = SpatialPoint.readXml(node)
+
+        self.assertEqual(pt1, pt3)
+
+        ext1 = SpatialExtent('EPSG:4326', QgsPointXY(0, 0), QgsPointXY(10, 20))
+
+        node = doc.createElement('EXTENT_NODE')
+        ext1.writeXml(node, doc)
+        ext2 = SpatialExtent.readXml(node)
+        self.assertEqual(ext1, ext2)
+
+
+
 
     def testOutputDirectory(self, name:str='test-outputs') -> pathlib.Path:
 
