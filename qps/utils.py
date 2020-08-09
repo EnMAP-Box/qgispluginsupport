@@ -873,10 +873,14 @@ def qgsVectorLayer(source) -> QgsVectorLayer:
     """
     if isinstance(source, QgsVectorLayer):
         return source
+    if isinstance(source, pathlib.Path):
+        return QgsRasterLayer(source.as_posix())
     if isinstance(source, str):
         return QgsVectorLayer(source)
     if isinstance(source, ogr.DataSource):
         return QgsVectorLayer(source.GetDescription())
+    if isinstance(source, QUrl):
+        return qgsVectorLayer(pathlib.Path(source.toString()))
 
     raise Exception('Unable to transform {} into QgsVectorLayer'.format(source))
 
@@ -890,10 +894,14 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     """
     if isinstance(source, QgsRasterLayer):
         return source
+    if isinstance(source, pathlib.Path):
+        return QgsRasterLayer(source.as_posix())
     if isinstance(source, str):
         return QgsRasterLayer(source)
     if isinstance(source, gdal.Dataset):
         return QgsRasterLayer(source.GetDescription())
+    if isinstance(source, QUrl):
+        return qgsRasterLayer(pathlib.Path(source.toString()))
 
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
