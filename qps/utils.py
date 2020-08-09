@@ -46,7 +46,7 @@ import datetime
 from qgis.core import *
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
-    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis
+    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry
 from qgis.gui import *
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
 
@@ -905,6 +905,30 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
 
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
+
+def qgsMapLayer(value: typing.Any) -> QgsMapLayer:
+    """
+    Tries to convert the input into a QgsMapLayer
+    :param value: any
+    :return: QgsMapLayer or None
+    """
+    if isinstance(value, QgsMapLayer):
+        return value
+    try:
+        lyr = qgsRasterLayer(value)
+        if isinstance(lyr, QgsRasterLayer):
+            return lyr
+    except:
+        pass
+
+    try:
+        lyr = qgsVectorLayer(value)
+        if isinstance(lyr, QgsVectorLayer):
+            return lyr
+    except:
+        pass
+
+    return None
 
 def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_resource_references=True,
            loadUiType=False):
