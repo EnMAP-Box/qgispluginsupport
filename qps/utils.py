@@ -873,6 +873,8 @@ def qgsVectorLayer(source) -> QgsVectorLayer:
     """
     if isinstance(source, QgsVectorLayer):
         return source
+    if isinstance(source, pathlib.Path):
+        return QgsRasterLayer(source.as_posix())
     if isinstance(source, str):
         return QgsVectorLayer(source)
     if isinstance(source, ogr.DataSource):
@@ -890,6 +892,8 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     """
     if isinstance(source, QgsRasterLayer):
         return source
+    if isinstance(source, pathlib.Path):
+        return QgsRasterLayer(source.as_posix())
     if isinstance(source, str):
         return QgsRasterLayer(source)
     if isinstance(source, gdal.Dataset):
