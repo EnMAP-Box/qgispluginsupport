@@ -265,6 +265,18 @@ class TestUtils(TestCase):
 
         self.showGui(d)
 
+    def test_maplayers(self):
+
+        lyr = TestObjects.createRasterLayer()
+
+        url = QUrl.fromLocalFile(lyr.source())
+
+        inputs = [lyr, lyr.source(), gdal.Open(lyr.source()), url]
+
+        for source in inputs:
+            l = qgsRasterLayer(source)
+            self.assertIsInstance(l, QgsRasterLayer)
+
     def test_UnitLookup(self):
 
         for u in ['nm', 'm', 'km', 'um', 'μm', u'μm']:
