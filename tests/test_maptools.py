@@ -21,9 +21,9 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from osgeo import gdal, ogr, osr
 
-
 from qps.utils import *
 from qps.maptools import *
+
 
 class TestMapTools(TestCase):
 
@@ -32,7 +32,7 @@ class TestMapTools(TestCase):
         self.lyr = TestObjects.createVectorLayer()
         QgsProject.instance().addMapLayer(self.lyr)
 
-    def createCanvas(self)->QgsMapCanvas:
+    def createCanvas(self) -> QgsMapCanvas:
         canvas = QgsMapCanvas()
         lyr = TestObjects.createVectorLayer()
         QgsProject.instance().addMapLayer(lyr)
@@ -64,7 +64,7 @@ class TestMapTools(TestCase):
         canvas.setExtent(canvas.fullExtent())
 
         w, h = canvas.size().width(), canvas.size().height()
-        
+
         canvas.setCurrentLayer(lyrV_Point)
 
         lyrV_Point.startEditing()
@@ -72,23 +72,23 @@ class TestMapTools(TestCase):
         self.assertIsInstance(mt, QgsMapToolAddFeature)
         canvas.setMapTool(mt)
         mt.activate()
-        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5*w, 0.5*h), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.LeftButton, Qt.LeftButton,
+                          Qt.NoModifier)
         canvas.mousePressEvent(me1)
-        #mt = QgsMapToolCapture(c, d, QgsMapToolCapture.CapturePolygon)
-
+        # mt = QgsMapToolCapture(c, d, QgsMapToolCapture.CapturePolygon)
 
         mts = QgsMapToolSelect(canvas)
         mts.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
         canvas.setMapTool(mts)
         canvas.setCurrentLayer(lyrV_Poly)
 
-        #QMouseEvent(QEvent::Type type, const QPointF &localPos, Qt::MouseButton button, Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers)
-        
+        # QMouseEvent(QEvent::Type type, const QPointF &localPos, Qt::MouseButton button, Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers)
 
-        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0,0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+        me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, 0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         me2 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         me3 = QMouseEvent(QEvent.MouseButtonPress, QPointF(h, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-        me4 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5*h, 0.5*w), Qt.RightButton, Qt.RightButton, Qt.NoModifier)
+        me4 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * h, 0.5 * w), Qt.RightButton, Qt.RightButton,
+                          Qt.NoModifier)
         canvas.mousePressEvent(me1)
         canvas.mousePressEvent(me2)
         canvas.mousePressEvent(me3)
@@ -96,31 +96,24 @@ class TestMapTools(TestCase):
 
         mt = SpatialExtentMapTool(canvas)
 
-        @pyqtSlot(SpatialExtent)
-        def onEmit1(extent):
-            print('# onEmit1')
-            self.assertIsInstance(extent, SpatialExtent)
-
         @pyqtSlot(QgsCoordinateReferenceSystem, QgsRectangle)
-        def onEmit2(crs, rect):
+        def onEmit(crs, rect):
             print('# onEmit2')
             self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
             self.assertIsInstance(rect, QgsRectangle)
 
-        mt.sigSpatialExtentSelected[SpatialExtent].connect(onEmit1)
-        mt.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].connect(onEmit2)
+        mt.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].connect(onEmit)
 
         @pyqtSlot()
         def doEmit():
             print('#doEmit')
             ext = SpatialExtent.fromMapCanvas(canvas)
             mt.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), canvas.extent())
-            mt.sigSpatialExtentSelected[SpatialExtent].emit(ext)
 
         QTimer.singleShot(2, doEmit)
-        #doEmit()
-        #import time
-        #time.sleep(2)
+        doEmit()
+        # import time
+        # time.sleep(2)
 
         self.showGui(canvas)
 
@@ -133,7 +126,8 @@ class TestMapTools(TestCase):
 
         self.showGui(canvas)
 
-    def onExtentReceived(self, spatialExtent:SpatialExtent):
+    def onExtentReceived(self, crs: QgsCoordinateReferenceSystem, rect: QgsRectangle):
+        spatialExtent = SpatialExtent(crs, rect)
         self.assertIsInstance(spatialExtent, SpatialExtent)
         self.mSpatialExtent = spatialExtent
 
@@ -144,7 +138,6 @@ class TestMapTools(TestCase):
         canvas.setCurrentLayer(canvas.layers()[0])
         mt = SpatialExtentMapTool(canvas)
         canvas.setMapTool(mt)
-
 
         mt.sigSpatialExtentSelected.connect(self.onExtentReceived)
         self.mSpatialExtent = None
@@ -162,7 +155,6 @@ class TestMapTools(TestCase):
         canvas.mouseReleaseEvent(event)
 
         self.assertIsInstance(self.mSpatialExtent, SpatialExtent)
-
 
     def test_QgsFeatureSelectTool(self):
 
@@ -194,11 +186,9 @@ class TestMapTools(TestCase):
         canvas.setMapTool(mt)
         self.showGui(canvas)
 
-
     def test_MapTools(self):
         canvas = QgsMapCanvas()
         cadDockWidget = QgsAdvancedDigitizingDockWidget(canvas)
-
 
         for name in MapTools.mapToolNames():
             mte = MapTools.toMapToolEnum(name)
@@ -208,7 +198,6 @@ class TestMapTools(TestCase):
             mte = MapTools.toMapToolEnum(value)
             self.assertIsInstance(mte, MapTools)
 
-
         tools = []
 
         for mte in MapTools.mapToolEnums():
@@ -216,10 +205,10 @@ class TestMapTools(TestCase):
 
             args = []
             if mte == MapTools.AddFeature:
-                for mode  in [QgsMapToolCapture.CapturePoint,
-                              QgsMapToolCapture.CaptureLine,
-                              QgsMapToolCapture.CapturePolygon,
-                              QgsMapToolCapture.CaptureNone]:
+                for mode in [QgsMapToolCapture.CapturePoint,
+                             QgsMapToolCapture.CaptureLine,
+                             QgsMapToolCapture.CapturePolygon,
+                             QgsMapToolCapture.CaptureNone]:
                     mt = MapTools.create(mte, canvas, mode, cadDockWidget)
                     self.assertIsInstance(mt, QgsMapTool)
                     tools.append(mt)
@@ -227,8 +216,6 @@ class TestMapTools(TestCase):
                 mt = MapTools.create(mte, canvas, *args)
                 self.assertIsInstance(mt, QgsMapTool)
                 tools.append(mt)
-
-
 
         for enum in MapTools.mapToolEnums():
             print('Test MapTool {}...'.format(enum.name))
@@ -239,18 +226,16 @@ class TestMapTools(TestCase):
             size = self.canvas.size()
 
             mouseEvent = QMouseEvent(
-                            QEvent.MouseButtonPress,
-                            QPointF(0.5 * size.width(), 0.5 * size.height()),
-                            Qt.LeftButton,
-                            Qt.LeftButton,
-                            Qt.NoModifier)
+                QEvent.MouseButtonPress,
+                QPointF(0.5 * size.width(), 0.5 * size.height()),
+                Qt.LeftButton,
+                Qt.LeftButton,
+                Qt.NoModifier)
 
             qgsMouseEvent = QgsMapMouseEvent(self.canvas, mouseEvent)
 
-
             mapTool.canvasPressEvent(qgsMouseEvent)
             mapTool.canvasReleaseEvent(qgsMouseEvent)
-
 
         mt = PixelScaleExtentMapTool(self.canvas)
         self.assertIsInstance(mt, PixelScaleExtentMapTool)
@@ -259,9 +244,7 @@ class TestMapTools(TestCase):
         self.assertIsInstance(mt, FullExtentMapTool)
 
 
-
-
-
 if __name__ == "__main__":
     import xmlrunner
+
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
