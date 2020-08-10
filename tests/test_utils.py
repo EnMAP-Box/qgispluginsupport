@@ -176,6 +176,9 @@ class TestUtils(TestCase):
         self.assertEqual(pt1, pt3)
 
         ext1 = SpatialExtent('EPSG:4326', QgsPointXY(0, 0), QgsPointXY(10, 20))
+        d = pickle.dumps(ext1)
+        ext2 = pickle.loads(d)
+        self.assertEqual(ext1, ext2)
 
         node = doc.createElement('EXTENT_NODE')
         ext1.writeXml(node, doc)

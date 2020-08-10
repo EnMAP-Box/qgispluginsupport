@@ -2246,11 +2246,27 @@ class SpatialExtent(QgsRectangle):
     def __copy__(self):
         return SpatialExtent(self.crs(), QgsRectangle(self))
 
-    def __reduce_ex__(self, protocol):
-        return self.__class__, (self.crs().toWkt(),
-                                self.xMinimum(), self.yMinimum(),
-                                self.xMaximum(), self.yMaximum()
-                                ), {}
+    def __reduce__(self):
+
+        return self.__class__, ('',), self.__getstate__()
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop('mCrs')
+        state['_crs_'] = self.crs().toWkt()
+        state['_xmin_'] = self.xMinimum()
+        state['_xmax_'] = self.xMaximum()
+        state['_ymin_'] = self.yMinimum()
+        state['_ymax_'] = self.yMaximum()
+        return state
+
+    def __setstate__(self, state):
+        self.setCrs(QgsCoordinateReferenceSystem(state.pop('_crs_')))
+        self.setXMinimum(state.pop('_xmin_'))
+        self.setXMaximum(state.pop('_xmax_'))
+        self.setYMinimum(state.pop('_ymin_'))
+        self.setYMaximum(state.pop('_ymax_'))
+        self.__dict__.update(state)
 
     def __hash__(self):
         return hash(str(self))
