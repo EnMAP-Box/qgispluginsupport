@@ -2058,7 +2058,7 @@ class SpatialExtent(QgsRectangle):
         return SpatialExtent(crs, rectangle)
 
     @staticmethod
-    def fromMapCanvas(mapCanvas, fullExtent=False):
+    def fromMapCanvas(mapCanvas, fullExtent:bool=False):
         assert isinstance(mapCanvas, QgsMapCanvas)
 
         if fullExtent:

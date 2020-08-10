@@ -75,7 +75,6 @@ class TestMapTools(TestCase):
         me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5*w, 0.5*h), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         canvas.mousePressEvent(me1)
         #mt = QgsMapToolCapture(c, d, QgsMapToolCapture.CapturePolygon)
-        
 
 
         mts = QgsMapToolSelect(canvas)
@@ -94,6 +93,34 @@ class TestMapTools(TestCase):
         canvas.mousePressEvent(me2)
         canvas.mousePressEvent(me3)
         canvas.mousePressEvent(me4)
+
+        mt = SpatialExtentMapTool(canvas)
+
+        @pyqtSlot(SpatialExtent)
+        def onEmit1(extent):
+            print('# onEmit1')
+            self.assertIsInstance(extent, SpatialExtent)
+
+        @pyqtSlot(QgsCoordinateReferenceSystem, QgsRectangle)
+        def onEmit2(crs, rect):
+            print('# onEmit2')
+            self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
+            self.assertIsInstance(rect, QgsRectangle)
+
+        mt.sigSpatialExtentSelected[SpatialExtent].connect(onEmit1)
+        mt.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].connect(onEmit2)
+
+        @pyqtSlot()
+        def doEmit():
+            print('#doEmit')
+            ext = SpatialExtent.fromMapCanvas(canvas)
+            mt.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), canvas.extent())
+            mt.sigSpatialExtentSelected[SpatialExtent].emit(ext)
+
+        QTimer.singleShot(2, doEmit)
+        #doEmit()
+        #import time
+        #time.sleep(2)
 
         self.showGui(canvas)
 

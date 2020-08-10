@@ -480,7 +480,7 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
 
 
 class RectangleMapTool(QgsMapToolEmitPoint):
-    rectangleDrawed = pyqtSignal(QgsRectangle, object)
+    rectangleDrawed = pyqtSignal(QgsRectangle, str)
 
     def __init__(self, canvas):
 
