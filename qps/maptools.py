@@ -444,9 +444,9 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
         self.reset()
 
         if crs is not None and rect is not None:
-            self.sigSpatialExtentSelected.emit(crs, rect)
+            self.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].emit(crs, rect)
             extent = SpatialExtent(crs, rect)
-            self.sigSpatialExtentSelected.emit(extent)
+            self.sigSpatialExtentSelected[SpatialExtent].emit(extent)
 
     def canvasMoveEvent(self, e):
         if not self.isEmittingPoint:
