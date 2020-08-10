@@ -21,11 +21,30 @@
  ***************************************************************************/
 """
 
-
-import enum, math
+import enum
+import math
 from qgis import *
 from qgis.core import *
 from qgis.gui import *
+
+from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
+    QgsVectorDataProvider, QgsApplication, Qgis, \
+    QgsLineString, QgsMultiPoint, QgsCurvePolygon, QgsRectangle, QgsPolygon, \
+    QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
+    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
+    QgsSettings, QgsPoint, QgsFeatureRequest, \
+    QgsWkbTypes, QgsCsException, QgsDistanceArea, QgsAction, \
+    QgsExpressionContextUtils, QgsRenderContext, QgsFeatureIterator, QgsVectorLayerTools, \
+    QgsEditFormConfig, QgsVectorLayerUtils, QgsExpressionContextScope, QgsPointLocator
+
+from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsAttributeEditorContext, \
+    QgsMapTool, QgsMapToolZoom, QgsMapToolPan, QgsMapToolCapture, QgsMapToolIdentify, QgsMapToolEmitPoint, \
+    QgsAttributeDialog, QgsIdentifyMenu, QgsSnapIndicator, QgsMapCanvas, QgsRubberBand, QgsMapMouseEvent, \
+    QgsAttributeForm, \
+    QgsUserInputWidget, QgsFloatingWidget, QgsAdvancedDigitizingDockWidget, \
+    QgsDoubleSpinBox, \
+    QgsVertexMarker, QgsHighlight
+
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtXml import *
 from qgis.PyQt.QtGui import *
@@ -34,6 +53,7 @@ from qgis.PyQt.QtWidgets import *
 import numpy as np
 from .utils import *
 from .vectorlayertools import VectorLayerTools
+
 
 def tr(t: str) -> str:
     return t
@@ -72,11 +92,12 @@ def createQgsMapCanvasUserInputWidget(canvas: QgsMapCanvas) -> QgsUserInputWidge
         mUserInputWidget.setAnchorPoint(QgsFloatingWidget.TopRight)
     return mUserInputWidget
 
+
 class MapTools(enum.Enum):
     """
     Static class to support the creation of QgsMapTools.
     """
-    #def __init__(self):
+    # def __init__(self):
     #    raise Exception('This class is not for any instantiation')
     ZoomIn = 'ZOOM_IN'
     ZoomOut = 'ZOOM_OUT'
@@ -181,6 +202,7 @@ class MapTools(enum.Enum):
     @staticmethod
     def mapToolEnums() -> list:
         return list(MapTools.__members__.values())
+
 
 class CursorLocationMapTool(QgsMapToolEmitPoint):
     """
@@ -354,6 +376,7 @@ class FullExtentMapTool(QgsMapTool):
     """
     A QgsMapTool to scale a QgsMapCanvas to the full extent of all available QgsMapLayers.
     """
+
     def __init__(self, canvas):
         super(FullExtentMapTool, self).__init__(canvas)
         self.mCursor = createCursor(':/qps/ui/icons/cursor_zoom_fullextent.svg')
@@ -366,6 +389,7 @@ class FullExtentMapTool(QgsMapTool):
     def flags(self):
         return QgsMapTool.Transient
 
+
 class PointLayersMapTool(CursorLocationMapTool):
 
     def __init__(self, canvas):
@@ -374,11 +398,12 @@ class PointLayersMapTool(CursorLocationMapTool):
         self.identifyMode = QgsMapToolIdentify.LayerSelection
         QgsMapToolIdentify.__init__(self, canvas)
 
+
 class SpatialExtentMapTool(QgsMapToolEmitPoint):
     """
     A QgsMapTool to select a SpatialExtent
     """
-    sigSpatialExtentSelected = pyqtSignal(SpatialExtent)
+    sigSpatialExtentSelected = pyqtSignal([SpatialExtent], [QgsCoordinateReferenceSystem, QgsRectangle])
 
     def __init__(self, canvas: QgsMapCanvas):
         super(SpatialExtentMapTool, self).__init__(canvas)
@@ -419,6 +444,7 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
         self.reset()
 
         if crs is not None and rect is not None:
+            self.sigSpatialExtentSelected.emit(crs, rect)
             extent = SpatialExtent(crs, rect)
             self.sigSpatialExtentSelected.emit(extent)
 
@@ -1030,7 +1056,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
                         self.messageEmitted.emit(tr(
                             "The feature cannot be added because it's geometry collapsed due to intersection avoidance"),
-                                                 Qgis.Critical)
+                            Qgis.Critical)
                         self.stopCapturing()
                         return
 
@@ -1741,6 +1767,3 @@ class QgsMapToolSelect(QgsMapTool):
         else:
             QgsMapToolSelectUtils.selectMultipleFeatures(self.canvas(), self.mSelectionHandler.selectedGeometry(),
                                                          modifiers)
-
-
-
