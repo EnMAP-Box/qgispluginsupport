@@ -208,7 +208,7 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
     """
     A QgsMapTool to collect SpatialPoints
     """
-    sigLocationRequest = pyqtSignal([SpatialPoint], [SpatialPoint, QgsMapCanvas])
+    sigLocationRequest = pyqtSignal(QgsCoordinateReferenceSystem, QgsPointXY)
 
     def __init__(self, canvas: QgsMapCanvas, showCrosshair: bool = True):
         """
@@ -271,7 +271,7 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
             pixelPoint = e.pixelPoint()
             crs = self.canvas().mapSettings().destinationCrs()
             self.marker.hide()
-            geoPoint = self.toMapCoordinates(pixelPoint)
+            geoPoint: QgsPointXY = self.toMapCoordinates(pixelPoint)
             if self.mShowCrosshair:
                 # show a temporary crosshair
                 ext = SpatialExtent.fromMapCanvas(self.canvas())
@@ -290,9 +290,7 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
                 # remove crosshair after a short while
                 QTimer.singleShot(self.mCrosshairTime, self.hideRubberband)
 
-            pt = SpatialPoint(crs, geoPoint)
-            self.sigLocationRequest[SpatialPoint].emit(pt)
-            self.sigLocationRequest[SpatialPoint, QgsMapCanvas].emit(pt, self.canvas())
+            self.sigLocationRequest[QgsCoordinateReferenceSystem, QgsPointXY].emit(crs, geoPoint)
 
     def hideRubberband(self):
         """
@@ -403,7 +401,7 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
     """
     A QgsMapTool to select a SpatialExtent
     """
-    sigSpatialExtentSelected = pyqtSignal([SpatialExtent], [QgsCoordinateReferenceSystem, QgsRectangle])
+    sigSpatialExtentSelected = pyqtSignal(QgsCoordinateReferenceSystem, QgsRectangle)
 
     def __init__(self, canvas: QgsMapCanvas):
         super(SpatialExtentMapTool, self).__init__(canvas)
@@ -445,8 +443,6 @@ class SpatialExtentMapTool(QgsMapToolEmitPoint):
 
         if crs is not None and rect is not None:
             self.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].emit(crs, rect)
-            extent = SpatialExtent(crs, rect)
-            self.sigSpatialExtentSelected[SpatialExtent].emit(extent)
 
     def canvasMoveEvent(self, e):
         if not self.isEmittingPoint:
