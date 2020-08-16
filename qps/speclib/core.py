@@ -1287,7 +1287,8 @@ class SpectralProfileRenderer(object):
         else:
             # use default style
             for fid in fids:
-                self.mFID2Style.pop(fid)
+                if fid in self.mFID2Style.keys():
+                    self.mFID2Style.pop(fid)
 
         return changedFIDs
 
