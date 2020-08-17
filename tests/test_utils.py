@@ -261,13 +261,6 @@ class TestUtils(TestCase):
         ds2 = gdalDataset(ds1)
         self.assertEqual(ds1, ds2)
 
-    def test_search_files_dialog(self):
-
-
-        d = SearchFilesDialog()
-
-        self.showGui(d)
-
     def test_maplayers(self):
 
         lyr = TestObjects.createRasterLayer()

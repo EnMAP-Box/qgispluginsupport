@@ -55,13 +55,13 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtXml import *
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import QPlainTextEdit
+from qgis.PyQt.QtWidgets import *
 from osgeo import gdal, ogr, osr, gdal_array
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from . import DIR_UI_FILES
 
-# dictionary to store form classes and avoid multiple calls to read <myui>.ui
+# dictionary to store form classes and avoid multiple calls to read <myui>.i
 QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
@@ -2303,26 +2303,6 @@ def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: list):
 
     menu.triggered.connect(toolButton.setDefaultAction)
     toolButton.setMenu(menu)
-
-
-class SearchFilesDialog(QgsDialog):
-    """
-    A dialog to select multiple files
-    """
-    sigFilesFound = pyqtSignal(list)
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-        loadUi(DIR_UI_FILES / 'searchfilesdialog.ui', self)
-
-        self.btnMatchCase.setDefaultAction(self.optionMatchCase)
-        self.btnRegex.setDefaultAction(self.optionRegex)
-        self.btnRecursive.setDefaultAction(self.optionRecursive)
-        self.plainTextEdit: QPlainTextEdit
-
-    def validate(self):
-        s = ""
-
 
 class SelectMapLayersDialog(QgsDialog):
     class LayerDescription(object):
