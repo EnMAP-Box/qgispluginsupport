@@ -734,6 +734,12 @@ class SpectralViewBox(pg.ViewBox):
         """
         i = self.mCBXAxisUnit.findText(unit)
         if i == -1:
+
+            units = self.mCBXAxisUnit.model().mUnits
+            bu = UnitLookup.baseUnit(unit)
+            if bu in units:
+                i = units.index(bu)
+        if i == -1:
             i = 0
         if i != self.mCBXAxisUnit.currentIndex():
             self.mCBXAxisUnit.setCurrentIndex(i)
@@ -774,30 +780,35 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     """
 
     def __init__(self, parent=None):
-        super(SpectralLibraryPlotWidget, self).__init__(parent)
+
+        mViewBox = SpectralViewBox()
+        plotItem = SpectralLibraryPlotItem(
+            axisItems={'bottom': SpectralXAxis(orientation='bottom')}
+            , viewBox=mViewBox
+        )
+
+        super(SpectralLibraryPlotWidget, self).__init__(parent, plotItem=plotItem)
 
         self.mMaxProfiles = 64
         self.mSelectedIds = set()
-        self.mViewBox = SpectralViewBox()
-        plotItem = SpectralLibraryPlotItem(
-            axisItems={'bottom': SpectralXAxis(orientation='bottom')}
-            , viewBox=self.mViewBox
-        )
+        self.mXAxisUnitInitialized: bool = False
+        self.mViewBox = mViewBox
         self.mViewBox.sbMaxProfiles.setValue(self.mMaxProfiles)
         self.mViewBox.sigProfileRendererChanged.connect(self.setProfileRenderer)
         self.mViewBox.sigMaxNumberOfProfilesChanged.connect(self.setMaxProfiles)
         self.mDualView = None
 
-        self.centralWidget.setParent(None)
-        self.centralWidget = None
+        #self.centralWidget.setParent(None)
+        #self.centralWidget = None
         self.setCentralWidget(plotItem)
+
         self.plotItem: SpectralLibraryPlotItem
-        self.plotItem = plotItem
-        for m in ['addItem', 'removeItem', 'autoRange', 'clear', 'setXRange',
-                  'setYRange', 'setRange', 'setAspectLocked', 'setMouseEnabled',
-                  'setXLink', 'setYLink', 'enableAutoRange', 'disableAutoRange',
-                  'setLimits', 'register', 'unregister', 'viewRect']:
-            setattr(self, m, getattr(self.plotItem, m))
+        #self.plotItem = plotItem
+        #for m in ['addItem', 'removeItem', 'autoRange', 'clear', 'setXRange',
+        #          'setYRange', 'setRange', 'setAspectLocked', 'setMouseEnabled',
+        #          'setXLink', 'setYLink', 'enableAutoRange', 'disableAutoRange',
+        #          'setLimits', 'register', 'unregister', 'viewRect']:
+        #    setattr(self, m, getattr(self.plotItem, m))
         # QtCore.QObject.connect(self.plotItem, QtCore.SIGNAL('viewChanged'), self.viewChanged)
         self.plotItem.sigRangeChanged.connect(self.viewRangeChanged)
 
@@ -812,7 +823,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         self.mXUnitInitialized = False
         self.setXUnit(BAND_INDEX)
-        self.mYUnit = None
 
         # describe functions to convert wavelength units from unit a to unit b
         self.mUnitConverter = UnitConverterFunctionModel()
@@ -1208,9 +1218,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def profileRenderer(self) -> SpectralProfileRenderer:
         return self.speclib().profileRenderer()
 
-
-
-
     def onSelectionChanged(self, selected, deselected, clearAndSelect):
 
         # fidsBefore = [pdi.id() for pdi in self.allSpectralProfilePlotDataItems()]
@@ -1252,6 +1259,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Sets the unit or mapping function to be shown on x-axis.
         :param unit: str, e.g. `nanometers`
         """
+        #unit = UnitLookup.baseUnit(unit)
         self.mViewBox.setXAxisUnit(unit)
 
     def xUnit(self) -> str:
@@ -1325,6 +1333,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             addedProfiles = self.speclib().profiles(toBeAdded)
             for profile in addedProfiles:
                 assert isinstance(profile, SpectralProfile)
+                if not self.mXUnitInitialized:
+                    self.setXUnit(profile.xUnit())
+                    self.mXUnitInitialized = True
+
                 pdi = SpectralProfilePlotDataItem(profile)
                 pdi.setClickable(True)
                 pdi.setVisible(True)

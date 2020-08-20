@@ -215,6 +215,7 @@ class TestSpeclibWidgets(TestCase):
     def test_SpectralLibraryPlotWidgetSimple(self):
 
         speclib = TestObjects.createSpectralLibrary(10)
+        #speclib = SpectralLibrary()
         w = SpectralLibraryPlotWidget()
         w.setSpeclib(speclib)
 
@@ -313,9 +314,6 @@ class TestSpeclibWidgets(TestCase):
 
     @unittest.skipIf(False, '')
     def test_SpectralProfileEditorWidget(self):
-
-        import qps
-        qps.initResources()
 
         self.assertIsInstance(QgsApplication.instance(), QgsApplication)
         SLIB = TestObjects.createSpectralLibrary()
