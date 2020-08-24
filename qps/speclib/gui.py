@@ -23,6 +23,7 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import sip
 from .core import *
 
 from ..externals.pyqtgraph import PlotItem, PlotWindow, PlotCurveItem
@@ -785,11 +786,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         super(SpectralLibraryPlotWidget, self).__init__(parent, plotItem=plotItem)
 
-        self.mMaxProfiles = 64
+
         self.mSelectedIds = set()
         self.mXAxisUnitInitialized: bool = False
         self.mViewBox = mViewBox
-        self.mViewBox.sbMaxProfiles.setValue(self.mMaxProfiles)
+        self.setMaxProfiles(64)
         self.mViewBox.sigProfileRendererChanged.connect(self.setProfileRenderer)
         self.mViewBox.sigMaxNumberOfProfilesChanged.connect(self.setMaxProfiles)
         self.mDualView = None
@@ -823,13 +824,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         # describe functions to convert wavelength units from unit a to unit b
         self.mUnitConverter = UnitConverterFunctionModel()
 
-        #self.mViewBox.sigXUnitChanged.connect(self.setXUnit)
-
-        self.mPlotDataItems = dict()
+        self.mPlotDataItems: typing.List[int, SpectralProfilePlotDataItem] = dict()
+        self.mPlotOverlayItems = []
         self.setAntialiasing(True)
         self.setAcceptDrops(True)
-
-        self.mPlotOverlayItems = []
 
         self.mLastFIDs = []
         self.mNeedsPlotUpdate = False
@@ -1019,8 +1017,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """
         return [i for i in self.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)]
 
-    def removeSpectralProfilePDIs(self, fidsToRemove: typing.List[int], updateScene=True):
+    def removeSpectralProfilePDIs(self, fidsToRemove: typing.List[int], updateScene: bool =True):
         """
+        :param updateScene:
         :param fidsToRemove: feature ids to remove
         :type fidsToRemove:
         :return:
@@ -1050,7 +1049,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         if updateScene:
             self.scene().update()
-        s = ""
 
     def resetProfileStyles(self):
         """
@@ -1075,10 +1073,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :param n: maximum number of profiles visualized
         :type n: int
         """
-        assert n > 0
+        assert n >= 0
+        self.mViewBox.sbMaxProfiles.setValue(n)
 
-        self.mMaxProfiles = n
-        self.mViewBox.sbMaxProfiles.setValue(self.mMaxProfiles)
+    def maxProfiles(self) -> int:
+        return self.mViewBox.sbMaxProfiles.value()
 
     def setSpeclib(self, speclib: SpectralLibrary):
         """
@@ -1307,8 +1306,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         pi = self.getPlotItem()
         assert isinstance(pi, SpectralLibraryPlotItem)
 
-        toBeVisualized = self.profileIDsToVisualize()
-        visualized = self.plottedProfileIDs()
+        toBeVisualized: typing.List[int] = self.profileIDsToVisualize()
+        visualized: typing.List[int] = self.plottedProfileIDs()
         toBeRemoved = [fid for fid in visualized if fid not in toBeVisualized]
         toBeAdded = [fid for fid in toBeVisualized if fid not in visualized]
 
@@ -1464,7 +1463,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
     def plottedProfileCount(self) -> int:
         """
-        Returns the number of plotted profiles
+        Returns the total number of plotted SpectralProfilePlotDataItems
         :return: int
         :rtype: int
         """
@@ -1472,14 +1471,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
     def plottedProfileIDs(self) -> typing.List[int]:
         """
-        Returns the feature IDs of all visualized SpectralProfiles.
+        Returns the feature IDs of visualize SpectralProfiles from the connected SpectralLibrary.
         """
-        return [pdi.id() for pdi in self.allSpectralProfilePlotDataItems()]
+        return list(self.mPlotDataItems.keys())
 
     def profileIDsToVisualize(self) -> typing.List[int]:
         """
         Returns the list of profile/feature ids to be visualized.
-        The maximum number is determined by self.mMaxProfiles
+        The maximum number is determined by self.maxProfiles()
         Order of returned fids is equal to its importance.
         1st position = most important, should be plottet on top of all other profiles
         """
@@ -1491,7 +1490,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         selectedIds = self.speclib().selectedFeatureIds()
 
         allIDs = self.speclib().allFeatureIds()
-        if nMax <= self.mMaxProfiles:
+        if nMax <= self.maxProfiles():
             if selectedOnly:
                 return [fid for fid in allIDs if fid in selectedIds]
             else:
@@ -1531,12 +1530,12 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         featurePool = np.unique(priority0 + priority1 + priority2).tolist()
         toVisualize = sorted(featurePool,
                              key=lambda fid: (fid not in priority0, fid not in priority1, fid not in priority2, fid))
-
-        if len(toVisualize) >= self.mMaxProfiles:
-            return sorted(toVisualize[0:self.mMaxProfiles])
+        maxProfiles = self.maxProfiles()
+        if len(toVisualize) > maxProfiles:
+            return sorted(toVisualize[0:maxProfiles])
         else:
             toVisualize = sorted(toVisualize)
-            nMissing = min(self.mMaxProfiles - len(toVisualize), len(priority3))
+            nMissing = min(maxProfiles - len(toVisualize), len(priority3))
             if nMissing > 0:
                 toVisualize += sorted(priority3[0:nMissing])
             return toVisualize
@@ -2068,8 +2067,6 @@ class SpectralLibraryWidget(QMainWindow):
 
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
 
-        self.m_plot_max = 500
-
         from .io.envi import EnviSpectralLibraryIO
         from .io.csvdata import CSVSpectralLibraryIO
         from .io.asd import ASDSpectralLibraryIO
@@ -2174,6 +2171,13 @@ class SpectralLibraryWidget(QMainWindow):
 
         self.mIODialogs = list()
 
+        self.mStatusBar: QStatusBar
+        self.mQgsStatusBar = QgsStatusBar(self.mStatusBar)
+        self.mQgsStatusBar.setParentStatusBar(self.mStatusBar)
+        self.mStatusLabel: QLabel = QLabel()
+        self.mStatusLabel.setTextFormat(Qt.RichText)
+        self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
+
     def onAttributesChanges(self):
         import collections
 
@@ -2210,15 +2214,35 @@ class SpectralLibraryWidget(QMainWindow):
 
     def updateStatusBar(self):
 
-        assert isinstance(self.mStatusBar, QStatusBar)
+        assert isinstance(self.mStatusLabel, QLabel)
         slib = self.speclib()
-        import sip
+
         if not sip.isdeleted(slib):
             nFeatures = slib.featureCount()
             nSelected = slib.selectedFeatureCount()
             nVisible = self.plotWidget().plottedProfileCount()
-            msg = "{}/{}/{}".format(nFeatures, nSelected, nVisible)
-            self.mStatusBar.showMessage(msg)
+            maxProfiles = self.plotWidget().maxProfiles()
+            bLimit = maxProfiles <= nVisible
+            if bLimit:
+                style = 'color:red'
+            else:
+                style = ''
+
+            msg = f'<html><head/><body>' \
+                  f'{nFeatures}/' \
+                  f'{nSelected}/' \
+                  f'<span style="{style}">{nVisible}</span>' \
+                  f'</body></head>'
+            tt = f'<html><head/><body>' \
+                 f'{nFeatures} profile in total<br/>' \
+                 f'{nSelected} profiles selected<br/>' \
+                 f'<span style="{style}">{nVisible} profiles visible'
+            if bLimit:
+                tt += f'<br/>increase the current limit of {maxProfiles} profiles to show more at same time.'
+            tt += '</span></body></html>'
+            self.mStatusLabel.setText(msg)
+            self.mStatusLabel.setToolTip(tt)
+
 
     def onShowContextMenuExternally(self, menu: QgsActionMenu, fid):
         s = ""
