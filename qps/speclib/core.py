@@ -42,7 +42,7 @@ from qgis.core import \
     QgsRaster, QgsDefaultValue, QgsReadWriteContext, \
     QgsCategorizedSymbolRenderer, QgsMapLayerProxyModel, \
     QgsSymbol, QgsNullSymbolRenderer, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
-    QgsEditorWidgetSetup, QgsAction
+    QgsEditorWidgetSetup, QgsAction, QgsTask
 
 from qgis.gui import \
     QgsGui, QgsMapCanvas, QgsDualView, QgisInterface, QgsEditorConfigWidget, \
