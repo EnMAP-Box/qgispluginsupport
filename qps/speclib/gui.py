@@ -417,9 +417,6 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                         'pxDistance': 0,
                         'pdi': self}
                 self.sigProfileClicked.emit(self.id(), data)
-       #ev.accept()
-
-
 
     def initProfile(self, spectralProfile: SpectralProfile):
         """
@@ -685,7 +682,7 @@ class SpectralViewBox(pg.ViewBox):
         l.addWidget(self.rbXAutoRange, 1, 0)
 
         self.mCBXAxisUnit = QComboBox()
-        self.mCBXAxisUnitModel:XUnitModel = XUnitModel()
+        self.mCBXAxisUnitModel: XUnitModel = XUnitModel()
         self.mCBXAxisUnit.setModel(self.mCBXAxisUnitModel)
         #self.mCBXAxisUnit.currentIndexChanged.connect(
         #    lambda: self.sigXUnitChanged.emit(self.mCBXAxisUnit.currentData(Qt.UserRole)))
@@ -734,11 +731,10 @@ class SpectralViewBox(pg.ViewBox):
         """
         i = self.mCBXAxisUnit.findText(unit)
         if i == -1:
-
             units = self.mCBXAxisUnit.model().mUnits
-            bu = UnitLookup.baseUnit(unit)
-            if bu in units:
-                i = units.index(bu)
+            baseUnit = UnitLookup.baseUnit(unit)
+            if baseUnit in units:
+                i = units.index(baseUnit)
         if i == -1:
             i = 0
         if i != self.mCBXAxisUnit.currentIndex():
@@ -865,8 +861,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.setYLabel('Y (Spectral Value)')
 
         self.mViewBox.mCBXAxisUnit.currentIndexChanged.connect(self.updateXUnit)
-        self.mSPECIFIC_PROFILE_STYLES = dict()
-        self.mTEMPORARY_HIGHLIGHTED = set()
+        self.mSPECIFIC_PROFILE_STYLES: typing.Dict[int, PlotStyle] = dict()
+        self.mTEMPORARY_HIGHLIGHTED: typing.Set[int] = set()
         self.mDefaultProfileRenderer: SpectralProfileRenderer
         self.mDefaultProfileRenderer = SpectralProfileRenderer.default()
 
@@ -2781,6 +2777,7 @@ class SpectralLibraryWidget(QMainWindow):
         """
         Adds all current spectral profiles to the "persistent" SpectralLibrary
         """
+
         fids = self.currentProfileIds()
         self.plotWidget().mTEMPORARY_HIGHLIGHTED.clear()
         self.plotWidget().updateProfileStyles(fids)
@@ -2908,3 +2905,32 @@ class SpectralLibraryPanel(QgsDockWidget):
         :param mode: SpectralLibraryWidget.CurrentProfilesMode
         """
         self.SLW.setCurrentProfilesMode(mode)
+
+
+
+class SpectralLibraryConsistencyCheckWidget(QWidget):
+
+    def __init__(self, speclib: SpectralLibrary = None, *args, **kwds):
+        super().__init__(*args, **kwds)
+        loadUi(speclibUiPath('spectrallibraryconsistencycheckwidget.ui'), self)
+        self.mSpeclib: SpectralLibrary = speclib
+        self.tbSpeclibInfo.setText('')
+        if speclib:
+            self.setSpeclib(speclib)
+
+    def setSpeclib(self, speclib: SpectralLibrary):
+        assert isinstance(speclib, SpectralLibrary)
+        self.mSpeclib = speclib
+        self.mSpeclib.nameChanged.connect(self.updateSpeclibInfo)
+        self.updateSpeclibInfo()
+
+    def updateSpeclibInfo(self):
+        info = '{}: {} profiles'.format(self.mSpeclib.name(), len(self.mSpeclib))
+        self.tbSpeclibInfo.setText(info)
+
+    def speclib(self) -> SpectralLibrary:
+        return self.mSpeclib
+
+    def startCheck(self):
+        consistencyCheck(self.mSpeclib)
+

@@ -503,6 +503,16 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(w)
 
+
+    def test_ConsistencyCheckDialog(self):
+
+        speclib = TestObjects.createSpectralLibrary(10)
+
+        d = SpectralLibraryConsistencyCheckWidget()
+        d.setSpeclib(speclib)
+
+        self.showGui(d)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 
