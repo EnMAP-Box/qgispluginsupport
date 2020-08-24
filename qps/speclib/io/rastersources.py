@@ -31,6 +31,7 @@ import typing
 from qgis.PyQt import sip
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtCore import *
 from qgis.core import QgsTask, QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
     QgsTaskManager, QgsMapLayerProxyModel, QgsApplication
 from ..core import SpectralProfile, SpectralLibrary
