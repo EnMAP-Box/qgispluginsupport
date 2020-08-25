@@ -105,7 +105,7 @@ class UnitModel(QAbstractListModel):
     def rowCount(self, parent=None, *args, **kwargs):
         return len(self.mUnits)
 
-    def findUnit(self, value:str) -> str:
+    def findUnit(self, value: str) -> str:
         """
         Returns a matching unit string, e.g. nm for Nanometers
         :param value:
@@ -126,7 +126,7 @@ class UnitModel(QAbstractListModel):
             if v.lower() == value:
                 return u
 
-    def addUnit(self, unit: str, description: str=None, tooltip: str=None):
+    def addUnit(self, unit: str, description: str = None, tooltip: str = None):
 
         if unit not in self.mUnits:
 
@@ -165,7 +165,6 @@ class XUnitModel(UnitModel):
                   'Millimeters',
                   'Meters',
                   'Kilometers']:
-
             baseUnit = UnitLookup.baseUnit(u)
             assert isinstance(baseUnit, str), u
             self.addUnit(baseUnit, description='{} [{}]'.format(u, baseUnit))
@@ -544,7 +543,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         distX = np.abs(dataX - x) / pw
         distY = np.abs(dataY - y) / ph
 
-        dist = np.sqrt(distX**2 + distY**2)
+        dist = np.sqrt(distX ** 2 + distY ** 2)
         idx = np.nanargmin(dist)
         return idx, dataX[idx], dataY[idx], dist[idx]
 
@@ -622,6 +621,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.menu.alphaSlider = alphaSlider
         return self.menu
 
+
 class SpectralViewBox(pg.ViewBox):
     """
     Subclass of ViewBox
@@ -685,7 +685,7 @@ class SpectralViewBox(pg.ViewBox):
         self.mCBXAxisUnit = QComboBox()
         self.mCBXAxisUnitModel: XUnitModel = XUnitModel()
         self.mCBXAxisUnit.setModel(self.mCBXAxisUnitModel)
-        #self.mCBXAxisUnit.currentIndexChanged.connect(
+        # self.mCBXAxisUnit.currentIndexChanged.connect(
         #    lambda: self.sigXUnitChanged.emit(self.mCBXAxisUnit.currentData(Qt.UserRole)))
 
         l.addWidget(QLabel('Unit'), 2, 0)
@@ -786,7 +786,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         super(SpectralLibraryPlotWidget, self).__init__(parent, plotItem=plotItem)
 
-
         self.mSelectedIds = set()
         self.mXAxisUnitInitialized: bool = False
         self.mViewBox = mViewBox
@@ -795,13 +794,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mViewBox.sigMaxNumberOfProfilesChanged.connect(self.setMaxProfiles)
         self.mDualView = None
 
-        #self.centralWidget.setParent(None)
-        #self.centralWidget = None
+        # self.centralWidget.setParent(None)
+        # self.centralWidget = None
         self.setCentralWidget(plotItem)
 
         self.plotItem: SpectralLibraryPlotItem
-        #self.plotItem = plotItem
-        #for m in ['addItem', 'removeItem', 'autoRange', 'clear', 'setXRange',
+        # self.plotItem = plotItem
+        # for m in ['addItem', 'removeItem', 'autoRange', 'clear', 'setXRange',
         #          'setYRange', 'setRange', 'setAspectLocked', 'setMouseEnabled',
         #          'setXLink', 'setYLink', 'enableAutoRange', 'disableAutoRange',
         #          'setLimits', 'register', 'unregister', 'viewRect']:
@@ -1017,7 +1016,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """
         return [i for i in self.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)]
 
-    def removeSpectralProfilePDIs(self, fidsToRemove: typing.List[int], updateScene: bool =True):
+    def removeSpectralProfilePDIs(self, fidsToRemove: typing.List[int], updateScene: bool = True):
         """
         :param updateScene:
         :param fidsToRemove: feature ids to remove
@@ -1057,7 +1056,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.profileRenderer().reset()
 
     def setProfileStyles(self,
-                         style:PlotStyle,
+                         style: PlotStyle,
                          fids: typing.List[int]):
         """
         Sets the style of single features
@@ -1098,7 +1097,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.connectSpeclibSignals()
 
         self.mUpdateTimer.start()
-
 
     def setDualView(self, dualView: QgsDualView):
         assert isinstance(dualView, QgsDualView)
@@ -1254,7 +1252,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Sets the unit or mapping function to be shown on x-axis.
         :param unit: str, e.g. `nanometers`
         """
-        #unit = UnitLookup.baseUnit(unit)
+        # unit = UnitLookup.baseUnit(unit)
         self.mViewBox.setXAxisUnit(unit)
 
     def xUnit(self) -> str:
@@ -1413,7 +1411,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.setXUnit(xUnit)
             self.mXUnitInitialized = True
 
-    def onProfileClicked(self, fid:int, data:dict):
+    def onProfileClicked(self, fid: int, data: dict):
         """
         Slot to react to mouse-clicks on SpectralProfilePlotDataItems
         :param pdi: SpectralProfilePlotDataItem
@@ -1424,10 +1422,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         fids = speclib.selectedFeatureIds()
         if modifiers == Qt.ControlModifier or modifiers == Qt.ShiftModifier:
             if fid in fids:
-                #print(f'Remove {fid}')
+                # print(f'Remove {fid}')
                 fids.remove(fid)
             else:
-                #print(f'Add {fid}')
+                # print(f'Add {fid}')
                 fids.append(fid)
             speclib.selectByIds(fids)
         else:
@@ -1815,7 +1813,6 @@ class SpectralProfileEditorWidget(QWidget):
         :return: dict
         """
         return self.mModel.values()
-
 
 
 class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
@@ -2244,7 +2241,6 @@ class SpectralLibraryWidget(QMainWindow):
             tt += '</span></body></html>'
             self.mStatusLabel.setText(msg)
             self.mStatusLabel.setToolTip(tt)
-
 
     def onShowContextMenuExternally(self, menu: QgsActionMenu, fid):
         s = ""
@@ -2815,7 +2811,7 @@ class SpectralLibraryWidget(QMainWindow):
 
     def setCurrentProfiles(self,
                            currentProfiles: list,
-                           profileStyles:typing.Dict[SpectralProfile, PlotStyle] = None):
+                           profileStyles: typing.Dict[SpectralProfile, PlotStyle] = None):
         assert isinstance(currentProfiles, list)
 
         if not isinstance(profileStyles, dict):
@@ -2933,7 +2929,6 @@ class SpectralLibraryPanel(QgsDockWidget):
         self.SLW.setCurrentProfilesMode(mode)
 
 
-
 class SpectralLibraryConsistencyCheckWidget(QWidget):
 
     def __init__(self, speclib: SpectralLibrary = None, *args, **kwds):
@@ -2959,4 +2954,3 @@ class SpectralLibraryConsistencyCheckWidget(QWidget):
 
     def startCheck(self):
         consistencyCheck(self.mSpeclib)
-
