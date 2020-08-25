@@ -1434,11 +1434,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             x = data['xValue']
             y = data['yValue']
             b = data['idx'] + 1
-            profile: SpectralProfile = self.speclib().profile(fid)
-            if isinstance(profile, SpectralProfile):
-                self.mInfoScatterPointText = f'FID:{fid} Bnd:{b}' + \
-                                             f'\nx:{x}\ny:{y}\n' + \
-                                             f'{profile.name()}'
+            pdi = data.get('pdi')
+            if isinstance(pdi, SpectralProfilePlotDataItem):
+                profile: SpectralProfile = pdi.spectralProfile()
+                if isinstance(profile, SpectralProfile):
+                    self.mInfoScatterPointText = f'FID:{fid} Bnd:{b}' + \
+                                                 f'\nx:{x}\ny:{y}\n' + \
+                                                 f'{profile.name()}'
 
             self.mInfoScatterPoint.setData(x=[x],
                                            y=[y],
