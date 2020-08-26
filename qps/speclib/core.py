@@ -1350,9 +1350,6 @@ class SpectralProfileRenderer(object):
     def clone(self):
         return copy.deepcopy(self)
 
-    def __copy__(self):
-        return copy.copy(self)
-
     def saveToUserSettings(self):
         """
         Saves this plotStyle scheme to the user Qt user settings
@@ -2141,6 +2138,8 @@ class SpectralLibrary(QgsVectorLayer):
         assert isinstance(profileRenderer, SpectralProfileRenderer)
         b = profileRenderer != self.mProfileRenderer
         self.mProfileRenderer = profileRenderer
+        if profileRenderer.mInputSource != self:
+            s = ""
         if b:
             self.sigProfileRendererChanged.emit(self.mProfileRenderer)
 

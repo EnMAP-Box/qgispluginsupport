@@ -294,8 +294,7 @@ class SpectralLibraryPlotColorSchemeWidget(QWidget):
 
         self.mBlocked = False
 
-        self.mLastColorScheme: SpectralProfileRenderer
-        self.mLastColorScheme = None
+        self.mLastRenderer: SpectralProfileRenderer = None
 
         self.btnColorBackground.colorChanged.connect(self.onProfileRendererChanged)
         self.btnColorForeground.colorChanged.connect(self.onProfileRendererChanged)
@@ -308,7 +307,7 @@ class SpectralLibraryPlotColorSchemeWidget(QWidget):
         self.wDefaultProfileStyle.sigPlotStyleChanged.connect(self.onProfileRendererChanged)
         self.wDefaultProfileStyle.setMinimumSize(self.wDefaultProfileStyle.sizeHint())
         self.btnReset.setDisabled(True)
-        self.btnReset.clicked.connect(lambda: self.setProfileRenderer(self.mLastColorScheme))
+        self.btnReset.clicked.connect(lambda: self.setProfileRenderer(self.mLastRenderer))
         self.btnColorSchemeBright.clicked.connect(lambda: self.setProfileRenderer(SpectralProfileRenderer.bright()))
         self.btnColorSchemeDark.clicked.connect(lambda: self.setProfileRenderer(SpectralProfileRenderer.dark()))
 
@@ -318,23 +317,23 @@ class SpectralLibraryPlotColorSchemeWidget(QWidget):
         assert isinstance(w, PlotStyleWidget)
         w.btnLinePenColor.setDisabled(checked)
 
-    def setProfileRenderer(self, colorScheme: SpectralProfileRenderer):
-        assert isinstance(colorScheme, SpectralProfileRenderer)
+    def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
+        assert isinstance(profileRenderer, SpectralProfileRenderer)
 
-        if self.mLastColorScheme is None:
-            self.mLastColorScheme = colorScheme
+        if self.mLastRenderer is None:
+            self.mLastRenderer = profileRenderer
             self.btnReset.setEnabled(True)
 
-        changed = colorScheme != self.spectralProfileRenderer()
+        changed = profileRenderer != self.spectralProfileRenderer()
 
         self.mBlocked = True
 
-        self.btnColorBackground.setColor(colorScheme.backgroundColor)
-        self.btnColorForeground.setColor(colorScheme.foregroundColor)
-        self.btnColorInfo.setColor(colorScheme.infoColor)
-        self.btnColorSelection.setColor(colorScheme.selectionColor)
-        self.wDefaultProfileStyle.setPlotStyle(colorScheme.profileStyle)
-        self.cbUseRendererColors.setChecked(colorScheme.useRendererColors)
+        self.btnColorBackground.setColor(profileRenderer.backgroundColor)
+        self.btnColorForeground.setColor(profileRenderer.foregroundColor)
+        self.btnColorInfo.setColor(profileRenderer.infoColor)
+        self.btnColorSelection.setColor(profileRenderer.selectionColor)
+        self.wDefaultProfileStyle.setPlotStyle(profileRenderer.profileStyle)
+        self.cbUseRendererColors.setChecked(profileRenderer.useRendererColors)
 
         self.mBlocked = False
         if changed:
@@ -344,8 +343,8 @@ class SpectralLibraryPlotColorSchemeWidget(QWidget):
         if not self.mBlocked:
             self.sigProfileRendererChanged.emit(self.spectralProfileRenderer())
 
-        self.btnReset.setEnabled(isinstance(self.mLastColorScheme, SpectralProfileRenderer) and
-                                 self.spectralProfileRenderer() != self.mLastColorScheme)
+        self.btnReset.setEnabled(isinstance(self.mLastRenderer, SpectralProfileRenderer) and
+                                 self.spectralProfileRenderer() != self.mLastRenderer)
 
     def spectralProfileRenderer(self) -> SpectralProfileRenderer:
         cs = SpectralProfileRenderer()
@@ -354,8 +353,8 @@ class SpectralLibraryPlotColorSchemeWidget(QWidget):
         cs.infoColor = self.btnColorInfo.color()
         cs.selectionColor = self.btnColorSelection.color()
         cs.profileStyle = self.wDefaultProfileStyle.plotStyle()
-        if isinstance(self.mLastColorScheme, SpectralProfileRenderer):
-            cs.temporaryProfileStyle = self.mLastColorScheme.temporaryProfileStyle.clone()
+        if isinstance(self.mLastRenderer, SpectralProfileRenderer):
+            cs.temporaryProfileStyle = self.mLastRenderer.temporaryProfileStyle.clone()
         cs.useRendererColors = self.cbUseRendererColors.isChecked()
         return cs
 
@@ -715,9 +714,10 @@ class SpectralViewBox(pg.ViewBox):
         self.mLastColorScheme = self.profileRenderer()
         super(SpectralViewBox, self).raiseContextMenu(ev)
 
-    def setProfileRenderer(self, colorScheme: SpectralProfileRenderer):
-        assert isinstance(colorScheme, SpectralProfileRenderer)
-        self.wColorScheme.setProfileRenderer(colorScheme)
+    def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
+        assert isinstance(profileRenderer, SpectralProfileRenderer)
+
+        self.wColorScheme.setProfileRenderer(profileRenderer)
 
     def profileRenderer(self) -> SpectralProfileRenderer:
         """
@@ -899,7 +899,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """Sets and applies the SpectralProfileRenderer"""
         assert isinstance(profileRenderer, SpectralProfileRenderer)
         if isinstance(self.speclib(), SpectralLibrary):
+            profileRenderer = copy.copy(profileRenderer)
+            profileRenderer.setInput(self.speclib())
             self.speclib().setProfileRenderer(profileRenderer)
+            s = ""
 
     def onPlotUpdateTimeOut(self, *args):
         try:
@@ -1398,7 +1401,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         fids2 = [pdi.id() for pdi in pdis]
         styles = profileRenderer.profilePlotStyles(fids2)
         for pdi in pdis:
-
             style = styles.get(pdi.id())
             if isinstance(style, PlotStyle):
                 style.apply(pdi, updateItem=False)
@@ -1422,7 +1424,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         speclib = self.speclib()
         assert isinstance(speclib, SpectralLibrary)
         fids = speclib.selectedFeatureIds()
-        if modifiers == Qt.ControlModifier or modifiers == Qt.ShiftModifier:
+        if modifiers == Qt.AltModifier:
             x = data['xValue']
             y = data['yValue']
             b = data['idx'] + 1
@@ -1442,12 +1444,16 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.mInfoScatterPoint.update()
 
         else:
-            if fid in fids:
-                # print(f'Remove {fid}')
-                fids.remove(fid)
-            else:
-                # print(f'Add {fid}')
-                fids.append(fid)
+            if modifiers == Qt.NoModifier:
+                fids = [fid]
+            elif modifiers == Qt.ShiftModifier or modifiers == Qt.ControlModifier:
+                if fid in fids:
+                    # print(f'Remove {fid}')
+                    fids.remove(fid)
+                else:
+                    # print(f'Add {fid}')
+                    fids.append(fid)
+
             speclib.selectByIds(fids)
 
 
