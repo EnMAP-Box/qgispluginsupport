@@ -367,7 +367,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
     def __init__(self, spectralProfile: SpectralProfile):
         assert isinstance(spectralProfile, SpectralProfile)
-        super(SpectralProfilePlotDataItem, self).__init__()
+        super().__init__()
 
         # self.curve.sigClicked.connect(self.curveClicked)
         # self.scatter.sigClicked.connect(self.scatterClicked)
@@ -379,7 +379,9 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.mYValueConversionFunction = lambda v, *args: v
         self.mSortByXValues: bool = False
 
-        self.mDefaultStyle = PlotStyle()
+        #self.mDefaultStyle = PlotStyle()
+
+        self.mProfileSource = None
 
         self.mProfile: SpectralProfile
         self.mProfile = None
@@ -390,6 +392,12 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         self.initProfile(spectralProfile)
         self.applyMapFunctions()
+
+    def profileSource(self):
+        return self.mProfileSource
+
+    def setProfileSource(self, source: typing.Any):
+        self.mProfileSource = source
 
     def onCurveMouseClickEvent(self, ev):
         self.mCurveMouseClickNativeFunc(ev)
@@ -1336,6 +1344,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                     self.mXUnitInitialized = True
 
                 pdi = SpectralProfilePlotDataItem(profile)
+                pdi.setProfileSource(self.speclib())
                 pdi.setClickable(True)
                 pdi.setVisible(True)
                 pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, self.xUnit()))
@@ -1418,17 +1427,17 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def onProfileClicked(self, fid: int, data: dict):
         """
         Slot to react to mouse-clicks on SpectralProfilePlotDataItems
+        :param fid: Feature ID
         :param pdi: SpectralProfilePlotDataItem
         """
         modifiers = QApplication.keyboardModifiers()
-        speclib = self.speclib()
-        assert isinstance(speclib, SpectralLibrary)
-        fids = speclib.selectedFeatureIds()
+
+        pdi: SpectralProfilePlotDataItem = data.get('pdi')
         if modifiers == Qt.AltModifier:
             x = data['xValue']
             y = data['yValue']
             b = data['idx'] + 1
-            pdi = data.get('pdi')
+
             if isinstance(pdi, SpectralProfilePlotDataItem):
                 profile: SpectralProfile = pdi.spectralProfile()
                 if isinstance(profile, SpectralProfile):
@@ -1444,17 +1453,20 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.mInfoScatterPoint.update()
 
         else:
-            if modifiers == Qt.NoModifier:
-                fids = [fid]
-            elif modifiers == Qt.ShiftModifier or modifiers == Qt.ControlModifier:
-                if fid in fids:
-                    # print(f'Remove {fid}')
-                    fids.remove(fid)
-                else:
-                    # print(f'Add {fid}')
-                    fids.append(fid)
 
-            speclib.selectByIds(fids)
+            if isinstance(pdi, SpectralProfilePlotDataItem) and isinstance(pdi.profileSource(), SpectralLibrary):
+                speclib: SpectralLibrary = pdi.profileSource()
+                fids = speclib.selectedFeatureIds()
+
+                if modifiers == Qt.NoModifier:
+                    fids = [fid]
+                elif modifiers == Qt.ShiftModifier or modifiers == Qt.ControlModifier:
+                    if fid in fids:
+                        fids.remove(fid)
+                    else:
+                        fids.append(fid)
+
+                speclib.selectByIds(fids)
 
 
     def setYLabel(self, label: str):
