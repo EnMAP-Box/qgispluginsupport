@@ -45,19 +45,22 @@ class PlotStyleTests(TestCase):
 
     def test_PlotStyleButton(self):
 
-        bt = PlotStyleButton()
-        bt.setStyleSheet("""
-        QToolButton[popupMode="1"] { /* only for MenuButtonPopup */
-    padding-left: 20px; /* make way for the popup button */
-}
+        bt1 = PlotStyleButton()
+        bt1.setCheckable(True)
 
-        """)
-        def onChanged(*args):
-            print(args)
+        bt2 = PlotStyleButton()
+        bt2.setCheckable(False)
 
-        bt.sigPlotStyleChanged.connect(onChanged)
+        w = QWidget()
+        g = QGridLayout()
+        g.addWidget(QLabel('Checkable PlotStyleButton'), 0, 0)
+        g.addWidget(bt1, 0, 1)
+        g.addWidget(QLabel('None-Checkable PlotStyleButton'), 1, 0)
+        g.addWidget(bt2, 1, 1)
 
-        self.showGui(bt)
+        w.setLayout(g)
+        #w.setMaximumSize(200, 50)
+        self.showGui(w)
 
     def test_json(self):
 

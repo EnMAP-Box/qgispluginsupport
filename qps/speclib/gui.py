@@ -896,7 +896,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         return self.mViewBox
 
     def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
-        """Sets and applies the SpectralProfilePlotColorScheme"""
+        """Sets and applies the SpectralProfileRenderer"""
         assert isinstance(profileRenderer, SpectralProfileRenderer)
         if isinstance(self.speclib(), SpectralLibrary):
             self.speclib().setProfileRenderer(profileRenderer)
@@ -1097,6 +1097,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.connectSpeclibSignals()
 
         self.mUpdateTimer.start()
+        self.onProfileRendererChanged()
+
 
     def setDualView(self, dualView: QgsDualView):
         assert isinstance(dualView, QgsDualView)
@@ -1182,7 +1184,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """
         Updates all SpectralProfilePlotDataItems
         """
-        profileRenderer = self.profileRenderer()
+        profileRenderer: SpectralProfileRenderer = self.profileRenderer()
         # set Background color
         self.setBackground(profileRenderer.backgroundColor)
 
@@ -1421,14 +1423,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         assert isinstance(speclib, SpectralLibrary)
         fids = speclib.selectedFeatureIds()
         if modifiers == Qt.ControlModifier or modifiers == Qt.ShiftModifier:
-            if fid in fids:
-                # print(f'Remove {fid}')
-                fids.remove(fid)
-            else:
-                # print(f'Add {fid}')
-                fids.append(fid)
-            speclib.selectByIds(fids)
-        else:
             x = data['xValue']
             y = data['yValue']
             b = data['idx'] + 1
@@ -1446,6 +1440,16 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                                            brush=QColor('red'))
             self.mInfoScatterPoint.setVisible(True)
             self.mInfoScatterPoint.update()
+
+        else:
+            if fid in fids:
+                # print(f'Remove {fid}')
+                fids.remove(fid)
+            else:
+                # print(f'Add {fid}')
+                fids.append(fid)
+            speclib.selectByIds(fids)
+
 
     def setYLabel(self, label: str):
         """
