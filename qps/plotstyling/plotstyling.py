@@ -886,6 +886,7 @@ class PlotStyleButton(QToolButton):
 
     def onToggled(self, b: bool):
         self.mPlotStyle.setVisibility(b)
+        self.sigPlotStyleChanged.emit(self.plotStyle())
         self.updateIcon()
 
     def onAboutToShowMenu(self, *args):
