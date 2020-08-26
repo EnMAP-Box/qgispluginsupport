@@ -23,7 +23,7 @@ import math
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
 from qgis.gui import QgsMapCanvas
-from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProkect
+from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
