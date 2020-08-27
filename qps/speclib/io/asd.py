@@ -30,7 +30,6 @@ import numpy as np
 import csv as pycsv
 from ..core import *
 
-
 """
 
 Offset Size Type Description Comment
@@ -87,7 +86,6 @@ ASD_VERSIONS = ['ASD', 'asd', 'as6', 'as7', 'as8']
 
 
 class SpectrumDataType(enum.IntEnum):
-
     RAW_TYPE = 0
     REF_TYPE = 1
     RAD_TYPE = 2
@@ -99,16 +97,14 @@ class SpectrumDataType(enum.IntEnum):
     ABS_TYPE = 8
 
 
-
 class SpectrumDataFormat(enum.Enum):
-
     FLOAT_FORMAT = 0
     INTEGER_FORMAT = 1
     DOUBLE_FORMAT = 2
     UNKOWN_FORMAT = 3
 
-class InstrumentType(enum.Enum):
 
+class InstrumentType(enum.Enum):
     UNKOWN_INSTRUMENT = 0
     PSII_INSTRUMENT = 1
     LSVNIR_INSTRUMENT = 2
@@ -118,16 +114,17 @@ class InstrumentType(enum.Enum):
     CHEM__INSTRUMENT = 6
     FSFR_UNATTENDED_INSTRUMENT = 7
 
+
 class GPS_DATA(object):
 
     def __init__(self, DATA):
         ASD_GPS_DATA = struct.Struct("= 5d 2b cl 2b 5B 2c").unpack(DATA)
 
-
         self.true_heading = self.speed = self.latitude = self.longitude = self.altitude = ASD_GPS_DATA[0:5]
         self.flags = ASD_GPS_DATA[5:7]
         self.hardware_mode = ASD_GPS_DATA[7]
-        self.timestamp = np.datetime64('1970-01-01') + np.timedelta64(ASD_GPS_DATA[8],'s')
+        self.timestamp = np.datetime64('1970-01-01') + np.timedelta64(ASD_GPS_DATA[8], 's')
+
 
 class SmartDetectorType(object):
 
@@ -150,8 +147,6 @@ class SmartDetectorType(object):
         self.serial_number, self.Signal, self.dark, self.ref, self.Status, self.avg, self.humid, self.temp = DETECTOR
 
 
-
-
 class TM_STRUCT(object):
 
     def __init__(self, DATA):
@@ -163,13 +158,16 @@ class TM_STRUCT(object):
         return datetime.date(self.year(), self.month(), self.day())
 
     def datetime(self):
-        return datetime.datetime(self.year(), self.month(), self.day(), hour=self.tm_hour, minute=self.tm_min, second=self.tm_sec)
+        return datetime.datetime(self.year(), self.month(), self.day(), hour=self.tm_hour, minute=self.tm_min,
+                                 second=self.tm_sec)
 
     def time(self):
         return datetime.time(hour=self.tm_hour, minute=self.tm_min, second=self.tm_sec)
 
     def datetime64(self) -> np.datetime64:
-        return np.datetime64('{:04}-{:02}-{:02}T{:02}:{:02}:{:02}'.format(self.year(), self.month(), self.day(), self.tm_hour, self.tm_min, self.tm_sec))
+        return np.datetime64(
+            '{:04}-{:02}-{:02}T{:02}:{:02}:{:02}'.format(self.year(), self.month(), self.day(), self.tm_hour,
+                                                         self.tm_min, self.tm_sec))
 
     def doy(self) -> int:
         return self.tm_yday
@@ -189,6 +187,7 @@ class ASDBinaryFile(object):
     Wrapper class to access a ASD File Format binary file.
     See ASD File Format, version 8, revision B, ASD Inc., a PANalytical company, 2555 55th Street, Suite 100 Boulder, CO 80301.
     """
+
     def __init__(self):
         super(ASDBinaryFile, self).__init__()
 
@@ -256,6 +255,7 @@ class ASDBinaryFile(object):
     def readFromBinaryFile(self, path: str):
         with open(path, 'rb') as f:
             DATA = f.read()
+
             def sub(start, len):
                 return DATA[start:start + len]
 
@@ -300,7 +300,8 @@ class ASDBinaryFile(object):
 
             self.instrument = sub(431, 1)
             self.bulb = struct.unpack('L', sub(432, 4))
-            self.swir1_gain, self.swir2_gain, self.swir1_offset, self.swir2_offset = struct.unpack('4H', sub(436, 2 * 4))
+            self.swir1_gain, self.swir2_gain, self.swir1_offset, self.swir2_offset = struct.unpack('4H',
+                                                                                                   sub(436, 2 * 4))
 
             self.splice1_wavelength, self.splice2_wavelength = struct.unpack('2f', sub(444, 2 * 4))
 
@@ -333,7 +334,7 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
         def read(speclib: SpectralLibrary):
 
             pathes, filter = QFileDialog.getOpenFileNames(caption='ASD FilesCSV File',
-                                               filter='All type (*.*);;Text files (*.txt);; CSV (*.csv);;ASD (*.asd)')
+                                                          filter='All type (*.*);;Text files (*.txt);; CSV (*.csv);;ASD (*.asd)')
 
             if len(pathes) > 0:
                 sl = ASDSpectralLibraryIO.readFrom(pathes)
@@ -404,16 +405,16 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
                 return ASDSpectralLibraryIO.canRead(path, binary=False)
 
     @classmethod
-    def readFrom(cls, paths:typing.Union[str, list],
-                 asdFields:typing.Iterable[str] = None,
-                 progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
+    def readFrom(cls, paths: typing.Union[str, list],
+                 asdFields: typing.Iterable[str] = None,
+                 progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
         :param paths: list of source paths
         :param asdFields: list of header information to be extracted from ASD binary files
         :return: SpectralLibrary
         """
         if asdFields is None:
-            #default fields to add as meta data
+            # default fields to add as meta data
             asdFields = ['when', 'ref_time', 'dc_time', 'dc_corr', 'it', 'sample_count', 'instrument_num', 'spec_type']
 
         if not isinstance(paths, list):
@@ -438,7 +439,8 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
                         for n in asdFields:
                             v = asd.__dict__[n]
                             if isinstance(v, TM_STRUCT):
-                                sl.addAttribute(createQgsField(n, '')) # TM struct will use a VARCHAR field to express the time stamp
+                                sl.addAttribute(createQgsField(n,
+                                                               ''))  # TM struct will use a VARCHAR field to express the time stamp
                             else:
                                 sl.addAttribute(createQgsField(n, v))
 
@@ -480,7 +482,6 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
                                 DATA[wl] = [float(v) for v in line[1:]]
 
                             for i, name in enumerate(profileNames):
-
                                 yValues = [DATA[wl][i] for wl in xValues]
                                 xUnit = 'nm'
                                 profile = SpectralProfile(fields=sl.fields())
@@ -503,6 +504,3 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
         sl.addProfiles(profiles, addMissingFields=False)
         sl.commitChanges()
         return sl
-
-
-

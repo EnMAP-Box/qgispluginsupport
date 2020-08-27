@@ -22,7 +22,8 @@ import random
 import math
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
-
+from qgis.gui import QgsMapCanvas
+from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
@@ -32,8 +33,8 @@ from qps.speclib.gui import *
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
-class TestSpeclibWidgets(TestCase):
 
+class TestSpeclibWidgets(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
@@ -49,7 +50,6 @@ class TestSpeclibWidgets(TestCase):
         gdal.PushErrorHandler(TestSpeclibWidgets.gdal_error_handler)
         ogr.UseExceptions()
 
-
     @staticmethod
     def gdal_error_handler(err_class, err_num, err_msg):
         errtype = {
@@ -64,7 +64,6 @@ class TestSpeclibWidgets(TestCase):
         print('Error Number: %s' % (err_num))
         print('Error Type: %s' % (err_class))
         print('Error Message: %s' % (err_msg))
-
 
     def setUp(self):
         super().setUp()
@@ -83,11 +82,11 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_PyQtGraphPlot(self):
         import qps.externals.pyqtgraph as pg
-        #pg.systemInfo()
+        # pg.systemInfo()
 
         plotWidget = pg.plot(title="Three plot curves")
 
-        item1 = pg.PlotItem(x=[1,2,3],   y=[2, 3, 4], color='white')
+        item1 = pg.PlotItem(x=[1, 2, 3], y=[2, 3, 4], color='white')
         plotWidget.plotItem.addItem(item1)
         self.assertIsInstance(plotWidget, pg.PlotWidget)
 
@@ -99,8 +98,9 @@ class TestSpeclibWidgets(TestCase):
         profile = SpectralProfile()
         self.assertIsInstance(profile, SpectralProfile)
         import numpy as np
-        yValues = np.asarray([700., np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan, 800.])
-        xValues = np.asarray([0   , 2     , 3    , 4     , 5     , 6     , 7     , 8     , 9     , 10    , 11    , 12    , 1  ])
+        yValues = np.asarray(
+            [700., np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan, 800.])
+        xValues = np.asarray([0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1])
 
         profile.setValues(xValues, yValues)
 
@@ -112,7 +112,7 @@ class TestSpeclibWidgets(TestCase):
         print('plot {}'.format(yValues))
         import qps.externals.pyqtgraph as pg
         import numpy as np
-        #w0 = pg.plot(yValues, connect='finite')
+        # w0 = pg.plot(yValues, connect='finite')
 
         pdi = SpectralProfilePlotDataItem(profile)
         self.assertIsInstance(pdi, SpectralProfilePlotDataItem)
@@ -155,13 +155,12 @@ class TestSpeclibWidgets(TestCase):
         sl.addProfiles([p])
         self.assertTrue(pw.xUnit(), p.xUnit())
 
-
         w = QWidget()
         w.setLayout(QVBoxLayout())
         pw = SpectralLibraryPlotWidget()
 
         btn = QPushButton('Add speclib')
-        btn.clicked.connect(lambda : pw.setSpeclib(speclib))
+        btn.clicked.connect(lambda: pw.setSpeclib(speclib))
         w.layout().addWidget(pw)
         w.layout().addWidget(btn)
 
@@ -201,8 +200,8 @@ class TestSpeclibWidgets(TestCase):
         p1 = SpectralProfile()
         p2 = SpectralProfile()
 
-        p1.setValues(x = [.1, .2, .3, .4], y = [20,30,40,30], xUnit='um')
-        p2.setValues(x = [100, 200, 300, 400], y=[21, 31, 41, 31], xUnit='nm')
+        p1.setValues(x=[.1, .2, .3, .4], y=[20, 30, 40, 30], xUnit='um')
+        p2.setValues(x=[100, 200, 300, 400], y=[21, 31, 41, 31], xUnit='nm')
         slib.startEditing()
         slib.addProfiles([p1, p2])
         slib.commitChanges()
@@ -215,6 +214,7 @@ class TestSpeclibWidgets(TestCase):
     def test_SpectralLibraryPlotWidgetSimple(self):
 
         speclib = TestObjects.createSpectralLibrary(10)
+        # speclib = SpectralLibrary()
         w = SpectralLibraryPlotWidget()
         w.setSpeclib(speclib)
 
@@ -222,7 +222,6 @@ class TestSpeclibWidgets(TestCase):
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorScheme(self):
-
 
         self.assertIsInstance(SpectralProfileRenderer.default(), SpectralProfileRenderer)
         self.assertIsInstance(SpectralProfileRenderer.dark(), SpectralProfileRenderer)
@@ -270,15 +269,12 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(profileRenderer2, SpectralProfileRenderer)
         self.assertEqual(profileRenderer, profileRenderer2)
 
-
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorSchemeWidget(self):
 
         w = SpectralLibraryPlotColorSchemeWidget()
         self.assertIsInstance(w, SpectralLibraryPlotColorSchemeWidget)
         self.showGui(w)
-
-
 
     @unittest.skipIf(False, '')
     def test_SpectralProfileValueTableModel(self):
@@ -310,12 +306,8 @@ class TestSpeclibWidgets(TestCase):
 
         m.setColumnValueUnit(0, '')
 
-
     @unittest.skipIf(False, '')
     def test_SpectralProfileEditorWidget(self):
-
-        import qps
-        qps.initResources()
 
         self.assertIsInstance(QgsApplication.instance(), QgsApplication)
         SLIB = TestObjects.createSpectralLibrary()
@@ -361,11 +353,9 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_SpectralProfileEditorWidgetFactory(self):
 
-
         reg = QgsGui.editorWidgetRegistry()
         if len(reg.factories()) == 0:
             reg.initEditors()
-
 
         registerSpectralProfileEditorWidget()
 
@@ -394,11 +384,12 @@ class TestSpeclibWidgets(TestCase):
         cb = QCheckBox()
         cb.setText('Show Editor')
 
-        def onClicked(b:bool):
+        def onClicked(b: bool):
             if b:
                 dv.setView(QgsDualView.AttributeEditor)
             else:
                 dv.setView(QgsDualView.AttributeTable)
+
         cb.clicked.connect(onClicked)
         w.layout().addWidget(dv)
         w.layout().addWidget(cb)
@@ -413,7 +404,7 @@ class TestSpeclibWidgets(TestCase):
 
         self.assertIsInstance(factory.createSearchWidget(vl, 0, dv), QgsSearchWidgetWrapper)
 
-        eww = factory.create(vl, 0, None, dv )
+        eww = factory.create(vl, 0, None, dv)
         self.assertIsInstance(eww, SpectralProfileEditorWidgetWrapper)
         self.assertIsInstance(eww.widget(), SpectralProfileEditorWidget)
 
@@ -438,7 +429,6 @@ class TestSpeclibWidgets(TestCase):
         self.assertTrue(len(sl) > 0)
         w.addSpeclib(sl)
         self.showGui(w)
-
 
     def test_dropping_speclibs(self):
 
@@ -505,6 +495,15 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(w)
 
+    def test_ConsistencyCheckDialog(self):
+
+        speclib = TestObjects.createSpectralLibrary(10)
+
+        d = SpectralLibraryConsistencyCheckWidget()
+        d.setSpeclib(speclib)
+
+        self.showGui(d)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 
@@ -560,11 +559,10 @@ class TestSpeclibWidgets(TestCase):
             style.setMarkerSymbol(MarkerSymbol.Diamond)
             style.setMarkerColor('blue')
 
-            slw.setCurrentProfiles([p], {p:style})
+            slw.setCurrentProfiles([p], {p: style})
 
         btnAddRandomProfile = QPushButton('Add Profile')
         btnAddRandomProfile.clicked.connect(onAddRandomProfile)
-
 
         lh = QHBoxLayout()
 
@@ -589,9 +587,8 @@ class TestSpeclibWidgets(TestCase):
 
         lyr = QgsRasterLayer(hymap)
         h, w = lyr.height(), lyr.width()
-        speclib = SpectralLibrary.readFromRasterPositions(enmap, [QPoint(0,0), QPoint(w-1, h-1), QPoint(2, 2)])
+        speclib = SpectralLibrary.readFromRasterPositions(enmap, [QPoint(0, 0), QPoint(w - 1, h - 1), QPoint(2, 2)])
         slw = SpectralLibraryWidget(speclib=speclib)
-
 
         QgsProject.instance().addMapLayers([lyr, slw.speclib()])
 
@@ -600,7 +597,6 @@ class TestSpeclibWidgets(TestCase):
         canvas.setLayers([lyr, slw.speclib()])
         canvas.setDestinationCrs(slw.speclib().crs())
         canvas.setExtent(slw.speclib().extent())
-
 
         def setLayers():
             canvas.mapSettings().setDestinationCrs(slw.mCanvas.mapSettings().destinationCrs())
@@ -623,7 +619,7 @@ class TestSpeclibWidgets(TestCase):
 
         slw.actionToggleEditing.setChecked(True)
 
-        #self.assertTrue()
+        # self.assertTrue()
         self.showGui(slw)
 
     @unittest.skipIf(False, '')
@@ -633,14 +629,12 @@ class TestSpeclibWidgets(TestCase):
         qps.registerEditorWidgets()
         speclib = TestObjects.createSpectralLibrary()
 
-
         slw = SpectralLibraryWidget(speclib=speclib)
 
         import qps.layerproperties
         propertiesDialog = qps.layerproperties.LayerPropertiesDialog(speclib, None)
         self.assertIsInstance(propertiesDialog, QgsOptionsDialogBase)
         self.showGui([slw, propertiesDialog])
-
 
     def test_addAttribute(self):
 
@@ -665,12 +659,10 @@ class TestSpeclibWidgets(TestCase):
             self.assertEqual(c1.type, c2.type)
             self.assertEqual(c1.hidden, c2.hidden)
             names.append(c1.name)
-        #self.assertTrue(attr.name() in names)
+        # self.assertTrue(attr.name() in names)
         s = ""
 
         self.showGui(slw)
-
-
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidgetThousands(self):
@@ -698,8 +690,6 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(w)
 
-
-
     def test_delete_speclib(self):
 
         speclib = TestObjects.createSpectralLibrary(10)
@@ -710,7 +700,6 @@ class TestSpeclibWidgets(TestCase):
         QgsProject.instance().removeAllMapLayers()
         del speclib
         assert w.plotWidget().speclib() is None
-
 
     def test_speclibImportSpeed(self):
 
@@ -771,8 +760,6 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryWidget()
         self.showGui(w)
 
-
-
     def test_SpectralProfileImportPointsDialog(self):
 
         lyrRaster = QgsRasterLayer(enmap)
@@ -805,8 +792,8 @@ class TestSpeclibWidgets(TestCase):
                 self.assertIsInstance(slib, SpectralLibrary)
                 self.assertIsInstance(d.profiles(), list)
                 self.assertTrue(len(d.profiles()) == len(slib))
-                print('Returned {} profiles from {} and {}'.format(len(slib), d.vectorSource().source(), d.rasterSource().source()))
-
+                print('Returned {} profiles from {} and {}'.format(len(slib), d.vectorSource().source(),
+                                                                   d.rasterSource().source()))
 
         for vl in layers:
             d = SpectralProfileImportPointsDialog()
@@ -824,9 +811,7 @@ class TestSpeclibWidgets(TestCase):
             d.hide()
             d.close()
 
-
-        #self.showGui(d)
-
+        # self.showGui(d)
 
     def test_AttributeDialog(self):
 
@@ -867,8 +852,6 @@ class TestSpeclibWidgets(TestCase):
 
 
 if __name__ == '__main__':
-
     import xmlrunner
+
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
-
-
