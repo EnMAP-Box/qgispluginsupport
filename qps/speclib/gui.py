@@ -2781,7 +2781,7 @@ class SpectralLibraryWidget(QMainWindow):
         return pi
 
     def onExportSpectra(self, *args):
-        files = self.mSpeclib.exportProfiles(None)
+        files = self.mSpeclib.write(None)
         if len(files) > 0:
             self.sigFilesCreated.emit(files)
 
