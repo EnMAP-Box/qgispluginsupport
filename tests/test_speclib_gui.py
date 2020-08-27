@@ -523,7 +523,7 @@ class TestSpeclibWidgets(TestCase):
 
         pd = QProgressDialog()
         speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
-        slw = SpectralLibraryWidget(speclib=speclib)
+        slw = SpectralLibraryWidgetV2(speclib=speclib)
         pd.close()
         QgsProject.instance().addMapLayer(slw.speclib())
 
@@ -532,27 +532,18 @@ class TestSpeclibWidgets(TestCase):
         fieldNames = slw.speclib().fieldNames()
         self.assertIsInstance(fieldNames, list)
 
-        for mode in list(SpectralLibraryWidget.CurrentProfilesMode):
-            assert isinstance(mode, SpectralLibraryWidget.CurrentProfilesMode)
-            slw.setCurrentProfilesMode(mode)
-            assert slw.currentProfilesMode() == mode
-
         cs = [speclib[0], speclib[3], speclib[-1]]
         l = len(speclib)
         self.assertTrue(slw.speclib() == speclib)
 
-        self.assertTrue(len(slw.currentSpectra()) == 0)
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.block)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 0)
+        self.assertTrue(len(slw.currentProfiles()) == 0)
+        slw.setAddCurrentProfilesAutomatically(True)
+        slw.setCurrentProfiles(cs)
+        self.assertTrue(len(slw.currentProfiles()) == 0)
 
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.automatically)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 0)
-
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.normal)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 3)
+        slw.setAddCurrentProfilesAutomatically(False)
+        slw.setCurrentProfiles(cs)
+        self.assertTrue(len(slw.currentProfiles()) == 3)
 
         from qps.plotstyling.plotstyling import MarkerSymbol
         def onAddRandomProfile():

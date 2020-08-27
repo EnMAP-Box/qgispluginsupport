@@ -435,14 +435,16 @@ class PlotStyle(QObject):
         """
         self.linePen.setColor(QColor(*color))
 
-    def apply(self, pdi: PlotDataItem, updateItem: bool = True):
+    def apply(self, pdi: PlotDataItem, updateItem: bool = True, visibility: bool = None):
         """
         Applies this PlotStyle to a PlotDataItem by setting
         the line pen (line type, line color) and the marker/symbol (marker/symbol type,
         marker/symbol pen line and color, marker/symbol brush)
+
         :param pdi: PlotDataItem
         :param updateItem: if True, will update the PlotDataItem
         :type updateItem:
+        :param visibility: use this keyword to overwrite the style's visibility.
         :return:
         :rtype:
         """
@@ -455,7 +457,11 @@ class PlotStyle(QObject):
         pdi.opts['symbolBrush'] = pg.mkBrush(self.markerBrush)
         pdi.opts['symbolSize'] = self.markerSize
 
-        pdi.setVisible(self.mIsVisible)
+        if isinstance(visibility, bool):
+            pdi.setVisible(visibility)
+        else:
+            pdi.setVisible(self.mIsVisible)
+
         if updateItem:
             pdi.updateItems()
 
