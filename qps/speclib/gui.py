@@ -2134,6 +2134,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionSelectProfilesFromMap.setToolTip(r'Select new profile from map')
         self.actionSelectProfilesFromMap.setIcon(QIcon(':/qps/ui/icons/profile_identify.svg'))
         self.actionSelectProfilesFromMap.setVisible(False)
+        self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
         self.actionAddProfiles = QAction('Add Profile(s)')
         self.actionAddProfiles.setToolTip('Adds currently overlaid profiles to the spectral library')
@@ -2152,25 +2153,34 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.optionAddCurrentProfilesAutomatically.setCheckable(True)
         self.optionAddCurrentProfilesAutomatically.setChecked(False)
 
+        self.actionImportVectorRasterSource = QAction('Import profiles from raster + vector source')
+        self.actionImportVectorRasterSource.setToolTip('Import spectral profiles from a raster image '
+                                                 'based on vector geometries (Points).')
+        self.actionImportVectorRasterSource.setIcon(QIcon(':/images/themes/default/mActionAddOgrLayer.svg'))
+        self.actionImportVectorRasterSource.triggered.connect(self.onImportFromRasterSource)
+
         m = QMenu()
         m.addAction(self.actionAddCurrentProfiles)
         m.addAction(self.optionAddCurrentProfilesAutomatically)
         self.actionAddProfiles.setMenu(m)
 
-        self.actionImportVectorSource = QAction('Import profiles from raster + vector source')
-        self.actionImportVectorSource.setToolTip('Import spectral profiles from a raster image '
-                                                 'based on vector geometries (Points).')
-        self.actionImportVectorSource.setIcon(QIcon(':/images/themes/default/mActionAddOgrLayer.svg'))
-
         self.actionImportSpeclib = QAction('Import Spectral Profiles')
         self.actionImportSpeclib.setToolTip('Import spectral profiles from other data sources')
         self.actionImportSpeclib.setIcon(QIcon(':/qps/ui/icons/speclib_add.svg'))
-        self.actionImportSpeclib.setMenu(self.importSpeclibMenu())
+        m = QMenu()
+        m.addAction(self.actionImportVectorRasterSource)
+        m.addSeparator()
+        self.createSpeclibImportMenu(m)
+        self.actionImportSpeclib.setMenu(m)
+        self.actionImportSpeclib.triggered.connect(self.onImportSpeclib)
 
         self.actionExportSpeclib = QAction('Export Spectral Profiles')
         self.actionExportSpeclib.setToolTip('Export spectral profiles to other data formats')
         self.actionExportSpeclib.setIcon(QIcon(':/qps/ui/icons/speclib_save.svg'))
-        self.actionExportSpeclib.setMenu(self.exportSpeclibMenu())
+        m = QMenu()
+        self.createSpeclibExportMenu(m)
+        self.actionExportSpeclib.setMenu(m)
+        self.actionExportSpeclib.triggered.connect(self.onExportSpectra)
 
         self.tbSpeclibAction = QToolBar('Spectral Profiles')
         self.tbSpeclibAction.addAction(self.actionSelectProfilesFromMap)
@@ -2182,6 +2192,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProperties = QAction('Show Spectral Library Poperties')
         self.actionShowProperties.setToolTip('Show Spectral Library Properties')
         self.actionShowProperties.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
+        self.actionShowProperties.triggered.connect(self.showProperties)
+
         self.btnShowProperties = QToolButton()
         self.btnShowProperties.setAutoRaise(True)
         self.btnShowProperties.setDefaultAction(self.actionShowProperties)
@@ -2203,7 +2215,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.widgetRight.setLayout(l)
         self.widgetRight.setVisible(True)
 
-        self.initActions()
 
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()
@@ -2273,25 +2284,22 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         s = ""
 
-    def importSpeclibMenu(self) -> QMenu:
+    def createSpeclibImportMenu(self, menu: QMenu):
         """
         :return: QMenu with QActions and submenus to import SpectralProfiles
         """
-        m = QMenu()
         for iface in self.mSpeclibIOInterfaces:
             assert isinstance(iface, AbstractSpectralLibraryIO), iface
-            iface.addImportActions(self.speclib(), m)
-        return m
+            iface.addImportActions(self.speclib(), menu)
 
-    def exportSpeclibMenu(self) -> QMenu:
+    def createSpeclibExportMenu(self, menu: QMenu):
         """
         :return: QMenu with QActions and submenus to export SpectralProfiles
         """
-        m = QMenu()
         for iface in self.mSpeclibIOInterfaces:
             assert isinstance(iface, AbstractSpectralLibraryIO)
-            iface.addExportActions(self.speclib(), m)
-        return m
+            iface.addExportActions(self.speclib(), menu)
+
 
     def plotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mPlotWidget
@@ -2429,15 +2437,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
             event.setAccepted(True)
             self.addSpeclib(speclib)
 
-    def initActions(self):
-        self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
-        self.actionImportSpeclib.triggered.connect(self.onImportSpeclib)
-        self.actionImportSpeclib.setMenu(self.importSpeclibMenu())
-        self.actionImportVectorSource.triggered.connect(self.onImportFromRasterSource)
-        self.actionExportSpeclib.triggered.connect(self.onExportSpectra)
-        self.actionExportSpeclib.setMenu(self.exportSpeclibMenu())
 
-        self.actionShowProperties.triggered.connect(self.showProperties)
+
+
+
+
+
 
     def onImportSpeclib(self):
         """
@@ -2551,8 +2556,12 @@ class SpectralLibraryInfoLabel(QLabel):
     def contextMenuEvent(self, event: QContextMenuEvent):
         m = QMenu()
         a = m.addAction('Select axis-unit incompatible profiles')
+        a.setToolTip(f'Selects all profiles that cannot be displayed in {self.plotWidget().xUnit()}')
         a.triggered.connect(self.onSelectAxisUnitIncompatibleProfiles)
 
+        a = m.addAction('Reset to band index')
+        a.setToolTip('Resets the x-axis to show the band index.')
+        a.triggered.connect(lambda *args: self.plotWidget().setXUnit(BAND_INDEX))
         m.exec_(event.globalPos())
 
     def onSelectAxisUnitIncompatibleProfiles(self):
