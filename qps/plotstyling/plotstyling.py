@@ -973,6 +973,9 @@ class PlotStyleDialog(QgsDialog):
         if isinstance(plotStyle, PlotStyle):
             self.setPlotStyle(plotStyle)
 
+    def plotStyleWidget(self) -> PlotStyleWidget:
+        return self.w
+
     def plotStyle(self) -> PlotStyle:
         return self.w.plotStyle()
 

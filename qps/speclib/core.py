@@ -1292,7 +1292,11 @@ class SpectralProfileRenderer(object):
     def nonDefaultPlotStyles(self) -> typing.List[PlotStyle]:
         return list(set(self.mFID2Style.values()))
 
-    def profilePlotStyles(self, fids: typing.List[int]) -> typing.Dict[int, PlotStyle]:
+    def profilePlotStyle(self, fid: int, ignore_selection: bool = True) -> PlotStyle:
+        d = self.profilePlotStyles([fid], ignore_selection=ignore_selection)
+        return d.get(fid, None)
+
+    def profilePlotStyles(self, fids: typing.List[int], ignore_selection: bool = False) -> typing.Dict[int, PlotStyle]:
 
         profileStyles: typing.Dict[int, PlotStyle] = dict()
 
@@ -1305,7 +1309,7 @@ class SpectralProfileRenderer(object):
             renderContext = QgsRenderContext()
             renderContext.setExtent(self.mInputSource.extent())
             renderer = self.mInputSource.renderer().clone()
-            #renderer.setInput(self.mInputSource.dataSource())
+            # renderer.setInput(self.mInputSource.dataSource())
             renderer.startRender(renderContext, self.mInputSource.fields())
             features = self.mInputSource.getFeatures(fids)
 
@@ -1331,16 +1335,18 @@ class SpectralProfileRenderer(object):
         line_increase_temp = 3
 
         # highlight selected features
-        for fid, style in profileStyles.items():
-            if fid in selectedFIDs:
-                style.setLineColor(self.selectionColor)
-                style.setMarkerColor(self.selectionColor)
-                style.markerBrush.setColor(self.selectionColor)
-                style.markerSize += line_increase_selected
-                style.linePen.setWidth(style.linePen.width() + line_increase_selected)
-            elif fid in self.mTemporaryFIDs:
-                style.markerSize += line_increase_selected
-                style.linePen.setWidth(style.linePen.width() + line_increase_selected)
+        if not ignore_selection:
+
+            for fid, style in profileStyles.items():
+                if fid in selectedFIDs:
+                    style.setLineColor(self.selectionColor)
+                    style.setMarkerColor(self.selectionColor)
+                    style.markerBrush.setColor(self.selectionColor)
+                    style.markerSize += line_increase_selected
+                    style.linePen.setWidth(style.linePen.width() + line_increase_selected)
+                elif fid in self.mTemporaryFIDs:
+                    style.markerSize += line_increase_selected
+                    style.linePen.setWidth(style.linePen.width() + line_increase_selected)
 
         return profileStyles
 
@@ -2707,7 +2713,6 @@ class ConsistencyRequirement(enum.IntFlag):
     UnifiedWavelengths = 2,
     UnifiedWavelengthUnits = 4,
     AttributesNotNone = 8
-
 
 
 class SpectralLibraryConsistencyCheckTask(QgsTask):

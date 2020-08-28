@@ -34,7 +34,7 @@ from ..layerproperties import AttributeTableWidget
 
 
 from ..models import Option, OptionListModel
-from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle
+from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle, PlotStyleDialog
 from ..layerproperties import AddAttributeDialog
 from qgis.core import \
     QgsFeature, QgsRenderContext, QgsNullSymbolRenderer, \
@@ -1084,8 +1084,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                          fids: typing.List[int]):
         """
         Sets the style of single features
-        :param fid2style:
-        :return:
+        :param style:
+        :type style:
         """
         updatedFIDs = self.profileRenderer().setProfilePlotStyle(style, fids)
         self.updateProfileStyles(updatedFIDs)
@@ -2229,6 +2229,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         wa = QWidgetAction(menuProfileStyle)
 
         btnResetProfileStyles = QPushButton('Reset')
+        btnApplyProfileStyle = QPushButton('Apply')
 
         plotStyle = self.plotWidget().profileRenderer().profileStyle
         if n == 0:
@@ -2237,7 +2238,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             btnResetProfileStyles.setToolTip('Resets all profile styles')
         else:
             for fid in selectedFIDs:
-                ps = self.plotWidget().mSPECIFIC_PROFILE_STYLES.get(fid)
+                ps = self.plotWidget().profileRenderer().profilePlotStyle(fid, ignore_selection=True)
                 if isinstance(ps, PlotStyle):
                     plotStyle = ps.clone()
                 break
@@ -2249,14 +2250,17 @@ class SpectralLibraryWidget(AttributeTableWidget):
         psw = PlotStyleWidget(plotStyle=plotStyle)
         psw.setPreviewVisible(False)
         psw.cbIsVisible.setVisible(False)
-        psw.sigPlotStyleChanged.connect(
-            lambda style, fids=selectedFIDs: self.plotWidget().setProfileStyles(style, fids))
+        btnApplyProfileStyle.clicked.connect(lambda *args, fids=selectedFIDs, w=psw:
+                                             self.plotWidget().setProfileStyles(psw.plotStyle(), fids))
+
+        hb = QHBoxLayout()
+        hb.addWidget(btnResetProfileStyles)
+        hb.addWidget(btnApplyProfileStyle)
+        l = QVBoxLayout()
+        l.addWidget(psw)
+        l.addLayout(hb)
 
         frame = QFrame()
-        l = QVBoxLayout()
-        l.addWidget(btnResetProfileStyles)
-        l.addWidget(psw)
-
         frame.setLayout(l)
         wa.setDefaultWidget(frame)
         menuProfileStyle.addAction(wa)
