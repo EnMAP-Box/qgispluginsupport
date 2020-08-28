@@ -2498,7 +2498,7 @@ class SpectralLibraryInfoLabel(QLabel):
 
         slib = self.mPW.speclib()
 
-        if not sip.isdeleted(slib):
+        if slib is not None and not sip.isdeleted(slib):
             stats = self.plotWidget().profileStats()
 
             if self.mLastStats == stats:
@@ -2535,6 +2535,9 @@ class SpectralLibraryInfoLabel(QLabel):
             self.setMinimumWidth(self.sizeHint().width())
 
             self.mLastStats = stats
+        else:
+            self.setText('')
+            self.setToolTip('')
 
     def contextMenuEvent(self, event: QContextMenuEvent):
         m = QMenu()
