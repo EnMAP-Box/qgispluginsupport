@@ -22,7 +22,7 @@ import random
 import math
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
-from qgis.gui import QgsMapCanvas
+from qgis.gui import QgsMapCanvas, QgsDualView
 from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
@@ -504,6 +504,13 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(d)
 
+    def test_SpectralLibraryWidgetV2(self):
+
+        slib = TestObjects.createSpectralLibrary(25)
+
+        w = SpectralLibraryWidget(speclib=slib)
+        self.showGui(w)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 
@@ -525,27 +532,18 @@ class TestSpeclibWidgets(TestCase):
         fieldNames = slw.speclib().fieldNames()
         self.assertIsInstance(fieldNames, list)
 
-        for mode in list(SpectralLibraryWidget.CurrentProfilesMode):
-            assert isinstance(mode, SpectralLibraryWidget.CurrentProfilesMode)
-            slw.setCurrentProfilesMode(mode)
-            assert slw.currentProfilesMode() == mode
-
         cs = [speclib[0], speclib[3], speclib[-1]]
         l = len(speclib)
         self.assertTrue(slw.speclib() == speclib)
 
-        self.assertTrue(len(slw.currentSpectra()) == 0)
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.block)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 0)
+        self.assertTrue(len(slw.currentProfiles()) == 0)
+        slw.setAddCurrentProfilesAutomatically(True)
+        slw.setCurrentProfiles(cs)
+        self.assertTrue(len(slw.currentProfiles()) == 0)
 
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.automatically)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 0)
-
-        slw.setCurrentProfilesMode(SpectralLibraryWidget.CurrentProfilesMode.normal)
-        slw.setCurrentSpectra(cs)
-        self.assertTrue(len(slw.currentSpectra()) == 3)
+        slw.setAddCurrentProfilesAutomatically(False)
+        slw.setCurrentProfiles(cs)
+        self.assertTrue(len(slw.currentProfiles()) == 3)
 
         from qps.plotstyling.plotstyling import MarkerSymbol
         def onAddRandomProfile():
@@ -640,7 +638,7 @@ class TestSpeclibWidgets(TestCase):
 
         slw = SpectralLibraryWidget()
         self.assertIsInstance(slw, SpectralLibraryWidget)
-        sl = slw.spectraLibrary()
+        sl = slw.speclib()
         self.assertIsInstance(sl, SpectralLibrary)
         sl.startEditing()
 
@@ -650,7 +648,7 @@ class TestSpeclibWidgets(TestCase):
 
         sl.addAttribute(attr)
         conf1 = sl.attributeTableConfig()
-        conf2 = slw.mDualView.attributeTableConfig()
+        conf2 = slw.mMainView.attributeTableConfig()
 
         self.assertEqual(len(conf1.columns()), len(conf2.columns()))
         names = []
@@ -843,12 +841,12 @@ class TestSpeclibWidgets(TestCase):
 
         sw = SpectralLibraryWidget(speclib=slib)
         self.assertEqual(sw.speclib(), slib)
-        sw.applyAllPlotUpdates()
+        sw.updatePlot()
 
         sw = SpectralLibraryWidget()
         sp = slib[0]
         sw.setCurrentProfiles([sp])
-        sw.applyAllPlotUpdates()
+        sw.updatePlot()
 
 
 if __name__ == '__main__':
