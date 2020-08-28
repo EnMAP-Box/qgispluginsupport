@@ -22,7 +22,7 @@ import random
 import math
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
-from qgis.gui import QgsMapCanvas
+from qgis.gui import QgsMapCanvas, QgsDualView
 from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
@@ -508,7 +508,7 @@ class TestSpeclibWidgets(TestCase):
 
         slib = TestObjects.createSpectralLibrary(25)
 
-        w = SpectralLibraryWidgetV2(speclib=slib)
+        w = SpectralLibraryWidget(speclib=slib)
         self.showGui(w)
 
     @unittest.skipIf(False, '')
@@ -523,7 +523,7 @@ class TestSpeclibWidgets(TestCase):
 
         pd = QProgressDialog()
         speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
-        slw = SpectralLibraryWidgetV2(speclib=speclib)
+        slw = SpectralLibraryWidget(speclib=speclib)
         pd.close()
         QgsProject.instance().addMapLayer(slw.speclib())
 
@@ -638,7 +638,7 @@ class TestSpeclibWidgets(TestCase):
 
         slw = SpectralLibraryWidget()
         self.assertIsInstance(slw, SpectralLibraryWidget)
-        sl = slw.spectraLibrary()
+        sl = slw.speclib()
         self.assertIsInstance(sl, SpectralLibrary)
         sl.startEditing()
 
@@ -648,7 +648,7 @@ class TestSpeclibWidgets(TestCase):
 
         sl.addAttribute(attr)
         conf1 = sl.attributeTableConfig()
-        conf2 = slw.mDualView.attributeTableConfig()
+        conf2 = slw.mMainView.attributeTableConfig()
 
         self.assertEqual(len(conf1.columns()), len(conf2.columns()))
         names = []
@@ -841,12 +841,12 @@ class TestSpeclibWidgets(TestCase):
 
         sw = SpectralLibraryWidget(speclib=slib)
         self.assertEqual(sw.speclib(), slib)
-        sw.applyAllPlotUpdates()
+        sw.updatePlot()
 
         sw = SpectralLibraryWidget()
         sp = slib[0]
         sw.setCurrentProfiles([sp])
-        sw.applyAllPlotUpdates()
+        sw.updatePlot()
 
 
 if __name__ == '__main__':

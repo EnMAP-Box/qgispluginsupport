@@ -2101,12 +2101,13 @@ class SpectralLibrary(QgsVectorLayer):
                 else:
                     raise rt
 
-        lyrOptions = QgsVectorLayer.LayerOptions(loadDefaultStyle=False, readExtentFromXml=False)
-        super(SpectralLibrary, self).__init__(uri, name, 'ogr', lyrOptions)
+        layer_options = QgsVectorLayer.LayerOptions(loadDefaultStyle=False, readExtentFromXml=False)
+        super(SpectralLibrary, self).__init__(uri, name, 'ogr', layer_options)
+
         # consistency check
-        fieldNames = self.fields().names()
-        assert FIELD_NAME in fieldNames
-        assert FIELD_VALUES in fieldNames
+        field_names = self.fields().names()
+        assert FIELD_NAME in field_names
+        assert FIELD_VALUES in field_names
         f = self.fields().at(self.fields().lookupField(FIELD_NAME))
         assert f.type() == QVariant.String, 'Field {} not of type String / VARCHAR'
         f = self.fields().at(self.fields().lookupField(FIELD_VALUES))
