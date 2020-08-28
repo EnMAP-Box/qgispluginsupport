@@ -2138,6 +2138,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionAddProfiles = QAction('Add Profile(s)')
         self.actionAddProfiles.setToolTip('Adds currently overlaid profiles to the spectral library')
         self.actionAddProfiles.setIcon(QIcon(':/qps/ui/icons/plus_green_icon.svg'))
+        self.actionAddProfiles.triggered.connect(self.addCurrentSpectraToSpeclib)
+
+        self.actionAddCurrentProfiles = QAction('Add Profiles(s)')
+        self.actionAddCurrentProfiles.setToolTip('Adds currently overlaid profiles to the spectral library')
+        self.actionAddCurrentProfiles.setIcon(QIcon(':/qps/ui/icons/plus_green_icon.svg'))
+        self.actionAddCurrentProfiles.triggered.connect(self.addCurrentSpectraToSpeclib)
 
         self.optionAddCurrentProfilesAutomatically = QAction('Add profiles automatically')
         self.optionAddCurrentProfilesAutomatically.setToolTip('Activate to add profiles automatically '
@@ -2146,15 +2152,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.optionAddCurrentProfilesAutomatically.setCheckable(True)
         self.optionAddCurrentProfilesAutomatically.setChecked(False)
 
-        self.actionShowProperties = QAction('Show Spectral Library Poperties')
-        self.actionShowProperties.setToolTip('Show Spectral Library Properties')
-        self.actionShowProperties.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
-        self.btnShowProperties = QToolButton()
-        self.btnShowProperties.setAutoRaise(True)
-        self.btnShowProperties.setDefaultAction(self.actionShowProperties)
-
-        self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
-                                             self.btnShowProperties)
+        m = QMenu()
+        m.addAction(self.actionAddCurrentProfiles)
+        m.addAction(self.optionAddCurrentProfilesAutomatically)
+        self.actionAddProfiles.setMenu(m)
 
         self.actionImportVectorSource = QAction('Import profiles from raster + vector source')
         self.actionImportVectorSource.setToolTip('Import spectral profiles from a raster image '
@@ -2177,6 +2178,17 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionImportSpeclib)
         self.tbSpeclibAction.addAction(self.actionExportSpeclib)
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
+
+        self.actionShowProperties = QAction('Show Spectral Library Poperties')
+        self.actionShowProperties.setToolTip('Show Spectral Library Properties')
+        self.actionShowProperties.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
+        self.btnShowProperties = QToolButton()
+        self.btnShowProperties.setAutoRaise(True)
+        self.btnShowProperties.setDefaultAction(self.actionShowProperties)
+
+        self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
+                                             self.btnShowProperties)
+
 
         self.mPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
@@ -2418,13 +2430,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionImportSpeclib.triggered.connect(self.onImportSpeclib)
         self.actionImportSpeclib.setMenu(self.importSpeclibMenu())
         self.actionImportVectorSource.triggered.connect(self.onImportFromRasterSource)
-
-        m = QMenu()
-        m.addAction(self.actionAddProfiles)
-        m.addAction(self.optionAddCurrentProfilesAutomatically)
-        self.actionAddProfiles.triggered.connect(self.addCurrentSpectraToSpeclib)
-        self.actionAddProfiles.setMenu(m)
-
         self.actionExportSpeclib.triggered.connect(self.onExportSpectra)
         self.actionExportSpeclib.setMenu(self.exportSpeclibMenu())
 
@@ -2541,10 +2546,25 @@ class SpectralLibraryInfoLabel(QLabel):
 
     def contextMenuEvent(self, event: QContextMenuEvent):
         m = QMenu()
-        a = m.addAction('Select hidden')
         a = m.addAction('Select axis-unit incompatible profiles')
+        a.triggered.connect(self.onSelectAxisUnitIncompatibleProfiles)
 
         m.exec_(event.globalPos())
+
+    def onSelectAxisUnitIncompatibleProfiles(self):
+        incompatible = []
+        pw: SpectralLibraryPlotWidget = self.plotWidget()
+        if not isinstance(pw, SpectralLibraryPlotWidget) or not isinstance(pw.speclib(), SpectralLibrary):
+            return
+
+        targetUnit = pw.xUnit()
+        for p in pw.speclib():
+            if isinstance(p, SpectralProfile):
+                f = pw.unitConversionFunction(p.xUnit(), targetUnit)
+                if f == pw.mUnitConverter.func_return_none:
+                    incompatible.append(p.id())
+
+        pw.speclib().selectByIds(incompatible)
 
 
 class DEPR_SpectralLibraryWidget(QMainWindow):
