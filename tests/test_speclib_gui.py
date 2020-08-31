@@ -454,7 +454,11 @@ class TestSpeclibWidgets(TestCase):
         # drop random files
         slw = SpectralLibraryWidget()
         self.assertTrue(len(slw.speclib()) == 0)
+        n = 0
         for file in files:
+            n += 1
+            if n >= 10:
+                break
             md = QMimeData()
             md.setUrls([QUrl.fromLocalFile(file.as_posix())])
             print('Drop {}'.format(file.name), flush=True)
@@ -469,7 +473,6 @@ class TestSpeclibWidgets(TestCase):
         self.showGui(slw)
 
     def test_CurrentProfiles(self):
-
         w = SpectralLibraryWidget()
 
         sl = TestObjects.createSpectralLibrary(10)

@@ -1584,14 +1584,26 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 toVisualize += sorted(priority3[0:nMissing])
             return toVisualize
 
-    def dragEnterEvent(self, event):
-        assert isinstance(event, QDragEnterEvent)
-        if MIMEDATA_SPECLIB_LINK in event.mimeData().formats():
+    def dragEnterEvent(self, event: QDragEnterEvent):
+
+        mimeData = event.mimeData()
+        assert isinstance(mimeData, QMimeData)
+        sl = self.speclib()
+        if isinstance(sl, SpectralLibrary) and containsSpeclib(mimeData):
             event.accept()
 
-    def dragMoveEvent(self, event):
-        if MIMEDATA_SPECLIB_LINK in event.mimeData().formats():
-            event.accept()
+    def dropEvent(self, event: QDropEvent):
+        assert isinstance(event, QDropEvent)
+        mimeData = event.mimeData()
+
+        speclib = SpectralLibrary.readFromMimeData(mimeData)
+        if isinstance(speclib, SpectralLibrary) and len(speclib) > 0:
+            event.setAccepted(True)
+            b = self.speclib().isEditable()
+            self.speclib().startEditing()
+            self.speclib().addSpeclib(speclib)
+            if not b:
+                self.speclib().commitChanges()
 
 
 class SpectralProfileValueTableModel(QAbstractTableModel):
@@ -2428,21 +2440,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.optionAddCurrentProfilesAutomatically.setChecked(b)
 
     def dropEvent(self, event):
-        assert isinstance(event, QDropEvent)
-        # log('dropEvent')
-        mimeData = event.mimeData()
+        self.plotWidget().dropEvent(event)
 
-        speclib = SpectralLibrary.readFromMimeData(mimeData)
-        if isinstance(speclib, SpectralLibrary) and len(speclib) > 0:
-            event.setAccepted(True)
-            self.addSpeclib(speclib)
-
-
-
-
-
-
-
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        self.plotWidget().dragEnterEvent(event)
 
     def onImportSpeclib(self):
         """
@@ -2466,13 +2467,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         files = self.mSpeclib.write(None)
         if len(files) > 0:
             self.sigFilesCreated.emit(files)
-
-    def dragEnterEvent(self, dragEnterEvent: QDragEnterEvent):
-
-        mimeData = dragEnterEvent.mimeData()
-        assert isinstance(mimeData, QMimeData)
-        if containsSpeclib(mimeData):
-            dragEnterEvent.accept()
 
     def clearSpectralLibrary(self):
         """
