@@ -2222,7 +2222,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
                                              self.btnShowProperties)
 
-
         self.mPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
         assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
         self.mPlotWidget.setDualView(self.mMainView)
@@ -2236,6 +2235,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.widgetRight.setLayout(l)
         self.widgetRight.setVisible(True)
 
+        self.setAcceptDrops(True)
 
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()

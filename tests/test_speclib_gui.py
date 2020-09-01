@@ -514,6 +514,12 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryWidget(speclib=slib)
         self.showGui(w)
 
+
+    def test_SpectraLibraryWidget_Empty(self):
+
+        w = SpectralLibraryWidget()
+        self.showGui(w)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 
