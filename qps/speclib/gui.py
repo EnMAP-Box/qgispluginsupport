@@ -791,6 +791,7 @@ class SpectralViewBox(pg.ViewBox):
 SpectralLibraryPlotStats = collections.namedtuple('SpectralLibraryPlotStats',
                                                   ['total', 'visible', 'max_visible', 'value_error', 'selected'])
 
+
 class SpectralLibraryPlotWidget(pg.PlotWidget):
     """
     A widget to PlotWidget SpectralProfiles
@@ -890,6 +891,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mUpdateTimer.start()
 
         self.setProfileRenderer(self.mDefaultProfileRenderer)
+        self.setAcceptDrops(True)
+        #self.setDragMode(QGraphicsView.ScrollHandDrag)
 
     def onInfoScatterClicked(self, a, b):
         self.mInfoScatterPoint.setVisible(False)
@@ -1585,25 +1588,31 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             return toVisualize
 
     def dragEnterEvent(self, event: QDragEnterEvent):
-
-        mimeData = event.mimeData()
-        assert isinstance(mimeData, QMimeData)
-        sl = self.speclib()
-        if isinstance(sl, SpectralLibrary) and containsSpeclib(mimeData):
+        if containsSpeclib(event.mimeData()):
             event.accept()
+        else:
+            super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event: QDragMoveEvent):
+        if not containsSpeclib(event.mimeData()):
+            super().dragMoveEvent(event)
 
     def dropEvent(self, event: QDropEvent):
         assert isinstance(event, QDropEvent)
         mimeData = event.mimeData()
+        if containsSpeclib(mimeData) and isinstance(self.speclib(), SpectralLibrary):
+            speclib = SpectralLibrary.readFromMimeData(mimeData)
+            print(f'DROP SPECLIB {speclib}')
+            if isinstance(speclib, SpectralLibrary) and len(speclib) > 0:
 
-        speclib = SpectralLibrary.readFromMimeData(mimeData)
-        if isinstance(speclib, SpectralLibrary) and len(speclib) > 0:
-            event.setAccepted(True)
-            b = self.speclib().isEditable()
-            self.speclib().startEditing()
-            self.speclib().addSpeclib(speclib)
-            if not b:
-                self.speclib().commitChanges()
+                b = self.speclib().isEditable()
+                self.speclib().startEditing()
+                self.speclib().addSpeclib(speclib)
+                if not b:
+                    self.speclib().commitChanges()
+            event.accept()
+        else:
+            super().dropEvent(event)
 
 
 class SpectralProfileValueTableModel(QAbstractTableModel):
