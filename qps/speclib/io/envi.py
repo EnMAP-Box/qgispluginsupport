@@ -416,7 +416,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             # backup: match csv line with profile index
             if len(PROFILE2CSVLine) == 0:
                 indices = range(min(nSpectra, len(CSV_DATA)))
-                CSVLine2ESLProfile = PROFILE2CSVLine = dict(zip(indices, indices))
+                PROFILE2CSVLine = dict(zip(indices, indices))
 
         SLIB = SpectralLibrary()
         assert SLIB.startEditing()
@@ -447,8 +447,8 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             valueDict = {'x': xValues, 'y': data[i, :].tolist(), 'xUnit': xUnit, 'yUnit': yUnit, 'bbl': bbl}
 
             if CSV_METADATA is not None:
-                j = PROFILE2CSVLine.get(i)
-                if j:
+                j = PROFILE2CSVLine.get(i, -1)
+                if j >= 0:
                     csvLine = CSV_DATA[j]
                     attr = f.attributes()
                     for iCSV, iAttr in zip(sliceCSV, sliceAttr):

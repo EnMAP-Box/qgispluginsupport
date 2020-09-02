@@ -893,15 +893,20 @@ class TestIO(TestCase):
             self.assertIsInstance(p2, SpectralProfile)
             self.assertEqual(p1, p2)
 
-
-
     def test_ENVILabeled(self):
 
         from qpstestdata import speclib_labeled as pathESL
+        from qpstestdata import speclib as pathSLI
+
+        sl = SpectralLibrary.readFrom(pathSLI)
+        for p in sl:
+            self.assertIsInstance(p, SpectralProfile)
+            print([p.attribute(a) for a in p.fieldNames() if a != FIELD_VALUES])
+        s = ""
+
         from qps import registerEditorWidgets
         from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY as RasterClassificationKey
         registerEditorWidgets()
-
 
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=QProgressDialog())
 

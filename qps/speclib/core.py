@@ -108,11 +108,16 @@ def log(msg: str):
 
 
 def containsSpeclib(mimeData: QMimeData) -> bool:
+    """
+    Short, fast test if a QMimeData object might contain a SpectralLibrary.
+    Might be wrong, but should be fast enough to be used in drag and drop operations
+    :param mimeData:
+    :type mimeData:
+    :return:
+    :rtype:
+    """
     if mimeData.hasUrls():
-        for url in mimeData.urls():
-            url.toLocalFile()
-            if url.isLocalFile():
-                return True
+        return True
 
     for f in [MIMEDATA_SPECLIB, MIMEDATA_SPECLIB_LINK]:
         if f in mimeData.formats():
