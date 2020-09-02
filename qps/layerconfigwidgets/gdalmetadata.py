@@ -208,8 +208,7 @@ class GDALBandNameModel(QAbstractTableModel):
                 ds.FlushCache()
                 del ds
 
-
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
 
         self.beginResetModel()
         self.mBandNames.clear()
@@ -321,7 +320,7 @@ class GDALMetadataModel(QAbstractTableModel):
         self.mLayer = layer
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
         self.beginResetModel()
         self._MOKs.clear()
         self._MDItems.clear()
@@ -635,6 +634,7 @@ class GDALMetadataItemDialog(QDialog):
         item = GDALMetadataItem(major_object, domain, key, value)
         item.initialValue = None
         return item
+
 
 class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
