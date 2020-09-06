@@ -129,7 +129,7 @@ class ClassInfo(QObject):
 
         self.mName = name
         self.mLabel = label
-        self.mColor = color
+        self.mColor = None
         if color:
             self.setColor(color)
 
@@ -169,6 +169,8 @@ class ClassInfo(QObject):
         Sets the class color.
         :param color: QColor
         """
+        if not isinstance(color, QColor):
+            color = QColor(color)
         assert isinstance(color, QColor)
         self.mColor = color
         self.sigSettingsChanged.emit()
@@ -208,7 +210,9 @@ class ClassInfo(QObject):
         Create a copy of this ClassInfo
         :return: ClassInfo
         """
-        return ClassInfo(name=self.mName, color=self.mColor)
+        return ClassInfo(name=self.mName,
+                         color=self.mColor,
+                         label=self.mLabel)
 
     def __hash__(self):
         return hash(id(self))
@@ -250,11 +254,13 @@ class ClassificationScheme(QAbstractTableModel):
 
     sigIsEditableChanged = pyqtSignal(bool)
 
-    def __init__(self, name: str = None):
+    def __init__(self, name: str = None, zero_based: bool = False):
         super(ClassificationScheme, self).__init__()
         self.mClasses = []
         self.mName = name
         self.mIsEditable = True
+
+        self.mZeroBased: bool = zero_based
 
         if name is None:
             name = 'Classification'
@@ -427,6 +433,8 @@ class ClassificationScheme(QAbstractTableModel):
                 return 'Class color "{}"'.format(classInfo.color().name())
 
         if role == Qt.EditRole:
+            if col == 0:
+                return classInfo.label()
             if col == 1:
                 return classInfo.name()
             if col == 2:
@@ -452,6 +460,9 @@ class ClassificationScheme(QAbstractTableModel):
         classInfo = self.index2ClassInfo(row)
         b = False
         if role == Qt.EditRole:
+            if col == 0:
+                classInfo.setLabel(int(value))
+                b = True
             if col == 1:
                 classInfo.setName(value)
                 b = True
@@ -470,8 +481,11 @@ class ClassificationScheme(QAbstractTableModel):
         flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
         if self.mIsEditable:
             flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
-            if col == 1 and self.isEditable():
-                flags |= Qt.ItemIsEditable
+            if self.isEditable():
+                if col == 0  and not self.mZeroBased:
+                    flags |= Qt.ItemIsEditable
+                elif col == 1:
+                    flags |= Qt.ItemIsEditable
         return flags
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.DisplayRole):
@@ -761,7 +775,11 @@ class ClassificationScheme(QAbstractTableModel):
     def _updateLabels(self):
         """
         Assigns class labels according to the ClassInfo position
+        in case the ClassificationScheme is zero-based
         """
+        if not self.mZeroBased:
+            return
+
         for i, c in enumerate(self.mClasses):
             c.mLabel = i
         self.dataChanged.emit(self.createIndex(0, 0),
@@ -819,7 +837,7 @@ class ClassificationScheme(QAbstractTableModel):
                 color = QColor(nextCol)
                 nextCol = nextColor(nextCol)
                 name = 'Class {}'.format(j)
-            classes.append(ClassInfo(name=name, color=color))
+            classes.append(ClassInfo(name=name, color=color, label=j))
         self.insertClasses(classes)
 
     def addClasses(self, classes, index=None):
@@ -861,10 +879,6 @@ class ClassificationScheme(QAbstractTableModel):
         self.endInsertRows()
         self._updateLabels()
         self.sigClassesAdded.emit(classes)
-
-    # sigClassInfoChanged = pyqtSignal(ClassInfo)
-    # def onClassInfoSettingChanged(self, *args):
-    #    self.sigClassInfoChanged.emit(self.sender())
 
     def classIndexFromValue(self, value, matchSimilarity=False) -> int:
         """
@@ -1117,12 +1131,14 @@ class ClassificationScheme(QAbstractTableModel):
         scheme = ClassificationScheme()
         classes = []
         for i, catName in enumerate(cat):
-            cli = ClassInfo(name=catName, label=i)
+            classInfo: ClassInfo = ClassInfo(name=catName, label=i)
             if ct is not None:
-                cli.setColor(QColor(*ct.GetColorEntry(i)))
-            classes.append(cli)
+                classInfo.setColor(QColor(*ct.GetColorEntry(i)))
+            classes.append(classInfo)
+
         if len(classes) == 0:
             return None
+
         scheme.insertClasses(classes)
         return scheme
 
