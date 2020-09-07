@@ -1124,16 +1124,20 @@ class ClassificationScheme(QAbstractTableModel):
         :return: ClassificationScheme, None if classes are undefined.
         """
         assert isinstance(band, gdal.Band)
-        cat = band.GetCategoryNames()
         ct = band.GetColorTable()
-        if cat is None or len(cat) == 0:
+        cat = band.GetCategoryNames()
+        if not isinstance(cat, list) or len(cat) == 0:
             return None
         scheme = ClassificationScheme()
         classes = []
         for i, catName in enumerate(cat):
             classInfo: ClassInfo = ClassInfo(name=catName, label=i)
+            NULL = QVariant()
             if ct is not None:
-                classInfo.setColor(QColor(*ct.GetColorEntry(i)))
+                gdal_color = ct.GetColorEntry(i)
+                if gdal_color in [None, NULL]:
+                    gdal_color = (0, 0, 0, 0)
+                classInfo.setColor(QColor(*gdal_color))
             classes.append(classInfo)
 
         if len(classes) == 0:
