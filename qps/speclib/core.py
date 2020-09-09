@@ -1260,9 +1260,10 @@ class SpectralProfileRenderer(object):
         nodeName.appendChild(doc.createTextNode(self.name))
         profileRendererNode.appendChild(nodeName)
 
-        nodeDefaultStyle = doc.createElement('default_style')
-        self.profileStyle.writeXml(nodeDefaultStyle, doc)
-        profileRendererNode.appendChild(nodeDefaultStyle)
+        if isinstance(self.profileStyle, PlotStyle):
+            nodeDefaultStyle = doc.createElement('default_style')
+            self.profileStyle.writeXml(nodeDefaultStyle, doc)
+            profileRendererNode.appendChild(nodeDefaultStyle)
 
         nodeCustomStyles = doc.createElement('custom_styles')
 
@@ -2529,7 +2530,8 @@ class SpectralLibrary(QgsVectorLayer):
         if msg == '':
             qgsNode = doc.documentElement().toElement()
             speclibNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
-            self.mProfileRenderer.writeXml(speclibNode, doc)
+            if isinstance(self.mProfileRenderer, SpectralProfileRenderer):
+                self.mProfileRenderer.writeXml(speclibNode, doc)
             qgsNode.appendChild(speclibNode)
 
         return msg
