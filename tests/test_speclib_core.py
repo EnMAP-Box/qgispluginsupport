@@ -81,6 +81,46 @@ class TestCore(TestCase):
             self.assertEqual(f1.typeName(), f2.typeName())
 
 
+    def test_SpectralProfile_Math(self):
+        sp = SpectralProfile()
+        xvals = [1, 2, 3, 4, 5]
+        yvals = [2, 3, 4, 5, 6]
+        sp.setValues(x=xvals, y=yvals)
+
+        self.assertListEqual(sp.yValues(), yvals)
+
+        sp2 = sp + 2
+        self.assertIsInstance(sp2, SpectralProfile)
+        self.assertListEqual(sp2.yValues(), [v+2 for v in yvals])
+
+        sp2 = sp - 2
+        self.assertIsInstance(sp2, SpectralProfile)
+        self.assertListEqual(sp2.yValues(), [v - 2 for v in yvals])
+
+        sp2 = sp / 2
+        self.assertIsInstance(sp2, SpectralProfile)
+        self.assertListEqual(sp2.yValues(), [v / 2 for v in yvals])
+
+        sp2 = sp * 2
+        self.assertIsInstance(sp2, SpectralProfile)
+        self.assertListEqual(sp2.yValues(), [v * 2 for v in yvals])
+
+        sp2 = sp + sp
+        self.assertIsInstance(sp2, SpectralProfile)
+        self.assertListEqual(sp2.yValues(), [v + v for v in yvals])
+
+        sp2 = sp - sp
+        self.assertIsInstance(sp2, SpectralProfile)
+        self.assertListEqual(sp2.yValues(), [v - v for v in yvals])
+
+        sp2 = sp / sp
+        self.assertIsInstance(sp2, SpectralProfile)
+        self.assertListEqual(sp2.yValues(), [v / v for v in yvals])
+
+        sp2 = sp * sp
+        self.assertIsInstance(sp2, SpectralProfile)
+        self.assertListEqual(sp2.yValues(), [v * v for v in yvals])
+
     def test_SpectralProfile_BadBandList(self):
 
         sp = SpectralProfile()

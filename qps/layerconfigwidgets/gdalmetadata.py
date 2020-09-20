@@ -481,8 +481,10 @@ class GDALMetadataModel(QAbstractTableModel):
         if isinstance(domains, list):
             domains = list(set(domains))
             for domain in domains:
-                for key, value in obj.GetMetadata(domain).items():
-                    yield domain, key, value
+                domainItems = obj.GetMetadata(domain)
+                if isinstance(domainItems, dict):
+                    for key, value in domainItems.items():
+                        yield domain, key, value
 
     def _read_maplayer(self) -> typing.Tuple[
                                 typing.List[GDALMetadataItem],
