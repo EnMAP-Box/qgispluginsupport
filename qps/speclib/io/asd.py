@@ -84,7 +84,6 @@ Offset Size Type Description Comment
 
 ASD_VERSIONS = ['ASD', 'asd', 'as6', 'as7', 'as8']
 
-
 class SpectrumDataType(enum.IntEnum):
     RAW_TYPE = 0
     REF_TYPE = 1
@@ -118,7 +117,7 @@ class InstrumentType(enum.Enum):
 class GPS_DATA(object):
 
     def __init__(self, DATA):
-        ASD_GPS_DATA = struct.Struct("= 5d 2b cl 2b 5B 2c").unpack(DATA)
+        ASD_GPS_DATA = struct.Struct("< 5d 2b cl 2b 5B 2c").unpack(DATA)
 
         self.true_heading = self.speed = self.latitude = self.longitude = self.altitude = ASD_GPS_DATA[0:5]
         self.flags = ASD_GPS_DATA[5:7]
@@ -141,7 +140,7 @@ class SmartDetectorType(object):
         # 2 f float 8          27
 
         if DATA is not None:
-            DETECTOR = struct.Struct('= 1i 3f 1h 1b 2f').unpack(DATA)
+            DETECTOR = struct.Struct('< 1i 3f 1h 1b 2f').unpack(DATA)
         else:
             DETECTOR = [None, None, None, None, None, None, None, None]
         self.serial_number, self.Signal, self.dark, self.ref, self.Status, self.avg, self.humid, self.temp = DETECTOR
@@ -267,57 +266,57 @@ class ASDBinaryFile(object):
             self.file_version = DATA[179]
             self.itime = DATA[180]
             self.dc_corr = DATA[181]
-            self.dc_time = np.datetime64('1970-01-01') + np.timedelta64(struct.unpack('l', DATA[182:182 + 4])[0], 's')
+            self.dc_time = np.datetime64('1970-01-01') + np.timedelta64(struct.unpack('<l', DATA[182:182 + 4])[0], 's')
             self.data_type = SpectrumDataType(DATA[186])
-            self.ref_time = np.datetime64('1970-01-01') + np.timedelta64(struct.unpack('l', DATA[182:182 + 4])[0], 's')
-            self.ch1_wavel = struct.unpack('f', sub(191, 4))[0]
-            self.wavel_step = struct.unpack('f', sub(195, 4))[0]
+            self.ref_time = np.datetime64('1970-01-01') + np.timedelta64(struct.unpack('<l', DATA[182:182 + 4])[0], 's')
+            self.ch1_wavel = struct.unpack('<f', sub(191, 4))[0]
+            self.wavel_step = struct.unpack('<f', sub(195, 4))[0]
             self.data_format = SpectrumDataFormat(DATA[199])
             self.old_dc_count = DATA[200]
             self.old_ref_count = DATA[201]
             self.old_sample_count = DATA[202]
             self.application = DATA[203]
 
-            self.channels = struct.unpack('H', sub(204, 2))[0]
+            self.channels = struct.unpack('<H', sub(204, 2))[0]
 
             self.app_data = sub(206, 128)
             self.gps_data = GPS_DATA(sub(334, 56))
 
-            self.it = struct.unpack('L', sub(390, 4))[0]
-            self.fo = struct.unpack('h', sub(394, 2))[0]
-            self.dcc = struct.unpack('h', sub(396, 2))[0]
+            self.it = struct.unpack('<L', sub(390, 4))[0]
+            self.fo = struct.unpack('<h', sub(394, 2))[0]
+            self.dcc = struct.unpack('<h', sub(396, 2))[0]
 
-            self.calibration = struct.unpack('H', sub(398, 2))[0]
-            self.instrument_num = struct.unpack('H', sub(400, 2))[0]
+            self.calibration = struct.unpack('<H', sub(398, 2))[0]
+            self.instrument_num = struct.unpack('<H', sub(400, 2))[0]
 
-            self.ymin, self.ymax, self.xmin, self.ymax = struct.unpack('4f', sub(402, 4 * 4))
+            self.ymin, self.ymax, self.xmin, self.ymax = struct.unpack('<4f', sub(402, 4 * 4))
 
-            self.ip_numbits = struct.unpack('H', sub(418, 2))[0]
-            self.xmode = struct.unpack('b', sub(420, 1))[0]
-            self.flags = struct.unpack('4b', sub(421, 4))
+            self.ip_numbits = struct.unpack('<H', sub(418, 2))[0]
+            self.xmode = struct.unpack('<b', sub(420, 1))[0]
+            self.flags = struct.unpack('<4b', sub(421, 4))
 
-            self.dc_count, self.ref_count, self.sample_count = struct.unpack('3H', sub(425, 2 * 3))
+            self.dc_count, self.ref_count, self.sample_count = struct.unpack('<3H', sub(425, 2 * 3))
 
             self.instrument = sub(431, 1)
-            self.bulb = struct.unpack('L', sub(432, 4))
-            self.swir1_gain, self.swir2_gain, self.swir1_offset, self.swir2_offset = struct.unpack('4H',
+            self.bulb = struct.unpack('<L', sub(432, 4))
+            self.swir1_gain, self.swir2_gain, self.swir1_offset, self.swir2_offset = struct.unpack('<4H',
                                                                                                    sub(436, 2 * 4))
 
-            self.splice1_wavelength, self.splice2_wavelength = struct.unpack('2f', sub(444, 2 * 4))
+            self.splice1_wavelength, self.splice2_wavelength = struct.unpack('<2f', sub(444, 2 * 4))
 
             self.SmartDetectorType = SmartDetectorType(sub(452, 27))
             self.spare = sub(479, 5)
 
             if self.data_format == SpectrumDataFormat.FLOAT_FORMAT:
                 size = 4 * self.channels
-                fmt = '{}f'.format(self.channels)
+                fmt = '<{}f'.format(self.channels)
 
             elif self.data_format == SpectrumDataFormat.DOUBLE_FORMAT:
                 size = 8 * self.channels
-                fmt = '{}d'.format(self.channels)
+                fmt = '<{}d'.format(self.channels)
             elif self.data_format == SpectrumDataFormat.INTEGER_FORMAT:
                 size = 4 * self.channels
-                fmt = '{}i'.format(self.channels)
+                fmt = '<{}i'.format(self.channels)
             else:
                 raise Exception()
 
