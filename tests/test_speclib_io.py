@@ -503,6 +503,16 @@ class TestIO(TestCase):
 
         self.assertEqual(len(speclib) - 1, n)
 
+    def test_ADS_AS7(self):
+
+        # read binary files
+        from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDBinaryFile
+        from qpstestdata import DIR_ASD_AS7
+        binaryFiles = list(file_search(DIR_ASD_AS7, '*.asd'))
+        for path in binaryFiles:
+            self.assertTrue(ASDSpectralLibraryIO.canRead(path))
+            asdFile = ASDBinaryFile().readFromBinaryFile(path)
+            self.assertIsInstance(asdFile, ASDBinaryFile)
 
     def test_ASD(self):
 

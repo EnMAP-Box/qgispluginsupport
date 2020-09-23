@@ -710,6 +710,35 @@ class SpectralProfile(QgsFeature):
         if isinstance(values, dict):
             self.setValues(**values)
 
+    def __add__(self, other):
+        return self._math_('__add__', other)
+
+    def __sub__(self, other):
+        return self._math_('__sub__', other)
+
+    def __truediv__(self, other):
+        return self._math_('__truediv__', other)
+
+    def __div__(self, other):
+        return self._math_('__div__', other)
+
+    def __abs__(self, other):
+        return self._math_('__abs__', other)
+
+    def __mul__(self, other):
+        return self._math_('__mul__', other)
+
+    def _math_(self, op, other):
+        sp = self.clone()
+        if isinstance(other, (int, float, np.int, np.float)):
+            yvals = [getattr(v, op)(other) for v in self.yValues()]
+
+        elif isinstance(other, SpectralProfile):
+            yvals = [getattr(v, op)(v2) for v, v2 in zip(self.yValues(), other.yValues())]
+
+        sp.setValues(self.xValues(), yvals)
+        return sp
+
     def fieldNames(self) -> typing.List[str]:
         """
         Returns all field names
