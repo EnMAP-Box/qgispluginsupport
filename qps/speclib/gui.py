@@ -740,6 +740,7 @@ class SpectralViewBox(pg.ViewBox):
         """
         return self.wColorScheme.spectralProfileRenderer()
 
+        XUnitModel = XUnitModel()
     def setXAxisUnit(self, unit: str):
         """
         Sets the X axis unit.
@@ -1289,6 +1290,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :return: str
         """
         return self.mViewBox.xAxisUnit()
+
+    def xAxisUnitModel(self) -> XUnitModel:
+        return self.mViewBox.mCBXAxisUnitModel
 
     def allPlotDataItems(self) -> typing.List[PlotDataItem]:
         """
@@ -2150,6 +2154,20 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
         self.mMainView.showContextMenuExternally.connect(self.onShowContextMenuAttributeEditor)
 
+        self.mPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
+        assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
+        self.mPlotWidget.setDualView(self.mMainView)
+        self.mStatusLabel.setPlotWidget(self.mPlotWidget)
+        self.mPlotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
+
+        l = QVBoxLayout()
+        l.addWidget(self.mPlotWidget)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.setSpacing(0)
+        self.widgetRight.setLayout(l)
+        self.widgetRight.setVisible(True)
+
+
         # define Actions and Options
         self.actionSelectProfilesFromMap = QAction(r'Select Profiles from Map')
         self.actionSelectProfilesFromMap.setToolTip(r'Select new profile from map')
@@ -2208,6 +2226,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionAddProfiles)
         self.tbSpeclibAction.addAction(self.actionImportSpeclib)
         self.tbSpeclibAction.addAction(self.actionExportSpeclib)
+
+        self.cbXAxisUnit = QComboBox()
+        self.cbXAxisUnit.setModel(self.plotWidget().xAxisUnitModel())
+        self.tbSpeclibAction.insertWidget(self.actionImportSpeclib, self.cbXAxisUnit)
+
+
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
 
         self.actionShowProperties = QAction('Show Spectral Library Poperties')
@@ -2222,18 +2246,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
                                              self.btnShowProperties)
 
-        self.mPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
-        assert isinstance(self.mPlotWidget, SpectralLibraryPlotWidget)
-        self.mPlotWidget.setDualView(self.mMainView)
-        self.mStatusLabel.setPlotWidget(self.mPlotWidget)
-        self.mPlotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
-
-        l = QVBoxLayout()
-        l.addWidget(self.mPlotWidget)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.setSpacing(0)
-        self.widgetRight.setLayout(l)
-        self.widgetRight.setVisible(True)
 
         self.setAcceptDrops(True)
 
@@ -2320,7 +2332,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         for iface in self.mSpeclibIOInterfaces:
             assert isinstance(iface, AbstractSpectralLibraryIO)
             iface.addExportActions(self.speclib(), menu)
-
 
     def plotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mPlotWidget
