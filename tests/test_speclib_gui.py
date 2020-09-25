@@ -138,6 +138,12 @@ class TestSpeclibWidgets(TestCase):
         w2 = pdi.plot()
         self.showGui([w1])
 
+    def test_SpectralLibraryPlotProfileMenu(self):
+
+        m = SpectralViewBoxMenu()
+
+        self.showGui(m)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidget(self):
 
@@ -146,6 +152,10 @@ class TestSpeclibWidgets(TestCase):
         pw = SpectralLibraryPlotWidget()
         self.assertIsInstance(pw, SpectralLibraryPlotWidget)
         self.assertTrue(pw.xUnit(), BAND_INDEX)
+
+
+        pw.setMaxProfiles(5)
+
 
         p = speclib[0]
         sl = SpectralLibrary()
@@ -272,8 +282,8 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorSchemeWidget(self):
 
-        w = SpectralLibraryPlotColorSchemeWidget()
-        self.assertIsInstance(w, SpectralLibraryPlotColorSchemeWidget)
+        w = SpectralProfileRendererWidget()
+        self.assertIsInstance(w, SpectralProfileRendererWidget)
         self.showGui(w)
 
     @unittest.skipIf(False, '')
