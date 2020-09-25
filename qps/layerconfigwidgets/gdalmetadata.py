@@ -27,7 +27,7 @@ import re
 import pathlib
 import sys
 from osgeo import gdal, ogr
-
+import numpy as np
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
@@ -36,7 +36,7 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
-from ..utils import loadUi, gdalDataset
+from ..utils import loadUi, gdalDataset, parseWavelength
 
 TYPE_LOOKUP = {
     ':STATISTICS_MAXIMUM': float,
@@ -113,20 +113,58 @@ class GDALErrorHandler(object):
         self.err_no=err_no
         self.err_msg=err_msg
 
-class GDALBandNameModel(QAbstractTableModel):
+
+class GDALBandMetadataItem(object):
+
+    def __init__(self):
+
+        self.name: str = None
+        self.wavelength: str = None
+        self.wavelength_unit: str = None
+        self.items: typing.List[GDALMetadataItem]
+
+
+class GDALBandMetadataModel(QAbstractTableModel):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.cnBand = 'Band'
-        self.cnName = 'Description'
+        self.cnName = 'Name'
+        self.cnWavelength = 'Wavelength'
+
+        self.mColumnNames = [
+            self.cnName,
+            self.cnWavelength
+        ]
+        self.mColumnTooltips = {
+            self.cnName: 'Band name',
+            self.cnWavelength: 'Band wavelengths'
+        }
+        for i, c in enumerate(self.mColumnNames):
+            self.mColumnTooltips[i] = self.mColumnTooltips[c]
+
+        self.wavelength_unit:str = None
         self.mMapLayer: QgsMapLayer = None
-        self.mBandNamesInitial : typing.List[str] = []
-        self.mBandNames: typing.List[str] = []
+        self.mBandMetadata: typing.List[GDALBandMetadataItem] = []
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
-        return len(self.mBandNamesInitial)
+        return len(self.mBandMetadata)
 
-    def setLayer(self, mapLayer:QgsMapLayer):
+    def columnCount(self, parent: QModelIndex = ...) -> int:
+        return len(self.mColumnNames)
+
+    def headerData(self, col, orientation, role=None):
+        if orientation == Qt.Horizontal:
+            if role == Qt.DisplayRole:
+                return self.mColumnNames[col]
+            if role == Qt.ToolTipRole:
+                return self.mColumnTooltips[col]
+
+        elif orientation == Qt.Vertical:
+            if role == Qt.DisplayRole:
+                return col+1
+        return None
+
+    def setLayer(self, mapLayer: QgsMapLayer):
 
         if isinstance(mapLayer, QgsRasterLayer):
 
@@ -140,55 +178,51 @@ class GDALBandNameModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.NoItemFlags
 
-        if index.column() == 1:
-            return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
-        else:
-            return Qt.ItemIsSelectable | Qt.ItemIsEnabled
-
-    def columnCount(self, parent: QModelIndex = ...) -> int:
-        return 2
+        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
 
     def data(self, index: QModelIndex, role=None):
         if not index.isValid():
             return None
 
-        b = index.row()
+        cname = self.mColumnNames[index.column()]
+        item: GDALBandMetadataItem = self.mBandMetadata[index.row()]
 
-        #if role == Qt.TextColorRole:
-        #    if self.mBandNames[b] in ['', None]:
-        #        return QColor('red')
-
-        if index.column() == 0:
-            if role == Qt.DisplayRole:
-                return f'Band {b+1}'
-
-        if index.column() == 1:
-            if role == Qt.DisplayRole:
-                return self.mBandNames[b]
-            if role == Qt.FontRole:
-                if self.mBandNames[b] != self.mBandNamesInitial[b]:
-                    f = QFont()
-                    f.setItalic(True)
-                    return f
-            if role in [Qt.EditRole, Qt.UserRole]:
-                return self.mBandNames[b]
+        if role == Qt.DisplayRole:
+            if cname == self.cnName:
+                return item.name
+            if cname == self.cnWavelength:
+                return item.wavelength
+        if role == Qt.ToolTipRole:
+            if cname == self.cnName:
+                return f'Band name band {index.row()+1}="{item.name}"'
+            if cname == self.cnWavelength:
+                if item.wavelength in [None, '']:
+                    return f'Wavelength band {index.row() + 1} undefined'
+                else:
+                    return f'Wavelength band {index.row() + 1}: {item.wavelength}'
 
     def setData(self, index: QModelIndex, value: typing.Any, role: int = ...) -> bool:
 
         if not index.isValid():
             return None
 
-        b = index.row()
-
+        cname = self.mColumnNames[index.column()]
+        item: GDALBandMetadataItem = self.mBandMetadata[index.row()]
         changed: bool = False
-        if role == Qt.EditRole and index.column() == 1:
-            self.mBandNames[b] = str(value)
-            changed = True
+
+        if role == Qt.EditRole:
+            if cname == self.cnName:
+                item.name = str(value)
+                changed = True
+            elif cname == self.cnWavelength:
+                item.wavelength = str(value)
+                changed = True
 
         if changed:
             idx0 = self.createIndex(index.row(), 0)
             idx1 = self.createIndex(index.row(), self.columnCount()-1)
             self.dataChanged.emit(idx0, idx1, [role, Qt.TextColorRole])
+
         return changed
 
     def applyToLayer(self):
@@ -197,13 +231,17 @@ class GDALBandNameModel(QAbstractTableModel):
             if self.mMapLayer.dataProvider().name() == 'gdal':
                 ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_ReadOnly)
 
-                for b, names in enumerate(zip(self.mBandNamesInitial, self.mBandNames)):
-                    name1, name2 = names
+                if self.wavelength_unit not in [None, '']:
+                    wl = [str(item.wavelength) for item in self.mBandMetadata]
+                    ds.SetMetadataItem('Wavelengths', ','.join(wl))
+                    ds.SetMetadataItem('Wavelength_Units', self.wavelength_unit)
 
-                    if name1 != name2:
-                        band: gdal.Band = ds.GetRasterBand(b+1)
-                        band.SetDescription(name2)
-                        band.FlushCache()
+                for b, item in enumerate(self.mBandMetadata):
+                    assert isinstance(item, GDALBandMetadataItem)
+                    band: gdal.Band = ds.GetRasterBand(b+1)
+                    band.SetDescription(item.name)
+
+                    band.FlushCache()
 
                 ds.FlushCache()
                 del ds
@@ -211,18 +249,27 @@ class GDALBandNameModel(QAbstractTableModel):
     def syncToLayer(self, *args):
 
         self.beginResetModel()
-        self.mBandNames.clear()
-        self.mBandNamesInitial.clear()
-        if isinstance(self.mMapLayer, QgsRasterLayer) and self.mMapLayer.isValid():
+        self.mBandMetadata.clear()
 
-            if self.mMapLayer.dataProvider().name() == 'gdal':
+        if isinstance(self.mMapLayer, QgsRasterLayer) and self.mMapLayer.isValid():
+            dp = self.mMapLayer.dataProvider()
+            if isinstance(dp, QgsRasterDataProvider) and dp.name() == 'gdal':
                 ds: gdal.Dataset = gdal.Open(self.mMapLayer.source())
+
+                wl, wlu = parseWavelength(ds)
+                self.wavelength_unit = wlu
+
                 for b in range(ds.RasterCount):
-                    name = ds.GetRasterBand(b+1).GetDescription()
-                    self.mBandNames.append(name)
-                    self.mBandNamesInitial.append(name)
+                    band: gdal.Band = ds.GetRasterBand(b+1)
+                    item = GDALBandMetadataItem()
+                    item.name = band.GetDescription()
+                    if isinstance(wl, np.ndarray) and len(wl) > b:
+                        item.wavelength = wl[b]
+
+                    self.mBandMetadata.append(item)
 
         self.endResetModel()
+
 
 class GDALMetadataModel(QAbstractTableModel):
 
@@ -663,7 +710,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.btnRegex.setDefaultAction(self.optionRegex)
         self._cs = None
 
-        self.bandNameModel = GDALBandNameModel()
+        self.bandNameModel = GDALBandMetadataModel()
         self.bandNameProxyModel = QSortFilterProxyModel()
         self.bandNameProxyModel.setSourceModel(self.bandNameModel)
         self.bandNameProxyModel.setFilterKeyColumn(-1)

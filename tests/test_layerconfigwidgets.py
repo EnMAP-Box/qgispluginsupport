@@ -289,8 +289,8 @@ class LayerConfigWidgetsTests(TestCase):
         del ds
 
         lyrR = QgsRasterLayer(path)
-        from qps.layerconfigwidgets.gdalmetadata import GDALBandNameModel
-        model = GDALBandNameModel()
+        from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel
+        model = GDALBandMetadataModel()
         model.setLayer(lyrR)
 
         self.assertEqual(model.rowCount(), lyrR.bandCount())
@@ -367,7 +367,7 @@ class LayerConfigWidgetsTests(TestCase):
         lyrR = QgsRasterLayer(enmap)
         lyrV = QgsVectorLayer(landcover)
         canvas = QgsMapCanvas()
-        w = GDALMetadataModelConfigWidget(lyrV, canvas)
+        w = GDALMetadataModelConfigWidget(lyrR, canvas)
         w.metadataModel.setIsEditable(True)
         w.widgetChanged.connect(lambda: print('Changed'))
         self.assertIsInstance(w, QWidget)
