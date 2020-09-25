@@ -326,7 +326,9 @@ class SpectralProfileRendererWidget(QWidget):
         self.btnColorForeground.colorChanged.connect(self.onProfileRendererChanged)
         self.btnColorInfo.colorChanged.connect(self.onProfileRendererChanged)
         self.btnColorSelection.colorChanged.connect(self.onProfileRendererChanged)
-        self.cbUseRendererColors.clicked.connect(self.onCbUseRendererColorsClicked)
+
+        self.optionUseColorsFromVectorRenderer.toggled.connect(self.onUseColorsFromVectorRendererChanged)
+        self.btnUseColorsFromVectorRenderer.setDefaultAction(self.optionUseColorsFromVectorRenderer)
 
         self.wDefaultProfileStyle.setPreviewVisible(False)
         self.wDefaultProfileStyle.cbIsVisible.setVisible(False)
@@ -334,14 +336,19 @@ class SpectralProfileRendererWidget(QWidget):
         self.wDefaultProfileStyle.setMinimumSize(self.wDefaultProfileStyle.sizeHint())
         self.btnReset.setDisabled(True)
         self.btnReset.clicked.connect(lambda: self.setProfileRenderer(self.mLastRenderer))
-        self.btnColorSchemeBright.clicked.connect(lambda: self.setProfileRenderer(SpectralProfileRenderer.bright()))
-        self.btnColorSchemeDark.clicked.connect(lambda: self.setProfileRenderer(SpectralProfileRenderer.dark()))
 
-    def onCbUseRendererColorsClicked(self, checked: bool):
+        self.btnColorSchemeBright.setDefaultAction(self.actionActivateBrightTheme)
+        self.btnColorSchemeDark.setDefaultAction(self.actionActivateDarkTheme)
+        self.actionActivateBrightTheme.triggered.connect(lambda: self.setProfileRenderer(SpectralProfileRenderer.bright()))
+        self.actionActivateDarkTheme.triggered.connect(lambda: self.setProfileRenderer(SpectralProfileRenderer.dark()))
+
+    def onUseColorsFromVectorRendererChanged(self, checked: bool):
         self.onProfileRendererChanged()
-        w = self.wDefaultProfileStyle
+        w: PlotStyleWidget = self.wDefaultProfileStyle
         assert isinstance(w, PlotStyleWidget)
         w.btnLinePenColor.setDisabled(checked)
+        w.btnMarkerBrushColor.setDisabled(checked)
+        w.btnMarkerPenColor.setDisabled(checked)
 
     def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
         assert isinstance(profileRenderer, SpectralProfileRenderer)
@@ -359,7 +366,7 @@ class SpectralProfileRendererWidget(QWidget):
         self.btnColorInfo.setColor(profileRenderer.infoColor)
         self.btnColorSelection.setColor(profileRenderer.selectionColor)
         self.wDefaultProfileStyle.setPlotStyle(profileRenderer.profileStyle)
-        self.cbUseRendererColors.setChecked(profileRenderer.useRendererColors)
+        #self.optionUseColorsFromVectorRenderer.setChecked(profileRenderer.useRendererColors)
 
         self.mBlocked = False
         if changed:
@@ -381,7 +388,7 @@ class SpectralProfileRendererWidget(QWidget):
         cs.profileStyle = self.wDefaultProfileStyle.plotStyle()
         if isinstance(self.mLastRenderer, SpectralProfileRenderer):
             cs.temporaryProfileStyle = self.mLastRenderer.temporaryProfileStyle.clone()
-        cs.useRendererColors = self.cbUseRendererColors.isChecked()
+        cs.useRendererColors = self.optionUseColorsFromVectorRenderer.isChecked()
         return cs
 
 

@@ -1,4 +1,4 @@
-import pathlib, os, zipfile, sys
+import pathlib
 
 if __name__ == '__main__':
 
