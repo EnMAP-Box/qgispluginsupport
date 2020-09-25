@@ -147,7 +147,7 @@ color:&quot;black&quot;</string>
    <item row="3" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
-      <string>Crosshair</string>
+      <string>Crosshair &amp; Text</string>
      </property>
     </widget>
    </item>

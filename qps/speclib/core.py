@@ -1147,7 +1147,7 @@ class SpectralProfileRenderer(object):
             name='Dark',
             fg=QColor('white'),
             bg=QColor('black'),
-            ic=QColor('yellow'),
+            ic=QColor('white'),
             sc=QColor('yellow'),
             ps=ps, cs=cs, useRendererColors=False)
 
@@ -1163,7 +1163,7 @@ class SpectralProfileRenderer(object):
             name='Bright',
             fg=QColor('black'),
             bg=QColor('white'),
-            ic=QColor('red'),
+            ic=QColor('black'),
             sc=QColor('red'),
             ps=ps, cs=cs, useRendererColors=False)
 
@@ -1173,7 +1173,7 @@ class SpectralProfileRenderer(object):
                  bg: QColor = QColor('black'),
                  ps: PlotStyle = None,
                  cs: PlotStyle = None,
-                 ic: QColor = QColor('yellow'),
+                 ic: QColor = QColor('white'),
                  sc: QColor = QColor('yellow'),
                  useRendererColors: bool = True):
         """

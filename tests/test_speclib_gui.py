@@ -138,11 +138,6 @@ class TestSpeclibWidgets(TestCase):
         w2 = pdi.plot()
         self.showGui([w1])
 
-    def test_SpectralLibraryPlotProfileMenu(self):
-
-        m = SpectralViewBoxMenu()
-
-        self.showGui(m)
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidget(self):
@@ -633,7 +628,7 @@ class TestSpeclibWidgets(TestCase):
         slw.speclib().startEditing()
         slw.speclib().addSpeclib(slib)
 
-        slw.actionToggleEditing.setChecked(True)
+        slw.mActionToggleEditing.setChecked(True)
 
         # self.assertTrue()
         self.showGui(slw)
