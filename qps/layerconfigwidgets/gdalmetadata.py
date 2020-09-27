@@ -36,7 +36,8 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
-from ..utils import loadUi, gdalDataset, parseWavelength
+from ..utils import loadUi, gdalDataset, parseWavelength, parseFWHM
+from ..unitmodel import XUnitModel, BAND_INDEX
 
 TYPE_LOOKUP = {
     ':STATISTICS_MAXIMUM': float,
@@ -120,6 +121,7 @@ class GDALBandMetadataItem(object):
 
         self.name: str = None
         self.wavelength: str = None
+        self.fwhm: str = None
         self.wavelength_unit: str = None
         self.items: typing.List[GDALMetadataItem]
 
@@ -130,21 +132,36 @@ class GDALBandMetadataModel(QAbstractTableModel):
         super().__init__(parent)
         self.cnName = 'Name'
         self.cnWavelength = 'Wavelength'
+        self.cnFWHM = 'FWHM'
 
         self.mColumnNames = [
             self.cnName,
-            self.cnWavelength
+            self.cnWavelength,
+            self.cnFWHM
         ]
         self.mColumnTooltips = {
             self.cnName: 'Band name',
-            self.cnWavelength: 'Band wavelengths'
+            self.cnWavelength: 'Band wavelengths',
+            self.cnFWHM: 'Full width half maximum'
         }
         for i, c in enumerate(self.mColumnNames):
             self.mColumnTooltips[i] = self.mColumnTooltips[c]
 
-        self.wavelength_unit:str = None
+        self.wavelength_unit: str = BAND_INDEX
         self.mMapLayer: QgsMapLayer = None
         self.mBandMetadata: typing.List[GDALBandMetadataItem] = []
+
+    def setWavelengthUnits(self, wlu: str):
+        if wlu in ['', None]:
+            # BAND_INDEX is a proxy for undefined
+            wlu = BAND_INDEX
+
+        if wlu != self.wavelength_unit:
+            self.wavelength_unit = wlu
+
+            ul = self.createIndex(0, 0)
+            lr = self.createIndex(self.rowCount()-1, self.columnCount()-1)
+            self.dataChanged.emit(ul, lr)
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self.mBandMetadata)
@@ -178,7 +195,11 @@ class GDALBandMetadataModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.NoItemFlags
 
-        return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
+        hasWLU = self.wavelength_unit != BAND_INDEX
+        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
+        if index.column() == 0 or (index.column() > 0 and hasWLU):
+            flags = flags | Qt.ItemIsEditable
+        return flags
 
     def data(self, index: QModelIndex, role=None):
         if not index.isValid():
@@ -187,11 +208,14 @@ class GDALBandMetadataModel(QAbstractTableModel):
         cname = self.mColumnNames[index.column()]
         item: GDALBandMetadataItem = self.mBandMetadata[index.row()]
 
-        if role == Qt.DisplayRole:
+        if role in [Qt.DisplayRole, Qt.EditRole]:
             if cname == self.cnName:
                 return item.name
             if cname == self.cnWavelength:
                 return item.wavelength
+            if cname == self.cnFWHM:
+                return item.fwhm
+
         if role == Qt.ToolTipRole:
             if cname == self.cnName:
                 return f'Band name band {index.row()+1}="{item.name}"'
@@ -200,6 +224,9 @@ class GDALBandMetadataModel(QAbstractTableModel):
                     return f'Wavelength band {index.row() + 1} undefined'
                 else:
                     return f'Wavelength band {index.row() + 1}: {item.wavelength}'
+
+        if role == Qt.UserRole:
+            return item
 
     def setData(self, index: QModelIndex, value: typing.Any, role: int = ...) -> bool:
 
@@ -217,6 +244,9 @@ class GDALBandMetadataModel(QAbstractTableModel):
             elif cname == self.cnWavelength:
                 item.wavelength = str(value)
                 changed = True
+            elif cname == self.cnFWHM:
+                item.fwhm = str(value)
+                changed = True
 
         if changed:
             idx0 = self.createIndex(index.row(), 0)
@@ -225,16 +255,37 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
         return changed
 
+    def isValidTypeList(self, l: list, t):
+        for i in l:
+            try:
+                v = t(i)
+            except:
+               return False
+        return True
+
     def applyToLayer(self):
         if isinstance(self.mMapLayer, QgsRasterLayer) and self.mMapLayer.isValid():
+
+            def list_or_empty(values):
+                for v in values:
+                    if v not in ['', None, 'None']:
+                        return ','.join(values)
+
+                return ''
 
             if self.mMapLayer.dataProvider().name() == 'gdal':
                 ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_ReadOnly)
 
                 if self.wavelength_unit not in [None, '']:
-                    wl = [str(item.wavelength) for item in self.mBandMetadata]
-                    ds.SetMetadataItem('Wavelengths', ','.join(wl))
                     ds.SetMetadataItem('Wavelength_Units', self.wavelength_unit)
+
+                    wl = [str(item.wavelength) for item in self.mBandMetadata]
+                    #if self.isValidTypeList(wl, float):
+                    ds.SetMetadataItem('Wavelengths', list_or_empty(wl))
+
+                    fwhm = [str(item.fwhm) for item in self.mBandMetadata]
+                    #if self.isValidTypeList(fwhm, float):
+                    ds.SetMetadataItem('fwhm', list_or_empty(fwhm))
 
                 for b, item in enumerate(self.mBandMetadata):
                     assert isinstance(item, GDALBandMetadataItem)
@@ -245,6 +296,12 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
                 ds.FlushCache()
                 del ds
+
+    def validate(self) -> typing.List[str]:
+        # todo: implement some internal validation and return descriptive error messages
+        errors = []
+
+        return errors
 
     def syncToLayer(self, *args):
 
@@ -257,19 +314,89 @@ class GDALBandMetadataModel(QAbstractTableModel):
                 ds: gdal.Dataset = gdal.Open(self.mMapLayer.source())
 
                 wl, wlu = parseWavelength(ds)
-                self.wavelength_unit = wlu
+                fwhm = parseFWHM(ds)
 
                 for b in range(ds.RasterCount):
                     band: gdal.Band = ds.GetRasterBand(b+1)
                     item = GDALBandMetadataItem()
                     item.name = band.GetDescription()
                     if isinstance(wl, np.ndarray) and len(wl) > b:
-                        item.wavelength = wl[b]
+                        item.wavelength = str(wl[b])
+                    if isinstance(fwhm, np.ndarray) and len(fwhm) > b:
+                        item.fwhm = str(fwhm[b])
 
                     self.mBandMetadata.append(item)
-
+                if wlu in [None, '']:
+                    self.setWavelengthUnits(BAND_INDEX)
+                else:
+                    self.setWavelengthUnits(wlu)
         self.endResetModel()
 
+
+class GDALBandMetadataModelTableView(QTableView):
+    """
+    A QTreeView for the GDALBandMetadataModelTableView
+    """
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        """
+        Opens a context menu
+        """
+        index = self.indexAt(event.pos())
+        if index.isValid():
+
+            item = index.data(Qt.UserRole)
+            if not isinstance(item, GDALBandMetadataItem):
+                return
+
+            selectedIndexes = self.selectionModel().selectedIndexes()
+            selectedColumnIndexes = [i for i in selectedIndexes if i.column() == index.column()]
+
+            cname = self.model().headerData(index.column(), Qt.Horizontal)
+            m = QMenu()
+            a = m.addAction(f'Copy value(s)')
+            a.triggered.connect(lambda *args, idx=selectedIndexes: self.copyValues(idx, sep='\n'))
+
+            a = m.addAction(f'Copy "{cname}" (newline)')
+            a.triggered.connect(lambda *args, idx=selectedColumnIndexes: self.copyValues(idx, sep='\n'))
+
+            a = m.addAction(f'Copy "{cname}" (,)')
+            a.triggered.connect(lambda *args, idx=selectedColumnIndexes: self.copyValues(idx, sep=','))
+
+            a = m.addAction(f'Paste "{cname}" value(s)')
+            a.triggered.connect(lambda *args, idx=index: self.pasteValues(idx))
+
+            m.addSeparator()
+            a = m.addAction(f'Clear selected')
+            a.setEnabled(len(selectedIndexes) > 0)
+            a.triggered.connect(lambda *args, idx=selectedIndexes: self.clearValues(idx))
+
+            m.exec_(event.globalPos())
+
+    def clearValues(self, indices: typing.List[QModelIndex]):
+        for idx in indices:
+            self.model().setData(idx, '', role=Qt.EditRole)
+
+    def copyValues(self, indices: typing.List[QModelIndex], sep='\n'):
+        values = [str(idx.data(Qt.DisplayRole)) for idx in indices]
+        values = sep.join(values)
+        QApplication.clipboard().setText(values)
+
+    def pasteValues(self, idx: QModelIndex):
+        md: QMimeData = QApplication.clipboard().mimeData()
+        values = md.text()
+        values = re.split(r'[,\n]', values)
+
+        r0 = idx.row()
+        for i, v in enumerate(values):
+            row = r0 + i
+            if row >= self.model().rowCount():
+                break
+            index = self.model().index(row, idx.column())
+            self.model().setData(index, v, role=Qt.EditRole)
 
 class GDALMetadataModel(QAbstractTableModel):
 
@@ -717,6 +844,15 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         self.tvBandNames.setModel(self.bandNameProxyModel)
 
+
+        self.wluModel = XUnitModel()
+        self.wluModel.mDescription[BAND_INDEX] = 'None'
+        self.wluModel.mToolTips[BAND_INDEX] = 'No wavelength defined'
+
+        self.cbWavelengthUnits: QComboBox
+        self.cbWavelengthUnits.setModel(self.wluModel)
+        self.cbWavelengthUnits.currentIndexChanged.connect(self.onWavelengthUnitsChanged)
+
         self.metadataModel = GDALMetadataModel()
         self.metadataModel.sigEditable.connect(self.onEditableChanged)
         self.metadataProxyModel = QSortFilterProxyModel()
@@ -746,6 +882,10 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.actionAddItem.triggered.connect(self.onAddItem)
         self.actionRemoveItem.triggered.connect(self.onRemoveSelectedItems)
         self.onEditableChanged(self.metadataModel.isEditable())
+
+    def onWavelengthUnitsChanged(self, idx):
+        wlu = self.cbWavelengthUnits.currentData(role=Qt.UserRole)
+        self.bandNameModel.setWavelengthUnits(wlu)
 
     def onReset(self):
 

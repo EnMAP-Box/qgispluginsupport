@@ -1496,6 +1496,45 @@ def parseBadBandList(dataset) -> typing.List[int]:
     return bbl
 
 
+def parseFWHM(dataset) -> typing.Tuple[np.ndarray]:
+    """
+    Returns the full width half maximum
+    :param dataset:
+    :return:
+    """
+    try:
+        dataset = gdalDataset(dataset)
+    except:
+        pass
+
+    key_positions = [('fwhm', None),
+                     ('fwhm', 'ENVI')]
+
+    if isinstance(dataset, gdal.Dataset):
+        for key, domain in key_positions:
+            values = dataset.GetMetadataItem(key, domain)
+            if isinstance(values, str):
+                values = re.sub('[{}]', '', values).strip()
+                try:
+                    values = np.fromstring(values, sep=',', count=dataset.RasterCount)
+                    if len(values) == dataset.RasterCount:
+                        return values
+                except:
+                    pass
+
+        # search band by band
+        values = []
+        for b in range(dataset.RasterCount):
+            band: gdal.Band = dataset.GetRasterBand(b+1)
+            for key, domain in key_positions:
+                value = dataset.GetMetadataItem(key, domain)
+                if value not in ['', None]:
+                    values.append(value)
+                    break
+        if len(values) == dataset.RasterCount:
+            return np.asarray(values)
+    return None
+
 def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
     """
     Returns the wavelength + wavelength unit of a raster
@@ -1555,6 +1594,8 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
                 sep = ','
             try:
                 wl = np.fromstring(values, sep=sep)
+            except ValueError as exV:
+                pass
             except Exception as ex:
                 pass
         return wl
