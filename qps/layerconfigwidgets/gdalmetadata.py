@@ -331,7 +331,13 @@ class GDALBandMetadataModel(QAbstractTableModel):
                 return ''
 
             if self.mMapLayer.dataProvider().name() == 'gdal':
-                ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_ReadOnly)
+                try:
+                    ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_Update)
+                    assert isinstance(ds, gdal.Dataset)
+                except Exception as ex:
+                    print(f'unable to open image in update mode: {self.mMapLayer.source()}')
+                    print(ex, file=sys.stderr)
+                    ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_ReadOnly)
 
                 is_envi = ds.GetDriver().ShortName == 'ENVI'
                 if is_envi:
@@ -543,6 +549,7 @@ class GDALBandMetadataModelTableView(QTableView):
             index = self.model().index(row, idx.column())
             self.model().setData(index, v, role=Qt.EditRole)
 
+
 class GDALMetadataModel(QAbstractTableModel):
 
     sigEditable = pyqtSignal(bool)
@@ -551,7 +558,7 @@ class GDALMetadataModel(QAbstractTableModel):
         super(GDALMetadataModel, self).__init__(parent)
         self.mLayer: QgsMapLayer = None
 
-        self.mErrorHandler:GDALErrorHandler = GDALErrorHandler()
+        self.mErrorHandler: GDALErrorHandler = GDALErrorHandler()
 
         self.cnItem = 'Item'
         self.cnDomain = 'Domain'

@@ -1593,7 +1593,7 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
             else:
                 sep = ','
             try:
-                wl = np.fromstring(values, sep=sep)
+                wl = np.fromstring(values, count=dataset.RasterCount, sep=sep)
             except ValueError as exV:
                 pass
             except Exception as ex:
