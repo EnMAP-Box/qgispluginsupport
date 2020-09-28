@@ -153,7 +153,7 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
     def setWavelengthUnits(self, wlu: str):
         if wlu in ['', None]:
-            # BAND_INDEX is a proxy for undefined
+            # BAND_INDEX is a proxy for undefined values
             wlu = BAND_INDEX
 
         if wlu != self.wavelength_unit:
@@ -161,6 +161,7 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
             ul = self.createIndex(0, 0)
             lr = self.createIndex(self.rowCount()-1, self.columnCount()-1)
+            self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount()-1)
             self.dataChanged.emit(ul, lr)
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
@@ -171,10 +172,16 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
     def headerData(self, col, orientation, role=None):
         if orientation == Qt.Horizontal:
+            cname = self.mColumnNames[col]
             if role == Qt.DisplayRole:
                 return self.mColumnNames[col]
             if role == Qt.ToolTipRole:
                 return self.mColumnTooltips[col]
+            if role == Qt.TextColorRole:
+                if cname == self.cnWavelength and self.wavelength_unit == BAND_INDEX:
+                    return QColor('grey')
+                if cname == self.cnFWHM and not self.isMetricUnit():
+                    return QColor('grey')
 
         elif orientation == Qt.Vertical:
             if role == Qt.DisplayRole:
@@ -191,13 +198,35 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
         self.syncToLayer()
 
+    def columnIsEnabled(self, index: QModelIndex) -> bool:
+        if isinstance(index, QModelIndex):
+            index = index.column()
+
+        if index == 0:
+            return True
+
+        cname = self.mColumnNames[index]
+        if cname == self.cnWavelength:
+            return self.wavelength_unit != BAND_INDEX
+        if cname == self.cnFWHM:
+            return cname != BAND_INDEX and not self.isDateUnit()
+        return False
+
+    def castWLType(self, value):
+        if value in ['', None, 'None']:
+            return None
+        if self.isMetricUnit():
+            return float(value)
+        if self.isDateUnit():
+            return str(value)
+        return str(value)
+
     def flags(self, index: QModelIndex) -> Qt.ItemFlags:
         if not index.isValid():
             return Qt.NoItemFlags
 
-        hasWLU = self.wavelength_unit != BAND_INDEX
         flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
-        if index.column() == 0 or (index.column() > 0 and hasWLU):
+        if self.columnIsEnabled(index):
             flags = flags | Qt.ItemIsEditable
         return flags
 
@@ -212,9 +241,9 @@ class GDALBandMetadataModel(QAbstractTableModel):
             if cname == self.cnName:
                 return item.name
             if cname == self.cnWavelength:
-                return item.wavelength
+                return self.castWLType(item.wavelength)
             if cname == self.cnFWHM:
-                return item.fwhm
+                return self.castWLType(item.fwhm)
 
         if role == Qt.ToolTipRole:
             if cname == self.cnName:
@@ -254,6 +283,12 @@ class GDALBandMetadataModel(QAbstractTableModel):
             self.dataChanged.emit(idx0, idx1, [role, Qt.TextColorRole])
 
         return changed
+
+    def isMetricUnit(self) -> bool:
+        return re.search(r'^(m|.m|.*meters?)$', self.wavelength_unit) is not None
+
+    def isDateUnit(self) -> bool:
+        return re.search(r'Date|DOY|Week', self.wavelength_unit, re.IGNORECASE) is not None
 
     def isValidTypeList(self, l: list, t):
         for i in l:
