@@ -1,6 +1,7 @@
 import pathlib
 enmap = (pathlib.Path(__file__).parent / 'enmap.tif').as_posix()
 hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()
+envi_bsq = (pathlib.Path(__file__).parent / 'envi').as_posix()
 timestack = (pathlib.Path(__file__).parent / '2010-2020_001-365_HL_TSA_LNDLG_NBR_TSS.tif').as_posix()
 speclib = (pathlib.Path(__file__).parent / 'speclib.sli').as_posix()
 speclib_labeled = (pathlib.Path(__file__).parent / 'library_berlin.sli').as_posix()

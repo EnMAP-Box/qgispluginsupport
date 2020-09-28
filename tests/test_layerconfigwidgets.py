@@ -362,10 +362,10 @@ class LayerConfigWidgetsTests(TestCase):
 
     def test_GDALMetadataModelConfigWidget(self):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
-        from qpstestdata import enmap, landcover
+        from qpstestdata import enmap, landcover, envi_bsq
 
-
-        lyrR = QgsRasterLayer(enmap)
+        lyrB = QgsRasterLayer(envi_bsq)
+        lyrR = QgsRasterLayer(envi_bsq)
         lyrV = QgsVectorLayer(landcover)
         canvas = QgsMapCanvas()
         w = GDALMetadataModelConfigWidget(lyrR, canvas)
