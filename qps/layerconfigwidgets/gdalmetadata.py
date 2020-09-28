@@ -320,7 +320,7 @@ class GDALBandMetadataModel(QAbstractTableModel):
                return False
         return True
 
-    def applyToLayer(self):
+    def applyToLayer(self, *args):
         if isinstance(self.mMapLayer, QgsRasterLayer) and self.mMapLayer.isValid():
 
             def list_or_empty(values):
@@ -333,16 +333,19 @@ class GDALBandMetadataModel(QAbstractTableModel):
             if self.mMapLayer.dataProvider().name() == 'gdal':
                 ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_ReadOnly)
 
-                if self.mWavelengthUnit not in [None, '']:
-                    ds.SetMetadataItem('Wavelength_Units', self.mWavelengthUnit)
+                is_envi = ds.GetDriver().ShortName == 'ENVI'
+                if is_envi:
+                    domain = 'ENVI'
+                else:
+                    domain = None
+                if self.mWavelengthUnit not in [None, '', BAND_INDEX]:
+                    ds.SetMetadataItem('wavelength units ', self.mWavelengthUnit, domain)
 
                     wl = [str(item.wavelength) for item in self.mBandMetadata]
-                    #if self.isValidTypeList(wl, float):
-                    ds.SetMetadataItem('Wavelengths', list_or_empty(wl))
+                    ds.SetMetadataItem('wavelength', list_or_empty(wl), domain)
 
                     fwhm = [str(item.fwhm) for item in self.mBandMetadata]
-                    #if self.isValidTypeList(fwhm, float):
-                    ds.SetMetadataItem('fwhm', list_or_empty(fwhm))
+                    ds.SetMetadataItem('fwhm', list_or_empty(fwhm), domain)
 
                 for b, item in enumerate(self.mBandMetadata):
                     assert isinstance(item, GDALBandMetadataItem)
@@ -438,6 +441,8 @@ class GDALBandMetadataModelTableViewDelegate(QStyledItemDelegate):
                 if self.bandModel().isMetricUnit():
                     w = QgsDoubleSpinBox(parent=parent)
                     w.setClearValue(0)
+                    w.setMaximum(16000)
+                    w.setMinimum(0)
                     w.setDecimals(4)
                 elif self.bandModel().isDateUnit():
                     w = QLineEdit(parent=parent)
@@ -1144,6 +1149,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             self.metadataProxyModel.setFilterRegExp(rx)
         else:
             self.metadataProxyModel.setFilterRegExp(None)
+
 
 class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
