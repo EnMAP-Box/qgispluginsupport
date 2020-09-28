@@ -364,6 +364,7 @@ class LayerConfigWidgetsTests(TestCase):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
         from qpstestdata import enmap, landcover
 
+
         lyrR = QgsRasterLayer(enmap)
         lyrV = QgsVectorLayer(landcover)
         canvas = QgsMapCanvas()

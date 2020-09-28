@@ -26,6 +26,7 @@ import typing
 import re
 import pathlib
 import sys
+import copy
 from osgeo import gdal, ogr
 import numpy as np
 from qgis.PyQt.QtCore import *
@@ -33,7 +34,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
     QgsVectorDataProvider, QgsRasterDataProvider, Qgis
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsDoubleSpinBox
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..utils import loadUi, gdalDataset, parseWavelength, parseFWHM
@@ -155,6 +156,7 @@ class GDALBandMetadataModel(QAbstractTableModel):
         self.mWavelengthUnit: str = BAND_INDEX
         self.mMapLayer: QgsMapLayer = None
         self.mBandMetadata: typing.List[GDALBandMetadataItem] = []
+        self.mBandMetadata0: typing.List[GDALBandMetadataItem] = []
 
     def registerWavelengthUnitComboBox(self, combobox: QComboBox):
 
@@ -261,9 +263,9 @@ class GDALBandMetadataModel(QAbstractTableModel):
             if cname == self.cnName:
                 return item.name
             if cname == self.cnWavelength:
-                return self.castWLType(item.wavelength)
+                return item.wavelength
             if cname == self.cnFWHM:
-                return self.castWLType(item.fwhm)
+                return item.fwhm
 
         if role == Qt.ToolTipRole:
             if cname == self.cnName:
@@ -288,13 +290,13 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
         if role == Qt.EditRole:
             if cname == self.cnName:
-                item.name = str(value)
+                item.name = value
                 changed = True
             elif cname == self.cnWavelength:
-                item.wavelength = str(value)
+                item.wavelength = value
                 changed = True
             elif cname == self.cnFWHM:
-                item.fwhm = str(value)
+                item.fwhm = value
                 changed = True
 
         if changed:
@@ -358,17 +360,29 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
         return errors
 
+    def reset(self):
+        self.beginResetModel()
+        self.mBandMetadata.clear()
+        self.mBandMetadata.extend([copy.copy(item) for item in self.mBandMetadata0])
+        self.endResetModel()
+
     def syncToLayer(self, *args):
 
         self.beginResetModel()
         self.mBandMetadata.clear()
+        self.mBandMetadata0.clear()
 
         if isinstance(self.mMapLayer, QgsRasterLayer) and self.mMapLayer.isValid():
             dp = self.mMapLayer.dataProvider()
             if isinstance(dp, QgsRasterDataProvider) and dp.name() == 'gdal':
                 ds: gdal.Dataset = gdal.Open(self.mMapLayer.source())
-
                 wl, wlu = parseWavelength(ds)
+
+                if wlu in [None, '']:
+                    self.setWavelengthUnit(BAND_INDEX)
+                else:
+                    self.setWavelengthUnit(wlu)
+
                 fwhm = parseFWHM(ds)
 
                 for b in range(ds.RasterCount):
@@ -376,16 +390,87 @@ class GDALBandMetadataModel(QAbstractTableModel):
                     item = GDALBandMetadataItem()
                     item.name = band.GetDescription()
                     if isinstance(wl, np.ndarray) and len(wl) > b:
-                        item.wavelength = str(wl[b])
+                        item.wavelength = self.castWLType(wl[b])
                     if isinstance(fwhm, np.ndarray) and len(fwhm) > b:
-                        item.fwhm = str(fwhm[b])
+                        item.fwhm = self.castWLType(fwhm[b])
 
                     self.mBandMetadata.append(item)
-                if wlu in [None, '']:
-                    self.setWavelengthUnit(BAND_INDEX)
-                else:
-                    self.setWavelengthUnit(wlu)
+
+        self.mBandMetadata0.extend([copy.copy(item) for item in self.mBandMetadata])
         self.endResetModel()
+
+
+
+class GDALBandMetadataModelTableViewDelegate(QStyledItemDelegate):
+    """
+
+    """
+
+    def __init__(self, tableView: QTableView, parent=None):
+        assert isinstance(tableView, GDALBandMetadataModelTableView)
+        super().__init__(parent=parent)
+        self.mTableView = tableView
+        # self.mTableView.model().rowsInserted.connect(self.onRowsInserted)
+
+    def sortFilterProxyModel(self) -> QSortFilterProxyModel:
+        return self.mTableView.model()
+
+    def bandModel(self) -> GDALBandMetadataModel:
+        return self.sortFilterProxyModel().sourceModel()
+
+    def setItemDelegates(self, tableView: QTableView):
+
+        m: GDALBandMetadataModel = self.bandModel()
+        for c in [m.cnWavelength, m.cnFWHM]:
+            for i in range(self.sortFilterProxyModel().columnCount()):
+                cname = self.sortFilterProxyModel().headerData(i, Qt.Horizontal, role=Qt.DisplayRole)
+                if cname == c:
+                    tableView.setItemDelegateForColumn(i, self)
+
+    def createEditor(self, parent, option, index):
+        w = None
+        m = self.bandModel()
+        if index.isValid() and isinstance(m, GDALBandMetadataModel):
+            cname = self.sortFilterProxyModel().headerData(index.column(), Qt.Horizontal)
+            wlu = self.bandModel().wavelenghtUnit()
+
+            if cname in [m.cnWavelength, m.cnFWHM]:
+                if self.bandModel().isMetricUnit():
+                    w = QgsDoubleSpinBox(parent=parent)
+                    w.setClearValue(0)
+                    w.setDecimals(4)
+                elif self.bandModel().isDateUnit():
+                    w = QLineEdit(parent=parent)
+
+        if w is None:
+            w = super().createEditor(parent, option, index)
+        return w
+
+    def setEditorData(self, w: QWidget, index):
+        m = self.bandModel()
+        if index.isValid() and isinstance(m, GDALBandMetadataModel):
+            cname = self.sortFilterProxyModel().headerData(index.column(), Qt.Horizontal)
+            value = index.data(Qt.DisplayRole)
+
+            if isinstance(w, QDoubleSpinBox):
+                if value in [None, 'None', '']:
+                    value = w.clearValue()
+                value = float(value)
+                w.setValue(value)
+            elif isinstance(w, QLineEdit):
+                w.setText(str(value))
+            else:
+                raise NotImplementedError()
+
+    def setModelData(self, w, bridge, proxyIndex):
+        value = None
+        if isinstance(w, QDoubleSpinBox):
+            value = w.value()
+            if isinstance(w, QgsDoubleSpinBox) and value == w.clearValue():
+                value = None
+        elif isinstance(w, QLineEdit):
+            value = w.text()
+        self.sortFilterProxyModel().setData(proxyIndex, value, role=Qt.EditRole)
 
 
 class GDALBandMetadataModelTableView(QTableView):
@@ -898,6 +983,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.bandMetadataProxyModel.setFilterKeyColumn(-1)
 
         self.tvBandNames.setModel(self.bandMetadataProxyModel)
+        self.bandMetadataModelViewDelegate = GDALBandMetadataModelTableViewDelegate(self.tvBandNames)
+        self.bandMetadataModelViewDelegate.setItemDelegates(self.tvBandNames)
 
         self.cbWavelengthUnits: QComboBox
         self.bandMetadataModel.registerWavelengthUnitComboBox(self.cbWavelengthUnits)
