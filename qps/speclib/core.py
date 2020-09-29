@@ -1410,13 +1410,31 @@ class SpectralProfileRenderer(object):
         settings.setValue(SpectralLibrarySettingsKey.SELECTION_COLOR.name, self.selectionColor)
         settings.setValue(SpectralLibrarySettingsKey.USE_VECTOR_RENDER_COLORS.name, self.useRendererColors)
 
+    def printDifferences(self, renderer):
+        assert isinstance(renderer, SpectralProfileRenderer)
+        keys = [k for k in self.__dict__.keys()
+                if not k.startswith('_') and
+                k not in ['name', 'mInputSource']]
+
+        differences = []
+        for k in keys:
+            if self.__dict__[k] != renderer.__dict__[k]:
+                differences.append(f'{k}: {self.__dict__[k]} != {renderer.__dict__[k]}')
+        if len(differences) == 0:
+            print(f'# no differences')
+        else:
+            print(f'# {len(differences)} differences:')
+            for d in differences:
+                print(d)
+        return True
+
     def __eq__(self, other):
         if not isinstance(other, SpectralProfileRenderer):
             return False
         else:
             keys = [k for k in self.__dict__.keys()
                     if not k.startswith('_') and
-                    k not in ['name']]
+                    k not in ['name', 'mInputSource']]
 
             for k in keys:
                 if self.__dict__[k] != other.__dict__[k]:

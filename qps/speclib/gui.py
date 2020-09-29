@@ -158,7 +158,7 @@ class SpectralProfileRendererWidget(QWidget):
         path_ui = speclibUiPath('spectralprofilerendererwidget.ui')
         loadUi(path_ui, self)
 
-        self.mBlocked = False
+        self.mBlocked: bool = False
 
         self.mLastRenderer: SpectralProfileRenderer = None
 
@@ -179,8 +179,8 @@ class SpectralProfileRendererWidget(QWidget):
 
         self.btnColorSchemeBright.setDefaultAction(self.actionActivateBrightTheme)
         self.btnColorSchemeDark.setDefaultAction(self.actionActivateDarkTheme)
-        self.actionActivateBrightTheme.triggered.connect(lambda: self.setProfileRenderer(SpectralProfileRenderer.bright()))
-        self.actionActivateDarkTheme.triggered.connect(lambda: self.setProfileRenderer(SpectralProfileRenderer.dark()))
+        self.actionActivateBrightTheme.triggered.connect(lambda: self.setRendererTheme(SpectralProfileRenderer.bright()))
+        self.actionActivateDarkTheme.triggered.connect(lambda: self.setRendererTheme(SpectralProfileRenderer.dark()))
 
     def onUseColorsFromVectorRendererChanged(self, checked: bool):
         self.onProfileRendererChanged()
@@ -189,6 +189,12 @@ class SpectralProfileRendererWidget(QWidget):
         w.btnLinePenColor.setDisabled(checked)
         w.btnMarkerBrushColor.setDisabled(checked)
         w.btnMarkerPenColor.setDisabled(checked)
+
+    def setRendererTheme(self, profileRenderer: SpectralProfileRenderer):
+        profileRenderer = profileRenderer.clone()
+        # do not overwrite the following settings:
+        profileRenderer.useRendererColors = self.optionUseColorsFromVectorRenderer.isChecked()
+        self.setProfileRenderer(profileRenderer)
 
     def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
         assert isinstance(profileRenderer, SpectralProfileRenderer)
@@ -206,8 +212,7 @@ class SpectralProfileRendererWidget(QWidget):
         self.btnColorInfo.setColor(profileRenderer.infoColor)
         self.btnColorSelection.setColor(profileRenderer.selectionColor)
         self.wDefaultProfileStyle.setPlotStyle(profileRenderer.profileStyle)
-        #self.optionUseColorsFromVectorRenderer.setChecked(profileRenderer.useRendererColors)
-
+        self.optionUseColorsFromVectorRenderer.setChecked(profileRenderer.useRendererColors)
         self.mBlocked = False
         if changed:
             self.sigProfileRendererChanged.emit(self.spectralProfileRenderer())
@@ -566,25 +571,25 @@ class SpectralProfileRendererWidgetAction(QWidgetAction):
 
     def __init__(self, parent, **kwds):
         super().__init__(parent)
-
         self.mProfileRenderer: SpectralProfileRenderer = SpectralProfileRenderer.default()
 
     def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
-
         if self.mProfileRenderer != profileRenderer:
+            # print(self.mProfileRenderer.printDifferences(profileRenderer))
             self.mProfileRenderer = profileRenderer
             self.sigProfileRendererChanged.emit(profileRenderer)
 
     def profileRenderer(self) -> SpectralProfileRenderer:
         return self.mProfileRenderer
 
-    def createWidget(self, parent: QWidget):
+    def createWidget(self, parent: QWidget) -> SpectralProfileRendererWidget:
 
         w = SpectralProfileRendererWidget(parent)
         w.setProfileRenderer(self.profileRenderer())
         w.sigProfileRendererChanged.connect(self.setProfileRenderer)
-
+        self.sigProfileRendererChanged.connect(w.setProfileRenderer)
         return w
+
 
 class MaxNumberOfProfilesWidgetAction(QWidgetAction):
 
@@ -639,14 +644,12 @@ class SpectralViewBox(pg.ViewBox):
         """
         super().__init__(parent, enableMenu=False)
 
-
-        # self.menu = None # Override pyqtgraph ViewBoxMenu
-        # self.menu = self.getMenu() # Create the menu
-        # self.menu = None
         self.mCurrentCursorPosition: typing.Tuple[int, int] = (0, 0)
         # define actions
         self.mActionMaxNumberOfProfiles: MaxNumberOfProfilesWidgetAction = MaxNumberOfProfilesWidgetAction(None)
         self.mActionSpectralProfileRendering: SpectralProfileRendererWidgetAction = SpectralProfileRendererWidgetAction(None)
+        self.mActionSpectralProfileRendering.setDefaultWidget(self.mActionSpectralProfileRendering.createWidget(None))
+        self.mOptionUseVectorSymbology: QAction = self.mActionSpectralProfileRendering.defaultWidget().optionUseColorsFromVectorRenderer
         self.mActionXAxis: XAxisWidgetAction = XAxisWidgetAction(None)
 
         self.mActionShowSelectedProfilesOnly: QAction = QAction('Show Selected Profiles Only', None)
@@ -849,7 +852,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             profileRenderer.setInput(self.speclib())
             self.speclib().setProfileRenderer(profileRenderer)
 
-
     def updatePlot(self, *args):
         try:
             self.updateSpectralProfilePlotItems()
@@ -933,6 +935,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
     def actionSpectralProfileRendering(self) -> SpectralProfileRendererWidgetAction:
         return self.viewBox().mActionSpectralProfileRendering
+
+    def optionUseVectorSymbology(self) -> QAction:
+        return self.viewBox().mOptionUseVectorSymbology
 
     def actionProfileSettings(self) -> MaxNumberOfProfilesWidgetAction:
         return self.viewBox().mActionMaxNumberOfProfiles
@@ -2120,8 +2125,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.widgetRight.setLayout(l)
         self.widgetRight.setVisible(True)
 
-
         # define Actions and Options
+
         self.actionSelectProfilesFromMap = QAction(r'Select Profiles from Map')
         self.actionSelectProfilesFromMap.setToolTip(r'Select new profile from map')
         self.actionSelectProfilesFromMap.setIcon(QIcon(':/qps/ui/icons/profile_identify.svg'))
@@ -2180,8 +2185,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionImportSpeclib)
         self.tbSpeclibAction.addAction(self.actionExportSpeclib)
 
+        self.tbSpeclibAction.addSeparator()
         self.cbXAxisUnit = self.plotWidget().actionXAxis().createUnitComboBox()
-        self.tbSpeclibAction.insertWidget(self.actionImportSpeclib, self.cbXAxisUnit)
+        self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
+        self.tbSpeclibAction.addAction(self.plotWidget().optionUseVectorSymbology())
 
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
 
@@ -2196,7 +2203,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
                                              self.btnShowProperties)
-
 
         self.setAcceptDrops(True)
 

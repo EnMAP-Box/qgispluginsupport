@@ -133,8 +133,8 @@
         <string>...</string>
        </property>
        <property name="icon">
-        <iconset resource="../../../QGIS/images/images.qrc">
-         <normaloff>:/images/themes/default/mIconPointLayer.svg</normaloff>:/images/themes/default/mIconPointLayer.svg</iconset>
+        <iconset resource="../qpsresources.qrc">
+         <normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</iconset>
        </property>
        <property name="checkable">
         <bool>true</bool>
@@ -197,7 +197,7 @@
         <string>Reset</string>
        </property>
        <property name="icon">
-        <iconset resource="../../../QGIS/images/images.qrc">
+        <iconset resource="../../../../QGIS/images/images.qrc">
          <normaloff>:/images/themes/default/mActionReload.svg</normaloff>:/images/themes/default/mActionReload.svg</iconset>
        </property>
        <property name="autoRaise">
@@ -213,14 +213,14 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/mIconPointLayer.svg</normaloff>:/images/themes/default/mIconPointLayer.svg</iconset>
+    <iconset resource="../qpsresources.qrc">
+     <normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</iconset>
    </property>
    <property name="text">
     <string>Colors from vector renderer</string>
    </property>
    <property name="toolTip">
-    <string>Activate this options to use colors from the map vector renderer</string>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Activate to use colors from map vector symbology.&lt;br/&gt;The vector symbology can be specified in in the layer properties.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </action>
   <action name="actionActivateDarkTheme">
@@ -232,7 +232,7 @@
     <string>ActivateDarkTheme</string>
    </property>
    <property name="toolTip">
-    <string>Activates a dark color theme.</string>
+    <string>Activate a dark color theme.</string>
    </property>
   </action>
   <action name="actionActivateBrightTheme">
@@ -244,7 +244,7 @@
     <string>ActivateBrightTheme</string>
    </property>
    <property name="toolTip">
-    <string>Activates a bright color theme.</string>
+    <string>Activate a bright color theme.</string>
    </property>
   </action>
  </widget>
@@ -263,7 +263,7 @@
  </customwidgets>
  <resources>
   <include location="../qpsresources.qrc"/>
-  <include location="../../../QGIS/images/images.qrc"/>
+  <include location="../../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>
 </ui>
