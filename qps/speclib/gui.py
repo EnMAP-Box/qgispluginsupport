@@ -33,7 +33,7 @@ from ..externals import pyqtgraph as pg
 from ..externals.pyqtgraph.graphicsItems.ViewBox.ViewBoxMenu import ViewBoxMenu
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ..layerproperties import AttributeTableWidget
-from ..unitmodel import UnitModel, BAND_INDEX, XUnitModel
+from ..unitmodel import UnitModel, BAND_INDEX, XUnitModel, UnitConverterFunctionModel
 
 from ..models import Option, OptionListModel
 from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle, PlotStyleDialog
