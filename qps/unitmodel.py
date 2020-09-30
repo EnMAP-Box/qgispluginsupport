@@ -1,6 +1,8 @@
+import typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 import numpy as np
+
 from .utils import UnitLookup, METRIC_EXPONENTS, datetime64
 
 BAND_INDEX = 'Band Index'
@@ -29,6 +31,10 @@ class UnitModel(QAbstractListModel):
         if value in self.mUnits:
             return value
 
+        baseUnit = UnitLookup.baseUnit(value)
+        if baseUnit in self.mUnits:
+            return baseUnit
+
         value = value.lower()
         for u, v in self.mDescription.items():
             if v.lower() == value:
@@ -37,6 +43,8 @@ class UnitModel(QAbstractListModel):
         for u, v in self.mToolTips.items():
             if v.lower() == value:
                 return u
+
+        return None
 
     def removeUnit(self, unit: str):
         """
@@ -55,7 +63,10 @@ class UnitModel(QAbstractListModel):
             self.mUnits.remove(unit)
             self.endRemoveRows()
 
-    def addUnit(self, unit: str, description: str = None, tooltip: str = None):
+    def addUnit(self, unit: str,
+                description: str = None,
+                tooltip: str = None,
+                aliases: typing.List[str] = []):
         """
         Adds a unit to the unit model
         :param unit:
@@ -76,7 +87,6 @@ class UnitModel(QAbstractListModel):
                 self.mDescription[unit] = description
             if isinstance(tooltip, str):
                 self.mToolTips[unit] = tooltip
-
             self.endInsertRows()
 
     def unitIndex(self, unit: str) -> QModelIndex:

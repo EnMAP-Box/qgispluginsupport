@@ -60,6 +60,7 @@ import qgis.utils
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
 from .resources import *
+from .utils import UnitLookup
 
 WMS_GMAPS = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
 WMS_OSM = r'referer=OpenStreetMap%20contributors,%20under%20ODbL&type=xyz&url=http://tiles.wmflabs.org/hikebike/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=17&zmin=1'
@@ -496,10 +497,20 @@ class TestObjects():
     @staticmethod
     def spectralProfiles(n=10,
                          fields: QgsFields = None,
-                         n_bands: typing.List[int] = [-1]):
+                         n_bands: typing.List[int] = [-1],
+                         wlu: str = None):
+
         from .speclib.core import SpectralProfile
+
+
+
         i = 1
-        for (data, wl, wlu) in TestObjects.spectralProfileData(n, n_bands=n_bands):
+        for (data, wl, data_wlu) in TestObjects.spectralProfileData(n, n_bands=n_bands):
+            if wlu is None:
+                wlu = data_wlu
+            if wlu != data_wlu:
+                wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
+
             profile = SpectralProfile(fields=fields)
             profile.setName(f'Profile {i}')
             profile.setValues(y=data, x=wl, xUnit=wlu)
@@ -513,9 +524,12 @@ class TestObjects():
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
-                              n_bands: typing.List[int] = [-1]):
+                              n_bands: typing.List[int] = [-1],
+                              wlu: str = None):
         """
         Creates an Spectral Library
+        :param wlu:
+        :type wlu:
         :param n: total number of profiles
         :type n: int
         :param n_empty: number of empty profiles, SpectralProfiles with empty x/y values
@@ -529,7 +543,7 @@ class TestObjects():
         from .speclib.core import SpectralLibrary
         slib = SpectralLibrary()
         assert slib.startEditing()
-        profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields(), n_bands=n_bands))
+        profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields(), n_bands=n_bands, wlu=wlu))
         slib.addProfiles(profiles, addMissingFields=False)
 
         for i in range(n_empty):

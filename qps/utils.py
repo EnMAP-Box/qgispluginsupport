@@ -270,7 +270,15 @@ class UnitLookup(object):
 
     @staticmethod
     def baseUnit(unit: str) -> str:
+        """
+        Tries to return the basic physical unit
+        e.g. "m" for string of "Meters"
 
+        :param unit:
+        :type unit:
+        :return:
+        :rtype:
+        """
         if not isinstance(unit, str):
             return None
 
@@ -357,7 +365,7 @@ class UnitLookup(object):
         return baseUnit in UnitLookup.time_units() + UnitLookup.date_units()
 
     @staticmethod
-    def convertMetricUnit(value: float, u1: str, u2: str) -> float:
+    def convertMetricUnit(value: typing.Union[float, np.ndarray], u1: str, u2: str) -> float:
         """
         Converts value `value` from unit `u1` into unit `u2`
         :param value: float | int | might work with numpy.arrays as well
@@ -366,7 +374,8 @@ class UnitLookup(object):
         :return: float | numpy.array, converted values
                  or None in case conversion is not possible
         """
-
+        assert isinstance(u1, str), 'Source unit needs to be a str'
+        assert isinstance(u2, str), 'Destination unit needs to be a str'
         u1 = UnitLookup.baseUnit(u1)
         u2 = UnitLookup.baseUnit(u2)
 

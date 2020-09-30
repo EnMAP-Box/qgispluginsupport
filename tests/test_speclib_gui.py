@@ -536,6 +536,12 @@ class TestSpeclibWidgets(TestCase):
 
         pd = QProgressDialog()
         speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
+
+        #
+        sl2 = TestObjects.createSpectralLibrary(2, wlu='Nanometers')
+        speclib.startEditing()
+        speclib.addSpeclib(sl2)
+
         slw = SpectralLibraryWidget(speclib=speclib)
         pd.close()
         QgsProject.instance().addMapLayer(slw.speclib())
