@@ -587,8 +587,18 @@ class TestSpeclibWidgets(TestCase):
         lv = QVBoxLayout()
         lv.addLayout(lh)
         lv.addWidget(slw)
+
         w = QWidget()
         w.setLayout(lv)
+
+        # add profile with none-default plot style
+        onAddRandomProfile()
+
+        slw.plotWidget().onProfileRendererChanged()
+        path = self.testOutputDirectory() / 'speclib_gui' / 'testsli_gui.gpkg'
+        os.makedirs(path.parent, exist_ok=True)
+        speclib.write(path)
+
         self.showGui(w)
 
     @unittest.skipIf(False, '')

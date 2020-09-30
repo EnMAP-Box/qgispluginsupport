@@ -183,12 +183,14 @@ class SpectralProfileRendererWidget(QWidget):
         self.actionActivateDarkTheme.triggered.connect(lambda: self.setRendererTheme(SpectralProfileRenderer.dark()))
 
     def onUseColorsFromVectorRendererChanged(self, checked: bool):
-        self.onProfileRendererChanged()
+
         w: PlotStyleWidget = self.wDefaultProfileStyle
         assert isinstance(w, PlotStyleWidget)
         w.btnLinePenColor.setDisabled(checked)
         w.btnMarkerBrushColor.setDisabled(checked)
         w.btnMarkerPenColor.setDisabled(checked)
+
+        self.onProfileRendererChanged()
 
     def setRendererTheme(self, profileRenderer: SpectralProfileRenderer):
         profileRenderer = profileRenderer.clone()
@@ -199,9 +201,8 @@ class SpectralProfileRendererWidget(QWidget):
     def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
         assert isinstance(profileRenderer, SpectralProfileRenderer)
 
-        if self.mLastRenderer is None:
-            self.mLastRenderer = profileRenderer
-            self.btnReset.setEnabled(True)
+        self.mLastRenderer = profileRenderer
+        self.btnReset.setEnabled(True)
 
         changed = profileRenderer != self.spectralProfileRenderer()
 
@@ -233,6 +234,7 @@ class SpectralProfileRendererWidget(QWidget):
         cs.profileStyle = self.wDefaultProfileStyle.plotStyle()
         if isinstance(self.mLastRenderer, SpectralProfileRenderer):
             cs.temporaryProfileStyle = self.mLastRenderer.temporaryProfileStyle.clone()
+            cs.mFID2Style.update(self.mLastRenderer.mFID2Style)
         cs.useRendererColors = self.optionUseColorsFromVectorRenderer.isChecked()
         return cs
 
@@ -852,6 +854,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             profileRenderer.setInput(self.speclib())
             self.speclib().setProfileRenderer(profileRenderer)
 
+            self.actionSpectralProfileRendering().setProfileRenderer(profileRenderer)
+
     def updatePlot(self, *args):
         try:
             self.updateSpectralProfilePlotItems()
@@ -1164,7 +1168,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Updates all SpectralProfilePlotDataItems
         """
         profileRenderer: SpectralProfileRenderer = self.profileRenderer()
-        self.actionSpectralProfileRendering().setProfileRenderer(profileRenderer)
+        #self.actionSpectralProfileRendering().setProfileRenderer(profileRenderer)
         # set Background color
         self.setBackground(profileRenderer.backgroundColor)
 
@@ -1184,9 +1188,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mInfoLabelCursor.setColor(profileRenderer.infoColor)
         self.mCrosshairLineH.pen.setColor(profileRenderer.infoColor)
         self.mCrosshairLineV.pen.setColor(profileRenderer.infoColor)
-
-        # update viewbox context menu and
-        self.actionSpectralProfileRendering().setProfileRenderer(profileRenderer)
 
         self.updateProfileStyles()
 

@@ -684,7 +684,6 @@ class TestCore(TestCase):
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertNotEqual(id(sl1), id(sl2))
 
-
     def test_mergeSpeclibSpeed(self):
 
         from qpstestdata import speclib
