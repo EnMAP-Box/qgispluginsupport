@@ -1230,7 +1230,7 @@ class SpectralProfileRenderer(object):
     @staticmethod
     def readXml(node: QDomElement, *args):
         """
-        Reads the PlotStyle from a QDomElement (XML node)
+        Reads the SpectralProfileRenderer from a QDomElement (XML node)
         :param self:
         :param node:
         :param args:
@@ -1241,6 +1241,8 @@ class SpectralProfileRenderer(object):
             node = node.firstChildElement(XMLNODE_PROFILE_RENDERER)
         if node.isNull():
             return None
+
+        default: SpectralProfileRenderer = SpectralProfileRenderer.default()
 
         renderer = SpectralProfileRenderer()
         renderer.backgroundColor = QColor(node.attribute('bg', renderer.backgroundColor.name()))
@@ -1255,6 +1257,8 @@ class SpectralProfileRenderer(object):
 
         nodeDefaultStyle = node.firstChildElement('default_style')
         renderer.profileStyle = PlotStyle.readXml(nodeDefaultStyle)
+        if not isinstance(renderer.profileStyle, PlotStyle):
+            renderer.profileStyle = default.profileStyle
 
         customStyleNodes = node.firstChildElement('custom_styles').childNodes()
         for i in range(customStyleNodes.count()):
@@ -2592,10 +2596,10 @@ class SpectralLibrary(QgsVectorLayer):
         msg = super(SpectralLibrary, self).exportNamedStyle(doc, context=context, categories=categories)
         if msg == '':
             qgsNode = doc.documentElement().toElement()
-            speclibNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
+            #speclibNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
             if isinstance(self.mProfileRenderer, SpectralProfileRenderer):
-                self.mProfileRenderer.writeXml(speclibNode, doc)
-            qgsNode.appendChild(speclibNode)
+                self.mProfileRenderer.writeXml(qgsNode, doc)
+            #qgsNode.appendChild(speclibNode)
 
         return msg
 

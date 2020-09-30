@@ -559,8 +559,12 @@ class TestCore(TestCase):
         os.makedirs(path.parent, exist_ok=True)
         SLIB.write(path)
 
+        pathQml = path.parent / 'testsli.qml'
+        self.assertTrue(pathQml.is_file())
+
         SLIB2 = SpectralLibrary(path)
         self.assertIsInstance(SLIB2, SpectralLibrary)
+        SLIB2.loadNamedStyle(pathQml.as_posix())
 
         for p1, p2 in zip(SLIB, SLIB2):
             self.assertEqual(p1, p2)
