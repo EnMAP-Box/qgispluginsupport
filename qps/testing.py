@@ -354,7 +354,7 @@ class TestCase(qgis.testing.TestCase):
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
 
-        # trie to find QGIS resource files
+        # tryto find QGIS resource files
         for r in findQGISResourceFiles():
             if r not in resources:
                 resources.append(r)

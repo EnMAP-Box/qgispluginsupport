@@ -442,7 +442,8 @@ class TestCore(TestCase):
     def test_SpectralLibrary(self):
 
         self.assertListEqual(vsiSpeclibs(), [])
-        self.assertTrue(len(SpectralLibrary.instances()) == 0)
+
+
         sp1 = SpectralProfile()
         sp1.setName('Name 1')
         sp1.setValues(y=[1, 1, 1, 1, 1], x=[450, 500, 750, 1000, 1500])
@@ -553,6 +554,17 @@ class TestCore(TestCase):
         self.assertTrue(len(SLIB) == n1 + n2 + n2)
         self.assertTrue(SLIB.commitChanges())
 
+        # save and restore
+        path = self.testOutputDirectory() / 'speclib' / 'testsli.gpkg'
+        os.makedirs(path.parent, exist_ok=True)
+        SLIB.write(path)
+
+        SLIB2 = SpectralLibrary(path)
+        self.assertIsInstance(SLIB2, SpectralLibrary)
+
+        for p1, p2 in zip(SLIB, SLIB2):
+            self.assertEqual(p1, p2)
+
     def test_others(self):
 
         self.assertEqual(23, toType(int, '23'))
@@ -661,8 +673,8 @@ class TestCore(TestCase):
 
     def test_multiinstances(self):
 
-        sl1 = SpectralLibrary(name='A')
-        sl2 = SpectralLibrary(name='B')
+        sl1 = SpectralLibrary(baseName='A')
+        sl2 = SpectralLibrary(baseName='B')
 
         self.assertIsInstance(sl1, SpectralLibrary)
         self.assertIsInstance(sl2, SpectralLibrary)
