@@ -61,21 +61,7 @@ class LayerPropertyTests(TestCase):
         vl = QgsVectorLayer(testvectordata)
         sLayers = subLayers(vl)
         self.assertIsInstance(sLayers, list)
-        self.assertTrue(len(sLayers) == 2)
-
-        p = r'F:\Temp\Hajo\S3A_OL_2_EFR____20160614T082507_20160614T082707_20170930T190837_0119_005_178______MR1_R_NT_002_vical_c2rcc015nets20170704.nc'
-
-        if os.path.isfile(p):
-            rl = QgsRasterLayer(p)
-            sDefs = subLayerDefinitions(rl)
-            self.assertTrue(sDefs, list)
-            self.assertTrue(len(sDefs) > 0)
-
-            sLayers = subLayers(rl)
-
-            self.assertTrue(sLayers, list)
-            self.assertTrue(len(sLayers) > 0)
-
+        self.assertTrue(len(sLayers) == 3)
 
 
     def test_defaultRenderer(self):

@@ -131,7 +131,6 @@ class TestUtils(TestCase):
 
     def test_file_search(self):
 
-
         rootQps = pathlib.Path(__file__).parents[1]
         self.assertTrue(rootQps.is_dir())
 
@@ -145,12 +144,6 @@ class TestUtils(TestCase):
             self.assertIsInstance(results, list)
             self.assertTrue(len(results) == 1)
             self.assertTrue(os.path.isfile(results[0]))
-
-        results = list(file_search(rootQps, 'speclib', directories=True, recursive=True))
-        self.assertIsInstance(results, list)
-        self.assertTrue(len(results) == 1)
-        self.assertTrue(os.path.isdir(results[0]))
-
 
     def test_vsimem(self):
 
@@ -280,7 +273,6 @@ class TestUtils(TestCase):
             bu = UnitLookup.baseUnit(u)
             self.assertIsInstance(bu, str)
             self.assertTrue(len(bu) > 0)
-
 
     def test_bandNames(self):
 

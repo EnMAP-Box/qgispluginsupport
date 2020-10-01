@@ -383,6 +383,39 @@ class TestCase(qgis.testing.TestCase):
         os.makedirs(testDir, exist_ok=True)
         return testDir
 
+    def createImageCopy(self, path, overwrite_existing: bool = True) -> str:
+        """
+        Creates a save image copy to manipulate metadata
+        :param path: str, path to valid raster image
+        :type path:
+        :return:
+        :rtype:
+        """
+        if isinstance(path, pathlib.Path):
+            path = path.as_posix()
+
+        ds: gdal.Dataset = gdal.Open(path)
+        assert isinstance(ds, gdal.Dataset)
+        drv: gdal.Driver = ds.GetDriver()
+
+        testdir = self.testOutputDirectory() / 'images'
+        os.makedirs(testdir, exist_ok=True)
+        bn, ext = os.path.splitext(os.path.basename(path))
+
+        newpath = testdir / f'{bn}{ext}'
+        i = 0
+        if overwrite_existing and newpath.is_file():
+            drv.Delete(newpath.as_posix())
+        else:
+            while newpath.is_file():
+                i += 1
+                newpath = testdir / f'{bn}{i}{ext}'
+
+        drv.CopyFiles(newpath.as_posix(), path)
+
+        return newpath.as_posix()
+
+
     def setUp(self):
 
         print('\nSET UP {}'.format(self.id()))

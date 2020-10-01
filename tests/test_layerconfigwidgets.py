@@ -217,21 +217,15 @@ class LayerConfigWidgetsTests(TestCase):
 
         self.assertIsInstance(wFields, LayerFieldsConfigWidget)
         self.assertIsInstance(wForms, LayerAttributeFormConfigWidget)
-
-
         self.showGui([wFields, wForms])
 
-
-    def test_legend(self):
-        pass
-
-    #
 
     def test_rasterbandselection2(self):
         from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
 
-        from qpstestdata import timestack
-        lyrR = QgsRasterLayer(timestack)
+        from qpstestdata import ndvi_ts
+        lyrR = QgsRasterLayer(ndvi_ts)
+        self.assertTrue(lyrR.isValid())
         cR = self.canvasWithLayer(lyrR)
 
         f = RasterBandConfigWidgetFactory()
@@ -242,11 +236,9 @@ class LayerConfigWidgetsTests(TestCase):
 
         self.showGui([cR, w])
 
-
     def test_rasterbandselection(self):
         from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
 
-        from qpstestdata import enmap
         lyrR = TestObjects.createRasterLayer(nb=200)
         lyrV = TestObjects.createVectorLayer()
         cR = self.canvasWithLayer(lyrR)
@@ -279,51 +271,50 @@ class LayerConfigWidgetsTests(TestCase):
         w.setLayout(l)
         self.showGui(w)
 
+
     def test_GDALBandNameModel(self):
 
         from qpstestdata import enmap
-        path = enmap
+        enmap2 = self.createImageCopy(enmap)
 
-        ds:gdal.Dataset = gdal.Open(path)
+        ds: gdal.Dataset = gdal.Open(enmap2)
         old_name = ds.GetRasterBand(1).GetDescription()
         del ds
 
-        lyrR = QgsRasterLayer(path)
+        lyrR = QgsRasterLayer(enmap2)
         from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel
-        model = GDALBandMetadataModel()
-        model.setLayer(lyrR)
+        bandModel = GDALBandMetadataModel()
+        bandModel.setLayer(lyrR)
 
-        self.assertEqual(model.rowCount(), lyrR.bandCount())
+        self.assertEqual(bandModel.rowCount(), lyrR.bandCount())
 
         fm = QSortFilterProxyModel()
-        fm.setSourceModel(model)
+        fm.setSourceModel(bandModel)
 
         tv = QTableView()
         tv.setSortingEnabled(True)
         tv.setModel(fm)
 
         new_name = old_name + 'XYZ'
-        changed = model.setData(model.index(0, 1), new_name, role=Qt.EditRole)
+        changed = bandModel.setData(bandModel.index(0, 0), new_name, role=Qt.EditRole)
         self.assertTrue(changed)
-        model.applyToLayer()
-        model.syncToLayer()
-        self.assertEqual(model.data(model.index(0, 1), role=Qt.DisplayRole), new_name)
+        bandModel.applyToLayer()
+        bandModel.syncToLayer()
+        self.assertEqual(bandModel.data(bandModel.index(0, 0), role=Qt.DisplayRole), new_name)
 
-        ds: gdal.Dataset = gdal.Open(path)
+        ds: gdal.Dataset = gdal.Open(enmap2)
         new_name2 = ds.GetRasterBand(1).GetDescription()
         del ds
         self.assertEqual(new_name, new_name2)
 
-
         self.showGui(tv)
-
 
     def test_GDALMetadataModel(self):
         from qpstestdata import enmap, landcover
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
 
         c = QgsMapCanvas()
-        lyr = QgsRasterLayer(enmap)
+        #lyr = QgsRasterLayer(enmap)
         lyr = QgsVectorLayer(landcover)
         model = GDALMetadataModel()
         model.setIsEditable(True)
@@ -356,13 +347,13 @@ class LayerConfigWidgetsTests(TestCase):
         self.assertEqual(item.key, 'MyKey')
         self.assertEqual(item.value, 'MyValue')
 
-
-
         self.showGui(d)
 
     def test_GDALMetadataModelConfigWidget(self):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
-        from qpstestdata import enmap, landcover, envi_bsq
+        from qpstestdata import landcover, envi_bsq
+
+        envi_bsq = self.createImageCopy(envi_bsq)
 
         lyrB = QgsRasterLayer(envi_bsq)
         lyrR = QgsRasterLayer(envi_bsq)
@@ -416,7 +407,6 @@ class LayerConfigWidgetsTests(TestCase):
 
             w.apply()
         self.showGui(m)
-
 
     def test_gdalmetadata(self):
 

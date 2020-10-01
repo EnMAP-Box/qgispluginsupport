@@ -341,7 +341,6 @@ class TestIO(TestCase):
         for fieldName in vlLandCover.fields().names():
             self.assertTrue(fieldName in speclib4.fieldNames())
 
-
     def test_reloadProfiles(self):
         lyr = QgsRasterLayer(enmap)
         QgsProject.instance().addMapLayer(lyr)

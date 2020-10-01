@@ -162,6 +162,7 @@ class TestsClassificationScheme(TestCase):
         c = ClassInfo(label=1, name='New Class', color=QColor('red'))
         cs.insertClass(c)
         self.assertEqual(cs[3], c)
+        cs.mZeroBased = True
         cs._updateLabels()
         self.assertEqual(cs[3].label(), 3)
 
@@ -182,7 +183,6 @@ class TestsClassificationScheme(TestCase):
         c2 = ClassInfo(label=5, name='Class 2')
         cs.insertClass(c2)
         self.assertTrue(len(cs) == 5)
-
 
         mimeData = cs.mimeData(None)
         self.assertIsInstance(mimeData, QMimeData)
@@ -371,7 +371,7 @@ class TestsClassificationScheme(TestCase):
 
 
         cs = self.createClassSchemeA()
-
+        cs.mZeroBased = True
         w = ClassificationSchemeComboBox(classification=cs)
 
 

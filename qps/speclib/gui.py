@@ -1549,8 +1549,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         selectedOnly = self.actionShowSelectedProfilesOnly().isChecked()
         selectedIds = self.speclib().selectedFeatureIds()
 
-        if self.dualView().filteredFeatureCount() > 0:
-            allIDs = self.dualView().filteredFeatures()
+        dualView = self.dualView()
+        if isinstance(dualView, QgsDualView) and dualView.filteredFeatureCount() > 0:
+            allIDs = dualView.filteredFeatures()
             selectedIds = [fid for fid in allIDs if fid in selectedIds]
         else:
             allIDs = self.speclib().allFeatureIds()
@@ -1568,7 +1569,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         # 2. selected
         # 3. others
 
-        dualView = self.dualView()
+
 
         # overlaid features / current spectral
         priority0 = sorted(self.mTEMPORARY_HIGHLIGHTED)

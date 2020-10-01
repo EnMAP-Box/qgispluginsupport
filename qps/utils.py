@@ -1652,7 +1652,7 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
                             _wl = checkWavelength(key, values)
                     if wlu is not None:
                         s = ""
-                    if wlu and _wl:
+                    if wlu is not None and _wl is not None:
                         wl.append(_wl[0])
                         break
 

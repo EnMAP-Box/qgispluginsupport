@@ -17,7 +17,7 @@ from qgis import *
 from qgis.gui import *
 from qgis.gui import QgsMapCanvas
 from qgis.core import *
-from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, QgsProject
+from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, QgsProject, QgsCoordinateReferenceSystem
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from qps.testing import TestObjects, TestCase
@@ -60,8 +60,13 @@ class CursorLocationTest(TestCase):
         from qps.maptools import CursorLocationMapTool
         mt = CursorLocationMapTool(c)
         c.setMapTool(mt)
-        mt.sigLocationRequest[SpatialPoint, QgsMapCanvas].connect(dock.loadCursorLocation)
 
+        def onLocationRequest(crs:QgsCoordinateReferenceSystem, pt: QgsPointXY):
+            canvas: QgsMapCanvas = mt.canvas()
+            spt = SpatialPoint(canvas.mapSettings().destinationCrs(), pt)
+            dock.loadCursorLocation(spt, canvas)
+
+        mt.sigLocationRequest.connect(onLocationRequest)
 
         w = QWidget()
         l = QHBoxLayout()
