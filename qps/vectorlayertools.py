@@ -98,7 +98,7 @@ class VectorLayerTools(QgsVectorLayerTools):
         if isinstance(layer, QgsVectorLayer) \
                 and layer.isEditable() \
                 and isinstance(qgis.utils.iface, QgisInterface):
-                qgis.utils.iface.pasteFromClipBoard(layer)
+                qgis.utils.iface.pasteFromClipboard(layer)
 
     def deleteSelected(self, layer: QgsVectorLayer):
         if isinstance(layer, QgsVectorLayer) and layer.isEditable():
