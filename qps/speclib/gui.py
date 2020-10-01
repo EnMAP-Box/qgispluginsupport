@@ -1529,11 +1529,18 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if not isinstance(self.speclib(), SpectralLibrary):
             return []
 
-        nMax = len(self.speclib())
+
         selectedOnly = self.actionShowSelectedProfilesOnly().isChecked()
         selectedIds = self.speclib().selectedFeatureIds()
 
-        allIDs = self.speclib().allFeatureIds()
+        if self.dualView().filteredFeatureCount() > 0:
+            allIDs = self.dualView().filteredFeatures()
+            selectedIds = [fid for fid in allIDs if fid in selectedIds]
+        else:
+            allIDs = self.speclib().allFeatureIds()
+
+        nMax = len(allIDs)
+
         if nMax <= self.maxProfiles():
             if selectedOnly:
                 return [fid for fid in allIDs if fid in selectedIds]

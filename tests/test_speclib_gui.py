@@ -623,6 +623,8 @@ class TestSpeclibWidgets(TestCase):
         os.makedirs(path.parent, exist_ok=True)
         speclib.write(path)
 
+        slw.setFilterExpression('"fid" < 5', QgsAttributeForm.ReplaceFilter, True)
+
         self.showGui(w)
 
     @unittest.skipIf(False, '')

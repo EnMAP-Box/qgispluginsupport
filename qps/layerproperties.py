@@ -78,7 +78,8 @@ from qgis.gui import \
     QgsMessageBar, \
     QgsOptionsDialogBase, \
     QgsRasterTransparencyWidget, \
-    QgsSublayersDialog
+    QgsSublayersDialog, \
+    QgsFilterLineEdit
 
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
@@ -1089,7 +1090,10 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         config = mLayer.attributeTableConfig()
         self.mMainView.setAttributeTableConfig(config)
 
+        # workaround for missing filter widget
         # self.mFeatureFilterWidget.init(mLayer, self.mEditorContext, self.mMainView, None, QgisApp.instance().messageTimeout())
+        self.mApplyFilterButton.setDefaultAction(self.mActionApplyFilter)
+        self.mActionApplyFilter.triggered.connect(self._filterQueryAccepted)
 
         self.mActionFeatureActions = QToolButton()
         self.mActionFeatureActions.setAutoRaise(False)
@@ -1287,6 +1291,18 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
                                  self.mUpdateExpressionText.asExpression(), filteredIds)
 
+    def _filterQueryAccepted(self):
+        if self.mFilterQuery.text().strip() == '':
+            self._filterShowAll()
+        else:
+            self._filterQueryChanged(self.mFilterQuery.text())
+
+    def _filterShowAll(self):
+        self.mMainView.setFilterMode(QgsAttributeTableFilterModel.ShowAll)
+
+    def _filterQueryChanged(self, query):
+        self.setFilterExpression(query)
+
     def runFieldCalculation(self, layer: QgsVectorLayer,
                             fieldName: str,
                             expression: str,
@@ -1397,9 +1413,73 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     def formFilterSet(self, filter: str, filterType: QgsAttributeForm.FilterType):
         self.setFilterExpression(filter, filterType, True)
 
-    def setFilterExpression(self, filterString: str, filterType: QgsAttributeForm.FilterType, alwaysShowFilter: bool):
-        pass
-        # mFeatureFilterWidget->setFilterExpression(filterString, type, alwaysShowFilter );
+    def setFilterExpression(self,
+                            filterString: str,
+                            filterType: QgsAttributeForm.FilterType = QgsAttributeForm.ReplaceFilter,
+                            alwaysShowFilter: bool = False):
+
+        # as long we have no filter widget implementation
+        if filterString is None:
+            filterString = ''
+
+        assert isinstance(self.mFilterQuery, QgsFilterLineEdit)
+        filter = self.mFilterQuery.text()
+        if filter != '' and filterString != '':
+            if filterType == QgsAttributeForm.ReplaceFilter:
+                filter = filterString
+            elif filterType == QgsAttributeForm.FilterAnd:
+                filter = f'({filter}) AND ({filterString})'
+            elif filterType == QgsAttributeForm.FilterOr:
+                filter = f'({filter}) OR ({filterString})'
+        elif len(filterString) > 0:
+            filter = filterString
+        else:
+            self.mMainView.setFilterMode(QgsAttributeTableFilterModel.ShowAll)
+            return
+        self.mFilterQuery.setText(filter)
+
+        filterExpression: QgsExpression = QgsExpression(filter)
+        context: QgsExpressionContext = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(self.mLayer))
+        fetchGeom: bool = filterExpression.needsGeometry()
+
+        myDa = QgsDistanceArea()
+        myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
+        myDa.setEllipsoid(QgsProject.instance().ellipsoid())
+        filterExpression.setGeomCalculator(myDa)
+        filterExpression.setDistanceUnits(QgsProject.instance().distanceUnits())
+        filterExpression.setAreaUnits(QgsProject.instance().areaUnits())
+
+        if filterExpression.hasParserError():
+            print(f'Parsing errors: {filterExpression.parserErrorString()}', file=sys.stderr)
+
+        if not filterExpression.prepare(context):
+            print(f'Evaluation error {filterExpression.evalErrorString()}', file=sys.stderr)
+            return
+
+        filteredFeatures = []
+
+        request = self.mMainView.masterModel().request()
+        request.setSubsetOfAttributes(filterExpression.referencedColumns(), self.mLayer.fields())
+        if not fetchGeom:
+            request.setFlags(QgsFeatureRequest.NoGeometry)
+        else:
+            request.setFlags(request.flags() & QgsFeatureRequest.NoGeometry)
+
+        for f in self.mLayer.getFeatures(request):
+            context.setFeature(f)
+            if filterExpression.evaluate(context) != 0:
+                filteredFeatures.append(f.id())
+            if filterExpression.hasEvalError():
+                break
+
+        self.mMainView.setFilteredFeatures(filteredFeatures)
+
+        if filterExpression.hasEvalError():
+            print(f'Error filtering: {filterExpression.evalErrorString()}', file=sys.stderr)
+            return
+        self.mMainView.setFilterMode(QgsAttributeTableFilterModel.ShowFilteredList)
+
+
 
     def viewModeChanged(self, mode: QgsAttributeEditorContext.Mode):
         if mode != QgsAttributeEditorContext.SearchMode:
