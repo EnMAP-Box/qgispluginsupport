@@ -62,8 +62,8 @@ from qgis.gui import QgsFileWidget
 from osgeo import gdal, ogr, osr, gdal_array
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
-from qps import DIR_UI_FILES
-from qps.utils import loadUi
+from . import DIR_UI_FILES
+from .utils import loadUi
 
 
 class SearchFilesDialog(QDialog):

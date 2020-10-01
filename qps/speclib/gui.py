@@ -46,7 +46,8 @@ from qgis.core import \
 from qgis.gui import \
     QgsEditorWidgetWrapper, QgsAttributeTableView, \
     QgsActionMenu, QgsEditorWidgetFactory, QgsStatusBar, \
-    QgsDualView, QgsGui, QgisInterface, QgsMapCanvas, QgsDockWidget, QgsEditorConfigWidget
+    QgsDualView, QgsGui, QgisInterface, QgsMapCanvas, QgsDockWidget, QgsEditorConfigWidget, \
+    QgsAttributeTableFilterModel
 
 
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
@@ -749,11 +750,28 @@ class SpectralViewBox(pg.ViewBox):
     def updateCurrentPosition(self, x, y):
         self.mCurrentCursorPosition = (x, y)
 
+class SpectralLibraryPlotStats(object):
 
+    def __init__(self):
+        self.features_speclib: int = 0
+        self.features_speclib_selected: int = 0
 
-SpectralLibraryPlotStats = collections.namedtuple('SpectralLibraryPlotStats',
-                                                  ['total', 'visible', 'max_visible', 'value_error', 'selected'])
+        self.filter_mode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowAll
+        self.features_filtered: int = 0
+        self.features_filtered_selected: int = 0
 
+        self.features_plotted: int = 0
+        self.features_plotted_max: int = 0
+
+        self.features_with_value_error: int = 0
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, SpectralLibraryPlotStats):
+            return False
+        for k in self.__dict__.keys():
+            if self.__dict__[k] != other.__dict__[k]:
+                return False
+        return True
 
 class SpectralLibraryPlotWidget(pg.PlotWidget):
     """
@@ -1489,28 +1507,27 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """
         Returns stats related to existing and visualized SpectralProfiles
         """
+        stats = SpectralLibraryPlotStats()
+        stats.features_plotted_max = self.maxProfiles()
+        if isinstance(self.speclib(), SpectralLibrary) and not sip.isdeleted(self.speclib()):
+            stats.features_speclib = self.speclib().featureCount()
+            stats.features_speclib_selected = self.speclib().selectedFeatureCount()
 
-        nVisible = 0
-        nNoValues = 0
-        if isinstance(self.speclib(), SpectralLibrary):
-            nTotal = self.speclib().featureCount()
-            nSelected = self.speclib().selectedFeatureCount()
-        else:
-            nTotal = nSelected = 0
+            stats.filter_mode = self.dualView().filterMode()
+
+            if stats.filter_mode != QgsAttributeTableFilterModel.ShowAll:
+                stats.features_filtered = self.dualView().filteredFeatureCount()
+                selected_fids = self.speclib().selectedFeatureIds()
+                for f in self.dualView().filteredFeatures():
+                    if f in selected_fids:
+                        stats.features_filtered_selected += 1
 
         for pdi in self.allSpectralProfilePlotDataItems():
             if pdi.isVisible():
-                nVisible += 1
+                stats.features_plotted += 1
             elif not pdi.valueConversionPossible():
-                nNoValues += 1
+                stats.features_with_value_error += 1
 
-        stats = SpectralLibraryPlotStats(
-            visible=nVisible,
-            max_visible=self.maxProfiles(),
-            value_error=nNoValues,
-            total=nTotal,
-            selected=nSelected
-        )
         return stats
 
     def plottedProfileIDs(self) -> typing.List[int]:
@@ -1528,7 +1545,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """
         if not isinstance(self.speclib(), SpectralLibrary):
             return []
-
 
         selectedOnly = self.actionShowSelectedProfilesOnly().isChecked()
         selectedIds = self.speclib().selectedFeatureIds()
@@ -2531,6 +2547,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.spectralLibrary().deleteAttribute(index)
             self.spectralLibrary().commitChanges()
 
+
 class SpectralLibraryInfoLabel(QLabel):
 
     def __init__(self, *args, **kwds):
@@ -2538,6 +2555,7 @@ class SpectralLibraryInfoLabel(QLabel):
         self.mPW: SpectralLibraryPlotWidget = None
 
         self.mLastStats: SpectralLibraryPlotStats = None
+        self.setStyleSheet('QToolTip{width:300px}')
 
     def setPlotWidget(self, pw: SpectralLibraryPlotWidget):
         assert isinstance(pw, SpectralLibraryPlotWidget)
@@ -2552,51 +2570,61 @@ class SpectralLibraryInfoLabel(QLabel):
             self.setToolTip('')
             return
 
-        slib = self.mPW.speclib()
+        stats = self.plotWidget().profileStats()
+        if self.mLastStats == stats:
+            return
 
-        if slib is not None and not sip.isdeleted(slib):
-            stats = self.plotWidget().profileStats()
+        msg = f'<html><head/><body>'
+        ttp = f'<html><head/><body><p>'
 
-            if self.mLastStats == stats:
-                return
-
-            bLimit = stats.visible < stats.total
-            if bLimit:
-                style = 'color:red'
-            else:
-                style = ''
-
-            if stats.value_error > 0:
-                msgAxisError = f'/<span style="color:red">{stats.value_error}</span>'
-                ttAxisError = f'<br/><span style="color:red">{stats.value_error} profile(s) ' \
-                              f'not convertible to {self.plotWidget().xUnit()}'
-            else:
-                msgAxisError = ttAxisError = ''
-
-            msg = f'<html><head/><body>' \
-                  f'{stats.total}/' \
-                  f'{stats.selected}/' \
-                  f'<span style="{style}">{stats.visible}</span>' \
-                  + msgAxisError + \
-                  f'</body></head>'
-            tt = f'<html><head/><body>' \
-                 f'{stats.total} profile(s) in total<br/>' \
-                 f'{stats.selected} profile(s) selected<br/>' \
-                 f'<span style="{style}">{stats.visible} profile(s) visible'
-            if bLimit:
-                tt += f'<br/>increase the current limit of {stats.max_visible} profile(s) to show more at same time.'
-            tt += ttAxisError + '</span></body></html>'
-            self.setText(msg)
-            self.setToolTip(tt)
-            self.setMinimumWidth(self.sizeHint().width())
-
-            self.mLastStats = stats
+        # total + filtering
+        if stats.filter_mode == QgsAttributeTableFilterModel.ShowFilteredList:
+            needed = stats.features_filtered
+            selected = stats.features_filtered_selected
+            msg += f'{stats.features_filtered}f/'
+            ttp += f'{stats.features_filtered} profiles filtered out of {stats.features_speclib}<br/>'
         else:
-            self.setText('')
-            self.setToolTip('')
+            # show all
+            needed = stats.features_speclib
+            selected = stats.features_speclib_selected
+            msg += f'{stats.features_speclib}</span>/'
+            ttp += f'{stats.features_speclib} profiles in total<br/>'
+
+        # show selected
+        msg += f'{selected}/'
+        ttp += f'{selected} selected in plot/table<br/>'
+
+        exceeds_limit = needed > stats.features_plotted
+
+        if exceeds_limit:
+            msg += f'<span style="color:red">{stats.features_plotted}({needed})</span>'
+            ttp += f'<span style="color:red">' \
+                   f'{stats.features_plotted} of {needed} profiles plotted<br/>' \
+                   f'<br/>Increase plot limit to show more profiles at same time.' \
+                   f'(Might slow-down plot speed)</span>'
+        else:
+            msg += f'{stats.features_plotted}'
+            ttp += f'{stats.features_plotted} profiles plotted<br/>'
+
+        if stats.features_with_value_error > 0:
+            msg = f'/<span style="color:red">{stats.features_with_value_error}</span>'
+            ttp = f'<br/><span style="color:red">{stats.features_with_value_error} profiles ' \
+                  f'not convertible to {self.plotWidget().xUnit()}'
+
+        msg += '</body></html>'
+        ttp += '</p></body></html>'
+
+        self.setText(msg)
+        self.setToolTip(ttp)
+        self.setMinimumWidth(self.sizeHint().width())
+
+        self.mLastStats = stats
 
     def contextMenuEvent(self, event: QContextMenuEvent):
         m = QMenu()
+
+        stats = self.plotWidget().profileStats()
+
         a = m.addAction('Select axis-unit incompatible profiles')
         a.setToolTip(f'Selects all profiles that cannot be displayed in {self.plotWidget().xUnit()}')
         a.triggered.connect(self.onSelectAxisUnitIncompatibleProfiles)
@@ -2604,6 +2632,7 @@ class SpectralLibraryInfoLabel(QLabel):
         a = m.addAction('Reset to band index')
         a.setToolTip('Resets the x-axis to show the band index.')
         a.triggered.connect(lambda *args: self.plotWidget().setXUnit(BAND_INDEX))
+
         m.exec_(event.globalPos())
 
     def onSelectAxisUnitIncompatibleProfiles(self):

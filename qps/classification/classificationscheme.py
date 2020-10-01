@@ -77,7 +77,6 @@ def hasClassification(pathOrDataset):
     :return: True | False
     """
     ds = None
-    from qps.utils import gdalDataset
     try:
         if isinstance(pathOrDataset, gdal.Dataset):
             ds = pathOrDataset
