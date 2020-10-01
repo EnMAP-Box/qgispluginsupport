@@ -662,8 +662,6 @@ class TestCore(TestCase):
                 style.setLineColor(QColor(NAME2NAME[p.name()]))
                 sl1.profileRenderer().setProfilePlotStyle(style, p.id())
 
-
-
         # test line color before commit
         checkColorNames(sl1)
 

@@ -3,8 +3,9 @@ import os
 from qps.testing import TestCase
 
 from qps.subdatasets import *
-class TestSubDataSets(TestCase):
 
+
+class TestSubDataSets(TestCase):
     ref_file = r'D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml'
 
     @unittest.skipIf(not os.path.isfile(ref_file), 'Missing S2 Testfile')
@@ -14,12 +15,12 @@ class TestSubDataSets(TestCase):
 
         self.assertIsInstance(info, DatasetInfo)
         s = ""
-        for name, descr, sdtype in zip(info.subdataset_names(), info.subdataset_descriptions(), info.subdataset_types()):
+        for name, descr, sdtype in zip(info.subdataset_names(), info.subdataset_descriptions(),
+                                       info.subdataset_types()):
             self.assertIsInstance(name, str)
             self.assertIsInstance(descr, str)
             self.assertIsInstance(sdtype, SubDatasetType)
             self.assertEqual(sdtype.name, descr)
-
 
     def create_subset_infos(self) -> typing.List[DatasetInfo]:
 
@@ -41,7 +42,6 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
         infos = self.create_subset_infos()
         return [i.mReferenceFile for i in infos]
 
-
     def test_subdatasetdescription(self):
         d = SubDatasetType('a', False)
         self.assertEqual(d.checked, False)
@@ -49,18 +49,21 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
 
     def test_subdatasettask(self):
         files = self.create_references_filelist()
+        files = [f for f in files if os.path.isfile(f)]
+        if len(files) > 0:
+            foundInfos = []
 
-        foundInfos = []
-        def onSubDatasetsFound(infos: typing.List[DatasetInfo]):
-            self.assertIsInstance(infos, list)
-            for info in infos:
-                self.assertIsInstance(info, DatasetInfo)
-                foundInfos.append(info)
-        task = SubDatasetLoadingTask(files)
-        task.sigFoundSubDataSets.connect(onSubDatasetsFound)
-        task.run()
+            def onSubDatasetsFound(infos: typing.List[DatasetInfo]):
+                self.assertIsInstance(infos, list)
+                for info in infos:
+                    self.assertIsInstance(info, DatasetInfo)
+                    foundInfos.append(info)
 
-        self.assertTrue(len(foundInfos) > 0)
+            task = SubDatasetLoadingTask(files)
+            task.sigFoundSubDataSets.connect(onSubDatasetsFound)
+            task.run()
+
+            self.assertTrue(len(foundInfos) > 0)
 
     def test_subdatasetdialog(self):
         files = self.create_references_filelist()
@@ -91,4 +94,5 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
 
 if __name__ == '__main__':
     import xmlrunner
+
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

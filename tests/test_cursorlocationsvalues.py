@@ -113,7 +113,6 @@ class CursorLocationTest(TestCase):
 
         self.showGui(cldock)
 
-
     def test_weblayertest(self):
 
         if os.environ.get('CI'):
@@ -138,7 +137,6 @@ class CursorLocationTest(TestCase):
         self.assertIsInstance(point, SpatialPoint)
 
         self.showGui([cldock, canvas])
-
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ from qps.testing import TestObjects
 from qps.utils import *
 from qps.testing import TestCase
 
+
 class TestUtils(TestCase):
     def setUp(self):
         super().setUp()
@@ -33,7 +34,6 @@ class TestUtils(TestCase):
         self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
 
     def tearDown(self):
-
 
         super().tearDown()
 
@@ -80,7 +80,6 @@ class TestUtils(TestCase):
                 warnings.warn('BaseClass {} not implemented\nto test {}'.format(baseClass, pathUi), Warning)
                 continue
 
-
             w = None
             try:
                 w = TestWidget()
@@ -90,7 +89,6 @@ class TestUtils(TestCase):
                 info = 'Failed to load {}'.format(pathUi)
                 info += '\n' + str(ex)
                 self.fail(info)
-
 
     def test_gdal_filesize(self):
 
@@ -139,7 +137,6 @@ class TestUtils(TestCase):
         self.assertTrue(len(results) == 0)
 
         for pattern in ['test_utils.py', 'test_utils*.py', re.compile(r'test_utils\.py')]:
-
             results = list(file_search(rootQps, pattern, recursive=True))
             self.assertIsInstance(results, list)
             self.assertTrue(len(results) == 1)
@@ -151,7 +148,6 @@ class TestUtils(TestCase):
 
         b = check_vsimem()
         self.assertIsInstance(b, bool)
-
 
     def test_spatialObjects(self):
 
@@ -178,10 +174,7 @@ class TestUtils(TestCase):
         ext2 = SpatialExtent.readXml(node)
         self.assertEqual(ext1, ext2)
 
-
-
-
-    def testOutputDirectory(self, name:str='test-outputs') -> pathlib.Path:
+    def testOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
 
         DIR = super().testOutputDirectory(name) / 'utils'
         os.makedirs(DIR, exist_ok=True)
@@ -211,16 +204,14 @@ class TestUtils(TestCase):
         self.assertEqual(burned.shape[1], rl.width())
         self.assertEqual(burned.shape[0], rl.height())
 
-
     def test_block_size(self):
-
 
         ds = TestObjects.createRasterDataset(200, 300, 100, eType=gdal.GDT_Int16)
 
         for cache in [10,
-                      2*100,
-                      10*2**20,
-                      100*2**20]:
+                      2 * 100,
+                      10 * 2 ** 20,
+                      100 * 2 ** 20]:
             bs = optimize_block_size(ds, cache=cache)
             self.assertIsInstance(bs, list)
             self.assertTrue(len(bs) == 2)
@@ -232,7 +223,7 @@ class TestUtils(TestCase):
 
         for input in ['EPSG:32633',
                       QgsCoordinateReferenceSystem('EPSG:32633')
-                    ]:
+                      ]:
             srs = osrSpatialReference(input)
             self.assertIsInstance(srs, osr.SpatialReference)
             self.assertTrue(srs.Validate() == ogr.OGRERR_NONE)
@@ -289,7 +280,6 @@ class TestUtils(TestCase):
             self.assertIsInstance(names, list, msg='Unable to derive band names from {}'.format(src))
             self.assertTrue(len(names) > 0)
 
-
     def test_coordinateTransformations(self):
 
         ds = TestObjects.createRasterDataset(300, 500)
@@ -305,7 +295,7 @@ class TestUtils(TestCase):
         self.assertTrue(crs.isValid())
 
         geoCoordinateUL = QgsPointXY(gt[0], gt[3])
-        shiftToCenter = QgsVector(gt[1]*0.5, gt[5]*0.5)
+        shiftToCenter = QgsVector(gt[1] * 0.5, gt[5] * 0.5)
         geoCoordinateCenter = geoCoordinateUL + shiftToCenter
         pxCoordinate = geo2px(geoCoordinateUL, gt)
         pxCoordinate2 = geo2px(geoCoordinateUL, lyr)
@@ -320,7 +310,6 @@ class TestUtils(TestCase):
         self.assertEqual(pxCoordinate.x(), 0)
         self.assertEqual(pxCoordinate.y(), 0)
         self.assertAlmostEqual(px2geo(pxCoordinate, gt), geoCoordinateUL + shiftToCenter)
-
 
     def test_createQgsField(self):
 
@@ -382,17 +371,16 @@ class TestUtils(TestCase):
             self.assertIsInstance(dateB, np.datetime64)
             self.assertEqual(dateA, dateB)
 
-
     def test_convertTimeUnits(self):
 
         refDate = np.datetime64('2020-01-01')
-        self.assertEqual(datetime64(refDate), refDate) ## datetime64 to datetime64
-        self.assertEqual(datetime64('2020-01-01'), refDate) # string to datetime64
-        self.assertEqual(datetime64(QDate(2020, 1, 1,)), refDate)
+        self.assertEqual(datetime64(refDate), refDate)  ## datetime64 to datetime64
+        self.assertEqual(datetime64('2020-01-01'), refDate)  # string to datetime64
+        self.assertEqual(datetime64(QDate(2020, 1, 1, )), refDate)
         self.assertEqual(datetime64(QDateTime(2020, 1, 1, 0, 0)), refDate)
         self.assertEqual(datetime64(datetime.date(year=2020, month=1, day=1)), refDate)
         self.assertEqual(datetime64(datetime.datetime(year=2020, month=1, day=1)), refDate)
-        self.assertEqual(datetime64(2020), refDate) # decimal year to datetime64
+        self.assertEqual(datetime64(2020), refDate)  # decimal year to datetime64
 
         date_arrays = [np.asarray(['2020-01-01', '2019-01-01'], dtype=np.datetime64),
                        np.asarray([2020, 2019]),
@@ -430,7 +418,6 @@ class TestUtils(TestCase):
             dpy = days_per_year(y)
             self.assertEqual(dpy, 365)
 
-
         self.assertEqual(convertDateUnit('2020-01-01', 'DOY'), 1)
         self.assertEqual(convertDateUnit('2020-12-31', 'DOY'), 366)
         self.assertEqual(convertDateUnit('2020-12-31', 'Y'), 2020)
@@ -462,12 +449,11 @@ class TestUtils(TestCase):
 
             if not calendar.isleap(year):
                 self.assertEqual(dj0a, dj0b)
-                self.assertEqual(int((dj0a - int(dj0a))*365 + 1), doy)
+                self.assertEqual(int((dj0a - int(dj0a)) * 365 + 1), doy)
 
             else:
                 self.assertEqual(dj0a, dj0c)
                 self.assertEqual(int((dj0a - int(dj0a)) * 366 + 1), doy)
-
 
     def test_appendItemsToMenu(self):
         B = QMenu()
@@ -478,18 +464,17 @@ class TestUtils(TestCase):
 
         self.assertTrue(action in menuA.children())
 
-
     def test_value2string(self):
 
-        valueSet = [[1,2,3],
-                        1,
-                        '',
-                        None,
-                        np.zeros((3,3,))
-                        ]
+        valueSet = [[1, 2, 3],
+                    1,
+                    '',
+                    None,
+                    np.zeros((3, 3,))
+                    ]
 
         for i, values in enumerate(valueSet):
-            print('Test {}:{}'.format(i+1, values))
+            print('Test {}:{}'.format(i + 1, values))
             s = value2str(values, delimiter=';')
             self.assertIsInstance(s, str)
 
@@ -558,8 +543,7 @@ class TestUtils(TestCase):
         absPath = '/data/foo/bar/file.txt'
         relPath = relativePath(absPath, refDir)
         self.assertEqual(relPath.as_posix(), '../../../file.txt')
-        #self.assertEqual((pathlib.Path(refDir) / relPath).resolve(), pathlib.Path(absPath))
-
+        # self.assertEqual((pathlib.Path(refDir) / relPath).resolve(), pathlib.Path(absPath))
 
     def test_nextColor(self):
 
@@ -578,5 +562,5 @@ class TestUtils(TestCase):
 
 if __name__ == "__main__":
     import xmlrunner
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

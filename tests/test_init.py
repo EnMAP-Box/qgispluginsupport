@@ -5,7 +5,10 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest, pickle, pathlib, re
+import unittest
+import pickle
+import pathlib
+import re
 from qgis import *
 from qgis.core import *
 from qgis.gui import *

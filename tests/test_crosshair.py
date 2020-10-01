@@ -93,6 +93,7 @@ class CrosshairTests(TestCase):
         lyr2.willBeDeleted.emit()
         self.assertTrue(mc.rasterGridLayer() == None)
 
+
 if __name__ == "__main__":
     import xmlrunner
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

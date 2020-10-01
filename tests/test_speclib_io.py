@@ -889,7 +889,6 @@ class TestIO(TestCase):
         # addresses issue #11:
         # No error is generated when trying (by accident) to read the ENVI header file instead of the .sli/.esl file itself.
 
-
         pathHdr = os.path.splitext(speclibpath)[0]+'.hdr'
         self.assertTrue(os.path.isfile(pathHdr))
         sl1 = SpectralLibrary.readFrom(speclibpath, progressDialog=QProgressDialog())

@@ -21,6 +21,7 @@ from osgeo import gdal, ogr, osr
 from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
 from qps.layerproperties import *
 from qps import registerMapLayerConfigWidgetFactories
+
 LAYER_WIDGET_REPS = 5
 
 
@@ -31,7 +32,7 @@ class LayerConfigWidgetsTests(TestCase):
         super(LayerConfigWidgetsTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initQtResources()
 
-    def canvasWithLayer(self, lyr)->QgsMapCanvas:
+    def canvasWithLayer(self, lyr) -> QgsMapCanvas:
         c = QgsMapCanvas()
         c.setLayers([lyr])
         c.setDestinationCrs(lyr.crs())
@@ -55,7 +56,6 @@ class LayerConfigWidgetsTests(TestCase):
             self.assertIsInstance(w, MetadataConfigWidget)
             w.syncToLayer()
             w.apply()
-
 
             self.showGui([c, w])
 
@@ -158,7 +158,6 @@ class LayerConfigWidgetsTests(TestCase):
         btnApply = QPushButton('Apply')
         btnSync = QPushButton('Sync')
 
-
         def onApply():
             ndv1 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
             w1.apply()
@@ -174,11 +173,11 @@ class LayerConfigWidgetsTests(TestCase):
             ndv3 = [n.min() for n in lyr.dataProvider().userNoDataValues(1)]
 
             s = ""
+
         btnApply.clicked.connect(onApply)
         btnSync.clicked.connect(onSync)
 
-
-        w  = QWidget()
+        w = QWidget()
         l = QVBoxLayout()
         lh = QHBoxLayout()
         lh.addWidget(btnApply)
@@ -187,7 +186,6 @@ class LayerConfigWidgetsTests(TestCase):
         l.addWidget(w1)
         w.setLayout(l)
         self.showGui(w)
-
 
     def test_histogram(self):
         pass
@@ -200,9 +198,8 @@ class LayerConfigWidgetsTests(TestCase):
 
     def test_fields_and_forms(self):
         from qps.layerconfigwidgets.vectorlayerfields import \
-        LayerFieldsConfigWidgetFactory, LayerAttributeFormConfigWidgetFactory, \
-        LayerFieldsConfigWidget, LayerAttributeFormConfigWidget
-
+            LayerFieldsConfigWidgetFactory, LayerAttributeFormConfigWidgetFactory, \
+            LayerFieldsConfigWidget, LayerAttributeFormConfigWidget
 
         lyr = TestObjects.createVectorLayer()
         c = self.canvasWithLayer(lyr)
@@ -219,11 +216,11 @@ class LayerConfigWidgetsTests(TestCase):
         self.assertIsInstance(wForms, LayerAttributeFormConfigWidget)
         self.showGui([wFields, wForms])
 
-
     def test_rasterbandselection2(self):
         from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
 
         from qpstestdata import ndvi_ts
+        ndvi_ts = self.createImageCopy(ndvi_ts)
         lyrR = QgsRasterLayer(ndvi_ts)
         self.assertTrue(lyrR.isValid())
         cR = self.canvasWithLayer(lyrR)
@@ -260,7 +257,7 @@ class LayerConfigWidgetsTests(TestCase):
 
         QgsProject.instance().addMapLayers([lyrR, lyrV, lyrE])
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
-        cb= QgsMapLayerComboBox()
+        cb = QgsMapLayerComboBox()
         c = QgsMapCanvas()
         md = GDALMetadataModelConfigWidget()
         cb.layerChanged.connect(md.setLayer)
@@ -270,7 +267,6 @@ class LayerConfigWidgetsTests(TestCase):
         w = QWidget()
         w.setLayout(l)
         self.showGui(w)
-
 
     def test_GDALBandNameModel(self):
 
@@ -314,7 +310,7 @@ class LayerConfigWidgetsTests(TestCase):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
 
         c = QgsMapCanvas()
-        #lyr = QgsRasterLayer(enmap)
+        # lyr = QgsRasterLayer(enmap)
         lyr = QgsVectorLayer(landcover)
         model = GDALMetadataModel()
         model.setIsEditable(True)
@@ -455,7 +451,6 @@ class LayerConfigWidgetsTests(TestCase):
         m.setLayer(lyr)
         v.setModel(m)
 
-
         self.assertTrue(lyr.startEditing())
         f = QgsField('newField', QVariant.String, 'String')
         lyr.addAttribute(f)
@@ -465,5 +460,5 @@ class LayerConfigWidgetsTests(TestCase):
 
 if __name__ == "__main__":
     import xmlrunner
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

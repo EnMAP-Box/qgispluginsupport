@@ -275,9 +275,6 @@ class PlotStyleTests(TestCase):
 
     def test_marker_symbols(self):
 
-
-
-
         symbols = []
         symbol_text = []
         for s in MarkerSymbol:
