@@ -31,6 +31,7 @@ import enum
 import pickle
 import typing
 import pathlib
+import uuid
 from osgeo import osr
 from ..speclib import SpectralLibrarySettingsKey
 from PyQt5.QtWidgets import *
@@ -2150,13 +2151,11 @@ class SpectralLibrary(QgsVectorLayer):
             # create a new, empty backend
             existing_vsi_files = vsiSpeclibs()
             assert isinstance(existing_vsi_files, list)
-            i = 0
-            path = pathlib.PurePosixPath(VSI_DIR) / '{}.gpkg'.format(baseName)
-            path = path.as_posix().replace('\\', '/')
-            while path in existing_vsi_files:
-                i += 1
-                path = pathlib.PurePosixPath(VSI_DIR) / '{}{:03}.gpkg'.format(baseName, i)
+            while True:
+                path = pathlib.PurePosixPath(VSI_DIR) / f'{baseName}.{uuid.uuid4()}.gpkg'
                 path = path.as_posix().replace('\\', '/')
+                if not path in existing_vsi_files:
+                    break
 
             drv = ogr.GetDriverByName('GPKG')
             missingGPKGInfo = \

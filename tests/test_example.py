@@ -8,15 +8,16 @@ from qgis.core import QgsApplication
 
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
 
-class Example1(unittest.TestCase):
 
-    @unittest.skipIf(not qgis_images_resources.is_file(), 'Resource file does not exist: {}'.format(qgis_images_resources))
+class Example1(unittest.TestCase):
+    resource_path = ':/images/icons/qgis_icon.svg'
+
+    @unittest.skipIf(not qgis_images_resources.is_file() or QFile(resource_path).exists(),
+                     'Resource file does not exist: {}'.format(qgis_images_resources))
     def test_startQgsApplication(self):
         """
         This example shows how to initialize a QgsApplication on TestCase start up
         """
-        resource_path = ':/images/icons/qgis_icon.svg'
-        self.assertFalse(QFile(resource_path).exists())
 
         # StartOptions:
         # Minimized = just the QgsApplication
@@ -28,7 +29,8 @@ class Example1(unittest.TestCase):
 
         app = start_app(options=StartOptions.Minimized, resources=[qgis_images_resources])
         self.assertIsInstance(app, QgsApplication)
-        self.assertTrue(QFile(resource_path).exists())
+
+        self.assertTrue(QFile(self.resource_path).exists())
 
 
 class ExampleCase(TestCase):
@@ -42,7 +44,7 @@ class ExampleCase(TestCase):
         resources = []
         if qgis_images_resources.is_file():
             resources.append(qgis_images_resources)
-        super().setUpClass(cleanup=True, options=StartOptions.Minimized, resources=resources)
+        super().setUpClass(cleanup=False, options=StartOptions.Minimized, resources=resources)
 
     @unittest.skipIf(not qgis_images_resources.is_file(),
                      'Resource file does not exist: {}'.format(qgis_images_resources))
@@ -60,7 +62,6 @@ class ExampleCase(TestCase):
         # .showGui([list-of-widgets]) function will show and calls QApplication.exec_()
         # to keep the widget open
         self.showGui(label)
-
 
 
 if __name__ == '__main__':

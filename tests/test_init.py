@@ -16,7 +16,6 @@ class testClassTesting(unittest.TestCase):
 
     def test_init(self):
 
-
         from qps.testing import start_app
         from qps.utils import scanResources
         import qps
@@ -49,9 +48,7 @@ class testClassTesting(unittest.TestCase):
         self.assertIsInstance(qps.classification.classificationscheme.CLASS_SCHEME_EDITOR_WIDGET_FACTORY,
                               QgsEditorWidgetFactory)
 
-
         app.quit()
-
 
     def test_relative_imports(self):
 
@@ -62,11 +59,10 @@ class testClassTesting(unittest.TestCase):
         re1 = re.compile(r'^\w*import qps')
         re2 = re.compile(r'^\w*from qps')
         for path in file_search(root / 'qps', '*.py', recursive=True):
-            with open(path) as f:
+            with open(path, encoding='utf-8') as f:
                 lines = f.read()
-                self.assertTrue(re1.search(lines) == None, msg='non-relative "import qps" in {}'.format(path))
-                self.assertTrue(re2.search(lines) == None, msg='non-relative "from qps" in {}'.format(path))
-
+                self.assertTrue(re1.search(lines) is None, msg='non-relative "import qps" in {}'.format(path))
+                self.assertTrue(re2.search(lines) is None, msg='non-relative "from qps" in {}'.format(path))
 
 
 if __name__ == "__main__":
