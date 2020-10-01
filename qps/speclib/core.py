@@ -1396,7 +1396,8 @@ class SpectralProfileRenderer(object):
         return profileStyles
 
     def clone(self):
-        return copy.deepcopy(self)
+        renderer = copy.deepcopy(self)
+        return renderer
 
     def saveToUserSettings(self):
         """

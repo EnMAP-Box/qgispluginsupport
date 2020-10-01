@@ -161,6 +161,7 @@ class SpectralProfileRendererWidget(QWidget):
         self.mBlocked: bool = False
 
         self.mLastRenderer: SpectralProfileRenderer = None
+        self.mResetRenderer: SpectralProfileRenderer = None
 
         self.btnColorBackground.colorChanged.connect(self.onProfileRendererChanged)
         self.btnColorForeground.colorChanged.connect(self.onProfileRendererChanged)
@@ -175,12 +176,23 @@ class SpectralProfileRendererWidget(QWidget):
         self.wDefaultProfileStyle.sigPlotStyleChanged.connect(self.onProfileRendererChanged)
         self.wDefaultProfileStyle.setMinimumSize(self.wDefaultProfileStyle.sizeHint())
         self.btnReset.setDisabled(True)
-        self.btnReset.clicked.connect(lambda: self.setProfileRenderer(self.mLastRenderer))
+        self.btnReset.clicked.connect(self.reset)
 
         self.btnColorSchemeBright.setDefaultAction(self.actionActivateBrightTheme)
         self.btnColorSchemeDark.setDefaultAction(self.actionActivateDarkTheme)
         self.actionActivateBrightTheme.triggered.connect(lambda: self.setRendererTheme(SpectralProfileRenderer.bright()))
         self.actionActivateDarkTheme.triggered.connect(lambda: self.setRendererTheme(SpectralProfileRenderer.dark()))
+
+    def setResetRenderer(self, profileRenderer: SpectralProfileRenderer):
+        self.mResetRenderer = profileRenderer
+
+    def resetRenderer(self) -> SpectralProfileRenderer:
+        return self.mResetRenderer
+
+    def reset(self, *args):
+
+        if isinstance(self.mResetRenderer, SpectralProfileRenderer):
+            self.setProfileRenderer(self.mResetRenderer)
 
     def onUseColorsFromVectorRendererChanged(self, checked: bool):
 
@@ -193,13 +205,20 @@ class SpectralProfileRendererWidget(QWidget):
         self.onProfileRendererChanged()
 
     def setRendererTheme(self, profileRenderer: SpectralProfileRenderer):
+
         profileRenderer = profileRenderer.clone()
         # do not overwrite the following settings:
         profileRenderer.useRendererColors = self.optionUseColorsFromVectorRenderer.isChecked()
+        if isinstance(self.mLastRenderer, SpectralProfileRenderer):
+            profileRenderer.mFID2Style = self.mLastRenderer.mFID2Style
+
         self.setProfileRenderer(profileRenderer)
 
     def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
         assert isinstance(profileRenderer, SpectralProfileRenderer)
+
+        if self.mResetRenderer is None:
+            self.mResetRenderer = profileRenderer.clone()
 
         self.mLastRenderer = profileRenderer
         self.btnReset.setEnabled(True)
@@ -220,21 +239,23 @@ class SpectralProfileRendererWidget(QWidget):
 
     def onProfileRendererChanged(self, *args):
         if not self.mBlocked:
+            self.btnReset.setEnabled(isinstance(self.mResetRenderer, SpectralProfileRenderer) and
+                                     self.spectralProfileRenderer() != self.mResetRenderer)
             self.sigProfileRendererChanged.emit(self.spectralProfileRenderer())
 
-        self.btnReset.setEnabled(isinstance(self.mLastRenderer, SpectralProfileRenderer) and
-                                 self.spectralProfileRenderer() != self.mLastRenderer)
-
     def spectralProfileRenderer(self) -> SpectralProfileRenderer:
-        cs = SpectralProfileRenderer()
+        if isinstance(self.mLastRenderer, SpectralProfileRenderer):
+            cs = self.mLastRenderer.clone()
+        else:
+            cs = SpectralProfileRenderer()
         cs.backgroundColor = self.btnColorBackground.color()
         cs.foregroundColor = self.btnColorForeground.color()
         cs.infoColor = self.btnColorInfo.color()
         cs.selectionColor = self.btnColorSelection.color()
         cs.profileStyle = self.wDefaultProfileStyle.plotStyle()
-        if isinstance(self.mLastRenderer, SpectralProfileRenderer):
-            cs.temporaryProfileStyle = self.mLastRenderer.temporaryProfileStyle.clone()
-            cs.mFID2Style.update(self.mLastRenderer.mFID2Style)
+        #if isinstance(self.mLastRenderer, SpectralProfileRenderer):
+        #    cs.temporaryProfileStyle = self.mLastRenderer.temporaryProfileStyle.clone()
+        #    cs.mFID2Style.update(self.mLastRenderer.mFID2Style)
         cs.useRendererColors = self.optionUseColorsFromVectorRenderer.isChecked()
         return cs
 
@@ -570,10 +591,16 @@ class XAxisWidgetAction(QWidgetAction):
 class SpectralProfileRendererWidgetAction(QWidgetAction):
 
     sigProfileRendererChanged = pyqtSignal(SpectralProfileRenderer)
+    sigResetRendererChanged = pyqtSignal(SpectralProfileRenderer)
 
     def __init__(self, parent, **kwds):
         super().__init__(parent)
         self.mProfileRenderer: SpectralProfileRenderer = SpectralProfileRenderer.default()
+        self.mResetRenderer: SpectralProfileRenderer = self.mProfileRenderer
+
+    def setResetRenderer(self, profileRenderer: SpectralProfileRenderer):
+        self.mResetRenderer = profileRenderer
+        self.sigResetRendererChanged.emit(self.mResetRenderer)
 
     def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
         if self.mProfileRenderer != profileRenderer:
@@ -590,6 +617,7 @@ class SpectralProfileRendererWidgetAction(QWidgetAction):
         w.setProfileRenderer(self.profileRenderer())
         w.sigProfileRendererChanged.connect(self.setProfileRenderer)
         self.sigProfileRendererChanged.connect(w.setProfileRenderer)
+        self.sigResetRendererChanged.connect(w.setResetRenderer)
         return w
 
 
@@ -651,12 +679,16 @@ class SpectralViewBox(pg.ViewBox):
         self.mActionMaxNumberOfProfiles: MaxNumberOfProfilesWidgetAction = MaxNumberOfProfilesWidgetAction(None)
         self.mActionSpectralProfileRendering: SpectralProfileRendererWidgetAction = SpectralProfileRendererWidgetAction(None)
         self.mActionSpectralProfileRendering.setDefaultWidget(self.mActionSpectralProfileRendering.createWidget(None))
-        self.mOptionUseVectorSymbology: QAction = self.mActionSpectralProfileRendering.defaultWidget().optionUseColorsFromVectorRenderer
+
+        self.mOptionUseVectorSymbology: QAction = \
+            self.mActionSpectralProfileRendering.defaultWidget().optionUseColorsFromVectorRenderer
+
         self.mActionXAxis: XAxisWidgetAction = XAxisWidgetAction(None)
 
         self.mActionShowSelectedProfilesOnly: QAction = QAction('Show Selected Profiles Only', None)
         self.mActionShowSelectedProfilesOnly.setToolTip('Activate to show selected profiles only, '
                                                         'e.g. those selected in the attribute table')
+
         self.mActionShowSelectedProfilesOnly.setCheckable(True)
 
         self.mActionShowCrosshair: QAction = QAction('Show Crosshair', None)
@@ -692,6 +724,8 @@ class SpectralViewBox(pg.ViewBox):
         self.state['enableMenu'] = True
 
     def raiseContextMenu(self, ev):
+        # update current renderer, as the viewbox menu is a "static" widget instance
+        self.mActionSpectralProfileRendering.setResetRenderer(self.mActionSpectralProfileRendering.profileRenderer())
         super(SpectralViewBox, self).raiseContextMenu(ev)
 
     def addItems(self, pdis: list, ignoreBounds=False):
@@ -850,7 +884,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """Sets and applies the SpectralProfileRenderer"""
         assert isinstance(profileRenderer, SpectralProfileRenderer)
         if isinstance(self.speclib(), SpectralLibrary):
-            profileRenderer = copy.copy(profileRenderer)
+            profileRenderer = profileRenderer.clone()
             profileRenderer.setInput(self.speclib())
             self.speclib().setProfileRenderer(profileRenderer)
 
@@ -1168,7 +1202,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Updates all SpectralProfilePlotDataItems
         """
         profileRenderer: SpectralProfileRenderer = self.profileRenderer()
-        #self.actionSpectralProfileRendering().setProfileRenderer(profileRenderer)
+        self.actionSpectralProfileRendering().setProfileRenderer(profileRenderer)
         # set Background color
         self.setBackground(profileRenderer.backgroundColor)
 
@@ -2384,15 +2418,20 @@ class SpectralLibraryWidget(AttributeTableWidget):
         for p, fid in zip(currentProfiles, addedIDs):
             PROFILE2FID[p] = fid
 
+        renderer = self.speclib().profileRenderer()
+
         customStyles = set(profileStyles.values())
-        for customStyle in customStyles:
-            fids = [PROFILE2FID[p] for p, s in profileStyles.items() if s == customStyle]
-            plotWidget.profileRenderer().setProfilePlotStyle(customStyle, fids)
+        if len(customStyles) > 0:
+            profileRenderer = plotWidget.profileRenderer()
+            for customStyle in customStyles:
+                fids = [PROFILE2FID[p] for p, s in profileStyles.items() if s == customStyle]
+                profileRenderer.setProfilePlotStyle(customStyle, fids)
+            plotWidget.setProfileRenderer(profileRenderer)
 
         # set current profiles highlighted
 
         if not addAuto:
-            # give current spectral the current spectral style
+            # give current spectra the current spectral style
             self.plotWidget().mTEMPORARY_HIGHLIGHTED.update(addedIDs)
 
         plotWidget.mUpdateTimer.start()
@@ -2514,7 +2553,7 @@ class SpectralLibraryInfoLabel(QLabel):
             if self.mLastStats == stats:
                 return
 
-            bLimit = stats.max_visible <= stats.visible
+            bLimit = stats.visible < stats.total
             if bLimit:
                 style = 'color:red'
             else:

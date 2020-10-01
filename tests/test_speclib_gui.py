@@ -592,9 +592,33 @@ class TestSpeclibWidgets(TestCase):
         w.setLayout(lv)
 
         # add profile with none-default plot style
+
+        self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().profileRenderer())
+        self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().actionSpectralProfileRendering().profileRenderer())
+
         onAddRandomProfile()
 
+        self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().profileRenderer())
+        self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().actionSpectralProfileRendering().profileRenderer())
+
+        # this should not end in endless recursion
         slw.plotWidget().onProfileRendererChanged()
+
+        pr1 = slw.speclib().profileRenderer()
+        self.assertIsInstance(pr1, SpectralProfileRenderer)
+        self.assertFalse(pr1.useRendererColors)
+        slw.plotWidget().optionUseVectorSymbology().setChecked(True)
+        self.assertTrue(len(pr1.mFID2Style) > 0)
+
+        pr2 = slw.speclib().profileRenderer()
+        self.assertTrue(pr2.useRendererColors)
+        self.assertEqual(pr1.mFID2Style, pr2.mFID2Style)
+
+        slw.plotWidget().optionUseVectorSymbology().setChecked(False)
+        pr3 = slw.speclib().profileRenderer()
+        self.assertFalse(pr3.useRendererColors)
+        self.assertEqual(pr1.mFID2Style, pr3.mFID2Style)
+
         path = self.testOutputDirectory() / 'speclib_gui' / 'testsli_gui.gpkg'
         os.makedirs(path.parent, exist_ok=True)
         speclib.write(path)
