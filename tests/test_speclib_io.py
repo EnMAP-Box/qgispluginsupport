@@ -70,8 +70,8 @@ class TestIO(TestCase):
         pathJSON = tempfile.mktemp(suffix='.json', prefix='tmpSpeclib')
 
         # no additional info, no JSON file
-        slib.writeJSONProperties(pathJSON)
-        self.assertFalse(os.path.isfile(pathJSON))
+        #slib.writeJSONProperties(pathJSON)
+        #self.assertFalse(os.path.isfile(pathJSON))
 
         # add categorical info
         slib.startEditing()

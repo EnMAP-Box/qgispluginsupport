@@ -1745,14 +1745,15 @@ def check_vsimem() -> bool:
     try:
         from osgeo import gdal
         from qgis.core import QgsCoordinateReferenceSystem, QgsRasterLayer
-
+        import uuid
         # create an 2x2x1 in-memory raster
         driver = gdal.GetDriverByName('GTiff')
         assert isinstance(driver, gdal.Driver)
-        path = '/vsimem/inmemorytestraster.tif'
+        path = f'/vsimem/inmemorytestraster.{uuid.uuid4()}.tif'
 
-        dataSet = driver.Create(path, 2, 2, bands=1, eType=gdal.GDT_Byte)
+        dataSet: gdal.Dataset = driver.Create(path, 2, 2, bands=1, eType=gdal.GDT_Byte)
         assert isinstance(dataSet, gdal.Dataset)
+        drv: gdal.Driver = dataSet.GetDriver()
         c = QgsCoordinateReferenceSystem('EPSG:32632')
         dataSet.SetProjection(c.toWkt())
         dataSet.SetGeoTransform([0, 1.0, 0, 0, 0, -1.0])
@@ -1765,6 +1766,8 @@ def check_vsimem() -> bool:
         layer = QgsRasterLayer(path)
         assert isinstance(layer, QgsRasterLayer)
         result = layer.isValid()
+        del layer
+        drv.Delete(path)
 
     except Exception as ex:
         return False

@@ -1,10 +1,12 @@
-import os, pathlib, unittest
-from qps.testing import TestCase, StartOptions, start_app
+import pathlib
+import unittest
 
+from PyQt5.QtCore import QSize, QFile
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QLabel
-from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import QSize, QFile, QDir
+
 from qgis.core import QgsApplication
+from qps.testing import TestCase, StartOptions, start_app
 
 # image resource location
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
