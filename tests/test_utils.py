@@ -531,20 +531,22 @@ class TestUtils(TestCase):
         relPath = relativePath(absPath, refDir).as_posix()
         self.assertEqual(relPath, 'bar/file.txt')
 
-        refDir = r'C:\data\foo'
-        absPath = r'C:\data\foo\bar\file.txt'
-        relPath = relativePath(absPath, refDir)
-        self.assertEqual(relPath.as_posix(), 'bar/file.txt')
+        if os.sep == '\\':
+            refDir = r'C:\data\foo'
+            absPath = r'C:\data\foo\bar\file.txt'
+            relPath = relativePath(absPath, refDir)
+            self.assertEqual(relPath.as_posix(), 'bar/file.txt')
 
-        refDir = r'D:\data\foo'
-        absPath = r'C:\data\foo\bar\file.txt'
-        relPath = relativePath(absPath, refDir)
-        self.assertEqual(relPath, pathlib.Path(absPath))
+            refDir = r'D:\data\foo'
+            absPath = r'C:\data\foo\bar\file.txt'
+            relPath = relativePath(absPath, refDir)
+            self.assertEqual(relPath, pathlib.Path(absPath))
+        else:
 
-        refDir = '/data/foo/bar/sub/sub/sub'
-        absPath = '/data/foo/bar/file.txt'
-        relPath = relativePath(absPath, refDir)
-        self.assertEqual(relPath.as_posix(), '../../../file.txt')
+            refDir = '/data/foo/bar/sub/sub/sub'
+            absPath = '/data/foo/bar/file.txt'
+            relPath = relativePath(absPath, refDir)
+            self.assertEqual(relPath.as_posix(), '../../../file.txt')
         # self.assertEqual((pathlib.Path(refDir) / relPath).resolve(), pathlib.Path(absPath))
 
     def test_nextColor(self):
