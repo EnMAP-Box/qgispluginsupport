@@ -1,18 +1,46 @@
+# -*- coding: utf-8 -*-
+# noinspection PyPep8Naming
+"""
+***************************************************************************
+    speclib/io/artmo.py
 
-import os, sys, re, pathlib, json, io, re, linecache, collections
+    Input/Output of ARTMO spectral library data
+    ---------------------
+    Beginning            : 2019-09-03
+    Copyright            : (C) 2020 by Benjamin Jakimow
+    Email                : benjamin.jakimow@geo.hu-berlin.de
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
+
+import os, sys, re, pathlib, json, io, re, linecache, collections, typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 import csv as pycsv
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
+    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, \
+    ProgressHandler
 
 class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
     """
     I/O Interface for ARTMO CSV profile outputs.
     See https://artmotoolbox.com/tools.html for details.
     """
-    @staticmethod
-    def canRead(path:str):
+    @classmethod
+    def canRead(cls, path: str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -20,21 +48,23 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
         """
         if not isinstance(path, str) and os.path.isfile(path):
             return False
+        try:
+            # check if an _meta.txt exists
+            pathMeta = os.path.splitext(path)[0] + '_meta.txt'
+            if not os.path.isfile(pathMeta):
+                return False
 
-        # check if an _meta.txt exists
-        pathMeta = os.path.splitext(path)[0] + '_meta.txt'
-        if not os.path.isfile(pathMeta):
+            with open(pathMeta, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if re.search(r'Line 1, Column \d \.{3} end:', line, re.I):
+                        return True
+        except Exception:
             return False
-
-        with open(pathMeta, 'r', encoding='utf-8') as f:
-            for line in f:
-                if re.search(r'Line 1, Column \d \.{3} end:', line, re.I):
-                    return True
 
         return False
 
-    @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
+    @classmethod
+    def readFrom(cls, path: str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -113,8 +143,8 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return speclib
 
 
-    @staticmethod
-    def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    @classmethod
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def read(speclib: SpectralLibrary):
 

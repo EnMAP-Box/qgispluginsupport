@@ -21,7 +21,8 @@ c.setDestinationCrs(l.crs())
 c.setExtent(l.extent())
 c.show()
 
-def loadProfile(spatialPoint:SpatialPoint):
+def loadProfile(crs: QgsCoordinateReferenceSystem, pt: QgsPointXY):
+    spatialPoint = SpatialPoint(crs, pt)
     profiles = []
     for layer in c.layers():
         if isinstance(layer, QgsRasterLayer):

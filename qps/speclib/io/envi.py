@@ -2,36 +2,38 @@
 # noinspection PyPep8Naming
 """
 ***************************************************************************
-    envi.py
-    Reading and writing spectral profiles to ENVI Spectral Libraries
+    speclib/io/envi.py
+
+    Input/Output of ENVI spectral library data
     ---------------------
-    Date                 : Okt 2018
-    Copyright            : (C) 2018 by Benjamin Jakimow
+    Beginning            : 2018-12-17
+    Copyright            : (C) 2020 by Benjamin Jakimow
     Email                : benjamin.jakimow@geo.hu-berlin.de
 ***************************************************************************
-*                                                                         *
-*   This file is part of the EnMAP-Box.                                   *
-*                                                                         *
-*   The EnMAP-Box is free software; you can redistribute it and/or modify *
-*   it under the terms of the GNU General Public License as published by  *
-*   the Free Software Foundation; either version 3 of the License, or     *
-*   (at your option) any later version.                                   *
-*                                                                         *
-*   The EnMAP-Box is distributed in the hope that it will be useful,      *
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          *
-*   GNU General Public License for more details.                          *
-*                                                                         *
-*   You should have received a copy of the GNU General Public License     *
-*   along with the EnMAP-Box. If not, see <http://www.gnu.org/licenses/>. *
-*                                                                         *
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import os, csv, tempfile, uuid, time
-from osgeo import gdal, gdal_array
+
+import csv
+import tempfile
+import time
+import uuid
+
+from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes
 from ..core import *
 
-#lookup GDAL Data Type and its size in bytes
+# lookup GDAL Data Type and its size in bytes
 LUT_GDT_SIZE = {gdal.GDT_Byte: 1,
                 gdal.GDT_UInt16: 2,
                 gdal.GDT_Int16: 2,
@@ -80,22 +82,25 @@ def flushCacheWithoutException(dataset: gdal.Dataset):
         n += 1
 
 
-
-def findENVIHeader(path:str)->(str, str):
+def findENVIHeader(path: str) -> (str, str):
     """
     Get a path and returns the ENVI header (*.hdr) and the ENVI binary file (e.g. *.sli) for
     :param path: str
     :return: (str, str), e.g. ('pathESL.hdr', 'pathESL.sli')
     """
+    # the two file names we want to extract
+    pathHdr = None
+    pathSLI = None
+
     # 1. find header file
     paths = [os.path.splitext(path)[0] + '.hdr', path + '.hdr']
-    pathHdr = None
     for p in paths:
         if os.path.exists(p):
             pathHdr = p
             break
 
     if pathHdr is None:
+        # no header file, no ENVI file
         return None, None
 
     # 2. find binary file
@@ -154,7 +159,6 @@ def value2hdrString(values):
     return s
 
 
-
 def readCSVMetadata(pathESL):
     """
     Returns ESL metadata stored in a extra CSV file
@@ -165,7 +169,6 @@ def readCSVMetadata(pathESL):
     pathCSV = os.path.splitext(pathESL)[0] + '.csv'
     if not os.path.isfile(pathCSV):
         return None
-
 
     lines = None
     with open(pathCSV) as f:
@@ -190,26 +193,26 @@ def readCSVMetadata(pathESL):
         if match:
             sep = match.group(1)
         else:
-            print('Unable to find column name like "*name*" in {}. Use "," as delimiter'.format(pathCSV), file=sys.stderr)
+            print('Unable to find column name like "*name*" in {}. Use "," as delimiter'.format(pathCSV),
+                  file=sys.stderr)
             sep = ','
 
     METADATA_LINES = []
     fieldNames = lines[0].split(sep)
 
-    #read CSV data
+    # read CSV data
     reader = csv.DictReader(lines[1:], fieldnames=fieldNames, delimiter=sep)
     for i, row in enumerate(reader):
         METADATA_LINES.append(tuple(row.values()))
 
     # set an emtpy value to None
-    def stripped(value:str):
+    def stripped(value: str):
         if value is None:
             return None
         value = value.strip()
         return None if len(value) == 0 else value
 
     METADATA_LINES = [tuple([stripped(v) for v in row]) for row in METADATA_LINES]
-
 
     # find type for undefined metadata names
     QGSFIELD_PYTHON_TYPES = []
@@ -237,23 +240,21 @@ def readCSVMetadata(pathESL):
         QGSFIELD_PYTHON_TYPES.append(fieldType)
         QGSFIELDS.append(QgsField(fieldName, a, b))
 
-
     # convert metadata string values to basic python type
-    def typeOrNone(value:str, t:type):
+    def typeOrNone(value: str, t: type):
         return value if value is None else t(value)
-
 
     for i in range(len(METADATA_LINES)):
         line = METADATA_LINES[i]
         lineTuple = tuple(typeOrNone(cellValue, cellType) for cellValue, cellType in zip(line, QGSFIELD_PYTHON_TYPES))
         METADATA_LINES[i] = lineTuple
 
-    #METADATA_LINES = [tuple(typeOrNone(v, QGSFIELD_PYTHON_TYPES[i]) for i, v in enumerate(line)) for line in METADATA_LINES]
+    # METADATA_LINES = [tuple(typeOrNone(v, QGSFIELD_PYTHON_TYPES[i]) for i, v in enumerate(line)) for line in METADATA_LINES]
 
     return (METADATA_LINES, QGSFIELDS)
 
 
-def writeCSVMetadata(pathCSV:str, profiles:list):
+def writeCSVMetadata(pathCSV: str, profiles: list):
     """
     Write profile Metadata as CSV file
     :param pathCSV: str, path of CSV file
@@ -266,7 +267,6 @@ def writeCSVMetadata(pathCSV:str, profiles:list):
     excludedNames = CSV_PROFILE_NAME_COLUMN_NAMES + [CSV_GEOMETRY_COLUMN, FIELD_FID, FIELD_VALUES]
     fieldNames = [n for n in profiles[0].fields().names() if n not in excludedNames]
     allFieldNames = ['spectra names'] + fieldNames + [CSV_GEOMETRY_COLUMN]
-
 
     with open(pathCSV, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=allFieldNames)
@@ -286,7 +286,6 @@ def writeCSVMetadata(pathCSV:str, profiles:list):
             writer.writerow(d)
 
 
-
 class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
     """
     IO of ENVI Spectral Libraries
@@ -297,68 +296,55 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
     REQUIRED_TAGS = ['byte order', 'data type', 'header offset', 'lines', 'samples', 'bands']
     SINGLE_VALUE_TAGS = REQUIRED_TAGS + ['description', 'wavelength', 'wavelength units']
 
-
-    @staticmethod
-    def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    @classmethod
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def read(speclib: SpectralLibrary):
 
             path, filter = QFileDialog.getOpenFileName(caption='ENVI Spectral Library',
-                                               filter='All types (*.*);;Spectral Library files (*.sli)')
+                                                       filter='All types (*.*);;Spectral Library files (*.sli)')
             if os.path.isfile(path):
 
                 sl = EnviSpectralLibraryIO.readFrom(path)
                 if isinstance(sl, SpectralLibrary):
                     speclib.startEditing()
                     speclib.beginEditCommand('Add ENVI Spectral Library from {}'.format(path))
-                    speclib.copyEditorWidgetSetup(sl)
-                    speclib.addSpeclib(sl, True)
+                    speclib.addSpeclib(sl, addMissingFields=True)
                     speclib.endEditCommand()
                     speclib.commitChanges()
 
         m = menu.addAction('ENVI')
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
-
-
-    @staticmethod
-    def addExportActions(spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
+    @classmethod
+    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def write(speclib: SpectralLibrary):
-
             path, filter = QFileDialog.getSaveFileName(caption='Write ENVI Spectral Library ',
-                                                    filter=FILTER_SLI)
+                                                       filter=FILTER_SLI)
             if isinstance(path, str) and len(path) > 0:
-                EnviSpectralLibraryIO.write(spectralLibrary, path)
+                EnviSpectralLibraryIO.write(speclib, path)
 
         m = menu.addAction('ENVI')
         m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
 
-    @staticmethod
-    def canRead(pathESL):
+    @classmethod
+    def canRead(cls, pathESL) -> bool:
         """
         Checks if a file can be read as SpectraLibrary
         :param pathESL: path to ENVI Spectral Library (ESL)
         :return: True, if pathESL can be read as Spectral Library.
         """
-        assert isinstance(pathESL, str)
+        pathESL = str(pathESL)
         if not os.path.isfile(pathESL):
             return False
-        hdr = EnviSpectralLibraryIO.readENVIHeader(pathESL, typeConversion=False)
+        hdr = cls.readENVIHeader(pathESL, typeConversion=False)
         if hdr is None or hdr['file type'] != 'ENVI Spectral Library':
             return False
         return True
 
-    @staticmethod
-    def score(uri:str):
-        if not isinstance(uri, str):
-            return 0
-        if re.search(r'\.(esl|sli)$', uri, ):
-            return 20
-        return 0
-
-    @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    @classmethod
+    def readFrom(cls, path, progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
         """
         Reads an ENVI Spectral Library (ESL).
         :param path: path to ENVI Spectral Library
@@ -374,21 +360,20 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         ds = EnviSpectralLibraryIO.esl2vrt(pathESL, tmpVrt)
         data = ds.ReadAsArray()
 
-        #remove the temporary VRT, as it was created internally only
+        # remove the temporary VRT, as it was created internally only
         ds.GetDriver().Delete(ds.GetDescription())
-        #gdal.Unlink(ds)
-
+        # gdal.Unlink(ds)
 
         nSpectra, nbands = data.shape
         yUnit = None
         xUnit = md.get('wavelength units')
         xValues = md.get('wavelength')
         zPlotTitles = md.get('z plot titles')
-        if isinstance(zPlotTitles, str) and len(zPlotTitles.split(','))>=2:
+        if isinstance(zPlotTitles, str) and len(zPlotTitles.split(',')) >= 2:
             xUnit, yUnit = zPlotTitles.split(',')[0:2]
 
         # get official ENVI Spectral Library standard values
-        spectraNames = md.get('spectra names', ['Spectrum {}'.format(i+1) for i in range(nSpectra)])
+        spectraNames = md.get('spectra names', ['Spectrum {}'.format(i + 1) for i in range(nSpectra)])
 
         # thanks to Ann for https://bitbucket.org/jakimowb/qgispluginsupport/issues/3/speclib-envypy
 
@@ -406,7 +391,6 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             print(str(ex), file=sys.stderr)
 
         PROFILE2CSVLine = {}
-
 
         if CSV_METADATA is not None:
             CSV_DATA, CSV_FIELDS = CSV_METADATA
@@ -432,7 +416,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             # backup: match csv line with profile index
             if len(PROFILE2CSVLine) == 0:
                 indices = range(min(nSpectra, len(CSV_DATA)))
-                CSVLine2ESLProfile = PROFILE2CSVLine = dict(zip(indices, indices))
+                PROFILE2CSVLine = dict(zip(indices, indices))
 
         SLIB = SpectralLibrary()
         assert SLIB.startEditing()
@@ -463,8 +447,8 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             valueDict = {'x': xValues, 'y': data[i, :].tolist(), 'xUnit': xUnit, 'yUnit': yUnit, 'bbl': bbl}
 
             if CSV_METADATA is not None:
-                j = PROFILE2CSVLine.get(i)
-                if j:
+                j = PROFILE2CSVLine.get(i, -1)
+                if j >= 0:
                     csvLine = CSV_DATA[j]
                     attr = f.attributes()
                     for iCSV, iAttr in zip(sliceCSV, sliceAttr):
@@ -483,20 +467,20 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
 
             profiles.append(f)
 
-        #print('Creation: {}'.format(datetime.datetime.now() - t0))
+        # print('Creation: {}'.format(datetime.datetime.now() - t0))
         t0 = datetime.datetime.now()
         SLIB.addFeatures(profiles)
-        #print('Adding: {}'.format(datetime.datetime.now() - t0))
+        # print('Adding: {}'.format(datetime.datetime.now() - t0))
 
         assert SLIB.commitChanges()
         assert SLIB.featureCount() == nSpectra
 
-
         SLIB.readJSONProperties(pathESL)
         return SLIB
 
-    @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+    @classmethod
+    def write(cls, speclib: SpectralLibrary, path: str,
+              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None):
         """
         Writes a SpectralLibrary as ENVI Spectral Library (ESL).
         See http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for ESL definition
@@ -518,7 +502,6 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         bn, ext = os.path.splitext(os.path.basename(path))
         if not re.search(r'\.(sli|esl)', ext, re.I):
             ext = '.sli'
-
 
         writtenFiles = []
 
@@ -597,7 +580,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             file.close()
 
             # write JSON properties
-            speclib.writeJSONProperties(pathDst)
+            # speclib.writeJSONProperties(pathDst)
 
             # write other metadata to CSV
             pathCSV = os.path.splitext(pathHDR)[0] + '.csv'
@@ -607,9 +590,8 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         return writtenFiles
 
-
-    @staticmethod
-    def esl2vrt(pathESL, pathVrt=None):
+    @classmethod
+    def esl2vrt(cls, pathESL, pathVrt=None):
         """
         Creates a GDAL Virtual Raster (VRT) that allows to read an ENVI Spectral Library file
         :param pathESL: path ENVI Spectral Library file (binary part)
@@ -617,7 +599,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         :return: GDAL VRT
         """
 
-        hdr = EnviSpectralLibraryIO.readENVIHeader(pathESL, typeConversion=False)
+        hdr = cls.readENVIHeader(pathESL, typeConversion=False)
         assert hdr is not None and hdr['file type'] == 'ENVI Spectral Library'
 
         if hdr.get('file compression') == '1':
@@ -632,8 +614,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         if pathVrt is None:
             id = uuid.UUID()
             pathVrt = '/vsimem/{}.esl.vrt'.format(id)
-            #pathVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt')
-
+            # pathVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt')
 
         ds = describeRawFile(pathESL, pathVrt, xSize, ySize, bands=bands, eType=eType, byteOrder=byteOrder)
         for key, value in hdr.items():
@@ -643,9 +624,8 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         flushCacheWithoutException(ds)
         return ds
 
-
-    @staticmethod
-    def readENVIHeader(pathESL, typeConversion=False):
+    @classmethod
+    def readENVIHeader(cls, pathESL, typeConversion=False):
         """
         Reads an ENVI Header File (*.hdr) and returns its values in a dictionary
         :param pathESL: path to ENVI Header
@@ -661,8 +641,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         if pathHdr is None:
             return None
 
-
-        #hdr = open(pathHdr).readlines()
+        # hdr = open(pathHdr).readlines()
         file = open(pathHdr, encoding='utf-8')
         hdr = file.readlines()
         file.close()
@@ -712,16 +691,15 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
                     if value:
                         md[k] = value
 
-
         return md
 
 
 def describeRawFile(pathRaw, pathVrt, xsize, ysize,
                     bands=1,
-                    eType = gdal.GDT_Byte,
+                    eType=gdal.GDT_Byte,
                     interleave='bsq',
                     byteOrder='LSB',
-                    headerOffset=0)->gdal.Dataset:
+                    headerOffset=0) -> gdal.Dataset:
     """
     Creates a VRT to describe a raw binary file
     :param pathRaw: path of raw image
@@ -751,7 +729,7 @@ def describeRawFile(pathRaw, pathVrt, xsize, ysize,
     dsVRT = drvVRT.Create(pathVrt, xsize, ysize, bands=0, eType=eType)
     assert isinstance(dsVRT, gdal.Dataset)
 
-    #vrt = ['<VRTDataset rasterXSize="{xsize}" rasterYSize="{ysize}">'.format(xsize=xsize,ysize=ysize)]
+    # vrt = ['<VRTDataset rasterXSize="{xsize}" rasterYSize="{ysize}">'.format(xsize=xsize,ysize=ysize)]
 
     vrtDir = os.path.dirname(pathVrt)
     if pathRaw.startswith(vrtDir):
@@ -792,15 +770,14 @@ def describeRawFile(pathRaw, pathVrt, xsize, ysize,
                                                          lineOffset=lineOffset,
                                                          byteOrder=byteOrder)
 
-        #md = {}
-        #md['source_0'] = xml
-        #vrtBand = dsVRT.GetRasterBand(b + 1)
+        # md = {}
+        # md['source_0'] = xml
+        # vrtBand = dsVRT.GetRasterBand(b + 1)
         assert dsVRT.AddBand(eType, options=options) == 0
 
-        vrtBand = dsVRT.GetRasterBand(b+1)
+        vrtBand = dsVRT.GetRasterBand(b + 1)
         assert isinstance(vrtBand, gdal.Band)
-        #vrtBand.SetMetadata(md, 'vrt_sources')
-        #vrt.append('  <VRTRasterBand dataType="{dataType}" band="{band}" subClass="VRTRawRasterBand">'.format(dataType=LUT_GDT_NAME[eType], band=b+1))
+        # vrtBand.SetMetadata(md, 'vrt_sources')
+        # vrt.append('  <VRTRasterBand dataType="{dataType}" band="{band}" subClass="VRTRawRasterBand">'.format(dataType=LUT_GDT_NAME[eType], band=b+1))
     flushCacheWithoutException(dsVRT)
     return dsVRT
-

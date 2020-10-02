@@ -1,22 +1,26 @@
-import os, pathlib, unittest
+import pathlib
+import unittest
+
+from PyQt5.QtCore import QSize, QFile
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QLabel
+
+from qgis.core import QgsApplication
 from qps.testing import TestCase, StartOptions, start_app
 
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import QSize, QFile, QDir
-from qgis.core import QgsApplication
-
+# image resource location
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
 
-class Example1(unittest.TestCase):
 
-    @unittest.skipIf(not qgis_images_resources.is_file(), 'Resource file does not exist: {}'.format(qgis_images_resources))
+class Example1(unittest.TestCase):
+    resource_path = ':/images/icons/qgis_icon.svg'
+
+    @unittest.skipIf(qgis_images_resources.is_file() == False or QFile(resource_path).exists(),
+                     'Resource file does not exist: {}'.format(qgis_images_resources))
     def test_startQgsApplication(self):
         """
         This example shows how to initialize a QgsApplication on TestCase start up
         """
-        resource_path = ':/images/icons/qgis_icon.svg'
-        self.assertFalse(QFile(resource_path).exists())
 
         # StartOptions:
         # Minimized = just the QgsApplication
@@ -28,7 +32,8 @@ class Example1(unittest.TestCase):
 
         app = start_app(options=StartOptions.Minimized, resources=[qgis_images_resources])
         self.assertIsInstance(app, QgsApplication)
-        self.assertTrue(QFile(resource_path).exists())
+
+        self.assertTrue(QFile(self.resource_path).exists())
 
 
 class ExampleCase(TestCase):
@@ -36,13 +41,14 @@ class ExampleCase(TestCase):
     This example shows how to run unit tests using a QgsApplication
     that has the QGIS resource icons loaded
     """
+
     @classmethod
     def setUpClass(cls) -> None:
         # this initializes the QgsApplication with resources from images loaded
         resources = []
         if qgis_images_resources.is_file():
             resources.append(qgis_images_resources)
-        super().setUpClass(cleanup=True, options=StartOptions.Minimized, resources=resources)
+        super().setUpClass(cleanup=False, options=StartOptions.Minimized, resources=resources)
 
     @unittest.skipIf(not qgis_images_resources.is_file(),
                      'Resource file does not exist: {}'.format(qgis_images_resources))
@@ -54,7 +60,7 @@ class ExampleCase(TestCase):
         self.assertIsInstance(icon, QIcon)
 
         label = QLabel()
-        label.setPixmap(icon.pixmap(QSize(200,200)))
+        label.setPixmap(icon.pixmap(QSize(200, 200)))
 
         # In case the the environmental variable 'CI' is not set,
         # .showGui([list-of-widgets]) function will show and calls QApplication.exec_()
@@ -62,7 +68,7 @@ class ExampleCase(TestCase):
         self.showGui(label)
 
 
-
 if __name__ == '__main__':
+    import xmlrunner
 
-    unittest.main()
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

@@ -1,3 +1,29 @@
+# -*- coding: utf-8 -*-
+# noinspection PyPep8Naming
+"""
+***************************************************************************
+    qps/resources.py
+
+    A module to manage Qt/PyQt resources
+    ---------------------
+    Beginning            : 2019-02-18
+    Copyright            : (C) 2020 by Benjamin Jakimow
+    Email                : benjamin.jakimow@geo.hu-berlin.de
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
 
 import sys, os, pathlib, typing, re
 from qgis.PyQt.QtGui import *
@@ -18,8 +44,6 @@ def getDOMAttributes(elem):
         attr = attributes.item(a)
         values[str(attr.nodeName())] = attr.nodeValue()
     return values
-
-
 
 def compileResourceFiles(dirRoot:str, targetDir:str=None, suffix:str= '_rc.py'):
     """
@@ -170,6 +194,10 @@ def compileQGISResourceFiles(qgis_repo:str, target:str=None):
                 qgis_repo = pathlib.Path(os.environ[k])
                 break
 
+    if qgis_repo is None:
+        print('QGIS_REPO location undefined', file=sys.stderr)
+        return
+
     if not isinstance(qgis_repo, pathlib.Path):
         qgis_repo = pathlib.Path(qgis_repo)
     assert isinstance(qgis_repo, pathlib.Path)
@@ -184,7 +212,8 @@ def compileQGISResourceFiles(qgis_repo:str, target:str=None):
         target = pathlib.Path(target)
 
     os.makedirs(target, exist_ok=True)
-    compileResourceFiles(qgis_repo, targetDir=target)
+    compileResourceFiles(qgis_repo / 'src', targetDir=target)
+    compileResourceFiles(qgis_repo / 'images', targetDir=target)
 
 
 def initQtResources(roots: list = []):
@@ -271,7 +300,7 @@ def findQGISResourceFiles():
     return results
 
 
-def scanResources(path=':')->str:
+def scanResources(path=':') -> str:
     """Recursively returns file paths in directory"""
     D = QDirIterator(path)
     while D.hasNext():
@@ -286,44 +315,6 @@ def printResources():
     res = sorted(list(scanResources()))
     for r in res:
         print(r)
-
-
-
-def showResources()->QWidget:
-    """
-    A simple way to list available Qt resources
-    :return:
-    :rtype:
-    """
-    needQApp = not isinstance(QApplication.instance(), QApplication)
-    if needQApp:
-        app = QApplication([])
-    scrollArea = QScrollArea()
-
-    widget = QFrame()
-    grid = QGridLayout()
-    iconSize = QSize(25, 25)
-    row = 0
-    for resourcePath in scanResources(':'):
-        labelText = QLabel(resourcePath)
-        labelText.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        labelIcon = QLabel()
-        icon = QIcon(resourcePath)
-        assert not icon.isNull()
-
-        labelIcon.setPixmap(icon.pixmap(iconSize))
-
-        grid.addWidget(labelText, row, 0)
-        grid.addWidget(labelIcon, row, 1)
-        row += 1
-
-    widget.setLayout(grid)
-    widget.setMinimumSize(widget.sizeHint())
-    scrollArea.setWidget(widget)
-    scrollArea.show()
-    if needQApp:
-        QApplication.instance().exec_()
-    return scrollArea
 
 
 
@@ -351,7 +342,7 @@ class ResourceTableModel(QAbstractTableModel):
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self.RESOURCES)
 
-    def columnNames(self)->typing.List[str]:
+    def columnNames(self) -> typing.List[str]:
         return [self.cnUri, self.cnIcon]
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> typing.Any:
@@ -521,7 +512,22 @@ class ResourceBrowser(QWidget):
 
 
 
-    def useFilterRegex(self)->bool:
+    def useFilterRegex(self) -> bool:
         return self.optionUseRegex.isChecked()
 
 
+
+def showResources() -> ResourceBrowser:
+    """
+    A simple way to list available Qt resources
+    :return:
+    :rtype:
+    """
+    needQApp = not isinstance(QApplication.instance(), QApplication)
+    if needQApp:
+        app = QApplication([])
+    browser = ResourceBrowser()
+    browser.show()
+    if needQApp:
+        QApplication.instance().exec_()
+    return browser

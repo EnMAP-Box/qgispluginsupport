@@ -1,17 +1,51 @@
-import typing, pathlib
-from qgis.core import QgsRasterLayer, QgsRasterRenderer
+"""
+***************************************************************************
+    layerconfigwidget/rasterbands.py
+        - A QgsMapLayerConfigWidget to select and change bands of QgsRasterRenderers
+    -----------------------------------------------------------------------
+    begin                : 2020-02-24
+    copyright            : (C) 2020 Benjamin Jakimow
+    email                : benjamin.jakimow@geo.hu-berlin.de
+
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
+import typing
+import pathlib
 from qgis.core import *
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsRasterBandComboBox
+from qgis.core import QgsRasterLayer, \
+    QgsRasterRenderer, \
+    QgsSingleBandGrayRenderer, \
+    QgsSingleBandColorDataRenderer, \
+    QgsSingleBandPseudoColorRenderer, \
+    QgsMultiBandColorRenderer, \
+    QgsPalettedRasterRenderer, \
+    QgsColorRampShader, QgsRasterShaderFunction, QgsRasterShader
 from qgis.gui import *
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
+
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import QIcon
 import numpy as np
+from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
+from ..utils import loadUi, parseWavelength, UnitLookup
 
-from ..utils import loadUi, parseWavelength, convertMetricUnit
-class RasterBandConfigWidget(QgsMapLayerConfigWidget):
+class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
     @staticmethod
-    def icon()->QIcon:
+    def icon() -> QIcon:
         return QIcon(':/qps/ui/icons/rasterband_select.svg')
 
     def __init__(self, layer:QgsRasterLayer, canvas:QgsMapCanvas, parent:QWidget=None):
@@ -35,7 +69,6 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         self.cbMultiBandGreen.bandChanged.connect(self.widgetChanged)
         self.cbMultiBandBlue.bandChanged.connect(self.widgetChanged)
 
-
         assert isinstance(self.sliderSingleBand, QSlider)
         self.sliderSingleBand.setRange(1, self.mLayer.bandCount())
         self.sliderMultiBandRed.setRange(1, self.mLayer.bandCount())
@@ -46,41 +79,46 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         if isinstance(mWL, list):
             mWL = np.asarray(mWL)
 
-        if isinstance(mWLUnit, str) and mWLUnit != 'nm':
-            try:
-                # convert to nanometers
-                mWL = np.asarray([convertMetricUnit(v, mWLUnit, 'nm') for v in mWL])
-            except:
-                mWL = None
-                mWLUnit = None
+        if UnitLookup.isMetricUnit(mWLUnit):
+            mWLUnit = UnitLookup.baseUnit(mWLUnit)
+            # convert internally to nanometers
+            if mWLUnit != 'nm':
+                try:
+                    mWL = UnitLookup.convertMetricUnit(mWL, mWLUnit, 'nm')
+                    mWLUnit = 'nm'
+                except:
+                    mWL = None
+                    mWLUnit = None
 
         self.mWL = mWL
         self.mWLUnit = mWLUnit
 
-        hasWL = self.mWL is not None
+        hasWL = UnitLookup.isMetricUnit(self.mWLUnit)
         self.gbMultiBandWavelength.setEnabled(hasWL)
         self.gbSingleBandWavelength.setEnabled(hasWL)
 
-        self.btnSetSBBand_B.clicked.connect(lambda : self.setWL(('B',)))
+        self.btnSetSBBand_B.clicked.connect(lambda: self.setWL(('B',)))
         self.btnSetSBBand_G.clicked.connect(lambda: self.setWL(('G',)))
         self.btnSetSBBand_R.clicked.connect(lambda: self.setWL(('R',)))
         self.btnSetSBBand_NIR.clicked.connect(lambda: self.setWL(('NIR',)))
-        self.btnSetSBBand_SWIR.clicked.connect(lambda: self.setWL(('SWIR',)))
+        self.btnSetSBBand_SWIR1.clicked.connect(lambda: self.setWL(('SWIR1',)))
+        self.btnSetSBBand_SWIR2.clicked.connect(lambda: self.setWL(('SWIR2',)))
 
-        self.btnSetMBBands_RGB.clicked.connect(lambda : self.setWL(('R', 'G', 'B')))
+        self.btnSetMBBands_RGB.clicked.connect(lambda: self.setWL(('R', 'G', 'B')))
         self.btnSetMBBands_NIRRG.clicked.connect(lambda: self.setWL(('NIR', 'R', 'G')))
         self.btnSetMBBands_SWIRNIRR.clicked.connect(lambda: self.setWL(('SWIR', 'NIR', 'R')))
+        self.btnSetMBBands_NIRSWIRR.clicked.connect(lambda: self.setWL(('NIR', 'SWIR', 'R')))
 
         self.syncToLayer()
 
         self.setPanelTitle('Band Selection')
 
-    def syncToLayer(self):
-
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         renderer = self.mLayer.renderer()
         self.setRenderer(renderer)
 
-    def renderer(self)->QgsRasterRenderer:
+    def renderer(self) -> QgsRasterRenderer:
         oldRenderer = self.mLayer.renderer()
         newRenderer = None
         if isinstance(oldRenderer, QgsSingleBandGrayRenderer):
@@ -119,7 +157,10 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
             newRenderer.setBlueBand(self.cbMultiBandBlue.currentBand())
         return newRenderer
 
-    def setRenderer(self, renderer:QgsRasterRenderer):
+    def setRenderer(self, renderer: QgsRasterRenderer):
+        if not isinstance(renderer, QgsRasterRenderer):
+            return
+
         w = self.renderBandWidget
         assert isinstance(self.labelRenderType, QLabel)
         assert isinstance(w, QStackedWidget)
@@ -152,14 +193,10 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
         else:
             w.setCurrentWidget(self.pageUnknown)
 
-
-
-
-    def shouldTriggerLayerRepaint(self)->bool:
+    def shouldTriggerLayerRepaint(self) -> bool:
         return True
 
     def apply(self):
-
         newRenderer = self.renderer()
 
         if isinstance(newRenderer, QgsRasterRenderer) and isinstance(self.mLayer, QgsRasterLayer):
@@ -167,7 +204,7 @@ class RasterBandConfigWidget(QgsMapLayerConfigWidget):
             self.mLayer.setRenderer(newRenderer)
             self.widgetChanged.emit()
 
-    def wlBand(self, wlKey:str)->int:
+    def wlBand(self, wlKey:str) -> int:
         """
         Returns the band number for a wavelength
         :param wlKey:
@@ -221,7 +258,7 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def supportsStyleDock(self):
         return True
 
-    def createWidget(self, layer, canvas, dockWidget=True, parent=None)->QgsMapLayerConfigWidget:
+    def createWidget(self, layer, canvas, dockWidget=True, parent=None) -> QgsMapLayerConfigWidget:
         w = RasterBandConfigWidget(layer, canvas, parent=parent)
         return w
 

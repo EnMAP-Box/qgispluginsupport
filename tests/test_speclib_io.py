@@ -20,22 +20,21 @@
 import unittest
 from qps.testing import TestObjects, TestCase
 
-
-from qpstestdata import enmap
+from qgis._gui import *
+from qgis._core import *
+from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
 
+from qps.speclib.io.vectorsources import *
 from qps.speclib.io.csvdata import *
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.speclib.gui import *
 
 
-os.environ['CI'] = 'True'
-
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
 class TestIO(TestCase):
-
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         os.makedirs(TEST_DIR, exist_ok=True)
@@ -51,9 +50,6 @@ class TestIO(TestCase):
     def setUp(self):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
-
-        for s in SpectralLibrary.instances():
-            del s
 
         for file in vsiSpeclibs():
             gdal.Unlink(file)
@@ -74,8 +70,8 @@ class TestIO(TestCase):
         pathJSON = tempfile.mktemp(suffix='.json', prefix='tmpSpeclib')
 
         # no additional info, no JSON file
-        slib.writeJSONProperties(pathJSON)
-        self.assertFalse(os.path.isfile(pathJSON))
+        #slib.writeJSONProperties(pathJSON)
+        #self.assertFalse(os.path.isfile(pathJSON))
 
         # add categorical info
         slib.startEditing()
@@ -112,6 +108,70 @@ class TestIO(TestCase):
         data = slib.readJSONProperties(pathJSON)
         s = ""
 
+    def test_readFromVector(self):
+
+        from qpstestdata import enmap_pixel, landcover, enmap
+
+        rl = QgsRasterLayer(enmap)
+        vl = QgsVectorLayer(enmap_pixel)
+
+        progressDialog = QProgressDialog()
+        #progress_handler.show()
+
+        info ='Test read from \n'+ \
+              'Vector: {}\n'.format(vl.crs().description()) + \
+              'Raster: {}\n'.format(rl.crs().description())
+        print(info)
+
+        sl = SpectralLibrary.readFromVector(vl, rl,
+                                            all_touched=True,
+                                            copy_attributes=True, progress_handler=progressDialog)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0, msg='Failed to read SpectralProfiles')
+        n_pr = len(sl)
+        n_px = rl.width() * rl.height()
+        self.assertEqual(n_px, n_pr, msg=f'Expected {n_px} profiles but got {n_pr}')
+
+        self.assertTrue(progressDialog.value(), [-1, progressDialog.maximum()])
+
+        data = gdal.Open(enmap).ReadAsArray()
+        nb, nl, ns = data.shape
+
+        for p in sl:
+            self.assertIsInstance(p, SpectralProfile)
+
+            x = p.attribute('px_x')
+            y = p.attribute('px_y')
+            yValues = p.values()['y']
+            yValues2 = list(data[:, y, x])
+            self.assertListEqual(yValues, yValues2)
+            s = ""
+
+        self.assertTrue(sl.crs() != vl.crs())
+
+
+        info ='Test read from \n'+ \
+              'Vector: {} (speclib)\n'.format(sl.crs().description()) + \
+              'Raster: {}\n'.format(rl.crs().description())
+        print(info)
+
+
+        sl2 = SpectralLibrary.readFromVector(sl, rl, copy_attributes=True)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl2) > 0, msg='Failed to re-read SpectralProfiles')
+        for p1, p2 in zip(sl[:], sl2[:]):
+            self.assertIsInstance(p1, SpectralProfile)
+            self.assertIsInstance(p2, SpectralProfile)
+            self.assertTrue(p1.geometry().equals(p2.geometry()))
+            self.assertListEqual(p1.yValues(), p2.yValues())
+
+        rl = QgsRasterLayer(enmap)
+        vl = QgsVectorLayer(landcover)
+        sl = SpectralLibrary.readFromVector(vl, rl)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
+
+
     def test_CSV2(self):
         from qpstestdata import speclib
         from qps.speclib.io.csvdata import CSVSpectralLibraryIO
@@ -133,7 +193,7 @@ class TestIO(TestCase):
             self.assertEqual(p1, p2)
 
         SLIB = TestObjects.createSpectralLibrary()
-        #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs2.out.csv')
+        #pathCSV = os.data_source.join(os.data_source.dirname(__file__), 'speclibcvs2.out.csv')
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
         print(pathCSV)
         CSVSpectralLibraryIO.write(SLIB, pathCSV, progressDialog=QProgressDialog())
@@ -223,6 +283,7 @@ class TestIO(TestCase):
             self.assertEqual(p.yValues()[0], 42)
             self.assertEqual(p.yValues()[99], 42)
 
+
     def test_vector2speclib(self):
 
         lyrRaster = QgsRasterLayer(enmap)
@@ -251,7 +312,7 @@ class TestIO(TestCase):
 
         progress = QProgressDialog()
 
-        speclib2 = SpectralLibrary.readFromVector(speclib1, lyrRaster, progressDialog=progress)
+        speclib2 = SpectralLibrary.readFromVector(speclib1, lyrRaster, progress_handler=progress)
         self.assertIsInstance(speclib2, SpectralLibrary)
         self.assertEqual(len(speclib1), len(speclib2))
         self.assertTrue(speclib1.crs().toWkt() == speclib2.crs().toWkt())
@@ -265,18 +326,20 @@ class TestIO(TestCase):
             self.assertListEqual(p1.yValues(), p2.yValues())
             self.assertTrue(p1.geometry().equals(p2.geometry()))
 
-        uri = "MultiPoint?crs=epsg:4326";
-        pathMultiPointLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
-        pathRasterLayer = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
-        vlMultiPoint = None
 
-        if os.path.isfile(pathMultiPointLayer) and os.path.isfile(pathRasterLayer):
-            vlMultiPoint = QgsVectorLayer(pathMultiPointLayer)
-            rlEnMAP = QgsRasterLayer(pathRasterLayer)
-            speclib3 = SpectralLibrary.readFromVector(vlMultiPoint, rlEnMAP, progressDialog=progress)
+        vlLandCover = QgsVectorLayer(landcover)
+        rlEnMAP = QgsRasterLayer(enmap)
+        speclib3 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, progress_handler=progress)
 
-            self.assertIsInstance(speclib3, SpectralLibrary)
-            self.assertTrue(len(speclib3) > 0)
+        self.assertIsInstance(speclib3, SpectralLibrary)
+        self.assertTrue(len(speclib3) > 0)
+
+        speclib4 = SpectralLibrary.readFromVector(vlLandCover, rlEnMAP, copy_attributes=True, progress_handler=progress)
+        self.assertIsInstance(speclib3, SpectralLibrary)
+        self.assertTrue(len(speclib3) > 0)
+        self.assertTrue(len(speclib3.fieldNames()) < len(speclib4.fieldNames()))
+        for fieldName in vlLandCover.fields().names():
+            self.assertTrue(fieldName in speclib4.fieldNames())
 
     def test_reloadProfiles(self):
         lyr = QgsRasterLayer(enmap)
@@ -288,39 +351,65 @@ class TestIO(TestCase):
             for y in range(lyr.height()):
                 locations.append(QPoint(x, y))
 
+        print('load speclibA', flush=True)
         speclibA = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
+        self.assertIsInstance(speclibA, SpectralLibrary)
 
+        print('load speclibREF', flush=True)
         speclibREF = SpectralLibrary.readFromRasterPositions(lyr.source(), locations)
+        self.assertIsInstance(speclibREF, SpectralLibrary)
         speclibREF.setName('REF SPECLIB')
         self.assertIsInstance(speclibA, SpectralLibrary)
         self.assertTrue(len(locations) == len(speclibA))
 
-        self.assertTrue(speclibA.isEditable() == False)
+        self.assertFalse(speclibA.isEditable())
+        print('speclibA is editable', flush=True)
 
         # clean values
-        speclibA.startEditing()
+        self.assertTrue(speclibA.startEditing())
         idx = speclibA.fields().indexOf(FIELD_VALUES)
+
+        n = 0
         for p in speclibA:
+            n += 1
+            #if n > 10:
+            #    break
+            print('Change attribute values profile {}'.format(p.id()), flush=True)
             self.assertIsInstance(p, SpectralProfile)
             speclibA.changeAttributeValue(p.id(), idx, None)
+            QApplication.processEvents()
+
+        print('Commit changes', flush=True)
         self.assertTrue(speclibA.commitChanges())
+
+        print('Check yValues(', flush=True)
 
         for p in speclibA:
             self.assertIsInstance(p, SpectralProfile)
-            self.assertEqual(p.yValues(), [])
+            self.assertListEqual(p.yValues(), [])
+            QApplication.processEvents()
 
+        QApplication.processEvents()
         # re-read values
+        print('select all', flush=True)
         speclibA.selectAll()
+        print('start editing', flush=True)
         speclibA.startEditing()
+        QApplication.processEvents()
+        print('reload spectral values', flush=True)
         speclibA.reloadSpectralValues(enmap)
         self.assertTrue(speclibA.commitChanges())
+
+        print('Compare speclibA with speclibREF', flush=True)
         for a, b in zip(speclibA[:], speclibREF[:]):
             self.assertIsInstance(a, SpectralProfile)
             self.assertIsInstance(b, SpectralProfile)
             self.assertListEqual(a.xValues(), b.xValues())
             self.assertListEqual(a.yValues(), b.yValues())
 
+        print('load SpectralLibraryWidget', flush=True)
         slw = SpectralLibraryWidget(speclib=speclibA)
+        QApplication.processEvents()
 
         # clean values
         speclibA.startEditing()
@@ -329,13 +418,14 @@ class TestIO(TestCase):
             self.assertIsInstance(p, SpectralProfile)
             speclibA.changeAttributeValue(p.id(), idx, None)
         self.assertTrue(speclibA.commitChanges())
-
+        QApplication.processEvents()
         self.showGui(slw)
 
     def test_EcoSIS(self):
 
-
         from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
+        from qpstestdata import speclib
+        self.assertFalse(EcoSISSpectralLibraryIO.canRead(speclib))
 
         # 1. read
         from qpstestdata import DIR_ECOSIS
@@ -359,7 +449,7 @@ class TestIO(TestCase):
 
         pathCSV = os.path.join(TEST_DIR, 'speclib.ecosys.csv')
         csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=QProgressDialog())
-
+        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=None)
         n = 0
         for p in csvFiles:
             self.assertTrue(os.path.isfile(p))
@@ -389,9 +479,11 @@ class TestIO(TestCase):
             sl = SPECCHIOSpectralLibraryIO.readFrom(path, progressDialog=QProgressDialog())
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) > 0)
-
+            for p in sl:
+                self.assertIsInstance(p, SpectralProfile)
+                self.assertListEqual(p.xValues(), sorted(p.xValues()))
         # 2. write
-        speclib = TestObjects.createSpectralLibrary(50, nEmpty=1)
+        speclib = TestObjects.createSpectralLibrary(50, n_empty=1)
         pathCSV = os.path.join(TEST_DIR, 'speclib.specchio.csv')
         csvFiles = SPECCHIOSpectralLibraryIO.write(speclib, pathCSV, progressDialog=QProgressDialog())
 
@@ -402,12 +494,24 @@ class TestIO(TestCase):
 
             slPart = SPECCHIOSpectralLibraryIO.readFrom(p, progressDialog=QProgressDialog())
             self.assertIsInstance(slPart, SpectralLibrary)
-
+            for p in slPart:
+                self.assertIsInstance(p, SpectralProfile)
+                self.assertListEqual(p.xValues(), sorted(p.xValues()))
 
             n += len(slPart)
 
         self.assertEqual(len(speclib) - 1, n)
 
+    def test_ADS_AS7(self):
+
+        # read binary files
+        from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDBinaryFile
+        from qpstestdata import DIR_ASD_AS7
+        binaryFiles = list(file_search(DIR_ASD_AS7, '*.asd'))
+        for path in binaryFiles:
+            self.assertTrue(ASDSpectralLibraryIO.canRead(path))
+            asdFile = ASDBinaryFile().readFromBinaryFile(path)
+            self.assertIsInstance(asdFile, ASDBinaryFile)
 
     def test_ASD(self):
 
@@ -443,33 +547,48 @@ class TestIO(TestCase):
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), len(textFiles))
 
-    def test_vectorlayer(self):
+    def test_speclib2vector(self):
 
-        slib = TestObjects.createSpectralLibrary()
-
+        testDir = self.createTestOutputDirectory() / 'speclib2vector'
+        os.makedirs(testDir, exist_ok=True)
 
         from qps.speclib.io.vectorsources import VectorSourceSpectralLibraryIO
 
-        extensions = ['.csv', '.gpkg', '.shp', '.kml', '.gpx']
+        slib = TestObjects.createSpectralLibrary(2, n_bands=[-1, 3, 24])
+        self.assertIsInstance(slib, SpectralLibrary)
+        self.assertTrue(len(slib) == 6)
+
+        extensions = ['.json', '.geojson', '.geojsonl', '.csv', '.gpkg']
+
+        hasLIBKML = isinstance(ogr.GetDriverByName('LIBKML'), ogr.Driver)
+        if hasLIBKML:
+            extensions.append('.kml')
+
         for ext in extensions:
             print('Test vector file type {}'.format(ext))
-            path = tempfile.mktemp(suffix=ext, prefix='tmpSpeclib')
+            path = testDir / f'speclib_{ext[1:]}{ext}'
 
             # write
             writtenFiles = VectorSourceSpectralLibraryIO.write(slib, path, progressDialog=QProgressDialog())
-            self.assertTrue(len(writtenFiles) > 0)
+            self.assertTrue(len(writtenFiles) == 1)
 
             # read
-            results = []
-            n = 0
-            for file in writtenFiles:
-                self.assertTrue(VectorSourceSpectralLibraryIO.canRead(file), msg='Failed to read speclib from {}'.format(file))
-                sl = VectorSourceSpectralLibraryIO.readFrom(file, progressDialog=QProgressDialog())
-                n += len(sl)
-                self.assertIsInstance(sl, SpectralLibrary)
-                results.append(sl)
+            file = writtenFiles[0]
+            self.assertTrue(VectorSourceSpectralLibraryIO.canRead(file),
+                            msg='Failed to read speclib from {}'.format(file))
+            sl = VectorSourceSpectralLibraryIO.readFrom(file, progressDialog=QProgressDialog())
+            self.assertIsInstance(sl, SpectralLibrary)
+            self.assertEqual(len(sl), len(slib))
 
-            self.assertEqual(n, len(slib))
+            for p1, p2 in zip(slib[:], sl[:]):
+                self.assertIsInstance(p1, SpectralProfile)
+                self.assertIsInstance(p2, SpectralProfile)
+                self.assertEqual(p1.name(), p2.name())
+                self.assertEqual(p1.xUnit(), p2.xUnit())
+                self.assertEqual(p1.yUnit(), p2.yUnit())
+                self.assertListEqual(p1.xValues(), p2.xValues())
+                self.assertListEqual(p1.yValues(), p2.yValues())
+
 
 
 
@@ -485,10 +604,11 @@ class TestIO(TestCase):
             if len(p.yValues()) > 0:
                 nProfiles += 1
 
-        pd = QProgressDialog()
+
         for c in allSubclasses(AbstractSpectralLibraryIO):
             print('Test {}'.format(c.__name__))
             path = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
+            pd = QProgressDialog()
             writtenFiles = c.write(slib, path, progressDialog=pd)
 
             # if it can write, it should read the profiles too
@@ -502,8 +622,6 @@ class TestIO(TestCase):
                     n += len(sl)
 
                 self.assertTrue(n == nProfiles or n == nFeatures)
-            pass
-
 
     def test_ARTMO(self):
 
@@ -522,45 +640,131 @@ class TestIO(TestCase):
 
     def test_CSV(self):
         # TEST CSV writing
+
+
         speclib = TestObjects.createSpectralLibrary()
 
+        dirTMP = self.createTestOutputDirectory() / 'speclib-tests'
+        os.makedirs(dirTMP, exist_ok=True)
         # txt = CSVSpectralLibraryIO.asString(speclib)
-        pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        #pathCSV = os.path.join(os.path.dirname(__file__), 'speclibcvs3.out.csv')
-        writtenFiles = speclib.exportProfiles(pathCSV)
+        pathCSV1 = dirTMP / 'speclib1.csv'
+        pathCSV2 = dirTMP / 'speclib2.csv'
+
+        writtenFiles = CSVSpectralLibraryIO.write(speclib, pathCSV1, progressDialog=QProgressDialog())
         self.assertIsInstance(writtenFiles, list)
         self.assertTrue(len(writtenFiles) == 1)
 
-        path = writtenFiles[0]
-        lines = None
-        with open(path, 'r') as f:
-            lines = f.read()
-        self.assertTrue(CSVSpectralLibraryIO.canRead(path), msg='Unable to read {}'.format(path))
-        sl_read1 = CSVSpectralLibraryIO.readFrom(path, progressDialog=QProgressDialog())
-        sl_read2 = SpectralLibrary.readFrom(path, progressDialog=QProgressDialog())
+        writtenFiles = speclib.write(pathCSV2)
+        self.assertIsInstance(writtenFiles, list)
+        self.assertTrue(len(writtenFiles) == 1)
+
+        self.assertTrue(CSVSpectralLibraryIO.canRead(pathCSV1), msg='Unable to read {}'.format(pathCSV1))
+        sl_read1 = CSVSpectralLibraryIO.readFrom(pathCSV1, progressDialog=QProgressDialog())
+
+        self.assertTrue(VectorSourceSpectralLibraryIO.canRead(pathCSV2), msg='Unable to read {}'.format(pathCSV2))
+        sl_read2 = SpectralLibrary.readFrom(pathCSV2, progressDialog=QProgressDialog())
 
         self.assertTrue(len(sl_read1) > 0)
         self.assertIsInstance(sl_read1, SpectralLibrary)
         self.assertIsInstance(sl_read2, SpectralLibrary)
 
-        self.assertEqual(len(sl_read1), len(speclib), msg='Should return {} instead of {} SpectralProfiles'.format(len(speclib), len(sl_read1)))
+        self.assertEqual(len(sl_read1), len(speclib),
+                         msg='Should return {} instead of {} SpectralProfiles'.format(len(speclib), len(sl_read1)))
 
-        profilesA = sorted(speclib.profiles(), key=lambda p: p.id())
-        profilesB = sorted(sl_read1.profiles(), key=lambda p: p.attribute('fid'))
+        self.assertEqual(len(sl_read2), len(speclib),
+                         msg='Should return {} instead of {} SpectralProfiles'.format(len(speclib), len(sl_read2)))
 
-        for p1, p2 in zip(profilesA, profilesB):
+        profilesR = sorted(speclib.profiles(), key=lambda p: p.id())
+        profiles1 = sorted(sl_read1.profiles(), key=lambda p: p.attribute('fid'))
+        profiles2 = sorted(sl_read2.profiles(), key=lambda p: p.attribute('fid'))
+
+        for pR, p1, p2 in zip(profilesR, profiles1, profiles2):
+            self.assertIsInstance(pR, SpectralProfile)
             self.assertIsInstance(p1, SpectralProfile)
             self.assertIsInstance(p2, SpectralProfile)
-            self.assertEqual(p1.name(), p2.name())
-            self.assertEqual(p1.xUnit(), p2.xUnit())
-            self.assertEqual(p1.yUnit(), p2.yUnit())
+            self.assertEqual(pR.name(), p1.name())
+            self.assertEqual(pR.name(), p2.name())
+            self.assertEqual(pR.xUnit(), p1.xUnit())
+            self.assertEqual(pR.xUnit(), p2.xUnit())
+            self.assertEqual(pR.yUnit(), p1.yUnit())
+            self.assertEqual(pR.yUnit(), p2.yUnit())
 
         self.SPECLIB = speclib
 
         try:
-            os.remove(pathCSV)
+            os.remove(pathCSV1)
         except:
             pass
+
+    def test_enmapbox_issue_463(self):
+        # see https://bitbucket.org/hu-geomatics/enmap-box/issues/463/string-attributes-not-correctly-imported
+        # for details
+
+        TESTDATA = pathlib.Path(r'D:\Repositories\enmap-box\enmapboxtestdata')
+
+        landcover_points = TESTDATA / 'landcover_berlin_point.shp'
+        enmap = TESTDATA / 'enmap_berlin.bsq'
+
+        if os.path.isfile(landcover_points) and os.path.isfile(enmap):
+            lyrV = QgsVectorLayer(landcover_points.as_posix())
+            lyrR = QgsRasterLayer(enmap.as_posix())
+
+            slib = SpectralLibrary.readFromVector(lyrV, lyrR,
+                                                  copy_attributes=True,
+                                                  name_field='level_1',
+                                                  )
+
+            for profile in slib:
+                value = profile.attribute('level_2')
+                self.assertIsInstance(value, str)
+                self.assertTrue(len(value) > 0)
+
+            # test speed by
+            uri = '/vsimem/temppoly.gpkg'
+            drv: ogr.Driver = ogr.GetDriverByName('GPKG')
+            ds: ogr.DataSource = drv.CreateDataSource(uri)
+
+            lyr: ogr.Layer = ds.CreateLayer('polygon',
+                                            srs=osrSpatialReference(lyrR.crs()),
+                                            geom_type=ogr.wkbPolygon)
+
+            pd = QProgressDialog()
+
+            f = ogr.Feature(lyr.GetLayerDefn())
+            ext = SpatialExtent.fromLayer(lyrR)
+            g = ogr.CreateGeometryFromWkt(ext.asWktPolygon())
+            f.SetGeometry(g)
+            lyr.CreateFeature(f)
+            ds.FlushCache()
+
+
+            t0 = datetime.datetime.now()
+            slib = SpectralLibrary.readFromVector(uri, lyrR, progress_handler=pd)
+            self.assertIsInstance(slib, SpectralLibrary)
+            dt = datetime.datetime.now() - t0
+            print(f'Loaded {len(slib)} speclib profiles in {dt}')
+
+            self.assertTrue(pd.value() == -1)
+
+            pd.setValue(0)
+
+            t0 = datetime.datetime.now()
+            profiles = SpectralLibrary.readFromVector(uri, lyrR, return_profile_list=True)
+
+            self.assertIsInstance(profiles, list)
+            dt = datetime.datetime.now() - t0
+            print(f'Loaded {len(profiles)} profiles in {dt}')
+            s = ""
+
+    def test_csv_from_string(self):
+        from qps.speclib.io.csvdata import CSVSpectralLibraryIO
+        # see https://bitbucket.org/hu-geomatics/enmap-box/issues/321/error-when-dropping-a-raster-eg
+        # test if CSVSpectralLibraryIO.fromString() handles obviously none-CSV data
+
+        p = str(QUrl.fromLocalFile(pathlib.Path(__file__).resolve().as_posix()))
+        result = CSVSpectralLibraryIO.fromString(p)
+        self.assertTrue(result == None)
+
 
     def test_findEnviHeader(self):
 
@@ -604,8 +808,19 @@ class TestIO(TestCase):
 
         pathESL = speclibpath
 
+        from qpstestdata import speclib
 
+        self.assertTrue(EnviSpectralLibraryIO.canRead(speclib))
+
+        sl = EnviSpectralLibraryIO.readFrom(speclib)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
+
+        sl = SpectralLibrary.readFrom(speclib)
+        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertTrue(len(sl) > 0)
         csv = readCSVMetadata(pathESL)
+
 
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=QProgressDialog())
 
@@ -674,7 +889,6 @@ class TestIO(TestCase):
         # addresses issue #11:
         # No error is generated when trying (by accident) to read the ENVI header file instead of the .sli/.esl file itself.
 
-
         pathHdr = os.path.splitext(speclibpath)[0]+'.hdr'
         self.assertTrue(os.path.isfile(pathHdr))
         sl1 = SpectralLibrary.readFrom(speclibpath, progressDialog=QProgressDialog())
@@ -687,14 +901,20 @@ class TestIO(TestCase):
             self.assertIsInstance(p2, SpectralProfile)
             self.assertEqual(p1, p2)
 
-
-
     def test_ENVILabeled(self):
 
         from qpstestdata import speclib_labeled as pathESL
+        from qpstestdata import speclib as pathSLI
+
+        sl = SpectralLibrary.readFrom(pathSLI)
+        for p in sl:
+            self.assertIsInstance(p, SpectralProfile)
+            print([p.attribute(a) for a in p.fieldNames() if a != FIELD_VALUES])
+        s = ""
+
         from qps import registerEditorWidgets
+        from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY as RasterClassificationKey
         registerEditorWidgets()
-        csv = readCSVMetadata(pathESL)
 
         sl1 = EnviSpectralLibraryIO.readFrom(pathESL, progressDialog=QProgressDialog())
 
@@ -702,6 +922,7 @@ class TestIO(TestCase):
         p0 = sl1[0]
         self.assertIsInstance(p0, SpectralProfile)
         self.assertEqual(sl1.fieldNames(), ['fid', 'name', 'source', 'values', 'level_1', 'level_2', 'level_3'])
+
 
         setupTypes = []
         setupConfigs = []
@@ -711,32 +932,47 @@ class TestIO(TestCase):
             setupTypes.append(setup.type())
             setupConfigs.append(setup.config())
 
+
+        classValueFields = ['level_1', 'level_2', 'level_3']
+        for name in classValueFields:
+            i = sl1.fields().indexFromName(name)
+            self.assertEqual(setupTypes[i], RasterClassificationKey)
+
         sl = SpectralLibrary()
         sl.startEditing()
         sl.addSpeclib(sl1)
         self.assertTrue(sl.commitChanges())
 
-
-        i = sl.fields().indexOf('level_1')
-        from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY
-        self.assertEqual(sl.editorWidgetSetup(i).type(), EDITOR_WIDGET_REGISTRY_KEY)
-        #self.assertTrue(sl.commitChanges())
-        self.assertEqual(sl.editorWidgetSetup(i).type(), EDITOR_WIDGET_REGISTRY_KEY)
-
-        for name in ['level_1', 'level_2', 'level_3']:
+        for name in classValueFields:
             i = sl.fields().indexFromName(name)
             j = sl1.fields().indexFromName(name)
             self.assertTrue(i > 0)
+            self.assertTrue(j > 0)
             setupNew = sl.editorWidgetSetup(i)
             setupOld = sl1.editorWidgetSetup(j)
-            self.assertEqual(setupOld.type(), EDITOR_WIDGET_REGISTRY_KEY)
-            self.assertEqual(setupNew.type(), EDITOR_WIDGET_REGISTRY_KEY)
+            self.assertEqual(setupOld.type(), RasterClassificationKey)
+            self.assertEqual(setupNew.type(), RasterClassificationKey,
+                             msg='EditorWidget type is "{}" not "{}"'.format(setupNew.type(), setupOld.type()))
 
-        s = ""
+        sl = SpectralLibrary()
+        sl.startEditing()
+        sl.addSpeclib(sl1, copyEditorWidgetSetup=False)
+        self.assertTrue(sl.commitChanges())
+
+        for name in classValueFields:
+            i = sl.fields().indexFromName(name)
+            j = sl1.fields().indexFromName(name)
+            self.assertTrue(i > 0)
+            self.assertTrue(j > 0)
+            setupNew = sl.editorWidgetSetup(i)
+            setupOld = sl1.editorWidgetSetup(j)
+            self.assertEqual(setupOld.type(), RasterClassificationKey)
+            self.assertNotEqual(setupNew.type(), RasterClassificationKey)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    import xmlrunner
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
 
 

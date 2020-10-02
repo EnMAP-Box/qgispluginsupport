@@ -1,11 +1,43 @@
-import typing, pathlib, enum
-from qgis.core import *
-from qgis.gui import *
+"""
+***************************************************************************
+    layerconfigwidget/core.py - Helpers and emulations for QgsMapLayerConfigWidgets
+    -----------------------------------------------------------------------
+    begin                : <month and year of creation>
+    copyright            : (C) 2020 Benjamin Jakimow
+    email                : benjamin.jakimow@geo.hu-berlin.de
+
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
+
+import typing
+import os
+import pathlib
+import enum
+import re
+from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsFileUtils, QgsSettings, QgsStyle, QgsApplication
+from qgis.gui import QgsRasterHistogramWidget, QgsMapCanvas, QgsMapLayerConfigWidget, \
+    QgsLayerTreeEmbeddedConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRendererRasterPropertiesWidget, \
+    QgsRendererPropertiesDialog, QgsRasterTransparencyWidget, QgsProjectionSelectionWidget
+#
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtGui import QIcon
 from ..utils import loadUi
 
-def configWidgetUi(name:str)->str:
+
+def configWidgetUi(name: str) -> str:
     """
     Returns the full path to a '*.ui' file
     :param name:
@@ -19,36 +51,37 @@ def configWidgetUi(name:str)->str:
 
 class QpsMapLayerConfigWidget(QgsMapLayerConfigWidget):
 
-    def __init__(self, mapLayer:QgsMapLayer, canvas:QgsMapCanvas, *args, **kwds):
+    def __init__(self, mapLayer: QgsMapLayer, canvas: QgsMapCanvas, *args, **kwds):
         assert isinstance(mapLayer, QgsMapLayer)
         assert isinstance(canvas, QgsMapCanvas)
         super().__init__(mapLayer, canvas, *args, **kwds)
         self.mMapLayer = mapLayer
         self.mCanvas = canvas
 
-    def canvas(self)->QgsMapCanvas:
+    def canvas(self) -> QgsMapCanvas:
         """
         Returns the QgsMapCanvas
         """
         return self.mCanvas
 
-    def mapLayer(self)->QgsMapLayer:
+    def mapLayer(self) -> QgsMapLayer:
         """
         Returns the map layer
         """
         return self.mMapLayer
 
-    def menuButtonMenu(self)->QMenu:
+    def menuButtonMenu(self) -> QMenu:
         return None
 
     def menuButtonToolTip(self):
         return ''
 
-    def syncToLayer(self):
+    def syncToLayer(self, mapLayer: QgsMapLayer = None):
         """
         Implement this method to take up changes from the underlying map layer.
         """
-        pass
+        if isinstance(mapLayer, QgsMapLayer):
+            self.mMapLayer = mapLayer
 
     def reset(self):
         """
@@ -66,15 +99,17 @@ class MetadataConfigWidget(QpsMapLayerConfigWidget):
     """
     Emulates the QGS Layer Property Dialogs "Information" page
     """
-    def __init__(self, layer:QgsMapLayer, canvas:QgsMapCanvas, parent=None):
+
+    def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
         super().__init__(layer, canvas, parent=parent)
         self.setLayout(QVBoxLayout())
-        self.textBrowser:QTextBrowser = QTextBrowser()
+        self.textBrowser: QTextBrowser = QTextBrowser()
         self.layout().addWidget(self.textBrowser)
 
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         lyr = self.mapLayer()
         if isinstance(lyr, QgsMapLayer):
             style = QgsApplication.reportStyleSheet(QgsApplication.WebBrowser)
@@ -83,6 +118,7 @@ class MetadataConfigWidget(QpsMapLayerConfigWidget):
             self.textBrowser.setHtml(md)
         else:
             self.textBrowser.setHtml('')
+
 
 class MetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def __init__(self, title='Information', icon=QIcon(':/images/themes/default/mActionPropertiesWidget.svg')):
@@ -95,6 +131,7 @@ class MetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def supportLayerPropertiesDialog(self):
         return True
+
     def supportsStyleDock(self):
         return False
 
@@ -103,6 +140,7 @@ class SourceConfigWidget(QpsMapLayerConfigWidget):
     """
     Emulates the QGS Layer Property Dialogs "Source" page
     """
+
     def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
         super().__init__(layer, canvas, parent=parent)
         loadUi(configWidgetUi('sourceconfigwidget.ui'), self)
@@ -112,7 +150,8 @@ class SourceConfigWidget(QpsMapLayerConfigWidget):
         self.tbLayerName.textChanged.connect(lambda txt: self.tbLayerDisplayName.setText(layer.formatLayerName(txt)))
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         lyr = self.mapLayer()
         if isinstance(lyr, QgsMapLayer):
             self.tbLayerName.setText(lyr.name())
@@ -129,7 +168,6 @@ class SourceConfigWidget(QpsMapLayerConfigWidget):
             lyr.setCrs(self.mCRS.crs())
 
 
-
 class SourceConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def __init__(self, title='Source', icon=QIcon(':/images/themes/default/propertyicons/system.svg')):
         super().__init__(title, icon)
@@ -139,7 +177,7 @@ class SourceConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def createWidget(self, layer, canvas, dockWidget=False, parent=None):
         return SourceConfigWidget(layer, canvas, parent=parent)
 
-    def supportsLayer(self, layer)->bool:
+    def supportsLayer(self, layer) -> bool:
         return isinstance(layer, QgsMapLayer)
 
     def supportLayerPropertiesDialog(self):
@@ -148,33 +186,41 @@ class SourceConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def supportsStyleDock(self):
         return False
 
+
 class SymbologyConfigWidget(QpsMapLayerConfigWidget):
     """
     Emulates the QGS Layer Property Dialogs "Source" page
     """
-    def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
+
+    def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, style: QgsStyle = QgsStyle(), parent=None):
         super().__init__(layer, canvas, parent=parent)
         loadUi(configWidgetUi('symbologyconfigwidget.ui'), self)
         self.mSymbologyWidget = None
-
-
+        self.mStyle: QgsStyle = style
         self.mDefaultRenderer = None
         if isinstance(layer, (QgsRasterLayer, QgsVectorLayer)):
             self.mDefaultRenderer = layer.renderer().clone()
 
         self.syncToLayer()
 
-    def symbologyWidget(self)->typing.Union[QgsRendererRasterPropertiesWidget, QgsRendererPropertiesDialog]:
+    def symbologyWidget(self) -> typing.Union[QgsRendererRasterPropertiesWidget, QgsRendererPropertiesDialog]:
         return self.scrollArea.widget()
 
-    def menuButtonMenu(self) ->QMenu:
+    def style(self) -> QgsStyle:
+        return self.mStyle
+
+    def menuButtonMenu(self) -> QMenu:
         m = QMenu('Style')
 
         a = m.addAction('Load Style...')
+        a.triggered.connect(lambda: self.loadStyle(None))
         a = m.addAction('Save Style...')
+        a.triggered.connect(lambda: self.saveStyle(None))
         m.addSeparator()
         a = m.addAction('Save as Default')
+        a.triggered.connect(self.saveStyleAsDefault)
         a = m.addAction('Restore Default')
+        a.triggered.connect(self.loadDefaultStyle)
         m.addSeparator()
 
         m.addSeparator()
@@ -183,7 +229,126 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
 
         return m
 
+    def loadStyle(self, fileName: str = None):
+        lastUsedDir = QgsSettings().value("style/lastStyleDir")
 
+        if isinstance(fileName, pathlib.Path):
+            fileName = str(fileName.resolve())
+
+        if fileName is None:
+            fileName = QFileDialog.getOpenFileName(self,
+                                                   'Load layer properties from style file',
+                                                   lastUsedDir,
+                                                   'QGIS Layer Style file (*.qml)')
+        if len(fileName) == 0:
+            return
+        if not re.search(r'\.qml$', fileName, re.I):
+            fileName += '.qml'
+
+        oldStyle = self.mapLayer().styleManager().style(self.mapLayer().styleManager().currentStyle())
+        msg, success = self.mapLayer().loadNamedStyle(fileName)
+
+        if success:
+            self.syncToLayer()
+            QgsSettings().setValue('style/lastStyleDir', os.path.dirname(fileName))
+        else:
+            QMessageBox.information(self, 'Load Style', msg)
+
+    def saveStyle(self, fileName: str = None):
+        lastUsedDir = QgsSettings().value("style/lastStyleDir")
+
+        if isinstance(fileName, pathlib.Path):
+            fileName = str(fileName.resolve())
+
+        if fileName is None:
+            fileName = QFileDialog.getSaveFileName(self,
+                                                   'Save layer properties as style file',
+                                                   lastUsedDir,
+                                                   'QGIS Layer Style file (*.qml);;Styled Layer Descriptor (*.sld)'
+                                                   )
+        if len(fileName) == 0:
+            return
+
+        styleType = 'QML'
+        if re.search(r'\.sld$', fileName, re.I):
+            styleType = 'SLD'
+        else:
+            fileName = QgsFileUtils.ensureFileNameHasExtension(fileName, ['qml'])
+
+        self.apply()
+
+    def loadStyle(self, fileName: str = None):
+        lastUsedDir = QgsSettings().value("style/lastStyleDir")
+
+        if isinstance(fileName, pathlib.Path):
+            fileName = str(fileName.resolve())
+
+        if fileName is None:
+            fileName, filter = QFileDialog.getOpenFileName(self,
+                                                           'Load layer properties from style file',
+                                                           lastUsedDir,
+                                                           'QGIS Layer Style file (*.qml)')
+        if len(fileName) == 0:
+            return
+        if not re.search(r'\.qml$', fileName, re.I):
+            fileName += '.qml'
+
+        oldStyle = self.mapLayer().styleManager().style(self.mapLayer().styleManager().currentStyle())
+        msg, success = self.mapLayer().loadNamedStyle(fileName)
+
+        if success:
+            self.syncToLayer()
+            QgsSettings().setValue('style/lastStyleDir', os.path.dirname(fileName))
+        else:
+            QMessageBox.information(self, 'Load Style', msg)
+
+    def saveStyle(self, fileName: str = None):
+        lastUsedDir = QgsSettings().value("style/lastStyleDir")
+
+        if isinstance(fileName, pathlib.Path):
+            fileName = str(fileName.resolve())
+
+        if fileName is None:
+            fileName, filter = QFileDialog.getSaveFileName(self,
+                                                           'Save layer properties as style file',
+                                                           lastUsedDir,
+                                                           'QGIS Layer Style file (*.qml);;Styled Layer Descriptor (*.sld)'
+                                                           )
+        if len(fileName) == 0:
+            return
+
+        styleType = 'QML'
+        if re.search(r'\.sld$', fileName, re.I):
+            styleType = 'SLD'
+        else:
+            fileName = QgsFileUtils.ensureFileNameHasExtension(fileName, ['qml'])
+
+        self.apply()
+
+        fileName = pathlib.Path(fileName).resolve().as_posix()
+        if styleType == 'QML':
+            flag, msg = self.mapLayer().saveNamedStyle(fileName)
+        elif styleType == 'SLD':
+            flag, msg = self.mapLayer().saveSldStyle(fileName)
+
+        if flag:
+            QgsSettings().value("style/lastStyleDir", fileName)
+        else:
+            QMessageBox.information(self, 'Save Style', msg)
+
+    def saveStyleAsDefault(self):
+        self.apply()
+
+        msg, success = self.mapLayer().saveDefaultStyle()
+        if not success:
+            QMessageBox.information(self, 'Save Default Style', msg)
+
+    def loadDefaultStyle(self):
+        msg, success = self.mapLayer().loadDefaultStyle()
+        if success:
+            self.syncToLayer()
+        else:
+            QMessageBox.information(self, 'Load Default Style', msg)
 
     def setSymbologyWidget(self, w):
         wOld = self.scrollArea.widget()
@@ -194,10 +359,11 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
                 self.scrollArea.setWidget(w)
             self.mSymbologyWidget = w
 
-    def syncToLayer(self):
-        lyr = self.mapLayer()
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
 
         w = self.symbologyWidget()
+        lyr = self.mapLayer()
         if isinstance(lyr, QgsRasterLayer):
             r = lyr.renderer()
             if isinstance(w, QgsRendererRasterPropertiesWidget):
@@ -212,7 +378,7 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
 
         elif isinstance(lyr, QgsVectorLayer):
             if not isinstance(w, QgsRendererPropertiesDialog):
-                w = QgsRendererPropertiesDialog(lyr, QgsStyle(), embedded=True)
+                w = QgsRendererPropertiesDialog(lyr, self.style(), embedded=True)
                 self.setSymbologyWidget(w)
             else:
                 s = ""
@@ -238,6 +404,7 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
             w.apply()
         pass
 
+
 class SymbologyConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def __init__(self, title='Symbology', icon=QIcon(':/images/themes/default/propertyicons/symbology.svg')):
         super().__init__(title, icon)
@@ -256,9 +423,11 @@ class SymbologyConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def supportsStyleDock(self):
         return True
 
+
 class TransparencyConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     """
     """
+
     def __init__(self, title='Transparency', icon=QIcon(':/images/themes/default/propertyicons/transparency.svg')):
         super().__init__(title, icon)
         self.setSupportLayerPropertiesDialog(True)
@@ -276,6 +445,7 @@ class TransparencyConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def supportsStyleDock(self):
         return True
 
+
 class HistogramConfigWidget(QpsMapLayerConfigWidget):
 
     def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
@@ -287,7 +457,8 @@ class HistogramConfigWidget(QpsMapLayerConfigWidget):
 
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         lyr = self.mapLayer()
         if isinstance(lyr, QgsRasterLayer):
             w = self.mScrollArea.widget()
@@ -295,9 +466,11 @@ class HistogramConfigWidget(QpsMapLayerConfigWidget):
                 w = QgsRasterHistogramWidget(lyr, None)
                 self.histogramScrollArea.setWidget(w)
 
+
 class HistogramConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     """
     """
+
     def __init__(self, title='Transparency', icon=QIcon(':/images/themes/default/propertyicons/histogram.svg')):
         super().__init__(title, icon)
         self.setSupportLayerPropertiesDialog(True)
@@ -311,13 +484,16 @@ class HistogramConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def supportLayerPropertiesDialog(self):
         return True
+
     def supportsStyleDock(self):
         return False
+
 
 class PyramidsConfigWidget(QpsMapLayerConfigWidget):
     """
     Emulates the QGS Layer Property Dialogs "Pyramids" page
     """
+
     def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
         super().__init__(layer, canvas, parent=parent)
         loadUi(configWidgetUi('pyramidsconfigwidget.ui'), self)
@@ -327,6 +503,7 @@ class PyramidsConfigWidget(QpsMapLayerConfigWidget):
 class PyramidsConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     """
     """
+
     def __init__(self, title='Pyramids', icon=QIcon(':/images/themes/default/propertyicons/pyramids.svg')):
         super().__init__(title, icon)
         self.setSupportLayerPropertiesDialog(True)
@@ -343,6 +520,7 @@ class LegendConfigWidget(QpsMapLayerConfigWidget):
     """
     Emulates the QGS Layer Property Dialogs "Pyramids" page
     """
+
     def __init__(self, layer: QgsMapLayer, canvas: QgsMapCanvas, parent=None):
         super().__init__(layer, canvas, parent=None)
         self.setLayout(QVBoxLayout())
@@ -350,7 +528,8 @@ class LegendConfigWidget(QpsMapLayerConfigWidget):
         self.layout().addWidget(self.mEmbeddedConfigWidget)
         self.syncToLayer()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         self.mEmbeddedConfigWidget.setLayer(self.mapLayer())
 
     def apply(self):
@@ -362,9 +541,11 @@ class LegendConfigWidget(QpsMapLayerConfigWidget):
     def supportsStyleDock(self):
         return False
 
+
 class LegendConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     """
     """
+
     def __init__(self, title='Legend', icon=QIcon(':/images/themes/default/legend.svg')):
         super().__init__(title, icon)
         self.setSupportLayerPropertiesDialog(True)
@@ -378,8 +559,10 @@ class LegendConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def supportLayerPropertiesDialog(self):
         return True
+
     def supportsStyleDock(self):
         return False
+
 
 class RenderingConfigWidget(QpsMapLayerConfigWidget):
     """
@@ -391,8 +574,8 @@ class RenderingConfigWidget(QpsMapLayerConfigWidget):
         loadUi(configWidgetUi('renderingconfigwidget.ui'), self)
         self.syncToLayer()
 
-    def syncToLayer(self):
-
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         lyr = self.mapLayer()
         if isinstance(lyr, QgsMapLayer):
             self.gbRenderingScale.setChecked(lyr.hasScaleBasedVisibility())
@@ -406,9 +589,11 @@ class RenderingConfigWidget(QpsMapLayerConfigWidget):
                 lyr.setMaximumScale(self.mScaleRangeWidget.maximumScale())
                 lyr.setMinimumScale(self.mScaleRangeWidget.minimumScale())
 
+
 class RenderingConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     """
     """
+
     def __init__(self, title='Rendering', icon=QIcon(':/images/themes/default/propertyicons/rendering.svg')):
         super().__init__(title, icon)
         self.setSupportLayerPropertiesDialog(True)

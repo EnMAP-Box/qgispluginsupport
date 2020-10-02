@@ -14,13 +14,10 @@ import unittest, os
 from qps.testing import TestObjects, TestCase
 from qps.crosshair.crosshair import *
 
-os.environ['CI'] = '1' # un-comment or set to 'False' to popup GUIs
-
-
 class CrosshairTests(TestCase):
 
     def test_crosshair(self):
-        # add site-packages to sys.path as done by enmapboxplugin.py
+        # add site-packages to sys.data_source as done by enmapboxplugin.py
 
         lyr = TestObjects.createRasterLayer()
         lyr2 = TestObjects.createRasterLayer(ns=2000, nl=3000, nb=3)
@@ -75,11 +72,30 @@ class CrosshairTests(TestCase):
 
         refCanvas = QgsMapCanvas()
         refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
+        QTimer.singleShot(500, QApplication.closeAllWindows)
+        style = getCrosshairStyle(mapCanvas=refCanvas)
 
-        func = lambda: getCrosshairStyle(mapCanvas=refCanvas)
-        self.showGui(func)
+
+    def test_crosshair_maplayer(self):
+
+        canvas = QgsMapCanvas()
+        mc = CrosshairMapCanvasItem(canvas)
+
+        lyr = TestObjects.createRasterLayer()
+
+        lyr2 = TestObjects.createRasterLayer()
+        mc.setRasterGridLayer(lyr)
+        self.assertEqual(mc.rasterGridLayer(), lyr)
+        mc.setRasterGridLayer(lyr2)
+        self.assertEqual(mc.rasterGridLayer(), lyr2)
+
+        lyr.willBeDeleted.emit()
+        lyr2.willBeDeleted.emit()
+        self.assertTrue(mc.rasterGridLayer() == None)
+
 
 if __name__ == "__main__":
-    unittest.main()
+    import xmlrunner
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
 

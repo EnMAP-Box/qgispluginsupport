@@ -1,9 +1,33 @@
 # -*- coding: utf-8 -*-
-
 # noinspection PyPep8Naming
 
+"""
+***************************************************************************
+    crosshair.py - A Crosshair for the QgsMapCanvas
+    -----------------------------------------------------------------------
+    begin                : <month and year of creation>
+    copyright            : (C) <year> <creator>
+    email                : <main address>
 
-# believe it or not, this module was inspired by the CS:GO Crosshair Generator https://tools.dathost.net/
+    Believe it or not, this module was inspired by the
+    ConterStrike CS:GO Crosshair Generator https://tools.dathost.net/
+
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
+
 import os, warnings
 from qgis.core import *
 from qgis.gui import *
@@ -126,7 +150,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         self.mPosition = point
         self.mCanvas.update()
 
-    def crosshairStyle(self)->CrosshairStyle:
+    def crosshairStyle(self) -> CrosshairStyle:
         """
         Returns the crosshair style
         :return: CrosshairStyle
@@ -146,7 +170,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         if old != b:
             self.mCanvas.update()
 
-    def visibility(self)->bool:
+    def visibility(self) -> bool:
         """Returns the Crosshair visibility"""
         return self.mShow
 
@@ -157,12 +181,28 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :param qgsRasterLayer:
         :return:
         """
+
+        if qgsRasterLayer == self.mRasterGridLayer:
+            return
+
+        if isinstance(self.mRasterGridLayer, QgsRasterLayer):
+            self.mRasterGridLayer.willBeDeleted.disconnect(self.onLayerWillBeDeleted)
+
         if isinstance(qgsRasterLayer, QgsRasterLayer):
             self.mRasterGridLayer = qgsRasterLayer
+            self.mRasterGridLayer.willBeDeleted.connect(self.onLayerWillBeDeleted)
         else:
             self.mRasterGridLayer = None
 
-    def rasterGridLayer(self)->QgsRasterLayer:
+    def onLayerWillBeDeleted(self):
+        """
+        Removes the reference to the map layer
+        :return:
+        :rtype:
+        """
+        self.mRasterGridLayer = None
+
+    def rasterGridLayer(self) -> QgsRasterLayer:
         """
         Returns the raster grid layer
         :return: QgsRasterLayer
@@ -177,7 +217,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         assert nPx >= 0
         assert nPx == 1 or nPx % 3 == 0, 'Size of pixel box must be an odd integer value (1,3,5...)'
         self.mSizePixelBox = nPx
-
 
     def setCrosshairStyle(self, crosshairStyle:CrosshairStyle):
         """
@@ -252,14 +291,11 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
 
                     crs = self.mCanvas.mapSettings().destinationCrs()
                     assert isinstance(crs, QgsCoordinateReferenceSystem)
-                    if crs.description() == '':
-                        labelText = 'CRS unspecified'
+                    unitString = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
+                    if unitString == 'meters':
+                        labelText = scaledUnitString(pred, suffix='m')
                     else:
-                        unitString = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
-                        if unitString == 'meters':
-                            labelText = scaledUnitString(pred, suffix='m')
-                        else:
-                            labelText = '{}{}'.format(pred, unitString)
+                        labelText = '{}{}'.format(pred, unitString)
 
                     pen = QPen(Qt.SolidLine)
                     pen.setWidth(self.mCrosshairStyle.mThickness)
@@ -292,7 +328,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                 p = QPolygonF(p)
                 polygons.append(p)
 
-
             if self.mCrosshairStyle.mShowPixelBorder:
                 lyr = self.rasterGridLayer()
 
@@ -307,8 +342,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     ms = self.mCanvas.mapSettings()
                     centerPxLyr = ms.mapToLayerCoordinates(lyr, centerGeo)
 
-
-
                     #get center pixel pixel index
                     pxX = int(np.floor((centerPxLyr.x() - ex.xMinimum()) / xres).astype(int))
                     pxY = int(np.floor((ex.yMaximum() - centerPxLyr.y()) / yres).astype(int))
@@ -321,9 +354,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     lyrCoord2CanvasPx = lambda x, y, : self.toCanvasCoordinates(
                         ms.layerToMapCoordinates(lyr,
                                                  px2LayerGeo(x, y)))
-                    if pxX >= 0 and pxY >= 0 and \
-                       pxX < ns and pxY < nl:
-
+                    if pxX >= 0 and pxY >= 0 and pxX < ns and pxY < nl:
                         #get pixel edges in map canvas coordinates
 
                         lyrGeo = px2LayerGeo(pxX, pxY)
@@ -366,8 +397,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                 painter.drawLine(p)
 
 
-
-
 def nicePredecessor(l):
     mul = -1 if l < 0 else 1
     l = np.abs(l)
@@ -396,13 +425,13 @@ def nicePredecessor(l):
 
 class CrosshairWidget(QWidget):
     """
-    A widget to configurate a CrossHair
+    A widget to configure a CrossHair
     """
     sigCrosshairStyleChanged = pyqtSignal(CrosshairStyle)
 
     def __init__(self, title='<#>', parent=None):
         super(CrosshairWidget, self).__init__(parent)
-        loadUi(DIR_UI_FILES / 'crosshairwidget.ui')
+        loadUi(pathlib.Path(__file__).parent / 'crosshairwidget.ui', self)
 
         self.mapCanvas.setExtent(QgsRectangle(0, 0, 1, 1))  #
 
@@ -421,14 +450,12 @@ class CrosshairWidget(QWidget):
         self.cbShowDistanceMarker.toggled.connect(self.refreshCrosshairPreview)
         self.refreshCrosshairPreview()
 
-
-    def copyCanvas(self,mapCanvas:QgsMapCanvas):
+    def copyCanvas(self,mapCanvas: QgsMapCanvas):
         """
         Copys layers,crs, extent and background color
         :param mapCanvas:
         :return:
         """
-
         assert isinstance(mapCanvas, QgsMapCanvas)
         # copy layers
         canvas = self.mapCanvas
@@ -440,8 +467,6 @@ class CrosshairWidget(QWidget):
         canvas.setCanvasColor(mapCanvas.canvasColor())
         self.mapCanvasItem.setPosition(canvas.center())
         self.refreshCrosshairPreview()
-
-
 
     def setCanvasColor(self, color):
         self.mapCanvas.setBackgroundColor(color)
@@ -487,8 +512,10 @@ class CrosshairWidget(QWidget):
         style.setShowDistanceMarker(self.cbShowDistanceMarker.isChecked())
         return style
 
+
 def getCrosshairStyle(*args, **kwds):
     return CrosshairDialog.getCrosshairStyle(*args, **kwds)
+
 
 class CrosshairDialog(QgsDialog):
 
@@ -529,14 +556,14 @@ class CrosshairDialog(QgsDialog):
         if isinstance(crosshairStyle, CrosshairStyle):
             self.setCrosshairStyle(crosshairStyle)
 
-    def crosshairStyle(self)->CrosshairStyle:
+    def crosshairStyle(self) -> CrosshairStyle:
         """
         Returns the specfied CrosshairStyle
         :return: CrosshairStyle
         """
         return self.w.crosshairStyle()
 
-    def setCrosshairStyle(self, crosshairStyle:CrosshairStyle):
+    def setCrosshairStyle(self, crosshairStyle: CrosshairStyle):
         """
         Sets a new Crosshair Style
         :param crosshairStyle: CrosshairStyle
@@ -545,7 +572,7 @@ class CrosshairDialog(QgsDialog):
         assert isinstance(crosshairStyle, CrosshairStyle)
         self.w.setCrosshairStyle(crosshairStyle)
 
-    def copyCanvas(self, mapCanvas:QgsMapCanvas):
+    def copyCanvas(self, mapCanvas: QgsMapCanvas):
         """
         Copies the map canvas layers and background color
         :param mapCanvas: QgsMapCanvas

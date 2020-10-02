@@ -1,10 +1,33 @@
+"""
+***************************************************************************
+    layerconfigwidget/vectorlayerfields.py
+        - widgets and helpers to handle QgsVectorLayer fields
+    -----------------------------------------------------------------------
+    begin                : 2020-02-24
+    copyright            : (C) 2020 Benjamin Jakimow
+    email                : benjamin.jakimow@geo.hu-berlin.de
+
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
 import typing, pathlib, sys
 from qgis.core import QgsRasterLayer, QgsRasterRenderer
 from qgis.core import *
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsRasterBandComboBox
 from qgis.gui import *
 from qgis.PyQt.QtWidgets import *
-from qgis.PyQt import Qt
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import QIcon
@@ -109,7 +132,7 @@ class LayerFieldsListModel(QgsFieldModel):
     A model to show the QgsFields of an QgsVectorLayer as vertical list
     Inherits QgsFieldModel and allows to change the name of the 1st column.
     """
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         """
         Constructor
         :param parent:
@@ -178,42 +201,42 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
             """
             self.mConfigWidget.setConfig(dict(self.mInitialConfig))
 
-        def factoryKey(self)->str:
+        def factoryKey(self) -> str:
             """
             Returns the QgsEditorWidgetFactory key, e.g. "CheckBox"
             :return: str
             """
             return self.mKey
 
-        def factoryName(self)->str:
+        def factoryName(self) -> str:
             """
             Returns the QgsEditorWidgetFactory name, e.g. "Checkbox"
             :return: str
             """
             return self.factory().name()
 
-        def config(self)->dict:
+        def config(self) -> dict:
             """
             Returns the config dictionary
             :return: dict
             """
             return self.mConfigWidget.config()
 
-        def configWidget(self)->QgsEditorConfigWidget:
+        def configWidget(self) -> QgsEditorConfigWidget:
             """
             Returns the QgsEditorConfigWidget
             :return: QgsEditorConfigWidget
             """
             return self.mConfigWidget
 
-        def factory(self)->QgsEditorWidgetFactory:
+        def factory(self) -> QgsEditorWidgetFactory:
             """
             Returns the QgsEditorWidgetFactory
             :return: QgsEditorWidgetFactory
             """
             return self.mFactory
 
-        def editorWidgetSetup(self)->QgsEditorWidgetSetup:
+        def editorWidgetSetup(self) -> QgsEditorWidgetSetup:
             """
             Creates a QgsEditorWidgetSetup
             :return: QgsEditorWidgetSetup
@@ -309,7 +332,7 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
                 break
 
 
-    def changed(self)->bool:
+    def changed(self) -> bool:
         """
         Returns True if the QgsEditorWidgetFactory or its configuration has been changed
         :return: bool
@@ -345,11 +368,11 @@ class LayerAttributeFormConfigEditorWidget(QWidget):
             self.setFactory(self.mInitialFactoryKey)
             self.currentEditorConfigWidget().setConfig(self.mInitialConf)
 
-    def currentFieldConfig(self)->ConfigInfo:
+    def currentFieldConfig(self) -> ConfigInfo:
         i = self.cbWidgetType.currentIndex()
         return self.mItemModel.item(i)
 
-    def currentEditorConfigWidget(self)->QgsEditorConfigWidget:
+    def currentEditorConfigWidget(self) -> QgsEditorConfigWidget:
         return self.currentFieldConfig().configWidget()
 
     def updateConfigWidget(self, index):
@@ -479,7 +502,7 @@ class LayerAttributeFormConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def createWidget(self, layer, canvas, dockWidget=False, parent=None):
         return LayerAttributeFormConfigWidget(layer, canvas, parent=parent)
 
-    def supportsLayer(self, layer)->bool:
+    def supportsLayer(self, layer) -> bool:
         return isinstance(layer, QgsVectorLayer)
 
     def supportLayerPropertiesDialog(self):
@@ -593,7 +616,8 @@ class LayerFieldsConfigWidget(QpsMapLayerConfigWidget):
             lyr.commitChanges()
             lyr.startEditing()
 
-    def syncToLayer(self):
+    def syncToLayer(self, *args):
+        super().syncToLayer(*args)
         self.mFieldModel.setLayer(self.mapLayer())
 
 
@@ -606,7 +630,7 @@ class LayerFieldsConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def createWidget(self, layer, canvas, dockWidget=False, parent=None):
         return LayerFieldsConfigWidget(layer, canvas, parent=parent)
 
-    def supportsLayer(self, layer)->bool:
+    def supportsLayer(self, layer) -> bool:
         return isinstance(layer, QgsVectorLayer)
 
     def supportLayerPropertiesDialog(self):

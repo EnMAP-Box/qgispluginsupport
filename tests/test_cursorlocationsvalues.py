@@ -15,9 +15,9 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 import unittest
 from qgis import *
 from qgis.gui import *
-
+from qgis.gui import QgsMapCanvas
 from qgis.core import *
-from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer
+from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, QgsProject, QgsCoordinateReferenceSystem
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from qps.testing import TestObjects, TestCase
@@ -43,15 +43,46 @@ class CursorLocationTest(TestCase):
             self.assertTrue(l.isValid())
         return layers
 
+    def test_maptool(self):
 
+        lyr = TestObjects.createRasterLayer(ns=50, nl=50, no_data_rectangle=40)
+        QgsProject.instance().addMapLayer(lyr)
+        c = QgsMapCanvas()
+        c.setLayers([lyr])
+        c.setDestinationCrs(lyr.crs())
+        c.zoomToFullExtent()
 
+        center = SpatialPoint.fromMapLayerCenter(lyr)
+        dock = CursorLocationInfoDock()
+        dock.setCanvas(c)
+        dock.loadCursorLocation(center, c)
 
+        from qps.maptools import CursorLocationMapTool
+        mt = CursorLocationMapTool(c)
+        c.setMapTool(mt)
+
+        def onLocationRequest(crs:QgsCoordinateReferenceSystem, pt: QgsPointXY):
+            canvas: QgsMapCanvas = mt.canvas()
+            spt = SpatialPoint(canvas.mapSettings().destinationCrs(), pt)
+            dock.loadCursorLocation(spt, canvas)
+
+        mt.sigLocationRequest.connect(onLocationRequest)
+
+        w = QWidget()
+        l = QHBoxLayout()
+        l.addWidget(dock)
+        l.addWidget(c)
+        w.setLayout(l)
+        self.showGui(w)
 
     def test_locallayers(self):
 
         canvas = QgsMapCanvas()
 
-        layers = [TestObjects.createRasterLayer(nc=3), TestObjects.createRasterLayer(nb=5), TestObjects.createVectorLayer()]
+        layers = [#TestObjects.createRasterLayer(nc=3),
+                  TestObjects.createRasterLayer(nb=5, eType=gdal.GDT_Int16),
+                  #TestObjects.createVectorLayer()
+        ]
 
         for lyr in layers:
             self.assertIsInstance(lyr, QgsMapLayer)
@@ -108,8 +139,8 @@ class CursorLocationTest(TestCase):
         self.showGui([cldock, canvas])
 
 
-
 if __name__ == "__main__":
 
-    unittest.main()
+    import xmlrunner
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 

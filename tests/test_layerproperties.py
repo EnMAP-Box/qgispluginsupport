@@ -19,58 +19,52 @@ from osgeo import gdal, ogr, osr
 from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
 from qps.layerproperties import *
 from qps import registerMapLayerConfigWidgetFactories
+from qps.resources import findQGISResourceFiles
+
 LAYER_WIDGET_REPS = 5
+
 
 class LayerPropertyTests(TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.EditorWidgets, resources=[]) -> None:
+        resources += findQGISResourceFiles()
         super(LayerPropertyTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initQtResources()
 
+    def test_equal_styles(self):
+
+        lyr1 = TestObjects.createRasterLayer(nb=1, nc=5)
+        lyr2 = TestObjects.createRasterLayer(nb=10)
+
+        self.assertTrue(equal_styles(lyr1, lyr1))
+        self.assertFalse(equal_styles(lyr1, lyr2))
 
     def test_SubLayerSelection(self):
 
         p = r'F:\Temp\Hajo\S3A_OL_2_EFR____20160614T082507_20160614T082707_20170930T190837_0119_005_178______MR1_R_NT_002_vical_c2rcc015nets20170704.nc'
 
-        #d = QgsSublayersDialog(QgsSublayersDialog.Gdal, )
-
-
+        # d = QgsSublayersDialog(QgsSublayersDialog.Gdal, )
 
     def test_subLayerDefinitions(self):
-
 
         from qpstestdata import testvectordata, landcover, enmap
         from qps.layerproperties import subLayers, subLayerDefinitions
 
         p = enmap
-        sDefs = subLayers(QgsRasterLayer(p))
+        rl = QgsRasterLayer(p)
+        sDefs = subLayers(rl)
         self.assertIsInstance(sDefs, list)
         self.assertTrue(len(sDefs) == 1)
 
         vl = QgsVectorLayer(testvectordata)
         sLayers = subLayers(vl)
         self.assertIsInstance(sLayers, list)
-        self.assertTrue(len(sLayers) == 2)
-
-        p = r'F:\Temp\Hajo\S3A_OL_2_EFR____20160614T082507_20160614T082707_20170930T190837_0119_005_178______MR1_R_NT_002_vical_c2rcc015nets20170704.nc'
-
-        if os.path.isfile(p):
-            rl = QgsRasterLayer(p)
-            sDefs = subLayerDefinitions(rl)
-            self.assertTrue(sDefs, list)
-            self.assertTrue(len(sDefs) > 0)
-
-            sLayers = subLayers(rl)
-
-            self.assertTrue(sLayers, list)
-            self.assertTrue(len(sLayers) > 0)
-
-
+        self.assertTrue(len(sLayers) == 3)
 
     def test_defaultRenderer(self):
 
-        #1 band, byte
+        # 1 band, byte
         ds = TestObjects.createRasterDataset(nb=1, eType=gdal.GDT_Byte)
         lyr = QgsRasterLayer(ds.GetDescription())
         r = defaultRasterRenderer(lyr)
@@ -94,6 +88,13 @@ class LayerPropertyTests(TestCase):
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
+    def test_enmapboxbug_452(self):
+        lyr = TestObjects.createVectorLayer()
+        rlr = TestObjects.createRasterLayer()
+        style = QgsStyle()
+        d = QgsRendererPropertiesDialog(lyr, style, embedded=True)
+        self.showGui(d)
+
     def test_LayerPropertiesDialog_Vector(self):
         registerMapLayerConfigWidgetFactories()
         lyr = TestObjects.createVectorLayer()
@@ -116,16 +117,16 @@ class LayerPropertyTests(TestCase):
 
         self.showGui([w])
 
-
     def test_LayerPropertiesDialog_Raster(self):
 
         registerMapLayerConfigWidgetFactories()
-        lyr = TestObjects.createRasterLayer(nb=100)
+        lyr = TestObjects.createRasterLayer(nb=1, eType=gdal.GDT_UInt16)
         d = LayerPropertiesDialog(lyr)
         d.sync()
         self.assertIsInstance(d, LayerPropertiesDialog)
         for p in d.pages():
             self.assertIsInstance(p, QgsMapLayerConfigWidget)
+
             p.apply()
             d.setPage(p)
 
@@ -153,6 +154,29 @@ class LayerPropertyTests(TestCase):
             dialog.btnOk.click()
             self.assertTrue(dialog.result() == QDialog.Accepted)
 
+    def test_add_attributes(self):
+
+        vl = TestObjects.createVectorLayer()
+        vl.startEditing()
+        vl.addAttribute(createQgsField('test', 42))
+        self.assertTrue(vl.commitChanges())
+
+        d = AddAttributeDialog(vl, case_sensitive=False)
+        self.assertIsInstance(d, AddAttributeDialog)
+        d.setName('Test')
+        is_valid, errors = d.validate()
+        self.assertFalse(is_valid)
+        self.assertIsInstance(errors, str)
+        self.assertTrue(len(errors) > 0)
+
+        d.setCaseSensitive(True)
+        is_valid, errors = d.validate()
+        self.assertTrue(is_valid)
+        self.assertIsInstance(errors, str)
+        self.assertTrue(len(errors) == 0)
+
+        d.setName('test')
+        self.showGui(d)
 
     def test_p(self):
 
@@ -164,11 +188,28 @@ class LayerPropertyTests(TestCase):
         wtrans = QgsRasterTransparencyWidget(rl, canvas, None)
 
         style = QgsMapLayerStyleManagerWidget(rl, canvas, None)
-        self.showGui([vd, rd, wtrans,style])
+        self.showGui([vd, rd, wtrans, style])
 
+    def test_RemoveAttributeDialog(self):
+        vl = TestObjects.createVectorLayer()
+        d = RemoveAttributeDialog(vl)
+        d.tvFieldNames.selectAll()
+        self.assertListEqual(d.fieldNames(), vl.fields().names())
+        d.tvFieldNames.clearSelection()
+        self.assertListEqual(d.fieldNames(), [])
+        self.showGui(d)
 
+    def test_AttributeTableWidget(self):
+        vl = TestObjects.createVectorLayer()
+        w = AttributeTableWidget(vl)
+        vl.startEditing()
+
+        w.mUpdateExpressionText.setExpression("'dummy'")
+
+        self.showGui(w)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    import xmlrunner
 
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

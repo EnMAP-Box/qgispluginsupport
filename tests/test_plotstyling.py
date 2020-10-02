@@ -26,6 +26,8 @@ from qgis.PyQt.QtGui import *
 from qps.testing import TestCase
 from qps.plotstyling.plotstyling import *
 
+
+
 class PlotStyleTests(TestCase):
 
 
@@ -43,14 +45,22 @@ class PlotStyleTests(TestCase):
 
     def test_PlotStyleButton(self):
 
-        bt = PlotStyleButton()
+        bt1 = PlotStyleButton()
+        bt1.setCheckable(True)
 
-        def onChanged(*args):
-            print(args)
+        bt2 = PlotStyleButton()
+        bt2.setCheckable(False)
 
-        bt.sigPlotStyleChanged.connect(onChanged)
+        w = QWidget()
+        g = QGridLayout()
+        g.addWidget(QLabel('Checkable PlotStyleButton'), 0, 0)
+        g.addWidget(bt1, 0, 1)
+        g.addWidget(QLabel('None-Checkable PlotStyleButton'), 1, 0)
+        g.addWidget(bt2, 1, 1)
 
-        self.showGui(bt)
+        w.setLayout(g)
+        #w.setMaximumSize(200, 50)
+        self.showGui(w)
 
     def test_json(self):
 
@@ -77,10 +87,58 @@ class PlotStyleTests(TestCase):
         self.assertTrue(PlotStyle.fromJSON(None) == None)
         self.assertTrue(PlotStyle.fromJSON('') == None)
 
+    def test_XML_IO(self):
+        testDir = self.createTestOutputDirectory() / 'plotStyle'
+        os.makedirs(testDir, exist_ok=True)
+        path = testDir / 'plotstyle.xml'
+        doc = QDomDocument()
+
+        style = PlotStyle()
+        style.setMarkerColor('red')
+        style.setLineColor('green')
+
+        stylesIn = [style]
+        node = doc.createElement('PlotStyles')
+        for style in stylesIn:
+            style.writeXml(node, doc)
+        doc.appendChild(node)
+
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(doc.toString())
+
+        with open(path, 'r', encoding='utf-8') as f:
+            xml = f.read()
+        dom = QDomDocument()
+        dom.setContent(xml)
+        stylesOut = []
+        stylesNode = doc.firstChildElement('PlotStyles').toElement()
+        self.assertFalse(stylesNode.isNull())
+        childs = stylesNode.childNodes()
+        for i in range(childs.count()):
+            node = childs.at(i).toElement()
+            self.assertEqual(node.tagName(), XMLTAG_PLOTSTYLENODE)
+            style = PlotStyle.readXml(node)
+            self.assertIsInstance(style, PlotStyle)
+            stylesOut.append(style)
+
+        for A, B in zip(stylesIn, stylesOut):
+            self.assertEqual(A, B, msg='XML Export/Import changed style property')
+
+    def test_PlotStyle(self):
+
+        s1 = PlotStyle()
+        s2 = PlotStyle()
+
+        self.assertEqual(s1, s2)
+
+        s3 = PlotStyle()
+        s3.setLineColor('red')
+
+        self.assertNotEqual(s1, s3)
+
     def test_PlotStyleWidget(self):
         from qps.plotstyling.plotstyling import PlotStyleWidget
         w = PlotStyleWidget()
-
         self.showGui(w)
 
     def test_PlotStyleQgsAction(self):
@@ -95,13 +153,13 @@ class PlotStyleTests(TestCase):
         mgr.addAction(action)
         # fill some testdata
         layer.startEditing()
-        for i, o in enumerate(MARKERSYMBOLS):
-            assert isinstance(o, Option)
+        for i, symbol in enumerate(MarkerSymbol):
+            self.assertIsInstance(symbol, MarkerSymbol)
             f = QgsFeature(layer.fields())
             f.setAttribute('fldint', i)
-            f.setAttribute('fldtxt', o.name())
+            f.setAttribute('fldtxt', symbol.name)
             style = PlotStyle()
-            style.markerSymbol = o.value()
+            style.markerSymbol = symbol.value
             f.setAttribute('fldstyle', style.json())
             layer.addFeature(f)
         layer.commitChanges()
@@ -215,9 +273,40 @@ class PlotStyleTests(TestCase):
 
         self.showGui(w)
 
+    def test_marker_symbols(self):
 
+        symbols = []
+        symbol_text = []
+        for s in MarkerSymbol:
+            self.assertIsInstance(s, MarkerSymbol)
+            encoded = MarkerSymbol.encode(s)
+            decoded = MarkerSymbol.decode(encoded)
+            symbols.append(s)
+            symbol_text.append(encoded)
+            self.assertEqual(s, decoded, msg='Failed to decode {} to {}'.format(encoded, s))
+
+        n = len(MarkerSymbol)
+        cb = MarkerSymbolComboBox()
+        self.assertIsInstance(cb, QComboBox)
+        self.assertEqual(cb.count(), n)
+
+        for i in range(cb.count()):
+            cb.setCurrentIndex(i)
+            s = cb.markerSymbol()
+            self.assertEqual(cb.markerSymbol(), symbols[i])
+            self.assertEqual(cb.currentText(), symbol_text[i])
+            self.assertEqual(cb.markerSymbolString(), s.value)
+
+        cb = MarkerSymbolComboBox()
+
+        for s in MarkerSymbol:
+            cb.setMarkerSymbol(s)
+            self.assertEqual(cb.markerSymbol(), s)
+
+        self.showGui(cb)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    import xmlrunner
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 

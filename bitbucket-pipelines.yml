@@ -16,21 +16,21 @@ pipelines:
             - pip
             - qgisicons
           script: # Modify the commands below to build your repository.
-            - python3 -m pip install -r requirements.txt
             - apt-get update
-            - apt-get install -y xvfb
             - apt-get install -y wget
             - apt-get install -y unzip
-            - Xvfb :1 -screen 0 1024x768x16 &> xvfb.log  &
-            - ps aux | grep X
-            - DISPLAY=:1.0
-            - export DISPLAY
+            - QT_QPA_PLATFORM=offscreen
+            - export QT_QPA_PLATFORM
+            - export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+            - echo "current dir:" $(pwd)
+            - python3 --version
+            - printenv PYTHONPATH
             - python3 -m pip install -r requirements.txt
             - wget https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip -O qgisresources.zip
             - unzip qgisresources.zip
-            - ls
             - python3 runfirst.py
-            - /bin/bash runtests.sh
+            - python3 -m coverage run -m unittest discover -s tests
+            #- /bin/bash runtests.sh
 
 
 definitions:

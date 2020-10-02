@@ -9,6 +9,7 @@ doc/build/
 deploy/*
 temp/
 */temp/
+.coverage
 doc/build/*
 vrtbuilder/ui/resources.py
 vrtbuilder/externals/qps/qpsresources.py
@@ -26,6 +27,7 @@ qgisresources
 enmapboxtestdata/
 testdata/
 test-reports/
+test-outputs/
 
 *.gpkg-shm
 *.gpkg-wal

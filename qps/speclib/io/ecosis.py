@@ -1,5 +1,31 @@
+# -*- coding: utf-8 -*-
+# noinspection PyPep8Naming
+"""
+***************************************************************************
+    speclib/io/ecosis.py
 
-import os, sys, re, pathlib, json, io, re, linecache
+    Input/Output of EcoSYS spectral library data
+    ---------------------
+    Beginning            : 2019-08-23
+    Copyright            : (C) 2020 by Benjamin Jakimow
+    Email                : benjamin.jakimow@geo.hu-berlin.de
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+                                                                                                                                                 *
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
+
+import os, sys, re, pathlib, json, io, re, linecache, typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
@@ -7,7 +33,8 @@ from qgis.core import *
 
 
 import csv as pycsv
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField
+from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
+    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, ProgressHandler
 
 class EcoSISCSVDialect(pycsv.Dialect):
     delimiter = ','
@@ -19,7 +46,7 @@ class EcoSISCSVDialect(pycsv.Dialect):
     quoting = pycsv.QUOTE_NONE
 
 
-def findDialect(file)->pycsv.Dialect:
+def findDialect(file) -> pycsv.Dialect:
 
     if isinstance(file, str):
         file = open(file, 'r', encoding='utf-8')
@@ -46,8 +73,8 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
     I/O Interface for the EcoSIS spectral library format.
     See https://ecosis.org for details.
     """
-    @staticmethod
-    def canRead(path:str):
+    @classmethod
+    def canRead(cls, path:str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -58,7 +85,7 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 for line in f:
-                    line = f.readline().strip()
+                    line = line.strip()
                     if len(line) > 0:
                         # most-right header name must be a number
                         lastColumn = [c for c in re.split(r'[\t\n;,]', line) if c != ''][-1]
@@ -68,8 +95,8 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         return False
 
-    @staticmethod
-    def readFrom(path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None)->SpectralLibrary:
+    @classmethod
+    def readFrom(cls, path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -152,8 +179,8 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         assert speclib.commitChanges()
         return speclib
 
-    @staticmethod
-    def write(speclib:SpectralLibrary, path:str, progressDialog:QProgressDialog, delimiter:str=';'):
+    @classmethod
+    def write(cls, speclib:SpectralLibrary, path:str, progressDialog:QProgressDialog = None, delimiter:str=';'):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """
@@ -203,18 +230,8 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         return writtenFiles
 
-    @staticmethod
-    def score(uri:str)->int:
-        """
-        Returns a score value for the give uri. E.g. 0 for unlikely/unknown, 20 for yes, probalby thats the file format the reader can read.
-
-        :param uri: str
-        :return: int
-        """
-        return 0
-
-    @staticmethod
-    def addImportActions(spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    @classmethod
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def read(speclib: SpectralLibrary):
 
@@ -234,9 +251,8 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         m.setToolTip('Adds profiles from an EcoSIS csv text file.')
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
-
-    @staticmethod
-    def addExportActions(spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
+    @classmethod
+    def addExportActions(cls, spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
 
         def write(speclib: SpectralLibrary):
 
