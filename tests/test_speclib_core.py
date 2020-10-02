@@ -29,6 +29,7 @@ from qps.speclib.io.asd import *
 from qps import initResources
 import numpy as np
 
+
 class TestCore(TestCase):
 
     @classmethod
@@ -36,15 +37,12 @@ class TestCore(TestCase):
         super(TestCore, cls).setUpClass(*args, **kwds)
         initResources()
 
-
-
     def setUp(self):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
         for file in vsiSpeclibs():
             gdal.Unlink(file)
-
 
     def test_fields(self):
 
@@ -68,7 +66,7 @@ class TestCore(TestCase):
         fields.append(f3)
 
         serialized = qgsFields2str(fields)
-        self.assertIsInstance(serialized,str)
+        self.assertIsInstance(serialized, str)
 
         fields2 = str2QgsFields(serialized)
         self.assertIsInstance(fields2, QgsFields)
@@ -80,7 +78,6 @@ class TestCore(TestCase):
             self.assertEqual(f1.name(), f2.name())
             self.assertEqual(f1.typeName(), f2.typeName())
 
-
     def test_SpectralProfile_Math(self):
         sp = SpectralProfile()
         xvals = [1, 2, 3, 4, 5]
@@ -91,7 +88,7 @@ class TestCore(TestCase):
 
         sp2 = sp + 2
         self.assertIsInstance(sp2, SpectralProfile)
-        self.assertListEqual(sp2.yValues(), [v+2 for v in yvals])
+        self.assertListEqual(sp2.yValues(), [v + 2 for v in yvals])
 
         sp2 = sp - 2
         self.assertIsInstance(sp2, SpectralProfile)
@@ -138,7 +135,6 @@ class TestCore(TestCase):
 
     def test_Serialization(self):
 
-
         import qps.speclib.core
         x = [1, 2, 3, 4, 5]
         y = [2, 3, 4, 5, 6]
@@ -167,8 +163,43 @@ class TestCore(TestCase):
             sl.addProfiles([sp])
             self.assertTrue(sl.commitChanges())
 
+    def test_SpectralProfileMath(self):
+
+        sp = SpectralProfile()
+        x = [1, 2, 3, 4, 5]
+        y = [1, 1, 2, 2, 3]
+        sp.setValues(x, y)
+
+        for n in [2, 2.2, np.int(2), np.float(2.2)]:
+            sp1 = sum([sp, sp])
+            self.assertListEqual(sp1.yValues(), [v + v for v in y])
+            sp2 = sp + n
+            self.assertListEqual(sp2.yValues(), [v + n for v in y])
+            sp3 = n + sp
+            self.assertListEqual(sp3.yValues(), sp2.yValues())
 
 
+            sp2 = sp - n
+            self.assertListEqual(sp2.yValues(), [v - n for v in y])
+            sp3 = n - sp
+            self.assertListEqual(sp3.yValues(), [n - v for v in y])
+
+            sp1 = sp * n
+            self.assertListEqual(sp1.yValues(), [v * n for v in y])
+            sp2 = n * sp
+            self.assertListEqual(sp2.yValues(), sp1.yValues())
+            sp3 = sp * sp
+            self.assertListEqual(sp3.yValues(), [v * v for v in y])
+
+            sp1 = sp / n
+            self.assertListEqual(sp1.yValues(), [v / n for v in y])
+            sp2 = n / sp
+            self.assertListEqual(sp2.yValues(), [n / v for v in y])
+            sp3 = sp / sp
+            self.assertListEqual(sp3.yValues(), [v / v for v in y])
+
+
+        s = ""
     def test_SpectralProfile(self):
 
         # empty profile
@@ -182,7 +213,6 @@ class TestCore(TestCase):
         self.assertEqual(sp.xValues(), [])
         self.assertEqual(sp.yValues(), [])
 
-
         y = [0.23, 0.4, 0.3, 0.8, 0.7]
         x = [300, 400, 600, 1200, 2500]
         with self.assertRaises(Exception):
@@ -191,9 +221,8 @@ class TestCore(TestCase):
 
         d = sp.values()
         self.assertIsInstance(d, dict)
-        for k in ['x','y', 'yUnit', 'xUnit', 'bbl']:
+        for k in ['x', 'y', 'yUnit', 'xUnit', 'bbl']:
             self.assertEqual(d[k], EMPTY_PROFILE_VALUES[k])
-
 
         sp.setValues(y=y)
         self.assertListEqual(sp.xValues(), list(range(len(y))))
@@ -225,12 +254,10 @@ class TestCore(TestCase):
             self.assertIsInstance(p.geometry(), QgsGeometry)
             self.assertTrue(p.hasGeometry())
 
-
         yVal = [0.23, 0.4, 0.3, 0.8, 0.7]
         xVal = [300, 400, 600, 1200, 2500]
         sp1 = SpectralProfile()
         sp1.setValues(x=xVal, y=yVal)
-
 
         self.assertEqual(xVal, sp1.xValues())
         self.assertEqual(yVal, sp1.yValues())
@@ -249,18 +276,15 @@ class TestCore(TestCase):
 
         self.assertEqual(sp1, sp1)
 
-
-        for sp2 in[sp1.clone(), copy.copy(sp1), sp1.__copy__()]:
+        for sp2 in [sp1.clone(), copy.copy(sp1), sp1.__copy__()]:
             self.assertIsInstance(sp2, SpectralProfile)
             self.assertEqual(sp1, sp2)
-
 
         dump = pickle.dumps(sp1)
         sp2 = pickle.loads(dump)
         self.assertIsInstance(sp2, SpectralProfile)
         self.assertEqual(sp1, sp2)
         self.assertEqual(sp1.values(), sp2.values())
-
 
         dump = pickle.dumps([sp1, sp2])
         loads = pickle.loads(dump)
@@ -273,22 +297,18 @@ class TestCore(TestCase):
             self.assertEqual(p1.name(), p2.name())
             self.assertEqual(p1.id(), p2.id())
 
-
         sp2 = SpectralProfile()
         sp2.setValues(x=xVal, y=yVal, xUnit='um')
         self.assertNotEqual(sp1, sp2)
         sp2.setValues(xUnit='nm')
         self.assertEqual(sp1, sp2)
         sp2.setYUnit('reflectance')
-        #self.assertNotEqual(sp1, sp2)
+        # self.assertNotEqual(sp1, sp2)
 
-
-
-
-        values = [('key','value'),('key', 100),('Üä','ÜmlÄute')]
+        values = [('key', 'value'), ('key', 100), ('Üä', 'ÜmlÄute')]
         for md in values:
             k, d = md
-            sp1.setMetadata(k,d)
+            sp1.setMetadata(k, d)
             v2 = sp1.metadata(k)
             self.assertEqual(v2, None)
 
@@ -299,7 +319,6 @@ class TestCore(TestCase):
             self.assertEqual(d, v2)
 
         self.SP = sp1
-
 
         dump = pickle.dumps(sp1)
 
@@ -317,7 +336,7 @@ class TestCore(TestCase):
         self.assertEqual(sp2.geometry().asWkt(), r2.geometry().asWkt())
 
     def test_read_temporal_wavelength(self):
-        
+
         p = r'D:\Repositories\qgispluginsupport\qpstestdata\2010-2020_001-365_HL_TSA_LNDLG_NBR_TSS.tif'
         if os.path.isfile(p):
             lyr = QgsRasterLayer(p)
@@ -328,7 +347,6 @@ class TestCore(TestCase):
             p.setName('Test Profile')
             self.assertIsInstance(p, SpectralProfile)
 
-
             speclib = SpectralLibrary()
             speclib.startEditing()
             speclib.addProfiles([p])
@@ -337,7 +355,6 @@ class TestCore(TestCase):
             from qps.speclib.gui import SpectralLibraryWidget
             w = SpectralLibraryWidget(speclib=speclib)
             self.showGui(w)
-
 
     def test_SpectralProfileReading(self):
 
@@ -380,7 +397,6 @@ class TestCore(TestCase):
         sl1.addProfiles([sp1, sp2])
         sl1.commitChanges()
 
-
         # test link
         mimeData = sl1.mimeData(MIMEDATA_SPECLIB_LINK)
 
@@ -397,7 +413,8 @@ class TestCore(TestCase):
                 continue
 
             slRetrieved = SpectralLibrary.readFromMimeData(mimeData)
-            self.assertIsInstance(slRetrieved, SpectralLibrary, 'Re-Import from MIMEDATA failed for MIME type "{}"'.format(format))
+            self.assertIsInstance(slRetrieved, SpectralLibrary,
+                                  'Re-Import from MIMEDATA failed for MIME type "{}"'.format(format))
 
             n = len(slRetrieved)
             self.assertEqual(n, len(sl1))
@@ -414,9 +431,7 @@ class TestCore(TestCase):
                 self.assertEqual(p.name(), pr.name())
                 self.assertEqual(p, pr)
 
-
             self.assertEqual(sl1, slRetrieved)
-
 
     def test_groupBySpectralProperties(self):
 
@@ -438,11 +453,9 @@ class TestCore(TestCase):
             for p in profiles:
                 self.assertEqual(l, len(p.xValues()))
 
-
     def test_SpectralLibrary(self):
 
         self.assertListEqual(vsiSpeclibs(), [])
-
 
         sp1 = SpectralProfile()
         sp1.setName('Name 1')
@@ -453,7 +466,6 @@ class TestCore(TestCase):
         sp2.setValues(y=[2, 2, 2, 2, 2], x=[450, 500, 750, 1000, 1500])
 
         SLIB = SpectralLibrary()
-
 
         self.assertEqual(SLIB.name(), 'SpectralLibrary')
         SLIB.setName('MySpecLib')
@@ -483,18 +495,17 @@ class TestCore(TestCase):
         if p.values() != sp1.values():
             s = ""
 
-        self.assertEqual(p.values(), sp1.values(), msg='Unequal values:\n\t{}\n\t{}'.format(str(p.values()), str(sp1.values())))
+        self.assertEqual(p.values(), sp1.values(),
+                         msg='Unequal values:\n\t{}\n\t{}'.format(str(p.values()), str(sp1.values())))
         self.assertEqual(SLIB[0].values(), sp1.values())
 
-        #self.assertNotEqual(speclib[0], sp1) #because sl1 has an FID
-
+        # self.assertNotEqual(speclib[0], sp1) #because sl1 has an FID
 
         subset = SLIB[0:1]
         self.assertIsInstance(subset, list)
         self.assertEqual(len(subset), 1)
 
-
-        self.assertEqual(set(SLIB.allFeatureIds()), set([1,2]))
+        self.assertEqual(set(SLIB.allFeatureIds()), set([1, 2]))
         slSubset = SLIB.speclibFromFeatureIDs(fids=2)
         self.assertEqual(set(SLIB.allFeatureIds()), set([1, 2]))
         self.assertIsInstance(slSubset, SpectralLibrary)
@@ -506,7 +517,7 @@ class TestCore(TestCase):
         dump = pickle.dumps(SLIB)
         restoredSpeclib = pickle.loads(dump)
         self.assertIsInstance(restoredSpeclib, SpectralLibrary)
-        self.assertEqual(len(vsiSpeclibs()), n+1)
+        self.assertEqual(len(vsiSpeclibs()), n + 1)
         self.assertEqual(len(SLIB), len(restoredSpeclib))
 
         for i in range(len(SLIB)):
@@ -514,7 +525,7 @@ class TestCore(TestCase):
             r1 = restoredSpeclib[i]
 
             if p1.values() != r1.values():
-                s  =""
+                s = ""
 
             self.assertEqual(p1.values(), r1.values(), msg='dumped and restored values are not the same')
 
@@ -524,8 +535,7 @@ class TestCore(TestCase):
         self.assertNotEqual(SLIB, restoredSpeclib)
         self.assertEqual(restoredSpeclib[-1].values(), sp2.values())
 
-
-        #read from image
+        # read from image
 
         lyr1 = QgsRasterLayer(hymap)
 
@@ -549,7 +559,7 @@ class TestCore(TestCase):
 
         SLIB.startEditing()
         SLIB.addProfiles(slSubset[:])
-        self.assertTrue(len(SLIB) == n1+n2)
+        self.assertTrue(len(SLIB) == n1 + n2)
         SLIB.addProfiles(slSubset[:])
         self.assertTrue(len(SLIB) == n1 + n2 + n2)
         self.assertTrue(SLIB.commitChanges())
@@ -572,9 +582,9 @@ class TestCore(TestCase):
     def test_others(self):
 
         self.assertEqual(23, toType(int, '23'))
-        self.assertEqual([23, 42], toType(int, ['23','42']))
+        self.assertEqual([23, 42], toType(int, ['23', '42']))
         self.assertEqual(23., toType(float, '23'))
-        self.assertEqual([23., 42.], toType(float, ['23','42']))
+        self.assertEqual([23., 42.], toType(float, ['23', '42']))
 
         self.assertTrue(findTypeFromString('23') is int)
         self.assertTrue(findTypeFromString('23.3') is float)
@@ -583,7 +593,7 @@ class TestCore(TestCase):
 
         regex = CSVSpectralLibraryIO.REGEX_BANDVALUE_COLUMN
 
-        #REGEX to identify band value column names
+        # REGEX to identify band value column names
 
         for text in ['b1', 'b1_']:
             match = regex.match(text)
@@ -595,7 +605,6 @@ class TestCore(TestCase):
         self.assertEqual(match.group('band'), '1')
         self.assertEqual(match.group('xvalue'), '23.34')
         self.assertEqual(match.group('xunit'), 'nm')
-
 
     def test_mergeSpeclibs(self):
         sp1 = TestObjects.createSpectralLibrary()
@@ -613,13 +622,12 @@ class TestCore(TestCase):
 
         sp1.startEditing()
         sp1.addSpeclib(sp2)
-        self.assertTrue(len(sp1), n+len(sp2))
+        self.assertTrue(len(sp1), n + len(sp2))
 
     def test_merge(self):
 
         sl1: SpectralLibrary = TestObjects.createSpectralLibrary(10)
         self.assertIsInstance(sl1, SpectralLibrary)
-
 
         profiles = []
 
@@ -627,13 +635,13 @@ class TestCore(TestCase):
         color = QColor('green')
         for i in range(20):
             p = SpectralProfile()
-            name = f'N{i+1}'
+            name = f'N{i + 1}'
             color = nextColor(color, mode='cat')
             NAME2NAME[name] = color.name()
             p.setName(name)
             profiles.append(p)
 
-        def checkColorNames(sl:SpectralLibrary):
+        def checkColorNames(sl: SpectralLibrary):
             STYLES = sl.profileRenderer().profilePlotStyles(sl.allFeatureIds())
             for p in sl:
                 self.assertIsInstance(p, SpectralProfile)
@@ -666,7 +674,7 @@ class TestCore(TestCase):
         checkColorNames(sl1)
 
         # remove features before commit
-        sl1.deleteFeatures([5,9])
+        sl1.deleteFeatures([5, 9])
         checkColorNames(sl1)
 
         sl1.commitChanges()
@@ -705,11 +713,11 @@ class TestCore(TestCase):
         sl2.addSpeclib(sl2)
         sl2.commitChanges()
 
-        self.assertEqual(len(sl2), n*2)
+        self.assertEqual(len(sl2), n * 2)
         s = ""
 
 
 if __name__ == '__main__':
-
     import xmlrunner
+
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

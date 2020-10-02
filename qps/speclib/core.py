@@ -712,31 +712,51 @@ class SpectralProfile(QgsFeature):
             self.setValues(**values)
 
     def __add__(self, other):
-        return self._math_('__add__', other)
+        return self._math_(self, '__add__', other)
+
+    def __radd__(self, other):
+        return self._math_(other, '__add__', self)
 
     def __sub__(self, other):
-        return self._math_('__sub__', other)
+        return self._math_(self, '__sub__', other)
 
-    def __truediv__(self, other):
-        return self._math_('__truediv__', other)
-
-    def __div__(self, other):
-        return self._math_('__div__', other)
-
-    def __abs__(self, other):
-        return self._math_('__abs__', other)
+    def __rsub__(self, other):
+        return self._math_(other, '__sub__', self)
 
     def __mul__(self, other):
-        return self._math_('__mul__', other)
+        return self._math_(self, '__mul__', other)
 
-    def _math_(self, op, other):
+    def __rmul__(self, other):
+        return self._math_(other, '__mul__', self)
+
+    def __truediv__(self, other):
+        return self._math_(self, '__truediv__', other)
+
+    def __rtruediv__(self, other):
+        return self._math_(other, '__truediv__', self)
+
+    def __div__(self, other):
+        return self._math_(self, '__div__', other)
+
+    def __rdiv__(self, other):
+        return self._math_(other, '__div__', self)
+
+    def __abs__(self, other):
+        return self._math_(self, '__abs__', other)
+
+    def _math_(self, left, op, right):
+
+        if np.isscalar(left):
+            left = np.ones(len(self)) * left
+        elif isinstance(left, SpectralProfile):
+            left = np.asarray(left.yValues())
+        if np.isscalar(right):
+            right = np.ones(len(self)) * right
+        elif isinstance(right, SpectralProfile):
+            right = np.asarray(right.yValues())
+
         sp = self.clone()
-        if isinstance(other, (int, float, np.int, np.float)):
-            yvals = [getattr(v, op)(other) for v in self.yValues()]
-
-        elif isinstance(other, SpectralProfile):
-            yvals = [getattr(v, op)(v2) for v, v2 in zip(self.yValues(), other.yValues())]
-
+        yvals = getattr(left, op)(right)
         sp.setValues(self.xValues(), yvals)
         return sp
 
