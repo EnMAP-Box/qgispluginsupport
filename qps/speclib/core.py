@@ -127,7 +127,7 @@ def containsSpeclib(mimeData: QMimeData) -> bool:
     return False
 
 
-FILTERS = 'ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;Geopackage (*.gpkg);;GeoJSON (*.geojson)'
+FILTERS = 'Geopackage (*.gpkg);;ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;GeoJSON (*.geojson)'
 
 PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 # CURRENT_SPECTRUM_STYLE = PlotStyle()
@@ -1533,7 +1533,7 @@ class SpectralLibrary(QgsVectorLayer):
         if not QFileInfo(lastDataSourceDir).isDir():
             lastDataSourceDir = None
 
-        uris, filter = QFileDialog.getOpenFileNames(parent, "Open spectral library", lastDataSourceDir,
+        uris, filter = QFileDialog.getOpenFileNames(parent, "Open Spectral Library", lastDataSourceDir,
                                                     filter=FILTERS + ';;All files (*.*)', )
 
         if len(uris) > 0:
