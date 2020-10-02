@@ -549,7 +549,7 @@ class TestIO(TestCase):
 
     def test_speclib2vector(self):
 
-        testDir = self.testOutputDirectory() / 'speclib2vector'
+        testDir = self.createTestOutputDirectory() / 'speclib2vector'
         os.makedirs(testDir, exist_ok=True)
 
         from qps.speclib.io.vectorsources import VectorSourceSpectralLibraryIO
@@ -644,7 +644,7 @@ class TestIO(TestCase):
 
         speclib = TestObjects.createSpectralLibrary()
 
-        dirTMP = self.testOutputDirectory() / 'speclib-tests'
+        dirTMP = self.createTestOutputDirectory() / 'speclib-tests'
         os.makedirs(dirTMP, exist_ok=True)
         # txt = CSVSpectralLibraryIO.asString(speclib)
         pathCSV1 = dirTMP / 'speclib1.csv'

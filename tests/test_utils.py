@@ -42,6 +42,8 @@ class TestUtils(TestCase):
         import qps
         sources = list(file_search(dn(qps.__file__), '*.ui', recursive=True))
         sources = [s for s in sources if not 'pyqtgraph' in s]
+        sources = [s for s in sources if not 'externals' in s]
+
         for pathUi in sources:
             tree = ET.parse(pathUi)
             root = tree.getroot()
@@ -174,9 +176,9 @@ class TestUtils(TestCase):
         ext2 = SpatialExtent.readXml(node)
         self.assertEqual(ext1, ext2)
 
-    def testOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
+    def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
 
-        DIR = super().testOutputDirectory(name) / 'utils'
+        DIR = super().createTestOutputDirectory(name) / 'utils'
         os.makedirs(DIR, exist_ok=True)
         return DIR
 
@@ -187,7 +189,7 @@ class TestUtils(TestCase):
         rl = QgsRasterLayer(enmap)
         vl = QgsVectorLayer(enmap_pixel)
 
-        DIR_TEST = self.testOutputDirectory()
+        DIR_TEST = self.createTestOutputDirectory()
         burned, no_data = fid2pixelindices(rl, vl,
                                            layer=vl.dataProvider().subLayers()[0].split('!!::!!')[1],
                                            all_touched=True)

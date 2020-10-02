@@ -88,7 +88,7 @@ class PlotStyleTests(TestCase):
         self.assertTrue(PlotStyle.fromJSON('') == None)
 
     def test_XML_IO(self):
-        testDir = self.testOutputDirectory() / 'plotStyle'
+        testDir = self.createTestOutputDirectory() / 'plotStyle'
         os.makedirs(testDir, exist_ok=True)
         path = testDir / 'plotstyle.xml'
         doc = QDomDocument()

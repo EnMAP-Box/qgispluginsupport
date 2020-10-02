@@ -240,7 +240,7 @@ class TestSpeclibWidgets(TestCase):
         profileRenderer.saveToUserSettings()
         self.assertEqual(profileRenderer, SpectralProfileRenderer.fromUserSettings())
 
-        testDir = self.testOutputDirectory() / 'speclibColorScheme'
+        testDir = self.createTestOutputDirectory() / 'speclibColorScheme'
         os.makedirs(testDir, exist_ok=True)
         pathXML = testDir / 'colorscheme.xml'
 
@@ -619,7 +619,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertFalse(pr3.useRendererColors)
         self.assertEqual(pr1.mFID2Style, pr3.mFID2Style)
 
-        path = self.testOutputDirectory() / 'speclib_gui' / 'testsli_gui.gpkg'
+        path = self.createTestOutputDirectory() / 'speclib_gui' / 'testsli_gui.gpkg'
         os.makedirs(path.parent, exist_ok=True)
         speclib.write(path)
 

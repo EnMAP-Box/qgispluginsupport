@@ -555,7 +555,7 @@ class TestCore(TestCase):
         self.assertTrue(SLIB.commitChanges())
 
         # save and restore
-        path = self.testOutputDirectory() / 'speclib' / 'testsli.gpkg'
+        path = self.createTestOutputDirectory() / 'speclib' / 'testsli.gpkg'
         os.makedirs(path.parent, exist_ok=True)
         SLIB.write(path)
 
