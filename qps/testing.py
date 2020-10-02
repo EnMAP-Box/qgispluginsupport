@@ -43,6 +43,7 @@ import types
 import enum
 import sip
 import random
+import unittest
 from qgis.core import *
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext, \
     QgsProcessingFeedback, QgsField, QgsFields, QgsApplication, QgsCoordinateReferenceSystem, QgsProject, \
@@ -372,7 +373,12 @@ class TestCase(qgis.testing.TestCase):
             import gc
             gc.collect()
 
-    def testOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
+    #@unittest.skip("deprectated method")
+    #def testOutputDirectory(self, *args, **kwds):
+    #    warnings.warn('Use createTestOutputDirectory(...) instead', DeprecationWarning)
+    #    self.createTestOutputDirectory(*args, **kwds)
+
+    def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
         """
         Returns the path to a test output directory
         :return:
@@ -398,7 +404,7 @@ class TestCase(qgis.testing.TestCase):
         assert isinstance(ds, gdal.Dataset)
         drv: gdal.Driver = ds.GetDriver()
 
-        testdir = self.testOutputDirectory() / 'images'
+        testdir = self.createTestOutputDirectory() / 'images'
         os.makedirs(testdir, exist_ok=True)
         bn, ext = os.path.splitext(os.path.basename(path))
 

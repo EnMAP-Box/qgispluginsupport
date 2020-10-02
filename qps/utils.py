@@ -130,19 +130,6 @@ def cleanDir(d):
         for p in dirs + files: rm(jp(root, p))
         break
 
-
-def mkDir(d, delete=False):
-    """
-    Make directory.
-    :param d: path of directory to be created
-    :param delete: set on True to delete the directory contents, in case the directory already existed.
-    """
-    if delete and os.path.isdir(d):
-        cleanDir(d)
-    if not os.path.isdir(d):
-        os.makedirs(d)
-
-
 # a QPS internal map layer store
 QPS_MAPLAYER_STORE = QgsMapLayerStore()
 
@@ -467,11 +454,6 @@ LUT_WAVELENGTH = dict({'B': 480,
                        'SWIR1': 1650,
                        'SWIR2': 2150
                        })
-
-
-def mkdir(path):
-    if not os.path.isdir(path):
-        os.mkdir(path)
 
 
 NEXT_COLOR_HUE_DELTA_CON = 10
@@ -1763,14 +1745,15 @@ def check_vsimem() -> bool:
     try:
         from osgeo import gdal
         from qgis.core import QgsCoordinateReferenceSystem, QgsRasterLayer
-
+        import uuid
         # create an 2x2x1 in-memory raster
         driver = gdal.GetDriverByName('GTiff')
         assert isinstance(driver, gdal.Driver)
-        path = '/vsimem/inmemorytestraster.tif'
+        path = f'/vsimem/inmemorytestraster.{uuid.uuid4()}.tif'
 
-        dataSet = driver.Create(path, 2, 2, bands=1, eType=gdal.GDT_Byte)
+        dataSet: gdal.Dataset = driver.Create(path, 2, 2, bands=1, eType=gdal.GDT_Byte)
         assert isinstance(dataSet, gdal.Dataset)
+        drv: gdal.Driver = dataSet.GetDriver()
         c = QgsCoordinateReferenceSystem('EPSG:32632')
         dataSet.SetProjection(c.toWkt())
         dataSet.SetGeoTransform([0, 1.0, 0, 0, 0, -1.0])
@@ -1783,6 +1766,8 @@ def check_vsimem() -> bool:
         layer = QgsRasterLayer(path)
         assert isinstance(layer, QgsRasterLayer)
         result = layer.isValid()
+        del layer
+        drv.Delete(path)
 
     except Exception as ex:
         return False

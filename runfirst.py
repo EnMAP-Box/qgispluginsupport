@@ -26,15 +26,20 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import pathlib, sys, site
+import pathlib
+import site
+
 
 def setupRepository():
-
-    import os
     DIR_REPO = pathlib.Path(__file__).parent.resolve()
     site.addsitedir(DIR_REPO)
 
     from qps.resources import compileResourceFiles
+
+    path_images = DIR_REPO / 'qgisresources' / 'images_rc.py'
+    if not path_images.is_file():
+        from scripts.install_testdata import install_qgisresources
+        install_qgisresources()
 
     makeQrc = False
     try:
@@ -42,7 +47,7 @@ def setupRepository():
         import qps.qpsresources
 
         pathQrc = DIR_REPO / 'qps' / 'qpsresources.qrc'
-        pathPy  = DIR_REPO / 'qps' / 'qpsresources.py'
+        pathPy = DIR_REPO / 'qps' / 'qpsresources.py'
 
         if not pathPy.is_file() or os.path.getmtime(pathPy) < os.path.getmtime(pathQrc):
             makeQrc = True

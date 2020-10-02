@@ -140,7 +140,7 @@ class LayerConfigWidgetsTests(TestCase):
                     self.assertIsInstance(w.labeling(), QgsAbstractVectorLayerLabeling)
                     w.apply()
                     self.assertTrue(lyrV.labelsEnabled())
-                    self.assertEquals(type(lyrV.labeling()), type(w.labeling()))
+                    self.assertEqual(type(lyrV.labeling()), type(w.labeling()))
 
             labeling = w.labeling()
             w.setLabeling(labeling)
