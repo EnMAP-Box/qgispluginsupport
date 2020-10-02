@@ -150,7 +150,20 @@
               <number>0</number>
              </property>
              <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Filter</string>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QgsFilterLineEdit" name="mFilterQuery">
+               <property name="placeholderText">
+                <string>Show all features</string>
+               </property>
+               <property name="nullValue">
+                <string/>
+               </property>
                <property name="qgisRelation" stdset="0">
                 <string notr="true"/>
                </property>
@@ -160,6 +173,20 @@
               <widget class="QToolButton" name="mApplyFilterButton">
                <property name="text">
                 <string>Apply</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QToolButton" name="mSetFilterButton">
+               <property name="text">
+                <string>Apply</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../../../../QGIS/images/images.qrc">
+                 <normaloff>:/images/themes/default/mActionFilter2.svg</normaloff>:/images/themes/default/mActionFilter2.svg</iconset>
+               </property>
+               <property name="autoRaise">
+                <bool>true</bool>
                </property>
               </widget>
              </item>
@@ -595,6 +622,15 @@
   <action name="mActionApplyFilter">
    <property name="text">
     <string>Apply</string>
+   </property>
+  </action>
+  <action name="mActionSetFilter">
+   <property name="icon">
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionFilter2.svg</normaloff>:/images/themes/default/mActionFilter2.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Set Filter</string>
    </property>
   </action>
  </widget>

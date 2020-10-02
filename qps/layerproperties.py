@@ -79,7 +79,8 @@ from qgis.gui import \
     QgsOptionsDialogBase, \
     QgsRasterTransparencyWidget, \
     QgsSublayersDialog, \
-    QgsFilterLineEdit
+    QgsFilterLineEdit, \
+    QgsExpressionBuilderDialog
 
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
@@ -1091,9 +1092,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mMainView.setAttributeTableConfig(config)
 
         # workaround for missing filter widget
+        self.mMessageTimeOut = 5
         # self.mFeatureFilterWidget.init(mLayer, self.mEditorContext, self.mMainView, None, QgisApp.instance().messageTimeout())
         self.mApplyFilterButton.setDefaultAction(self.mActionApplyFilter)
+        self.mSetFilterButton.setDefaultAction(self.mActionSetFilter)
         self.mActionApplyFilter.triggered.connect(self._filterQueryAccepted)
+        self.mActionSetFilter.triggered.connect(self._filterExpressionBuilder)
 
         self.mActionFeatureActions = QToolButton()
         self.mActionFeatureActions.setAutoRaise(False)
@@ -1291,6 +1295,22 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.runFieldCalculation(self.mLayer, self.mFieldCombo.currentField(),
                                  self.mUpdateExpressionText.asExpression(), filteredIds)
 
+    def _filterExpressionBuilder(self):
+        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(self.mLayer))
+
+        # taken from qgsfeaturefilterwidget.cpp : void QgsFeatureFilterWidget::filterExpressionBuilder()
+        dlg = QgsExpressionBuilderDialog(self.mLayer, self.mFilterQuery.text(),
+                                                                    self,
+                                                                    'generic', context)
+        dlg.setWindowTitle('Expression Based Filter')
+        myDa = QgsDistanceArea()
+        myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
+        myDa.setEllipsoid(QgsProject.instance().ellipsoid())
+        dlg.setGeomCalculator(myDa)
+
+        if dlg.exec() == QDialog.Accepted:
+            self.setFilterExpression(dlg.expressionText(), QgsAttributeForm.ReplaceFilter, True)
+
     def _filterQueryAccepted(self):
         if self.mFilterQuery.text().strip() == '':
             self._filterShowAll()
@@ -1422,6 +1442,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         if filterString is None:
             filterString = ''
 
+        messageBar: QgsMessageBar = self.mainMessageBar()
+
         assert isinstance(self.mFilterQuery, QgsFilterLineEdit)
         filter = self.mFilterQuery.text()
         if filter != '' and filterString != '':
@@ -1450,10 +1472,18 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         filterExpression.setAreaUnits(QgsProject.instance().areaUnits())
 
         if filterExpression.hasParserError():
-            print(f'Parsing errors: {filterExpression.parserErrorString()}', file=sys.stderr)
+            if isinstance(messageBar, QgsMessageBar):
+                messageBar.pushMessage('Parsing error', filterExpression.parserErrorString(),
+                                       Qgis.Warning, self.mMessageTimeOut)
+            else:
+                print(f'Parsing errors: {filterExpression.parserErrorString()}', file=sys.stderr)
 
         if not filterExpression.prepare(context):
-            print(f'Evaluation error {filterExpression.evalErrorString()}', file=sys.stderr)
+            if isinstance(messageBar, QgsMessageBar):
+                messageBar.pushMessage('Evaluation error', filterExpression.evalErrorString(),
+                                       Qgis.Warning, self.mMessageTimeOut)
+            else:
+                print(f'Evaluation error {filterExpression.evalErrorString()}', file=sys.stderr)
             return
 
         filteredFeatures = []
@@ -1475,10 +1505,13 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mMainView.setFilteredFeatures(filteredFeatures)
 
         if filterExpression.hasEvalError():
-            print(f'Error filtering: {filterExpression.evalErrorString()}', file=sys.stderr)
+            if isinstance(messageBar, QgsMessageBar):
+                messageBar.pushMessage('Error filtering', filterExpression.evalErrorString(),
+                                       Qgis.Warning, self.mMessageTimeOut)
+            else:
+                print(f'Error filtering: {filterExpression.evalErrorString()}', file=sys.stderr)
             return
         self.mMainView.setFilterMode(QgsAttributeTableFilterModel.ShowFilteredList)
-
 
 
     def viewModeChanged(self, mode: QgsAttributeEditorContext.Mode):

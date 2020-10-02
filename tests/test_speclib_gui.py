@@ -138,7 +138,6 @@ class TestSpeclibWidgets(TestCase):
         w2 = pdi.plot()
         self.showGui([w1])
 
-
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidget(self):
 
@@ -585,6 +584,9 @@ class TestSpeclibWidgets(TestCase):
 
         lh.addWidget(btnAddRandomProfile)
         lv = QVBoxLayout()
+        mbar = QgsMessageBar()
+        lv.addWidget(mbar)
+        slw.setMainMessageBar(mbar)
         lv.addLayout(lh)
         lv.addWidget(slw)
 
