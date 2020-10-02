@@ -130,19 +130,6 @@ def cleanDir(d):
         for p in dirs + files: rm(jp(root, p))
         break
 
-
-def mkDir(d, delete=False):
-    """
-    Make directory.
-    :param d: path of directory to be created
-    :param delete: set on True to delete the directory contents, in case the directory already existed.
-    """
-    if delete and os.path.isdir(d):
-        cleanDir(d)
-    if not os.path.isdir(d):
-        os.makedirs(d)
-
-
 # a QPS internal map layer store
 QPS_MAPLAYER_STORE = QgsMapLayerStore()
 
@@ -467,11 +454,6 @@ LUT_WAVELENGTH = dict({'B': 480,
                        'SWIR1': 1650,
                        'SWIR2': 2150
                        })
-
-
-def mkdir(path):
-    if not os.path.isdir(path):
-        os.mkdir(path)
 
 
 NEXT_COLOR_HUE_DELTA_CON = 10
