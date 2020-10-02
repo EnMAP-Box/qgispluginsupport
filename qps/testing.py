@@ -373,10 +373,10 @@ class TestCase(qgis.testing.TestCase):
             import gc
             gc.collect()
 
-    @unittest.skip("deprectated method")
-    def testOutputDirectory(self, *args, **kwds):
-        warnings.warn('Use createTestOutputDirectory(...) instead', DeprecationWarning)
-        self.createTestOutputDirectory(*args, **kwds)
+    #@unittest.skip("deprectated method")
+    #def testOutputDirectory(self, *args, **kwds):
+    #    warnings.warn('Use createTestOutputDirectory(...) instead', DeprecationWarning)
+    #    self.createTestOutputDirectory(*args, **kwds)
 
     def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
         """
