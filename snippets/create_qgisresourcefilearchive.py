@@ -1,8 +1,10 @@
-import pathlib, os, zipfile, sys
+import os
+import pathlib
+import sys
+import zipfile
+
 
 def create_qgis_resource_file(qgis_repo=None):
-
-
     from qps.utils import findUpwardPath
     from qps.resources import compileQGISResourceFiles
     REPO = findUpwardPath(pathlib.Path(__file__).resolve(), '.git')
@@ -23,9 +25,11 @@ def create_qgis_resource_file(qgis_repo=None):
                 arcName = path.relative_to(TARGET_DIR).as_posix()
                 f.write(path, arcname=arcName)
 
+
 if __name__ == '__main__':
 
     import getopt
+
     try:
         print(sys.argv)
         opts, qgis_repo = getopt.getopt(sys.argv[1:], "")
@@ -33,4 +37,3 @@ if __name__ == '__main__':
         print(err)
 
     create_qgis_resource_file()
-

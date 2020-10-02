@@ -26,11 +26,11 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import pathlib, sys, site
+import pathlib
+import site
 
 def setupRepository():
 
-    import os
     DIR_REPO = pathlib.Path(__file__).parent.resolve()
     site.addsitedir(DIR_REPO)
 
