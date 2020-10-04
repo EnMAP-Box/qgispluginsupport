@@ -557,7 +557,10 @@ class ClassificationScheme(QAbstractTableModel):
                     with open(p, 'r') as f:
                         jsonStr = f.read()
                     return ClassificationScheme.fromJson(jsonStr)
-
+                elif p.endswith('.csv'):
+                    return ClassificationScheme.fromCsv(p)
+                elif p.endswith('.qml'):
+                    return ClassificationScheme.fromQml(p)
         except Exception as ex:
             print(ex, file=sys.stderr)
         return None
@@ -1634,7 +1637,7 @@ class ClassificationSchemeWidget(QWidget):
                                                        "Read classes from text file",
                                                        "/home", filter)
             if isinstance(path, str) and os.path.isfile(path):
-                cs = ClassificationScheme.fromFile()
+                cs = ClassificationScheme.fromFile(path)
                 if isinstance(cs, ClassificationScheme):
                     self.mScheme.insertClasses(cs[:])
 

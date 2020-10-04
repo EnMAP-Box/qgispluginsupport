@@ -1392,8 +1392,10 @@ def defaultBands(dataset) -> list:
         return defaultBands(gdal.Open(dataset))
     elif isinstance(dataset, QgsRasterDataProvider):
         return defaultBands(dataset.dataSourceUri())
-    elif isinstance(dataset, QgsRasterLayer):
-        return defaultBands(dataset.source())
+    elif isinstance(dataset, QgsRasterLayer) and \
+         isinstance(dataset.dataProvider(), QgsRasterDataProvider) and \
+         dataset.dataProvider().name() == 'gdal':
+            return defaultBands(dataset.source())
     elif isinstance(dataset, gdal.Dataset):
 
         # check ENVI style metadata default band definition
@@ -1426,7 +1428,7 @@ def defaultBands(dataset) -> list:
         return db
 
     else:
-        raise Exception()
+        return [0, 0, 0]
 
 
 def bandClosestToWavelength(dataset, wl, wl_unit='nm') -> int:
