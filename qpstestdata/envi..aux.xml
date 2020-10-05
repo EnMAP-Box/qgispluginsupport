@@ -187,13 +187,13 @@
     <MDI key="byte_order">0</MDI>
     <MDI key="coordinate_system_string">{PROJCS["WGS_1984_UTM_Zone_33N",GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",500000.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",15.0],PARAMETER["Scale_Factor",0.9996],PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]}</MDI>
     <MDI key="data_type">2</MDI>
+    <MDI key="description">{D:\Repositories\qgispluginsupport\qpstestdata\envi.}</MDI>
     <MDI key="file_type">ENVI Standard</MDI>
     <MDI key="header_offset">0</MDI>
     <MDI key="interleave">bsq</MDI>
     <MDI key="lines">7</MDI>
     <MDI key="map_info">{UTM, 1, 1, 384342.37, 5818392.35, 30, 30, 33, North,WGS-84}</MDI>
     <MDI key="samples">10</MDI>
-    <MDI key="wavelength units">nm</MDI>
   </Metadata>
   <PAMRasterBand band="1">
     <Description>Band 1</Description>
@@ -257,6 +257,13 @@
   </PAMRasterBand>
   <PAMRasterBand band="4">
     <Description>Band 4</Description>
+    <Metadata>
+      <MDI key="STATISTICS_MAXIMUM">652</MDI>
+      <MDI key="STATISTICS_MEAN">486.42857142857</MDI>
+      <MDI key="STATISTICS_MINIMUM">280</MDI>
+      <MDI key="STATISTICS_STDDEV">90.639249055736</MDI>
+      <MDI key="STATISTICS_VALID_PERCENT">100</MDI>
+    </Metadata>
   </PAMRasterBand>
   <PAMRasterBand band="5">
     <Description>Band 5</Description>
