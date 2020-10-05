@@ -1384,11 +1384,17 @@ class SpectralProfileRenderer(object):
                 style = self.mFID2Style.get(fid, self.profileStyle).clone()
                 symbol = renderer.symbolForFeature(feature, renderContext)
                 if not isinstance(symbol, QgsSymbol):
-                    symbol = renderer.sourceSymbol()
-                assert isinstance(symbol, QgsSymbol)
-                if isinstance(symbol, (QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol)):
-                    style.setLineColor(symbol.color())
-                    style.setMarkerColor(symbol.color())
+                    if not ignore_selection and fid in selectedFIDs:
+                        pass
+                    else:
+                        style.setVisibility(False)
+                    #symbol = renderer.sourceSymbol()
+                elif isinstance(symbol, (QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol)):
+                    color: QColor = symbol.color()
+                    color.setAlpha(int(symbol.opacity()*100))
+
+                    style.setLineColor(color)
+                    style.setMarkerColor(color)
                 profileStyles[fid] = style
             renderer.stopRender(renderContext)
         else:

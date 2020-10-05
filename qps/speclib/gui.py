@@ -1431,7 +1431,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         for pdi in pdis:
             style = styles.get(pdi.id())
             if isinstance(style, PlotStyle):
-                style.apply(pdi, updateItem=False, visibility=pdi.valueConversionPossible())
+                style.apply(pdi, updateItem=False, visibility=pdi.valueConversionPossible() and style.isVisible())
 
         # finally, update items
         for pdi in pdis:
