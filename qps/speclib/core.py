@@ -2576,7 +2576,7 @@ class SpectralLibrary(QgsVectorLayer):
         for f in self.features(fids=fids):
             yield SpectralProfile.fromSpecLibFeature(f)
 
-    def groupBySpectralProperties(self, excludeEmptyProfiles=True):
+    def groupBySpectralProperties(self, excludeEmptyProfiles: bool = True):
         """
         Returns SpectralProfiles grouped by key = (xValues, xUnit and yUnit):
 
@@ -2647,6 +2647,46 @@ class SpectralLibrary(QgsVectorLayer):
     def exportProfiles(self, *args, **kwds) -> list:
         warnings.warn('Use SpectralLibrary.write() instead', DeprecationWarning)
         return self.write(*args, **kwds)
+
+    def writeRasterImages(self, pathOne: typing.Union[str, pathlib.Path], drv:str='GTiff') -> typing.List[pathlib.Path]:
+        """
+        Writes the SpectralLibrary into images of same spectral properties
+        :return: list of image paths
+        """
+        if not isinstance(pathOne, pathlib.Path):
+            pathOne = pathlib.Path(pathOne)
+
+        basename, ext = os.path.splitext(pathOne.name)
+
+        assert pathOne.parent.is_dir()
+        results = []
+        for k, profiles in self.groupBySpectralProperties().items():
+            xValues, xUnit, yUnit = k
+            ns: int = len(profiles)
+            nb = len(xValues)
+
+            ref_profile = np.asarray(profiles[0].yValues())
+            dtype = ref_profile.dtype
+            imageArray = np.empty((nb, ns, 1), dtype=dtype)
+            imageArray[:,0,0] = ref_profile
+            for i in range(1, len(profiles)):
+                imageArray[:, i, 0] = np.asarray(profiles[i].yValues(), dtype=dtype)
+            if len(results) == 0:
+                pathDst = pathOne.parent / f'{basename}{ext}'
+            else:
+                pathDst = pathOne.parent / f'{basename}{i}{ext}'
+
+            dsDst: gdal.Dataset = gdal_array.SaveArray(imageArray, pathDst.as_posix(), format=drv)
+            fakeProjection: osr.SpatialReference = osr.SpatialReference()
+            fakeProjection.SetFromUserInput('EPSG:3857')
+            dsDst.SetProjection(fakeProjection.ExportToWkt())
+            dsDst.SetGeoTransform([0.0, 1.0, 0.0, 0.0, 0.0, -1.0])
+            dsDst.SetMetadataItem('wavelength units', xUnit)
+            dsDst.SetMetadataItem('wavelength', ','.join(f'{v}' for v in xValues))
+            dsDst.FlushCache()
+            results.append(pathDst)
+            del dsDst
+        return results
 
     def write(self, path: str, **kwds) -> typing.List[str]:
         """

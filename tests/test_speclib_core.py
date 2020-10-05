@@ -681,6 +681,34 @@ class TestCore(TestCase):
         # test line color after commit
         checkColorNames(sl1)
 
+    def test_writeAsRaster(self):
+
+        speclib = SpectralLibrary()
+        speclib.startEditing()
+        speclib.addSpeclib(TestObjects.createSpectralLibrary(n=5, n_empty=2, n_bands=5, wlu='Nanometers'))
+        speclib.addSpeclib(TestObjects.createSpectralLibrary(n=4, n_bands=[10, 25], wlu='Micrometers', n_empty=2))
+        speclib.commitChanges()
+
+        self.assertIsInstance(speclib, SpectralLibrary)
+
+        groups = speclib.groupBySpectralProperties()
+
+        pathOne = '/vsimem/tempraster.tif'
+        images = speclib.writeRasterImages(pathOne)
+        from qps.unitmodel import XUnitModel
+        xUnitModel = XUnitModel()
+
+        for image, item in zip(images, groups.items()):
+            key, profiles = item
+            xunits, xunit, yunit = key
+            ds: gdal.Dataset = gdal.Open(image.as_posix())
+            self.assertIsInstance(ds, gdal.Dataset)
+            wl, wlu = parseWavelength(ds)
+            xunit = xUnitModel.findUnit(xunit)
+            self.assertListEqual(list(xunits), wl.tolist())
+            self.assertEqual(xunit, wlu)
+            self.assertEqual(ds.RasterCount, len(xunits))
+
     def test_multiinstances(self):
 
         sl1 = SpectralLibrary(baseName='A')

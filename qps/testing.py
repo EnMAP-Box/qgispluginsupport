@@ -578,7 +578,8 @@ class TestObjects():
         """
         assert n > 0
         assert n_empty >= 0 and n_empty <= n
-
+        if not isinstance(n_bands, list):
+            n_bands = [n_bands]
         from .speclib.core import SpectralLibrary
         slib = SpectralLibrary()
         assert slib.startEditing()
