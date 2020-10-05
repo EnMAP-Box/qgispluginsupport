@@ -604,6 +604,7 @@ class TestObjects():
                             nc: int = 0,
                             path: typing.Union[str, pathlib.Path] = None,
                             drv: typing.Union[str, gdal.Driver] = None,
+                            wlu: str = None,
                             no_data_rectangle: int = 0,
                             no_data_value: typing.Union[int, float] = -9999) -> gdal.Dataset:
         """
@@ -716,11 +717,14 @@ class TestObjects():
                 wl = core_wl[:nb].tolist()
             assert len(wl) == nb
 
+            if wlu != core_wlu:
+                wl = UnitLookup.convertMetricUnit(wl, core_wlu, wlu)
+
             domain = None
             if drv.ShortName == 'ENVI':
                 domain = 'ENVI'
 
-            ds.SetMetadataItem('wavelength units', core_wlu, domain)
+            ds.SetMetadataItem('wavelength units', wlu, domain)
             ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]), domain)
 
         ds.FlushCache()
