@@ -604,6 +604,7 @@ class TestObjects():
                             nc: int = 0,
                             path: typing.Union[str, pathlib.Path] = None,
                             drv: typing.Union[str, gdal.Driver] = None,
+                            wlu: str = None,
                             no_data_rectangle: int = 0,
                             no_data_value: typing.Union[int, float] = -9999) -> gdal.Dataset:
         """
@@ -715,6 +716,9 @@ class TestObjects():
             else:
                 wl = core_wl[:nb].tolist()
             assert len(wl) == nb
+
+            if wlu != core_wlu:
+                wl = UnitLookup.convertMetricUnit(wl, core_wlu, wlu)
 
             domain = None
             if drv.ShortName == 'ENVI':
