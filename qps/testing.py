@@ -48,11 +48,11 @@ from qgis.core import *
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext, \
     QgsProcessingFeedback, QgsField, QgsFields, QgsApplication, QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
-    QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer,  \
+    QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
     QgsProviderRegistry, QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge
 from qgis.gui import *
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
-    QgsMapCanvas,  QgsGui, QgisInterface
+    QgsMapCanvas, QgsGui, QgisInterface
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
@@ -373,8 +373,8 @@ class TestCase(qgis.testing.TestCase):
             import gc
             gc.collect()
 
-    #@unittest.skip("deprectated method")
-    #def testOutputDirectory(self, *args, **kwds):
+    # @unittest.skip("deprectated method")
+    # def testOutputDirectory(self, *args, **kwds):
     #    warnings.warn('Use createTestOutputDirectory(...) instead', DeprecationWarning)
     #    self.createTestOutputDirectory(*args, **kwds)
 
@@ -420,7 +420,6 @@ class TestCase(qgis.testing.TestCase):
         drv.CopyFiles(newpath.as_posix(), path)
 
         return newpath.as_posix()
-
 
     def setUp(self):
 
@@ -541,8 +540,6 @@ class TestObjects():
 
         from .speclib.core import SpectralProfile
 
-
-
         i = 1
         for (data, wl, data_wlu) in TestObjects.spectralProfileData(n, n_bands=n_bands):
             if wlu is None:
@@ -605,7 +602,8 @@ class TestObjects():
                             crs=None, gt=None,
                             eType: int = gdal.GDT_Int16,
                             nc: int = 0,
-                            path: str = None,
+                            path: typing.Union[str, pathlib.Path] = None,
+                            drv: typing.Union[str, gdal.Driver] = None,
                             no_data_rectangle: int = 0,
                             no_data_value: typing.Union[int, float] = -9999) -> gdal.Dataset:
         """
@@ -622,14 +620,20 @@ class TestObjects():
             scheme = ClassificationScheme()
             scheme.createClasses(nc)
 
-        drv = gdal.GetDriverByName('GTiff')
+        if isinstance(drv, str):
+            drv = gdal.GetDriverByName(drv)
+        elif drv is None:
+            drv = gdal.GetDriverByName('GTiff')
         assert isinstance(drv, gdal.Driver)
 
-        if not isinstance(path, str):
+        if isinstance(path, pathlib.Path):
+            path = path.as_posix()
+        elif path is None:
             if nc > 0:
                 path = '/vsimem/testClassification.{}.tif'.format(str(uuid.uuid4()))
             else:
                 path = '/vsimem/testImage.{}.tif'.format(str(uuid.uuid4()))
+        assert isinstance(path, str)
 
         ds: gdal.Driver = drv.Create(path, ns, nl, bands=nb, eType=eType)
         assert isinstance(ds, gdal.Dataset)
@@ -637,7 +641,7 @@ class TestObjects():
             no_data_rectangle = min([no_data_rectangle, ns])
             no_data_rectangle = min([no_data_rectangle, nl])
             for b in range(ds.RasterCount):
-                band: gdal.Band = ds.GetRasterBand(b+1)
+                band: gdal.Band = ds.GetRasterBand(b + 1)
                 band.SetNoDataValue(no_data_value)
 
         coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
@@ -711,8 +715,13 @@ class TestObjects():
             else:
                 wl = core_wl[:nb].tolist()
             assert len(wl) == nb
-            ds.SetMetadataItem('wavelength units', core_wlu)
-            ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]))
+
+            domain = None
+            if drv.ShortName == 'ENVI':
+                domain = 'ENVI'
+
+            ds.SetMetadataItem('wavelength units', core_wlu, domain)
+            ds.SetMetadataItem('wavelength', ','.join([str(w) for w in wl]), domain)
 
         ds.FlushCache()
         return ds
