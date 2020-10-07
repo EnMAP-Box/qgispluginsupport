@@ -526,7 +526,7 @@ class TestObjects():
             if nb == -1:
                 n_bands[i] = cnb
             else:
-                assert nb > 0 and nb <= cnb, f'Number of bands need to be in range 0 < nb <= {cnb}.'
+                assert 0 < nb <= cnb, f'Number of bands need to be in range 0 < nb <= {cnb}.'
 
         n_bands = [nb if nb > 0 else cnb for nb in n_bands]
 
