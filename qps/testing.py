@@ -129,7 +129,8 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = []
                 qgsApp.addLibraryPath(candidate.as_posix())
 
     assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
-        'Directory: {} does not exist'.format(QgsProviderRegistry.instance().libraryDirectory().path())
+        'Directory: {} does not exist. Please check if QGIS_PREFIX_PATH correct'.format(
+            QgsProviderRegistry.instance().libraryDirectory().path())
 
     # initiate a PythonRunner instance if None exists
     if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
@@ -571,6 +572,8 @@ class TestObjects():
                               wlu: str = None):
         """
         Creates an Spectral Library
+        :param n_bands:
+        :type n_bands:
         :param wlu:
         :type wlu:
         :param n: total number of profiles
