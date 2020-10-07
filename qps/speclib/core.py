@@ -2747,7 +2747,7 @@ class SpectralLibrary(QgsVectorLayer):
     def __repr__(self):
         return str(self.__class__) + '"{}" {} feature(s)'.format(self.name(), self.dataProvider().featureCount())
 
-    def plot(self):
+    def plot(self) -> QWidget:
         """Create a plot widget and shows all SpectralProfile in this SpectralLibrary."""
 
         app = None
@@ -2762,6 +2762,8 @@ class SpectralLibrary(QgsVectorLayer):
 
         if app:
             app.exec_()
+
+        return w
 
     def fieldNames(self) -> list:
         """
