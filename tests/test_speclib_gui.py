@@ -535,9 +535,9 @@ class TestSpeclibWidgets(TestCase):
 
         pd = QProgressDialog()
         speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
-
+        speclib.setName(' My Speclib *./\\[]:')
         #
-        sl2 = TestObjects.createSpectralLibrary(2, wlu='Nanometers')
+        sl2 = TestObjects.createSpectralLibrary(2, wlu='Nanometers', n_bands=[5, 25])
         speclib.startEditing()
         speclib.addSpeclib(sl2)
 

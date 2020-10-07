@@ -43,7 +43,7 @@ from qgis.core import \
     QgsRaster, QgsDefaultValue, QgsReadWriteContext, \
     QgsCategorizedSymbolRenderer, QgsMapLayerProxyModel, \
     QgsSymbol, QgsNullSymbolRenderer, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
-    QgsEditorWidgetSetup, QgsAction, QgsTask, QgsMessageLog
+    QgsEditorWidgetSetup, QgsAction, QgsTask, QgsMessageLog, QgsFileUtils
 
 from qgis.gui import \
     QgsGui, QgsMapCanvas, QgsDualView, QgisInterface, QgsEditorConfigWidget, \
@@ -1388,10 +1388,10 @@ class SpectralProfileRenderer(object):
                         pass
                     else:
                         style.setVisibility(False)
-                    #symbol = renderer.sourceSymbol()
+                    # symbol = renderer.sourceSymbol()
                 elif isinstance(symbol, (QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol)):
                     color: QColor = symbol.color()
-                    color.setAlpha(int(symbol.opacity()*100))
+                    color.setAlpha(int(symbol.opacity() * 100))
 
                     style.setLineColor(color)
                     style.setMarkerColor(color)
@@ -2157,8 +2157,8 @@ class SpectralLibrary(QgsVectorLayer):
                  path: str = None,
                  baseName: str = DEFAULT_NAME,
                  options: QgsVectorLayer.LayerOptions = None,
-                 uri: str = None, # deprectated
-                 name: str = None # deprectated
+                 uri: str = None,  # deprectated
+                 name: str = None  # deprectated
                  ):
 
         if isinstance(uri, str):
@@ -2623,10 +2623,10 @@ class SpectralLibrary(QgsVectorLayer):
         msg = super(SpectralLibrary, self).exportNamedStyle(doc, context=context, categories=categories)
         if msg == '':
             qgsNode = doc.documentElement().toElement()
-            #speclibNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
+            # speclibNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
             if isinstance(self.mProfileRenderer, SpectralProfileRenderer):
                 self.mProfileRenderer.writeXml(qgsNode, doc)
-            #qgsNode.appendChild(speclibNode)
+            # qgsNode.appendChild(speclibNode)
 
         return msg
 
@@ -2648,7 +2648,8 @@ class SpectralLibrary(QgsVectorLayer):
         warnings.warn('Use SpectralLibrary.write() instead', DeprecationWarning)
         return self.write(*args, **kwds)
 
-    def writeRasterImages(self, pathOne: typing.Union[str, pathlib.Path], drv:str='GTiff') -> typing.List[pathlib.Path]:
+    def writeRasterImages(self, pathOne: typing.Union[str, pathlib.Path], drv: str = 'GTiff') -> typing.List[
+        pathlib.Path]:
         """
         Writes the SpectralLibrary into images of same spectral properties
         :return: list of image paths
@@ -2659,7 +2660,7 @@ class SpectralLibrary(QgsVectorLayer):
         basename, ext = os.path.splitext(pathOne.name)
 
         assert pathOne.parent.is_dir()
-        results = []
+        imageFiles = []
         for k, profiles in self.groupBySpectralProperties().items():
             xValues, xUnit, yUnit = k
             ns: int = len(profiles)
@@ -2668,13 +2669,14 @@ class SpectralLibrary(QgsVectorLayer):
             ref_profile = np.asarray(profiles[0].yValues())
             dtype = ref_profile.dtype
             imageArray = np.empty((nb, 1, ns), dtype=dtype)
-            imageArray[:,0,0] = ref_profile
+            imageArray[:, 0, 0] = ref_profile
             for i in range(1, len(profiles)):
                 imageArray[:, 0, i] = np.asarray(profiles[i].yValues(), dtype=dtype)
-            if len(results) == 0:
+
+            if len(imageFiles) == 0:
                 pathDst = pathOne.parent / f'{basename}{ext}'
             else:
-                pathDst = pathOne.parent / f'{basename}{i}{ext}'
+                pathDst = pathOne.parent / f'{basename}{len(imageFiles)}{ext}'
 
             dsDst: gdal.Dataset = gdal_array.SaveArray(imageArray, pathDst.as_posix(), format=drv)
             fakeProjection: osr.SpatialReference = osr.SpatialReference()
@@ -2685,9 +2687,9 @@ class SpectralLibrary(QgsVectorLayer):
             dsDst.SetMetadataItem('wavelength units', xUnit)
             dsDst.SetMetadataItem('wavelength', ','.join(f'{v}' for v in xValues))
             dsDst.FlushCache()
-            results.append(pathDst)
+            imageFiles.append(pathDst)
             del dsDst
-        return results
+        return imageFiles
 
     def write(self, path: str, **kwds) -> typing.List[str]:
         """
@@ -2704,7 +2706,7 @@ class SpectralLibrary(QgsVectorLayer):
         if path is None:
             path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'),
                                                        caption='Save Spectral Library',
-                                                       directory='speclib',
+                                                       directory=QgsFileUtils.stringToSafeFilename(self.name()),
                                                        filter=FILTERS)
 
         if isinstance(path, pathlib.Path):

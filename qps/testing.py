@@ -518,9 +518,16 @@ class TestObjects():
         coredata, wl, wlu, gt, wkt = TestObjects.coreData()
         cnb, cnl, cns = coredata.shape
         assert n > 0
+        if not isinstance(n_bands, list):
+            n_bands = [n_bands]
         assert isinstance(n_bands, list)
-        for nb in n_bands:
-            assert nb == -1 or nb > 0 and nb <= cnb
+        for i in range(len(n_bands)):
+            nb = n_bands[i]
+            if nb == -1:
+                n_bands[i] = cnb
+            else:
+                assert nb > 0 and nb <= cnb, f'Number of bands need to be in range 0 < nb <= {cnb}.'
+
         n_bands = [nb if nb > 0 else cnb for nb in n_bands]
 
         for nb in n_bands:

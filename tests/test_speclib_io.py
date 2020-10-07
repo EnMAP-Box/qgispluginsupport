@@ -20,8 +20,8 @@
 import unittest
 from qps.testing import TestObjects, TestCase
 
-from qgis._gui import *
-from qgis._core import *
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
+
 from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
 
@@ -29,6 +29,7 @@ from qps.speclib.io.vectorsources import *
 from qps.speclib.io.csvdata import *
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
+from qps.speclib.io.rastersources import *
 from qps.speclib.gui import *
 
 
@@ -900,6 +901,27 @@ class TestIO(TestCase):
             self.assertIsInstance(p1, SpectralProfile)
             self.assertIsInstance(p2, SpectralProfile)
             self.assertEqual(p1, p2)
+
+    def test_rasterIO(self):
+
+        testdir = self.createTestOutputDirectory() / 'speclibIO'
+        os.makedirs(testdir, exist_ok=True)
+
+        path = testdir / 'raster.tif'
+
+        sl = TestObjects.createSpectralLibrary(n_bands=[10, 177])
+        io = RasterSourceSpectralLibraryIO()
+        files = io.write(sl, path)
+
+        sl2 = SpectralLibrary()
+        self.assertTrue(sl2.startEditing())
+        for f in files:
+            self.assertTrue(os.path.isfile(f))
+            sl = io.readFrom(f)
+            self.assertIsInstance(sl, SpectralLibrary)
+            sl2.addSpeclib(sl)
+        self.assertTrue(sl2.commitChanges())
+        self.assertEqual(len(sl), len(sl2))
 
     def test_ENVILabeled(self):
 
