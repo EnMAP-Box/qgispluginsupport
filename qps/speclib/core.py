@@ -2670,6 +2670,7 @@ class SpectralLibrary(QgsVectorLayer):
             dtype = ref_profile.dtype
             imageArray = np.empty((nb, 1, ns), dtype=dtype)
             imageArray[:, 0, 0] = ref_profile
+
             for i in range(1, len(profiles)):
                 imageArray[:, 0, i] = np.asarray(profiles[i].yValues(), dtype=dtype)
 
@@ -2727,10 +2728,19 @@ class SpectralLibrary(QgsVectorLayer):
 
         return []
 
-    def yRange(self):
-        profiles = self.profiles()
-        minY = min([min(p.yValues()) for p in profiles])
-        maxY = max([max(p.yValues()) for p in profiles])
+    def yRange(self) -> typing.List[float]:
+        """
+        Returns the maximum y range
+        :return: 
+        :rtype:
+        """
+
+        minY = maxY = 0
+
+        for p in self.profiles():
+            yValues = p.yValues()
+            minY = min(minY, min(yValues))
+            maxY = max(maxY, max(yValues))
         return minY, maxY
 
     def __repr__(self):
