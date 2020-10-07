@@ -35,7 +35,7 @@ import uuid
 from osgeo import osr
 from ..speclib import SpectralLibrarySettingsKey
 from PyQt5.QtWidgets import *
-from qgis.core import \
+from qgis.core import QgsApplication, \
     QgsRenderContext, QgsFeature, QgsVectorLayer, QgsMapLayer, QgsRasterLayer, \
     QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsVectorFileWriter, QgsActionManager, QgsFeatureIterator, QgsFeatureRequest, \
@@ -2731,7 +2731,7 @@ class SpectralLibrary(QgsVectorLayer):
     def yRange(self) -> typing.List[float]:
         """
         Returns the maximum y range
-        :return: 
+        :return:
         :rtype:
         """
 
@@ -2741,6 +2741,7 @@ class SpectralLibrary(QgsVectorLayer):
             yValues = p.yValues()
             minY = min(minY, min(yValues))
             maxY = max(maxY, max(yValues))
+
         return minY, maxY
 
     def __repr__(self):
@@ -2748,30 +2749,23 @@ class SpectralLibrary(QgsVectorLayer):
 
     def plot(self):
         """Create a plot widget and shows all SpectralProfile in this SpectralLibrary."""
-        from ..externals import pyqtgraph as pg
-        pg.mkQApp()
 
-        win = pg.GraphicsWindow(title="Spectral Library")
-        win.resize(1000, 600)
+        app = None
+        if not isinstance(QgsApplication.instance(), QgsApplication):
+            from ..testing import start_app
+            app = start_app()
 
-        # Enable antialiasing for prettier plots
-        pg.setConfigOptions(antialias=True)
+        from .gui import SpectralLibraryWidget
 
-        # Create a plot with some random data
-        p1 = win.addPlot(title="Spectral Library {}".format(self.name()), pen=0.5)
-        yMin, yMax = self.yRange()
-        p1.setYRange(yMin, yMax)
+        w = SpectralLibraryWidget(speclib=self)
+        w.show()
 
-        # Add three infinite lines with labels
-        for p in self:
-            pi = pg.PlotDataItem(p.xValues(), p.yValues())
-            p1.addItem(pi)
-
-        pg.QAPP.exec_()
+        if app:
+            app.exec_()
 
     def fieldNames(self) -> list:
         """
-        Retunrs the field names. Shortcut from self.fields().names()
+        Returns the field names. Shortcut from self.fields().names()
         :return: [list-of-str]
         """
         return self.fields().names()
