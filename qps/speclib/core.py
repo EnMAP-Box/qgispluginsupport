@@ -2667,10 +2667,10 @@ class SpectralLibrary(QgsVectorLayer):
 
             ref_profile = np.asarray(profiles[0].yValues())
             dtype = ref_profile.dtype
-            imageArray = np.empty((nb, ns, 1), dtype=dtype)
+            imageArray = np.empty((nb, 1, ns), dtype=dtype)
             imageArray[:,0,0] = ref_profile
             for i in range(1, len(profiles)):
-                imageArray[:, i, 0] = np.asarray(profiles[i].yValues(), dtype=dtype)
+                imageArray[:, 0, i] = np.asarray(profiles[i].yValues(), dtype=dtype)
             if len(results) == 0:
                 pathDst = pathOne.parent / f'{basename}{ext}'
             else:
@@ -2680,7 +2680,8 @@ class SpectralLibrary(QgsVectorLayer):
             fakeProjection: osr.SpatialReference = osr.SpatialReference()
             fakeProjection.SetFromUserInput('EPSG:3857')
             dsDst.SetProjection(fakeProjection.ExportToWkt())
-            dsDst.SetGeoTransform([0.0, 1.0, 0.0, 0.0, 0.0, -1.0])
+            # north-up project, 1 px above equator, starting at 0°, n pixels = n profiles towards east
+            dsDst.SetGeoTransform([0.0, 1.0, 0.0, 1.0, 0.0, -1.0])
             dsDst.SetMetadataItem('wavelength units', xUnit)
             dsDst.SetMetadataItem('wavelength', ','.join(f'{v}' for v in xValues))
             dsDst.FlushCache()
