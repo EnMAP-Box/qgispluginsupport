@@ -2529,7 +2529,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.speclib().startEditing()
 
     def onExportSpectra(self, *args):
-        files = self.mSpeclib.write(None)
+        files = self.speclib().write(None)
         if len(files) > 0:
             self.sigFilesCreated.emit(files)
 
