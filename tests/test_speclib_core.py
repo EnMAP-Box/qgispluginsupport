@@ -18,7 +18,8 @@
 """
 # noinspection PyPep8Naming
 import unittest, shutil
-from qgis.gui import *
+from qgis.gui import QgsMapCanvas
+from qgis.core import QgsField, QgsGeometry, QgsRasterLayer, QgsVectorLayer
 from qps.testing import TestObjects, TestCase
 from qpstestdata import hymap
 from qpstestdata import speclib as speclibpath
@@ -452,6 +453,23 @@ class TestCore(TestCase):
 
             for p in profiles:
                 self.assertEqual(l, len(p.xValues()))
+
+    def test_SpectralLibraryValueFields(self):
+
+        sl = SpectralLibrary(value_fields=[FIELD_VALUES, 'derived1'])
+
+        fields = sl.spectralValueFields()
+        self.assertIsInstance(fields, list)
+        self.assertTrue(len(fields) == 2)
+        for f in fields:
+            self.assertIsInstance(f, QgsField)
+            self.assertTrue(f.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY)
+        self.assertFalse(sl.addSpectralProfileAttribute('derived2'))
+        sl.startEditing()
+        self.assertTrue(sl.addSpectralProfileAttribute('derived2'))
+        self.assertTrue(sl.commitChanges())
+        self.assertTrue(len(sl.spectralValueFields()) == 3)
+
 
     def test_SpectralLibrary(self):
 

@@ -33,11 +33,10 @@ from ..externals import pyqtgraph as pg
 from ..externals.pyqtgraph.graphicsItems.ViewBox.ViewBoxMenu import ViewBoxMenu
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ..layerproperties import AttributeTableWidget
-from ..unitmodel import UnitModel, BAND_INDEX, XUnitModel, UnitConverterFunctionModel
+from ..unitmodel import BAND_INDEX, XUnitModel, UnitConverterFunctionModel
 
-from ..models import Option, OptionListModel
 from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle, PlotStyleDialog
-from ..layerproperties import AddAttributeDialog
+
 from qgis.core import \
     QgsFeature, QgsRenderContext, QgsNullSymbolRenderer, \
     QgsRasterLayer, QgsMapLayer, QgsVectorLayer, \
@@ -2560,16 +2559,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         Removes all SpectralProfiles and additional fields
         """
-        feature_ids = self.speclib().allFeatureIds()
-        self.speclib().startEditing()
-        self.speclib().deleteFeatures(feature_ids)
-        self.speclib().commitChanges()
 
-        for fieldName in self.speclib().optionalFieldNames():
-            index = self.spectralLibrary().fields().indexFromName(fieldName)
-            self.spectralLibrary().startEditing()
-            self.spectralLibrary().deleteAttribute(index)
-            self.spectralLibrary().commitChanges()
+        warnings.warn('Deprectated and desimplemented', DeprecationWarning)
 
 
 class SpectralLibraryInfoLabel(QLabel):

@@ -23,18 +23,18 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import pickle
+import typing
+from qgis.core import QgsExpression, QgsFeature, qgsfunction
 
-from qgis.core import *
-
-from .core import FIELD_VALUES, decodeProfileValueDict
+from .core import FIELD_VALUES, decodeProfileValueDict, SpectralProfile
 
 QGS_FUNCTION_GROUP = "Spectral Libraries"
 
-@qgsfunction(0, QGS_FUNCTION_GROUP)
-def spectralValues(values, feature, parent):
+
+@qgsfunction(0, QGS_FUNCTION_GROUP, referenced_columns=FIELD_VALUES)
+def spectralProfileDict(values, feature, parent) -> dict:
     """
-    Returns the spectral values dictionary
+    Returns the SpectralProfile dictionary will all profile internal properties
     :param values:
     :param feature:
     :param parent:
@@ -48,11 +48,69 @@ def spectralValues(values, feature, parent):
     return None
 
 
+@qgsfunction(0, QGS_FUNCTION_GROUP, referenced_columns=FIELD_VALUES)
+def spectralValues(values, feature, parent) -> typing.List[float]:
+    """
+    Returns the spectral values, i.e. a list of numbers typically plotted on Y axis
+    :param values:
+    :param feature:
+    :param parent:
+    :return: dict
+    """
+    if isinstance(feature, QgsFeature):
+        try:
+            profile: SpectralProfile = SpectralProfile.fromSpecLibFeature(feature)
+            return profile.yValues()
+        except:
+            return None
+    return None
+
+
+@qgsfunction(0, QGS_FUNCTION_GROUP, referenced_columns=FIELD_VALUES)
+def wavelengthUnit(values, feature, parent) -> str:
+    """
+    Returns the SpectralProfiles wavelength unit, e.g. 'nm', or 'μm'
+    :param values:
+    :param feature:
+    :param parent:
+    :return: dict
+    """
+    if isinstance(feature, QgsFeature):
+        try:
+            profile: SpectralProfile = SpectralProfile.fromSpecLibFeature(feature)
+            return profile.xUnit()
+        except:
+            return None
+    return None
+
+
+@qgsfunction(0, QGS_FUNCTION_GROUP, referenced_columns=FIELD_VALUES)
+def wavelengths(values, feature, parent) -> typing.List[float]:
+    """
+    Returns the list of wavelength related to each spectral profile value.
+
+    :param values:
+    :param feature:
+    :param parent:
+    :return: dict
+    """
+    if isinstance(feature, QgsFeature):
+        try:
+            profile: SpectralProfile = SpectralProfile.fromSpecLibFeature(feature)
+            return profile.xValues()
+        except:
+            return None
+    return None
+
+
 def registerQgsExpressionFunctions():
     """
     Registers functions to support SpectraLibrary handling with QgsExpressions
     """
-    #QgsExpression.registerFunction(plotStyleSymbolFillColor)
-    #QgsExpression.registerFunction(plotStyleSymbol)
-    #QgsExpression.registerFunction(plotStyleSymbolSize)
+    # QgsExpression.registerFunction(plotStyleSymbolFillColor)
+    # QgsExpression.registerFunction(plotStyleSymbol)
+    # QgsExpression.registerFunction(plotStyleSymbolSize)
     QgsExpression.registerFunction(spectralValues)
+    QgsExpression.registerFunction(wavelengthUnit)
+    QgsExpression.registerFunction(wavelengths)
+    QgsExpression.registerFunction(spectralProfileDict)

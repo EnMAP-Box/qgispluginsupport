@@ -330,6 +330,7 @@ class TestUtils(TestCase):
                   np.float16(1),
                   np.float32(1),
                   np.float64(1),
+                  QByteArray(),
                   ]
 
         for v in values:

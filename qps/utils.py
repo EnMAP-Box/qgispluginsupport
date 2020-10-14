@@ -59,6 +59,10 @@ from qgis.PyQt.QtWidgets import *
 from osgeo import gdal, ogr, osr, gdal_array
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
+try:
+    from .. import qps
+except:
+    import qps
 from . import DIR_UI_FILES
 
 # dictionary to store form classes and avoid multiple calls to read <myui>.i
@@ -66,10 +70,7 @@ QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
 
-try:
-    from .. import qps
-except:
-    import qps
+
 
 jp = os.path.join
 dn = os.path.dirname
@@ -577,6 +578,8 @@ def createQgsField(name: str, exampleValue: typing.Any, comment: str = None) -> 
         return QgsField(name, QVariant.String, 'varchar', comment=comment)
     elif isinstance(exampleValue, np.datetime64):
         return QgsField(name, QVariant.String, 'varchar', comment=comment)
+    elif isinstance(exampleValue, (bytes, QByteArray)):
+        return QgsField(name, QVariant.ByteArray, 'Binary', comment=comment)
     elif isinstance(exampleValue, list):
         assert len(exampleValue) > 0, 'need at least one value in provided list'
         v = exampleValue[0]

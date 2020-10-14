@@ -68,7 +68,7 @@ class VectorSourceFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
     def convert(self, fieldIndex: int, value: any):
         if fieldIndex in self.mBLOB2TXT:
             dataDict = decodeProfileValueDict(value)
-            json = encodeProfileValueDict(dataDict, mode=SerializationMode.JSON)
+            json = encodeProfileValueDict(dataDict)
             return json
         return value
 
