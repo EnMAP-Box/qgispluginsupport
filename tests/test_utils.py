@@ -15,8 +15,9 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 import unittest
 import pickle
 import xml.etree.ElementTree as ET
-from qgis import *
-from qgis.core import *
+
+from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
+    QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.Qt import *
 from qgis.PyQt.QtCore import *
