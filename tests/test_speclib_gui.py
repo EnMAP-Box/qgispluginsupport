@@ -22,15 +22,17 @@ import random
 import math
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
-from qgis.gui import QgsMapCanvas, QgsDualView
-from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject
+from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
+    QgsSearchWidgetWrapper, QgsMessageBar
+from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, QgsActionManager, \
+    QgsField, QgsApplication, QgsWkbTypes
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.speclib.gui import *
-
+from qps.layerproperties import AddAttributeDialog
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
 
@@ -176,7 +178,10 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(plotItem, pg.PlotItem)
 
         pw.setSpeclib(speclib)
+        to_vis = pw.profileKeysToVisualize()
+        self.assertTrue(len(to_vis) > 0)
         pw.updateSpectralProfilePlotItems()
+        nPDIS = pw.plottedProfileKeys()
         n = len([sp for sp in plotItem.dataItems if isinstance(sp, SpectralProfilePlotDataItem)])
         self.assertTrue(n == len(speclib))
 

@@ -1616,11 +1616,12 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             assert isinstance(tv, QTableView)
             if not selectedOnly:
                 rowHeight = tv.rowViewportPosition(1) - tv.rowViewportPosition(0)
-                for y in range(0, tv.viewport().height(), rowHeight):
-                    idx = dualView.tableView().indexAt(QPoint(0, y))
-                    if idx.isValid():
-                        fid = tv.model().data(idx, role=Qt.UserRole)
-                        priority1.append(fid)
+                if rowHeight > 0:
+                    for y in range(0, tv.viewport().height(), rowHeight):
+                        idx = dualView.tableView().indexAt(QPoint(0, y))
+                        if idx.isValid():
+                            fid = tv.model().data(idx, role=Qt.UserRole)
+                            priority1.append(fid)
             priority2 = self.dualView().masterModel().layer().selectedFeatureIds()
             if not selectedOnly:
                 priority3 = dualView.filteredFeatures()
@@ -1629,7 +1630,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             if not selectedOnly:
                 priority3 = allIDs
 
-        featurePool = np.unique(priority0 + priority1 + priority2).tolist()
+        featurePool = np.unique(priority0 + priority1 + priority2 + priority3).tolist()
         toVisualize = sorted(featurePool,
                              key=lambda fid: (fid not in priority0, fid not in priority1, fid not in priority2, fid))
 
