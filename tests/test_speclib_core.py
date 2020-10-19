@@ -19,7 +19,7 @@
 # noinspection PyPep8Naming
 import unittest, shutil
 from qgis.gui import QgsMapCanvas
-from qgis.core import QgsField, QgsGeometry, QgsRasterLayer, QgsVectorLayer
+from qgis.core import QgsField, QgsFields, QgsProject, QgsGeometry, QgsRasterLayer, QgsVectorLayer
 from qps.testing import TestObjects, TestCase
 from qpstestdata import hymap
 from qpstestdata import speclib as speclibpath
@@ -143,26 +143,20 @@ class TestCore(TestCase):
         xUnit = 'nm'
         yUnit = None
 
-        for mode in [SerializationMode.JSON, SerializationMode.PICKLE]:
+        sl = SpectralLibrary()
+        self.assertTrue(sl.startEditing())
+        sp = SpectralProfile()
+        sp.setValues(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
 
-            sl = SpectralLibrary()
-            self.assertTrue(sl.startEditing())
-            sp = SpectralProfile()
-            sp.setValues(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
+        vd1 = sp.values()
+        dump = encodeProfileValueDict(vd1)
+        self.assertIsInstance(dump, QByteArray)
 
-            vd1 = sp.values()
-            dump = encodeProfileValueDict(vd1, mode=mode)
-
-            if mode == SerializationMode.JSON:
-                self.assertIsInstance(dump, str)
-            elif mode == SerializationMode.PICKLE:
-                self.assertIsInstance(dump, QByteArray)
-
-            vd2 = decodeProfileValueDict(dump, mode=mode)
-            self.assertIsInstance(vd2, dict)
-            self.assertEqual(vd1, vd2)
-            sl.addProfiles([sp])
-            self.assertTrue(sl.commitChanges())
+        vd2 = decodeProfileValueDict(dump)
+        self.assertIsInstance(vd2, dict)
+        self.assertEqual(vd1, vd2)
+        sl.addProfiles([sp])
+        self.assertTrue(sl.commitChanges())
 
     def test_SpectralProfileMath(self):
 
