@@ -125,6 +125,21 @@ MDF_QGIS_LAYER_STYLE = 'application/qgis.style'
 MDF_TEXT_PLAIN = 'text/plain'
 
 
+class FieldListModel(QAbstractListModel):
+
+    def __init__(self, *args, layer:QgsVectorLayer=None, **kwds):
+
+        super().__init__(*args, **kwds)
+
+    def setLayer(self, layer:QgsVectorLayer):
+
+        self.mLayer = layer
+
+    def flags(self, index:QModelIndex):
+        pass
+
+
+
 class AddAttributeDialog(QDialog):
     """
     A dialog to set up a new QgsField.
