@@ -377,11 +377,12 @@ class SymbologyConfigWidget(QpsMapLayerConfigWidget):
                 self.setSymbologyWidget(w)
 
         elif isinstance(lyr, QgsVectorLayer):
+            w = None
             if not isinstance(w, QgsRendererPropertiesDialog):
                 w = QgsRendererPropertiesDialog(lyr, self.style(), embedded=True)
                 self.setSymbologyWidget(w)
             else:
-                s = ""
+
                 pass
 
         else:
