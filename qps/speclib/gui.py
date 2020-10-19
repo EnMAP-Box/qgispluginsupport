@@ -2370,7 +2370,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
 
-        self.actionShowProperties = QAction('Show Spectral Library Poperties')
+        self.actionShowProperties = QAction('Show Spectral Library Properties')
         self.actionShowProperties.setToolTip('Show Spectral Library Properties')
         self.actionShowProperties.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
         self.actionShowProperties.triggered.connect(self.showProperties)
