@@ -13,8 +13,9 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 import time
 import tempfile
-from qgis.core import *
-from qgis.gui import *
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsField, QgsAbstractVectorLayerLabeling
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, \
+    QgsMapLayerComboBox, QgsRasterBandComboBox, QgsRasterTransparencyWidget, QgsMapLayerConfigWidgetFactory
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
@@ -353,6 +354,8 @@ class LayerConfigWidgetsTests(TestCase):
 
         lyrB = QgsRasterLayer(envi_bsq)
         lyrR = QgsRasterLayer(envi_bsq)
+
+
         lyrV = QgsVectorLayer(landcover)
         canvas = QgsMapCanvas()
         w = GDALMetadataModelConfigWidget(lyrR, canvas)

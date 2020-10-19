@@ -1552,19 +1552,14 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
     def checkWavelengthUnit(key: str, value: str) -> str:
         wlu = None
         value = value.strip()
-        if re.search(r'wavelength.units?', key, re.I):
+        if re.search(r'wavelength[ _]?units?', key, re.I):
             # metric length units
-            if re.search(r'^(Micrometers?|um|μm)$', values, re.I):
-                wlu = 'μm'  # fix with python 3 UTF
-            elif re.search(r'^(Nanometers?|nm)$', values, re.I):
-                wlu = 'nm'
-            elif re.search(r'^(Millimeters?|mm)$', values, re.I):
-                wlu = 'nm'
-            elif re.search(r'^(Centimeters?|cm)$', values, re.I):
-                wlu = 'nm'
-            elif re.search(r'^(Meters?|m)$', values, re.I):
-                wlu = 'nm'
-            elif re.search(r'^Wavenumber$', values, re.I):
+            wlu = UnitLookup.baseUnit(value)
+
+            if wlu is not None:
+                return wlu
+
+            if re.search(r'^Wavenumber$', values, re.I):
                 wlu = '-'
             elif re.search(r'^GHz$', values, re.I):
                 wlu = 'GHz'

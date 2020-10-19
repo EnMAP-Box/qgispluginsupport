@@ -34,7 +34,7 @@ from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
     QgsVectorDataProvider, QgsRasterDataProvider, Qgis
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsDoubleSpinBox
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsDoubleSpinBox, QgsMessageBar
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..utils import loadUi, gdalDataset, parseWavelength, parseFWHM
@@ -129,6 +129,7 @@ class GDALBandMetadataItem(object):
 
 class GDALBandMetadataModel(QAbstractTableModel):
     sigWavelengthUnitsChanged = pyqtSignal(str)
+    sigMessage = pyqtSignal(str, Qgis.MessageLevel)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -323,29 +324,47 @@ class GDALBandMetadataModel(QAbstractTableModel):
     def applyToLayer(self, *args):
         if isinstance(self.mMapLayer, QgsRasterLayer) and self.mMapLayer.isValid():
 
-            def list_or_empty(values):
+            def list_or_empty(values, domain:str=None):
                 for v in values:
-                    if v not in ['', None, 'None']:
-                        return ','.join(values)
+                    if v in ['', None, 'None']:
+                        return ''
 
-                return ''
+                result = ','.join(values)
+                if domain == 'ENVI':
+                    result = f'{{{result}}}'
+                return result
 
             if self.mMapLayer.dataProvider().name() == 'gdal':
                 try:
                     ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_Update)
                     assert isinstance(ds, gdal.Dataset)
                 except Exception as ex:
-                    print(f'unable to open image in update mode: {self.mMapLayer.source()}')
-                    print(ex, file=sys.stderr)
+                    msg = f'Unable to open image in update mode. ' \
+                          f'Some metadata might not be saved: {self.mMapLayer.source()}'
+                    self.sigMessage.emit(msg, Qgis.Warning)
+
                     ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_ReadOnly)
+
+                # if ENVI driver, save to 'ENVI' domain
+                # if other driver, save  to default domain
 
                 is_envi = ds.GetDriver().ShortName == 'ENVI'
                 if is_envi:
                     domain = 'ENVI'
                 else:
                     domain = None
+
                 if self.mWavelengthUnit not in [None, '', BAND_INDEX]:
-                    ds.SetMetadataItem('wavelength units ', self.mWavelengthUnit, domain)
+
+                    # remove potential concurrent definitions of wavelength unit and fwhm
+                    for k in ['wavelength_units', 'wavelength units', 'fwhm', 'wavelength', 'wavelengths']:
+                        for d in ['ENVI', None]:
+                            ds.SetMetadataItem(k, None, d)
+                            for b in range(ds.RasterCount):
+                                band: gdal.Band = ds.GetRasterBand(b+1)
+                                band.SetMetadataItem(k, None, d)
+
+                    ds.SetMetadataItem('wavelength units', self.mWavelengthUnit, domain)
 
                     wl = [str(item.wavelength) for item in self.mBandMetadata]
                     ds.SetMetadataItem('wavelength', list_or_empty(wl), domain)
@@ -407,7 +426,6 @@ class GDALBandMetadataModel(QAbstractTableModel):
 
         self.mBandMetadata0.extend([copy.copy(item) for item in self.mBandMetadata])
         self.endResetModel()
-
 
 
 class GDALBandMetadataModelTableViewDelegate(QStyledItemDelegate):
@@ -553,6 +571,7 @@ class GDALBandMetadataModelTableView(QTableView):
 class GDALMetadataModel(QAbstractTableModel):
 
     sigEditable = pyqtSignal(bool)
+    sigMessage = pyqtSignal(str, Qgis.MessageLevel)
 
     def __init__(self, parent=None):
         super(GDALMetadataModel, self).__init__(parent)
@@ -568,7 +587,7 @@ class GDALMetadataModel(QAbstractTableModel):
         self._column_names = [self.cnItem, self.cnDomain, self.cnKey, self.cnValue]
         self._isEditable = False
         self._MDItems: typing.List[GDALMetadataItem] = []
-        self._MOKs:typing.List[str] = []
+        self._MOKs: typing.List[str] = []
 
     def resetChanges(self):
         c = self._column_names.index(self.cnValue)
@@ -697,10 +716,14 @@ class GDALMetadataModel(QAbstractTableModel):
                         del ds
 
                     if self.mErrorHandler.err_level >= gdal.CE_Warning:
-                        raise RuntimeError(self.mErrorHandler.err_level,
-                                           self.mErrorHandler.err_no,
-                                           self.mErrorHandler.err_msg)
+                        msg = self.mErrorHandler.err_msg
+                        self.sigMessage.emit(msg, Qgis.Critical)
+                        #raise RuntimeError(self.mErrorHandler.err_level,
+                        #                   self.mErrorHandler.err_no,
+                        #                   self.mErrorHandler.err_msg)
                 except Exception as ex:
+                    msg = str(ex)
+                    self.sigMessage.emit(msg, Qgis.Critical)
                     print(ex, file=sys.stderr)
                 finally:
                     gdal.PopErrorHandler()
@@ -725,10 +748,14 @@ class GDALMetadataModel(QAbstractTableModel):
 
                         ds.FlushCache()
                     if self.mErrorHandler.err_level >= gdal.CE_Warning:
-                        raise RuntimeError(self.mErrorHandler.err_level,
-                                           self.mErrorHandler.err_no,
-                                           self.mErrorHandler.err_msg)
+                        msg = self.mErrorHandler.err_msg
+                        self.sigMessage.emit(msg, Qgis.Critical)
+                        #raise RuntimeError(self.mErrorHandler.err_level,
+                        #                   self.mErrorHandler.err_no,
+                        #                   self.mErrorHandler.err_msg)
                 except Exception as ex:
+                    msg = str(ex)
+                    self.sigMessage.emit(msg, Qgis.Critical)
                     print(ex, file=sys.stderr)
                 finally:
                     gdal.PopErrorHandler()
@@ -915,8 +942,6 @@ class GDALMetadataItemDialog(QDialog):
         self.tbValue.textChanged.connect(self.validate)
         self.cbDomain.currentTextChanged.connect(self.validate)
         self.cbMajorObject.currentTextChanged.connect(self.validate)
-
-
         self.validate()
 
     def validate(self, *args):
@@ -984,12 +1009,14 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
 
+        self.mMessageBar: QgsMessageBar
         self.tbFilter: QLineEdit
         self.btnMatchCase.setDefaultAction(self.optionMatchCase)
         self.btnRegex.setDefaultAction(self.optionRegex)
         self._cs = None
 
         self.bandMetadataModel = GDALBandMetadataModel()
+        self.bandMetadataModel.sigMessage.connect(self.showMessage)
         self.bandMetadataProxyModel = QSortFilterProxyModel()
         self.bandMetadataProxyModel.setSourceModel(self.bandMetadataModel)
         self.bandMetadataProxyModel.setFilterKeyColumn(-1)
@@ -1002,6 +1029,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.bandMetadataModel.registerWavelengthUnitComboBox(self.cbWavelengthUnits)
 
         self.metadataModel = GDALMetadataModel()
+        self.metadataModel.sigMessage.connect(self.showMessage)
         self.metadataModel.sigEditable.connect(self.onEditableChanged)
         self.metadataProxyModel = QSortFilterProxyModel()
         self.metadataProxyModel.setSourceModel(self.metadataModel)
@@ -1030,6 +1058,18 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.actionAddItem.triggered.connect(self.onAddItem)
         self.actionRemoveItem.triggered.connect(self.onRemoveSelectedItems)
         self.onEditableChanged(self.metadataModel.isEditable())
+
+    def showMessage(self, msg:str, level: Qgis.MessageLevel):
+
+        if level == Qgis.Critical:
+            duration = 200
+        else:
+            duration = 50
+        line1 = msg.splitlines()[0]
+        self.messageBar().pushMessage('', line1, msg, level, duration)
+
+    def messageBar(self) -> QgsMessageBar:
+        return self.mMessageBar
 
     def onWavelengthUnitsChanged(self):
         wlu = self.bandMetadataModel.wavelenghtUnit()
