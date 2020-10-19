@@ -1141,7 +1141,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         if not (isinstance(layer, QgsMapLayer) and layer.isValid()):
             self.is_gdal = self.is_ogr = self.supportsGDALClassification = False
         else:
-
+            self.supportsGDALClassification = False
             self.is_gdal = isinstance(layer, QgsRasterLayer) and layer.dataProvider().name() == 'gdal'
             self.is_ogr = isinstance(layer, QgsVectorLayer) and layer.dataProvider().name() == 'ogr'
 
@@ -1184,6 +1184,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.metadataModel.setLayer(lyr)
         if self.supportsGDALClassification:
             self._cs = ClassificationScheme.fromMapLayer(lyr)
+        else:
+            self._cs = None
 
         if isinstance(self._cs, ClassificationScheme) and len(self._cs) > 0:
             self.gbClassificationScheme.setVisible(True)
