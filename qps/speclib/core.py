@@ -2624,22 +2624,45 @@ class SpectralLibrary(QgsVectorLayer):
             value_field = self.spectralValueFields()[0]
         return SpectralProfile.fromQgsFeature(self.getFeature(fid), value_field=value_field)
 
-    def profiles(self, fids=None, value_fields=None) -> typing.Generator[SpectralProfile, None, None]:
+    def profiles(self,
+                 fids=None,
+                 value_fields=None,
+                 profile_keys: typing.Tuple[int, str]=None) -> typing.Generator[SpectralProfile, None, None]:
         """
         Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
         If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value field.
+        :param value_fields:
+        :type value_fields:
+        :param profile_keys:
+        :type profile_keys:
         :param fids: optional, [int-list-of-feature-ids] to return
         :return: generator of [List-of-SpectralProfiles]
         """
 
-        if value_fields is None:
-            value_fields = [f.name() for f in self.spectralValueFields()]
-        elif not isinstance(value_fields, list):
-            value_fields = [value_fields]
+        if profile_keys is None:
+            if value_fields is None:
+                value_fields = [f.name() for f in self.spectralValueFields()]
+            elif not isinstance(value_fields, list):
+                value_fields = [value_fields]
 
-        for f in self.features(fids=fids):
-            for field in value_fields:
-                yield SpectralProfile.fromQgsFeature(f, value_field=field)
+            for f in self.features(fids=fids):
+                for field in value_fields:
+                    yield SpectralProfile.fromQgsFeature(f, value_field=field)
+        else:
+            # sort by FID
+            LUT_FID2KEYS = dict()
+            for pkey in profile_keys:
+                fid, field = pkey
+
+                fields = LUT_FID2KEYS.get(fid, [])
+                fields.append(field)
+                LUT_FID2KEYS[fid] = fields
+
+            for f in self.features(fids=list(LUT_FID2KEYS.keys())):
+                assert isinstance(f, QgsFeature)
+                for field in LUT_FID2KEYS[f.id()]:
+                    yield SpectralProfile.fromQgsFeature(f, value_field=field)
+
 
     def groupBySpectralProperties(self, excludeEmptyProfiles: bool = True):
         """

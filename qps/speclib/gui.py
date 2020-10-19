@@ -879,6 +879,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def currentProfileIDs(self) -> typing.List[int]:
         return list(set([k[0] for k in self.currentProfileKeys()]))
 
+    def currentProfiles(self) -> typing.List[SpectralProfile]:
+        keys = self.currentProfileKeys()
+        return list(self.speclib().profiles(profile_keys=keys))
+
     def onInfoScatterClicked(self, a, b):
         self.mInfoScatterPoint.setVisible(False)
         self.mInfoScatterPointHtml = ""
@@ -2586,6 +2590,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.plotWidget().mTEMPORARY_HIGHLIGHTED.update(addedKeys)
 
         plotWidget.mUpdateTimer.start()
+
+    def currentProfiles(self) -> typing.List[SpectralProfile]:
+        return self.mPlotWidget.currentProfiles()
 
     def canvas(self) -> QgsMapCanvas:
         """
