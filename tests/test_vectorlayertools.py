@@ -1,7 +1,7 @@
 import unittest
 from qps.testing import TestObjects, TestCase
 from qps.vectorlayertools import VectorLayerTools
-
+import xmlrunner
 
 class TestCasesVectorLayerTools(TestCase):
 
@@ -35,6 +35,5 @@ class TestCasesVectorLayerTools(TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

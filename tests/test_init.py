@@ -9,9 +9,9 @@ import unittest
 import pickle
 import pathlib
 import re
-from qgis import *
-from qgis.core import *
-from qgis.gui import *
+import xmlrunner
+from qgis.core import QgsApplication
+from qgis.gui import QgsEditorWidgetFactory
 from PyQt5.QtGui import *
 
 
@@ -69,7 +69,7 @@ class testClassTesting(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
+
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
 

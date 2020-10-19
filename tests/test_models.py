@@ -1,13 +1,8 @@
 # noinspection PyPep8Naming
-import unittest, json, pickle
-from qgis.core import *
-from qgis.gui import *
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtGui import *
-from qps.testing import TestCase
-
+import unittest
+import xmlrunner
 from qps.models import *
+from qps.testing import TestCase
 
 class ModelTests(TestCase):
 
@@ -18,11 +13,11 @@ class ModelTests(TestCase):
 
         argList = list()
         kwdList = list()
+
         def onSignal(*args, **kwargs):
             nonlocal argList, kwdList
             argList.append(args)
             kwdList.append(kwargs)
-
 
         node.sigAddedChildren.connect(onSignal)
         n2 = TreeNode(node)
@@ -37,8 +32,6 @@ class ModelTests(TestCase):
 
         n2.setStatusTip(t)
         assert n2.statusTip() == t
-
-
 
     def test_treeModel(self):
 
@@ -56,10 +49,9 @@ class ModelTests(TestCase):
         n = 5
         nodes = []
         for i in range(n):
-            n = TreeNode(parent, 'Node {}'.format(i+1))
+            n = TreeNode(parent, 'Node {}'.format(i + 1))
             self.assertTrue(n.parentNode() == parent)
             nodes.append(n)
-
 
             parent = n
 
@@ -77,7 +69,6 @@ class ModelTests(TestCase):
         TM = TreeModel()
         TV.setModel(TM)
 
-
         self.assertEqual(TV.model(), TM)
 
         class TestNodeA(TreeNode):
@@ -90,7 +81,7 @@ class ModelTests(TestCase):
             def __init__(self, *args, **kwds):
                 super(TestNodeB, self).__init__(*args, **kwds)
 
-            def contextMenu(self)->QMenu:
+            def contextMenu(self) -> QMenu:
                 m = QMenu()
                 m2 = m.addMenu('SubMenu')
                 return m
@@ -111,7 +102,6 @@ class ModelTests(TestCase):
             self.assertEqual(n2, n)
             parent = n
 
-
         nA = TestNodeA(TM.rootNode(), name='TestNodeA')
         nB = TestNodeB(TreeNode(nA, name='SubA'), name='TestNodeB')
         nLast = TreeNode(TreeNode(nB))
@@ -122,7 +112,6 @@ class ModelTests(TestCase):
         nB.parentNode().removeChildNode(nB)
 
         self.showGui(TV)
-
 
     def test_nodeColumnSpan(self):
 
@@ -135,8 +124,8 @@ class ModelTests(TestCase):
         if True:
             n1 = TreeNode(TM.rootNode(), name='Node1 looooong text')
             n11 = TreeNode(n1, name='spanned')
-            n12 = TreeNode(n1, name='value', value = 1)
-            n13 = TreeNode(n1, name='value', values = [1,2])
+            n12 = TreeNode(n1, name='value', value=1)
+            n13 = TreeNode(n1, name='value', values=[1, 2])
 
         n2 = TreeNode(None, name='ins. spanned1')
         n21 = TreeNode(n2, name='ins. value', value=[1])
@@ -147,7 +136,7 @@ class ModelTests(TestCase):
         TM.rootNode().appendChildNodes([n2])
 
         if True:
-            n2 = TreeNode(TM.rootNode(), name='mod. spanned', value = 1)
+            n2 = TreeNode(TM.rootNode(), name='mod. spanned', value=1)
             n2.setValue(None)
             n21 = TreeNode(n2, name='mod. value')
             n21.setValue('block')
@@ -169,7 +158,6 @@ class ModelTests(TestCase):
         cb = QComboBox()
         cb.setModel(cbModel)
 
-
         tv = QTreeView(None)
 
         tv.setModel(treeModel)
@@ -187,5 +175,4 @@ class ModelTests(TestCase):
 
 
 if __name__ == '__main__':
-    import xmlrunner
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

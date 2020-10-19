@@ -13,11 +13,10 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import unittest
-from qgis import *
-from qgis.gui import *
+import xmlrunner
 from qgis.gui import QgsMapCanvas
-from qgis.core import *
-from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, QgsProject, QgsCoordinateReferenceSystem
+from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, \
+    QgsProject, QgsCoordinateReferenceSystem
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from qps.testing import TestObjects, TestCase
@@ -141,6 +140,5 @@ class CursorLocationTest(TestCase):
 
 if __name__ == "__main__":
 
-    import xmlrunner
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 

@@ -10,7 +10,10 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest, os
+import unittest
+import xmlrunner
+from qgis.core import QgsProject, QgsRectangle, QgsCoordinateReferenceSystem
+from qgis.gui import QgsMapCanvas
 from qps.testing import TestObjects, TestCase
 from qps.crosshair.crosshair import *
 
@@ -95,7 +98,7 @@ class CrosshairTests(TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
+
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
 

@@ -1,5 +1,5 @@
 import unittest
-
+import xmlrunner
 from qps.testing import TestCase, TestObjects
 
 from qps.searchfiledialog import *
@@ -14,4 +14,4 @@ class SearchFileDialogTest(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

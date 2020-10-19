@@ -17,25 +17,24 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest, json, pickle
-from qgis.core import *
-from qgis.gui import *
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtGui import *
-from qps.testing import TestCase
-from qps.plotstyling.plotstyling import *
+import unittest
 
+import xmlrunner
+
+from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableConfig, \
+    QgsEditorWidgetSetup, QgsActionManager, QgsAction
+from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
+from qps.plotstyling.plotstyling import *
+from qps.testing import TestCase
 
 
 class PlotStyleTests(TestCase):
 
-
-    def create_vectordataset(self)->QgsVectorLayer:
+    def create_vectordataset(self) -> QgsVectorLayer:
         vl = QgsVectorLayer("Point?crs=EPSG:4326", 'test', "memory")
         vl.startEditing()
 
-        vl.addAttribute(QgsField(name='fStyle', type=QVariant.String,typeName='varchar', len=500))
+        vl.addAttribute(QgsField(name='fStyle', type=QVariant.String, typeName='varchar', len=500))
         vl.addAttribute(QgsField(name='fString', type=QVariant.String, typeName='varchar', len=50))
         vl.addAttribute(QgsField(name='fInt', type=QVariant.Int, typeName='int'))
         vl.addAttribute(QgsField(name='fDouble', type=QVariant.Double))
@@ -59,11 +58,10 @@ class PlotStyleTests(TestCase):
         g.addWidget(bt2, 1, 1)
 
         w.setLayout(g)
-        #w.setMaximumSize(200, 50)
+        # w.setMaximumSize(200, 50)
         self.showGui(w)
 
     def test_json(self):
-
 
         pen = QPen()
         encoded = pen2tuple(pen)
@@ -74,8 +72,6 @@ class PlotStyleTests(TestCase):
 
         plotStyle = PlotStyle()
         plotStyle.markerPen.setColor(QColor('green'))
-
-
 
         jsonStr = plotStyle.json()
         self.assertIsInstance(jsonStr, str)
@@ -143,8 +139,9 @@ class PlotStyleTests(TestCase):
 
     def test_PlotStyleQgsAction(self):
 
-        layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer&field=flddate:datetime&field=fldstyle:string",
-                                    "test_layer", "memory")
+        layer = QgsVectorLayer(
+            "Point?field=fldtxt:string&field=fldint:integer&field=flddate:datetime&field=fldstyle:string",
+            "test_layer", "memory")
 
         mgr = layer.actions()
         self.assertIsInstance(mgr, QgsActionManager)
@@ -185,8 +182,6 @@ class PlotStyleTests(TestCase):
         myWidget.layout().addWidget(checkBox)
         myWidget.resize(QSize(300, 250))
 
-
-
         # we like to see the "Action
         columns = layer.attributeTableConfig().columns()
         columns = [columns[-1]] + columns[:-1]
@@ -222,8 +217,6 @@ class PlotStyleTests(TestCase):
         am = vl.actions()
         self.assertIsInstance(am, QgsActionManager)
 
-
-
         uid = am.addAction(QgsAction.Generic, 'sdsd', 'sdsd')
 
         c = QgsMapCanvas()
@@ -235,28 +228,28 @@ class PlotStyleTests(TestCase):
 
         cb = QCheckBox()
         cb.setText('Show Editor')
-        def onClicked(b:bool):
+
+        def onClicked(b: bool):
             if b:
                 dv.setView(QgsDualView.AttributeEditor)
             else:
                 dv.setView(QgsDualView.AttributeTable)
+
         cb.clicked.connect(onClicked)
         w.layout().addWidget(dv)
         w.layout().addWidget(cb)
 
-        w.resize(QSize(300,250))
+        w.resize(QSize(300, 250))
 
-        self.assertTrue(factory.fieldScore(vl, 0) > 0) #specialized support style + str len > 350
+        self.assertTrue(factory.fieldScore(vl, 0) > 0)  # specialized support style + str len > 350
         self.assertTrue(factory.fieldScore(vl, 1) == 5)
         self.assertTrue(factory.fieldScore(vl, 2) == 0)
         self.assertTrue(factory.fieldScore(vl, 3) == 0)
 
-
         self.assertIsInstance(factory.configWidget(vl, 0, dv), PlotStyleEditorConfigWidget)
         self.assertIsInstance(factory.createSearchWidget(vl, 0, dv), QgsSearchWidgetWrapper)
 
-
-        eww = factory.create(vl, 0, None, dv )
+        eww = factory.create(vl, 0, None, dv)
         self.assertIsInstance(eww, PlotStyleEditorWidgetWrapper)
         self.assertIsInstance(eww.widget(), PlotStyleWidget)
 
@@ -307,6 +300,4 @@ class PlotStyleTests(TestCase):
 
 
 if __name__ == '__main__':
-    import xmlrunner
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
-

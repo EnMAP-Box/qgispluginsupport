@@ -12,6 +12,7 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 import time
+import xmlrunner
 import tempfile
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsField, QgsAbstractVectorLayerLabeling
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, \
@@ -462,6 +463,5 @@ class LayerConfigWidgetsTests(TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

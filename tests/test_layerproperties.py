@@ -11,6 +11,7 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
+import xmlrunner
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
     QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer
 
@@ -214,6 +215,5 @@ class LayerPropertyTests(TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

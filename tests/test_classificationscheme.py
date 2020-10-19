@@ -6,10 +6,15 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
-import unittest, sys
+import unittest
 import tempfile
-from qgis.core import *
-from qgis.gui import *
+import xmlrunner
+from qgis.core import QgsRasterRenderer, QgsRasterLayer, QgsVectorLayer, QgsProject, \
+    QgsMapLayerStore, QgsFeature, QgsEditorWidgetSetup, \
+    QgsPalettedRasterRenderer, QgsCategorizedSymbolRenderer, \
+    QgsReadWriteContext, QgsFeatureRenderer, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsRendererCategory, \
+    QgsField, QgsWkbTypes
+from qgis.gui import QgsMapCanvas, QgsDualView, QgsMapLayerComboBox, QgsGui, QgsSearchWidgetWrapper
 
 from qps.testing import start_app, TestObjects, TestCase
 from qps.utils import *
@@ -538,6 +543,5 @@ class TestsClassificationScheme(TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

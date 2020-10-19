@@ -18,6 +18,7 @@
 """
 # noinspection PyPep8Naming
 import unittest
+import xmlrunner
 from qps.testing import TestObjects, TestCase
 
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
@@ -993,7 +994,7 @@ class TestIO(TestCase):
 
 
 if __name__ == '__main__':
-    import xmlrunner
+
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
 

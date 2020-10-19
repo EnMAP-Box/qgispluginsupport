@@ -13,6 +13,7 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import unittest
+import xmlrunner
 import pickle
 import xml.etree.ElementTree as ET
 
@@ -568,6 +569,5 @@ class TestUtils(TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

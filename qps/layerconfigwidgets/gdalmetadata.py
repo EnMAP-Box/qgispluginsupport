@@ -115,6 +115,12 @@ class GDALErrorHandler(object):
         self.err_no=err_no
         self.err_msg=err_msg
 
+        if err_level == gdal.CE_Warning:
+            pass
+
+        if err_level > gdal.CE_Warning:
+            raise RuntimeError(err_level, err_no, err_msg)
+
 
 class GDALBandMetadataItem(object):
 
@@ -136,6 +142,8 @@ class GDALBandMetadataModel(QAbstractTableModel):
         self.cnName = 'Name'
         self.cnWavelength = 'Wavelength'
         self.cnFWHM = 'FWHM'
+
+        self.mErrorHandler: GDALErrorHandler = GDALErrorHandler()
 
         self.mWavelengthUnitModel = XUnitModel()
         self.mWavelengthUnitModel.mDescription[BAND_INDEX] = 'None'
@@ -335,52 +343,61 @@ class GDALBandMetadataModel(QAbstractTableModel):
                 return result
 
             if self.mMapLayer.dataProvider().name() == 'gdal':
+                gdal.PushErrorHandler(self.mErrorHandler.handler)
                 try:
                     ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_Update)
                     assert isinstance(ds, gdal.Dataset)
-                except Exception as ex:
-                    msg = f'Unable to open image in update mode. ' \
-                          f'Some metadata might not be saved: {self.mMapLayer.source()}'
+                except RuntimeError as ex:
+                    msg = f'{ex}\nMetadata might not get saved for {self.mMapLayer.source()}'
                     self.sigMessage.emit(msg, Qgis.Warning)
 
                     ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_ReadOnly)
 
-                # if ENVI driver, save to 'ENVI' domain
-                # if other driver, save  to default domain
+                try:
 
-                is_envi = ds.GetDriver().ShortName == 'ENVI'
-                if is_envi:
-                    domain = 'ENVI'
-                else:
-                    domain = None
+                    # if ENVI driver, save to 'ENVI' domain
+                    # if other driver, save  to default domain
 
-                if self.mWavelengthUnit not in [None, '', BAND_INDEX]:
+                    is_envi = ds.GetDriver().ShortName == 'ENVI'
+                    if is_envi:
+                        domain = 'ENVI'
+                    else:
+                        domain = None
 
-                    # remove potential concurrent definitions of wavelength unit and fwhm
-                    for k in ['wavelength_units', 'wavelength units', 'fwhm', 'wavelength', 'wavelengths']:
-                        for d in ['ENVI', None]:
-                            ds.SetMetadataItem(k, None, d)
-                            for b in range(ds.RasterCount):
-                                band: gdal.Band = ds.GetRasterBand(b+1)
-                                band.SetMetadataItem(k, None, d)
+                    if self.mWavelengthUnit not in [None, '', BAND_INDEX]:
 
-                    ds.SetMetadataItem('wavelength units', self.mWavelengthUnit, domain)
+                        # remove potential concurrent definitions of wavelength unit and fwhm
+                        for k in ['wavelength_units', 'wavelength units', 'fwhm', 'wavelength', 'wavelengths']:
+                            for d in ['ENVI', None]:
+                                ds.SetMetadataItem(k, None, d)
+                                for b in range(ds.RasterCount):
+                                    band: gdal.Band = ds.GetRasterBand(b+1)
+                                    band.SetMetadataItem(k, None, d)
 
-                    wl = [str(item.wavelength) for item in self.mBandMetadata]
-                    ds.SetMetadataItem('wavelength', list_or_empty(wl), domain)
+                        ds.SetMetadataItem('wavelength units', self.mWavelengthUnit, domain)
 
-                    fwhm = [str(item.fwhm) for item in self.mBandMetadata]
-                    ds.SetMetadataItem('fwhm', list_or_empty(fwhm), domain)
+                        wl = [str(item.wavelength) for item in self.mBandMetadata]
+                        ds.SetMetadataItem('wavelength', list_or_empty(wl), domain)
 
-                for b, item in enumerate(self.mBandMetadata):
-                    assert isinstance(item, GDALBandMetadataItem)
-                    band: gdal.Band = ds.GetRasterBand(b+1)
-                    band.SetDescription(item.name)
+                        fwhm = [str(item.fwhm) for item in self.mBandMetadata]
+                        ds.SetMetadataItem('fwhm', list_or_empty(fwhm), domain)
 
-                    band.FlushCache()
+                    for b, item in enumerate(self.mBandMetadata):
+                        assert isinstance(item, GDALBandMetadataItem)
+                        band: gdal.Band = ds.GetRasterBand(b+1)
+                        band.SetDescription(item.name)
 
-                ds.FlushCache()
-                del ds
+                        band.FlushCache()
+
+                    ds.FlushCache()
+                    del ds
+
+                except Exception as ex:
+                    msg = f'{ex}'
+                    self.sigMessage.emit(msg, Qgis.Critical)
+                    print(msg, file=sys.stderr)
+                finally:
+                    gdal.PopErrorHandler()
 
     def validate(self) -> typing.List[str]:
         # todo: implement some internal validation and return descriptive error messages
@@ -698,8 +715,17 @@ class GDALMetadataModel(QAbstractTableModel):
 
             if self.mLayer.dataProvider().name() == 'gdal':
                 gdal.PushErrorHandler(self.mErrorHandler.handler)
+
                 try:
-                    ds = gdal.Open(self.mLayer.source(), gdal.GA_ReadOnly)
+                    ds: gdal.Dataset = gdal.Open(self.mLayer.source(), gdal.GA_Update)
+                    assert isinstance(ds, gdal.Dataset)
+                except RuntimeError as ex:
+                    msg = f'{ex}\nMetadata might not get saved for {self.mLayer.source()}'
+                    self.sigMessage.emit(msg, Qgis.Warning)
+
+                    ds: gdal.Dataset = gdal.Open(self.mLayer.source(), gdal.GA_ReadOnly)
+
+                try:
                     if isinstance(ds, gdal.Dataset):
                         for item in changed:
                             mo: gdal.MajorObject = None
@@ -715,12 +741,6 @@ class GDALMetadataModel(QAbstractTableModel):
                         ds.FlushCache()
                         del ds
 
-                    if self.mErrorHandler.err_level >= gdal.CE_Warning:
-                        msg = self.mErrorHandler.err_msg
-                        self.sigMessage.emit(msg, Qgis.Critical)
-                        #raise RuntimeError(self.mErrorHandler.err_level,
-                        #                   self.mErrorHandler.err_no,
-                        #                   self.mErrorHandler.err_msg)
                 except Exception as ex:
                     msg = str(ex)
                     self.sigMessage.emit(msg, Qgis.Critical)
@@ -747,12 +767,7 @@ class GDALMetadataModel(QAbstractTableModel):
                                 mo.SetMetadataItem(item.key, item.value, item.domain)
 
                         ds.FlushCache()
-                    if self.mErrorHandler.err_level >= gdal.CE_Warning:
-                        msg = self.mErrorHandler.err_msg
-                        self.sigMessage.emit(msg, Qgis.Critical)
-                        #raise RuntimeError(self.mErrorHandler.err_level,
-                        #                   self.mErrorHandler.err_no,
-                        #                   self.mErrorHandler.err_msg)
+
                 except Exception as ex:
                     msg = str(ex)
                     self.sigMessage.emit(msg, Qgis.Critical)
@@ -902,7 +917,7 @@ class GDALMetadataModelTableView(QTableView):
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         """
-        Opens a context menue
+        Opens a context menu
         """
         index = self.indexAt(event.pos())
         if index.isValid():

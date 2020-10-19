@@ -7,11 +7,14 @@ __date__ = '2019/01/21'
 # This will get replaced with a git SHA1 when you do a git archive
 __revision__ = '$Format:%H$'
 
-from qgis.core import *
-from qgis.gui import *
+import xmlrunner
+from osgeo import gdal
+from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem
+from qgis.gui import QgsMapCanvas, QgsMapMouseEvent
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.testing import start_app, unittest, stop_app
+
 
 class TestQgsFeature(unittest.TestCase):
 
@@ -31,7 +34,6 @@ class TestQgsFeature(unittest.TestCase):
         # this works
         mouseEvent = QMouseEvent(QEvent.MouseButtonPress, pos, Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
 
-
         qgsMouseEvent1 = QgsMapMouseEvent(canvas, mouseEvent)
         self.assertIsInstance(qgsMouseEvent1, QgsMapMouseEvent)
 
@@ -45,10 +47,7 @@ class TestQgsFeature(unittest.TestCase):
             Qt.NoModifier)
         self.assertIsInstance(qgsMouseEvent2, QgsMapMouseEvent)
 
-
     def test_vsimem(self):
-        from osgeo import gdal
-        from qgis.core import QgsCoordinateReferenceSystem, QgsRasterLayer
 
         # create an 2x2x1 in-memory raster
         driver = gdal.GetDriverByName('GTiff')
@@ -59,7 +58,7 @@ class TestQgsFeature(unittest.TestCase):
         self.assertIsInstance(dataSet, gdal.Dataset)
         c = QgsCoordinateReferenceSystem('EPSG:32632')
         dataSet.SetProjection(c.toWkt())
-        dataSet.SetGeoTransform([0, 1.0, 0, 0, 0, -1.0])
+        dataSet.SetGeoTransform([0, 1.0, 0, dataSet.RasterYSize, 0, -1.0])
         dataSet.FlushCache()
         dataSet = None
 
@@ -72,6 +71,5 @@ class TestQgsFeature(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import xmlrunner
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
 
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

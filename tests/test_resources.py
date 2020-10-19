@@ -1,18 +1,18 @@
-import unittest, pathlib
+import unittest
+import xmlrunner
 import xml.etree.ElementTree as ET
 from qps.testing import start_app
 from qps.resources import *
 from qps import QPS_RESOURCE_FILE
 
-class ResourceTests(unittest.TestCase):
 
+class ResourceTests(unittest.TestCase):
 
     def test_qrc(self):
 
         pathQRC = pathlib.Path(__file__).parents[1] / 'qps' / 'qpsresources.qrc'
         qrcDir = pathQRC.parent
         self.assertTrue(pathQRC.is_file())
-
 
         tree = ET.parse(pathQRC)
         root = tree.getroot()
@@ -55,15 +55,10 @@ class ResourceTests(unittest.TestCase):
 
         self.assertIsInstance(B.resourceModel, ResourceTableModel)
 
-
-
-
         if str(os.environ.get('CI')).lower() in ['', 'false', '0']:
             app.exec_()
         app.quit()
 
+
 if __name__ == '__main__':
-
-    import xmlrunner
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
-

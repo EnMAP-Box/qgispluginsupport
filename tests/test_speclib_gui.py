@@ -20,6 +20,7 @@
 import unittest
 import random
 import math
+import xmlrunner
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
@@ -912,6 +913,5 @@ class TestSpeclibWidgets(TestCase):
 
 
 if __name__ == '__main__':
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

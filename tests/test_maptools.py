@@ -12,10 +12,14 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 
 import unittest
+import xmlrunner
 from qps.testing import TestObjects, TestCase
 
-from qgis import *
-from qgis.core import *
+from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, QgsMapToolZoom, \
+    QgsMapToolCapture, QgsMapMouseEvent
+from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle,   \
+    QgsRasterLayer, QgsVectorLayer,  QgsWkbTypes
+
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -245,6 +249,5 @@ class TestMapTools(TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

@@ -5,10 +5,12 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-from qgis.core import *
-from qgis.gui import *
-import unittest, pickle
-import qgis.testing
+import xmlrunner
+
+from qgis.core import QgsRasterLayer, QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
+    QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
+from qgis.gui import QgsLayerTreeView,  QgisInterface, QgsGui
+import unittest
 import qps.testing
 from osgeo import gdal, gdal_array, ogr, osr
 import numpy as np
@@ -22,8 +24,6 @@ class testClassTesting(unittest.TestCase):
 
         qgis_app = qps.testing.start_app(options=qps.testing.StartOptions.All)
 
-        from qgis.core import QgsApplication, QgsProcessingRegistry
-        from qgis.gui import QgsGui
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
 
@@ -71,8 +71,6 @@ class testClassTesting(unittest.TestCase):
         qgis_app.quit()
 
     def test_init_minimal(self):
-        import qps.testing
-        from qgis.core import QgsApplication
         qgis_app = qps.testing.start_app(options=qps.testing.StartOptions.Minimized)
 
         self.assertIsInstance(qgis_app, QgsApplication)
@@ -170,6 +168,5 @@ class test_TestObject(qps.testing.TestCase):
 
 
 if __name__ == "__main__":
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

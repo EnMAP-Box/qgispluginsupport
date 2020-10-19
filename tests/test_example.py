@@ -1,5 +1,6 @@
 import pathlib
 import unittest
+import xmlrunner
 
 from PyQt5.QtCore import QSize, QFile
 from PyQt5.QtGui import QIcon
@@ -69,6 +70,5 @@ class ExampleCase(TestCase):
 
 
 if __name__ == '__main__':
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

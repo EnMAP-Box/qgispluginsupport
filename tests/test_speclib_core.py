@@ -17,7 +17,8 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import unittest, shutil
+import unittest
+import xmlrunner
 from qgis.gui import QgsMapCanvas
 from qgis.core import QgsField, QgsFields, QgsProject, QgsGeometry, QgsRasterLayer, QgsVectorLayer
 from qps.testing import TestObjects, TestCase
@@ -758,6 +759,5 @@ class TestCore(TestCase):
 
 
 if __name__ == '__main__':
-    import xmlrunner
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

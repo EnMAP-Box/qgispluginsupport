@@ -1,16 +1,13 @@
-import unittest, pathlib
-import xml.etree.ElementTree as ET
+import unittest
+import xmlrunner
 from qgis.core import QgsExpressionFunction, QgsExpression
-from qps.testing import TestObjects
-from qps.resources import *
-from qps import QPS_RESOURCE_FILE
 from qps.speclib.qgsfunctions import SpectralMath, HelpStringMaker
+from qps.testing import TestObjects
+
 
 class QgsFunctionTests(unittest.TestCase):
 
-
     def test_SpectralMath(self):
-
         slib = TestObjects.createSpectralLibrary(10)
         f = SpectralMath()
 
@@ -25,3 +22,7 @@ class QgsFunctionTests(unittest.TestCase):
         self.assertTrue(QgsExpression.isFunctionName(f.name()))
         h = QgsExpression.helpText(f.name())
         s = ""
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
