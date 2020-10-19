@@ -816,6 +816,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         assert isinstance(self.mOptionsStackedWidget, QStackedWidget)
         assert isinstance(lyr, QgsMapLayer)
         self.btnConfigWidgetMenu: QPushButton = QPushButton('<menu>')
+        self.btnConfigWidgetMenu.setVisible(False)
         assert isinstance(self.btnConfigWidgetMenu, QPushButton)
         self.mOptionsListWidget.currentRowChanged.connect(self.onPageChanged)
         self.mLayer: QgsMapLayer = lyr
@@ -870,7 +871,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         menu = None
 
         if isinstance(page, QgsMapLayerConfigWidget):
-            # comes with QIS 3.12
+            # comes with QGIS 3.12
 
             if hasattr(page, 'menuButtonMenu'):
                 menu = page.menuButtonMenu()

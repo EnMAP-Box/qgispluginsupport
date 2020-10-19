@@ -10,9 +10,13 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest, time
-from qgis.core import *
-from qgis.gui import *
+import unittest
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
+    QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer
+
+from qgis.gui import QgsMapLayerConfigWidget, QgsRendererPropertiesDialog, QgsMapCanvas, \
+    QgsMapLayerStyleManagerWidget, QgsRendererRasterPropertiesWidget, QgsRasterTransparencyWidget, \
+    QgsTextFormatPanelWidget
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
