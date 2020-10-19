@@ -756,16 +756,18 @@ class SpectralViewBox(pg.ViewBox):
 class SpectralLibraryPlotStats(object):
 
     def __init__(self):
-        self.features_speclib: int = 0
-        self.features_speclib_selected: int = 0
-        self.features_speclib_filtered: int = 0
+        self.features_total: int = 0
+        self.features_selected: int = 0
+        self.features_filtered: int = 0
         self.filter_mode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowAll
 
+        self.profiles_plotted_max: int = 0
+        self.profiles_total: int = 0
+        self.profiles_empty: int = 0
         self.profiles_plotted: int = 0
         self.profiles_selected: int = 0
         self.profiles_filtered: int = 0
-        self.profiles_plotted_max: int = 0
-        self.profiles_with_value_error: int = 0
+        self.profiles_error: int = 0
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, SpectralLibraryPlotStats):
@@ -796,6 +798,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mViewBox: SpectralViewBox = mViewBox
         self.setMaxProfiles(64)
         self.mDualView = None
+
+        self.mNumberOfValueErrorsProfiles: int = 0
+        self.mNumberOfEmptyProfiles: int = 0
 
         self.mMaxInfoLength: int = 30
 
@@ -1363,6 +1368,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         assert isinstance(pi, SpectralLibraryPlotItem)
         n_max = self.maxProfiles()
 
+        self.mNumberOfValueErrorsProfiles = 0
+        self.mNumberOfEmptyProfiles = 0
+
         keys_visualized: typing.List[typing.Tuple[int, str]] = self.plottedProfileKeys()
         pdis_to_visualize: typing.List[SpectralProfilePlotDataItem] = []
         new_pdis: typing.List[SpectralProfilePlotDataItem] = []
@@ -1373,12 +1381,18 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
             fid, field_name = pkey
 
-            pdi: SpectralProfilePlotDataItem = self.mPlotDataItems.get(pkey)
-            if not isinstance(pdi, SpectralProfilePlotDataItem):
+            pdi: SpectralProfilePlotDataItem = self.mPlotDataItems.get(pkey, None)
+            if isinstance(pdi, SpectralProfilePlotDataItem):
+                if pdi.valueConversionPossible():
+                    pdis_to_visualize.append(pdi)
+                else:
+                    self.mNumberOfValueErrorsProfiles += 1
+            else:
                 # create a new PDI
                 profile = self.speclib().profile(fid, value_field=field_name)
                 assert isinstance(profile, SpectralProfile)
                 if profile.isEmpty():
+                    self.mNumberOfEmptyProfiles += 1
                     continue
 
                 if not self.mXUnitInitialized:
@@ -1393,13 +1407,17 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.mSortByXValues = sort_x_values
                 pdi.applyMapFunctions()
                 pdi.sigProfileClicked.connect(self.onProfileClicked)
-
-                new_pdis.append(pdi)
-            pdis_to_visualize.append(pdi)
+                if pdi.valueConversionPossible():
+                    new_pdis.append(pdi)
+                    pdis_to_visualize.append(pdi)
+                else:
+                    self.mNumberOfValueErrorsProfiles += 1
 
         keys_to_visualize = [pdi.key() for pdi in pdis_to_visualize]
         keys_to_remove = [pkey for pkey in keys_visualized if pkey not in keys_to_visualize]
         keys_new = [pdi.key() for pdi in new_pdis]
+        if len(keys_to_remove) > 0:
+            s = ""
         self.removeSpectralProfilePDIs(keys_to_remove)
         if len(new_pdis) > 0:
             for pdi in new_pdis:
@@ -1541,33 +1559,36 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         stats = SpectralLibraryPlotStats()
         stats.profiles_plotted_max = self.maxProfiles()
 
-        filtered_fids = []
-        selected_fids = []
 
         if isinstance(self.speclib(), SpectralLibrary) and not sip.isdeleted(self.speclib()):
-            stats.features_speclib = self.speclib().featureCount()
-            stats.features_speclib_selected = self.speclib().selectedFeatureCount()
+            stats.features_total = self.speclib().featureCount()
+            stats.features_selected = self.speclib().selectedFeatureCount()
 
             stats.filter_mode = self.dualView().filterMode()
 
             filtered_fids = self.dualView().filteredFeatures()
             selected_fids = self.speclib().selectedFeatureIds()
 
-            stats.features_speclib_filtered = len(filtered_fids)
+            stats.features_filtered = len(filtered_fids)
 
-        for pdi in self.allSpectralProfilePlotDataItems():
-            fid, value_field = pdi.key()
-            if pdi.isVisible():
-                stats.profiles_plotted += 1
+            stats.profiles_total = stats.features_total * len(self.speclib().spectralValueFields())
 
-                if fid in selected_fids:
-                    stats.profiles_selected += 1
 
-                if fid in filtered_fids:
-                    stats.profiles_filtered += 1
+            stats.profiles_error = self.mNumberOfValueErrorsProfiles
+            stats.profiles_empty = self.mNumberOfEmptyProfiles
 
-            elif not pdi.valueConversionPossible():
-                stats.profiles_with_value_error += 1
+            for pdi in self.allSpectralProfilePlotDataItems():
+                fid, value_field = pdi.key()
+                if pdi.isVisible():
+                    stats.profiles_plotted += 1
+
+                    if fid in selected_fids:
+                        stats.profiles_selected += 1
+
+                    if fid in filtered_fids:
+                        stats.profiles_filtered += 1
+                else:
+                    s = ""
 
         return stats
 
@@ -2696,37 +2717,35 @@ class SpectralLibraryInfoLabel(QLabel):
 
         # total + filtering
         if stats.filter_mode == QgsAttributeTableFilterModel.ShowFilteredList:
-            needed = stats.features_speclib_filtered
-            selected = stats.profiles_selected
-            msg += f'{stats.features_speclib_filtered}f/'
-            ttp += f'{stats.features_speclib_filtered} profiles filtered out of {stats.features_speclib}<br/>'
+            msg += f'{stats.profiles_filtered}f'
+            ttp += f'{stats.profiles_filtered} profiles filtered out of {stats.profiles_total}<br/>'
         else:
             # show all
-            needed = stats.features_speclib
-            selected = stats.features_speclib_selected
-            msg += f'{stats.features_speclib}</span>/'
-            ttp += f'{stats.features_speclib} profiles in total<br/>'
+            msg += f'{stats.profiles_total}'
+            ttp += f'{stats.profiles_total} profiles in total<br/>'
 
         # show selected
-        msg += f'{selected}/'
-        ttp += f'{selected} selected in plot/table<br/>'
+        msg += f'/{stats.profiles_selected}'
+        ttp += f'{stats.profiles_selected} selected in plot<br/>'
 
-        exceeds_limit = needed > stats.profiles_plotted
+        if stats.profiles_empty > 0:
+            msg += f'/<span style="color:red">{stats.profiles_empty}N</span>'
+            ttp += f'<span style="color:red">At least {stats.profiles_empty} profile fields empty (NULL)<br/>' \
 
-        if exceeds_limit:
-            msg += f'<span style="color:red">{stats.profiles_plotted}({needed})</span>'
-            ttp += f'<span style="color:red">' \
-                   f'{stats.profiles_plotted} of {needed} profiles plotted<br/>' \
-                   f'<br/>Increase plot limit to show more profiles at same time.' \
-                   f'(Might slow-down plot speed)</span>'
+        if stats.profiles_error > 0:
+            msg += f'/<span style="color:red">{stats.profiles_error}E</span>'
+            ttp += f'<span style="color:red">At least {stats.profiles_error} profiles ' \
+                   f'can not be converted to X axis unit "{self.plotWidget().xUnit()}" (ERROR)</span><br/>'
+
+
+        if stats.profiles_plotted >= stats.profiles_plotted_max and stats.profiles_total > stats.profiles_plotted_max:
+            msg += f'/<span style="color:red">{stats.profiles_plotted}</span>'
+            ttp += f'<span style="color:red">{stats.profiles_plotted} profiles plotted. Increase plot ' \
+                   f'limit ({stats.profiles_plotted_max}) to show more at same time.</span><br/>'
         else:
-            msg += f'{stats.profiles_plotted}'
+            msg += f'/{stats.profiles_plotted}'
             ttp += f'{stats.profiles_plotted} profiles plotted<br/>'
 
-        if stats.profiles_with_value_error > 0:
-            msg = f'/<span style="color:red">{stats.profiles_with_value_error}</span>'
-            ttp = f'<br/><span style="color:red">{stats.profiles_with_value_error} profiles ' \
-                  f'not convertible to {self.plotWidget().xUnit()}'
 
         msg += '</body></html>'
         ttp += '</p></body></html>'
