@@ -602,7 +602,7 @@ class GDALMetadataModel(QAbstractTableModel):
         self.cnValue = 'Value(s)'
 
         self._column_names = [self.cnItem, self.cnDomain, self.cnKey, self.cnValue]
-        self._isEditable = False
+        self._isEditable: bool = False
         self._MDItems: typing.List[GDALMetadataItem] = []
         self._MOKs: typing.List[str] = []
 
@@ -689,6 +689,7 @@ class GDALMetadataModel(QAbstractTableModel):
         mdItems, moks = self._read_maplayer()
         self._MDItems.extend(mdItems)
         self._MOKs.extend(moks)
+
         self.endResetModel()
 
     def removeItem(self, item:GDALMetadataItem):
@@ -751,8 +752,10 @@ class GDALMetadataModel(QAbstractTableModel):
         if isinstance(self.mLayer, QgsVectorLayer) and isinstance(self.mLayer.dataProvider(), QgsVectorDataProvider):
             if self.mLayer.dataProvider().name() == 'ogr':
                 path = self.mLayer.source().split('|')[0]
-                gdal.PushErrorHandler(self.mErrorHandler.handler)
+                use_ogr_exception = ogr.GetUseExceptions()
+
                 try:
+                    ogr.UseExceptions()
                     ds: ogr.DataSource = ogr.Open(path, update=1)
                     if isinstance(ds, ogr.DataSource):
                         for item in changed:
@@ -773,7 +776,12 @@ class GDALMetadataModel(QAbstractTableModel):
                     self.sigMessage.emit(msg, Qgis.Critical)
                     print(ex, file=sys.stderr)
                 finally:
-                    gdal.PopErrorHandler()
+                    if use_ogr_exception:
+                        ogr.UseExceptions()
+                    else:
+                        ogr.DontUseExceptions()
+
+                    #gdal.PopErrorHandler()
 
     def index2MDItem(self, index: QModelIndex) -> GDALMetadataItem:
         """
@@ -861,12 +869,16 @@ class GDALMetadataModel(QAbstractTableModel):
         items = []
         major_objects = []
 
+
+
         if not isinstance(self.mLayer, QgsMapLayer) or not self.mLayer.isValid():
+            self.setIsEditable(False)
             return items, major_objects
 
+        is_editable = False
         if isinstance(self.mLayer, QgsRasterLayer) and self.mLayer.dataProvider().name() == 'gdal':
             ds = gdal.Open(self.mLayer.source())
-
+            is_editable = True
             if isinstance(ds, gdal.Dataset):
                 z = len(str(ds.RasterCount))
                 mok = 'Dataset'
@@ -884,6 +896,8 @@ class GDALMetadataModel(QAbstractTableModel):
         if isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.dataProvider().name() == 'ogr':
             ds = ogr.Open(self.mLayer.source().split('|')[0])
             if isinstance(ds, ogr.DataSource):
+                drv: ogr.Driver = ds.GetDriver()
+                is_editable = False
                 sep = self.mLayer.dataProvider().sublayerSeparator()
                 subLayers = self.mLayer.dataProvider().subLayers()
                 if len(subLayers) > 0:
@@ -904,6 +918,7 @@ class GDALMetadataModel(QAbstractTableModel):
                     for (domain, key, value) in self._read_majorobject(lyr):
                         items.append(GDALMetadataItem(mok, domain, key, value))
 
+        self.setIsEditable(is_editable)
         return items, major_objects
 
 
@@ -1245,7 +1260,7 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
 
     def createWidget(self, layer, canvas, dockWidget=True, parent=None) -> GDALMetadataModelConfigWidget:
         w = GDALMetadataModelConfigWidget(layer, canvas, parent=parent)
-        w.metadataModel.setIsEditable(True)
+        #w.metadataModel.setIsEditable(True)
         w.setWindowTitle(self.title())
         w.setWindowIcon(self.icon())
         return w
