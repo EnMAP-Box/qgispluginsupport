@@ -839,6 +839,9 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.btnCancel: QPushButton = self.buttonBox.button(QDialogButtonBox.Cancel)
         self.btnOk: QPushButton = self.buttonBox.button(QDialogButtonBox.Ok)
 
+        self.btnHelp: QPushButton = self.buttonBox.button(QDialogButtonBox.Help)
+        # not connected
+        self.btnHelp.setVisible(False)
         s = ""
 
         assert isinstance(self.mOptionsListWidget, QListWidget)
