@@ -1559,7 +1559,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         stats = SpectralLibraryPlotStats()
         stats.profiles_plotted_max = self.maxProfiles()
 
-
         if isinstance(self.speclib(), SpectralLibrary) and not sip.isdeleted(self.speclib()):
             stats.features_total = self.speclib().featureCount()
             stats.features_selected = self.speclib().selectedFeatureCount()
@@ -1572,8 +1571,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             stats.features_filtered = len(filtered_fids)
 
             stats.profiles_total = stats.features_total * len(self.speclib().spectralValueFields())
-
-
+            stats.profiles_filtered = stats.features_filtered * len(self.speclib().spectralValueFields())
             stats.profiles_error = self.mNumberOfValueErrorsProfiles
             stats.profiles_empty = self.mNumberOfEmptyProfiles
 
@@ -1584,11 +1582,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
                     if fid in selected_fids:
                         stats.profiles_selected += 1
-
-                    if fid in filtered_fids:
-                        stats.profiles_filtered += 1
-                else:
-                    s = ""
 
         return stats
 
