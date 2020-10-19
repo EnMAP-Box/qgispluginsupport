@@ -1285,10 +1285,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mMainView.openConditionalStyles()
 
     def mActionCutSelectedRows_triggered(self):
-
-        pass
-
-        # QgisApp:: instance() -> cutSelectionToClipboard(mLayer);
+        self.vectorLayerTools().cutSelectionToClipboard(self.mLayer)
 
     def mActionCopySelectedRows_triggered(self):
         self.vectorLayerTools().copySelectionToClipboard(self.mLayer)
@@ -1645,7 +1642,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.vectorLayerTools().panToSelected(self.mLayer)
 
     def mActionDeleteSelected_triggered(self):
-        self.vectorLayerTools().deleteSelected(self.mLayer)
+        self.vectorLayerTools().deleteSelection(self.mLayer)
 
     def reloadModel(self):
         """
