@@ -307,6 +307,7 @@ class CursorLocationInfoDock(QDockWidget):
         self.mLocationInfoModel = CursorLocationInfoModel()
         self.mTreeView: CursorLocationInfoTreeView
         assert isinstance(self.mTreeView, CursorLocationInfoTreeView)
+        self.mTreeView.setAutoExpansionDepth(2)
         self.mTreeView.setModel(self.mLocationInfoModel)
 
         self.mLayerModeModel = ComboBoxOptionModel(LAYERMODES, parent=self)

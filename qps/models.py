@@ -265,7 +265,6 @@ class TreeNode(QObject):
     sigWillRemoveChildren = pyqtSignal(QObject, int, int)
     sigRemovedChildren = pyqtSignal(QObject, int, int)
     sigUpdated = pyqtSignal(QObject)
-    sigExpandedChanged = pyqtSignal(QObject, bool)
 
     def __init__(self,
                  name: str = None,
@@ -287,7 +286,6 @@ class TreeNode(QObject):
         self.mCheckState: Qt.CheckState = Qt.Unchecked
         self.mCheckable: bool = False
         self.mStatusTip: str = ''
-        self.mExpanded: bool = False
 
         if name:
             self.setName(name)
@@ -322,19 +320,6 @@ class TreeNode(QObject):
         :rtype:
         """
         return len(self.mValues) + 1
-
-    def setExpanded(self, expanded: bool):
-        """
-        Expands the node
-        :param expanded:
-        :return:
-        """
-        assert isinstance(expanded, bool)
-        b = self.mExpanded != expanded
-        self.mExpanded = expanded
-
-        if b and not self.signalsBlocked():
-            self.sigExpandedChanged.emit(self, self.mExpanded)
 
     def expanded(self) -> bool:
         return self.mExpanded == True
@@ -441,7 +426,6 @@ class TreeNode(QObject):
             node.sigWillRemoveChildren.connect(self.sigWillRemoveChildren)
             node.sigRemovedChildren.connect(self.sigRemovedChildren)
             node.sigUpdated.connect(self.sigUpdated)
-            node.sigExpandedChanged.connect(self.sigExpandedChanged)
 
             node.setParentNode(self)
             self.mChildren.insert(index + i, node)
@@ -489,7 +473,7 @@ class TreeNode(QObject):
                 node.sigWillRemoveChildren.disconnect(self.sigWillRemoveChildren)
                 node.sigRemovedChildren.disconnect(self.sigRemovedChildren)
                 node.sigUpdated.disconnect(self.sigUpdated)
-                node.sigExpandedChanged.disconnect(self.sigExpandedChanged)
+
                 node.setParentNode(None)
 
                 child_nodes.remove(node)
@@ -655,7 +639,6 @@ class TreeModel(QAbstractItemModel):
         self.mRootNode.sigWillRemoveChildren.connect(self.onNodeWillRemoveChildren)
         self.mRootNode.sigRemovedChildren.connect(self.onNodeRemovedChildren)
         self.mRootNode.sigUpdated.connect(self.onNodeUpdated)
-        self.mRootNode.sigExpandedChanged.connect(self.onExpandChanged)
 
     def setColumnNames(self, names):
         assert isinstance(names, list)
@@ -680,9 +663,6 @@ class TreeModel(QAbstractItemModel):
 
     def onNodeAddedChildren(self, node: TreeNode, first: int, last: int):
         self.endInsertRows()
-
-    def onExpandChanged(self, node: TreeNode, is_expanded: bool):
-        s = ""
 
     def maxColumnCount(self, index: QModelIndex) -> int:
         assert isinstance(index, QModelIndex)
@@ -1003,10 +983,13 @@ class TreeView(QTreeView):
             if rows > 0:
                 nodeName = f'{prefix}:{model.data(index, role=Qt.DisplayRole)}'
 
-                if restore:  # restore the expansion state
-                    self.setExpanded(index, self.mNodeExpansion.get(nodeName, False))
-                else:  # save the expansion state
-                    self.mNodeExpansion[nodeName] = self.isExpanded(index)
+                isExpanded = self.isExpanded(index)
+                if restore:
+                    # restore expansion state, if stored in mNodeExpansion
+                    self.setExpanded(index, self.mNodeExpansion.get(nodeName, isExpanded))
+                else:
+                    # save expansion state
+                    self.mNodeExpansion[nodeName] = isExpanded
 
                 for row in range(rows):
                     idx = model.index(row, 0, index)
