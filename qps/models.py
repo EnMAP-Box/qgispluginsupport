@@ -29,7 +29,7 @@ import copy
 import enum
 import typing
 from qgis.PyQt.QtCore import QModelIndex, QAbstractItemModel, QAbstractListModel, \
-    pyqtSignal, Qt, QObject, QAbstractListModel
+    pyqtSignal, Qt, QObject, QAbstractListModel, QSize
 from qgis.PyQt.QtWidgets import QComboBox, QTreeView
 from qgis.PyQt.QtGui import QIcon
 
@@ -313,6 +313,14 @@ class TreeNode(QObject):
     def __getitem__(self, slice):
         return self.mChildren[slice]
 
+    def depth(self) -> int:
+        d = 0
+        parent = self.parentNode()
+        while isinstance(parent, TreeNode):
+            d += 1
+            parent = parent.parentNode()
+        return d
+
     def columnCount(self) -> int:
         """
         A node has at least one column for its name
@@ -525,7 +533,7 @@ class TreeNode(QObject):
         Sets the TreeNodes name
         :param name: str
         """
-        self.mName = name
+        self.mName = str(name)
 
     def name(self) -> str:
         """
@@ -760,6 +768,10 @@ class TreeModel(QAbstractItemModel):
         for r in range(self.rowCount(index)):
             idx = self.index(r, 0, parent=index)
             self.printModel(idx, prefix=f'{prefix}-')
+
+    def span(self, idx) -> QSize():
+
+        return super(TreeModel, self).span(idx)
 
     def columnCount(self, parent: QModelIndex = None) -> int:
         """
@@ -1010,6 +1022,10 @@ class TreeView(QTreeView):
             self.mModel.dataChanged.connect(self.onDataChanged)
             self.mModel.rowsInserted.connect(self.onRowsInserted)
 
+        # update column spans
+        self.onModelReset()
+
+
     def onModelReset(self):
         for row in range(self.model().rowCount(QModelIndex())):
             idx = self.model().index(row, 0)
@@ -1045,6 +1061,31 @@ class TreeView(QTreeView):
         :param idx:
         :return:
         """
+
+        assert isinstance(idx, QModelIndex)
+        if not idx.isValid():
+            return
+
+        colCnt = self.header().count()
+        #span: QSize = model.span(idx)
+        span: QSize = QSize(1, 1)
+        rightIdx = idx
+        while rightIdx.isValid() and rightIdx.column() < colCnt:
+            rightIdx = rightIdx.siblingAtColumn(rightIdx.column() + 1)
+            if rightIdx.data(Qt.DisplayRole) is None:
+                span.setWidth(span.width() + 1)
+            else:
+                break
+
+        if span.width() > 1:
+            self.setFirstColumnSpanned(idx.row(), idx.parent(), True)
+        for row in range(self.model().rowCount(idx)):
+            idx2 = self.model().index(row, 0, idx)
+            self.setColumnSpan(idx2)
+
+        return
+
+        """
         assert isinstance(idx, QModelIndex)
         if not idx.isValid():
             return
@@ -1061,6 +1102,7 @@ class TreeView(QTreeView):
             for row in range(self.model().rowCount(idx)):
                 idx2 = self.model().index(row, 0, idx)
                 self.setColumnSpan(idx2)
+        """
 
     def selectedNode(self) -> TreeNode:
         """

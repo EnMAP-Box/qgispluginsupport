@@ -2,12 +2,35 @@
 import unittest
 import xmlrunner
 import os
-from qgis.PyQt.QtCore import QModelIndex
-from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication
+from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel
+from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication, QGridLayout, QLabel, QWidget
 from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option
 from qps.testing import TestCase
 
 class ModelTests(TestCase):
+
+
+
+    def createTestNodes(self, parentNode: TreeNode,
+                        rows: int = 2,
+                        depth: int = 3,
+                        cols: int = 4) -> TreeNode:
+        assert isinstance(parentNode, TreeNode)
+
+        pDepth = parentNode.depth()
+        if depth == pDepth:
+            return parentNode
+
+        to_add = []
+        for row in range(rows):
+            node = TreeNode(name=f'Node {pDepth}/{row+1}')
+            if pDepth == depth - 1:
+                node.setValues([f'{row}/{cols}' for c in range(cols)])
+            to_add.append(node)
+        parentNode.appendChildNodes(to_add)
+        for node in to_add:
+            self.createTestNodes(node, rows=rows, depth=depth, cols=cols)
+        return parentNode
 
     def test_treeNode(self):
 
@@ -167,6 +190,41 @@ class ModelTests(TestCase):
 
         # todo: test if columns are spanned / not
         self.showGui(TV)
+
+    def test_proxyModel(self):
+
+        tvR = QTreeView()
+        tvRPM = QTreeView()
+        tvN = TreeView()
+        tvNPM = TreeView()
+        css = """QTreeView::item:selected {\n    background-color: yellow;\n	color:black;\n}"""
+        tvN.setStyleSheet(css)
+        tvNPM.setStyleSheet(css)
+        tm = TreeModel()
+        self.createTestNodes(tm.rootNode())
+
+        pm = QSortFilterProxyModel()
+        pm.setSourceModel(tm)
+
+        tvR.setModel(tm)
+        tvRPM.setModel(pm)
+        tvN.setModel(tm)
+        tvNPM.setModel(pm)
+
+        l = QGridLayout()
+        l.addWidget(QLabel('Model'), 0, 1)
+        l.addWidget(QLabel('Proxy Model'), 0, 2)
+        l.addWidget(QLabel('QTreeView'), 1, 0)
+        l.addWidget(QLabel('QPS Treeview'), 2, 0)
+        l.addWidget(tvR, 1, 1)
+        l.addWidget(tvRPM, 1, 2)
+        l.addWidget(tvN, 2, 1)
+        l.addWidget(tvNPM, 2, 2)
+
+        w = QWidget()
+        w.setWindowTitle('TreeModel test')
+        w.setLayout(l)
+        self.showGui(w)
 
     def test_modelview(self):
 
