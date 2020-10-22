@@ -1250,7 +1250,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                 self.mActionSearchForm.setEnabled(False)
                 self.mActionSearchForm.setToolTip(tr("Search is not supported when using custom UI forms"))
 
-            self.editingToggled();
+            self.editingToggled()
 
         self._hide_unconnected_widgets()
 

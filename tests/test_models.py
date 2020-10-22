@@ -71,6 +71,7 @@ class ModelTests(TestCase):
 
         TV = TreeView()
         self.assertIsInstance(TV, TreeView)
+        TV.setAutoExpansionDepth(2)
         TM = TreeModel()
         TV.setModel(TM)
 
@@ -95,7 +96,7 @@ class ModelTests(TestCase):
         n = 5
         parent = TM.rootNode()
         for i in range(n):
-            n = TreeNode(pname='Node {}'.format(i + 1), value=i)
+            n = TreeNode(name='Node {}'.format(i + 1), value=i+1)
             parent.appendChildNodes(n)
             self.assertTrue(n.parentNode() == parent)
             nodes.append(n)

@@ -701,7 +701,7 @@ class TreeModel(QAbstractItemModel):
 
     def onNodeUpdated(self, node: TreeNode):
         idx = self.node2idx(node)
-        idx2 = self.createIndex(idx.row(), node.columnCount()-1)
+        idx2 = self.createIndex(idx.row(), node.columnCount() - 1)
         self.dataChanged.emit(idx, idx2)
 
     def headerData(self, section, orientation, role):
@@ -710,7 +710,7 @@ class TreeModel(QAbstractItemModel):
             if section < len(self.mRootNode.values()):
                 return self.mRootNode.values()[section]
             else:
-                return f'Column {section+1}'
+                return f'Column {section + 1}'
         return None
 
     def parent(self, index: QModelIndex) -> QModelIndex:
@@ -781,7 +781,7 @@ class TreeModel(QAbstractItemModel):
             idx = self.index(r, 0, parent=index)
             self.printModel(idx, prefix=f'{prefix}-')
 
-    def columnCount(self, parent:QModelIndex=None) -> int:
+    def columnCount(self, parent: QModelIndex = None) -> int:
         """
         Returns the number of columns
         :param index: QModelIndex
@@ -947,7 +947,7 @@ class TreeModel(QAbstractItemModel):
                 if role == Qt.EditRole:
                     return node.values()[i]
                 if role == Qt.ToolTipRole:
-                    tt = [f'{i+1}: {v}' for i, v in enumerate(node.values())]
+                    tt = [f'{i + 1}: {v}' for i, v in enumerate(node.values())]
                     return '\n'.join(tt)
         return None
 
@@ -966,8 +966,20 @@ class TreeView(QTreeView):
     def __init__(self, *args, **kwds):
         super(TreeView, self).__init__(*args, **kwds)
 
+        self.mAutoExpansionDepth: int = 1
         self.mModel = None
         self.mNodeExpansion: typing.Dict[str, bool] = dict()
+
+    def setAutoExpansionDepth(self, depth: int):
+        """
+        Sets the depth until which new TreeNodes will be opened
+        0 = Top nodes not expanded
+        1 = Top nodes expanded
+        2 = Top and Subnodes expanded
+        :param depth: int
+        """
+        assert isinstance(depth, int)
+        self.mAutoExpansionDepth = depth
 
     def updateNodeExpansion(self, restore: bool,
                             index: QModelIndex = None, prefix='') -> typing.Dict[str, bool]:
@@ -1020,11 +1032,21 @@ class TreeView(QTreeView):
             idx = self.model().index(row, 0)
             self.setColumnSpan(idx)
 
+    def nodeDepth(self, index: QModelIndex) -> int:
+        if not index.isValid():
+            return 0
+        return 1 + self.nodeDepth(index.parent())
+
     def onRowsInserted(self, parent: QModelIndex, first: int, last: int):
 
         for row in range(first, last + 1):
             idx = self.model().index(row, 0, parent)
             self.setColumnSpan(idx)
+
+        level = self.nodeDepth(parent)
+        if level < self.mAutoExpansionDepth:
+            self.setExpanded(idx, True)
+            s = ""
 
     def onDataChanged(self, tl: QModelIndex, br: QModelIndex, roles):
 
