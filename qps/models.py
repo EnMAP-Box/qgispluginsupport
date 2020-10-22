@@ -414,7 +414,7 @@ class TreeNode(QObject):
         """
         p = self.parent()
         if isinstance(p, TreeNode):
-            p.removeChildNode(self)
+            p.removeChildNodes(self)
 
     def hasChildren(self) -> bool:
         return len(self.mChildren) > 0
