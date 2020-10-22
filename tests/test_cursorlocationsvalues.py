@@ -12,16 +12,21 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
+import os
 import unittest
 import xmlrunner
+from osgeo import gdal
 from qgis.gui import QgsMapCanvas
 from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, \
     QgsProject, QgsCoordinateReferenceSystem
 from qgis.PyQt.QtGui import *
+from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout
 from qgis.PyQt.QtCore import *
 from qps.testing import TestObjects, TestCase
+from qps.utils import SpatialPoint, SpatialExtent
 
-from qps.cursorlocationvalue import *
+from qps.cursorlocationvalue import CursorLocationInfoDock
+
 
 class CursorLocationTest(TestCase):
 
@@ -31,7 +36,7 @@ class CursorLocationTest(TestCase):
         # self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
         # self.wfsUri = r"pagingEnabled='true' restrictToRequestBBOX='1' srsname='EPSG:26986' typename='massgis:GISDATA.WATERPIPES_ARC_M150' url='http://giswebservices.massgis.state.ma.us/geoserver/wfs' url='http://giswebservices.massgis.state.ma.us/geoserver/wfs?request=getcapabilities' version='auto' table="" sql='"
 
-    def webLayers(self)->list:
+    def webLayers(self) -> list:
         l1 = QgsRasterLayer(self.wmsUri1, 'XYZ Web Map Service Raster Layer', 'wms')
         l2 = QgsRasterLayer(self.wmsUri2, 'OSM', 'wms')
         # l3 = QgsVectorLayer(self.wfsUri, 'Lee Water Pipes', 'WFS')
@@ -60,7 +65,7 @@ class CursorLocationTest(TestCase):
         mt = CursorLocationMapTool(c)
         c.setMapTool(mt)
 
-        def onLocationRequest(crs:QgsCoordinateReferenceSystem, pt: QgsPointXY):
+        def onLocationRequest(crs: QgsCoordinateReferenceSystem, pt: QgsPointXY):
             canvas: QgsMapCanvas = mt.canvas()
             spt = SpatialPoint(canvas.mapSettings().destinationCrs(), pt)
             dock.loadCursorLocation(spt, canvas)
@@ -78,9 +83,9 @@ class CursorLocationTest(TestCase):
 
         canvas = QgsMapCanvas()
 
-        layers = [#TestObjects.createRasterLayer(nc=3),
-                  TestObjects.createRasterLayer(nb=5, eType=gdal.GDT_Int16),
-                  #TestObjects.createVectorLayer()
+        layers = [  # TestObjects.createRasterLayer(nc=3),
+            TestObjects.createRasterLayer(nb=5, eType=gdal.GDT_Int16),
+            # TestObjects.createVectorLayer()
         ]
 
         for lyr in layers:
@@ -97,7 +102,6 @@ class CursorLocationTest(TestCase):
                         center = feature.geometry().centroid().asPoint()
                         center = SpatialPoint(lyr.crs(), center)
                         break
-
 
             store = QgsMapLayerStore()
             store.addMapLayer(lyr)
@@ -128,7 +132,6 @@ class CursorLocationTest(TestCase):
         canvas.setCenter(center)
         cldock = CursorLocationInfoDock()
 
-
         self.assertIsInstance(cldock, CursorLocationInfoDock)
 
         cldock.loadCursorLocation(center, canvas)
@@ -139,6 +142,4 @@ class CursorLocationTest(TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
-

@@ -100,52 +100,38 @@ class CursorLocationInfoModel(TreeModel):
     REMAINDER = 'reminder'
 
     def __init__(self, parent=None):
-        super(CursorLocationInfoModel, self).__init__(parent)
+        super().__init__(parent=parent)
 
-        self.mColumnNames = ['Band/Field', 'Value', 'Description']
+        self.setColumnNames(['Band/Field', 'Value', 'Description'])
+
         self.mExpandedNodeRemainder = {}
         self.mNodeExpansion = CursorLocationInfoModel.REMAINDER
 
-    def setNodeExpansion(self, type):
+    def flags(self, index):
 
-        assert type in [CursorLocationInfoModel.ALWAYS_EXPAND,
-                        CursorLocationInfoModel.NEVER_EXPAND,
-                        CursorLocationInfoModel.REMAINDER]
-        self.mNodeExpansion = type
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
 
-    def setExpandedNodeRemainder(self, node=None):
-        treeView = self.mTreeView
-        assert isinstance(treeView, QTreeView)
-        if node is None:
-            for n in self.mRootNode.childNodes():
-                self.setExpandedNodeRemainder(node=n)
-        else:
-            self.mExpandedNodeRemainder[self.weakNodeId(node)] = self.mTreeView.isExpanded(self.node2idx(node))
-            for n in node.childNodes():
-                self.setExpandedNodeRemainder(node=n)
-
-    def weakNodeId(self, node):
+    """
+    def weakNodeId(self, node: TreeNode) -> str:
         assert isinstance(node, TreeNode)
         n = node.name()
         while node.parentNode() != self.mRootNode:
             node = node.parentNode()
             n += '{}:{}'.format(node.name(), n)
         return n
+    """
 
-    def flags(self, index):
-
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
-
-    def addSourceValues(self, sourceValueSet):
+    def addSourceValues(self, sourceValueSet: SourceValueSet):
         if not isinstance(sourceValueSet, SourceValueSet):
             return
 
         # get-or-create node
-        def gocn(root, name) -> TreeNode:
+        def gocn(root: TreeNode, name) -> TreeNode:
             assert isinstance(root, TreeNode)
-            n = TreeNode(root, name)
-            weakId = self.weakNodeId(n)
-
+            n = TreeNode(name)
+            root.appendChildNodes(n)
+            # weakId = self.weakNodeId(n)
+            return n
             expand = False
             if not isinstance(root.parentNode(), TreeNode):
                 expand = True
@@ -156,8 +142,8 @@ class CursorLocationInfoModel(TreeModel):
                     expand = False
                 elif self.mNodeExpansion == CursorLocationInfoModel.ALWAYS_EXPAND:
                     expand = True
+            n.setExpanded(expand)
 
-            self.mTreeView.setExpanded(self.node2idx(n), expand)
             return n
 
         bn = os.path.basename(sourceValueSet.source)
@@ -180,7 +166,6 @@ class CursorLocationInfoModel(TreeModel):
                         nc = gocn(root, 'Class')
                         nc.setValues(bv.classInfo.name())
                         nc.setIcon(bv.classInfo.icon())
-
 
                 elif isinstance(bv, QColor):
                     n = gocn(root, 'Color')
@@ -215,7 +200,13 @@ class CursorLocationInfoModel(TreeModel):
         s = ""
 
     def clear(self):
-        self.mRootNode.removeChildNodes(0, self.mRootNode.childCount())
+        self.mRootNode.removeAllChildNodes()
+
+
+class CursorLocationInfoTreeView(TreeView):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
 
 
 class ComboBoxOption(object):
@@ -313,8 +304,10 @@ class CursorLocationInfoDock(QDockWidget):
         self.btnCrs.crsChanged.connect(self.setCrs)
         self.btnCrs.setCrs(QgsCoordinateReferenceSystem())
 
-        self.mLocationInfoModel = CursorLocationInfoModel(parent=self.treeView)
-        self.treeView.setModel(self.mLocationInfoModel)
+        self.mLocationInfoModel = CursorLocationInfoModel()
+        self.mTreeView: CursorLocationInfoTreeView
+        assert isinstance(self.mTreeView, CursorLocationInfoTreeView)
+        self.mTreeView.setModel(self.mLocationInfoModel)
 
         self.mLayerModeModel = ComboBoxOptionModel(LAYERMODES, parent=self)
         self.mLayerTypeModel = ComboBoxOptionModel(LAYERTYPES, parent=self)
@@ -355,6 +348,9 @@ class CursorLocationInfoDock(QDockWidget):
         self.setCanvas(canvas)
         self.reloadCursorLocation()
 
+    def treeView(self) -> CursorLocationInfoTreeView:
+        return self.mTreeView
+
     def reloadCursorLocation(self):
         """
         Call to load / re-load the data for the cursor location
@@ -381,7 +377,7 @@ class CursorLocationInfoDock(QDockWidget):
         for c in self.mCanvases:
             lyrs.extend(layerFilter(c))
 
-        self.mLocationInfoModel.setExpandedNodeRemainder()
+        self.treeView().updateNodeExpansion(False)
         self.mLocationInfoModel.clear()
 
         for l in lyrs:
@@ -473,6 +469,8 @@ class CursorLocationInfoDock(QDockWidget):
 
                 pass
 
+        self.treeView().updateNodeExpansion(True)
+
     def setCursorLocation(self, spatialPoint: SpatialPoint):
         """
         Set the cursor lcation to be loaded.
@@ -535,5 +533,3 @@ class CursorLocationInfoDock(QDockWidget):
             return self.mLocationHistory[0]
         else:
             return None, None
-
-

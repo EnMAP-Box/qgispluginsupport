@@ -1,7 +1,10 @@
 # noinspection PyPep8Naming
 import unittest
 import xmlrunner
-from qps.models import *
+import os
+from qgis.PyQt.QtCore import QModelIndex
+from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication
+from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option
 from qps.testing import TestCase
 
 class ModelTests(TestCase):
@@ -20,8 +23,9 @@ class ModelTests(TestCase):
             kwdList.append(kwargs)
 
         node.sigAddedChildren.connect(onSignal)
-        n2 = TreeNode(node)
+        n2 = TreeNode()
         self.assertIsInstance(n2, TreeNode)
+        node.appendChildNodes(n2)
         self.assertEqual(n2.parentNode(), node)
         QApplication.processEvents()
         self.assertTrue(len(argList) > 0)
@@ -49,7 +53,8 @@ class ModelTests(TestCase):
         n = 5
         nodes = []
         for i in range(n):
-            n = TreeNode(parent, 'Node {}'.format(i + 1))
+            n = TreeNode('Node {}'.format(i + 1))
+            parent.appendChildNodes(n)
             self.assertTrue(n.parentNode() == parent)
             nodes.append(n)
 
@@ -59,7 +64,7 @@ class ModelTests(TestCase):
             idx = TM.node2idx(node)
             self.assertIsInstance(idx, QModelIndex)
             self.assertTrue(idx.internalPointer() == node)
-            self.assertTrue(TM.idx2columnName(idx), 'Node')
+
         self.assertTrue(TM.rowCount(None), 1)
 
     def test_treeView(self):
@@ -90,7 +95,8 @@ class ModelTests(TestCase):
         n = 5
         parent = TM.rootNode()
         for i in range(n):
-            n = TreeNode(parent, name='Node {}'.format(i + 1), value=i)
+            n = TreeNode(pname='Node {}'.format(i + 1), value=i)
+            parent.appendChildNodes(n)
             self.assertTrue(n.parentNode() == parent)
             nodes.append(n)
 
@@ -102,15 +108,22 @@ class ModelTests(TestCase):
             self.assertEqual(n2, n)
             parent = n
 
-        nA = TestNodeA(TM.rootNode(), name='TestNodeA')
-        nB = TestNodeB(TreeNode(nA, name='SubA'), name='TestNodeB')
-        nLast = TreeNode(TreeNode(nB))
+        nA = TestNodeA(name='TestNodeA')
+        nB = TestNodeB('TestNodeB')
+        nLast = TreeNode()
+        nInBetween = TreeNode()
+        nFirst = TreeNode()
+
+        nFirst.appendChildNodes(nA)
+        nA.appendChildNodes(nInBetween)
+        nInBetween.appendChildNodes(nB)
+        nB.appendChildNodes(nLast)
 
         self.assertEqual(TM.findParentNode(nLast, TestNodeA), nA)
         self.assertEqual(TM.findParentNode(nLast, TestNodeB), nB)
 
-        nB.parentNode().removeChildNode(nB)
-
+        nLast.parentNode().removeChildNodes(nLast)
+        self.assertEqual(TM.findParentNode(nLast, TestNodeB), None)
         self.showGui(TV)
 
     def test_nodeColumnSpan(self):
@@ -122,26 +135,33 @@ class ModelTests(TestCase):
 
         TM.rootNode()
         if True:
-            n1 = TreeNode(TM.rootNode(), name='Node1 looooong text')
-            n11 = TreeNode(n1, name='spanned')
-            n12 = TreeNode(n1, name='value', value=1)
-            n13 = TreeNode(n1, name='value', values=[1, 2])
+            n1 = TreeNode(name='Node1 looooong text')
+            n11 = TreeNode(name='spanned')
+            n12 = TreeNode(name='value', value=1)
+            n13 = TreeNode(name='value', values=[1, 2])
 
-        n2 = TreeNode(None, name='ins. spanned1')
-        n21 = TreeNode(n2, name='ins. value', value=[1])
-        n22 = TreeNode(n21, name='ins. spanned2')
-        n23 = TreeNode(n22, name='ins. value', value=[1])
-        b24 = TreeNode(n23, name='ins. spanned3')
+            n1.appendChildNodes([n11, n12, n13])
+            TM.rootNode().appendChildNodes(n1)
 
+        n2 = TreeNode(name='ins. spanned1')
+        n21 = TreeNode(name='ins. value', value=[1])
+        n22 = TreeNode(name='ins. spanned2')
+        n23 = TreeNode(name='ins. value', value=[1])
+        b24 = TreeNode(name='ins. spanned3')
+        n2.appendChildNodes([n21, n22, n23, b24])
         TM.rootNode().appendChildNodes([n2])
 
         if True:
-            n2 = TreeNode(TM.rootNode(), name='mod. spanned', value=1)
-            n2.setValue(None)
-            n21 = TreeNode(n2, name='mod. value')
-            n21.setValue('block')
 
-            n21 = TreeNode(n2, name='mod. spanned', value='do not show')
+            n2 = TreeNode(name='mod. spanned', value=1)
+            TM.rootNode().appendChildNodes(n2)
+            n2.setValue(None)
+            n21 = TreeNode(name='mod. value')
+            n21.setValue('block')
+            n2.appendChildNodes(n21)
+
+            n21 = TreeNode(name='mod. spanned', value='do not show')
+            n2.appendChildNodes(n21)
             n21.setValues(None)
 
         # todo: test if columns are spanned / not
@@ -163,11 +183,11 @@ class ModelTests(TestCase):
         tv.setModel(treeModel)
 
         rn = treeModel.rootNode()
-        n1 = TreeNode(None, 'Node1')
+        n1 = TreeNode('Node1')
         rn.appendChildNodes([n1])
         rn.appendChildNodes([TreeNode(rn, 'Node2')])
-        n3 = TreeNode(None, 'Node3')
-        n4 = TreeNode(None, 'Node4')
+        n3 = TreeNode('Node3')
+        n4 = TreeNode('Node4')
         n1.appendChildNodes([n3])
         n1.appendChildNodes(n4)
 
