@@ -59,6 +59,7 @@ from qgis.PyQt.QtWidgets import *
 from osgeo import gdal, ogr, osr, gdal_array
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
+
 try:
     from .. import qps
 except:
@@ -69,8 +70,6 @@ from . import DIR_UI_FILES
 QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
-
-
 
 jp = os.path.join
 dn = os.path.dirname
@@ -685,7 +684,7 @@ def gdalDataset(dataset: typing.Union[str,
                                       QgsRasterLayer,
                                       QgsRasterDataProvider,
                                       gdal.Dataset],
-                eAccess:int = gdal.GA_ReadOnly) -> gdal.Dataset:
+                eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
     :param dataset:
@@ -900,6 +899,24 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
         return qgsRasterLayer(pathlib.Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
 
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
+
+
+def qgsRasterLayers(sources) -> typing.Iterator[QgsRasterLayer]:
+    """
+    Like qgsRasterLayer, but on multiple inputs and with extraction of sub-layers
+    :param sources:
+    :return:
+    """
+    if not isinstance(sources, list):
+        sources = [sources]
+    assert isinstance(sources, list)
+
+    for source in sources:
+        lyr: QgsRasterLayer = qgsRasterLayer(source)
+        if lyr.isValid():
+            yield lyr
+        for lyr in qgsRasterLayers(lyr.subLayers()):
+            yield lyr
 
 
 def qgsMapLayer(value: typing.Any) -> QgsMapLayer:
