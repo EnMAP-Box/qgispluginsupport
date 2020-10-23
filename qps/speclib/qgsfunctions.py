@@ -56,7 +56,8 @@ class HelpStringMaker(object):
                     if isinstance(data, dict) and 'name' in data.keys():
                         self.mHELP[data['name']] = data
 
-    def helpText(self, name: str, parameters: typing.List[QgsExpressionFunction.Parameter] = []) -> str:
+    def helpText(self, name: str,
+                 parameters: typing.List[QgsExpressionFunction.Parameter] = []) -> str:
         """
         re-implementation of QString QgsExpression::helpText( QString name )
         to generate similar help strings
@@ -71,9 +72,11 @@ class HelpStringMaker(object):
 
         JSON = self.mHELP.get(name, None)
         ARGUMENT_DESCRIPTIONS = {}
+        ARGUMENT_NAMES = []
         if isinstance(JSON, dict):
             for D in JSON.get('arguments', []):
                 if isinstance(D, dict) and 'arg' in D:
+                    ARGUMENT_NAMES.append(D['arg'])
                     ARGUMENT_DESCRIPTIONS[D['arg']] = D.get('description', '')
 
         if not isinstance(JSON, dict):
@@ -89,10 +92,13 @@ class HelpStringMaker(object):
             hasOptionalArgs: bool = False
             html.append(f'<h4>Syntax</h4>')
             syntax = f'<div class="syntax">\n<code>{name}('
+
             if len(parameters) > 0:
                 delim = ''
+                syntaxParameters = set()
                 for P in parameters:
                     assert isinstance(P, QgsExpressionFunction.Parameter)
+                    syntaxParameters.add(P.name())
                     optional: bool = P.optional()
                     if optional:
                         hasOptionalArgs = True
@@ -109,6 +115,10 @@ class HelpStringMaker(object):
                     if optional:
                         syntax += ']'
                     delim = ','
+                # add other optional arguments from help file
+                for a in ARGUMENT_NAMES:
+                    if a not in syntaxParameters:
+                        pass
 
             syntax += ')</code>'
 
@@ -133,6 +143,47 @@ class HelpStringMaker(object):
 
 
 HM = HelpStringMaker()
+
+"""
+@qgsfunction(args='auto', group='String')
+def format_py(fmt: str, *args):
+    assert isinstance(fmt, str)
+    fmtArgs = args[0:-2]
+    feature, parent = args[-2:]
+
+    return fmt.format(*fmtArgs)
+"""
+class Format_Py(QgsExpressionFunction):
+
+    def __init__(self):
+        group = 'String'
+        name = 'format_py'
+
+        args = [
+            QgsExpressionFunction.Parameter('fmt', optional=False, defaultValue=FIELD_VALUES),
+            QgsExpressionFunction.Parameter('arg1', optional=True),
+            QgsExpressionFunction.Parameter('arg2', optional=True),
+            QgsExpressionFunction.Parameter('argN', optional=True),
+        ]
+        helptext = HM.helpText(name, args)
+        super(Format_Py, self).__init__(name, -1, group, helptext)
+
+    def func(self, values, context: QgsExpressionContext, parent, node):
+        if len(values) == 0 or values[0] in (None, NULL):
+            return ''
+        assert isinstance(values[0], str)
+        fmt: str = values[0]
+        fmtArgs = values[1:]
+        return fmt.format(fmtArgs)
+
+    def usesGeometry(self, node) -> bool:
+        return False
+
+    def referencedColumns(self, node) -> typing.List[str]:
+        return [QgsFeatureRequest.ALL_ATTRIBUTES]
+
+    def handlesNull(self) -> bool:
+        return True
 
 
 class SpectralData(QgsExpressionFunction):
@@ -221,7 +272,7 @@ def registerQgsExpressionFunctions():
     Registers functions to support SpectraLibrary handling with QgsExpressions
     """
     global QGIS_FUNCTION_INSTANCES
-    for func in [SpectralMath(), SpectralData()]:
+    for func in [Format_Py(), SpectralMath(), SpectralData()]:
         QGIS_FUNCTION_INSTANCES[func.name()] = func
         if QgsExpression.isFunctionName(func.name()):
             if not QgsExpression.unregisterFunction(func.name):
