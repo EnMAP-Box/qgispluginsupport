@@ -154,6 +154,29 @@ class TestUtils(TestCase):
         b = check_vsimem()
         self.assertIsInstance(b, bool)
 
+    def test_qgsLayers(self):
+
+        # raster
+        l = TestObjects.createRasterLayer()
+        sources = [l, l.source()]
+
+        for s in sources:
+            layer = qgsRasterLayer(s)
+            self.assertIsInstance(layer, QgsRasterLayer)
+
+        p = r'D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml'
+        if os.path.isfile(p):
+            sources = [QgsRasterLayer(p), p]
+            for s in sources:
+                self.assertIsInstance(qgsRasterLayer(s), QgsRasterLayer)
+
+            with_sublayers = list(qgsRasterLayers(sources))
+            self.assertTrue(len(with_sublayers) > len(sources))
+            for l in with_sublayers:
+                self.assertIsInstance(l, QgsRasterLayer)
+                self.assertTrue(l.isValid())
+
+
     def test_spatialObjects(self):
 
         pt1 = SpatialPoint('EPSG:4326', 300, 300)

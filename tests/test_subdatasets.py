@@ -1,10 +1,13 @@
 import unittest
 import os
+import typing
 import xmlrunner
+import pathlib
 from qps.testing import TestCase
 
 from qgis.core import QgsRasterLayer
-from qps.subdatasets import *
+from qps.subdatasets import DatasetInfo, SubDatasetType, \
+    SubDatasetLoadingTask, SubDatasetSelectionDialog, SubDatasetDescriptionModel
 
 
 class TestSubDataSets(TestCase):
