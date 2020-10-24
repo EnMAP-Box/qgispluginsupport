@@ -27,6 +27,7 @@ class SimpleWidgetTests(TestCase):
         w.setLayout(l)
         self.showGui(w)
 
+
 if __name__ == '__main__':
 
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
