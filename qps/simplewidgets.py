@@ -56,9 +56,11 @@ class SliderSpinBox(QWidget):
 
     def setSingleStep(self, value):
         self.spinbox.setSingleStep(value)
-        m = int(10 ** self.decimals() * value)
-        self.slider.setSingleStep(m)
-        self.slider.setPageStep(m * 10)
+        self.slider.setSingleStep(value)
+        self.slider.setPageStep(value * 10)
+
+    def singleStep(self):
+        return self.spinbox.singleStep()
 
     def setMinimum(self, value):
         self.spinbox.setMinimum(value)
@@ -85,6 +87,14 @@ class SliderSpinBox(QWidget):
 
     def value(self) -> float:
         return self.spinbox.value()
+
+    def setRange(self, vmin, vmax):
+        vmin = min(vmin, vmax)
+        vmax = max(vmin, vmax)
+        assert vmin < vmax
+
+        self.setMinimum(vmin)
+        self.setMaximum(vmax)
 
 
 class DoubleSliderSpinBox(SliderSpinBox):
@@ -115,3 +125,9 @@ class DoubleSliderSpinBox(SliderSpinBox):
 
     def decimals(self) -> int:
         return self.spinbox.decimals()
+
+    def setSingleStep(self, value):
+        self.spinbox.setSingleStep(value)
+        m = int(10 ** self.decimals() * value)
+        self.slider.setSingleStep(m)
+        self.slider.setPageStep(m * 10)
