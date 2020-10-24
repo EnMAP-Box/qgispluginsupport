@@ -9,8 +9,8 @@ class SliderSpinBox(QWidget):
     sigValueChanged = pyqtSignal(int)
 
     def __init__(self, *args,
-                 spinbox: QAbstractSpinBox=None,
-                 spinbox_position: Qt.Alignment= Qt.LeftButton,
+                 spinbox: QAbstractSpinBox = None,
+                 spinbox_position: Qt.Alignment= Qt.AlignLeft,
                  **kwds):
 
         if not isinstance(spinbox, QAbstractSpinBox):

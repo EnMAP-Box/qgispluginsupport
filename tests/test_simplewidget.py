@@ -11,6 +11,10 @@ class SimpleWidgetTests(TestCase):
 
 
     def test_SliderSpinBox(self):
+
+        sb = SliderSpinBox()
+        sbl = DoubleSliderSpinBox()
+
         l = QGridLayout()
         for row, a in enumerate([Qt.AlignLeft, Qt.AlignRight, Qt.AlignTop, Qt.AlignBottom]):
             for col, sb in enumerate([SliderSpinBox(spinbox=QgsSpinBox(), spinbox_position=a),
