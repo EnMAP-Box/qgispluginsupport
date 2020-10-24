@@ -91,7 +91,7 @@ class SliderSpinBox(QWidget):
     def setRange(self, vmin, vmax):
         vmin = min(vmin, vmax)
         vmax = max(vmin, vmax)
-        assert vmin < vmax
+        assert vmin <= vmax
 
         self.setMinimum(vmin)
         self.setMaximum(vmax)
