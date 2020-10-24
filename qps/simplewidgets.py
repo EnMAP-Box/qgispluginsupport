@@ -5,12 +5,11 @@ from qgis.PyQt.QtWidgets import QWidget, QAbstractSpinBox, QSpinBox, QDoubleSpin
 
 
 class SliderSpinBox(QWidget):
-
     sigValueChanged = pyqtSignal(int)
 
     def __init__(self, *args,
                  spinbox: QAbstractSpinBox = None,
-                 spinbox_position: Qt.Alignment= Qt.AlignLeft,
+                 spinbox_position: Qt.Alignment = Qt.AlignLeft,
                  **kwds):
 
         if not isinstance(spinbox, QAbstractSpinBox):
@@ -57,9 +56,9 @@ class SliderSpinBox(QWidget):
 
     def setSingleStep(self, value):
         self.spinbox.setSingleStep(value)
-        m = int(10**self.decimals() * value)
+        m = int(10 ** self.decimals() * value)
         self.slider.setSingleStep(m)
-        self.slider.setPageStep(m*10)
+        self.slider.setPageStep(m * 10)
 
     def setMinimum(self, value):
         self.spinbox.setMinimum(value)
@@ -81,7 +80,7 @@ class SliderSpinBox(QWidget):
     def minimum(self) -> int:
         return self.spinbox.minimum()
 
-    def setValue(self, value:float):
+    def setValue(self, value: float):
         self.spinbox.setValue(value)
 
     def value(self) -> float:
@@ -89,7 +88,6 @@ class SliderSpinBox(QWidget):
 
 
 class DoubleSliderSpinBox(SliderSpinBox):
-
     sigValueChanged = pyqtSignal(float)
 
     def __init__(self, *args, **kwds):
@@ -104,14 +102,14 @@ class DoubleSliderSpinBox(SliderSpinBox):
         self.setSingleStep(0.1)
 
     def spinbox2slidervalue(self, value: float) -> int:
-        v = int(round(10**self.decimals()*value))
+        v = int(round(10 ** self.decimals() * value))
         return v
 
     def slider2spinboxvalue(self, value: int) -> float:
         v = value / (10 ** self.decimals())
         return v
 
-    def setDecimals(self, value:int):
+    def setDecimals(self, value: int):
         self.spinbox.setDecimals(value)
         self.setSingleStep(self.spinbox.singleStep())
 
