@@ -69,6 +69,7 @@ class TestSpeclibWidgets(TestCase):
         print('Error Message: %s' % (err_msg))
 
     def setUp(self):
+        registerSpectralProfileEditorWidget()
         super().setUp()
 
     def tearDown(self):

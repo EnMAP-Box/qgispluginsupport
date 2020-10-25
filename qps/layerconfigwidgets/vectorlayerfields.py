@@ -28,9 +28,9 @@ from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import *
-from qgis.core import QgsMapLayer, QgsVectorLayer, QgsField, QgsFieldModel
-from qgis.gui import QgsEditorWidgetFactory, QgsEditorWidgetSetup, QgsCollapsibleGroupBox, \
-    QgsEditorConfigWidget, QgsGui, QgsMapLayerConfigWidgetFactory
+from qgis.core import QgsMapLayer, QgsVectorLayer, QgsField, QgsFieldModel, QgsEditorWidgetSetup
+from qgis.gui import QgsEditorWidgetFactory, QgsCollapsibleGroupBox, QgsEditorConfigWidget, QgsGui, \
+    QgsMapLayerConfigWidgetFactory
 from .core import QpsMapLayerConfigWidget
 from ..layerproperties import AddAttributeDialog
 from ..utils import loadUi
