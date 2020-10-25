@@ -1774,7 +1774,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
                              1, None}
         
         self.mValues = EMPTY_PROFILE_VALUES.copy()
-        
+
         self.mRows: int = 0
 
     def setProfile(self, values):
