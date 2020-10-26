@@ -170,11 +170,14 @@ class Format_Py(QgsExpressionFunction):
 
     def func(self, values, context: QgsExpressionContext, parent, node):
         if len(values) == 0 or values[0] in (None, NULL):
-            return ''
+            return None
         assert isinstance(values[0], str)
         fmt: str = values[0]
         fmtArgs = values[1:]
-        return fmt.format(fmtArgs)
+        try:
+            return fmt.format(*fmtArgs)
+        except:
+            return None
 
     def usesGeometry(self, node) -> bool:
         return False
