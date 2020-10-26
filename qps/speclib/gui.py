@@ -2067,7 +2067,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
             editor.initConfig(conf)
 
         elif isinstance(editor, QLabel):
-            editor.setText('Profile')
+            editor.setText(SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE)
             editor.setToolTip('Use Form View to edit values')
 
     def onValueChanged(self, *args):
@@ -2171,7 +2171,7 @@ class SpectralProfileFieldFormatter(QgsFieldFormatter):
     def representValue(self, layer: QgsVectorLayer, fieldIndex: int, config: dict, cache, value):
 
         if value not in [None, NULL]:
-            return 'Profile'
+            return SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE
         else:
             return 'Empty'
         s = ""
