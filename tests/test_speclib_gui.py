@@ -327,7 +327,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(w, QWidget)
 
         p = SLIB[-1]
-        w.setProfileValues(p)
+        w.setProfile(p)
 
         self.showGui(w)
         self.assertTrue(True)

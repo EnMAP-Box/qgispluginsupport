@@ -1764,57 +1764,117 @@ class SpectralProfileTableModel(QAbstractTableModel):
     A TableModel to show and edit spectral values of a SpectralProfile
     """
 
+    sigXUnitChanged = pyqtSignal(str)
+    sigYUnitChanged = pyqtSignal(str)
+
     def __init__(self, *args, **kwds):
         super(SpectralProfileTableModel, self).__init__(*args, **kwds)
 
-        self.mColumnNames = {0, 'x',
-                             1, 'y',
-                             2, 'bbl'}
-        self.mColumnUnits = {0, None,
-                             1, None}
-        
-        self.mValues = EMPTY_PROFILE_VALUES.copy()
+        self.mColumnNames = {0: 'x',
+                             1: 'y'}
+        self.mColumnUnits = {0: None,
+                             1: None}
+
+        self.mValuesX: typing.Dict[int, typing.Any] = {}
+        self.mValuesY: typing.Dict[int, typing.Any] = {}
+        self.mValuesBBL: typing.Dict[int, typing.Any] = {}
+
+        self.mLastProfile: SpectralProfile = SpectralProfile()
 
         self.mRows: int = 0
 
-    def setProfile(self, values):
+    def setBands(self, bands: int):
+        bands = int(bands)
+
+        assert bands >= 0
+
+        if bands > self.bands():
+            self.beginInsertRows(QModelIndex(), self.bands(), bands - 1)
+            self.mRows = bands
+            self.endInsertRows()
+
+        elif bands < self.bands():
+            self.beginRemoveRows(QModelIndex(), bands, self.bands() - 1)
+            self.mRows = bands
+            self.endRemoveRows()
+
+    def bands(self) -> int:
+        return self.rowCount()
+
+    def setProfile(self, profile: SpectralProfile):
         """
         :param values:
         :return:
         """
-        if isinstance(values, SpectralProfile):
-            values = values.values()
-        assert isinstance(values, dict)
-
-        for k in EMPTY_PROFILE_VALUES.keys():
-            assert k in values.keys()
-
-        for i, k in enumerate(['y', 'x']):
-            if values[k] and len(values[k]) > 0:
-                self.setColumnDataType(i, type(values[k][0]))
-            else:
-                self.setColumnDataType(i, float)
-        self.setColumnValueUnit('y', values.get('yUnit', ''))
-        self.setColumnValueUnit('x', values.get('xUnit', ''))
+        assert isinstance(profile, SpectralProfile)
 
         self.beginResetModel()
-        self.mValues.update(values)
+        self.mValuesX.clear()
+        self.mValuesY.clear()
+        self.mValuesBBL.clear()
+        self.mLastProfile = profile
+        self.mValuesX.update({i: v for i, v in enumerate(profile.xValues())})
+        self.mValuesY.update({i: v for i, v in enumerate(profile.yValues())})
+        self.mValuesBBL.update({i: v for i, v in enumerate(profile.bbl())})
+
+        self.setBands(len(self.mValuesY))
+
         self.endResetModel()
+        self.setXUnit(profile.xUnit())
+        self.setYUnit(profile.yUnit())
 
-    def values(self) -> dict:
-        """
-        Returns the value dictionary of a SpectralProfile
-        :return: dict
-        """
-        return self.mValues
+    def setXUnit(self, unit: str):
+        if self.xUnit() != unit:
+            self.mColumnUnits[0] = unit
+            idx0 = self.index(0, 0)
+            idx1 = self.index(self.rowCount(QModelIndex()) - 1, 0)
+            self.dataChanged.emit(idx0, idx1)
+            # self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount(QModelIndex())-1)
+            self.sigXUnitChanged.emit(unit)
 
-    def rowCount(self, QModelIndex_parent=None, *args, **kwargs):
-        if self.mValues['y'] is None:
-            return 0
+    def setYUnit(self, unit: str):
+        if self.yUnit() != unit:
+            self.mColumnUnits[1] = unit
+            # self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount(QModelIndex())-1)
+            self.sigYUnitChanged.emit(unit)
+
+    def xUnit(self) -> str:
+        return self.mColumnUnits[0]
+
+    def yUnit(self) -> str:
+        return self.mColumnUnits[1]
+
+    def profile(self) -> SpectralProfile:
+        """
+        Return the data as new SpectralProfile
+        :return:
+        :rtype:
+        """
+        p = SpectralProfile(fields=self.mLastProfile.fields())
+        nb = self.bands()
+
+        y = [self.mValuesY.get(b, None) for b in range(nb)]
+        if self.xUnit() == BAND_INDEX:
+            x = None
         else:
-            return len(self.mValues['y'])
+            x = [self.mValuesX.get(b, None) for b in range(nb)]
 
-    def columnCount(self, parent=QModelIndex()):
+        bbl = [self.mValuesBBL.get(b, None) for b in range(nb)]
+        bbl = np.asarray(bbl, dtype=bool)
+        if np.any(bbl == False) == False:
+            bbl = None
+        p.setValues(x, y, xUnit=self.xUnit(), yUnit=self.yUnit(), bbl=bbl)
+
+        return p
+
+    def resetProfile(self):
+        self.setProfile(self.mLastProfile)
+
+    def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
+
+        return self.mRows
+
+    def columnCount(self, parent=QModelIndex()) -> int:
         return len(self.mColumnNames)
 
     def data(self, index, role=Qt.DisplayRole):
@@ -1827,17 +1887,28 @@ class SpectralProfileTableModel(QAbstractTableModel):
         if role in [Qt.DisplayRole, Qt.EditRole]:
             value = None
             if c == 0:
-                value = self.mValues['y'][i]
+                if self.xUnit() != BAND_INDEX:
+                    value = self.mValuesX.get(i, None)
+                    if value:
+                        return str(value)
+                    else:
+                        return None
+                else:
+                    return i + 1
 
             elif c == 1:
-                value = self.mValues['x'][i]
+                value = self.mValuesY.get(i, None)
+                if value:
+                    return str(value)
+                else:
+                    return None
 
-            # log('data: {} {}'.format(type(value), value))
-            return value
-
-        if role == Qt.UserRole:
-            return self.mValues
-
+        elif role == Qt.CheckStateRole:
+            if c == 0:
+                if bool(self.mValuesBBL.get(i, True)):
+                    return Qt.Checked
+                else:
+                    return Qt.Unchecked
         return None
 
     def setData(self, index, value, role=None):
@@ -1847,26 +1918,40 @@ class SpectralProfileTableModel(QAbstractTableModel):
         c = index.column()
         i = index.row()
 
-        if role == Qt.EditRole:
-            # cast to correct data type
-            dt = self.mColumnDataTypes[c]
-            value = dt(value)
-
+        modified = False
+        if role == Qt.CheckStateRole:
             if c == 0:
-                self.mValues['y'][i] = value
-                return True
+                self.mValuesBBL[i] = value == Qt.Checked
+                modified = True
+
+        if role == Qt.EditRole:
+            if c == 0:
+                try:
+                    self.mValuesX[i] = float(value)
+                    modified = True
+                except:
+                    pass
             elif c == 1:
-                self.mValues['x'][i] = value
-                return True
-        return False
+                try:
+                    self.mValuesY[i] = float(value)
+                    modified = True
+                except:
+                    pass
+
+        if modified:
+            self.dataChanged.emit(index, index, [role])
+        return modified
 
     def flags(self, index):
         if index.isValid():
             c = index.column()
             flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-            if c == 0 and self.mColumnUnits.get(c):
-                flags = flags | Qt.ItemIsEditable
-            elif c >= 1:
+
+            if c == 0:
+                flags = flags | Qt.ItemIsUserCheckable
+                if self.xUnit() != BAND_INDEX:
+                    flags = flags | Qt.ItemIsEditable
+            elif c == 1:
                 flags = flags | Qt.ItemIsEditable
             return flags
         return None
@@ -1874,40 +1959,53 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def headerData(self, col: int, orientation, role):
 
         if orientation == Qt.Horizontal and role in [Qt.DisplayRole, Qt.ToolTipRole]:
-            
-            if col in self.mColumnUnits.keys():
-                unit = self.mColumnUnits.get(col)
-                if unit in EMPTY_VALUES:
-                    unit = '-'
-                return '{} [{}]'.format(self.mColumnNames[col], unit)
-            else:
-                return self.mColumnNames[col]
-        
+            return self.mColumnNames.get(col, f'{col + 1}')
         return None
 
 
 class SpectralProfileEditorWidget(QWidget):
-    sigProfileValuesChanged = pyqtSignal(dict)
+    sigProfileChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
         super(SpectralProfileEditorWidget, self).__init__(*args, **kwds)
         loadUi(speclibUiPath('spectralprofileeditorwidget.ui'), self)
-        self.mDefault = None
-        self.mModel = SpectralProfileTableModel()
-        self.mModel.dataChanged.connect(lambda: self.sigProfileValuesChanged.emit(self.profileValues()))
-        self.mModel.sigColumnValueUnitChanged.connect(self.onValueUnitChanged)
+        self.mDefault: SpectralProfile = None
+        self.mModel: SpectralProfileTableModel = SpectralProfileTableModel()
+        self.mModel.rowsInserted.connect(self.onBandsChanged)
+        self.mModel.rowsRemoved.connect(self.onBandsChanged)
+        self.mModel.dataChanged.connect(lambda *args: self.onProfileChanged())
+        self.mXUnitModel: XUnitModel = XUnitModel()
+        self.cbXUnit.setModel(self.mXUnitModel)
+        self.cbXUnit.currentIndexChanged.connect(
+            lambda *args: self.mModel.setXUnit(self.cbXUnit.currentData(Qt.UserRole)))
+        self.mModel.sigXUnitChanged.connect(
+            lambda unit: self.cbXUnit.setCurrentIndex(self.mXUnitModel.unitIndex(unit).row())
+        )
+
+        self.tbYUnit.textChanged.connect(self.mModel.setYUnit)
+        self.mModel.sigYUnitChanged.connect(self.tbYUnit.setText)
+        self.mModel.sigYUnitChanged.connect(self.onProfileChanged)
+        self.mModel.sigXUnitChanged.connect(self.onProfileChanged)
+        # self.mModel.sigColumnValueUnitChanged.connect(self.onValueUnitChanged)
         # self.mModel.sigColumnDataTypeChanged.connect(self.onDataTypeChanged)
         self.tableView.setModel(self.mModel)
-        self.cbYUnit.currentTextChanged.connect(lambda unit: self.mModel.setColumnValueUnit(0, unit))
-        self.cbXUnit.currentTextChanged.connect(lambda unit: self.mModel.setColumnValueUnit(1, unit))
 
-        self.actionReset.triggered.connect(self.resetProfileValues)
+        self.actionReset.triggered.connect(self.resetProfile)
         self.btnReset.setDefaultAction(self.actionReset)
 
+        self.sbBands.valueChanged.connect(self.mModel.setBands)
         # self.onDataTypeChanged(0, float)
         # self.onDataTypeChanged(1, float)
 
-        self.setProfileValues(EMPTY_PROFILE_VALUES.copy())
+        self.setProfile(SpectralProfile())
+
+    def onProfileChanged(self):
+        if self.profile() != self.mDefault:
+            self.sigProfileChanged.emit()
+
+    def onBandsChanged(self, *args):
+        self.sbBands.setValue(self.mModel.bands())
+        self.onProfileChanged()
 
     def initConfig(self, conf: dict):
         """
@@ -1917,106 +2015,84 @@ class SpectralProfileEditorWidget(QWidget):
 
         pass
 
-    def onValueUnitChanged(self, index: int, unit: str):
-        comboBox = [self.cbYUnit, self.cbXUnit][index]
-        setComboboxValue(comboBox, unit)
-
-    def onDataTypeChanged(self, index: int, dataType: type):
-
-        if dataType == int:
-            typeString = 'Integer'
-        elif dataType == float:
-            typeString = 'Float'
-        else:
-            raise NotImplementedError()
-        # comboBox = [self.cbYUnitDataType, self.cbXUnitDataType][index]
-
-        # setComboboxValue(comboBox, typeString)
-
-    def setProfileValues(self, values):
+    def setProfile(self, profile: SpectralProfile):
         """
         Sets the profile values to be shown
         :param values: dict() or SpectralProfile
         :return:
         """
+        assert isinstance(profile, SpectralProfile)
+        self.mDefault = profile
 
-        if isinstance(values, SpectralProfile):
-            values = values.values()
+        self.mModel.setProfile(profile)
 
-        assert isinstance(values, dict)
-        self.mDefault = copy.deepcopy(values)
-        self.mModel.setProfile(values)
-        s = ""
+    def resetProfile(self):
+        self.mModel.setProfile(self.mDefault)
 
-    def resetProfileValues(self):
-        self.setProfileValues(self.mDefault)
-
-    def profileValues(self) -> dict:
+    def profile(self) -> SpectralProfile:
         """
-        Returns the value dictionary of a SpectralProfile
+        Returns modified SpectralProfile
         :return: dict
         """
-        return self.mModel.values()
+
+        return self.mModel.profile()
 
 
 class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
 
     def __init__(self, vl: QgsVectorLayer, fieldIdx: int, editor: QWidget, parent: QWidget):
         super(SpectralProfileEditorWidgetWrapper, self).__init__(vl, fieldIdx, editor, parent)
-        self.mEditorWidget = None
-        self.mLabel = None
-        self.mDefaultValue = None
+        self.mWidget: QWidget = None
 
     def createWidget(self, parent: QWidget):
         # log('createWidget')
-        w = None
+
         if not self.isInTable(parent):
-            self.mEditorWidget = SpectralProfileEditorWidget(parent=parent)
-            return self.mEditorWidget
+            self.mWidget = SpectralProfileEditorWidget(parent=parent)
         else:
-            # w = PlotStyleButton(parent)
-            w = QLabel(' Profile', parent=parent)
-            # w.setVisible(False)
-        return w
+            self.mWidget = QLabel(' Profile', parent=parent)
+        return self.mWidget
 
     def initWidget(self, editor: QWidget):
         # log(' initWidget')
         conf = self.config()
 
         if isinstance(editor, SpectralProfileEditorWidget):
-            self.mEditorWidget = editor
-            self.mEditorWidget.sigProfileValuesChanged.connect(self.onValueChanged)
-            self.mEditorWidget.initConfig(conf)
 
-        elif isinstance(editor, QWidget):
-            self.mLabel = editor
-            self.mLabel.setVisible(False)
-            self.mLabel.setToolTip('Use Form View to edit values')
+            editor.sigProfileChanged.connect(self.onValueChanged)
+            editor.initConfig(conf)
+
+        elif isinstance(editor, QLabel):
+            editor.setText('Profile')
+            editor.setToolTip('Use Form View to edit values')
 
     def onValueChanged(self, *args):
-        self.valueChanged.emit(self.value())
+        self.valuesChanged.emit(self.value())
         s = ""
 
     def valid(self, *args, **kwargs) -> bool:
-        return isinstance(self.mEditorWidget, SpectralProfileEditorWidget) or isinstance(self.mLabel, QWidget)
+        return isinstance(self.mWidget, (SpectralProfileEditorWidget, QLabel))
 
     def value(self, *args, **kwargs):
-        value = self.mDefaultValue
-        if isinstance(self.mEditorWidget, SpectralProfileEditorWidget):
-            v = self.mEditorWidget.profileValues()
-            value = encodeProfileValueDict(v)
+        value = QVariant(None)
+        w = self.widget()
+        if isinstance(w, SpectralProfileEditorWidget):
+            p = w.profile()
+            value = encodeProfileValueDict(p.values())
 
         return value
 
     def setEnabled(self, enabled: bool):
-
-        if self.mEditorWidget:
-            self.mEditorWidget.setEnabled(enabled)
+        w = self.widget()
+        if isinstance(w, SpectralProfileEditorWidget):
+            w.setEnabled(enabled)
 
     def setValue(self, value):
-        if isinstance(self.mEditorWidget, SpectralProfileEditorWidget):
-            self.mEditorWidget.setProfileValues(decodeProfileValueDict(value))
-        self.mDefaultValue = value
+        p = SpectralProfile(values=decodeProfileValueDict(value))
+        w = self.widget()
+        if isinstance(w, SpectralProfileEditorWidget):
+            w.setProfile(p)
+
         # if isinstance(self.mLabel, QLabel):
         #    self.mLabel.setText(value2str(value))
 
@@ -2141,7 +2217,7 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         """
 
         w = SpectralProfileEditorWidgetWrapper(layer, fieldIdx, editor, parent)
-        #self.editWrapper = w
+        # self.editWrapper = w
         return w
 
     def writeConfig(self, key: tuple, config: dict):

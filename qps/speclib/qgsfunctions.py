@@ -178,6 +178,7 @@ class Format_Py(QgsExpressionFunction):
             return fmt.format(*fmtArgs)
         except:
             return None
+
     def usesGeometry(self, node) -> bool:
         return False
 
