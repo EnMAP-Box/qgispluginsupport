@@ -49,14 +49,16 @@ class CursorLocationTest(TestCase):
 
     def test_maptool(self):
 
-        lyr = TestObjects.createRasterLayer(ns=50, nl=50, no_data_rectangle=40)
-        QgsProject.instance().addMapLayer(lyr)
+        lyrR = TestObjects.createRasterLayer(ns=50, nl=50, no_data_rectangle=40)
+        lyrV = TestObjects.createVectorLayer()
+        layers = [lyrR, lyrV]
+        QgsProject.instance().addMapLayers(layers)
         c = QgsMapCanvas()
-        c.setLayers([lyr])
-        c.setDestinationCrs(lyr.crs())
+        c.setLayers(layers)
+        c.setDestinationCrs(layers[0].crs())
         c.zoomToFullExtent()
 
-        center = SpatialPoint.fromMapLayerCenter(lyr)
+        center = SpatialPoint.fromMapCanvasCenter(c)
         dock = CursorLocationInfoDock()
         dock.setCanvas(c)
         dock.loadCursorLocation(center, c)

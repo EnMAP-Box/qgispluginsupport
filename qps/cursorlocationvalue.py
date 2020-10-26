@@ -102,14 +102,14 @@ class CursorLocationInfoModel(TreeModel):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        self.setColumnNames(['Band/Field', 'Value', 'Description'])
+        self.setColumnNames(['Band/Field', 'Value'])
 
         self.mExpandedNodeRemainder = {}
         self.mNodeExpansion = CursorLocationInfoModel.REMAINDER
 
     def flags(self, index):
 
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
     """
     def weakNodeId(self, node: TreeNode) -> str:
@@ -124,58 +124,45 @@ class CursorLocationInfoModel(TreeModel):
     def addSourceValues(self, sourceValueSet: SourceValueSet):
         if not isinstance(sourceValueSet, SourceValueSet):
             return
-
-        # get-or-create node
-        def gocn(root: TreeNode, name) -> TreeNode:
-            assert isinstance(root, TreeNode)
-            n = TreeNode(name)
-            root.appendChildNodes(n)
-            # weakId = self.weakNodeId(n)
-            return n
-            expand = False
-            if not isinstance(root.parentNode(), TreeNode):
-                expand = True
-            else:
-                if self.mNodeExpansion == CursorLocationInfoModel.REMAINDER:
-                    expand = self.mExpandedNodeRemainder.get(weakId, False)
-                elif self.mNodeExpansion == CursorLocationInfoModel.NEVER_EXPAND:
-                    expand = False
-                elif self.mNodeExpansion == CursorLocationInfoModel.ALWAYS_EXPAND:
-                    expand = True
-            n.setExpanded(expand)
-
-            return n
-
         bn = os.path.basename(sourceValueSet.source)
 
         if isinstance(sourceValueSet, RasterValueSet):
-            root = gocn(self.mRootNode, name=bn)
+
+            root = TreeNode(bn)
             root.setIcon(QIcon(':/qps/ui/icons/raster.svg'))
 
             # add subnodes
-            n = gocn(root, 'Pixel')
-            n.setValues('{},{}'.format(sourceValueSet.pxPosition.x(), sourceValueSet.pxPosition.y()))
+            pxNode = TreeNode('Pixel')
+            pxNode.setValues('{},{}'.format(sourceValueSet.pxPosition.x(), sourceValueSet.pxPosition.y()))
+
+            subNodes = [pxNode]
 
             for bv in sourceValueSet.bandValues:
                 if isinstance(bv, RasterValueSet.BandInfo):
-                    n = gocn(root, 'Band {}'.format(bv.bandIndex + 1))
+                    n = TreeNode('Band {}'.format(bv.bandIndex + 1))
                     n.setToolTip('Band {} {}'.format(bv.bandIndex + 1, bv.bandName).strip())
                     n.setValues([bv.bandValue, bv.bandName])
+                    subNodes.append(n)
 
                     if isinstance(bv.classInfo, ClassInfo):
-                        nc = gocn(root, 'Class')
+                        nc = TreeNode('Class')
                         nc.setValues(bv.classInfo.name())
                         nc.setIcon(bv.classInfo.icon())
+                        n.appendChildNodes(nc)
 
                 elif isinstance(bv, QColor):
-                    n = gocn(root, 'Color')
+                    n = TreeNode('Color')
                     n.setToolTip('Color selected from screen pixel')
                     n.setValues(bv.getRgb())
+                    subNodes.append(n)
+            root.appendChildNodes(subNodes)
+            self.rootNode().appendChildNodes(root)
 
         if isinstance(sourceValueSet, VectorValueSet):
             if len(sourceValueSet.features) == 0:
                 return
-            root = gocn(self.mRootNode, name=bn)
+
+            root = TreeNode(bn)
             refFeature = sourceValueSet.features[0]
             assert isinstance(refFeature, QgsFeature)
             typeName = QgsWkbTypes.displayString(refFeature.geometry().wkbType()).lower()
@@ -186,17 +173,23 @@ class CursorLocationInfoModel(TreeModel):
             if 'point' in typeName:
                 root.setIcon(QIcon(r':/images/themes/default/mIconPointLayer.svg'))
 
+            subNodes = []
             for field in refFeature.fields():
                 assert isinstance(field, QgsField)
 
-                fieldNode = gocn(root, name=field.name())
+                fieldNode = TreeNode(field.name())
 
+                featureNodes = []
                 for i, feature in enumerate(sourceValueSet.features):
                     assert isinstance(feature, QgsFeature)
-                    nf = gocn(fieldNode, name='{}'.format(feature.id()))
+                    nf = TreeNode(name='{}'.format(feature.id()))
                     nf.setValues([feature.attribute(field.name()), field.typeName()])
                     nf.setToolTip('Value of feature "{}" in field with name "{}"'.format(feature.id(), field.name()))
-
+                    featureNodes.append(nf)
+                fieldNode.appendChildNodes(featureNodes)
+                subNodes.append(fieldNode)
+            root.appendChildNodes(subNodes)
+            self.rootNode().appendChildNodes(root)
         s = ""
 
     def clear(self):
@@ -307,7 +300,7 @@ class CursorLocationInfoDock(QDockWidget):
         self.mLocationInfoModel = CursorLocationInfoModel()
         self.mTreeView: CursorLocationInfoTreeView
         assert isinstance(self.mTreeView, CursorLocationInfoTreeView)
-        self.mTreeView.setAutoExpansionDepth(2)
+        self.mTreeView.setAutoExpansionDepth(3)
         self.mTreeView.setModel(self.mLocationInfoModel)
 
         self.mLayerModeModel = ComboBoxOptionModel(LAYERMODES, parent=self)

@@ -994,14 +994,14 @@ class TreeView(QTreeView):
             rows = model.rowCount(index)
             if rows > 0:
                 nodeName = f'{prefix}:{model.data(index, role=Qt.DisplayRole)}'
+                nodeDepth: int = self.nodeDepth(index)
 
-                isExpanded = self.isExpanded(index)
                 if restore:
                     # restore expansion state, if stored in mNodeExpansion
-                    self.setExpanded(index, self.mNodeExpansion.get(nodeName, isExpanded))
+                    self.setExpanded(index, self.mNodeExpansion.get(nodeName, nodeDepth < self.mAutoExpansionDepth))
                 else:
                     # save expansion state
-                    self.mNodeExpansion[nodeName] = isExpanded
+                    self.mNodeExpansion[nodeName] = self.isExpanded(index)
 
                 for row in range(rows):
                     idx = model.index(row, 0, index)
