@@ -46,7 +46,7 @@
      <property name="styleSheet">
       <string notr="true">QTableView{
 margin:0;
-padding:0;
+padding:1px;
 }</string>
      </property>
      <attribute name="verticalHeaderMinimumSectionSize">
