@@ -45,9 +45,9 @@ class HelpStringMaker(object):
     def __init__(self):
 
         helpDir = pathlib.Path(__file__).parent / 'function_help'
-        assert helpDir.is_dir()
-
         self.mHELP = dict()
+
+        assert helpDir.is_dir()
 
         for e in os.scandir(helpDir):
             if e.is_file() and e.name.endswith('.json'):
