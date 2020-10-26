@@ -1978,9 +1978,7 @@ class SpectralProfileEditorWidget(QWidget):
         self.cbXUnit.setModel(self.mXUnitModel)
         self.cbXUnit.currentIndexChanged.connect(
             lambda *args: self.mModel.setXUnit(self.cbXUnit.currentData(Qt.UserRole)))
-        self.mModel.sigXUnitChanged.connect(
-            lambda unit: self.cbXUnit.setCurrentIndex(self.mXUnitModel.unitIndex(unit).row())
-        )
+        self.mModel.sigXUnitChanged.connect(self.onXUnitChanged)
 
         self.tbYUnit.textChanged.connect(self.mModel.setYUnit)
         self.mModel.sigYUnitChanged.connect(self.tbYUnit.setText)
@@ -2002,6 +2000,12 @@ class SpectralProfileEditorWidget(QWidget):
     def onProfileChanged(self):
         if self.profile() != self.mDefault:
             self.sigProfileChanged.emit()
+
+    def onXUnitChanged(self, unit: str):
+        unit = self.mXUnitModel.findUnit(unit)
+        if unit is None:
+            unit = BAND_INDEX
+        self.cbXUnit.setCurrentIndex(self.mXUnitModel.unitIndex(unit).row())
 
     def onBandsChanged(self, *args):
         self.sbBands.setValue(self.mModel.bands())
