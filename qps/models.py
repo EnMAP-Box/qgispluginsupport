@@ -519,7 +519,10 @@ class TreeNode(QObject):
         Sets the TreeNode icon
         :param icon: QIcon
         """
-        self.mIcon = icon
+        if icon != self.mIcon:
+            self.mIcon = icon
+            self.sigUpdated.emit(self)
+
 
     def icon(self) -> QIcon:
         """
@@ -533,7 +536,9 @@ class TreeNode(QObject):
         Sets the TreeNodes name
         :param name: str
         """
-        self.mName = str(name)
+        if name != self.mName:
+            self.mName = str(name)
+            self.sigUpdated.emit(self)
 
     def name(self) -> str:
         """
