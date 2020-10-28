@@ -824,7 +824,7 @@ class SpectralProfile(QgsFeature):
     def geoCoordinate(self):
         return self.geometry()
 
-    def updateMetadata(self, metaData):
+    def updateMetadata(self, metaData:dict):
         if isinstance(metaData, dict):
             for key, value in metaData.items():
                 self.setMetadata(key, value)
@@ -2711,10 +2711,9 @@ class SpectralLibrary(QgsVectorLayer):
         msg = super(SpectralLibrary, self).exportNamedStyle(doc, context=context, categories=categories)
         if msg == '':
             qgsNode = doc.documentElement().toElement()
-            # speclibNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
+
             if isinstance(self.mProfileRenderer, SpectralProfileRenderer):
                 self.mProfileRenderer.writeXml(qgsNode, doc)
-            # qgsNode.appendChild(speclibNode)
 
         return msg
 
