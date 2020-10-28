@@ -2048,6 +2048,8 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         super(SpectralProfileEditorWidgetWrapper, self).__init__(vl, fieldIdx, editor, parent)
         self.mWidget: QWidget = None
 
+        self.mLastValue = QVariant()
+
     def createWidget(self, parent: QWidget):
         # log('createWidget')
 
@@ -2078,7 +2080,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         return isinstance(self.mWidget, (SpectralProfileEditorWidget, QLabel))
 
     def value(self, *args, **kwargs):
-        value = QVariant(None)
+        value = self.mLastValue
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             p = w.profile()
@@ -2092,6 +2094,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
             w.setEnabled(enabled)
 
     def setValue(self, value):
+        self.mLastValue = value
         p = SpectralProfile(values=decodeProfileValueDict(value))
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
