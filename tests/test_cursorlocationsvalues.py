@@ -16,9 +16,9 @@ import os
 import unittest
 import xmlrunner
 from osgeo import gdal
-from qgis.gui import QgsMapCanvas
 from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, \
     QgsProject, QgsCoordinateReferenceSystem
+from qgis.gui import QgsMapCanvas, QgsMapTool
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout
 from qgis.PyQt.QtCore import *
@@ -65,6 +65,7 @@ class CursorLocationTest(TestCase):
 
         from qps.maptools import CursorLocationMapTool
         mt = CursorLocationMapTool(c)
+        #mt.setFlags(QgsMapTool.ShowContextMenu)
         c.setMapTool(mt)
 
         def onLocationRequest(crs: QgsCoordinateReferenceSystem, pt: QgsPointXY):
