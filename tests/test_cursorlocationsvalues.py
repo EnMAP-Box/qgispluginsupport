@@ -20,7 +20,7 @@ from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, Q
     QgsProject, QgsCoordinateReferenceSystem
 from qgis.gui import QgsMapCanvas, QgsMapTool
 from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout
+from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout, QTreeView
 from qgis.PyQt.QtCore import *
 from qps.testing import TestObjects, TestCase
 from qps.utils import SpatialPoint, SpatialExtent
@@ -60,6 +60,7 @@ class CursorLocationTest(TestCase):
 
         center = SpatialPoint.fromMapCanvasCenter(c)
         dock = CursorLocationInfoDock()
+
         dock.setCanvas(c)
         dock.loadCursorLocation(center, c)
 
@@ -74,11 +75,13 @@ class CursorLocationTest(TestCase):
             dock.loadCursorLocation(spt, canvas)
 
         mt.sigLocationRequest.connect(onLocationRequest)
-
+        tv2 = QTreeView()
+        tv2.setModel(dock.mLocationInfoModel)
         w = QWidget()
         l = QHBoxLayout()
         l.addWidget(dock)
         l.addWidget(c)
+        l.addWidget(tv2)
         w.setLayout(l)
         self.showGui(w)
 

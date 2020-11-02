@@ -3,8 +3,9 @@ import unittest
 import xmlrunner
 import os
 import numpy as np
-from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel
-from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication, QGridLayout, QLabel, QWidget
+from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, Qt
+from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication, QGridLayout, QLabel, QWidget, \
+    QPushButton, QVBoxLayout, QHBoxLayout
 from qgis.gui import QgsMapCanvas
 from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option, PyObjectTreeNode
 from qps.testing import TestCase
@@ -120,6 +121,56 @@ class ModelTests(TestCase):
             self.assertTrue(idx.internalPointer() == node)
 
         self.assertTrue(TM.rowCount(None), 1)
+
+    def test_treeViewSpan(self):
+
+        TV = TreeView()
+        TM = TreeModel()
+        def onRowsInserted(p, first, last):
+            print(f'ROWS INSERTED {p.data(Qt.UserRole).name()} {first} to {last}')
+        TM.rowsInserted.connect(onRowsInserted)
+        TV.setModel(TM)
+        TV2 = QTreeView()
+        TV2.setModel(TM)
+
+        btnReset = QPushButton('Reset')
+        btnClean = QPushButton('Clean')
+
+        def onClean():
+            TM.rootNode().removeAllChildNodes()
+
+        def onReset(*args):
+
+            TM.rootNode().removeAllChildNodes()
+
+            new_nodes = []
+            nA = TreeNode(name='AAAAAAAAAAAA')
+            nAA = TreeNode(name='aa', value='avalues')
+            nA.appendChildNodes(nAA)
+            nB = TreeNode(name='BBBBBBBBBBBB')
+            nBB = TreeNode(name='bb', value='bvalues')
+            nB.appendChildNodes(nBB)
+            new_nodes += [nA, nB]
+            TM.rootNode().appendChildNodes(new_nodes)
+
+        btnReset.clicked.connect(onReset)
+        btnClean.clicked.connect(onClean)
+        l = QVBoxLayout()
+        lh = QHBoxLayout()
+        lh.addWidget(btnReset)
+        lh.addWidget(btnClean)
+        l.addLayout(lh)
+
+        lh = QHBoxLayout()
+        lh.addWidget(TV)
+        lh.addWidget(TV2)
+        l.addLayout(lh)
+
+        w = QWidget()
+        w.setLayout(l)
+        self.showGui(w)
+
+
 
     def test_treeView(self):
 

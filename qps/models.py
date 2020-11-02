@@ -452,6 +452,8 @@ class TreeNode(QObject):
         child_nodes = [l for l in child_nodes if l not in self.mChildren]
 
         l = len(child_nodes)
+        if l == 0:
+            return
         idxLast = index + l - 1
         self.sigWillAddChildren.emit(self, index, idxLast)
 
@@ -486,8 +488,10 @@ class TreeNode(QObject):
         for node in child_nodes:
             assert isinstance(node, TreeNode)
             assert node in self.mChildren
+            assert node.parentNode() == self
 
         child_nodes = sorted(child_nodes, key=lambda node: node.nodeIndex())
+        removed = []
         while len(child_nodes) > 0:
             # find neighbored nodes to remove
             nextNode = child_nodes[0]
@@ -501,9 +505,7 @@ class TreeNode(QObject):
 
             self.sigWillRemoveChildren.emit(self, first, last)
 
-            for node in toRemove:
-                self.mChildren.remove(node)
-
+            for node in reversed(toRemove):
                 # disconnect node signals
                 node.sigWillAddChildren.disconnect(self.sigWillAddChildren)
                 node.sigAddedChildren.disconnect(self.sigAddedChildren)
@@ -511,9 +513,12 @@ class TreeNode(QObject):
                 node.sigRemovedChildren.disconnect(self.sigRemovedChildren)
                 node.sigUpdated.disconnect(self.sigUpdated)
 
+                self.mChildren.remove(node)
+
                 node.setParentNode(None)
 
                 child_nodes.remove(node)
+                removed.append(node)
 
             self.sigRemovedChildren.emit(self, first, last)
 
@@ -536,12 +541,6 @@ class TreeNode(QObject):
 
     def parentNode(self):
         return self.mParentNode
-
-    def setParent(self, parentNode) -> None:
-        if parentNode is not None:
-            warnings.warn('Use setParentNode', DeprecationWarning)
-            assert isinstance(parentNode, TreeNode)
-        super().setParent(parentNode)
 
     def setIcon(self, icon: QIcon):
         """
@@ -774,16 +773,17 @@ class TreeModel(QAbstractItemModel):
         return self.mRootNode
 
     def onNodeWillAddChildren(self, node: TreeNode, first: int, last: int):
-        idxNode = self.node2idx(node)
-
-        assert idxNode.internalPointer() == node
-        self.beginInsertRows(idxNode, first, last)
+        parent = self.node2idx(node)
+        if not node == self.mRootNode:
+            assert parent.internalPointer() == node
+        self.beginInsertRows(parent, first, last)
 
     def onNodeAddedChildren(self, node: TreeNode, first: int, last: int):
         self.endInsertRows()
-        #print(f'ADDED CHILDNODES {node}')
-        for i in range(first, last + 1):
-            print(f'  {node.childNodes()[i]}')
+        parent = self.node2idx(node)
+        idx1 = self.index(first, 0, parent)
+        idx2 = self.index(last, 0, parent)
+        self.dataChanged.emit(idx1, idx2)
 
     def maxColumnCount(self, index: QModelIndex) -> int:
         assert isinstance(index, QModelIndex)
@@ -823,11 +823,18 @@ class TreeModel(QAbstractItemModel):
         if not index.isValid():
             return QModelIndex()
         childNode: TreeNode = index.internalPointer()
+        if not isinstance(childNode, TreeNode) or \
+                sip.isdeleted(childNode):
+            return QModelIndex()
+
         parentNode: TreeNode = childNode.parentNode()
-        if not isinstance(parentNode, TreeNode) or parentNode == self.mRootNode:
+        if not isinstance(parentNode, TreeNode) or \
+                sip.isdeleted(parentNode) \
+                or parentNode == self.mRootNode:
             return QModelIndex()
         else:
-            return self.createIndex(parentNode.nodeIndex(), 0, parentNode)
+            idx = self.node2idx(parentNode)
+            return self.createIndex(idx.row(), idx.column(), parentNode)
 
     def rowCount(self, parent: QModelIndex = None) -> int:
         """
@@ -945,7 +952,10 @@ class TreeModel(QAbstractItemModel):
             parentNode: TreeNode = parent.internalPointer()
 
         if parentNode.childCount() > 0:
-            return self.createIndex(row, column, parentNode.mChildren[row])
+            if row < len(parentNode.mChildren):
+                return self.createIndex(row, column, parentNode.mChildren[row])
+            else:
+                return QModelIndex()
         else:
             return QModelIndex()
 
@@ -1031,7 +1041,8 @@ class TreeModel(QAbstractItemModel):
         if not isinstance(node, TreeNode):
             return QModelIndex()
         if node == self.mRootNode:
-            return self.createIndex(-1, -1, self.mRootNode)
+            #return self.createIndex(-1, -1, self.mRootNode)
+            return QModelIndex()
         else:
             row: int = node.nodeIndex()
             if not isinstance(row, int):
@@ -1047,16 +1058,18 @@ class TreeModel(QAbstractItemModel):
         :return: object
         """
         assert isinstance(index, QModelIndex)
+        if not index.isValid():
+            if role == Qt.UserRole:
+                return self.rootNode()
+            else:
+                return None
+
         node = index.internalPointer()
-        if not isinstance(node, TreeNode):
-            return None
-        if node == self.rootNode():
-            s = ""
+        assert isinstance(node, TreeNode)
+
         if role == Qt.UserRole:
             return node
 
-        if role == Qt.ToolTipRole:
-            return str(node)
         col = index.column()
 
         if col == 0:
@@ -1158,15 +1171,14 @@ class TreeView(QTreeView):
         if isinstance(self.mModel, QAbstractItemModel):
             self.mModel.modelReset.connect(self.onModelReset)
             self.mModel.dataChanged.connect(self.onDataChanged)
+            #self.mModel.rowsAboutToBeInserted.connect(self.onAboutRowsInserted)
             self.mModel.rowsInserted.connect(self.onRowsInserted)
 
         # update column spans
-        self.onModelReset()
+        #self.onModelReset()
 
     def onModelReset(self):
-        for row in range(self.model().rowCount(QModelIndex())):
-            idx = self.model().index(row, 0)
-            self.setColumnSpan(idx)
+        self.setColumnSpan(QModelIndex(), None, None)
 
     def nodeDepth(self, index: QModelIndex) -> int:
         if not index.isValid():
@@ -1175,51 +1187,55 @@ class TreeView(QTreeView):
 
     def onRowsInserted(self, parent: QModelIndex, first: int, last: int):
 
-        for row in range(first, last + 1):
-            idx = self.model().index(row, 0, parent)
-            self.setColumnSpan(idx)
-
-        level = self.nodeDepth(parent)
-        if level < self.mAutoExpansionDepth:
-            self.setExpanded(idx, True)
-            s = ""
+        node = self.model().data(parent, Qt.UserRole)
+        if True:
+            self.setColumnSpan(parent, first, last)
+        if True:
+            level = self.nodeDepth(parent)
+            if level < self.mAutoExpansionDepth:
+                self.setExpanded(parent, True)
 
     def onDataChanged(self, tl: QModelIndex, br: QModelIndex, roles):
 
         parent = tl.parent()
+
         for row in range(tl.row(), br.row() + 1):
             idx = self.model().index(row, 0, parent)
-            self.setColumnSpan(idx)
+            self.setColumnSpan(idx, None, None)
         s = ""
 
-    def setColumnSpan(self, idx: QModelIndex):
+    def setColumnSpan(self, parent: QModelIndex, first:int, last:int):
         """
         Sets the column span for index `idx` and all child widgets
         :param idx:
         :return:
         """
 
-        assert isinstance(idx, QModelIndex)
-        if not idx.isValid():
+        model: QAbstractItemModel = self.model()
+        if not isinstance(model, QAbstractItemModel):
             return
 
-        colCnt = self.header().count()
-        # span: QSize = model.span(idx)
-        span: QSize = QSize(1, 1)
-        rightIdx = idx
-        while rightIdx.isValid() and rightIdx.column() < colCnt:
-            rightIdx = rightIdx.siblingAtColumn(rightIdx.column() + 1)
-            if rightIdx.isValid() and rightIdx.data(Qt.DisplayRole) is None:
-                span.setWidth(span.width() + 1)
-            else:
-                break
+        rows = model.rowCount(parent)
+        if rows == 0:
+            return
+        if not isinstance(first, int):
+            first = 0
+        if not isinstance(last, int):
+            last = rows-1
 
-        if span.width() > 1:
-            self.setFirstColumnSpanned(idx.row(), idx.parent(), True)
-        for row in range(self.model().rowCount(idx)):
-            idx2 = self.model().index(row, 0, idx)
-            self.setColumnSpan(idx2)
+        assert last < rows
+        for r in range(first, last+1):
+            idx: QModelIndex = model.index(r, 0, parent)
+            idx2: QModelIndex = model.index(r, 1, parent)
 
+            if idx2.isValid():
+                txt = idx2.data(Qt.DisplayRole)
+                spanned = txt in [None, '']
+                if spanned:
+                    print(f'set spanned:: {idx.data(Qt.DisplayRole)}')
+                self.setFirstColumnSpanned(r, parent, spanned)
+
+            self.setColumnSpan(idx, None, None)
         return
 
         """
