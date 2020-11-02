@@ -2,14 +2,15 @@
 import unittest
 import xmlrunner
 import os
+import numpy as np
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel
 from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication, QGridLayout, QLabel, QWidget
-from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option
+from qgis.gui import QgsMapCanvas
+from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option, PyObjectTreeNode
 from qps.testing import TestCase
 
+
 class ModelTests(TestCase):
-
-
 
     def createTestNodes(self, parentNode: TreeNode,
                         rows: int = 2,
@@ -23,7 +24,7 @@ class ModelTests(TestCase):
 
         to_add = []
         for row in range(rows):
-            node = TreeNode(name=f'Node {pDepth}/{row+1}')
+            node = TreeNode(name=f'Node {pDepth}/{row + 1}')
             if pDepth == depth - 1:
                 node.setValues([f'{row}/{cols}' for c in range(cols)])
             to_add.append(node)
@@ -31,6 +32,36 @@ class ModelTests(TestCase):
         for node in to_add:
             self.createTestNodes(node, rows=rows, depth=depth, cols=cols)
         return parentNode
+
+    def test_pyObjectNodes(self):
+
+        m = TreeModel()
+        if True:
+            tv = TreeView()
+            tv.setAutoExpansionDepth(15)
+        else:
+            tv = QTreeView()
+
+
+
+        root = m.rootNode()
+
+
+        DATA = {'AAA':
+                {'B1': root,
+                 'B2': {'DDD': root},
+                 'NP': np.arange(256),
+                 'M': m},
+                'CA': QgsMapCanvas(),
+                }
+
+        objNode = PyObjectTreeNode('DATA', obj=DATA)
+
+        n = TreeNode('TOP')
+        n.appendChildNodes(objNode)
+        root.appendChildNodes(n)
+        tv.setModel(m)
+        self.showGui(tv)
 
     def test_treeNode(self):
 
@@ -119,7 +150,7 @@ class ModelTests(TestCase):
         n = 5
         parent = TM.rootNode()
         for i in range(n):
-            n = TreeNode(name='Node {}'.format(i + 1), value=i+1)
+            n = TreeNode(name='Node {}'.format(i + 1), value=i + 1)
             parent.appendChildNodes(n)
             self.assertTrue(n.parentNode() == parent)
             nodes.append(n)
@@ -176,7 +207,6 @@ class ModelTests(TestCase):
         TM.rootNode().appendChildNodes([n2])
 
         if True:
-
             n2 = TreeNode(name='mod. spanned', value=1)
             TM.rootNode().appendChildNodes(n2)
             n2.setValue(None)
