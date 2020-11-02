@@ -681,10 +681,12 @@ class PyObjectTreeNode(TreeNode):
                 self.setValue(value)
             """
         else:
-            value = type(obj).__name__
-            if value == 'enumtype':
-                s = ""
+            if hasattr(obj, '__name__'):
+                value = obj.__name__
+            else:
+                value = type(obj).__name__
             self.setValue(value)
+            self.setToolTip(f'{self.name()} {str(obj)}')
 
     def canFetchMore(self) -> bool:
         return self.mFetched is False
@@ -1231,10 +1233,31 @@ class TreeView(QTreeView):
             if idx2.isValid():
                 txt = idx2.data(Qt.DisplayRole)
                 spanned = txt in [None, '']
+                if spanned:
+                    print(f'set spanned:: {idx.data(Qt.DisplayRole)}')
                 self.setFirstColumnSpanned(r, parent, spanned)
 
             self.setColumnSpan(idx, None, None)
         return
+
+        """
+        assert isinstance(idx, QModelIndex)
+        if not idx.isValid():
+            return
+
+        row = idx.row()
+        nRows = self.model().rowCount(idx)
+        node = self.model().data(idx, role=Qt.UserRole)
+        if isinstance(node, TreeNode):
+            span = len(node.values()) == 0
+            if span == True and node.value() != None:
+                s = ""
+            self.setFirstColumnSpanned(idx.row(), idx.parent(), span)
+
+            for row in range(self.model().rowCount(idx)):
+                idx2 = self.model().index(row, 0, idx)
+                self.setColumnSpan(idx2)
+        """
 
     def selectedNode(self) -> TreeNode:
         """
