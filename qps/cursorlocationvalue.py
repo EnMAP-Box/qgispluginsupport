@@ -118,7 +118,7 @@ class CursorLocationInfoModel(TreeModel):
         if isinstance(sourceValueSet, RasterValueSet):
 
             root = TreeNode(bn)
-            root.setIcon(QIcon(':/qps/ui/icons/raster.svg'))
+            root.setIcon(QIcon(':/images/themes/default/mIconRasterLayer.svg'))
 
             # add subnodes
             pxNode = TreeNode(name='Pixel')

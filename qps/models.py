@@ -1233,8 +1233,8 @@ class TreeView(QTreeView):
             if idx2.isValid():
                 txt = idx2.data(Qt.DisplayRole)
                 spanned = txt in [None, '']
-                if spanned:
-                    print(f'set spanned:: {idx.data(Qt.DisplayRole)}')
+                #if spanned:
+                #    print(f'set spanned:: {idx.data(Qt.DisplayRole)}')
                 self.setFirstColumnSpanned(r, parent, spanned)
 
             self.setColumnSpan(idx, None, None)
