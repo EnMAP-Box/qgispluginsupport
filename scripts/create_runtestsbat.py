@@ -1,5 +1,8 @@
-import os, sys, pathlib
+import os
+import pathlib
+
 from qps.utils import file_search
+
 DIR_REPO = pathlib.Path(__file__).parents[1]
 DIR_TESTS = DIR_REPO / 'tests'
 
