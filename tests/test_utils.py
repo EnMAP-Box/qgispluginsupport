@@ -120,13 +120,16 @@ class TestUtils(TestCase):
 
         lyr = TestObjects.createRasterLayer()
         paths = [lyr.source(),
-                 r'J:\diss_bj\level2\s-america\X0048_Y0029\20160624_LEVEL2_SEN2A_BOA.tif',
-                 r'J:\diss_bj\level2\s-america\X0048_Y0029\20180721_LEVEL2_LND08_BOA.tif',
+                 r'J:\diss_bj\level2\s-america\X0048_Y0027\20140608_LEVEL2_LND08_BOA.tif',
                  ]
         for p in paths:
-            if os.path.isfile(p):
-                ds = gdal.Open(p)
-                self.assertIsInstance(ds, gdal.Dataset)
+            ds = None
+            try:
+                ds = gdalDataset(p)
+            except:
+                pass
+
+            if isinstance(ds, gdal.Dataset):
                 wl, wlu = parseWavelength(ds)
                 self.assertIsInstance(wl, np.ndarray)
                 self.assertTrue(len(wl), ds.RasterCount)
