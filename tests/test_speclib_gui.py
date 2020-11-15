@@ -87,7 +87,8 @@ class TestSpeclibWidgets(TestCase):
     def test_PyQtGraphPlot(self):
         import qps.externals.pyqtgraph as pg
         # pg.systemInfo()
-
+        from qps import registerMapLayerConfigWidgetFactories
+        registerMapLayerConfigWidgetFactories()
         plotWidget = pg.plot(title="Three plot curves")
 
         item1 = pg.PlotItem(x=[1, 2, 3], y=[2, 3, 4], color='white')
