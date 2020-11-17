@@ -2798,8 +2798,9 @@ class SpectralLibrary(QgsVectorLayer):
         if path is None:
             path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'),
                                                        caption='Save Spectral Library',
-                                                       directory=QgsFileUtils.stringToSafeFilename(self.name()),
-                                                       filter=FILTERS)
+                                                       directory=QgsFileUtils.stringToSafeFilename(self.name()+'.gpkg'),
+                                                       filter=FILTERS,
+                                                       initialFilter='Geopackage (*.gpkg)')
 
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
