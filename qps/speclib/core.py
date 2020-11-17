@@ -2817,7 +2817,8 @@ class SpectralLibrary(QgsVectorLayer):
 
             elif ext in ['.json', '.geojson', '.geojsonl', '.csv', '.gpkg']:
                 return VectorSourceSpectralLibraryIO.write(self, path, **kwds)
-
+            else:
+                raise Exception(f'Filetype not supported: {path}')
         return []
 
     def spectralValueFields(self) -> typing.List[QgsField]:
