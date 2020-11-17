@@ -143,6 +143,30 @@ class TestSpeclibWidgets(TestCase):
         w2 = pdi.plot()
         self.showGui([w1])
 
+    def test_SpectralLibraryPlotTemporalProfiles(self):
+
+        speclib = SpectralLibrary()
+
+        sp1 = SpectralProfile()
+        sp1.setName('with Date[dateimte64]')
+        xvalues = np.datetime64('2012-08-15') + np.arange(10)
+        yvalues = np.arange(10)
+        sp1.setValues(x=xvalues, y=yvalues, xUnit='Date')
+
+        sp2 = SpectralProfile()
+        sp2.setName('with DOY')
+        sp2.setValues(x=[230, 240], y=[3,2], xUnit='DOY')
+
+        sp3 = SpectralProfile()
+        sp3.setName('with Nanometers')
+        sp3.setValues(x=[340, 380], y=[4, 4], xUnit='nm')
+
+        self.assertTrue(speclib.startEditing())
+        speclib.addProfiles([sp1, sp2, sp3])
+        self.assertTrue(speclib.commitChanges())
+        w = SpectralLibraryWidget(speclib=speclib)
+        self.showGui(w)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidget(self):
 
