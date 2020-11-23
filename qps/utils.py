@@ -1607,6 +1607,13 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
     :return: (wl, wl_u) or (None, None), if not existing
     """
 
+    def sort_domains(domains) -> typing.List[str]:
+        if not isinstance(domains, list):
+            domains = []
+
+        return sorted(domains, key=lambda n: n != ['ENVI'])
+
+
     try:
         dataset = gdalDataset(dataset)
     except AssertionError:
@@ -1614,31 +1621,29 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
 
     if isinstance(dataset, gdal.Dataset):
         # 1. check on raster level
-        domains = dataset.GetMetadataDomainList()
-        if isinstance(domains, list):
-            for domain in domains:
-                # see http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for supported wavelength units
+        for domain in sort_domains(dataset.GetMetadataDomainList()):
+            # see http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for supported wavelength units
 
-                mdDict = dataset.GetMetadata_Dict(domain)
+            mdDict = dataset.GetMetadata_Dict(domain)
 
-                domainWLU: str = None
-                domainWL: np.ndarray = None
-                # search domain
-                for key, values in mdDict.items():
-                    if domainWL is None:
-                        domainWL = checkWavelength(key, values, expected=dataset.RasterCount)
-                    if domainWLU is None:
-                        domainWLU = checkWavelengthUnit(key, values)
+            domainWLU: str = None
+            domainWL: np.ndarray = None
+            # search domain
+            for key, values in mdDict.items():
+                if domainWL is None:
+                    domainWL = checkWavelength(key, values, expected=dataset.RasterCount)
+                if domainWLU is None:
+                    domainWLU = checkWavelengthUnit(key, values)
 
-                if isinstance(domainWL, np.ndarray) and isinstance(domainWLU, str):
-                    if domain == 'FORCE' and domainWLU == 'DecimalYear':
-                        # make decimal-year values leap-year sensitive
-                        domainWL = convertDateUnit(datetime64(domainWL, dpy=365), 'DecimalYear')
+            if isinstance(domainWL, np.ndarray) and isinstance(domainWLU, str):
+                if domain == 'FORCE' and domainWLU == 'DecimalYear':
+                    # make decimal-year values leap-year sensitive
+                    domainWL = convertDateUnit(datetime64(domainWL, dpy=365), 'DecimalYear')
 
-                    if len(domainWL) > dataset.RasterCount:
-                        domainWL = domainWL[0:dataset.RasterCount]
+                if len(domainWL) > dataset.RasterCount:
+                    domainWL = domainWL[0:dataset.RasterCount]
 
-                    return domainWL, domainWLU
+                return domainWL, domainWLU
 
         # 2. check on band level. collect wl from each single band
         # first domain that defines wl and wlu is prototyp domain for all other bands
@@ -1652,29 +1657,27 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
         for b in range(dataset.RasterCount):
             band: gdal.Band = dataset.GetRasterBand(b + 1)
             if b == 0:
-                domains = band.GetMetadataDomainList()
-                if isinstance(domains, list):
-                    for domain in domains:
-                        # see http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for supported wavelength units
-                        domainWL = domainWLU = None
+                for domain in sort_domains(band.GetMetadataDomainList()):
+                    # see http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for supported wavelength units
+                    domainWL = domainWLU = None
 
-                        mdDict = band.GetMetadata_Dict(domain)
+                    mdDict = band.GetMetadata_Dict(domain)
 
-                        for key, values in mdDict.items():
-                            if domainWLU is None:
-                                domainWLU = checkWavelengthUnit(key, values)
-                                if domainWLU:
-                                    wluKey = key
+                    for key, values in mdDict.items():
+                        if domainWLU is None:
+                            domainWLU = checkWavelengthUnit(key, values)
+                            if domainWLU:
+                                wluKey = key
 
-                            if domainWL is None:
-                                domainWL = checkWavelength(key, values, expected=1)
-                                if isinstance(domainWL, np.ndarray):
-                                    wlKey = key
+                        if domainWL is None:
+                            domainWL = checkWavelength(key, values, expected=1)
+                            if isinstance(domainWL, np.ndarray):
+                                wlKey = key
 
-                        if isinstance(domainWL, np.ndarray) and isinstance(domainWLU, str):
-                            wlDomain = domain
-                            wlu = domainWLU
-                            wl.append(domainWL[0])
+                    if isinstance(domainWL, np.ndarray) and isinstance(domainWLU, str):
+                        wlDomain = domain
+                        wlu = domainWLU
+                        wl.append(domainWL[0])
 
                 if len(wl) == 0:
                     # we did not found a WL + WLU for the 1st band. stop searching and return
