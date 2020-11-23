@@ -1342,7 +1342,7 @@ def days_per_year(year):
     1. If the year is evenly divisible by 4, go to step 2. Otherwise, False.
     2. If the year is evenly divisible by 100, go to step 3. Otherwise, False
     3. If the year is evenly divisible by 400, True Otherwise, False
-    
+
     """
     """
     Every year that is exactly divisible by four is a leap year, except for years that are exactly divisible by 100, 
@@ -1554,7 +1554,7 @@ def parseFWHM(dataset) -> typing.Tuple[np.ndarray]:
 
 def checkWavelength(key: str, values: str, expected: int = 1) -> np.ndarray:
     wl: np.ndarray = None
-    if re.search(r'^wavelengths?$', key, re.I):
+    if re.search(r'^(center[ _]*)?wavelengths?$', key, re.I):
         # remove trailing / ending { } and whitespace
         values = re.sub('[{}]', '', values).strip()
         if ',' not in values:
@@ -1568,6 +1568,7 @@ def checkWavelength(key: str, values: str, expected: int = 1) -> np.ndarray:
         except Exception as ex:
             pass
     return wl
+
 
 def checkWavelengthUnit(key: str, value: str) -> str:
     wlu: str = None
@@ -1642,11 +1643,11 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
         # 2. check on band level. collect wl from each single band
         # first domain that defines wl and wlu is prototyp domain for all other bands
 
-        wl = [] # list of wavelength values
-        wlu: str = None # wavelength unit string
-        wlDomain: str = None # the domain in which the WL and WLU are defined
-        wlKey: str = None # key that stores the wavelength value
-        wluKey: str = None # key that stores the wavelength unit
+        wl = []  # list of wavelength values
+        wlu: str = None  # wavelength unit string
+        wlDomain: str = None  # the domain in which the WL and WLU are defined
+        wlKey: str = None  # key that stores the wavelength value
+        wluKey: str = None  # key that stores the wavelength unit
 
         for b in range(dataset.RasterCount):
             band: gdal.Band = dataset.GetRasterBand(b + 1)
@@ -1698,7 +1699,6 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
         return wl, wlu
     else:
         return None, None
-
 
 
 class Singleton(type):
