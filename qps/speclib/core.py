@@ -2776,8 +2776,13 @@ class SpectralLibrary(QgsVectorLayer):
             dsDst.SetProjection(fakeProjection.ExportToWkt())
             # north-up project, 1 px above equator, starting at 0°, n pixels = n profiles towards east
             dsDst.SetGeoTransform([0.0, 1.0, 0.0, 1.0, 0.0, -1.0])
+            xvalue_string = ','.join(f'{v}' for v in xValues)
             dsDst.SetMetadataItem('wavelength units', xUnit)
-            dsDst.SetMetadataItem('wavelength', ','.join(f'{v}' for v in xValues))
+            dsDst.SetMetadataItem('wavelength', xvalue_string)
+            # backward compatibility for stupid algorithms
+            dsDst.SetMetadataItem('wavelength units', xUnit, 'ENVI')
+            dsDst.SetMetadataItem('wavelength', f'{{{xvalue_string}}}', 'ENVI')
+
             dsDst.FlushCache()
             imageFiles.append(pathDst)
             del dsDst

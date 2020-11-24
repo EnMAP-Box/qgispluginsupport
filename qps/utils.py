@@ -1613,9 +1613,7 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
     def sort_domains(domains) -> typing.List[str]:
         if not isinstance(domains, list):
             domains = []
-
         return sorted(domains, key=lambda n: n != ['ENVI'])
-
 
     try:
         dataset = gdalDataset(dataset)
