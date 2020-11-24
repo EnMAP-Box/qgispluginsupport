@@ -2433,7 +2433,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.btnShowProperties = QToolButton()
         self.btnShowProperties.setAutoRaise(True)
         self.btnShowProperties.setDefaultAction(self.actionShowProperties)
-
+        
+        self.tbSpeclibAction.addAction(self.actionShowProperties)
         self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
                                              self.btnShowProperties)
 
