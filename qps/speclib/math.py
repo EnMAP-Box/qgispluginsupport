@@ -48,6 +48,9 @@ class AbstractSpectralMathFunction(QObject):
     def _unpack(*args) -> typing.Tuple[SpectralMathResult, QgsFeature]:
         assert len(args) >= 1
         f = None
+        if isinstance(args[-1], QgsFeature):
+            f = args[-1]
+
         if isinstance(args[0], SpectralProfile):
             sp: SpectralProfile = args[0]
             x = sp.xValues()
@@ -55,6 +58,8 @@ class AbstractSpectralMathFunction(QObject):
             x_unit = sp.xUnit()
             y_unit = sp.yUnit()
             f = sp
+        elif isinstance(args[0], SpectralMathResult):
+            return args[0], f
         elif len(args) == 4:
             x, y, x_unit, y_unit = args
         elif len(args) >= 5:
@@ -82,6 +87,8 @@ class AbstractSpectralMathFunction(QObject):
 
     def icon(self) -> QIcon:
         return self.mIcon
+
+    sigChanged = pyqtSignal()
 
     def createWidget(self) -> QWidget:
         """
@@ -132,7 +139,11 @@ class GenericSpectralMathFunction(AbstractSpectralMathFunction):
         self.mExpression = None
 
     def setExpression(self, expression:str):
+        changed = expression != self.mExpression
         self.mExpression = expression
+
+        if changed:
+            self.sigChanged.emit()
 
     def apply(self, spectralMathResult:SpectralMathResult, feature:QgsFeature) -> SpectralMathResult:
 
@@ -150,10 +161,13 @@ class GenericSpectralMathFunction(AbstractSpectralMathFunction):
         editor = QgsCodeEditorPython()
         editor.setTitle(self.name())
         editor.setText(self.mExpression)
+        editor.textChanged.connect(lambda *args, e=editor: self.setExpression(e.text()))
         return editor
 
 
 class SpectralMathFunctionModel(QAbstractTableModel):
+
+    sigChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
         super(SpectralMathFunctionModel, self).__init__(*args, **kwds)
@@ -166,7 +180,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
     def __len__(self):
         return len(self.mFunctions)
 
-    def validate(self, test: SpectralMathResult) ->  bool:
+    def validate(self, test: SpectralMathResult) -> bool:
 
         stack = self.functionStack()
         result = AbstractSpectralMathFunction.applyFunctionStack(stack, test)
@@ -174,7 +188,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         self.dataChanged.emit(
             self.createIndex(0, 0),
             self.createIndex(len(self)-1, 0),
-            roles=roles
+            roles
         )
         return isinstance(result, SpectralMathResult)
 
@@ -197,6 +211,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         self.beginInsertRows(QModelIndex(), i0, i1)
         i = i0
         for i, f in enumerate(functions):
+            f.sigChanged.connect(self.sigChanged)
             self.mFunctions.insert(i0 + i, f)
         self.endInsertRows()
 
@@ -289,7 +304,7 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
 
         self.mFunctionModel = SpectralMathFunctionModel()
         self.mFunctionModel.addFunction(GenericSpectralMathFunction())
-
+        self.mFunctionModel.sigChanged.connect(self.validate)
         self.mTableView: SpectralMathFunctionTableView
         self.mTableView.setModel(self.mFunctionModel)
         self.mTableView.selectionModel().currentChanged.connect(self.onCurrentChanged)
@@ -323,7 +338,7 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
         return stack
 
     def validate(self) -> bool:
-        test = SpectralMathResult(x=[1,2], y=[1,2], x_unit='nm', y_unit='')
+        test = SpectralMathResult(x=[1, 2], y=[1, 2], x_unit='nm', y_unit='')
 
         return self.mFunctionModel.validate(test)
 

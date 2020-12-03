@@ -40,6 +40,6 @@ class SpectralMathTests(TestCase):
     def test_spectralMathWidget(self):
 
         w = SpectralMathWidget()
-        w.mFunctionModel.addFunction(GenericSpectralMathFunction())
+        #w.mFunctionModel.addFunction(GenericSpectralMathFunction())
         self.assertIsInstance(w, QWidget)
         self.showGui(w)
