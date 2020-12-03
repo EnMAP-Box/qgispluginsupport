@@ -52,6 +52,8 @@ from qgis.gui import \
     QgsDualView, QgsGui, QgisInterface, QgsMapCanvas, QgsDockWidget, QgsEditorConfigWidget, \
     QgsAttributeTableFilterModel, QgsFieldExpressionWidget
 
+from .math import AbstractSpectralMathFunction, SpectralMathResult, XUnitConversion
+
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
@@ -283,6 +285,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.scatter.sigClicked.connect(self.onScatterMouseClicked)
 
         self.mValueConversionIsPossible: bool = True
+        self.mSpectralMathStack: typing.List[AbstractSpectralMathFunction] = []
         self.mXValueConversionFunction = lambda v, *args: v
         self.mYValueConversionFunction = lambda v, *args: v
         self.mSortByXValues: bool = False
@@ -372,35 +375,60 @@ class SpectralProfilePlotDataItem(PlotDataItem):
     def spectralProfile(self) -> SpectralProfile:
         """
         Returns the SpectralProfile
-        :return: SpectralPrrofile
+        :return: SpectralProfile
         """
         return self.mProfile
 
-    def setMapFunctionX(self, func):
-        """
-        Sets the function `func` to get the values to be plotted on x-axis.
-        The function must have the pattern mappedXValues = func(originalXValues, SpectralProfilePlotDataItem),
-        The default function `func = lambda v, *args : v` returns the unchanged x-values in `v`
-        The returned value can by of type list or np.ndarray (preferred)
-        :param func: callable, mapping function
-        """
-        assert callable(func)
-        self.mXValueConversionFunction = func
+    def setSpectralMathStack(self, functionStack):
+        assert isinstance(functionStack, list)
+        self.mSpectralMathStack = functionStack
 
-    def setMapFunctionY(self, func):
-        """
-        Sets the function `func` to get the values to be plotted on y-axis.
-        The function must follow the pattern mappedYValues = func(originalYValues, plotDataItem),
-        The default function `func = lambda v, *args : v` returns the unchanged y-values in `v`
-        The second argument `plotDataItem` provides a handle to SpectralProfilePlotDataItem instance which uses this
-        function when running its `.applyMapFunctions()`.
-        The returned value can by of type list or np.ndarray (preferred)
-        :param func: callable, mapping function
-        """
-        assert callable(func)
-        self.mYValueConversionFunction = func
+    def applySpectralMath(self) -> bool:
+        result = AbstractSpectralMathFunction.applyFunctionStack(self.mSpectralMathStack, self.spectralProfile())
+        if not isinstance(result, SpectralMathResult):
+            self.setVisible(False)
+            return False
+
+        x, y, x_unit, y_unit = result
+
+        # handle failed removal of NaN
+        # see https://github.com/pyqtgraph/pyqtgraph/issues/1057
+
+        # 1. convert to numpy arrays
+        if not isinstance(y, np.ndarray):
+            y = np.asarray(y, dtype=np.float)
+        if not isinstance(x, np.ndarray):
+            x = np.asarray(x)
+
+        if self.mSortByXValues:
+            idx = np.argsort(x)
+            x = x[idx]
+            y = y[idx]
+
+        is_finite = np.isfinite(y)
+        connected = np.logical_and(is_finite, np.roll(is_finite, -1))
+        keep = is_finite + connected
+        # y[np.logical_not(is_finite)] = np.nanmin(y)
+        y = y[keep]
+        x = x[keep]
+        connected = connected[keep]
+
+        # convert date units to float with decimal year and second precision
+        if isinstance(x[0], (datetime.datetime, datetime.date, datetime.time, np.datetime64)):
+            x = convertDateUnit(datetime64(x), 'DecimalYear')
+
+        if isinstance(y[0], (datetime.datetime, datetime.date, datetime.time, np.datetime64)):
+            y = convertDateUnit(datetime64(y), 'DecimalYear')
+
+        self.setData(x=x, y=y, connect=connected)
+        self.setVisible(True)
+
+        return True
 
     def applyMapFunctions(self) -> bool:
+        warnings.warn('Use applySpectralMath', DeprecationWarning)
+        return self.applySpectralMath()
+
         """
         Applies the two functions defined with `.setMapFunctionX` and `.setMapFunctionY` and updates the plotted values.
         :return: bool, True in case of success
@@ -841,6 +869,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # describe functions to convert wavelength units from unit a to unit b
         self.mUnitConverter = UnitConverterFunctionModel()
+        self.mXUnitMathFunc = XUnitConversion(self.xUnit())
+        self.mSpectralMathStack: typing.List[AbstractSpectralMathFunction] = [self.mXUnitMathFunc]
 
         self.mPlotDataItems: typing.List[typing.Tuple[int, str], SpectralProfilePlotDataItem] = dict()
         self.mPlotOverlayItems = []
@@ -1373,12 +1403,16 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 label = 'Date [{}]'.format(unit)
 
         self.mXAxis.setUnit(unit, label)
-
+        self.mXUnitMathFunc.setTargetUnit(unit)
         # update x values
+        self.updateSpectralMath()
+
+    def updateSpectralMath(self):
         pdis = self.allSpectralProfilePlotDataItems()
+        stack = self.spectralMathStack()
         for pdi in pdis:
-            pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, unit))
-            pdi.applyMapFunctions()
+            pdi.setSpectralMathStack(stack)
+            pdi.applySpectralMath()
 
     def updateSpectralProfilePlotItems(self):
         pi = self.getPlotItem()
@@ -1419,9 +1453,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setProfileSource(self.speclib())
                 pdi.setClickable(True)
                 pdi.setVisible(True)
-                pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, self.xUnit()))
+                pdi.setSpectralMathStack(self.spectralMathStack())
+                # pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, self.xUnit()))
                 pdi.mSortByXValues = sort_x_values
-                pdi.applyMapFunctions()
+                pdi.applySpectralMath()
                 pdi.sigProfileClicked.connect(self.onProfileClicked)
                 if pdi.valueConversionPossible():
                     new_pdis.append(pdi)
@@ -1454,10 +1489,28 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if len(keys_new) > 0 or len(keys_to_remove) > 0 or len(key_to_update_style) > 0:
             pi.update()
 
+    def spectralMathStack(self) -> typing.List[AbstractSpectralMathFunction]:
+        return self.mSpectralMathStack
+
+    def setSpectralMathStack(self, stack):
+        assert isinstance(stack, list)
+        for f in stack:
+            assert isinstance(f, AbstractSpectralMathFunction)
+        stack = stack[:]
+        # set unit converter to 1st position of function stack
+        if self.mXUnitMathFunc not in stack:
+            stack.insert(0, self.mXUnitMathFunc)
+        else:
+            stack.insert(0, stack.pop(self.mXUnitMathFunc))
+        self.mSpectralMathStack = stack
+        self.updateSpectralMath()
+
     def resetSpectralProfiles(self):
         for pdi in self.spectralProfilePlotDataItems():
             assert isinstance(pdi, SpectralProfilePlotDataItem)
             pdi.resetSpectralProfile()
+
+
 
     def spectralProfilePlotDataItem(self,
                                     fid: typing.Union[int, QgsFeature, SpectralProfile]) -> SpectralProfilePlotDataItem:
@@ -2350,10 +2403,15 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mStatusLabel.setPlotWidget(self.mPlotWidget)
         self.mPlotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
+        from .math import SpectralMathWidget
+        self.mMathWidget: SpectralMathWidget = SpectralMathWidget()
+        self.mMathWidget.sigSpectralMathChanged.connect(
+            lambda *args: self.mPlotWidget.setSpectralMathStack(self.mMathWidget.spectralMathStack()))
         l = QVBoxLayout()
         l.addWidget(self.mPlotWidget)
+        l.addWidget(self.mMathWidget)
         l.setContentsMargins(0, 0, 0, 0)
-        l.setSpacing(0)
+        l.setSpacing(2)
         self.widgetRight.setLayout(l)
         self.widgetRight.setVisible(True)
 

@@ -131,7 +131,7 @@ class UnitConverterFunctionModel(object):
 
     def __init__(self):
 
-        # look-up table with functions to conver from unit1 to unit2, with unit1 != unit2 and
+        # look-up table with functions to convert from unit1 to unit2, with unit1 != unit2 and
         # unit1 != None and unit2 != None
         self.mLUT = dict()
 
