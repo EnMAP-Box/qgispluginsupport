@@ -2,12 +2,14 @@ import collections
 import typing
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QPlainTextEdit, QWidget, QTableView
+
+from qgis.PyQt.QtWidgets import QPlainTextEdit, QWidget, QTableView, QLabel, QComboBox, \
+    QHBoxLayout, QVBoxLayout, QSpacerItem, QMenu, QAction, QToolButton, QGridLayout
 from qgis.core import QgsFeature
 from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython
 import numpy as np
 from .core import SpectralLibrary, SpectralProfile, speclibUiPath
-from ..unitmodel import UnitConverterFunctionModel
+from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
 from ..utils import loadUi
 
 SpectralMathResult = collections.namedtuple('SpectralMathResult', ['x', 'y', 'x_unit', 'y_unit'])
@@ -76,17 +78,29 @@ class AbstractSpectralMathFunction(QObject):
             name = self.__class__.__name__
         self.mError = None
         self.mName: str = name
-        self.mHelp: str = ''
+        self.mHelp: str = None
         self.mIcon: QIcon = None
+        self.mToolTip: str = None
+
+    def id(self):
+        self.__class__.__name__()
 
     def name(self) -> str:
         return self.mName
+
+    def setName(self, name:str):
+        assert isinstance(name, str)
+        assert len(name) > 0
+        self.mName = name
 
     def help(self) -> str:
         return self.mHelp
 
     def icon(self) -> QIcon:
         return self.mIcon
+
+    def toolTip(self) -> str:
+        return self.mToolTip
 
     sigChanged = pyqtSignal()
 
@@ -112,16 +126,37 @@ class AbstractSpectralMathFunction(QObject):
 
 class XUnitConversion(AbstractSpectralMathFunction):
 
-    def __init__(self, x_unit:str):
-
+    def __init__(self, x_unit:str=BAND_INDEX, x_unit_model:XUnitModel=None):
+        super().__init__()
         self.mTargetUnit = x_unit
         self.mUnitConverter = UnitConverterFunctionModel()
+
+        if not isinstance(x_unit_model, XUnitModel):
+            x_unit_model = XUnitModel()
+        self.mUnitModel = x_unit_model
 
     def unitConverter(self) -> UnitConverterFunctionModel:
         return self.mUnitConverter
 
     def setTargetUnit(self, unit:str):
         self.mTargetUnit = unit
+
+    def createWidget(self) -> QWidget:
+
+        w = QWidget()
+        l = QGridLayout()
+        l.addWidget(QLabel('X Unit'), 0, 0)
+
+        cb = QComboBox()
+        cb.setModel(self.mUnitModel)
+        cb.currentIndexChanged[str].connect(self.setTargetUnit)
+
+        idx = self.mUnitModel.unitIndex(self.mTargetUnit)
+        if idx.isValid():
+            cb.setCurrentIndex(idx.row())
+        l.addWidget(cb, 0, 1)
+        w.setLayout(l)
+        return w
 
     def apply(self, result:SpectralMathResult, feature: QgsFeature) -> SpectralMathResult:
 
@@ -131,6 +166,7 @@ class XUnitConversion(AbstractSpectralMathFunction):
             return SpectralMathResult(x=x, y=result.y, x_unit=self.mTargetUnit, y_unit=result.y_unit)
         else:
             return None
+
 
 class GenericSpectralMathFunction(AbstractSpectralMathFunction):
 
@@ -146,15 +182,20 @@ class GenericSpectralMathFunction(AbstractSpectralMathFunction):
             self.sigChanged.emit()
 
     def apply(self, spectralMathResult:SpectralMathResult, feature:QgsFeature) -> SpectralMathResult:
-
-        values = spectralMathResult._asdict()
         self.mError = None
-        try:
-            exec(self.mExpression, values)
-            return SpectralMathResult(x=values['x'], y=values['y'], x_unit=values['x_unit'], y_unit=values['y_unit'] )
-        except Exception as ex:
-            self.mError = str(ex)
-        return None
+
+        if self.mExpression:
+            values = spectralMathResult._asdict()
+
+            try:
+                exec(self.mExpression, values)
+                return SpectralMathResult(x=values['x'], y=values['y'], x_unit=values['x_unit'], y_unit=values['y_unit'] )
+            except Exception as ex:
+                self.mError = str(ex)
+                return None
+        else:
+            return spectralMathResult
+
 
     def createWidget(self) -> QgsCodeEditorPython:
 
@@ -173,9 +214,12 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         super(SpectralMathFunctionModel, self).__init__(*args, **kwds)
 
         self.mFunctions: typing.List[AbstractSpectralMathFunction] = []
-        self.mIsEnabled: typing.Dict[str, bool] = dict()
+        self.mIsEnabled: typing.Dict[AbstractSpectralMathFunction, bool] = dict()
 
-        self.mColumnNames = ['Function']
+        self.mColumnNames = ['Steps']
+
+    def __iter__(self):
+        return iter(self.mFunctions)
 
     def __len__(self):
         return len(self.mFunctions)
@@ -183,6 +227,9 @@ class SpectralMathFunctionModel(QAbstractTableModel):
     def validate(self, test: SpectralMathResult) -> bool:
 
         stack = self.functionStack()
+        for f in self:
+            f.mError = None
+
         result = AbstractSpectralMathFunction.applyFunctionStack(stack, test)
         roles = [Qt.DecorationRole, Qt.ToolTipRole]
         self.dataChanged.emit(
@@ -196,13 +243,15 @@ class SpectralMathFunctionModel(QAbstractTableModel):
 
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             return self.mColumnNames[i]
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return f'{i+1}'
         return None
 
     def index(self, row:int, col:int, parent: QModelIndex=None):
         return self.createIndex(row, col, self.mFunctions[row])
 
     def functionStack(self) -> typing.List[AbstractSpectralMathFunction]:
-        return [f for f in self.mFunctions if self.mIsEnabled.get(f.name(), False)]
+        return [f for f in self.mFunctions if self.mIsEnabled.get(f, False)]
 
     def insertFunctions(self, index: int, functions: typing.Iterable[AbstractSpectralMathFunction]):
         n = len(functions)
@@ -213,17 +262,27 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         for i, f in enumerate(functions):
             f.sigChanged.connect(self.sigChanged)
             self.mFunctions.insert(i0 + i, f)
+            self.mIsEnabled[f] = True
         self.endInsertRows()
 
-    def addFunction(self, f: AbstractSpectralMathFunction):
-        self.insertFunctions(len(self), [f])
+    def addFunctions(self, functions):
+        if isinstance(functions, AbstractSpectralMathFunction):
+            functions = [functions]
+        for f in functions:
+            assert isinstance(f, AbstractSpectralMathFunction)
+        self.insertFunctions(len(self), functions)
 
-    def removeFunction(self, f: AbstractSpectralMathFunction):
-        if f in self.mFunctions:
-            i = self.mFunctions.index(f)
-
-            self.beginRemoveRows()
-            self.endRemoveRows()
+    def removeFunctions(self, functions):
+        if isinstance(functions, AbstractSpectralMathFunction):
+            functions = [functions]
+        for f in functions:
+            assert isinstance(f, AbstractSpectralMathFunction)
+        for f in functions:
+            if f in self.mFunctions:
+                i = self.mFunctions.index(f)
+                self.beginRemoveRows(QModelIndex(), i, i)
+                self.mFunctions.remove(f)
+                self.endRemoveRows()
 
     def rowCount(self, parent=None, *args, **kwargs):
         return len(self.mFunctions)
@@ -232,7 +291,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.NoItemFlags
 
-        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable
+        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable | Qt.ItemIsEditable
         return flags
 
     def columnCount(self, parent=None, *args, **kwargs):
@@ -246,9 +305,13 @@ class SpectralMathFunctionModel(QAbstractTableModel):
 
         changed = False
         if role == Qt.CheckStateRole and index.column() == 0:
-            self.mIsEnabled[f.name()] = value == Qt.Checked
+            self.mIsEnabled[f] = value == Qt.Checked
             changed = True
-
+        if role == Qt.EditRole and index.column() == 0:
+            name = str(value)
+            if len(name) > 0:
+                f.setName(name)
+                changed = True
         if changed:
             self.dataChanged.emit(index, index)
         return changed
@@ -260,6 +323,9 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         f: AbstractSpectralMathFunction = self.mFunctions[index.row()]
 
         if role == Qt.DisplayRole:
+            return f.name()
+
+        if role == Qt.EditRole:
             return f.name()
 
         if role == Qt.DecorationRole:
@@ -277,7 +343,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
                 return None
 
         if role == Qt.CheckStateRole:
-            if self.mIsEnabled.get(f.name()):
+            if self.mIsEnabled.get(f, False) == True:
                 return Qt.Checked
             else:
                 return Qt.Unchecked
@@ -303,26 +369,64 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
         loadUi(speclibUiPath('spectralmathwidget.ui'), self)
 
         self.mFunctionModel = SpectralMathFunctionModel()
-        self.mFunctionModel.addFunction(GenericSpectralMathFunction())
+        # self.mFunctionModel.addFunction(GenericSpectralMathFunction())
         self.mFunctionModel.sigChanged.connect(self.validate)
         self.mTableView: SpectralMathFunctionTableView
         self.mTableView.setModel(self.mFunctionModel)
-        self.mTableView.selectionModel().currentChanged.connect(self.onCurrentChanged)
+        self.mTableView.selectionModel().selectionChanged.connect(self.onSelectionChanged)
         #self.mLastExpression = None
         #self.mDefaultExpressionToolTip = self.tbExpression.toolTip()
         #self.tbExpression.textChanged.connect(self.validate)
         self.mTestProfile = QgsFeature()
         self.mCurrentFunction: AbstractSpectralMathFunction = None
 
-    def onCurrentChanged(self, idx1, idx2):
+        m = QMenu()
+        m.setToolTipsVisible(True)
+        a = m.addAction('Add X Unit Conversion')
+        a.triggered.connect(lambda *args: self.functionModel().addFunctions([XUnitConversion()]))
 
-        f = idx1.data(Qt.UserRole)
-        if isinstance(f, AbstractSpectralMathFunction) and self.mCurrentFunction != f:
+        a = m.addAction('Add Python Expression')
+        a.triggered.connect(lambda *args : self.functionModel().addFunctions([GenericSpectralMathFunction()]))
 
+        self.actionAddFunction.setMenu(m)
+        self.actionRemoveFunction.triggered.connect(self.onRemoveFunctions)
+
+        for tb in self.findChildren(QToolButton):
+            tb: QToolButton
+            a: QAction = tb.defaultAction()
+            if isinstance(a, QAction) and isinstance(a.menu(), QMenu):
+                tb.setPopupMode(QToolButton.MenuButtonPopup)
+
+
+    def functionModel(self) -> SpectralMathFunctionModel:
+        return self.mFunctionModel
+
+    def onRemoveFunctions(self, *args):
+
+        to_remove = set()
+        for idx in self.mTableView.selectedIndexes():
+            f = idx.data(Qt.UserRole)
+            if isinstance(f, AbstractSpectralMathFunction):
+                to_remove.add(f)
+
+        if len(to_remove) > 0:
+            self.functionModel().removeFunctions(list(to_remove))
+
+    def onSelectionChanged(self, selected, deselected):
+
+        self.actionRemoveFunction.setEnabled(selected.count() > 0)
+        current: QModelIndex = self.mTableView.currentIndex()
+        f = None
+        if current.isValid():
+            f = current.data(Qt.UserRole)
+
+        if f != self.mCurrentFunction:
+            wOld = self.scrollArea.takeWidget()
             self.mCurrentFunction = f
-            w = self.mCurrentFunction.createWidget()
-            self.scrollArea.setWidget(w)
 
+            if isinstance(f, AbstractSpectralMathFunction):
+                w = self.mCurrentFunction.createWidget()
+                self.scrollArea.setWidget(w)
 
     def tableView(self) -> SpectralMathFunctionTableView:
         return self.mTableView
@@ -340,8 +444,9 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
     def validate(self) -> bool:
         test = SpectralMathResult(x=[1, 2], y=[1, 2], x_unit='nm', y_unit='')
 
-        return self.mFunctionModel.validate(test)
+        b = self.mFunctionModel.validate(test)
 
+        return b
         expression: str = self.expression()
         self.mTestFunction.setExpression(expression)
 
