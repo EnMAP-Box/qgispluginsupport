@@ -653,7 +653,7 @@ class TreeNode(QObject):
         else:
             return parent.findParentNode(nodeType)
 
-    def findChildNodes(self, type, recursive=True):
+    def findChildNodes(self, type, recursive: bool =True):
         """
         Returns a list of child nodes with node-type `type`.
         :param type: node-class

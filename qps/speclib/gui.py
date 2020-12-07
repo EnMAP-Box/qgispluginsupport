@@ -52,7 +52,7 @@ from qgis.gui import \
     QgsDualView, QgsGui, QgisInterface, QgsMapCanvas, QgsDockWidget, QgsEditorConfigWidget, \
     QgsAttributeTableFilterModel, QgsFieldExpressionWidget
 
-from .math import AbstractSpectralMathFunction, SpectralMathResult, XUnitConversion
+from .math import SpectralMathFunction, SpectralMathResult, XUnitConversion
 
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
@@ -285,7 +285,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.scatter.sigClicked.connect(self.onScatterMouseClicked)
 
         self.mValueConversionIsPossible: bool = True
-        self.mSpectralMathStack: typing.List[AbstractSpectralMathFunction] = []
+        self.mSpectralMathStack: typing.List[SpectralMathFunction] = []
         self.mXValueConversionFunction = lambda v, *args: v
         self.mYValueConversionFunction = lambda v, *args: v
         self.mSortByXValues: bool = False
@@ -384,7 +384,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.mSpectralMathStack = functionStack
 
     def applySpectralMath(self) -> bool:
-        result = AbstractSpectralMathFunction.applyFunctionStack(self.mSpectralMathStack, self.spectralProfile())
+        result = SpectralMathFunction.applyFunctionStack(self.mSpectralMathStack, self.spectralProfile())
         if not isinstance(result, SpectralMathResult):
             self.setVisible(False)
             return False
@@ -870,7 +870,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         # describe functions to convert wavelength units from unit a to unit b
         self.mUnitConverter = UnitConverterFunctionModel()
         self.mXUnitMathFunc = XUnitConversion(self.xUnit())
-        self.mSpectralMathStack: typing.List[AbstractSpectralMathFunction] = [self.mXUnitMathFunc]
+        self.mSpectralMathStack: typing.List[SpectralMathFunction] = [self.mXUnitMathFunc]
 
         self.mPlotDataItems: typing.List[typing.Tuple[int, str], SpectralProfilePlotDataItem] = dict()
         self.mPlotOverlayItems = []
@@ -1489,13 +1489,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if len(keys_new) > 0 or len(keys_to_remove) > 0 or len(key_to_update_style) > 0:
             pi.update()
 
-    def spectralMathStack(self) -> typing.List[AbstractSpectralMathFunction]:
+    def spectralMathStack(self) -> typing.List[SpectralMathFunction]:
         return self.mSpectralMathStack
 
     def setSpectralMathStack(self, stack):
         assert isinstance(stack, list)
         for f in stack:
-            assert isinstance(f, AbstractSpectralMathFunction)
+            assert isinstance(f, SpectralMathFunction)
         stack = stack[:]
         # set unit converter to 1st position of function stack
         if self.mXUnitMathFunc not in stack:
