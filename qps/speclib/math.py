@@ -10,8 +10,12 @@ from qgis.PyQt.QtWidgets import QPlainTextEdit, QWidget, QTableView, QLabel, QCo
     QHBoxLayout, QVBoxLayout, QSpacerItem, QMenu, QAction, QToolButton, QGridLayout
 from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, \
     QgsRuntimeProfiler, QgsProcessingProvider, QgsProcessingParameterDefinition, QgsProcessingFeedback, \
-    QgsProcessingParameterType
-from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython
+    QgsProcessingParameterType, \
+     QgsProcessingParameterDefinition, QgsProcessingModelAlgorithm
+
+from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython, QgsProcessingParameterWidgetFactoryInterface, \
+    QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
+    QgsAbstractProcessingParameterWidgetWrapper, QgsProcessingParameterWidgetContext, QgsProcessingGui
 from processing import ProcessingConfig, Processing
 from processing.core.ProcessingConfig import Setting
 import numpy as np
@@ -26,7 +30,7 @@ MIMEFORMAT_SPECTRAL_MATH_FUNCTION = 'qps.speclib.math.spectralmathfunction'
 
 XML_SPECTRALMATHFUNCTION = 'SpectralMathFunction'
 
-class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
+class SpectralAlgorithmInputDefinition(QgsProcessingParameterDefinition):
 
     def __init__(self, name='', description='', optional:bool=False):
         super().__init__(name, description=description, optional=optional)
@@ -39,7 +43,6 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
         self.mX = None
         self.mY = None
 
-
     def isDestination(self):
         return False
 
@@ -47,20 +50,21 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
         return 'spetral_profile'
 
     def clone(self):
-        return SpectralAlgorithmInput()
+        return SpectralAlgorithmInputDefinition()
 
     def description(self):
         return 'the spectral profile'
 
     def isDynamic(self):
         return True
+
     def toolTip(self):
         return 'The spectral profile'
 
     def toVariantMap(self):
         result = {
-            'x':self.mX,
-            'y':self.mY
+            'x': self.mX,
+            'y': self.mY
         }
         return result
 
@@ -87,7 +91,7 @@ class SpectralAlgorithmInputType(QgsProcessingParameterType):
         return 'Spectral Profiles'
 
     def create(self, name):
-        p = SpectralAlgorithmInput(name=name)
+        p = SpectralAlgorithmInputDefinition(name=name)
 
         self.mRefs.append(p)
 
@@ -111,6 +115,28 @@ class SpectralAlgorithmInputType(QgsProcessingParameterType):
     def pythonImportString(self):
         return 'from qps.speclib.math import SpectralAlgorithmInputType'
 
+
+class SpectralAlgorithmInputDefinitionWidget(QgsProcessingAbstractParameterDefinitionWidget):
+
+    def __init__(self, context: QgsProcessingContext, widgetContext:QgsProcessingParameterWidgetContext,
+                 definition: QgsProcessingParameterDefinition = None,
+                 algorithm: QgsProcessingAlgorithm = None,
+                 parent: QWidget = None):
+
+        super().__init__(context, widgetContext, definition, algorithm, parent)
+        self.mContext= context
+        self.mDefinition = definition
+        self.mAlgorithm = algorithm
+        l = QVBoxLayout()
+        self.mL = QLabel('Input Widget')
+        l.addWidget(self.mL)
+        self.mLayout = l
+        self.setLayout(l)
+    def createParameter(self, name:str, description:str, flags) -> SpectralAlgorithmInputDefinition:
+
+        param = SpectralAlgorithmInputDefinition(name, description=description)
+        param.setFlags(flags)
+        return param
 
 class SpectralAlgorithm(QgsProcessingAlgorithm):
 
@@ -193,7 +219,7 @@ class SpectralAlgorithm(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, configuration:dict):
 
-        self.addParameter(SpectralAlgorithmInput())
+        self.addParameter(SpectralAlgorithmInputDefinition())
 
         from qgis.core import QgsProcessingParameterNumber, QgsProcessingParameterString
         """
@@ -398,77 +424,35 @@ class GenericSpectralAlgorithm(SpectralAlgorithm):
         editor.textChanged.connect(lambda *args, e=editor: self.setExpression(e.text()))
         return editor
 
-class SpectralMathFunctionNode(TreeNode):
+class SpectralMathParameterWidgetFactory(QgsProcessingParameterWidgetFactoryInterface):
 
-    def __init__(self, function: SpectralAlgorithm, *args, **kwds):
-        super().__init__(name=function.name(), icon=function.icon(), toolTip=function.toolTip())
+    def __init__(self):
+        super(SpectralMathParameterWidgetFactory, self).__init__()
 
-        self.mFunction = function
-
-    def function(self):
-        return self.mFunction
-
-class SpectralMathFunctionRegistry(TreeModel):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-        self.mFunctions = dict()
-
-    def __len__(self):
-        return len(self.mFunctions)
-
-    def registerFunction(self, f, group:str=''):
-
-        assert isinstance(f, SpectralAlgorithm)
-
-        if f.id() not in self.mFunctions.keys():
-            if group == '':
-                groupNode = self.rootNode()
-            else:
-                groupNode = self.groupNode(group)
-                if not isinstance(group, TreeNode):
-                    groupNode = TreeNode(name=group)
-                    self.rootNode().appendChildNodes([groupNode])
-
-            functionNode = SpectralMathFunctionNode(f)
-            self.mFunctions[f.id()] = f
-            groupNode.appendChildNodes([functionNode])
-            return True
-        else:
-            return False
-
-    def groupNode(self, group:str) -> TreeNode:
-        assert isinstance(group, str)
-        for n in self.groupNodes():
-            if n.name() == group:
-                return n
+    def createModelerWidgetWrapper(self,
+                                   model:QgsProcessingModelAlgorithm,
+                                   childId:str,
+                                   paramter: QgsProcessingParameterDefinition,
+                                   context: QgsProcessingContext
+                                   ) -> QgsProcessingModelerParameterWidget:
         return None
 
-    def groupNodes(self) -> typing.List[TreeNode]:
-        return self.rootNode().childNodes()
+    def createParameterDefinitionWidget(self,
+                                        context: QgsProcessingContext,
+                                        widgetContext: QgsProcessingParameterWidgetContext,
+                                        definition: QgsProcessingParameterDefinition =None,
+                                        algorithm:QgsProcessingAlgorithm = None
+                                        ) -> QgsProcessingAbstractParameterDefinitionWidget:
+        w = SpectralAlgorithmInputDefinitionWidget(context, widgetContext, definition, algorithm, None)
+        return w
 
-    def unregisterFunction(self, f, group:str='') -> bool:
-        if isinstance(f, SpectralAlgorithm):
-            f = f.id()
-        assert isinstance(f, str)
-        if f not in self.mFunctions.keys():
-            return False
-        func = self.mFunctions.pop(f)
-        nodes = [n for n in self.functionNodes()
-                  if isinstance(n, SpectralMathFunctionNode) and n.function() == func]
-        for n in nodes:
-            n.parentNode().removeChildNodes([n])
+    def createWidgetWrapper(self,
+                            parameter: QgsProcessingParameterDefinition,
+                            wtype:  QgsProcessingGui.WidgetType) -> QgsAbstractProcessingParameterWidgetWrapper :
+        return None
 
-        return True
-
-    def functionNodes(self) -> typing.List[SpectralMathFunctionNode]:
-        return [n for n in self.rootNode().findChildNodes(SpectralMathFunctionNode, recursive=True)]
-
-    def functions(self) -> typing.List[SpectralAlgorithm]:
-        return [n.function() for n in self.functionNodes()]
-
-
+    def parameterType(self):
+        return SpectralAlgorithmInputType.__class__.__name__
 
 def function2mimedata(functions: typing.List[SpectralAlgorithm]) -> QMimeData:
     doc = QDomDocument()

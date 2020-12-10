@@ -5,10 +5,14 @@ import math
 import xmlrunner
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
+from qgis.gui import *
+from qgis.core import *
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
-    QgsSearchWidgetWrapper, QgsMessageBar
+    QgsSearchWidgetWrapper, QgsMessageBar, QgsProcessingGuiRegistry, QgsProcessingGui, \
+    QgsProcessingParameterWidgetContext, QgsProcessingAbstractParameterDefinitionWidget
 from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, QgsActionManager, \
-    QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry
+    QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry, QgsProcessingContext, QgsProcessingParameterDefinition
+
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
@@ -28,14 +32,34 @@ class SpectralMathTests(TestCase):
 
     def test_spectral_algorithm(self):
 
-        registry = QgsApplication.instance().processingRegistry()
-        assert isinstance(registry, QgsProcessingRegistry)
+        procReg = QgsApplication.instance().processingRegistry()
+        procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
+        assert isinstance(procReg, QgsProcessingRegistry)
+
+        paramFactory = SpectralMathParameterWidgetFactory()
+        procGuiReg.addParameterWidgetFactory(paramFactory)
+
+
+        parent = QWidget()
+        context = QgsProcessingContext()
+        widgetContext = QgsProcessingParameterWidgetContext()
+
+        definitionWidget: QgsProcessingAbstractParameterDefinitionWidget \
+            = procGuiReg.createParameterDefinitionWidget(paramFactory.parameterType(), context, widgetContext)
+
+        self.assertIsInstance(definitionWidget, QgsProcessingAbstractParameterDefinitionWidget)
+
+        parameter = definitionWidget.createParameter('testname', 'test descripton', QgsProcessingParameterDefinition)
+        self.assertTrue(parameter, SpectralAlgorithmInputDefinition)
+        wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Standard)
+        wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Batch)
+        wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Modeler)
 
         parameterType = SpectralAlgorithmInputType()
-        self.assertTrue(registry.addParameterType(parameterType))
+        self.assertTrue(procReg.addParameterType(parameterType))
 
         provider = QPSAlgorithmProvider()
-        self.assertTrue(registry.addProvider(provider))
+        self.assertTrue(procReg.addProvider(provider))
 
         a = SpectralAlgorithm()
         self.assertTrue(provider.addAlgorithm(a))
