@@ -8,8 +8,12 @@ from qgis.PyQt.QtGui import QIcon, QColor, QFont, QFontInfo
 from qgis.PyQt.QtXml import QDomElement, QDomDocument, QDomNode, QDomCDATASection
 from qgis.PyQt.QtWidgets import QPlainTextEdit, QWidget, QTableView, QLabel, QComboBox, \
     QHBoxLayout, QVBoxLayout, QSpacerItem, QMenu, QAction, QToolButton, QGridLayout
-from qgis.core import QgsFeature
+from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, \
+    QgsRuntimeProfiler, QgsProcessingProvider, QgsProcessingParameterDefinition, QgsProcessingFeedback, \
+    QgsProcessingParameterType
 from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython
+from processing import ProcessingConfig, Processing
+from processing.core.ProcessingConfig import Setting
 import numpy as np
 from .core import SpectralLibrary, SpectralProfile, speclibUiPath
 from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
@@ -22,7 +26,93 @@ MIMEFORMAT_SPECTRAL_MATH_FUNCTION = 'qps.speclib.math.spectralmathfunction'
 
 XML_SPECTRALMATHFUNCTION = 'SpectralMathFunction'
 
-class SpectralMathFunction(QObject):
+class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
+
+    def __init__(self, name='', description='', optional:bool=False):
+        super().__init__(name, description=description, optional=optional)
+
+        self.setMetadata({
+            #'widget_wrapper': 'processing.gui.wrappers.BasicWidgetWrapper'
+            'widget_wrapper': 'processing.gui.wrappers.BasicWidgetWrapper'
+        })
+
+        self.mX = None
+        self.mY = None
+
+
+    def isDestination(self):
+        return False
+
+    def type(self):
+        return 'spetral_profile'
+
+    def clone(self):
+        return SpectralAlgorithmInput()
+
+    def description(self):
+        return 'the spectral profile'
+
+    def isDynamic(self):
+        return True
+    def toolTip(self):
+        return 'The spectral profile'
+
+    def toVariantMap(self):
+        result = {
+            'x':self.mX,
+            'y':self.mY
+        }
+        return result
+
+    def fromVariantMap(self, map:dict):
+        self.mY = map.get('y', [])
+        self.mX = map.get('x', [])
+        return True
+
+
+class SpectralAlgorithmInputType(QgsProcessingParameterType):
+
+    def __init__(self):
+        super().__init__()
+        self.mName = 'PROFILE INPUT'
+        self.mRefs = []
+
+    def acceptedPythonType(self):
+        return ['str']
+
+    def description(self):
+        return 'Spectral Profile Inputs'
+
+    def name(self):
+        return 'Spectral Profiles'
+
+    def create(self, name):
+        p = SpectralAlgorithmInput(name=name)
+
+        self.mRefs.append(p)
+
+        return p
+
+    def metadata(self):
+        return {'x':[], 'y':[]}
+
+    def flags(self):
+        return QgsProcessingParameterType.ExposeToModeler
+
+    def id(self):
+        return self.__class__.__name__
+
+    def acceptedPythonTypes(self):
+        return ['SpectralProfile', 'ndarray']
+
+    def acceptedStringValues(self):
+        return ['Profile Input']
+
+    def pythonImportString(self):
+        return 'from qps.speclib.math import SpectralAlgorithmInputType'
+
+
+class SpectralAlgorithm(QgsProcessingAlgorithm):
 
     @staticmethod
     def is_valid_result(result: SpectralMathResult) -> bool:
@@ -35,21 +125,21 @@ class SpectralMathFunction(QObject):
         return True
 
     @staticmethod
-    def applyFunctionStack(functionStack: typing.Iterable[typing.Optional['SpectralMathFunction']],
+    def applyFunctionStack(functionStack: typing.Iterable[typing.Optional['SpectralAlgorithm']],
                            *args) -> SpectralMathResult:
 
-        if isinstance(functionStack, SpectralMathFunction):
+        if isinstance(functionStack, SpectralAlgorithm):
             functionStack = [functionStack]
         else:
             assert isinstance(functionStack, typing.Iterable)
 
-        spectralMathResult, feature = SpectralMathFunction._unpack(*args)
+        spectralMathResult, feature = SpectralAlgorithm._unpack(*args)
 
         for f in functionStack:
-            assert isinstance(f, SpectralMathFunction)
+            assert isinstance(f, SpectralAlgorithm)
 
             spectralMathResult = f.apply(spectralMathResult, feature)
-            if not SpectralMathFunction.is_valid_result(spectralMathResult):
+            if not SpectralAlgorithm.is_valid_result(spectralMathResult):
                 return None
 
         return spectralMathResult
@@ -87,11 +177,11 @@ class SpectralMathFunction(QObject):
         self.mError = None
         self.mName: str = name
         self.mHelp: str = None
-        self.mIcon: QIcon = None
+        self.mIcon: QIcon = QIcon(':/qps/ui/icons/profile.svg')
         self.mToolTip: str = None
 
     def __eq__(self, other):
-        if not isinstance(other, SpectralMathFunction):
+        if not isinstance(other, SpectralAlgorithm):
             return False
         if self.id() != other.id():
             return False
@@ -101,37 +191,93 @@ class SpectralMathFunction(QObject):
         # hash on instance
         return hash(id(self))
 
-    def id(self) -> str:
-        return self.__class__.__name__
+    def initAlgorithm(self, configuration:dict):
+
+        self.addParameter(SpectralAlgorithmInput())
+
+        from qgis.core import QgsProcessingParameterNumber, QgsProcessingParameterString
+        """
+        class ParameterRasterCalculatorExpression(QgsProcessingParameterString):
+
+            def __init__(self, name='', description='', multiLine=False):
+                super().__init__(name, description, multiLine=multiLine)
+                self.setMetadata({
+                    'widget_wrapper': 'processing.algs.qgis.ui.RasterCalculatorWidgets.ExpressionWidgetWrapper'
+                })
+
+            def type(self):
+                return 'raster_calc_expression'
+
+            def clone(self):
+                return ParameterRasterCalculatorExpression(self.name(), self.description(), self.multiLine())
+
+        self.addParameter(ParameterRasterCalculatorExpression())
+        """
+
+        self.addParameter(QgsProcessingParameterNumber('TESTNUMBER',
+                                                       'info testnumber',
+                                                       type=QgsProcessingParameterNumber.Double,
+                                                       minValue=0.0, defaultValue=0.0, optional=True))
+
+    def processAlgorithm(self,  parameters: dict, context: QgsProcessingContext, feedback: QgsProcessingFeedback):
+        s = ""
+        result = parameters
+        return result
+
+    def createInstance(self):
+        return type(self)()
 
     def name(self) -> str:
-        return self.mName
+        return 'spectral_algorithm'
 
-    def setName(self, name:str):
-        assert isinstance(name, str)
-        assert len(name) > 0
-        self.mName = name
+    def displayName(self) -> str:
+        return 'Spectral Algorithm'
 
-    def help(self) -> str:
+    def flags(self):
+        return super().flags()
+
+    def group(self):
+        return 'Spectral Math'
+
+    def groupId(self):
+        return 'spectralmath'
+
+    def hasHtmlOutputs(self) -> bool:
+        return False
+
+    def shortDescription(self) -> str:
+        return f'Not implemented: Short description of {self.name()}'
+
+    def shortHelpString(self) -> str:
         return self.mHelp
 
     def icon(self) -> QIcon:
-        return self.mIcon
+        return QIcon(self.svgIconPath())
 
     def toolTip(self) -> str:
         return self.mToolTip
 
+    def svgIconPath(self) -> str:
+        return ':/qps/ui/icons/profile.svg'
+
+    def tags(self) -> typing.List[str]:
+        return ['spectral math']
+
+    def validateInputCrs(self, parameters: dict, context:QgsProcessingContext):
+        return super().validateInputCrs(parameters, context)
+
+
     sigChanged = pyqtSignal()
 
     @staticmethod
-    def readXml(element: QDomElement) -> typing.Optional['SpectralMathFunction']:
+    def readXml(element: QDomElement) -> typing.Optional['SpectralAlgorithm']:
         assert element.nodeName() == XML_SPECTRALMATHFUNCTION
         functionType = element.attribute('ftype')
         functionName = element.attribute('fname', functionType)
         moduleName = element.attribute('fmodule')
         module = importlib.import_module(moduleName)
         functionClass_ = getattr(module, functionType)
-        function: SpectralMathFunction = functionClass_()
+        function: SpectralAlgorithm = functionClass_()
         function.setName(functionName)
         return function
 
@@ -152,7 +298,7 @@ class SpectralMathFunction(QObject):
         parent.appendChild(node)
         return node
 
-    def createWidget(self) -> QWidget:
+    def createCustomParametersWidget(self) -> QWidget:
         """
         Create a QWidget to configure this function
         :return:
@@ -172,7 +318,7 @@ class SpectralMathFunction(QObject):
         return None
 
 
-class XUnitConversion(SpectralMathFunction):
+class XUnitConversion(SpectralAlgorithm):
 
     def __init__(self, x_unit:str=BAND_INDEX, x_unit_model:XUnitModel=None):
         super().__init__()
@@ -189,7 +335,7 @@ class XUnitConversion(SpectralMathFunction):
     def setTargetUnit(self, unit:str):
         self.mTargetUnit = unit
 
-    def createWidget(self) -> QWidget:
+    def createCustomParametersWidget(self) -> QWidget:
 
         w = QWidget()
         l = QGridLayout()
@@ -216,7 +362,7 @@ class XUnitConversion(SpectralMathFunction):
             return None
 
 
-class GenericSpectralMathFunction(SpectralMathFunction):
+class GenericSpectralAlgorithm(SpectralAlgorithm):
 
     def __init__(self):
         super().__init__()
@@ -244,7 +390,7 @@ class GenericSpectralMathFunction(SpectralMathFunction):
         else:
             return spectralMathResult
 
-    def createWidget(self) -> QgsCodeEditorPython:
+    def createCustomParametersWidget(self) -> QgsCodeEditorPython:
 
         editor = QgsCodeEditorPython()
         editor.setTitle(self.name())
@@ -254,7 +400,7 @@ class GenericSpectralMathFunction(SpectralMathFunction):
 
 class SpectralMathFunctionNode(TreeNode):
 
-    def __init__(self, function: SpectralMathFunction, *args, **kwds):
+    def __init__(self, function: SpectralAlgorithm, *args, **kwds):
         super().__init__(name=function.name(), icon=function.icon(), toolTip=function.toolTip())
 
         self.mFunction = function
@@ -274,7 +420,7 @@ class SpectralMathFunctionRegistry(TreeModel):
 
     def registerFunction(self, f, group:str=''):
 
-        assert isinstance(f, SpectralMathFunction)
+        assert isinstance(f, SpectralAlgorithm)
 
         if f.id() not in self.mFunctions.keys():
             if group == '':
@@ -303,7 +449,7 @@ class SpectralMathFunctionRegistry(TreeModel):
         return self.rootNode().childNodes()
 
     def unregisterFunction(self, f, group:str='') -> bool:
-        if isinstance(f, SpectralMathFunction):
+        if isinstance(f, SpectralAlgorithm):
             f = f.id()
         assert isinstance(f, str)
         if f not in self.mFunctions.keys():
@@ -319,17 +465,17 @@ class SpectralMathFunctionRegistry(TreeModel):
     def functionNodes(self) -> typing.List[SpectralMathFunctionNode]:
         return [n for n in self.rootNode().findChildNodes(SpectralMathFunctionNode, recursive=True)]
 
-    def functions(self) -> typing.List[SpectralMathFunction]:
+    def functions(self) -> typing.List[SpectralAlgorithm]:
         return [n.function() for n in self.functionNodes()]
 
 
 
-def function2mimedata(functions: typing.List[SpectralMathFunction]) -> QMimeData:
+def function2mimedata(functions: typing.List[SpectralAlgorithm]) -> QMimeData:
     doc = QDomDocument()
     node = doc.createElement('root')
 
     for f in functions:
-        assert isinstance(f, SpectralMathFunction)
+        assert isinstance(f, SpectralAlgorithm)
         f.writeXml(node, doc)
 
     doc.appendChild(node)
@@ -340,7 +486,7 @@ def function2mimedata(functions: typing.List[SpectralMathFunction]) -> QMimeData
 
     return mimeData
 
-def mimedata2functions(mimeData:QMimeData) -> typing.List[SpectralMathFunction]:
+def mimedata2functions(mimeData:QMimeData) -> typing.List[SpectralAlgorithm]:
     assert isinstance(mimeData, QMimeData)
     results = []
     if MIMEFORMAT_SPECTRAL_MATH_FUNCTION in mimeData.formats():
@@ -351,8 +497,8 @@ def mimedata2functions(mimeData:QMimeData) -> typing.List[SpectralMathFunction]:
         if not root.isNull():
             fNode = root.firstChildElement(XML_SPECTRALMATHFUNCTION)
             while not fNode.isNull():
-                f = SpectralMathFunction.readXml(fNode)
-                if isinstance(f, SpectralMathFunction):
+                f = SpectralAlgorithm.readXml(fNode)
+                if isinstance(f, SpectralAlgorithm):
                     results.append(f)
                 fNode = fNode.nextSiblingElement(XML_SPECTRALMATHFUNCTION)
 
@@ -365,8 +511,8 @@ class SpectralMathFunctionModel(QAbstractTableModel):
     def __init__(self, *args, **kwds):
         super(SpectralMathFunctionModel, self).__init__(*args, **kwds)
 
-        self.mFunctions: typing.List[SpectralMathFunction] = []
-        self.mIsEnabled: typing.Dict[SpectralMathFunction, bool] = dict()
+        self.mFunctions: typing.List[SpectralAlgorithm] = []
+        self.mIsEnabled: typing.Dict[SpectralAlgorithm, bool] = dict()
 
         self.mColumnNames = ['Steps']
 
@@ -398,8 +544,8 @@ class SpectralMathFunctionModel(QAbstractTableModel):
             functions = []
             functionNode = modelNode.firstChildElement(XML_SPECTRALMATHFUNCTION)
             while not functionNode.isNull():
-                f = SpectralMathFunction.readXml(functionNode)
-                if isinstance(f, SpectralMathFunction):
+                f = SpectralAlgorithm.readXml(functionNode)
+                if isinstance(f, SpectralAlgorithm):
                     functions.append(f)
                     is_checked[f] = str(functionNode.attribute('checked', 'true')).lower() in ['1', 'true']
                 functionNode = functionNode.nextSiblingElement(XML_SPECTRALMATHFUNCTION)
@@ -418,7 +564,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
 
         parent = doc.createElement('SpectralMathFunctionModel')
         for f in self:
-            f: SpectralMathFunction
+            f: SpectralAlgorithm
             node = f.writeXml(parent, doc)
             node.setAttribute('checked', str(self.mIsEnabled.get(f, False)))
         element.appendChild(parent)
@@ -429,7 +575,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         for f in self:
             f.mError = None
 
-        result = SpectralMathFunction.applyFunctionStack(stack, test)
+        result = SpectralAlgorithm.applyFunctionStack(stack, test)
         roles = [Qt.DecorationRole, Qt.ToolTipRole]
         self.dataChanged.emit(
             self.createIndex(0, 0),
@@ -449,10 +595,10 @@ class SpectralMathFunctionModel(QAbstractTableModel):
     def index(self, row:int, col:int, parent: QModelIndex=None):
         return self.createIndex(row, col, self.mFunctions[row])
 
-    def functionStack(self) -> typing.List[SpectralMathFunction]:
+    def functionStack(self) -> typing.List[SpectralAlgorithm]:
         return [f for f in self.mFunctions if self.mIsEnabled.get(f, False)]
 
-    def insertFunctions(self, row: int, functions: typing.Iterable[SpectralMathFunction]):
+    def insertFunctions(self, row: int, functions: typing.Iterable[SpectralAlgorithm]):
         n = len(functions)
         row = min(max(0, row), len(self))
         i1 = row + n - 1
@@ -465,17 +611,17 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         self.endInsertRows()
 
     def addFunctions(self, functions):
-        if isinstance(functions, SpectralMathFunction):
+        if isinstance(functions, SpectralAlgorithm):
             functions = [functions]
         for f in functions:
-            assert isinstance(f, SpectralMathFunction)
+            assert isinstance(f, SpectralAlgorithm)
         self.insertFunctions(len(self), functions)
 
     def removeFunctions(self, functions):
-        if isinstance(functions, SpectralMathFunction):
+        if isinstance(functions, SpectralAlgorithm):
             functions = [functions]
         for f in functions:
-            assert isinstance(f, SpectralMathFunction)
+            assert isinstance(f, SpectralAlgorithm)
         for f in functions:
             if f in self.mFunctions:
                 i = self.mFunctions.index(f)
@@ -501,7 +647,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         for idx in indexes:
             if idx.isValid():
                 f = idx.data(Qt.UserRole)
-                if isinstance(f, SpectralMathFunction):
+                if isinstance(f, SpectralAlgorithm):
                     functions.append(f)
 
         return function2mimedata(functions)
@@ -546,7 +692,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
 
         if not index.isValid():
             return False
-        f: SpectralMathFunction = self.mFunctions[index.row()]
+        f: SpectralAlgorithm = self.mFunctions[index.row()]
 
         changed = False
         if role == Qt.CheckStateRole and index.column() == 0:
@@ -565,7 +711,7 @@ class SpectralMathFunctionModel(QAbstractTableModel):
         if not index.isValid():
             return None
 
-        f: SpectralMathFunction = self.mFunctions[index.row()]
+        f: SpectralAlgorithm = self.mFunctions[index.row()]
 
         if role == Qt.DisplayRole:
             return f.name()
@@ -631,7 +777,7 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
         #self.mDefaultExpressionToolTip = self.tbExpression.toolTip()
         #self.tbExpression.textChanged.connect(self.validate)
         self.mTestProfile = QgsFeature()
-        self.mCurrentFunction: SpectralMathFunction = None
+        self.mCurrentFunction: SpectralAlgorithm = None
 
         m = QMenu()
         m.setToolTipsVisible(True)
@@ -639,7 +785,7 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
         a.triggered.connect(lambda *args: self.functionModel().addFunctions([XUnitConversion()]))
 
         a = m.addAction('Add Python Expression')
-        a.triggered.connect(lambda *args : self.functionModel().addFunctions([GenericSpectralMathFunction()]))
+        a.triggered.connect(lambda *args : self.functionModel().addFunctions([GenericSpectralAlgorithm()]))
 
         self.actionAddFunction.setMenu(m)
         self.actionRemoveFunction.triggered.connect(self.onRemoveFunctions)
@@ -659,7 +805,7 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
         to_remove = set()
         for idx in self.mTableView.selectedIndexes():
             f = idx.data(Qt.UserRole)
-            if isinstance(f, SpectralMathFunction):
+            if isinstance(f, SpectralAlgorithm):
                 to_remove.add(f)
 
         if len(to_remove) > 0:
@@ -677,7 +823,7 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
             wOld = self.scrollArea.takeWidget()
             self.mCurrentFunction = f
 
-            if isinstance(f, SpectralMathFunction):
+            if isinstance(f, SpectralAlgorithm):
                 w = self.mCurrentFunction.createWidget()
                 self.scrollArea.setWidget(w)
 
@@ -688,7 +834,7 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
         self.mTestProfile = f
         self.validate()
 
-    def spectralMathStack(self) -> typing.List[SpectralMathFunction]:
+    def spectralMathStack(self) -> typing.List[SpectralAlgorithm]:
         stack = []
         if self.is_valid():
             stack.append(self.mTestFunction)
@@ -706,7 +852,7 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
         changed = expression != self.mLastExpression
         self.mLastExpression = expression
         result = self.mTestFunction.apply(test, self.mTestProfile)
-        is_valid = SpectralMathFunction.is_valid_result(result)
+        is_valid = SpectralAlgorithm.is_valid_result(result)
         if is_valid:
             self.tbExpression.setToolTip(self.mDefaultExpressionToolTip)
             self.tbExpression.setStyleSheet('')
@@ -724,3 +870,67 @@ class SpectralMathWidget(QgsCollapsibleGroupBox):
 
     def expression(self) -> str:
         return self.tbExpression.toPlainText()
+
+
+
+class QPSAlgorithmProvider(QgsProcessingProvider):
+
+    def __init__(self):
+        super().__init__()
+        self.algs = []
+
+    def load(self):
+        with QgsRuntimeProfiler.profile('QPS Provider'):
+            ProcessingConfig.settingIcons[self.name()] = self.icon()
+            ProcessingConfig.addSetting(Setting(self.name(), 'ACTIVATE_QPS',
+                                                self.tr('Activate'), True))
+            ProcessingConfig.readSettings()
+            self.refreshAlgorithms()
+        return True
+
+    def unload(self):
+        ProcessingConfig.removeSetting('ACTIVATE_QPS')
+
+    def isActive(self):
+        return ProcessingConfig.getSetting('ACTIVATE_QPS')
+
+    def setActive(self, active):
+        ProcessingConfig.setSettingValue('ACTIVATE_QPS', active)
+
+    def name(self):
+        return 'QPS'
+
+    def longName(self):
+        from .. import __version__
+        return f'QPS ({__version__})'
+
+    def id(self):
+        return 'qps'
+
+    def helpId(self):
+        return 'qps'
+
+    def icon(self):
+        return QIcon(self.svgIconPath())
+
+    def svgIconPath(self):
+        return r':/qps/ui/icons/profile.svg'
+
+    def loadAlgorithms(self):
+        self.algs = [
+
+        ]
+
+        for a in self.algs:
+            self.addAlgorithm(a)
+
+    def supportedOutputRasterLayerExtensions(self):
+        return []
+
+    def supportsNonFileBasedOutput(self) -> True:
+        return True
+
+    def tr(self, string, context=''):
+        if context == '':
+            context = 'GdalAlgorithmProvider'
+        return QCoreApplication.translate(context, string)

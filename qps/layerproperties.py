@@ -852,7 +852,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         for f in mapLayerConfigFactories:
             assert isinstance(f, QgsMapLayerConfigWidgetFactory)
             if f.supportsLayer(self.mapLayer()) and f.supportLayerPropertiesDialog():
-                pageWidget = f.createWidget(self.mapLayer(), self.canvas(), dockWidget=False)
+                pageWidget = f.createCustomParametersWidget(self.mapLayer(), self.canvas(), dockWidget=False)
                 assert isinstance(pageWidget, QgsMapLayerConfigWidget)
                 title = f.title()
                 icon = f.icon()

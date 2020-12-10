@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>637</width>
-    <height>229</height>
+    <width>532</width>
+    <height>240</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -67,8 +67,8 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>367</width>
-         <height>207</height>
+         <width>263</width>
+         <height>221</height>
         </rect>
        </property>
       </widget>
@@ -137,7 +137,7 @@
   </layout>
   <action name="actionAddFunction">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS_Images/images/images.qrc">
      <normaloff>:/images/themes/default/mActionAddExpression.svg</normaloff>:/images/themes/default/mActionAddExpression.svg</iconset>
    </property>
    <property name="text">
@@ -152,7 +152,7 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS_Images/images/images.qrc">
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">
@@ -177,7 +177,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../../../QGIS/images/images.qrc"/>
+  <include location="../../../QGIS_Images/images/images.qrc"/>
  </resources>
  <connections/>
 </ui>
