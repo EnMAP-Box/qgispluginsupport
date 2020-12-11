@@ -1497,6 +1497,7 @@ def parseBadBandList(dataset) -> typing.List[int]:
     try:
         dataset = gdalDataset(dataset)
     except:
+        return None
         pass
 
     if not isinstance(dataset, gdal.Dataset):
@@ -1524,7 +1525,7 @@ def parseFWHM(dataset) -> typing.Tuple[np.ndarray]:
     try:
         dataset = gdalDataset(dataset)
     except:
-        pass
+        return None
 
     key_positions = [('fwhm', None),
                      ('fwhm', 'ENVI')]
@@ -1565,7 +1566,10 @@ def checkWavelength(key: str, values: str, expected: int = 1) -> np.ndarray:
         else:
             sep = ','
         try:
-            wl = np.fromstring(values, count=expected, sep=sep)
+            wl = np.asarray(values.split(sep), dtype=np.float)
+            if len(wl) != expected:
+                wl = None
+            # wl = np.fromstring(values, count=expected, sep=sep)
         except ValueError as exV:
             pass
         except Exception as ex:
@@ -1617,7 +1621,7 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
 
     try:
         dataset = gdalDataset(dataset)
-    except AssertionError:
+    except Exception:
         return None, None
 
     if isinstance(dataset, gdal.Dataset):
