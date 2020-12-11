@@ -1566,7 +1566,10 @@ def checkWavelength(key: str, values: str, expected: int = 1) -> np.ndarray:
         else:
             sep = ','
         try:
-            wl = np.fromstring(values, count=expected, sep=sep)
+            wl = np.asarray(values.split(sep), dtype=np.float)
+            if len(wl) != expected:
+                wl = None
+            # wl = np.fromstring(values, count=expected, sep=sep)
         except ValueError as exV:
             pass
         except Exception as ex:
