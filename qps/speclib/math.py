@@ -29,6 +29,7 @@ SpectralMathResult = collections.namedtuple('SpectralMathResult', ['x', 'y', 'x_
 MIMEFORMAT_SPECTRAL_MATH_FUNCTION = 'qps.speclib.math.spectralmathfunction'
 
 XML_SPECTRALMATHFUNCTION = 'SpectralMathFunction'
+PARAMETER_TYPE = 'SPECTRAL_MATH_PARAMETER'
 
 class SpectralAlgorithmInputDefinition(QgsProcessingParameterDefinition):
 
@@ -104,6 +105,7 @@ class SpectralAlgorithmInputType(QgsProcessingParameterType):
         return QgsProcessingParameterType.ExposeToModeler
 
     def id(self):
+        print('#SpectralAlgorithmInputType:id')
         return self.__class__.__name__
 
     def acceptedPythonTypes(self):
@@ -435,6 +437,7 @@ class SpectralMathParameterWidgetFactory(QgsProcessingParameterWidgetFactoryInte
                                    paramter: QgsProcessingParameterDefinition,
                                    context: QgsProcessingContext
                                    ) -> QgsProcessingModelerParameterWidget:
+        print('#SpectralMathParameterWidgetFactory:createModelerWidgetWrapper')
         return None
 
     def createParameterDefinitionWidget(self,
@@ -443,16 +446,21 @@ class SpectralMathParameterWidgetFactory(QgsProcessingParameterWidgetFactoryInte
                                         definition: QgsProcessingParameterDefinition =None,
                                         algorithm:QgsProcessingAlgorithm = None
                                         ) -> QgsProcessingAbstractParameterDefinitionWidget:
+        print('#SpectralMathParameterWidgetFactory:createParameterDefinitionWidget')
         w = SpectralAlgorithmInputDefinitionWidget(context, widgetContext, definition, algorithm, None)
         return w
 
     def createWidgetWrapper(self,
                             parameter: QgsProcessingParameterDefinition,
                             wtype:  QgsProcessingGui.WidgetType) -> QgsAbstractProcessingParameterWidgetWrapper :
+        print('#SpectralMathParameterWidgetFactory:createWidgetWrapper')
         return None
 
     def parameterType(self):
-        return SpectralAlgorithmInputType.__class__.__name__
+        print('#SpectralMathParameterWidgetFactory:parameterType')
+        #return SpectralAlgorithmInputType.__class__.__name__
+        return PARAMETER_TYPE
+
 
 def function2mimedata(functions: typing.List[SpectralAlgorithm]) -> QMimeData:
     doc = QDomDocument()
@@ -487,6 +495,7 @@ def mimedata2functions(mimeData:QMimeData) -> typing.List[SpectralAlgorithm]:
                 fNode = fNode.nextSiblingElement(XML_SPECTRALMATHFUNCTION)
 
     return results
+
 
 class SpectralMathFunctionModel(QAbstractTableModel):
 
