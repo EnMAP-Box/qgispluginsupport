@@ -1956,8 +1956,10 @@ class SpatialPoint(QgsPointXY):
 
     @staticmethod
     def readXml(node: QDomNode):
-        wkt = node.firstChildElement('SpatialPointCrs').text()
-        crs = QgsCoordinateReferenceSystem(wkt)
+        node_crs = node.firstChildElement('SpatialPointCrs')
+        crs = QgsCoordinateReferenceSystem()
+        if not node_crs.isNull():
+            crs.readXml(node_crs)
         point = QgsGeometry.fromWkt(node.firstChildElement('SpatialPoint').text()).asPoint()
         return SpatialPoint(crs, point)
 
@@ -2023,10 +2025,7 @@ class SpatialPoint(QgsPointXY):
         node_geom = doc.createElement('SpatialPoint')
         node_geom.appendChild(doc.createTextNode(self.asWkt()))
         node_crs = doc.createElement('SpatialPointCrs')
-        if QgsCoordinateReferenceSystem(self.crs().authid()) == self.crs():
-            node_crs.appendChild(doc.createTextNode(self.crs().authid()))
-        else:
-            node_crs.appendChild(doc.createTextNode(self.crs().toWkt()))
+        self.crs().writeXml(node_crs, doc)
         node.appendChild(node_geom)
         node.appendChild(node_crs)
 
@@ -2149,8 +2148,10 @@ class SpatialExtent(QgsRectangle):
 
     @staticmethod
     def readXml(node: QDomNode):
-        wkt = node.firstChildElement('SpatialExtentCrs').text()
-        crs = QgsCoordinateReferenceSystem(wkt)
+        node_crs = node.firstChildElement('SpatialExtentCrs')
+        crs = QgsCoordinateReferenceSystem()
+        if not node_crs.isNull():
+            crs.readXml(node_crs)
         rectangle = QgsRectangle.fromWkt(node.firstChildElement('SpatialExtent').text())
         return SpatialExtent(crs, rectangle)
 
@@ -2215,10 +2216,11 @@ class SpatialExtent(QgsRectangle):
         node_geom = doc.createElement('SpatialExtent')
         node_geom.appendChild(doc.createTextNode(self.asWktPolygon()))
         node_crs = doc.createElement('SpatialExtentCrs')
-        if QgsCoordinateReferenceSystem(self.crs().authid()) == self.crs():
-            node_crs.appendChild(doc.createTextNode(self.crs().authid()))
-        else:
-            node_crs.appendChild(doc.createTextNode(self.crs().toWkt()))
+        self.crs().writeXml(node_crs, doc)
+        #if QgsCoordinateReferenceSystem(self.crs().authid()) == self.crs():
+        #    node_crs.appendChild(doc.createTextNode(self.crs().authid()))
+        #else:
+        #    node_crs.appendChild(doc.createTextNode(self.crs().toWkt()))
         node.appendChild(node_geom)
         node.appendChild(node_crs)
 
