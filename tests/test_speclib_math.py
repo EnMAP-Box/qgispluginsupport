@@ -30,50 +30,45 @@ class SpectralMathTests(TestCase):
 
         super(SpectralMathTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
 
-    def test_spectral_algorithm(self):
+    def test_SpectralAlgorithmInputType(self):
+
 
         procReg = QgsApplication.instance().processingRegistry()
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
         assert isinstance(procReg, QgsProcessingRegistry)
+        parameterType = SpectralAlgorithmInputType()
+        self.assertTrue(procReg.addParameterType(parameterType))
 
         paramFactory = SpectralMathParameterWidgetFactory()
         procGuiReg.addParameterWidgetFactory(paramFactory)
 
-
-        parent = QWidget()
-        context = QgsProcessingContext()
-        widgetContext = QgsProcessingParameterWidgetContext()
-
-        definitionWidget: QgsProcessingAbstractParameterDefinitionWidget \
-            = procGuiReg.createParameterDefinitionWidget(paramFactory.parameterType(), context, widgetContext)
-
-        self.assertIsInstance(definitionWidget, QgsProcessingAbstractParameterDefinitionWidget)
-
-        parameter = definitionWidget.createParameter('testname', 'test descripton', QgsProcessingParameterDefinition)
-        self.assertTrue(parameter, SpectralAlgorithmInputDefinition)
-        wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Standard)
-        wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Batch)
-        wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Modeler)
-
-        parameterType = SpectralAlgorithmInputType()
-        self.assertTrue(procReg.addParameterType(parameterType))
-
-        provider = QPSAlgorithmProvider()
+        provider = SpectralAlgorithmProvider()
         self.assertTrue(procReg.addProvider(provider))
 
-        a = SpectralAlgorithm()
-        self.assertTrue(provider.addAlgorithm(a))
-
-        from processing.gui.AlgorithmDialog import AlgorithmDialog
-
-        algorithm = None
-        dlg = a.createCustomParametersWidget()
-        if not dlg:
-            dlg = AlgorithmDialog(a.create())
 
         from processing.modeler.ModelerDialog import ModelerDialog
         md = ModelerDialog()
-        self.showGui([dlg, md])
+        #md.model().addModelParameter()
+        #md.saveModel()
+        self.showGui([md])
+
+        #parent = QWidget()
+        #context = QgsProcessingContext()
+        #widgetContext = QgsProcessingParameterWidgetContext()
+
+        #definitionWidget: QgsProcessingAbstractParameterDefinitionWidget \
+        #    = procGuiReg.createParameterDefinitionWidget(paramFactory.parameterType(), context, widgetContext)
+        #self.assertIsInstance(definitionWidget, QgsProcessingAbstractParameterDefinitionWidget)
+        #self.showGui(definitionWidget)
+        #parameter = definitionWidget.createParameter('testname', 'test descripton', QgsProcessingParameterDefinition)
+        #self.assertTrue(parameter, SpectralAlgorithmInput)
+        #wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Standard)
+        #wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Batch)
+        #wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Modeler)
+
+
+
+
 
         s = ""
         pass
