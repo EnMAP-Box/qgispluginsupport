@@ -42,12 +42,14 @@ class SpectralMathTests(TestCase):
         paramFactory = SpectralMathParameterWidgetFactory()
         procGuiReg.addParameterWidgetFactory(paramFactory)
 
-        provider = SpectralAlgorithmProvider()
-        self.assertTrue(procReg.addProvider(provider))
+        #provider = SpectralAlgorithmProvider()
+        #self.assertTrue(procReg.addProvider(provider))
 
-
+        import processing.modeler.ModelerDialog
+        import qgis.utils
+        processing.modeler.ModelerDialog.iface = qgis.utils.iface
         from processing.modeler.ModelerDialog import ModelerDialog
-        md = ModelerDialog()
+        md = ModelerDialog.create()
         #md.model().addModelParameter()
         #md.saveModel()
         self.showGui([md])
@@ -73,6 +75,9 @@ class SpectralMathTests(TestCase):
         s = ""
         pass
 
+    def test_loadinqgis(self):
+
+        s = ""
 
     def test_functiontableview(self):
 

@@ -35,13 +35,15 @@ MIMEFORMAT_SPECTRAL_MATH_FUNCTION = 'qps.speclib.math.spectralmathfunction'
 XML_SPECTRALMATHFUNCTION = 'SpectralMathFunction'
 
 REFS = dict()
-
+REFS = []
 def keepRef(o):
+    global REFS
     #to_remove = [d for d in REFS if sip.isdeleted(d)]
     #for d in to_remove:
     #    pass
         #REFS.remove(d)
-    REFS[id(o)] = o
+    #REFS[id(o)] = o
+    REFS.append(o)
 
 def printCaller(prefix=''):
     curFrame = inspect.currentframe()
@@ -71,6 +73,7 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
         #self.destroyed.connect(self.sigAboutToBeDestroyed.emit)
         self.mX = []
         self.mY = []
+        printCaller(f'#{id(self)}')
 
     def isDestination(self):
         #printCaller()
@@ -94,15 +97,15 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
         return 'The spectral profile'
 
     def toVariantMap(self):
-        printCaller()
-        result = {
-            'x': self.mX,
-            'y': self.mY
-        }
+        printCaller(f'#{id(self)}')
+        result = super(SpectralAlgorithmInput, self).toVariantMap()
+        result['x'] = self.mX
+        result['y'] = self.mY
         return result
 
     def fromVariantMap(self, map:dict):
         printCaller()
+        super(SpectralAlgorithmInput, self).fromVariantMap(map)
         self.mY = map.get('y', [])
         self.mX = map.get('x', [])
         return True
@@ -202,7 +205,9 @@ class SpectralAlgorithmInputWidget(QgsProcessingAbstractParameterDefinitionWidge
     """
     Widget to specify SpectralAlgorithm input
     """
-    def __init__(self, context: QgsProcessingContext, widgetContext:QgsProcessingParameterWidgetContext,
+    def __init__(self,
+                 context: QgsProcessingContext,
+                 widgetContext: QgsProcessingParameterWidgetContext,
                  definition: QgsProcessingParameterDefinition = None,
                  algorithm: QgsProcessingAlgorithm = None,
                  parent: QWidget = None):
@@ -220,20 +225,13 @@ class SpectralAlgorithmInputWidget(QgsProcessingAbstractParameterDefinitionWidge
         self.setLayout(l)
         self.mPARAMETERS = dict()
 
-    def _wasDestroyed(self, pid):
-        printCaller()
-        self.mPARAMETERS.pop(pid)
-
     def createParameter(self, name:str, description:str, flags) -> SpectralAlgorithmInput:
         printCaller()
 
         param = SpectralAlgorithmInput(name, description=description)
-
         param.setFlags(flags)
         keepRef(param)
-        #pid = id(param)
-        #self.mPARAMETERS[pid] = param
-        #param.sigAboutToBeDestroyed.connect(lambda *args, p=pid: self._wasDestroyed(p))
+
         return param
 
 class DummyAlgorithm(QgsProcessingAlgorithm):
@@ -391,7 +389,8 @@ class SpectralMathParameterWidgetFactory(QgsProcessingParameterWidgetFactoryInte
                                         ) -> QgsProcessingAbstractParameterDefinitionWidget:
         printCaller(f'#{id(self)}')
         w = SpectralAlgorithmInputWidget(context, widgetContext, definition, algorithm, None)
-        #self.mWrappers.append(w)
+        keepRef(w)
+        # self.mWrappers.append(w)
         return w
 
     def createWidgetWrapper(self,
@@ -401,7 +400,8 @@ class SpectralMathParameterWidgetFactory(QgsProcessingParameterWidgetFactoryInte
         printCaller()
         wrapper = SpectralAlgorithmInputWidgetWrapper(parameter, wtype)
         #wrapper.destroyed.connect(self._onWrapperDestroyed)
-        self.mWrappers.append(wrapper)
+        #self.mWrappers.append(wrapper)
+        keepRef(wrapper)
         return wrapper
 
 
