@@ -9,10 +9,15 @@ from qgis.gui import *
 from qgis.core import *
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
     QgsSearchWidgetWrapper, QgsMessageBar, QgsProcessingGuiRegistry, QgsProcessingGui, \
-    QgsProcessingParameterWidgetContext, QgsProcessingAbstractParameterDefinitionWidget
-from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, QgsActionManager, \
-    QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry, QgsProcessingContext, QgsProcessingParameterDefinition
+    QgsProcessingParameterWidgetContext, QgsProcessingAbstractParameterDefinitionWidget, \
+    QgsProcessingModelerParameterWidget
 
+from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, QgsActionManager, \
+    QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry, QgsProcessingContext, \
+    QgsProcessingParameterDefinition, QgsProcessingModelAlgorithm, QgsProcessingFeedback, \
+    QgsProcessingModelChildAlgorithm, QgsProcessingModelChildParameterSource
+
+from processing.modeler.ModelerDialog import ModelerParametersDialog
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
@@ -30,28 +35,108 @@ class SpectralMathTests(TestCase):
 
         super(SpectralMathTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
 
-    def test_SpectralAlgorithmInputType(self):
 
-
+    def initProcessingRegistry(self):
         procReg = QgsApplication.instance().processingRegistry()
-        procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
         assert isinstance(procReg, QgsProcessingRegistry)
-        parameterType = SpectralAlgorithmInputType()
-        self.assertTrue(procReg.addParameterType(parameterType))
 
+        procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
         paramFactory = SpectralMathParameterWidgetFactory()
         procGuiReg.addParameterWidgetFactory(paramFactory)
 
-        #provider = SpectralAlgorithmProvider()
-        #self.assertTrue(procReg.addProvider(provider))
+        parameterType = SpectralAlgorithmInputType()
+        self.assertTrue(procReg.addParameterType(parameterType))
+
+
+        provider = SpectralAlgorithmProvider()
+        self.assertTrue(procReg.addProvider(provider))
+
+        self.mFac = paramFactory
+        self.mPRov = provider
+
+    def test_SpectralAlgorithmInputType(self):
+
+        self.initProcessingRegistry()
+
+        salgs = spectral_algorithms()
+        assert len(salgs) > 0
+
 
         import processing.modeler.ModelerDialog
         import qgis.utils
         processing.modeler.ModelerDialog.iface = qgis.utils.iface
         from processing.modeler.ModelerDialog import ModelerDialog
-        md = ModelerDialog.create()
-        #md.model().addModelParameter()
-        #md.saveModel()
+        from processing.modeler.ModelerParametersDialog import ModelerParametersPanelWidget
+
+        model: QgsProcessingModelAlgorithm = QgsProcessingModelAlgorithm()
+        model.setName('MyModelName')
+        model.setGroup('MyModelGroup')
+        alg = salgs[0]
+        #w = ModelerParametersPanelWidget(alg, model, None, None, None, None)
+        #self.showGui(w)
+        dlg = ModelerParametersDialog(alg, model)
+        #dlg.exec_()
+        calg1: QgsProcessingModelChildAlgorithm = dlg.createAlgorithm()
+
+
+        calg2: QgsProcessingModelChildAlgorithm = dlg.createAlgorithm()
+        model.addChildAlgorithm(calg1)
+        model.addChildAlgorithm(calg2)
+        for output in calg2.algorithm().outputDefinitions():
+            output: SpectralAlgorithmOutput
+
+        compatibleParameterTypes = [SpectralAlgorithmInput.TYPE]
+        compatibleOuptutTypes = [SpectralAlgorithmInput.TYPE]
+        compatibleDataTypes = []
+        result1 = model.availableSourcesForChild(calg1.childId(), compatibleParameterTypes, compatibleOuptutTypes, compatibleDataTypes)
+
+        for source in result1:
+            isChildOutput = source.source() == QgsProcessingModelChildParameterSource.ChildOutput
+            if not isChildOutput:
+                s = ""
+            assert source.outputChildId() in model.childAlgorithms()
+            alg = model.childAlgorithm(source.outputChildId())
+            assert alg.algorithm()
+            s = ""
+        p = QWidget()
+        parameter = calg1.algorithm().parameterDefinitions()[0]
+        context = QgsProcessingContext()
+        w = QgsProcessingModelerParameterWidget(model, calg1.childId(), parameter, context, p)
+
+        #w.populateSources(compatibleParameterTypes, compatibleOuptutTypes, compatibleDataTypes)
+        #w.setSourceType(QgsProcessingModelChildParameterSource.ChildOutput)
+        self.showGui([p,w])
+        alg.algorithm()
+        result2 = model.availableSourcesForChild(calg2.childId(), compatibleParameterTypes, compatibleOuptutTypes, compatibleDataTypes)
+        s = ""
+        """
+        mModel->availableSourcesForChild( mChildId, compatibleParameterTypes, compatibleOutputTypes, compatibleDataTypes );
+        #widget = QgsGui.processingGuiRegistry().createModelerParameterWidget(model,
+                                                                             calg2.childId,
+                                                                             output,
+                                                                             self.context)
+        #widget.setDialog(self.dialog)
+        """
+        calg1.algorithm().destinationParameterDefinitions()
+
+
+        outputs = {}
+
+        res, errors = model.validateChildAlgorithm(id)
+        self.assertTrue(res)
+
+        feedback = QgsProcessingFeedback()
+        context = QgsProcessingContext()
+        context.setProject(QgsProject.instance())
+        context.setFeedback(feedback)
+        parameters = {}
+
+
+        #res = model.run(parameters, context, feedback)
+        
+
+        md = ModelerDialog.create(model)
+        self.assertIsInstance(md, ModelerDialog)
         self.showGui([md])
 
         #parent = QWidget()
@@ -74,6 +159,42 @@ class SpectralMathTests(TestCase):
 
         s = ""
         pass
+    def test_SimpleModel(self):
+
+        m = SimpleSpectralMathModel()
+
+        self.assertIsInstance(m, QgsProcessingModelAlgorithm)
+
+        m
+
+    def test_AlgoritmWidget(self):
+        self.initProcessingRegistry()
+
+        wrapper = QgsGui.processingGuiRegistry().createModelerParameterWidget(dialog.model,
+                                                                              dialog.childId,
+                                                                              param,
+                                                                              dialog.context)
+
+    def test_ModelBuilder(self):
+        import processing.modeler.ModelerDialog
+        import qgis.utils
+        processing.modeler.ModelerDialog.iface = qgis.utils.iface
+        self.initProcessingRegistry()
+        procReg = QgsApplication.instance().processingRegistry()
+        for p in procReg.parameterTypes():
+            if p.id() == '':
+                s = ""
+
+        from processing.modeler.ModelerDialog import ModelerDialog
+        pathModel = pathlib.Path(__file__).parent / 'testmodel.model3'
+        d = ModelerDialog()
+        d.loadModel(pathModel.as_posix())
+
+        model = d.model()
+
+        model.availableSourcesForChild
+        self.showGui(d)
+        s = ""
 
     def test_loadinqgis(self):
 

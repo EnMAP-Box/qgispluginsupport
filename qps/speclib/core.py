@@ -1152,6 +1152,89 @@ class SpectralProfile(QgsFeature):
         return len(self.yValues())
 
 
+class SpectralProfileBlock(object):
+    """
+    A block of spectral profiles that share the same properties like wavelength, wavelength unit etc.
+
+    """
+    def __init__(self, data: np.ndarray,
+                 xValues: typing.Union[np.ndarray, typing.List[typing.Union[float, int]]] = None,
+                 xUnit: str = None,
+                 yUnit: str = None,
+                 bbl: typing.Union[np.ndarray, typing.List[bool]] = None,
+                 metadata: dict = None):
+
+        assert isinstance(data, np.ndarray)
+        assert data.ndim <= 3
+        if data.ndim == 1:
+            data = data.reshape((data.shape[0], 1, 1))
+        elif data.ndim == 2:
+            data = data.reshape((data.shape[0], data.shape[1], 1))
+        self.mData: np.ndarray = data
+
+        if xValues is not None:
+            if not isinstance(xValues, np.ndarray):
+                xValues = np.asarray(xValues)
+        else:
+            xValues = np.arange(data.shape[0])
+        assert len(xValues) == self.n_bands()
+
+        if bbl is not None:
+            assert isinstance(bbl, np.ndarray)
+        assert len(bbl) == self.n_bands()
+
+        self.mXValues: np.ndarray = xValues
+        self.mXUnit: str = xUnit
+        self.mYUnit: str = yUnit
+        self.mBBL: np.ndarray = bbl
+
+        if not isinstance(metadata, dict):
+            metadata = dict()
+        self.mMetadata = metadata
+
+    def xValues(self) -> np.ndarray:
+        return self.mXValues
+
+    def xUnit(self) -> str:
+        return self.mXUnit
+
+    def n_profiles(self) -> int:
+        return int(np.product(self.mData.shape[1:]))
+
+    def n_bands(self) -> int:
+        return self.mData.shape[0]
+
+    def yUnit(self) -> str:
+        return self.mYUnit
+
+    def __len__(self) -> int:
+        return np.product(self.mData.shape[1,:])
+
+    def __iter__(self):
+        y, x = self.mData.shape[1:]
+
+        xValues = self.wavelengths()
+        xUnit = self.wavelengthUnit()
+        yUnit = self.yUnit()
+
+        for j in range(y):
+            for x in range(x):
+                yValues = self.mData[:,y,x]
+                profile = SpectralProfile()
+                profile.setValues(x=xValues, y=yValues, xUnit=xUnit, yUnit=yUnit)
+                yield profile
+
+    def data(self) -> np.ndarray:
+        """
+        Spectral profiles as np.ndarray with (always) 3 dimensions:
+        (bands, profile number, 1) or - e.g. if profiles are from a spectral library
+        (bands, y position, x position) - e.g. if profiles come from an image subset
+        :return: np.ndarray
+        """
+        return self.mData
+
+
+
 def defaultCurvePlotStyle() -> PlotStyle:
     ps = PlotStyle()
     ps.setLineColor('white')
@@ -2667,7 +2750,6 @@ class SpectralLibrary(QgsVectorLayer):
                 assert isinstance(f, QgsFeature)
                 for field in LUT_FID2KEYS[f.id()]:
                     yield SpectralProfile.fromQgsFeature(f, value_field=field)
-
 
     def groupBySpectralProperties(self, excludeEmptyProfiles: bool = True):
         """
