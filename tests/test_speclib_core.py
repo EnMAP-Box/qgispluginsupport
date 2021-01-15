@@ -331,6 +331,16 @@ class TestCore(TestCase):
         self.assertEqual(sp2.values(), r2.values())
         self.assertEqual(sp2.geometry().asWkt(), r2.geometry().asWkt())
 
+
+    def test_SpectralProfileBlock(self):
+
+        profiles = TestObjects.spectralProfiles()
+        coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
+
+        block1 = SpectralProfileBlock(coredata, core_wl, core_wlu)
+
+        self.assertIsInstance(block1, SpectralProfileBlock)
+
     def test_read_temporal_wavelength(self):
 
         p = r'D:\Repositories\qgispluginsupport\qpstestdata\2010-2020_001-365_HL_TSA_LNDLG_NBR_TSS.tif'
