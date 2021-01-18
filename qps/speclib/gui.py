@@ -53,7 +53,7 @@ from qgis.gui import \
     QgsAttributeTableFilterModel, QgsFieldExpressionWidget
 
 #from .math import SpectralAlgorithm, SpectralMathResult, XUnitConversion
-from .math import *
+from .processing import *
 from .math_functions import *
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
@@ -2404,7 +2404,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mStatusLabel.setPlotWidget(self.mPlotWidget)
         self.mPlotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
-        from .math import SpectralMathWidget
+        from .processing import SpectralMathWidget
         self.mMathWidget: SpectralMathWidget = SpectralMathWidget()
         self.mMathWidget.sigSpectralMathChanged.connect(
             lambda *args: self.mPlotWidget.setSpectralMathStack(self.mMathWidget.spectralMathStack()))

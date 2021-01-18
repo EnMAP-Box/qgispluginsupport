@@ -103,7 +103,7 @@ import numpy as np
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.speclib.gui import *
-from qps.speclib.math import *
+from qps.speclib.processing import *
 from qps.testing import TestCase
 from qps.models import TreeView, TreeNode, TreeModel
 
@@ -121,8 +121,15 @@ class SpectralMathTests(TestCase):
         processing.modeler.ModelerDialog.iface = qgis.utils.iface
         from processing.modeler.ModelerDialog import ModelerDialog, createContext
 
-        md = ModelerDialog.create()
+        model: QgsProcessingModelAlgorithm = QgsProcessingModelAlgorithm()
+        model.setName('MyModelName')
+        model.setGroup('MyModelGroup')
+        md = ModelerDialog.create(model)
         self.assertIsInstance(md, ModelerDialog)
+
+
+        self.showGui(md)
+
         typeBool = QgsApplication.processingRegistry().parameterType('boolean')
         typeMyType = QgsApplication.processingRegistry().parameterType('my_type')
         for i, myType in enumerate([typeBool, typeMyType]):

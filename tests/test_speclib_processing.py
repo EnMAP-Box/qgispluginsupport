@@ -24,7 +24,7 @@ from qpstestdata import speclib as speclibpath
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.speclib.gui import *
-from qps.speclib.math import *
+from qps.speclib.processing import *
 from qps.testing import TestCase
 from qps.models import TreeView, TreeNode, TreeModel
 
@@ -164,6 +164,9 @@ class SpectralMathTests(TestCase):
         m = SimpleSpectralMathModel()
 
         self.assertIsInstance(m, QgsProcessingModelAlgorithm)
+
+        alg1 = DummyAlgorithm()
+
 
         m
 

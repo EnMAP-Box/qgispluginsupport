@@ -381,6 +381,7 @@ class DummyAlgorithm(QgsProcessingAlgorithm):
     def __init__(self):
         super().__init__()
         self.mParameters = []
+        self.mFunction: typing.Callable = None
 
     def description(self) -> str:
         return 'Dummy Algorithm Description'
@@ -394,6 +395,12 @@ class DummyAlgorithm(QgsProcessingAlgorithm):
         o1 = SpectralAlgorithmOutputDestination(self.OUTPUT, description='Modified profiles')
         self.addParameter(o1)
         pass
+
+
+    def setProcessingFunction(self, function:typing.Callable):
+
+        assert isinstance(function, typing.Callable)
+        self.mFunction = function
 
     def asPythonCommand(self) -> str:
         printCaller()
@@ -478,6 +485,10 @@ class DummyAlgorithm(QgsProcessingAlgorithm):
             # process block by block
             assert isinstance(profileBlock, SpectralProfileBlock)
             print(profileBlock)
+
+            if isinstance(self.mFunction, typing.Callable):
+                profileBlock = self.mFunction(profileBlock)
+
             output_blocks.append(profileBlock)
         OUTPUTS = dict()
         OUTPUTS[self.OUTPUT] = output_blocks
