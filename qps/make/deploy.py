@@ -41,6 +41,7 @@ class QGISMetadataFileWriter(object):
         self.mTracker = ''
         self.mRepository = ''
         self.mIsExperimental = ''
+        self.mHasProcessingProvider=False
         self.mTags = []
         self.mCategory = ''
         self.mChangelog = ''
@@ -68,7 +69,10 @@ class QGISMetadataFileWriter(object):
 
         lines.append('tags={}'.format(', '.join(self.mTags)))
         lines.append('category={}'.format(self.mRepository))
-
+        if self.mHasProcessingProvider:
+            lines.append(f'hasProcessingProvider=yes')
+        else:
+            lines.append(f'hasProcessingProvider=no')
         lines.append('homepage={}'.format(self.mHomepage))
         if self.mTracker:
             lines.append('tracker={}'.format(self.mTracker))
