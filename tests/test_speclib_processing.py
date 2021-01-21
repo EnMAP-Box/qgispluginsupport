@@ -28,31 +28,33 @@ from qps.speclib.processing import *
 from qps.testing import TestCase
 from qps.models import TreeView, TreeNode, TreeModel
 
-class SpectralMathTests(TestCase):
+class SpectralProcessingTests(TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
 
-        super(SpectralMathTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
+        super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
+        from qps import initResources
+        initResources()
 
-
-    def initProcessingRegistry(self):
+    def initProcessingRegistry(self) -> typing.Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
         procReg = QgsApplication.instance().processingRegistry()
         assert isinstance(procReg, QgsProcessingRegistry)
 
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
-        paramFactory = SpectralMathParameterWidgetFactory()
+        paramFactory = SpectralProcessingParameterWidgetFactory()
         procGuiReg.addParameterWidgetFactory(paramFactory)
 
         parameterType = SpectralAlgorithmInputType()
         self.assertTrue(procReg.addParameterType(parameterType))
-
 
         provider = SpectralAlgorithmProvider()
         self.assertTrue(procReg.addProvider(provider))
 
         self.mFac = paramFactory
         self.mPRov = provider
+
+        return procReg, procGuiReg
 
     def test_SpectralAlgorithmInputType(self):
 
@@ -155,28 +157,47 @@ class SpectralMathTests(TestCase):
 
 
 
-
-
+    def test_gui(self):
+        self.initProcessingRegistry()
+        sl = TestObjects.createSpectralLibrary(10)
+        w = SpectralLibraryWidget(speclib=sl)
+        self.showGui(w)
         s = ""
         pass
+
     def test_SimpleModel(self):
-
-        m = SimpleSpectralMathModel()
-
-        self.assertIsInstance(m, QgsProcessingModelAlgorithm)
-
-        alg1 = DummyAlgorithm()
+        reg, guiReg = self.initProcessingRegistry()
+        reg: QgsProcessingRegistry
+        guiReg: QgsProcessingGuiRegistry
 
 
-        m
+        m = SimpleProcessingModelAlgorithmChain()
+        self.assertIsInstance(m, QAbstractListModel)
 
-    def test_AlgoritmWidget(self):
+        algs = spectral_algorithms()
+
+        w = QTableView()
+        w.setModel(m)
+        for a in algs:
+            m.addAlgorithm(a)
+            m.addAlgorithm(a.id())
+
+
+        self.showGui(w)
+
+    def test_AlgorithmWidget(self):
         self.initProcessingRegistry()
 
         wrapper = QgsGui.processingGuiRegistry().createModelerParameterWidget(dialog.model,
                                                                               dialog.childId,
                                                                               param,
                                                                               dialog.context)
+
+    def test_SpectralProcessingWidget(self):
+        self.initProcessingRegistry()
+        w = SpectralProcessingWidget()
+
+        self.showGui(w)
 
     def test_ModelBuilder(self):
         import processing.modeler.ModelerDialog
@@ -199,71 +220,12 @@ class SpectralMathTests(TestCase):
         self.showGui(d)
         s = ""
 
-    def test_loadinqgis(self):
 
-        s = ""
+    def test_SpectralProcessingAlgorithmTreeView(self):
 
-    def test_functiontableview(self):
-
-        tv = SpectralMathFunctionTableView()
-        m = SpectralMathFunctionModel()
+        self.initProcessingRegistry()
+        tv = SpectralProcessingAlgorithmTreeView()
+        m = SpectralProcessingAlgorithmModel(tv)
         tv.setModel(m)
 
-        self.assertTrue(len(m) == 0)
-        func = GenericSpectralAlgorithm()
-        self.assertIsInstance(func, SpectralAlgorithm)
-        m.addFunction(func)
-
-        self.assertTrue(len(m) == 1)
-
         self.showGui(tv)
-
-    def test_spectralMathFunctionRegistry(self):
-
-        reg = SpectralMathFunctionRegistry()
-        f1 = GenericSpectralAlgorithm()
-        f2 = XUnitConversion()
-
-        self.assertTrue(reg.registerFunction(f1))
-        self.assertFalse(reg.registerFunction(f1))
-        self.assertFalse(reg.registerFunction(GenericSpectralAlgorithm()))
-        self.assertTrue(reg.registerFunction(f2))
-        self.assertTrue(len(reg) == 2)
-        self.assertTrue(reg.unregisterFunction(f2))
-        self.assertTrue(len(reg) == 1)
-        self.assertFalse(reg.unregisterFunction(f2))
-
-        reg.registerFunction(f2, group='Group')
-
-        tv = TreeView()
-        tv.setModel(reg)
-
-        self.showGui(tv)
-
-
-
-    def test_spectralMathWidget(self):
-
-        w = SpectralMathWidget()
-        f1 = GenericSpectralAlgorithm()
-        f2 = XUnitConversion()
-
-        model = w.functionModel()
-        model.addFunctions([f1, f2])
-        model.removeFunctions([f2, f1])
-        model.addFunctions([f2, f1])
-
-        doc = QDomDocument()
-        node = doc.createElement('functions')
-        model.writeXml(node, doc)
-
-        model2 = SpectralMathFunctionModel.readXml(node)
-        self.assertIsInstance(model2, SpectralMathFunctionModel)
-        self.assertTrue(len(model) == len(model2))
-        for f1, f2 in zip(model, model2):
-            self.assertIsInstance(f1, SpectralAlgorithm)
-            self.assertIsInstance(f2, SpectralAlgorithm)
-            self.assertEqual(f1.id(), f2.id())
-
-        self.assertIsInstance(w, QWidget)
-        self.showGui(w)

@@ -2404,8 +2404,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mStatusLabel.setPlotWidget(self.mPlotWidget)
         self.mPlotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
-        from .processing import SpectralMathWidget
-        self.mMathWidget: SpectralMathWidget = SpectralMathWidget()
+        from .processing import SpectralProcessingWidget
+        self.mMathWidget: SpectralProcessingWidget = SpectralProcessingWidget()
         self.mMathWidget.sigSpectralMathChanged.connect(
             lambda *args: self.mPlotWidget.setSpectralMathStack(self.mMathWidget.spectralMathStack()))
         l = QVBoxLayout()
