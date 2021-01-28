@@ -17,7 +17,7 @@ from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, 
     QgsProcessingModelAlgorithm, QgsApplication, QgsProcessingDestinationParameter, \
     QgsProcessingFeatureSource, QgsProcessingOutputDefinition, QgsProcessingParameterVectorLayer, \
     QgsProcessingModelChildAlgorithm, \
-    QgsProcessingRegistry
+    QgsProcessingRegistry, QgsProcessingModelOutput
 
 from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython, QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
@@ -26,7 +26,12 @@ from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython, QgsProcessingP
 
 from processing import ProcessingConfig, Processing
 from processing.core.ProcessingConfig import Setting
-from processing.modeler.ModelerDialog import ModelerParametersDialog
+from processing.gui.wrappers import WidgetWrapperFactory
+from processing.gui.wrappers import InvalidParameterValue
+from processing.tools.dataobjects import createContext
+from processing.gui.wrappers import WidgetWrapper
+from processing.modeler.ModelerParametersDialog import \
+    ModelerParametersPanelWidget, ModelerParametersWidget, ModelerParametersDialog
 import numpy as np
 from .core import SpectralLibrary, SpectralProfile, SpectralProfileBlock, speclibUiPath
 from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
@@ -336,7 +341,7 @@ class SpectralProcessingWidget(QWidget):
 
         self.mAlgorithmModel = SpectralProcessingAlgorithmModel(self)
         # self.mProcessingModel = SimpleProcessingModelAlgorithm()
-        self.mProcessingModelTableModel = SimpleProcessingModelAlgorithmChain()
+        self.mProcessingModelTableModel = ProcessingModelAlgorithmChain()
 
         # self.mProcessingModel.addFunction(GenericSpectralMathFunction())
         # self.mProcessingModel.sigChanged.connect(self.validate)
@@ -367,7 +372,7 @@ class SpectralProcessingWidget(QWidget):
         # a.triggered.connect(lambda *args : self.functionModel().addFunctions([GenericSpectralAlgorithm()]))
 
         self.actionAddFunction.setMenu(m)
-        self.actionRemoveFunction.triggered.connect(self.onRemoveFunctions)
+        #self.actionRemoveFunction.triggered.connect(self.onRemoveFunctions)
 
         for tb in self.findChildren(QToolButton):
             tb: QToolButton
@@ -383,17 +388,6 @@ class SpectralProcessingWidget(QWidget):
 
     def functionModel(self):
         return self.mProcessingModel
-
-    def onRemoveFunctions(self, *args):
-
-        to_remove = set()
-        for idx in self.mTableView.selectedIndexes():
-            f = idx.data(Qt.UserRole)
-            if isinstance(f, SpectralAlgorithm):
-                to_remove.add(f)
-
-        if len(to_remove) > 0:
-            self.functionModel().removeFunctions(list(to_remove))
 
     def onSelectionChanged(self, selected, deselected):
 
@@ -888,12 +882,14 @@ class SpectralAlgorithmProvider(QgsProcessingProvider):
         return True
 
 
-class SimpleProcessingModelAlgorithmChain(QAbstractListModel):
+class ProcessingModelAlgorithmChain(QAbstractListModel):
 
     def __init__(self, *args, **kwds):
-        super(SimpleProcessingModelAlgorithmChain, self).__init__(*args, **kwds)
+        super(ProcessingModelAlgorithmChain, self).__init__(*args, **kwds)
         self.mPModel: QgsProcessingModelAlgorithm = QgsProcessingModelAlgorithm()
-        self.mChilds = []
+        self.mPModel.setName('SimpleModel')
+        self.mPModel.setGroup('')
+        self.mChilds: typing.List[str] = []
 
     def processingModel(self) -> QgsProcessingModelAlgorithm:
         return self.mPModel
@@ -916,18 +912,35 @@ class SimpleProcessingModelAlgorithmChain(QAbstractListModel):
         if orientation == Qt.Horizontal:
             return 'Algorithm'
 
+    """
     def index(self, row: int, column: int, parent: QModelIndex = ...) -> QModelIndex:
         if not parent.isValid():
-            return None
+            return QModelIndex()
 
-        return None
+        alg = self.mChilds[row]
+        return self.createIndex(row, column, alg)
+    """
 
     def insertAlgorithm(self, alg, index:int):
 
-        if isinstance(alg, QgsProcessingAlgorithm):
-            alg = alg.id()
+        if isinstance(alg, str):
+            procReg = QgsApplication.instance().processingRegistry()
+            assert isinstance(procReg, QgsProcessingRegistry)
+            alg = procReg.algorithmById(alg)
 
-        self.mPModel.addChildAlgorithm(childAlg)
+        if isinstance(alg, QgsProcessingAlgorithm):
+            # create new child algorithm
+            alg = self.createChildAlgorithm(alg)
+
+        assert isinstance(alg, QgsProcessingModelChildAlgorithm)
+
+        childID = self.mPModel.addChildAlgorithm(alg)
+        assert childID not in self.mChilds
+        self.mChilds.insert(index, alg.childId())
+        s = ""
+
+    def update_child_connections(self):
+
         s = ""
 
     def addAlgorithm(self, alg):
@@ -940,18 +953,27 @@ class SimpleProcessingModelAlgorithmChain(QAbstractListModel):
     def moveAlgorithm(self):
         pass
 
-    def createChildAlgorithm(self):
+    def createChildAlgorithm(self, _alg:QgsProcessingAlgorithm)-> QgsProcessingModelChildAlgorithm:
 
-        alg = QgsProcessingModelChildAlgorithm(self._alg.id())
-        if not self.childId:
-            alg.generateChildId(self.model)
-        else:
-            alg.setChildId(self.childId)
-        alg.setDescription(self.descriptionBox.text())
-        if self.algorithmItem:
-            alg.setConfiguration(self.algorithmItem.configuration())
-            self._alg = alg.algorithm().create(self.algorithmItem.configuration())
-        for param in self._alg.parameterDefinitions():
+        # todo: replace use of ModelerParametersDialog by own routines that don't require a widget
+        from qgis.PyQt.QtWidgets import QDialog
+        d = ModelerParametersDialog(_alg, self.mPModel)
+
+        #w = ModelerParametersWidget(_alg, self.mPModel, dialog=d)
+        childAlg = d.createAlgorithm()
+        return childAlg
+        d = ModelerParametersPanelWidget(_alg, self.mPModel)
+        childAlg = d.createAlgorithm()
+        return childAlg
+
+        alg = QgsProcessingModelChildAlgorithm(_alg.id())
+        alg.generateChildId(self.mPModel)
+        alg.setDescription('')
+
+        #if self.algorithmItem:
+        #    alg.setConfiguration(self.algorithmItem.configuration())
+        #    self._alg = alg.algorithm().create(self.algorithmItem.configuration())
+        for param in _alg.parameterDefinitions():
             if param.isDestination() or param.flags() & QgsProcessingParameterDefinition.FlagHidden:
                 continue
             try:
@@ -987,7 +1009,6 @@ class SimpleProcessingModelAlgorithmChain(QAbstractListModel):
         for output in self._alg.destinationParameterDefinitions():
             if not output.flags() & QgsProcessingParameterDefinition.FlagHidden:
                 wrapper = self.wrappers[output.name()]
-
                 if wrapper.isModelOutput():
                     name = wrapper.modelOutputName()
                     if name:

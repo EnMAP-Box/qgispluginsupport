@@ -28,6 +28,27 @@ from qps.speclib.processing import *
 from qps.testing import TestCase
 from qps.models import TreeView, TreeNode, TreeModel
 
+class SpectraProcessingExamples(TestCase):
+    @classmethod
+    def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
+        super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
+        from qps import initResources
+        initResources()
+        procReg = QgsApplication.instance().processingRegistry()
+        assert isinstance(procReg, QgsProcessingRegistry)
+
+        procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
+        paramFactory = SpectralProcessingParameterWidgetFactory()
+        procGuiReg.addParameterWidgetFactory(paramFactory)
+
+    def test_create_algorithm(self):
+
+        pass
+
+    def text_use_simple_model(self):
+        pass
+
+
 class SpectralProcessingTests(TestCase):
 
     @classmethod
@@ -170,18 +191,19 @@ class SpectralProcessingTests(TestCase):
         reg: QgsProcessingRegistry
         guiReg: QgsProcessingGuiRegistry
 
-
-        m = SimpleProcessingModelAlgorithmChain()
+        m = ProcessingModelAlgorithmChain()
         self.assertIsInstance(m, QAbstractListModel)
 
         algs = spectral_algorithms()
 
         w = QTableView()
         w.setModel(m)
+        w.show()
         for a in algs:
             m.addAlgorithm(a)
-            m.addAlgorithm(a.id())
-
+            #break
+            #m.addAlgorithm(a.id())
+            pass
 
         self.showGui(w)
 
