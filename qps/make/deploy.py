@@ -25,6 +25,8 @@
 """
 # noinspection PyPep8Naming
 import re
+
+
 class QGISMetadataFileWriter(object):
 
     def __init__(self):
@@ -41,7 +43,7 @@ class QGISMetadataFileWriter(object):
         self.mTracker = ''
         self.mRepository = ''
         self.mIsExperimental = ''
-        self.mHasProcessingProvider=False
+        self.mHasProcessingProvider = False
         self.mTags = []
         self.mCategory = ''
         self.mChangelog = ''
@@ -81,12 +83,12 @@ class QGISMetadataFileWriter(object):
         if isinstance(self.mIsExperimental, bool):
             lines.append('experimental={}'.format(self.mIsExperimental))
 
-
-        #lines.append('deprecated={}'.format(self.mIsDeprecated))
+        # lines.append('deprecated={}'.format(self.mIsDeprecated))
         lines.append('')
         lines.append('changelog={}'.format(self.mChangelog))
 
         return '\n'.join(lines)
+
     """
     [general]
     name=dummy
@@ -107,8 +109,6 @@ class QGISMetadataFileWriter(object):
     category=Raster
     """
 
-    def writeMetadataTxt(self, path:str):
+    def writeMetadataTxt(self, path: str):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(self.metadataString())
-
-
