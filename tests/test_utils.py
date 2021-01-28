@@ -182,7 +182,11 @@ class TestUtils(TestCase):
 
     def test_spatialObjects(self):
 
-        pt1 = SpatialPoint('EPSG:4326', 300, 300)
+
+        wkt = 'PROJCS["BU MEaSUREs Lambert Azimuthal Equal Area - SA - V01",GEOGCS["GCS_WGS_1984",DATUM["WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",-15],PARAMETER["longitude_of_center",-60],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
+        crs = QgsCoordinateReferenceSystem.fromWkt(wkt)
+        self.assertTrue(crs.isValid())
+        pt1 = SpatialPoint(wkt, 300, 300)
         self.assertIsInstance(pt1, SpatialPoint)
         d = pickle.dumps(pt1)
         pt2 = pickle.loads(d)
@@ -195,7 +199,7 @@ class TestUtils(TestCase):
 
         self.assertEqual(pt1, pt3)
 
-        ext1 = SpatialExtent('EPSG:4326', QgsPointXY(0, 0), QgsPointXY(10, 20))
+        ext1 = SpatialExtent(wkt, QgsPointXY(0, 0), QgsPointXY(10, 20))
         d = pickle.dumps(ext1)
         ext2 = pickle.loads(d)
         self.assertEqual(ext1, ext2)
@@ -204,6 +208,7 @@ class TestUtils(TestCase):
         ext1.writeXml(node, doc)
         ext2 = SpatialExtent.readXml(node)
         self.assertEqual(ext1, ext2)
+        self.assertEqual(ext1.crs().toWkt(), ext2.crs().toWkt())
 
     def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
 
