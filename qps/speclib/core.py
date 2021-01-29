@@ -29,6 +29,7 @@
 import json
 import enum
 import pickle
+from collections import namedtuple
 import typing
 import pathlib
 import collections
@@ -79,6 +80,10 @@ DEFAULT_NAME = 'SpectralLibrary'
 
 OGR_EXTENSION2DRIVER = dict()
 OGR_EXTENSION2DRIVER[''] = []  # list all drivers without specific extension
+
+# to be used in future
+# a single profiles is identified by feature id and field index or field name
+ProfileKey = namedtuple('ProfileKey', ['fid', 'field'])
 
 for i in range(ogr.GetDriverCount()):
     drv = ogr.GetDriver(i)
@@ -531,6 +536,56 @@ def value2str(value, sep: str = ' ') -> str:
     else:
         value = str(value)
     return value
+
+
+
+class SpectralSetting(object):
+    """
+    A spectral settings described the boundary conditions of one or multiple spectral profiles with
+    n y-values, e.g. reflectances or radiances, by
+    1. n x values, e.g. the wavelenght of each band
+    2. an xUnit, e.g. the wavelength unit 'micrometers'
+    3. an yUnit, e.g. 'reflectance'
+    """
+
+    def __init__(self, x, xUnit:str=None, yUnit=None, bbl:list=None):
+
+        assert isinstance(x, (tuple, list, np.ndarray))
+
+        if isinstance(x, np.ndarray):
+            x = x.tolist()
+        if isinstance(x, list):
+            x = tuple(x)
+
+        self._x: typing.Tuple = x
+        self._xUnit: str = xUnit
+        self._yUnit: str = yUnit
+        self._bbl:list = bbl
+        self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
+
+    def x(self):
+        return self._x
+
+    def n_bands(self)->int:
+        return len(self._x)
+
+    def yUnit(self):
+        return self._yUnit
+
+    def xUnit(self):
+        return self._xUnit
+
+    def bbl(self):
+        return self._bbl
+
+    def __eq__(self, other):
+        if not isinstance(other, SpectralSetting):
+            return False
+        return self._hash == other._hash
+
+    def __hash__(self):
+        return self._hash
+
 
 
 class SpectralProfile(QgsFeature):
@@ -1155,15 +1210,13 @@ class SpectralProfile(QgsFeature):
 class SpectralProfileBlock(object):
     """
     A block of spectral profiles that share the same properties like wavelength, wavelength unit etc.
-
     """
     def __init__(self, data: np.ndarray,
-                 xValues: typing.Union[np.ndarray, typing.List[typing.Union[float, int]]] = None,
-                 xUnit: str = None,
-                 yUnit: str = None,
-                 bbl: typing.Union[np.ndarray, typing.List[bool]] = None,
+                 spectralSetting: SpectralSetting,
+                 fids: typing.List[int] = None,
                  metadata: dict = None):
 
+        assert isinstance(spectralSetting, SpectralSetting)
         assert isinstance(data, np.ndarray)
         assert data.ndim <= 3
         if data.ndim == 1:
@@ -1172,25 +1225,35 @@ class SpectralProfileBlock(object):
             data = data.reshape((data.shape[0], data.shape[1], 1))
         self.mData: np.ndarray = data
 
-        if xValues is not None:
-            if not isinstance(xValues, np.ndarray):
-                xValues = np.asarray(xValues)
-        else:
+        if spectralSetting.x is None:
             xValues = np.arange(data.shape[0])
+        else:
+            xValues = np.asarray(spectralSetting.x())
+
         assert len(xValues) == self.n_bands()
 
-        if bbl is not None:
-            assert isinstance(bbl, np.ndarray)
-        assert len(bbl) == self.n_bands()
-
+        self.mSpectralSetting = spectralSetting
         self.mXValues: np.ndarray = xValues
-        self.mXUnit: str = xUnit
-        self.mYUnit: str = yUnit
-        self.mBBL: np.ndarray = bbl
+        self.mFIDs: typing.List[int] = None
 
         if not isinstance(metadata, dict):
             metadata = dict()
         self.mMetadata = metadata
+
+        if fids is not None:
+            self.setFIDs(fids)
+
+    def setFIDs(self, fids: typing.List[int]):
+        """
+        :param fids:
+        :return:
+        """
+        assert len(fids) == self.n_profiles(), \
+            f'Number of Feature IDs ({len(fids)}) must be equal to number of profiles ({self.n_profiles()})'
+        self.mFIDs = fids
+
+    def fids(self) -> typing.List[int]:
+        return self.mFIDs
 
     def xValues(self) -> np.ndarray:
         return self.mXValues
@@ -1241,7 +1304,6 @@ def defaultCurvePlotStyle() -> PlotStyle:
     ps.markerSymbol = None
     ps.linePen.setStyle(Qt.SolidLine)
     return ps
-
 
 class SpectralProfileRenderer(object):
 
@@ -2707,6 +2769,37 @@ class SpectralLibrary(QgsVectorLayer):
         # features = [f for f in self.features() if f.id() in keys_to_remove]
         return self.getFeatures(featureRequest)
 
+    def profileBlocks(self,
+                          fids=None,
+                          value_fields=None,
+                          profile_keys=None,
+                          ) -> typing.List[SpectralProfileBlock]:
+        """
+        Reads SpectralProfiles into profile blocks with different spectral settings
+        :param blob:
+        :return:
+        """
+        for spectral_setting, profiles in self.groupBySpectralProperties(
+                                                fids=fids,
+                                                value_fields=value_fields,
+                                                profile_keys=profile_keys
+                                                    ).items():
+
+            ns: int = len(profiles)
+            profile_ids = [p.id() for p in profiles]
+            nb = spectral_setting.n_bands()
+
+            ref_profile = np.asarray(profiles[0].yValues())
+            dtype = ref_profile.dtype
+            blockArray = np.empty((nb, 1, ns), dtype=dtype)
+            blockArray[:, 0, 0] = ref_profile
+
+            for i in range(1, len(profiles)):
+                blockArray[:, 0, i] = np.asarray(profiles[i].yValues(), dtype=dtype)
+            block = SpectralProfileBlock(blockArray, spectral_setting, fids=profile_ids)
+            yield block
+            s = ""
+
     def profile(self, fid: int, value_field=None) -> SpectralProfile:
         if value_field is None:
             value_field = self.spectralValueFields()[0]
@@ -2751,7 +2844,12 @@ class SpectralLibrary(QgsVectorLayer):
                 for field in LUT_FID2KEYS[f.id()]:
                     yield SpectralProfile.fromQgsFeature(f, value_field=field)
 
-    def groupBySpectralProperties(self, excludeEmptyProfiles: bool = True):
+    def groupBySpectralProperties(self,
+                                  fids=None,
+                                  value_fields=None,
+                                  profile_keys=None,
+                                  excludeEmptyProfiles: bool = True
+                                  ) -> typing.Dict[SpectralSetting, typing.List[SpectralProfile]]:
         """
         Returns SpectralProfiles grouped by key = (xValues, xUnit and yUnit):
 
@@ -2759,11 +2857,15 @@ class SpectralLibrary(QgsVectorLayer):
             xUnit: None | str with len(str) > 0, e.g. a wavelength like 'nm'
             yUnit: None | str with len(str) > 0, e.g. 'reflectance' or '-'
 
-        :return: {(xValues, xUnit, yUnit):[list-of-profiles]}
+        :return: {SpectralSetting:[list-of-profiles]}
         """
 
         results = dict()
-        for p in self.profiles():
+        for p in self.profiles(
+                fids=fids,
+                value_fields=value_fields,
+                profile_keys=profile_keys):
+
             assert isinstance(p, SpectralProfile)
 
             d = p.values()
@@ -2774,7 +2876,7 @@ class SpectralLibrary(QgsVectorLayer):
                 if not len(d['y']) > 0:
                     continue
 
-            x = tuple(p.xValues())
+            x = p.xValues()
             if len(x) == 0:
                 x = None
             # y = None if d['y'] in [None, []] else tuple(d['y'])
@@ -2782,7 +2884,7 @@ class SpectralLibrary(QgsVectorLayer):
             xUnit = None if d['xUnit'] in [None, ''] else d['xUnit']
             yUnit = None if d['yUnit'] in [None, ''] else d['yUnit']
 
-            key = (x, xUnit, yUnit)
+            key = SpectralSetting(x=x, xUnit=xUnit, yUnit=yUnit)
 
             if key not in results.keys():
                 results[key] = []

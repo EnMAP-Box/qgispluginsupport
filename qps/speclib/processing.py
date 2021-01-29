@@ -22,7 +22,8 @@ from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, 
 from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython, QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
     QgsAbstractProcessingParameterWidgetWrapper, QgsProcessingParameterWidgetContext, QgsProcessingGui, \
-    QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog
+    QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, \
+    QgsProcessingToolboxTreeView
 
 from processing import ProcessingConfig, Processing
 from processing.core.ProcessingConfig import Setting
@@ -82,10 +83,11 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
         super().__init__(name, description=description, optional=optional)
 
         self.mSpectralProfileBlocks: typing.List[SpectralProfileBlock] = list()
-        self.mSpectralLibrary: SpectralLibrary = None
-        self.mSpectralLibraryField: str = None
 
-    def setSpectralLibrary(self, speclib: SpectralLibrary, field: str = None):
+    def n_blocks(self) -> int:
+        return len(self.mSpectralProfileBlocks)
+
+    def setFromSpectralLibrary(self, speclib: SpectralLibrary, field: str = None):
         from ..speclib.core import spectralValueFields
         blob_fields = [f.name() for f in spectralValueFields(speclib)]
         assert len(blob_fields) >= 1, f'{speclib.name()} does not contain a SpectralProfile field'
@@ -93,18 +95,16 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
             assert field in blob_fields, f'Field {field} is not a SpectralProfile field'
         else:
             field = blob_fields[0]
-        self.mSpectralLibrary = speclib
-        self.mSpectralLibraryField = field
+        self.mSpectralProfileBlocks.extend(
+            speclib.profileBlocks(value_fields=[field]))
 
     def profileBlocks(self) -> typing.List[SpectralProfileBlock]:
         return self.mSpectralProfileBlocks
 
     def isDestination(self):
-        # printCaller()
         return False
 
     def type(self):
-        # printCaller()
         return self.TYPE
 
     def clone(self):
@@ -121,13 +121,11 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
         return 'The spectral profile'
 
     def toVariantMap(self):
-        printCaller(f'#{id(self)}')
         result = super(SpectralAlgorithmInput, self).toVariantMap()
         result['spectral_profile_blocks'] = self.mSpectralProfileBlocks
         return result
 
     def fromVariantMap(self, map: dict):
-        printCaller()
         super(SpectralAlgorithmInput, self).fromVariantMap(map)
         self.mSpectralProfileBlocks = map.get('spectral_profile_blocks', [])
 
@@ -137,9 +135,13 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
 class SpectralAlgorithmOutput(QgsProcessingOutputDefinition):
     TYPE = SpectralAlgorithmInput.TYPE
 
-    def __init__(self, name: str, description='Spectral Profile'):
+    def __init__(self, name: str='Spectral Profile', description='Spectral Profile'):
         super(SpectralAlgorithmOutput, self).__init__(name, description=description)
         s = ""
+        self.mSpectralProfileBlocks: typing.List[SpectralProfileBlock] = []
+
+    def addProfileBlock(self, block: SpectralProfileBlock):
+        self.mSpectralProfileBlocks.append(block)
 
     def type(self):
         printCaller()
@@ -297,7 +299,7 @@ class SpectralProcessingModelTableView(QTableView):
         self.setDropIndicatorShown(True)
 
 
-from qgis.gui import QgsProcessingToolboxTreeView
+
 
 
 class SpectralProcessingAlgorithmTreeView(QgsProcessingToolboxTreeView):
@@ -401,9 +403,6 @@ class SpectralProcessingWidget(QWidget):
             wOld = self.scrollArea.takeWidget()
             self.mCurrentFunction = f
 
-            if isinstance(f, SpectralAlgorithm):
-                w = self.mCurrentFunction.createWidget()
-                self.scrollArea.setWidget(w)
 
     def tableView(self) -> SpectralProcessingAlgorithmTreeView:
         return self.mTableView
@@ -423,299 +422,6 @@ class SpectralProcessingWidget(QWidget):
 
     def expression(self) -> str:
         return self.tbExpression.toPlainText()
-
-
-class SpectralProfileReader(QgsProcessingAlgorithm):
-    INPUT = 'input_speclib'
-    OUTPUT = 'output_profiles'
-
-    def __init__(self):
-        super().__init__()
-        self.mParameters = []
-
-    def description(self) -> str:
-        return 'Reads spectral profiles'
-
-    def initAlgorithm(self, configuration: dict):
-        printCaller()
-
-        p1 = QgsProcessingParameterVectorLayer(self.INPUT)
-        self.addParameter(p1, createOutput=True)
-
-        o1 = SpectralAlgorithmOutput(self.OUTPUT)
-        self.addOutput(o1)
-        pass
-
-    def asPythonCommand(self) -> str:
-        pass
-
-    def canExecute(self, parameters: dict, context: QgsProcessingContext) -> bool:
-        return True
-
-    def checkParameterValues(self,
-                             parameters: dict,
-                             context: QgsProcessingContext,
-                             ):
-        result = True
-        msg = ''
-        # check parameters
-
-        return result, msg
-
-    def createInstance(self):
-        printCaller()
-        alg = SpectralProfileReader()
-        return alg
-
-    def displayName(self) -> str:
-        return 'Spectral Profile Reader'
-
-    def flags(self):
-        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagNoThreading
-
-    def group(self):
-        return 'qps'
-
-    def helpString(self) -> str:
-        return 'Spectral Profile Loader Help String'
-
-    def name(self):
-        return 'SpectralProfileReader'
-
-    def icon(self):
-        return QIcon(':/qps/ui/icons/profile.svg')
-
-    def prepareAlgorithm(self,
-                         parameters: dict,
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback):
-        printCaller()
-        return True
-
-    def processAlgorithm(self,
-                         parameters: dict,
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback):
-        printCaller()
-        speclib = self.parameterAsVectorLayer(parameters, context)
-
-        input_profiles: SpectralAlgorithmInput = self.parameterDefinition(self.INPUT)
-
-        output_blocks: typing.List[SpectralProfileBlock] = []
-        for profileBlock in input_profiles.profileBlocks():
-            # process block by block
-            assert isinstance(profileBlock, SpectralProfileBlock)
-            print(profileBlock)
-            output_blocks.append(profileBlock)
-        OUTPUTS = dict()
-        OUTPUTS[self.OUTPUT] = output_blocks
-        return OUTPUTS
-
-
-class SpectralProfileWriter(QgsProcessingAlgorithm):
-    INPUT = 'input_profiles'
-    OUTPUT = 'output_speclib'
-
-    def __init__(self):
-        super().__init__()
-        self.mParameters = []
-
-    def description(self) -> str:
-        return 'Writes spectral profiles'
-
-    def initAlgorithm(self, configuration: dict):
-        printCaller()
-
-        p1 = SpectralAlgorithmInput(self.INPUT)
-        self.addParameter(p1)
-
-        o1 = SpectralAlgorithmOutput(self.OUTPUT)
-        self.addOutput(o1)
-        self.mParameters.append([p1, o1])
-
-    def asPythonCommand(self) -> str:
-        pass
-
-    def canExecute(self, parameters: dict, context: QgsProcessingContext) -> bool:
-        return True
-
-    def checkParameterValues(self,
-                             parameters: dict,
-                             context: QgsProcessingContext,
-                             ):
-        result = True
-        msg = ''
-        # check parameters
-
-        return result, msg
-
-    def createInstance(self):
-        printCaller()
-        alg = SpectralProfileReader()
-        return alg
-
-    def displayName(self) -> str:
-        return 'SpectralProfileReader'
-
-    def flags(self):
-        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagNoThreading
-
-    def group(self):
-        return 'qps'
-
-    def helpString(self) -> str:
-        return 'Spectral Profile Loader Help String'
-
-    def name(self):
-        return 'Spectral Profile Loader'
-
-    def icon(self):
-        return QIcon(':/qps/ui/icons/profile.svg')
-
-    def prepareAlgorithm(self,
-                         parameters: dict,
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback):
-        printCaller()
-        return True
-
-    def processAlgorithm(self,
-                         parameters: dict,
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback):
-        printCaller()
-        speclib = self.parameterAsVectorLayer(parameters, context)
-
-        input_profiles: SpectralAlgorithmInput = self.parameterDefinition(self.INPUT)
-
-        output_blocks: typing.List[SpectralProfileBlock] = []
-        for profileBlock in input_profiles.profileBlocks():
-            # process block by block
-            assert isinstance(profileBlock, SpectralProfileBlock)
-            print(profileBlock)
-            output_blocks.append(profileBlock)
-        OUTPUTS = dict()
-        OUTPUTS[self.OUTPUT] = output_blocks
-        return OUTPUTS
-
-
-class DummyAlgorithm(QgsProcessingAlgorithm):
-    INPUT = 'Input Profiles'
-    OUTPUT = 'Output Profiles'
-
-    def __init__(self):
-        super().__init__()
-        self.mParameters = []
-        self.mFunction: typing.Callable = None
-
-    def description(self) -> str:
-        return 'Dummy Algorithm Description'
-
-    def initAlgorithm(self, configuration: dict):
-        printCaller()
-
-        p1 = SpectralAlgorithmInput(self.INPUT, description='Input Profiles')
-        self.addParameter(p1, createOutput=False)
-
-        o1 = SpectralAlgorithmOutputDestination(self.OUTPUT, description='Modified profiles')
-        self.addParameter(o1)
-        pass
-
-    def processAlgorithm(self,
-                         parameters: dict,
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback):
-        printCaller()
-        input_profiles: SpectralAlgorithmInput = self.parameterDefinition(self.INPUT)
-
-        output_blocks: typing.List[SpectralProfileBlock] = []
-        for profileBlock in input_profiles.profileBlocks():
-            # process block by block
-            assert isinstance(profileBlock, SpectralProfileBlock)
-            print(profileBlock)
-
-            if isinstance(self.mFunction, typing.Callable):
-                profileBlock = self.mFunction(profileBlock)
-
-            output_blocks.append(profileBlock)
-        OUTPUTS = dict()
-        OUTPUTS[self.OUTPUT] = output_blocks
-        return OUTPUTS
-
-    def setProcessingFunction(self, function: typing.Callable):
-
-        assert isinstance(function, typing.Callable)
-        self.mFunction = function
-
-    def asPythonCommand(self) -> str:
-        printCaller()
-        pass
-
-    def canExecute(self, parameters: dict, context: QgsProcessingContext) -> bool:
-        printCaller()
-        return True
-
-    def checkParameterValues(self,
-                             parameters: dict,
-                             context: QgsProcessingContext,
-                             ):
-        result = True
-        msg = ''
-        # check parameters
-
-        return result, msg
-
-    def createCustomParametersWidget(self) -> QWidget:
-
-        w = QWidget()
-        label = QLabel('Placeholder custom widget')
-        l = QHBoxLayout()
-        l.addWidget(label)
-        w.setLayout(l)
-        return w
-
-    def createExpressionContext(self,
-                                parameter: dict,
-                                context: QgsProcessingContext,
-                                source: QgsProcessingFeatureSource,
-                                ):
-
-        printCaller()
-        return None
-
-    def createInstance(self):
-        printCaller()
-        alg = DummyAlgorithm()
-        return alg
-
-    def displayName(self) -> str:
-
-        return 'Dummy Profile Algorithm'
-
-    def flags(self):
-
-        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagNoThreading
-
-    def group(self):
-
-        return 'qps'
-
-    def helpString(self) -> str:
-        return 'Dummy Alg Help String'
-
-    def name(self):
-        return 'Dummy Alg Name'
-
-    def icon(self):
-        return QIcon(':/qps/ui/icons/profile.svg')
-
-    def prepareAlgorithm(self,
-                         parameters: dict,
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback):
-
-        printCaller()
-        return True
 
 
 def spectral_algorithms() -> typing.List[QgsProcessingAlgorithm]:
@@ -821,67 +527,6 @@ class SpectralProcessingParameterWidgetFactory(QgsProcessingParameterWidgetFacto
         return [SpectralAlgorithmOutput.TYPE]
 
 
-class SpectralAlgorithmProvider(QgsProcessingProvider):
-    NAME = 'SpectralAlgorithmProvider'
-    def __init__(self):
-        super().__init__()
-        self.algs = []
-
-    def load(self):
-        with QgsRuntimeProfiler.profile('QPS Provider'):
-            ProcessingConfig.settingIcons[self.name()] = self.icon()
-            ProcessingConfig.addSetting(Setting(self.name(), 'ACTIVATE_QPS',
-                                                self.tr('Activate'), True))
-            ProcessingConfig.readSettings()
-            self.refreshAlgorithms()
-        return True
-
-    def unload(self):
-        ProcessingConfig.removeSetting('ACTIVATE_QPS')
-
-    def isActive(self):
-        return ProcessingConfig.getSetting('ACTIVATE_QPS')
-
-    def setActive(self, active):
-        ProcessingConfig.setSettingValue('ACTIVATE_QPS', active)
-
-    def name(self):
-        return 'SpectralMath'
-
-    def longName(self):
-        from .. import __version__
-        return f'SpectralMath ({__version__})'
-
-    def id(self):
-        return 'spectralmath'
-
-    def helpId(self):
-        return 'spectralmath'
-
-    def icon(self):
-        return QIcon(r':/qps/ui/icons/profile_expression.svg')
-
-    def svgIconPath(self):
-        return r':/qps/ui/icons/profile_expression.svg'
-
-    def loadAlgorithms(self):
-        self.algs = [
-            DummyAlgorithm(),
-            # SpectralProfileReader(),
-            SpectralProfileReader(),
-            SpectralProfileWriter(),
-        ]
-
-        for a in self.algs:
-            self.addAlgorithm(a)
-
-    def supportedOutputRasterLayerExtensions(self):
-        return []
-
-    def supportsNonFileBasedOutput(self) -> True:
-        return True
-
-
 class ProcessingModelAlgorithmChain(QAbstractListModel):
 
     def __init__(self, *args, **kwds):
@@ -900,13 +545,29 @@ class ProcessingModelAlgorithmChain(QAbstractListModel):
     def columnCount(self, parent: QModelIndex = None) -> int:
         return 1
 
+    def index(self, row: int, column: int = ..., parent: QModelIndex = ...) -> QModelIndex:
+
+        childId = self.mChilds[row]
+
+        return self.createIndex(row, column, childId)
+
+    def childAlgorithm(self, childId:str) -> QgsProcessingModelAlgorithm:
+        return self.mPModel.childAlgorithm(childId)
+
     def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
 
         if not index.isValid():
             return None
 
-        i = index.row()
-        self.mPModel
+        childAlgo: QgsProcessingModelChildAlgorithm = self.childAlgoritm(index.internalPointer())
+
+        if role == Qt.DisplayRole:
+
+            pass
+        if role == Qt.DisplayRole:
+            return childAlgo.childId()
+
+        return None
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> typing.Any:
         if orientation == Qt.Horizontal:
@@ -933,13 +594,54 @@ class ProcessingModelAlgorithmChain(QAbstractListModel):
             alg = self.createChildAlgorithm(alg)
 
         assert isinstance(alg, QgsProcessingModelChildAlgorithm)
-
+        keepRef(alg)
+        self.beginInsertRows(QModelIndex(), index, index)
         childID = self.mPModel.addChildAlgorithm(alg)
         assert childID not in self.mChilds
         self.mChilds.insert(index, alg.childId())
+
+        self.endInsertRows()
+
+        self.update_child_connections()
         s = ""
 
     def update_child_connections(self):
+
+
+        # model output(s) are taken from last algorithm
+        n_total = len(self.mChilds)
+        i_last = n_total-1
+        for i, childId in enumerate(self.mChilds):
+            child: QgsProcessingModelChildAlgorithm = self.childAlgorithm(childId)
+            previous: QgsProcessingModelChildAlgorithm = None
+            if i > 0:
+                previous = self.childAlgorithm(self.mChilds[i-1])
+
+            alg: QgsProcessingAlgorithm = child.algorithm()
+            inputParams = alg.parameterDefinitions()
+            outputParams = alg.outputDefinitions()
+            destinationParams = alg.destinationParameterDefinitions()
+            outputs = {}
+            if i == 0:
+                # this is the very first algorithm. Use its inputs as model input
+                s = ""
+            if i == i_last:
+
+                for output in destinationParams:
+                    if isinstance(output, SpectralAlgorithmOutputDestination):
+                        output.setFlags(output.flags() | QgsProcessingParameterDefinition.FlagIsModelOutput)
+                    if output.flags() & QgsProcessingParameterDefinition.FlagIsModelOutput:
+                        if output.name() not in outputs:
+                            model_output = QgsProcessingModelOutput(output.name(), output.name())
+                            model_output.setChildId(child.childId())
+                            model_output.setChildOutputName(output.name())
+                            outputs[output.name()] = model_output
+                    else:
+                        s = ""
+
+                pass
+
+            child.setModelOutputs(outputs)
 
         s = ""
 
@@ -953,85 +655,23 @@ class ProcessingModelAlgorithmChain(QAbstractListModel):
     def moveAlgorithm(self):
         pass
 
-    def createChildAlgorithm(self, _alg:QgsProcessingAlgorithm)-> QgsProcessingModelChildAlgorithm:
+    def createChildAlgorithm(self, _alg:QgsProcessingAlgorithm) -> QgsProcessingModelChildAlgorithm:
 
         # todo: replace use of ModelerParametersDialog by own routines that don't require a widget
-        from qgis.PyQt.QtWidgets import QDialog
-        d = ModelerParametersDialog(_alg, self.mPModel)
-
-        #w = ModelerParametersWidget(_alg, self.mPModel, dialog=d)
-        childAlg = d.createAlgorithm()
-        return childAlg
-        d = ModelerParametersPanelWidget(_alg, self.mPModel)
-        childAlg = d.createAlgorithm()
-        return childAlg
+        #from qgis.PyQt.QtWidgets import QDialog
+        #d = ModelerParametersDialog(_alg, self.mPModel)
+        #d.createAlgorithm()
+        #return childAlg
 
         alg = QgsProcessingModelChildAlgorithm(_alg.id())
         alg.generateChildId(self.mPModel)
         alg.setDescription('')
+        # algorithm with configuration?
 
-        #if self.algorithmItem:
-        #    alg.setConfiguration(self.algorithmItem.configuration())
-        #    self._alg = alg.algorithm().create(self.algorithmItem.configuration())
-        for param in _alg.parameterDefinitions():
-            if param.isDestination() or param.flags() & QgsProcessingParameterDefinition.FlagHidden:
-                continue
-            try:
-                wrapper = self.wrappers[param.name()]
-                if issubclass(wrapper.__class__, WidgetWrapper):
-                    val = wrapper.value()
-                elif issubclass(wrapper.__class__, QgsProcessingModelerParameterWidget):
-                    val = wrapper.value()
-                else:
-                    val = wrapper.parameterValue()
-            except InvalidParameterValue:
-                val = None
-
-            if isinstance(val, QgsProcessingModelChildParameterSource):
-                val = [val]
-            elif not (isinstance(val, list) and all(
-                    [isinstance(subval, QgsProcessingModelChildParameterSource) for subval in val])):
-                val = [QgsProcessingModelChildParameterSource.fromStaticValue(val)]
-
-            valid = True
-            for subval in val:
-                if (isinstance(subval, QgsProcessingModelChildParameterSource)
-                    and subval.source() == QgsProcessingModelChildParameterSource.StaticValue
-                    and not param.checkValueIsAcceptable(subval.staticValue())) \
-                        or (subval is None and not param.flags() & QgsProcessingParameterDefinition.FlagOptional):
-                    valid = False
-                    break
-
-            if valid:
-                alg.addParameterSources(param.name(), val)
-
-        outputs = {}
-        for output in self._alg.destinationParameterDefinitions():
-            if not output.flags() & QgsProcessingParameterDefinition.FlagHidden:
-                wrapper = self.wrappers[output.name()]
-                if wrapper.isModelOutput():
-                    name = wrapper.modelOutputName()
-                    if name:
-                        model_output = QgsProcessingModelOutput(name, name)
-                        model_output.setChildId(alg.childId())
-                        model_output.setChildOutputName(output.name())
-                        outputs[name] = model_output
-                else:
-                    val = wrapper.value()
-
-                    if isinstance(val, QgsProcessingModelChildParameterSource):
-                        val = [val]
-
-                    alg.addParameterSources(output.name(), val)
-
-            if output.flags() & QgsProcessingParameterDefinition.FlagIsModelOutput:
-                if output.name() not in outputs:
-                    model_output = QgsProcessingModelOutput(output.name(), output.name())
-                    model_output.setChildId(alg.childId())
-                    model_output.setChildOutputName(output.name())
-                    outputs[output.name()] = model_output
-
-        alg.setModelOutputs(outputs)
-        alg.setDependencies(self.dependencies_panel.value())
+        # add parameter sources? -> done in update
+        # define mode outputs -> do in update
+        # alg.setModelOutputs(outputs)
+        # np dependencies
+        # alg.setDependencies(self.dependencies_panel.value())
 
         return alg
