@@ -538,7 +538,6 @@ def value2str(value, sep: str = ' ') -> str:
     return value
 
 
-
 class SpectralSetting(object):
     """
     A spectral settings described the boundary conditions of one or multiple spectral profiles with
@@ -548,7 +547,7 @@ class SpectralSetting(object):
     3. an yUnit, e.g. 'reflectance'
     """
 
-    def __init__(self, x, xUnit:str=None, yUnit=None, bbl:list=None):
+    def __init__(self, x, xUnit: str = None, yUnit=None, bbl: list = None):
 
         assert isinstance(x, (tuple, list, np.ndarray))
 
@@ -560,13 +559,16 @@ class SpectralSetting(object):
         self._x: typing.Tuple = x
         self._xUnit: str = xUnit
         self._yUnit: str = yUnit
-        self._bbl:list = bbl
+        self._bbl: list = bbl
         self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
+
+    def __str__(self):
+        return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
 
     def x(self):
         return self._x
 
-    def n_bands(self)->int:
+    def n_bands(self) -> int:
         return len(self._x)
 
     def yUnit(self):
@@ -585,7 +587,6 @@ class SpectralSetting(object):
 
     def __hash__(self):
         return self._hash
-
 
 
 class SpectralProfile(QgsFeature):
@@ -883,7 +884,7 @@ class SpectralProfile(QgsFeature):
     def geoCoordinate(self):
         return self.geometry()
 
-    def updateMetadata(self, metaData:dict):
+    def updateMetadata(self, metaData: dict):
         if isinstance(metaData, dict):
             for key, value in metaData.items():
                 self.setMetadata(key, value)
@@ -1211,6 +1212,7 @@ class SpectralProfileBlock(object):
     """
     A block of spectral profiles that share the same properties like wavelength, wavelength unit etc.
     """
+
     def __init__(self, data: np.ndarray,
                  spectralSetting: SpectralSetting,
                  fids: typing.List[int] = None,
@@ -1255,6 +1257,9 @@ class SpectralProfileBlock(object):
     def fids(self) -> typing.List[int]:
         return self.mFIDs
 
+    def spectralSetting(self) -> SpectralSetting:
+        return self.mSpectralSetting
+
     def xValues(self) -> np.ndarray:
         return self.mXValues
 
@@ -1271,7 +1276,7 @@ class SpectralProfileBlock(object):
         return self.mYUnit
 
     def __len__(self) -> int:
-        return np.product(self.mData.shape[1,:])
+        return np.product(self.mData.shape[1, :])
 
     def __iter__(self):
         y, x = self.mData.shape[1:]
@@ -1282,7 +1287,7 @@ class SpectralProfileBlock(object):
 
         for j in range(y):
             for x in range(x):
-                yValues = self.mData[:,y,x]
+                yValues = self.mData[:, y, x]
                 profile = SpectralProfile()
                 profile.setValues(x=xValues, y=yValues, xUnit=xUnit, yUnit=yUnit)
                 yield profile
@@ -1297,13 +1302,13 @@ class SpectralProfileBlock(object):
         return self.mData
 
 
-
 def defaultCurvePlotStyle() -> PlotStyle:
     ps = PlotStyle()
     ps.setLineColor('white')
     ps.markerSymbol = None
     ps.linePen.setStyle(Qt.SolidLine)
     return ps
+
 
 class SpectralProfileRenderer(object):
 
@@ -2447,7 +2452,7 @@ class SpectralLibrary(QgsVectorLayer):
         self.initTableConfig()
         self.initProfileRenderer()
 
-    def onAttributeAdded(self, idx:int):
+    def onAttributeAdded(self, idx: int):
 
         field: QgsField = self.fields().at(idx)
         if field.type() == QVariant.ByteArray:
@@ -2770,20 +2775,20 @@ class SpectralLibrary(QgsVectorLayer):
         return self.getFeatures(featureRequest)
 
     def profileBlocks(self,
-                          fids=None,
-                          value_fields=None,
-                          profile_keys=None,
-                          ) -> typing.List[SpectralProfileBlock]:
+                      fids=None,
+                      value_fields=None,
+                      profile_keys=None,
+                      ) -> typing.List[SpectralProfileBlock]:
         """
         Reads SpectralProfiles into profile blocks with different spectral settings
         :param blob:
         :return:
         """
         for spectral_setting, profiles in self.groupBySpectralProperties(
-                                                fids=fids,
-                                                value_fields=value_fields,
-                                                profile_keys=profile_keys
-                                                    ).items():
+                fids=fids,
+                value_fields=value_fields,
+                profile_keys=profile_keys
+        ).items():
 
             ns: int = len(profiles)
             profile_ids = [p.id() for p in profiles]
@@ -2808,7 +2813,7 @@ class SpectralLibrary(QgsVectorLayer):
     def profiles(self,
                  fids=None,
                  value_fields=None,
-                 profile_keys: typing.Tuple[int, str]=None) -> typing.Generator[SpectralProfile, None, None]:
+                 profile_keys: typing.Tuple[int, str] = None) -> typing.Generator[SpectralProfile, None, None]:
         """
         Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
         If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value field.
@@ -2988,7 +2993,8 @@ class SpectralLibrary(QgsVectorLayer):
         if path is None:
             path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'),
                                                        caption='Save Spectral Library',
-                                                       directory=QgsFileUtils.stringToSafeFilename(self.name()+'.gpkg'),
+                                                       directory=QgsFileUtils.stringToSafeFilename(
+                                                           self.name() + '.gpkg'),
                                                        filter=FILTERS,
                                                        initialFilter='Geopackage (*.gpkg)')
 
