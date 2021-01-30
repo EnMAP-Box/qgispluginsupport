@@ -317,8 +317,12 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         stream = io.StringIO()
 
         for iCSVTable, item in enumerate(speclib.groupBySpectralProperties(excludeEmptyProfiles=False).items()):
-            xvalues, xunit, yunit = item[0]
-            profiles = item[1]
+
+            settings, profiles = item
+            xvalues = settings.x()
+            yunit = settings.yUnit()
+            xunit = settings.xUnit()
+
             refProfile = profiles[0]
             assert isinstance(refProfile, SpectralProfile)
             nbands = len(refProfile.xValues())

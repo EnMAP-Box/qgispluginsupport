@@ -34,8 +34,9 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QLabel, QHBoxLayout
 
 from .processing import \
-    SpectralAlgorithmInput, SpectralAlgorithmOutput, SpectralAlgorithmOutputDestination,\
+    SpectralAlgorithmInput, SpectralAlgorithmOutput, SpectralAlgorithmOutputDestination, \
     SpectralProfileBlock
+
 
 class SpectralProfileReader(QgsProcessingAlgorithm):
     """
@@ -53,15 +54,15 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
         return 'Reads spectral profiles'
 
     def initAlgorithm(self, configuration: dict):
-
+        from .core import FIELD_VALUES
         self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT, 'Spectral Library'))
 
         self.addParameter(QgsProcessingParameterField(self.INPUT_FIELD, 'Profile column',
-                                         parentLayerParameterName=self.INPUT,
-                                         allowMultiple=False))
+                                                      defaultValue=FIELD_VALUES,
+                                                      parentLayerParameterName=self.INPUT,
+                                                      allowMultiple=False))
 
         self.addOutput(SpectralAlgorithmOutput(self.OUTPUT, 'Spectral Profiles'))
-
 
     def asPythonCommand(self) -> str:
         pass
@@ -96,7 +97,7 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
         return 'Spectral Profile Reader Help String'
 
     def name(self):
-        return 'SpectralProfileReader'
+        return 'spectral_profile_reader'
 
     def icon(self):
         return QIcon(':/qps/ui/icons/profile.svg')
@@ -138,7 +139,6 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
         return 'Writes spectral profiles'
 
     def initAlgorithm(self, configuration: dict):
-
         p1 = SpectralAlgorithmInput(self.INPUT)
         self.addParameter(p1)
 
@@ -179,7 +179,7 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
         return 'Spectral Profile Writer Help String'
 
     def name(self):
-        return 'Spectral Profile Writer'
+        return 'spectral_profile_writer'
 
     def icon(self):
         return QIcon(':/qps/ui/icons/profile.svg')
@@ -188,14 +188,12 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
                          parameters: dict,
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
-
         return True
 
     def processAlgorithm(self,
                          parameters: dict,
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
-
         speclib = self.parameterAsVectorLayer(parameters, context)
 
         input_profiles: SpectralAlgorithmInput = self.parameterDefinition(self.INPUT)
@@ -224,7 +222,6 @@ class DummyAlgorithm(QgsProcessingAlgorithm):
         return 'Dummy Algorithm Description'
 
     def initAlgorithm(self, configuration: dict):
-
 
         p1 = SpectralAlgorithmInput(self.INPUT, description='Input Profiles')
         self.addParameter(p1, createOutput=False)
@@ -312,7 +309,7 @@ class DummyAlgorithm(QgsProcessingAlgorithm):
         return 'Dummy Alg Help String'
 
     def name(self):
-        return 'Dummy Alg Name'
+        return 'dummy_algorithm'
 
     def icon(self):
         return QIcon(':/qps/ui/icons/profile.svg')
@@ -323,4 +320,3 @@ class DummyAlgorithm(QgsProcessingAlgorithm):
                          feedback: QgsProcessingFeedback):
 
         return True
-

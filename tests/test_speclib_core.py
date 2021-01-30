@@ -337,7 +337,8 @@ class TestCore(TestCase):
         profiles = TestObjects.spectralProfiles()
         coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
 
-        block1 = SpectralProfileBlock(coredata, core_wl, core_wlu)
+        setting = SpectralSetting(core_wl, core_wlu)
+        block1 = SpectralProfileBlock(coredata, setting)
 
         self.assertIsInstance(block1, SpectralProfileBlock)
 
@@ -445,8 +446,11 @@ class TestCore(TestCase):
         groups = sl1.groupBySpectralProperties(excludeEmptyProfiles=False)
         self.assertTrue(len(groups) > 0)
         for key, profiles in groups.items():
-            self.assertTrue(len(key) == 3)
-            xvalues, xunit, yunit = key
+            self.assertIsInstance(key, SpectralSetting)
+            xvalues = key.x()
+            xunit = key.xUnit()
+            yunit = key.yUnit()
+
             self.assertTrue(xvalues is None or isinstance(xvalues, tuple) and len(xvalues) > 0)
             self.assertTrue(xunit is None or isinstance(xunit, str) and len(xunit) > 0)
             self.assertTrue(yunit is None or isinstance(yunit, str) and len(yunit) > 0)
@@ -722,8 +726,10 @@ class TestCore(TestCase):
         xUnitModel = XUnitModel()
 
         for image, item in zip(images, groups.items()):
-            key, profiles = item
-            xunits, xunit, yunit = key
+            settings, profiles = item
+            xunits = settings.x()
+            xunit = settings.xUnit()
+            yunit = settings.yUnit()
             ds: gdal.Dataset = gdal.Open(image.as_posix())
             self.assertIsInstance(ds, gdal.Dataset)
             wl, wlu = parseWavelength(ds)

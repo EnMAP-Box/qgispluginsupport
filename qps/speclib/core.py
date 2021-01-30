@@ -2942,8 +2942,11 @@ class SpectralLibrary(QgsVectorLayer):
 
         assert pathOne.as_posix().startswith('/vsimem/') or pathOne.parent.is_dir(), f'Canot write to {pathOne}'
         imageFiles = []
-        for k, profiles in self.groupBySpectralProperties().items():
-            xValues, xUnit, yUnit = k
+        for setting, profiles in self.groupBySpectralProperties().items():
+            xValues = setting.x()
+            xUnit = setting.xUnit()
+            yUnit = setting.yUnit()
+
             ns: int = len(profiles)
             nb = len(xValues)
 
