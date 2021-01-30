@@ -59,6 +59,8 @@ SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
+# do not sho spectral processing widget in production releases
+SPECTRAL_PROCESSING: bool = 'CI' in os.environ.keys()
 
 class SpectralXAxis(pg.AxisItem):
 
@@ -2405,17 +2407,20 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mPlotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
         from .processing import SpectralProcessingWidget
-        self.mMathWidget: SpectralProcessingWidget = SpectralProcessingWidget()
-        self.mMathWidget.sigSpectralMathChanged.connect(
-            lambda *args: self.mPlotWidget.setSpectralMathStack(self.mMathWidget.spectralMathStack()))
+        self.pageProcessingWidget: SpectralProcessingWidget = SpectralProcessingWidget()
+        self.pageProcessingWidget.sigSpectralMathChanged.connect(
+            lambda *args: self.mPlotWidget.setSpectralMathStack(self.pageProcessingWidget.spectralMathStack()))
+
         l = QVBoxLayout()
         l.addWidget(self.mPlotWidget)
-        l.addWidget(self.mMathWidget)
+        #l.addWidget(self.pageProcessingWidget)
         l.setContentsMargins(0, 0, 0, 0)
         l.setSpacing(2)
         self.widgetRight.setLayout(l)
         self.widgetRight.setVisible(True)
 
+        self.widgetCenter.addWidget(self.pageProcessingWidget)
+        self.widgetCenter.currentChanged.connect(self.onCenterWidgetChanged)
         # define Actions and Options
 
         self.actionSelectProfilesFromMap = QAction(r'Select Profiles from Map')
@@ -2482,13 +2487,41 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
         self.tbSpeclibAction.addAction(self.plotWidget().optionUseVectorSymbology())
 
+        self.actionShowAttributeTable = QAction('Show Attribute Table')
+        self.actionShowAttributeTable.setCheckable(True)
+        self.actionShowAttributeTable.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
+        self.actionShowAttributeTable.triggered.connect(lambda: self.widgetCenter.setCurrentWidget(self.pageAttributeTable))
+
+        self.actionShowProcessingWidget = QAction('Show Spectral Processing Options')
+        self.actionShowProcessingWidget.setCheckable(True)
+        self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_expression.svg'))
+        self.actionShowProcessingWidget.triggered.connect(lambda : self.widgetCenter.setCurrentWidget(self.pageProcessingWidget))
+
+        self.tbSpectralProcessing = QToolBar('Spectral Processing')
+        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionAddFunction)
+        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionLoadModel)
+        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionSaveModel)
+        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionRemoveFunction)
+
+        if SPECTRAL_PROCESSING == True:
+            r = self.tbSpeclibAction.addSeparator()
+            self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
+            self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
+            self.addToolBar(self.tbSpectralProcessing)
+        else:
+            self.actionShowAttributeTable.setVisible(False)
+            self.actionShowProcessingWidget.setVisible(False)
+
+        # update toolbar visibilities
+        self.onCenterWidgetChanged()
+
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
 
         self.actionShowProperties = QAction('Show Spectral Library Properties')
         self.actionShowProperties.setToolTip('Show Spectral Library Properties')
         self.actionShowProperties.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
         self.actionShowProperties.triggered.connect(self.showProperties)
-        
+
         self.btnShowProperties = QToolButton()
         self.btnShowProperties.setAutoRaise(True)
         self.btnShowProperties.setDefaultAction(self.actionShowProperties)
@@ -2505,6 +2538,15 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def onShowContextMenuAttributeEditor(self, menu: QgsActionMenu, fid):
         menu.addSeparator()
         self.addProfileStyleMenu(menu)
+
+    def onCenterWidgetChanged(self, *args):
+
+        w = self.widgetCenter.currentWidget()
+        self.mToolbar.setVisible(w == self.pageAttributeTable)
+        self.tbSpectralProcessing.setVisible(w == self.pageProcessingWidget)
+        self.actionShowAttributeTable.setChecked(w == self.pageAttributeTable)
+        self.actionShowProcessingWidget.setChecked(w == self.pageProcessingWidget)
+        s = ""
 
     def onWillShowContextMenuAttributeTable(self, menu: QMenu, atIndex: QModelIndex):
         """

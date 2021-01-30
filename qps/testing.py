@@ -482,6 +482,48 @@ class TestCase(qgis.testing.TestCase):
         return True
 
 
+class TestAlgorithmProvider(QgsProcessingProvider):
+    NAME = 'TestAlgorithmProvider'
+
+    def __init__(self):
+        super().__init__()
+        self.algs = []
+
+    def load(self):
+
+        self.refreshAlgorithms()
+        return True
+
+    def name(self):
+        return self.NAME
+
+    def longName(self):
+        return self.NAME
+
+    def id(self):
+        return self.NAME.lower()
+
+    def helpId(self):
+        return self.id()
+
+    def icon(self):
+        return QIcon(r':/qps/ui/icons/profile_expression.svg')
+
+    def svgIconPath(self):
+        return r':/qps/ui/icons/profile_expression.svg'
+
+    def loadAlgorithms(self):
+
+        for a in self.algs:
+            self.addAlgorithm(a)
+
+    def supportedOutputRasterLayerExtensions(self):
+        return []
+
+    def supportsNonFileBasedOutput(self) -> True:
+        return True
+
+
 class TestObjects():
     """
     Creates objects to be used for testing. It is preferred to generate objects in-memory.

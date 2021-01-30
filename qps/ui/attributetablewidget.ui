@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>787</width>
-    <height>363</height>
+    <height>452</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -42,209 +42,211 @@
        <enum>Qt::Horizontal</enum>
       </property>
       <widget class="QWidget" name="widgetRight" native="true"/>
-      <widget class="QWidget" name="widgetCenter" native="true">
-       <layout class="QVBoxLayout" name="verticalLayout_2">
-        <property name="spacing">
-         <number>2</number>
-        </property>
-        <property name="leftMargin">
-         <number>2</number>
-        </property>
-        <property name="topMargin">
-         <number>2</number>
-        </property>
-        <property name="rightMargin">
-         <number>2</number>
-        </property>
-        <property name="bottomMargin">
-         <number>2</number>
-        </property>
-        <item>
-         <widget class="QFrame" name="mUpdateExpressionBox">
-          <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <widget class="QStackedWidget" name="widgetCenter">
+       <widget class="QWidget" name="pageAttributeTable" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <property name="leftMargin">
+          <number>2</number>
+         </property>
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="rightMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
+         <item>
+          <widget class="QFrame" name="mUpdateExpressionBox">
+           <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <property name="spacing">
+             <number>3</number>
+            </property>
+            <property name="leftMargin">
+             <number>3</number>
+            </property>
+            <property name="topMargin">
+             <number>1</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>3</number>
+            </property>
+            <item>
+             <widget class="QgsFieldComboBox" name="mFieldCombo"/>
+            </item>
+            <item>
+             <widget class="QLabel" name="label">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>=</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QgsFieldExpressionWidget" name="mUpdateExpressionText">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="focusPolicy">
+               <enum>Qt::StrongFocus</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="mRunFieldCalc">
+              <property name="text">
+               <string>Update All</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="mRunFieldCalcSelected">
+              <property name="text">
+               <string>Update Selected</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QgsDualView" name="mMainView"/>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="centerBottomLayout">
            <property name="spacing">
-            <number>3</number>
-           </property>
-           <property name="leftMargin">
-            <number>3</number>
-           </property>
-           <property name="topMargin">
-            <number>1</number>
-           </property>
-           <property name="rightMargin">
             <number>0</number>
            </property>
-           <property name="bottomMargin">
-            <number>3</number>
-           </property>
            <item>
-            <widget class="QgsFieldComboBox" name="mFieldCombo"/>
-           </item>
-           <item>
-            <widget class="QLabel" name="label">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="text">
-              <string>=</string>
-             </property>
+            <widget class="QWidget" name="mFeatureFilterWidget" native="true">
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="label_2">
+                <property name="text">
+                 <string>Filter</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QgsFilterLineEdit" name="mFilterQuery">
+                <property name="placeholderText">
+                 <string>Show all features</string>
+                </property>
+                <property name="nullValue">
+                 <string/>
+                </property>
+                <property name="qgisRelation" stdset="0">
+                 <string notr="true"/>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QToolButton" name="mApplyFilterButton">
+                <property name="text">
+                 <string>Apply</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QToolButton" name="mSetFilterButton">
+                <property name="text">
+                 <string>Apply</string>
+                </property>
+                <property name="icon">
+                 <iconset resource="../../../QGIS/images/images.qrc">
+                  <normaloff>:/images/themes/default/mActionFilter2.svg</normaloff>:/images/themes/default/mActionFilter2.svg</iconset>
+                </property>
+                <property name="autoRaise">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
            <item>
-            <widget class="QgsFieldExpressionWidget" name="mUpdateExpressionText">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
+            <widget class="QToolButton" name="mAttributeViewButton">
+             <property name="toolTip">
+              <string>Switch to form view</string>
              </property>
-             <property name="focusPolicy">
-              <enum>Qt::StrongFocus</enum>
+             <property name="text">
+              <string>Form View</string>
              </property>
+             <property name="icon">
+              <iconset resource="../../../QGIS/images/images.qrc">
+               <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="autoRaise">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">mMainViewButtonGroup</string>
+             </attribute>
             </widget>
            </item>
            <item>
-            <widget class="QToolButton" name="mRunFieldCalc">
-             <property name="text">
-              <string>Update All</string>
+            <widget class="QToolButton" name="mTableViewButton">
+             <property name="toolTip">
+              <string>Switch to table view</string>
              </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QToolButton" name="mRunFieldCalcSelected">
              <property name="text">
-              <string>Update Selected</string>
+              <string>Table View</string>
              </property>
+             <property name="icon">
+              <iconset resource="../../../QGIS/images/images.qrc">
+               <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <property name="autoRaise">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">mMainViewButtonGroup</string>
+             </attribute>
             </widget>
            </item>
           </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QgsDualView" name="mMainView"/>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="centerBottomLayout">
-          <property name="spacing">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QWidget" name="mFeatureFilterWidget" native="true">
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <property name="spacing">
-              <number>0</number>
-             </property>
-             <property name="leftMargin">
-              <number>0</number>
-             </property>
-             <property name="topMargin">
-              <number>0</number>
-             </property>
-             <property name="rightMargin">
-              <number>0</number>
-             </property>
-             <property name="bottomMargin">
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="label_2">
-               <property name="text">
-                <string>Filter</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QgsFilterLineEdit" name="mFilterQuery">
-               <property name="placeholderText">
-                <string>Show all features</string>
-               </property>
-               <property name="nullValue">
-                <string/>
-               </property>
-               <property name="qgisRelation" stdset="0">
-                <string notr="true"/>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QToolButton" name="mApplyFilterButton">
-               <property name="text">
-                <string>Apply</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QToolButton" name="mSetFilterButton">
-               <property name="text">
-                <string>Apply</string>
-               </property>
-               <property name="icon">
-                <iconset resource="../../../../QGIS/images/images.qrc">
-                 <normaloff>:/images/themes/default/mActionFilter2.svg</normaloff>:/images/themes/default/mActionFilter2.svg</iconset>
-               </property>
-               <property name="autoRaise">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QToolButton" name="mAttributeViewButton">
-            <property name="toolTip">
-             <string>Switch to form view</string>
-            </property>
-            <property name="text">
-             <string>Form View</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../../../../QGIS/images/images.qrc">
-              <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="autoRaise">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">mMainViewButtonGroup</string>
-            </attribute>
-           </widget>
-          </item>
-          <item>
-           <widget class="QToolButton" name="mTableViewButton">
-            <property name="toolTip">
-             <string>Switch to table view</string>
-            </property>
-            <property name="text">
-             <string>Table View</string>
-            </property>
-            <property name="icon">
-             <iconset resource="../../../../QGIS/images/images.qrc">
-              <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-            <property name="autoRaise">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">mMainViewButtonGroup</string>
-            </attribute>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
+         </item>
+        </layout>
+       </widget>
       </widget>
       <widget class="QWidget" name="widgetLeft" native="true"/>
      </widget>
@@ -259,7 +261,7 @@
     </sizepolicy>
    </property>
    <property name="windowTitle">
-    <string>Attribute Table Toolbar</string>
+    <string>Attribute Table</string>
    </property>
    <property name="movable">
     <bool>false</bool>
@@ -306,7 +308,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionFilter2.svg</normaloff>:/images/themes/default/mActionFilter2.svg</iconset>
    </property>
    <property name="text">
@@ -324,7 +326,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionToggleEditing.svg</normaloff>:/images/themes/default/mActionToggleEditing.svg</iconset>
    </property>
    <property name="text">
@@ -342,7 +344,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionMultiEdit.svg</normaloff>:/images/themes/default/mActionMultiEdit.svg</iconset>
    </property>
    <property name="text">
@@ -354,7 +356,7 @@
   </action>
   <action name="mActionSaveEdits">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionSaveAllEdits.svg</normaloff>:/images/themes/default/mActionSaveAllEdits.svg</iconset>
    </property>
    <property name="text">
@@ -366,7 +368,7 @@
   </action>
   <action name="mActionReload">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionRefresh.svg</normaloff>:/images/themes/default/mActionRefresh.svg</iconset>
    </property>
    <property name="text">
@@ -378,7 +380,7 @@
   </action>
   <action name="mActionAddFeature">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionNewTableRow.svg</normaloff>:/images/themes/default/mActionNewTableRow.svg</iconset>
    </property>
    <property name="text">
@@ -387,7 +389,7 @@
   </action>
   <action name="mActionDeleteSelected">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionDeleteSelectedFeatures.svg</normaloff>:/images/themes/default/mActionDeleteSelectedFeatures.svg</iconset>
    </property>
    <property name="text">
@@ -402,7 +404,7 @@
   </action>
   <action name="mActionExpressionSelect">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mIconExpressionSelect.svg</normaloff>:/images/themes/default/mIconExpressionSelect.svg</iconset>
    </property>
    <property name="text">
@@ -414,7 +416,7 @@
   </action>
   <action name="mActionSelectAll">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionSelectAll.svg</normaloff>:/images/themes/default/mActionSelectAll.svg</iconset>
    </property>
    <property name="text">
@@ -429,7 +431,7 @@
   </action>
   <action name="mActionInvertSelection">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionInvertSelection.svg</normaloff>:/images/themes/default/mActionInvertSelection.svg</iconset>
    </property>
    <property name="text">
@@ -444,7 +446,7 @@
   </action>
   <action name="mActionRemoveSelection">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionDeselectAll.svg</normaloff>:/images/themes/default/mActionDeselectAll.svg</iconset>
    </property>
    <property name="text">
@@ -462,7 +464,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionSelectedToTop.svg</normaloff>:/images/themes/default/mActionSelectedToTop.svg</iconset>
    </property>
    <property name="text">
@@ -474,7 +476,7 @@
   </action>
   <action name="mActionPanMapToSelectedRows">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionPanToSelected.svg</normaloff>:/images/themes/default/mActionPanToSelected.svg</iconset>
    </property>
    <property name="text">
@@ -489,7 +491,7 @@
   </action>
   <action name="mActionZoomMapToSelectedRows">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionZoomToSelected.svg</normaloff>:/images/themes/default/mActionZoomToSelected.svg</iconset>
    </property>
    <property name="text">
@@ -504,7 +506,7 @@
   </action>
   <action name="mActionCutSelectedRows">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionEditCut.svg</normaloff>:/images/themes/default/mActionEditCut.svg</iconset>
    </property>
    <property name="text">
@@ -519,7 +521,7 @@
   </action>
   <action name="mActionCopySelectedRows">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionEditCopy.svg</normaloff>:/images/themes/default/mActionEditCopy.svg</iconset>
    </property>
    <property name="text">
@@ -534,7 +536,7 @@
   </action>
   <action name="mActionPasteFeatures">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionEditPaste.svg</normaloff>:/images/themes/default/mActionEditPaste.svg</iconset>
    </property>
    <property name="text">
@@ -549,7 +551,7 @@
   </action>
   <action name="mActionRemoveAttribute">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionDeleteAttribute.svg</normaloff>:/images/themes/default/mActionDeleteAttribute.svg</iconset>
    </property>
    <property name="text">
@@ -561,7 +563,7 @@
   </action>
   <action name="mActionAddAttribute">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionNewAttribute.svg</normaloff>:/images/themes/default/mActionNewAttribute.svg</iconset>
    </property>
    <property name="text">
@@ -576,7 +578,7 @@
   </action>
   <action name="mActionOpenFieldCalculator">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>:/images/themes/default/mActionCalculateField.svg</iconset>
    </property>
    <property name="text">
@@ -594,7 +596,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionConditionalFormatting.svg</normaloff>:/images/themes/default/mActionConditionalFormatting.svg</iconset>
    </property>
    <property name="text">
@@ -609,7 +611,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mDockify.svg</normaloff>:/images/themes/default/mDockify.svg</iconset>
    </property>
    <property name="text">
@@ -626,7 +628,7 @@
   </action>
   <action name="mActionSetFilter">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionFilter2.svg</normaloff>:/images/themes/default/mActionFilter2.svg</iconset>
    </property>
    <property name="text">
@@ -660,8 +662,7 @@
  </customwidgets>
  <resources>
   <include location="../qpsresources.qrc"/>
-  <include location="../../../../QGIS/images/images.qrc"/>
-  <include location="../../../../QGIS/images/images.qrc"/>
+  <include location="../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>
  <buttongroups>
