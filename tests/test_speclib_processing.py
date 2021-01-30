@@ -146,8 +146,8 @@ class SpectraProcessingExamples(TestCase):
         procReg.addProvider(cls.mTestProvider)
 
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
-        paramFactory = SpectralProcessingParameterWidgetFactory()
-        procGuiReg.addParameterWidgetFactory(paramFactory)
+        procGuiReg.addParameterWidgetFactory(SpectralAlgorithmInputWidgetFactory())
+        procGuiReg.addParameterWidgetFactory(SpectralAlgorithmOutputWidgetFactory())
 
         import processing.modeler.ModelerDialog
         import qgis.utils
@@ -259,16 +259,20 @@ class SpectralProcessingTests(TestCase):
         assert isinstance(procReg, QgsProcessingRegistry)
 
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
-        paramFactory = SpectralProcessingParameterWidgetFactory()
-        procGuiReg.addParameterWidgetFactory(paramFactory)
 
-        parameterType = SpectralAlgorithmInputType()
-        self.assertTrue(procReg.addParameterType(parameterType))
+        procGuiReg.addParameterWidgetFactory(SpectralAlgorithmInputWidgetFactory())
+        procGuiReg.addParameterWidgetFactory(SpectralAlgorithmOutputWidgetFactory())
+
+        self.assertTrue(procReg.addParameterType(SpectralAlgorithmInputType()))
 
         provider = TestAlgorithmProvider()
         self.assertTrue(procReg.addProvider(provider))
-
-        self.mFac = paramFactory
+        provider.algs.extend([
+            SpectralProfileReader(),
+            SpectralProfileWriter(),
+            SpectralProcessingAlgorithmExample()
+        ])
+        provider.refreshAlgorithms()
         self.mPRov = provider
 
         return procReg, procGuiReg
@@ -412,11 +416,22 @@ class SpectralProcessingTests(TestCase):
 
         self.showGui(w)
 
+
+
     def test_ModelBuilder(self):
         import processing.modeler.ModelerDialog
         import qgis.utils
         processing.modeler.ModelerDialog.iface = qgis.utils.iface
         self.initProcessingRegistry()
+
+        self.mPRov.algs.extend([
+            SpectralProfileReader(),
+            SpectralProfileWriter(),
+            SpectralProcessingAlgorithmExample()
+        ]
+        )
+        self.mPRov.refreshAlgorithms()
+
         procReg = QgsApplication.instance().processingRegistry()
         for p in procReg.parameterTypes():
             if p.id() == '':
@@ -425,11 +440,10 @@ class SpectralProcessingTests(TestCase):
         from processing.modeler.ModelerDialog import ModelerDialog
         pathModel = pathlib.Path(__file__).parent / 'testmodel.model3'
         d = ModelerDialog()
-        d.loadModel(pathModel.as_posix())
+        #d.loadModel(pathModel.as_posix())
 
         model = d.model()
 
-        model.availableSourcesForChild
         self.showGui(d)
         s = ""
 
