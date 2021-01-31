@@ -34,6 +34,7 @@ from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.speclib.gui import *
 from qps.layerproperties import AddAttributeDialog
+
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
 
@@ -155,7 +156,7 @@ class TestSpeclibWidgets(TestCase):
 
         sp2 = SpectralProfile()
         sp2.setName('with DOY')
-        sp2.setValues(x=[230, 240], y=[3,2], xUnit='DOY')
+        sp2.setValues(x=[230, 240], y=[3, 2], xUnit='DOY')
 
         sp3 = SpectralProfile()
         sp3.setName('with Nanometers')
@@ -176,9 +177,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(pw, SpectralLibraryPlotWidget)
         self.assertTrue(pw.xUnit(), BAND_INDEX)
 
-
         pw.setMaxProfiles(5)
-
 
         p = speclib[0]
         sl = SpectralLibrary()
@@ -331,7 +330,7 @@ class TestSpeclibWidgets(TestCase):
 
         self.assertIsInstance(m, SpectralProfileTableModel)
         self.assertTrue(m.rowCount() == 0)
-        #self.assertTrue(m.columnCount() == 2)
+        # self.assertTrue(m.columnCount() == 2)
         self.assertEqual('Y [-]', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
         self.assertEqual('X [-]', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
@@ -628,12 +627,14 @@ class TestSpeclibWidgets(TestCase):
         # add profile with none-default plot style
 
         self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().profileRenderer())
-        self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().actionSpectralProfileRendering().profileRenderer())
+        self.assertEqual(slw.speclib().profileRenderer(),
+                         slw.plotWidget().actionSpectralProfileRendering().profileRenderer())
 
         onAddRandomProfile()
 
         self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().profileRenderer())
-        self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().actionSpectralProfileRendering().profileRenderer())
+        self.assertEqual(slw.speclib().profileRenderer(),
+                         slw.plotWidget().actionSpectralProfileRendering().profileRenderer())
 
         # this should not end in endless recursion
         slw.plotWidget().onProfileRendererChanged()
@@ -939,5 +940,4 @@ class TestSpeclibWidgets(TestCase):
 
 
 if __name__ == '__main__':
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

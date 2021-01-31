@@ -179,11 +179,12 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         writtenFiles = []
         fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES, FIELD_FID]]
         groups = speclib.groupBySpectralProperties()
-        for i, grp in enumerate(groups.keys()):
+        for i, setting in enumerate(groups.keys()):
             # in-memory text buffer
+            setting: SpectralSetting
             stream = io.StringIO()
-            xValues, xUnit, yUnit = grp
-            profiles = groups[grp]
+            xValues, xUnit, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
+            profiles = groups[setting]
             if i == 0:
                 path = basePath + ext
             else:

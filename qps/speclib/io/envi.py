@@ -509,11 +509,11 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             os.makedirs(dn)
 
         iGrp = -1
-        for key, profiles in speclib.groupBySpectralProperties().items():
+        for setting, profiles in speclib.groupBySpectralProperties().items():
             iGrp += 1
             if len(profiles) == 0:
                 continue
-            xValues, wlu, yUnit = key
+            xValues, wlu, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
 
             # stack profiles
             pData = [np.asarray(p.yValues()) for p in profiles]

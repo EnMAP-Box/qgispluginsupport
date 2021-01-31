@@ -174,7 +174,6 @@ class TestCore(TestCase):
             sp3 = n + sp
             self.assertListEqual(sp3.yValues(), sp2.yValues())
 
-
             sp2 = sp - n
             self.assertListEqual(sp2.yValues(), [v - n for v in y])
             sp3 = n - sp
@@ -194,8 +193,6 @@ class TestCore(TestCase):
             sp3 = sp / sp
             self.assertListEqual(sp3.yValues(), [v / v for v in y])
 
-
-        s = ""
     def test_SpectralProfile(self):
 
         # empty profile
@@ -330,7 +327,6 @@ class TestCore(TestCase):
         self.assertEqual(sp1.values(), r1.values())
         self.assertEqual(sp2.values(), r2.values())
         self.assertEqual(sp2.geometry().asWkt(), r2.geometry().asWkt())
-
 
     def test_SpectralProfileBlock(self):
 
@@ -478,7 +474,6 @@ class TestCore(TestCase):
         self.assertTrue(sl.addSpectralProfileAttribute('derived2'))
         self.assertTrue(sl.commitChanges())
         self.assertTrue(len(sl.spectralValueFields()) == 3)
-
 
     def test_SpectralLibrary(self):
 
@@ -775,5 +770,4 @@ class TestCore(TestCase):
 
 
 if __name__ == '__main__':
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
