@@ -515,7 +515,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
                 continue
             xValues, wlu, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
 
-            # stack profiles
+            # model profiles
             pData = [np.asarray(p.yValues()) for p in profiles]
             pData = np.vstack(pData)
 

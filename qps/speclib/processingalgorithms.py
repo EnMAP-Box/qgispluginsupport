@@ -28,14 +28,100 @@ import typing
 
 from qgis.core import \
     QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer, \
-    QgsProcessingContext, QgsProcessingFeedback, QgsProcessingFeatureSource, QgsProcessingParameterField
+    QgsProcessingContext, QgsProcessingFeedback, QgsProcessingFeatureSource, \
+    QgsProcessingParameterField, QgsProcessingParameterEnum
 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QLabel, QHBoxLayout
 
+from .core import SpectralSetting, SpectralProfileBlock
 from .processing import \
-    SpectralAlgorithmInput, SpectralAlgorithmOutput, SpectralAlgorithmOutputDestination, \
-    SpectralProfileBlock
+    SpectralAlgorithmInput, SpectralAlgorithmOutput, SpectralAlgorithmOutputDestination
+
+from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
+
+
+class SpectralXUnitConversion(QgsProcessingAlgorithm):
+    INPUT = 'input_profiles'
+    TARGET_XUNIT = 'target_unit'
+    OUTPUT = 'output_profiles'
+
+    def __init__(self):
+        super().__init__()
+        self.mUnitConverterFunctionModel = UnitConverterFunctionModel()
+        self.mUnitModel = XUnitModel()
+        self.mParameters = []
+
+    def name(self):
+        return 'spectral_xunit_converter'
+
+
+    def initAlgorithm(self, configuration):
+
+        p1 = SpectralAlgorithmInput(self.INPUT)
+        p2 = QgsProcessingParameterEnum(self.TARGET_XUNIT,
+                                        description='Target x/wavelength unit',
+                                        options=self.mUnitModel.mUnits,
+                                        defaultValue='nm',
+                                        )
+        o1 = SpectralAlgorithmOutput(self.OUTPUT)
+        self.addParameter(p1)
+        self.addParameter(p2)
+        self.addOutput(o1)
+        self.mParameters.extend([p1, p2, o1])
+
+        self.addOutput(SpectralAlgorithmOutput(self.OUTPUT, 'Spectral Profiles'))
+
+    def prepareAlgorithm(self,
+                         parameters: dict,
+                         context: QgsProcessingContext,
+                         feedback: QgsProcessingFeedback):
+        if not self.INPUT in parameters.keys():
+            feedback.reportError(f'Missing parameter {self.INPUT}')
+            return False
+        return True
+
+    def processAlgorithm(self,
+                         parameters: dict,
+                         context: QgsProcessingContext,
+                         feedback: QgsProcessingFeedback):
+
+        targetUnit = parameters[self.TARGET_XUNIT]
+
+        input_profiles: SpectralAlgorithmInput = parameters[self.INPUT]
+        output_profiles: SpectralAlgorithmOutput = self.outputDefinition(self.OUTPUT)
+
+        for i, profileBlock in enumerate(input_profiles.profileBlocks()):
+            # process block by block
+
+            assert isinstance(profileBlock, SpectralProfileBlock)
+            print(profileBlock)
+            feedback.pushConsoleInfo(f'Process profile block {i + 1}/{input_profiles.n_blocks()}')
+
+            spectralSetting = profileBlock.spectralSetting()
+
+            f = self.mUnitConverterFunctionModel.convertFunction(spectralSetting.xUnit(), targetUnit)
+            if callable(f):
+                xValuesNew = f(profileBlock.xValues())
+                settingOut = SpectralSetting(xValuesNew,
+                                             xUnit=targetUnit,
+                                             yUnit=spectralSetting.yUnit(),
+                                             )
+                blockOut = SpectralProfileBlock(profileBlock.data(),
+                                                spectralSetting=settingOut,
+                                                fids=profileBlock.fids(),
+                                                metadata=profileBlock.metadata())
+                output_profiles.addProfileBlock(blockOut)
+            else:
+                feedback.pushConsoleInfo(f'Unable to convert {profileBlock.n_profiles()} profiles '
+                                         f'with {spectralSetting} to {targetUnit}')
+
+
+        OUTPUTS = dict()
+        OUTPUTS[self.OUTPUT] = output_profiles
+        return OUTPUTS
+
+
 
 
 class SpectralProfileReader(QgsProcessingAlgorithm):
@@ -106,6 +192,9 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
                          parameters: dict,
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
+        if not self.INPUT in parameters.keys():
+            feedback.reportError(f'Missing parameter {self.INPUT}')
+            return False
         return True
 
     def processAlgorithm(self,
@@ -140,9 +229,8 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, configuration: dict):
         p1 = SpectralAlgorithmInput(self.INPUT)
-        self.addParameter(p1)
-
         o1 = SpectralAlgorithmOutput(self.OUTPUT)
+        self.addParameter(p1)
         self.addOutput(o1)
         self.mParameters.append([p1, o1])
 

@@ -1212,6 +1212,14 @@ class SpectralProfileBlock(object):
     """
     A block of spectral profiles that share the same properties like wavelength, wavelength unit etc.
     """
+    @staticmethod
+    def fromSpectralProfile(self, profile:SpectralProfile):
+
+        data = np.asarray(profile.yValues())
+
+
+        setting = SpectralSetting(profile.xValues(), xUnit=profile.xUnit(), yUnit=profile.yUnit())
+        return SpectralProfileBlock(data, setting, fids=[profile.id()])
 
     def __init__(self, data: np.ndarray,
                  spectralSetting: SpectralSetting,
@@ -1244,6 +1252,13 @@ class SpectralProfileBlock(object):
 
         if fids is not None:
             self.setFIDs(fids)
+
+    def metadata(self) -> dict:
+        """
+        Returns a copy of the metadata
+        :return:
+        """
+        return self.mMetadata.copy()
 
     def setFIDs(self, fids: typing.List[int]):
         """

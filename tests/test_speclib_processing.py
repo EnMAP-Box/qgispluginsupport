@@ -26,7 +26,7 @@ from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.speclib.gui import *
 from qps.speclib.processing import *
-from qps.speclib.processingalgorithms import SpectralProfileWriter, SpectralProfileReader
+from qps.speclib.processingalgorithms import *
 from qps.testing import TestCase, TestAlgorithmProvider
 from qps.models import TreeView, TreeNode, TreeModel
 
@@ -134,6 +134,26 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
         return True
 
 
+def test_read_and_write():
+    configuration = {}
+    context = QgsProcessingContext()
+    feedback = QgsProcessingFeedback()
+
+    algReader = SpectralProfileReader()
+    algWriter = SpectralProfileWriter()
+    algReader.initAlgorithm(configuration)
+    algWriter.initAlgorithm(configuration)
+
+    param = {
+
+    }
+    algReader.prepareAlgorithm()
+
+    # write outputs
+
+    s = ""
+
+
 class SpectraProcessingExamples(TestCase):
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
@@ -162,11 +182,12 @@ class SpectraProcessingExamples(TestCase):
     def testProvider(self) -> QgsProcessingProvider:
         return self.mTestProvider
 
-    def test_spectral_algorithm_example(self):
-
+    def test_example_spectral_algorithms(self):
         configuration = {}
+
         def onFeedbackProgress(v: float):
             print(f'Progress {v}')
+
         context = QgsProcessingContext()
         feedback = QgsProcessingFeedback()
         feedback.progressChanged.connect(onFeedbackProgress)
@@ -217,7 +238,7 @@ class SpectraProcessingExamples(TestCase):
 
             setting = block.spectralSetting()
             self.assertIsInstance(setting, SpectralSetting)
-            print(f'Block {b+1}:\n\t{setting}\n\t{block.n_profiles()} profiles')
+            print(f'Block {b + 1}:\n\t{setting}\n\t{block.n_profiles()} profiles')
 
             # profile values are available as numpy array
             data = block.data()
@@ -249,7 +270,7 @@ class SpectraProcessingExamples(TestCase):
             # processed data in profile blocks
             output.addProfileBlock(output_block)
 
-    def test_processing_model_example(self):
+    def test_example_processing_model(self):
         configuration = {}
         context = QgsProcessingContext()
         feedback = QgsProcessingFeedback()
@@ -258,7 +279,8 @@ class SpectraProcessingExamples(TestCase):
 
         model = QgsProcessingModelAlgorithm()
         model.setName('ExampleModel')
-        def createChildAlgorithm(algorithm_id:str, description='') -> QgsProcessingModelChildAlgorithm:
+
+        def createChildAlgorithm(algorithm_id: str, description='') -> QgsProcessingModelChildAlgorithm:
             alg = QgsProcessingModelChildAlgorithm(algorithm_id)
             alg.generateChildId(model)
             alg.setDescription(description)
@@ -271,22 +293,26 @@ class SpectraProcessingExamples(TestCase):
         algW = reg.algorithmById('testalgorithmprovider:spectral_profile_writer')
 
         idR: str = model.addChildAlgorithm(createChildAlgorithm(algR.id(), 'Read'))
-        idP1: str = model.addChildAlgorithm(createChildAlgorithm(algP.id(), 'Process Step 1'))
-        idP2: str = model.addChildAlgorithm(createChildAlgorithm(algP.id(), 'Process Step 2'))
-        idR: str = model.addChildAlgorithm(createChildAlgorithm(algW.id(), 'Write'))
+        # idP1: str = model.addChildAlgorithm(createChildAlgorithm(algP.id(), 'Process Step 1'))
+        # idP2: str = model.addChildAlgorithm(createChildAlgorithm(algP.id(), 'Process Step 2'))
+        # idW: str = model.addChildAlgorithm(createChildAlgorithm(algW.id(), 'Write'))
 
         # set Input / Output for idR
         model.addModelParameter(QgsProcessingParameterVectorLayer('speclib_source'),
-                                QgsProcessingModelParameter())
+                                QgsProcessingModelParameter('speclib_source'))
 
-        QgsProcessingModelChildParameterSource
-        model.childAlgorithm(idR).addParameterSources(SpectralProfileReader.INPUT,
-                                                      [QgsProcessingModelChildParameterSource.fromModelParameter('speclib_source')]
-                                                      )
+        # QgsProcessingModelChildParameterSource
+        model.childAlgorithm(idR) \
+            .addParameterSources(
+            SpectralProfileReader.INPUT,
+            [QgsProcessingModelChildParameterSource.fromModelParameter('speclib_source')]
+        )
+
         s = ""
         # todo: show creation of model
 
         parameters = {}
+
         model.initAlgorithm(configuration)
         self.assertTrue(
             model.prepareAlgorithm(parameters, context, feedback)
@@ -296,26 +322,7 @@ class SpectraProcessingExamples(TestCase):
         self.assertTrue(success)
         self.assertIsInstance(results, dict)
 
-    def test_read_and_write(self):
-        configuration = {}
-        context = QgsProcessingContext()
-        feedback = QgsProcessingFeedback()
-
-        algReader = SpectralProfileReader()
-        algWriter = SpectralProfileWriter()
-        algReader.initAlgorithm(configuration)
-        algWriter.initAlgorithm(configuration)
-
-        param = {
-
-        }
-        algReader.prepareAlgorithm()
-
-        # write outputs
-
-        s = ""
-
-    def test_register_spectral_algorithm(self):
+    def test_example_register_spectral_algorithms(self):
         alg = SpectralProcessingAlgorithmExample()
         self.testProvider().algs.append(alg)
         self.testProvider().refreshAlgorithms()
@@ -329,10 +336,6 @@ class SpectraProcessingExamples(TestCase):
         from processing.modeler.ModelerDialog import ModelerDialog
         d = ModelerDialog()
         self.showGui(d)
-
-    def text_use_simple_model(self):
-        # todo: show how to create a simple linear model
-        pass
 
 
 class SpectralProcessingTests(TestCase):
@@ -470,6 +473,36 @@ class SpectralProcessingTests(TestCase):
         self.showGui(w)
         s = ""
         pass
+
+    def test_SpectralXUnitConversion(self):
+
+        feedback = QgsProcessingFeedback()
+        context = QgsProcessingContext()
+        context.setProject(QgsProject.instance())
+        context.setFeedback(feedback)
+        configuration = {}
+
+        speclib: SpectralLibrary = TestObjects.createSpectralLibrary(10, n_bands=10, wlu='nm')
+        speclib.startEditing()
+        speclib.addSpeclib(TestObjects.createSpectralLibrary(10, n_bands=10, wlu='micrometers'))
+        speclib.commitChanges()
+
+        input = SpectralAlgorithmInput()
+        input.addProfileBlocks(speclib.profileBlocks())
+
+        alg = SpectralXUnitConversion()
+        alg.initAlgorithm(configuration)
+
+        target_unit = 'mm'
+        parameters = {alg.INPUT: input,
+                      alg.TARGET_XUNIT: target_unit}
+
+        alg.prepareAlgorithm(parameters, context, feedback)
+        outputs = alg.processAlgorithm(parameters, context, feedback)
+        for block in outputs[alg.OUTPUT].profileBlocks():
+            self.assertIsInstance(block, SpectralProfileBlock)
+            self.assertTrue(block.spectralSetting().xUnit() == target_unit)
+            print(block.spectralSetting().x())
 
     def test_SimpleModel(self):
         reg, guiReg = self.initProcessingRegistry()

@@ -44,7 +44,7 @@ from qgis.core import \
     QgsRasterLayer, QgsMapLayer, QgsVectorLayer, QgsFieldFormatterRegistry, \
     QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
     QgsAttributeTableConfig, QgsField, QgsMapLayerProxyModel, QgsFileUtils, \
-    QgsExpression, QgsFieldProxyModel
+    QgsExpression, QgsFieldProxyModel, QgsProcessingModelAlgorithm
 
 from qgis.gui import \
     QgsEditorWidgetWrapper, QgsAttributeTableView, \
@@ -54,7 +54,7 @@ from qgis.gui import \
 
 #from .math import SpectralAlgorithm, SpectralMathResult, XUnitConversion
 from .processing import *
-from .math_functions import *
+
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
@@ -288,7 +288,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.scatter.sigClicked.connect(self.onScatterMouseClicked)
 
         self.mValueConversionIsPossible: bool = True
-        self.mSpectralMathStack: typing.List[SpectralAlgorithm] = []
+        self.mSpectralModel: typing.List[SpectralAlgorithm] = []
         self.mXValueConversionFunction = lambda v, *args: v
         self.mYValueConversionFunction = lambda v, *args: v
         self.mSortByXValues: bool = False
@@ -382,12 +382,16 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         """
         return self.mProfile
 
-    def setSpectralMathStack(self, functionStack):
-        assert isinstance(functionStack, list)
-        self.mSpectralMathStack = functionStack
+    def setSpectralModel(self, model: QgsProcessingModelAlgorithm):
+        assert isinstance(model, QgsProcessingModelAlgorithm)
+        self.mSpectralModel = model
 
-    def applySpectralMath(self) -> bool:
-        result = SpectralAlgorithm.applyFunctionStack(self.mSpectralMathStack, self.spectralProfile())
+    def applySpectralModel(self) -> bool:
+        block = SpectralProfileBlock.fromSpectralProfile(self.spectralProfile())
+        self.mSpectralModel
+        # todo: apply model to profile data
+        return
+        result = SpectralAlgorithm.applyFunctionStack(self.mSpectralModel, self.spectralProfile())
         if not isinstance(result, SpectralMathResult):
             self.setVisible(False)
             return False
@@ -430,7 +434,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
     def applyMapFunctions(self) -> bool:
         warnings.warn('Use applySpectralMath', DeprecationWarning)
-        return self.applySpectralMath()
+        return self.applySpectralModel()
 
         """
         Applies the two functions defined with `.setMapFunctionX` and `.setMapFunctionY` and updates the plotted values.
@@ -872,8 +876,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # describe functions to convert wavelength units from unit a to unit b
         self.mUnitConverter = UnitConverterFunctionModel()
-        self.mXUnitMathFunc = XUnitConversion(self.xUnit())
-        self.mSpectralMathStack: typing.List[SpectralAlgorithm] = [self.mXUnitMathFunc]
+        #self.mXUnitMathFunc = XUnitConversion(self.xUnit())
+        self.mSpectralModel: QgsProcessingModelAlgorithm = None
 
         self.mPlotDataItems: typing.List[typing.Tuple[int, str], SpectralProfilePlotDataItem] = dict()
         self.mPlotOverlayItems = []
@@ -1408,14 +1412,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mXAxis.setUnit(unit, label)
         self.mXUnitMathFunc.setTargetUnit(unit)
         # update x values
-        self.updateSpectralMath()
+        self.updateSpectralModel()
 
-    def updateSpectralMath(self):
+    def updateSpectralModel(self):
         pdis = self.allSpectralProfilePlotDataItems()
-        stack = self.spectralMathStack()
+        stack = self.spectralModel()
         for pdi in pdis:
-            pdi.setSpectralMathStack(stack)
-            pdi.applySpectralMath()
+            pdi.setSpectralModel(stack)
+            pdi.applySpectralModel()
 
     def updateSpectralProfilePlotItems(self):
         pi = self.getPlotItem()
@@ -1456,10 +1460,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setProfileSource(self.speclib())
                 pdi.setClickable(True)
                 pdi.setVisible(True)
-                pdi.setSpectralMathStack(self.spectralMathStack())
+                pdi.setSpectralModel(self.spectralModel())
                 # pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, self.xUnit()))
                 pdi.mSortByXValues = sort_x_values
-                pdi.applySpectralMath()
+                pdi.applySpectralModel()
                 pdi.sigProfileClicked.connect(self.onProfileClicked)
                 if pdi.valueConversionPossible():
                     new_pdis.append(pdi)
@@ -1492,21 +1496,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if len(keys_new) > 0 or len(keys_to_remove) > 0 or len(key_to_update_style) > 0:
             pi.update()
 
-    def spectralMathStack(self) -> typing.List[SpectralAlgorithm]:
-        return self.mSpectralMathStack
+    def spectralModel(self) -> QgsProcessingModelAlgorithm:
+        return self.mSpectralModel
 
-    def setSpectralMathStack(self, stack):
-        assert isinstance(stack, list)
-        for f in stack:
-            assert isinstance(f, SpectralAlgorithm)
-        stack = stack[:]
-        # set unit converter to 1st position of function stack
-        if self.mXUnitMathFunc not in stack:
-            stack.insert(0, self.mXUnitMathFunc)
-        else:
-            stack.insert(0, stack.pop(self.mXUnitMathFunc))
-        self.mSpectralMathStack = stack
-        self.updateSpectralMath()
+    def setSpectralModel(self, model: QgsProcessingModelAlgorithm):
+        assert isinstance(model, QgsProcessingModelAlgorithm)
+
+        self.updateSpectralModel()
 
     def resetSpectralProfiles(self):
         for pdi in self.spectralProfilePlotDataItems():
@@ -2409,7 +2405,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         from .processing import SpectralProcessingWidget
         self.pageProcessingWidget: SpectralProcessingWidget = SpectralProcessingWidget()
         self.pageProcessingWidget.sigSpectralMathChanged.connect(
-            lambda *args: self.mPlotWidget.setSpectralMathStack(self.pageProcessingWidget.spectralMathStack()))
+            lambda *args: self.mPlotWidget.setSpectralModel(self.pageProcessingWidget.spectralMathStack()))
 
         l = QVBoxLayout()
         l.addWidget(self.mPlotWidget)

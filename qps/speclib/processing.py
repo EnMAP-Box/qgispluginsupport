@@ -129,6 +129,11 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
         self.mSpectralProfileBlocks.extend(
             speclib.profileBlocks(value_fields=[field]))
 
+    def addProfileBlocks(self, blocks: typing.List[SpectralProfileBlock]):
+        if isinstance(blocks, SpectralProfileBlock):
+            blocks = [blocks]
+        self.mSpectralProfileBlocks.extend(blocks)
+
     def profileBlocks(self) -> typing.List[SpectralProfileBlock]:
         return self.mSpectralProfileBlocks
 
@@ -163,6 +168,20 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
         return True
 
 
+def parameterAsSpectralAlgorithmInput(parameters: dict, name: str, context: QgsProcessingContext) -> SpectralAlgorithmInput:
+    """
+    Evaluates the parameter with matching name to a SpectralAlgorithmInput
+    :param parameters:
+    :param name:
+    :param context:
+    :return:
+    """
+    s = ""
+    input = SpectralAlgorithmInput(name)
+    value = parameters[name]
+
+    return input
+
 class SpectralAlgorithmOutput(QgsProcessingOutputDefinition):
     TYPE = SpectralAlgorithmInput.TYPE
 
@@ -170,6 +189,9 @@ class SpectralAlgorithmOutput(QgsProcessingOutputDefinition):
         super(SpectralAlgorithmOutput, self).__init__(name, description=description)
         s = ""
         self.mSpectralProfileBlocks: typing.List[SpectralProfileBlock] = []
+
+    def profileBlocks(self) -> typing.List[SpectralProfileBlock]:
+        return self.mSpectralProfileBlocks
 
     def addProfileBlock(self, block: SpectralProfileBlock):
         self.mSpectralProfileBlocks.append(block)
