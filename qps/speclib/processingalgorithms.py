@@ -30,7 +30,7 @@ from qgis.core import \
     QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer, \
     QgsProcessingContext, QgsProcessingFeedback, QgsProcessingFeatureSource, \
     QgsProcessingParameterField, QgsProcessingParameterEnum, \
-    QgsVectorLayer
+    QgsVectorLayer, QgsProcessingParameterVectorDestination
 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QLabel, QHBoxLayout
@@ -227,9 +227,9 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, configuration: dict):
         p1 = SpectralProcessingProfiles(self.INPUT)
-        o1 = SpectralProcessingProfilesOutput(self.OUTPUT)
+        o1 = QgsProcessingParameterVectorDestination(self.OUTPUT)
         self.addParameter(p1)
-        self.addOutput(o1)
+        self.addParameter(o1)
         self.mParameters.append([p1, o1])
 
     def asPythonCommand(self) -> str:

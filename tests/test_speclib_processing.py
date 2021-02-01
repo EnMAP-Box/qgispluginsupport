@@ -350,7 +350,6 @@ class SpectraProcessingExamples(TestCase):
             [QgsProcessingModelChildParameterSource.fromModelParameter('speclib_target')]
         )
 
-
         parameters = {'speclib_source': speclib_source,
                       'speclib_target': speclib_target}
 
