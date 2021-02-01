@@ -487,7 +487,7 @@ class TestAlgorithmProvider(QgsProcessingProvider):
 
     def __init__(self):
         super().__init__()
-        self.algs = []
+        self._algs = []
 
     def load(self):
 
@@ -514,8 +514,8 @@ class TestAlgorithmProvider(QgsProcessingProvider):
 
     def loadAlgorithms(self):
 
-        for a in self.algs:
-            self.addAlgorithm(a)
+        for a in self._algs:
+            self.addAlgorithm(a.createInstance())
 
     def supportedOutputRasterLayerExtensions(self):
         return []

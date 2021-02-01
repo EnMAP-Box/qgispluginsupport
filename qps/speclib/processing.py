@@ -104,7 +104,7 @@ def printCaller(prefix=''):
     print(f'#{prefix}{info}')
 
 
-class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
+class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
     """
     SpectralAlgorithm Input definition, i.e. defines where the profiles come from
     """
@@ -115,28 +115,6 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
 
         self.mSpectralProfileBlocks: typing.List[SpectralProfileBlock] = list()
 
-    def n_blocks(self) -> int:
-        return len(self.mSpectralProfileBlocks)
-
-    def setFromSpectralLibrary(self, speclib: SpectralLibrary, field: str = None):
-        from ..speclib.core import spectralValueFields
-        blob_fields = [f.name() for f in spectralValueFields(speclib)]
-        assert len(blob_fields) >= 1, f'{speclib.name()} does not contain a SpectralProfile field'
-        if isinstance(field, str):
-            assert field in blob_fields, f'Field {field} is not a SpectralProfile field'
-        else:
-            field = blob_fields[0]
-        self.mSpectralProfileBlocks.extend(
-            speclib.profileBlocks(value_fields=[field]))
-
-    def addProfileBlocks(self, blocks: typing.List[SpectralProfileBlock]):
-        if isinstance(blocks, SpectralProfileBlock):
-            blocks = [blocks]
-        self.mSpectralProfileBlocks.extend(blocks)
-
-    def profileBlocks(self) -> typing.List[SpectralProfileBlock]:
-        return self.mSpectralProfileBlocks
-
     def isDestination(self):
         return False
 
@@ -145,7 +123,7 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
 
     def clone(self):
         # printCaller()
-        return SpectralAlgorithmInput()
+        return SpectralProcessingProfiles()
 
     def description(self):
         return 'the spectral profile'
@@ -156,37 +134,48 @@ class SpectralAlgorithmInput(QgsProcessingParameterDefinition):
     def toolTip(self):
         return 'The spectral profile'
 
-    def toVariantMap(self):
-        result = super(SpectralAlgorithmInput, self).toVariantMap()
-        result['spectral_profile_blocks'] = self.mSpectralProfileBlocks
-        return result
-
-    def fromVariantMap(self, map: dict):
-        super(SpectralAlgorithmInput, self).fromVariantMap(map)
-        self.mSpectralProfileBlocks = map.get('spectral_profile_blocks', [])
-
-        return True
 
 
-def parameterAsSpectralAlgorithmInput(parameters: dict, name: str, context: QgsProcessingContext) -> SpectralAlgorithmInput:
+def parameterAsSpectralProfileBlockList(parameters: dict,
+                                        name: str,
+                                        context: QgsProcessingContext) -> typing.List[SpectralProfileBlock]:
     """
-    Evaluates the parameter with matching name to a SpectralAlgorithmInput
+    Evaluates the parameter with matching name to a SpectralProcessingProfiles
     :param parameters:
     :param name:
     :param context:
     :return:
     """
     s = ""
-    input = SpectralAlgorithmInput(name)
+    feedback = context.feedback()
     value = parameters[name]
+    blocks = None
+    if isinstance(value, SpectralLibrary):
+        blocks = list(value.profileBlocks())
+    elif isinstance(value, SpectralProfile):
+        blocks = [SpectralProfileBlock.fromSpectralProfile(value)]
+    elif isinstance(value, typing.Generator):
+        blocks = list(value)
+        for b in blocks:
+            assert isinstance(b, SpectralProfileBlock)
+    elif isinstance(value, list):
+        blocks = value
 
-    return input
+    if not isinstance(blocks, list):
+        raise Exception(f'Unable to convert {value} to list of SpectralProfileBlocks')
 
-class SpectralAlgorithmOutput(QgsProcessingOutputDefinition):
-    TYPE = SpectralAlgorithmInput.TYPE
+    for block in blocks:
+        if not isinstance(block, SpectralProfileBlock):
+            raise Exception(f'{block} is not a SpectralProfileBlock')
+
+    return blocks
+
+
+class SpectralProcessingProfilesOutput(QgsProcessingOutputDefinition):
+    TYPE = SpectralProcessingProfiles.TYPE
 
     def __init__(self, name: str = 'Spectral Profile', description='Spectral Profile'):
-        super(SpectralAlgorithmOutput, self).__init__(name, description=description)
+        super(SpectralProcessingProfilesOutput, self).__init__(name, description=description)
         s = ""
         self.mSpectralProfileBlocks: typing.List[SpectralProfileBlock] = []
 
@@ -201,7 +190,7 @@ class SpectralAlgorithmOutput(QgsProcessingOutputDefinition):
         return self.TYPE
 
 
-class SpectralAlgorithmOutputDestination(QgsProcessingDestinationParameter):
+class SpectralProcessingProfilesOutputDestination(QgsProcessingDestinationParameter):
 
     def __init__(self, name: str, description: str = 'Spectra Profiles', defaultValue=None, optional: bool = False,
                  createByDefault=True):
@@ -220,18 +209,18 @@ class SpectralAlgorithmOutputDestination(QgsProcessingDestinationParameter):
         return 'gpkg'
 
     def toOutputDefinition(self):
-        return SpectralAlgorithmOutput(self.name(), self.description())
+        return SpectralProcessingProfilesOutput(self.name(), self.description())
 
     def type(self):
-        return SpectralAlgorithmInput.TYPE
+        return SpectralProcessingProfiles.TYPE
 
     def clone(self):
-        return SpectralAlgorithmOutputDestination(self.name(), self.description())
+        return SpectralProcessingProfilesOutputDestination(self.name(), self.description())
 
 
-class SpectralAlgorithmInputType(QgsProcessingParameterType):
+class SpectralProcessingProfileType(QgsProcessingParameterType):
     """
-    Describes a SpectralAlgorithmInput in the Modeler's parameter type list
+    Describes a SpectralProcessingProfiles in the Modeler's parameter type list
     """
 
     def __init__(self):
@@ -247,11 +236,11 @@ class SpectralAlgorithmInputType(QgsProcessingParameterType):
 
     def className(self) -> str:
         printCaller()
-        return 'SpectralAlgorithmInputType'
+        return 'SpectralProcessingProfileType'
 
     def create(self, name):
         printCaller()
-        p = SpectralAlgorithmInput(name=name)
+        p = SpectralProcessingProfiles(name=name)
         # global REFS
         keepRef(p)
         # REFS.append(p)
@@ -279,10 +268,10 @@ class SpectralAlgorithmInputType(QgsProcessingParameterType):
 
     def pythonImportString(self):
         printCaller()
-        return 'from .speclib.math import SpectralAlgorithmInputType'
+        return 'from .speclib.math import SpectralProcessingProfileType'
 
 
-class SpectralAlgorithmInputModelerParameterWidget(QgsProcessingModelerParameterWidget):
+class SpectralProcessingAlgorithmInputModelerParameterWidget(QgsProcessingModelerParameterWidget):
 
     def __init__(self,
                  model: QgsProcessingModelAlgorithm,
@@ -291,11 +280,11 @@ class SpectralAlgorithmInputModelerParameterWidget(QgsProcessingModelerParameter
                  context: QgsProcessingContext,
                  parent: QWidget = None
                  ):
-        super(SpectralAlgorithmInputModelerParameterWidget, self).__init__(model,
-                                                                           childId,
-                                                                           parameter,
-                                                                           context,
-                                                                           parent)
+        super(SpectralProcessingAlgorithmInputModelerParameterWidget, self).__init__(model,
+                                                                                     childId,
+                                                                                     parameter,
+                                                                                     context,
+                                                                                     parent)
 
         # label = QLabel('Profiles')
         # self.layout().addWidget(label)
@@ -309,7 +298,7 @@ class SpectralAlgorithmInputModelerParameterWidget(QgsProcessingModelerParameter
         return result
 
 
-class SpectralAlgorithmInputWidget(QgsProcessingAbstractParameterDefinitionWidget):
+class SpectralProcessingAlgorithmInputWidget(QgsProcessingAbstractParameterDefinitionWidget):
     """
     Widget to specify SpectralAlgorithm input
     """
@@ -333,10 +322,10 @@ class SpectralAlgorithmInputWidget(QgsProcessingAbstractParameterDefinitionWidge
         self.setLayout(l)
         self.mPARAMETERS = dict()
 
-    def createParameter(self, name: str, description: str, flags) -> SpectralAlgorithmInput:
+    def createParameter(self, name: str, description: str, flags) -> SpectralProcessingProfiles:
         printCaller()
 
-        param = SpectralAlgorithmInput(name, description=description)
+        param = SpectralProcessingProfiles(name, description=description)
         param.setFlags(flags)
         keepRef(param)
 
@@ -344,6 +333,9 @@ class SpectralAlgorithmInputWidget(QgsProcessingAbstractParameterDefinitionWidge
 
 
 class SpectralProcessingModelTableView(QTableView):
+    """
+    A QTableView used in the SpectralProcessingWidget
+    """
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -353,12 +345,18 @@ class SpectralProcessingModelTableView(QTableView):
 
 
 class SpectralProcessingAlgorithmTreeView(QgsProcessingToolboxTreeView):
-
+    """
+    The QTreeView used to show SpectraProcessingAlgorithms in the SpectralProcessingWidget
+    """
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
 
 class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
+    """
+    This proxy model filters out all QgsProcessingAlgorithms that do not use
+    SpectralProcessingProfiles
+    """
 
     def __init__(self,
                  parent: QObject,
@@ -376,7 +374,7 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
                 algId = self.sourceModel().data(sourceIdx, QgsProcessingToolboxModel.RoleAlgorithmId)
                 alg = procReg.algorithmById(algId)
                 for output in alg.outputDefinitions():
-                    if isinstance(output, SpectralAlgorithmOutput):
+                    if isinstance(output, SpectralProcessingProfilesOutput):
                         return True
                 return False
             else:
@@ -393,7 +391,7 @@ class SpectralProcessingWidget(QWidget):
 
         self.mAlgorithmModel = SpectralProcessingAlgorithmModel(self)
         # self.mProcessingModel = SimpleProcessingModelAlgorithm()
-        self.mProcessingModelTableModel = ProcessingModelAlgorithmChain()
+        self.mProcessingModelTableModel = SpectralProcessingAlgorithmChainModel()
 
         # self.mProcessingModel.addFunction(GenericSpectralMathFunction())
         # self.mProcessingModel.sigChanged.connect(self.validate)
@@ -489,12 +487,12 @@ def is_spectral_processing_algorithm(alg: QgsProcessingAlgorithm,
     bOut = False
 
     for input in alg.parameterDefinitions():
-        if isinstance(input, SpectralAlgorithmInput):
+        if isinstance(input, SpectralProcessingProfiles):
             bIn = True
             break
 
     for output in alg.outputDefinitions():
-        if isinstance(output, SpectralAlgorithmOutput):
+        if isinstance(output, SpectralProcessingProfilesOutput):
             bOut = True
             break
 
@@ -515,19 +513,19 @@ def spectral_algorithms() -> typing.List[QgsProcessingAlgorithm]:
     spectral_algos = []
     for alg in QgsApplication.instance().processingRegistry().algorithms():
         for output in alg.outputDefinitions():
-            if isinstance(output, SpectralAlgorithmOutput):
+            if isinstance(output, SpectralProcessingProfilesOutput):
                 spectral_algos.append(alg)
                 break
     return spectral_algos
 
 
-class SpectralAlgorithmInputWidgetWrapper(QgsAbstractProcessingParameterWidgetWrapper):
+class SpectralProcessingProfilesWidgetWrapper(QgsAbstractProcessingParameterWidgetWrapper):
 
     def __init__(self,
                  parameter: QgsProcessingParameterDefinition,
                  wtype: QgsProcessingGui.WidgetType,
                  parent=None):
-        super(SpectralAlgorithmInputWidgetWrapper, self).__init__(parameter, wtype, parent)
+        super(SpectralProcessingProfilesWidgetWrapper, self).__init__(parameter, wtype, parent)
 
     def createWidget(self):
         l = QLabel('Spectral Profiles')
@@ -547,10 +545,10 @@ class SpectralAlgorithmInputWidgetWrapper(QgsAbstractProcessingParameterWidgetWr
         return QLabel(pdef.name())
 
 
-class SpectralAlgorithmInputWidgetFactory(QgsProcessingParameterWidgetFactoryInterface):
+class SpectralProcessingAlgorithmInputWidgetFactory(QgsProcessingParameterWidgetFactoryInterface):
 
     def __init__(self):
-        super(SpectralAlgorithmInputWidgetFactory, self).__init__()
+        super(SpectralProcessingAlgorithmInputWidgetFactory, self).__init__()
         self.mWrappers = []
 
     def createModelerWidgetWrapper(self,
@@ -561,16 +559,14 @@ class SpectralAlgorithmInputWidgetFactory(QgsProcessingParameterWidgetFactoryInt
                                    ) -> QgsProcessingModelerParameterWidget:
         printCaller()
 
-        # widget = super(SpectralAlgorithmInputWidgetFactory, self).createModelerWidgetWrapper(model, childId, parameter, context)
-
-        widget = SpectralAlgorithmInputModelerParameterWidget(
+        widget = SpectralProcessingAlgorithmInputModelerParameterWidget(
             model, childId, parameter, context
         )
 
-        compatible_parameter_types = [SpectralAlgorithmInput.TYPE]
-        compatible_ouptut_types = [SpectralAlgorithmInput.TYPE]
+        compatible_parameter_types = [SpectralProcessingProfiles.TYPE]
+        compatible_output_types = [SpectralProcessingProfiles.TYPE]
         compatible_data_types = []
-        widget.populateSources(compatible_parameter_types, compatible_ouptut_types, compatible_data_types)
+        widget.populateSources(compatible_parameter_types, compatible_output_types, compatible_data_types)
 
         self.mRef = widget
 
@@ -583,7 +579,7 @@ class SpectralAlgorithmInputWidgetFactory(QgsProcessingParameterWidgetFactoryInt
                                         algorithm: QgsProcessingAlgorithm = None
                                         ) -> QgsProcessingAbstractParameterDefinitionWidget:
         printCaller(f'#{id(self)}')
-        w = SpectralAlgorithmInputWidget(context, widgetContext, definition, algorithm, None)
+        w = SpectralProcessingAlgorithmInputWidget(context, widgetContext, definition, algorithm, None)
         keepRef(w)
         # self.mWrappers.append(w)
         return w
@@ -592,14 +588,14 @@ class SpectralAlgorithmInputWidgetFactory(QgsProcessingParameterWidgetFactoryInt
                             parameter: QgsProcessingParameterDefinition,
                             wtype: QgsProcessingGui.WidgetType) -> QgsAbstractProcessingParameterWidgetWrapper:
         printCaller()
-        wrapper = SpectralAlgorithmInputWidgetWrapper(parameter, wtype)
+        wrapper = SpectralProcessingProfilesWidgetWrapper(parameter, wtype)
         # wrapper.destroyed.connect(self._onWrapperDestroyed)
         # self.mWrappers.append(wrapper)
         keepRef(wrapper)
         return wrapper
 
     def parameterType(self):
-        return SpectralAlgorithmInput.TYPE  # 'spectral_profile' #SpectralAlgorithmInputType.__class__.__name__
+        return SpectralProcessingProfiles.TYPE  # 'spectral_profile' #SpectralProcessingProfileType.__class__.__name__
 
     def compatibleDataTypes(self):
         #    printCaller()
@@ -607,17 +603,17 @@ class SpectralAlgorithmInputWidgetFactory(QgsProcessingParameterWidgetFactoryInt
 
     def compatibleOutputTypes(self):
         printCaller()
-        return [SpectralAlgorithmOutput.TYPE]
+        return [SpectralProcessingProfilesOutput.TYPE]
 
     def compatibleParameterTypes(self):
         printCaller()
-        return [SpectralAlgorithmOutput.TYPE]
+        return [SpectralProcessingProfilesOutput.TYPE]
 
 
-class SpectralAlgorithmOutputWidgetFactory(QgsProcessingParameterWidgetFactoryInterface):
+class SpectralProcessingProfilesOutputWidgetFactory(QgsProcessingParameterWidgetFactoryInterface):
 
     def __init__(self):
-        super(SpectralAlgorithmOutputWidgetFactory, self).__init__()
+        super(SpectralProcessingProfilesOutputWidgetFactory, self).__init__()
         self.mWrappers = []
 
     def createModelerWidgetWrapper(self,
@@ -628,14 +624,14 @@ class SpectralAlgorithmOutputWidgetFactory(QgsProcessingParameterWidgetFactoryIn
                                    ) -> QgsProcessingModelerParameterWidget:
         printCaller()
 
-        # widget = super(SpectralAlgorithmInputWidgetFactory, self).createModelerWidgetWrapper(model, childId, parameter, context)
+        # widget = super(SpectralProcessingAlgorithmInputWidgetFactory, self).createModelerWidgetWrapper(model, childId, parameter, context)
 
-        widget = SpectralAlgorithmInputModelerParameterWidget(
+        widget = SpectralProcessingAlgorithmInputModelerParameterWidget(
             model, childId, parameter, context
         )
 
-        compatible_parameter_types = [SpectralAlgorithmInput.TYPE]
-        compatible_ouptut_types = [SpectralAlgorithmInput.TYPE]
+        compatible_parameter_types = [SpectralProcessingProfiles.TYPE]
+        compatible_ouptut_types = [SpectralProcessingProfiles.TYPE]
         compatible_data_types = []
         widget.populateSources(compatible_parameter_types, compatible_ouptut_types, compatible_data_types)
 
@@ -650,7 +646,7 @@ class SpectralAlgorithmOutputWidgetFactory(QgsProcessingParameterWidgetFactoryIn
                                         algorithm: QgsProcessingAlgorithm = None
                                         ) -> QgsProcessingAbstractParameterDefinitionWidget:
         printCaller(f'#{id(self)}')
-        w = SpectralAlgorithmInputWidget(context, widgetContext, definition, algorithm, None)
+        w = SpectralProcessingAlgorithmInputWidget(context, widgetContext, definition, algorithm, None)
         keepRef(w)
         # self.mWrappers.append(w)
         return w
@@ -659,7 +655,7 @@ class SpectralAlgorithmOutputWidgetFactory(QgsProcessingParameterWidgetFactoryIn
                             parameter: QgsProcessingParameterDefinition,
                             wtype: QgsProcessingGui.WidgetType) -> QgsAbstractProcessingParameterWidgetWrapper:
         printCaller()
-        wrapper = SpectralAlgorithmInputWidgetWrapper(parameter, wtype)
+        wrapper = SpectralProcessingProfilesWidgetWrapper(parameter, wtype)
         # wrapper.destroyed.connect(self._onWrapperDestroyed)
         # self.mWrappers.append(wrapper)
         keepRef(wrapper)
@@ -667,25 +663,25 @@ class SpectralAlgorithmOutputWidgetFactory(QgsProcessingParameterWidgetFactoryIn
 
     def parameterType(self):
         printCaller()
-        return SpectralAlgorithmOutput.TYPE  # 'spectral_profile' #SpectralAlgorithmInputType.__class__.__name__
+        return SpectralProcessingProfilesOutput.TYPE  # 'spectral_profile' #SpectralProcessingProfileType.__class__.__name__
 
     def compatibleDataTypes(self, parameter):
         #    printCaller()
-        return [SpectralAlgorithmInput.TYPE]
+        return [SpectralProcessingProfiles.TYPE]
 
     def compatibleOutputTypes(self):
         printCaller()
-        return [SpectralAlgorithmOutput.TYPE]
+        return [SpectralProcessingProfilesOutput.TYPE]
 
     def compatibleParameterTypes(self):
         printCaller()
-        return [SpectralAlgorithmOutput.TYPE]
+        return [SpectralProcessingProfilesOutput.TYPE]
 
 
-class ProcessingModelAlgorithmChain(QAbstractListModel):
+class SpectralProcessingAlgorithmChainModel(QAbstractListModel):
 
     def __init__(self, *args, **kwds):
-        super(ProcessingModelAlgorithmChain, self).__init__(*args, **kwds)
+        super(SpectralProcessingAlgorithmChainModel, self).__init__(*args, **kwds)
         self.mPModel: QgsProcessingModelAlgorithm = QgsProcessingModelAlgorithm()
         self.mPModel.setName('SimpleModel')
         self.mPModel.setGroup('')
@@ -781,7 +777,7 @@ class ProcessingModelAlgorithmChain(QAbstractListModel):
             if i == i_last:
 
                 for output in destinationParams:
-                    if isinstance(output, SpectralAlgorithmOutputDestination):
+                    if isinstance(output, SpectralProcessingProfilesOutputDestination):
                         output.setFlags(output.flags() | QgsProcessingParameterDefinition.FlagIsModelOutput)
                     if output.flags() & QgsProcessingParameterDefinition.FlagIsModelOutput:
                         if output.name() not in outputs:
