@@ -30,16 +30,17 @@ from qgis.core import \
     QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer, \
     QgsProcessingContext, QgsProcessingFeedback, QgsProcessingFeatureSource, \
     QgsProcessingParameterField, QgsProcessingParameterEnum, \
-    QgsVectorLayer, QgsProcessingParameterVectorDestination
+    QgsVectorLayer, QgsProcessingParameterVectorDestination, \
+    QgsFeature, QgsProcessingOutputVectorLayer
 
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QLabel, QHBoxLayout
 
-from .core import SpectralSetting, SpectralProfileBlock, read_profiles, groupBySpectralProperties
+from .core import SpectralSetting, SpectralProfileBlock, read_profiles, \
+    groupBySpectralProperties, SpectralLibrary, FIELD_VALUES, encodeProfileValueDict, decodeProfileValueDict
 from .processing import \
     SpectralProcessingProfiles, SpectralProcessingProfilesOutput, \
     SpectralProcessingProfilesOutputDestination, parameterAsSpectralProfileBlockList
-
 
 from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
 
@@ -57,7 +58,6 @@ class SpectralXUnitConversion(QgsProcessingAlgorithm):
 
     def name(self):
         return 'spectral_xunit_converter'
-
 
     def initAlgorithm(self, configuration):
 
@@ -207,7 +207,7 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
 
         output_blocks = list(
             SpectralProfileBlock.fromSpectralProfiles(read_profiles(speclib, value_fields=field),
-                                                                 feedback=feedback)
+                                                      feedback=feedback)
         )
         OUTPUTS = dict()
         OUTPUTS[self.OUTPUT] = output_blocks
@@ -217,6 +217,7 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
 class SpectralProfileWriter(QgsProcessingAlgorithm):
     INPUT = 'input_profiles'
     OUTPUT = 'output_speclib'
+    OUTPUT_FIELD = 'output_speclib_field'
 
     def __init__(self):
         super().__init__()
@@ -227,10 +228,17 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, configuration: dict):
         p1 = SpectralProcessingProfiles(self.INPUT)
-        o1 = QgsProcessingParameterVectorDestination(self.OUTPUT)
+        p2 = QgsProcessingParameterVectorDestination(self.OUTPUT)
+        p3 = QgsProcessingParameterField(self.OUTPUT_FIELD,
+                                         defaultValue=FIELD_VALUES,
+                                         optional=True,
+                                         parentLayerParameterName=self.OUTPUT)
+
         self.addParameter(p1)
-        self.addParameter(o1)
-        self.mParameters.append([p1, o1])
+        self.addParameter(p2, createOutput=True)
+        self.addParameter(p3)
+
+        # self.addOutput(QgsProcessingOutputVectorLayer(self.OUTPUT, 'Spectral Library'))
 
     def asPythonCommand(self) -> str:
         pass
@@ -281,16 +289,45 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
 
-        input_profiles: parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
-        speclib = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
+        input_profiles: typing.List[SpectralProfileBlock] = parameterAsSpectralProfileBlockList(parameters, self.INPUT,
+                                                                                                context)
+        speclib: SpectralLibrary = self.parameterAsVectorLayer(parameters, self.OUTPUT, context)
 
+        existing_fids = []
+        if isinstance(speclib, SpectralLibrary):
+
+            existing_fids = speclib.allFeatureIds()
+        else:
+            s = ""
+
+        field = self.parameterAsFields(parameters, self.OUTPUT_FIELD, context)[0]
+        assert field in speclib.fields().names()
+        i_field = speclib.fields().lookupField(field)
+
+        editable: bool = speclib.isEditable()
+        assert speclib.startEditing()
         output_blocks: typing.List[SpectralProfileBlock] = []
-        for profileBlock in input_profiles:
-            # process block by block
-            assert isinstance(profileBlock, SpectralProfileBlock)
-            print(profileBlock)
-            output_blocks.append(profileBlock)
-        OUTPUTS = dict()
-        OUTPUTS[self.OUTPUT] = output_blocks
-        return OUTPUTS
 
+        replace_fids = True
+
+        for block in input_profiles:
+            # process block by block
+            assert isinstance(block, SpectralProfileBlock)
+            # append new features
+            new_features = []
+            for ba in block.profileValueByteArrays():
+                f = QgsFeature(speclib.fields())
+                f.setAttribute(i_field, ba)
+                new_features.append(f)
+            # todo: allow to overwrite existing features
+            assert speclib.addFeatures(new_features)
+        s = ""
+
+        assert speclib.commitChanges()
+        if editable:
+            speclib.startEditing()
+
+        OUTPUTS = dict()
+        OUTPUTS[self.OUTPUT] = speclib
+
+        return OUTPUTS

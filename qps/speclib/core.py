@@ -567,47 +567,9 @@ class SpectralProfile(QgsFeature):
 
     def setValues(self, x=None, y=None, xUnit: str = None, yUnit: str = None, bbl=None, **kwds):
 
-        d = self.values().copy()
+        #d = self.values().copy()
+        d = prepareProfileValueDict(x=x, y=y, xUnit=xUnit, yUnit=yUnit, bbl=bbl, prototype=self.values())
 
-        if isinstance(x, np.ndarray):
-            x = x.tolist()
-
-        if isinstance(y, np.ndarray):
-            y = y.tolist()
-
-        if isinstance(bbl, np.ndarray):
-            bbl = bbl.astype(bool).tolist()
-
-        if isinstance(x, list):
-            d['x'] = x
-
-        if isinstance(y, list):
-            d['y'] = y
-
-        if isinstance(bbl, list):
-            d['bbl'] = bbl
-
-        # ensure x/y/bbl are list or None
-        assert d['x'] is None or isinstance(d['x'], list)
-        assert d['y'] is None or isinstance(d['y'], list)
-        assert d['bbl'] is None or isinstance(d['bbl'], list)
-
-        # ensure same length
-        if isinstance(d['x'], list):
-            assert isinstance(d['y'], list), 'y values need to be specified'
-
-            assert len(d['x']) == len(d['y']), \
-                'x and y need to have the same number of values ({} != {})'.format(len(d['x']), len(d['y']))
-
-        if isinstance(d['bbl'], list):
-            assert isinstance(d['y'], list), 'y values need to be specified'
-            assert len(d['bbl']) == len(d['y']), \
-                'y and bbl need to have the same number of values ({} != {})'.format(len(d['y']), len(d['bbl']))
-
-        if isinstance(xUnit, str):
-            d['xUnit'] = xUnit
-        if isinstance(yUnit, str):
-            d['yUnit'] = yUnit
 
         self.setAttribute(self.mValueField, encodeProfileValueDict(d))
         self.mValueCache = d
@@ -1149,10 +1111,63 @@ def toType(t, arg, empty2None=True):
         else:
             return t(arg)
 
+def prepareProfileValueDict(x:None, y:None, xUnit:str=None, yUnit:str=None, bbl=None, prototype:dict=None):
+    """
+    Creates a profile value dictionary from inputs
+    :param d:
+    :return:
+    """
+    if isinstance(prototype, dict):
+        d = prototype.copy()
+    else:
+        d = EMPTY_PROFILE_VALUES.copy()
+
+    if isinstance(x, np.ndarray):
+        x = x.tolist()
+
+    if isinstance(y, np.ndarray):
+        y = y.tolist()
+
+    if isinstance(bbl, np.ndarray):
+        bbl = bbl.astype(bool).tolist()
+
+    if isinstance(x, list):
+        d['x'] = x
+
+    if isinstance(y, list):
+        d['y'] = y
+
+    if isinstance(bbl, list):
+        d['bbl'] = bbl
+
+    # ensure x/y/bbl are list or None
+    assert d['x'] is None or isinstance(d['x'], list)
+    assert d['y'] is None or isinstance(d['y'], list)
+    assert d['bbl'] is None or isinstance(d['bbl'], list)
+
+    # ensure same length
+    if isinstance(d['x'], list):
+        assert isinstance(d['y'], list), 'y values need to be specified'
+
+        assert len(d['x']) == len(d['y']), \
+            'x and y need to have the same number of values ({} != {})'.format(len(d['x']), len(d['y']))
+
+    if isinstance(d['bbl'], list):
+        assert isinstance(d['y'], list), 'y values need to be specified'
+        assert len(d['bbl']) == len(d['y']), \
+            'y and bbl need to have the same number of values ({} != {})'.format(len(d['y']), len(d['bbl']))
+
+    if isinstance(xUnit, str):
+        d['xUnit'] = xUnit
+    if isinstance(yUnit, str):
+        d['yUnit'] = yUnit
+
+    return d
+
 
 def encodeProfileValueDict(d: dict, mode=None) -> QByteArray:
     """
-    Converts a SpectralProfile value dictionary into a compact JSON string, which can be
+    Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
     :param d: dict
     :return: str
@@ -1171,7 +1186,7 @@ def encodeProfileValueDict(d: dict, mode=None) -> QByteArray:
     return QByteArray(pickle.dumps(d2))
 
 
-def decodeProfileValueDict(dump, mode=None):
+def decodeProfileValueDict(dump, mode=None) -> dict:
     """
     Converts a json / pickle dump  into a SpectralProfile value dictionary
     :param dump: str
@@ -1386,7 +1401,7 @@ class SpectralProfileBlock(object):
         return self.mXValues
 
     def xUnit(self) -> str:
-        return self.mXUnit
+        return self.mSpectralSetting.xUnit()
 
     def n_profiles(self) -> int:
         return int(np.product(self.mData.shape[1:]))
@@ -1395,7 +1410,7 @@ class SpectralProfileBlock(object):
         return self.mData.shape[0]
 
     def yUnit(self) -> str:
-        return self.mYUnit
+        return self.mSpectralSetting.yUnit()
 
     def __len__(self) -> int:
         return np.product(self.mData.shape[1, :])
@@ -1413,6 +1428,32 @@ class SpectralProfileBlock(object):
                 profile = SpectralProfile()
                 profile.setValues(x=xValues, y=yValues, xUnit=xUnit, yUnit=yUnit)
                 yield profile
+
+        encodeProfileValueDict()
+
+    def profileValueDictionaries(self) -> typing.List[dict]:
+        """
+        Converts the block data into profile value dictionaries
+        :return:
+        """
+        yy, xx = np.unravel_index(np.arange(self.n_profiles()), self.mData.shape[1:])
+        spectral_settings = self.spectralSetting()
+
+        for j, i in zip(yy, xx):
+            yValues = self.mData[:, j, i]
+            d = prepareProfileValueDict(x=spectral_settings.x(),
+                                        y=yValues,
+                                        xUnit=spectral_settings.xUnit(),
+                                        yUnit=spectral_settings.yUnit())
+            yield d
+
+    def profileValueByteArrays(self) -> typing.List[QByteArray]:
+        """
+        Converts the block profiles data into serialized profile value dictionaries
+        :return:
+        """
+        for d in self.profileValueDictionaries():
+            yield encodeProfileValueDict(d)
 
     def data(self) -> np.ndarray:
         """

@@ -287,8 +287,8 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.curve.mouseClickEvent = self.onCurveMouseClickEvent
         self.scatter.sigClicked.connect(self.onScatterMouseClicked)
 
-        self.mValueConversionIsPossible: bool = True
-        self.mSpectralModel: typing.List[SpectralAlgorithm] = []
+        # self.mValueConversionIsPossible: bool = True
+        # self.mSpectralModel: typing.List[SpectralAlgorithm] = []
         self.mXValueConversionFunction = lambda v, *args: v
         self.mYValueConversionFunction = lambda v, *args: v
         self.mSortByXValues: bool = False
@@ -305,9 +305,10 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.mInitialUnitY = None
 
         self.initProfile(spectralProfile)
-        self.applyMapFunctions()
+        # self.applyMapFunctions()
 
     def valueConversionPossible(self) -> bool:
+        warnings.warn('Deprecated', DeprecationWarning)
         return self.mValueConversionIsPossible
 
     def profileSource(self):
@@ -382,9 +383,9 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         """
         return self.mProfile
 
-    def setSpectralModel(self, model: QgsProcessingModelAlgorithm):
-        assert isinstance(model, QgsProcessingModelAlgorithm)
-        self.mSpectralModel = model
+    # def setSpectralModel(self, model: QgsProcessingModelAlgorithm):
+    #    assert isinstance(model, QgsProcessingModelAlgorithm)
+    #    self.mSpectralModel = model
 
     def applySpectralModel(self) -> bool:
         block = SpectralProfileBlock.fromSpectralProfile(self.spectralProfile())
@@ -876,7 +877,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # describe functions to convert wavelength units from unit a to unit b
         self.mUnitConverter = UnitConverterFunctionModel()
-        #self.mXUnitMathFunc = XUnitConversion(self.xUnit())
+        # self.mXUnitMathFunc = XUnitConversion(self.xUnit())
+
         self.mSpectralModel: QgsProcessingModelAlgorithm = None
 
         self.mPlotDataItems: typing.List[typing.Tuple[int, str], SpectralProfilePlotDataItem] = dict()
@@ -1410,15 +1412,19 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 label = 'Date [{}]'.format(unit)
 
         self.mXAxis.setUnit(unit, label)
-        self.mXUnitMathFunc.setTargetUnit(unit)
+        # self.mXUnitMathFunc.setTargetUnit(unit)
         # update x values
         self.updateSpectralModel()
 
     def updateSpectralModel(self):
         pdis = self.allSpectralProfilePlotDataItems()
-        stack = self.spectralModel()
+        model = self.spectralModel()
+
+        # todo: update PDIs block-wise
+
+
         for pdi in pdis:
-            pdi.setSpectralModel(stack)
+            pdi.setSpectralModel(model)
             pdi.applySpectralModel()
 
     def updateSpectralProfilePlotItems(self):
@@ -1433,6 +1439,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         pdis_to_visualize: typing.List[SpectralProfilePlotDataItem] = []
         new_pdis: typing.List[SpectralProfilePlotDataItem] = []
         sort_x_values: bool = self.xUnit() in ['DOI']
+
+        # todo: update with model call
+        unitModel = None
+
         for pkey in self.profileKeysToVisualize():
             if len(pdis_to_visualize) >= n_max:
                 break
@@ -1441,7 +1451,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
             pdi: SpectralProfilePlotDataItem = self.mPlotDataItems.get(pkey, None)
             if isinstance(pdi, SpectralProfilePlotDataItem):
-                if pdi.valueConversionPossible():
+                # todo: fix
+                if False and pdi.valueConversionPossible():
                     pdis_to_visualize.append(pdi)
                 else:
                     self.mNumberOfValueErrorsProfiles += 1
@@ -1460,12 +1471,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setProfileSource(self.speclib())
                 pdi.setClickable(True)
                 pdi.setVisible(True)
-                pdi.setSpectralModel(self.spectralModel())
+                # pdi.setSpectralModel(self.spectralModel())
                 # pdi.setMapFunctionX(self.unitConversionFunction(pdi.mInitialUnitX, self.xUnit()))
                 pdi.mSortByXValues = sort_x_values
-                pdi.applySpectralModel()
+                # pdi.applySpectralModel()
                 pdi.sigProfileClicked.connect(self.onProfileClicked)
-                if pdi.valueConversionPossible():
+                # todo: fix
+                if False and pdi.valueConversionPossible():
                     new_pdis.append(pdi)
                     pdis_to_visualize.append(pdi)
                 else:

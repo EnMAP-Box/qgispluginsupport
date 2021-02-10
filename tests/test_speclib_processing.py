@@ -16,7 +16,8 @@ from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, Q
     QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry, QgsProcessingContext, \
     QgsProcessingParameterDefinition, QgsProcessingModelAlgorithm, QgsProcessingFeedback, \
     QgsProcessingModelChildAlgorithm, QgsProcessingModelChildParameterSource, \
-    QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterVectorLayer, QgsProcessingModelParameter
+    QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterVectorLayer, QgsProcessingModelParameter, \
+    QgsProcessingModelOutput, QgsProcessingOutputVectorLayer
 
 from processing.modeler.ModelerDialog import ModelerParametersDialog
 from qpstestdata import enmap, hymap
@@ -276,6 +277,13 @@ class SpectraProcessingExamples(TestCase):
             output.addProfileBlock(output_block)
 
     def test_example_processing_model(self):
+        """
+        This example shows how to create a processing model that
+        1. reads profiles from a speclib
+        2. processes profiles
+        3. writes the processed profile into a speclib
+        """
+
         configuration = {}
         context = QgsProcessingContext()
         feedback = QgsProcessingFeedback()
@@ -312,11 +320,12 @@ class SpectraProcessingExamples(TestCase):
         idW: str = model.addChildAlgorithm(createChildAlgorithm(algW.id(), 'Write'))
 
         # set model input / output
-        model.addModelParameter(QgsProcessingParameterVectorLayer('speclib_source'),
+        model.addModelParameter(QgsProcessingParameterVectorLayer('speclib_source', description='Source Speclib'),
                                 QgsProcessingModelParameter('speclib_source'))
-        model.addModelParameter(QgsProcessingParameterVectorLayer('speclib_target'),
+        model.addModelParameter(QgsProcessingParameterVectorLayer('speclib_target', description='Target Speclib'),
                                 QgsProcessingModelParameter('speclib_target'))
 
+        # model.addOutput(QgsProcessingOutputVectorLayer('speclib_target'))
         # QgsProcessingModelChildParameterSource
         calgR = model.childAlgorithm(idR)
         calgR.addParameterSources(
@@ -350,17 +359,32 @@ class SpectraProcessingExamples(TestCase):
             [QgsProcessingModelChildParameterSource.fromModelParameter('speclib_target')]
         )
 
+        #output = calgW.algorithm().outputDefinitions()[0]
+        #model_output = QgsProcessingModelOutput(output.name(), output.name())
+        #model_output.setChildId(calgW.childId())
+        #model_output.setChildOutputName(output.name())
+        #outputs = {output.name(): model_output}
+        #calgW.setModelOutputs(outputs)
+
+        # outputID = calgW.modelOutput('speclib_target').childId()
         parameters = {'speclib_source': speclib_source,
                       'speclib_target': speclib_target}
 
         model.initAlgorithm(configuration)
-        #self.assertTrue(
-        #    model.prepareAlgorithm(parameters, context, feedback)
-        #)
+        # self.assertTrue(model.prepareAlgorithm(parameters, context, feedback))
 
+        n0 = len(parameters['speclib_target'])
         results, success = model.run(parameters, context, feedback)
         self.assertTrue(success)
         self.assertIsInstance(results, dict)
+        self.assertTrue(len(parameters['speclib_target']) == n0 + len(speclib_source))
+
+        from processing.modeler.ModelerDialog import ModelerDialog
+        d = ModelerDialog(model=model)
+
+        # note: this will work only if environmental variable CI=False
+        self.showGui(d)
+
 
     def test_example_register_spectral_algorithms(self):
         alg = SpectralProcessingAlgorithmExample()
@@ -509,9 +533,6 @@ class SpectralProcessingTests(TestCase):
         # wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Standard)
         # wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Batch)
         # wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Modeler)
-
-
-
 
     def test_gui(self):
         self.initProcessingRegistry()
