@@ -116,7 +116,7 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
 
             # sort by wavelength
             numericValueKeys = np.asarray(numericValueKeys, dtype=np.str)
-            xValues = np.asarray(numericValueKeys, dtype=np.float)
+            xValues = np.asarray(numericValueKeys, dtype=float)
             s = np.argsort(xValues)
             numericValueKeys = numericValueKeys[s]
             xValues = xValues[s]
