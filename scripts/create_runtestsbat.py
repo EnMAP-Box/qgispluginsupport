@@ -32,10 +32,8 @@ start %PYTHON% runfirst.py
 
 PREFACE_SH = \
 """#!/bin/bash
-QT_QPA_PLATFORM=offscreen
-export QT_QPA_PLATFORM
-CI=True
-export CI
+export QT_QPA_PLATFORM=offscree
+export CI=True
 
 find . -name "*.pyc" -exec rm -f {} \;
 export PYTHONPATH="${PYTHONPATH}:$(pwd):/usr/share/qgis/python/plugins"

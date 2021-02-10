@@ -281,7 +281,7 @@ class SpectraProcessingExamples(TestCase):
         This example shows how to create a processing model that
         1. reads profiles from a speclib
         2. processes profiles
-        3. writes the processed profile into a speclib
+        3. writes the processed profile into a Speclib
         """
 
         configuration = {}
@@ -534,7 +534,7 @@ class SpectralProcessingTests(TestCase):
         # wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Batch)
         # wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Modeler)
 
-    def test_gui(self):
+    def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
         sl = TestObjects.createSpectralLibrary(10)
         w = SpectralLibraryWidget(speclib=sl)
