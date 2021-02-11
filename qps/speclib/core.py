@@ -29,6 +29,7 @@
 import json
 import enum
 import pickle
+import itertools
 from collections import namedtuple
 import typing
 import pathlib
@@ -83,8 +84,8 @@ OGR_EXTENSION2DRIVER = dict()
 OGR_EXTENSION2DRIVER[''] = []  # list all drivers without specific extension
 
 # to be used in future
-# a single profiles is identified by feature id and field index or field name
-ProfileKey = namedtuple('ProfileKey', ['fid', 'field'])
+# a single profile is identified by its QgsFeature id and field index or field name
+SpectralProfileKey = namedtuple('SpectralProfileKey', ['fid', 'field'])
 
 
 FILTERS = 'Geopackage (*.gpkg);;ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;GeoJSON (*.geojson)'
@@ -113,8 +114,6 @@ X_UNITS = ['Index', 'Micrometers', 'Nanometers', 'Millimeters', 'Centimeters', '
            'GHz', 'MHz', '']
 Y_UNITS = ['DN', 'Reflectance', 'Radiance', '']
 
-
-
 for i in range(ogr.GetDriverCount()):
     drv = ogr.GetDriver(i)
     extensions = drv.GetMetadataItem(gdal.DMD_EXTENSIONS)
@@ -130,10 +129,21 @@ OGR_EXTENSION2DRIVER[None] = OGR_EXTENSION2DRIVER['']
 
 DEBUG = False
 
+def generateProfileKeys(feature_ids: typing.List[int],
+                        value_fields:typing.Union[QgsField, str]) -> typing.List[SpectralProfileKey]:
+    field_names = []
+    for f in value_fields:
+        if isinstance(f, QgsField):
+            f = f.name()
+        assert isinstance(f, str)
+        field_names.append(f)
+
+    return [SpectralProfileKey(fid, field_name) for fid, field_name in itertools.product(feature_ids, field_names)]
 
 class SerializationMode(enum.Enum):
     JSON = 1
     PICKLE = 2
+
 
 class SpectralSetting(object):
     """
@@ -184,7 +194,6 @@ class SpectralSetting(object):
 
     def __hash__(self):
         return self._hash
-
 
 
 class SpectralProfile(QgsFeature):
@@ -391,7 +400,7 @@ class SpectralProfile(QgsFeature):
         if isinstance(value_field, QgsField):
             value_field = value_field.name()
 
-        self.mValueField: str = value_field
+        self.mProfileKey: SpectralProfileKey = SpectralProfileKey(self.id(), value_field)
 
         if isinstance(values, dict):
             self.setValues(**values)
@@ -472,12 +481,14 @@ class SpectralProfile(QgsFeature):
         elif isinstance(pt, QgsPointXY):
             self.setGeometry(QgsGeometry.fromPointXY(pt))
 
-    def key(self) -> typing.Tuple[int, any]:
+    def key(self) -> SpectralProfileKey:
         """
-        Returns a key tuple consisting of the profiles feature id and the columns that stores the profile data
+        This key that identifies the profiles data BLOB
+        SpectralProfile::id() = QgsFeature::id() = identifies the feature "row"
+        SpectralProfile.key() = SpectralProfileKey -> identifies the feature row & QgsField name of BLOB column
         :return:
         """
-        return (self.id(), self.mValueField)
+        return self.mProfileKey
 
     def geoCoordinate(self):
         return self.geometry()
@@ -547,9 +558,9 @@ class SpectralProfile(QgsFeature):
     def isEmpty(self) -> bool:
         """
         Returns True if there is not ByteArray stored in the BLOB value field
-        :return:
+        :return: bool
         """
-        return self.attribute(self.fields().indexFromName(self.mValueField)) in [None, QVariant()]
+        return self.attribute(self.fields().indexFromName(self.mProfileKey.field)) in [None, QVariant()]
 
     def values(self) -> dict:
         """
@@ -557,7 +568,7 @@ class SpectralProfile(QgsFeature):
         :return: {'x':list,'y':list,'xUnit':str,'yUnit':str, 'bbl':list}
         """
         if self.mValueCache is None:
-            byteArray = self.attribute(self.fields().indexFromName(self.mValueField))
+            byteArray = self.attribute(self.fields().indexFromName(self.mProfileKey.field))
             d = decodeProfileValueDict(byteArray)
 
             # save a reference to the decoded dictionary
@@ -567,11 +578,10 @@ class SpectralProfile(QgsFeature):
 
     def setValues(self, x=None, y=None, xUnit: str = None, yUnit: str = None, bbl=None, **kwds):
 
-        #d = self.values().copy()
+        # d = self.values().copy()
         d = prepareProfileValueDict(x=x, y=y, xUnit=xUnit, yUnit=yUnit, bbl=bbl, prototype=self.values())
 
-
-        self.setAttribute(self.mValueField, encodeProfileValueDict(d))
+        self.setAttribute(self.mProfileKey.field, encodeProfileValueDict(d))
         self.mValueCache = d
 
     def xValues(self) -> list:
@@ -769,14 +779,16 @@ class SpectralProfile(QgsFeature):
 
 
 def read_profiles(vectorlayer: QgsVectorLayer,
-             fids=None,
-             value_fields=None,
-             profile_keys: typing.Tuple[int, str] = None) -> typing.Generator[SpectralProfile, None, None]:
+                  fids: typing.List[int]=None,
+                  value_fields: typing.List[str] = None,
+                  profile_keys: typing.List[SpectralProfileKey] = None) -> typing.Generator[SpectralProfile, None, None]:
     """
-    Reads SpectralProfiles from a vector layers' BLOB 'value_fields'.
+    Reads SpectralProfiles from a vector layers BLOB 'value_fields'.
 
     Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
     If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value field.
+    SpectralProfiles are returned for value_fields != NULL only
+    :param vectorlayer:
     :param value_fields:
     :type value_fields:
     :param profile_keys:
@@ -788,29 +800,30 @@ def read_profiles(vectorlayer: QgsVectorLayer,
     if profile_keys is None:
         if value_fields is None:
             value_fields = [f.name() for f in spectralValueFields(vectorlayer)]
+        if fids is None:
+            fids = vectorlayer.allFeatureIds()
+
         elif not isinstance(value_fields, list):
             value_fields = [value_fields]
 
-        for f in vectorlayer.features(fids=fids):
-            for field in value_fields:
-                yield SpectralProfile.fromQgsFeature(f, value_field=field)
-    else:
-        # sort by FID
-        LUT_FID2KEYS = dict()
-        for pkey in profile_keys:
-            fid, field = pkey
+        profile_keys = [SpectralProfileKey(fid, n) for fid, n in itertools.product(fids, value_fields)]
 
-            fields = LUT_FID2KEYS.get(fid, [])
-            fields.append(field)
-            LUT_FID2KEYS[fid] = fields
+    ID2KEY: typing.Dict[int, SpectralProfileKey] = dict()
+    for k in profile_keys:
+        fields = ID2KEY.get(k.fid, [])
+        fields.append(k.field)
+        ID2KEY[k.fid] = fields
 
-        for f in vectorlayer.features(fids=list(LUT_FID2KEYS.keys())):
-            assert isinstance(f, QgsFeature)
-            for field in LUT_FID2KEYS[f.id()]:
+    featureRequest = QgsFeatureRequest()
+    featureRequest.setFilterFids(sorted(ID2KEY.keys()))
+    for f in vectorlayer.getFeatures(featureRequest):
+        f: QgsFeature
+        for field in ID2KEY[f.id()]:
+            if isinstance(f.attribute(field), QByteArray):
                 yield SpectralProfile.fromQgsFeature(f, value_field=field)
 
 
-def groupBySpectralProperties(profiles:typing.List[SpectralProfile],
+def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
                               excludeEmptyProfiles: bool = True
                               ) -> typing.Dict[SpectralSetting, typing.List[SpectralProfile]]:
     """
@@ -1111,7 +1124,8 @@ def toType(t, arg, empty2None=True):
         else:
             return t(arg)
 
-def prepareProfileValueDict(x:None, y:None, xUnit:str=None, yUnit:str=None, bbl=None, prototype:dict=None):
+
+def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = None, bbl=None, prototype: dict = None):
     """
     Creates a profile value dictionary from inputs
     :param d:
@@ -1316,8 +1330,8 @@ class SpectralProfileBlock(object):
     """
 
     @staticmethod
-    def fromSpectralProfiles(profiles:typing.List[SpectralProfile],
-                             feedback:QgsProcessingFeedback=None):
+    def fromSpectralProfiles(profiles: typing.List[SpectralProfile],
+                             feedback: QgsProcessingFeedback = None):
 
         for spectral_setting, profiles in groupBySpectralProperties(profiles, excludeEmptyProfiles=True).items():
             ns: int = len(profiles)
@@ -2951,7 +2965,6 @@ class SpectralLibrary(QgsVectorLayer):
             self.profiles(fids=fids, value_fields=value_fields, profile_keys=profile_keys)
         )
 
-
     def profile(self, fid: int, value_field=None) -> SpectralProfile:
         if value_field is None:
             value_field = self.spectralValueFields()[0]
@@ -2990,12 +3003,12 @@ class SpectralLibrary(QgsVectorLayer):
         :return: {SpectralSetting:[list-of-profiles]}
         """
         return groupBySpectralProperties(self.profiles(
-                                            fids=fids,
-                                            value_fields=value_fields,
-                                            profile_keys=profile_keys,
-                                            ),
-                                            excludeEmptyProfiles=excludeEmptyProfiles
-                                         )
+            fids=fids,
+            value_fields=value_fields,
+            profile_keys=profile_keys,
+        ),
+            excludeEmptyProfiles=excludeEmptyProfiles
+        )
 
     def exportNamedStyle(self,
                          doc: QDomDocument,

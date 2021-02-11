@@ -27,6 +27,7 @@ from typing import List, Tuple
 
 import sip
 import textwrap
+import itertools
 from .core import *
 import collections
 from ..externals.pyqtgraph import PlotItem, PlotWindow, PlotCurveItem
@@ -44,7 +45,8 @@ from qgis.core import \
     QgsRasterLayer, QgsMapLayer, QgsVectorLayer, QgsFieldFormatterRegistry, \
     QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
     QgsAttributeTableConfig, QgsField, QgsMapLayerProxyModel, QgsFileUtils, \
-    QgsExpression, QgsFieldProxyModel, QgsProcessingModelAlgorithm
+    QgsExpression, QgsFieldProxyModel, QgsProcessingModelAlgorithm, \
+    QgsProcessingFeedback, QgsProcessingContext, QgsProject
 
 from qgis.gui import \
     QgsEditorWidgetWrapper, QgsAttributeTableView, \
@@ -58,6 +60,8 @@ from .processing import *
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
+
+MAX_PDIS_DEFAULT = 512
 
 # do not sho spectral processing widget in production releases
 SPECTRAL_PROCESSING: bool = 'CI' in os.environ.keys()
@@ -289,16 +293,14 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         # self.mValueConversionIsPossible: bool = True
         # self.mSpectralModel: typing.List[SpectralAlgorithm] = []
-        self.mXValueConversionFunction = lambda v, *args: v
-        self.mYValueConversionFunction = lambda v, *args: v
+        # self.mXValueConversionFunction = lambda v, *args: v
+        # self.mYValueConversionFunction = lambda v, *args: v
         self.mSortByXValues: bool = False
 
         # self.mDefaultStyle = PlotStyle()
 
         self.mProfileSource = None
-
-        self.mProfile: SpectralProfile
-        self.mProfile = None
+        self.mProfile: SpectralProfile = None
         self.mInitialDataX = None
         self.mInitialDataY = None
         self.mInitialUnitX = None
@@ -849,7 +851,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mSelectedIds = set()
         self.mXAxisUnitInitialized: bool = False
         self.mViewBox: SpectralViewBox = mViewBox
-        self.setMaxProfiles(64)
+        self.setMaxProfiles(MAX_PDIS_DEFAULT)
         self.mDualView = None
 
         self.mNumberOfValueErrorsProfiles: int = 0
@@ -877,11 +879,15 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # describe functions to convert wavelength units from unit a to unit b
         self.mUnitConverter = UnitConverterFunctionModel()
+        from .processingalgorithms import SpectralXUnitConversion
+        self.mUnitConverterAlg = SpectralXUnitConversion()
+        self.mUnitConverterAlg.initAlgorithm({})
+
         # self.mXUnitMathFunc = XUnitConversion(self.xUnit())
 
         self.mSpectralModel: QgsProcessingModelAlgorithm = None
 
-        self.mPlotDataItems: typing.List[typing.Tuple[int, str], SpectralProfilePlotDataItem] = dict()
+        self.mPlotDataItems: typing.List[SpectralProfileKey, SpectralProfilePlotDataItem] = dict()
         self.mPlotOverlayItems = []
         self.setAntialiasing(True)
         self.setAcceptDrops(True)
@@ -917,8 +923,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.setYLabel('Y (Spectral Value)')
 
         self.actionXAxis().sigUnitChanged.connect(self.updateXUnit)
-        self.mSPECIFIC_PROFILE_STYLES: typing.Dict[int, PlotStyle] = dict()
-        self.mTEMPORARY_HIGHLIGHTED: typing.Set[typing.Tuple[int, str]] = set()
+        self.mSPECIFIC_PROFILE_STYLES: typing.Dict[SpectralProfileKey, PlotStyle] = dict()
+        self.mTEMPORARY_HIGHLIGHTED: typing.Set[SpectralProfileKey] = set()
         self.mDefaultProfileRenderer: SpectralProfileRenderer
         self.mDefaultProfileRenderer = SpectralProfileRenderer.default()
 
@@ -934,14 +940,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.setProfileRenderer(self.mDefaultProfileRenderer)
         self.setAcceptDrops(True)
 
-    def currentProfileKeys(self) -> typing.List[typing.Tuple[int, str]]:
+    def highlightedProfileKeys(self) -> typing.List[SpectralProfileKey]:
         return sorted(self.mTEMPORARY_HIGHLIGHTED)
 
-    def currentProfileIDs(self) -> typing.List[int]:
-        return list(set([k[0] for k in self.currentProfileKeys()]))
+    def highlightedProfileIds(self) -> typing.List[int]:
+        return sorted(set([k.fid for k in self.highlightedProfileKeys()]))
 
     def currentProfiles(self) -> typing.List[SpectralProfile]:
-        keys = self.currentProfileKeys()
+        keys = self.highlightedProfileKeys()
         return list(self.speclib().profiles(profile_keys=keys))
 
     def onInfoScatterClicked(self, a, b):
@@ -1123,7 +1129,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         """
         return [i for i in self.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)]
 
-    def removeSpectralProfilePDIs(self, keys_to_remove: typing.List[typing.Tuple[int, str]], updateScene: bool = True):
+    def removeSpectralProfilePDIs(self, keys_to_remove: typing.List[SpectralProfileKey], updateScene: bool = True):
         """
         :param updateScene:
         :param keys_to_remove: feature ids to remove
@@ -1173,11 +1179,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         :type style:
         """
         updatedFIDs = self.profileRenderer().setProfilePlotStyle(style, fids)
-        self.updateProfileStyles(updatedFIDs)
+        self.updatePDIStyles(updatedFIDs)
 
     def setMaxProfiles(self, n: int):
         """
-        Sets the maximum number of profiles.
+        Sets the maximum number of profiles to be displayed at the same time
         :param n: maximum number of profiles visualized
         :type n: int
         """
@@ -1283,16 +1289,17 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if len(fids) == 0:
             return
         fids = list(fids)
-        update = False
+        updated: typing.List[SpectralProfilePlotDataItem] = []
         for p in self.speclib().profiles(fids):
+            p: SpectralProfile
             assert isinstance(p, SpectralProfile)
             pdi = self.mPlotDataItems.get(p.key(), None)
             if isinstance(pdi, SpectralProfilePlotDataItem):
-                pdi.resetSpectralProfile(p)
-            else:
-                update = True
-        if update:
-            self.updateSpectralProfilePlotItems()
+                pdi.initProfile(p)
+                updated.append(pdi)
+
+        self.updatePDIValues(updated)
+
 
     @pyqtSlot()
     def onProfileRendererChanged(self):
@@ -1321,7 +1328,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mCrosshairLineH.pen.setColor(profileRenderer.infoColor)
         self.mCrosshairLineV.pen.setColor(profileRenderer.infoColor)
 
-        self.updateProfileStyles()
+        self.updatePDIStyles()
 
     def profileRenderer(self) -> SpectralProfileRenderer:
         return self.speclib().profileRenderer()
@@ -1412,16 +1419,42 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 label = 'Date [{}]'.format(unit)
 
         self.mXAxis.setUnit(unit, label)
+        # self.mUnitConverterAlg
         # self.mXUnitMathFunc.setTargetUnit(unit)
         # update x values
-        self.updateSpectralModel()
+        self.updatePDIValues()
 
-    def updateSpectralModel(self):
-        pdis = self.allSpectralProfilePlotDataItems()
-        model = self.spectralModel()
+    def updatePDIValues(self, pdis: typing.List[SpectralProfilePlotDataItem] = None):
+        """
+        Updates the displayed values, e.g. after unit conversion or model application.
+        :param pdis: list of SpectralProfilePlotDataItems
+        """
+        if pdis is None:
+            pdis = self.allSpectralProfilePlotDataItems()
+
+        assert isinstance(pdis, list)
+        if len(pdis) == 0:
+            return
+
+        blocks = list(SpectralProfileBlock.fromSpectralProfiles(
+            [pdi.spectralProfile() for pdi in pdis]
+        ))
 
         # todo: update PDIs block-wise
+        # 1. read PDI profiles
+        # 2. convert to target unit
+        # 3. apply spectral model
+        feedback = QgsProcessingFeedback()
+        context = QgsProcessingContext()
+        context.setProject(QgsProject.instance())
+        context.setFeedback(feedback)
 
+        parameters = {self.mUnitConverterAlg.INPUT: blocks,
+                      self.mUnitConverterAlg.TARGET_XUNIT: self.xUnit()}
+        results = self.mUnitConverterAlg.processAlgorithm(parameters, context, feedback)
+
+
+        model = self.spectralModel()
 
         for pdi in pdis:
             pdi.setSpectralModel(model)
@@ -1435,15 +1468,23 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mNumberOfValueErrorsProfiles = 0
         self.mNumberOfEmptyProfiles = 0
 
-        keys_visualized: typing.List[typing.Tuple[int, str]] = self.plottedProfileKeys()
+        sort_x_values: bool = self.xUnit() in ['DOI']
+
+        keys_visualized_potentially = self.profileKeysToVisualize()
+        keys_visualized: typing.List[SpectralProfileKey] = self.plottedProfileKeys()
+        keys_added_potentially = [k for k in keys_visualized_potentially if k not in keys_visualized]
+
+        # 1. create new PDIs
+
+        #
         pdis_to_visualize: typing.List[SpectralProfilePlotDataItem] = []
         new_pdis: typing.List[SpectralProfilePlotDataItem] = []
-        sort_x_values: bool = self.xUnit() in ['DOI']
+
 
         # todo: update with model call
         unitModel = None
 
-        for pkey in self.profileKeysToVisualize():
+        for pkey in keys_all:
             if len(pdis_to_visualize) >= n_max:
                 break
 
@@ -1503,7 +1544,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mSelectedIds = selectedNow
 
         key_to_update_style = [pkey for pkey in keys_to_visualize if pkey[0] in selectionChanged or pkey in keys_new]
-        self.updateProfileStyles(key_to_update_style)
+        self.updatePDIStyles(key_to_update_style)
 
         if len(keys_new) > 0 or len(keys_to_remove) > 0 or len(key_to_update_style) > 0:
             pi.update()
@@ -1514,45 +1555,30 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def setSpectralModel(self, model: QgsProcessingModelAlgorithm):
         assert isinstance(model, QgsProcessingModelAlgorithm)
 
-        self.updateSpectralModel()
+        self.updatePDIValues()
 
     def resetSpectralProfiles(self):
         for pdi in self.spectralProfilePlotDataItems():
             assert isinstance(pdi, SpectralProfilePlotDataItem)
             pdi.resetSpectralProfile()
 
-
-
-    def spectralProfilePlotDataItem(self,
-                                    fid: typing.Union[int, QgsFeature, SpectralProfile]) -> SpectralProfilePlotDataItem:
-        """
-        Returns the SpectralProfilePlotDataItem related to SpectralProfile fid
-        :param fid: int | QgsFeature | SpectralProfile
-        :return: SpectralProfilePlotDataItem
-        """
-        warnings.warn('Do not use', DeprecationWarning)
-        if isinstance(fid, QgsFeature):
-            fid = fid.id()
-        return self.mPlotDataItems.get(fid)
-
-    def updateProfileStyles(self, keys: typing.List[typing.Tuple[int, str]] = None):
+    def updatePDIStyles(self, keys: typing.List[SpectralProfileKey] = None):
         """
         Updates the styles for a set of SpectralProfilePlotDataItems specified by its feature keys
-        :param keys: profile ids to update
+        :param keys: list of SpectralProfileKeys to update
         """
 
         if not isinstance(self.speclib(), SpectralLibrary):
             return
 
+        if keys is None:
+            keys = self.plottedProfileKeys()
+
         profileRenderer = self.profileRenderer()
 
-        pdis = self.spectralProfilePlotDataItems()
-
-        # update for requested FIDs only
-        if isinstance(keys, list):
-            if len(keys) == 0:
-                return
-            pdis = [pdi for pdi in pdis if pdi.key() in keys]
+        pdis: typing.List[SpectralProfilePlotDataItem] = [pdi for pdi in self.spectralProfilePlotDataItems() if pdi.key() in keys]
+        if len(pdis) == 0:
+            return
 
         # update line colors
         fids2 = [pdi.id() for pdi in pdis]
@@ -1665,25 +1691,33 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         return stats
 
-    def plottedProfileKeys(self) -> typing.List[typing.Tuple[int, str]]:
+    def plottedProfileKeys(self) -> typing.List[SpectralProfileKey]:
         return [pdi.key() for pdi in self.mPlotDataItems.values()]
 
     def plottedProfileIDs(self) -> typing.List[int]:
         """
-        Returns the feature IDs of visualize SpectralProfiles from the connected SpectralLibrary.
+        Returns the QgsFeature IDs of visualize SpectralProfiles from the connected SpectralLibrary.
         """
-        return [pdi.id() for pdi in self.mPlotDataItems.values()]
+        return [k.fid for k in self.plottedProfileKeys()]
 
-    def profileKeysToVisualize(self) -> typing.List[typing.Tuple[int, str]]:
+    def value_fields(self) -> typing.List[QgsField]:
         """
-        Returns the list of profile/feature ids to be visualized.
+        Returns the speclib field to show profiles from
+        :return:
+        """
+        return self.speclib().spectralValueFields()
+
+    def profileKeysToVisualize(self) -> typing.List[SpectralProfileKey]:
+        """
+        Returns the list of profile/feature keys to be visualized.
         Order of returned keys is equal to its importance.
+        Can contain keys to "empty" profiles, where the value field BLOB is NULL
         1st position = most important, should be plotted on top of all other profiles
         """
         if not isinstance(self.speclib(), SpectralLibrary):
             return []
 
-        fieldNames = [f.name() for f in self.speclib().spectralValueFields()]
+        fieldNames = self.value_fields()
 
         if len(fieldNames) == 0:
             return []
@@ -1699,15 +1733,17 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             allIDs = self.speclib().allFeatureIds()
 
         # Order:
-        # 1. visible in table
-        # 2. selected
+        # 1. Highlighted
+        # 1. Visible in table
+        # 2. Selected
         # 3. others
 
         # overlaid features / current spectral
-        priority0 = self.currentProfileIDs()
-        priority1 = []  # visible features
-        priority2 = []  # selected features
-        priority3 = []  # any other : not visible / not selected
+
+        priority0: typing.List[SpectralProfileKey] = self.highlightedProfileKeys()
+        priority1: typing.List[SpectralProfileKey] = []  # visible features
+        priority2: typing.List[SpectralProfileKey] = []  # selected features
+        priority3: typing.List[SpectralProfileKey] = []  # any other : not visible / not selected
 
         if isinstance(dualView, QgsDualView):
             tv = dualView.tableView()
@@ -1715,97 +1751,26 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             if not selectedOnly:
                 rowHeight = tv.rowViewportPosition(1) - tv.rowViewportPosition(0)
                 if rowHeight > 0:
+                    visible_fids = []
                     for y in range(0, tv.viewport().height(), rowHeight):
                         idx = dualView.tableView().indexAt(QPoint(0, y))
                         if idx.isValid():
-                            fid = tv.model().data(idx, role=Qt.UserRole)
-                            priority1.append(fid)
-            priority2 = self.dualView().masterModel().layer().selectedFeatureIds()
+                            visible_fids.append(tv.model().data(idx, role=Qt.UserRole))
+
+                    priority1.extend(generateProfileKeys(visible_fids, fieldNames))
+            priority2 = generateProfileKeys(self.dualView().masterModel().layer().selectedFeatureIds(),
+                                            fieldNames)
             if not selectedOnly:
-                priority3 = dualView.filteredFeatures()
+                priority3 = generateProfileKeys(dualView.filteredFeatures(), fieldNames)
         else:
-            priority2 = selectedIds
+            priority2 = generateProfileKeys(selectedIds, fieldNames)
             if not selectedOnly:
-                priority3 = allIDs
+                priority3 = generateProfileKeys(allIDs, fieldNames)
 
-        featurePool = np.unique(priority0 + priority1 + priority2 + priority3).tolist()
-        toVisualize = sorted(featurePool,
-                             key=lambda fid: (fid not in priority0, fid not in priority1, fid not in priority2, fid))
+        toVisualize = sorted(set(priority0 + priority1 + priority2 + priority3),
+                             key=lambda k: (k not in priority0, k not in priority1, k not in priority2, k))
 
-        results = []
-        for fid in toVisualize:
-            for n in fieldNames:
-                results.append((fid, n))
-        return results
-
-    def profileIDsToVisualizeOLD(self) -> typing.List[int]:
-        """
-        Returns the list of profile/feature ids to be visualized.
-        Order of returned keys is equal to its importance.
-        1st position = most important, should be plotted on top of all other profiles
-        """
-        if not isinstance(self.speclib(), SpectralLibrary):
-            return []
-
-        selectedOnly = self.actionShowSelectedProfilesOnly().isChecked()
-        selectedIds = self.speclib().selectedFeatureIds()
-
-        dualView = self.dualView()
-        if isinstance(dualView, QgsDualView) and dualView.filteredFeatureCount() > 0:
-            allIDs = dualView.filteredFeatures()
-            selectedIds = [fid for fid in allIDs if fid in selectedIds]
-        else:
-            allIDs = self.speclib().allFeatureIds()
-
-        nMax = len(allIDs)
-
-        if nMax <= self.maxProfiles():
-            if selectedOnly:
-                return [fid for fid in allIDs if fid in selectedIds]
-            else:
-                return allIDs
-
-        # Order:
-        # 1. visible in table
-        # 2. selected
-        # 3. others
-
-        # overlaid features / current spectral
-        priority0 = self.currentProfileIDs()
-        priority1 = []  # visible features
-        priority2 = []  # selected features
-        priority3 = []  # any other : not visible / not selected
-
-        if isinstance(dualView, QgsDualView):
-            tv = dualView.tableView()
-            assert isinstance(tv, QTableView)
-            if not selectedOnly:
-                rowHeight = tv.rowViewportPosition(1) - tv.rowViewportPosition(0)
-                for y in range(0, tv.viewport().height(), rowHeight):
-                    idx = dualView.tableView().indexAt(QPoint(0, y))
-                    if idx.isValid():
-                        fid = tv.model().data(idx, role=Qt.UserRole)
-                        priority1.append(fid)
-            priority2 = self.dualView().masterModel().layer().selectedFeatureIds()
-            if not selectedOnly:
-                priority3 = dualView.filteredFeatures()
-        else:
-            priority2 = selectedIds
-            if not selectedOnly:
-                priority3 = allIDs
-
-        featurePool = np.unique(priority0 + priority1 + priority2).tolist()
-        toVisualize = sorted(featurePool,
-                             key=lambda fid: (fid not in priority0, fid not in priority1, fid not in priority2, fid))
-        maxProfiles = self.maxProfiles()
-        if len(toVisualize) > maxProfiles:
-            return sorted(toVisualize[0:maxProfiles])
-        else:
-            toVisualize = sorted(toVisualize)
-            nMissing = min(maxProfiles - len(toVisualize), len(priority3))
-            if nMissing > 0:
-                toVisualize += sorted(priority3[0:nMissing])
-            return toVisualize
+        return toVisualize
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if containsSpeclib(event.mimeData()):
@@ -2695,7 +2660,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         fids = self.plotWidget().currentProfileIDs()
         self.plotWidget().mTEMPORARY_HIGHLIGHTED.clear()
-        self.plotWidget().updateProfileStyles(fids)
+        self.plotWidget().updatePDIStyles(fids)
 
     def setCurrentProfiles(self,
                            currentProfiles: list,
@@ -2711,7 +2676,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         #  stop plot updates
         plotWidget.mUpdateTimer.stop()
         restart_editing = not speclib.startEditing()
-        oldCurrentKeys = self.plotWidget().currentProfileKeys()
+        oldCurrentKeys = self.plotWidget().highlightedProfileKeys()
         oldCurrentIDs = self.plotWidget().currentProfileIDs()
         addAuto: bool = self.optionAddCurrentProfilesAutomatically.isChecked()
 

@@ -71,9 +71,7 @@ class SpectralXUnitConversion(QgsProcessingAlgorithm):
         self.addParameter(p1)
         self.addParameter(p2)
         self.addOutput(o1)
-        self.mParameters.extend([p1, p2, o1])
-
-        self.addOutput(SpectralProcessingProfilesOutput(self.OUTPUT, 'Spectral Profiles'))
+        # self.mParameters.extend([p1, p2, o1])
 
     def prepareAlgorithm(self,
                          parameters: dict,

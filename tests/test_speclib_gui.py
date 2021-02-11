@@ -585,14 +585,14 @@ class TestSpeclibWidgets(TestCase):
         l = len(speclib)
         self.assertTrue(slw.speclib() == speclib)
 
-        self.assertTrue(len(slw.plotWidget().currentProfileKeys()) == 0)
+        self.assertTrue(len(slw.plotWidget().highlightedProfileKeys()) == 0)
         slw.setAddCurrentProfilesAutomatically(True)
         slw.setCurrentProfiles(cs)
-        self.assertTrue(len(slw.plotWidget().currentProfileKeys()) == 0)
+        self.assertTrue(len(slw.plotWidget().highlightedProfileKeys()) == 0)
 
         slw.setAddCurrentProfilesAutomatically(False)
         slw.setCurrentProfiles(cs)
-        self.assertTrue(len(slw.plotWidget().currentProfileKeys()) == 3)
+        self.assertTrue(len(slw.plotWidget().highlightedProfileKeys()) == 3)
 
         from qps.plotstyling.plotstyling import MarkerSymbol
         def onAddRandomProfile():
