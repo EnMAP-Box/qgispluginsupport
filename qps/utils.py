@@ -446,7 +446,7 @@ convertDateUnit = UnitLookup.convertDateUnit
 
 METRIC_EXPONENTS = UnitLookup.METRIC_EXPONENTS
 
-# contains the wavelenghts
+# contains the wavelengths
 LUT_WAVELENGTH = dict({'B': 480,
                        'G': 570,
                        'R': 660,
