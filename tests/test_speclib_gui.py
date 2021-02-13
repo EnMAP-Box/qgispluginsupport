@@ -204,9 +204,9 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(plotItem, pg.PlotItem)
 
         pw.setSpeclib(speclib)
-        to_vis = pw.profileKeysToVisualize()
+        to_vis = pw.potentialProfileKeys()
         self.assertTrue(len(to_vis) > 0)
-        pw.updateSpectralProfilePlotItems()
+        pw.updatePlotDataItems()
         nPDIS = pw.plottedProfileKeys()
         n = len([sp for sp in plotItem.dataItems if isinstance(sp, SpectralProfilePlotDataItem)])
         self.assertTrue(n == len(speclib))

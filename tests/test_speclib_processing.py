@@ -268,7 +268,7 @@ class SpectraProcessingExamples(TestCase):
             # SpectralSetting, FIDs, and other metadata
             output_block = SpectralProfileBlock(processed_profiles,
                                                 spectralSetting=setting,
-                                                fids=block.fids()
+                                                profileKeys=block.profileKeys()
                                                 )
             output_block.mMetadata['Note'] = 'processed profiles'
 

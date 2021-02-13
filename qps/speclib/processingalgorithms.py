@@ -110,7 +110,7 @@ class SpectralXUnitConversion(QgsProcessingAlgorithm):
                                              )
                 blockOut = SpectralProfileBlock(profileBlock.data(),
                                                 spectralSetting=settingOut,
-                                                fids=profileBlock.fids(),
+                                                profileKeys=profileBlock.profileKeys(),
                                                 metadata=profileBlock.metadata())
                 output_profiles.append(blockOut)
             else:

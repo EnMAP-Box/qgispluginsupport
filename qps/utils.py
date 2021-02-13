@@ -32,6 +32,7 @@ import re
 import fnmatch
 import io
 import zipfile
+import itertools
 import pathlib
 import warnings
 import collections
@@ -1733,6 +1734,19 @@ def qgisAppQgisInterface() -> QgisInterface:
         return qgis.utils.iface
     except:
         return None
+
+
+def chunks(iterable, size=10):
+    """
+    Returns list or generator output as chunks
+    Example taken from: https://stackoverflow.com/a/24527424
+    :param iterable:
+    :param size:
+    :return:
+    """
+    iterator = iter(iterable)
+    for first in iterator:
+        yield itertools.chain([first], itertools.islice(iterator, size - 1))
 
 
 def getDOMAttributes(elem) -> dict:

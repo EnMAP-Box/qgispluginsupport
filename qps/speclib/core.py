@@ -810,6 +810,8 @@ def read_profiles(vectorlayer: QgsVectorLayer,
 
     ID2KEY: typing.Dict[int, SpectralProfileKey] = dict()
     for k in profile_keys:
+        if not isinstance(k, SpectralProfileKey):
+            s = ""
         fields = ID2KEY.get(k.fid, [])
         fields.append(k.field)
         ID2KEY[k.fid] = fields
@@ -1335,7 +1337,7 @@ class SpectralProfileBlock(object):
 
         for spectral_setting, profiles in groupBySpectralProperties(profiles, excludeEmptyProfiles=True).items():
             ns: int = len(profiles)
-            profile_ids = [p.id() for p in profiles]
+            profile_keys = [p.key() for p in profiles]
             nb = spectral_setting.n_bands()
 
             ref_profile = np.asarray(profiles[0].yValues())
@@ -1345,9 +1347,9 @@ class SpectralProfileBlock(object):
 
             for i in range(1, len(profiles)):
                 blockArray[:, 0, i] = np.asarray(profiles[i].yValues(), dtype=dtype)
-            block = SpectralProfileBlock(blockArray, spectral_setting, fids=profile_ids)
+            block = SpectralProfileBlock(blockArray, spectral_setting, profileKeys=profile_keys)
             yield block
-            s = ""
+
 
     @staticmethod
     def fromSpectralProfile(self, profile: SpectralProfile):
@@ -1355,11 +1357,11 @@ class SpectralProfileBlock(object):
         data = np.asarray(profile.yValues())
 
         setting = SpectralSetting(profile.xValues(), xUnit=profile.xUnit(), yUnit=profile.yUnit())
-        return SpectralProfileBlock(data, setting, fids=[profile.id()])
+        return SpectralProfileBlock(data, setting, profileKeys=[profile.key()])
 
     def __init__(self, data: np.ndarray,
                  spectralSetting: SpectralSetting,
-                 fids: typing.List[int] = None,
+                 profileKeys: typing.List[SpectralProfileKey] = None,
                  metadata: dict = None):
 
         assert isinstance(spectralSetting, SpectralSetting)
@@ -1380,14 +1382,14 @@ class SpectralProfileBlock(object):
 
         self.mSpectralSetting = spectralSetting
         self.mXValues: np.ndarray = xValues
-        self.mFIDs: typing.List[int] = None
+        self.mProfileKeys: typing.List[SpectralProfileKey] = None
 
         if not isinstance(metadata, dict):
             metadata = dict()
         self.mMetadata = metadata
 
-        if fids is not None:
-            self.setFIDs(fids)
+        if profileKeys is not None:
+            self.setProfileKeys(profileKeys)
 
     def metadata(self) -> dict:
         """
@@ -1396,17 +1398,17 @@ class SpectralProfileBlock(object):
         """
         return self.mMetadata.copy()
 
-    def setFIDs(self, fids: typing.List[int]):
+    def setProfileKeys(self, profileKeys: typing.List[SpectralProfileKey]):
         """
-        :param fids:
+        :param profileKeys:
         :return:
         """
-        assert len(fids) == self.n_profiles(), \
-            f'Number of Feature IDs ({len(fids)}) must be equal to number of profiles ({self.n_profiles()})'
-        self.mFIDs = fids
+        assert len(profileKeys) == self.n_profiles(), \
+            f'Number of Feature IDs ({len(profileKeys)}) must be equal to number of profiles ({self.n_profiles()})'
+        self.mProfileKeys = profileKeys
 
-    def fids(self) -> typing.List[int]:
-        return self.mFIDs
+    def profileKeys(self) -> typing.List[SpectralProfileKey]:
+        return self.mProfileKeys
 
     def spectralSetting(self) -> SpectralSetting:
         return self.mSpectralSetting
@@ -2973,7 +2975,7 @@ class SpectralLibrary(QgsVectorLayer):
     def profiles(self,
                  fids=None,
                  value_fields=None,
-                 profile_keys: typing.Tuple[int, str] = None) -> typing.Generator[SpectralProfile, None, None]:
+                 profile_keys: typing.List[SpectralProfileKey] = None) -> typing.Generator[SpectralProfile, None, None]:
         """
         Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
         If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value field.
