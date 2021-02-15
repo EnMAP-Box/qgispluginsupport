@@ -203,14 +203,14 @@ class SpectraProcessingExamples(TestCase):
         alg.initAlgorithm(configuration)
 
         # There is no `SpectralProcessingAlgorithm`, but a QgsProcessingAlgorithm
-        # is a SpectralProcessingAlgorithm, if
+        # is a SpectralProcessingAlgorithm, if:
         self.assertTrue(is_spectral_processing_algorithm(alg))
 
-        # which means it defines SpectralProcessingProfiles(s)
+        # which means it defines SpectralProcessingProfiles(s) as input
         self.assertTrue(any([d for d in alg.parameterDefinitions()
                              if isinstance(d, SpectralProcessingProfiles)]))
 
-        # and returns SpectralProcessingProfilesOutput(s)
+        # and SpectralProcessingProfilesOutput(s)
         self.assertTrue(any([d for d in alg.outputDefinitions()
                              if isinstance(d, SpectralProcessingProfilesOutput)]))
 
