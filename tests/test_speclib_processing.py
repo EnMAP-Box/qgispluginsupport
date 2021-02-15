@@ -536,36 +536,40 @@ class SpectralProcessingTests(TestCase):
 
     def test_dualview(self):
 
-        sl: SpectralLibrary = TestObjects.createSpectralLibrary(5000, n_bands=[177])
+        n_features = 5000
+        # sl = TestObjects.createVectorLayer(n_features=n_features)
+        sl: SpectralLibrary = TestObjects.createSpectralLibrary(n_features, n_bands=[177])
+        self.assertEqual(sl.featureCount(), n_features)
         c = QgsMapCanvas()
         if True:
             dv = QgsDualView()
-            dv.init(sl, c, loadFeatures=False)
+            dv.init(sl, c, loadFeatures=True)
         sl.startEditing()
         fids = sl.allFeatureIds()
         sl.selectByIds(fids[-2500:])
         n_to_del = len(sl.selectedFeatureIds())
         t0 = datetime.datetime.now()
-        context = QgsVectorLayer.DeleteContext(cascade=False, project=QgsProject.instance())
+        context = QgsVectorLayer.DeleteContext(cascade=True, project=QgsProject.instance())
+        sl.beginEditCommand('Delete features')
         success, n_del = sl.deleteSelectedFeatures(context)
+        sl.endEditCommand()
         assert success
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
 
     def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
-
+        n_profiles_per_n_bands = 1000
+        n_bands = [6, 30, 177]
         if False:
-            slibs = [TestObjects.createSpectralLibrary(2048, n_bands=[10, 20, 117])
-                     for i in range(4)
-                     ]
 
-            slibs = [QgsVectorLayer(lyr.source()) for lyr in slibs]
+            slibs = [TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands) for _ in range(4)]
 
             c = QgsMapCanvas()
             for i, sl in enumerate(slibs):
 
                 sl.startEditing()
+                sl.beginEditCommand('Delete features')
                 fids = sl.allFeatureIds()
                 sl.selectByIds(fids[1500:])
                 if i == 1:
@@ -580,14 +584,12 @@ class SpectralProcessingTests(TestCase):
                     w.show()
                 t0 = datetime.datetime.now()
                 sl.deleteSelectedFeatures()
-
+                sl.endEditCommand()
                 dt = datetime.datetime.now() - t0
                 print(f'Speclib {i}: {dt}')
             s = ""
 
-        sl = TestObjects.createSpectralLibrary(2048, n_bands=[10, 20, 117])
-
-
+        sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
         w = SpectralLibraryWidget(speclib=sl)
         self.showGui(w)
         s = ""

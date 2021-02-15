@@ -62,7 +62,7 @@ SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
-MAX_PDIS_DEFAULT = 15
+MAX_PDIS_DEFAULT: int = 1024
 
 # do not sho spectral processing widget in production releases
 SPECTRAL_PROCESSING: bool = 'CI' in os.environ.keys()
@@ -164,6 +164,38 @@ class SpectralLibraryPlotItem(pg.PlotItem):
             self.updateParamList()
             if self.ctrl.averageGroup.isChecked() and 'skipAverage' not in kargs:
                 self.addAvgCurve(item)
+
+    def removeItems(self, items):
+        """
+        Remove an item from the internal ViewBox.
+        """
+        if len(items) == 0:
+            return
+
+        for item in items:
+            self.items.remove(item)
+            if item in self.dataItems:
+                self.dataItems.remove(item)
+
+            #self.vb.removeItem(item)
+            """Remove an item from this view."""
+            try:
+                self.vb.addedItems.remove(item)
+            except:
+                pass
+            scene = self.vb.scene()
+            if scene is not None:
+                scene.removeItem(item)
+            item.setParentItem(None)
+
+            if item in self.curves:
+                self.curves.remove(item)
+
+            if self.legend is not None:
+                self.legend.removeItem(item)
+        #self.updateDecimation()
+        #self.updateParamList()
+
 
 
 class SpectralProfileRendererWidget(QWidget):
@@ -418,7 +450,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.setVisible(True)
         return True
 
-    def applyMapFunctions(self) -> bool:
+    def DEPR_applyMapFunctions(self) -> bool:
         warnings.warn('Use applySpectralMath', DeprecationWarning)
         return
         """
@@ -508,6 +540,18 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         pw = pg.plot(title=self.name())
         pw.getPlotItem().addItem(self)
         return pw
+
+    def updateItems(self, *args):
+        if not self.signalsBlocked():
+            super().updateItems(*args)
+        else:
+            s = ""
+
+    def viewRangeChanged(self, *args):
+        if not self.signalsBlocked():
+            super().viewRangeChanged()
+        else:
+            s = ""
 
     def key(self) -> SpectralProfileKey:
         return self.mProfile.key()
@@ -671,14 +715,15 @@ class MaxNumberOfProfilesWidgetAction(QWidgetAction):
 
     def createWidget(self, parent: QWidget):
         l = QGridLayout()
-        self.sbMaxProfiles = QSpinBox()
-        self.sbMaxProfiles.setToolTip('Maximum number of profiles to plot.')
-        self.sbMaxProfiles.setRange(0, np.iinfo(np.int16).max)
-        self.sbMaxProfiles.setValue(self.maxProfiles())
-        self.sbMaxProfiles.valueChanged[int].connect(self.setMaxProfiles)
+        sbMaxProfiles = QSpinBox()
+        sbMaxProfiles.setToolTip('Maximum number of profiles to plot.')
+        sbMaxProfiles.setRange(0, np.iinfo(np.int16).max)
+        sbMaxProfiles.setValue(self.maxProfiles())
+        self.sigMaxNumberOfProfilesChanged.connect(lambda n, sb=sbMaxProfiles: sb.setValue(n))
+        sbMaxProfiles.valueChanged[int].connect(self.setMaxProfiles)
 
         l.addWidget(QLabel('Max. Profiles'), 0, 0)
-        l.addWidget(self.sbMaxProfiles, 0, 1)
+        l.addWidget(sbMaxProfiles, 0, 1)
         frame = QFrame(parent)
         frame.setLayout(l)
         return frame
@@ -1434,7 +1479,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
     def updatePlotDataItemValues(self, pdis: typing.List[SpectralProfilePlotDataItem] = None) \
             -> typing.List[SpectralProfilePlotDataItem]:
         """
-        Updates the displayed values, e.g. after unit conversion or model application.
+        Updates values to be displayed, including x-unit conversions and further SpectralProcessingModels.
         :param pdis: list of SpectralProfilePlotDataItems
         """
         t0 = datetime.datetime.now()
@@ -1446,10 +1491,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             return
 
         LUT: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = {pdi.key(): pdi for pdi in pdis}
+
+        active_pdis = self.plottedProfilePlotDataItems()
+
         for pdi in LUT.values():
             # set visualization vectors to none
             pdi.mDataX = pdi.mDataY = None
-
+            # pdi.blockSignals(True)
         blocks = list(SpectralProfileBlock.fromSpectralProfiles(
             [pdi.spectralProfile() for pdi in pdis]
         ))
@@ -1470,7 +1518,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         model = self.spectralModel()
 
         blocks: typing.List[SpectralProfileBlock] = results['output_profiles']
-
+        # self.blockSignals(True)
         for block in blocks:
             data = block.data()
             xvalues = block.xValues()
@@ -1483,11 +1531,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             for key, y, x in zip(keys, key_indices[0], key_indices[1]):
                 yvalues = data[:, y, x]
                 pdi = LUT[key]
+                # pdi.blockSignals(True)
                 pdi.mDataX = xvalues
                 pdi.mDataY = yvalues
                 pdi.setData(x=pdi.mDataX, y=pdi.mDataY)
                 # pdi.setVisible(SPDIFlags.Displayable in pdi.visualizationFlags())
-
+                # pdi.blockSignals(False)
+        # self.blockSignals(False)
         print(f'PDI data update: n={len(LUT)} dt={datetime.datetime.now() - t0}')
 
     def _update_to_display(self,
@@ -1541,7 +1591,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         assert isinstance(pi, SpectralLibraryPlotItem)
         n_max = self.maxProfiles()
 
-        return
         # problems:
         # 1. too many PlotDataItems? -> plot becomes too unresponsive
         #    => we need to limit the number of plot data items to self.maxProfiles()
@@ -1563,17 +1612,21 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if not self._update_to_display(keys_to_display, keys_all, n_max):
             for keys_block in chunks(keys_missing, CHUNK_SIZE):
                 keys_block = list(keys_block)
-                block_pdis: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = {k:None for k in keys_block}
+                block_pdis: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = {k: None for k in keys_block}
 
+                new_pdis: typing.List[SpectralProfilePlotDataItem] = []
                 for profile in self.speclib().profiles(profile_keys=keys_block):
                     pdi = SpectralProfilePlotDataItem(profile)
                     pdi.setProfileSource(self.speclib())
                     pdi.setClickable(True)
                     pdi.sigProfileClicked.connect(self.onProfileClicked)
                     block_pdis[pdi.key()] = pdi
+                    new_pdis.append(pdi)
+                # update display values
+                self.updatePlotDataItemValues(new_pdis)
+                # update plot style
+                # self.updatePlotDataItemStyles(new_pdis)
 
-                self.updatePlotDataItemValues([pdi for pdi in block_pdis.values()
-                                               if isinstance(pdi, SpectralProfilePlotDataItem)])
                 # update cache
                 self.mSPDICache.update(block_pdis)
 
@@ -1581,40 +1634,43 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 if self._update_to_display(keys_to_display, keys_all, n_max):
                     break
 
-        # now keys_to_display all visible keys in order of keys in keys_all
+        # keys_to_display now contains all visible keys in order of keys in keys_all
 
         t1 = datetime.datetime.now()
         # remove pdis from plot item that we dont want to show
         to_remove = []
-        if False:
+        to_add = []
 
-            for pdi in self.plottedProfilePlotDataItems():
-                if isinstance(pdi, SpectralProfilePlotDataItem) and pdi.key() not in keys_to_display:
-                    to_remove.append(pdi)
+        for pdi in self.plottedProfilePlotDataItems():
+            if isinstance(pdi, SpectralProfilePlotDataItem) and pdi.key() not in keys_to_display:
+                to_remove.append(pdi)
+        if len(to_remove) > 0:
+            pi.removeItems(to_remove)
 
-            for pdi in to_remove:
-                pi.removeItem(pdi)
 
         t2 = datetime.datetime.now()
         # add missing keys
         plotted = self.plottedProfileKeys()
-        to_add = []
+
         for z, k in enumerate(keys_to_display):
             if k not in plotted:
                 pdi = self.mSPDICache.get(k, None)
                 if isinstance(pdi, SpectralProfilePlotDataItem):
                     pdi.setZValue(-1*z)
                     to_add.append(pdi)
+
         if len(to_add) > 0:
             pi.addItems(to_add)
-            self.updatePlotDataItemStyles(to_add)
-            #pi.update()
+            # self.updatePlotDataItemStyles(to_add)
+
+
         t3 = datetime.datetime.now()
 
-        if len(to_remove) + len(to_add) > 0:
+        if DEBUG and len(to_remove) + len(to_add) > 0:
             print(f'A:{len(to_add)} R: {len(to_remove)}')
             print(f'tP:{t1-t0} tR:{t2-t1} tA:{t3-t2}')
             fids = ' '.join([str(k.fid) for k in keys_to_display])
+            # self.update()
             print(fids)
             #if len(to_remove) > 0:
             #    for p in to_remove: print(p.key())

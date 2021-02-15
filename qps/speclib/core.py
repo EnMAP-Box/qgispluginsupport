@@ -127,7 +127,7 @@ for i in range(ogr.GetDriverCount()):
         OGR_EXTENSION2DRIVER[''].append(drv.GetName())
 OGR_EXTENSION2DRIVER[None] = OGR_EXTENSION2DRIVER['']
 
-DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'false').lower() in ['true', '1']
 
 def generateProfileKeys(feature_ids: typing.List[int],
                         value_fields:typing.Union[QgsField, str]) -> typing.List[SpectralProfileKey]:
