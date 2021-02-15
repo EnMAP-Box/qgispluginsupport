@@ -62,7 +62,7 @@ SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
-MAX_PDIS_DEFAULT = 512
+MAX_PDIS_DEFAULT = 15
 
 # do not sho spectral processing widget in production releases
 SPECTRAL_PROCESSING: bool = 'CI' in os.environ.keys()
@@ -227,7 +227,7 @@ class SpectralProfileRendererWidget(QWidget):
         # do not overwrite the following settings:
         profileRenderer.useRendererColors = self.optionUseColorsFromVectorRenderer.isChecked()
         if isinstance(self.mLastRenderer, SpectralProfileRenderer):
-            profileRenderer.mFID2Style = self.mLastRenderer.mFID2Style
+            profileRenderer.mProfileKey2Style = self.mLastRenderer.mProfileKey2Style
 
         self.setProfileRenderer(profileRenderer)
 
@@ -272,7 +272,7 @@ class SpectralProfileRendererWidget(QWidget):
         cs.profileStyle = self.wDefaultProfileStyle.plotStyle()
         # if isinstance(self.mLastRenderer, SpectralProfileRenderer):
         #    cs.temporaryProfileStyle = self.mLastRenderer.temporaryProfileStyle.clone()
-        #    cs.mFID2Style.update(self.mLastRenderer.mFID2Style)
+        #    cs.mProfileKey2Style.update(self.mLastRenderer.mProfileKey2Style)
         cs.useRendererColors = self.optionUseColorsFromVectorRenderer.isChecked()
         return cs
 
@@ -281,7 +281,6 @@ class SPDIFlags(enum.Flag):
     NoProfile = enum.auto()
     NotDisplayable = enum.auto()
     Displayable = enum.auto()
-    All = NoProfile | NotDisplayable | Displayable
 
 
 class SpectralProfilePlotDataItem(PlotDataItem):
@@ -289,8 +288,6 @@ class SpectralProfilePlotDataItem(PlotDataItem):
     A pyqtgraph.PlotDataItem to plot a SpectralProfile
     """
     sigProfileClicked = pyqtSignal(SpectralProfileKey, dict)
-
-
 
     def __init__(self, spectralProfile: SpectralProfile):
         assert isinstance(spectralProfile, SpectralProfile)
@@ -311,8 +308,8 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.mProfile: SpectralProfile = None
         self.mDataX = None
         self.mDataY = None
-        self.setSpectralProfile(spectralProfile)
-        # self.applyMapFunctions()
+        if isinstance(spectralProfile, SpectralProfile):
+            self.setSpectralProfile(spectralProfile)
 
     def valueConversionPossible(self) -> bool:
         warnings.warn('Deprecated', DeprecationWarning)
@@ -516,6 +513,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         return self.mProfile.key()
 
     def id(self) -> int:
+        warnings.warn('Use key instead', DeprecationWarning)
         """
         Returns the profile fid
         :return: int
@@ -872,7 +870,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         self.mSpectralModel: QgsProcessingModelAlgorithm = None
 
-        self.mPlotDataItems: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = dict()
+        self.mSPDICache: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = dict()
         self.mPlotOverlayItems = []
         self.setAntialiasing(True)
         self.setAcceptDrops(True)
@@ -970,10 +968,21 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             self.actionSpectralProfileRendering().setProfileRenderer(profileRenderer)
 
     def updatePlot(self, *args):
+
         try:
+            dv = self.dualView()
+            if isinstance(dv, QgsDualView) and dv.tableView().verticalScrollBar().underMouse():
+                return
+
+            self.mUpdateTimer.stop()
+            t0 = datetime.datetime.now()
             self.updatePlotDataItems()
+            print(f'Plot update: {datetime.datetime.now() - t0}')
+            self.mUpdateTimer.start()
         except RuntimeError as ex:
             print(ex, file=sys.stderr)
+            self.mUpdateTimer.start()
+
 
     def leaveEvent(self, ev):
         super(SpectralLibraryPlotWidget, self).leaveEvent(ev)
@@ -1108,13 +1117,27 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 self.setXUnit(xUnit)
                 self.mXUnitInitialized = True
 
-    def spectralProfilePlotDataItems(self) -> typing.List[SpectralProfilePlotDataItem]:
+    def plottedProfilePlotDataItems(self, flags: SPDIFlags = None) -> typing.List[SpectralProfilePlotDataItem]:
         """
         Returns all SpectralProfilePlotDataItems
         """
-        return [i for i in self.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)]
+        items = [i for i in self.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)]
+        if flags is None:
+            return items
+        else:
+            return [i for i in items if bool(i.visualizationFlags() | flags)]
 
-    def removeSpectralProfilePDIs(self, keys_to_remove: typing.List[SpectralProfileKey], updateScene: bool = True):
+    def cachedProfilePlotDataItems(self, flags: SPDIFlags = None) -> typing.List[SpectralProfilePlotDataItem]:
+        items = [i for i in self.mSPDICache.items() if isinstance(i, SpectralProfilePlotDataItem)]
+        if flags is None:
+            return items
+        else:
+            return [i for i in items if bool(i.visualizationFlags() | flags)]
+
+    def cachedProfileKeys(self, flags: SPDIFlags = None) -> typing.Set[SpectralProfileKey]:
+        return set([i.key() for i in self.cachedProfilePlotDataItems(flags=flags)])
+
+    def removeSPDIs(self, keys_to_remove: typing.List[SpectralProfileKey], updateScene: bool = True):
         """
         :param updateScene:
         :param keys_to_remove: feature ids to remove
@@ -1135,7 +1158,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         plotItem = self.getPlotItem()
         assert isinstance(plotItem, pg.PlotItem)
-        pdisToRemove = [pdi for pdi in self.spectralProfilePlotDataItems() if pdi.key() in keys_to_remove]
+        pdisToRemove = [pdi for pdi in self.plottedProfilePlotDataItems() if pdi.key() in keys_to_remove]
         for pdi in pdisToRemove:
             assert isinstance(pdi, SpectralProfilePlotDataItem)
             pdi.setClickable(False)
@@ -1143,8 +1166,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             plotItem.removeItem(pdi)
             # QtGui.QGraphicsScene.items(self, *args)
             assert pdi not in plotItem.dataItems
-            if pdi.key() in self.mPlotDataItems.keys():
-                self.mPlotDataItems.pop(pdi.key(), None)
+            if pdi.key() in self.mSPDICache.keys():
+                self.mSPDICache.pop(pdi.key(), None)
 
         if updateScene:
             self.scene().update()
@@ -1187,7 +1210,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mUpdateTimer.stop()
 
         # remove old spectra
-        self.removeSpectralProfilePDIs(self.mPlotDataItems.keys())
+        self.removeSPDIs(self.mSPDICache.keys())
         self.disconnectSpeclibSignals()
         self.mSpeclib = None
 
@@ -1275,10 +1298,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             return
         fids = list(fids)
         updated: typing.List[SpectralProfilePlotDataItem] = []
-        for p in self.speclib().profiles(fids):
+        for p in self.speclib().profiles(fids=fids, return_empty=True):
             p: SpectralProfile
             assert isinstance(p, SpectralProfile)
-            pdi = self.mPlotDataItems.get(p.key(), None)
+            pdi = self.mSPDICache.get(p.key(), None)
             if isinstance(pdi, SpectralProfilePlotDataItem):
                 pdi.setSpectralProfile(p)
                 updated.append(pdi)
@@ -1376,7 +1399,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Returns all PlotDataItems (not only SpectralProfilePlotDataItems)
         :return: [list-of-PlotDataItems]
         """
-        return list(self.mPlotDataItems.values()) + self.mPlotOverlayItems
+        return list(self.mSPDICache.values()) + self.mPlotOverlayItems
 
     def allSpectralProfilePlotDataItems(self) -> typing.List[SpectralProfilePlotDataItem]:
         """
@@ -1408,12 +1431,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         # update x values
         self.updatePlotDataItemValues()
 
-
-    def updatePlotDataItemValues(self, pdis: typing.List[SpectralProfilePlotDataItem] = None):
+    def updatePlotDataItemValues(self, pdis: typing.List[SpectralProfilePlotDataItem] = None) \
+            -> typing.List[SpectralProfilePlotDataItem]:
         """
         Updates the displayed values, e.g. after unit conversion or model application.
         :param pdis: list of SpectralProfilePlotDataItems
         """
+        t0 = datetime.datetime.now()
         if pdis is None:
             pdis = self.allSpectralProfilePlotDataItems()
 
@@ -1423,18 +1447,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         LUT: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = {pdi.key(): pdi for pdi in pdis}
         for pdi in LUT.values():
+            # set visualization vectors to none
             pdi.mDataX = pdi.mDataY = None
 
         blocks = list(SpectralProfileBlock.fromSpectralProfiles(
             [pdi.spectralProfile() for pdi in pdis]
         ))
-        if True: # check
-            for block in blocks:
-                for key in block.profileKeys():
-                    assert key in LUT.keys()
 
-
-        # todo: update PDIs block-wise
         # 1. read PDI profiles
         # 2. convert to target unit
         # 3. apply spectral model
@@ -1446,16 +1465,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         parameters = {self.mUnitConverterAlg.INPUT: blocks,
                       self.mUnitConverterAlg.TARGET_XUNIT: self.xUnit()}
         results = self.mUnitConverterAlg.processAlgorithm(parameters, context, feedback)
-        # todo: apply other spectral processing things
 
+        # todo: apply other spectral processing things
         model = self.spectralModel()
 
         blocks: typing.List[SpectralProfileBlock] = results['output_profiles']
-
-        if True:  # check
-            for block in blocks:
-                for key in block.profileKeys():
-                    assert key in LUT.keys()
 
         for block in blocks:
             data = block.data()
@@ -1468,15 +1482,53 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             key_indices = np.unravel_index(np.arange(len(keys)), data.shape[1:])
             for key, y, x in zip(keys, key_indices[0], key_indices[1]):
                 yvalues = data[:, y, x]
-                if key not in LUT.keys():
-                    s = ""
-                pdi = LUT.pop(key)
+                pdi = LUT[key]
                 pdi.mDataX = xvalues
                 pdi.mDataY = yvalues
-                pdi.mVisualizationFlags = SPDIFlags.Displayable
                 pdi.setData(x=pdi.mDataX, y=pdi.mDataY)
+                # pdi.setVisible(SPDIFlags.Displayable in pdi.visualizationFlags())
 
+        print(f'PDI data update: n={len(LUT)} dt={datetime.datetime.now() - t0}')
 
+    def _update_to_display(self,
+                           keys_to_display: typing.List[SpectralProfileKey],
+                           key_order: typing.List[SpectralProfileKey],
+                           limit: int) -> bool:
+        """
+        Updates the list 'keys_to_display' in order of 'key_order'
+        Returns True if
+            (i) len(keys_to_display) >= limit, or
+            (ii) all keys in key_order have been checked for displayability
+        else:
+            False, which means new SpectralProfileDataItems need to be loaded and added with a SpectralProfileKey
+        :param keys_to_display:
+        :param key_order:
+        :param limit:
+        :return: bool
+        """
+        assert len(keys_to_display) <= len(key_order)
+        if len(key_order) == 0:
+            return True
+        i_start = len(keys_to_display)
+        for k in key_order[i_start:]:
+            if len(keys_to_display) >= limit:
+                return True
+
+            if k not in self.mSPDICache.keys():
+                # profile misses key in cache.
+                # return to force loading from Speclib
+                return False
+
+            item = self.mSPDICache[k]
+            if isinstance(item, SpectralProfilePlotDataItem) and SPDIFlags.Displayable in item.visualizationFlags():
+                keys_to_display.append(k)
+            else:
+                # a key exists but not profile for in the database.
+                # or profile data exists, but is not displayable in current mode
+                # continue to next key
+                continue
+
+        return len(keys_to_display) >= limit or k == key_order[-1]
 
     def updatePlotDataItems(self):
         """
@@ -1484,18 +1536,20 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         2. update PDI data based on model
         3. update PDI styles
         """
+        t0 = datetime.datetime.now()
         pi: SpectralLibraryPlotItem = self.getPlotItem()
         assert isinstance(pi, SpectralLibraryPlotItem)
         n_max = self.maxProfiles()
 
+        return
         # problems:
-        # 1. too many PlotDataItems? -> plot becomes too slow
+        # 1. too many PlotDataItems? -> plot becomes too unresponsive
         #    => we need to limit the number of plot data items to self.maxProfiles()
         # 2. reading SpectralProfiles from SpectralLibrary needs time (NULL values?, decoding ByteArrays, ...)
         #    => read SpectralProfiles in chunks
         # 3.
 
-        CHUNK_SIZE = min(256, n_max)
+        CHUNK_SIZE = min(1024, n_max)
 
         self.mNumberOfValueErrorsProfiles = 0
         self.mNumberOfEmptyProfiles = 0
@@ -1503,50 +1557,69 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         sort_x_values: bool = self.xUnit() in ['DOI']
 
         keys_all = self.potentialProfileKeys()
-        keys_pdis = self.plottedProfileKeys()
-        keys_displayed = self.plottedProfileKeys(SPDIFlags.Displayable)
-        keys_potential = [k for k in keys_all if k not in keys_pdis]
+        keys_missing = [k for k in keys_all if k not in self.mSPDICache.keys()]
+        keys_to_display: typing.List[SpectralProfileKey] = []
 
-        # add new keys until keys_displayed is at max. number of profiles
-        # problem: reading from speclib/vector source needs time
+        if not self._update_to_display(keys_to_display, keys_all, n_max):
+            for keys_block in chunks(keys_missing, CHUNK_SIZE):
+                keys_block = list(keys_block)
+                block_pdis: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = {k:None for k in keys_block}
 
-        new_pdis: typing.List[SpectralProfilePlotDataItem] = []
+                for profile in self.speclib().profiles(profile_keys=keys_block):
+                    pdi = SpectralProfilePlotDataItem(profile)
+                    pdi.setProfileSource(self.speclib())
+                    pdi.setClickable(True)
+                    pdi.sigProfileClicked.connect(self.onProfileClicked)
+                    block_pdis[pdi.key()] = pdi
 
-        # add add max. n_profiles  new profiles from spectral library
-        n_displayable = len(keys_displayed)
+                self.updatePlotDataItemValues([pdi for pdi in block_pdis.values()
+                                               if isinstance(pdi, SpectralProfilePlotDataItem)])
+                # update cache
+                self.mSPDICache.update(block_pdis)
 
-        for keys_block in chunks(keys_potential, CHUNK_SIZE):
-            block_pdis = []
-            for profile in self.speclib().profiles(profile_keys=keys_block):
-                pdi = SpectralProfilePlotDataItem(profile)
-                pdi.setProfileSource(self.speclib())
-                pdi.setClickable(True)
-                pdi.setVisible(False) #
-                pdi.sigProfileClicked.connect(self.onProfileClicked)
-                block_pdis.append(pdi)
-            self.updatePlotDataItemValues(block_pdis)
-            new_pdis.append(block_pdis)
-            n_displayable += len([pdi for pdi in block_pdis if SPDIFlags.Displayable in pdi.visualizationFlags()])
-            if n_displayable >= n_max:
-                break
+                # stop loading profiles, if we can display n_max profiles in order of keys in keys_all
+                if self._update_to_display(keys_to_display, keys_all, n_max):
+                    break
 
+        # now keys_to_display all visible keys in order of keys in keys_all
 
-        keys_to_visualize = [pdi.key() for pdi in pdis_to_visualize]
-        keys_to_remove = [pkey for pkey in keys_visualized if pkey not in keys_to_visualize]
-        keys_new = [pdi.key() for pdi in new_pdis]
-        if len(keys_to_remove) > 0:
-            s = ""
-        self.removeSpectralProfilePDIs(keys_to_remove)
-        if len(new_pdis) > 0:
-            for pdi in new_pdis:
-                self.mPlotDataItems[pdi.key()] = pdi
-            pi.addItems(new_pdis)
+        t1 = datetime.datetime.now()
+        # remove pdis from plot item that we dont want to show
+        to_remove = []
+        if False:
 
-        if isinstance(self.speclib(), SpectralLibrary):
-            selectedNow = set(self.speclib().selectedFeatureIds())
-        else:
-            selectedNow = set()
+            for pdi in self.plottedProfilePlotDataItems():
+                if isinstance(pdi, SpectralProfilePlotDataItem) and pdi.key() not in keys_to_display:
+                    to_remove.append(pdi)
 
+            for pdi in to_remove:
+                pi.removeItem(pdi)
+
+        t2 = datetime.datetime.now()
+        # add missing keys
+        plotted = self.plottedProfileKeys()
+        to_add = []
+        for z, k in enumerate(keys_to_display):
+            if k not in plotted:
+                pdi = self.mSPDICache.get(k, None)
+                if isinstance(pdi, SpectralProfilePlotDataItem):
+                    pdi.setZValue(-1*z)
+                    to_add.append(pdi)
+        if len(to_add) > 0:
+            pi.addItems(to_add)
+            self.updatePlotDataItemStyles(to_add)
+            #pi.update()
+        t3 = datetime.datetime.now()
+
+        if len(to_remove) + len(to_add) > 0:
+            print(f'A:{len(to_add)} R: {len(to_remove)}')
+            print(f'tP:{t1-t0} tR:{t2-t1} tA:{t3-t2}')
+            fids = ' '.join([str(k.fid) for k in keys_to_display])
+            print(fids)
+            #if len(to_remove) > 0:
+            #    for p in to_remove: print(p.key())
+
+        """
         selectionChanged = list(selectedNow.symmetric_difference(self.mSelectedIds))
         self.mSelectedIds = selectedNow
 
@@ -1555,6 +1628,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         if len(keys_new) > 0 or len(keys_to_remove) > 0 or len(key_to_update_style) > 0:
             pi.update()
+        """
 
     def spectralModel(self) -> QgsProcessingModelAlgorithm:
         return self.mSpectralModel
@@ -1564,38 +1638,40 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         self.updatePlotDataItemValues()
 
-    def updatePlotDataItemStyles(self, keys: typing.List[SpectralProfileKey] = None):
+    def updatePlotDataItemStyles(self, pdis: typing.List[SpectralProfilePlotDataItem] = None):
         """
         Updates the styles for a set of SpectralProfilePlotDataItems specified by its feature keys
         :param keys: list of SpectralProfileKeys to update
         """
 
-        if not isinstance(self.speclib(), SpectralLibrary):
+        if not isinstance(self.speclib(), QgsVectorLayer):
             return
-
-        if keys is None:
-            keys = self.plottedProfileKeys()
 
         profileRenderer = self.profileRenderer()
 
-        pdis: typing.List[SpectralProfilePlotDataItem] = [pdi for pdi in self.spectralProfilePlotDataItems() if
-                                                          pdi.key() in keys]
+        if pdis is None:
+            pdis = self.plottedProfilePlotDataItems()
         if len(pdis) == 0:
             return
 
         # update line colors
-        fids2 = [pdi.id() for pdi in pdis]
-        styles = profileRenderer.profilePlotStyles(fids2)
+        keys2 = [pdi.key() for pdi in pdis]
+        styles = profileRenderer.profilePlotStyles(keys2)
         for pdi in pdis:
-            style = styles.get(pdi.id())
+            style = styles.get(pdi.key())
             if isinstance(style, PlotStyle):
-                style.apply(pdi, updateItem=False, visibility=pdi.valueConversionPossible() and style.isVisible())
+                style.apply(pdi,
+                            updateItem=False,
+                            visibility=SPDIFlags.Displayable in pdi.visualizationFlags()
+                                       and style.isVisible())
 
         # finally, update items
         for pdi in pdis:
-            z = 1 if pdi.id() in self.mSelectedIds else 0
-            pdi.setZValue(z)
-            pdi.updateItems()
+            pass
+            #z = 1 if pdi.id() in self.mSelectedIds else 0
+            #pdi.setZValue(z)
+            # pdi.updateItems()
+        s = ""
 
     def onProfileClicked(self, fid: int, data: dict):
         """
@@ -1694,19 +1770,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         return stats
 
-    def plottedProfileKeys(self, flags: SPDIFlags = SPDIFlags.All) \
-            -> typing.Set[SpectralProfileKey]:
-        if flags == SPDIFlags.All:
-            return set(self.mPlotDataItems.keys())
-        else:
-            return set([k for k, spdi in self.mPlotDataItems.items()
-                        if bool(spdi.visualizationFlags() | flags)])
+    def plottedProfileKeys(self, flags: SPDIFlags = None) -> typing.Set[SpectralProfileKey]:
+        return set([pdi.key() for pdi in self.plottedProfilePlotDataItems(flags=flags)])
 
-    def plottedProfileIDs(self) -> typing.List[int]:
-        """
-        Returns the QgsFeature IDs of visualize SpectralProfiles from the connected SpectralLibrary.
-        """
-        return [k.fid for k in self.plottedProfileKeys()]
+
 
     def value_fields(self) -> typing.List[QgsField]:
         """
@@ -2693,7 +2760,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         if not addAuto:
             # delete previous current profiles from speclib
             speclib.deleteFeatures(oldCurrentIDs)
-            plotWidget.removeSpectralProfilePDIs(oldCurrentKeys, updateScene=False)
+            plotWidget.removeSPDIs(oldCurrentKeys, updateScene=False)
             # now there shouldn't be any PDI or style ref related to an old ID
         else:
             self.addCurrentSpectraToSpeclib()

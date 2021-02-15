@@ -534,9 +534,59 @@ class SpectralProcessingTests(TestCase):
         # wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Batch)
         # wrapper = procGuiReg.createParameterWidgetWrapper(parameter, QgsProcessingGui.Modeler)
 
+    def test_dualview(self):
+
+        sl: SpectralLibrary = TestObjects.createSpectralLibrary(5000, n_bands=[177])
+        c = QgsMapCanvas()
+        if True:
+            dv = QgsDualView()
+            dv.init(sl, c, loadFeatures=True)
+        sl.startEditing()
+        fids = sl.allFeatureIds()
+        sl.selectByIds(fids[-2500:])
+        n_to_del = len(sl.selectedFeatureIds())
+        t0 = datetime.datetime.now()
+        success, n_del = sl.deleteSelectedFeatures()
+        assert success
+        print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
+        # self.showGui(dv)
+
     def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
-        sl = TestObjects.createSpectralLibrary(10)
+
+        if False:
+            slibs = [TestObjects.createSpectralLibrary(2048, n_bands=[10, 20, 117])
+                     for i in range(4)
+                     ]
+
+            slibs = [QgsVectorLayer(lyr.source()) for lyr in slibs]
+
+            c = QgsMapCanvas()
+            for i, sl in enumerate(slibs):
+
+                sl.startEditing()
+                fids = sl.allFeatureIds()
+                sl.selectByIds(fids[1500:])
+                if i == 1:
+                    w = QgsDualView()
+                    w.init(sl, c)
+                    w.show()
+                elif i == 2:
+                    w = AttributeTableWidget(sl)
+                    w.show()
+                elif i == 3:
+                    w = SpectralLibraryWidget(speclib=sl)
+                    w.show()
+                t0 = datetime.datetime.now()
+                sl.deleteSelectedFeatures()
+
+                dt = datetime.datetime.now() - t0
+                print(f'Speclib {i}: {dt}')
+            s = ""
+
+        sl = TestObjects.createSpectralLibrary(2048, n_bands=[10, 20, 117])
+
+
         w = SpectralLibraryWidget(speclib=sl)
         self.showGui(w)
         s = ""

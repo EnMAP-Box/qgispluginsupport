@@ -121,7 +121,8 @@ class VectorLayerTools(QgsVectorLayerTools):
 
     def deleteSelection(self, layer: QgsVectorLayer):
         if isinstance(layer, QgsVectorLayer) and layer.isEditable():
-            layer.deleteSelectedFeatures()
+            success, deleted_fids = layer.deleteSelectedFeatures()
+
 
     def toggleEditing(self, vlayer: QgsVectorLayer, allowCancel: bool = True) -> bool:
         """

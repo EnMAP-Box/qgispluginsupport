@@ -362,8 +362,7 @@ class SpectralProfile(QgsFeature):
             print(f'field "{value_field}" does not exist. Allows values: {",".join(feature.fields().names())}')
             return None
 
-        sp = SpectralProfile(fields=feature.fields(), value_field=value_field)
-        sp.setId(feature.id())
+        sp = SpectralProfile(id=feature.id(), fields=feature.fields(), value_field=value_field)
         sp.setAttributes(feature.attributes())
         sp.setGeometry(feature.geometry())
         return sp
@@ -379,6 +378,7 @@ class SpectralProfile(QgsFeature):
         return SpectralProfile.fromQgsFeature(feature)
 
     def __init__(self, parent=None,
+                 id: int = None,
                  fields: QgsFields = None,
                  values: dict = None,
                  value_field: typing.Union[str, QgsField] = FIELD_VALUES):
@@ -395,6 +395,9 @@ class SpectralProfile(QgsFeature):
         assert isinstance(fields, QgsFields)
         super(SpectralProfile, self).__init__(fields)
 
+        if isinstance(id, int):
+            super().setId(id)
+
         assert isinstance(fields, QgsFields)
         self.mValueCache = None
         if isinstance(value_field, QgsField):
@@ -404,6 +407,10 @@ class SpectralProfile(QgsFeature):
 
         if isinstance(values, dict):
             self.setValues(**values)
+
+    def setId(self, fid: int):
+        super().setId(fid)
+        self.mProfileKey: SpectralProfileKey = SpectralProfileKey(self.id(), self.mProfileKey.field)
 
     def __add__(self, other):
         return self._math_(self, '__add__', other)
@@ -818,8 +825,10 @@ def read_profiles(vectorlayer: QgsVectorLayer,
 
     featureRequest = QgsFeatureRequest()
     featureRequest.setFilterFids(sorted(ID2KEY.keys()))
+    # features = list(vectorlayer.getFeatures(featureRequest))
     for f in vectorlayer.getFeatures(featureRequest):
-        f: QgsFeature
+        if not isinstance(f, QgsFeature):
+            s = ""
         for field in ID2KEY[f.id()]:
             if isinstance(f.attribute(field), QByteArray):
                 yield SpectralProfile.fromQgsFeature(f, value_field=field)
@@ -1594,32 +1603,21 @@ class SpectralProfileRenderer(object):
             cs = defaultCurvePlotStyle()
             cs.setLineColor('green')
 
-        self.name: str
-        self.name = name
-
-        self.foregroundColor: QColor
-        self.foregroundColor = fg
-
-        self.backgroundColor: QColor
-        self.backgroundColor = bg
-
-        self.profileStyle: PlotStyle
-        self.profileStyle = ps
-
-        self.temporaryProfileStyle: PlotStyle
-        self.temporaryProfileStyle = cs
-
+        self.name: str = name
+        self.foregroundColor: QColor = fg
+        self.backgroundColor: QColor = bg
+        self.profileStyle: PlotStyle = ps
+        self.temporaryProfileStyle: PlotStyle = cs
         self.infoColor: QColor = ic
-
         self.selectionColor: QColor = sc
         self.useRendererColors: bool = useRendererColors
 
-        self.mFID2Style: typing.Dict[int, PlotStyle] = dict()
-        self.mTemporaryFIDs: typing.Set[int] = set()
+        self.mProfileKey2Style: typing.Dict[SpectralProfileKey, PlotStyle] = dict()
+        self.mTemporaryKeys: typing.Set[SpectralProfileKey] = set()
         self.mInputSource: QgsVectorLayer = None
 
     def reset(self):
-        self.mFID2Style.clear()
+        self.mProfileKey2Style.clear()
 
     @staticmethod
     def readXml(node: QDomElement, *args):
@@ -1697,7 +1695,7 @@ class SpectralProfileRenderer(object):
 
         customStyles = self.nonDefaultPlotStyles()
         for style in customStyles:
-            fids = [k for k, s in self.mFID2Style.items() if s == style]
+            fids = [k for k, s in self.mProfileKey2Style.items() if s == style]
             nodeStyle = doc.createElement('custom_style')
             style.writeXml(nodeStyle, doc)
             nodeFIDs = doc.createElement('keys')
@@ -1710,35 +1708,36 @@ class SpectralProfileRenderer(object):
         return True
 
     def setTemporaryFIDs(self, fids):
-        self.mTemporaryFIDs.clear()
-        self.mTemporaryFIDs.update(fids)
+        self.mTemporaryKeys.clear()
+        self.mTemporaryKeys.update(fids)
 
-    def setProfilePlotStyle(self, plotStyle, fids: typing.List[int]) -> typing.List[int]:
-        if isinstance(fids, int):
-            fids = [fids]
-        changedFIDs = [f for f in fids if self.mFID2Style.get(f) != plotStyle]
+    def setProfilePlotStyle(self, plotStyle, keys: typing.List[SpectralProfileKey]) -> typing.List[SpectralProfileKey]:
+        if isinstance(keys, SpectralProfileKey):
+            keys = [keys]
+        changed_keys = [k for k in keys if self.mProfileKey2Style.get(k) != plotStyle]
 
         if isinstance(plotStyle, PlotStyle):
-            for fid in fids:
-                self.mFID2Style[fid] = plotStyle
+            for k in keys:
+                self.mProfileKey2Style[k] = plotStyle
         else:
             # use default style
-            for fid in fids:
-                if fid in self.mFID2Style.keys():
-                    self.mFID2Style.pop(fid)
+            for k in keys:
+                if k in self.mProfileKey2Style.keys():
+                    self.mProfileKey2Style.pop(k)
 
-        return changedFIDs
+        return changed_keys
 
     def nonDefaultPlotStyles(self) -> typing.List[PlotStyle]:
-        return list(set(self.mFID2Style.values()))
+        return list(set(self.mProfileKey2Style.values()))
 
-    def profilePlotStyle(self, fid: int, ignore_selection: bool = True) -> PlotStyle:
-        d = self.profilePlotStyles([fid], ignore_selection=ignore_selection)
-        return d.get(fid, None)
+    def profilePlotStyle(self, key: SpectralProfileKey, ignore_selection: bool = True) -> PlotStyle:
+        d = self.profilePlotStyles([key], ignore_selection=ignore_selection)
+        return d.get(key, None)
 
-    def profilePlotStyles(self, fids: typing.List[int], ignore_selection: bool = False) -> typing.Dict[int, PlotStyle]:
+    def profilePlotStyles(self, keys: typing.List[SpectralProfileKey], ignore_selection: bool = False) -> \
+            typing.Dict[SpectralProfileKey, PlotStyle]:
 
-        profileStyles: typing.Dict[int, PlotStyle] = dict()
+        profileStyles: typing.Dict[SpectralProfileKey, PlotStyle] = dict()
 
         if isinstance(self.mInputSource, QgsVectorLayer):
             selectedFIDs = self.mInputSource.selectedFeatureIds()
@@ -1746,16 +1745,19 @@ class SpectralProfileRenderer(object):
             selectedFIDs = []
 
         if self.useRendererColors and isinstance(self.mInputSource, QgsVectorLayer):
+
+            fids = sorted(set([k.fid for k in keys]))
+            feature_styles: typing.Dict[int, PlotStyle] = dict()
+
             renderContext = QgsRenderContext()
             renderContext.setExtent(self.mInputSource.extent())
             renderer = self.mInputSource.renderer().clone()
             # renderer.setInput(self.mInputSource.dataSource())
             renderer.startRender(renderContext, self.mInputSource.fields())
             features = self.mInputSource.getFeatures(fids)
-
             for i, feature in enumerate(features):
                 fid = feature.id()
-                style = self.mFID2Style.get(fid, self.profileStyle).clone()
+                style = self.mProfileKey2Style.get(fid, self.profileStyle).clone()
                 symbol = renderer.symbolForFeature(feature, renderContext)
                 if not isinstance(symbol, QgsSymbol):
                     if not ignore_selection and fid in selectedFIDs:
@@ -1769,13 +1771,13 @@ class SpectralProfileRenderer(object):
 
                     style.setLineColor(color)
                     style.setMarkerColor(color)
-                profileStyles[fid] = style
+                feature_styles[fid] = style
             renderer.stopRender(renderContext)
+            for k in keys:
+                profileStyles[k] = feature_styles.get(k.fid)
         else:
-            for fid in fids:
-                if fid not in self.mFID2Style.keys():
-                    s = ""
-                profileStyles[fid] = self.mFID2Style.get(fid, self.profileStyle).clone()
+            for k in keys:
+                profileStyles[k] = self.mProfileKey2Style.get(k, self.profileStyle).clone()
 
         line_increase_selected = 2
         line_increase_temp = 3
@@ -1790,7 +1792,7 @@ class SpectralProfileRenderer(object):
                     style.markerBrush.setColor(self.selectionColor)
                     style.markerSize += line_increase_selected
                     style.linePen.setWidth(style.linePen.width() + line_increase_selected)
-                elif fid in self.mTemporaryFIDs:
+                elif fid in self.mTemporaryKeys:
                     style.markerSize += line_increase_selected
                     style.linePen.setWidth(style.linePen.width() + line_increase_selected)
 
@@ -2649,7 +2651,7 @@ class SpectralLibrary(QgsVectorLayer):
         newFIDs = [f.id() for f in features]
         # see qgsvectorlayereditbuffer.cpp
         oldFIDs = list(reversed(list(self.editBuffer().addedFeatures().keys())))
-        mFID2Style = self.profileRenderer().mFID2Style
+        mFID2Style = self.profileRenderer().mProfileKey2Style
         updates = dict()
         for fidOld, fidNew in zip(oldFIDs, newFIDs):
             if fidOld in mFID2Style.keys():
@@ -2812,10 +2814,10 @@ class SpectralLibrary(QgsVectorLayer):
                                     copyEditorWidgetSetup=copyEditorWidgetSetup,
                                     progressDialog=progressDialog)
 
-        fid2Style = copy.deepcopy(speclib.profileRenderer().mFID2Style)
+        fid2Style = copy.deepcopy(speclib.profileRenderer().mProfileKey2Style)
 
         for fid_old, fid_new in [(fo, fn) for fo, fn in zip(fids_old, fids_new) if fo in fid2Style.keys()]:
-            self.profileRenderer().mFID2Style[fid_new] = fid2Style[fid_old]
+            self.profileRenderer().mProfileKey2Style[fid_new] = fid2Style[fid_old]
 
         return fids_new
 

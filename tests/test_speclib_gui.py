@@ -643,16 +643,16 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(pr1, SpectralProfileRenderer)
         self.assertFalse(pr1.useRendererColors)
         slw.plotWidget().optionUseVectorSymbology().setChecked(True)
-        self.assertTrue(len(pr1.mFID2Style) > 0)
+        self.assertTrue(len(pr1.mProfileKey2Style) > 0)
 
         pr2 = slw.speclib().profileRenderer()
         self.assertTrue(pr2.useRendererColors)
-        self.assertEqual(pr1.mFID2Style, pr2.mFID2Style)
+        self.assertEqual(pr1.mProfileKey2Style, pr2.mProfileKey2Style)
 
         slw.plotWidget().optionUseVectorSymbology().setChecked(False)
         pr3 = slw.speclib().profileRenderer()
         self.assertFalse(pr3.useRendererColors)
-        self.assertEqual(pr1.mFID2Style, pr3.mFID2Style)
+        self.assertEqual(pr1.mProfileKey2Style, pr3.mProfileKey2Style)
 
         path = self.createTestOutputDirectory() / 'speclib_gui' / 'testsli_gui.gpkg'
         os.makedirs(path.parent, exist_ok=True)
