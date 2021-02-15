@@ -33,6 +33,7 @@ import typing
 import traceback
 import sqlite3
 import uuid
+import itertools
 import warnings
 import pathlib
 import time
@@ -490,7 +491,6 @@ class TestAlgorithmProvider(QgsProcessingProvider):
         self._algs = []
 
     def load(self):
-
         self.refreshAlgorithms()
         return True
 
@@ -513,7 +513,6 @@ class TestAlgorithmProvider(QgsProcessingProvider):
         return r':/qps/ui/icons/profile_expression.svg'
 
     def loadAlgorithms(self):
-
         for a in self._algs:
             self.addAlgorithm(a.createInstance())
 
@@ -803,7 +802,7 @@ class TestObjects():
         return lyr
 
     @staticmethod
-    def createVectorDataSet(wkb=ogr.wkbPolygon) -> ogr.DataSource:
+    def createVectorDataSet(wkb=ogr.wkbPolygon, n_features: int = None) -> ogr.DataSource:
         """
         Create an in-memory ogr.DataSource
         :return: ogr.DataSource
@@ -857,50 +856,60 @@ class TestObjects():
         else:
             raise NotImplementedError()
 
-        if wkb == ogr.wkbPolygon:
-            dsDst = drv.CopyDataSource(dsSrc, pathDst)
-        else:
-            dsDst = drv.CreateDataSource(pathDst)
-            assert isinstance(dsDst, ogr.DataSource)
-            lyrDst = dsDst.CreateLayer(lname, srs=srs, geom_type=wkb)
-            assert isinstance(lyrDst, ogr.Layer)
+        dsDst = drv.CreateDataSource(pathDst)
+        assert isinstance(dsDst, ogr.DataSource)
+        lyrDst = dsDst.CreateLayer(lname, srs=srs, geom_type=wkb)
+        assert isinstance(lyrDst, ogr.Layer)
 
-            # copy field definitions
+        if n_features is None:
+            n_features = lyrSrc.GetFeatureCount()
+
+        assert n_features >= 0
+
+        # copy features
+        TMP_FEATURES: typing.List[ogr.Feature] = []
+        for fSrc in lyrSrc:
+            assert isinstance(fSrc, ogr.Feature)
+            TMP_FEATURES.append(fSrc)
+
+        # copy field definitions
+        for i in range(ldef.GetFieldCount()):
+            fieldDefn = ldef.GetFieldDefn(i)
+            assert isinstance(fieldDefn, ogr.FieldDefn)
+            lyrDst.CreateField(fieldDefn)
+
+        n = 0
+        for fSrc in itertools.cycle(TMP_FEATURES):
+            g = fSrc.geometry()
+            fDst = ogr.Feature(lyrDst.GetLayerDefn())
+            assert isinstance(fDst, ogr.Feature)
+
+            if isinstance(g, ogr.Geometry):
+                if wkb == ogr.wkbPolygon:
+                    pass
+                elif wkb == ogr.wkbPoint:
+                    g = g.Centroid()
+                elif wkb == ogr.wkbLineString:
+                    g = g.GetBoundary()
+                else:
+                    raise NotImplementedError()
+
+            fDst.SetGeometry(g)
+
             for i in range(ldef.GetFieldCount()):
-                fieldDefn = ldef.GetFieldDefn(i)
-                assert isinstance(fieldDefn, ogr.FieldDefn)
-                lyrDst.CreateField(fieldDefn)
+                fDst.SetField(i, fSrc.GetField(i))
 
-            # copy features
+            assert lyrDst.CreateFeature(fDst) == ogr.OGRERR_NONE
+            n += 1
 
-            for fSrc in lyrSrc:
-                assert isinstance(fSrc, ogr.Feature)
-                g = fSrc.geometry()
-
-                fDst = ogr.Feature(lyrDst.GetLayerDefn())
-                assert isinstance(fDst, ogr.Feature)
-
-                if isinstance(g, ogr.Geometry):
-                    if wkb == ogr.wkbPoint:
-                        g = g.Centroid()
-                    elif wkb == ogr.wkbLineString:
-                        g = g.GetBoundary()
-                    else:
-                        raise NotImplementedError()
-
-                fDst.SetGeometry(g)
-
-                for i in range(ldef.GetFieldCount()):
-                    fDst.SetField(i, fSrc.GetField(i))
-
-                assert lyrDst.CreateFeature(fDst) == ogr.OGRERR_NONE
-
+            if n >= n_features:
+                break
         assert isinstance(dsDst, ogr.DataSource)
         dsDst.FlushCache()
         return dsDst
 
     @staticmethod
-    def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon) -> QgsVectorLayer:
+    def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon, n_features: int = None) -> QgsVectorLayer:
         """
         Create a QgsVectorLayer
         :return: QgsVectorLayer
@@ -917,13 +926,13 @@ class TestObjects():
             wkb = ogr.wkbPolygon
 
         assert wkb is not None
-        dsSrc = TestObjects.createVectorDataSet(wkb)
+        dsSrc = TestObjects.createVectorDataSet(wkb=wkb, n_features=n_features)
 
         assert isinstance(dsSrc, ogr.DataSource)
         lyr = dsSrc.GetLayer(0)
         assert isinstance(lyr, ogr.Layer)
         assert lyr.GetFeatureCount() > 0
-        #uri = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
+        # uri = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
         uri = dsSrc.GetName()
         # dsSrc = None
         vl = QgsVectorLayer(uri, 'testlayer', 'ogr', lyrOptions)
