@@ -540,13 +540,14 @@ class SpectralProcessingTests(TestCase):
         c = QgsMapCanvas()
         if True:
             dv = QgsDualView()
-            dv.init(sl, c, loadFeatures=True)
+            dv.init(sl, c, loadFeatures=False)
         sl.startEditing()
         fids = sl.allFeatureIds()
         sl.selectByIds(fids[-2500:])
         n_to_del = len(sl.selectedFeatureIds())
         t0 = datetime.datetime.now()
-        success, n_del = sl.deleteSelectedFeatures()
+        context = QgsVectorLayer.DeleteContext(cascade=False, project=QgsProject.instance())
+        success, n_del = sl.deleteSelectedFeatures(context)
         assert success
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
