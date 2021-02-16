@@ -318,7 +318,7 @@ def findQGISResourceFiles():
     return results
 
 
-def scanResources(path=':') -> str:
+def scanResources(path=':') -> typing.Generator[str, None, None]:
     """Recursively returns file paths in directory"""
     D = QDirIterator(path)
     while D.hasNext():

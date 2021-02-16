@@ -139,11 +139,10 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
         return is_valid
 
 
-
-class SpectraProcessingExamples(TestCase):
+class SpectralProcessingExamples(TestCase):
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
-        super(SpectraProcessingExamples, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
+        super(SpectralProcessingExamples, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initResources()
         procReg = QgsApplication.instance().processingRegistry()
         assert isinstance(procReg, QgsProcessingRegistry)
@@ -207,8 +206,11 @@ class SpectraProcessingExamples(TestCase):
 
         parameters = {alg.INPUT: speclib}
         self.assertTrue(alg.checkParameterValues(parameters, context))
+
         results = alg.processAlgorithm(parameters, context, feedback)
         self.assertIsInstance(results, dict)
+
+        # Spectral Processing algorithms return a list of SpectralProfileBlocks as output
         profile_blocks = results.get(SpectralProcessingAlgorithmExample.OUTPUT, None)
         self.assertIsInstance(profile_blocks, list)
 
@@ -238,7 +240,6 @@ class SpectraProcessingExamples(TestCase):
             # is an 'image-like' 3D array, with
             self.assertTrue(data.shape[0] == block.n_bands())
             self.assertTrue(data.shape[1] * data.shape[2] == block.n_profiles())
-
 
     def test_example_spectral_processing_model(self):
         """
@@ -397,7 +398,6 @@ class SpectralProcessingTests(TestCase):
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
 
         super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
-        from qps import initResources
         initResources()
 
     def initProcessingRegistry(self) -> typing.Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
