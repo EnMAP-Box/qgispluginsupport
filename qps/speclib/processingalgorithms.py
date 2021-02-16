@@ -56,12 +56,19 @@ class SpectralXUnitConversion(QgsProcessingAlgorithm):
         self.mUnitModel = XUnitModel()
         self.mParameters = []
 
+    def icon(self):
+        return QIcon(':/qps/ui/icons/profile.svg')
+
     def name(self):
         return 'spectral_xunit_converter'
+
+    def displayName(self) -> str:
+        return 'Convert wavelength units'
 
     def createInstance(self):
         alg = SpectralXUnitConversion()
         return alg
+
 
     def initAlgorithm(self, configuration):
 
