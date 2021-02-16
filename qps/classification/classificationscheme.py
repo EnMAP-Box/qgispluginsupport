@@ -1077,24 +1077,24 @@ class ClassificationScheme(QAbstractTableModel):
         elif isinstance(fieldIndex, QgsField):
             fieldIndex = layer.fields().indexFromName(fieldIndex.name())
 
-        if not isinstance(fieldIndex, int) and fieldIndex >= 0 and fieldIndex < layer.fields().count():
+        if not isinstance(fieldIndex, int) and 0 <= fieldIndex < layer.fields().count():
             return scheme
 
         field = layer.fields().at(fieldIndex)
-        if re.search('int|string', field.typeName(), re.I):
+        if re.search('int|string|Date|Time|DateTime', field.typeName(), re.I):
             values = layer.uniqueValues(fieldIndex, limit=MAX_UNIQUE_CLASSES)
+            values = [v for v in values if v not in [NULL, None]]
             values = sorted(values)
 
-            if len(values) > 0:
-                scheme = ClassificationScheme()
-                scheme.insertClass(ClassInfo(0, 'unclassified'))
-                if field.isNumeric():
-                    for v in values:
-                        scheme.insertClass(ClassInfo(int(v), name=str(v)))
-                else:
-                    for i, v in enumerate(values):
-                        scheme.insertClass(ClassInfo(i + 1, name=str(v)))
 
+            scheme = ClassificationScheme()
+            scheme.insertClass(ClassInfo(0, 'unclassified'))
+            if field.isNumeric():
+                for v in values:
+                    scheme.insertClass(ClassInfo(int(v), name=str(v)))
+            else:
+                for i, v in enumerate(values):
+                    scheme.insertClass(ClassInfo(i + 1, name=str(v)))
         return scheme
 
     @staticmethod
