@@ -79,8 +79,10 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
         assert isinstance(function, typing.Callable)
         self.mFunction = function
 
-    def canExecute(self, parameters: dict, context: QgsProcessingContext) -> bool:
-        return True
+    def canExecute(self) -> bool:
+        result: bool = True
+        msg = ''
+        return result, msg
 
     def checkParameterValues(self,
                              parameters: dict,

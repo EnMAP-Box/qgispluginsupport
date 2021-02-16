@@ -150,8 +150,10 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
     def asPythonCommand(self) -> str:
         pass
 
-    def canExecute(self, parameters: dict, context: QgsProcessingContext) -> bool:
-        return True
+    def canExecute(self) -> bool:
+        result: bool = True
+        msg = ''
+        return result, msg
 
     def checkParameterValues(self,
                              parameters: dict,
@@ -241,8 +243,10 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
     def asPythonCommand(self) -> str:
         pass
 
-    def canExecute(self, parameters: dict, context: QgsProcessingContext) -> bool:
-        return True
+    def canExecute(self) -> bool:
+        result: bool = True
+        msg = ''
+        return result, msg
 
     def checkParameterValues(self,
                              parameters: dict,
