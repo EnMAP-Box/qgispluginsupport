@@ -55,6 +55,8 @@ WMS_OSM = r'referer=OpenStreetMap%20contributors,%20under%20ODbL&type=xyz&url=ht
 WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
 
 
+TESTVECTORDATA_KML = pathlib.Path(__file__).parent / 'testvectordata.kml'
+
 def initQgisApplication(*args, qgisResourceDir: str = None,
                         loadProcessingFramework=True,
                         loadEditorWidgets=True,
@@ -517,7 +519,7 @@ class TestAlgorithmProvider(QgsProcessingProvider):
         return True
 
 
-class TestObjects():
+class TestObjects(object):
     """
     Creates objects to be used for testing. It is preferred to generate objects in-memory.
     """
@@ -808,24 +810,13 @@ class TestObjects():
         pkgPath = QgsApplication.instance().pkgDataPath()
         assert os.path.isdir(pkgPath)
 
-        pathSrc = pathlib.Path(__file__).parent / 'landcover_polygons.geojson'
+        #pathSrc = pathlib.Path(__file__).parent / 'landcover_polygons.geojson'
+        pathSrc = TESTVECTORDATA_KML
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
-        """
-        potentialPathes = [
-            os.path.join(os.path.dirname(__file__), 'testpolygons.geojson'),
-            os.path.join(pkgPath, *['resources', 'data', 'world_map.shp']),
-        ]
-        for p in potentialPathes:
-            if os.path.isfile(p):
-                pathSrc = p
-                break
-        assert os.path.isfile(pathSrc), 'Unable to find QGIS "world_map.shp". QGIS Pkg path = {}'.format(pkgPath)
-
-        """
 
         dsSrc = ogr.Open(pathSrc.as_posix())
         assert isinstance(dsSrc, ogr.DataSource)
-        lyrSrc = dsSrc.GetLayer(0)
+        lyrSrc = dsSrc.GetLayerByName('landcover')
         assert isinstance(lyrSrc, ogr.Layer)
 
         ldef = lyrSrc.GetLayerDefn()

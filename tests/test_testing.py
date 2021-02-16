@@ -47,8 +47,8 @@ class testClassTesting(unittest.TestCase):
         lyr2 = qps.testing.TestObjects.createVectorLayer()
 
         self.assertIsInstance(iface.layerTreeView(), QgsLayerTreeView)
-        self.assertIsInstance(iface.layerTreeView().model(), QgsLayerTreeModel)
-        root = iface.layerTreeView().model().rootGroup()
+        self.assertIsInstance(iface.layerTreeView().layerTreeModel(), QgsLayerTreeModel)
+        root = iface.layerTreeView().layerTreeModel().rootGroup()
         self.assertIsInstance(root, QgsLayerTree)
         self.assertEqual(len(root.findLayers()), 0)
 

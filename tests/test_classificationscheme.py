@@ -126,6 +126,8 @@ class TestsClassificationScheme(TestCase):
         lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point)
         for name in lyr.fields().names():
             cs = ClassificationScheme.fromUniqueFieldValues(lyr, name)
+            if cs is None:
+                s  =""
             self.assertIsInstance(cs, ClassificationScheme)
             self.assertTrue(len(cs) > 0)
 
