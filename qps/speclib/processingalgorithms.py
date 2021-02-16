@@ -333,3 +333,14 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
         OUTPUTS[self.OUTPUT] = speclib
 
         return OUTPUTS
+
+
+def createSpectralAlgorithms() -> typing.List[QgsProcessingAlgorithm]:
+    """
+    Returns the spectral processing algorithms defined in this module
+    """
+    return [
+        SpectralProfileReader(),
+        SpectralProfileWriter(),
+        SpectralXUnitConversion(),
+    ]

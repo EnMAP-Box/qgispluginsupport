@@ -64,8 +64,8 @@ SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
 MAX_PDIS_DEFAULT: int = 256
 
-# do not sho spectral processing widget in production releases
-SPECTRAL_PROCESSING: bool = 'CI' in os.environ.keys()
+# do not show spectral processing widget in production releases
+SHOW_SPECTRAL_PROCESSING_WIDGETS: bool = os.environ.get('DEBUG', 'false').lower() in ['1', 'true']
 
 
 class SpectralXAxis(pg.AxisItem):
@@ -2626,7 +2626,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionSaveModel)
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionRemoveFunction)
 
-        if SPECTRAL_PROCESSING == True:
+        if SHOW_SPECTRAL_PROCESSING_WIDGETS:
             r = self.tbSpeclibAction.addSeparator()
             self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
             self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
