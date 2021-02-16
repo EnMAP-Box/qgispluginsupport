@@ -24,43 +24,29 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import os
-import sys
-import re
-import io
-import importlib
-import typing
-import traceback
-import sqlite3
-import uuid
-import itertools
-import warnings
-import pathlib
-import time
-import site
-import mock
-import inspect
-import types
 import enum
-import sip
+import inspect
+import itertools
 import random
-import unittest
-from qgis.core import *
+import sqlite3
+import traceback
+import uuid
+import warnings
+
+import mock
+import numpy as np
+import sip
+from osgeo import gdal, ogr, osr, gdal_array
+
+import qgis.testing
+import qgis.utils
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext, \
-    QgsProcessingFeedback, QgsField, QgsFields, QgsApplication, QgsCoordinateReferenceSystem, QgsProject, \
+    QgsProcessingFeedback, QgsFields, QgsApplication, QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
     QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
     QgsProviderRegistry, QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge
-from qgis.gui import *
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-import qgis.testing
-import qgis.utils
-import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
 from .resources import *
 from .utils import UnitLookup
 
@@ -102,7 +88,11 @@ class StartOptions(enum.IntFlag):
     All = EditorWidgets | ProcessingFramework | PythonRunner | PrintProviders
 
 
-def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = []) -> QgsApplication:
+def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = None) -> QgsApplication:
+
+    if resources is None:
+        resources = []
+
     if isinstance(QgsApplication.instance(), QgsApplication):
         print('Found existing QgsApplication.instance()')
         qgsApp = QgsApplication.instance()
@@ -149,7 +139,7 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = []
                 QgsApplication.qgisUserDatabaseFilePath())
 
         con = sqlite3.connect(QgsApplication.qgisUserDatabaseFilePath())
-        cursor = con.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        cursor = con.execute(r"SELECT name FROM sqlite_master WHERE type='table'")
         tables = [v[0] for v in cursor.fetchall() if v[0] != 'sqlite_sequence']
         if 'tbl_srs' not in tables:
             info = ['{} misses "tbl_srs"'.format(QgsApplication.qgisSettingsDirPath())]
@@ -163,7 +153,7 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = []
         assert iface == qgis.utils.iface
 
     # set 'home_plugin_path', which is required from the QGIS Plugin manager
-    qgis.utils.home_plugin_path = (pathlib.Path(QgsApplication.instance().qgisSettingsDirPath()) \
+    qgis.utils.home_plugin_path = (pathlib.Path(QgsApplication.instance().qgisSettingsDirPath())
                                    / 'python' / 'plugins').as_posix()
 
     # initialize the QGIS processing framework
@@ -276,14 +266,17 @@ class QgisMockup(QgisInterface):
     def pasteFromClipboard(self, pasteVectorLayer: QgsMapLayer):
         if not isinstance(pasteVectorLayer, QgsVectorLayer):
             return
-        return
+        """
         # todo: implement
         pasteVectorLayer.beginEditCommand('Features pasted')
         features = self.mClipBoard.transformedCopyOf(pasteVectorLayer.crs(), pasteVectorLayer.fields())
         nTotalFeatures = features.count()
         context = pasteVectorLayer.createExpressionContext()
         compatibleFeatures = QgsVectorLayerUtils.makeFeatureCompatible(features, pasteVectorLayer)
-        newFeatures
+        """
+
+        return
+
 
     def iconSize(self, dockedToolbar=False):
         return QSize(30, 30)
@@ -358,8 +351,10 @@ class QgisMockup(QgisInterface):
 class TestCase(qgis.testing.TestCase):
 
     @classmethod
-    def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
+    def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
 
+        if resources is None:
+            resources = []
         # tryto find QGIS resource files
         for r in findQGISResourceFiles():
             if r not in resources:
@@ -434,13 +429,14 @@ class TestCase(qgis.testing.TestCase):
 
         print('TEAR DOWN {}'.format(self.id()))
 
-    def showGui(self, widgets=[]) -> bool:
+    def showGui(self, widgets: typing.Union[QWidget, typing.List[QWidget]] = None) -> bool:
         """
         Call this to show GUI(s) in case we do not run within a CI system
         """
         if str(os.environ.get('CI')).lower() not in ['', 'none', 'false', '0']:
             return False
-
+        if widgets is None:
+            widgets = []
         if not isinstance(widgets, list):
             widgets = [widgets]
 
@@ -531,7 +527,7 @@ class TestObjects():
     _coreData = _coreDataWL = _coreDataWLU = _coreDataWkt = _coreDataGT = None
 
     @staticmethod
-    def coreData() -> typing.Tuple[np.ndarray, typing.List[float], str]:
+    def coreData() -> typing.Tuple[np.ndarray, np.ndarray, str, tuple, str]:
         if TestObjects._coreData is None:
             source_raster = pathlib.Path(__file__).parent / 'enmap.tif'
             assert source_raster.is_file()
@@ -554,7 +550,7 @@ class TestObjects():
 
     @staticmethod
     def spectralProfileData(n: int = 10,
-                            n_bands: typing.List[int] = [-1]):
+                            n_bands: typing.List[int] = None):
         """
         Returns n random spectral profiles from the test data
         :return: lost of (N,3) array of floats specifying point locations.
@@ -563,6 +559,8 @@ class TestObjects():
         coredata, wl, wlu, gt, wkt = TestObjects.coreData()
         cnb, cnl, cns = coredata.shape
         assert n > 0
+        if n_bands is None:
+            n_bands = [-1]
         if not isinstance(n_bands, list):
             n_bands = [n_bands]
         assert isinstance(n_bands, list)
@@ -587,7 +585,7 @@ class TestObjects():
     @staticmethod
     def spectralProfiles(n=10,
                          fields: QgsFields = None,
-                         n_bands: typing.List[int] = [-1],
+                         n_bands: typing.List[int] = None,
                          wlu: str = None):
 
         from .speclib.core import SpectralProfile
@@ -612,7 +610,7 @@ class TestObjects():
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
-                              n_bands: typing.List[int] = [-1],
+                              n_bands: typing.Union[int, typing.List[int]] = None,
                               wlu: str = None):
         """
         Creates an Spectral Library
@@ -629,8 +627,6 @@ class TestObjects():
         """
         assert n > 0
         assert n_empty >= 0 and n_empty <= n
-        if not isinstance(n_bands, list):
-            n_bands = [n_bands]
         from .speclib.core import SpectralLibrary
         slib = SpectralLibrary()
         assert slib.startEditing()
@@ -1066,18 +1062,19 @@ class QgsClipboardMockup(QObject):
             self.mCRS = src.crs()
             self.mSrcLayer = src
 
+            """
+                        self.setSystemClipBoard()
+                        self.mUseSystemClipboard = False
+                        self.changed.emit()
+            """
             return
 
-            self.setSystemClipBoard()
-            self.mUseSystemClipboard = False
-            self.changed.emit()
 
         elif isinstance(src, QgsFeatureStore):
             raise NotImplementedError()
 
     def setSystemClipBoard(self):
-
-        raise NotImplementedError()
+        """
         cb = QApplication.clipboard()
         textCopy = self.generateClipboardText()
 
@@ -1085,15 +1082,21 @@ class QgsClipboardMockup(QObject):
         m.setText(textCopy)
 
         # todo: set HTML
+        """
+        raise NotImplementedError()
+
 
     def generateClipboardText(self):
 
-        raise NotImplementedError()
-        pass
+        """
         textFields = ['wkt_geom'] + [n for n in self.mFeatureFields]
 
         textLines = '\t'.join(textFields)
         textFields.clear()
+        """
+
+        raise NotImplementedError()
+
 
     def systemClipboardChanged(self):
         pass
@@ -1124,5 +1127,4 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
             command = ['{}:{}'.format(i + 1, l) for i, l in enumerate(command.splitlines())]
             print('\n'.join(command), file=sys.stderr)
             raise ex
-            return False
         return True
