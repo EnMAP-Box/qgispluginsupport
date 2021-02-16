@@ -89,7 +89,6 @@ class StartOptions(enum.IntFlag):
 
 
 def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = None) -> QgsApplication:
-
     if resources is None:
         resources = []
 
@@ -276,7 +275,6 @@ class QgisMockup(QgisInterface):
         """
 
         return
-
 
     def iconSize(self, dockedToolbar=False):
         return QSize(30, 30)
@@ -1085,7 +1083,6 @@ class QgsClipboardMockup(QObject):
         """
         raise NotImplementedError()
 
-
     def generateClipboardText(self):
 
         """
@@ -1096,7 +1093,6 @@ class QgsClipboardMockup(QObject):
         """
 
         raise NotImplementedError()
-
 
     def systemClipboardChanged(self):
         pass

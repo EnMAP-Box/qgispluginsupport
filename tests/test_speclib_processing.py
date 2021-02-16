@@ -3,8 +3,8 @@ import unittest
 import random
 import math
 import xmlrunner
-from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
+
 from qgis.gui import *
 from qgis.core import *
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
@@ -19,17 +19,12 @@ from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, Q
     QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterVectorLayer, QgsProcessingModelParameter, \
     QgsProcessingModelOutput, QgsProcessingOutputVectorLayer
 
-from processing.modeler.ModelerDialog import ModelerParametersDialog
-from qpstestdata import enmap, hymap
-from qpstestdata import speclib as speclibpath
-
-from qps.speclib.io.envi import *
-from qps.speclib.io.asd import *
+from qps import initResources
+from qps.testing import TestObjects, TestCase, StartOptions
 from qps.speclib.gui import *
 from qps.speclib.processing import *
 from qps.speclib.processingalgorithms import *
 from qps.testing import TestCase, TestAlgorithmProvider
-from qps.models import TreeView, TreeNode, TreeModel
 
 
 class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
@@ -149,7 +144,6 @@ class SpectraProcessingExamples(TestCase):
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
         super(SpectraProcessingExamples, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
-        from qps import initResources
         initResources()
         procReg = QgsApplication.instance().processingRegistry()
         assert isinstance(procReg, QgsProcessingRegistry)
@@ -385,8 +379,6 @@ class SpectraProcessingExamples(TestCase):
         self.testProvider().addAlgorithm(alg)
 
         self.assertIsInstance(self.testProvider().algorithm(alg.name()), SpectralProcessingAlgorithmExample)
-
-        from qps.speclib.processing import spectral_algorithms
 
         self.assertTrue(alg.name() in [a.name() for a in spectral_algorithms()])
 
