@@ -459,7 +459,7 @@ class SpectralProcessingTests(TestCase):
         n_profiles_per_n_bands = 1000
         n_bands = [6, 30, 177]
         if False:
-
+            # speed-test for deleting features
             slibs = [TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands) for _ in range(4)]
 
             c = QgsMapCanvas()

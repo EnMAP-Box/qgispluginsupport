@@ -62,7 +62,7 @@ SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
-MAX_PDIS_DEFAULT: int = 1024
+MAX_PDIS_DEFAULT: int = 256
 
 # do not sho spectral processing widget in production releases
 SPECTRAL_PROCESSING: bool = 'CI' in os.environ.keys()
@@ -1486,8 +1486,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         LUT: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = {pdi.key(): pdi for pdi in pdis}
 
-        #active_pdis = self.plottedProfilePlotDataItems()
-
+        plot_pdis = self.plottedProfilePlotDataItems()
+        pi: SpectralLibraryPlotItem = self.getPlotItem()
+        pi.removeItems(plot_pdis)
         for pdi in LUT.values():
             # set visualization vectors to none
             pdi.mDataX = pdi.mDataY = None
@@ -1532,6 +1533,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 # pdi.setVisible(SPDIFlags.Displayable in pdi.visualizationFlags())
                 # pdi.blockSignals(False)
         # self.blockSignals(False)
+        pi.addItems(plot_pdis)
         print(f'PDI data update: n={len(LUT)} dt={datetime.datetime.now() - t0}')
 
     def _update_to_display(self,
@@ -1598,7 +1600,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.mNumberOfEmptyProfiles = 0
 
         sort_x_values: bool = self.xUnit() in ['DOI']
-
+        keys_plotted = self.plottedProfileKeys()
         keys_all = self.potentialProfileKeys()
         keys_missing = [k for k in keys_all if k not in self.mSPDICache.keys()]
         keys_to_display: typing.List[SpectralProfileKey] = []
@@ -1647,7 +1649,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         if len(to_remove) > 0:
             pi.removeItems(to_remove)
 
-
         t2 = datetime.datetime.now()
         # add missing keys
         plotted = self.plottedProfileKeys()
@@ -1665,21 +1666,19 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         t3 = datetime.datetime.now()
 
-
-        sFids = self.mDualView.tableView().selectedFeaturesIds()
-
         TV = self.mDualView.tableView()
+        selected_fids = TV.selectedFeaturesIds()
+        selected_cell: SpectralProfileKey = None
         cIdx = TV.selectionModel().currentIndex()
-        value_fields = self.speclib().spectralValueFields()
         if isinstance(cIdx, QModelIndex):
-            cFID = cIdx.data(QgsAttributeTableModel.FieldIndexRole)
-            cField = cIdx.data(QgsAttributeTableModel.FeatureIdRole)
-            if cField:
+            cField = cIdx.data(QgsAttributeTableModel.FieldIndexRole)
+            cFID = cIdx.data(QgsAttributeTableModel.FeatureIdRole)
+            if cField >= 0:
                 cField: QgsField = self.speclib().fields().at(cField)
                 if cField in self.speclib().spectralValueFields():
-                    selectedKey = SpectralProfileKey(cFID, cField.name())
+                    selected_cell = SpectralProfileKey(cFID, cField.name())
                     s = ""
-
+        # self.updatePlotDataItemStyles()
         if DEBUG and len(to_remove) + len(to_add) > 0:
             print(f'A:{len(to_add)} R: {len(to_remove)}')
             print(f'tP:{t1-t0} tR:{t2-t1} tA:{t3-t2}')
@@ -1739,6 +1738,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # finally, update items
         for pdi in pdis:
+            pdi.updateItems()
             pass
             #z = 1 if pdi.id() in self.mSelectedIds else 0
             #pdi.setZValue(z)
