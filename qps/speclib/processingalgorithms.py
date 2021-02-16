@@ -56,6 +56,9 @@ class SpectralXUnitConversion(QgsProcessingAlgorithm):
         self.mUnitModel = XUnitModel()
         self.mParameters = []
 
+    def icon(self):
+        return QIcon(':/qps/ui/icons/profile.svg')
+
     def name(self):
         return 'spectral_xunit_converter'
 
