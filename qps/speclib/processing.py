@@ -113,8 +113,6 @@ class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
     def __init__(self, name='Spectral Profile', description='Spectral Profile', optional: bool = False):
         super().__init__(name, description=description, optional=optional)
 
-        self.mSpectralProfileBlocks: typing.List[SpectralProfileBlock] = list()
-
     def isDestination(self):
         return False
 
@@ -124,6 +122,23 @@ class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
     def clone(self):
         # printCaller()
         return SpectralProcessingProfiles()
+
+    def checkValueIsAcceptable(self, input, context:QgsProcessingContext =None) -> bool:
+        """
+        Acceptable inputs are: Spectral Libraries or lists of SpectralProfile Blocks
+        :param input:
+        :param context:
+        :return: bool
+        """
+        if isinstance(input, SpectralLibrary):
+            return True
+        if isinstance(input, list):
+            return all([isinstance(i, SpectralProfileBlock) for i in input])
+        return False
+
+    def parameterAsSpectralProfileBlockList(self, parameters:dict, context: QgsProcessingContext) \
+            -> typing.List[SpectralProfileBlock]:
+        return parameterAsSpectralProfileBlockList(parameters, self.name(), context)
 
     def description(self):
         return 'the spectral profile'
@@ -135,16 +150,15 @@ class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
         return 'The spectral profile'
 
 
-
 def parameterAsSpectralProfileBlockList(parameters: dict,
                                         name: str,
                                         context: QgsProcessingContext) -> typing.List[SpectralProfileBlock]:
     """
-    Evaluates the parameter with matching name to a SpectralProcessingProfiles
+    Evaluates a parameter with matching name to a SpectralProcessingProfiles
     :param parameters:
     :param name:
     :param context:
-    :return:
+    :return: list of SpectralProfileBlocks
     """
     s = ""
     feedback = context.feedback()
@@ -169,6 +183,7 @@ def parameterAsSpectralProfileBlockList(parameters: dict,
             raise Exception(f'{block} is not a SpectralProfileBlock')
 
     return blocks
+
 
 
 class SpectralProcessingProfilesOutput(QgsProcessingOutputDefinition):

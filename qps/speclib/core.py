@@ -87,7 +87,6 @@ OGR_EXTENSION2DRIVER[''] = []  # list all drivers without specific extension
 # a single profile is identified by its QgsFeature id and field index or field name
 SpectralProfileKey = namedtuple('SpectralProfileKey', ['fid', 'field'])
 
-
 FILTERS = 'Geopackage (*.gpkg);;ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;GeoJSON (*.geojson)'
 
 PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
@@ -129,8 +128,9 @@ OGR_EXTENSION2DRIVER[None] = OGR_EXTENSION2DRIVER['']
 
 DEBUG = os.environ.get('DEBUG', 'false').lower() in ['true', '1']
 
+
 def generateProfileKeys(feature_ids: typing.List[int],
-                        value_fields:typing.Union[QgsField, str]) -> typing.List[SpectralProfileKey]:
+                        value_fields: typing.Union[QgsField, str]) -> typing.List[SpectralProfileKey]:
     field_names = []
     for f in value_fields:
         if isinstance(f, QgsField):
@@ -139,6 +139,7 @@ def generateProfileKeys(feature_ids: typing.List[int],
         field_names.append(f)
 
     return [SpectralProfileKey(fid, field_name) for fid, field_name in itertools.product(feature_ids, field_names)]
+
 
 class SerializationMode(enum.Enum):
     JSON = 1
@@ -786,9 +787,10 @@ class SpectralProfile(QgsFeature):
 
 
 def read_profiles(vectorlayer: QgsVectorLayer,
-                  fids: typing.List[int]=None,
+                  fids: typing.List[int] = None,
                   value_fields: typing.List[str] = None,
-                  profile_keys: typing.List[SpectralProfileKey] = None) -> typing.Generator[SpectralProfile, None, None]:
+                  profile_keys: typing.List[SpectralProfileKey] = None) -> typing.Generator[
+    SpectralProfile, None, None]:
     """
     Reads SpectralProfiles from a vector layers BLOB 'value_fields'.
 
@@ -922,6 +924,7 @@ class ProgressHandler(QObject):
     progressChanged = pyqtSignal([int], [int, int, int])
 
     def __init__(self, *args, **kwds):
+        warnings.warn('Deprecated. Use QgsProcessingFeedback instead', DeprecationWarning)
         super().__init__()
 
         self.mMinimum: int = int(kwds.get('minimum', 0))
@@ -1358,7 +1361,6 @@ class SpectralProfileBlock(object):
                 blockArray[:, 0, i] = np.asarray(profiles[i].yValues(), dtype=dtype)
             block = SpectralProfileBlock(blockArray, spectral_setting, profileKeys=profile_keys)
             yield block
-
 
     @staticmethod
     def fromSpectralProfile(self, profile: SpectralProfile):
@@ -2821,18 +2823,25 @@ class SpectralLibrary(QgsVectorLayer):
 
         return fids_new
 
-    def addProfiles(self, profiles: typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
+    def addProfiles(self,
+                    profiles: typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
                     addMissingFields: bool = None, \
                     copyEditorWidgetSetup: bool = True, \
-                    progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> typing.List[int]:
+                    progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+                    feedback: QgsProcessingFeedback = None) -> typing.List[int]:
 
+        # todo: allow to add profiles with distinct key
+
+        if progressDialog is not None:
+            warnings.warn('Deprecated progressDialog. Use feedback: QgsProcessingFeedback instead', DeprecationWarning, stacklevel=2)
         if isinstance(profiles, SpectralProfile):
             profiles = [profiles]
 
         if addMissingFields is None:
             addMissingFields = isinstance(profiles, SpectralLibrary)
 
-        if len(profiles) == 0:
+        nTotal = len(profiles)
+        if nTotal == 0:
             return
 
         assert self.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(self.name())
@@ -2842,10 +2851,9 @@ class SpectralLibrary(QgsVectorLayer):
         lastTime = datetime.datetime.now()
         dt = datetime.timedelta(seconds=2)
 
-        if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
-            progressDialog.setLabelText('Add {} profiles'.format(len(profiles)))
-            progressDialog.setValue(0)
-            progressDialog.setRange(0, len(profiles))
+        if isinstance(feedback, QgsProcessingFeedback):
+            feedback.setProgressText('Add {} profiles'.format(len(profiles)))
+            feedback.setProgress(0)
 
         iSrcList = []
         iDstList = []
@@ -2856,16 +2864,16 @@ class SpectralLibrary(QgsVectorLayer):
         nAdded = 0
 
         def flushBuffer(triggerProgressBar: bool = False):
-            nonlocal self, nAdded, profileBuffer, progressDialog, lastTime, dt
+            nonlocal self, nAdded, profileBuffer, feedback, lastTime, dt
             if not self.addFeatures(profileBuffer):
                 self.raiseError()
             nAdded += len(profileBuffer)
             profileBuffer.clear()
 
-            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
+            if isinstance(feedback, QgsProcessingFeedback):
                 # update progressbar in intervals of dt
                 if triggerProgressBar or (lastTime + dt) < datetime.datetime.now():
-                    progressDialog.setValue(nAdded)
+                    feedback.setProgress(nAdded)
                     lastTime = datetime.datetime.now()
 
         for i, pSrc in enumerate(profiles):

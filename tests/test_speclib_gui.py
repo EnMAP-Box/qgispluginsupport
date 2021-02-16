@@ -123,10 +123,6 @@ class TestSpeclibWidgets(TestCase):
         pdi = SpectralProfilePlotDataItem(profile)
         self.assertIsInstance(pdi, SpectralProfilePlotDataItem)
 
-        if xValues != sorted(xValues):
-            self.assertListEqual(list(pdi.mInitialDataX), sorted(list(pdi.mInitialDataX)),
-                                 msg='SpectralProfilePlotDataItem values need to be ordered by X value dimension')
-
         style = PlotStyle.fromPlotDataItem(pdi)
 
         plotStyle = defaultCurvePlotStyle()
@@ -585,14 +581,14 @@ class TestSpeclibWidgets(TestCase):
         l = len(speclib)
         self.assertTrue(slw.speclib() == speclib)
 
-        self.assertTrue(len(slw.plotWidget().highlightedProfileKeys()) == 0)
+        self.assertTrue(len(slw.plotWidget().temporaryProfileKeys()) == 0)
         slw.setAddCurrentProfilesAutomatically(True)
         slw.setCurrentProfiles(cs)
-        self.assertTrue(len(slw.plotWidget().highlightedProfileKeys()) == 0)
+        self.assertTrue(len(slw.plotWidget().temporaryProfileKeys()) == 0)
 
         slw.setAddCurrentProfilesAutomatically(False)
         slw.setCurrentProfiles(cs)
-        self.assertTrue(len(slw.plotWidget().highlightedProfileKeys()) == 3)
+        self.assertTrue(len(slw.plotWidget().temporaryProfileKeys()) == 3)
 
         from qps.plotstyling.plotstyling import MarkerSymbol
         def onAddRandomProfile():
@@ -934,6 +930,7 @@ class TestSpeclibWidgets(TestCase):
         sw.updatePlot()
 
         sw = SpectralLibraryWidget()
+        sw.updatePlot()
         sp = slib[0]
         sw.setCurrentProfiles([sp])
         sw.updatePlot()

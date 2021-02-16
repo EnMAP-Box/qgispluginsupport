@@ -407,9 +407,11 @@ class TestIO(TestCase):
         # clean values
         speclibA.startEditing()
         idx = speclibA.fields().indexOf(FIELD_VALUES)
+        speclibA.beginEditCommand('Reset profile values')
         for p in speclibA:
             self.assertIsInstance(p, SpectralProfile)
             speclibA.changeAttributeValue(p.id(), idx, None)
+        speclibA.endEditCommand()
         self.assertTrue(speclibA.commitChanges())
         QApplication.processEvents()
         self.showGui(slw)
