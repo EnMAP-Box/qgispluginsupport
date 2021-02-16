@@ -59,6 +59,10 @@ class SpectralXUnitConversion(QgsProcessingAlgorithm):
     def name(self):
         return 'spectral_xunit_converter'
 
+    def createInstance(self):
+        alg = SpectralXUnitConversion()
+        return alg
+
     def initAlgorithm(self, configuration):
 
         p1 = SpectralProcessingProfiles(self.INPUT)
