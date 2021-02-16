@@ -1665,19 +1665,20 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             # self.updatePlotDataItemStyles(to_add)
 
         t3 = datetime.datetime.now()
+        if isinstance(self.mDualView, QgsDualView):
+            TV = self.mDualView.tableView()
+            selected_fids = TV.selectedFeaturesIds()
+            selected_cell: SpectralProfileKey = None
+            cIdx = TV.selectionModel().currentIndex()
+            if isinstance(cIdx, QModelIndex):
+                cField = cIdx.data(QgsAttributeTableModel.FieldIndexRole)
+                cFID = cIdx.data(QgsAttributeTableModel.FeatureIdRole)
+                if isinstance(cField, int) and cField >= 0:
+                    cField: QgsField = self.speclib().fields().at(cField)
+                    if cField in self.speclib().spectralValueFields():
+                        selected_cell = SpectralProfileKey(cFID, cField.name())
+                        s = ""
 
-        TV = self.mDualView.tableView()
-        selected_fids = TV.selectedFeaturesIds()
-        selected_cell: SpectralProfileKey = None
-        cIdx = TV.selectionModel().currentIndex()
-        if isinstance(cIdx, QModelIndex):
-            cField = cIdx.data(QgsAttributeTableModel.FieldIndexRole)
-            cFID = cIdx.data(QgsAttributeTableModel.FeatureIdRole)
-            if cField >= 0:
-                cField: QgsField = self.speclib().fields().at(cField)
-                if cField in self.speclib().spectralValueFields():
-                    selected_cell = SpectralProfileKey(cFID, cField.name())
-                    s = ""
         # self.updatePlotDataItemStyles()
         if DEBUG and len(to_remove) + len(to_add) > 0:
             print(f'A:{len(to_add)} R: {len(to_remove)}')

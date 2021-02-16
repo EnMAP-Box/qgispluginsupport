@@ -670,16 +670,16 @@ def subLayerDefinitions(mapLayer: QgsMapLayer) -> typing.List[QgsSublayersDialog
     :return: list of sublayer definitions
     """
     definitions = []
-    dp = mapLayer.dataProvider()
-
+    dp: QgsDataProvider = mapLayer.dataProvider()
     subLayers = dp.subLayers()
+
     if len(subLayers) == 0:
         return []
 
     for i, sub in enumerate(subLayers):
         ldef = QgsSublayersDialog.LayerDefinition()
         assert isinstance(ldef, QgsSublayersDialog.LayerDefinition)
-        elements = sub.split(QgsDataProvider.SUBLAYER_SEPARATOR)
+        elements = sub.split(dp.sublayerSeparator())
 
         if dp.name() == 'ogr':
             # <layer_index>:<name>:<feature_count>:<geom_type>

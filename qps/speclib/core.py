@@ -1201,7 +1201,7 @@ def encodeProfileValueDict(d: dict, mode=None) -> QByteArray:
     :return: str
     """
     if mode is not None:
-        warnings.warn('keyword "mode" is not not used anymore', DeprecationWarning)
+        warnings.warn('keyword "mode" is not not used anymore', DeprecationWarning, stacklevel=2)
 
     if not isinstance(d, dict):
         return None
@@ -2014,9 +2014,11 @@ class SpectralLibrary(QgsVectorLayer):
         # add other attributes to SpectralLibrary
         fields_to_copy = []
         if copy_attributes:
+            existing = [n.lower() for n in spectral_library.fields().names()]
             for field in vector.fields():
                 assert isinstance(field, QgsField)
-                if field.name() not in spectral_library.fields().names():
+
+                if field.name().lower() not in existing:
                     spectral_library.addAttribute(QgsField(field))
                     fields_to_copy.append(field.name())
         assert spectral_library.commitChanges()

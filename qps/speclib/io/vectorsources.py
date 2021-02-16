@@ -98,14 +98,14 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
             assert lyr.isValid()
 
             fieldNames = lyr.fields().names()
-            for fn in [FIELD_NAME, FIELD_VALUES]:
+            for fn in [FIELD_VALUES]:
                 assert fn in fieldNames
 
             typeName = lyr.fields().at(lyr.fields().lookupField(FIELD_NAME)).typeName()
             assert re.search('(string|varchar|char|json)', typeName, re.I)
 
             return True
-        except:
+        except Exception as ex:
             return False
         return False
 
@@ -150,7 +150,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
                 if TXT2BLOB and name == FIELD_VALUES:
                     jsonStr = feature.attribute(name)
                     d = json.loads(jsonStr)
-                    blob = encodeProfileValueDict(d, mode=SerializationMode.PICKLE)
+                    blob = encodeProfileValueDict(d)
                     profile.setAttribute(name, blob)
                 else:
                     profile.setAttribute(name, feature.attribute(name))
