@@ -16,8 +16,11 @@ PREFACE_BAT = \
 """
 :: use this script to run unit tests locally
 ::
+
 @echo off
 set CI=True
+set PYTHONPATH=%~dp0;%PYTHONPATH%
+set PYTHONPATH
 
 WHERE python3 >nul 2>&1 && (
     echo Found "python3" command
