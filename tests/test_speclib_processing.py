@@ -333,6 +333,7 @@ class SpectralProcessingExamples(TestCase):
             [QgsProcessingModelChildParameterSource.fromModelParameter('speclib_target')]
         )
 
+
         outputs = {SpectralProcessingAlgorithmExample.OUTPUT: QgsProcessingModelOutput('output_spectra')}
         calgP2.setModelOutputs(outputs)
         # define outputs
@@ -349,8 +350,8 @@ class SpectralProcessingExamples(TestCase):
             x += dx
         model.setParameterComponents(components)
 
-        y = 50
-        x = 400
+        y = 150
+        x = 250
         for calg in [calgR, calgP1, calgP2, calgW]:
             calg: QgsProcessingModelChildAlgorithm
             calg.setPosition(QPointF(x, y))
