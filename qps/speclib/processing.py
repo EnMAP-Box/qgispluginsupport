@@ -49,7 +49,7 @@ from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython, QgsProcessingP
     QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
     QgsAbstractProcessingParameterWidgetWrapper, QgsProcessingParameterWidgetContext, QgsProcessingGui, \
     QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, \
-    QgsProcessingToolboxTreeView
+    QgsProcessingToolboxTreeView, QgsProcessingGui
 
 from processing import ProcessingConfig, Processing
 from processing.core.ProcessingConfig import Setting
@@ -86,11 +86,11 @@ def keepRef(o):
     REFS.append(o)
 
 
-def printCaller(prefix=''):
+def printCaller(prefix=None, suffix=None):
     """
     prints out the current code location in calling method
-    :param prefix:
-    :return:
+    :param prefix: prefix text
+    :param suffix: suffix text
     """
     curFrame = inspect.currentframe()
     outerFrames = inspect.getouterframes(curFrame)
@@ -99,9 +99,11 @@ def printCaller(prefix=''):
     stack_class = stack[1][0].f_locals["self"].__class__.__name__
     stack_method = stack[1][0].f_code.co_name
     info = f'{stack_class}.{FOI.function}: {os.path.basename(FOI.filename)}:{FOI.lineno}'
-    if len(prefix) > 0:
-        prefix += ':'
-    print(f'#{prefix}{info}')
+
+    prefix = f'{prefix}:' if prefix else ''
+    suffix = f':{suffix}' if suffix else ''
+
+    print(f'#{prefix}{info}{suffix}')
 
 
 class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
@@ -112,6 +114,13 @@ class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
 
     def __init__(self, name='Spectral Profile', description='Spectral Profile', optional: bool = False):
         super().__init__(name, description=description, optional=optional)
+
+        metadata = {
+        'widget_wrapper': {
+            'class': SpectralProcessingProfilesWidgetWrapper}
+        }
+        self.setMetadata(metadata)
+        s = ""
 
     def isDestination(self):
         return False
@@ -533,20 +542,31 @@ def spectral_algorithms() -> typing.List[QgsProcessingAlgorithm]:
                 break
     return spectral_algos
 
-
 class SpectralProcessingProfilesWidgetWrapper(QgsAbstractProcessingParameterWidgetWrapper):
 
-    def __init__(self,
-                 parameter: QgsProcessingParameterDefinition,
-                 wtype: QgsProcessingGui.WidgetType,
-                 parent=None):
-        super(SpectralProcessingProfilesWidgetWrapper, self).__init__(parameter, wtype, parent)
+    #def __init__(self, parameter: QgsProcessingParameterDefinition, wtype: QgsProcessingGui.WidgetType, parent=None):
+    def __init__(self, parameter, dialog, row = 0, col = 0, **kwargs):
+        self.mDialogType = QgsProcessingGui.Standard
+        printCaller()
+        super().__init__(parameter, self.mDialogType)
+        self.widget = self.createWidget(**kwargs)
+        self.label = self.createLabel(**kwargs)
+        # super(SpectralProcessingProfilesWidgetWrapper, self).__init__(parameter, wtype, parent)
 
-    def createWidget(self):
-        l = QLabel('Spectral Profiles')
-        return l
+    def createWidget(self, *args, **kwargs):
+        printCaller()
+        #w = SpectralProcessingAlgorithmInputModelerParameterWidget()
+        w = QWidget()
+        w.setWindowTitle('Dummy widget')
+        w.setLayout(QHBoxLayout())
+        w.layout().addWidget(QLabel('Dummy label '))
+        return w
 
     def setWidgetValue(self, value, context: QgsProcessingContext):
+        printCaller()
+        pass
+
+    def setWidgetValue(self, value, context):
         printCaller()
         pass
 
@@ -555,9 +575,39 @@ class SpectralProcessingProfilesWidgetWrapper(QgsAbstractProcessingParameterWidg
         v = dict()
         return v
 
-    def createLabel(self) -> QLabel:
+    def createLabel(self, *args, **kwargs) -> QLabel:
         pdef = self.parameterDefinition()
         return QLabel(pdef.name())
+
+    def createWrappedLabel(self):
+        printCaller()
+        return QLabel('TestLabel')
+
+    def createWrappedWidget(self):
+        printCaller()
+        w = QWidget()
+        return w
+
+    def setValue(self, value):
+
+
+        if value is None:
+            value = ''
+
+        if self.mDialogType == QgsProcessingGui.Modeler:
+            self.widget
+        elif self.mDialogType == QgsProcessingGui.Batch:
+            self.widget
+        else:
+            self.widget
+
+    def value(self):
+        if self.mDialogType == QgsProcessingGui.Modeler:
+            return self.widget.windowTitle() + '+Modeler'
+        elif self.mDialogType == QgsProcessingGui.Batch:
+            return self.widget.windowTitle() + '+Batch'
+        else:
+            return self.widget.windowTitle() + '+Std'
 
 
 class SpectralProcessingAlgorithmInputWidgetFactory(QgsProcessingParameterWidgetFactoryInterface):
@@ -639,8 +689,6 @@ class SpectralProcessingProfilesOutputWidgetFactory(QgsProcessingParameterWidget
                                    ) -> QgsProcessingModelerParameterWidget:
         printCaller()
 
-        # widget = super(SpectralProcessingAlgorithmInputWidgetFactory, self).createModelerWidgetWrapper(model, childId, parameter, context)
-
         widget = SpectralProcessingAlgorithmInputModelerParameterWidget(
             model, childId, parameter, context
         )
@@ -671,9 +719,6 @@ class SpectralProcessingProfilesOutputWidgetFactory(QgsProcessingParameterWidget
                             wtype: QgsProcessingGui.WidgetType) -> QgsAbstractProcessingParameterWidgetWrapper:
         printCaller()
         wrapper = SpectralProcessingProfilesWidgetWrapper(parameter, wtype)
-        # wrapper.destroyed.connect(self._onWrapperDestroyed)
-        # self.mWrappers.append(wrapper)
-        keepRef(wrapper)
         return wrapper
 
     def parameterType(self):
@@ -682,7 +727,7 @@ class SpectralProcessingProfilesOutputWidgetFactory(QgsProcessingParameterWidget
 
     def compatibleDataTypes(self, parameter):
         #    printCaller()
-        return [SpectralProcessingProfiles.TYPE]
+        return [SpectralProcessingProfiles.TYPE, SpectralProcessingProfilesOutput.TYPE]
 
     def compatibleOutputTypes(self):
         printCaller()
