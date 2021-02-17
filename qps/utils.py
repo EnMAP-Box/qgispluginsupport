@@ -780,8 +780,7 @@ def optimize_block_size(ds: gdal.Dataset,
 def fid2pixelindices(raster: gdal.Dataset,
                      vector: ogr.DataSource,
                      layer: typing.Union[int, str] = None,
-                     all_touched: bool = True) -> typing.Tuple[
-    np.ndarray, int]:
+                     all_touched: bool = True) -> typing.Tuple[np.ndarray, int]:
     """
     Returns vector feature pixel positions.
 
@@ -2231,9 +2230,9 @@ class SpatialExtent(QgsRectangle):
         node_geom.appendChild(doc.createTextNode(self.asWktPolygon()))
         node_crs = doc.createElement('SpatialExtentCrs')
         self.crs().writeXml(node_crs, doc)
-        #if QgsCoordinateReferenceSystem(self.crs().authid()) == self.crs():
+        # if QgsCoordinateReferenceSystem(self.crs().authid()) == self.crs():
         #    node_crs.appendChild(doc.createTextNode(self.crs().authid()))
-        #else:
+        # else:
         #    node_crs.appendChild(doc.createTextNode(self.crs().toWkt()))
         node.appendChild(node_geom)
         node.appendChild(node_crs)

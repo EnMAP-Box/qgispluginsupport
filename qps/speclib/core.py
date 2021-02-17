@@ -2013,14 +2013,21 @@ class SpectralLibrary(QgsVectorLayer):
 
         # add other attributes to SpectralLibrary
         fields_to_copy = []
+        copy_pixel_positions: bool = False
         if copy_attributes:
             existing = [n.lower() for n in spectral_library.fields().names()]
             for field in vector.fields():
                 assert isinstance(field, QgsField)
-
                 if field.name().lower() not in existing:
                     spectral_library.addAttribute(QgsField(field))
                     fields_to_copy.append(field.name())
+                    existing.append(field.name().lower())
+            # copy raster pixel positions
+            if 'px_x' not in existing and 'px_y' not in existing:
+                spectral_library.addAttribute(createQgsField('px_x', 1, 'pixel index x'))
+                spectral_library.addAttribute(createQgsField('px_y', 1, 'pixel index y'))
+                copy_pixel_positions = True
+
         assert spectral_library.commitChanges()
         assert spectral_library.startEditing()
 
@@ -2086,6 +2093,8 @@ class SpectralLibrary(QgsVectorLayer):
                         fid_profiles = cube[:, fid_yy, fid_xx]
                         profile_geo_x = geo_x[fid_yy + yoff, fid_xx + xoff]
                         profile_geo_y = geo_y[fid_yy + yoff, fid_xx + xoff]
+                        profile_px_x = fid_xx + xoff
+                        profile_px_y = fid_yy + yoff
 
                         for i in range(n_p):
                             # create profile feature
@@ -2104,6 +2113,9 @@ class SpectralLibrary(QgsVectorLayer):
                             if vectorFeature.isValid():
                                 for field_name in fields_to_copy:
                                     sp[field_name] = vectorFeature[field_name]
+                            if copy_pixel_positions:
+                                sp['px_x'] = int(profile_px_x[i])
+                                sp['px_y'] = int(profile_px_y[i])
                             if progress_handler and progress_handler.wasCanceled():
                                 return None
 
@@ -2126,90 +2138,6 @@ class SpectralLibrary(QgsVectorLayer):
                 spectral_library.raiseError()
 
             return spectral_library
-
-    @staticmethod
-    def readFromVectorPositions(rasterSource, vectorSource, mode='CENTROIDS', \
-                                progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None):
-        """
-
-        :param pathRaster:
-        :param vectorSource:
-        :param mode:
-        :return:
-        """
-        warnings.warn(DeprecationWarning(r'Use readFromVector instead'))
-        assert mode in ['CENTROIDS', 'AVERAGES', 'PIXELS']
-
-        if isinstance(rasterSource, str):
-            rasterSource = QgsRasterLayer(rasterSource)
-        elif isinstance(rasterSource, gdal.Dataset):
-            rasterSource = QgsRasterLayer(rasterSource, '', 'gdal')
-
-        assert isinstance(rasterSource, QgsRasterLayer)
-
-        if isinstance(vectorSource, str):
-            vectorSource = QgsVectorLayer(vectorSource)
-        elif isinstance(vectorSource, ogr.DataSource):
-            raise NotImplementedError()
-
-        assert isinstance(vectorSource, QgsVectorLayer)
-
-        extentRaster = SpatialExtent.fromLayer(rasterSource)
-        vectorSource.selectByRect(extentRaster.toCrs(vectorSource.crs()))
-
-        trans = QgsCoordinateTransform()
-        trans.setSourceCrs(vectorSource.crs())
-        trans.setDestinationCrs(rasterSource.crs())
-
-        nSelected = vectorSource.selectedFeatureCount()
-
-        gt = layerGeoTransform(rasterSource)
-        extent = rasterSource.extent()
-        center = extent.center()
-        # m2p = QgsMapToPixel(rasterSource.rasterUnitsPerPixelX(),
-        #                    center.x() + 0.5*rasterSource.rasterUnitsPerPixelX(),
-        #                    center.y() - 0.5*rasterSource.rasterUnitsPerPixelY(),
-        #                    rasterSource.width(), rasterSource.height(), 0)
-
-        pixelpositions = []
-
-        if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
-            progressDialog.setMinimum(0)
-            progressDialog.setMaximum(nSelected)
-            progressDialog.setLabelText('Get pixel positions...')
-
-        nMissingGeometry = []
-        for i, feature in enumerate(vectorSource.selectedFeatures()):
-            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)) and progressDialog.wasCanceled():
-                return None
-
-            assert isinstance(feature, QgsFeature)
-
-            if feature.hasGeometry():
-                g = feature.geometry().constGet()
-
-                if isinstance(g, QgsPoint):
-                    point = trans.transform(QgsPointXY(g))
-                    px = geo2px(point, gt)
-                    pixelpositions.append(px)
-
-                if isinstance(g, QgsMultiPoint):
-                    for point in g.parts():
-                        if isinstance(point, QgsPoint):
-                            point = trans.transform(QgsPointXY(point))
-                            px = geo2px(point, gt)
-                            pixelpositions.append(px)
-                    s = ""
-            else:
-                nMissingGeometry += 1
-
-            if isinstance(progressDialog, (QProgressDialog, ProgressHandler)):
-                progressDialog.setValue(progressDialog.value() + 1)
-
-        if len(nMissingGeometry) > 0:
-            print('{} features without geometry in {}'.format(nMissingGeometry))
-
-        return SpectralLibrary.readFromRasterPositions(rasterSource, pixelpositions, progressDialog=progressDialog)
 
     def reloadSpectralValues(self, raster, selectedOnly: bool = True):
         """
