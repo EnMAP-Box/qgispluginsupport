@@ -571,6 +571,18 @@ class SpectralProcessingTests(TestCase):
 
         self.showGui(w)
 
+    def test_processing_algorithms(self):
+        self.initProcessingRegistry()
+
+        for a in createSpectralAlgorithms():
+            self.assertIsInstance(a, QgsProcessingAlgorithm)
+            a.initAlgorithm({})
+            has_inputs = is_spectral_processing_algorithm(a, check_in=True, check_out=False)
+            has_outputs = is_spectral_processing_algorithm(a, check_out=True, check_in=False)
+            self.assertTrue(has_inputs or has_outputs)
+
+
+
     def test_SpectralProcessingAlgorithmTreeView(self):
 
         self.initProcessingRegistry()

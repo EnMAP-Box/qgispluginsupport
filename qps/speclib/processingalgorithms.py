@@ -45,7 +45,33 @@ from .processing import \
 from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
 
 
-class SpectralXUnitConversion(QgsProcessingAlgorithm):
+class _AbstractSpectralAlgorithm(QgsProcessingAlgorithm):
+
+    def __init__(self):
+        super(_AbstractSpectralAlgorithm, self).__init__()
+        self.mGroup: str = 'qps'
+        self.mIcon: QIcon = QIcon(':/qps/ui/icons/profile.svg')
+
+    def group(self) -> str:
+        return self.mGroup
+
+    def icon(self) -> QIcon:
+        return self.mIcon
+
+    def createInstance(self):
+        alg = self.__class__()
+        return alg
+
+    def canExecute(self) -> bool:
+        result: bool = True
+        msg = ''
+        return result, msg
+
+    def flags(self):
+        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagNoThreading
+
+
+class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
     INPUT = 'input_profiles'
     TARGET_XUNIT = 'target_unit'
     OUTPUT = 'output_profiles'
@@ -56,19 +82,11 @@ class SpectralXUnitConversion(QgsProcessingAlgorithm):
         self.mUnitModel = XUnitModel()
         self.mParameters = []
 
-    def icon(self):
-        return QIcon(':/qps/ui/icons/profile.svg')
-
     def name(self):
         return 'spectral_xunit_converter'
 
     def displayName(self) -> str:
         return 'Convert wavelength units'
-
-    def createInstance(self):
-        alg = SpectralXUnitConversion()
-        return alg
-
 
     def initAlgorithm(self, configuration):
 
@@ -132,7 +150,7 @@ class SpectralXUnitConversion(QgsProcessingAlgorithm):
         return OUTPUTS
 
 
-class SpectralProfileReader(QgsProcessingAlgorithm):
+class SpectralProfileReader(_AbstractSpectralAlgorithm):
     """
     Reads spectral profile block from SpectralLibraries / Vectorlayers with BLOB columns
     """
@@ -158,14 +176,6 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
 
         self.addOutput(SpectralProcessingProfilesOutput(self.OUTPUT, 'Spectral Profiles'))
 
-    def asPythonCommand(self) -> str:
-        pass
-
-    def canExecute(self) -> bool:
-        result: bool = True
-        msg = ''
-        return result, msg
-
     def checkParameterValues(self,
                              parameters: dict,
                              context: QgsProcessingContext,
@@ -176,27 +186,14 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
 
         return result, msg
 
-    def createInstance(self):
-        alg = SpectralProfileReader()
-        return alg
-
     def displayName(self) -> str:
         return 'Spectral Profile Reader'
-
-    def flags(self):
-        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagNoThreading
-
-    def group(self):
-        return 'qps'
 
     def helpString(self) -> str:
         return 'Spectral Profile Reader Help String'
 
     def name(self):
         return 'spectral_profile_reader'
-
-    def icon(self):
-        return QIcon(':/qps/ui/icons/profile.svg')
 
     def prepareAlgorithm(self,
                          parameters: dict,
@@ -225,7 +222,7 @@ class SpectralProfileReader(QgsProcessingAlgorithm):
         return OUTPUTS
 
 
-class SpectralProfileWriter(QgsProcessingAlgorithm):
+class SpectralProfileWriter(_AbstractSpectralAlgorithm):
     INPUT = 'input_profiles'
     OUTPUT = 'output_speclib'
     OUTPUT_FIELD = 'output_speclib_field'
@@ -251,45 +248,23 @@ class SpectralProfileWriter(QgsProcessingAlgorithm):
 
         # self.addOutput(QgsProcessingOutputVectorLayer(self.OUTPUT, 'Spectral Library'))
 
-    def asPythonCommand(self) -> str:
-        pass
-
-    def canExecute(self) -> bool:
-        result: bool = True
-        msg = ''
-        return result, msg
-
     def checkParameterValues(self,
                              parameters: dict,
                              context: QgsProcessingContext,
                              ):
-        result = True
-        msg = ''
-        # check parameters
+
+        result, msg = super().checkParameterValues(parameters, context)
 
         return result, msg
 
-    def createInstance(self):
-        alg = SpectralProfileWriter()
-        return alg
-
     def displayName(self) -> str:
         return 'Spectral Profile Writer'
-
-    def flags(self):
-        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagNoThreading
-
-    def group(self):
-        return 'qps'
 
     def helpString(self) -> str:
         return 'Spectral Profile Writer Help String'
 
     def name(self):
         return 'spectral_profile_writer'
-
-    def icon(self):
-        return QIcon(':/qps/ui/icons/profile.svg')
 
     def prepareAlgorithm(self,
                          parameters: dict,

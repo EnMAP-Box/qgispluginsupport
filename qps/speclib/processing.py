@@ -185,7 +185,6 @@ def parameterAsSpectralProfileBlockList(parameters: dict,
     return blocks
 
 
-
 class SpectralProcessingProfilesOutput(QgsProcessingOutputDefinition):
     TYPE = SpectralProcessingProfiles.TYPE
 
