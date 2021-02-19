@@ -40,7 +40,7 @@ from .core import SpectralSetting, SpectralProfileBlock, read_profiles, \
     groupBySpectralProperties, SpectralLibrary, FIELD_VALUES, encodeProfileValueDict, decodeProfileValueDict
 from .processing import \
     SpectralProcessingProfiles, SpectralProcessingProfilesOutput, \
-    SpectralProcessingProfilesOutputDestination, parameterAsSpectralProfileBlockList
+    SpectralProcessingProfilesSink, parameterAsSpectralProfileBlockList
 
 from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
 
@@ -96,10 +96,12 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
                                         options=self.mUnitModel.mUnits,
                                         defaultValue='nm',
                                         )
-        o1 = SpectralProcessingProfilesOutput(self.OUTPUT)
+        p3 = SpectralProcessingProfilesSink(self.OUTPUT)
+        # o1 = SpectralProcessingProfilesOutput(self.OUTPUT)
         self.addParameter(p1)
         self.addParameter(p2)
-        self.addOutput(o1)
+        self.addParameter(p3, createOutput=True)
+        # self.addOutput(o1)
         # self.mParameters.extend([p1, p2, o1])
 
     def prepareAlgorithm(self,
@@ -174,7 +176,8 @@ class SpectralProfileReader(_AbstractSpectralAlgorithm):
                                                       parentLayerParameterName=self.INPUT,
                                                       allowMultiple=False))
 
-        self.addOutput(SpectralProcessingProfilesOutput(self.OUTPUT, 'Spectral Profiles'))
+        self.addParameter(SpectralProcessingProfilesSink(self.OUTPUT, 'Spectral Profiles'), createOutput=True)
+        # self.addOutput(SpectralProcessingProfilesOutput(self.OUTPUT, 'Spectral Profiles'))
 
     def checkParameterValues(self,
                              parameters: dict,
@@ -213,7 +216,7 @@ class SpectralProfileReader(_AbstractSpectralAlgorithm):
         speclib: QgsVectorLayer = self.parameterAsVectorLayer(parameters, self.INPUT, context)
         field: typing.List[str] = self.parameterAsFields(parameters, self.INPUT_FIELD, context)
 
-        output_blocks = list(
+        output_blocks: typing.List[SpectralProfileBlock] = list(
             SpectralProfileBlock.fromSpectralProfiles(read_profiles(speclib, value_fields=field),
                                                       feedback=feedback)
         )

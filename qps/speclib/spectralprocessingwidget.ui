@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>653</width>
+    <width>701</width>
     <height>491</height>
    </rect>
   </property>
@@ -103,41 +103,6 @@
          <number>2</number>
         </property>
         <item>
-         <widget class="QToolBar" name="mToolBar">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="contextMenuPolicy">
-           <enum>Qt::DefaultContextMenu</enum>
-          </property>
-          <property name="windowTitle">
-           <string>Attribute Table Toolbar</string>
-          </property>
-          <property name="movable">
-           <bool>false</bool>
-          </property>
-          <property name="allowedAreas">
-           <set>Qt::NoToolBarArea</set>
-          </property>
-          <property name="iconSize">
-           <size>
-            <width>18</width>
-            <height>18</height>
-           </size>
-          </property>
-          <property name="floatable">
-           <bool>false</bool>
-          </property>
-          <addaction name="actionAddFunction"/>
-          <addaction name="actionLoadModel"/>
-          <addaction name="actionSaveModel"/>
-          <addaction name="actionRemoveFunction"/>
-         </widget>
-        </item>
-        <item>
          <widget class="SpectralProcessingModelTableView" name="mTableView">
           <property name="dragEnabled">
            <bool>true</bool>
@@ -174,7 +139,7 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>381</width>
+         <width>429</width>
          <height>487</height>
         </rect>
        </property>
