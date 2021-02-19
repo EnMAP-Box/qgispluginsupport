@@ -25,9 +25,15 @@
 """
 # noinspection PyPep8Naming
 import re
+import typing
 
 
 class QGISMetadataFileWriter(object):
+    """
+    A class to store and write the QGIS plugin metadata.txt
+    For details see:
+    https://docs.qgis.org/3.16/en/docs/pyqgis_developer_cookbook/plugins/plugins.html#plugin-metadata-table
+    """
 
     def __init__(self):
         self.mName = ''
@@ -43,10 +49,11 @@ class QGISMetadataFileWriter(object):
         self.mTracker = ''
         self.mRepository = ''
         self.mIsExperimental = ''
-        self.mHasProcessingProvider = False
-        self.mTags = []
-        self.mCategory = ''
-        self.mChangelog = ''
+        self.mHasProcessingProvider: bool = False
+        self.mTags: typing.List[str] = []
+        self.mCategory: str = ''
+        self.mChangelog: str = ''
+        self.mPlugin_dependencies: typing.List[str] = []
 
     def validate(self) -> bool:
 
@@ -83,6 +90,8 @@ class QGISMetadataFileWriter(object):
         if isinstance(self.mIsExperimental, bool):
             lines.append('experimental={}'.format(self.mIsExperimental))
 
+        if len(self.mPlugin_dependencies) > 0:
+            lines.append(f'plugin_dependencies={",".join(self.mPlugin_dependencies)}')
         # lines.append('deprecated={}'.format(self.mIsDeprecated))
         lines.append('')
         lines.append('changelog={}'.format(self.mChangelog))
