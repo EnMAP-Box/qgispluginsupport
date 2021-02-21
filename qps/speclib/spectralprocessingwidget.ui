@@ -116,6 +116,9 @@
           <attribute name="horizontalHeaderVisible">
            <bool>false</bool>
           </attribute>
+          <attribute name="horizontalHeaderStretchLastSection">
+           <bool>true</bool>
+          </attribute>
          </widget>
         </item>
        </layout>
@@ -191,6 +194,24 @@
    </property>
    <property name="text">
     <string>Save Model</string>
+   </property>
+  </action>
+  <action name="actionApplyModel">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mTaskRunning.svg</normaloff>:/images/themes/default/mTaskRunning.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Apply Model</string>
+   </property>
+  </action>
+  <action name="actionResetModel">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionReload.svg</normaloff>:/images/themes/default/mActionReload.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Reset Model</string>
    </property>
   </action>
  </widget>

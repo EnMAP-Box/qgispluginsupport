@@ -670,6 +670,7 @@ class SpectralProcessingTests(TestCase):
         reg, guiReg = self.initProcessingRegistry()
         reg: QgsProcessingRegistry
         guiReg: QgsProcessingGuiRegistry
+
         algs = spectral_algorithms()
 
         m = SpectralProcessingModelTableModel()
@@ -691,6 +692,33 @@ class SpectralProcessingTests(TestCase):
         self.assertTrue(selectedWrapper.name == 'AlgA2')
         m.removeAlgorithm(selectedWrapper)
         self.assertTrue(len(m) == n - 1)
+        self.showGui(tv)
+
+        model = m.createModel()
+        self.assertTrue(is_spectral_processing_model(model))
+
+        configuration = {}
+        feedback = QgsProcessingFeedback()
+        context = QgsProcessingContext()
+        context.setFeedback(feedback)
+
+        parameters = {}
+        for p in model.parameterDefinitions():
+            if isinstance(p, SpectralProcessingProfiles):
+                parameters[p.name()] = TestObjects.createSpectralLibrary()
+
+        self.assertTrue(model.prepareAlgorithm(parameters, context, feedback))
+        results = model.processAlgorithm(parameters, context, feedback)
+        for o in model.outputDefinitions():
+            self.assertTrue(o.name() in results.keys())
+            values = results[o.name()]
+            if isinstance(o, SpectralProcessingProfilesOutput):
+                self.assertIsInstance(values, list)
+                for block in values:
+                    self.assertIsInstance(block, SpectralProfileBlock)
+
+        s = ""
+
 
         self.showGui(tv)
 
