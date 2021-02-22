@@ -10,7 +10,7 @@ lyr = QgsVectorLayer(path)
 lyr.setName('Test')
 print(lyr.isValid())
 
-root = iface.layerTreeView().model().rootGroup()
+root = iface.layerTreeView().layerTreeModel().rootGroup()
 grp = root.addGroup('testGroup')
 grp.setItemVisibilityChecked(False)
 root.addLayer(lyr)
