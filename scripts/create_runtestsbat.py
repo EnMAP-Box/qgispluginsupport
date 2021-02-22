@@ -16,8 +16,11 @@ PREFACE_BAT = \
 """
 :: use this script to run unit tests locally
 ::
+
 @echo off
 set CI=True
+set PYTHONPATH=%~dp0;%PYTHONPATH%
+set PYTHONPATH
 
 WHERE python3 >nul 2>&1 && (
     echo Found "python3" command
@@ -32,10 +35,8 @@ start %PYTHON% runfirst.py
 
 PREFACE_SH = \
 """#!/bin/bash
-QT_QPA_PLATFORM=offscreen
-export QT_QPA_PLATFORM
-CI=True
-export CI
+export QT_QPA_PLATFORM=offscree
+export CI=True
 
 find . -name "*.pyc" -exec rm -f {} \;
 export PYTHONPATH="${PYTHONPATH}:$(pwd):/usr/share/qgis/python/plugins"
