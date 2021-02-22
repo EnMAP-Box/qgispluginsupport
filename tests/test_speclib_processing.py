@@ -726,6 +726,10 @@ class SpectralProcessingTests(TestCase):
         self.initProcessingRegistry()
         w = SpectralProcessingWidget()
 
+        for a in spectral_algorithms():
+            w.mProcessingModelTableModel.addAlgorithm(a)
+        for i in range(w.mProcessingModelTableModel.rowCount()):
+            w.mTableView.selectRow(i)
         self.showGui(w)
 
     def test_processing_algorithms(self):

@@ -40,7 +40,7 @@
       </property>
       <widget class="QgsCollapsibleGroupBox" name="mGroupBox">
        <property name="title">
-        <string>Spectral Algorithms</string>
+        <string>Spectral Processing Algorithms</string>
        </property>
        <property name="checkable">
         <bool>false</bool>
@@ -84,12 +84,9 @@
         </sizepolicy>
        </property>
        <property name="title">
-        <string>Model</string>
+        <string>Spectral Processing Model</string>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout">
-        <property name="spacing">
-         <number>2</number>
-        </property>
+       <layout class="QGridLayout" name="gridLayout">
         <property name="leftMargin">
          <number>2</number>
         </property>
@@ -102,7 +99,28 @@
         <property name="bottomMargin">
          <number>2</number>
         </property>
-        <item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="tbModelGroup">
+          <property name="placeholderText">
+           <string>Model Group</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="tbModelName">
+          <property name="placeholderText">
+           <string>Model Name</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Name</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" colspan="2">
          <widget class="SpectralProcessingModelTableView" name="mTableView">
           <property name="dragEnabled">
            <bool>true</bool>
@@ -121,6 +139,13 @@
           </attribute>
          </widget>
         </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Group</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </widget>
@@ -137,7 +162,7 @@
       <property name="widgetResizable">
        <bool>true</bool>
       </property>
-      <widget class="QWidget" name="scrollAreaWidgetContents">
+      <widget class="QWidget" name="scrollAreaContents">
        <property name="geometry">
         <rect>
          <x>0</x>
