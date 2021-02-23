@@ -1508,11 +1508,22 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         parameters = {self.mUnitConverterAlg.INPUT: blocks,
                       self.mUnitConverterAlg.TARGET_XUNIT: self.xUnit()}
         results = self.mUnitConverterAlg.processAlgorithm(parameters, context, feedback)
+        blocks = results[self.mUnitConverterAlg.OUTPUT]
 
         # todo: apply other spectral processing things
         model = self.spectralModel()
         if is_spectral_processing_model(model):
             parameters = {}
+            for p in model.parameterDefinitions():
+                if isinstance(p, SpectralProcessingProfiles):
+                    parameters[p.name()] = blocks
+
+            results2 = model.processAlgorithm(parameters, context, feedback)
+            if isinstance(results2, dict):
+                for p in model.outputDefinitions():
+                    if isinstance(p, SpectralProcessingProfilesOutput):
+                        blocks = results2[p.name()]
+
 
 
         blocks: typing.List[SpectralProfileBlock] = results['output_profiles']
@@ -1707,7 +1718,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         return self.mSpectralModel
 
     def setSpectralModel(self, model: QgsProcessingModelAlgorithm):
-        assert is_spectral_processing_model(model, QgsProcessingModelAlgorithm)
+        assert is_spectral_processing_model(model)
         self.mSpectralModel = model
         self.updatePlotDataItemValues()
 
