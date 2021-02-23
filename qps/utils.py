@@ -65,7 +65,8 @@ try:
     from .. import qps
 except:
     import qps
-from . import DIR_UI_FILES
+
+
 
 # dictionary to store form classes and avoid multiple calls to read <myui>.i
 QGIS_RESOURCE_WARNINGS = set()
@@ -966,6 +967,8 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
 
     assert os.path.isfile(uifile), '*.ui file does not exist: {}'.format(uifile)
 
+    from .resources import REGEX_QGIS_IMAGES_QRC
+
     with open(uifile, 'r', encoding='utf-8') as f:
         txt = f.read()
 
@@ -973,12 +976,17 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
 
     locations = []
 
+    # replace local path to QGIS repository images with that used in the QGIS Application
+    txt = re.sub(r'resource="[^":]*/QGIS[^\/"]*[\/]images[\/]images\.qrc"', 'resource=":/images/images.qrc"', txt)
+
     for m in re.findall(r'(<include location="(.*\.qrc)"/>)', txt):
         locations.append(m)
 
     missing = []
     for t in locations:
         line, path = t
+        if REGEX_QGIS_IMAGES_QRC.search(path):
+            continue
         if not os.path.isabs(path):
             p = os.path.join(dirUi, path)
         else:
@@ -987,37 +995,12 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
         if not os.path.isfile(p):
             missing.append(t)
 
-    match = re.search(r'resource="[^:].*/QGIS[^/"]*/images/images.qrc"', txt)
-    if match:
-        txt = txt.replace(match.group(), 'resource=":/images/images.qrc"')
-
     if len(missing) > 0:
-
-        missingQrc = []
-        missingQgs = []
-
-        for t in missing:
+        print('{}\nrefers to {} none-existing resource (*.qrc) file(s):'.format(uifile, len(missing)))
+        for i, t in enumerate(missing):
             line, path = t
-            if re.search(r'.*(?i:qgis)/images/images\.qrc.*', line):
-                missingQgs.append(m)
-            else:
-                missingQrc.append(m)
+            print('{}: "{}"'.format(i + 1, path), file=sys.stderr)
 
-        if len(missingQrc) > 0:
-            print('{}\nrefers to {} none-existing resource (*.qrc) file(s):'.format(uifile, len(missingQrc)))
-            for i, t in enumerate(missingQrc):
-                line, path = t
-                print('{}: "{}"'.format(i + 1, path), file=sys.stderr)
-
-        if len(missingQgs) > 0 and not isinstance(qgisAppQgisInterface(), QgisInterface):
-            missingFiles = [p[1] for p in missingQrc if p[1] not in QGIS_RESOURCE_WARNINGS]
-
-            if len(missingFiles) > 0:
-                print('{}\nrefers to {} none-existing resource (*.qrc) file(s) '.format(uifile, len(missingFiles)))
-                for i, path in enumerate(missingFiles):
-                    print('{}: "{}"'.format(i + 1, path))
-                    QGIS_RESOURCE_WARNINGS.add(path)
-                print('These files are likely available in a QGIS Desktop session. Further warnings will be skipped')
 
     doc = QDomDocument()
     doc.setContent(txt)
