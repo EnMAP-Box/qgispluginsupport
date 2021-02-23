@@ -65,7 +65,7 @@ SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 MAX_PDIS_DEFAULT: int = 256
 
 # do not show spectral processing widget in production releases
-SHOW_SPECTRAL_PROCESSING_WIDGETS: bool = os.environ.get('DEBUG', 'false').lower() in ['1', 'true']
+# SHOW_SPECTRAL_PROCESSING_WIDGETS: bool = os.environ.get('DEBUG', 'false').lower() in ['1', 'true']
 
 
 class SpectralXAxis(pg.AxisItem):
@@ -1511,6 +1511,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         # todo: apply other spectral processing things
         model = self.spectralModel()
+        if is_spectral_processing_model(model):
+            parameters = {}
+
 
         blocks: typing.List[SpectralProfileBlock] = results['output_profiles']
         # self.blockSignals(True)
@@ -1704,8 +1707,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         return self.mSpectralModel
 
     def setSpectralModel(self, model: QgsProcessingModelAlgorithm):
-        assert isinstance(model, QgsProcessingModelAlgorithm)
-
+        assert is_spectral_processing_model(model, QgsProcessingModelAlgorithm)
+        self.mSpectralModel = model
         self.updatePlotDataItemValues()
 
     def updatePlotDataItemStyles(self, pdis: typing.List[SpectralProfilePlotDataItem] = None):
@@ -2529,8 +2532,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         from .processing import SpectralProcessingWidget
         self.pageProcessingWidget: SpectralProcessingWidget = SpectralProcessingWidget()
-        self.pageProcessingWidget.sigSpectralMathChanged.connect(
-            lambda *args: self.mPlotWidget.setSpectralModel(self.pageProcessingWidget.spectralMathStack()))
+        self.pageProcessingWidget.sigSpectralProcessingModelChanged.connect(
+            lambda *args: self.mPlotWidget.setSpectralModel(self.pageProcessingWidget.model()))
 
         l = QVBoxLayout()
         l.addWidget(self.mPlotWidget)
@@ -2621,19 +2624,19 @@ class SpectralLibraryWidget(AttributeTableWidget):
             lambda: self.widgetCenter.setCurrentWidget(self.pageProcessingWidget))
 
         self.tbSpectralProcessing = QToolBar('Spectral Processing')
-        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionAddFunction)
-        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionLoadModel)
+
+        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionApplyModel)
+        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionVerifyModel)
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionSaveModel)
+        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionLoadModel)
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionRemoveFunction)
 
-        if SHOW_SPECTRAL_PROCESSING_WIDGETS:
-            r = self.tbSpeclibAction.addSeparator()
-            self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
-            self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
-            self.addToolBar(self.tbSpectralProcessing)
-        else:
-            self.actionShowAttributeTable.setVisible(False)
-            self.actionShowProcessingWidget.setVisible(False)
+        self.addToolBar(self.tbSpectralProcessing)
+
+        r = self.tbSpeclibAction.addSeparator()
+        self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
+        self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
+
 
         # update toolbar visibilities
         self.onCenterWidgetChanged()

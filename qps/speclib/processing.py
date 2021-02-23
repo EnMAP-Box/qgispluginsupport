@@ -28,12 +28,13 @@ import collections
 import typing
 import importlib
 import inspect
+import warnings
 import os
 import enum
 import pathlib
 import pickle
 from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import QIcon, QColor, QFont, QFontInfo, QContextMenuEvent
+from qgis.PyQt.QtGui import QIcon, QColor, QFont, QFontInfo, QContextMenuEvent, QClipboard
 from qgis.PyQt.QtXml import QDomElement, QDomDocument, QDomNode, QDomCDATASection
 from qgis.PyQt.QtWidgets import QPlainTextEdit, QWidget, QTableView, QTreeView, \
     QLabel, QComboBox, QSpacerItem, QSizePolicy, \
@@ -182,10 +183,11 @@ class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
         :param context:
         :return: bool
         """
-        if isinstance(input, SpectralLibrary):
+        if isinstance(input, (SpectralLibrary, SpectralProfileBlock)):
             return True
         if isinstance(input, list):
             return all([isinstance(i, SpectralProfileBlock) for i in input])
+
         return False
 
     def parameterAsSpectralProfileBlockList(self, parameters: dict, context: QgsProcessingContext) \
@@ -243,6 +245,8 @@ def parameterAsSpectralProfileBlockList(parameters: dict,
         blocks = list(value.profileBlocks())
     elif isinstance(value, SpectralProfile):
         blocks = [SpectralProfileBlock.fromSpectralProfile(value)]
+    elif isinstance(value, SpectralProfileBlock):
+        blocks = [value]
     elif isinstance(value, typing.Generator):
         blocks = list(value)
         for b in blocks:
@@ -442,11 +446,14 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QObject):
     A wrapper to keep a references on QgsProcessingAlgorithm
     and related parameter values and widgets
     """
+    sigParameterValueChanged = pyqtSignal(str)
+
     def __init__(self, alg: QgsProcessingAlgorithm, context: QgsProcessingContext = None):
         super().__init__()
         self.alg: QgsProcessingAlgorithm = alg
         self.name: str = alg.displayName()
-        self.parameters: typing.Dict = dict()
+        self.parameterValuesDefault: typing.Dict[str, typing.Any] = dict()
+        self.tooltip: str = ''
         self.parameterWrappers: typing.Dict[str, QgsAbstractProcessingParameterWidgetWrapper] = \
             collections.OrderedDict()
         self._mWidgets = []
@@ -460,23 +467,87 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QObject):
             if isinstance(param, (SpectralProcessingProfiles, SpectralProcessingProfilesSink)):
                 continue
             pWrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
+            pWrapper.widgetValueHasChanged.connect(self.onWrapperWidgetChanged)
             self.parameterWrappers[param.name()] = pWrapper
+            self.parameterValuesDefault[param.name()] = param.defaultValue()
+
+        for w in self.parameterWrappers.values():
+            w.postInitialize(self.parameterWrappers.values())
+
+        self.verify()
+
+    def parameterValues(self) -> typing.Dict[str, typing.Any]:
+        parameters = dict()
+        for pname, w in self.parameterWrappers.items():
+            parameters[pname] = w.parameterValue()
+        return parameters
+
+    def onWrapperWidgetChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
+        self.verify()
+        self.sigParameterValueChanged.emit(wrapper.parameterDefinition().name())
+
+    def verify(self) -> bool:
+        msg = []
+        undefined = self.undefinedParameters()
+        if len(undefined) > 0:
+            msg.append(f'Undefined parameters: {",".join([p.name() for p in undefined])}')
+        else:
+            s = ""
+
+        msg = ','.join(msg)
+        if len(msg) == 0:
+            self.tooltip = f'{self.alg.displayName()}\n{self.alg.shortDescription()}'
+            return True, msg
+        else:
+            self.tooltip = f'{self.alg.displayName()}\n{self.alg.shortDescription()}\n\n{msg}'
+            return False, msg
+
+        return len(msg) == 0, msg
+
+    def setParameterValue(self, parameter, value) -> bool:
+
+        if isinstance(parameter, QgsProcessingParameterDefinition):
+            parameter = parameter.name()
+        assert isinstance(parameter, str)
+        p: QgsProcessingParameterDefinition = self.alg.parameterDefinition(parameter)
+        assert isinstance(p, QgsProcessingParameterDefinition)
+
+
+        accepted = p.checkValueIsAcceptable(value, self.processing_context)
+
+        if accepted:
+            self.parameterValues[parameter] = value
+            return True
+        else:
+            return False
+
+    def undefinedParameters(self) -> typing.List[QgsProcessingParameterDefinition]:
+        """
+        Return the paramters with missing values
+        :return:
+        :rtype:
+        """
+        missing = []
+
+        for pname, w in self.parameterWrappers.items():
+            pname: str
+            w:  QgsAbstractProcessingParameterWidgetWrapper
+            p = w.parameterDefinition()
+            if isinstance(p, (SpectralProcessingProfiles, SpectralProcessingProfilesSink)):
+                # will be connected automatically
+                continue
+            if not bool(p.flags() & QgsProcessingParameterDefinition.FlagOptional) and p.defaultValue() is None:
+                value = w.parameterValue()
+                if value is None:
+                    missing.append(p)
+        return missing
 
     def allParametersDefined(self) -> bool:
         """
         Returns True if all required parameters are set
         :return:
         """
-        for p in self.alg.parameterDefinitions():
-            if isinstance(p, (SpectralProcessingProfiles, SpectralProcessingProfilesSink)):
-                # will be connected automatically
-                continue
-            if p.name() not in self.parameters.keys() and \
-                    (bool(
-                        p.flags() & QgsProcessingParameterDefinition.FlagOptional) == False and p.defaultValue() is None):
-                return False
-
-        return True
+        return len(self.undefinedParameters()) == 0
 
     def __hash__(self):
         return hash((self.alg.name(), id(self)))
@@ -533,10 +604,11 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
         previous_cid: str = None
         previous_calg: QgsProcessingModelChildAlgorithm = None
 
-        if len(self) == 0:
+        active_wrappers = [w for w in self if w.is_active]
+        if len(active_wrappers) == 0:
             return None
 
-        for w in self:
+        for w in active_wrappers:
             w: SpectralProcessingModelTableModelAlgorithmWrapper
             if not w.is_active:
                 continue
@@ -575,7 +647,12 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
                                              [QgsProcessingModelChildParameterSource.fromChildOutput(previous_cid,
                                                                                                      sink.name())])
 
-            # todo: add none-profile parameter sources (which are not set / connected automatically)
+            # add none-profile parameter sources (which are not set / connected automatically)
+            for parameter in w.alg.parameterDefinitions():
+                value = w.parameterValues().get(parameter.name())
+                # todo: handle expressions
+                calg.addParameterSources(parameter.name(),
+                                         [QgsProcessingModelChildParameterSource.fromStaticValue(value)])
 
             if len(calg.parameterSources()) == 0:
                 raise Exception('Unable to retrieve sources for {}')
@@ -610,7 +687,12 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
         return self.createIndex(row, column, wrapper)
     """
 
-    def _algWrapper(self, index) -> SpectralProcessingModelTableModelAlgorithmWrapper:
+    def wrapper2idx(self, wrapper: SpectralProcessingModelTableModelAlgorithmWrapper) -> QModelIndex:
+        assert isinstance(wrapper, SpectralProcessingModelTableModelAlgorithmWrapper)
+        row = self.mAlgorithmWrappers.index(wrapper)
+        return self.index(row, 0)
+
+    def idx2wrapper(self, index) -> SpectralProcessingModelTableModelAlgorithmWrapper:
 
         if isinstance(index, QModelIndex):
             index = index.row()
@@ -629,13 +711,13 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
         if not index.isValid():
             return None
         col = index.column()
-        wrapper = self._algWrapper(index)
+        wrapper = self.idx2wrapper(index)
 
         if role == Qt.DisplayRole:
             if col == 0:
                 return wrapper.name
             if col == 1:
-                return str(wrapper.parameters)
+                return str(wrapper.parameterValues())
         if role == Qt.DecorationRole:
             if col == 0:
                 if wrapper.allParametersDefined():
@@ -652,9 +734,9 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
 
         if role == Qt.ToolTipRole:
             if col == 0:
-                return wrapper.alg.description()
+                return wrapper.tooltip
             if col == 1:
-                return '\n'.join(f'{k}:{v}' for k, v in wrapper.parameters.items())
+                return '\n'.join(f'{k}:{v}' for k, v in wrapper.parameterValues().items())
 
         if role == Qt.CheckStateRole:
             if col == 0:
@@ -675,7 +757,7 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
         if not index.isValid():
             return False
 
-        wrapper = self._algWrapper(index)
+        wrapper = self.idx2wrapper(index)
 
         changed = False
         if index.column() == 0:
@@ -730,7 +812,7 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
             index = self.rowCount()
 
         names = [w.name for w in self]
-
+        wrapper.sigParameterValueChanged.connect(self.onParameterChanged)
         self.beginInsertRows(QModelIndex(), index, index)
         if name:
             wrapper.name = name
@@ -744,6 +826,14 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
             wrapper.name = name2
         self.mAlgorithmWrappers.insert(index, wrapper)
         self.endInsertRows()
+
+    def onParameterChanged(self, parameter_name: str):
+        w = self.sender()
+        if isinstance(w, SpectralProcessingModelTableModelAlgorithmWrapper) and w in self.mAlgorithmWrappers:
+            row = self.mAlgorithmWrappers.index(w)
+            self.dataChanged.emit(self.index(row, 0),
+                                  self.index(row, self.columnCount()),
+                                  [Qt.DisplayRole, Qt.DecorationRole])
 
     def addAlgorithm(self, alg, name: str = None):
         self.insertAlgorithm(alg, -1, name=name)
@@ -771,7 +861,15 @@ class SpectralProcessingModelTableView(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
 
     def selectedAlgorithmWrappers(
-            self) -> SpectralProcessingModelTableModelAlgorithmWrapper:
+            self) -> typing.List[SpectralProcessingModelTableModelAlgorithmWrapper]:
+        wrappers = set()
+        for idx in self.selectedIndexes():
+            w = idx.data(Qt.UserRole)
+            if isinstance(w, SpectralProcessingModelTableModelAlgorithmWrapper):
+                wrappers.add(w)
+        return list(wrappers)
+
+    def currentAlgorithmWrapper(self) -> SpectralProcessingModelTableModelAlgorithmWrapper:
         w = self.currentIndex().data(Qt.UserRole)
         if isinstance(w, SpectralProcessingModelTableModelAlgorithmWrapper):
             return w
@@ -788,6 +886,7 @@ class SpectralProcessingModelTableView(QTableView):
         :param indices:
         :return:
         """
+
         if indices is None:
             indices = self.selectedIndexes()
 
@@ -795,7 +894,6 @@ class SpectralProcessingModelTableView(QTableView):
         wrappers = set()
         for i in indices:
             wrappers.add(i.data(Qt.UserRole))
-
         for w in wrappers:
             if isinstance(w, SpectralProcessingModelTableModelAlgorithmWrapper):
                 m.removeAlgorithm(w)
@@ -871,7 +969,7 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
 
 
 class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
-    sigSpectralMathChanged = pyqtSignal()
+    sigSpectralProcessingModelChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -889,6 +987,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         # self.mProcessingModel = SimpleProcessingModelAlgorithm()
         self.mProcessingModelTableModel = SpectralProcessingModelTableModel()
         self.mProcessingModelTableModel.setProcessingContext(self.mProcessingContext)
+        # self.mProcessingModelTableModel.dataChanged.connect(self.verifyModel)
 
         self.tbModelGroup.textChanged.connect(self.mProcessingModelTableModel.setModelGroup)
         self.tbModelName.textChanged.connect(self.mProcessingModelTableModel.setModelName)
@@ -908,11 +1007,76 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         self.mTestProfile = QgsFeature()
         self.mCurrentFunction: QgsProcessingAlgorithm = None
 
+        self.actionRemoveFunction.triggered.connect(self.mTableView.onRemoveSelected)
+        self.actionApplyModel.triggered.connect(self.onApplyModel)
+        self.actionResetModel.triggered.connect(self.onResetModel)
+        self.actionVerifyModel.triggered.connect(self.verifyModel)
+
+        self.actionCopyLog.triggered.connect(self.onCopyLog)
+        self.actionClearLog.triggered.connect(self.tbLogs.clear)
+        self.actionSaveLog.triggered.connect(self.onSaveLog)
+
+        self.btnCopyLog.setDefaultAction(self.actionCopyLog)
+        self.btnClearLog.setDefaultAction(self.actionClearLog)
+        self.btnSaveLog.setDefaultAction(self.actionSaveLog)
+
         for tb in self.findChildren(QToolButton):
             tb: QToolButton
             a: QAction = tb.defaultAction()
             if isinstance(a, QAction) and isinstance(a.menu(), QMenu):
                 tb.setPopupMode(QToolButton.MenuButtonPopup)
+
+    def onCopyLog(self):
+        QgsApplication.clipboard().setText(self.tbLogs.tbLogs.toPlainText())
+        # todo: add HTML
+
+    def onSaveLog(self):
+        pass
+
+    def currentAlgorithm(self) -> SpectralProcessingModelTableModelAlgorithmWrapper:
+        return self.mTableView.currentAlgorithmWrapper()
+
+    def onApplyModel(self, *args):
+        # verify model
+        valid, msg = self.verifyModel()
+        if valid:
+            self.sigSpectralProcessingModelChanged.emit()
+
+    def onResetModel(self, *args):
+        s = ""
+
+    def verifyModel(self, *args) -> typing.Tuple[bool, str]:
+        msg = []
+
+        model = self.processingTableModel().createModel()
+
+        if not is_spectral_processing_model(model):
+            msg = ['Unable to create spectral processing model']
+        else:
+            feedback = QgsProcessingFeedback()
+            context = QgsProcessingContext()
+            context.setFeedback(feedback)
+            parameters = dict()
+            for p  in model.parameterDefinitions():
+                if isinstance(p, SpectralProcessingProfiles):
+                    parameters[p.name()] = SpectralProfileBlock.dummy()
+                else:
+                    parameters[p.name()] = p.defaultValue()
+
+            _valid, _msg = model.checkParameterValues(parameters, context)
+            if not _valid:
+                msg.append(feedback.textLog())
+                msg.append(_msg)
+
+        msg = '\n'.join(msg)
+        is_valid = len(msg) == 0
+        self.actionApplyModel.setEnabled(is_valid)
+        if not is_valid:
+            self.tbLogs.append('\n'+msg)
+            self.tabWidget.setCurrentWidget(self.tabLog)
+        else:
+            self.tbLogs.append('Created valid model')
+        return is_valid, msg
 
     def onCurrentAlgorithmChanged(self, current, previous):
 
@@ -948,16 +1112,17 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
                 label = QLabel('No parameters to set')
                 grid.addWidget(label, row, 0, 1, -1)
 
-
-
     def onTreeViewDoubleClicked(self, *args):
 
         alg = self.mTreeView.selectedAlgorithm()
         if is_spectral_processing_algorithm(alg, SpectralProfileIOFlag.Outputs | SpectralProfileIOFlag.Inputs):
             self.mProcessingModelTableModel.addAlgorithm(alg)
 
-    def functionModel(self):
-        return self.mProcessingModel
+    def processingTableModel(self) -> SpectralProcessingModelTableModel:
+        return self.mProcessingModelTableModel
+
+    def model(self) -> QgsProcessingModelAlgorithm:
+        return self.processingTableModel().createModel()
 
     def onSelectionChanged(self, selected, deselected):
 

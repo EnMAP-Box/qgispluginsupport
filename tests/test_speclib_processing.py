@@ -38,7 +38,7 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
         self.mParameters = []
         self.mFunction: typing.Callable = None
 
-    def description(self) -> str:
+    def shortDescription(self) -> str:
         return 'This is a spectral processing algorithm'
 
     def initAlgorithm(self, configuration: dict):
@@ -46,7 +46,11 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
         p1 = SpectralProcessingProfiles(self.INPUT, description='Input Profiles')
         self.addParameter(p1, createOutput=False)
         self.addParameter(QgsProcessingParameterString(
-            self.CODE, description='Python code', defaultValue='', multiLine=True, optional=False
+            self.CODE,
+            description='Python code',
+            defaultValue='result_txt="Hello World"',
+            multiLine=True,
+            optional=False
         ))
         p3 = SpectralProcessingProfilesSink(self.OUTPUT, description='Output Profiles')
         self.addParameter(p3, createOutput=True)
@@ -94,8 +98,9 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
                              parameters: dict,
                              context: QgsProcessingContext,
                              ):
-        result, msg = super().checkParameterValues(parameters, context)
 
+        result, msg = super().checkParameterValues(parameters, context)
+        print(('A', result, msg))
         if not self.parameterDefinition(self.INPUT).checkValueIsAcceptable(parameters[self.INPUT], context):
             msg += f'Unable to read {self.INPUT}'
 
@@ -104,7 +109,15 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
             msg += f'Unable to read {self.CODE}'
 
         code = parameters[self.CODE]
-        s = ""
+        dummyblock = SpectralProfileBlock.dummy()
+        para2 = parameters.copy()
+        para2['profiles'] = dummyblock
+        try:
+            exec(code, para2)
+            assert 'profiles' in para2
+        except Exception as ex:
+            result = False
+            msg += f'\n{ex}'
         return result and len(msg) > 0, msg
 
     def createCustomParametersWidget(self) -> QWidget:
@@ -441,6 +454,7 @@ class SpectralProcessingTests(TestCase):
             provider._algs.extend([
                 SpectralProfileReader(),
                 SpectralProfileWriter(),
+                SpectralXUnitConversion(),
                 SpectralProcessingAlgorithmExample()
             ])
             provider.refreshAlgorithms()
@@ -740,7 +754,14 @@ class SpectralProcessingTests(TestCase):
             w.mProcessingModelTableModel.addAlgorithm(a)
         for i in range(w.mProcessingModelTableModel.rowCount()):
             w.mTableView.selectRow(i)
-        self.showGui(w)
+        M = QMainWindow()
+        M.setCentralWidget(w)
+        toolbar = QToolBar()
+        for a in w.findChildren(QAction):
+            toolbar.addAction(a)
+        M.addToolBar(toolbar)
+        w.verifyModel()
+        self.showGui(M)
 
     def test_processing_algorithms(self):
         self.initProcessingRegistry()

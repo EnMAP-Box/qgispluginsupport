@@ -1344,6 +1344,18 @@ class SpectralProfileBlock(object):
     """
 
     @staticmethod
+    def dummy() -> typing.Optional['SpectralProfileBlock']:
+        """
+        Creates a dummy block. For testing only
+        :return:
+        :rtype:
+        """
+        array = np.asarray([10, 20, 30])
+        array = array.reshape((3, 1, 1,))
+        settings = SpectralSetting([300, 400, 500], xUnit='nm')
+        return SpectralProfileBlock(array, settings)
+
+    @staticmethod
     def fromSpectralProfiles(profiles: typing.List[SpectralProfile],
                              feedback: QgsProcessingFeedback = None):
 
@@ -2763,7 +2775,8 @@ class SpectralLibrary(QgsVectorLayer):
         # todo: allow to add profiles with distinct key
 
         if progressDialog is not None:
-            warnings.warn('Deprecated progressDialog. Use feedback: QgsProcessingFeedback instead', DeprecationWarning, stacklevel=2)
+            warnings.warn('Deprecated progressDialog. Use feedback: QgsProcessingFeedback instead', DeprecationWarning,
+                          stacklevel=2)
         if isinstance(profiles, SpectralProfile):
             profiles = [profiles]
 

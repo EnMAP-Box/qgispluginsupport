@@ -131,22 +131,25 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
             feedback.pushConsoleInfo(f'Process profile block {i + 1}/{n_blocks}')
 
             spectralSetting = profileBlock.spectralSetting()
-
-            f = self.mUnitConverterFunctionModel.convertFunction(spectralSetting.xUnit(), targetUnit)
-            if callable(f):
-                xValuesNew = f(profileBlock.xValues())
-                settingOut = SpectralSetting(xValuesNew,
-                                             xUnit=targetUnit,
-                                             yUnit=spectralSetting.yUnit(),
-                                             )
-                blockOut = SpectralProfileBlock(profileBlock.data(),
-                                                spectralSetting=settingOut,
-                                                profileKeys=profileBlock.profileKeys(),
-                                                metadata=profileBlock.metadata())
-                output_profiles.append(blockOut)
+            if spectralSetting.xUnit() == targetUnit:
+                # output unit is already correct
+                output_profiles.append(profileBlock)
             else:
-                feedback.pushConsoleInfo(f'Unable to convert {profileBlock.n_profiles()} profiles '
-                                         f'with {spectralSetting} to {targetUnit}')
+                f = self.mUnitConverterFunctionModel.convertFunction(spectralSetting.xUnit(), targetUnit)
+                if callable(f):
+                    xValuesNew = f(profileBlock.xValues())
+                    settingOut = SpectralSetting(xValuesNew,
+                                                 xUnit=targetUnit,
+                                                 yUnit=spectralSetting.yUnit(),
+                                                 )
+                    blockOut = SpectralProfileBlock(profileBlock.data(),
+                                                    spectralSetting=settingOut,
+                                                    profileKeys=profileBlock.profileKeys(),
+                                                    metadata=profileBlock.metadata())
+                    output_profiles.append(blockOut)
+                else:
+                    feedback.pushConsoleInfo(f'Unable to convert {profileBlock.n_profiles()} profiles '
+                                             f'with {spectralSetting} to {targetUnit}')
 
         OUTPUTS = {self.OUTPUT: output_profiles}
         return OUTPUTS
@@ -164,7 +167,7 @@ class SpectralProfileReader(_AbstractSpectralAlgorithm):
         super().__init__()
         self.mParameters = []
 
-    def description(self) -> str:
+    def shortDescription(self) -> str:
         return 'Reads spectral profiles'
 
     def initAlgorithm(self, configuration: dict):
@@ -234,7 +237,7 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
         super().__init__()
         self.mParameters = []
 
-    def description(self) -> str:
+    def shortDescription(self) -> str:
         return 'Writes spectral profiles'
 
     def initAlgorithm(self, configuration: dict):

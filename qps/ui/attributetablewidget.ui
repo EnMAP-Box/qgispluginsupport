@@ -41,9 +41,12 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
+      <property name="opaqueResize">
+       <bool>false</bool>
+      </property>
       <widget class="QWidget" name="widgetRight" native="true"/>
       <widget class="QStackedWidget" name="widgetCenter">
-       <widget class="QWidget" name="pageAttributeTable" native="true">
+       <widget class="QWidget" name="pageAttributeTable">
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <property name="spacing">
           <number>2</number>

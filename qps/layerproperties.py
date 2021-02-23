@@ -85,6 +85,7 @@ from qgis.gui import \
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .utils import *
+from . import DIR_UI_FILES
 from .vectorlayertools import VectorLayerTools
 
 """
