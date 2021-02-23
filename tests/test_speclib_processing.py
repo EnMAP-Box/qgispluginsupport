@@ -17,7 +17,7 @@ from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, Q
     QgsProcessingParameterDefinition, QgsProcessingModelAlgorithm, QgsProcessingFeedback, \
     QgsProcessingModelChildAlgorithm, QgsProcessingModelChildParameterSource, \
     QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterVectorLayer, QgsProcessingModelParameter, \
-    QgsProcessingModelOutput, QgsProcessingOutputVectorLayer
+    QgsProcessingModelOutput, QgsProcessingOutputVectorLayer, QgsProcessingParameterString
 
 from qps import initResources
 from qps.testing import TestObjects, TestCase, StartOptions
@@ -30,6 +30,7 @@ from qps.testing import TestCase, TestAlgorithmProvider
 class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
     NAME = 'spectral_processing_algorithm_example'
     INPUT = 'Input_Profiles'
+    CODE = 'python_code'
     OUTPUT = 'Output_Profiles'
 
     def __init__(self):
@@ -44,8 +45,11 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
 
         p1 = SpectralProcessingProfiles(self.INPUT, description='Input Profiles')
         self.addParameter(p1, createOutput=False)
-        p2 = SpectralProcessingProfilesSink(self.OUTPUT, description='Output Profiles')
-        self.addParameter(p2, createOutput=True)
+        self.addParameter(QgsProcessingParameterString(
+            self.CODE, description='Python code', defaultValue='', multiLine=True, optional=False
+        ))
+        p3 = SpectralProcessingProfilesSink(self.OUTPUT, description='Output Profiles')
+        self.addParameter(p3, createOutput=True)
         # p2 = SpectralProcessingProfilesOutput(self.OUTPUT, description='Output Profiles')
         # self.addOutput(p2)
 
@@ -95,6 +99,12 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
         if not self.parameterDefinition(self.INPUT).checkValueIsAcceptable(parameters[self.INPUT], context):
             msg += f'Unable to read {self.INPUT}'
 
+        # check if we can evaluate the python code
+        if not self.parameterDefinition(self.CODE).checkValueIsAcceptable(parameters[self.CODE], context):
+            msg += f'Unable to read {self.CODE}'
+
+        code = parameters[self.CODE]
+        s = ""
         return result and len(msg) > 0, msg
 
     def createCustomParametersWidget(self) -> QWidget:
