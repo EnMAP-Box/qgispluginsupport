@@ -45,7 +45,7 @@ from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, 
     QgsProcessingModelAlgorithm, QgsApplication, QgsProcessingDestinationParameter, \
     QgsProcessingFeatureSource, QgsProcessingOutputDefinition, QgsProcessingParameterVectorLayer, \
     QgsProcessingModelChildAlgorithm, \
-    QgsProcessingRegistry, QgsProcessingModelOutput, QgsProcessingModelParameter
+    QgsProcessingRegistry, QgsProcessingModelOutput, QgsProcessingModelParameter, QgsProcessingParameterEnum
 
 from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython, QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
@@ -483,6 +483,7 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QObject):
         return parameters
 
     def onWrapperWidgetChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
+        print(f'new value: {wrapper.parameterValue()} :: {wrapper.widgetValue()}')
         self.verify()
         self.sigParameterValueChanged.emit(wrapper.parameterDefinition().name())
 
@@ -1099,8 +1100,13 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             alg: QgsProcessingAlgorithm = wrapper.alg
             for pName, pWrapper in wrapper.parameterWrappers.items():
                 pWrapper: QgsAbstractProcessingParameterWidgetWrapper
-                label = pWrapper.createWrappedLabel()
-                widget = pWrapper.createWrappedWidget(self.processingContext())
+                label = pWrapper.wrappedLabel()
+                widget = pWrapper.wrappedWidget()
+                if label is None:
+                    label = pWrapper.createWrappedLabel()
+                if widget is None:
+                    widget = pWrapper.createWrappedWidget(self.processingContext())
+
                 self.mCurrentParameterLabels[pName] = label
                 self.mCurrentParameterWidgets[pName] = widget
                 self.mCurrentParameterWrappers[pName] = pWrapper

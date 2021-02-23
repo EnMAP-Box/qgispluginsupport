@@ -94,7 +94,7 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
         p2 = QgsProcessingParameterEnum(self.TARGET_XUNIT,
                                         description='Target x/wavelength unit',
                                         options=self.mUnitModel.mUnits,
-                                        defaultValue='nm',
+                                        defaultValue=0,
                                         )
         p3 = SpectralProcessingProfilesSink(self.OUTPUT)
         # o1 = SpectralProcessingProfilesOutput(self.OUTPUT)
@@ -119,7 +119,8 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
 
-        targetUnit = self.parameterAsString(parameters, self.TARGET_XUNIT, context)
+        targetUnit = self.parameterAsEnum(parameters, self.TARGET_XUNIT, context)
+        targetUnit = self.mUnitModel.units[targetUnit]
         input_profiles = parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
         output_profiles: typing.List[SpectralProcessingProfilesOutput] = []
         n_blocks = len(input_profiles)
