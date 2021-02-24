@@ -450,7 +450,7 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QObject):
 
     def __init__(self, alg: QgsProcessingAlgorithm, context: QgsProcessingContext = None):
         super().__init__()
-        self.alg: QgsProcessingAlgorithm = alg
+        self.alg: QgsProcessingAlgorithm = alg.create({})
         self.name: str = alg.displayName()
         self.parameterValuesDefault: typing.Dict[str, typing.Any] = dict()
         self.tooltip: str = ''
@@ -483,6 +483,7 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QObject):
         return parameters
 
     def onWrapperWidgetChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
+        print(wrapper)
         print(f'new value: {wrapper.parameterValue()} :: {wrapper.widgetValue()}')
         self.verify()
         self.sigParameterValueChanged.emit(wrapper.parameterDefinition().name())
@@ -504,23 +505,6 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QObject):
             return False, msg
 
         return len(msg) == 0, msg
-
-    def setParameterValue(self, parameter, value) -> bool:
-
-        if isinstance(parameter, QgsProcessingParameterDefinition):
-            parameter = parameter.name()
-        assert isinstance(parameter, str)
-        p: QgsProcessingParameterDefinition = self.alg.parameterDefinition(parameter)
-        assert isinstance(p, QgsProcessingParameterDefinition)
-
-
-        accepted = p.checkValueIsAcceptable(value, self.processing_context)
-
-        if accepted:
-            self.parameterValues[parameter] = value
-            return True
-        else:
-            return False
 
     def undefinedParameters(self) -> typing.List[QgsProcessingParameterDefinition]:
         """
