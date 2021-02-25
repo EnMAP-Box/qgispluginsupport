@@ -147,8 +147,7 @@ def is_spectral_processing_algorithm(
             break
 
     return flags in _flags
-    s = ""
-    return True
+
 
 
 class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
@@ -453,6 +452,7 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QObject):
         self.alg: QgsProcessingAlgorithm = alg.create({})
         self.name: str = alg.displayName()
         self.parameterValuesDefault: typing.Dict[str, typing.Any] = dict()
+        self.parameterValues: typing.Dict[str, typing.Any] = dict()
         self.tooltip: str = ''
         self.parameterWrappers: typing.Dict[str, QgsAbstractProcessingParameterWidgetWrapper] = \
             collections.OrderedDict()
@@ -476,16 +476,11 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QObject):
 
         self.verify()
 
-    def parameterValues(self) -> typing.Dict[str, typing.Any]:
-        parameters = dict()
-        for pname, w in self.parameterWrappers.items():
-            parameters[pname] = w.parameterValue()
-        return parameters
-
     def onWrapperWidgetChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
         print(wrapper)
         print(f'new value: {wrapper.parameterValue()} :: {wrapper.widgetValue()}')
         self.verify()
+        self.parameterValues[wrapper.parameterDefinition().name()] = wrapper.widgetValue()
         self.sigParameterValueChanged.emit(wrapper.parameterDefinition().name())
 
     def verify(self) -> bool:
@@ -634,7 +629,7 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
 
             # add none-profile parameter sources (which are not set / connected automatically)
             for parameter in w.alg.parameterDefinitions():
-                value = w.parameterValues().get(parameter.name())
+                value = w.parameterValues.get(parameter.name())
                 # todo: handle expressions
                 calg.addParameterSources(parameter.name(),
                                          [QgsProcessingModelChildParameterSource.fromStaticValue(value)])
@@ -1070,6 +1065,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         if len(self.mCurrentParameterWrappers) > 0:
             # save old states and remove old widget
             s = ""
+            self.mCurrentParameterWrappers.clear()
 
         if isinstance(wrapper, SpectralProcessingModelTableModelAlgorithmWrapper):
             self.gbParameterWidgets.setTitle(wrapper.name)
@@ -1084,15 +1080,13 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             alg: QgsProcessingAlgorithm = wrapper.alg
             for pName, pWrapper in wrapper.parameterWrappers.items():
                 pWrapper: QgsAbstractProcessingParameterWidgetWrapper
-                label = pWrapper.wrappedLabel()
-                widget = pWrapper.wrappedWidget()
-                if label is None:
-                    label = pWrapper.createWrappedLabel()
-                if widget is None:
-                    widget = pWrapper.createWrappedWidget(self.processingContext())
-
-                self.mCurrentParameterLabels[pName] = label
-                self.mCurrentParameterWidgets[pName] = widget
+                label = pWrapper.createWrappedLabel()
+                widget = pWrapper.createWrappedWidget(self.processingContext())
+                value = wrapper.parameterValues.get(pName)
+                if value:
+                    pWrapper.setWidgetValue(value, self.mProcessingContext)
+                #self.mCurrentParameterLabels[pName] = label
+                #self.mCurrentParameterWidgets[pName] = widget
                 self.mCurrentParameterWrappers[pName] = pWrapper
                 grid.addWidget(label, row, 0, alignment=Qt.AlignTop | Qt.AlignLeft)
                 grid.addWidget(widget, row, 1)

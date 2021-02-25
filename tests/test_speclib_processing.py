@@ -752,9 +752,9 @@ class SpectralProcessingTests(TestCase):
 
         for a in spectral_algorithms():
             w.mProcessingModelTableModel.addAlgorithm(a)
-            # w.mProcessingModelTableModel.addAlgorithm(a.id())
-        for i in range(w.mProcessingModelTableModel.rowCount()):
-            w.mTableView.selectRow(i)
+            w.mProcessingModelTableModel.addAlgorithm(a.id())
+        # for i in range(w.mProcessingModelTableModel.rowCount()):
+        #    w.mTableView.selectRow(i)
         M = QMainWindow()
         M.setCentralWidget(w)
         toolbar = QToolBar()
