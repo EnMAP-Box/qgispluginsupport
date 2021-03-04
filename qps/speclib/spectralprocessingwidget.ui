@@ -201,17 +201,9 @@
             <item>
              <widget class="QGroupBox" name="gbParameterWidgets">
               <property name="title">
-               <string>Spectral Processing Algorithm</string>
+               <string>&lt;no algorithm selected&gt;</string>
               </property>
-              <layout class="QGridLayout" name="gridLayout_2">
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_3">
-                 <property name="text">
-                  <string>Model is empty. Add spectral processing algorithms</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+              <layout class="QGridLayout" name="gridLayout_2"/>
              </widget>
             </item>
             <item>
