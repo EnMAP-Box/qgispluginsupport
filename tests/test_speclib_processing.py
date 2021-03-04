@@ -766,16 +766,11 @@ class SpectralProcessingTests(TestCase):
         for a in w.findChildren(QAction):
             toolbar.addAction(a)
         M.addToolBar(toolbar)
-        w.verifyModel()
+        success, error = w.verifyModel()
+
+        self.assertTrue(success)
+
         self.showGui(M)
-
-    def test_spmparameterswidget(self):
-        self.initProcessingRegistry()
-        a = spectral_algorithms()[0]
-        w1 = SPMParametersWidget(a, None)
-        w2 = SPMParametersWidget(a, None)
-
-        self.showGui([w1, w2])
 
     def test_processing_algorithms(self):
         self.initProcessingRegistry()

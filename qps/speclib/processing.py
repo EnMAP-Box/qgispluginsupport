@@ -46,7 +46,7 @@ from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, 
     QgsProcessingFeatureSource, QgsProcessingOutputDefinition, QgsProcessingParameterVectorLayer, \
     QgsProcessingModelChildAlgorithm, \
     QgsProcessingRegistry, QgsProcessingModelOutput, QgsProcessingModelParameter, QgsProcessingParameterEnum, \
-    QgsProject
+    QgsProject, QgsProcessingException
 
 from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython, QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
@@ -440,14 +440,24 @@ class SpectralProcessingAlgorithmInputWidget(QgsProcessingAbstractParameterDefin
 
         return param
 
-class SPMParametersWidget(QgsProcessingParametersWidget):
+class SpectralProcessingModelTableModelAlgorithmWrapper(QgsProcessingParametersWidget):
+    """
+    A wrapper to keep a references on QgsProcessingAlgorithm
+    and related parameter values and widgets
+    """
+    sigParameterValueChanged = pyqtSignal(str)
 
-    def __init__(self, *args, **kwds):
-        super(SPMParametersWidget, self).__init__(*args, **kwds)
-
-        self.processing_context = createContext()
+    def __init__(self, alg: QgsProcessingAlgorithm, context: QgsProcessingContext = None):
+        super().__init__(alg, None)
+        self.alg: QgsProcessingAlgorithm = alg.create({})
+        self.name: str = alg.displayName()
+        # self.parameterValuesDefault: typing.Dict[str, typing.Any] = dict()
+        self.parameterValues: typing.Dict[str, typing.Any] = dict()
         self.wrappers = {}
         self.extra_parameters = {}
+        if context is None:
+            context = QgsProcessingContext()
+        self.processing_context: QgsProcessingContext = context
 
         class ContextGenerator(QgsProcessingContextGenerator):
 
@@ -461,6 +471,18 @@ class SPMParametersWidget(QgsProcessingParametersWidget):
         self.context_generator = ContextGenerator(self.processing_context)
 
         self.initWidgets()
+        self.tooltip: str = ''
+
+        self._mWidgets = []
+        self.is_active: bool = True
+
+
+        # self.parameterWrappers: typing.Dict[str, QgsAbstractProcessingParameterWidgetWrapper] = \
+        #    collections.OrderedDict()
+
+
+        self.verify()
+
 
     def initWidgets(self):
         super().initWidgets()
@@ -476,7 +498,8 @@ class SPMParametersWidget(QgsProcessingParametersWidget):
             if param.isDestination():
                 continue
 
-            wrapper =  wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
+            wrapper = wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param,
+                                                                                            QgsProcessingGui.Standard)
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.context_generator)
             wrapper.registerProcessingParametersGenerator(self)
@@ -492,42 +515,7 @@ class SPMParametersWidget(QgsProcessingParametersWidget):
         for wrapper in list(self.wrappers.values()):
             wrapper.postInitialize(list(self.wrappers.values()))
 
-class SpectralProcessingModelTableModelAlgorithmWrapper(QgsProcessingParametersGenerator):
-    """
-    A wrapper to keep a references on QgsProcessingAlgorithm
-    and related parameter values and widgets
-    """
-    sigParameterValueChanged = pyqtSignal(str)
-
-    def __init__(self, alg: QgsProcessingAlgorithm, context: QgsProcessingContext = None):
-        super().__init__()
-        QgsProcessingParametersGenerator.__init__(self)
-        self.alg: QgsProcessingAlgorithm = alg.create({})
-        self.name: str = alg.displayName()
-        # self.parameterValuesDefault: typing.Dict[str, typing.Any] = dict()
-        self.parameterValues: typing.Dict[str, typing.Any] = dict()
-        self.tooltip: str = ''
-
-        self._mWidgets = []
-        self.is_active: bool = True
-        if context is None:
-            context = QgsProcessingContext()
-        self.processing_context: QgsProcessingContext = context
-
-        self.parameterWrappers: typing.Dict[str, QgsAbstractProcessingParameterWidgetWrapper] = \
-            collections.OrderedDict()
-
-
-        self.verify()
-
-    def createProcessingParameters(self):
-
-        printCaller()
-        parameterValues = self.parameterValues.copy()
-        return self.alg.preprocessParameters(parameterValues)
-
-
-    def createParameterWrappers(self) -> typing.Dict[str, QgsAbstractProcessingParameterWidgetWrapper]:
+    def depr_createParameterWrappers(self) -> typing.Dict[str, QgsAbstractProcessingParameterWidgetWrapper]:
         parameterWrappers = dict()
         for param in self.alg.parameterDefinitions():
             param: QgsProcessingParameterDefinition
@@ -545,7 +533,7 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QgsProcessingParametersG
         return parameterWrappers
 
 
-    def onWrapperWidgetChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
+    def depr_onWrapperWidgetChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
 
         print(f'new value: {self.name}:{wrapper}= {wrapper.parameterValue()} = {wrapper.widgetValue()}')
         self.verify()
@@ -599,8 +587,6 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QgsProcessingParametersG
 
 
 class SpectralProcessingModelTableModel(QAbstractListModel):
-
-
 
     def __init__(self, *args, **kwds):
         super(SpectralProcessingModelTableModel, self).__init__(*args, **kwds)
@@ -945,7 +931,7 @@ class SpectralProcessingModelTableView(QTableView):
         :return:
         """
 
-        if indices is None:
+        if isinstance(indices, bool):
             indices = self.selectedIndexes()
 
         m = self.spectralProcessingModelTableModel()
@@ -1144,7 +1130,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             context = QgsProcessingContext()
             context.setFeedback(feedback)
             parameters = dict()
-            for p  in model.parameterDefinitions():
+            for p in model.parameterDefinitions():
                 if isinstance(p, SpectralProcessingProfiles):
                     parameters[p.name()] = SpectralProfileBlock.dummy()
                 else:
@@ -1154,7 +1140,12 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             if not _valid:
                 msg.append(feedback.textLog())
                 msg.append(_msg)
-
+            else:
+                try:
+                    results = model.processAlgorithm(parameters, context, feedback)
+                except QgsProcessingException as ex:
+                    msg.append(feedback.textLog())
+                    msg.append(str(ex))
         msg = '\n'.join(msg)
         is_valid = len(msg) == 0
         self.actionApplyModel.setEnabled(is_valid)
@@ -1193,36 +1184,39 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             self.gbParameterWidgets.setTitle(wrapper.name)
 
             row = 0
-            alg: QgsProcessingAlgorithm = wrapper.alg
-            for pName, pWrapper in wrapper.createParameterWrappers().items():
-                pWrapper: QgsAbstractProcessingParameterWidgetWrapper
-                value = wrapper.parameterValues.get(pName)
-                print(f'Set {wrapper.name}:{pName} = {value}')
-                if value:
-                    pWrapper.setParameterValue(value, self.mProcessingContext)
-                    pWrapper.setWidgetValue(value, self.mProcessingContext)
+            wrapper.setParent(self.gbParameterWidgets)
+            grid.addWidget(wrapper, row,  0)
+            if False:
+                alg: QgsProcessingAlgorithm = wrapper.alg
+                for pName, pWrapper in wrapper.createParameterWrappers().items():
+                    pWrapper: QgsAbstractProcessingParameterWidgetWrapper
+                    value = wrapper.parameterValues.get(pName)
+                    print(f'Set {wrapper.name}:{pName} = {value}')
+                    if value:
+                        pWrapper.setParameterValue(value, self.mProcessingContext)
+                        pWrapper.setWidgetValue(value, self.mProcessingContext)
 
-                label = pWrapper.createWrappedLabel()
+                    label = pWrapper.createWrappedLabel()
 
-                widget = pWrapper.wrappedWidget()
-                if widget is None:
+                    widget = pWrapper.wrappedWidget()
+                    if widget is None:
 
-                    widget = pWrapper.createWrappedWidget(self.processingContext())
+                        widget = pWrapper.createWrappedWidget(self.processingContext())
 
-                #self.mCurrentParameterLabels[pName] = label
-                #self.mCurrentParameterWidgets[pName] = widget
-                self.mCurrentParameterWrappers[pName] = pWrapper
-                if False:
-                    grid.addWidget(label, row, 0, alignment=Qt.AlignTop | Qt.AlignLeft)
-                    grid.addWidget(widget, row, 1)
-                    row += 1
-                else:
-                    grid.addWidget(label, row, 0, alignment=Qt.AlignTop | Qt.AlignLeft)
-                    row += 1
-                    grid.addWidget(widget, row, 0, alignment=Qt.AlignTop | Qt.AlignRight)
-                    row += 1
+                    #self.mCurrentParameterLabels[pName] = label
+                    #self.mCurrentParameterWidgets[pName] = widget
+                    self.mCurrentParameterWrappers[pName] = pWrapper
+                    if False:
+                        grid.addWidget(label, row, 0, alignment=Qt.AlignTop | Qt.AlignLeft)
+                        grid.addWidget(widget, row, 1)
+                        row += 1
+                    else:
+                        grid.addWidget(label, row, 0, alignment=Qt.AlignTop | Qt.AlignLeft)
+                        row += 1
+                        grid.addWidget(widget, row, 0, alignment=Qt.AlignTop | Qt.AlignRight)
+                        row += 1
 
-            if len(self.mCurrentParameterWrappers) == 0:
+            if False and len(self.mCurrentParameterWrappers) == 0:
                 label = QLabel('No parameters to set')
                 grid.addWidget(label, row, 0, 1, -1)
 
