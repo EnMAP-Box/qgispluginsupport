@@ -1352,7 +1352,7 @@ class SpectralProfileBlock(object):
         """
         from ..testing import TestObjects
         profiles = TestObjects.spectralProfiles(n, n_bands=n_bands, wlu=wlu)
-        return SpectralProfileBlock.fromSpectralProfiles(profiles)
+        return list(SpectralProfileBlock.fromSpectralProfiles(profiles))[0]
 
     @staticmethod
     def fromSpectralProfiles(profiles: typing.List[SpectralProfile],
@@ -1449,6 +1449,49 @@ class SpectralProfileBlock(object):
 
     def yUnit(self) -> str:
         return self.mSpectralSetting.yUnit()
+
+    def toVariantMap(self) -> dict:
+
+        kwds = dict()
+        kwds['metadata'] = self.metadata()
+        kwds['profiledata'] = self.mData
+        kwds['keys'] = self.mProfileKeys
+        SS = self.spectralSetting()
+        kwds['x'] = SS.x()
+        kwds['x_unit'] = SS.xUnit()
+        kwds['y_unit'] = SS.yUnit()
+        kwds['bbl'] = SS.bbl()
+
+        return kwds
+
+    @staticmethod
+    def fromVariantMap(kwds: dict) -> typing.Optional['SpectralProfileBlock']:
+
+        values = kwds['profiledata']
+        assert isinstance(values, np.ndarray)
+
+        SS = SpectralSetting(kwds.get('x', list(range(values.shape[0]))),
+                             xUnit=kwds.get('x_unit', None),
+                             yUnit=kwds.get('y_unit'),
+                             bbl=kwds.get('bbl')
+                             )
+        return SpectralProfileBlock(values, SS,
+                                    profileKeys=kwds.get('keys', None),
+                                    metadata=kwds.get('metadata', None)
+                                    )
+
+    def __eq__(self, other):
+        if not isinstance(other, SpectralProfileBlock):
+            return False
+
+        for k, v in self.__dict__.items():
+            if isinstance(v, np.ndarray):
+                if not np.all(v == other.__dict__.get(k, None)):
+                    return False
+            elif v != other.__dict__.get(k, None):
+                return False
+
+        return True
 
     def __len__(self) -> int:
         return np.product(self.mData.shape[1, :])

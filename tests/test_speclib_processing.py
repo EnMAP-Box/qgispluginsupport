@@ -48,7 +48,7 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterString(
             self.CODE,
             description='Python code',
-            defaultValue='result_txt="Hello World"',
+            defaultValue="""profiledata=profiledata\nx_unit=x_unit\nbbl=bbl""",
             multiLine=True,
             optional=False
         ))
@@ -62,22 +62,24 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
 
-        input_profiles: typing.List[SpectralProfileBlock] = parameterAsSpectralProfileBlockList(parameters, self.INPUT,
-                                                                                                context)
+        input_profiles: typing.List[SpectralProfileBlock] = \
+            parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
+
         output_profiles: typing.List[SpectralProfileBlock] = []
+        user_code: str = self.parameterAsString(parameters, self.CODE, context)
 
         n_block = len(input_profiles)
         for i, profileBlock in enumerate(input_profiles):
             # process block by block
-
             assert isinstance(profileBlock, SpectralProfileBlock)
-            print(profileBlock)
             feedback.pushConsoleInfo(f'Process profile block {i + 1}/{n_block}')
 
-            # do the spectral processing here
-            if isinstance(self.mFunction, typing.Callable):
-                profileBlock = self.mFunction(profileBlock)
-            output_profiles.append(profileBlock)
+            resultBlock, msg = self.applyUserCode(user_code, profileBlock)
+
+            if isinstance(resultBlock, SpectralProfileBlock):
+                output_profiles.append(resultBlock)
+            else:
+                feedback
             feedback.setProgress(100 * i / n_block)
 
         OUTPUTS = dict()
@@ -157,12 +159,43 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
                          feedback: QgsProcessingFeedback):
 
         is_valid = True
-        for key in [self.INPUT]:
+        for key in [self.INPUT, self.CODE]:
             if not key in parameters.keys():
                 feedback.reportError(f'Missing parameter {key}')
                 is_valid = False
+        if is_valid:
+            code = self.parameterAsString(parameters, self.CODE, context)
+            # test with dummy profiles
+            dummy = SpectralProfileBlock.dummy()
+            result_block, msg = self.applyUserCode(code, dummy)
+            if not isinstance(result_block, SpectralProfileBlock):
+                is_valid = False
+                feedback.reportError(msg)
+
+            s = ""
         return is_valid
 
+    def applyUserCode(self, code, profileBlock:SpectralProfileBlock) -> SpectralProfileBlock:
+        kwds_global = SpectralProfileBlock.dummy().toVariantMap()
+        kwds_local = {}
+        msg = ''
+        result_block: SpectralProfileBlock = None
+        try:
+            exec(code, kwds_global, kwds_local)
+        except Exception as ex:
+            return None, str(ex)
+
+        if not isinstance(kwds_local.get('profiledata', None), np.ndarray):
+            msg = 'python code does not return "profiledata" of type numpy.array'
+        else:
+            try:
+                result = {'profiledata': kwds_local['profiledata']}
+                for k in ['x', 'x_unit', 'y_unit', 'bbl']:
+                    result[k] = kwds_local.get(k, kwds_global.get(k, None))
+                result_block = SpectralProfileBlock.fromVariantMap(result)
+            except Exception as ex:
+                msg = str(ex)
+        return result_block, msg
 
 class SpectralProcessingExamples(TestCase):
     @classmethod
@@ -741,9 +774,6 @@ class SpectralProcessingTests(TestCase):
                 for block in values:
                     self.assertIsInstance(block, SpectralProfileBlock)
 
-        s = ""
-
-
         self.showGui(tv)
 
     def test_SpectralProcessingWidget(self):
@@ -768,7 +798,7 @@ class SpectralProcessingTests(TestCase):
         M.addToolBar(toolbar)
         success, error = w.verifyModel()
 
-        self.assertTrue(success)
+        self.assertTrue(success, msg=error)
 
         self.showGui(M)
 

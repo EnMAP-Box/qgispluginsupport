@@ -30,6 +30,7 @@ import importlib
 import inspect
 import warnings
 import os
+import re
 import enum
 import pathlib
 import pickle
@@ -453,6 +454,7 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QgsProcessingParametersW
         self.name: str = alg.displayName()
         # self.parameterValuesDefault: typing.Dict[str, typing.Any] = dict()
         self.parameterValues: typing.Dict[str, typing.Any] = dict()
+        self.mErrors = []
         self.wrappers = {}
         self.extra_parameters = {}
         if context is None:
@@ -498,11 +500,11 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QgsProcessingParametersW
             if param.isDestination():
                 continue
 
-            wrapper = wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param,
-                                                                                            QgsProcessingGui.Standard)
+            wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.context_generator)
             wrapper.registerProcessingParametersGenerator(self)
+            wrapper.widgetValueHasChanged.connect(self.parameterWidgetValueChanged)
             self.wrappers[param.name()] = wrapper
 
             label = wrapper.createWrappedLabel()
@@ -533,7 +535,7 @@ class SpectralProcessingModelTableModelAlgorithmWrapper(QgsProcessingParametersW
         return parameterWrappers
 
 
-    def depr_onWrapperWidgetChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
+    def parameterWidgetValueChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
 
         print(f'new value: {self.name}:{wrapper}= {wrapper.parameterValue()} = {wrapper.widgetValue()}')
         self.verify()
@@ -602,7 +604,6 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
     def setProcessingContext(self, context: QgsProcessingContext):
         assert isinstance(context, QgsProcessingContext)
         self.mProcessingContext = context
-
 
     def processingContext(self) -> QgsProcessingContext:
         return self.mProcessingContext
@@ -686,7 +687,9 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
 
             # add none-profile parameter sources (which are not set / connected automatically)
             for parameter in w.alg.parameterDefinitions():
-                value = w.parameterValues.get(parameter.name())
+                if isinstance(parameter, (SpectralProcessingProfiles, SpectralProcessingProfilesSink)):
+                    continue
+                value = w.wrappers[parameter.name()].parameterValue()
                 # todo: handle expressions
                 calg.addParameterSources(parameter.name(),
                                          [QgsProcessingModelChildParameterSource.fromStaticValue(value)])
@@ -723,6 +726,46 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
 
         return self.createIndex(row, column, wrapper)
     """
+    def verifyModel(self, test_blocks: typing.List[SpectralProfileBlock],
+                    context: QgsProcessingContext,
+                    feedback: QgsProcessingFeedback) -> \
+            typing.Tuple[bool, str]:
+        messages = []
+
+        try:
+            # 1. create model
+            model = self.createModel()
+            assert isinstance(model, QgsProcessingModelAlgorithm)
+            assert is_spectral_processing_model(model)
+
+            parameters = {}
+            for p in model.parameterDefinitions():
+                if isinstance(p, SpectralProcessingProfiles):
+                    parameters[p.name()] = test_blocks
+
+            model.initAlgorithm()
+            success, msg = model.canExecute()
+            assert success, msg
+
+            # 2. prepare model
+            assert model.prepareAlgorithm(parameters, context, feedback), 'Failed to prepare model with test data'
+
+            # 3. execute model
+            results: dict = model.processAlgorithm(parameters, context, feedback)
+
+            # 4. check outputs
+            for p in model.outputDefinitions():
+                if isinstance(p, SpectralProcessingProfilesOutput):
+                    for k, block_list in results.items():
+                        if isinstance(k, str) and k.endswith(f':{p.name()}'):
+                            assert isinstance(block_list, list)
+                            for block in block_list:
+                                assert isinstance(block, SpectralProfileBlock)
+
+        except Exception as ex:
+            messages.append(str(ex))
+
+        return len(messages) == 0, '\n'.join(messages)
 
     def wrapper2idx(self, wrapper: SpectralProcessingModelTableModelAlgorithmWrapper) -> QModelIndex:
         assert isinstance(wrapper, SpectralProcessingModelTableModelAlgorithmWrapper)
@@ -757,7 +800,7 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
                 return str(wrapper.parameterValues())
         if role == Qt.DecorationRole:
             if col == 0:
-                if wrapper.allParametersDefined():
+                if wrapper.allParametersDefined() and len(wrapper.mErrors) == 0:
                     return QColor('green')
                 else:
                     return QColor('red')
@@ -1022,9 +1065,9 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
 
         # create 3 dummy blocks for testing
         self.mDummyBlocks: typing.List[SpectralProfileBlock] = []
-        self.mDummyBlocks.extend(SpectralProfileBlock.dummy(1, 7, 'nm'))
-        self.mDummyBlocks.extend(SpectralProfileBlock.dummy(1, 5, 'um'))
-        self.mDummyBlocks.extend(SpectralProfileBlock.dummy(1, 3, '-')) # without unit
+        self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 7, 'nm'))
+        self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 5, 'um'))
+        self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 3, '-')) # without unit
 
         self.mAlgorithmModel = SpectralProcessingAlgorithmModel(self)
 
@@ -1128,48 +1171,21 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
                 # update algorithm info
                 self.gbParameterWidgets.setTitle(current.name)
 
-
     def verifyModel(self, *args) -> typing.Tuple[bool, str]:
-        msg = []
-
+        messages = []
+        rx_error_alg = re.compile('Error encountered while running (?P<algname>.+)$')
         model = self.processingTableModel().createModel()
 
-        if not is_spectral_processing_model(model):
-            msg = ['Unable to create spectral processing model']
-        else:
-            feedback = QgsProcessingFeedback()
-            context = QgsProcessingContext()
-            context.setFeedback(feedback)
-            parameters = dict()
-            for p in model.parameterDefinitions():
-                if isinstance(p, SpectralProcessingProfiles):
-                    parameters[p.name()] = self.mDummyBlocks
-                else:
-                    parameters[p.name()] = p.defaultValue()
+        feedback = QgsProcessingFeedback()
+        context = QgsProcessingContext()
+        context.setFeedback(feedback)
 
-            _valid, _msg = model.checkParameterValues(parameters, context)
-            if not _valid:
-                msg.append(feedback.textLog())
-                msg.append(_msg)
-            else:
-                try:
-                    results = model.processAlgorithm(parameters, context, feedback)
-                except QgsProcessingException as ex:
-                    msg.append(feedback.textLog())
-                    msg.append(str(ex))
-        msg = '\n'.join(msg)
-        is_valid = len(msg) == 0
-        self.actionApplyModel.setEnabled(is_valid)
-        if not is_valid:
-            self.tbLogs.append('\n'+msg)
-            self.tabWidget.setCurrentWidget(self.tabLog)
-        else:
-            self.tbLogs.append('Created valid model')
-        return is_valid, msg
+        success, msg = self.processingTableModel().verifyModel(self.mDummyBlocks, context, feedback)
+        if success:
+            self.mProcessingFeedback
+        return success, msg
 
     def onCurrentAlgorithmChanged(self, current, previous):
-
-
 
         if len(self.mCurrentParameterWrappers) > 0:
             # save old states and remove old widget

@@ -338,6 +338,14 @@ class TestCore(TestCase):
 
         self.assertIsInstance(block1, SpectralProfileBlock)
 
+        kwds = block1.toVariantMap()
+        self.assertIsInstance(kwds, dict)
+
+        block2 = SpectralProfileBlock.fromVariantMap(kwds)
+        self.assertIsInstance(block2, SpectralProfileBlock)
+        self.assertEqual(block1, block2)
+
+
     def test_read_temporal_wavelength(self):
 
         p = r'D:\Repositories\qgispluginsupport\qpstestdata\2010-2020_001-365_HL_TSA_LNDLG_NBR_TSS.tif'
