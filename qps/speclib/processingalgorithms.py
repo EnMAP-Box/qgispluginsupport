@@ -120,7 +120,7 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
                          feedback: QgsProcessingFeedback):
 
         targetUnit = self.parameterAsEnum(parameters, self.TARGET_XUNIT, context)
-        targetUnit = self.mUnitModel.units[targetUnit]
+        targetUnit = self.mUnitModel.mUnits[targetUnit]
         input_profiles = parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
         output_profiles: typing.List[SpectralProcessingProfilesOutput] = []
         n_blocks = len(input_profiles)

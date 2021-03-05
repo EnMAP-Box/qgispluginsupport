@@ -515,7 +515,10 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
                 continue
             xValues, wlu, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
 
-            # model profiles
+            # Ann Crabbé: bad bands list
+            bbl = profiles[0].bbl()
+
+            # stack profiles
             pData = [np.asarray(p.yValues()) for p in profiles]
             pData = np.vstack(pData)
 
@@ -559,6 +562,9 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
 
             if wlu not in ['', '-', None]:
                 ds.SetMetadataItem('wavelength units', wlu, 'ENVI')
+
+            if bbl not in ['', '-', None]:
+                ds.SetMetadataItem('bbl', value2hdrString(bbl), 'ENVI')
 
             flushCacheWithoutException(ds)
 

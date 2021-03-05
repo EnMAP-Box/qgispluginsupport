@@ -750,18 +750,26 @@ class SpectralProcessingTests(TestCase):
         self.initProcessingRegistry()
         w = SpectralProcessingWidget()
 
-        for a in spectral_algorithms():
-            w.mProcessingModelTableModel.addAlgorithm(a)
-            # w.mProcessingModelTableModel.addAlgorithm(a.id())
-        for i in range(w.mProcessingModelTableModel.rowCount()):
-            w.mTableView.selectRow(i)
+        id = 'testalgorithmprovider:spectral_processing_algorithm_example'
+        if True:
+            w.mProcessingModelTableModel.addAlgorithm(id, name='Alg A')
+            w.mProcessingModelTableModel.addAlgorithm(id, name='Alg B')
+        else:
+            for a in spectral_algorithms():
+                w.mProcessingModelTableModel.addAlgorithm(a)
+                w.mProcessingModelTableModel.addAlgorithm(a.id())
+        # for i in range(w.mProcessingModelTableModel.rowCount()):
+        #    w.mTableView.selectRow(i)
         M = QMainWindow()
         M.setCentralWidget(w)
         toolbar = QToolBar()
         for a in w.findChildren(QAction):
             toolbar.addAction(a)
         M.addToolBar(toolbar)
-        w.verifyModel()
+        success, error = w.verifyModel()
+
+        self.assertTrue(success)
+
         self.showGui(M)
 
     def test_processing_algorithms(self):
