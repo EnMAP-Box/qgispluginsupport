@@ -961,9 +961,20 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         QgsProcessingContextGenerator.__init__(self)
         loadUi(speclibUiPath('spectralprocessingwidget.ui'), self)
 
+        # create 3 dummy blocks for testing
+        self.mDummyBlocks: typing.List[SpectralProfileBlock] = []
+        self.mDummyBlocks.extend(SpectralProfileBlock.dummy(1, 7, 'nm'))
+        self.mDummyBlocks.extend(SpectralProfileBlock.dummy(1, 5, 'um'))
+        self.mDummyBlocks.extend(SpectralProfileBlock.dummy(1, 3, '-')) # without unit
+
         self.mAlgorithmModel = SpectralProcessingAlgorithmModel(self)
 
+        self.mProcessingFeedback: QgsProcessingFeedback = QgsProcessingFeedback()
+        self.mProcessingWidgetContext: QgsProcessingParameterWidgetContext = QgsProcessingParameterWidgetContext()
+        self.mProcessingWidgetContext.setMessageBar(self.mMessageBar)
+
         self.mProcessingContext: QgsProcessingContext = QgsProcessingContext()
+        self.mProcessingContext.setFeedback(self.mProcessingFeedback)
 
         self.mCurrentParameterWrappers: typing.Dict[str, QgsAbstractProcessingParameterWidgetWrapper] = dict()
         self.mCurrentParameterWidgets: typing.Dict[str, QWidget] = dict()
@@ -1042,9 +1053,9 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             context = QgsProcessingContext()
             context.setFeedback(feedback)
             parameters = dict()
-            for p  in model.parameterDefinitions():
+            for p in model.parameterDefinitions():
                 if isinstance(p, SpectralProcessingProfiles):
-                    parameters[p.name()] = SpectralProfileBlock.dummy()
+                    parameters[p.name()] = self.mDummyBlocks
                 else:
                     parameters[p.name()] = p.defaultValue()
 
@@ -1127,22 +1138,6 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
 
     def tableView(self) -> SpectralProcessingAlgorithmTreeView:
         return self.mTableView
-
-    def setTextProfile(self, f: QgsFeature):
-        self.mTestProfile = f
-        self.validate()
-
-    def validate(self) -> bool:
-        is_valid = False
-        # todo: validate mode with example input
-
-        return is_valid
-
-    def is_valid(self) -> bool:
-        return self.validate()
-
-    def expression(self) -> str:
-        return self.tbExpression.toPlainText()
 
 
 def spectral_algorithms() -> typing.List[QgsProcessingAlgorithm]:

@@ -594,6 +594,8 @@ class TestObjects(object):
         for (data, wl, data_wlu) in TestObjects.spectralProfileData(n, n_bands=n_bands):
             if wlu is None:
                 wlu = data_wlu
+            elif wlu == '-':
+                wl = wlu = None
             elif wlu != data_wlu:
                 wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
 

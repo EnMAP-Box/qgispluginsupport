@@ -1344,16 +1344,15 @@ class SpectralProfileBlock(object):
     """
 
     @staticmethod
-    def dummy() -> typing.Optional['SpectralProfileBlock']:
+    def dummy(n=5, n_bands=10, wlu='nm') -> typing.Optional['SpectralProfileBlock']:
         """
-        Creates a dummy block. For testing only
+        Creates a dummy block, e.g. to be used for testing
         :return:
         :rtype:
         """
-        array = np.asarray([10, 20, 30])
-        array = array.reshape((3, 1, 1,))
-        settings = SpectralSetting([300, 400, 500], xUnit='nm')
-        return SpectralProfileBlock(array, settings)
+        from ..testing import TestObjects
+        profiles = TestObjects.spectralProfiles(n, n_bands=n_bands, wlu=wlu)
+        return SpectralProfileBlock.fromSpectralProfiles(profiles)
 
     @staticmethod
     def fromSpectralProfiles(profiles: typing.List[SpectralProfile],
