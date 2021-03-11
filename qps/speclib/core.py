@@ -1404,7 +1404,7 @@ class SpectralProfileBlock(object):
 
         self.mSpectralSetting = spectralSetting
         self.mXValues: np.ndarray = xValues
-        self.mProfileKeys: typing.List[SpectralProfileKey] = None
+        self.mProfileKeys: typing.List[SpectralProfileKey] = []
 
         if not isinstance(metadata, dict):
             metadata = dict()

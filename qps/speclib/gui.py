@@ -1522,11 +1522,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             if isinstance(results2, dict):
                 for p in model.outputDefinitions():
                     if isinstance(p, SpectralProcessingProfilesOutput):
-                        blocks = results2[p.name()]
+                        suffix = f':{p.name()}'
+                        for k in results2.keys():
+                            if k.endswith(suffix):
+                                blocks = results2[k]
 
 
 
-        blocks: typing.List[SpectralProfileBlock] = results['output_profiles']
         # self.blockSignals(True)
         for block in blocks:
             data = block.data()

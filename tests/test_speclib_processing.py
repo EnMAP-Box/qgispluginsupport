@@ -176,7 +176,7 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
         return is_valid
 
     def applyUserCode(self, code, profileBlock:SpectralProfileBlock) -> SpectralProfileBlock:
-        kwds_global = SpectralProfileBlock.dummy().toVariantMap()
+        kwds_global = profileBlock.toVariantMap()
         kwds_local = {}
         msg = ''
         result_block: SpectralProfileBlock = None
@@ -448,6 +448,8 @@ class SpectralProcessingExamples(TestCase):
         # ._algs.append(alg)
         # self.testProvider().refreshAlgorithms()
         self.testProvider().addAlgorithm(alg)
+
+        from test_issue42069 import CollectAndSumDirections_ProcessingAlgorithm
 
         self.assertIsInstance(self.testProvider().algorithm(alg.name()), SpectralProcessingAlgorithmExample)
 

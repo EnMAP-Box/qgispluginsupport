@@ -640,8 +640,8 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
     def __iter__(self):
         return iter(self.mAlgorithmWrappers)
 
-    INPUT_PROFILE_PREFIX = 'input_profiles'
-    OUTPUT_PROFILE_PREFIX = 'output_profiles'
+    INPUT_PROFILE_PREFIX = 'model_profile_input'
+    OUTPUT_PROFILE_PREFIX = 'model_profile_output'
 
     def createModel(self) -> QgsProcessingModelAlgorithm:
 
@@ -831,7 +831,8 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
             if col == 0:
                 tt = f'{alg.displayName()}\n{alg.shortDescription()}'
                 if not wrapper.isVerified():
-                    tt += "\n".join(wrapper.mErrors)
+                    # tt += '\n<span style="color:red">'+'<br/>'.join(wrapper.mErrors) + '</span>'
+                    tt += '\n' + '\n'.join(wrapper.mErrors)
                 return tt
 
             if col == 1:
