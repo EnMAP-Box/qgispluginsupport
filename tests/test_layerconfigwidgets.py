@@ -227,10 +227,14 @@ class LayerConfigWidgetsTests(TestCase):
         self.assertTrue(lyrR.isValid())
         cR = self.canvasWithLayer(lyrR)
 
+
         f = RasterBandConfigWidgetFactory()
         self.assertIsInstance(f, QgsMapLayerConfigWidgetFactory)
         self.assertTrue(f.supportsLayer(lyrR))
         w = f.createWidget(lyrR, cR, dockWidget=False)
+        self.assertIsInstance(w, RasterBandConfigWidget)
+
+        w = f.createWidget(lyrR, None, False, None)
         self.assertIsInstance(w, RasterBandConfigWidget)
 
         self.showGui([cR, w])
