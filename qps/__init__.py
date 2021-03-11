@@ -71,6 +71,7 @@ def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory)
         os.environ[KEY_MAPLAYERCONFIGWIDGETFACTORIES] = '::'.join(registered)
         iface.registerMapLayerConfigWidgetFactory(factory)
 
+
 def unregisterMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory):
     """
     Unregister a previously registered tab in the map layer properties dialog.
