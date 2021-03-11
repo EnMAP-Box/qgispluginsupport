@@ -225,6 +225,9 @@
            <layout class="QVBoxLayout" name="verticalLayout_3">
             <item>
              <widget class="QGroupBox" name="gbParameterWidgets">
+              <property name="styleSheet">
+               <string notr="true">border-color: rgb(255, 0, 0);</string>
+              </property>
               <property name="title">
                <string>&lt;no algorithm selected&gt;</string>
               </property>
@@ -407,7 +410,7 @@
     <string>CopyLog</string>
    </property>
    <property name="toolTip">
-    <string>Copiesthe toext to clipboard</string>
+    <string>Copies log text to clipboard</string>
    </property>
   </action>
   <action name="actionClearLog">

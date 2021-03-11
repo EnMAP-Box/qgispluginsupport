@@ -46,7 +46,7 @@ from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, 
     QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
     QgsProviderRegistry, QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
-    QgsMapCanvas, QgsGui, QgisInterface
+    QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
 from .resources import *
 from .utils import UnitLookup
 
@@ -205,6 +205,7 @@ class QgisMockup(QgisInterface):
         # QgsProject.instance().legendLayersAdded.connect(self.addLegendLayers)
         self.mPluginManager = QgsPluginManagerMockup()
 
+        self.mBrowserGuiModel = QgsBrowserGuiModel()
         self.ui = QMainWindow()
 
         self.mViewMenu = self.ui.menuBar().addMenu('View')
@@ -259,6 +260,9 @@ class QgisMockup(QgisInterface):
             mapLayer.beginEditCommand('Features cut')
             mapLayer.deleteSelectedFeatures()
             mapLayer.endEditCommand()
+
+    def browserModel(self) -> QgsBrowserGuiModel:
+        self.mBrowserGuiModel
 
     def copySelectionToClipboard(self, mapLayer: QgsMapLayer):
         if isinstance(mapLayer, QgsVectorLayer):
