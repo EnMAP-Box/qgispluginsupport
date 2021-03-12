@@ -254,7 +254,7 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         return False
 
     def layerPropertiesPagePositionHint(self) -> str:
-        return 'Transparency'
+        return 'mOptsPage_Transparency'
 
     def supportLayerPropertiesDialog(self):
         return True

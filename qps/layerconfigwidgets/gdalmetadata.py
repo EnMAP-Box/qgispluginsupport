@@ -1253,7 +1253,7 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         return QIcon()
 
     def layerPropertiesPagePositionHint(self) -> str:
-        return 'Metadata'
+        return 'mOptsPage_Legend'
 
     def supportLayerPropertiesDialog(self):
         return True
