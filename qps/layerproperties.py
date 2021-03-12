@@ -128,17 +128,14 @@ MDF_TEXT_PLAIN = 'text/plain'
 
 class FieldListModel(QAbstractListModel):
 
-    def __init__(self, *args, layer:QgsVectorLayer=None, **kwds):
-
+    def __init__(self, *args, layer: QgsVectorLayer = None, **kwds):
         super().__init__(*args, **kwds)
 
-    def setLayer(self, layer:QgsVectorLayer):
-
+    def setLayer(self, layer: QgsVectorLayer):
         self.mLayer = layer
 
-    def flags(self, index:QModelIndex):
+    def flags(self, index: QModelIndex):
         pass
-
 
 
 class AddAttributeDialog(QDialog):
@@ -806,7 +803,8 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
                  canvas: QgsMapCanvas = None,
                  parent=None,
                  mapLayerConfigFactories: typing.List[QgsMapLayerConfigWidgetFactory] = None):
-
+        warnings.warn('This dialog emulates only parts of the real QGIS Layer Properties dialog. '
+                      'Use for testing only.', Warning)
         super(QgsOptionsDialogBase, self).__init__('QPS_LAYER_PROPERTIES', parent, Qt.Dialog, settings=None)
         pathUi = pathlib.Path(__file__).parent / 'ui' / 'layerpropertiesdialog.ui'
         loadUi(pathUi.as_posix(), self)
@@ -1011,16 +1009,26 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
             print(ex, file=sys.stderr)
 
     else:
-
-        dialog = LayerPropertiesDialog(layer, canvas=canvas)
-
-        if modal == True:
-            dialog.setModal(True)
-            return dialog.exec_()
+        dialog = None
+        if False and isinstance(layer, QgsRasterLayer):
+            if not isinstance(canvas, QgsMapCanvas):
+                canvas = QgsMapCanvas()
+            dialog = QgsRasterLayerProperties(layer, canvas)
         else:
-            dialog.setModal(False)
-            dialog.show()
-            return dialog
+            dialog = LayerPropertiesDialog(layer, canvas=canvas)
+
+        if dialog:
+            from . import MAPLAYER_CONFIGWIDGET_FACTORIES
+            for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
+                dialog.addPropertiesPageFactory(f)
+
+            if modal == True:
+                dialog.setModal(True)
+                return dialog.exec_()
+            else:
+                dialog.setModal(False)
+                dialog.show()
+                return dialog
 
     return None
 
@@ -1318,8 +1326,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         # taken from qgsfeaturefilterwidget.cpp : void QgsFeatureFilterWidget::filterExpressionBuilder()
         dlg = QgsExpressionBuilderDialog(self.mLayer, self.mFilterQuery.text(),
-                                                                    self,
-                                                                    'generic', context)
+                                         self,
+                                         'generic', context)
         dlg.setWindowTitle('Expression Based Filter')
         myDa = QgsDistanceArea()
         myDa.setSourceCrs(self.mLayer.crs(), QgsProject.instance().transformContext())
@@ -1479,7 +1487,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mFilterQuery.setText(filter)
 
         filterExpression: QgsExpression = QgsExpression(filter)
-        context: QgsExpressionContext = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(self.mLayer))
+        context: QgsExpressionContext = QgsExpressionContext(
+            QgsExpressionContextUtils.globalProjectLayerScopes(self.mLayer))
         fetchGeom: bool = filterExpression.needsGeometry()
 
         myDa = QgsDistanceArea()
@@ -1530,7 +1539,6 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                 print(f'Error filtering: {filterExpression.evalErrorString()}', file=sys.stderr)
             return
         self.mMainView.setFilterMode(QgsAttributeTableFilterModel.ShowFilteredList)
-
 
     def viewModeChanged(self, mode: QgsAttributeEditorContext.Mode):
         if mode != QgsAttributeEditorContext.SearchMode:
