@@ -553,6 +553,8 @@ class SpectralProcessingTests(TestCase):
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
         w = SpectralLibraryWidget(speclib=sl)
+        SPW: SpectralProcessingWidget = w.pageProcessingWidget
+
         self.showGui(w)
         s = ""
         pass
@@ -749,7 +751,7 @@ class SpectralProcessingTests(TestCase):
         selectedWrapper = tv.currentIndex().data(Qt.UserRole)
         self.assertIsInstance(selectedWrapper, SpectralProcessingModelTableModelAlgorithmWrapper, selectedWrapper)
         self.assertTrue(selectedWrapper.name == 'AlgA2')
-        m.removeAlgorithm(selectedWrapper)
+        m.removeAlgorithms(selectedWrapper)
         self.assertTrue(len(m) == n - 1)
         self.showGui(tv)
 
@@ -802,6 +804,19 @@ class SpectralProcessingTests(TestCase):
 
         self.assertTrue(success, msg=error)
 
+        # save and load models
+        test_dir = self.createTestOutputDirectory() / 'spectral_processing'
+        os.makedirs(test_dir, exist_ok=True)
+        path = test_dir / 'mymodel.model3'
+        wrappers_before = [w for w in w.mProcessingModelTableModel if w.is_active]
+        w.saveModel(path)
+        w.clearModel()
+        self.assertTrue(len(w.mProcessingModelTableModel) == 0)
+        w.loadModel(path)
+        wrappers_after = [w for w in w.mProcessingModelTableModel if w.is_active]
+        self.assertTrue(len(wrappers_after) == len(wrappers_before))
+        #for w_b, w_a in zip(wrappers_before, wrappers_after):
+        #    self.assertEqual(w_b.name, w_a.name)
         self.showGui(M)
 
     def test_processing_algorithms(self):
