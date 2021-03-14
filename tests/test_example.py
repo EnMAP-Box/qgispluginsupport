@@ -16,7 +16,7 @@ qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'i
 class Example1(unittest.TestCase):
     resource_path = ':/images/icons/qgis_icon.svg'
 
-    @unittest.skipIf(qgis_images_resources.is_file() == False or QFile(resource_path).exists(),
+    @unittest.skipIf(qgis_images_resources.is_file() is False or QFile(resource_path).exists(),
                      'Resource file does not exist: {}'.format(qgis_images_resources))
     def test_startQgsApplication(self):
         """
@@ -70,5 +70,4 @@ class ExampleCase(TestCase):
 
 
 if __name__ == '__main__':
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
