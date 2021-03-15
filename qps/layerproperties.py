@@ -1014,14 +1014,13 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
             if not isinstance(canvas, QgsMapCanvas):
                 canvas = QgsMapCanvas()
             dialog = QgsRasterLayerProperties(layer, canvas)
+            from . import MAPLAYER_CONFIGWIDGET_FACTORIES
+            for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
+                dialog.addPropertiesPageFactory(f)
         else:
             dialog = LayerPropertiesDialog(layer, canvas=canvas)
 
         if dialog:
-            from . import MAPLAYER_CONFIGWIDGET_FACTORIES
-            for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
-                dialog.addPropertiesPageFactory(f)
-
             if modal == True:
                 dialog.setModal(True)
                 return dialog.exec_()

@@ -19,7 +19,7 @@ from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, Q
     QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterVectorLayer, QgsProcessingModelParameter, \
     QgsProcessingModelOutput, QgsProcessingOutputVectorLayer, QgsProcessingParameterString
 
-from qps import initResources
+from qps import initResources, initAll
 from qps.testing import TestObjects, TestCase, StartOptions
 from qps.speclib.gui import *
 from qps.speclib.processing import *
@@ -77,6 +77,7 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
             resultBlock, msg = self.applyUserCode(user_code, profileBlock)
 
             if isinstance(resultBlock, SpectralProfileBlock):
+                resultBlock.setProfileKeys(profileBlock.profileKeys())
                 output_profiles.append(resultBlock)
             else:
                 feedback
@@ -470,7 +471,7 @@ class SpectralProcessingTests(TestCase):
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
 
         super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
-        initResources()
+        initAll()
 
     def initProcessingRegistry(self) -> typing.Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
         procReg = QgsApplication.instance().processingRegistry()
@@ -785,8 +786,9 @@ class SpectralProcessingTests(TestCase):
         w = SpectralProcessingWidget()
 
         id = 'testalgorithmprovider:spectral_processing_algorithm_example'
+        # id2 = 'testalgorithmprovider:'
         if True:
-            w.mProcessingModelTableModel.addAlgorithm(id, name='Alg A')
+            w.mProcessingModelTableModel.addAlgorithm(id, name='A')
             w.mProcessingModelTableModel.addAlgorithm(id, name='Alg B')
         else:
             for a in spectral_algorithms():
