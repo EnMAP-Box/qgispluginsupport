@@ -85,6 +85,7 @@ from qgis.gui import \
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .utils import *
+from . import DIR_UI_FILES
 from .vectorlayertools import VectorLayerTools
 
 """
@@ -667,16 +668,16 @@ def subLayerDefinitions(mapLayer: QgsMapLayer) -> typing.List[QgsSublayersDialog
     :return: list of sublayer definitions
     """
     definitions = []
-    dp = mapLayer.dataProvider()
-
+    dp: QgsDataProvider = mapLayer.dataProvider()
     subLayers = dp.subLayers()
+
     if len(subLayers) == 0:
         return []
 
     for i, sub in enumerate(subLayers):
         ldef = QgsSublayersDialog.LayerDefinition()
         assert isinstance(ldef, QgsSublayersDialog.LayerDefinition)
-        elements = sub.split(QgsDataProvider.SUBLAYER_SEPARATOR)
+        elements = sub.split(dp.sublayerSeparator())
 
         if dp.name() == 'ogr':
             # <layer_index>:<name>:<feature_count>:<geom_type>
@@ -1013,14 +1014,13 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
             if not isinstance(canvas, QgsMapCanvas):
                 canvas = QgsMapCanvas()
             dialog = QgsRasterLayerProperties(layer, canvas)
+            from . import MAPLAYER_CONFIGWIDGET_FACTORIES
+            for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
+                dialog.addPropertiesPageFactory(f)
         else:
             dialog = LayerPropertiesDialog(layer, canvas=canvas)
 
         if dialog:
-            from . import MAPLAYER_CONFIGWIDGET_FACTORIES
-            for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
-                dialog.addPropertiesPageFactory(f)
-
             if modal == True:
                 dialog.setModal(True)
                 return dialog.exec_()
