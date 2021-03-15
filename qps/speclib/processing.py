@@ -35,7 +35,8 @@ import sys
 import enum
 import pathlib
 import pickle
-from qgis.PyQt.QtCore import QMimeData, Qt, pyqtSignal, QModelIndex, QAbstractListModel, QObject, QPoint, QPointF
+from qgis.PyQt.QtCore import QMimeData, Qt, pyqtSignal, QModelIndex, QAbstractListModel, QObject, QPoint, \
+    QPointF, QByteArray
 from qgis.PyQt.QtGui import QIcon, QColor, QFont, QFontInfo, QContextMenuEvent, QClipboard
 from qgis.PyQt.QtXml import QDomElement, QDomDocument, QDomNode, QDomCDATASection
 from qgis.PyQt.QtWidgets import QPlainTextEdit, QWidget, QTableView, QTreeView, \
@@ -615,12 +616,62 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
         self.mTestBlocks: typing.List[SpectralProfileBlock] = [
             SpectralProfileBlock.dummy(5)]
 
+
+    def supportedDropActions(self) -> Qt.DropActions:
+        return Qt.MoveAction | Qt.CopyAction
+
+    def supportedDragActions(self) -> Qt.DropActions:
+        return Qt.MoveAction
+
     def setProcessingContext(self, context: QgsProcessingContext):
         assert isinstance(context, QgsProcessingContext)
         self.mProcessingContext = context
 
     def processingContext(self) -> QgsProcessingContext:
         return self.mProcessingContext
+
+    MIMEDATAKEY = 'application/wrapperindices'
+    def mimeTypes(self) -> typing.List[str]:
+        return [self.MIMEDATAKEY]
+
+    def mimeData(self, indexes: typing.Iterable[QModelIndex]) -> QMimeData:
+        mimeData = QMimeData()
+
+        wrappers = []
+        wrapper_idx = []
+        wrapper_rows = []
+        for idx in indexes:
+            if idx.isValid():
+                w = idx.data(Qt.UserRole)
+                if isinstance(w, SpectralProcessingModelTableModelAlgorithmWrapper):
+                    wrappers.append(w)
+                    wrapper_rows.append(self.mAlgorithmWrappers.index(w))
+                    wrapper_idx.append(idx)
+
+
+        mimeData.setData(self.MIMEDATAKEY, QByteArray(pickle.dumps(wrapper_rows)))
+        return mimeData
+
+    def canDropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int, parent: QModelIndex) -> bool:
+
+        if self.MIMEDATAKEY in data.formats():
+            return True
+
+        return False
+
+    def dropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int, parent: QModelIndex) -> bool:
+
+        if self.MIMEDATAKEY in data.formats() and action == Qt.MoveAction:
+            ba = bytes(data.data(self.MIMEDATAKEY))
+            src_rows = pickle.loads(ba)
+            self.beginMoveRows(QModelIndex(),src_rows[0], src_rows[-1], QModelIndex(), row)
+            for src_row in sorted(src_rows, reverse=True):
+                self.mAlgorithmWrappers.insert(max(0, row), self.mAlgorithmWrappers.pop(src_row))
+            self.endMoveRows()
+        else:
+            s = ""
+
+        return False
 
     def setModelName(self, name: str):
         assert isinstance(name, str)
@@ -834,7 +885,9 @@ class SpectralProcessingModelTableModel(QAbstractListModel):
         if not index.isValid():
             return Qt.NoItemFlags
 
-        flags = Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsEditable | Qt.ItemIsSelectable
+        flags = Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsEditable | Qt.ItemIsSelectable | \
+                Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
+
 
         return flags
 
@@ -1162,6 +1215,9 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         self.mTableView.setModel(self.mProcessingModelTableModel)
         self.mTableView.selectionModel().selectionChanged.connect(self.onSelectionChanged)
         self.mTableView.selectionModel().currentChanged.connect(self.onCurrentAlgorithmChanged)
+        self.mTableView.setDragEnabled(True)
+        self.mTableView.setAcceptDrops(True)
+        self.mTableView.setDropIndicatorShown(True)
         self.mTreeView: SpectralProcessingAlgorithmTreeView
         self.mTreeView.header().setVisible(False)
         self.mTreeView.setDragDropMode(QTreeView.DragOnly)
