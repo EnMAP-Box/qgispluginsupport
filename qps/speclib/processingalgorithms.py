@@ -130,7 +130,6 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
             assert isinstance(profileBlock, SpectralProfileBlock)
             print(profileBlock)
             feedback.pushConsoleInfo(f'Process profile block {i + 1}/{n_blocks}')
-
             spectralSetting = profileBlock.spectralSetting()
             if spectralSetting.xUnit() == targetUnit:
                 # output unit is already correct
