@@ -40,7 +40,7 @@ from ..layerproperties import AttributeTableWidget
 from ..unitmodel import BAND_INDEX, XUnitModel, UnitConverterFunctionModel
 
 from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle, PlotStyleDialog
-
+from qgis.PyQt.QtWidgets import QGroupBox
 from qgis.core import \
     QgsFeature, QgsRenderContext, QgsNullSymbolRenderer, QgsFieldFormatter, QgsApplication, \
     QgsRasterLayer, QgsMapLayer, QgsVectorLayer, QgsFieldFormatterRegistry, \
@@ -63,6 +63,7 @@ SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
 MAX_PDIS_DEFAULT: int = 256
+
 
 # do not show spectral processing widget in production releases
 # SHOW_SPECTRAL_PROCESSING_WIDGETS: bool = os.environ.get('DEBUG', 'false').lower() in ['1', 'true']
@@ -177,7 +178,7 @@ class SpectralLibraryPlotItem(pg.PlotItem):
             if item in self.dataItems:
                 self.dataItems.remove(item)
 
-            #self.vb.removeItem(item)
+            # self.vb.removeItem(item)
             """Remove an item from this view."""
             try:
                 self.vb.addedItems.remove(item)
@@ -193,9 +194,8 @@ class SpectralLibraryPlotItem(pg.PlotItem):
 
             if self.legend is not None:
                 self.legend.removeItem(item)
-        #self.updateDecimation()
-        #self.updateParamList()
-
+        # self.updateDecimation()
+        # self.updateParamList()
 
 
 class SpectralProfileRendererWidget(QWidget):
@@ -1028,7 +1028,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             print(ex, file=sys.stderr)
             self.mUpdateTimer.start()
 
-
     def leaveEvent(self, ev):
         super(SpectralLibraryPlotWidget, self).leaveEvent(ev)
 
@@ -1385,8 +1384,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.updatePlotDataItems()
 
         # fidsAfter = [pdi.id() for pdi in self.allSpectralProfilePlotDataItems()]
+
     def onCellCelectionChanged(self, *args):
         s = ""
+
     """
     def syncLibrary(self):
         s = ""
@@ -1526,8 +1527,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                         for k in results2.keys():
                             if k.endswith(suffix):
                                 blocks = results2[k]
-
-
 
         # self.blockSignals(True)
         for block in blocks:
@@ -1673,7 +1672,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             if k not in plotted:
                 pdi = self.mSPDICache.get(k, None)
                 if isinstance(pdi, SpectralProfilePlotDataItem):
-                    pdi.setZValue(-1*z)
+                    pdi.setZValue(-1 * z)
                     to_add.append(pdi)
 
         if len(to_add) > 0:
@@ -1698,11 +1697,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         # self.updatePlotDataItemStyles()
         if DEBUG and len(to_remove) + len(to_add) > 0:
             print(f'A:{len(to_add)} R: {len(to_remove)}')
-            print(f'tP:{t1-t0} tR:{t2-t1} tA:{t3-t2}')
+            print(f'tP:{t1 - t0} tR:{t2 - t1} tA:{t3 - t2}')
             fids = ' '.join([str(k.fid) for k in keys_to_display])
             # self.update()
             print(fids)
-            #if len(to_remove) > 0:
+            # if len(to_remove) > 0:
             #    for p in to_remove: print(p.key())
 
         """
@@ -1757,8 +1756,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         for pdi in pdis:
             pdi.updateItems()
             pass
-            #z = 1 if pdi.id() in self.mSelectedIds else 0
-            #pdi.setZValue(z)
+            # z = 1 if pdi.id() in self.mSelectedIds else 0
+            # pdi.setZValue(z)
             # pdi.updateItems()
         s = ""
 
@@ -1861,8 +1860,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
     def plottedProfileKeys(self, flags: SPDIFlags = None) -> typing.Set[SpectralProfileKey]:
         return set([pdi.key() for pdi in self.plottedProfilePlotDataItems(flags=flags)])
-
-
 
     def value_fields(self) -> typing.List[QgsField]:
         """
@@ -2168,7 +2165,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         return None
 
 
-class SpectralProfileEditorWidget(QWidget):
+class SpectralProfileEditorWidget(QGroupBox):
     sigProfileChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
@@ -2646,7 +2643,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.actionShowProcessingWidget = QAction('Show Spectral Processing Options')
         self.actionShowProcessingWidget.setCheckable(True)
-        self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_expression.svg'))
+        self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
         self.actionShowProcessingWidget.triggered.connect(
             lambda: self.setCenterView(SpectralLibraryWidget.ViewType.ProcessingView))
         self.mMainViewButtonGroup.buttonClicked.connect(self.onCenterWidgetChanged)
@@ -2693,7 +2690,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.mMainViewButtonGroup.button(m).setChecked(m == mode)
 
     def setCenterView(self, view: typing.Union[QgsDualView.ViewMode,
-                                  typing.Optional['SpectralLibraryWidget.ViewType']]):
+                                               typing.Optional['SpectralLibraryWidget.ViewType']]):
         if isinstance(view, QgsDualView.ViewMode):
             if view == QgsDualView.AttributeTable:
                 view = SpectralLibraryWidget.ViewType.AttributeTable
@@ -2714,11 +2711,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.widgetCenter.setCurrentWidget(self.pageProcessingWidget)
 
         # legacy code
-        self.mMainViewButtonGroup.button(QgsDualView.AttributeTable)\
+        self.mMainViewButtonGroup.button(QgsDualView.AttributeTable) \
             .setChecked(self.actionShowAttributeTable.isChecked())
-        self.mMainViewButtonGroup.button(QgsDualView.AttributeEditor)\
+        self.mMainViewButtonGroup.button(QgsDualView.AttributeEditor) \
             .setChecked(self.actionShowFormView.isChecked())
-
 
     def onCenterWidgetChanged(self, *args):
         w = self.widgetCenter.currentWidget()
@@ -2741,7 +2737,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def onShowContextMenuAttributeEditor(self, menu: QgsActionMenu, fid):
         menu.addSeparator()
         self.addProfileStyleMenu(menu)
-
 
     def onWillShowContextMenuAttributeTable(self, menu: QMenu, atIndex: QModelIndex):
         """

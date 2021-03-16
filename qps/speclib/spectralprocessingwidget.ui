@@ -224,8 +224,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>423</width>
-             <height>402</height>
+             <width>424</width>
+             <height>405</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -470,6 +470,7 @@
  </customwidgets>
  <resources>
   <include location="../../../QGIS/images/images.qrc"/>
+  <include location="../qpsresources.qrc"/>
  </resources>
  <connections/>
 </ui>
