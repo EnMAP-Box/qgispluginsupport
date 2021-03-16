@@ -2649,6 +2649,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_expression.svg'))
         self.actionShowProcessingWidget.triggered.connect(
             lambda: self.setCenterView(SpectralLibraryWidget.ViewType.ProcessingView))
+        self.mMainViewButtonGroup.buttonClicked.connect(self.onCenterWidgetChanged)
 
         self.tbSpectralProcessing = QToolBar('Spectral Processing')
 
