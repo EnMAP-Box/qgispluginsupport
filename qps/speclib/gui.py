@@ -1020,9 +1020,9 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 return
 
             self.mUpdateTimer.stop()
-            t0 = datetime.datetime.now()
+            # t0 = datetime.datetime.now()
             self.updatePlotDataItems()
-            print(f'Plot update: {datetime.datetime.now() - t0}')
+            # print(f'Plot update: {datetime.datetime.now() - t0}')
             self.mUpdateTimer.start()
         except RuntimeError as ex:
             print(ex, file=sys.stderr)
@@ -1477,7 +1477,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Updates values to be displayed, including x-unit conversions and further SpectralProcessingModels.
         :param pdis: list of SpectralProfilePlotDataItems
         """
-        t0 = datetime.datetime.now()
+
+        DTIME = collections.OrderedDict()
+        DTIME[0] = (datetime.datetime.now(), 'start')
+        def measure(step:str):
+            nonlocal DTIME
+            k = max(DTIME.keys())+1
+            DTIME[k] = (datetime.datetime.now(), step)
+
         if pdis is None:
             pdis = self.allSpectralProfilePlotDataItems()
 
@@ -1487,16 +1494,22 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         LUT: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = {pdi.key(): pdi for pdi in pdis}
 
+        measure('until blocks 0')
         plot_pdis = self.plottedProfilePlotDataItems()
+        measure('plot_dis')
         pi: SpectralLibraryPlotItem = self.getPlotItem()
         pi.removeItems(plot_pdis)
+        measure('removeItems')
         for pdi in LUT.values():
             # set visualization vectors to none
             pdi.mDataX = pdi.mDataY = None
             # pdi.blockSignals(True)
+        measure('until blocks 1')
         blocks = list(SpectralProfileBlock.fromSpectralProfiles(
             [pdi.spectralProfile() for pdi in pdis]
         ))
+        measure('create blocks')
+
 
         # 1. read PDI profiles
         # 2. convert to target unit
@@ -1511,6 +1524,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         results = self.mUnitConverterAlg.processAlgorithm(parameters, context, feedback)
         blocks = results[self.mUnitConverterAlg.OUTPUT]
 
+        measure('convert units')
         # todo: apply other spectral processing things
         model = self.spectralModel()
         if is_spectral_processing_model(model):
@@ -1527,6 +1541,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                         for k in results2.keys():
                             if k.endswith(suffix):
                                 blocks = results2[k]
+
+            measure('run model units')
 
         # self.blockSignals(True)
         for block in blocks:
@@ -1547,9 +1563,20 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setData(x=pdi.mDataX, y=pdi.mDataY)
                 # pdi.setVisible(SPDIFlags.Displayable in pdi.visualizationFlags())
                 # pdi.blockSignals(False)
-        # self.blockSignals(False)
+
+        measure('set pdi data')
         pi.addItems(plot_pdis)
-        print(f'PDI data update: n={len(LUT)} dt={datetime.datetime.now() - t0}')
+        measure('addItems(plot_pdis)')
+
+        if True:
+            msg = []
+            for k, t in DTIME.items():
+                dt, step = t
+                if k == 0:
+                    continue
+                dt = dt-DTIME[k-1][0]
+                msg.append(f'{step}= {dt}')
+            print('#Step Report\n'+ '\n'.join(msg))
 
     def _update_to_display(self,
                            keys_to_display: typing.List[SpectralProfileKey],
