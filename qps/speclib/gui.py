@@ -2498,6 +2498,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
     sigMapCenterRequested = pyqtSignal(SpatialPoint)
     sigCurrentProfilesChanged = pyqtSignal(list)
 
+    class ViewType(enum.Enum):
+        AttributeTable = enum.auto()
+        FormView = enum.auto()
+        ProcessingView = enum.auto()
+
     def __init__(self, *args, speclib: SpectralLibrary = None, mapCanvas: QgsMapCanvas = None, **kwds):
 
         if not isinstance(speclib, SpectralLibrary):
@@ -2558,6 +2563,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.widgetCenter.addWidget(self.pageProcessingWidget)
         self.widgetCenter.currentChanged.connect(self.onCenterWidgetChanged)
+        self.mMainView.formModeChanged.connect(self.onCenterWidgetChanged)
+
         # define Actions and Options
 
         self.actionSelectProfilesFromMap = QAction(r'Select Profiles from Map')
@@ -2625,17 +2632,23 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
         self.tbSpeclibAction.addAction(self.plotWidget().optionUseVectorSymbology())
 
+        self.actionShowFormView = QAction('Show Form View')
+        self.actionShowFormView.setCheckable(True)
+        self.actionShowFormView.setIcon(QIcon(':/images/themes/default/mActionFormView.svg'))
+        self.actionShowFormView.triggered.connect(
+            lambda: self.setCenterView(SpectralLibraryWidget.ViewType.FormView))
+
         self.actionShowAttributeTable = QAction('Show Attribute Table')
         self.actionShowAttributeTable.setCheckable(True)
         self.actionShowAttributeTable.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
         self.actionShowAttributeTable.triggered.connect(
-            lambda: self.widgetCenter.setCurrentWidget(self.pageAttributeTable))
+            lambda: self.setCenterView(SpectralLibraryWidget.ViewType.AttributeTable))
 
         self.actionShowProcessingWidget = QAction('Show Spectral Processing Options')
         self.actionShowProcessingWidget.setCheckable(True)
         self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_expression.svg'))
         self.actionShowProcessingWidget.triggered.connect(
-            lambda: self.widgetCenter.setCurrentWidget(self.pageProcessingWidget))
+            lambda: self.setCenterView(SpectralLibraryWidget.ViewType.ProcessingView))
 
         self.tbSpectralProcessing = QToolBar('Spectral Processing')
 
@@ -2648,9 +2661,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.addToolBar(self.tbSpectralProcessing)
 
         r = self.tbSpeclibAction.addSeparator()
+        self.tbSpeclibAction.addAction(self.actionShowFormView)
         self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
         self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
-
 
         # update toolbar visibilities
         self.onCenterWidgetChanged()
@@ -2672,6 +2685,55 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.setAcceptDrops(True)
 
+    def depr_setViewMode(self, mode: QgsDualView.ViewMode):
+        assert isinstance(mode, QgsDualView.ViewMode)
+        self.mMainView.setView(mode)
+        for m in [QgsDualView.AttributeEditor, QgsDualView.AttributeTable]:
+            self.mMainViewButtonGroup.button(m).setChecked(m == mode)
+
+    def setCenterView(self, view: typing.Union[QgsDualView.ViewMode,
+                                  typing.Optional['SpectralLibraryWidget.ViewType']]):
+        if isinstance(view, QgsDualView.ViewMode):
+            if view == QgsDualView.AttributeTable:
+                view = SpectralLibraryWidget.ViewType.AttributeTable
+            elif view == QgsDualView.AttributeEditor:
+                view = SpectralLibraryWidget.ViewType.FormView
+
+        assert isinstance(view, SpectralLibraryWidget.ViewType)
+
+        if view == SpectralLibraryWidget.ViewType.AttributeTable:
+            self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
+            self.mMainView.setView(QgsDualView.AttributeTable)
+
+        elif view == SpectralLibraryWidget.ViewType.FormView:
+            self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
+            self.mMainView.setView(QgsDualView.AttributeEditor)
+
+        elif view == SpectralLibraryWidget.ViewType.ProcessingView:
+            self.widgetCenter.setCurrentWidget(self.pageProcessingWidget)
+
+        # legacy code
+        self.mMainViewButtonGroup.button(QgsDualView.AttributeTable)\
+            .setChecked(self.actionShowAttributeTable.isChecked())
+        self.mMainViewButtonGroup.button(QgsDualView.AttributeEditor)\
+            .setChecked(self.actionShowFormView.isChecked())
+
+
+    def onCenterWidgetChanged(self, *args):
+        w = self.widgetCenter.currentWidget()
+
+        self.mToolbar.setVisible(w == self.pageAttributeTable)
+        self.tbSpectralProcessing.setVisible(w == self.pageProcessingWidget)
+        self.actionShowProcessingWidget.setChecked(w == self.pageProcessingWidget)
+
+        if w == self.pageAttributeTable:
+            viewMode: QgsDualView.ViewMode = self.mMainView.view()
+            self.actionShowAttributeTable.setChecked(viewMode == QgsDualView.AttributeTable)
+            self.actionShowFormView.setChecked(viewMode == QgsDualView.AttributeEditor)
+        else:
+            self.actionShowAttributeTable.setChecked(False)
+            self.actionShowFormView.setChecked(False)
+
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()
 
@@ -2679,14 +2741,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         menu.addSeparator()
         self.addProfileStyleMenu(menu)
 
-    def onCenterWidgetChanged(self, *args):
-
-        w = self.widgetCenter.currentWidget()
-        self.mToolbar.setVisible(w == self.pageAttributeTable)
-        self.tbSpectralProcessing.setVisible(w == self.pageProcessingWidget)
-        self.actionShowAttributeTable.setChecked(w == self.pageAttributeTable)
-        self.actionShowProcessingWidget.setChecked(w == self.pageProcessingWidget)
-        s = ""
 
     def onWillShowContextMenuAttributeTable(self, menu: QMenu, atIndex: QModelIndex):
         """
