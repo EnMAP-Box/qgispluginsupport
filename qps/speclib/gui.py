@@ -622,6 +622,15 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         return self.menu
 
 
+
+class SpectralProfilePlotDataItemController(QAbstractTableModel):
+
+    def __init__(self, *args, **kwds):
+
+        super().__init__(*args, **kwds)
+
+
+
 class XAxisWidgetAction(QWidgetAction):
     sigUnitChanged = pyqtSignal(str)
 

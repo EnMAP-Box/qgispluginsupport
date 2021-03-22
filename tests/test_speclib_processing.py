@@ -520,6 +520,37 @@ class SpectralProcessingTests(TestCase):
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
 
+    def test_SpectralProcessingModelList(self):
+
+
+        m1 = self.create_spectral_processing_model('Model1')
+        m2 = self.create_spectral_processing_model('Model2')
+
+        model = SpectralProcessingModelList()
+        self.assertTrue(model.rowCount() == 0)
+
+        model.addModel(m1)
+        model.addModel(m1)
+        model.addModel(m2)
+
+        self.assertTrue(len(model) == 2)
+        self.assertTrue(model.rowCount() == 2)
+        self.assertEqual(m2, model[1])
+        idx = model.index(1, 0)
+        self.assertEqual(m2, model.data(idx, Qt.UserRole), Qt.UserRole)
+        self.assertEqual(m2.modelName(), model.data(idx, Qt.DisplayRole))
+
+        model.removeModel(m1)
+        self.assertTrue(m1 in model)
+        self.assertTrue(m2 in model)
+
+        self.assertTrue(len(model) == 1)
+        self.assertTrue(m1 in model)
+        self.assertFalse(m2 in model)
+
+
+
+
     def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
         n_profiles_per_n_bands = 1000
@@ -616,6 +647,16 @@ class SpectralProcessingTests(TestCase):
             self.assertTrue(block.spectralSetting().xUnit() == target_unit)
             print(block.spectralSetting().x())
 
+
+    def create_spectral_processing_model(self, name='') -> QgsProcessingModelAlgorithm:
+        self.initProcessingRegistry()
+        m = SpectralProcessingModelCreatorTableModel()
+        m.setModelName(name)
+        m.addAlgorithm(SpectralXUnitConversion())
+
+        model = m.createModel()
+        assert is_spectral_processing_model(model)
+        return model
 
     def test_simple_processing_model(self):
 
@@ -735,9 +776,9 @@ class SpectralProcessingTests(TestCase):
 
         algs = spectral_algorithms()
 
-        m = SpectralProcessingModelTableModel()
+        m = SpectralProcessingModelCreatorTableModel()
         self.assertIsInstance(m, QAbstractListModel)
-        tv = SpectralProcessingModelTableView()
+        tv = SpectralProcessingModelCreatorTableView()
         tv.setModel(m)
         tv.show()
         for i, a in enumerate(algs):
@@ -750,7 +791,7 @@ class SpectralProcessingTests(TestCase):
 
         tv.selectRow(1)
         selectedWrapper = tv.currentIndex().data(Qt.UserRole)
-        self.assertIsInstance(selectedWrapper, SpectralProcessingModelTableModelAlgorithmWrapper, selectedWrapper)
+        self.assertIsInstance(selectedWrapper, SpectralProcessingModelCreatorAlgorithmWrapper, selectedWrapper)
         self.assertTrue(selectedWrapper.name == 'AlgA2')
         m.removeAlgorithms(selectedWrapper)
         self.assertTrue(len(m) == n - 1)
