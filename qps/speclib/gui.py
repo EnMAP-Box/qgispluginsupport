@@ -40,7 +40,7 @@ from ..layerproperties import AttributeTableWidget
 from ..unitmodel import BAND_INDEX, XUnitModel, UnitConverterFunctionModel
 
 from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle, PlotStyleDialog
-
+from qgis.PyQt.QtWidgets import QGroupBox
 from qgis.core import \
     QgsFeature, QgsRenderContext, QgsNullSymbolRenderer, QgsFieldFormatter, QgsApplication, \
     QgsRasterLayer, QgsMapLayer, QgsVectorLayer, QgsFieldFormatterRegistry, \
@@ -63,6 +63,7 @@ SPECTRAL_PROFILE_FIELD_FORMATTER: None
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
 MAX_PDIS_DEFAULT: int = 256
+
 
 # do not show spectral processing widget in production releases
 # SHOW_SPECTRAL_PROCESSING_WIDGETS: bool = os.environ.get('DEBUG', 'false').lower() in ['1', 'true']
@@ -177,7 +178,7 @@ class SpectralLibraryPlotItem(pg.PlotItem):
             if item in self.dataItems:
                 self.dataItems.remove(item)
 
-            #self.vb.removeItem(item)
+            # self.vb.removeItem(item)
             """Remove an item from this view."""
             try:
                 self.vb.addedItems.remove(item)
@@ -193,9 +194,8 @@ class SpectralLibraryPlotItem(pg.PlotItem):
 
             if self.legend is not None:
                 self.legend.removeItem(item)
-        #self.updateDecimation()
-        #self.updateParamList()
-
+        # self.updateDecimation()
+        # self.updateParamList()
 
 
 class SpectralProfileRendererWidget(QWidget):
@@ -1029,14 +1029,13 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 return
 
             self.mUpdateTimer.stop()
-            t0 = datetime.datetime.now()
+            # t0 = datetime.datetime.now()
             self.updatePlotDataItems()
-            print(f'Plot update: {datetime.datetime.now() - t0}')
+            # print(f'Plot update: {datetime.datetime.now() - t0}')
             self.mUpdateTimer.start()
         except RuntimeError as ex:
             print(ex, file=sys.stderr)
             self.mUpdateTimer.start()
-
 
     def leaveEvent(self, ev):
         super(SpectralLibraryPlotWidget, self).leaveEvent(ev)
@@ -1394,8 +1393,10 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         self.updatePlotDataItems()
 
         # fidsAfter = [pdi.id() for pdi in self.allSpectralProfilePlotDataItems()]
+
     def onCellCelectionChanged(self, *args):
         s = ""
+
     """
     def syncLibrary(self):
         s = ""
@@ -1485,7 +1486,14 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         Updates values to be displayed, including x-unit conversions and further SpectralProcessingModels.
         :param pdis: list of SpectralProfilePlotDataItems
         """
-        t0 = datetime.datetime.now()
+
+        DTIME = collections.OrderedDict()
+        DTIME[0] = (datetime.datetime.now(), 'start')
+        def measure(step:str):
+            nonlocal DTIME
+            k = max(DTIME.keys())+1
+            DTIME[k] = (datetime.datetime.now(), step)
+
         if pdis is None:
             pdis = self.allSpectralProfilePlotDataItems()
 
@@ -1495,16 +1503,22 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
         LUT: typing.Dict[SpectralProfileKey, SpectralProfilePlotDataItem] = {pdi.key(): pdi for pdi in pdis}
 
+        measure('until blocks 0')
         plot_pdis = self.plottedProfilePlotDataItems()
+        measure('plot_dis')
         pi: SpectralLibraryPlotItem = self.getPlotItem()
         pi.removeItems(plot_pdis)
+        measure('removeItems')
         for pdi in LUT.values():
             # set visualization vectors to none
             pdi.mDataX = pdi.mDataY = None
             # pdi.blockSignals(True)
+        measure('until blocks 1')
         blocks = list(SpectralProfileBlock.fromSpectralProfiles(
             [pdi.spectralProfile() for pdi in pdis]
         ))
+        measure('create blocks')
+
 
         # 1. read PDI profiles
         # 2. convert to target unit
@@ -1519,6 +1533,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         results = self.mUnitConverterAlg.processAlgorithm(parameters, context, feedback)
         blocks = results[self.mUnitConverterAlg.OUTPUT]
 
+        measure('convert units')
         # todo: apply other spectral processing things
         model = self.spectralModel()
         if is_spectral_processing_model(model):
@@ -1536,7 +1551,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                             if k.endswith(suffix):
                                 blocks = results2[k]
 
-
+            measure('run model units')
 
         # self.blockSignals(True)
         for block in blocks:
@@ -1557,9 +1572,20 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 pdi.setData(x=pdi.mDataX, y=pdi.mDataY)
                 # pdi.setVisible(SPDIFlags.Displayable in pdi.visualizationFlags())
                 # pdi.blockSignals(False)
-        # self.blockSignals(False)
+
+        measure('set pdi data')
         pi.addItems(plot_pdis)
-        print(f'PDI data update: n={len(LUT)} dt={datetime.datetime.now() - t0}')
+        measure('addItems(plot_pdis)')
+
+        if True:
+            msg = []
+            for k, t in DTIME.items():
+                dt, step = t
+                if k == 0:
+                    continue
+                dt = dt-DTIME[k-1][0]
+                msg.append(f'{step}= {dt}')
+            print('#Step Report\n'+ '\n'.join(msg))
 
     def _update_to_display(self,
                            keys_to_display: typing.List[SpectralProfileKey],
@@ -1682,7 +1708,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
             if k not in plotted:
                 pdi = self.mSPDICache.get(k, None)
                 if isinstance(pdi, SpectralProfilePlotDataItem):
-                    pdi.setZValue(-1*z)
+                    pdi.setZValue(-1 * z)
                     to_add.append(pdi)
 
         if len(to_add) > 0:
@@ -1707,11 +1733,11 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         # self.updatePlotDataItemStyles()
         if DEBUG and len(to_remove) + len(to_add) > 0:
             print(f'A:{len(to_add)} R: {len(to_remove)}')
-            print(f'tP:{t1-t0} tR:{t2-t1} tA:{t3-t2}')
+            print(f'tP:{t1 - t0} tR:{t2 - t1} tA:{t3 - t2}')
             fids = ' '.join([str(k.fid) for k in keys_to_display])
             # self.update()
             print(fids)
-            #if len(to_remove) > 0:
+            # if len(to_remove) > 0:
             #    for p in to_remove: print(p.key())
 
         """
@@ -1766,8 +1792,8 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
         for pdi in pdis:
             pdi.updateItems()
             pass
-            #z = 1 if pdi.id() in self.mSelectedIds else 0
-            #pdi.setZValue(z)
+            # z = 1 if pdi.id() in self.mSelectedIds else 0
+            # pdi.setZValue(z)
             # pdi.updateItems()
         s = ""
 
@@ -1870,8 +1896,6 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
 
     def plottedProfileKeys(self, flags: SPDIFlags = None) -> typing.Set[SpectralProfileKey]:
         return set([pdi.key() for pdi in self.plottedProfilePlotDataItems(flags=flags)])
-
-
 
     def value_fields(self) -> typing.List[QgsField]:
         """
@@ -2177,7 +2201,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         return None
 
 
-class SpectralProfileEditorWidget(QWidget):
+class SpectralProfileEditorWidget(QGroupBox):
     sigProfileChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
@@ -2655,9 +2679,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.actionShowProcessingWidget = QAction('Show Spectral Processing Options')
         self.actionShowProcessingWidget.setCheckable(True)
-        self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_expression.svg'))
+        self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
         self.actionShowProcessingWidget.triggered.connect(
             lambda: self.setCenterView(SpectralLibraryWidget.ViewType.ProcessingView))
+        self.mMainViewButtonGroup.buttonClicked.connect(self.onCenterWidgetChanged)
 
         self.tbSpectralProcessing = QToolBar('Spectral Processing')
 
@@ -2701,7 +2726,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.mMainViewButtonGroup.button(m).setChecked(m == mode)
 
     def setCenterView(self, view: typing.Union[QgsDualView.ViewMode,
-                                  typing.Optional['SpectralLibraryWidget.ViewType']]):
+                                               typing.Optional['SpectralLibraryWidget.ViewType']]):
         if isinstance(view, QgsDualView.ViewMode):
             if view == QgsDualView.AttributeTable:
                 view = SpectralLibraryWidget.ViewType.AttributeTable
@@ -2722,11 +2747,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.widgetCenter.setCurrentWidget(self.pageProcessingWidget)
 
         # legacy code
-        self.mMainViewButtonGroup.button(QgsDualView.AttributeTable)\
+        self.mMainViewButtonGroup.button(QgsDualView.AttributeTable) \
             .setChecked(self.actionShowAttributeTable.isChecked())
-        self.mMainViewButtonGroup.button(QgsDualView.AttributeEditor)\
+        self.mMainViewButtonGroup.button(QgsDualView.AttributeEditor) \
             .setChecked(self.actionShowFormView.isChecked())
-
 
     def onCenterWidgetChanged(self, *args):
         w = self.widgetCenter.currentWidget()
@@ -2749,7 +2773,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def onShowContextMenuAttributeEditor(self, menu: QgsActionMenu, fid):
         menu.addSeparator()
         self.addProfileStyleMenu(menu)
-
 
     def onWillShowContextMenuAttributeTable(self, menu: QMenu, atIndex: QModelIndex):
         """

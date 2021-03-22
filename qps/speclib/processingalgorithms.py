@@ -128,7 +128,7 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
             # process block by block
 
             assert isinstance(profileBlock, SpectralProfileBlock)
-            print(profileBlock)
+            # print(profileBlock)
             feedback.pushConsoleInfo(f'Process profile block {i + 1}/{n_blocks}')
             spectralSetting = profileBlock.spectralSetting()
             if spectralSetting.xUnit() == targetUnit:

@@ -176,7 +176,7 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
             s = ""
         return is_valid
 
-    def applyUserCode(self, code, profileBlock:SpectralProfileBlock) -> SpectralProfileBlock:
+    def applyUserCode(self, code, profileBlock: SpectralProfileBlock) -> SpectralProfileBlock:
         kwds_global = profileBlock.toVariantMap()
         kwds_local = {}
         msg = ''
@@ -197,6 +197,7 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
             except Exception as ex:
                 msg = str(ex)
         return result_block, msg
+
 
 class SpectralProcessingExamples(TestCase):
     @classmethod
@@ -450,8 +451,6 @@ class SpectralProcessingExamples(TestCase):
         # self.testProvider().refreshAlgorithms()
         self.testProvider().addAlgorithm(alg)
 
-        from test_issue42069 import CollectAndSumDirections_ProcessingAlgorithm
-
         self.assertIsInstance(self.testProvider().algorithm(alg.name()), SpectralProcessingAlgorithmExample)
 
         self.assertTrue(alg.name() in [a.name() for a in spectral_algorithms()])
@@ -463,6 +462,19 @@ class SpectralProcessingExamples(TestCase):
 
         # note: this will work only if environmental variable CI=False
         self.showGui(d)
+
+    def test_SpectralLibraryWidget(self):
+
+        n_profiles_per_n_bands = 50
+        n_bands = [6, 30, 177]
+        alg = SpectralProcessingAlgorithmExample()
+        self.testProvider().addAlgorithm(alg)
+        sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
+        w = SpectralLibraryWidget(speclib=sl)
+
+        self.showGui(w)
+        s = ""
+        pass
 
 
 class SpectralProcessingTests(TestCase):
@@ -727,11 +739,10 @@ class SpectralProcessingTests(TestCase):
         child_alg = model._algWrapper(childId)
         child_results = results['CHILD_RESULTS'][childId]
         for output_name, output in child_alg.modelOutputs().items():
-
             final_key = f'{childId}:{output_name}'
             final_value = child_results[output.childOutputName()]
             s = ""
-        s  =""
+        s = ""
 
         if False:
             dialog = ModelerParametersDialog(childAlg.algorithm(),
@@ -740,7 +751,7 @@ class SpectralProcessingTests(TestCase):
                                              configuration=configuration)
         else:
             # new API
-            #context = createContext()
+            # context = createContext()
             widget_context = QgsProcessingParameterWidgetContext()
             widget_context.setProject(QgsProject.instance())
             from qgis.utils import iface
@@ -760,11 +771,11 @@ class SpectralProcessingTests(TestCase):
                                                          algorithm=algorithm)
             dlg.setComments('My Comment')
             dlg.setCommentColor(QColor('green'))
-            #if edit_comment:
+            # if edit_comment:
             #    dlg.switchToCommentTab()
 
             if dlg.exec_():
-                s  =""
+                s = ""
                 new_param = dlg.createParameter(existing_param.name())
                 comment = dlg.comments()
                 comment_color = dlg.commentColor()
@@ -782,12 +793,12 @@ class SpectralProcessingTests(TestCase):
         tv.setModel(m)
         tv.show()
         for i, a in enumerate(algs):
-            m.addAlgorithm(a, name=f'AlgA{i+1}')
+            m.addAlgorithm(a, name=f'AlgA{i + 1}')
         for a in algs:
-            m.addAlgorithm(a.id(), name=f'AlgB{i+1}')
+            m.addAlgorithm(a.id(), name=f'AlgB{i + 1}')
 
         n = len(m)
-        self.assertTrue(n == len(algs)*2)
+        self.assertTrue(n == len(algs) * 2)
 
         tv.selectRow(1)
         selectedWrapper = tv.currentIndex().data(Qt.UserRole)
@@ -858,7 +869,7 @@ class SpectralProcessingTests(TestCase):
         w.loadModel(path)
         wrappers_after = [w for w in w.mProcessingModelTableModel if w.is_active]
         self.assertTrue(len(wrappers_after) == len(wrappers_before))
-        #for w_b, w_a in zip(wrappers_before, wrappers_after):
+        # for w_b, w_a in zip(wrappers_before, wrappers_after):
         #    self.assertEqual(w_b.name, w_a.name)
         self.showGui(M)
 
