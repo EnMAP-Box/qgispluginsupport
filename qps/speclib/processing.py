@@ -993,19 +993,25 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
                             SpectralProcessingModelCreatorAlgorithmWrapper],
                         index: int,
                         name: str = None) -> SpectralProcessingModelCreatorAlgorithmWrapper:
+        procReg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        assert isinstance(procReg, QgsProcessingRegistry)
+        alg_ids = [a.id() for a in procReg.algorithms()]
 
         if isinstance(alg, str):
-            procReg = QgsApplication.instance().processingRegistry()
-            assert isinstance(procReg, QgsProcessingRegistry)
+            # alg needs to be a registered algorithms id
+            if alg not in alg_ids:
+                for a in alg_ids:
+                    if a.endswith(alg):
+                        alg = a
+
             a = procReg.algorithmById(alg)
+
             assert isinstance(a, QgsProcessingAlgorithm), f'Unable to find QgsProcessingAlgorithm {alg}'
             wrapper = SpectralProcessingModelCreatorAlgorithmWrapper(a,
                                                                      self.mTestBlocks,
                                                                      context=self.mProcessingContext)
         elif isinstance(alg, QgsProcessingAlgorithm):
-            wrapper = SpectralProcessingModelCreatorAlgorithmWrapper(alg,
-                                                                     self.mTestBlocks,
-                                                                     context=self.mProcessingContext)
+            return self.insertAlgorithm(alg.id(), index, name=name)
         else:
             assert isinstance(alg, SpectralProcessingModelCreatorAlgorithmWrapper)
             wrapper = alg
