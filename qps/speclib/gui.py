@@ -41,6 +41,7 @@ from ..unitmodel import BAND_INDEX, XUnitModel, UnitConverterFunctionModel
 
 from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle, PlotStyleDialog
 from qgis.PyQt.QtWidgets import QGroupBox
+from qgis.PyQt.QtCore import Qt
 from qgis.core import \
     QgsFeature, QgsRenderContext, QgsNullSymbolRenderer, QgsFieldFormatter, QgsApplication, \
     QgsRasterLayer, QgsMapLayer, QgsVectorLayer, QgsFieldFormatterRegistry, \
@@ -621,6 +622,16 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.menu.alphaSlider = alphaSlider
         return self.menu
 
+class SpectralProfilePlotDataItemControlWrapper(QObject):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.mModel: QgsProcessingModelAlgorithm = None
+        self.mField: QgsField = None
+        self.mLabelExpression: str = ''
+        self.mLineStyle = None
+        self.mVisible: bool = True
 
 
 class SpectralProfilePlotDataItemController(QAbstractTableModel):
@@ -628,8 +639,87 @@ class SpectralProfilePlotDataItemController(QAbstractTableModel):
     def __init__(self, *args, **kwds):
 
         super().__init__(*args, **kwds)
+        self.mProfileVisualizations: typing.List[SpectralProfilePlotDataItemControlWrapper] = []
+        self.mModelList: SpectralProcessingModelList = SpectralProcessingModelList()
+
+        self.mMaxPDIs: int = 64
+
+        self.mColumnNames = {0: 'Source',
+                             1: 'Model',
+                             }
+        self.mColumnTooltips = {0: 'Source field',
+                                1: 'Spectral processing model'}
+
+        self.mPDIs: typing.List[SpectralProfilePlotDataItem] = list()
+
+    def __len__(self):
+        return len(self.mProfileVisualizations)
+
+    def __iter__(self):
+        return iter(self.mProfileVisualizations)
+
+    def rowCount(self, parent=None, *args, **kwargs):
+        return len(self.mProfileVisualizations)
+
+    def columnCount(self, parent=None, *args, **kwargs):
+        return len(self.mColumnNames)
+
+    def index(self, row, col, parent: QModelIndex=None, *args, **kwargs) -> QModelIndex:
+        vis = self.mProfileVisualizations[row]
+        return self.createIndex(row, col, vis)
+
+    def flags(self, index: QModelIndex):
+        if not index.isValid():
+            return Qt.NoItemFlags
+
+        flags = Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable
+        if index.column() == 0:
+            flags = flags | Qt.ItemIsUserCheckable
+        return flags
+
+    def data(self, index:QModelIndex, role=None):
+        if not index.isValid():
+            return None
+
+        vis = self.mProfileVisualizations[index.row()]
+        if index.column() == 0:
+            if role == Qt.CheckStateRole:
+                return Qt.Checked if vis.mVisible else Qt.Unchecked
+            if role == Qt.DisplayRole:
+                return vis.mField.name()
+            if role == Qt.ToolTipRole:
+                return vis.mField.name()
+
+        if index.column() == 1:
+            if role == Qt.DisplayRole:
+                return vis.mModel.id()
+            if role == Qt.ToolTipRole:
+                return vis.mModel.id()
+
+        if role == Qt.UserRole:
+            return vis
+
+        return None
 
 
+    def headerData(self, col: int, orientation, role):
+        if orientation == Qt.Horizontal:
+            if role == Qt.DisplayRole:
+                return self.mColumnNames.get(col, f'{col + 1}')
+            elif role == Qt.ToolTipRole:
+                return self.mColumnTooltips.get(col, None)
+        return None
+
+    def removeModel(self, model: QgsProcessingModelAlgorithm):
+        self.mModelList.removeModel(model)
+        # todo: disconnect model from visualiszations
+
+    def addModel(self, model: QgsProcessingModelAlgorithm):
+        assert is_spectral_processing_model(model)
+        self.mModelList.addModel(model)
+
+    def modelList(self) -> SpectralProcessingModelList:
+        return self.mModelList
 
 class XAxisWidgetAction(QWidgetAction):
     sigUnitChanged = pyqtSignal(str)

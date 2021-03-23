@@ -453,6 +453,86 @@ class SpectralProcessingModelList(QAbstractListModel):
         super(SpectralProcessingModelList, self).__init__(*args, **kwds)
         self.mModels: typing.List[QgsProcessingModelAlgorithm] = list()
 
+    def __iter__(self):
+        return iter(self.mModels)
+
+    def __getitem__(self, slice):
+        return self.mModels[slice]
+
+    def __len__(self):
+        return len(self.mModels)
+
+    def flags(self, index: QModelIndex):
+        if not index.isValid():
+            return Qt.NoItemFlags
+
+        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        return flags
+
+    def rowCount(self, parent=None, *args, **kwargs):
+        return len(self.mModels)
+
+    def columnCount(self, *args, **kwargs):
+        return 1
+
+    def addModel(self, model: QgsProcessingModelAlgorithm):
+        self.insertModel(-1, model)
+
+    def findModelInstance(self, model: QgsProcessingModelAlgorithm) -> typing.Tuple[int,QgsProcessingModelAlgorithm]:
+        for i, m in enumerate(self):
+            m: QgsProcessingModelAlgorithm
+            if m.id() == model.id():
+                return i, m
+        return None, None
+
+    def insertModel(self, row, model:QgsProcessingModelAlgorithm):
+        assert isinstance(model, QgsProcessingModelAlgorithm)
+        if isinstance(row, QModelIndex):
+            row = row.row()
+
+        i, existingModel = self.findModelInstance(model)
+        if isinstance(existingModel, QgsProcessingModelAlgorithm):
+            # update existing model
+            idx = self.index(i, 0)
+            self.mModels[i] = model
+            self.dataChanged.emit(idx, idx)
+        else:
+            if row < 0:
+                row = self.rowCount()
+
+            self.beginInsertRows(QModelIndex(), row, row)
+            self.mModels.insert(row, model)
+            self.endInsertRows()
+
+    def removeModel(self, model: QgsProcessingModelAlgorithm):
+        assert isinstance(model, QgsProcessingModelAlgorithm)
+
+        row, modelInstance = self.findModelInstance(model)
+        if isinstance(row, int):
+            self.beginRemoveRows(QModelIndex(), row, row)
+            self.mModels.remove(modelInstance)
+            self.endRemoveRows()
+
+    def index(self, row: int, column: int, parent: QModelIndex = None) -> QModelIndex:
+        if row < 0 or row >= len(self.mModels):
+            return QModelIndex()
+        model = self.mModels[row]
+        return self.createIndex(row, column, model)
+
+    def data(self, index:QModelIndex, role=None):
+        if not index.isValid():
+            return None
+        model: QgsProcessingModelAlgorithm = self.mModels[index.row()]
+
+        if role == Qt.DisplayRole:
+            return f'{model.id()}'
+
+        if role == Qt.ToolTipRole:
+            return f'{model.name()}\n{model.group()}'
+
+        if role == Qt.UserRole:
+            return model
+        return None
 
 
 class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidget):

@@ -545,20 +545,21 @@ class SpectralProcessingTests(TestCase):
         model.addModel(m1)
         model.addModel(m2)
 
+
         self.assertTrue(len(model) == 2)
         self.assertTrue(model.rowCount() == 2)
         self.assertEqual(m2, model[1])
         idx = model.index(1, 0)
-        self.assertEqual(m2, model.data(idx, Qt.UserRole), Qt.UserRole)
-        self.assertEqual(m2.modelName(), model.data(idx, Qt.DisplayRole))
+
+        self.assertTrue(model.data(idx, Qt.DisplayRole) == m2.id())
+        self.assertEqual(m2, model.data(idx, Qt.UserRole))
+        self.assertEqual(m2.id(), model.data(idx, Qt.DisplayRole))
 
         model.removeModel(m1)
-        self.assertTrue(m1 in model)
-        self.assertTrue(m2 in model)
 
         self.assertTrue(len(model) == 1)
-        self.assertTrue(m1 in model)
-        self.assertFalse(m2 in model)
+        self.assertFalse(m1 in model)
+        self.assertTrue(m2 in model)
 
 
 
