@@ -780,7 +780,7 @@ class SpectralProcessingTests(TestCase):
                 comment = dlg.comments()
                 comment_color = dlg.commentColor()
 
-    def test_SpectralProcessingModelTableView(self):
+    def test_SpectralProcessingModelCreatorTableView(self):
         reg, guiReg = self.initProcessingRegistry()
         reg: QgsProcessingRegistry
         guiReg: QgsProcessingGuiRegistry
