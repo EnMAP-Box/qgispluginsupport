@@ -448,6 +448,11 @@ class SpectralProcessingModelList(QAbstractListModel):
     """
     Contains a list of SpectralProcessingModels(QgsModelAlgorithms)
     """
+    def __init__(self, *args, **kwds):
+
+        super(SpectralProcessingModelList, self).__init__(*args, **kwds)
+        self.mModels: typing.List[QgsProcessingModelAlgorithm] = list()
+
 
 
 class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidget):
