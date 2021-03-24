@@ -562,11 +562,9 @@ class SpectralProcessingTests(TestCase):
         self.assertTrue(m2 in model)
 
 
-
-
     def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
-        n_profiles_per_n_bands = 1000
+        n_profiles_per_n_bands = 5
         n_bands = [6, 30, 177]
         if False:
             # speed-test for deleting features

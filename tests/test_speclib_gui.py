@@ -169,8 +169,8 @@ class TestSpeclibWidgets(TestCase):
 
         speclib = SpectralLibrary.readFrom(speclibpath)
 
-        pw = SpectralLibraryPlotWidget()
-        self.assertIsInstance(pw, SpectralLibraryPlotWidget)
+        pw = SpectralProfilePlotWidget()
+        self.assertIsInstance(pw, SpectralProfilePlotWidget)
         self.assertTrue(pw.xUnit(), BAND_INDEX)
 
         pw.setMaxProfiles(5)
@@ -185,7 +185,7 @@ class TestSpeclibWidgets(TestCase):
 
         w = QWidget()
         w.setLayout(QVBoxLayout())
-        pw = SpectralLibraryPlotWidget()
+        pw = SpectralProfilePlotWidget()
 
         btn = QPushButton('Add speclib')
         btn.clicked.connect(lambda: pw.setSpeclib(speclib))
@@ -236,7 +236,7 @@ class TestSpeclibWidgets(TestCase):
         slib.startEditing()
         slib.addProfiles([p1, p2])
         slib.commitChanges()
-        pw = SpectralLibraryPlotWidget()
+        pw = SpectralProfilePlotWidget()
         pw.setSpeclib(slib)
 
         self.showGui(pw)
@@ -246,7 +246,7 @@ class TestSpeclibWidgets(TestCase):
 
         speclib = TestObjects.createSpectralLibrary(10)
         # speclib = SpectralLibrary()
-        w = SpectralLibraryPlotWidget()
+        w = SpectralProfilePlotWidget()
         w.setSpeclib(speclib)
 
         self.showGui(w)
@@ -914,7 +914,7 @@ class TestSpeclibWidgets(TestCase):
         sw = SpectralLibraryWidget()
         self.assertIsInstance(sw, SpectralLibraryWidget)
         pw = sw.plotWidget()
-        self.assertIsInstance(pw, SpectralLibraryPlotWidget)
+        self.assertIsInstance(pw, SpectralProfilePlotWidget)
         self.assertEqual(pw.xUnit(), BAND_INDEX)
         slib = TestObjects.createSpectralLibrary(10)
 
