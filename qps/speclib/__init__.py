@@ -27,10 +27,54 @@
 ***************************************************************************
 """
 import enum
-from qgis.core import QgsSettings
+import pathlib
 
+from qgis.core import QgsSettings, QgsCoordinateReferenceSystem, QgsField, QgsFields
+from qgis.PyQt.QtCore import NULL, QVariant
+from osgeo import ogr
 EDITOR_WIDGET_REGISTRY_KEY = 'Spectral Profile'
 
+SPECLIB_EPSG_CODE = 4326
+SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))
+
+EMPTY_VALUES = [None, NULL, QVariant(), '', 'None']
+
+FIELD_VALUES = 'values'
+FIELD_NAME = 'name'
+FIELD_FID = 'fid'
+
+
+def ogrStandardFields() -> list:
+    """Returns the minimum set of field a Spectral Library contains"""
+    fields = [
+        ogr.FieldDefn(FIELD_FID, ogr.OFTInteger),
+        ogr.FieldDefn(FIELD_NAME, ogr.OFTString),
+        ogr.FieldDefn('source', ogr.OFTString),
+        ogr.FieldDefn(FIELD_VALUES, ogr.OFTBinary),
+    ]
+    return fields
+
+
+def createStandardFields() -> QgsFields:
+    fields = QgsFields()
+    for f in ogrStandardFields():
+        assert isinstance(f, ogr.FieldDefn)
+        name = f.GetName()
+        ogrType = f.GetType()
+        if ogrType == ogr.OFTString:
+            a, b = QVariant.String, 'varchar'
+        elif ogrType in [ogr.OFTInteger, ogr.OFTInteger64]:
+            a, b = QVariant.Int, 'int'
+        elif ogrType in [ogr.OFTReal]:
+            a, b = QVariant.Double, 'double'
+        elif ogrType in [ogr.OFTBinary]:
+            a, b = QVariant.ByteArray, 'Binary'
+        else:
+            raise NotImplementedError()
+
+        fields.append(QgsField(name, a, b))
+
+    return fields
 
 class SpectralLibrarySettingsKey(enum.Enum):
     CURRENT_PROFILE_STYLE = 1
@@ -54,3 +98,16 @@ try:
     from ..speclib.io.envi import EnviSpectralLibraryIO
 except:
     pass
+
+
+def speclibUiPath(name: str) -> str:
+    """
+    Returns the path to a spectral library *.ui file
+    :param name: name
+    :type name: str
+    :return: absolute path to *.ui file
+    :rtype: str
+    """
+    path = pathlib.Path(__file__).parent / 'ui' / name
+    assert path.is_file(), f'File does not exist: {path}'
+    return path.as_posix()

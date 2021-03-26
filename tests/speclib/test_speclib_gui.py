@@ -21,18 +21,23 @@ import unittest
 import random
 import math
 import xmlrunner
+from PyQt5.QtCore import QSize
+from PyQt5.QtWidgets import QCheckBox, QProgressDialog
+
+from qps.speclib.gui.spectrallibraryconsistencywidget import SpectralLibraryConsistencyCheckWidget
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
     QgsSearchWidgetWrapper, QgsMessageBar
 from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, QgsActionManager, \
     QgsField, QgsApplication, QgsWkbTypes
+from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
 
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
-from qps.speclib.gui import *
+from qps.speclib.gui.gui import *
 from qps.layerproperties import AddAttributeDialog
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
@@ -327,15 +332,15 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(m, SpectralProfileTableModel)
         self.assertTrue(m.rowCount() == 0)
         # self.assertTrue(m.columnCount() == 2)
-        self.assertEqual('Y [-]', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('X [-]', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
         m.setProfile(p3)
         self.assertTrue(m.rowCount() == len(p3.xValues()))
-        self.assertEqual('Y [{}]'.format(yUnit), m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('X [{}]'.format(xUnit), m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        self.assertEqual('x'.format(yUnit), m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        self.assertEqual('y'.format(xUnit), m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
-        m.setColumnValueUnit(0, '')
+        # m.setColumnValueUnit(0, '')
 
     @unittest.skipIf(False, '')
     def test_SpectralProfileEditorWidget(self):

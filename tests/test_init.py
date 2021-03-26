@@ -6,7 +6,6 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
-import pickle
 import pathlib
 import re
 import xmlrunner
@@ -40,7 +39,7 @@ class testClassTesting(unittest.TestCase):
         import qps
         qps.registerEditorWidgets()
 
-        import qps.speclib.core
+        import qps.speclib.core.spectrallibrary
         self.assertIsInstance(qps.speclib.gui.SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY, QgsEditorWidgetFactory)
 
         import qps.plotstyling.plotstyling

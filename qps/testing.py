@@ -592,7 +592,7 @@ class TestObjects(object):
                          n_bands: typing.List[int] = None,
                          wlu: str = None):
 
-        from .speclib.core import SpectralProfile
+        from qps.speclib.core.spectrallibrary import SpectralProfile
 
         i = 1
         for (data, wl, data_wlu) in TestObjects.spectralProfileData(n, n_bands=n_bands):
@@ -604,7 +604,7 @@ class TestObjects(object):
                 wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
 
             profile = SpectralProfile(fields=fields)
-            profile.setName(f'Profile {i}')
+            # profile.setName(f'Profile {i}')
             profile.setValues(y=data, x=wl, xUnit=wlu)
             yield profile
             i += 1
@@ -633,7 +633,7 @@ class TestObjects(object):
         """
         assert n > 0
         assert n_empty >= 0 and n_empty <= n
-        from .speclib.core import SpectralLibrary
+        from qps.speclib.core.spectrallibrary import SpectralLibrary
         slib = SpectralLibrary()
         assert slib.startEditing()
         profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields(), n_bands=n_bands, wlu=wlu))

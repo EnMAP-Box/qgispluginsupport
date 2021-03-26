@@ -28,11 +28,12 @@
 import csv
 import tempfile
 import time
-import uuid
 
-from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes
-from ..core import *
-
+from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes, QgsProcessingFeedback
+from ..core.spectralprofile import encodeProfileValueDict, decodeProfileValueDict
+from ..core.spectrallibrary import *
+from .. import createStandardFields, EMPTY_VALUES
+from ...utils import toType, findTypeFromString
 # lookup GDAL Data Type and its size in bytes
 LUT_GDT_SIZE = {gdal.GDT_Byte: 1,
                 gdal.GDT_UInt16: 2,
@@ -344,7 +345,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         return True
 
     @classmethod
-    def readFrom(cls, path, progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
+    def readFrom(cls, path, progressDialog: QgsProcessingFeedback= None) -> SpectralLibrary:
         """
         Reads an ENVI Spectral Library (ESL).
         :param path: path to ENVI Spectral Library
@@ -480,7 +481,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
 
     @classmethod
     def write(cls, speclib: SpectralLibrary, path: str,
-              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None):
+              progressDialog: QgsProcessingFeedback= None):
         """
         Writes a SpectralLibrary as ENVI Spectral Library (ESL).
         See http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for ESL definition

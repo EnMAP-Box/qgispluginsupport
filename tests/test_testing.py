@@ -7,12 +7,12 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import xmlrunner
 
-from qgis.core import QgsRasterLayer, QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
+from qgis.core import QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
     QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView,  QgisInterface, QgsGui
 import unittest
 import qps.testing
-from osgeo import gdal, gdal_array, ogr, osr
+from osgeo import gdal
 import numpy as np
 
 
@@ -88,8 +88,8 @@ class test_TestObject(qps.testing.TestCase):
         self.assertTrue(len(profiles) == 10)
 
     def test_VectorLayers(self):
-        from qps.testing import TestObjects, start_app
-        from osgeo import ogr, osr
+        from qps.testing import TestObjects
+        from osgeo import ogr
 
         ds = TestObjects.createVectorDataSet(wkb=ogr.wkbPoint)
         self.assertIsInstance(ds, ogr.DataSource)
@@ -153,7 +153,6 @@ class test_TestObject(qps.testing.TestCase):
         self.assertEqual(ds.GetRasterBand(1).DataType, gdal.GDT_Float32)
 
         dsSrc = TestObjects.createRasterDataset(100, 100, 1)
-        from qpstestdata import enmap
         woptions = gdal.WarpOptions(dstSRS='EPSG:4326')
         pathDst = '/vsimem/warpDest.tif'
         dsDst = gdal.Warp(pathDst, dsSrc, options=woptions)
@@ -161,7 +160,7 @@ class test_TestObject(qps.testing.TestCase):
 
     def test_Speclibs(self):
         from qps.testing import TestObjects
-        from qps.speclib.core import SpectralLibrary
+        from qps.speclib.core.spectrallibrary import SpectralLibrary
         slib = TestObjects.createSpectralLibrary(7)
         self.assertIsInstance(slib, SpectralLibrary)
         self.assertTrue(len(slib) == 7)

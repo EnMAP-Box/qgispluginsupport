@@ -28,21 +28,19 @@ import typing
 
 from qgis.core import \
     QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer, \
-    QgsProcessingContext, QgsProcessingFeedback, QgsProcessingFeatureSource, \
-    QgsProcessingParameterField, QgsProcessingParameterEnum, \
+    QgsProcessingContext, QgsProcessingFeedback, QgsProcessingParameterField, QgsProcessingParameterEnum, \
     QgsVectorLayer, QgsProcessingParameterVectorDestination, \
-    QgsFeature, QgsProcessingOutputVectorLayer
+    QgsFeature
 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QWidget, QLabel, QHBoxLayout
 
-from .core import SpectralSetting, SpectralProfileBlock, read_profiles, \
-    groupBySpectralProperties, SpectralLibrary, FIELD_VALUES, encodeProfileValueDict, decodeProfileValueDict
+from qps.speclib.core.spectrallibrary import SpectralSetting, SpectralProfileBlock, read_profiles, \
+    SpectralLibrary, FIELD_VALUES
 from .processing import \
     SpectralProcessingProfiles, SpectralProcessingProfilesOutput, \
     SpectralProcessingProfilesSink, parameterAsSpectralProfileBlockList
 
-from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
+from ..unitmodel import UnitConverterFunctionModel, XUnitModel
 
 
 class _AbstractSpectralAlgorithm(QgsProcessingAlgorithm):
@@ -171,7 +169,7 @@ class SpectralProfileReader(_AbstractSpectralAlgorithm):
         return 'Reads spectral profiles'
 
     def initAlgorithm(self, configuration: dict):
-        from .core import FIELD_VALUES
+        from qps.speclib.core.spectrallibrary import FIELD_VALUES
         self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT, 'Spectral Library'))
 
         self.addParameter(QgsProcessingParameterField(self.INPUT_FIELD, 'Profile column',

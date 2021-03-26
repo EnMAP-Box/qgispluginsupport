@@ -20,13 +20,15 @@
 import unittest
 import xmlrunner
 from qgis.gui import QgsMapCanvas
-from qgis.core import QgsField, QgsFields, QgsProject, QgsGeometry, QgsRasterLayer, QgsVectorLayer
+from qgis.core import QgsField, QgsFields, QgsProject, QgsGeometry, QgsRasterLayer
 from qps.testing import TestObjects, TestCase
 from qpstestdata import hymap
 from qpstestdata import speclib as speclibpath
 
+from qps.utils import *
+from qps.speclib.core.spectralprofile import *
+from qps.speclib.core.spectrallibrary import *
 from qps.speclib.io.csvdata import *
-from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps import initResources
 import numpy as np
@@ -137,7 +139,6 @@ class TestCore(TestCase):
 
     def test_Serialization(self):
 
-        import qps.speclib.core
         x = [1, 2, 3, 4, 5]
         y = [2, 3, 4, 5, 6]
         bbl = [1, 0, 1, 1, 0]
@@ -363,7 +364,7 @@ class TestCore(TestCase):
             speclib.addProfiles([p])
             speclib.commitChanges()
 
-            from qps.speclib.gui import SpectralLibraryWidget
+            from qps.speclib.gui.gui import SpectralLibraryWidget
             w = SpectralLibraryWidget(speclib=speclib)
             self.showGui(w)
 
@@ -391,11 +392,11 @@ class TestCore(TestCase):
     def test_speclib_mimedata(self):
 
         sp1 = SpectralProfile()
-        sp1.setName('Name A')
+        # sp1.setName('Name A')
         sp1.setValues(y=[0, 4, 3, 2, 1], x=[450, 500, 750, 1000, 1500])
 
         sp2 = SpectralProfile()
-        sp2.setName('Name B')
+        # sp2.setName('Name B')
         sp2.setValues(y=[3, 2, 1, 0, 1], x=[450, 500, 750, 1000, 1500])
 
         sl1 = SpectralLibrary()
@@ -439,7 +440,9 @@ class TestCore(TestCase):
 
                 self.assertEqual(p.xValues(), pr.xValues())
                 self.assertEqual(p.xUnit(), pr.xUnit())
-                self.assertEqual(p.name(), pr.name())
+                # self.assertEqual(p.name(), pr.name())
+                if p != pr:
+                    s = ""
                 self.assertEqual(p, pr)
 
             self.assertEqual(sl1, slRetrieved)
@@ -469,7 +472,7 @@ class TestCore(TestCase):
 
     def test_SpectralLibraryValueFields(self):
 
-        sl = SpectralLibrary(value_fields=[FIELD_VALUES, 'derived1'])
+        sl = SpectralLibrary(profile_fields=['profiles', 'derived1'])
 
         fields = sl.spectralValueFields()
         self.assertIsInstance(fields, list)
@@ -488,11 +491,11 @@ class TestCore(TestCase):
         self.assertListEqual(vsiSpeclibs(), [])
 
         sp1 = SpectralProfile()
-        sp1.setName('Name 1')
+        # sp1.setName('Name 1')
         sp1.setValues(y=[1, 1, 1, 1, 1], x=[450, 500, 750, 1000, 1500])
 
         sp2 = SpectralProfile()
-        sp2.setName('Name 2')
+        # sp2.setName('Name 2')
         sp2.setValues(y=[2, 2, 2, 2, 2], x=[450, 500, 750, 1000, 1500])
 
         SLIB = SpectralLibrary()
@@ -507,7 +510,7 @@ class TestCore(TestCase):
         self.assertTrue(len(addedFIDs) == len(profiles))
         for i, fid in enumerate(addedFIDs):
             f = SLIB.getFeature(fid)
-            self.assertEqual(f.attribute('name'), profiles[i].name())
+            # self.assertEqual(f.attribute('name'), profiles[i].name())
 
         SLIB.rollBack()
         self.assertEqual(len(SLIB), 0)

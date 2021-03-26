@@ -39,6 +39,7 @@ import collections
 import copy
 import shutil
 import typing
+import json
 import gc
 import sip
 import traceback
@@ -47,7 +48,8 @@ import datetime
 from qgis.core import *
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
-    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry
+    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
+    QgsFields
 from qgis.gui import *
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
 
@@ -556,6 +558,28 @@ def qgisLayerTreeLayers() -> list:
     else:
         return []
 
+def toType(t, arg, empty2None=True, empty_values=[None, NULL]):
+    """
+    Converts lists or single values into type t.
+
+    Examples:
+        toType(int, '42') == 42,
+        toType(float, ['23.42', '123.4']) == [23.42, 123.4]
+
+    :param t: type
+    :param arg: value to convert
+    :param empty2None: returns None in case arg is an emptry value (None, '', NoneType, ...)
+    :return: arg as type t (or None)
+    """
+    if isinstance(arg, list):
+        return [toType(t, a, empty2None=empty2None, empty_values=empty_values) for a in arg]
+    else:
+
+        if empty2None and arg in empty_values:
+            return None
+        else:
+            return t(arg)
+
 
 def createQgsField(name: str, exampleValue: typing.Any, comment: str = None) -> QgsField:
     """
@@ -617,9 +641,16 @@ def filenameFromString(text: str):
     return ''.join(chars)
 
 
-def value2str(value, sep: str = None, delimiter: str = ' '):
+
+def value2str(value,
+              sep: str = None,
+              delimiter: str = ' ',
+              empty_values: list =[None, NULL],
+              empty_string:str = ''):
     """
     Converts a value into a string
+    :param empty_values: Defines a list of values to be represented by the empty_string
+    :param sep:
     :param value: any
     :param delimiter: delimiter to be used for list values
     :return:
@@ -631,9 +662,9 @@ def value2str(value, sep: str = None, delimiter: str = ' '):
     if isinstance(value, list):
         value = delimiter.join([str(v) for v in value])
     elif isinstance(value, np.ndarray):
-        value = value2str(value.tolist(), delimiter=delimiter)
-    elif value is None:
-        value = ''
+        value = value2str(value.tolist(), delimiter=delimiter, empty_values=empty_values, empty_string=empty_string)
+    elif value in empty_values:
+        value = empty_string
     else:
         value = str(value)
     return value
@@ -903,6 +934,68 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
         return qgsRasterLayer(pathlib.Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
 
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
+
+def qgsField(layer: QgsVectorLayer, field) -> QgsField:
+    """
+    Returns the QgsField reating to the input value in "field"
+    :param layer:
+    :param field:
+    :return: QgsField
+    """
+    assert isinstance(layer, QgsVectorLayer)
+
+    if isinstance(field, QgsField):
+        return qgsField(layer.fields().lookupField(field.name()))
+    elif isinstance(field, str):
+        return qgsField(layer.fields().lookupField(field))
+    elif isinstance(field, int):
+        if 0 <= field < layer.fields().count():
+            return layer.fields().at(field)
+    return None
+
+
+def findTypeFromString(value: str):
+    """
+    Returns a fitting basic python data type of a string value, i.e.
+    :param value: string
+    :return: type out of [str, int or float]
+    """
+    for t in (int, float, str):
+        try:
+            _ = t(value)
+        except ValueError:
+            continue
+        return t
+
+    # every values can be converted into a string
+    return str
+
+
+def setComboboxValue(cb: QComboBox, text: str):
+    """
+    :param cb:
+    :param text:
+    :return:
+    """
+    assert isinstance(cb, QComboBox)
+    currentIndex = cb.currentIndex()
+    idx = -1
+    if text is None:
+        text = ''
+    text = text.strip()
+    for i in range(cb.count()):
+        v = str(cb.itemText(i)).strip()
+        if v == text:
+            idx = i
+            break
+    if not idx >= 0:
+        pass
+
+    if idx >= 0:
+        cb.setCurrentIndex(idx)
+    else:
+        print('ComboBox index not found for "{}"'.format(text))
+
 
 
 def qgsRasterLayers(sources) -> typing.Iterator[QgsRasterLayer]:
@@ -1186,6 +1279,33 @@ def check_package(name, package=None, stop_on_error=False):
         return False
     return True
 
+
+def qgsFieldAttributes2List(attributes: typing.List[typing.Any]) -> typing.List[typing.Any]:
+    """Returns a list of attributes with None instead of NULL or QVariant.NULL"""
+    r = QVariant(None)
+    return [None if v == r else v for v in attributes]
+
+def qgsFields2str(qgsFields: QgsFields) -> str:
+    """Converts the QgsFields definition into a pickable string"""
+    infos = []
+    for field in qgsFields:
+        assert isinstance(field, QgsField)
+        info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(), field.comment(),
+                field.subType()]
+        infos.append(info)
+    return json.dumps(infos)
+
+
+def str2QgsFields(fieldString: str) -> QgsFields:
+    """Converts the string from qgsFields2str into a QgsFields collection"""
+    fields = QgsFields()
+
+    infos = json.loads(fieldString)
+    assert isinstance(infos, list)
+    for info in infos:
+        field = QgsField(*info)
+        fields.append(field)
+    return fields
 
 def as_py_value(value, datatype: Qgis.DataType):
     """

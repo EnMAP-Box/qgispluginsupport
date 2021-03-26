@@ -36,12 +36,11 @@ from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
 
 from qgis.core import QgsField, QgsVectorLayer, QgsVectorFileWriter, QgsProviderRegistry, \
-    QgsProject, QgsProviderMetadata, QgsFileUtils
+    QgsProject, QgsProviderMetadata, QgsFileUtils, QgsProcessingFeedback
 
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
-    decodeProfileValueDict, encodeProfileValueDict, \
-    SerializationMode, \
-    FIELD_VALUES, FIELD_NAME, ProgressHandler
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from qps.speclib.core.spectrallibrary import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
+    FIELD_VALUES, FIELD_NAME
 
 
 class VectorSourceFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
@@ -111,7 +110,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
     @classmethod
     def readFrom(cls, path,
-                 progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+                 progressDialog: QgsProcessingFeedback= None,
                  addAttributes: bool = True) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
@@ -172,7 +171,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def write(cls, speclib: SpectralLibrary,
               path: str,
-              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+              progressDialog: QgsProcessingFeedback= None,
               options: QgsVectorFileWriter.SaveVectorOptions = None,
               filterFormat: QgsVectorFileWriter.FilterFormatDetails = None):
         """

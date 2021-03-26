@@ -30,12 +30,12 @@ import typing
 from osgeo import gdal
 import numpy as np
 from qgis.PyQt import sip
-from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtCore import *
-from qgis.core import QgsTask, QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
-    QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsFileUtils
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, ProgressHandler
+
+from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
+    QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsFileUtils, QgsProcessingFeedback
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList
 
 PIXEL_LIMIT = 100*100
@@ -53,12 +53,13 @@ class SpectralProfileLoadingTask(QgsTask):
         self.copy_attributes = copy_attributes
         self.exception = None
         self.profiles = None
-        from ..gui import ProgressHandler
-        self.progress_handler = ProgressHandler()
+
 
     def run(self):
 
-        self.progress_handler.progressChanged[int, int, int].connect(self.onProgressChanged)
+        feedback = QgsProcessingFeedback()
+        feedback.progressChanged.connect(self.setProgress)
+        # todo: emit progress
         try:
             vector = QgsVectorLayer(self.path_vector)
             raster = QgsRasterLayer(self.path_raster)
@@ -66,7 +67,7 @@ class SpectralProfileLoadingTask(QgsTask):
                                                       raster,
                                                       all_touched=self.all_touched,
                                                       copy_attributes=self.copy_attributes,
-                                                      progress_handler=self.progress_handler,
+                                                      progress_handler=feedback,
                                                       return_profile_list=True)
             self.profiles = profiles
         except Exception as ex:
@@ -266,7 +267,7 @@ class RasterSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
     @classmethod
     def readFrom(cls, path,
-                 progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+                 progressDialog: QgsProcessingFeedback= None,
                  addAttributes: bool = True) -> SpectralLibrary:
 
         ds: gdal.Dataset = gdalDataset(path)
@@ -318,7 +319,7 @@ class RasterSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def write(cls, speclib: SpectralLibrary,
               path: str,
-              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None):
+              progressDialog: QgsProcessingFeedback= None):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """

@@ -24,11 +24,19 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import os, sys, re, pathlib, json, typing
-from qgis.core import *
+import sys
+import io
+import json
+import os
+import re
 import csv as pycsv
-from ..core import *
-
+from qgis.PyQt.QtWidgets import QFileDialog, QMenu
+from qgis.core import QgsProcessingFeedback, QgsVectorFileWriter, QgsGeometry
+from .. import createStandardFields
+from ...utils import toType, createQgsField, findTypeFromString, value2str
+from ..core.spectralprofile import SpectralProfile
+from ..core.spectrallibrary import SpectralLibrary, AbstractSpectralLibraryIO
+from .. import FIELD_VALUES
 # max size a CSV file can have, in MBytes
 MAX_CSV_SIZE = 5
 
@@ -114,7 +122,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def write(cls, speclib: SpectralLibrary,
               path: str,
-              progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None,
+              progressDialog: QgsProcessingFeedback = None,
               dialect=pycsv.excel_tab) -> list:
         """
         Writes the speclib into a CSv file
@@ -132,7 +140,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         return [path]
 
     @classmethod
-    def readFrom(cls, path=None, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, dialect=pycsv.excel_tab):
+    def readFrom(cls, path=None, progressDialog:QgsProcessingFeedback=None, dialect=pycsv.excel_tab):
         f = open(path, 'r', encoding='utf-8')
         text = f.read()
         f.close()
@@ -265,7 +273,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
                     s = ""
 
                 # convert values to int, float or str
-                columnVectors[n] = toType(t, values, empty2None=True)
+                columnVectors[n] = toType(t, values, empty2None=True, empty_values=[None, ''])
                 missingQgsFields.append(qgsField)
 
             # add missing fields
@@ -372,7 +380,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 class CSVWriterFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
     """
-    A QgsVectorFileWriter.FieldValueConverter to convers SpectralLibrary values into strings
+    A QgsVectorFileWriter.FieldValueConverter to converts SpectralLibrary values into strings
     """
     def __init__(self, speclib):
         super(CSVWriterFieldValueConverter, self).__init__()

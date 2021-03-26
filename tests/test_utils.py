@@ -157,6 +157,16 @@ class TestUtils(TestCase):
         b = check_vsimem()
         self.assertIsInstance(b, bool)
 
+    def test_qgsField(self):
+
+        l = TestObjects.createVectorLayer()
+        for i, field in enumerate(l.fields()):
+            name = field.name()
+            self.assertEqual(field, qgsField(l, name))
+            self.assertEqual(field, qgsField(l, field))
+            self.assertEqual(field, qgsField(l, i))
+
+
     def test_qgsLayers(self):
 
         # raster

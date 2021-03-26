@@ -85,10 +85,7 @@ class MyParameterType(QgsProcessingParameterType):
 
 from qgis.gui import *
 from qgis.core import *
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
-    QgsSearchWidgetWrapper, QgsMessageBar, QgsProcessingGuiRegistry, QgsProcessingGui, \
-    QgsProcessingParameterWidgetContext, QgsProcessingAbstractParameterDefinitionWidget
-from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, QgsActionManager, \
+from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsActionManager, \
     QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry,  \
     QgsProcessingContext, QgsProcessingParameterDefinition, QgsProcessingModelAlgorithm
 
@@ -102,7 +99,7 @@ from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
-from qps.speclib.gui import *
+from qps.speclib.gui.gui import *
 from qps.speclib.processing import *
 from qps.testing import TestCase
 from qps.models import TreeView, TreeNode, TreeModel

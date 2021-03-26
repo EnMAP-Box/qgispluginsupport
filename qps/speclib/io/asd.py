@@ -24,11 +24,19 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import datetime
+import enum
+import os
+import re
+import struct
+import sys
 
-import os, sys, re, pathlib, json, enum, struct, time, datetime, typing, collections
 import numpy as np
-import csv as pycsv
-from ..core import *
+import typing
+from qgis.PyQt.QtWidgets import QFileDialog, QMenu
+from qgis.core import QgsProcessingFeedback
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO
+from ...utils import createQgsField
 
 """
 
@@ -406,7 +414,7 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def readFrom(cls, paths: typing.Union[str, list],
                  asdFields: typing.Iterable[str] = None,
-                 progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
+                 progressDialog: QgsProcessingFeedback= None) -> SpectralLibrary:
         """
         :param paths: list of source paths
         :param asdFields: list of header information to be extracted from ASD binary files

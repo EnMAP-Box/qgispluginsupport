@@ -24,12 +24,17 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-
-import os, sys, re, pathlib, json, collections, typing
-import csv as pycsv
-from ..core import *
-
-
+import os
+import collections
+import re
+import sys
+import io
+from qgis.core import QgsProcessingFeedback
+import numpy as np
+from qgis.PyQt.QtWidgets import QMenu, QFileDialog
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, SpectralSetting, AbstractSpectralLibraryIO
+from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
+from ...utils import findTypeFromString, createQgsField
 class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
     """
     I/O Interface for the SPECCHIO spectral library .
@@ -55,7 +60,7 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
     def readFrom(cls, path: str,
                  wlu='nm',
                  delimiter=',',
-                 progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
+                 progressDialog: QgsProcessingFeedback = None) -> SpectralLibrary:
         """
          Returns the SpectralLibrary read from "path"
         :param path:
@@ -71,6 +76,8 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         """
         sl = SpectralLibrary()
         sl.startEditing()
+        sl.addMissingFields(createStandardFields())
+        sl.commitChanges(stopEditing=False)
         bn = os.path.basename(path)
         delimiter = ','
         with open(path, 'r', encoding='utf-8') as f:
@@ -115,7 +122,7 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
                     metadataKeys.append(k)
 
             # sort by wavelength
-            numericValueKeys = np.asarray(numericValueKeys, dtype=np.str)
+            numericValueKeys = np.asarray(numericValueKeys, dtype=str)
             xValues = np.asarray(numericValueKeys, dtype=float)
             s = np.argsort(xValues)
             numericValueKeys = numericValueKeys[s]
@@ -134,16 +141,16 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
 
 
             sl.endEditCommand()
-            sl.commitChanges()
-            sl.startEditing()
+            sl.commitChanges(stopEditing=False)
+
             profiles = []
             for i in range(nProfiles):
                 profile = SpectralProfile(fields=sl.fields())
                 # add profile name
                 if FIELD_NAME in metadataKeys:
-                    profile.setName(DATA[FIELD_NAME][i])
+                    profile.setAttribute(FIELD_NAME, DATA[FIELD_NAME][i])
                 else:
-                    profile.setName('{}:{}'.format(bn, i+1))
+                    profile.setAttribute(FIELD_NAME, '{}:{}'.format(bn, i+1))
 
                 # add profile values
                 yValues = [float(DATA[k][i]) for k in numericValueKeys]
@@ -162,7 +169,7 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return sl
 
     @classmethod
-    def write(cls, speclib:SpectralLibrary, path:str, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None, delimiter:str=',') -> list:
+    def write(cls, speclib:SpectralLibrary, path:str, progressDialog:QgsProcessingFeedback=None, delimiter:str=',') -> list:
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom(...)
         :param speclib: SpectralLibrary

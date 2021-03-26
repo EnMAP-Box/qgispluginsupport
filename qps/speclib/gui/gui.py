@@ -23,41 +23,54 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-from typing import List, Tuple
+import collections
+import sys
+import warnings
 
 import sip
-import textwrap
-import itertools
 import enum
-from .core import *
-import collections
-from ..externals.pyqtgraph import PlotItem, PlotWindow, PlotCurveItem
-from ..externals.pyqtgraph.functions import mkPen
-from ..externals import pyqtgraph as pg
-from ..externals.pyqtgraph.graphicsItems.ViewBox.ViewBoxMenu import ViewBoxMenu
-from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
-from ..layerproperties import AttributeTableWidget
-from ..unitmodel import BAND_INDEX, XUnitModel, UnitConverterFunctionModel
+import textwrap
+import datetime
+import typing
+import numpy as np
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QToolBar, QHBoxLayout, QVBoxLayout, QToolButton
 
-from ..plotstyling.plotstyling import PlotStyleWidget, PlotStyle, PlotStyleDialog
-from qgis.PyQt.QtWidgets import QGroupBox
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, pyqtSignal, pyqtSlot, QModelIndex, QAbstractTableModel, QAbstractListModel, \
+    QPoint, QPointF, QVariant, NULL, QObject
+from qgis.PyQt.QtWidgets import QTableView, QLabel, QPushButton, QGridLayout, QSpinBox, QFrame, QAction, \
+    QWidget, QWidgetAction, QSlider, QComboBox, QMenu, QGroupBox, QDialog, QApplication
+from qgis.PyQt.QtGui import QDragEnterEvent, QDragMoveEvent, QDragLeaveEvent, QColor, QIcon, QDropEvent, \
+    QContextMenuEvent
 from qgis.core import \
-    QgsFeature, QgsRenderContext, QgsNullSymbolRenderer, QgsFieldFormatter, QgsApplication, \
-    QgsRasterLayer, QgsMapLayer, QgsVectorLayer, QgsFieldFormatterRegistry, \
-    QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
-    QgsAttributeTableConfig, QgsField, QgsMapLayerProxyModel, QgsFileUtils, \
-    QgsExpression, QgsFieldProxyModel, QgsProcessingModelAlgorithm, \
+    QgsFeature, QgsFieldFormatter, QgsApplication, \
+    QgsVectorLayer, QgsField, QgsExpression, QgsFieldProxyModel, QgsProcessingModelAlgorithm, \
     QgsProcessingFeedback, QgsProcessingContext, QgsProject
 
 from qgis.gui import \
     QgsEditorWidgetWrapper, QgsAttributeTableView, \
     QgsActionMenu, QgsEditorWidgetFactory, QgsStatusBar, \
-    QgsDualView, QgsGui, QgisInterface, QgsMapCanvas, QgsDockWidget, QgsEditorConfigWidget, \
+    QgsDualView, QgsGui, QgsMapCanvas, QgsDockWidget, QgsEditorConfigWidget, \
     QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsFieldExpressionWidget
 
 # from .math import SpectralAlgorithm, SpectralMathResult, XUnitConversion
-from .processing import *
+from ...utils import chunks, SpatialPoint, SpatialExtent, loadUi, datetime64
+from ..processing import SpectralProcessingProfiles, SpectralProcessingModelList, \
+    SpectralProcessingProfilesOutput, SpectralProfileBlock, \
+    is_spectral_processing_model, is_spectral_processing_algorithm
+from .. import FIELD_FID, FIELD_VALUES, FIELD_NAME, EDITOR_WIDGET_REGISTRY_KEY, speclibUiPath
+from ...unitmodel import XUnitModel, UnitLookup, BAND_INDEX, UnitConverterFunctionModel
+from ..core.spectralprofile import SpectralProfile, SpectralProfileKey, SpectralSetting, \
+    encodeProfileValueDict, decodeProfileValueDict
+from ..core.spectrallibrary import SpectralLibrary, SpectralProfileRenderer, \
+    containsSpeclib, generateProfileKeys, spectralValueFields, DEBUG, AbstractSpectralLibraryIO
+from ..processing import SpectralProcessingWidget
+from ...externals.pyqtgraph import PlotWindow
+from ...externals import pyqtgraph as pg
+from ...externals.pyqtgraph.graphicsItems.ViewBox.ViewBoxMenu import ViewBoxMenu
+from ...externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
+from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog
+from ...plotstyling.plotstyling import PlotStyleWidget, PlotStyle
 
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
@@ -908,7 +921,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
         # describe functions to convert wavelength units from unit a to unit b
         self.mUnitConverter = UnitConverterFunctionModel()
-        from .processingalgorithms import SpectralXUnitConversion
+        from ..processingalgorithms import SpectralXUnitConversion
         self.mUnitConverterAlg = SpectralXUnitConversion()
         self.mUnitConverterAlg.initAlgorithm({})
 
@@ -2695,14 +2708,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.mIODialogs: typing.List[QWidget] = list()
 
-        from .io.envi import EnviSpectralLibraryIO
-        from .io.csvdata import CSVSpectralLibraryIO
-        from .io.asd import ASDSpectralLibraryIO
-        from .io.ecosis import EcoSISSpectralLibraryIO
-        from .io.specchio import SPECCHIOSpectralLibraryIO
-        from .io.artmo import ARTMOSpectralLibraryIO
-        from .io.vectorsources import VectorSourceSpectralLibraryIO
-        from .io.rastersources import RasterSourceSpectralLibraryIO
+        from ..io.envi import EnviSpectralLibraryIO
+        from ..io.csvdata import CSVSpectralLibraryIO
+        from ..io.asd import ASDSpectralLibraryIO
+        from ..io.ecosis import EcoSISSpectralLibraryIO
+        from ..io.specchio import SPECCHIOSpectralLibraryIO
+        from ..io.artmo import ARTMOSpectralLibraryIO
+        from ..io.vectorsources import VectorSourceSpectralLibraryIO
+        from ..io.rastersources import RasterSourceSpectralLibraryIO
         self.mSpeclibIOInterfaces = [
             EnviSpectralLibraryIO(),
             CSVSpectralLibraryIO(),
@@ -2725,7 +2738,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mStatusLabel.setPlotWidget(self.mSpeclibPlotWidget)
         self.mSpeclibPlotWidget.plotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
-        from .processing import SpectralProcessingWidget
         self.pageProcessingWidget: SpectralProcessingWidget = SpectralProcessingWidget()
         self.pageProcessingWidget.sigSpectralProcessingModelChanged.connect(
             lambda *args: self.mSpeclibPlotWidget.addSpectralModel(self.pageProcessingWidget.model()))
@@ -2973,7 +2985,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def showProperties(self, *args):
 
-        from ..layerproperties import showLayerPropertiesDialog
+
 
         showLayerPropertiesDialog(self.speclib(), None, parent=self, useQGISDialog=True)
 
@@ -2984,7 +2996,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :return: QMenu with QActions and submenus to import SpectralProfiles
         """
         separated = []
-        from .io.rastersources import RasterSourceSpectralLibraryIO
+        from ..io.rastersources import RasterSourceSpectralLibraryIO
 
         for iface in self.mSpeclibIOInterfaces:
             assert isinstance(iface, AbstractSpectralLibraryIO), iface
@@ -3003,7 +3015,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :return: QMenu with QActions and submenus to export the SpectralLibrary
         """
         separated = []
-        from .io.rastersources import RasterSourceSpectralLibraryIO
+        from ..io.rastersources import RasterSourceSpectralLibraryIO
         for iface in self.mSpeclibIOInterfaces:
             assert isinstance(iface, AbstractSpectralLibraryIO)
             if isinstance(iface, RasterSourceSpectralLibraryIO):
@@ -3173,14 +3185,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.addSpeclib(slib)
 
     def onImportFromRasterSource(self):
-        from .io.rastersources import SpectralProfileImportPointsDialog
+        from ..io.rastersources import SpectralProfileImportPointsDialog
         d = SpectralProfileImportPointsDialog(parent=self)
         d.finished.connect(lambda *args, d=d: self.onIODialogFinished(d))
         d.show()
         self.mIODialogs.append(d)
 
     def onIODialogFinished(self, w: QWidget):
-        from .io.rastersources import SpectralProfileImportPointsDialog
+        from ..io.rastersources import SpectralProfileImportPointsDialog
         if isinstance(w, SpectralProfileImportPointsDialog):
             if w.result() == QDialog.Accepted:
                 profiles = w.profiles()
@@ -3347,32 +3359,5 @@ class SpectralLibraryPanel(QgsDockWidget):
         :return:
         """
         self.SLW.setCurrentProfiles(listOfSpectra)
-
-
-class SpectralLibraryConsistencyCheckWidget(QWidget):
-
-    def __init__(self, speclib: SpectralLibrary = None, *args, **kwds):
-        super().__init__(*args, **kwds)
-        loadUi(speclibUiPath('spectrallibraryconsistencycheckwidget.ui'), self)
-        self.mSpeclib: SpectralLibrary = speclib
-        self.tbSpeclibInfo.setText('')
-        if speclib:
-            self.setSpeclib(speclib)
-
-    def setSpeclib(self, speclib: SpectralLibrary):
-        assert isinstance(speclib, SpectralLibrary)
-        self.mSpeclib = speclib
-        self.mSpeclib.nameChanged.connect(self.updateSpeclibInfo)
-        self.updateSpeclibInfo()
-
-    def updateSpeclibInfo(self):
-        info = '{}: {} profiles'.format(self.mSpeclib.name(), len(self.mSpeclib))
-        self.tbSpeclibInfo.setText(info)
-
-    def speclib(self) -> SpectralLibrary:
-        return self.mSpeclib
-
-    def startCheck(self):
-        consistencyCheck(self.mSpeclib)
 
 

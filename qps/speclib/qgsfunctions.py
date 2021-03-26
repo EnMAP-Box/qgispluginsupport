@@ -24,16 +24,15 @@
 ***************************************************************************
 """
 import typing
-import string
 import pathlib
 import json
 import sys
 import os
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import QgsExpression, QgsFeature, qgsfunction, QgsFeatureRequest, QgsExpressionFunction, \
+from qgis.core import QgsExpression, QgsFeature, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext
-from qgis.PyQt.QtCore import QByteArray, QVariant, NULL
-from .core import FIELD_VALUES, decodeProfileValueDict, SpectralProfile, encodeProfileValueDict
+from qgis.PyQt.QtCore import QVariant, NULL
+from qps.speclib.core.spectrallibrary import FIELD_VALUES, SpectralProfile
 
 QGS_FUNCTION_GROUP = "Spectral Libraries"
 

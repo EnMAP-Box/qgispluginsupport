@@ -26,53 +26,34 @@
 """
 import collections
 import typing
-import importlib
 import inspect
-import warnings
 import os
 import re
 import sys
 import enum
 import pathlib
 import pickle
-from qgis.PyQt.QtCore import QMimeData, Qt, pyqtSignal, QModelIndex, QAbstractListModel, QObject, QPoint, \
-    QPointF, QByteArray
-from qgis.PyQt.QtGui import QIcon, QColor, QFont, QFontInfo, QContextMenuEvent, QClipboard
-from qgis.PyQt.QtXml import QDomElement, QDomDocument, QDomNode, QDomCDATASection
-from qgis.PyQt.QtWidgets import QPlainTextEdit, QWidget, QTableView, QTreeView, \
-    QLabel, QComboBox, QSpacerItem, QSizePolicy, QGroupBox, QFileDialog, QMessageBox, \
-    QHBoxLayout, QVBoxLayout, QSpacerItem, QMenu, QAction, QToolButton, QGridLayout
+from qgis.PyQt.QtCore import QMimeData, Qt, pyqtSignal, QModelIndex, QAbstractListModel, QObject, QPointF, QByteArray
+from qgis.PyQt.QtGui import QColor, QFont, QContextMenuEvent
+from qgis.PyQt.QtWidgets import QWidget, QTableView, QTreeView, \
+    QLabel, QGroupBox, QFileDialog, QMessageBox, \
+    QHBoxLayout, QVBoxLayout, QMenu, QAction, QToolButton, QGridLayout
 from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, \
-    QgsRuntimeProfiler, QgsProcessingProvider, QgsProcessingParameterDefinition, QgsProcessingFeedback, \
+    QgsProcessingParameterDefinition, QgsProcessingFeedback, \
     QgsProcessingParameterType, QgsProcessingModelChildParameterSource, \
     QgsProcessingModelAlgorithm, QgsApplication, QgsProcessingDestinationParameter, \
-    QgsProcessingFeatureSource, QgsProcessingOutputDefinition, QgsProcessingParameterVectorLayer, \
-    QgsProcessingModelChildAlgorithm, \
-    QgsProcessingRegistry, QgsProcessingModelOutput, QgsProcessingModelParameter, QgsProcessingParameterEnum, \
-    QgsProject, QgsProcessingException, Qgis
+    QgsProcessingOutputDefinition, QgsProcessingModelChildAlgorithm, \
+    QgsProcessingRegistry, QgsProcessingModelOutput, QgsProcessingModelParameter, QgsProject, QgsProcessingException, Qgis
 
-from qgis.gui import QgsCollapsibleGroupBox, QgsCodeEditorPython, QgsProcessingParameterWidgetFactoryInterface, \
+from qgis.gui import QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
-    QgsAbstractProcessingParameterWidgetWrapper, QgsProcessingParameterWidgetContext, QgsProcessingGui, \
-    QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, \
+    QgsProcessingParameterWidgetContext, QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, \
     QgsProcessingToolboxTreeView, QgsProcessingGui, QgsGui, QgsAbstractProcessingParameterWidgetWrapper, \
-    QgsProcessingContextGenerator, QgsProcessingParametersGenerator, QgsProcessingParametersWidget
+    QgsProcessingContextGenerator, QgsProcessingParametersWidget
 
-from processing import ProcessingConfig, Processing
-from processing.core.ProcessingConfig import Setting
-from processing.gui.wrappers import WidgetWrapperFactory
-from processing.gui.wrappers import InvalidParameterValue
-from processing.tools.dataobjects import createContext
-from processing.gui.wrappers import WidgetWrapper
-from processing.modeler.ModelerParametersDialog import \
-    ModelerParametersPanelWidget, ModelerParametersWidget, ModelerParametersDialog
-import numpy as np
-from .core import SpectralLibrary, SpectralProfile, SpectralProfileBlock, speclibUiPath
-from ..unitmodel import UnitConverterFunctionModel, BAND_INDEX, XUnitModel
+from qps.speclib.core.spectrallibrary import SpectralLibrary, SpectralProfile, SpectralProfileBlock
+from . import speclibUiPath
 from ..utils import loadUi
-from ..models import TreeModel, TreeNode
-import sip
-import weakref
 
 SpectralMathResult = collections.namedtuple('SpectralMathResult', ['x', 'y', 'x_unit', 'y_unit'])
 

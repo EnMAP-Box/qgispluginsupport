@@ -1,27 +1,19 @@
 # noinspection PyPep8Naming
 import unittest
-import random
-import math
 import xmlrunner
-import numpy as np
 
-from qgis.gui import *
-from qgis.core import *
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
-    QgsSearchWidgetWrapper, QgsMessageBar, QgsProcessingGuiRegistry, QgsProcessingGui, \
-    QgsProcessingParameterWidgetContext, QgsProcessingAbstractParameterDefinitionWidget, \
-    QgsProcessingModelerParameterWidget, QgsProcessingParameterDefinitionDialog
+from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, \
+    QgsProcessingGuiRegistry, QgsProcessingParameterWidgetContext, QgsProcessingParameterDefinitionDialog
 
-from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, QgsActionManager, \
-    QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry, QgsProcessingContext, \
-    QgsProcessingParameterDefinition, QgsProcessingModelAlgorithm, QgsProcessingFeedback, \
+from qgis.core import QgsVectorLayer, QgsProject, QgsApplication, QgsProcessingRegistry, QgsProcessingContext, \
+    QgsProcessingModelAlgorithm, QgsProcessingFeedback, \
     QgsProcessingModelChildAlgorithm, QgsProcessingModelChildParameterSource, \
     QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterVectorLayer, QgsProcessingModelParameter, \
-    QgsProcessingModelOutput, QgsProcessingOutputVectorLayer, QgsProcessingParameterString
+    QgsProcessingModelOutput, QgsProcessingParameterString
 
 from qps import initResources, initAll
-from qps.testing import TestObjects, TestCase, StartOptions
-from qps.speclib.gui import *
+from qps.testing import TestObjects, StartOptions
+from qps.speclib.gui.gui import *
 from qps.speclib.processing import *
 from qps.speclib.processingalgorithms import *
 from qps.testing import TestCase, TestAlgorithmProvider
