@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>467</width>
-    <height>515</height>
+    <height>431</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,6 +34,9 @@
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
+     <property name="opaqueResize">
+      <bool>false</bool>
+     </property>
      <widget class="SpectralProfilePlotWidget" name="plotWidget">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -44,7 +47,7 @@
      </widget>
      <widget class="QgsCollapsibleGroupBox" name="mGroupBox">
       <property name="title">
-       <string>Profile Control</string>
+       <string>Visualization</string>
       </property>
       <layout class="QGridLayout" name="gridLayout">
        <property name="leftMargin">
@@ -114,15 +117,21 @@
           </widget>
          </item>
          <item>
-          <widget class="QSpinBox" name="spinBox">
+          <widget class="QSpinBox" name="sbMaxProfiles">
+           <property name="minimumSize">
+            <size>
+             <width>50</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="maximum">
-            <number>16000</number>
+            <number>32000</number>
            </property>
            <property name="singleStep">
-            <number>256</number>
+            <number>64</number>
            </property>
-           <property name="stepType">
-            <enum>QAbstractSpinBox::DefaultStepType</enum>
+           <property name="value">
+            <number>256</number>
            </property>
           </widget>
          </item>
@@ -135,7 +144,7 @@
   </layout>
   <action name="actionAddProfileVis">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
    </property>
    <property name="text">
@@ -147,7 +156,7 @@
   </action>
   <action name="actionRemoveProfileVis">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">

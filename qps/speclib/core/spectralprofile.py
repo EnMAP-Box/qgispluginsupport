@@ -598,7 +598,7 @@ class SpectralProfile(QgsFeature):
         Plots this profile to an new PyQtGraph window
         :return:
         """
-        from qps.speclib.gui.gui import SpectralProfilePlotDataItem
+        from ..gui.spectrallibraryplotwidget import SpectralProfilePlotDataItem
 
         pdi = SpectralProfilePlotDataItem(self)
         pdi.setClickable(True)

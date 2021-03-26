@@ -6,6 +6,7 @@ import numpy as np
 from .utils import UnitLookup, METRIC_EXPONENTS, datetime64
 
 BAND_INDEX = 'Band Index'
+BAND_NUMBER = 'Band Number'
 
 class UnitModel(QAbstractListModel):
 
@@ -136,6 +137,7 @@ class UnitConverterFunctionModel(object):
         self.mLUT = dict()
 
         self.func_return_band_index = lambda v, *args: np.arange(len(v))
+        self.func_return_band_number = lambda v, *args: np.arange(len(v))+1
         self.func_return_none = lambda v, *args: None
         self.func_return_same = lambda v, *args: v
         self.func_return_decimalyear = lambda v, *args: UnitLookup.convertDateUnit(v, 'DecimalYear')
@@ -160,6 +162,9 @@ class UnitConverterFunctionModel(object):
     def convertFunction(self, unitSrc: str, unitDst: str):
         if unitDst == BAND_INDEX:
             return self.func_return_band_index
+        elif unitDst == BAND_NUMBER:
+            return self.func_return_band_number
+
         unitSrc = UnitLookup.baseUnit(unitSrc)
         unitDst = UnitLookup.baseUnit(unitDst)
         if unitSrc is None or unitDst is None:
@@ -177,6 +182,7 @@ class XUnitModel(UnitModel):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
+        self.addUnit(BAND_NUMBER, description=BAND_NUMBER)
         self.addUnit(BAND_INDEX, description=BAND_INDEX)
         for u in ['Nanometers',
                   'Micrometers',
@@ -193,5 +199,5 @@ class XUnitModel(UnitModel):
 
     def findUnit(self, unit):
         if unit in [None, NULL]:
-            unit = BAND_INDEX
+            unit = BAND_NUMBER
         return super(XUnitModel, self).findUnit(unit)

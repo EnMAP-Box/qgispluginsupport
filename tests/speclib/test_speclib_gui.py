@@ -25,12 +25,10 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtWidgets import QCheckBox, QProgressDialog
 
 from qps.speclib.gui.spectrallibraryconsistencywidget import SpectralLibraryConsistencyCheckWidget
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem
 from qps.testing import TestObjects, TestCase, StartOptions
-import numpy as np
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsOptionsDialogBase, QgsAttributeForm, QgsGui, \
-    QgsSearchWidgetWrapper, QgsMessageBar
-from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsProject, QgsActionManager, \
-    QgsField, QgsApplication, QgsWkbTypes
+from qgis.gui import QgsOptionsDialogBase, QgsAttributeForm, QgsSearchWidgetWrapper, QgsMessageBar
+from qgis.core import QgsProject
 from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
@@ -121,8 +119,6 @@ class TestSpeclibWidgets(TestCase):
         self.assertTrue(any([math.isnan(v) for v in yValues]))
 
         print('plot {}'.format(yValues))
-        import qps.externals.pyqtgraph as pg
-        import numpy as np
         # w0 = pg.plot(yValues, connect='finite')
 
         pdi = SpectralProfilePlotDataItem(profile)
