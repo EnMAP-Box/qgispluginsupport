@@ -6,7 +6,7 @@ app = start_app(resources=findQGISResourceFiles())
 initAll()
 
 from qps.speclib.core.spectrallibrary import SpectralProfile
-from qps.speclib.gui.gui import SpectralLibraryWidget
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qgis.gui import QgsMapCanvas
 from qps.maptools import CursorLocationMapTool
 from qps.utils import SpatialPoint

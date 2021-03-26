@@ -32,7 +32,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsExpression, QgsFeature, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext
 from qgis.PyQt.QtCore import QVariant, NULL
-from qps.speclib.core.spectrallibrary import FIELD_VALUES, SpectralProfile
+from ..speclib.core.spectrallibrary import FIELD_VALUES, SpectralProfile
 
 QGS_FUNCTION_GROUP = "Spectral Libraries"
 

@@ -38,9 +38,9 @@ from qgis.PyQt.QtWidgets import *
 from qgis.core import QgsField, QgsVectorLayer, QgsVectorFileWriter, QgsProviderRegistry, \
     QgsProject, QgsProviderMetadata, QgsFileUtils, QgsProcessingFeedback
 
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
-from qps.speclib.core.spectrallibrary import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
-    FIELD_VALUES, FIELD_NAME
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_VALUES, FIELD_NAME
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
 
 
 class VectorSourceFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):

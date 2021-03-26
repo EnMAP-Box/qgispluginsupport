@@ -35,8 +35,8 @@ from qgis.PyQt.QtCore import QObject, QVariant
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog, QProgressDialog
 from qgis.core import QgsProcessingFeedback
 from .. import createStandardFields
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
-    FIELD_FID, FIELD_VALUES, FIELD_NAME, createQgsField
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_FID, FIELD_VALUES, FIELD_NAME, createQgsField
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
 from ...utils import findTypeFromString
 
 

@@ -63,10 +63,6 @@ from osgeo import gdal, ogr, osr, gdal_array
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 
-try:
-    from .. import qps
-except:
-    import qps
 
 
 
@@ -1110,6 +1106,14 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
         for prop in toRemove:
             prop.parentNode().removeChild(prop)
         del toRemove
+
+    # we need the absolute position of qps
+    # eg. within my/package/externals/qps
+    # of as top-level qps
+    try:
+        from .. import qps
+    except ValueError:
+        import qps
 
     elem = doc.elementsByTagName('customwidget')
     for child in [elem.item(i) for i in range(elem.count())]:

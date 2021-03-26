@@ -51,7 +51,7 @@ from qgis.gui import QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingToolboxTreeView, QgsProcessingGui, QgsGui, QgsAbstractProcessingParameterWidgetWrapper, \
     QgsProcessingContextGenerator, QgsProcessingParametersWidget
 
-from qps.speclib.core.spectrallibrary import SpectralLibrary, SpectralProfile, SpectralProfileBlock
+from .core.spectrallibrary import SpectralLibrary, SpectralProfile, SpectralProfileBlock
 from . import speclibUiPath
 from ..utils import loadUi
 

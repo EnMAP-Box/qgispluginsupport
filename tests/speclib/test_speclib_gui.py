@@ -22,20 +22,29 @@ import random
 import math
 import xmlrunner
 from PyQt5.QtCore import QSize
-from PyQt5.QtWidgets import QCheckBox, QProgressDialog
+from PyQt5.QtGui import QDropEvent
+from PyQt5.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QHBoxLayout, QVBoxLayout, QPushButton, \
+    QToolButton, QAction, QComboBox
 
 from qps.speclib.gui.spectrallibraryconsistencywidget import SpectralLibraryConsistencyCheckWidget
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem, \
+    SpectralProfilePlotWidget, SpectralProfileRendererWidget
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
+from qps.speclib.gui.spectralprofileeditor import SpectralProfileTableModel, SpectralProfileEditorWidget, \
+    SpectralProfileEditorWidgetWrapper, SpectralProfileEditorConfigWidget, SpectralProfileEditorWidgetFactory, \
+    registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase, StartOptions
-from qgis.gui import QgsOptionsDialogBase, QgsAttributeForm, QgsSearchWidgetWrapper, QgsMessageBar
-from qgis.core import QgsProject
-from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
+from qgis.core import QgsApplication, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes, \
+    QgsActionManager
+from qgis.gui import QgsOptionsDialogBase, QgsAttributeForm, QgsSearchWidgetWrapper, QgsMessageBar, QgsMapCanvas, \
+    QgsDualView, QgsGui
+from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER, XUnitModel
+from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS, SpatialPoint
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
-
+import qps.externals.pyqtgraph as pg
 from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
-from qps.speclib.gui.gui import *
 from qps.layerproperties import AddAttributeDialog
 
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
@@ -172,7 +181,7 @@ class TestSpeclibWidgets(TestCase):
 
         pw = SpectralProfilePlotWidget()
         self.assertIsInstance(pw, SpectralProfilePlotWidget)
-        self.assertTrue(pw.xUnit(), BAND_INDEX)
+        self.assertTrue(pw.xUnit(), BAND_NUMBER)
 
         pw.setMaxProfiles(5)
 
@@ -916,7 +925,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(sw, SpectralLibraryWidget)
         pw = sw.plotWidget()
         self.assertIsInstance(pw, SpectralProfilePlotWidget)
-        self.assertEqual(pw.xUnit(), BAND_INDEX)
+        self.assertEqual(pw.xUnit(), BAND_NUMBER)
         slib = TestObjects.createSpectralLibrary(10)
 
         xunits = []

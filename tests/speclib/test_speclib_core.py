@@ -364,7 +364,7 @@ class TestCore(TestCase):
             speclib.addProfiles([p])
             speclib.commitChanges()
 
-            from qps.speclib.gui.gui import SpectralLibraryWidget
+            from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
             w = SpectralLibraryWidget(speclib=speclib)
             self.showGui(w)
 

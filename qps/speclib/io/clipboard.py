@@ -25,9 +25,11 @@
 ***************************************************************************
 """
 
-from qps.speclib.core.spectrallibrary import *
-from PyQt5.QtWidgets import QProgressDialog
+from ..core.spectrallibrary import *
 import locale
+
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+
 
 class ClipboardIO(AbstractSpectralLibraryIO):
     """

@@ -35,7 +35,8 @@ from qgis.core import QgsProcessingFeedback, QgsVectorFileWriter, QgsGeometry
 from .. import createStandardFields
 from ...utils import toType, createQgsField, findTypeFromString, value2str
 from ..core.spectralprofile import SpectralProfile
-from ..core.spectrallibrary import SpectralLibrary, AbstractSpectralLibraryIO
+from ..core.spectrallibrary import SpectralLibrary
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
 from .. import FIELD_VALUES
 # max size a CSV file can have, in MBytes
 MAX_CSV_SIZE = 5

@@ -177,12 +177,12 @@
   <customwidget>
    <class>SpectralProfilePlotControlTableView</class>
    <extends>QTableView</extends>
-   <header>qps.speclib.gui.gui</header>
+   <header>qps.speclib.gui.spectrallibraryplotwidget</header>
   </customwidget>
   <customwidget>
    <class>SpectralProfilePlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>qps.speclib.gui.gui</header>
+   <header>qps.speclib.gui.spectrallibraryplotwidget</header>
   </customwidget>
  </customwidgets>
  <resources>

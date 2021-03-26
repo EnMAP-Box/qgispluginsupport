@@ -35,7 +35,8 @@ from qgis.PyQt.QtCore import *
 
 from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
     QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsFileUtils, QgsProcessingFeedback
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList
 
 PIXEL_LIMIT = 100*100

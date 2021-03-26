@@ -19,6 +19,9 @@
 # noinspection PyPep8Naming
 import unittest
 import xmlrunner
+
+from qps.speclib.core.spectrallibrary import vsiSpeclibs
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import TestObjects, TestCase
 
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
@@ -29,9 +32,8 @@ from qpstestdata import speclib as speclibpath
 from qps.speclib.io.vectorsources import *
 from qps.speclib.io.csvdata import *
 from qps.speclib.io.envi import *
-from qps.speclib.io.asd import *
 from qps.speclib.io.rastersources import *
-from qps.speclib.gui.gui import *
+
 from qps.utils import *
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
@@ -98,13 +100,6 @@ class TestIO(TestCase):
         setup2 = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, config)
         slib.setEditorWidgetSetup(idx1, setup1)
         slib.setEditorWidgetSetup(idx2, setup2)
-
-        slib.writeJSONProperties(pathJSON)
-        self.assertTrue(os.path.isfile(pathJSON))
-        with open(pathJSON, 'r') as file:
-            jsonData = json.load(file)
-            self.assertTrue('class1' in jsonData.keys())
-            self.assertTrue('class2' in jsonData.keys())
 
         slib.setEditorWidgetSetup(idx1, QgsEditorWidgetSetup('', {}))
         slib.setEditorWidgetSetup(idx2, QgsEditorWidgetSetup('', {}))

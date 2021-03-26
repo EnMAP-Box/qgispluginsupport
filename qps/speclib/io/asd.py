@@ -35,7 +35,8 @@ import numpy as np
 import typing
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsProcessingFeedback
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
 from ...utils import createQgsField
 
 """

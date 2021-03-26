@@ -46,8 +46,8 @@ import numpy as np
 from qgis.PyQt.QtCore import Qt, QVariant, QPoint, QUrl, QMimeData, \
     QFileInfo, pyqtSignal, QByteArray
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.PyQt.QtGui import QColor, QIcon
-from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QDialog, QMenu
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QDialog
 
 from qgis.core import QgsApplication, \
     QgsRenderContext, QgsFeature, QgsVectorLayer, QgsMapLayer, QgsRasterLayer, \
@@ -61,6 +61,7 @@ from qgis.core import QgsApplication, \
 
 from qgis.gui import \
     QgsGui
+
 
 from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
@@ -1190,74 +1191,6 @@ class SpectralLibrary(QgsVectorLayer):
             if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(self, idx):
                 self.setEditorWidgetSetup(idx, setup)
 
-    def writeJSONProperties(self, pathSPECLIB: str):
-        """
-        Writes additional field properties into a JSON files
-        :param pathSPECLIB:
-        :return:
-        """
-        warnings.warn('will be removed in future', DeprecationWarning)
-        assert isinstance(pathSPECLIB, str)
-        if not pathSPECLIB.endswith('.json'):
-            pathJSON = os.path.splitext(pathSPECLIB)[0] + '.json'
-        else:
-            pathJSON = pathSPECLIB
-        jsonData = collections.OrderedDict()
-
-        from ...classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY, classSchemeFromConfig, ClassInfo
-
-        rendererCategories = None
-
-        # is this speclib rendered with a QgsCategorizedSymbolRenderer?
-        if isinstance(self.renderer(), QgsCategorizedSymbolRenderer):
-            rendererCategories = []
-            for i, c in enumerate(self.renderer().categories()):
-                symbol = c.symbol()
-                assert isinstance(symbol, QgsSymbol)
-                try:
-                    label = int(c.value())
-                except:
-                    label = i
-                category = [label, str(c.label()), symbol.color().name()]
-                rendererCategories.append(category)
-            jsonData[self.renderer().classAttribute()] = {'categories': rendererCategories}
-
-        # is any field described as Raster Renderer or QgsCategorizedSymbolRenderer?
-        for fieldIdx, field in enumerate(self.fields()):
-            assert isinstance(field, QgsField)
-            attributeEntry = dict()
-            if len(field.comment()) > 0:
-                attributeEntry['description'] = field.comment()
-
-            defaultValue = field.defaultValueDefinition()
-            assert isinstance(defaultValue, QgsDefaultValue)
-            if len(defaultValue.expression()) > 0:
-                attributeEntry['no data value'] = defaultValue.expression()
-
-            setup = self.editorWidgetSetup(fieldIdx)
-            assert isinstance(setup, QgsEditorWidgetSetup)
-            if setup.type() == EDITOR_WIDGET_REGISTRY_KEY:
-                conf = setup.config()
-                classScheme = classSchemeFromConfig(conf)
-                if len(classScheme) > 0:
-
-                    categories = []
-                    for classInfo in classScheme:
-                        assert isinstance(classInfo, ClassInfo)
-                        category = [classInfo.label(), classInfo.name(), classInfo.color().name()]
-                        categories.append(category)
-                    attributeEntry['categories'] = categories
-
-            elif setup.type() == 'Classification' and isinstance(rendererCategories, list):
-                attributeEntry['categories'] = rendererCategories
-
-            if len(attributeEntry) > 0:
-                jsonData[field.name()] = attributeEntry
-
-        if len(jsonData) > 0:
-            with open(pathJSON, 'w', encoding='utf-8') as f:
-                json.dump(jsonData, f)
-
     @staticmethod
     def readFrom(uri, progressDialog: QgsProcessingFeedback = None):
         """
@@ -1287,6 +1220,7 @@ class SpectralLibrary(QgsVectorLayer):
                         sl.setName(os.path.basename(uri))
                     return sl
 
+        from .spectrallibraryio import AbstractSpectralLibraryIO
         readers = AbstractSpectralLibraryIO.subClasses()
 
         for cls in sorted(readers, key=lambda r: r.score(uri), reverse=True):
@@ -1801,7 +1735,7 @@ class SpectralLibrary(QgsVectorLayer):
         if success:
             elem = doc.documentElement().firstChildElement(XMLNODE_PROFILE_RENDERER)
             if not elem.isNull():
-                from qps.speclib.gui.gui import SpectralProfileRenderer
+
                 scheme = SpectralProfileRenderer.readXml(elem)
                 if isinstance(scheme, SpectralProfileRenderer):
                     self.mProfileRenderer = scheme
@@ -1933,7 +1867,7 @@ class SpectralLibrary(QgsVectorLayer):
             from ...testing import start_app
             app = start_app()
 
-        from qps.speclib.gui.gui import SpectralLibraryWidget
+        from ..gui.spectrallibrarywidget import SpectralLibraryWidget
 
         w = SpectralLibraryWidget(speclib=self)
         w.show()
@@ -2111,175 +2045,6 @@ def consistencyCheck(speclib: SpectralLibrary, requirements, notNoneAttributes=[
         fid = profile.id()
 
     return problems
-
-
-class AbstractSpectralLibraryExportWidget(QWidget):
-    """
-    Abstract Interface of an Widget to export / write a spectral library
-    """
-
-    def __init__(self, *args, **kwds):
-        super(AbstractSpectralLibraryExportWidget, self).__init__(*args, **kwds)
-
-    def formatName(self) -> str:
-        raise NotImplementedError()
-
-    def icon(self) -> QIcon():
-        return QIcon()
-
-    def exportSpeclib(self, speclib: SpectralLibrary):
-        raise NotImplementedError()
-
-
-class AbstractSpectralLibraryImportWidget(QWidget):
-
-    def __init__(self, *args, **kwds):
-        super(AbstractSpectralLibraryImportWidget, self).__init__(*args, **kwds)
-
-    def icon(self) -> QIcon:
-        return QIcon()
-
-    def formatName(self) -> str:
-        raise NotImplementedError()
-
-
-class AbstractSpectralLibraryIO(object):
-    """
-    Abstract class interface to define I/O operations for spectral libraries
-    """
-    _SUB_CLASSES = []
-
-    @staticmethod
-    def subClasses():
-
-        from ..io.vectorsources import VectorSourceSpectralLibraryIO
-        from ..io.artmo import ARTMOSpectralLibraryIO
-        from ..io.asd import ASDSpectralLibraryIO
-        from ..io.clipboard import ClipboardIO
-        from ..io.csvdata import CSVSpectralLibraryIO
-        from ..io.ecosis import EcoSISSpectralLibraryIO
-        from ..io.envi import EnviSpectralLibraryIO
-        from ..io.specchio import SPECCHIOSpectralLibraryIO
-
-        subClasses = [
-            VectorSourceSpectralLibraryIO,  # this is the prefered way to save/load speclibs
-            EnviSpectralLibraryIO,
-            ASDSpectralLibraryIO,
-            CSVSpectralLibraryIO,
-            ARTMOSpectralLibraryIO,
-            EcoSISSpectralLibraryIO,
-            SPECCHIOSpectralLibraryIO,
-            ClipboardIO,
-        ]
-
-        # other sub-classes
-        for c in AbstractSpectralLibraryIO.__subclasses__():
-            if c not in subClasses:
-                subClasses.append(c)
-
-        return subClasses
-
-    @classmethod
-    def canRead(cls, path: str) -> bool:
-        """
-        Returns true if it can read the source defined by path.
-        Well behaving implementations use a try-catch block and return False in case of errors.
-        :param path: source uri
-        :return: True, if source is readable.
-        """
-        return False
-
-    @classmethod
-    def readFrom(cls, path: str,
-                 progressDialog: QgsProcessingFeedback = None) -> SpectralLibrary:
-        """
-        Returns the SpectralLibrary read from "path"
-        :param path: source of Spectral Library
-        :param progressDialog: QProgressDialog, which well-behave implementations can use to show the import progress.
-        :return: SpectralLibrary
-        """
-        return None
-
-    @classmethod
-    def write(cls,
-              speclib: SpectralLibrary,
-              path: str,
-              progressDialog: QgsProcessingFeedback = None) -> \
-            typing.List[str]:
-        """
-        Writes the SpectralLibrary.
-        :param speclib: SpectralLibrary to write
-        :param path: file path to write the SpectralLibrary to
-        :param progressDialog:  QProgressDialog, which well-behave implementations can use to show the writing progress.
-        :return: a list of paths that can be used to re-open all written profiles
-        """
-        assert isinstance(speclib, SpectralLibrary)
-        return []
-
-    @classmethod
-    def supportedFileExtensions(cls) -> typing.Dict[str, str]:
-        """
-        Returns a dictionary of file extensions (key) and descriptions (values)
-        that can be read/written by the AbstractSpectralLibraryIO implementation.
-        :return: dict[str,str]
-        """
-        return dict()
-
-    @classmethod
-    def filterString(cls) -> str:
-        """
-        Returns a filter string to be used in QFileDialogs
-        :return: str
-        """
-        return ';;'.join([f'{descr} (*{ext})' for ext, descr
-                          in cls.supportedFileExtensions().items()])
-
-    @classmethod
-    def score(cls, uri: str) -> int:
-        uri = str(uri)
-        """
-        Returns a score value for the give uri. E.g. 0 for unlikely/unknown, 20 for yes, probably thats the file format the reader can read.
-
-        :param uri: str
-        :return: int
-        """
-        for ext in cls.supportedFileExtensions().keys():
-            if uri.endswith(ext):
-                return 20
-        return 0
-
-    @classmethod
-    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu):
-        """
-        Returns a list of QActions or QMenus that can be called to read/import SpectralProfiles from a certain file format into a SpectralLibrary
-        :param spectralLibrary: SpectralLibrary to import SpectralProfiles to
-        :return: [list-of-QAction-or-QMenus]
-        """
-        return []
-
-    @classmethod
-    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu):
-        """
-        Returns a list of QActions or QMenus that can be called to write/export SpectralProfiles into certain file format
-        :param spectralLibrary: SpectralLibrary to export SpectralProfiles from
-        :return: [list-of-QAction-or-QMenus]
-        """
-        return []
-
-    @classmethod
-    def createImportWidget(cls) -> AbstractSpectralLibraryImportWidget:
-        """
-        Creates a Widget to import data into a SpectralLibrary
-        :return:
-        """
-        pass
-
-    @classmethod
-    def createExportWidget(cls) -> AbstractSpectralLibraryExportWidget:
-        """
-        Creates a widget to export a SpectralLibrary
-        :return:
-        """
 
 
 def deleteSelected(layer):

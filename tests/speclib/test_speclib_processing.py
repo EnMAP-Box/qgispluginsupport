@@ -1,5 +1,7 @@
 # noinspection PyPep8Naming
 import unittest
+from datetime import datetime
+
 import xmlrunner
 
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, \
@@ -12,8 +14,9 @@ from qgis.core import QgsVectorLayer, QgsProject, QgsApplication, QgsProcessingR
     QgsProcessingModelOutput, QgsProcessingParameterString
 
 from qps import initResources, initAll
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import TestObjects, StartOptions
-from qps.speclib.gui.gui import *
+from qps.speclib.gui.spectrallibrarywidget import *
 from qps.speclib.processing import *
 from qps.speclib.processingalgorithms import *
 from qps.testing import TestCase, TestAlgorithmProvider
@@ -526,7 +529,6 @@ class SpectralProcessingTests(TestCase):
 
     def test_SpectralProcessingModelList(self):
 
-
         m1 = self.create_spectral_processing_model('Model1')
         m2 = self.create_spectral_processing_model('Model2')
 
@@ -536,7 +538,6 @@ class SpectralProcessingTests(TestCase):
         model.addModel(m1)
         model.addModel(m1)
         model.addModel(m2)
-
 
         self.assertTrue(len(model) == 2)
         self.assertTrue(model.rowCount() == 2)
@@ -552,7 +553,6 @@ class SpectralProcessingTests(TestCase):
         self.assertTrue(len(model) == 1)
         self.assertFalse(m1 in model)
         self.assertTrue(m2 in model)
-
 
     def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
@@ -649,7 +649,6 @@ class SpectralProcessingTests(TestCase):
             self.assertIsInstance(block, SpectralProfileBlock)
             self.assertTrue(block.spectralSetting().xUnit() == target_unit)
             print(block.spectralSetting().x())
-
 
     def create_spectral_processing_model(self, name='') -> QgsProcessingModelAlgorithm:
         self.initProcessingRegistry()

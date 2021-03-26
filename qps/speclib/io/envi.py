@@ -26,13 +26,21 @@
 """
 
 import csv
+import os
+import re
+import sys
 import tempfile
 import time
-
+import uuid
+import numpy as np
+from PyQt5.QtCore import QVariant
+from PyQt5.QtWidgets import QFileDialog, QMenu
+from osgeo import gdal, gdal_array
 from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes, QgsProcessingFeedback
-from ..core.spectralprofile import encodeProfileValueDict, decodeProfileValueDict
-from ..core.spectrallibrary import *
-from .. import createStandardFields, EMPTY_VALUES
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile
+from ..core.spectrallibrary import SpectralLibrary, VSI_DIR, LUT_IDL2GDAL
+from .. import createStandardFields, EMPTY_VALUES, FIELD_VALUES, FIELD_NAME, FIELD_FID
 from ...utils import toType, findTypeFromString
 # lookup GDAL Data Type and its size in bytes
 LUT_GDT_SIZE = {gdal.GDT_Byte: 1,

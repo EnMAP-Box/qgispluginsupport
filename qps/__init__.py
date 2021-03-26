@@ -115,7 +115,7 @@ def registerEditorWidgets():
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
 
     try:
-        from .speclib.gui.gui import registerSpectralProfileEditorWidget
+        from .speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
         registerSpectralProfileEditorWidget()
     except Exception as ex:
         print('Failed to call .speclib.gui.gui.registerSpectralProfileEditorWidget()', file=sys.stderr)
@@ -186,3 +186,7 @@ def unloadAll():
     unregisterExpressionFunctions()
     unregisterMapLayerConfigWidgetFactories()
 
+
+from .speclib.core.spectralprofile import SpectralProfile
+from .speclib.core.spectrallibrary import SpectralLibrary
+s = ""
