@@ -117,6 +117,9 @@ def decodeProfileValueDict(dump, mode=None) -> dict:
 
 
 class SpectralProfile(QgsFeature):
+    """
+    A QgsFeature specialized to read Spectral Profile data from BLOB fields
+    """
     crs = SPECLIB_CRS
 
     @staticmethod
@@ -484,7 +487,7 @@ class SpectralProfile(QgsFeature):
         """
         return self.attribute(self.fields().indexFromName(self.mProfileKey.field)) in [None, QVariant()]
 
-    def values(self) -> dict:
+    def values(self, f=None) -> dict:
         """
         Returns a dictionary with 'x', 'y', 'xUnit' and 'yUnit' values.
         :return: {'x':list,'y':list,'xUnit':str,'yUnit':str, 'bbl':list}
