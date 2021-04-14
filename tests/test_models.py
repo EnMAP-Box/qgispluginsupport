@@ -52,6 +52,7 @@ class ModelTests(TestCase):
                 {'B1': root,
                  'B2': {'DDD': root},
                  'NP': np.arange(256),
+                 'Array2': np.asarray([[1,2,3],[4,5,6]]),
                  'M': m},
                 'CA': QgsMapCanvas(),
                 }
