@@ -1335,7 +1335,7 @@ class SpectralProfileRenderer(object):
             if isinstance(customStyle, PlotStyle):
                 fids = customStyleNode.firstChildElement('keys').firstChild().nodeValue().split(',')
                 rxInt = re.compile(r'\d+[ ]*')
-                fids = [int(f) for f in fids if re.match(rxInt)]
+                fids = [int(f) for f in fids if rxInt.match(f)]
                 renderer.setProfilePlotStyle(customStyle, fids)
 
         return renderer

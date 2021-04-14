@@ -215,7 +215,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         transform_context = QgsProject.instance().transformContext()
 
         if callable(getattr(QgsVectorFileWriter, "writeAsVectorFormatV3", None)):
-            errCode, errMsg = QgsVectorFileWriter.writeAsVectorFormatV3(
+            errCode, errMsg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(
                 speclib,
                 path.as_posix(),
                 transform_context,
