@@ -2573,9 +2573,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
             info = 'Add {} profiles from {} ...'.format(len(speclib), speclib.name())
             sl.beginEditCommand(info)
             sl.addSpeclib(speclib)
+            sl.commitChanges(stopEditing=not wasEditable)
             sl.endEditCommand()
-            if not wasEditable:
-                sl.commitChanges()
+            s = ""
         except Exception as ex:
             print(ex, file=sys.stderr)
             pass

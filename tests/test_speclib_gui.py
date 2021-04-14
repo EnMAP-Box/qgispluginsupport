@@ -773,7 +773,7 @@ class TestSpeclibWidgets(TestCase):
 
         w.addSpeclib(speclib)
         dt = datetime.datetime.now() - t0
-        print('Adding speclib required : {}'.format(dt))
+        print(f'Adding speclib with {len(speclib)} profiles required : {dt}')
 
         self.showGui(w)
 
