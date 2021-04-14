@@ -213,11 +213,19 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         if options.layerName in [None, '']:
             options.layerName = speclib.name()
         transform_context = QgsProject.instance().transformContext()
-        errCode, errMsg = QgsVectorFileWriter.writeAsVectorFormatV2(
-            speclib,
-            path.as_posix(),
-            transform_context,
-            options)
+
+        if callable(getattr(QgsVectorFileWriter, "writeAsVectorFormatV3", None)):
+            errCode, errMsg = QgsVectorFileWriter.writeAsVectorFormatV3(
+                speclib,
+                path.as_posix(),
+                transform_context,
+                options)
+        else:
+            errCode, errMsg = QgsVectorFileWriter.writeAsVectorFormatV2(
+                speclib,
+                path.as_posix(),
+                transform_context,
+                options)
 
         if errCode != QgsVectorFileWriter.NoError:
             raise Exception(errMsg)
