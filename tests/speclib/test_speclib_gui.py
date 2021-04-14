@@ -17,15 +17,21 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
+import pathlib
 import unittest
 import random
 import math
 import xmlrunner
-from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QDropEvent
+from PyQt5.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
+from PyQt5.QtGui import QDropEvent, QColor
 from PyQt5.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QHBoxLayout, QVBoxLayout, QPushButton, \
-    QToolButton, QAction, QComboBox
+    QToolButton, QAction, QComboBox, QWidget, QDialog
+from PyQt5.QtXml import QDomDocument
+from osgeo import ogr
 
+from qgis.PyQt import QtCore
+from qps.plotstyling.plotstyling import PlotStyle
+from qps.speclib.core.spectrallibrary import SpectralProfileRenderer, defaultCurvePlotStyle, XMLNODE_PROFILE_RENDERER
 from qps.speclib.gui.spectrallibraryconsistencywidget import SpectralLibraryConsistencyCheckWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem, \
     SpectralProfilePlotWidget, SpectralProfileRendererWidget
@@ -400,6 +406,7 @@ class TestSpeclibWidgets(TestCase):
 
         registerSpectralProfileEditorWidget()
 
+        from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
         self.assertTrue(EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys())
         factory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
         self.assertIsInstance(factory, SpectralProfileEditorWidgetFactory)
@@ -556,9 +563,12 @@ class TestSpeclibWidgets(TestCase):
         self.showGui(w)
 
     def test_SpectraLibraryWidget_Empty(self):
-
+        w1 = QWidget()
+        w1.show()
         w = SpectralLibraryWidget()
+
         self.showGui(w)
+
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):

@@ -40,6 +40,7 @@ from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
 import qgis.utils
+from qgis.PyQt import QtCore
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsProcessingContext, \
     QgsProcessingFeedback, QgsFields, QgsApplication, QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
@@ -369,6 +370,7 @@ class TestCase(qgis.testing.TestCase):
         from osgeo import gdal
         gdal.AllRegister()
 
+
     @classmethod
     def tearDownClass(cls):
         if False and isinstance(QgsApplication.instance(), QgsApplication):
@@ -426,7 +428,6 @@ class TestCase(qgis.testing.TestCase):
         return newpath.as_posix()
 
     def setUp(self):
-
         print('\nSET UP {}'.format(self.id()))
 
     def tearDown(self):

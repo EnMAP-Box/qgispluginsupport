@@ -1112,7 +1112,7 @@ def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_
     # of as top-level qps
     try:
         from .. import qps
-    except ValueError:
+    except ImportError:
         import qps
 
     elem = doc.elementsByTagName('customwidget')
