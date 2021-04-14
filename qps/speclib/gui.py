@@ -1764,8 +1764,7 @@ class SpectralLibraryPlotWidget(pg.PlotWidget):
                 b = self.speclib().isEditable()
                 self.speclib().startEditing()
                 self.speclib().addSpeclib(speclib)
-                if not b:
-                    self.speclib().commitChanges()
+                self.speclib().commitChanges(stopEditing=not b)
             event.accept()
         else:
             super().dropEvent(event)
