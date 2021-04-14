@@ -579,14 +579,6 @@ class TreeNode(QObject):
         """
         return self.mName
 
-    def populateContextMenu(self, menu: QMenu):
-        """
-        Implement this to add a TreeNode specific context menu
-        :param menu:
-        :return:
-        """
-        pass
-
     def setValue(self, value):
         """
         Same as setValues([value])
