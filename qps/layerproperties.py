@@ -1142,14 +1142,14 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         mLayer.editingStopped.connect(self.editingToggled)
         mLayer.destroyed.connect(self.mMainView.cancelProgress)
         mLayer.selectionChanged.connect(self.updateTitle)
-        mLayer.featureAdded.connect(self.scheduleTitleUpdate)
+        mLayer.editCommandEnded.connect(self.scheduleTitleUpdate)
         mLayer.featuresDeleted.connect(self.updateTitle)
         mLayer.editingStopped.connect(self.updateTitle)
         mLayer.readOnlyChanged.connect(self.editingToggled)
 
         self.mUpdateTrigger: QTimer = QTimer()
         self.mUpdateTrigger.setInterval(2000)
-        self.mUpdateTrigger.timeout.connect(self.updateTitle)
+        # self.mUpdateTrigger.timeout.connect(self.updateTitle)
 
         # connect table info to window
         self.mMainView.filterChanged.connect(self.updateTitle)
@@ -1544,9 +1544,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.mActionSearchForm.setChecked(False)
 
     def scheduleTitleUpdate(self):
-
         self.mUpdateTrigger.start(2000)
-        s = ""
 
     def updateTitle(self):
         self.mUpdateTrigger.stop()
