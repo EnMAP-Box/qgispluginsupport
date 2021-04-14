@@ -497,13 +497,16 @@ class TestSpeclibWidgets(TestCase):
                 break
             md = QMimeData()
             md.setUrls([QUrl.fromLocalFile(file.as_posix())])
-            print('Drop {}'.format(file.name), flush=True)
+            print(f'Drop test {n}: {file.name}', flush=True)
             event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
             slw.dropEvent(event)
             QApplication.processEvents()
-            # delete dropped spectra
+
+            print(f'Drop test {n}: delete dropped features', flush=True)
             slw.speclib().startEditing()
+            slw.speclib().beginEditCommand('Delete features')
             slw.speclib().deleteFeatures(slw.speclib().allFeatureIds())
+            slw.speclib().endEditCommand()
             slw.speclib().commitChanges()
 
         self.showGui(slw)
