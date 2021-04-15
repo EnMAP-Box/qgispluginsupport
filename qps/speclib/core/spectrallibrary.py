@@ -1567,6 +1567,10 @@ class SpectralLibrary(QgsVectorLayer):
                     feedback.setProgress(nAdded)
                     lastTime = datetime.datetime.now()
 
+        new_edit_command: bool = not self.isEditCommandActive()
+        if new_edit_command:
+            self.beginEditCommand('Add profiles')
+
         for i, pSrc in enumerate(profiles):
             if i == 0:
                 if addMissingFields:
@@ -1597,6 +1601,9 @@ class SpectralLibrary(QgsVectorLayer):
 
         # final buffer call
         flushBuffer(triggerProgressBar=True)
+
+        if new_edit_command:
+            self.endEditCommand()
 
         # return the edited features
         MAP = self.editBuffer().addedFeatures()
