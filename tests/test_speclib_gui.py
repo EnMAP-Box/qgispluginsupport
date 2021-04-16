@@ -340,7 +340,7 @@ class TestSpeclibWidgets(TestCase):
         # self.assertEqual('Y [{}]'.format(yUnit), m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
         # self.assertEqual('X [{}]'.format(xUnit), m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
-        m.setColumnValueUnit(0, '')
+        # m.setColumnValueUnit(0, '')
 
     @unittest.skipIf(False, '')
     def test_SpectralProfileEditorWidget(self):
