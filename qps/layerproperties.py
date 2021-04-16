@@ -804,7 +804,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
                  parent=None,
                  mapLayerConfigFactories: typing.List[QgsMapLayerConfigWidgetFactory] = None):
         warnings.warn('This dialog emulates only parts of the real QGIS Layer Properties dialog. '
-                      'Use for testing only.', Warning)
+                      'Use for testing only.', Warning, stacklevel=2)
         super(QgsOptionsDialogBase, self).__init__('QPS_LAYER_PROPERTIES', parent, Qt.Dialog, settings=None)
         pathUi = pathlib.Path(__file__).parent / 'ui' / 'layerpropertiesdialog.ui'
         loadUi(pathUi.as_posix(), self)
