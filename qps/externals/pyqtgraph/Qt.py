@@ -134,7 +134,10 @@ def _loadUiType(uiFile):
 if QT_LIB == PYQT5:
     # We're using PyQt5 which has a different structure so we're going to use a shim to
     # recreate the Qt4 structure for Qt5
-    from PyQt5 import QtGui, QtCore, QtWidgets, sip, uic
+    try:
+        from PyQt5 import QtGui, QtCore, QtWidgets, sip, uic
+    except ImportError:
+        from qgis.PyQt import QtGui, QtCore, QtWidgets, sip, uic
     
     try:
         from PyQt5 import QtSvg
@@ -148,7 +151,10 @@ if QT_LIB == PYQT5:
     VERSION_INFO = 'PyQt5 ' + QtCore.PYQT_VERSION_STR + ' Qt ' + QtCore.QT_VERSION_STR
 
 elif QT_LIB == PYQT6:
-    from PyQt6 import QtGui, QtCore, QtWidgets, sip, uic
+    try:
+        from PyQt6 import QtGui, QtCore, QtWidgets, sip, uic
+    except ImportError:
+        from qgis.PyQt import QtGui, QtCore, QtWidgets, sip, uic
 
     try:
         from PyQt6 import QtSvg
@@ -388,7 +394,8 @@ versionReq = [5, 12]
 m = re.match(r'(\d+)\.(\d+).*', QtVersion)
 if m is not None and list(map(int, m.groups())) < versionReq:
     print(list(map(int, m.groups())))
-    raise Exception('pyqtgraph requires Qt version >= %d.%d  (your version is %s)' % (versionReq[0], versionReq[1], QtVersion))
+    # raise Exception('pyqtgraph requires Qt version >= %d.%d  (your version is %s)' % (versionReq[0], versionReq[1], QtVersion))
+    warnings.warn('pyqtgraph requires Qt version >= %d.%d  (your version is %s)' % (versionReq[0], versionReq[1], QtVersion), stacklevel=2)
 
 App = QtWidgets.QApplication
 # subclassing QApplication causes segfaults on PySide{2, 6} / Python 3.8.7+
