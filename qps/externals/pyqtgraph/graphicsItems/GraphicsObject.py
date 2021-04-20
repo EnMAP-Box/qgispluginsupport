@@ -1,6 +1,6 @@
 from ..Qt import QtGui, QtCore, QT_LIB
-if QT_LIB in ['PyQt4', 'PyQt5']:
-    import sip
+if QT_LIB.startswith('PyQt'):
+    from ..Qt import sip
 from .GraphicsItem import GraphicsItem
 
 __all__ = ['GraphicsObject']
@@ -18,10 +18,11 @@ class GraphicsObject(GraphicsItem, QtGui.QGraphicsObject):
         GraphicsItem.__init__(self)
         
     def itemChange(self, change, value):
-        if value == QtCore.QVariant(None):
-            value = None
+        try:
+            ret = super().itemChange(change, value)
+        except TypeError as ex:
+            ret = None
 
-        ret = QtGui.QGraphicsObject.itemChange(self, change, value)
         if change in [self.ItemParentHasChanged, self.ItemSceneHasChanged]:
             self.parentChanged()
         try:
