@@ -7,13 +7,28 @@
     <x>0</x>
     <y>0</y>
     <width>786</width>
-    <height>477</height>
+    <height>427</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>2</number>
+   </property>
+   <property name="leftMargin">
+    <number>2</number>
+   </property>
+   <property name="topMargin">
+    <number>2</number>
+   </property>
+   <property name="rightMargin">
+    <number>2</number>
+   </property>
+   <property name="bottomMargin">
+    <number>2</number>
+   </property>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
@@ -28,6 +43,16 @@
      </item>
      <item>
       <widget class="QToolButton" name="btnUseRegex">
+       <property name="text">
+        <string>...</string>
+       </property>
+       <property name="autoRaise">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="btnCaseSensitive">
        <property name="text">
         <string>...</string>
        </property>
@@ -53,7 +78,7 @@
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
        <horstretch>0</horstretch>
-       <verstretch>1</verstretch>
+       <verstretch>2</verstretch>
       </sizepolicy>
      </property>
      <property name="orientation">
@@ -171,16 +196,30 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>^.*$</string>
+    <string>.*</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to use regular expressions</string>
    </property>
   </action>
   <action name="actionReload">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset resource="../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionReload.svg</normaloff>:/images/themes/default/mActionReload.svg</iconset>
    </property>
    <property name="text">
     <string>Reload</string>
+   </property>
+  </action>
+  <action name="optionCaseSensitive">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>cC</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to filter case-sensitive</string>
    </property>
   </action>
  </widget>
@@ -192,7 +231,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../../../../QGIS/images/images.qrc"/>
+  <include location="../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>
 </ui>
