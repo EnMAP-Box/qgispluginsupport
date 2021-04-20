@@ -901,13 +901,13 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         pw.getPlotItem().addItem(self)
         return pw
 
-    def updateItems(self, *args):
+    def updateItems(self, *args, **kwds):
         if not self.signalsBlocked():
-            super().updateItems(*args)
+            super().updateItems(*args, **kwds)
         else:
             s = ""
 
-    def viewRangeChanged(self, *args):
+    def viewRangeChanged(self, *args, **kwds):
         if not self.signalsBlocked():
             super().viewRangeChanged()
         else:

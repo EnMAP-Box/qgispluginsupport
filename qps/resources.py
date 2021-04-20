@@ -432,6 +432,7 @@ class ResourceBrowser(QWidget):
         self.tbFilter: QLineEdit
         self.tableView: ResourceTableView
         self.btnUseRegex: QToolButton
+        self.btnCaseSensitive: QToolButton
         self.btnReload: QToolButton
         self.preview: QLabel
 
@@ -453,8 +454,10 @@ class ResourceBrowser(QWidget):
 
         self.btnReload.setDefaultAction(self.actionReload)
         self.btnUseRegex.setDefaultAction(self.optionUseRegex)
+        self.btnCaseSensitive.setDefaultAction(self.optionCaseSensitive)
         self.actionReload.triggered.connect(self.resourceModel.reloadResources)
 
+        self.optionCaseSensitive.toggled.connect(self.updateFilter)
         self.optionUseRegex.toggled.connect(self.updateFilter)
         self.tbFilter.textChanged.connect(self.updateFilter)
 
@@ -468,6 +471,12 @@ class ResourceBrowser(QWidget):
             expr.setPatternSyntax(QRegExp.RegExp)
         else:
             expr.setPatternSyntax(QRegExp.Wildcard)
+
+        if self.optionCaseSensitive.isChecked():
+            expr.setCaseSensitivity(Qt.CaseSensitive)
+        else:
+            expr.setCaseSensitivity(Qt.CaseInsensitive)
+
         if expr.isValid():
             self.resourceProxyModel.setFilterRegExp(expr)
             self.info.setText('')

@@ -297,7 +297,7 @@ class SpectralProfile(QgsFeature):
                  id: int = None,
                  fields: QgsFields = None,
                  values: dict = None,
-                 value_field: typing.Union[str, QgsField] = FIELD_VALUES):
+                 value_field: typing.Union[int, str, QgsField] = FIELD_VALUES):
         """
         :param parent:
         :param fields:
@@ -362,7 +362,13 @@ class SpectralProfile(QgsFeature):
         return self._math_(self, '__abs__', other)
 
     def _math_(self, left, op, right):
-
+        """
+        handles basic math operations with another SpectralProfile of same lengths
+        :param left:
+        :param op:
+        :param right:
+        :return:
+        """
         if np.isscalar(left):
             left = np.ones(len(self)) * left
         elif isinstance(left, SpectralProfile):
@@ -726,6 +732,14 @@ class SpectralSetting(object):
         self._yUnit: str = yUnit
         self._bbl: list = bbl
         self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
+        self._field: QgsField = None
+
+    def field(self) -> QgsField:
+        """
+        Returns the QgsField to which profiles with this setting are linked to
+        :return: QgsField
+        """
+        self._field
 
     def __str__(self):
         return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()

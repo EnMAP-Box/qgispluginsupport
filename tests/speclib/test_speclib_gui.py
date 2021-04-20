@@ -678,6 +678,7 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(w)
 
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPanel(self):
 
