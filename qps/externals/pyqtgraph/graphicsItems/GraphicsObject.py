@@ -18,11 +18,7 @@ class GraphicsObject(GraphicsItem, QtGui.QGraphicsObject):
         GraphicsItem.__init__(self)
         
     def itemChange(self, change, value):
-        try:
-            ret = super().itemChange(change, value)
-        except TypeError as ex:
-            ret = None
-
+        ret = super().itemChange(change, value)
         if change in [self.ItemParentHasChanged, self.ItemSceneHasChanged]:
             self.parentChanged()
         try:
