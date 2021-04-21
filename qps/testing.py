@@ -360,7 +360,7 @@ class TestCase(qgis.testing.TestCase):
 
         if resources is None:
             resources = []
-        # tryto find QGIS resource files
+        # try to find QGIS resource files
         for r in findQGISResourceFiles():
             if r not in resources:
                 resources.append(r)
