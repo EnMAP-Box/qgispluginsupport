@@ -144,11 +144,11 @@
   </layout>
   <action name="actionAddProfileVis">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
    </property>
    <property name="text">
-    <string>Add Profile Visualization</string>
+    <string>+ VIS</string>
    </property>
    <property name="toolTip">
     <string>Specfiy a new visualization of spectral profiles</string>
@@ -156,11 +156,11 @@
   </action>
   <action name="actionRemoveProfileVis">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">
-    <string>Remove profile visualization</string>
+    <string>- VIS</string>
    </property>
    <property name="toolTip">
     <string>Remove the selected profile visualizations</string>
@@ -186,7 +186,8 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../../../QGIS/images/images.qrc"/>
+  <include location="../../../../QGIS/images/images.qrc"/>
+  <include location="../../qpsresources.qrc"/>
  </resources>
  <connections/>
 </ui>

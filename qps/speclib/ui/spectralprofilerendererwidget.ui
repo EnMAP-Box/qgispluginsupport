@@ -43,7 +43,7 @@
         <string>...</string>
        </property>
        <property name="icon">
-        <iconset resource="../qpsresources.qrc">
+        <iconset resource="../../qpsresources.qrc">
          <normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</iconset>
        </property>
        <property name="checkable">
@@ -63,7 +63,7 @@
         <string>Dark</string>
        </property>
        <property name="icon">
-        <iconset resource="../qpsresources.qrc">
+        <iconset resource="../../qpsresources.qrc">
          <normaloff>:/qps/ui/icons/profiletheme_dark.svg</normaloff>:/qps/ui/icons/profiletheme_dark.svg</iconset>
        </property>
        <property name="autoRaise">
@@ -80,7 +80,7 @@
         <string>Bright</string>
        </property>
        <property name="icon">
-        <iconset resource="../qpsresources.qrc">
+        <iconset resource="../../qpsresources.qrc">
          <normaloff>:/qps/ui/icons/profiletheme_bright.svg</normaloff>:/qps/ui/icons/profiletheme_bright.svg</iconset>
        </property>
        <property name="autoRaise">
@@ -298,7 +298,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../qpsresources.qrc">
+    <iconset resource="../../qpsresources.qrc">
      <normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</iconset>
    </property>
    <property name="text">
@@ -310,7 +310,7 @@
   </action>
   <action name="actionActivateDarkTheme">
    <property name="icon">
-    <iconset resource="../qpsresources.qrc">
+    <iconset resource="../../qpsresources.qrc">
      <normaloff>:/qps/ui/icons/profiletheme_dark.svg</normaloff>:/qps/ui/icons/profiletheme_dark.svg</iconset>
    </property>
    <property name="text">
@@ -322,7 +322,7 @@
   </action>
   <action name="actionActivateBrightTheme">
    <property name="icon">
-    <iconset resource="../qpsresources.qrc">
+    <iconset resource="../../qpsresources.qrc">
      <normaloff>:/qps/ui/icons/profiletheme_bright.svg</normaloff>:/qps/ui/icons/profiletheme_bright.svg</iconset>
    </property>
    <property name="text">
@@ -353,7 +353,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../qpsresources.qrc"/>
+  <include location="../../qpsresources.qrc"/>
   <include location="../../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>

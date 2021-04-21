@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>786</width>
+    <width>841</width>
     <height>427</height>
    </rect>
   </property>
@@ -80,6 +80,19 @@
        <horstretch>0</horstretch>
        <verstretch>2</verstretch>
       </sizepolicy>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QSplitter::handle {
+    image: url(images/splitter.png);
+}
+
+QSplitter::handle:vertical {
+    height: 5px;
+}
+
+QSplitter::handle:pressed {
+    url(images/splitter_pressed.png);
+}</string>
      </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>

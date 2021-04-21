@@ -214,13 +214,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
                                              self.btnShowProperties)
 
+        # QIcon(':/images/themes/default/mActionMultiEdit.svg').pixmap(20,20).isNull()
         self.setAcceptDrops(True)
-
-    def depr_setViewMode(self, mode: QgsDualView.ViewMode):
-        assert isinstance(mode, QgsDualView.ViewMode)
-        self.mMainView.setView(mode)
-        for m in [QgsDualView.AttributeEditor, QgsDualView.AttributeTable]:
-            self.mMainViewButtonGroup.button(m).setChecked(m == mode)
 
     def setCenterView(self, view: typing.Union[QgsDualView.ViewMode,
                                                typing.Optional['SpectralLibraryWidget.ViewType']]):

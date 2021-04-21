@@ -657,6 +657,8 @@ class SpectralLibraryPlotWidget(QWidget):
         self.btnRemoveProfileVis.setDefaultAction(self.actionRemoveProfileVis)
         self.actionAddProfileVis.triggered.connect(self.createProfileVis)
 
+        self.actionAddProfileVis.triggered.connect(self.createProfileVis)
+
     def createProfileVis(self, *args):
         pass
 
