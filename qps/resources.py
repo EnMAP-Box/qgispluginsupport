@@ -288,7 +288,7 @@ def initResourceFile(path):
         sys.path.remove(path.parent.as_posix())
 
 
-def findQGISResourceFiles():
+def findQGISResourceFiles() -> typing.List[pathlib.Path]:
     """
     Tries to find a folder 'qgisresources'.
     See snippets/create_qgisresourcefilearchive.py to create the 'qgisresources' folder.
@@ -367,6 +367,9 @@ class ResourceTableModel(QAbstractTableModel):
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
                 return self.columnNames()[section]
+
+        if role == Qt.TextAlignmentRole and orientation == Qt.Vertical:
+            return Qt.AlignRight
 
         return super().headerData(section, orientation, role)
 
