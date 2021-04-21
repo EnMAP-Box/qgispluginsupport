@@ -1,6 +1,7 @@
 # noinspection PyPep8Naming
 import unittest
 from datetime import datetime
+from qgis.PyQt.QtGui import QIcon
 
 import xmlrunner
 
@@ -476,6 +477,12 @@ class SpectralProcessingTests(TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
+        from qps import QPS_RESOURCE_FILE
+        from qps.resources import findQGISResourceFiles
+        resources.extend(findQGISResourceFiles())
+        resources.append(QPS_RESOURCE_FILE)
+
+
 
         super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initAll()
@@ -558,6 +565,10 @@ class SpectralProcessingTests(TestCase):
         self.initProcessingRegistry()
         n_profiles_per_n_bands = 5
         n_bands = [6, 30, 177]
+
+
+        s = ""
+
         if False:
             # speed-test for deleting features
             slibs = [TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands) for _ in range(4)]
@@ -590,7 +601,9 @@ class SpectralProcessingTests(TestCase):
         w = SpectralLibraryWidget(speclib=sl)
         SPW: SpectralProcessingWidget = w.pageProcessingWidget
 
-        self.showGui(w)
+        from qps.resources import ResourceBrowser
+        rb = ResourceBrowser()
+        self.showGui([w,rb])
         s = ""
         pass
 

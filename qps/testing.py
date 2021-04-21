@@ -103,7 +103,7 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = No
         for path in resources:
             initResourceFile(path)
         qgsApp = qgis.testing.start_app(cleanup=cleanup)
-
+   
     # initialize things not done by qgis.test.start_app()...
     if not QgsProviderRegistry.instance().libraryDirectory().exists():
         libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'

@@ -180,8 +180,17 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryWidget(speclib=speclib)
         self.showGui(w)
 
-    @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotWidget(self):
+        speclib = TestObjects.createSpectralLibrary()
+        from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
+        from qps.resources import ResourceBrowser
+        w = SpectralLibraryPlotWidget()
+        rb = ResourceBrowser()
+
+        self.showGui([w, rb])
+
+    @unittest.skipIf(False, '')
+    def test_SpectralProfilePlotWidget(self):
 
         speclib = SpectralLibrary.readFrom(speclibpath)
 
