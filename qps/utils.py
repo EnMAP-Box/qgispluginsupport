@@ -63,9 +63,6 @@ from osgeo import gdal, ogr, osr, gdal_array
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 
-
-
-
 # dictionary to store form classes and avoid multiple calls to read <myui>.i
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -554,6 +551,7 @@ def qgisLayerTreeLayers() -> list:
     else:
         return []
 
+
 def toType(t, arg, empty2None=True, empty_values=[None, NULL]):
     """
     Converts lists or single values into type t.
@@ -637,12 +635,11 @@ def filenameFromString(text: str):
     return ''.join(chars)
 
 
-
 def value2str(value,
               sep: str = None,
               delimiter: str = ' ',
-              empty_values: list =[None, NULL],
-              empty_string:str = ''):
+              empty_values: list = [None, NULL],
+              empty_string: str = ''):
     """
     Converts a value into a string
     :param empty_values: Defines a list of values to be represented by the empty_string
@@ -931,6 +928,7 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
 
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
+
 def qgsField(layer: QgsVectorLayer, field) -> QgsField:
     """
     Returns the QgsField reating to the input value in "field"
@@ -993,7 +991,6 @@ def setComboboxValue(cb: QComboBox, text: str):
         print('ComboBox index not found for "{}"'.format(text))
 
 
-
 def qgsRasterLayers(sources) -> typing.Iterator[QgsRasterLayer]:
     """
     Like qgsRasterLayer, but on multiple inputs and with extraction of sub-layers
@@ -1037,121 +1034,130 @@ def qgsMapLayer(value: typing.Any) -> QgsMapLayer:
     return None
 
 
-def loadUi(uifile, baseinstance=None, package='', resource_suffix='_rc', remove_resource_references=True,
-           loadUiType=False):
+UI_STORE: typing.Dict[pathlib.Path, str] = dict()
+
+
+def loadUi(uifile: typing.Union[str, pathlib.Path],
+           resource_suffix: str = '_rc',
+           remove_resource_references: bool = True,
+           no_caching: bool = False,
+           loadUiType: bool = False,
+           baseinstance=None,
+           package: str = ''
+           ):
     """
-    :param uifile:
-    :type uifile:
-    :param baseinstance:
-    :type baseinstance:
-    :param package:
-    :type package:
-    :param resource_suffix:
-    :type resource_suffix:
-    :param remove_resource_references:
-    :type remove_resource_references:
+    :param uifile: path to *.ui file
+    :param resource_suffix: suffix used for python-compiled *.qrc files. E.g. `_rc` if images.qrc is
+    compiled to images_rc.py
+    :param remove_resource_references: removes all *.qrc references from the *.ui xml. In this case resources need to be
+    loaded externally. See qps.resources for examples.
+    :param no_caching: if True, will read the *.ui for each new call
+    :param loadUiType: if True, returns the output of `uic.loadUi(...)` instead of `uic.loadUiType(...)`
+    :param baseinstance: argument to `uic.loadUi(...)`
+    :param package: argument to `uic.loadUi(...)`
     :return:
-    :rtype:
     """
 
-    assert os.path.isfile(uifile), '*.ui file does not exist: {}'.format(uifile)
+    uifile = pathlib.Path(uifile).resolve()
+    global UI_STORE
+    assert uifile.is_file(), '*.ui file does not exist: {}'.format(uifile)
+    if no_caching or uifile not in UI_STORE.keys():
+        from .resources import REGEX_QGIS_IMAGES_QRC
 
-    from .resources import REGEX_QGIS_IMAGES_QRC
+        with open(uifile, 'r', encoding='utf-8') as f:
+            txt = f.read()
 
-    with open(uifile, 'r', encoding='utf-8') as f:
-        txt = f.read()
+        dirUi: pathlib.Path = uifile.parent
 
-    dirUi = os.path.dirname(uifile)
+        locations = []
 
-    locations = []
+        # replace local path to QGIS repository images with that used in the QGIS Application
+        txt = re.sub(r'resource="[^":]*/QGIS[^\/"]*[\/]images[\/]images\.qrc"', 'resource=":/images/images.qrc"', txt)
 
-    # replace local path to QGIS repository images with that used in the QGIS Application
-    txt = re.sub(r'resource="[^":]*/QGIS[^\/"]*[\/]images[\/]images\.qrc"', 'resource=":/images/images.qrc"', txt)
+        for m in re.findall(r'(<include location="(.*\.qrc)"/>)', txt):
+            locations.append(m)
 
-    for m in re.findall(r'(<include location="(.*\.qrc)"/>)', txt):
-        locations.append(m)
-
-    missing = []
-    for t in locations:
-        line, path = t
-        if REGEX_QGIS_IMAGES_QRC.search(path):
-            continue
-        if not os.path.isabs(path):
-            p = os.path.join(dirUi, path)
-        else:
-            p = path
-
-        if not os.path.isfile(p):
-            missing.append(t)
-
-    if len(missing) > 0:
-        print('{}\nrefers to {} none-existing resource (*.qrc) file(s):'.format(uifile, len(missing)))
-        for i, t in enumerate(missing):
+        missing = []
+        for t in locations:
             line, path = t
-            print('{}: "{}"'.format(i + 1, path), file=sys.stderr)
+            if REGEX_QGIS_IMAGES_QRC.search(path):
+                continue
+            if not os.path.isabs(path):
+                p = (dirUi / pathlib.Path(path)).resolve()
+            else:
+                p = pathlib.Path(path)
 
+            if not p.is_file():
+                missing.append(t)
 
-    doc = QDomDocument()
-    doc.setContent(txt)
+        if len(missing) > 0:
+            print('{}\nrefers to {} none-existing resource (*.qrc) file(s):'.format(uifile, len(missing)))
+            for i, t in enumerate(missing):
+                line, path = t
+                print('{}: "{}"'.format(i + 1, path), file=sys.stderr)
 
-    if REMOVE_setShortcutVisibleInContextMenu and 'shortcutVisibleInContextMenu' in txt:
-        toRemove = []
-        actions = doc.elementsByTagName('action')
-        for iAction in range(actions.count()):
-            properties = actions.item(iAction).toElement().elementsByTagName('property')
-            for iProperty in range(properties.count()):
-                prop = properties.item(iProperty).toElement()
-                if prop.attribute('name') == 'shortcutVisibleInContextMenu':
-                    toRemove.append(prop)
-        for prop in toRemove:
-            prop.parentNode().removeChild(prop)
-        del toRemove
+        doc = QDomDocument()
+        doc.setContent(txt)
 
-    # we need the absolute position of qps
-    # eg. within my/package/externals/qps
-    # of as top-level qps
-    try:
-        from .. import qps
-    except ImportError:
-        import qps
+        if REMOVE_setShortcutVisibleInContextMenu and 'shortcutVisibleInContextMenu' in txt:
+            toRemove = []
+            actions = doc.elementsByTagName('action')
+            for iAction in range(actions.count()):
+                properties = actions.item(iAction).toElement().elementsByTagName('property')
+                for iProperty in range(properties.count()):
+                    prop = properties.item(iProperty).toElement()
+                    if prop.attribute('name') == 'shortcutVisibleInContextMenu':
+                        toRemove.append(prop)
+            for prop in toRemove:
+                prop.parentNode().removeChild(prop)
+            del toRemove
 
-    elem = doc.elementsByTagName('customwidget')
-    for child in [elem.item(i) for i in range(elem.count())]:
-        child = child.toElement()
+        # we need the absolute position of qps
+        # eg. within my/package/externals/qps
+        # of as top-level qps
+        try:
+            from .. import qps
+        except ImportError:
+            import qps
 
-        cClass = child.firstChildElement('class').firstChild()
-        cHeader = child.firstChildElement('header').firstChild()
-        cExtends = child.firstChildElement('extends').firstChild()
+        elem = doc.elementsByTagName('customwidget')
+        for child in [elem.item(i) for i in range(elem.count())]:
+            child = child.toElement()
 
-        sClass = str(cClass.nodeValue())
-        sExtends = str(cHeader.nodeValue())
-        if False:
-            if sClass.startswith('Qgs'):
-                cHeader.setNodeValue('qgis.gui')
-        if True:
-            # replace 'qps' package location with local absolute position
-            if sExtends.startswith('qps.'):
-                cHeader.setNodeValue(re.sub(r'^qps\.', qps.__spec__.name + '.', sExtends))
+            cClass = child.firstChildElement('class').firstChild()
+            cHeader = child.firstChildElement('header').firstChild()
+            cExtends = child.firstChildElement('extends').firstChild()
 
-    if remove_resource_references:
-        # remove resource file locations to avoid import errors.
-        elems = doc.elementsByTagName('include')
-        for i in range(elems.count()):
-            node = elems.item(i).toElement()
-            attribute = node.attribute('location')
-            if len(attribute) > 0 and attribute.endswith('.qrc'):
-                node.parentNode().removeChild(node)
+            sClass = str(cClass.nodeValue())
+            sExtends = str(cHeader.nodeValue())
+            if False:
+                if sClass.startswith('Qgs'):
+                    cHeader.setNodeValue('qgis.gui')
+            if True:
+                # replace 'qps' package location with local absolute position
+                if sExtends.startswith('qps.'):
+                    cHeader.setNodeValue(re.sub(r'^qps\.', qps.__spec__.name + '.', sExtends))
 
-        # remove iconset resource names, e.g.<iconset resource="../qpsresources.qrc">
-        elems = doc.elementsByTagName('iconset')
-        for i in range(elems.count()):
-            node = elems.item(i).toElement()
-            attribute = node.attribute('resource')
-            if len(attribute) > 0:
-                node.removeAttribute('resource')
+        if remove_resource_references:
+            # remove resource file locations to avoid import errors.
+            elems = doc.elementsByTagName('include')
+            for i in range(elems.count()):
+                node = elems.item(i).toElement()
+                attribute = node.attribute('location')
+                if len(attribute) > 0 and attribute.endswith('.qrc'):
+                    node.parentNode().removeChild(node)
 
-    buffer = io.StringIO()  # buffer to store modified XML
-    buffer.write(doc.toString())
+            # remove iconset resource names, e.g.<iconset resource="../qpsresources.qrc">
+            elems = doc.elementsByTagName('iconset')
+            for i in range(elems.count()):
+                node = elems.item(i).toElement()
+                attribute = node.attribute('resource')
+                if len(attribute) > 0:
+                    node.removeAttribute('resource')
+        UI_STORE[uifile] = doc.toString()
+
+    buffer = io.StringIO()  # buffer to store ui XML
+    buffer.write(UI_STORE[uifile])
     buffer.flush()
     buffer.seek(0)
 
@@ -1289,6 +1295,7 @@ def qgsFieldAttributes2List(attributes: typing.List[typing.Any]) -> typing.List[
     r = QVariant(None)
     return [None if v == r else v for v in attributes]
 
+
 def qgsFields2str(qgsFields: QgsFields) -> str:
     """Converts the QgsFields definition into a pickable string"""
     infos = []
@@ -1310,6 +1317,7 @@ def str2QgsFields(fieldString: str) -> QgsFields:
         field = QgsField(*info)
         fields.append(field)
     return fields
+
 
 def as_py_value(value, datatype: Qgis.DataType):
     """
