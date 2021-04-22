@@ -39,7 +39,7 @@ from qgis.gui import QgsDialog, QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
 
 from ..externals import pyqtgraph as pg
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
-from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
+from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol, Symbols
 from ..utils import *
 
 DEBUG = False
@@ -103,6 +103,11 @@ class MarkerSymbol(enum.Enum):
     Star = 's'
     Plus = '+'
     Diamond = 'd'
+    Cross = 'x'
+    ArrowUp = 'arrow_up'
+    ArrowRight = 'arrow_right'
+    ArrowDown = 'arrow_down'
+    ArrowLeft = 'arrow_left'
     No_Symbol = None
 
     @staticmethod
@@ -640,15 +645,23 @@ class PlotStyle(QObject):
             p.setPen(self.linePen)
 
             w, h = pm.width(), pm.height()
+            path = QPainterPath()
+            path.moveTo(0, 0)
+            xvec = [0.2, 0.4, 0.5, 0.8, 1.0]
+            yvec = [0.2, 0.5, 0.5, 0.7, 0.6]
+            for x, y in zip(xvec, yvec):
+                path.lineTo(x*w, y*h)
+            # path.cubicTo()
+            p.drawPath(path)
 
             hw, hh = int(w * 0.5), int(h * 0.5)
             w2, h2 = int(w * 0.75), int(h * 0.75)
-            #p.drawLine(x1,y1,x2,y2)
+            # p.drawLine(x1,y1,x2,y2)
 
-            p.drawLine(2, h - 2, hw, hh)
-            p.drawLine(hw, hh, w - 2, int(h * 0.3))
+            # p.drawLine(2, h - 2, hw, hh)
+            # p.drawLine(hw, hh, w - 2, int(h * 0.3))
 
-            p.translate(pm.width() / 2, pm.height() / 2)
+            p.translate(0.5 * pm.width(), 0.5 * pm.height())
             drawSymbol(p, self.markerSymbol, self.markerSize, self.markerPen, self.markerBrush)
             p.end()
         else:

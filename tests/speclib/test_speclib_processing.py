@@ -1,198 +1,19 @@
 # noinspection PyPep8Naming
 import unittest
 from datetime import datetime
-from qgis.PyQt.QtGui import QIcon
 
 import xmlrunner
 
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, \
-    QgsProcessingGuiRegistry, QgsProcessingParameterWidgetContext, QgsProcessingParameterDefinitionDialog
+from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
 
-from qgis.core import QgsVectorLayer, QgsProject, QgsApplication, QgsProcessingRegistry, QgsProcessingContext, \
-    QgsProcessingModelAlgorithm, QgsProcessingFeedback, \
-    QgsProcessingModelChildAlgorithm, QgsProcessingModelChildParameterSource, \
-    QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterVectorLayer, QgsProcessingModelParameter, \
-    QgsProcessingModelOutput, QgsProcessingParameterString
+from qgis.core import QgsProcessingProvider
 
 from qps import initResources, initAll
-from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.testing import TestObjects, StartOptions
+from qps.testing import TestObjects, StartOptions, SpectralProcessingAlgorithmExample
 from qps.speclib.gui.spectrallibrarywidget import *
 from qps.speclib.processing import *
 from qps.speclib.processingalgorithms import *
 from qps.testing import TestCase, TestAlgorithmProvider
-
-
-class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
-    NAME = 'spectral_processing_algorithm_example'
-    INPUT = 'Input_Profiles'
-    CODE = 'python_code'
-    OUTPUT = 'Output_Profiles'
-
-    def __init__(self):
-        super().__init__()
-        self.mParameters = []
-        self.mFunction: typing.Callable = None
-
-    def shortDescription(self) -> str:
-        return 'This is a spectral processing algorithm'
-
-    def initAlgorithm(self, configuration: dict):
-
-        p1 = SpectralProcessingProfiles(self.INPUT, description='Input Profiles')
-        self.addParameter(p1, createOutput=False)
-        self.addParameter(QgsProcessingParameterString(
-            self.CODE,
-            description='Python code',
-            defaultValue="""profiledata=profiledata\nx_unit=x_unit\nbbl=bbl""",
-            multiLine=True,
-            optional=False
-        ))
-        p3 = SpectralProcessingProfilesSink(self.OUTPUT, description='Output Profiles')
-        self.addParameter(p3, createOutput=True)
-        # p2 = SpectralProcessingProfilesOutput(self.OUTPUT, description='Output Profiles')
-        # self.addOutput(p2)
-
-    def processAlgorithm(self,
-                         parameters: dict,
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback):
-
-        input_profiles: typing.List[SpectralProfileBlock] = \
-            parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
-
-        output_profiles: typing.List[SpectralProfileBlock] = []
-        user_code: str = self.parameterAsString(parameters, self.CODE, context)
-
-        n_block = len(input_profiles)
-        for i, profileBlock in enumerate(input_profiles):
-            # process block by block
-            assert isinstance(profileBlock, SpectralProfileBlock)
-            feedback.pushConsoleInfo(f'Process profile block {i + 1}/{n_block}')
-
-            resultBlock, msg = self.applyUserCode(user_code, profileBlock)
-
-            if isinstance(resultBlock, SpectralProfileBlock):
-                resultBlock.setProfileKeys(profileBlock.profileKeys())
-                output_profiles.append(resultBlock)
-            else:
-                feedback
-            feedback.setProgress(100 * i / n_block)
-
-        OUTPUTS = dict()
-        OUTPUTS[self.OUTPUT] = output_profiles
-        return OUTPUTS
-
-    def setProcessingFunction(self, function: typing.Callable):
-
-        assert isinstance(function, typing.Callable)
-        self.mFunction = function
-
-    def canExecute(self) -> bool:
-        result: bool = True
-        msg = ''
-        return result, msg
-
-    def checkParameterValues(self,
-                             parameters: dict,
-                             context: QgsProcessingContext,
-                             ):
-
-        result, msg = super().checkParameterValues(parameters, context)
-        print(('A', result, msg))
-        if not self.parameterDefinition(self.INPUT).checkValueIsAcceptable(parameters[self.INPUT], context):
-            msg += f'Unable to read {self.INPUT}'
-
-        # check if we can evaluate the python code
-        if not self.parameterDefinition(self.CODE).checkValueIsAcceptable(parameters[self.CODE], context):
-            msg += f'Unable to read {self.CODE}'
-
-        code = parameters[self.CODE]
-        dummyblock = SpectralProfileBlock.dummy()
-        para2 = parameters.copy()
-        para2['profiles'] = dummyblock
-        try:
-            exec(code, para2)
-            assert 'profiles' in para2
-        except Exception as ex:
-            result = False
-            msg += f'\n{ex}'
-        return result and len(msg) > 0, msg
-
-    def createCustomParametersWidget(self) -> QWidget:
-        w = QWidget()
-        label = QLabel('Placeholder for custom widget')
-        l = QHBoxLayout()
-        l.addWidget(label)
-        w.setLayout(l)
-        return w
-
-    def createInstance(self):
-        alg = SpectralProcessingAlgorithmExample()
-        return alg
-
-    def displayName(self) -> str:
-
-        return 'Spectral Processing Algorithm Example'
-
-    def flags(self):
-        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagNoThreading
-
-    def group(self):
-        return 'Test Group'
-
-    def helpString(self) -> str:
-        return 'Help String'
-
-    def name(self):
-        return self.NAME
-
-    def icon(self):
-        return QIcon(':/qps/ui/icons/profile.svg')
-
-    def prepareAlgorithm(self,
-                         parameters: dict,
-                         context: QgsProcessingContext,
-                         feedback: QgsProcessingFeedback):
-
-        is_valid = True
-        for key in [self.INPUT, self.CODE]:
-            if not key in parameters.keys():
-                feedback.reportError(f'Missing parameter {key}')
-                is_valid = False
-        if is_valid:
-            code = self.parameterAsString(parameters, self.CODE, context)
-            # test with dummy profiles
-            dummy = SpectralProfileBlock.dummy()
-            result_block, msg = self.applyUserCode(code, dummy)
-            if not isinstance(result_block, SpectralProfileBlock):
-                is_valid = False
-                feedback.reportError(msg)
-
-            s = ""
-        return is_valid
-
-    def applyUserCode(self, code, profileBlock: SpectralProfileBlock) -> SpectralProfileBlock:
-        kwds_global = profileBlock.toVariantMap()
-        kwds_local = {}
-        msg = ''
-        result_block: SpectralProfileBlock = None
-        try:
-            exec(code, kwds_global, kwds_local)
-        except Exception as ex:
-            return None, str(ex)
-
-        if not isinstance(kwds_local.get('profiledata', None), np.ndarray):
-            msg = 'python code does not return "profiledata" of type numpy.array'
-        else:
-            try:
-                result = {'profiledata': kwds_local['profiledata']}
-                for k in ['x', 'x_unit', 'y_unit', 'bbl']:
-                    result[k] = kwds_local.get(k, kwds_global.get(k, None))
-                result_block = SpectralProfileBlock.fromVariantMap(result)
-            except Exception as ex:
-                msg = str(ex)
-        return result_block, msg
 
 
 class SpectralProcessingExamples(TestCase):
@@ -302,7 +123,7 @@ class SpectralProcessingExamples(TestCase):
         This example shows how to create a processing model that:
         1. reads profiles from a speclib
         2. processes profiles
-        3. writes the processed profile into a Speclib
+        3. writes processed profiles into a Speclib
         """
 
         configuration = {}

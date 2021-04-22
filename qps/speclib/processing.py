@@ -210,6 +210,22 @@ def parameterAsSpectralProfileBlockSink(parameters: dict,
     return None
     s = ""
 
+def outputParameterResult(results: dict,
+                          output_parameter: typing.Union[str, QgsProcessingOutputDefinition]):
+    """
+
+    :param results: dict, QgsProcessingModelAlgorithm or QgsProcessingAlgorithm result
+    :param output_parameter: name or QgsProcessingOutputDefinition
+    :return: the parameter result or None
+    """
+    if isinstance(output_parameter, QgsProcessingOutputDefinition):
+        output_parameter = output_parameter.name()
+
+    output_parameter = f':{output_parameter}'
+    for k, v in results.items():
+        if k.endswith(output_parameter):
+            return v
+    return None
 
 def parameterAsSpectralProfileBlockList(parameters: dict,
                                         name: str,
@@ -425,14 +441,29 @@ class SpectralProcessingAlgorithmInputWidget(QgsProcessingAbstractParameterDefin
         return param
 
 
+class NO_MODEL_MODEL(QgsProcessingModelAlgorithm):
+    """
+    A proxy to represent None | NULL proxy values in a SpectralProcessingModelList
+    """
+    def __init__(self, *args, **kwds):
+        super(NO_MODEL_MODEL, self).__init__(*args, *kwds)
+
+    def id(self):
+        return 'No Model'
+
+    def displayName(self):
+        return 'No Model'
+
 class SpectralProcessingModelList(QAbstractListModel):
     """
     Contains a list of SpectralProcessingModels(QgsModelAlgorithms)
     """
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args, allow_empty: bool=False, **kwds):
 
         super(SpectralProcessingModelList, self).__init__(*args, **kwds)
         self.mModels: typing.List[QgsProcessingModelAlgorithm] = list()
+        if allow_empty:
+            self.mModels.append(NO_MODEL_MODEL())
 
     def __iter__(self):
         return iter(self.mModels)
@@ -466,10 +497,12 @@ class SpectralProcessingModelList(QAbstractListModel):
                 return i, m
         return None, None
 
-    def insertModel(self, row, model:QgsProcessingModelAlgorithm):
+    def insertModel(self, row, model: QgsProcessingModelAlgorithm):
         assert isinstance(model, QgsProcessingModelAlgorithm)
         if isinstance(row, QModelIndex):
             row = row.row()
+
+        assert is_spectral_processing_model(model)
 
         i, existingModel = self.findModelInstance(model)
         if isinstance(existingModel, QgsProcessingModelAlgorithm):
@@ -493,6 +526,13 @@ class SpectralProcessingModelList(QAbstractListModel):
             self.beginRemoveRows(QModelIndex(), row, row)
             self.mModels.remove(modelInstance)
             self.endRemoveRows()
+
+    def indexFromModelId(self, id:str) -> int:
+        for row, m in enumerate(self.mModels):
+            if m.id() == id:
+                return row
+
+        return -1
 
     def index(self, row: int, column: int, parent: QModelIndex = None) -> QModelIndex:
         if row < 0 or row >= len(self.mModels):

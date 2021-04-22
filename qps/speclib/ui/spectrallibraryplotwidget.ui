@@ -66,7 +66,7 @@
         <number>2</number>
        </property>
        <item row="2" column="0">
-        <widget class="SpectralProfilePlotControlTableView" name="tableView"/>
+        <widget class="SpectralProfilePlotControlView" name="tableView"/>
        </item>
        <item row="0" column="0">
         <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -79,7 +79,7 @@
          <item>
           <widget class="QToolButton" name="btnAddProfileVis">
            <property name="text">
-            <string>...</string>
+            <string>+VIS</string>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -89,7 +89,7 @@
          <item>
           <widget class="QToolButton" name="btnRemoveProfileVis">
            <property name="text">
-            <string>...</string>
+            <string>-VIS</string>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -175,7 +175,7 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SpectralProfilePlotControlTableView</class>
+   <class>SpectralProfilePlotControlView</class>
    <extends>QTableView</extends>
    <header>qps.speclib.gui.spectrallibraryplotwidget</header>
   </customwidget>

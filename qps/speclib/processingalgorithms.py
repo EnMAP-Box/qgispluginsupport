@@ -91,8 +91,8 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
         p1 = SpectralProcessingProfiles(self.INPUT)
         p2 = QgsProcessingParameterEnum(self.TARGET_XUNIT,
                                         description='Target x/wavelength unit',
-                                        options=self.mUnitModel.mUnits,
-                                        defaultValue=0,
+                                        options=[u for u in self.mUnitModel.mUnits],
+                                        defaultValue=1,
                                         )
         p3 = SpectralProcessingProfilesSink(self.OUTPUT)
         # o1 = SpectralProcessingProfilesOutput(self.OUTPUT)
@@ -110,15 +110,19 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
             if not key in parameters.keys():
                 feedback.reportError(f'Missing parameter {key}')
                 return False
+
         return True
 
     def processAlgorithm(self,
                          parameters: dict,
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
+        targetUnit = parameters.get(self.TARGET_XUNIT)
+        if isinstance(targetUnit, int):
+            targetUnit = self.mUnitModel.mUnits[targetUnit]
 
-        targetUnit = self.parameterAsEnum(parameters, self.TARGET_XUNIT, context)
-        targetUnit = self.mUnitModel.mUnits[targetUnit]
+        assert targetUnit in self.mUnitModel.mUnits
+
         input_profiles = parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
         output_profiles: typing.List[SpectralProcessingProfilesOutput] = []
         n_blocks = len(input_profiles)

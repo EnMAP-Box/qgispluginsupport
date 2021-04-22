@@ -1,32 +1,34 @@
 import collections
 import datetime
 import enum
+import re
 import sys
 import textwrap
 import typing
 import warnings
 
+
 import numpy as np
 import sip
-from PyQt5.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex, QPoint, QObject, QAbstractTableModel
-from PyQt5.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent
+from PyQt5.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex, QPoint, QObject, QAbstractTableModel, \
+    QSortFilterProxyModel, QSize, QVariant
+from PyQt5.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QPainter
 from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
-    QTableView, QComboBox, QMenu, QSlider
+    QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHeaderView
 from qgis._core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \
-    QgsVectorLayer
-from qgis._gui import QgsAttributeTableFilterModel, QgsDualView, QgsAttributeTableModel
-
+    QgsVectorLayer, QgsFieldModel, QgsFields, QgsFieldProxyModel
+from qgis._gui import QgsAttributeTableFilterModel, QgsDualView, QgsAttributeTableModel, QgsFieldExpressionWidget
 
 from ...externals import pyqtgraph as pg
 from ...externals.pyqtgraph import PlotDataItem, PlotWindow
 from ...externals.pyqtgraph.graphicsItems.ViewBox.ViewBoxMenu import ViewBoxMenu
-from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
+from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, MarkerSymbol, PlotStyleButton
 from .. import speclibUiPath
 from ..core.spectrallibrary import SpectralLibrary, SpectralProfileRenderer, spectralValueFields, DEBUG, \
     generateProfileKeys, containsSpeclib
 from ..core.spectralprofile import SpectralProfileKey, SpectralProfile, SpectralProfileBlock
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
-    SpectralProcessingProfilesOutput, SpectralProcessingModelList
+    SpectralProcessingProfilesOutput, SpectralProcessingModelList, NO_MODEL_MODEL
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, XUnitModel
 from ...utils import datetime64, UnitLookup, chunks, loadUi
 
@@ -35,7 +37,6 @@ class SPDIFlags(enum.Flag):
     NoProfile = enum.auto()
     NotDisplayable = enum.auto()
     Displayable = enum.auto()
-
 
 
 class XAxisWidgetAction(QWidgetAction):
@@ -517,40 +518,65 @@ class SpectralProfileRendererWidgetAction(QWidgetAction):
         return w
 
 
-
-class SpectralProfilePlotControlItem(QObject):
+class SpectralProfilePlotVisualization(QObject):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self.mModel: QgsProcessingModelAlgorithm = None
-        self.mField: QgsField = None
-        self.mLabelExpression: str = ''
-        self.mLineStyle = None
+        self.mModel: QgsProcessingModelAlgorithm = NO_MODEL_MODEL()
+        self.mSpeclib: QgsVectorLayer = None
+        self.mField: QgsField = QgsField()
+        self.mNameExpression: str = ''
+        self.mPlotStyle: PlotStyle = PlotStyle()
         self.mVisible: bool = True
 
+    def speclib(self) -> QgsVectorLayer:
+        return self.mSpeclib
+
+    def nameExpression(self) -> str:
+        """
+        Returns the expression that returns the name for a single profile
+        :return: str
+        """
+        return self.mNameExpression
+
+    def modelId(self) -> str:
+        if isinstance(self.mModel, QgsProcessingModelAlgorithm):
+            return self.mModel.id()
+        else:
+            return ''
+
+    def plotStyle(self) -> PlotStyle:
+        return self.mPlotStyle
 
 class SpectralProfilePlotControl(QAbstractTableModel):
 
+    CIX_FIELD = 0
+    CIX_MODEL = 1
+    CIX_NAME = 2
+    CIX_STYLE = 3
+    # CIX_MARKER = 4
+
     def __init__(self, *args, **kwds):
 
         super().__init__(*args, **kwds)
-        self.mProfileVisualizations: typing.List[SpectralProfilePlotControlItem] = []
-        self.mModelList: SpectralProcessingModelList = SpectralProcessingModelList()
-
+        self.mProfileVisualizations: typing.List[SpectralProfilePlotVisualization] = []
+        self.mModelList: SpectralProcessingModelList = SpectralProcessingModelList(allow_empty=True)
+        self.mProfileFieldModel: QgsFieldModel = QgsFieldModel()
         self.mMaxPDIs: int = 64
 
-        self.mColumnNames = {0: 'Source',
-                             1: 'Model',
-                             2: 'Name',
-                             3: 'Line',
-                             4: 'Marker'
+        self.mColumnNames = {self.CIX_FIELD: 'Field',
+                             self.CIX_MODEL: 'Model',
+                             self.CIX_NAME: 'Name',
+                             self.CIX_STYLE: 'Style',
+                             # self.CIX_MARKER: 'Marker'
                              }
-        self.mColumnTooltips = {0: 'This column specified the binary field that stores spectral profiles',
-                                1: 'This column is used to either show spectral profiles or modify them with a Spectral processing model',
-                                2: 'This column allow to specify how the profile names are generated',
-                                3: 'Here you can specify the line style for each profile type',
-                                4: 'Here you can specify the marker symbol ofr each profile type'}
+        self.mColumnTooltips = {self.CIX_FIELD: 'This column specifies the binary source field that stores the spectral profiles information',
+                                self.CIX_MODEL: 'This column is used to either show spectral profiles or modify them with a Spectral processing model',
+                                self.CIX_NAME: 'This column allow to specify how the profile names are generated',
+                                self.CIX_STYLE: 'Here you can specify the line style for each profile type',
+                                # self.CIX_MARKER: 'Here you can specify the marker symbol ofr each profile type'
+                                }
 
         self.mPDIs: typing.List[SpectralProfilePlotDataItem] = list()
         self.mSpeclib: QgsVectorLayer = None
@@ -560,6 +586,41 @@ class SpectralProfilePlotControl(QAbstractTableModel):
 
     def __iter__(self):
         return iter(self.mProfileVisualizations)
+
+    def profileFieldsModel(self):
+        return self.mProfileFieldModel
+
+    def insertVisualizations(self,
+                             index: typing.Union[int, QModelIndex],
+                             vis: typing.Union[SpectralProfilePlotVisualization,
+                                         typing.List[SpectralProfilePlotVisualization]],
+                             ):
+        if isinstance(index, QModelIndex):
+            index = index.row()
+        if index == -1:
+            index = len(self)
+        if isinstance(vis, SpectralProfilePlotVisualization):
+            vis = [vis]
+        for v in vis:
+            assert isinstance(v, SpectralProfilePlotVisualization)
+        n = len(vis)
+        i1 = index + n - 1
+        self.beginInsertRows(QModelIndex(), index, i1)
+        self.mProfileVisualizations[index:i1] = vis
+        self.endInsertRows()
+
+    def removeVisualizations(self, vis: typing.Union[SpectralProfilePlotVisualization,
+                                               typing.List[SpectralProfilePlotVisualization]]):
+
+        if isinstance(vis, SpectralProfilePlotVisualization):
+            vis = [vis]
+        for v in vis:
+            assert isinstance(v, SpectralProfilePlotVisualization)
+            assert v in self.mProfileVisualizations
+            i = self.mProfileVisualizations.index(v)
+            self.beginRemoveRows(QModelIndex(), i, i)
+            del self.mProfileVisualizations[i]
+            self.endRemoveRows()
 
     def rowCount(self, parent=None, *args, **kwargs):
         return len(self.mProfileVisualizations)
@@ -576,23 +637,37 @@ class SpectralProfilePlotControl(QAbstractTableModel):
             return Qt.NoItemFlags
 
         flags = Qt.ItemIsEnabled | Qt.ItemIsEditable | Qt.ItemIsSelectable
-        if index.column() == 0:
+        if index.column() == self.CIX_FIELD:
             flags = flags | Qt.ItemIsUserCheckable
         return flags
 
     def setSpeclib(self, speclib: QgsVectorLayer):
         if self.mSpeclib != speclib:
-            # remove all
 
-            # init columns
             self.mSpeclib = speclib
+            self.mSpeclib.attributeDeleted.connect(self.onSpeclibAttributesChanged)
+            self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributesChanged)
+            self.onSpeclibAttributesChanged()
+
+    def onSpeclibAttributesChanged(self):
+        fields = QgsFields()
+        for field in spectralValueFields(self.mSpeclib):
+            fields.append(field)
+        self.mProfileFieldModel.setFields(fields)
+
+    def speclib(self) -> QgsVectorLayer:
+        return self.mSpeclib
 
     def data(self, index: QModelIndex, role=None):
         if not index.isValid():
             return None
 
-        vis = self.mProfileVisualizations[index.row()]
-        if index.column() == 0:
+        vis: SpectralProfilePlotVisualization = self.mProfileVisualizations[index.row()]
+
+        if role == Qt.UserRole:
+            return vis
+
+        if index.column() == self.CIX_FIELD:
             if role == Qt.CheckStateRole:
                 return Qt.Checked if vis.mVisible else Qt.Unchecked
             if role == Qt.DisplayRole:
@@ -600,23 +675,90 @@ class SpectralProfilePlotControl(QAbstractTableModel):
             if role == Qt.ToolTipRole:
                 return vis.mField.name()
 
-        if index.column() == 1:
+        if index.column() == self.CIX_MODEL:
             if role == Qt.DisplayRole:
-                return vis.mModel.id()
+                return vis.modelId()
             if role == Qt.ToolTipRole:
-                return vis.mModel.id()
+                return vis.modelId()
 
-        if role == Qt.UserRole:
-            return vis
+        if index.column() == self.CIX_NAME:
+            if role == Qt.DisplayRole:
+                return vis.mNameExpression
+            if role == Qt.ToolTipRole:
+                return vis.mNameExpression
+
+        if index.column() == self.CIX_STYLE:
+            if role == Qt.ToolTipRole:
+                return 'Line and Symbol style'
+
+        if role == Qt.ForegroundRole and not vis.mVisible:
+            return QColor('grey')
 
         return None
 
+    def setData(self, index: QModelIndex, value: typing.Any, role=Qt.EditRole):
+
+        if not index.isValid():
+            return
+
+        changed = False
+        visibility_changed = False
+        vis: SpectralProfilePlotVisualization = self.mProfileVisualizations[index.row()]
+        if index.column() == self.CIX_FIELD:
+            if role == Qt.CheckStateRole:
+                set_visible = value == Qt.Checked
+                if set_visible != vis.mVisible:
+                    vis.mVisible = set_visible
+                    changed = True
+                    visibility_changed = True
+
+            elif role == Qt.EditRole:
+                assert isinstance(value, QgsField)
+                vis.mField = value
+                changed = True
+
+        if index.column() == self.CIX_NAME:
+            assert isinstance(value, str)
+            if value != vis.mNameExpression:
+                vis.mNameExpression = value
+                changed = True
+
+        if index.column() == self.CIX_MODEL:
+            assert isinstance(value, QgsProcessingModelAlgorithm)
+            assert value in self.modelList()
+            if vis.mModel != value:
+                vis.mModel = value
+                changed = True
+
+        if index.column() == self.CIX_STYLE:
+            assert isinstance(value, PlotStyle)
+            if value != vis.mPlotStyle:
+                vis.mPlotStyle = value
+                changed = True
+
+        if changed:
+            if visibility_changed:
+                self.dataChanged.emit(
+                    self.index(index.row(), 0),
+                    self.index(index.row(), self.columnCount()-1,
+                    [role, Qt.ForegroundRole])
+                )
+            else:
+                self.dataChanged.emit(index, index, [role])
+
+        return changed
+
     def headerData(self, col: int, orientation, role):
         if orientation == Qt.Horizontal:
+
             if role == Qt.DisplayRole:
                 return self.mColumnNames.get(col, f'{col + 1}')
             elif role == Qt.ToolTipRole:
                 return self.mColumnTooltips.get(col, None)
+
+        elif orientation == Qt.Vertical and role == Qt.DisplayRole:
+            return col+1
+
         return None
 
     def removeModel(self, model: QgsProcessingModelAlgorithm):
@@ -631,14 +773,174 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         return self.mModelList
 
 
-class SpectralProfilePlotControlTableView(QTableView):
+
+
+
+class SpectralProfilePlotControlView(QTableView):
 
     def __init__(self, *args, **kwds):
-        super(SpectralProfilePlotControlTableView, self).__init__(*args, **kwds)
+        super(SpectralProfilePlotControlView, self).__init__(*args, **kwds)
+        self.horizontalHeader().setStretchLastSection(True)
+        # self.horizontalHeader().setResizeMode(QHeaderView.Stretch)
 
     def controlTable(self) -> SpectralProfilePlotControl:
         return self.model()
 
+
+class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
+    """
+
+    """
+
+    def __init__(self, tableView: QTableView, parent=None):
+        assert isinstance(tableView, QTableView)
+        super(SpectralProfilePlotControlViewDelegate, self).__init__(parent=parent)
+        self.mTableView = tableView
+
+    def model(self) -> QAbstractTableModel:
+        return self.mTableView.model()
+
+    def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex):
+        # cName = self.mTableView.model().headerData(index.column(), Qt.Horizontal)
+        c = index.column()
+
+        vis: SpectralProfilePlotVisualization = index.data(Qt.UserRole)
+
+        if c == SpectralProfilePlotControl.CIX_STYLE:
+            style: PlotStyle = vis.mPlotStyle
+            h = self.mTableView.verticalHeader().sectionSize(index.row())
+            w = self.mTableView.horizontalHeader().sectionSize(index.column())
+            if h > 0 and w > 0:
+                px = style.createPixmap(size=QSize(w, h))
+                painter.drawPixmap(option.rect, px)
+            else:
+                super().paint(painter, option, index)
+        else:
+            super().paint(painter, option, index)
+
+    def setItemDelegates(self, tableView: QTableView):
+        for c in range(tableView.model().columnCount()):
+            tableView.setItemDelegateForColumn(c, self)
+
+    def onRowsInserted(self, parent, idx0, idx1):
+        nameStyleColumn = self.bridge().cnPlotStyle
+
+        for c in range(self.mTableView.model().columnCount()):
+            cname = self.mTableView.model().headerData(c, Qt.Horizontal, Qt.DisplayRole)
+            if cname == nameStyleColumn:
+                for r in range(idx0, idx1 + 1):
+                    idx = self.mTableView.model().index(r, c, parent=parent)
+                    self.mTableView.openPersistentEditor(idx)
+
+    def plotControl(self) -> SpectralProfilePlotControl:
+        return self.mTableView.model().sourceModel()
+
+    def createEditor(self, parent, option, index):
+        #cname = self.bridgeColumnName(index)
+        #bridge = self.bridge()
+        #pmodel = self.sortFilterProxyModel()
+
+        w = None
+        if index.isValid():
+            plotControl = self.plotControl()
+
+            c: int = index.column()
+            vis: SpectralProfilePlotVisualization = index.data(Qt.UserRole)
+
+            if c == SpectralProfilePlotControl.CIX_FIELD:
+
+                w = QComboBox(parent=parent)
+                w.setModel(plotControl.profileFieldsModel())
+                w.setToolTip('Select a field with profile data')
+
+            if c == SpectralProfilePlotControl.CIX_MODEL:
+                w = QComboBox(parent=parent)
+                w.setModel(plotControl.modelList())
+                w.setToolTip('Select a model or show raw profiles')
+
+            if c == SpectralProfilePlotControl.CIX_NAME:
+                w = QgsFieldExpressionWidget(parent=parent)
+                w.setExpressionDialogTitle('Profile Name')
+                w.setToolTip('Set an expression to specify the profile name')
+                w.setExpression(vis.nameExpression())
+                w.setLayer(vis.speclib())
+                w.setFilters(QgsFieldProxyModel.String | QgsFieldProxyModel.Numeric)
+
+            if c == SpectralProfilePlotControl.CIX_STYLE:
+                w = PlotStyleButton(parent=parent)
+                w.setMinimumSize(5, 5)
+                w.setPlotStyle(vis.plotStyle())
+                w.setToolTip('Set curve style')
+
+        return w
+
+    def checkData(self, index, w, value):
+        assert isinstance(index, QModelIndex)
+        bridge = self.bridge()
+        if index.isValid() and isinstance(bridge, SpectralProfileBridge):
+            #  todo: any checks?
+            self.commitData.emit(w)
+
+    def setEditorData(self, editor, index: QModelIndex):
+
+        # index = self.sortFilterProxyModel().mapToSource(index)
+        self.mTableView.model().sourceModel().mProfileFieldModel
+        if index.isValid():
+            vis: SpectralProfilePlotVisualization = index.data(Qt.UserRole)
+
+            if index.column() == SpectralProfilePlotControl.CIX_FIELD:
+                assert isinstance(editor, QComboBox)
+                idx = editor.model().indexFromName(vis.mField.name()).row()
+                if idx == -1:
+                    idx = 0
+                editor.setCurrentIndex(idx)
+
+            if index.column() == SpectralProfilePlotControl.CIX_MODEL:
+                assert isinstance(editor, QComboBox)
+                idx = editor.model().indexFromModelId(vis.modelId())
+                if idx == -1:
+                    idx = 0
+                editor.setCurrentIndex(idx)
+
+            if index.column() == SpectralProfilePlotControl.CIX_NAME:
+                assert isinstance(editor, QgsFieldExpressionWidget)
+                editor.setProperty('lastexpr', vis.nameExpression())
+                editor.setLayer(vis.speclib())
+                editor.setField(vis.nameExpression())
+
+            if index.column() == SpectralProfilePlotControl.CIX_STYLE:
+                assert isinstance(editor, PlotStyleButton)
+                editor.setPlotStyle(vis.plotStyle())
+
+
+    def setModelData(self, w, bridge, index):
+        model = self.mTableView.model()
+
+        if index.isValid():
+            vis: SpectralProfilePlotVisualization = index.data(Qt.UserRole)
+
+            if index.column() == SpectralProfilePlotControl.CIX_FIELD:
+                assert isinstance(w, QComboBox)
+                field: QgsField = w.model().fields().at(w.currentIndex())
+                model.setData(index, field, Qt.EditRole)
+
+            if index.column() == SpectralProfilePlotControl.CIX_MODEL:
+                assert isinstance(w, QComboBox)
+                pmodel = w.currentData(Qt.UserRole)
+                model.setData(index, pmodel, Qt.EditRole)
+
+
+            if index.column() == SpectralProfilePlotControl.CIX_NAME:
+                assert isinstance(w, QgsFieldExpressionWidget)
+                expr = w.asExpression()
+                exprLast = vis.nameExpression()
+
+                if w.isValidExpression():
+                    model.setData(index, w.asExpression(), Qt.EditRole)
+
+            if index.column() == SpectralProfilePlotControl.CIX_STYLE:
+                assert isinstance(w, PlotStyleButton)
+                bridge.setData(index, w.plotStyle(), Qt.EditRole)
 
 class SpectralLibraryPlotWidget(QWidget):
 
@@ -647,20 +949,87 @@ class SpectralLibraryPlotWidget(QWidget):
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
         assert isinstance(self.plotWidget, SpectralProfilePlotWidget)
-        assert isinstance(self.tableView, SpectralProfilePlotControlTableView)
+        assert isinstance(self.tableView, SpectralProfilePlotControlView)
         self.plotWidget: SpectralProfilePlotWidget
         self.mTableModel = SpectralProfilePlotControl()
-        self.tableView.setModel(self.mTableModel)
+        self.mCurrentModel: QgsProcessingModelAlgorithm = None
+        self.setCurrentModel(self.mTableModel.modelList()[0])
+
+        self.mProxyModel = QSortFilterProxyModel()
+        self.mProxyModel.setSourceModel(self.mTableModel)
+        self.tableView.setModel(self.mProxyModel)
+        self.tableView.selectionModel().selectionChanged.connect(self.onVisSelectionChanged)
+
+        self.mViewDelegate = SpectralProfilePlotControlViewDelegate(self.tableView)
+        self.mViewDelegate.setItemDelegates(self.tableView)
+
         self.mDualView: QgsDualView = None
 
         self.btnAddProfileVis.setDefaultAction(self.actionAddProfileVis)
         self.btnRemoveProfileVis.setDefaultAction(self.actionRemoveProfileVis)
         self.actionAddProfileVis.triggered.connect(self.createProfileVis)
+        self.actionRemoveProfileVis.triggered.connect(self.removeSelectedProfileVis)
 
-        self.actionAddProfileVis.triggered.connect(self.createProfileVis)
+    def onVisSelectionChanged(self):
+
+        rows = self.tableView.selectionModel().selectedRows()
+        self.actionRemoveProfileVis.setEnabled(len(rows) > 0)
 
     def createProfileVis(self, *args):
-        pass
+        item = SpectralProfilePlotVisualization()
+
+        # set defaults
+        # set speclib
+        item.mSpeclib = self.speclib()
+
+        # set profile source in speclib
+        for field in spectralValueFields(item.mSpeclib):
+            item.mField = field
+            break
+
+        # get a good guess for the name expression
+        # 1. "<source_field_name>_name"
+        # 2. "name"
+        # 3. $id (fallback)
+        name_field = None
+        source_field_name = item.mField.name()
+        rx1 = re.compile(source_field_name + '_?name', re.I)
+        rx2 = re.compile('name', re.I)
+        rx3 = re.compile('fid', re.I)
+        for rx in [rx1, rx2, rx3]:
+            for field in item.speclib().fields():
+                if field.type() in [QVariant.String, QVariant.Int] and rx.search(field.name()):
+                    name_field = field
+                    break
+            if name_field:
+                break
+        if isinstance(name_field, QgsField):
+            item.mNameExpression = f'"{name_field.name()}"'
+        else:
+            item.mNameExpression = '$id'
+
+        item.mModel = self.currentModel()
+
+        item.mPlotStyle = self.defaultStyle()
+
+        self.mTableModel.insertVisualizations(-1, item)
+
+    def defaultStyle(self) -> PlotStyle:
+
+        style = PlotStyle()
+        style.linePen.setStyle(Qt.SolidLine)
+        style.setLineColor('white')
+        style.setMarkerColor('white')
+        style.setMarkerSymbol(None)
+        #style.markerSymbol = MarkerSymbol.No_Symbol.value
+        #style.markerPen.setColor(style.linePen.color())
+        return style
+
+
+    def removeSelectedProfileVis(self, *args):
+        rows = self.tableView.selectionModel().selectedRows()
+        to_remove = [r.data(Qt.UserRole) for r in rows]
+        self.mTableModel.removeVisualizations(to_remove)
 
     def setDualView(self, dualView):
         self.plotWidget.setDualView(dualView)
@@ -668,10 +1037,25 @@ class SpectralLibraryPlotWidget(QWidget):
         speclib = dualView.masterModel().layer()
         self.mTableModel.setSpeclib(speclib)
 
+    def speclib(self) -> QgsVectorLayer:
+        return self.mTableModel.speclib()
+
     def addSpectralModel(self, model):
-        s = ""
+        self.mTableModel.addModel(model)
 
+    def currentModel(self) -> QgsProcessingModelAlgorithm:
+        return self.mCurrentModel
 
+    def setCurrentModel(self, model:QgsProcessingModelAlgorithm):
+        assert isinstance(model, QgsProcessingModelAlgorithm)
+
+        if model not in self.mTableModel.modelList():
+            self.addSpectralModel(model)
+        else:
+            self.mCurrentModel = model
+
+    def removeModel(self, model):
+        self.mTableModel.removeModel(model)
 
 
 MAX_PDIS_DEFAULT: int = 256
@@ -982,8 +1366,6 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         self.menu.alpha = alpha
         self.menu.alphaSlider = alphaSlider
         return self.menu
-
-
 
 
 class SpectralProfilePlotWidget(pg.PlotWidget):
@@ -1605,9 +1987,10 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
         DTIME = collections.OrderedDict()
         DTIME[0] = (datetime.datetime.now(), 'start')
-        def measure(step:str):
+
+        def measure(step: str):
             nonlocal DTIME
-            k = max(DTIME.keys())+1
+            k = max(DTIME.keys()) + 1
             DTIME[k] = (datetime.datetime.now(), step)
 
         if pdis is None:
@@ -1634,7 +2017,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
             [pdi.spectralProfile() for pdi in pdis]
         ))
         measure('create blocks')
-
 
         # 1. read PDI profiles
         # 2. convert to target unit
@@ -1699,9 +2081,9 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
                 dt, step = t
                 if k == 0:
                     continue
-                dt = dt-DTIME[k-1][0]
+                dt = dt - DTIME[k - 1][0]
                 msg.append(f'{step}= {dt}')
-            print('#Step Report\n'+ '\n'.join(msg))
+            print('#Step Report\n' + '\n'.join(msg))
 
     def _update_to_display(self,
                            keys_to_display: typing.List[SpectralProfileKey],
