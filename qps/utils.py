@@ -1038,11 +1038,11 @@ UI_STORE: typing.Dict[pathlib.Path, str] = dict()
 
 
 def loadUi(uifile: typing.Union[str, pathlib.Path],
+           baseinstance=None,
            resource_suffix: str = '_rc',
            remove_resource_references: bool = True,
            no_caching: bool = False,
            loadUiType: bool = False,
-           baseinstance=None,
            package: str = ''
            ):
     """
@@ -1057,6 +1057,8 @@ def loadUi(uifile: typing.Union[str, pathlib.Path],
     :param package: argument to `uic.loadUi(...)`
     :return:
     """
+    if baseinstance:
+        assert isinstance(baseinstance, QWidget)
 
     uifile = pathlib.Path(uifile).resolve()
     global UI_STORE
