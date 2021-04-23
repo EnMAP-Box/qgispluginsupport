@@ -45,6 +45,9 @@ import sip
 import traceback
 import calendar
 import datetime
+
+from PyQt5.QtCore import QObject
+
 from qgis.core import *
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
@@ -2626,3 +2629,12 @@ class QgsTaskMock(QgsTask):
 
     def __init__(self):
         super(QgsTaskMock, self).__init__()
+
+
+class SignalObjectWrapper(QObject):
+    """
+    A wrapper to transport python objects via signal-slot
+    """
+    def __init__(self, obj, *args, **kwds):
+        super(SignalObjectWrapper, self).__init__(*args, **kwds)
+        self.wrapped_object = obj

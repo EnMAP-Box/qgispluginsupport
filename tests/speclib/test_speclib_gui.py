@@ -189,51 +189,7 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui([w, rb])
 
-    @unittest.skipIf(False, '')
-    def test_SpectralProfilePlotWidget(self):
 
-        speclib = SpectralLibrary.readFrom(speclibpath)
-
-        pw = SpectralProfilePlotWidget()
-        self.assertIsInstance(pw, SpectralProfilePlotWidget)
-        self.assertTrue(pw.xUnit(), BAND_NUMBER)
-
-        pw.setMaxProfiles(5)
-
-        p = speclib[0]
-        sl = SpectralLibrary()
-        sl.startEditing()
-        pw.setSpeclib(sl)
-
-        sl.addProfiles([p])
-        self.assertTrue(pw.xUnit(), p.xUnit())
-
-        w = QWidget()
-        w.setLayout(QVBoxLayout())
-        pw = SpectralProfilePlotWidget()
-
-        btn = QPushButton('Add speclib')
-        btn.clicked.connect(lambda: pw.setSpeclib(speclib))
-        w.layout().addWidget(pw)
-        w.layout().addWidget(btn)
-
-        self.assertIsInstance(pw.plotItem, pg.PlotItem)
-        self.assertIsInstance(pw.plotItem.getViewBox(), SpectralViewBox)
-        self.assertIsInstance(pw.plotItem.getAxis('bottom'), SpectralXAxis)
-
-        plotItem = pw.getPlotItem()
-        self.assertIsInstance(plotItem, pg.PlotItem)
-
-        pw.setSpeclib(speclib)
-        to_vis = pw.potentialProfileKeys()
-        self.assertTrue(len(to_vis) > 0)
-        pw.updatePlotDataItems()
-        nPDIS = pw.plottedProfileKeys()
-        n = len([sp for sp in plotItem.dataItems if isinstance(sp, SpectralProfilePlotDataItem)])
-        self.assertTrue(n == len(speclib))
-
-        pw.setXUnit('nm')
-        self.showGui(w)
 
     def test_UnitConverterFunctionModel(self):
 

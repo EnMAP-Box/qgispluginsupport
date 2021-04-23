@@ -1,9 +1,11 @@
 import os
 
+from PyQt5.QtCore import QEvent, QPointF, Qt
+from PyQt5.QtGui import QMouseEvent
 from osgeo import gdal, ogr
 from qgis._gui import QgsMapCanvas, QgsDualView
 
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import StartOptions, TestCase, TestObjects
 
@@ -42,7 +44,23 @@ class TestSpeclibWidgets(TestCase):
         registerSpectralProfileEditorWidget()
         super().setUp()
 
-    def test_plotwidget(self):
+    def test_SpectralProfilePlotWidget(self):
+
+        speclib = TestObjects.createSpectralLibrary()
+
+        pw = SpectralProfilePlotWidget()
+        self.assertIsInstance(pw, SpectralProfilePlotWidget)
+        pw.show()
+        w, h = pw.width(), pw.height()
+        # event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
+        event = QMouseEvent(QEvent.MouseMove, QPointF(0.5*w, 0.5*h), Qt.NoButton, Qt.NoButton, Qt.NoModifier)
+        pw.mouseMoveEvent(event)
+
+        event = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5*w, 0.5*h), Qt.RightButton,Qt.RightButton, Qt.NoModifier)
+        pw.mouseReleaseEvent(event)
+        self.showGui(pw)
+
+    def test_SpectralLibraryPlotWidget(self):
 
         speclib = TestObjects.createSpectralLibrary()
         canvas = QgsMapCanvas()
