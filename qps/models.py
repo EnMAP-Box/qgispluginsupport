@@ -1356,7 +1356,7 @@ class SettingsNode(TreeNode):
 
 
 class SettingsModel(TreeModel):
-    sigKeyValueChange = pyqtSignal(str)
+    sigSettingsValueChanged = pyqtSignal(str)
 
     def __init__(self,
                  settings: QgsSettings,
@@ -1434,10 +1434,6 @@ class SettingsModel(TreeModel):
             assert isinstance(key_filter[i], typing.Pattern)
 
         self.mRootNode.removeAllChildNodes()
-        new_nodes = []
-        allKeys = settings.allKeys()
-        new_groups = collections.OrderedDict()
-
         self._readGroup(settings, '', self.mRootNode, key_filter)
 
     def _readGroup(self, settings: QgsSettings, group: str, parent_node: TreeNode, key_filter):
@@ -1525,20 +1521,13 @@ class SettingsModel(TreeModel):
         if not isinstance(node, SettingsNode):
             return False
 
-        node.setValue(value)
-        return True
+        old_value = node.value()
+        if old_value != value:
+            node.setValue(value) # this triggers the dataChanged signal
+            self.sigSettingsValueChanged.emit(node.mSettingsKey)
+            return True
 
-        changed = False
-        try:
-            self.mSettings.setValue(node.mSettingsKey, value)
-            node.setValue(self.mSettings.value(node.mSettingsKey))
-            changed = True
-        except Exception as ex:
-            print(ex)
-        if changed:
-            s = ""
-            # self.dataChanged.emit(index, index)
-        return changed
+        return False
 
 
 class SettingsTreeViewDelegate(QStyledItemDelegate):

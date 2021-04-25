@@ -357,7 +357,7 @@ class SpectralProfileRenderer(object):
     @staticmethod
     def fromUserSettings():
         """
-        Returns the SpectralProfileRenderer last  saved in then library settings
+        Returns the SpectralProfileRenderer last saved in then library settings
         :return:
         :rtype:
         """

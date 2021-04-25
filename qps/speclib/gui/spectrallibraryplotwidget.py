@@ -15,13 +15,14 @@ from PyQt5.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QPa
 from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout
 from qgis._core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \
-    QgsVectorLayer, QgsFieldModel, QgsFields, QgsFieldProxyModel
+    QgsVectorLayer, QgsFieldModel, QgsFields, QgsFieldProxyModel, QgsSettings
 from qgis._gui import QgsAttributeTableFilterModel, QgsDualView, QgsAttributeTableModel, QgsFieldExpressionWidget
 
 from ...externals import pyqtgraph as pg
 from ...externals.pyqtgraph import PlotDataItem, PlotWindow
 from ...externals.pyqtgraph import AxisItem
 from ...externals.pyqtgraph.graphicsItems.ViewBox.ViewBoxMenu import ViewBoxMenu
+from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, PlotStyleButton
 from .. import speclibUiPath
 from ..core.spectrallibrary import SpectralLibrary, SpectralProfileRenderer, spectralValueFields, DEBUG, \
@@ -228,6 +229,21 @@ class SpectralLibraryPlotItem(pg.PlotItem):
                 self.legend.removeItem(item)
         # self.updateDecimation()
         # self.updateParamList()
+
+
+class SpeclibSettingsWidgetAction(QWidgetAction):
+    sigSettingsValueChanged = pyqtSignal(str)
+
+    def __init__(self, parent, **kwds):
+        super().__init__(parent)
+        self.mSettings = QgsSettings()
+        self.mModel = SettingsModel(self.mSettings)
+        self.mModel.sigSettingsValueChanged.connect(self.sigSettingsValueChanged.emit)
+
+    def createWidget(self, parent: QWidget):
+        view = SettingsTreeView(parent)
+        view.setModel(self.mModel)
+        return view
 
 
 class MaxNumberOfProfilesWidgetAction(QWidgetAction):
@@ -555,6 +571,8 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         self.mActionShowSelectedProfilesOnly.setToolTip('Activate to show selected profiles only, '
                                                         'e.g. those selected in the attribute table')
         self.mActionShowSelectedProfilesOnly.setCheckable(True)
+
+
 
     def setNumberOfPlotDataItems(self, n: int):
         assert n >= 0
@@ -943,16 +961,27 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mViewDelegate.setItemDelegates(self.tableView)
 
         self.mDualView: QgsDualView = None
-
+        self.mSettingsModel = SettingsModel(QgsSettings('qps'), key_filter='qps/spectrallibrary')
         self.btnAddProfileVis.setDefaultAction(self.actionAddProfileVis)
         self.btnRemoveProfileVis.setDefaultAction(self.actionRemoveProfileVis)
         self.actionAddProfileVis.triggered.connect(self.createProfileVis)
         self.actionRemoveProfileVis.triggered.connect(self.removeSelectedProfileVis)
 
+        self.mActionSpeclib = SpeclibSettingsWidgetAction(None)
+        self.mActionSpeclib.setDefaultWidget(self.mActionSpeclib.createWidget(None))
+
+        self.plotWidget.mMenuOthers.addAction(self.mActionSpeclib)
         # actions
         self.visButtonLayout: QHBoxLayout
 
         self.visButtonLayout.addWidget(self.mPlotControlModel.mActionMaxNumberOfProfiles.createWidget(self))
+
+    def readSettings(self):
+        pass
+
+
+    def writeSettings(self):
+        pass
 
     def onVisSelectionChanged(self):
 
@@ -1439,6 +1468,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
             = SpectralProfileRendererWidgetAction(None)
         self.mActionSpectralProfileRendering.setDefaultWidget(
             self.mActionSpectralProfileRendering.createWidget(None))
+        self.mActionSpectralProfileRendering.sigProfileRendererChanged.connect(self.setRenderStyle)
 
         self.mOptionUseVectorSymbology: QAction = \
             self.mActionSpectralProfileRendering.defaultWidget().optionUseColorsFromVectorRenderer
@@ -1455,6 +1485,9 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
         self.mContextMenuItems.extend([self.mMenuColors, self.mMenuOthers])
 
+    def setRenderStyle(self, profile_renderer: SpectralProfileRenderer):
+
+        s = ""
 
     def populateContextMenu(self, listWrapper: SignalObjectWrapper):
         itemList: list = listWrapper.wrapped_object

@@ -386,7 +386,6 @@ class ModelTests(TestCase):
             self.assertEqual(RANGES['Group2/RangedValue'], ranges)
 
         view = SettingsTreeView()
-        view.setAutoExpansionDepth(3)
         view.setModel(model)
 
         self.showGui(view)
