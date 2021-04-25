@@ -24,6 +24,7 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import re
 import warnings
 import copy
 import enum
@@ -34,6 +35,12 @@ import sip
 import collections.abc
 import numpy as np
 import inspect
+
+from PyQt5.QtCore import QAbstractTableModel
+from PyQt5.QtGui import QColor, QPainter
+from PyQt5.QtWidgets import QStyledItemDelegate, QTableView, QSpinBox
+from qgis.core import QgsSettings
+from qgis.gui import QgsColorButton, QgsSpinBox, QgsDoubleSpinBox
 from qgis.PyQt.QtCore import QModelIndex, QAbstractItemModel, QAbstractListModel, \
     pyqtSignal, Qt, QObject, QAbstractListModel, QSize, pyqtBoundSignal, QMetaEnum, QMetaType
 from qgis.PyQt.QtWidgets import QComboBox, QTreeView, QMenu
@@ -173,6 +180,20 @@ class OptionListModel(QAbstractListModel):
             self.endInsertRows()
 
             self.sigOptionsInserted.emit(options)
+
+    def findOption(self, value) -> Option:
+        """
+        Returns the option with value "value"
+        :param value:
+        :return:
+        """
+        if isinstance(value, Option):
+            if value in self.mOptions:
+                return self.mOptions[self.mOptions.index(value)]
+        for o in self:
+            if o.mValue == value:
+                return o
+        return None
 
     def o2o(self, value):
         if not isinstance(value, Option):
@@ -579,6 +600,7 @@ class TreeNode(QObject):
         """
         return self.mName
 
+
     def setValue(self, value):
         """
         Same as setValues([value])
@@ -588,6 +610,7 @@ class TreeNode(QObject):
             self.setValues(None)
         else:
             self.setValues([value])
+
 
     def setValues(self, values: list):
         """
@@ -645,7 +668,7 @@ class TreeNode(QObject):
         else:
             return parent.findParentNode(nodeType)
 
-    def findChildNodes(self, type, recursive: bool =True):
+    def findChildNodes(self, type, recursive: bool = True):
         """
         Returns a list of child nodes with node-type `type`.
         :param type: node-class
@@ -695,7 +718,7 @@ class PyObjectTreeNode(TreeNode):
                 value = str(obj)
             else:
                 # value = '{:1.256s}'.format(str(obj))
-                value = str(obj) # .strip()
+                value = str(obj)  # .strip()
             value = value.replace('\n', ' ')
             self.setValue(value)
             self.setToolTip(f'{self.name()} {value}')
@@ -724,7 +747,6 @@ class PyObjectTreeNode(TreeNode):
                 s = ""
                 self.mIsFetched = True
                 return
-
 
         newNodes: typing.List[PyObjectTreeNode] = []
 
@@ -1321,3 +1343,299 @@ class TreeView(QTreeView):
             if isinstance(node, TreeNode) and node not in nodes:
                 nodes.append(node)
         return nodes
+
+
+class SettingsNode(TreeNode):
+
+    def __init__(self, settings: QgsSettings, settings_key: str, **kwds):
+
+        super(SettingsNode, self).__init__(**kwds)
+        self.mSettings: QgsSettings = settings
+        self.mSettingsKey = f'{settings.group()}/{settings_key}'
+        self.mType = type(self.value())
+
+
+class SettingsModel(TreeModel):
+    sigKeyValueChange = pyqtSignal(str)
+
+    def __init__(self,
+                 settings: QgsSettings,
+                 key_filter: re.Pattern = '.*',
+                 options: typing.Dict = None,
+                 ranges: typing.Dict = None,
+                 parent: QObject = None):
+
+        super().__init__(parent=parent)
+
+        self.mRANGES: typing.Dict[str, typing.Tuple] = dict()
+        self.mOPTIONS: typing.Dict[str, typing.List[Option]] = dict()
+        self.mSettings: QgsSettings = None
+        self.initSettings(settings, key_filter=key_filter)
+        if options:
+            self.updateOptions(options)
+
+        if ranges:
+            self.updateRanges(ranges)
+
+    def flags(self, index: QModelIndex):
+        if not index.isValid():
+            return Qt.NoItemFlags
+        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        node = index.data(Qt.UserRole)
+
+        if isinstance(node, SettingsNode):
+            flags = flags | Qt.ItemIsEditable
+            if isinstance(node.value(), bool):
+                flags = flags | Qt.ItemIsUserCheckable
+        return flags
+
+    def keys(self) -> typing.List[str]:
+        keys = [n.mSettingsKey for n in self.findChildren(SettingsNode)]
+        return keys
+
+    def updateRanges(self, ranges: typing.Dict[str, typing.Tuple]):
+        for k, v in ranges.items():
+            assert len(v) >= 2
+
+        self.mRANGES.update(ranges)
+
+    def updateOptions(self, options: typing.Dict[str, typing.List[Option]]):
+        assert isinstance(options, dict)
+        opt = dict()
+        for k, olist in options.items():
+            olist2 = []
+            for o in olist:
+                if isinstance(o, enum.Enum):
+                    icon = None
+                    try:
+                        icon = o.icon(o.value)
+                    except:
+                        pass
+                    o = Option(value=o.value, name=o.name, toolTip=str(o), icon=icon)
+                if not isinstance(o, Option):
+                    o = Option(o)
+                olist2.append(o)
+
+            opt[k] = olist2
+
+        self.mOPTIONS.update(opt)
+
+    def initSettings(self, settings: QgsSettings,
+                     key_filter: typing.Union[typing.Pattern, str] = None):
+
+        self.mSettings = settings
+
+        if not isinstance(key_filter, list):
+            key_filter = [key_filter]
+
+        for i in range(len(key_filter)):
+            if isinstance(key_filter[i], str):
+                key_filter[i] = re.compile(key_filter[i])
+            assert isinstance(key_filter[i], typing.Pattern)
+
+        self.mRootNode.removeAllChildNodes()
+        new_nodes = []
+        allKeys = settings.allKeys()
+        new_groups = collections.OrderedDict()
+
+        self._readGroup(settings, '', self.mRootNode, key_filter)
+
+    def _readGroup(self, settings: QgsSettings, group: str, parent_node: TreeNode, key_filter):
+        settings.beginGroup(group)
+        added_nodes = []
+        for k in settings.childKeys():
+            longkey = f'{settings.group()}/{k}'
+            for filter in key_filter:
+                if filter.match(longkey):
+                    parts = k.split('/')
+                    value = settings.value(k)
+                    node = SettingsNode(settings, k, value=value, name=parts[-1])
+                    added_nodes.append(node)
+        for g in settings.childGroups():
+            node = TreeNode(name=g)
+            self._readGroup(settings, g, node, key_filter)
+            if len(node) > 0:
+                added_nodes.append(node)
+        settings.endGroup()
+        parent_node.appendChildNodes(added_nodes)
+
+    def setting_key_node(self, key: str) -> SettingsNode:
+
+        for n in self.mRootNode.findChildNodes(SettingsNode, recursive=True):
+            assert isinstance(n, SettingsNode)
+            if n.mSettingsKey == key:
+                return n
+        return None
+
+    def sync(self):
+        pass
+
+    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+
+        if not index.isValid():
+            return None
+
+        node = index.internalPointer()
+
+        if isinstance(node, SettingsNode) and index.column() == 1:
+            value = node.value()
+            k = node.mSettingsKey
+            option = None
+            for o in self.mOPTIONS.get(k, []):
+                o: Option
+                if o.value() == value:
+                    option = o
+                    break
+
+            # handle colors
+            if isinstance(value, QColor):
+                if role == Qt.DecorationRole:
+                    return value
+                if role == Qt.DisplayRole:
+                    return value.name()
+
+            if role == Qt.DecorationRole:
+                if isinstance(option, Option):
+                    return option.icon()
+
+            if role == Qt.ToolTipRole:
+                if isinstance(option, Option):
+                    return option.toolTip()
+                else:
+                    return f'{value}'
+
+            if role == Qt.EditRole:
+                return value
+
+            if role == Qt.UserRole + 1:
+                return self.mOPTIONS.get(node.mSettingsKey, None)
+
+            if role == Qt.UserRole + 2:
+                return self.mRANGES.get(node.mSettingsKey, None)
+
+        return super().data(index, role=role)
+
+    def setData(self, index: QModelIndex, value, role=None) -> bool:
+
+        if not index.isValid():
+            return False
+
+        node = index.data(Qt.UserRole)
+
+        if not isinstance(node, SettingsNode):
+            return False
+
+        node.setValue(value)
+        return True
+
+        changed = False
+        try:
+            self.mSettings.setValue(node.mSettingsKey, value)
+            node.setValue(self.mSettings.value(node.mSettingsKey))
+            changed = True
+        except Exception as ex:
+            print(ex)
+        if changed:
+            s = ""
+            # self.dataChanged.emit(index, index)
+        return changed
+
+
+class SettingsTreeViewDelegate(QStyledItemDelegate):
+    """
+
+    """
+
+    def __init__(self, parent=None):
+        super(SettingsTreeViewDelegate, self).__init__(parent=parent)
+
+    def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex):
+        # cName = self.mTableView.model().headerData(index.column(), Qt.Horizontal)
+        c = index.column()
+
+        value = index.data(Qt.UserRole)
+
+        if False:
+            style: PlotStyle = vis.mPlotStyle
+            h = self.mTableView.verticalHeader().sectionSize(index.row())
+            w = self.mTableView.horizontalHeader().sectionSize(index.column())
+            if h > 0 and w > 0:
+                px = style.createPixmap(size=QSize(w, h))
+                painter.drawPixmap(option.rect, px)
+            else:
+                super().paint(painter, option, index)
+        else:
+            super().paint(painter, option, index)
+
+    def setItemDelegates(self, tableView: QTableView):
+        for c in range(tableView.model().columnCount()):
+            tableView.setItemDelegateForColumn(c, self)
+
+    def createEditor(self, parent, option, index):
+        # cname = self.bridgeColumnName(index)
+        # bridge = self.bridge()
+        # pmodel = self.sortFilterProxyModel()
+
+        w = None
+        if index.isValid() and index.column() == 1:
+            value = index.data(Qt.EditRole)
+            options = index.data(Qt.UserRole + 1)
+            range = index.data(Qt.UserRole + 2)
+
+            if isinstance(value, QColor):
+                w = QgsColorButton(parent=parent)
+            elif isinstance(options, list):
+                w = QComboBox(parent=parent)
+                model = OptionListModel(options)
+                w.__model = model
+                w.setModel(model)
+
+            elif isinstance(range, tuple):
+                v_min, v_max = range[0], range[1]
+                if isinstance(v_min, int):
+                    w = QgsSpinBox(parent=parent)
+                    w.setRange(range[0], range[1])
+                elif isinstance(v_min, float):
+                    w = QgsDoubleSpinBox(parent=parent)
+                    w.setRange(range[0], range[1])
+            else:
+                w = super().createEditor(parent, option, index)
+        return w
+
+    def setEditorData(self, editor, index: QModelIndex):
+
+        if index.isValid():
+            value = index.data(Qt.EditRole)
+            if isinstance(editor, QgsColorButton):
+                assert isinstance(value, QColor)
+                editor.setColor(value)
+            elif isinstance(editor, QComboBox):
+                setCurrentComboBoxValue(editor, value)
+            elif isinstance(editor, (QgsSpinBox, QgsDoubleSpinBox)):
+                editor.setValue(value)
+            else:
+                super().setEditorData(editor, index)
+
+    def setModelData(self, w, model, index):
+
+        if index.isValid():
+            value_old = index.data(Qt.EditRole)
+            value_new = None
+            if isinstance(w, QgsColorButton):
+                model.setData(index, w.color())
+            elif isinstance(w, (QgsSpinBox, QgsDoubleSpinBox)):
+                model.setData(index, w.value())
+            elif isinstance(w, QComboBox):
+                value = currentComboBoxValue(w)
+                model.setData(index, value)
+            else:
+                super().setModelData(w, model, index)
+
+
+class SettingsTreeView(TreeView):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.setAutoExpansionDepth(2)
+        self.mDelegate = SettingsTreeViewDelegate(self)
+        self.setItemDelegate(self.mDelegate)
