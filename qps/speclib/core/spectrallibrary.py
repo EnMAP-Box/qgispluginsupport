@@ -1321,7 +1321,6 @@ class SpectralLibrary(QgsVectorLayer):
         self.mProfileRenderer: SpectralProfileRenderer = SpectralProfileRenderer()
         self.mProfileRenderer.setInput(self)
 
-
         self.attributeAdded.connect(self.onAttributeAdded)
         self.attributeDeleted.connect(self.onFieldsChanged)
 
@@ -1402,11 +1401,13 @@ class SpectralLibrary(QgsVectorLayer):
         mgr.addAction(actionRemoveSpectrum)
 
         columns = self.attributeTableConfig().columns()
-        visibleColumns = ['name']
+
+        # to discuss: invisible columns?
+        invisibleColumns = []
+
         for column in columns:
             assert isinstance(column, QgsAttributeTableConfig.ColumnConfig)
-
-            column.hidden = column.name not in visibleColumns and column.type != QgsAttributeTableConfig.Action
+            column.hidden = column.name in invisibleColumns
 
         # set column order
         c_action = [c for c in columns if c.type == QgsAttributeTableConfig.Action][0]

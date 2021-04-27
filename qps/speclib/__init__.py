@@ -39,7 +39,7 @@ SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))
 
 EMPTY_VALUES = [None, NULL, QVariant(), '', 'None']
 
-FIELD_VALUES = 'values'
+FIELD_VALUES = 'profiles'
 FIELD_NAME = 'name'
 FIELD_FID = 'fid'
 
