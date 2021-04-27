@@ -97,6 +97,9 @@ class TestSpeclibWidgets(TestCase):
         w.actionAddProfileVis.trigger()
         self.assertEqual(visModel.rowCount(), 1)
 
-
-
-        self.showGui(w)
+        speclib.startEditing()
+        speclib.addSpectralProfileAttribute('profiles2')
+        speclib.commitChanges(stopEditing=False)
+        speclib.deleteAttribute(speclib.fields().lookupField('profiles'))
+        speclib.commitChanges(stopEditing=False)
+        self.showGui([w, dv])
