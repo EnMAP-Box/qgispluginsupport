@@ -1954,7 +1954,7 @@ def px2geo(px: QPoint, gt, pxCenter: bool = True) -> QgsPointXY:
     gy = gt[3] + px.x() * gt[4] + px.y() * gt[5]
 
     if pxCenter:
-        p2 = px2geo(QPoint(px.x() + 1, px.y() + 1), gt, pxCenter=False)
+        p2 = px2geo(QPoint(int(px.x() + 1), int(px.y() + 1)), gt, pxCenter=False)
 
         gx = 0.5 * (gx + p2.x())
         gy = 0.5 * (gy + p2.y())

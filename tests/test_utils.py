@@ -359,7 +359,7 @@ class TestUtils(TestCase):
                   np.uint16(1),
                   np.uint32(1),
                   np.uint64(1),
-                  np.float(1),
+                  float,
                   np.float16(1),
                   np.float32(1),
                   np.float64(1),
