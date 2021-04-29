@@ -39,12 +39,11 @@ import sys
 import copy
 import weakref
 import warnings
-import collections
 from osgeo import gdal, ogr, osr, gdal_array
 import uuid
 import numpy as np
 from qgis.PyQt.QtCore import Qt, QVariant, QPoint, QUrl, QMimeData, \
-    QFileInfo, pyqtSignal, QByteArray
+    QFileInfo, pyqtSignal
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QDialog
@@ -54,14 +53,14 @@ from qgis.core import QgsApplication, \
     QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsActionManager, QgsFeatureIterator, QgsFeatureRequest, \
     QgsGeometry, QgsPointXY, QgsPoint, QgsDefaultValue, QgsReadWriteContext, \
-    QgsCategorizedSymbolRenderer, QgsMapLayerProxyModel, \
+    QgsMapLayerProxyModel, \
     QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
     QgsEditorWidgetSetup, QgsAction, QgsTask, QgsMessageLog, QgsFileUtils, \
     QgsProcessingFeedback
 
 from qgis.gui import \
     QgsGui
-
+from . import spectralValueFields, first_profile_field_index
 
 from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
@@ -156,52 +155,31 @@ class SerializationMode(enum.Enum):
 
 def read_profiles(vectorlayer: QgsVectorLayer,
                   fids: typing.List[int] = None,
-                  value_fields: typing.List[str] = None,
-                  profile_keys: typing.List[SpectralProfileKey] = None) -> typing.Generator[
+                  profile_field: typing.Union[int, str, QgsField] = None,
+                  ) -> typing.Generator[
     SpectralProfile, None, None]:
     """
-    Reads SpectralProfiles from a vector layers BLOB 'value_fields'.
+    Reads SpectralProfiles from a vector layers BLOB 'profile_field'.
 
     Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
-    If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value field.
-    SpectralProfiles are returned for value_fields != NULL only
+    If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value profile_field.
+    SpectralProfiles are returned for profile_field != NULL only
     :param vectorlayer:
-    :param value_fields:
-    :type value_fields:
+    :param profile_field:
+    :type profile_field:
     :param profile_keys:
     :type profile_keys:
     :param fids: optional, [int-list-of-feature-ids] to return
     :return: generator of [List-of-SpectralProfiles]
     """
-
-    if profile_keys is None:
-        if value_fields is None:
-            value_fields = [f.name() for f in spectralValueFields(vectorlayer)]
-        if fids is None:
-            fids = vectorlayer.allFeatureIds()
-
-        elif not isinstance(value_fields, list):
-            value_fields = [value_fields]
-
-        profile_keys = [SpectralProfileKey(fid, n) for fid, n in itertools.product(fids, value_fields)]
-
-    ID2KEY: typing.Dict[int, SpectralProfileKey] = dict()
-    for k in profile_keys:
-        if not isinstance(k, SpectralProfileKey):
-            s = ""
-        fields = ID2KEY.get(k.fid, [])
-        fields.append(k.field)
-        ID2KEY[k.fid] = fields
+    if profile_field is None:
+        profile_field = first_profile_field_index(vectorlayer)
 
     featureRequest = QgsFeatureRequest()
-    featureRequest.setFilterFids(sorted(ID2KEY.keys()))
-    # features = list(vectorlayer.getFeatures(featureRequest))
+    if fids:
+        featureRequest.setFilterFids(fids)
     for f in vectorlayer.getFeatures(featureRequest):
-        if not isinstance(f, QgsFeature):
-            s = ""
-        for field in ID2KEY[f.id()]:
-            if isinstance(f.attribute(field), QByteArray):
-                yield SpectralProfile.fromQgsFeature(f, value_field=field)
+        yield SpectralProfile.fromQgsFeature(f, profile_field=profile_field)
 
 
 
@@ -251,7 +229,7 @@ def runRemoveFeatureActionRoutine(layerID, id: int):
     """
     Is applied to a set of layer features to change the plotStyle JSON string stored in styleField
     :param layerID: QgsVectorLayer or vector id str
-    :param styleField: str, name of string field in layer.fields() to store the PlotStyle
+    :param styleField: str, name of string profile_field in layer.fields() to store the PlotStyle
     :param id: feature id of feature for which the QgsAction was called
     """
 
@@ -318,21 +296,6 @@ LUT_IDL2GDAL = {1: gdal.GDT_Byte,
                 # 8:gdal.GDT_CInt32,
                 6: gdal.GDT_CFloat32,
                 9: gdal.GDT_CFloat64}
-
-
-
-
-def spectralValueFields(spectralLibrary: QgsVectorLayer) -> typing.List[QgsField]:
-    """
-    Returns the fields that contains values of SpectralProfiles
-    :param spectralLibrary:
-    :return:
-    """
-    fields = [f for f in spectralLibrary.fields() if
-              f.type() == QVariant.ByteArray and
-              f.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY]
-
-    return fields
 
 
 def defaultCurvePlotStyle() -> PlotStyle:
@@ -833,7 +796,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         if name_field:
             assert name_field in vector.fields().names(), \
-                f'invalid field name "{name_field}". Allowed values are {", ".join(vector.fields().names())}'
+                f'invalid profile_field name "{name_field}". Allowed values are {", ".join(vector.fields().names())}'
         else:
             for i in range(vector.fields().count()):
                 field: QgsField = vector.fields().at(i)
@@ -1182,7 +1145,7 @@ class SpectralLibrary(QgsVectorLayer):
             idx = self.fields().indexOf(fSrc.name())
 
             if idx == -1:
-                # field name does not exist
+                # profile_field name does not exist
                 continue
             fDst = self.fields().at(idx)
             assert isinstance(fDst, QgsField)
@@ -1303,7 +1266,7 @@ class SpectralLibrary(QgsVectorLayer):
             for fieldname in profile_fields:
                 self.addAttribute(QgsField(fieldname, QVariant.ByteArray, 'Binary'))
 
-            # add a single name field (more is not required)
+            # add a single name profile_field (more is not required)
             if create_name_field:
                 self.addAttribute(QgsField('name', QVariant.String, 'varchar'))
             self.commitChanges(stopEditing=True)
@@ -1474,7 +1437,7 @@ class SpectralLibrary(QgsVectorLayer):
     def addMissingFields(self, fields: QgsFields, copyEditorWidgetSetup: bool = True):
         """
         :param fields: list of QgsFields
-        :param copyEditorWidgetSetup: if True (default), the editor widget setup is copied for each field
+        :param copyEditorWidgetSetup: if True (default), the editor widget setup is copied for each profile_field
         """
         missingFields = []
         for field in fields:
@@ -1498,7 +1461,7 @@ class SpectralLibrary(QgsVectorLayer):
         Adds profiles from another SpectraLibrary
         :param speclib: SpectralLibrary
         :param addMissingFields: if True (default), missing fields / attributes will be added automatically
-        :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied for each added field
+        :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied for each added profile_field
         :param progressDialog: QProgressDialog or qps.speclib.core.ProgressHandler
 
         :returns: set of added feature ids
@@ -1585,7 +1548,7 @@ class SpectralLibrary(QgsVectorLayer):
                         iSrcList.append(iSrc)
                         iDstList.append(iDst)
                     elif addMissingFields:
-                        raise Exception('Missing field: "{}"'.format(srcName))
+                        raise Exception('Missing profile_field: "{}"'.format(srcName))
 
             # create new feature + copy geometry
             pDst = QgsFeature(self.fields())
@@ -1679,15 +1642,14 @@ class SpectralLibrary(QgsVectorLayer):
     def profile(self, fid: int, value_field=None) -> SpectralProfile:
         if value_field is None:
             value_field = self.spectralValueFields()[0]
-        return SpectralProfile.fromQgsFeature(self.getFeature(fid), value_field=value_field)
+        return SpectralProfile.fromQgsFeature(self.getFeature(fid), profile_field=value_field)
 
     def profiles(self,
                  fids=None,
-                 value_fields=None,
-                 profile_keys: typing.List[SpectralProfileKey] = None) -> typing.Generator[SpectralProfile, None, None]:
+                 value_fields=None) -> typing.Generator[SpectralProfile, None, None]:
         """
         Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
-        If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value field.
+        If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value profile_field.
         :param value_fields:
         :type value_fields:
         :param profile_keys:
@@ -1696,7 +1658,7 @@ class SpectralLibrary(QgsVectorLayer):
         :return: generator of [List-of-SpectralProfiles]
         """
 
-        return read_profiles(self, fids=fids, value_fields=value_fields, profile_keys=profile_keys)
+        return read_profiles(self, fids=fids, profile_field=value_fields)
 
     def groupBySpectralProperties(self,
                                   fids=None,
@@ -1887,7 +1849,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     def fieldNames(self) -> list:
         """
-        Returns the field names. Shortcut from self.fields().names()
+        Returns the profile_field names. Shortcut from self.fields().names()
         :return: [list-of-str]
         """
         return self.fields().names()
@@ -1969,7 +1931,7 @@ class SpectralLibrary(QgsVectorLayer):
             if isinstance(fids, list):
                 return sorted(self.profiles(fids=fids), key=lambda p: p.id())
             else:
-                return SpectralProfile.fromQgsFeature(self.getFeature(fids), value_field=value_field)
+                return SpectralProfile.fromQgsFeature(self.getFeature(fids), profile_field=value_field)
 
     def __delitem__(self, slice):
         profiles = self[slice]

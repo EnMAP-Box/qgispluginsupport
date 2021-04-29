@@ -25,8 +25,9 @@ from ...externals.pyqtgraph.graphicsItems.ViewBox.ViewBoxMenu import ViewBoxMenu
 from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, PlotStyleButton
 from .. import speclibUiPath
-from ..core.spectrallibrary import SpectralLibrary, SpectralProfileRenderer, spectralValueFields, DEBUG, \
+from ..core.spectrallibrary import SpectralLibrary, SpectralProfileRenderer, DEBUG, \
     generateProfileKeys, containsSpeclib
+from ..core import spectralValueFields, first_profile_field_index, spectralValueFieldIndices
 from ..core.spectralprofile import SpectralProfileKey, SpectralProfile, SpectralProfileBlock
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
     SpectralProcessingProfilesOutput, SpectralProcessingModelList, NO_MODEL_MODEL
@@ -1856,7 +1857,7 @@ class SpectralProfilePlotWidget_OLD(pg.PlotWidget):
 
     def value_fields(self) -> typing.List[QgsField]:
         """
-        Returns the speclib field to show profiles from
+        Returns the speclib profile_field to show profiles from
         :return:
         """
         return self.speclib().spectralValueFields()
@@ -1864,7 +1865,7 @@ class SpectralProfilePlotWidget_OLD(pg.PlotWidget):
     def potentialProfileKeys(self) -> typing.List[SpectralProfileKey]:
         """
         Returns the list of potential profile/feature keys to be visualized, ordered by its importance.
-        Can contain keys to "empty" profiles, where the value field BLOB is NULL
+        Can contain keys to "empty" profiles, where the value profile_field BLOB is NULL
         1st position = most important, should be plotted on top of all other profiles
         Last position = can be skipped if n_max is reached
         """
@@ -2152,6 +2153,30 @@ class SpectralProfilePlotVisualization(QObject):
     def plotStyle(self) -> PlotStyle:
         return self.mPlotStyle
 
+class PDIIterator(object):
+
+    def __init__(self, pdiList:typing.List[SpectralProfilePlotDataItem], plotWidget, maxPDIs:int):
+        self.n_done = 0
+        self.n_max = maxPDIs
+        self.pdiList = pdiList
+        self.plotWidget = plotWidget
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.n_done == self.n_max:
+            raise StopIteration
+        self.n_done += 1
+        if len(self.pdiList) > self.n_done:
+            return self.pdiList[self.n_done]
+        else:
+            # create new
+            item = SpectralProfilePlotDataItem()
+            item.setVisible(False)
+            self.pdiList.append(item)
+            self.plotWidget.addItem(item)
+            return item
 
 class SpectralProfilePlotControl(QAbstractTableModel):
     CIX_FIELD = 0
@@ -2168,6 +2193,7 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         self.mModelList: SpectralProcessingModelList = SpectralProcessingModelList(allow_empty=True)
         self.mProfileFieldModel: QgsFieldModel = QgsFieldModel()
         self.mMaxPDIs: int = 64
+
         self.mPlotWidget: SpectralProfilePlotWidget = None
 
         self.mColumnNames = {self.CIX_FIELD: 'Field',
@@ -2178,7 +2204,7 @@ class SpectralProfilePlotControl(QAbstractTableModel):
                              }
 
         self.mColumnTooltips = {
-            self.CIX_FIELD: 'This column specifies the binary source field that stores the spectral profiles information',
+            self.CIX_FIELD: 'This column specifies the binary source profile_field that stores the spectral profiles information',
             self.CIX_MODEL: 'This column is used to either show spectral profiles or modify them with a Spectral processing model',
             self.CIX_NAME: 'This column allow to specify how the profile names are generated',
             self.CIX_STYLE: 'Here you can specify the line style for each profile type',
@@ -2187,7 +2213,8 @@ class SpectralProfilePlotControl(QAbstractTableModel):
 
         self.mPlotDataItems: typing.List[SpectralProfilePlotDataItem] = list()
         self.mFID_VIS_Mapper: typing.Dict[typing.Tuple[int, SpectralProfilePlotVisualization], SpectralProfilePlotDataItem]
-        self.mProfileDataCache: typing.Dict[typing.Tuple[int, str, str], SpectralProfile] = dict()
+        self.mModelResultCache: typing.Dict[typing.Tuple[int, int, str], SpectralProfile] = dict()
+        self.mProfileCache: typing.Dict[int, SpectralProfile] = dict()
         self.mDualView: QgsDualView = None
         self.mSpeclib: QgsVectorLayer = None
 
@@ -2205,7 +2232,10 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         self.mMaxPDIs = n
 
         if len(self.mPlotDataItems) > self.mMaxPDIs:
-            s = ""
+            to_remove = self.mPlotDataItems[self.mMaxPDIs-1:]
+            for item in to_remove:
+                self.mPlotWidget.removeItem(item)
+                self.mPlotDataItems.remove(item)
 
     def __len__(self) -> int:
         return len(self.mProfileVisualizations)
@@ -2259,30 +2289,77 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         SL: QgsVectorLayer = self.speclib()
         n = 0
         n_max = self.mActionMaxNumberOfProfiles.maxProfiles()
-        NAME2FIELDIDX = {SL.fields().at(i).name():i for i in range(SL.fields().count())}
+        NAME2FIELDIDX = {SL.fields().at(i).name(): i for i in range(SL.fields().count())}
 
-        for fid in self.featurePriority():
+        PFIELDS = {SL.fields().lookupField(f.name()): f for f in spectralValueFields(SL)}
 
+        pdiIterator = PDIIterator(self.mPlotDataItems, self.mPlotWidget, self.mMaxPDIs)
+        done = False
+
+        # update data cache
+
+        # get the data to display
+
+        FEATURES_TO_LOAD = set()
+        MODEL_RESULTS_TO_LOAD: typing.Dict[str, set] = dict()
+
+        feature_priority = self.featurePriority()
+
+        i = 0
+        # 1. load required data from speclib
+        for fid in feature_priority:
+            if i >= self.mMaxPDIs:
+                break
             for vis in self:
-                n += 1
-                if n >= n_max:
-                    return
-
-                fidx = NAME2FIELDIDX[vis.mField.name()]
                 modelId = vis.modelId()
-                dataKey = (fid, vis.mField.name(), modelId)
+                dataKeyCore = (fid, vis.mField.name(), '')
+                dataKeyModel = (fid, vis.mField.name(), modelId)
+                if dataKeyCore not in self.mModelResultCache.keys():
+                    FEATURES_TO_LOAD.add(fid)
+                elif dataKeyModel not in self.mModelResultCache.keys():
+                    fids = MODEL_RESULTS_TO_LOAD.get((vis.mField.name(), modelId), set())
+                    fids.add(fid)
+                    MODEL_RESULTS_TO_LOAD[(vis.mField.name(), modelId)] = fids
+                else:
+                    profile = self.mModelResultCache[dataKeyModel]
+                    if not isinstance(profile, SpectralProfile):
+                        continue
+                    else:
+                        s = ""
+                        pdi = pdiIterator.__next__()
+                        pdi.setSpectralProfile(profile)
+                        # set styling
+                        pdi.setVisible(True)
+
+                        i += 1
+                if i >= self.mMaxPDIs:
+                    break
+
+        # load core data
+        if len(FEATURES_TO_LOAD) > 0:
+
+            pfi0 = list(PFIELDS.keys())[0]
+            for f in self.speclib().getFeatures(sorted(FEATURES_TO_LOAD)):
+                # load profile
+
+                profile = SpectralProfile.fromQgsFeature(f, profile_field=pfi0)
+                self.mProfileCache[profile.id()] = profile
+                # set model "" with raw profile data
+                for pfi, pf in PFIELDS.items():
+                    model_key = (profile.id(), pfi, '')
+                    self.mModelResultCache[model_key] = profile.values(profile_field=pfi)
                 s = ""
-                if dataKey not in self.mProfileDataCache.keys():
-                    s = "load / calculate"
 
 
-
+        # load model data
+        for modelID, fids in MODEL_RESULTS_TO_LOAD.items():
+            s = ""
         s = ""
 
     def featurePriority(self) -> typing.List[int]:
         """
         Returns the list of potential feature keys to be visualized, ordered by its importance.
-        Can contain keys to "empty" profiles, where the value field BLOB is NULL
+        Can contain keys to "empty" profiles, where the value profile_field BLOB is NULL
         1st position = most important, should be plotted on top of all other profiles
         Last position = can be skipped if n_max is reached
         """
@@ -2583,7 +2660,7 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
             if c == SpectralProfilePlotControl.CIX_FIELD:
                 w = QComboBox(parent=parent)
                 w.setModel(plotControl.profileFieldsModel())
-                w.setToolTip('Select a field with profile data')
+                w.setToolTip('Select a profile_field with profile data')
 
             if c == SpectralProfilePlotControl.CIX_MODEL:
                 w = QComboBox(parent=parent)

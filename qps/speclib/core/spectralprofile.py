@@ -13,6 +13,7 @@ from qgis.gui import QgsMapCanvas
 from osgeo import gdal, ogr
 import numpy as np
 
+from . import spectralValueFields, first_profile_field_index, field_index
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, createQgsField, \
     qgsFields2str, str2QgsFields, qgsFieldAttributes2List
 from ...plotstyling.plotstyling import PlotStyle
@@ -20,9 +21,12 @@ from ...externals import pyqtgraph as pg
 
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, FIELD_NAME, ogrStandardFields, createStandardFields
 
-# a single profile is identified by its QgsFeature id and field index or field name
-SpectralProfileKey = namedtuple('SpectralProfileKey', ['fid', 'field'])
+# a single profile is identified by its QgsFeature id and profile_field index or profile_field name
+SpectralProfileKey = namedtuple('SpectralProfileKey', ['fid', 'profile_field'])
 EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None, 'bbl': None}
+
+
+
 
 def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = None, bbl=None, prototype: dict = None):
     """
@@ -118,7 +122,8 @@ def decodeProfileValueDict(dump, mode=None) -> dict:
 
 class SpectralProfile(QgsFeature):
     """
-    A QgsFeature specialized to read Spectral Profile data from BLOB fields
+    A QgsFeature specialized to reading Spectral Profile data from BLOB fields
+    A single SpectralProfile allows to access all Spectral Profiles within multiple QgsFields of a QgsFeature
     """
     crs = SPECLIB_CRS
 
@@ -187,12 +192,9 @@ class SpectralProfile(QgsFeature):
         y = [v if isinstance(v, (int, float)) else float('NaN') for v in y]
 
         profile = SpectralProfile()
-        profile.setName(SpectralProfile.profileName(layer.name(), geoPosition=position))
-
         profile.setValues(x=wl, y=y, xUnit=wlu)
-
         profile.setCoordinates(position)
-        profile.setSource('{}'.format(layer.source()))
+
 
         return profile
 
@@ -273,22 +275,21 @@ class SpectralProfile(QgsFeature):
         return profile
 
     @staticmethod
-    def fromQgsFeature(feature: QgsFeature, value_field: str = FIELD_VALUES):
+    def fromQgsFeature(feature: QgsFeature, profile_field: typing.Union[int, str, QgsField] = None) -> 'SpectralProfile':
         """
         Converts a QgsFeature into a SpectralProfile
         :param feature: QgsFeature
-        :param value_field: name of QgsField that stores the Spectral Profile BLOB
+        :param profile_field: index, name or QgsField of QgsField that stores the Spectral Profile BLOB. Defaults to the first BLOB field
         :return:
         """
         assert isinstance(feature, QgsFeature)
-        if isinstance(value_field, QgsField):
-            value_field = value_field.name()
-
-        if not value_field in feature.fields().names():
-            print(f'field "{value_field}" does not exist. Allows values: {",".join(feature.fields().names())}')
-            return None
-
-        sp = SpectralProfile(id=feature.id(), fields=feature.fields(), value_field=value_field)
+        if not isinstance(profile_field, int):
+            if profile_field is None:
+                profile_field = first_profile_field_index(feature)
+            else:
+                profile_field = field_index(feature, profile_field)
+        assert profile_field >= 0
+        sp = SpectralProfile(id=feature.id(), fields=feature.fields(), profile_field=profile_field)
         sp.setAttributes(feature.attributes())
         sp.setGeometry(feature.geometry())
         return sp
@@ -296,16 +297,14 @@ class SpectralProfile(QgsFeature):
     def __init__(self, parent=None,
                  id: int = None,
                  fields: QgsFields = None,
-                 values: dict = None,
-                 value_field: typing.Union[int, str, QgsField] = FIELD_VALUES):
+                 profile_field: typing.List[typing.Union[int, str, QgsField]] = None):
         """
         :param parent:
         :param fields:
         :param values:
-        :param value_field: name or index of field that contains the spectral values information.
-                            Needs to be a BLOB field.
+        :param profile_field: name or index of profile_field that contains the spectral values information.
+                            Needs to be a BLOB profile_field.
         """
-
         if fields is None:
             fields = createStandardFields()
         assert isinstance(fields, QgsFields)
@@ -315,18 +314,30 @@ class SpectralProfile(QgsFeature):
             super().setId(id)
 
         assert isinstance(fields, QgsFields)
-        self.mValueCache = None
-        if isinstance(value_field, QgsField):
-            value_field = value_field.name()
+        if profile_field is None:
+            for f in self.fields():
+                if f.type() == QVariant.ByteArray:
+                    profile_field = f
+                    break
 
-        self.mProfileKey: SpectralProfileKey = SpectralProfileKey(self.id(), value_field)
+        self.mCurrentProfileFieldIndex: int = self._profile_field_index(profile_field)
+        assert self.mCurrentProfileFieldIndex > 0, f'Unable to find BLOB profile_field "{profile_field}" with spectral profiles'
+        # self.mProfileKey: SpectralProfileKey = SpectralProfileKey(self.id(), profile_field)
 
-        if isinstance(values, dict):
-            self.setValues(**values)
+        self.mValueCache: typing.Dict[int, dict] = dict()
 
-    def setId(self, fid: int):
-        super().setId(fid)
-        self.mProfileKey: SpectralProfileKey = SpectralProfileKey(self.id(), self.mProfileKey.field)
+    def _profile_field_index(self, field) -> int:
+        if isinstance(field, QgsField):
+            return self.fields().indexOf(field.name())
+        elif isinstance(field, str):
+            return self.fields().indexOf(field)
+        elif isinstance(field, int):
+            return field
+        elif field is None:
+            # return default profile_field
+            return self.mCurrentProfileFieldIndex
+        else:
+            return -1
 
     def __add__(self, other):
         return self._math_(self, '__add__', other)
@@ -383,15 +394,16 @@ class SpectralProfile(QgsFeature):
         sp.setValues(self.xValues(), yvals)
         return sp
 
+
     def fieldNames(self) -> typing.List[str]:
         """
-        Returns all field names
+        Returns all profile_field names
         :return:
         """
         return self.fields().names()
 
     def setName(self, name: str):
-        warnings.warn('Not supported anymore, as a name might be retrived with an expression',
+        warnings.warn('Not supported anymore, as a name might be retrieved with an expression',
                       DeprecationWarning, stacklevel=2)
 
     def name(self) -> str:
@@ -404,6 +416,14 @@ class SpectralProfile(QgsFeature):
     def source(self):
         warnings.warn('Not supported anymore', DeprecationWarning, stacklevel=2)
         return None
+
+    def setProfileField(self, field: typing.Union[str, int, QgsField]) -> int:
+        """
+        Sets the current profile profile_field the SpectralProfile loads and saves data from/to-
+        :param field: str|int|QgsField
+        """
+        self.mCurrentProfileFieldIndex = self._profile_field_index(field)
+        return self.mCurrentProfileFieldIndex
 
     def setCoordinates(self, pt):
         if isinstance(pt, SpatialPoint):
@@ -419,6 +439,7 @@ class SpectralProfile(QgsFeature):
         SpectralProfile.key() = SpectralProfileKey -> identifies the feature row & QgsField name of BLOB column
         :return:
         """
+        warnings.warn(DeprecationWarning)
         return self.mProfileKey
 
     def geoCoordinate(self):
@@ -439,161 +460,114 @@ class SpectralProfile(QgsFeature):
             self.setFields(fields)
             self.setAttributes(values)
 
-    def setMetadata(self, key: str, value, addMissingFields=False):
-        """
-        :param key: Name of metadata field
-        :param value: value to add. Need to be of type None, str, int or float.
-        :param addMissingFields: Set on True to add missing fields (in case value is not None)
-        :return:
-        """
-        i = self.fieldNameIndex(key)
-
-        if i < 0:
-            if value is not None and addMissingFields:
-                fields = self.fields()
-                values = self.attributes()
-                fields.append(createQgsField(key, value))
-                values.append(value)
-                self.setFields(fields)
-                self.setAttributes(values)
-
-            return False
-        else:
-            return self.setAttribute(key, value)
-
-    def metadata(self, key: str, default=None):
-        """
-        Returns a field value or None, if not existent
-        :param key: str, field name
-        :param default: default value to be returned
-        :return: value
-        """
-        assert isinstance(key, str)
-        i = self.fieldNameIndex(key)
-        if i < 0:
-            return None
-
-        v = self.attribute(i)
-        if v == QVariant(None):
-            v = None
-        return default if v is None else v
-
-    def nb(self) -> int:
+    def nb(self, profile_field=None) -> int:
         """
         Returns the number of profile bands / profile values
         :return: int
         :rtype:
         """
-        return len(self.yValues())
+        return len(self.yValues(profile_field=profile_field))
 
-    def isEmpty(self) -> bool:
+    def isEmpty(self, profile_field=None) -> bool:
         """
-        Returns True if there is not ByteArray stored in the BLOB value field
+        Returns True if there is not ByteArray stored in the BLOB value profile_field
         :return: bool
         """
-        return self.attribute(self.fields().indexFromName(self.mProfileKey.field)) in [None, QVariant()]
+        fidx = self._profile_field_index(profile_field)
+        return self.attribute(fidx) in [None, QVariant()]
 
-    def values(self, f=None) -> dict:
+    def values(self, profile_field=None) -> dict:
         """
         Returns a dictionary with 'x', 'y', 'xUnit' and 'yUnit' values.
         :return: {'x':list,'y':list,'xUnit':str,'yUnit':str, 'bbl':list}
         """
-        if self.mValueCache is None:
-            byteArray = self.attribute(self.fields().indexFromName(self.mProfileKey.field))
+        profile_field = self._profile_field_index(profile_field)
+        if profile_field not in self.mValueCache.keys():
+            byteArray = self.attribute(profile_field)
             d = decodeProfileValueDict(byteArray)
 
             # save a reference to the decoded dictionary
-            self.mValueCache = d
+            self.mValueCache[profile_field] = d
 
-        return self.mValueCache
+        return self.mValueCache[profile_field]
 
-    def setValues(self, x=None, y=None, xUnit: str = None, yUnit: str = None, bbl=None, **kwds):
+    def setValues(self, x=None, y=None, xUnit: str = None, yUnit: str = None, bbl=None, profile_field=None,
+                  profile_value_dict: dict = None, **kwds):
 
         # d = self.values().copy()
-        d = prepareProfileValueDict(x=x, y=y, xUnit=xUnit, yUnit=yUnit, bbl=bbl, prototype=self.values())
+        if not isinstance(profile_value_dict, dict):
+            profile_value_dict = prepareProfileValueDict(x=x, y=y, xUnit=xUnit, yUnit=yUnit, bbl=bbl, prototype=self.values(
+                profile_field=profile_field))
 
-        self.setAttribute(self.mProfileKey.field, encodeProfileValueDict(d))
-        self.mValueCache = d
+        field_index = self._profile_field_index(profile_field)
+        self.setAttribute(field_index, encodeProfileValueDict(profile_value_dict))
+        self.mValueCache[field_index] = profile_value_dict
 
-    def xValues(self) -> list:
+    def xValues(self, profile_field=None) -> list:
         """
         Returns the x Values / wavelength information.
         If wavelength information is not undefined it will return a list of band indices [0, ..., n-1]
         :return: [list-of-numbers]
         """
-        x = self.values()['x']
+        x = self.values(profile_field=profile_field)['x']
 
         if not isinstance(x, list):
             return list(range(len(self.yValues())))
         else:
             return x
 
-    def yValues(self) -> list:
+    def yValues(self, profile_field=None) -> list:
         """
         Returns the x Values / DN / spectral profile values.
         List is empty if not numbers are stored
         :return: [list-of-numbers]
         """
-        y = self.values()['y']
+        y = self.values(profile_field=profile_field)['y']
         if not isinstance(y, list):
             return []
         else:
             return y
 
-    def bbl(self) -> list:
+    def bbl(self, profile_field=None) -> list:
         """
         Returns the BadBandList.
         :return:
         :rtype:
         """
-        bbl = self.values().get('bbl')
+        bbl = self.values(profile_field=profile_field).get('bbl')
         if not isinstance(bbl, list):
-            bbl = np.ones(self.nb(), dtype=np.byte).tolist()
+            bbl = np.ones(self.nb(profile_field=profile_field), dtype=np.byte).tolist()
         return bbl
 
-    def setXUnit(self, unit: str):
-        d = self.values()
+    def setXUnit(self, unit: str, profile_field=None):
+        d = self.values(profile_field=profile_field)
         d['xUnit'] = unit
-        self.setValues(**d)
+        self.setValues(profile_field=profile_field, **d)
 
-    def xUnit(self) -> str:
+    def xUnit(self, profile_field = None) -> str:
         """
         Returns the semantic unit of x values, e.g. a wavelength unit like 'nm' or 'um'
         :return: str
         """
-        return self.values()['xUnit']
+        return self.values(profile_field=profile_field)['xUnit']
 
-    def setYUnit(self, unit: str = None):
+    def setYUnit(self, unit: str = None, profile_field=None):
         """
         :param unit:
         :return:
         """
-        d = self.values()
+        d = self.values(profile_field=profile_field)
         d['yUnit'] = unit
-        self.setValues(**d)
+        self.setValues(profile_field=profile_field, **d)
 
-    def yUnit(self) -> str:
+    def yUnit(self, profile_field=None) -> str:
         """
         Returns the semantic unit of y values, e.g. 'reflectances'"
         :return: str
         """
 
-        return self.values()['yUnit']
+        return self.values(profile_field=profile_field)['yUnit']
 
-    def copyFieldSubset(self, fields):
-
-        sp = SpectralProfile(fields=fields)
-
-        fieldsInCommon = [field for field in sp.fields() if field in self.fields()]
-
-        sp.setGeometry(self.geometry())
-        sp.setId(self.id())
-
-        for field in fieldsInCommon:
-            assert isinstance(field, QgsField)
-            i = sp.fieldNameIndex(field.name())
-            sp.setAttribute(i, self.attribute(field.name()))
-        return sp
 
     def clone(self):
         """

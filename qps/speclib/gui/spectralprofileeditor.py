@@ -354,7 +354,8 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
 
     def setValue(self, value):
         self.mLastValue = value
-        p = SpectralProfile(values=decodeProfileValueDict(value))
+        p = SpectralProfile(fields=self.layer().fields(), profile_field=self.field())
+        p.setValues(profile_value_dict=decodeProfileValueDict(value))
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             w.setProfile(p)
@@ -464,7 +465,7 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
 
     def configKey(self, layer: QgsVectorLayer, fieldIdx: int) -> typing.Tuple[str, int]:
         """
-        Returns a tuple to be used as dictionary key to identify a layer field configuration.
+        Returns a tuple to be used as dictionary key to identify a layer profile_field configuration.
         :param layer: QgsVectorLayer
         :param fieldIdx: int
         :return: (str, int)
@@ -513,7 +514,7 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
 
     def fieldScore(self, vl: QgsVectorLayer, fieldIdx: int) -> int:
         """
-        This method allows disabling this editor widget type for a certain field.
+        This method allows disabling this editor widget type for a certain profile_field.
         0: not supported: none String fields
         5: maybe support String fields with length <= 400
         20: specialized support: String fields with length > 400
