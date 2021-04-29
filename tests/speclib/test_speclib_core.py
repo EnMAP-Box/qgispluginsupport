@@ -256,15 +256,6 @@ class TestCore(TestCase):
         self.assertEqual(xVal, sp1.xValues())
         self.assertEqual(yVal, sp1.yValues())
 
-        name = 'missingAttribute'
-        sp1.setMetadata(name, 'myvalue')
-        self.assertTrue(name not in sp1.fieldNames())
-        sp1.setMetadata(name, 'myvalue', addMissingFields=True)
-        self.assertTrue(name in sp1.fieldNames())
-        self.assertEqual(sp1.metadata(name), 'myvalue')
-        sp1.removeField(name)
-        self.assertTrue(name not in sp1.fieldNames())
-
         sp1.setXUnit('nm')
         self.assertEqual(sp1.xUnit(), 'nm')
 
@@ -299,18 +290,6 @@ class TestCore(TestCase):
         sp2.setYUnit('reflectance')
         # self.assertNotEqual(sp1, sp2)
 
-        values = [('key', 'value'), ('key', 100), ('Üä', 'ÜmlÄute')]
-        for md in values:
-            k, d = md
-            sp1.setMetadata(k, d)
-            v2 = sp1.metadata(k)
-            self.assertEqual(v2, None)
-
-        for md in values:
-            k, d = md
-            sp1.setMetadata(k, d, addMissingFields=True)
-            v2 = sp1.metadata(k)
-            self.assertEqual(d, v2)
 
         self.SP = sp1
 
@@ -671,37 +650,27 @@ class TestCore(TestCase):
             name = f'N{i + 1}'
             color = nextColor(color, mode='cat')
             NAME2NAME[name] = color.name()
-            p.setName(name)
             profiles.append(p)
 
         def checkColorNames(sl: SpectralLibrary):
             STYLES = sl.profileRenderer().profilePlotStyles(sl.allFeatureIds())
             for p in sl:
                 self.assertIsInstance(p, SpectralProfile)
-                if p.name() in NAME2NAME.keys():
-                    print(p.name())
-                    cNameRef = NAME2NAME[p.name()]
-                    cNameNow = STYLES[p.id()].lineColor().name()
-                    self.assertEqual(cNameRef, cNameNow)
 
         import random
         profiles = random.choices(profiles, k=len(profiles))
-        names = [p.name() for p in profiles]
+
         sl1.startEditing()
         added_fids = sl1.addProfiles(profiles)
 
-        for fid, name in zip(added_fids, names):
+        for fid in added_fids:
             p = sl1.profile(fid)
             self.assertIsInstance(p, SpectralProfile)
-            self.assertEqual(name, p.name())
 
         # assign styles
         for p in sl1:
             self.assertIsInstance(p, SpectralProfile)
-            if p.name() in NAME2NAME.keys():
-                style = PlotStyle()
-                style.setLineColor(QColor(NAME2NAME[p.name()]))
-                sl1.profileRenderer().setProfilePlotStyle(style, p.id())
+
 
         # test line color before commit
         checkColorNames(sl1)

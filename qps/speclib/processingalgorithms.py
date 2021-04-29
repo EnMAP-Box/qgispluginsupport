@@ -222,7 +222,7 @@ class SpectralProfileReader(_AbstractSpectralAlgorithm):
         field: typing.List[str] = self.parameterAsFields(parameters, self.INPUT_FIELD, context)
 
         output_blocks: typing.List[SpectralProfileBlock] = list(
-            SpectralProfileBlock.fromSpectralProfiles(read_profiles(speclib, value_fields=field),
+            SpectralProfileBlock.fromSpectralProfiles(read_profiles(speclib, profile_field=field),
                                                       feedback=feedback)
         )
         OUTPUTS = dict()

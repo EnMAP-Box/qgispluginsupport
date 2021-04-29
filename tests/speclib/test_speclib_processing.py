@@ -158,7 +158,7 @@ class SpectralProcessingExamples(TestCase):
         # 2. read and process SpectralProfileBlocls
         algP = reg.algorithmById('testalgorithmprovider:spectral_processing_algorithm_example')
 
-        # 3. write SpectralProfileBlocks to standard QGIS output object, i.e. a BLOB field of a QgsVectorLayer
+        # 3. write SpectralProfileBlocks to standard QGIS output object, i.e. a BLOB profile_field of a QgsVectorLayer
         algW = reg.algorithmById('testalgorithmprovider:spectral_profile_writer')
 
         for a in [algP, algR, algW]:

@@ -45,7 +45,7 @@ FIELD_FID = 'fid'
 
 
 def ogrStandardFields() -> list:
-    """Returns the minimum set of field a Spectral Library contains"""
+    """Returns the minimum set of fields a Spectral Library should contains"""
     fields = [
         ogr.FieldDefn(FIELD_FID, ogr.OFTInteger),
         ogr.FieldDefn(FIELD_NAME, ogr.OFTString),
@@ -75,6 +75,7 @@ def createStandardFields() -> QgsFields:
         fields.append(QgsField(name, a, b))
 
     return fields
+
 
 class SpectralLibrarySettingsKey(enum.Enum):
     CURRENT_PROFILE_STYLE = 1

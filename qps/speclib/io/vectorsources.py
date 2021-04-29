@@ -218,7 +218,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
             transform_context,
             options)
 
-        if len(errMsg) > 0:
+        if errCode != QgsVectorFileWriter.NoError:
             raise Exception(errMsg)
 
         if not path.is_file() and filterFormat.driverName.startswith('GeoJSON'):
