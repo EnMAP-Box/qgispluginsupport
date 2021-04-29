@@ -2282,6 +2282,13 @@ class SpectralProfilePlotControl(QAbstractTableModel):
 
         self.updatePlot()
 
+    def updateData(self, fids: typing.List[int], models:typing.List[QgsProcessingModelAlgorithm]):
+        # loads SpectralProfiles for the requested FIDs and calculates the model results on it
+        pass
+
+    def updateModelData(self):
+        pass
+
     def updatePlot(self):
 
         if not isinstance(self.mPlotWidget, SpectralProfilePlotWidget):
