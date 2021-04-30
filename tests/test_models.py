@@ -48,7 +48,8 @@ class ModelTests(TestCase):
         root = m.rootNode()
 
 
-        DATA = {'AAA':
+        DATA = {'AAA': np.asarray([[1,2],[3,4],[5,6]]),
+                'BBB':
                 {'B1': root,
                  'B2': {'DDD': root},
                  'NP': np.arange(256),
@@ -57,9 +58,11 @@ class ModelTests(TestCase):
                 'CA': QgsMapCanvas(),
                 }
 
-        objNode = PyObjectTreeNode('DATA', obj=DATA)
 
+        objNode = PyObjectTreeNode('DATA', obj=DATA)
+        objNode0 = PyObjectTreeNode('Array', obj= np.asarray([[1,2],[3,4],[5,6]]))
         n = TreeNode('TOP')
+        n.appendChildNodes(objNode0)
         n.appendChildNodes(objNode)
         root.appendChildNodes(n)
         tv.setModel(m)

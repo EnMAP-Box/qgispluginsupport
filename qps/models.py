@@ -660,6 +660,35 @@ class TreeNode(QObject):
                 results.extend(node.findChildNodes(type, recursive=True))
         return results
 
+class ArrayIterator(object):
+    def __init__(self, array: np.ndarray):
+        assert isinstance(array, np.ndarray)
+
+        self.array = array
+        self.n = array.shape[0]
+        self.i = -1
+
+    def name(self):
+        return 'array'
+
+    def value(self):
+        return str(self.array)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.i += 1
+        if self.i == self.n:
+            raise StopIteration
+        else:
+            if self.array.ndim > 1:
+                return (self.i, ArrayIterator(self.array[self.i,:]))
+            else:
+                return (self.i, self.array[self.i].tolist())
+
+    def __len__(self)-> int:
+        return self.n
 
 class PyObjectTreeNode(TreeNode):
 
@@ -669,7 +698,6 @@ class PyObjectTreeNode(TreeNode):
         self.mPyObject = obj
         self.mFetchIterator = None
         self.mIsFetched: bool = False
-
         # end-nodes which cannot be fetched deeper
         if isinstance(obj, (int, float, str)):
             self.setValue(obj)
@@ -688,16 +716,17 @@ class PyObjectTreeNode(TreeNode):
             #    value = obj.__name__
             # else:
             #    value = type(obj).__name__
-
             if isinstance(obj, (np.ndarray,)):
                 value = np.array2string(obj, threshold=10)
+            elif isinstance(obj, ArrayIterator):
+                value = obj.value()
             elif isinstance(obj, (bytearray, bytes)):
                 value = str(obj)
             else:
                 # value = '{:1.256s}'.format(str(obj))
                 value = str(obj) # .strip()
             value = value.replace('\n', ' ')
-            self.setValue(value)
+            self.setValue(str(value))
             self.setToolTip(f'{self.name()} {value}')
 
     def canFetchMore(self) -> bool:
@@ -714,17 +743,34 @@ class PyObjectTreeNode(TreeNode):
         FETCH_SIZE = 50
 
         if self.mFetchIterator is None:
+            if isinstance(self.mPyObject, typing.Iterator):
+                self.mFetchIterator = self.mPyObject
+                s = ""
             if isinstance(self.mPyObject, (list, tuple)):
                 self.mFetchIterator = enumerate(self.mPyObject)
             elif isinstance(self.mPyObject, dict):
                 self.mFetchIterator = iter(self.mPyObject.items())
+            elif isinstance(self.mPyObject, ArrayIterator):
+                self.mFetchIterator = self.mPyObject
+            elif isinstance(self.mPyObject, np.ndarray):
+
+                prefix = [('min', self.mPyObject.min()),
+                          ('max', self.mPyObject.max()),
+                          ('array', ArrayIterator(self.mPyObject)),
+                          ]
+                members = prefix + inspect.getmembers(self.mPyObject)
+                first_names = ['array', 'min', 'max', 'size',  'ndim', 'shape']
+                members = sorted(members,
+                                 key=lambda t: first_names.index(t[0]) if t[0] in first_names else len(first_names))
+
+
+                self.mFetchIterator = iter(members)
             elif isinstance(self.mPyObject, object):
                 self.mFetchIterator = iter(sorted(inspect.getmembers(self.mPyObject)))
             else:
                 s = ""
                 self.mIsFetched = True
                 return
-
 
         newNodes: typing.List[PyObjectTreeNode] = []
 
@@ -735,6 +781,7 @@ class PyObjectTreeNode(TreeNode):
 
                 if isinstance(k, str) and k.startswith('__'):
                     continue
+
                 if isinstance(v, (types.BuiltinFunctionType,
                                   pyqtSignal,
                                   pyqtBoundSignal,
@@ -751,6 +798,7 @@ class PyObjectTreeNode(TreeNode):
 
         except StopIteration:
             self.mIsFetched = True
+            self.sigUpdated.emit(self)
 
         if len(newNodes) > 0:
             self.appendChildNodes(newNodes)
