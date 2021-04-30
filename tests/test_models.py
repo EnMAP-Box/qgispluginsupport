@@ -43,24 +43,20 @@ class ModelTests(TestCase):
         else:
             tv = QTreeView()
 
-
-
         root = m.rootNode()
 
-
-        DATA = {'AAA': np.asarray([[1,2],[3,4],[5,6]]),
+        DATA = {'AAA': np.asarray([[1, 2], [3, 4], [5, 6]]),
                 'BBB':
-                {'B1': root,
-                 'B2': {'DDD': root},
-                 'NP': np.arange(256),
-                 'Array2': np.asarray([[1,2,3],[4,5,6]]),
-                 'M': m},
+                    {'B1': root,
+                     'B2': {'DDD': root},
+                     'NP': np.arange(256),
+                     'Array2': np.asarray([[1, 2, 3], [4, 5, 6]]),
+                     'M': m},
                 'CA': QgsMapCanvas(),
                 }
 
-
         objNode = PyObjectTreeNode('DATA', obj=DATA)
-        objNode0 = PyObjectTreeNode('Array', obj= np.asarray([[1,2],[3,4],[5,6]]))
+        objNode0 = PyObjectTreeNode('Array', obj=np.asarray([[1, 2], [3, 4], [5, 6]]))
         n = TreeNode('TOP')
         n.appendChildNodes(objNode0)
         n.appendChildNodes(objNode)
@@ -130,8 +126,10 @@ class ModelTests(TestCase):
 
         TV = TreeView()
         TM = TreeModel()
+
         def onRowsInserted(p, first, last):
             print(f'ROWS INSERTED {p.data(Qt.UserRole).name()} {first} to {last}')
+
         TM.rowsInserted.connect(onRowsInserted)
         TV.setModel(TM)
         TV2 = QTreeView()
@@ -144,7 +142,6 @@ class ModelTests(TestCase):
             TM.rootNode().removeAllChildNodes()
 
         def onReset(*args):
-
             TM.rootNode().removeAllChildNodes()
 
             new_nodes = []
@@ -173,8 +170,6 @@ class ModelTests(TestCase):
         w = QWidget()
         w.setLayout(l)
         self.showGui(w)
-
-
 
     def test_treeView(self):
 

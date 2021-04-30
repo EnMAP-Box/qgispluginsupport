@@ -660,6 +660,7 @@ class TreeNode(QObject):
                 results.extend(node.findChildNodes(type, recursive=True))
         return results
 
+
 class ArrayIterator(object):
     def __init__(self, array: np.ndarray):
         assert isinstance(array, np.ndarray)
@@ -683,12 +684,13 @@ class ArrayIterator(object):
             raise StopIteration
         else:
             if self.array.ndim > 1:
-                return (self.i, ArrayIterator(self.array[self.i,:]))
+                return (self.i, ArrayIterator(self.array[self.i, :]))
             else:
                 return (self.i, self.array[self.i].tolist())
 
-    def __len__(self)-> int:
+    def __len__(self) -> int:
         return self.n
+
 
 class PyObjectTreeNode(TreeNode):
 
@@ -724,7 +726,7 @@ class PyObjectTreeNode(TreeNode):
                 value = str(obj)
             else:
                 # value = '{:1.256s}'.format(str(obj))
-                value = str(obj) # .strip()
+                value = str(obj)  # .strip()
             value = value.replace('\n', ' ')
             self.setValue(str(value))
             self.setToolTip(f'{self.name()} {value}')
@@ -759,10 +761,9 @@ class PyObjectTreeNode(TreeNode):
                           ('array', ArrayIterator(self.mPyObject)),
                           ]
                 members = prefix + inspect.getmembers(self.mPyObject)
-                first_names = ['array', 'min', 'max', 'size',  'ndim', 'shape']
+                first_names = ['array', 'min', 'max', 'size', 'ndim', 'shape']
                 members = sorted(members,
                                  key=lambda t: first_names.index(t[0]) if t[0] in first_names else len(first_names))
-
 
                 self.mFetchIterator = iter(members)
             elif isinstance(self.mPyObject, object):
