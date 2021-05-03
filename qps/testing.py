@@ -40,6 +40,7 @@ import sip
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout
 from osgeo import gdal, ogr, osr, gdal_array
+from qgis._core import QgsField
 
 import qgis.testing
 import qgis.utils
@@ -58,6 +59,7 @@ from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, Qgs
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel, QgsProcessingGuiRegistry
 
 from .resources import *
+from .speclib import createStandardFields
 from .speclib.core.spectralprofile import SpectralProfileBlock
 from .speclib.processing import SpectralProcessingAlgorithmInputWidgetFactory, \
     SpectralProcessingProfilesOutputWidgetFactory, SpectralProcessingProfileType, SpectralProcessingProfilesOutput, \
@@ -547,6 +549,32 @@ class TestAlgorithmProvider(QgsProcessingProvider):
     def supportsNonFileBasedOutput(self) -> True:
         return True
 
+class SpectralProfileDataIterator(object):
+
+    def __init__(self, n_bands_per_field: typing.Union[int, typing.List[int]]):
+        if not isinstance(n_bands_per_field, list):
+            n_bands_per_field = [n_bands_per_field]
+
+        self.coredata, self.wl, self.wlu, self.gt, self.wkt = TestObjects.coreData()
+        self.cnb, self.cnl, self.cns = self.coredata.shape
+        n_bands_per_field = [self.cnb if nb == -1 else nb for nb in n_bands_per_field]
+        for nb in n_bands_per_field:
+            assert 0 < nb <= self.cnb
+        self.band_indices: typing.List[np.ndarray] = \
+            [np.linspace(0, self.cnb - 1, num=nb, dtype=np.int16) for nb in n_bands_per_field]
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+
+        x = random.randint(0, self.coredata.shape[2] - 1)
+        y = random.randint(0, self.coredata.shape[1] - 1)
+
+        results = []
+        for band_indices in self.band_indices:
+            results.append((self.coredata[band_indices, y, x], self.wl[band_indices], self.wlu))
+        return results
 
 class TestObjects(object):
     """
@@ -615,34 +643,48 @@ class TestObjects(object):
     def spectralProfiles(n=10,
                          fields: QgsFields = None,
                          n_bands: typing.List[int] = None,
-                         wlu: str = None):
+                         wlu: str = None,
+                         profile_fields: typing.List[typing.Union[int, str, QgsField]] = None):
 
+        if fields is None:
+            fields = createStandardFields()
         from .speclib.core.spectrallibrary import SpectralProfile
+        from .speclib.core import field_index
 
-        i = 1
-        for (data, wl, data_wlu) in TestObjects.spectralProfileData(n, n_bands=n_bands):
-            if wlu is None:
-                wlu = data_wlu
-            elif wlu == '-':
-                wl = wlu = None
-            elif wlu != data_wlu:
-                wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
+        if profile_fields is None:
+            profile_fields = [f for f in fields if f.type() == QVariant.ByteArray]
+        if n_bands is None:
+            n_bands = [-1 for f in profile_fields]
+        elif isinstance(n_bands, int):
+            n_bands = [n_bands]
 
+        assert len(n_bands) == len(profile_fields)
+
+        profileGenerator = SpectralProfileDataIterator(n_bands)
+        for i in range(n):
+            field_data = profileGenerator.__next__()
             profile = SpectralProfile(fields=fields)
-            # profile.setName(f'Profile {i}')
-            profile.setValues(y=data, x=wl, xUnit=wlu)
+            for j, field in enumerate(profile_fields):
+                (data, wl, data_wlu) = field_data[j]
+                if wlu is None:
+                    wlu = data_wlu
+                elif wlu == '-':
+                    wl = wlu = None
+                elif wlu != data_wlu:
+                    wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
+
+                profile.setValues(profile_field=field, y=data, x=wl, xUnit=wlu)
             yield profile
-            i += 1
 
     """
     Class with static routines to create test objects
     """
-
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
                               n_bands: typing.Union[int, typing.List[int]] = None,
-                              wlu: str = None):
+                              n_profile_fields:int = 1,
+                              wlu: str = None) -> 'SpectralLibrary':
         """
         Creates an Spectral Library
         :param n_bands:
@@ -657,11 +699,22 @@ class TestObjects(object):
         :rtype: SpectralLibrary
         """
         assert n > 0
-        assert n_empty >= 0 and n_empty <= n
-        from .speclib.core.spectrallibrary import SpectralLibrary
-        slib = SpectralLibrary()
+        assert 0 <= n_empty <= n
+        assert n_profile_fields >= 1
+        from .speclib.core.spectrallibrary import SpectralLibrary, FIELD_VALUES
+        from .speclib.core import profile_field_indices
+        slib: SpectralLibrary = SpectralLibrary()
         assert slib.startEditing()
-        profiles = list(TestObjects.spectralProfiles(n, fields=slib.fields(), n_bands=n_bands, wlu=wlu))
+        for i in range(len(slib.spectralValueFields()), n_profile_fields):
+            slib.addSpectralProfileAttribute(f'{FIELD_VALUES}{i}')
+        slib.commitChanges(stopEditing=False)
+
+        profile_field_indices = profile_field_indices(slib)
+        profiles = list(TestObjects.spectralProfiles(n,
+                                                     fields=slib.fields(),
+                                                     n_bands=n_bands,
+                                                     wlu=wlu,
+                                                     profile_fields=profile_field_indices))
         slib.addProfiles(profiles, addMissingFields=False)
 
         for i in range(n_empty):
@@ -1301,7 +1354,7 @@ class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
             resultBlock, msg = self.applyUserCode(user_code, profileBlock)
 
             if isinstance(resultBlock, SpectralProfileBlock):
-                resultBlock.setProfileKeys(profileBlock.profileKeys())
+                resultBlock.setFIDs(profileBlock.fids())
                 output_profiles.append(resultBlock)
             else:
                 feedback

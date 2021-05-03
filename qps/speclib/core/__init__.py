@@ -6,22 +6,21 @@ from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 
-def spectralValueFields(spectralLibrary: QgsVectorLayer) -> typing.List[QgsField]:
+def profile_fields(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[QgsField]:
     """
     Returns the fields that contains values of SpectralProfiles
     :param spectralLibrary:
     :return:
     """
     fields = [f for f in spectralLibrary.fields() if
-              f.type() == QVariant.ByteArray and
-              f.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY]
-
+              f.type() == QVariant.ByteArray]
+    if isinstance(spectralLibrary, QgsVectorLayer):
+        fields = [f for f in fields if f.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY]
     return fields
 
-def spectralValueFieldIndices(spectralLibrary: QgsVectorLayer) -> typing.List[int]:
 
-    fields = spectralValueFields(spectralLibrary)
-    return [spectralLibrary.fields().lookupField(f.name()) for f in spectralValueFields(spectralLibrary)]
+def profile_field_indices(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[int]:
+    return [spectralLibrary.fields().lookupField(f.name()) for f in profile_fields(spectralLibrary)]
 
 
 
@@ -32,7 +31,7 @@ def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVec
     :return:
     """
     if isinstance(source, QgsVectorLayer):
-        for f in spectralValueFields(source):
+        for f in profile_fields(source):
             return source.fields().lookupField(f.name())
     elif isinstance(source, QgsFeature):
         return first_profile_field_index(source.fields())
@@ -41,6 +40,7 @@ def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVec
             if f.type() == QVariant.ByteArray:
                 return source.lookupField(f.name())
     return -1
+
 
 def field_index(source: typing.Union[QgsFields, QgsFeature, QgsVectorLayer], field: typing.Union[str, int, QgsField]) -> int:
     """

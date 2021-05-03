@@ -60,7 +60,7 @@ from qgis.core import QgsApplication, \
 
 from qgis.gui import \
     QgsGui
-from . import spectralValueFields, first_profile_field_index
+from . import profile_fields, first_profile_field_index
 
 from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
@@ -1808,7 +1808,7 @@ class SpectralLibrary(QgsVectorLayer):
         return []
 
     def spectralValueFields(self) -> typing.List[QgsField]:
-        return spectralValueFields(self)
+        return profile_fields(self)
 
     def yRange(self) -> typing.List[float]:
         """

@@ -146,7 +146,7 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
                                                  )
                     blockOut = SpectralProfileBlock(profileBlock.data(),
                                                     spectralSetting=settingOut,
-                                                    profileKeys=profileBlock.profileKeys(),
+                                                    fids=profileBlock.fids(),
                                                     metadata=profileBlock.metadata())
                     output_profiles.append(blockOut)
                 else:

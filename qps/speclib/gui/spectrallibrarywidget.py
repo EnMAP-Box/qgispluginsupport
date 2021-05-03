@@ -158,9 +158,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionExportSpeclib)
 
         self.tbSpeclibAction.addSeparator()
-        self.cbXAxisUnit = self.plotWidget().actionXAxis().createUnitComboBox()
+        self.cbXAxisUnit = self.plotWidget().mOptionXUnit.createUnitComboBox()
         self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
-        self.tbSpeclibAction.addAction(self.plotWidget().optionUseVectorSymbology())
+        self.tbSpeclibAction.addAction(self.plotWidget().mOptionUseVectorSymbology)
 
         self.actionShowFormView = QAction('Show Form View')
         self.actionShowFormView.setCheckable(True)
