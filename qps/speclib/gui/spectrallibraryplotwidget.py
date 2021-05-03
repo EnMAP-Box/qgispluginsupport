@@ -24,10 +24,9 @@ from ...externals.pyqtgraph import AxisItem
 from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, PlotStyleButton
 from .. import speclibUiPath
-from ..core.spectrallibrary import SpectralLibrary, SpectralProfileRenderer, DEBUG, \
-    generateProfileKeys, containsSpeclib
+from ..core.spectrallibrary import SpectralLibrary, SpectralProfileRenderer, DEBUG, containsSpeclib
 from ..core import profile_fields, profile_field_indices
-from ..core.spectralprofile import SpectralProfileKey, SpectralProfile, SpectralProfileBlock, SpectralProfileLoadingTask
+from ..core.spectralprofile import SpectralProfile, SpectralProfileBlock, SpectralProfileLoadingTask
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
     SpectralProcessingProfilesOutput, SpectralProcessingModelList, NO_MODEL_MODEL
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, XUnitModel, UnitModel
@@ -341,7 +340,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
     """
     A pyqtgraph.PlotDataItem to plot a SpectralProfile
     """
-    sigProfileClicked = pyqtSignal(SpectralProfileKey, dict)
+    sigProfileClicked = pyqtSignal(int, dict)
 
     def __init__(self, spectralProfile: SpectralProfile):
         assert isinstance(spectralProfile, SpectralProfile)
@@ -385,7 +384,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                     'yValue': y,
                     'pxDistance': pxDistance,
                     'pdi': self}
-            self.sigProfileClicked.emit(self.key(), data)
+            self.sigProfileClicked.emit(self.id(), data)
 
     def onScatterMouseClicked(self, pts: pg.ScatterPlotItem):
 
@@ -399,7 +398,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
                         'yValue': pdi.yData[i],
                         'pxDistance': 0,
                         'pdi': self}
-                self.sigProfileClicked.emit(self.key(), data)
+                self.sigProfileClicked.emit(self.id(), data)
 
     def setSpectralProfile(self, spectralProfile: SpectralProfile):
         """
@@ -575,15 +574,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         else:
             s = ""
 
-    def key(self) -> SpectralProfileKey:
-        return self.mProfile.key()
-
     def id(self) -> int:
-        warnings.warn('Use key instead', DeprecationWarning)
-        """
-        Returns the profile fid
-        :return: int
-        """
         return self.mProfile.id()
 
     def name(self) -> str:

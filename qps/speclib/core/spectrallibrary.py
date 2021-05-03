@@ -68,7 +68,7 @@ from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     qgsField, qgsFieldAttributes2List, qgsFields2str, str2QgsFields
 from ...plotstyling.plotstyling import PlotStyle
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
-from .spectralprofile import SpectralProfileKey, SpectralProfile, SpectralProfileBlock, \
+from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
     SpectralSetting, groupBySpectralProperties
 from .. import SpectralLibrarySettingsKey, SPECLIB_EPSG_CODE, FIELD_NAME, FIELD_FID, FIELD_VALUES
 
@@ -134,18 +134,6 @@ for i in range(ogr.GetDriverCount()):
 OGR_EXTENSION2DRIVER[None] = OGR_EXTENSION2DRIVER['']
 
 DEBUG = os.environ.get('DEBUG', 'false').lower() in ['true', '1']
-
-
-def generateProfileKeys(feature_ids: typing.List[int],
-                        value_fields: typing.Union[QgsField, str]) -> typing.List[SpectralProfileKey]:
-    field_names = []
-    for f in value_fields:
-        if isinstance(f, QgsField):
-            f = f.name()
-        assert isinstance(f, str)
-        field_names.append(f)
-
-    return [SpectralProfileKey(fid, field_name) for fid, field_name in itertools.product(feature_ids, field_names)]
 
 
 class SerializationMode(enum.Enum):
@@ -519,7 +507,7 @@ class SpectralProfileRenderer(object):
         self.mTemporaryKeys.clear()
         self.mTemporaryKeys.update(fids)
 
-    def setProfilePlotStyle(self, plotStyle, keys: typing.List[SpectralProfileKey]) -> typing.List[SpectralProfileKey]:
+    def setProfilePlotStyle(self, plotStyle, keys):
         if isinstance(keys, SpectralProfileKey):
             keys = [keys]
         changed_keys = [k for k in keys if self.mProfileKey2Style.get(k) != plotStyle]

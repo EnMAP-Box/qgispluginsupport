@@ -53,16 +53,17 @@ class TestSpeclibWidgets(TestCase):
         pw.show()
         w, h = pw.width(), pw.height()
         # event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
-        event = QMouseEvent(QEvent.MouseMove, QPointF(0.5*w, 0.5*h), Qt.NoButton, Qt.NoButton, Qt.NoModifier)
+        event = QMouseEvent(QEvent.MouseMove, QPointF(0.5 * w, 0.5 * h), Qt.NoButton, Qt.NoButton, Qt.NoModifier)
         pw.mouseMoveEvent(event)
 
-        event = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5*w, 0.5*h), Qt.RightButton,Qt.RightButton, Qt.NoModifier)
+        event = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.RightButton, Qt.RightButton,
+                            Qt.NoModifier)
         pw.mouseReleaseEvent(event)
         self.showGui(pw)
 
     def test_SpectralLibraryPlotWidget(self):
 
-        speclib = TestObjects.createSpectralLibrary()
+        speclib = TestObjects.createSpectralLibrary(n_profile_fields=2)
         canvas = QgsMapCanvas()
         dv = QgsDualView()
         dv.init(speclib, canvas)
@@ -98,8 +99,8 @@ class TestSpeclibWidgets(TestCase):
         self.assertEqual(visModel.rowCount(), 1)
 
         speclib.startEditing()
-        speclib.addSpectralProfileAttribute('profiles2')
+        speclib.addSpectralProfileAttribute('profiles3')
         speclib.commitChanges(stopEditing=False)
-        speclib.deleteAttribute(speclib.fields().lookupField('profiles'))
+        speclib.deleteAttribute(speclib.fields().lookupField('profiles3'))
         speclib.commitChanges(stopEditing=False)
         self.showGui([w, dv])

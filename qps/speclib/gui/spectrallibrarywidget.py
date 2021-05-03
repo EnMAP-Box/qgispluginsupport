@@ -14,7 +14,7 @@ from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ..core.spectrallibrary import SpectralLibrary
 from ..core.spectrallibraryio import AbstractSpectralLibraryIO
-from ..core.spectralprofile import SpectralProfile, SpectralProfileKey
+from ..core.spectralprofile import SpectralProfile
 from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibraryPlotWidget, \
     SpectralLibraryPlotItem, SpectralLibraryPlotStats
 from ..processing import SpectralProcessingWidget
@@ -420,6 +420,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         assert isinstance(currentProfiles, list)
 
+
         if not isinstance(profileStyles, dict):
             profileStyles = dict()
 
@@ -461,12 +462,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
             speclib.startEditing()
 
         addedIDs = sorted(set(speclib.allFeatureIds()).difference(oldIDs))
-        addedKeys: typing.List[SpectralProfileKey] = []
+        addedKeys = []
         value_fields = [f.name() for f in self.speclib().spectralValueFields()]
 
         for id in addedIDs:
             for n in value_fields:
-                addedKeys.append(SpectralProfileKey(id, n))
+                pass
+                # addedKeys.append(SpectralProfileKey(id, n))
         # set profile style
         PROFILE2FID = dict()
         for p, fid in zip(currentProfiles, addedIDs):

@@ -17,6 +17,7 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
+import time
 import unittest
 import xmlrunner
 from qgis.gui import QgsMapCanvas
@@ -121,6 +122,39 @@ class TestCore(TestCase):
         sp2 = sp * sp
         self.assertIsInstance(sp2, SpectralProfile)
         self.assertListEqual(sp2.yValues(), [v * v for v in yvals])
+
+    def test_SpectralProfileLoadingTask(self):
+
+        speclib = TestObjects.createSpectralLibrary(n=10, n_profile_fields=2)
+        self.assertIsInstance(speclib, QgsVectorLayer)
+        self.assertTrue(speclib.featureCount() == 10)
+        self.assertTrue(len(profile_fields(speclib)) == 2)
+
+        RESULTS = dict()
+
+        def onProfilesLoaded(loaded_profiles):
+            print(loaded_profiles)
+            RESULTS.update(loaded_profiles)
+
+        def onFinished(result, task):
+            print('Finished')
+            self.assertIsInstance(task, SpectralProfileLoadingTask)
+            self.assertTrue(result)
+            self.assertEqual(len(task.RESULTS), speclib.featureCount())
+            RESULTS.update(task.RESULTS)
+            self.assertEqual(len(RESULTS), speclib.featureCount())
+
+        task = SpectralProfileLoadingTask(speclib, callback=onFinished)
+        task.finished(task.run())
+
+        tm: QgsTaskManager = QgsApplication.instance().taskManager()
+        task = SpectralProfileLoadingTask(speclib, callback=onFinished)
+        # task.sigProfilesLoaded.connect(onProfilesLoaded)
+        taskID = tm.addTask(task)
+        self._tsk = task
+        w = QWidget()
+        QTimer.singleShot(500, lambda w=w: w.close())
+        self.showGui(w)
 
     def test_SpectralProfile_BadBandList(self):
 
@@ -290,7 +324,6 @@ class TestCore(TestCase):
         sp2.setYUnit('reflectance')
         # self.assertNotEqual(sp1, sp2)
 
-
         self.SP = sp1
 
         dump = pickle.dumps(sp1)
@@ -324,7 +357,6 @@ class TestCore(TestCase):
         block2 = SpectralProfileBlock.fromVariantMap(kwds)
         self.assertIsInstance(block2, SpectralProfileBlock)
         self.assertEqual(block1, block2)
-
 
     def test_read_temporal_wavelength(self):
 
@@ -670,7 +702,6 @@ class TestCore(TestCase):
         # assign styles
         for p in sl1:
             self.assertIsInstance(p, SpectralProfile)
-
 
         # test line color before commit
         checkColorNames(sl1)

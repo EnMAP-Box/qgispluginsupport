@@ -28,7 +28,7 @@ from ...externals import pyqtgraph as pg
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, FIELD_NAME, ogrStandardFields, createStandardFields
 
 # a single profile is identified by its QgsFeature id and profile_field index or profile_field name
-SpectralProfileKey = namedtuple('SpectralProfileKey', ['fid', 'profile_field'])
+
 EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None, 'bbl': None}
 
 
@@ -428,16 +428,6 @@ class SpectralProfile(QgsFeature):
             self.setGeometry(QgsGeometry.fromPointXY(sp))
         elif isinstance(pt, QgsPointXY):
             self.setGeometry(QgsGeometry.fromPointXY(pt))
-
-    def key(self) -> SpectralProfileKey:
-        """
-        This key that identifies the profiles data BLOB
-        SpectralProfile::id() = QgsFeature::id() = identifies the feature "row"
-        SpectralProfile.key() = SpectralProfileKey -> identifies the feature row & QgsField name of BLOB column
-        :return:
-        """
-        warnings.warn(DeprecationWarning)
-        return self.mProfileKey
 
     def geoCoordinate(self):
         return self.geometry()
