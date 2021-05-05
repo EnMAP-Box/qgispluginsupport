@@ -984,8 +984,6 @@ class SpectralProfilePlotVisualization(QObject):
     def plotStyle(self) -> PlotStyle:
         return self.mPlotStyle
 
-
-
 class SpectralProfilePlotControl(QAbstractTableModel):
     CIX_FIELD = 0
     CIX_MODEL = 1
