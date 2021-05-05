@@ -275,11 +275,13 @@ def initResourceFile(path):
     if add_path:
         sys.path.append(path.parent.as_posix())
     try:
-        __import__(name)
+        rcModule = __import__(name)
         # spec = importlib.util.spec_from_file_location(name, path)
         # rcModule = importlib.util.module_from_spec(spec)
         # spec.loader.exec_module(rcModule)
         # rcModule.qInitResources()
+        rcModule.qInitResources()
+        s = ""
 
     except Exception as ex:
         print(ex, file=sys.stderr)

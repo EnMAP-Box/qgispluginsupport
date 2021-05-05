@@ -22,6 +22,8 @@ def profile_fields(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) ->
 def profile_field_indices(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[int]:
     return [spectralLibrary.fields().lookupField(f.name()) for f in profile_fields(spectralLibrary)]
 
+def profile_field_names(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[str]:
+    return [f.name() for f in profile_fields(spectralLibrary)]
 
 
 def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVectorLayer]) -> int:

@@ -124,6 +124,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionImportVectorRasterSource.setToolTip('Import spectral profiles from a raster image '
                                                        'based on vector geometries (Points).')
         self.actionImportVectorRasterSource.setIcon(QIcon(':/images/themes/default/mActionAddOgrLayer.svg'))
+
         self.actionImportVectorRasterSource.triggered.connect(self.onImportFromRasterSource)
 
         m = QMenu()

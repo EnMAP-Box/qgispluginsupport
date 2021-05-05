@@ -547,12 +547,12 @@ class TestSpeclibWidgets(TestCase):
 
         pd = QProgressDialog()
         speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
-        speclib.setName(' My Speclib *./\\[]:')
+        speclib.setName(' My Speclib')
         #
-        sl2 = TestObjects.createSpectralLibrary(2, wlu='Nanometers', n_bands=[5, 25], n_profile_fields=2)
+        sl2 = TestObjects.createSpectralLibrary(512, wlu='Nanometers', n_bands=[177, 6])
         speclib.startEditing()
         speclib.addSpeclib(sl2)
-
+        speclib.commitChanges()
         slw = SpectralLibraryWidget(speclib=speclib)
         pd.close()
         QgsProject.instance().addMapLayer(slw.speclib())
@@ -566,82 +566,9 @@ class TestSpeclibWidgets(TestCase):
         l = len(speclib)
         self.assertTrue(slw.speclib() == speclib)
 
-        self.assertTrue(len(slw.plotWidget().temporaryProfileKeys()) == 0)
-        slw.setAddCurrentProfilesAutomatically(True)
-        slw.setCurrentProfiles(cs)
-        self.assertTrue(len(slw.plotWidget().temporaryProfileKeys()) == 0)
-
-        slw.setAddCurrentProfilesAutomatically(False)
-        slw.setCurrentProfiles(cs)
-        self.assertTrue(len(slw.plotWidget().temporaryProfileKeys()) == 3)
-
-        from qps.plotstyling.plotstyling import MarkerSymbol
-        def onAddRandomProfile():
-            ext = l1.extent()
-            x = random.uniform(ext.xMinimum(), ext.xMaximum())
-            y = random.uniform(ext.yMinimum(), ext.yMaximum())
-            p = SpectralProfile.fromRasterLayer(l1, SpatialPoint(l1.crs(), x, y))
-            style = PlotStyle()
-            style.setLineColor(QColor('blue'))
-            style.setLineWidth(2)
-            style.setMarkerSymbol(MarkerSymbol.Diamond)
-            style.setMarkerColor('blue')
-
-            slw.setCurrentProfiles([p], {p: style})
-
-        btnAddRandomProfile = QPushButton('Add Profile')
-        btnAddRandomProfile.clicked.connect(onAddRandomProfile)
-
-        lh = QHBoxLayout()
-
-        lh.addWidget(btnAddRandomProfile)
-        lv = QVBoxLayout()
-        mbar = QgsMessageBar()
-        lv.addWidget(mbar)
-        slw.setMainMessageBar(mbar)
-        lv.addLayout(lh)
-        lv.addWidget(slw)
-
-        w = QWidget()
-        w.setLayout(lv)
-
-        # add profile with none-default plot style
-
-        self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().profileRenderer())
-        self.assertEqual(slw.speclib().profileRenderer(),
-                         slw.plotWidget().actionSpectralProfileRendering().profileRenderer())
-
-        onAddRandomProfile()
-
-        self.assertEqual(slw.speclib().profileRenderer(), slw.plotWidget().profileRenderer())
-        self.assertEqual(slw.speclib().profileRenderer(),
-                         slw.plotWidget().actionSpectralProfileRendering().profileRenderer())
-
-        # this should not end in endless recursion
-        slw.plotWidget().onProfileRendererChanged()
-
-        pr1 = slw.speclib().profileRenderer()
-        self.assertIsInstance(pr1, SpectralProfileRenderer)
-        self.assertFalse(pr1.useRendererColors)
-        slw.plotWidget().optionUseVectorSymbology().setChecked(True)
-        self.assertTrue(len(pr1.mProfileKey2Style) > 0)
-
-        pr2 = slw.speclib().profileRenderer()
-        self.assertTrue(pr2.useRendererColors)
-        self.assertEqual(pr1.mProfileKey2Style, pr2.mProfileKey2Style)
-
-        slw.plotWidget().optionUseVectorSymbology().setChecked(False)
-        pr3 = slw.speclib().profileRenderer()
-        self.assertFalse(pr3.useRendererColors)
-        self.assertEqual(pr1.mProfileKey2Style, pr3.mProfileKey2Style)
-
-        path = self.createTestOutputDirectory() / 'speclib_gui' / 'testsli_gui.gpkg'
-        os.makedirs(path.parent, exist_ok=True)
-        speclib.write(path)
-
-        slw.setFilterExpression('"fid" < 5', QgsAttributeForm.ReplaceFilter, True)
-
-        self.showGui(w)
+        from qps.resources import ResourceBrowser
+        #b = ResourceBrowser()
+        self.showGui([slw])
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPanel(self):

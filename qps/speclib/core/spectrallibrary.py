@@ -526,14 +526,13 @@ class SpectralProfileRenderer(object):
     def nonDefaultPlotStyles(self) -> typing.List[PlotStyle]:
         return list(set(self.mProfileKey2Style.values()))
 
-    def profilePlotStyle(self, key: SpectralProfileKey, ignore_selection: bool = True) -> PlotStyle:
+    def profilePlotStyle(self, key, ignore_selection: bool = True) -> PlotStyle:
         d = self.profilePlotStyles([key], ignore_selection=ignore_selection)
         return d.get(key, None)
 
-    def profilePlotStyles(self, keys: typing.List[SpectralProfileKey], ignore_selection: bool = False) -> \
-            typing.Dict[SpectralProfileKey, PlotStyle]:
+    def profilePlotStyles(self, keys , ignore_selection: bool = False):
 
-        profileStyles: typing.Dict[SpectralProfileKey, PlotStyle] = dict()
+        profileStyles: t = dict()
 
         if isinstance(self.mInputSource, QgsVectorLayer):
             selectedFIDs = self.mInputSource.selectedFeatureIds()
@@ -1651,7 +1650,6 @@ class SpectralLibrary(QgsVectorLayer):
     def groupBySpectralProperties(self,
                                   fids=None,
                                   value_fields=None,
-                                  profile_keys=None,
                                   excludeEmptyProfiles: bool = True
                                   ) -> typing.Dict[SpectralSetting, typing.List[SpectralProfile]]:
         """
@@ -1666,7 +1664,6 @@ class SpectralLibrary(QgsVectorLayer):
         return groupBySpectralProperties(self.profiles(
             fids=fids,
             value_fields=value_fields,
-            profile_keys=profile_keys,
         ),
             excludeEmptyProfiles=excludeEmptyProfiles
         )

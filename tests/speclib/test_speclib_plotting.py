@@ -63,7 +63,7 @@ class TestSpeclibWidgets(TestCase):
 
     def test_SpectralLibraryPlotWidget(self):
 
-        speclib = TestObjects.createSpectralLibrary(n_profile_fields=2)
+        speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
         canvas = QgsMapCanvas()
         dv = QgsDualView()
         dv.init(speclib, canvas)

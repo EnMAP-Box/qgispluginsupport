@@ -223,7 +223,7 @@ class LayerPropertyTests(TestCase):
         w = AttributeTableWidget(vl)
         vl.startEditing()
 
-        w.mUpdateExpressionText.setExpression("'dummy'")
+        w.mUpdateExpressionText.setNameExpression("'dummy'")
 
         self.showGui(w)
 

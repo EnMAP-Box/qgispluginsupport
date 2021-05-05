@@ -129,6 +129,7 @@ def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = No
         # load resource files, e.g to make icons available
         for path in resources:
             initResourceFile(path)
+
         qgsApp = qgis.testing.start_app(cleanup=cleanup)
 
     # initialize things not done by qgis.test.start_app()...
@@ -559,7 +560,7 @@ class SpectralProfileDataIterator(object):
         self.cnb, self.cnl, self.cns = self.coredata.shape
         n_bands_per_field = [self.cnb if nb == -1 else nb for nb in n_bands_per_field]
         for nb in n_bands_per_field:
-            assert 0 < nb <= self.cnb
+            assert 0 < nb <= self.cnb, f'Max. number of bands can be {self.cnb}'
         self.band_indices: typing.List[np.ndarray] = \
             [np.linspace(0, self.cnb - 1, num=nb, dtype=np.int16) for nb in n_bands_per_field]
 
@@ -682,8 +683,7 @@ class TestObjects(object):
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
-                              n_bands: typing.Union[int, typing.List[int]] = None,
-                              n_profile_fields:int = 1,
+                              n_bands: typing.Union[int, typing.List[int]] = [-1],
                               wlu: str = None) -> 'SpectralLibrary':
         """
         Creates an Spectral Library
@@ -700,12 +700,13 @@ class TestObjects(object):
         """
         assert n > 0
         assert 0 <= n_empty <= n
-        assert n_profile_fields >= 1
         from .speclib.core.spectrallibrary import SpectralLibrary, FIELD_VALUES
         from .speclib.core import profile_field_indices
+        if not isinstance(n_bands, list):
+            n_bands = [n_bands]
         slib: SpectralLibrary = SpectralLibrary()
         assert slib.startEditing()
-        for i in range(len(slib.spectralValueFields()), n_profile_fields):
+        for i in range(len(slib.spectralValueFields()), len(n_bands)):
             slib.addSpectralProfileAttribute(f'{FIELD_VALUES}{i}')
         slib.commitChanges(stopEditing=False)
 

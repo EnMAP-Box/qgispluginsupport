@@ -743,30 +743,35 @@ def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
     """
 
     results = dict()
-    if len(profiles) == 0:
-        return results
 
-    p_fields = profile_fields(profiles[0])
-    p_field_indices = profile_field_indices(profiles[0])
-    p_field_names = [f.name() for f in p_fields]
 
-    if profile_field is None:
-        p_field = p_fields[0]
-        p_field_idx = p_field_indices[0]
-    elif isinstance(profile_field, int):
-        assert profile_field in p_field_indices
-        p_field_idx = profile_field
-        p_field = p_fields[p_field_indices.index(p_field_idx)]
-    elif isinstance(profile_field, str):
-        p_field_idx = p_field_indices[p_field_names.index(profile_field)]
-        p_field = p_fields[p_field_names.index(profile_field)]
-    elif isinstance(profile_field, QgsField):
-        p_field_idx = p_field_indices[p_field_names.index(profile_field.name())]
-        p_field = p_fields[p_field_names.index(profile_field.name())]
+
+
+    # will be initialized with 1st SpectralProfile
+    p_field = None
+    p_field_idx = None
 
     for p in profiles:
-
         assert isinstance(p, SpectralProfile)
+        if p_field_idx is None:
+            # initialize the profile field to group profiles on
+            p_fields = profile_fields(p)
+            p_field_indices = profile_field_indices(p)
+            p_field_names = [f.name() for f in p_fields]
+
+            if profile_field is None:
+                p_field = p_fields[0]
+                p_field_idx = p_field_indices[0]
+            elif isinstance(profile_field, int):
+                assert profile_field in p_field_indices
+                p_field_idx = profile_field
+                p_field = p_fields[p_field_indices.index(p_field_idx)]
+            elif isinstance(profile_field, str):
+                p_field_idx = p_field_indices[p_field_names.index(profile_field)]
+                p_field = p_fields[p_field_names.index(profile_field)]
+            elif isinstance(profile_field, QgsField):
+                p_field_idx = p_field_indices[p_field_names.index(profile_field.name())]
+                p_field = p_fields[p_field_names.index(profile_field.name())]
 
         d = p.values(profile_field=p_field_idx)
 
@@ -1010,8 +1015,10 @@ class SpectralProfileLoadingTask(QgsTask):
         self.mSpeclibSource: str = speclib.source()
         self.mPathSpeclib: pathlib.Path = pathlib.Path(speclib.source())
         self.mProfileFields: typing.List[QgsField] = profile_fields(speclib)
-        self.mProfileFieldIndices: typing.List[int] = [speclib.fields().lookupField(f.name()) for f in
-                                                       self.mProfileFields]
+
+        if isinstance(fids, set):
+            fids = list(fids)
+        assert isinstance(fids, list)
         self.mFIDs = fids
         self.exception: Exception = None
         assert len(self.mProfileFields) > 0
@@ -1034,7 +1041,9 @@ class SpectralProfileLoadingTask(QgsTask):
             options = QgsVectorLayer.LayerOptions(loadDefaultStyle=False)
             speclib = QgsVectorLayer(self.mPathSpeclib.as_posix(), options=options)
             assert speclib.isValid()
-            # speclib = QgsVectorLayer(self.mSpeclibSource
+
+            field_indices = [speclib.fields().lookupField(f.name()) for f in self.mProfileFields]
+
             request = QgsFeatureRequest()
             t_progress = datetime.datetime.now() + self.mTimeDelta
 
@@ -1050,10 +1059,10 @@ class SpectralProfileLoadingTask(QgsTask):
                     return False
 
                 f: QgsFeature
-                sp = SpectralProfile.fromQgsFeature(f, profile_field=self.mProfileFieldIndices[0])
-                for idx in self.mProfileFieldIndices:
+                sp = SpectralProfile.fromQgsFeature(f, profile_field=field_indices[0])
+                for idx in field_indices:
                     # de-serialize the profile information
-                    sp.values(idx)
+                    sp.values(profile_field=idx)
                 self.RESULTS[sp.id()] = sp
                 n_done += 1
 

@@ -104,6 +104,17 @@ class TestUtils(TestCase):
                 size = gdalFileSize(path)
                 self.assertTrue(size > 0)
 
+    def test_qgsFieldAttributes2List(self):
+
+        bstr = b'\x80\x04\x95^\x00\x00\x00\x00\x00\x00\x00}\x94(\x8c\x01x\x94]\x94(M,\x01M\x90\x01MX\x02M\xb0\x04M\xc4\te\x8c\x01y\x94]\x94(G?\xcdp\xa3\xd7\n=qG?\xd9\x99\x99\x99\x99\x99\x9aG?\xd3333333G?\xe9\x99\x99\x99\x99\x99\x9aG?\xe6ffffffe\x8c\x05xUnit\x94\x8c\x02nm\x94u.'
+        attributes = [None, NULL, QVariant(None), '', 'None',
+                      QByteArray(bstr),
+                      bstr, bytes(bstr)]
+
+        a2 = qgsFieldAttributes2List(attributes)
+        dump = pickle.dumps(a2)
+        self.assertIsInstance(dump, bytes)
+
     def test_findmaplayerstores(self):
 
         ref = [QgsProject.instance(), QgsMapLayerStore(), QgsMapLayerStore()]

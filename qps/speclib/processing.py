@@ -449,7 +449,7 @@ class NO_MODEL_MODEL(QgsProcessingModelAlgorithm):
         super(NO_MODEL_MODEL, self).__init__(*args, *kwds)
 
     def id(self):
-        return 'No Model'
+        return ''
 
     def displayName(self):
         return 'No Model'
@@ -546,10 +546,10 @@ class SpectralProcessingModelList(QAbstractListModel):
         model: QgsProcessingModelAlgorithm = self.mModels[index.row()]
 
         if role == Qt.DisplayRole:
-            return f'{model.id()}'
+            return f'{model.displayName()}'
 
         if role == Qt.ToolTipRole:
-            return f'{model.name()}\n{model.group()}'
+            return f'{model.displayName()}'
 
         if role == Qt.UserRole:
             return model
