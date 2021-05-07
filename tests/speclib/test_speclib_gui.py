@@ -31,10 +31,10 @@ from osgeo import ogr
 
 from qgis.PyQt import QtCore
 from qps.plotstyling.plotstyling import PlotStyle
-from qps.speclib.core.spectrallibrary import SpectralProfileRenderer, defaultCurvePlotStyle, XMLNODE_PROFILE_RENDERER
+from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, XMLNODE_PROFILE_RENDERER
 from qps.speclib.gui.spectrallibraryconsistencywidget import SpectralLibraryConsistencyCheckWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem, \
-    SpectralProfilePlotWidget, SpectralProfileRendererWidget
+    SpectralProfilePlotWidget, SpectralProfilePlotWidgetStyle, SpectralLibraryPlotWidgetStyleWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileTableModel, SpectralProfileEditorWidget, \
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorConfigWidget, SpectralProfileEditorWidgetFactory, \
@@ -235,17 +235,17 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorScheme(self):
 
-        self.assertIsInstance(SpectralProfileRenderer.default(), SpectralProfileRenderer)
-        self.assertIsInstance(SpectralProfileRenderer.dark(), SpectralProfileRenderer)
-        self.assertIsInstance(SpectralProfileRenderer.bright(), SpectralProfileRenderer)
-        self.assertIsInstance(SpectralProfileRenderer.fromUserSettings(), SpectralProfileRenderer)
+        self.assertIsInstance(SpectralProfilePlotWidgetStyle.default(), SpectralProfilePlotWidgetStyle)
+        self.assertIsInstance(SpectralProfilePlotWidgetStyle.dark(), SpectralProfilePlotWidgetStyle)
+        self.assertIsInstance(SpectralProfilePlotWidgetStyle.bright(), SpectralProfilePlotWidgetStyle)
+        self.assertIsInstance(SpectralProfilePlotWidgetStyle.fromUserSettings(), SpectralProfilePlotWidgetStyle)
 
-        b = SpectralProfileRenderer.bright()
+        b = SpectralProfilePlotWidgetStyle.bright()
         b.saveToUserSettings()
-        self.assertEqual(b, SpectralProfileRenderer.fromUserSettings())
-        profileRenderer = SpectralProfileRenderer.default()
+        self.assertEqual(b, SpectralProfilePlotWidgetStyle.fromUserSettings())
+        profileRenderer = SpectralProfilePlotWidgetStyle.default()
         profileRenderer.saveToUserSettings()
-        self.assertEqual(profileRenderer, SpectralProfileRenderer.fromUserSettings())
+        self.assertEqual(profileRenderer, SpectralProfilePlotWidgetStyle.fromUserSettings())
 
         testDir = self.createTestOutputDirectory() / 'speclibColorScheme'
         os.makedirs(testDir, exist_ok=True)
@@ -277,15 +277,15 @@ class TestSpeclibWidgets(TestCase):
         dom.setContent(xml)
         root = dom.documentElement()
         node = root.firstChildElement(XMLNODE_PROFILE_RENDERER)
-        profileRenderer2 = SpectralProfileRenderer.readXml(node)
-        self.assertIsInstance(profileRenderer2, SpectralProfileRenderer)
+        profileRenderer2 = SpectralProfilePlotWidgetStyle.readXml(node)
+        self.assertIsInstance(profileRenderer2, SpectralProfilePlotWidgetStyle)
         self.assertEqual(profileRenderer, profileRenderer2)
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorSchemeWidget(self):
 
-        w = SpectralProfileRendererWidget()
-        self.assertIsInstance(w, SpectralProfileRendererWidget)
+        w = SpectralLibraryPlotWidgetStyleWidget()
+        self.assertIsInstance(w, SpectralLibraryPlotWidgetStyleWidget)
         self.showGui(w)
 
     @unittest.skipIf(False, '')
@@ -533,7 +533,6 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryWidget()
 
         self.showGui(w)
-
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):

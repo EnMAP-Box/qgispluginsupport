@@ -31,12 +31,10 @@ import enum
 import pickle
 import typing
 import pathlib
-import itertools
 import os
 import datetime
 import re
 import sys
-import copy
 import weakref
 import warnings
 from osgeo import gdal, ogr, osr, gdal_array
@@ -44,17 +42,16 @@ import uuid
 import numpy as np
 from qgis.PyQt.QtCore import Qt, QVariant, QPoint, QUrl, QMimeData, \
     QFileInfo, pyqtSignal
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.PyQt.QtXml import QDomDocument
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QDialog
 
 from qgis.core import QgsApplication, \
-    QgsRenderContext, QgsFeature, QgsVectorLayer, QgsMapLayer, QgsRasterLayer, \
+    QgsFeature, QgsVectorLayer, QgsMapLayer, QgsRasterLayer, \
     QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsActionManager, QgsFeatureIterator, QgsFeatureRequest, \
     QgsGeometry, QgsPointXY, QgsPoint, QgsDefaultValue, QgsReadWriteContext, \
     QgsMapLayerProxyModel, \
-    QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
     QgsEditorWidgetSetup, QgsAction, QgsTask, QgsMessageLog, QgsFileUtils, \
     QgsProcessingFeedback
 
@@ -70,7 +67,7 @@ from ...plotstyling.plotstyling import PlotStyle
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
     SpectralSetting, groupBySpectralProperties
-from .. import SpectralLibrarySettingsKey, SPECLIB_EPSG_CODE, FIELD_NAME, FIELD_FID, FIELD_VALUES
+from .. import SPECLIB_EPSG_CODE, FIELD_FID, FIELD_VALUES
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -292,358 +289,6 @@ def defaultCurvePlotStyle() -> PlotStyle:
     ps.markerSymbol = None
     ps.linePen.setStyle(Qt.SolidLine)
     return ps
-
-
-class SpectralProfileRenderer(object):
-
-    @staticmethod
-    def default():
-        """
-        Returns the default plotStyle scheme.
-        :return:
-        :rtype: SpectralProfileRenderer
-        """
-        return SpectralProfileRenderer.dark()
-
-    @staticmethod
-    def fromUserSettings():
-        """
-        Returns the SpectralProfileRenderer last saved in then library settings
-        :return:
-        :rtype:
-        """
-        settings = speclibSettings()
-
-        scheme = SpectralProfileRenderer.default()
-
-        if SpectralLibrarySettingsKey.DEFAULT_PROFILE_STYLE.name in settings.allKeys():
-            scheme.profileStyle = PlotStyle.fromJSON(
-                settings.value(SpectralLibrarySettingsKey.DEFAULT_PROFILE_STYLE.name))
-        if SpectralLibrarySettingsKey.CURRENT_PROFILE_STYLE.name in settings.allKeys():
-            scheme.temporaryProfileStyle = PlotStyle.fromJSON(
-                settings.value(SpectralLibrarySettingsKey.CURRENT_PROFILE_STYLE.name))
-
-        scheme.backgroundColor = settings.value(SpectralLibrarySettingsKey.BACKGROUND_COLOR.name,
-                                                scheme.backgroundColor)
-        scheme.foregroundColor = settings.value(SpectralLibrarySettingsKey.FOREGROUND_COLOR.name,
-                                                scheme.foregroundColor)
-        scheme.infoColor = settings.value(SpectralLibrarySettingsKey.INFO_COLOR.name, scheme.infoColor)
-        scheme.selectionColor = settings.value(SpectralLibrarySettingsKey.SELECTION_COLOR.name, scheme.selectionColor)
-        scheme.useRendererColors = settings.value(SpectralLibrarySettingsKey.USE_VECTOR_RENDER_COLORS.name,
-                                                  scheme.useRendererColors) in ['True', 'true', True]
-
-        return scheme
-
-    @staticmethod
-    def dark():
-        ps = defaultCurvePlotStyle()
-        ps.setLineColor('white')
-
-        cs = defaultCurvePlotStyle()
-        cs.setLineColor('green')
-
-        return SpectralProfileRenderer(
-            name='Dark',
-            fg=QColor('white'),
-            bg=QColor('black'),
-            ic=QColor('white'),
-            sc=QColor('yellow'),
-            ps=ps, cs=cs, useRendererColors=False)
-
-    @staticmethod
-    def bright():
-        ps = defaultCurvePlotStyle()
-        ps.setLineColor('black')
-
-        cs = defaultCurvePlotStyle()
-        cs.setLineColor('green')
-
-        return SpectralProfileRenderer(
-            name='Bright',
-            fg=QColor('black'),
-            bg=QColor('white'),
-            ic=QColor('black'),
-            sc=QColor('red'),
-            ps=ps, cs=cs, useRendererColors=False)
-
-    def __init__(self,
-                 name: str = 'color_scheme',
-                 fg: QColor = QColor('white'),
-                 bg: QColor = QColor('black'),
-                 ps: PlotStyle = None,
-                 cs: PlotStyle = None,
-                 ic: QColor = QColor('white'),
-                 sc: QColor = QColor('yellow'),
-                 useRendererColors: bool = True):
-        """
-        :param name: name of color scheme
-        :type name: str
-        :param fg: foreground color
-        :type fg: QColor
-        :param bg: background color
-        :type bg: QColor
-        :param ps: default profile style
-        :type ps: PlotStyle
-        :param cs: current profile style, i.e. selected profiles
-        :type cs: PlotStyle
-        :param ic: info color, color of additional information, like crosshair and cursor location
-        :type ic: QColor
-        :param useRendererColors: if true (default), use colors from the QgsVectorRenderer to colorize plot lines
-        :type useRendererColors: bool
-        """
-
-        if ps is None:
-            ps = defaultCurvePlotStyle()
-
-        if cs is None:
-            cs = defaultCurvePlotStyle()
-            cs.setLineColor('green')
-
-        self.name: str = name
-        self.foregroundColor: QColor = fg
-        self.backgroundColor: QColor = bg
-        self.profileStyle: PlotStyle = ps
-        self.temporaryProfileStyle: PlotStyle = cs
-        self.infoColor: QColor = ic
-        self.selectionColor: QColor = sc
-        self.useRendererColors: bool = useRendererColors
-
-        self.mProfileKey2Style: typing.Dict[SpectralProfileKey, PlotStyle] = dict()
-        self.mTemporaryKeys: typing.Set[SpectralProfileKey] = set()
-        self.mInputSource: QgsVectorLayer = None
-
-    def reset(self):
-        self.mProfileKey2Style.clear()
-
-    @staticmethod
-    def readXml(node: QDomElement, *args):
-        """
-        Reads the SpectralProfileRenderer from a QDomElement (XML node)
-        :param self:
-        :param node:
-        :param args:
-        :return:
-        """
-        from .spectrallibrary import XMLNODE_PROFILE_RENDERER
-        if node.tagName() != XMLNODE_PROFILE_RENDERER:
-            node = node.firstChildElement(XMLNODE_PROFILE_RENDERER)
-        if node.isNull():
-            return None
-
-        default: SpectralProfileRenderer = SpectralProfileRenderer.default()
-
-        renderer = SpectralProfileRenderer()
-        renderer.backgroundColor = QColor(node.attribute('bg', renderer.backgroundColor.name()))
-        renderer.foregroundColor = QColor(node.attribute('fg', renderer.foregroundColor.name()))
-        renderer.selectionColor = QColor(node.attribute('sc', renderer.selectionColor.name()))
-        renderer.infoColor = QColor(node.attribute('ic', renderer.infoColor.name()))
-        renderer.useRendererColors = 'true' == node.attribute('use_symbolcolor',
-                                                              str(renderer.useRendererColors)).lower()
-
-        nodeName = node.firstChildElement('name')
-        renderer.name = nodeName.firstChild().nodeValue()
-
-        nodeDefaultStyle = node.firstChildElement('default_style')
-        renderer.profileStyle = PlotStyle.readXml(nodeDefaultStyle)
-        if not isinstance(renderer.profileStyle, PlotStyle):
-            renderer.profileStyle = default.profileStyle
-
-        customStyleNodes = node.firstChildElement('custom_styles').childNodes()
-        for i in range(customStyleNodes.count()):
-            customStyleNode = customStyleNodes.at(i)
-            customStyle = PlotStyle.readXml(customStyleNode)
-            if isinstance(customStyle, PlotStyle):
-                fids = customStyleNode.firstChildElement('keys').firstChild().nodeValue().split(',')
-                rxInt = re.compile(r'\d+[ ]*')
-                fids = [int(f) for f in fids if rxInt.match(f)]
-                renderer.setProfilePlotStyle(customStyle, fids)
-
-        return renderer
-
-    def setInput(self, vectorLayer: QgsVectorLayer):
-        self.mInputSource = vectorLayer
-
-    def writeXml(self, node: QDomElement, doc: QDomDocument) -> bool:
-        """
-        Writes the PlotStyle to a QDomNode
-        :param node:
-        :param doc:
-        :return:
-        """
-        from .spectrallibrary import XMLNODE_PROFILE_RENDERER
-        profileRendererNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
-        profileRendererNode.setAttribute('bg', self.backgroundColor.name())
-        profileRendererNode.setAttribute('fg', self.foregroundColor.name())
-        profileRendererNode.setAttribute('sc', self.selectionColor.name())
-        profileRendererNode.setAttribute('ic', self.infoColor.name())
-        profileRendererNode.setAttribute('use_symbolcolor', str(self.useRendererColors))
-
-        nodeName = doc.createElement('name')
-        nodeName.appendChild(doc.createTextNode(self.name))
-        profileRendererNode.appendChild(nodeName)
-
-        if isinstance(self.profileStyle, PlotStyle):
-            nodeDefaultStyle = doc.createElement('default_style')
-            self.profileStyle.writeXml(nodeDefaultStyle, doc)
-            profileRendererNode.appendChild(nodeDefaultStyle)
-
-        nodeCustomStyles = doc.createElement('custom_styles')
-
-        customStyles = self.nonDefaultPlotStyles()
-        for style in customStyles:
-            fids = [k for k, s in self.mProfileKey2Style.items() if s == style]
-            nodeStyle = doc.createElement('custom_style')
-            style.writeXml(nodeStyle, doc)
-            nodeFIDs = doc.createElement('keys')
-            nodeFIDs.appendChild(doc.createTextNode(','.join([str(i) for i in fids])))
-            nodeStyle.appendChild(nodeFIDs)
-            nodeCustomStyles.appendChild(nodeStyle)
-        profileRendererNode.appendChild(nodeCustomStyles)
-        node.appendChild(profileRendererNode)
-
-        return True
-
-    def setTemporaryFIDs(self, fids):
-        self.mTemporaryKeys.clear()
-        self.mTemporaryKeys.update(fids)
-
-    def setProfilePlotStyle(self, plotStyle, keys):
-        if isinstance(keys, SpectralProfileKey):
-            keys = [keys]
-        changed_keys = [k for k in keys if self.mProfileKey2Style.get(k) != plotStyle]
-
-        if isinstance(plotStyle, PlotStyle):
-            for k in keys:
-                self.mProfileKey2Style[k] = plotStyle
-        else:
-            # use default style
-            for k in keys:
-                if k in self.mProfileKey2Style.keys():
-                    self.mProfileKey2Style.pop(k)
-
-        return changed_keys
-
-    def nonDefaultPlotStyles(self) -> typing.List[PlotStyle]:
-        return list(set(self.mProfileKey2Style.values()))
-
-    def profilePlotStyle(self, key, ignore_selection: bool = True) -> PlotStyle:
-        d = self.profilePlotStyles([key], ignore_selection=ignore_selection)
-        return d.get(key, None)
-
-    def profilePlotStyles(self, keys , ignore_selection: bool = False):
-
-        profileStyles: t = dict()
-
-        if isinstance(self.mInputSource, QgsVectorLayer):
-            selectedFIDs = self.mInputSource.selectedFeatureIds()
-        else:
-            selectedFIDs = []
-
-        if self.useRendererColors and isinstance(self.mInputSource, QgsVectorLayer):
-
-            fids = sorted(set([k.fid for k in keys]))
-            feature_styles: typing.Dict[int, PlotStyle] = dict()
-
-            renderContext = QgsRenderContext()
-            renderContext.setExtent(self.mInputSource.extent())
-            renderer = self.mInputSource.renderer().clone()
-            # renderer.setInput(self.mInputSource.dataSource())
-            renderer.startRender(renderContext, self.mInputSource.fields())
-            features = self.mInputSource.getFeatures(fids)
-            for i, feature in enumerate(features):
-                fid = feature.id()
-                style = self.mProfileKey2Style.get(fid, self.profileStyle).clone()
-                symbol = renderer.symbolForFeature(feature, renderContext)
-                if not isinstance(symbol, QgsSymbol):
-                    if not ignore_selection and fid in selectedFIDs:
-                        pass
-                    else:
-                        style.setVisibility(False)
-                    # symbol = renderer.sourceSymbol()
-                elif isinstance(symbol, (QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol)):
-                    color: QColor = symbol.color()
-                    color.setAlpha(int(symbol.opacity() * 100))
-
-                    style.setLineColor(color)
-                    style.setMarkerColor(color)
-                feature_styles[fid] = style
-            renderer.stopRender(renderContext)
-            for k in keys:
-                profileStyles[k] = feature_styles.get(k.fid)
-        else:
-            for k in keys:
-                profileStyles[k] = self.mProfileKey2Style.get(k, self.profileStyle).clone()
-
-        line_increase_selected = 2
-        line_increase_temp = 3
-
-        # highlight selected features
-        if not ignore_selection:
-
-            for fid, style in profileStyles.items():
-                if fid in selectedFIDs:
-                    style.setLineColor(self.selectionColor)
-                    style.setMarkerColor(self.selectionColor)
-                    style.markerBrush.setColor(self.selectionColor)
-                    style.markerSize += line_increase_selected
-                    style.linePen.setWidth(style.linePen.width() + line_increase_selected)
-                elif fid in self.mTemporaryKeys:
-                    style.markerSize += line_increase_selected
-                    style.linePen.setWidth(style.linePen.width() + line_increase_selected)
-
-        return profileStyles
-
-    def clone(self):
-        # todo: avoid refs
-        renderer = copy.copy(self)
-        return renderer
-
-    def saveToUserSettings(self):
-        """
-        Saves this plotStyle scheme to the user Qt user settings
-        :return:
-        :rtype:
-        """
-        settings = speclibSettings()
-
-        settings.setValue(SpectralLibrarySettingsKey.DEFAULT_PROFILE_STYLE.name, self.profileStyle.json())
-        settings.setValue(SpectralLibrarySettingsKey.CURRENT_PROFILE_STYLE.name, self.temporaryProfileStyle.json())
-        settings.setValue(SpectralLibrarySettingsKey.BACKGROUND_COLOR.name, self.backgroundColor)
-        settings.setValue(SpectralLibrarySettingsKey.FOREGROUND_COLOR.name, self.foregroundColor)
-        settings.setValue(SpectralLibrarySettingsKey.INFO_COLOR.name, self.infoColor)
-        settings.setValue(SpectralLibrarySettingsKey.SELECTION_COLOR.name, self.selectionColor)
-        settings.setValue(SpectralLibrarySettingsKey.USE_VECTOR_RENDER_COLORS.name, self.useRendererColors)
-
-    def printDifferences(self, renderer):
-        assert isinstance(renderer, SpectralProfileRenderer)
-        keys = [k for k in self.__dict__.keys()
-                if not k.startswith('_') and
-                k not in ['name', 'mInputSource']]
-
-        differences = []
-        for k in keys:
-            if self.__dict__[k] != renderer.__dict__[k]:
-                differences.append(f'{k}: {self.__dict__[k]} != {renderer.__dict__[k]}')
-        if len(differences) == 0:
-            print(f'# no differences')
-        else:
-            print(f'# {len(differences)} differences:')
-            for d in differences:
-                print(d)
-        return True
-
-    def __eq__(self, other):
-        if not isinstance(other, SpectralProfileRenderer):
-            return False
-        else:
-            keys = [k for k in self.__dict__.keys()
-                    if not k.startswith('_') and
-                    k not in ['name', 'mInputSource']]
-
-            for k in keys:
-                if self.__dict__[k] != other.__dict__[k]:
-                    return False
-            return True
 
 
 class SpectralLibrary(QgsVectorLayer):
@@ -1191,7 +836,7 @@ class SpectralLibrary(QgsVectorLayer):
         return []
 
     sigProgressInfo = pyqtSignal(int, int, str)
-    sigProfileRendererChanged = pyqtSignal(SpectralProfileRenderer)
+
 
     def __init__(self,
                  path: str = None,
@@ -1268,14 +913,13 @@ class SpectralLibrary(QgsVectorLayer):
         # self.beforeCommitChanges.connect(self.onBeforeCommitChanges)
 
         self.committedFeaturesAdded.connect(self.onCommittedFeaturesAdded)
-        self.mProfileRenderer: SpectralProfileRenderer = SpectralProfileRenderer()
-        self.mProfileRenderer.setInput(self)
+
 
         self.attributeAdded.connect(self.onAttributeAdded)
         self.attributeDeleted.connect(self.onFieldsChanged)
 
         self.initTableConfig()
-        self.initProfileRenderer()
+
 
     def onAttributeAdded(self, idx: int):
 
@@ -1293,46 +937,19 @@ class SpectralLibrary(QgsVectorLayer):
         if id != self.id():
             return
 
-        newFIDs = [f.id() for f in features]
+        #newFIDs = [f.id() for f in features]
         # see qgsvectorlayereditbuffer.cpp
-        oldFIDs = list(reversed(list(self.editBuffer().addedFeatures().keys())))
-        mFID2Style = self.profileRenderer().mProfileKey2Style
-        updates = dict()
-        for fidOld, fidNew in zip(oldFIDs, newFIDs):
-            if fidOld in mFID2Style.keys():
-                updates[fidNew] = mFID2Style.pop(fidOld)
-        mFID2Style.update(updates)
+        #oldFIDs = list(reversed(list(self.editBuffer().addedFeatures().keys())))
+        #mFID2Style = self.style().mProfileKey2Style
+        #updates = dict()
+        #for fidOld, fidNew in zip(oldFIDs, newFIDs):
+        #     if fidOld in mFID2Style.keys():
+        #        updates[fidNew] = mFID2Style.pop(fidOld)
+        #mFID2Style.update(updates)
 
     def setEditorWidgetSetup(self, index: int, setup: QgsEditorWidgetSetup):
         super().setEditorWidgetSetup(index, setup)
         self.onFieldsChanged()
-
-    def setProfileRenderer(self, profileRenderer: SpectralProfileRenderer):
-        assert isinstance(profileRenderer, SpectralProfileRenderer)
-        b = profileRenderer != self.mProfileRenderer
-        self.mProfileRenderer = profileRenderer
-        if profileRenderer.mInputSource != self:
-            s = ""
-        if b:
-            self.sigProfileRendererChanged.emit(self.mProfileRenderer)
-
-    def profileRenderer(self) -> SpectralProfileRenderer:
-        return self.mProfileRenderer
-
-    def initProfileRenderer(self):
-        """
-        Initializes the default QgsFeatureRenderer
-        """
-        # color = speclibSettings().value('DEFAULT_PROFILE_COLOR', QColor('green'))
-        # self.renderer().symbol().setColor(color)
-
-        uri = self.source()
-        uri = os.path.splitext(uri)[0] + '.qml'
-
-        self.mProfileRenderer = SpectralProfileRenderer.default()
-        self.mProfileRenderer.setInput(self)
-
-        self.loadNamedStyle(uri)
 
     def initTableConfig(self):
         """
@@ -1360,10 +977,10 @@ class SpectralLibrary(QgsVectorLayer):
             column.hidden = column.name in invisibleColumns
 
         # set column order
-        c_action = [c for c in columns if c.type == QgsAttributeTableConfig.Action][0]
-        c_name = [c for c in columns if c.name == FIELD_NAME][0]
-        firstCols = [c_action, c_name]
-        columns = [c_action, c_name] + [c for c in columns if c not in firstCols]
+        #c_action = [c for c in columns if c.type == QgsAttributeTableConfig.Action][0]
+        #c_name = [c for c in columns if c.name == FIELD_NAME][0]
+        #firstCols = [c_action, c_name]
+        #columns = [c_action, c_name] + [c for c in columns if c not in firstCols]
 
         conf = QgsAttributeTableConfig()
         conf.setColumns(columns)
@@ -1460,11 +1077,6 @@ class SpectralLibrary(QgsVectorLayer):
                                     addMissingFields=addMissingFields,
                                     copyEditorWidgetSetup=copyEditorWidgetSetup,
                                     progressDialog=progressDialog)
-
-        fid2Style = copy.deepcopy(speclib.profileRenderer().mProfileKey2Style)
-
-        for fid_old, fid_new in [(fo, fn) for fo, fn in zip(fids_old, fids_new) if fo in fid2Style.keys()]:
-            self.profileRenderer().mProfileKey2Style[fid_new] = fid2Style[fid_old]
 
         return fids_new
 
@@ -1677,9 +1289,7 @@ class SpectralLibrary(QgsVectorLayer):
         msg = super(SpectralLibrary, self).exportNamedStyle(doc, context=context, categories=categories)
         if msg == '':
             qgsNode = doc.documentElement().toElement()
-
-            if isinstance(self.mProfileRenderer, SpectralProfileRenderer):
-                self.mProfileRenderer.writeXml(qgsNode, doc)
+            # style issues?
 
         return msg
 
@@ -1687,14 +1297,15 @@ class SpectralLibrary(QgsVectorLayer):
                          categories: QgsMapLayer.StyleCategories = QgsMapLayer.AllStyleCategories):
 
         success, errorMsg = super(SpectralLibrary, self).importNamedStyle(doc, categories)
+
+        return success, errorMsg
+
         if success:
             elem = doc.documentElement().firstChildElement(XMLNODE_PROFILE_RENDERER)
             if not elem.isNull():
+                # load styles?
+                pass
 
-                scheme = SpectralProfileRenderer.readXml(elem)
-                if isinstance(scheme, SpectralProfileRenderer):
-                    self.mProfileRenderer = scheme
-                    self.mProfileRenderer.setInput(self)
         return success, errorMsg
 
     def exportProfiles(self, *args, **kwds) -> list:

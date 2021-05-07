@@ -73,7 +73,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
         self.mMainView.showContextMenuExternally.connect(self.onShowContextMenuAttributeEditor)
 
-        self.mSpeclibPlotWidget: SpectralProfilePlotWidget = SpectralLibraryPlotWidget()
+        self.mSpeclibPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
         assert isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)
         self.mSpeclibPlotWidget.setDualView(self.mMainView)
         self.mStatusLabel.setPlotWidget(self.mSpeclibPlotWidget)
@@ -159,9 +159,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionExportSpeclib)
 
         self.tbSpeclibAction.addSeparator()
-        self.cbXAxisUnit = self.plotWidget().mOptionXUnit.createUnitComboBox()
+        self.cbXAxisUnit = self.mSpeclibPlotWidget.optionXUnit.createUnitComboBox()
         self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
-        self.tbSpeclibAction.addAction(self.plotWidget().mOptionUseVectorSymbology)
+        self.tbSpeclibAction.addAction(self.mSpeclibPlotWidget.optionColorsFromFeatureRenderer)
 
         self.actionShowFormView = QAction('Show Form View')
         self.actionShowFormView.setCheckable(True)

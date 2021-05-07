@@ -39,7 +39,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsVectorFileWriter, QgsProvider
     QgsProject, QgsProviderMetadata, QgsFileUtils, QgsProcessingFeedback
 
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_VALUES, FIELD_NAME
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_VALUES
 from ..core.spectrallibraryio import AbstractSpectralLibraryIO
 
 
@@ -272,7 +272,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         m = menu.addAction('Vector Layer')
         m.setToolTip(
-            'Adds profiles from another vector source\'s "{}" and "{}" attributes.'.format(FIELD_VALUES, FIELD_NAME))
+            'Adds profiles from another vector source\'s "{}" attributes.'.format(FIELD_VALUES))
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
     @classmethod

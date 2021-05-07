@@ -77,14 +77,11 @@ def createStandardFields() -> QgsFields:
     return fields
 
 
-class SpectralLibrarySettingsKey(enum.Enum):
-    CURRENT_PROFILE_STYLE = 1
-    DEFAULT_PROFILE_STYLE = 2
-    BACKGROUND_COLOR = 3
-    FOREGROUND_COLOR = 4
-    INFO_COLOR = 5
-    USE_VECTOR_RENDER_COLORS = 6
-    SELECTION_COLOR = 7
+class SpectralLibrarySettingsKey:
+    BACKGROUND_COLOR = 'BACKGROUND_COLOR'
+    FOREGROUND_COLOR = 'FOREGROUND_COLOR'
+    INFO_COLOR = 'INFO_COLOR'
+    SELECTION_COLOR = 'SELECTION_COLOR'
 
 
 def speclibSettings() -> QgsSettings:
