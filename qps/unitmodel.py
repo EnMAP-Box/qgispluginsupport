@@ -17,6 +17,12 @@ class UnitModel(QAbstractListModel):
         self.mDescription = dict()
         self.mToolTips = dict()
 
+    def __iter__(self):
+        return iter(self.mUnits)
+
+    def __getitem__(self, slice):
+        return self.mUnits[slice]
+
     def rowCount(self, parent=None, *args, **kwargs) -> int:
         return len(self.mUnits)
 
