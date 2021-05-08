@@ -684,10 +684,6 @@ class TestCore(TestCase):
             NAME2NAME[name] = color.name()
             profiles.append(p)
 
-        def checkColorNames(sl: SpectralLibrary):
-            STYLES = sl.profileRenderer().profilePlotStyles(sl.allFeatureIds())
-            for p in sl:
-                self.assertIsInstance(p, SpectralProfile)
 
         import random
         profiles = random.choices(profiles, k=len(profiles))
@@ -703,16 +699,6 @@ class TestCore(TestCase):
         for p in sl1:
             self.assertIsInstance(p, SpectralProfile)
 
-        # test line color before commit
-        checkColorNames(sl1)
-
-        # remove features before commit
-        sl1.deleteFeatures([5, 9])
-        checkColorNames(sl1)
-
-        sl1.commitChanges()
-        # test line color after commit
-        checkColorNames(sl1)
 
     def test_writeAsRaster(self):
 
