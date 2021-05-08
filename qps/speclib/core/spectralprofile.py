@@ -1012,13 +1012,15 @@ class SpectralProfileLoadingTask(QgsTask):
         super().__init__('Load spectral profiles', QgsTask.CanCancel)
         assert isinstance(speclib, QgsVectorLayer)
         self.mCallback: typing.Callable = callback
+        self.mSpeclib: QgsVectorLayer = speclib
         self.mSpeclibSource: str = speclib.source()
         self.mPathSpeclib: pathlib.Path = pathlib.Path(speclib.source())
         self.mProfileFields: typing.List[QgsField] = profile_fields(speclib)
 
-        if isinstance(fids, set):
-            fids = list(fids)
-        assert isinstance(fids, list)
+        if fids:
+            #
+            fids = list(set(fids).intersection(speclib.allFeatureIds()))
+            assert isinstance(fids, list)
         self.mFIDs = fids
         self.exception: Exception = None
         assert len(self.mProfileFields) > 0
@@ -1038,10 +1040,12 @@ class SpectralProfileLoadingTask(QgsTask):
     def run(self):
 
         try:
-            options = QgsVectorLayer.LayerOptions(loadDefaultStyle=False)
-            speclib = QgsVectorLayer(self.mPathSpeclib.as_posix(), options=options)
-            assert speclib.isValid()
+            speclib = self.mSpeclib
 
+            if not isinstance(speclib, QgsVectorLayer):
+                options = QgsVectorLayer.LayerOptions(loadDefaultStyle=False)
+                speclib = QgsVectorLayer(self.mPathSpeclib.as_posix(), options=options)
+            assert speclib.isValid()
             field_indices = [speclib.fields().lookupField(f.name()) for f in self.mProfileFields]
 
             request = QgsFeatureRequest()
