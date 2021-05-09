@@ -787,7 +787,7 @@ class SpectralLibrary(QgsVectorLayer):
                 self.setEditorWidgetSetup(idx, setup)
 
     @staticmethod
-    def readFrom(uri, progressDialog: QgsProcessingFeedback = None):
+    def readFrom(uri, feedback: QgsProcessingFeedback = None):
         """
         Reads a Spectral Library from the source specified in "uri" (path, url, ...)
         :param uri: path or uri of the source from which to read SpectralProfiles and return them in a SpectralLibrary
@@ -806,10 +806,13 @@ class SpectralLibrary(QgsVectorLayer):
                 print(ex)
                 return None
 
+        if feedback:
+            assert isinstance(feedback, QgsProcessingFeedback)
+
         if isinstance(uri, str) and uri.endswith('.sli'):
             from ..io.envi import EnviSpectralLibraryIO
             if EnviSpectralLibraryIO.canRead(uri):
-                sl = EnviSpectralLibraryIO.readFrom(uri, progressDialog=progressDialog)
+                sl = EnviSpectralLibraryIO.readFrom(uri, feedback=feedback)
                 if isinstance(sl, SpectralLibrary):
                     if sl.name() in [DEFAULT_NAME, '']:
                         sl.setName(os.path.basename(uri))
@@ -821,7 +824,7 @@ class SpectralLibrary(QgsVectorLayer):
         for cls in sorted(readers, key=lambda r: r.score(uri), reverse=True):
             try:
                 if cls.canRead(uri):
-                    sl = cls.readFrom(uri, progressDialog=progressDialog)
+                    sl = cls.readFrom(uri, feedback=feedback)
                     if isinstance(sl, SpectralLibrary):
                         if sl.name() in [DEFAULT_NAME, '']:
                             sl.setName(os.path.basename(uri))
@@ -830,13 +833,7 @@ class SpectralLibrary(QgsVectorLayer):
                 s = ""
         return None
 
-    @classmethod
-    def instances(cls) -> list:
-        warnings.warn('SpectraLibrary.instances() Will be removed', DeprecationWarning)
-        return []
-
     sigProgressInfo = pyqtSignal(int, int, str)
-
 
     def __init__(self,
                  path: str = None,
@@ -1076,7 +1073,7 @@ class SpectralLibrary(QgsVectorLayer):
         fids_new = self.addProfiles(speclib,
                                     addMissingFields=addMissingFields,
                                     copyEditorWidgetSetup=copyEditorWidgetSetup,
-                                    progressDialog=progressDialog)
+                                    feedback=progressDialog)
 
         return fids_new
 
@@ -1084,7 +1081,6 @@ class SpectralLibrary(QgsVectorLayer):
                     profiles: typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
                     addMissingFields: bool = None, \
                     copyEditorWidgetSetup: bool = True, \
-                    progressDialog: QgsProcessingFeedback = None,
                     feedback: QgsProcessingFeedback = None) -> typing.List[int]:
 
         # todo: allow to add profiles with distinct key

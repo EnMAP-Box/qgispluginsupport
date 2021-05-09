@@ -16,7 +16,7 @@ from ..core.spectrallibrary import SpectralLibrary
 from ..core.spectrallibraryio import AbstractSpectralLibraryIO
 from ..core.spectralprofile import SpectralProfile
 from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibraryPlotWidget, \
-    SpectralLibraryPlotItem, SpectralLibraryPlotStats
+    SpectralLibraryPlotItem, SpectralLibraryPlotStats, SpectralProfilePlotControl
 from ..processing import SpectralProcessingWidget
 from ...unitmodel import BAND_NUMBER
 from ...utils import SpatialExtent, SpatialPoint
@@ -368,6 +368,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def plotWidget(self) -> SpectralProfilePlotWidget:
         return self.mSpeclibPlotWidget.plotWidget
 
+    def plotControl(self) -> SpectralProfilePlotControl:
+        return self.mSpeclibPlotWidget.mPlotControlModel
+
     def plotItem(self) -> SpectralLibraryPlotItem:
         """
         :return: SpectralLibraryPlotItem
@@ -404,14 +407,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         Adds all current spectral profiles to the "persistent" SpectralLibrary
         """
 
-        keys = list(self.plotWidget().mTEMPORARY_PROFILES)
-        self.plotWidget().mTEMPORARY_PROFILES.clear()
-
-        self.plotWidget().updatePlotDataItemStyles(keys)
+        fids = list(self.plotControl().mTemporaryProfileIDs)
+        self.plotControl().mTemporaryProfileIDs.clear()
+        self.plotControl().updatePlot(fids)
 
     def setCurrentProfiles(self,
-                           currentProfiles: typing.List[SpectralProfile],
-                           profileStyles: typing.Dict[SpectralProfile, PlotStyle] = None):
+                           currentProfiles: typing.List[SpectralProfile]):
         """
         Sets temporary profiles for the spectral library.
         If not made permanent, they will be removes when adding the next set of temporary profiles
@@ -419,11 +420,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :param profileStyles:
         :return:
         """
-        assert isinstance(currentProfiles, list)
-
-
-        if not isinstance(profileStyles, dict):
-            profileStyles = dict()
+        if isinstance(currentProfiles, typing.Generator):
+            currentProfiles = list(currentProfiles)
+        assert isinstance(currentProfiles, (list,))
 
         speclib: SpectralLibrary = self.speclib()
         plotWidget: SpectralProfilePlotWidget = self.plotWidget()
@@ -431,67 +430,35 @@ class SpectralLibraryWidget(AttributeTableWidget):
         #  stop plot updates
         plotWidget.mUpdateTimer.stop()
         restart_editing: bool = not speclib.startEditing()
-        oldCurrentKeys = self.plotWidget().temporaryProfileKeys()
-        oldCurrentIDs = self.plotWidget().temporaryProfileIds()
+        oldCurrentIDs = list(self.plotControl().mTemporaryProfileIDs)
         addAuto: bool = self.optionAddCurrentProfilesAutomatically.isChecked()
 
-        if not addAuto:
+        if addAuto:
+            self.addCurrentSpectraToSpeclib()
+        else:
             # delete previous current profiles from speclib
             speclib.beginEditCommand('Remove temporary')
             speclib.deleteFeatures(oldCurrentIDs)
             speclib.endEditCommand()
-            plotWidget.removeSPDIs(oldCurrentKeys, updateScene=False)
             # now there shouldn't be any PDI or style ref related to an old ID
-        else:
-            self.addCurrentSpectraToSpeclib()
+        self.plotControl().mTemporaryProfileIDs.clear()
 
-        self.plotWidget().mTEMPORARY_PROFILES.clear()
         # if necessary, convert QgsFeatures to SpectralProfiles
-        for i in range(len(currentProfiles)):
-            p = currentProfiles[i]
-            assert isinstance(p, QgsFeature)
-            if not isinstance(p, SpectralProfile):
-                p = SpectralProfile.fromQgsFeature(p)
-                currentProfiles[i] = p
+        #for i in range(len(currentProfiles)):
+        #    p = currentProfiles[i]
+        #    assert isinstance(p, QgsFeature)
+        #    if not isinstance(p, SpectralProfile):
+        #        p = SpectralProfile.fromQgsFeature(p)
+        #        currentProfiles[i] = p
 
         # add current profiles to speclib
         oldIDs = set(speclib.allFeatureIds())
-        res = speclib.addProfiles(currentProfiles)
-
-        self.speclib().commitChanges()
-        if restart_editing:
-            speclib.startEditing()
-
-        addedIDs = sorted(set(speclib.allFeatureIds()).difference(oldIDs))
-        addedKeys = []
-        value_fields = [f.name() for f in self.speclib().spectralValueFields()]
-
-        for id in addedIDs:
-            for n in value_fields:
-                pass
-                # addedKeys.append(SpectralProfileKey(id, n))
-        # set profile style
-        PROFILE2FID = dict()
-        for p, fid in zip(currentProfiles, addedIDs):
-            PROFILE2FID[p] = fid
-
-        renderer = self.speclib().profileRenderer()
-
-        customStyles = set(profileStyles.values())
-        if len(customStyles) > 0:
-            profileRenderer = plotWidget.profileRenderer()
-            for customStyle in customStyles:
-                fids = [PROFILE2FID[p] for p, s in profileStyles.items() if s == customStyle]
-                profileRenderer.setProfilePlotStyle(customStyle, fids)
-            plotWidget.setProfileRenderer(profileRenderer)
-
-        # set current profiles highlighted
+        addedKeys = speclib.addProfiles(currentProfiles)
 
         if not addAuto:
             # give current spectra the current spectral style
-            self.plotWidget().mTEMPORARY_PROFILES.update(addedKeys)
+            self.plotControl().mTemporaryProfileIDs.update(addedKeys)
 
-        plotWidget.mUpdateTimer.start()
 
     def currentProfiles(self) -> typing.List[SpectralProfile]:
         return self.mSpeclibPlotWidget.plotWidget.currentProfiles()

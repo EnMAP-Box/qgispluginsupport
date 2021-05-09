@@ -400,7 +400,7 @@ class UnitLookup(object):
             return None
         # see https://numpy.org/doc/stable/reference/arrays.datetime.html#arrays-dtypes-dateunits
         # for valid date units
-        if isinstance(value, np.ndarray):
+        if isinstance(value, (np.ndarray, list)):
             func = np.vectorize(UnitLookup.convertDateUnit)
             return func(value, unit)
 
@@ -414,7 +414,7 @@ class UnitLookup(object):
         elif unit == 'W':
             return value.astype(object).week
         elif unit == 'DOY':
-            return int(((value - value.astype('datetime64[Y]')).astype('timedelta64[D]') + 1).astype(int))
+            return ((value - value.astype('datetime64[Y]')).astype('timedelta64[D]') + 1).astype(int)
 
         elif unit.startswith('DecimalYear'):
             year = value.astype(object).year
@@ -1421,6 +1421,8 @@ def datetime64(value, dpy: int = None) -> np.datetime64:
     if isinstance(value, np.ndarray):
         func = np.vectorize(datetime64)
         return func(value)
+    elif isinstance(value, list):
+        return datetime64(np.asarray(value), dpy=dpy)
     else:
         raise NotImplementedError('Unsupported input value: {}'.format(value))
 

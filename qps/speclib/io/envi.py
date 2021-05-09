@@ -353,7 +353,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         return True
 
     @classmethod
-    def readFrom(cls, path, progressDialog: QgsProcessingFeedback= None) -> SpectralLibrary:
+    def readFrom(cls, path, feedback: QgsProcessingFeedback= None) -> SpectralLibrary:
         """
         Reads an ENVI Spectral Library (ESL).
         :param path: path to ENVI Spectral Library
