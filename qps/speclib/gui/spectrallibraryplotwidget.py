@@ -1019,7 +1019,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mInfoScatterPoint.setVisible(False)
         self.mInfoScatterPointHtml = ''
 
-    def spectralProfilePlotDataItems(self) -> typing.Dict[tuple, SpectralProfilePlotDataItem]:
+    def spectralProfilePlotDataItems(self) -> typing.List[SpectralProfilePlotDataItem]:
         return [item for item in self.plotItem.listDataItems()
                 if isinstance(item, SpectralProfilePlotDataItem)]
 
@@ -1684,8 +1684,18 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         for o in [k for k in self.mCache1FeatureColors if k in oldFIDs]:
             self.mCache1FeatureColors[OLD2NEW[o]] = self.mCache1FeatureColors.pop(o)
 
+        # rename fids in plot data items
+        for pdi in self.mPlotWidget.spectralProfilePlotDataItems():
+            visKey: VISUALIZATION_KEY = pdi.visualizationKey()
+            old_fid = visKey[1][0]
+            if old_fid in oldFIDs:
+                new_vis_key = (visKey[0], (OLD2NEW[old_fid], visKey[1][1], visKey[1][2], visKey[1][3]))
+                pdi.setVisualizationKey(new_vis_key)
+
         # rename fids for temporary profiles
+        # self.mTemporaryProfileIDs = {t for t in self.mTemporaryProfileIDs if t not in oldFIDs}
         self.mTemporaryProfileIDs = {OLD2NEW.get(fid, fid) for fid in self.mTemporaryProfileIDs}
+        self.updatePlot(fids=OLD2NEW.values())
 
     def onSpeclibRendererChanged(self, *args):
         self.loadFeatureColors()

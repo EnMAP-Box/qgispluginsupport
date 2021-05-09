@@ -653,7 +653,7 @@ class TestCore(TestCase):
     def test_mergeSpeclibs(self):
         sp1 = TestObjects.createSpectralLibrary()
         pd = QProgressDialog()
-        sp2 = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
+        sp2 = SpectralLibrary.readFrom(speclibpath, feedback=pd)
 
         self.assertIsInstance(sp1, SpectralLibrary)
         self.assertIsInstance(sp2, SpectralLibrary)
@@ -743,8 +743,8 @@ class TestCore(TestCase):
 
         from qpstestdata import speclib
 
-        pd = QProgressDialog()
-        sl1 = SpectralLibrary.readFrom(speclib, progressDialog=pd)
+
+        sl1 = SpectralLibrary.readFrom(speclib)
 
         sl2 = SpectralLibrary()
 

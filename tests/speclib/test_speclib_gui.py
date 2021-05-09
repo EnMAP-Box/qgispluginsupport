@@ -161,17 +161,14 @@ class TestSpeclibWidgets(TestCase):
         speclib = SpectralLibrary()
 
         sp1 = SpectralProfile()
-        sp1.setName('with Date[dateimte64]')
         xvalues = np.datetime64('2012-08-15') + np.arange(10)
         yvalues = np.arange(10)
         sp1.setValues(x=xvalues, y=yvalues, xUnit='Date')
 
         sp2 = SpectralProfile()
-        sp2.setName('with DOY')
         sp2.setValues(x=[230, 240], y=[3, 2], xUnit='DOY')
 
         sp3 = SpectralProfile()
-        sp3.setName('with Nanometers')
         sp3.setValues(x=[340, 380], y=[4, 4], xUnit='nm')
 
         self.assertTrue(speclib.startEditing())
@@ -439,28 +436,21 @@ class TestSpeclibWidgets(TestCase):
     def test_CurrentProfiles(self):
         w = SpectralLibraryWidget()
 
-        sl = TestObjects.createSpectralLibrary(10)
-        p1 = sl[0]
-        p2 = sl[1]
-        p3 = sl[2]
-        p1.setName('Default Style')
-        p2.setName('Style Red')
-        p3.setName('Style Blue')
-
-        styleA = PlotStyle()
-        styleA.setLineColor(QColor('red'))
-        styleA.setMarkerColor(QColor('red'))
-        styleB = PlotStyle()
-        styleB.setLineColor(QColor('blue'))
-        styleB.setMarkerColor(QColor('blue'))
 
         styles = dict()
-        styles[p2] = styleA
-        styles[p3] = styleB
+        def onClicked(*args):
+            sl = TestObjects.createSpectralLibrary(2)
+            w.setCurrentProfiles(sl[:])
 
-        w.setCurrentProfiles([p1, p2, p3], profileStyles=styles)
-
-        self.showGui(w)
+        btnAddTempProfiles = QPushButton('Add Temp Profiles')
+        btnAddTempProfiles.clicked.connect(onClicked)
+        # w.setCurrentProfiles([p1, p2, p3])
+        w2 = QWidget()
+        l = QVBoxLayout()
+        l.addWidget(btnAddTempProfiles)
+        l.addWidget(w)
+        w2.setLayout(l)
+        self.showGui(w2)
 
     def test_ConsistencyCheckDialog(self):
 
@@ -470,13 +460,6 @@ class TestSpeclibWidgets(TestCase):
         d.setSpeclib(speclib)
 
         self.showGui(d)
-
-    def test_SpectralLibraryWidgetV2(self):
-
-        slib = TestObjects.createSpectralLibrary(25)
-
-        w = SpectralLibraryWidget(speclib=slib)
-        self.showGui(w)
 
     def test_SpectraLibraryWidget_Empty(self):
         w1 = QWidget()
@@ -495,26 +478,34 @@ class TestSpeclibWidgets(TestCase):
         l3 = QgsVectorLayer(enmap_pixel, 'Points of Interest')
         QgsProject.instance().addMapLayers([l1, l2, l3])
 
-        pd = QProgressDialog()
-        speclib = SpectralLibrary.readFrom(speclibpath, progressDialog=pd)
-        speclib.setName(' My Speclib')
-        #
-        sl2 = TestObjects.createSpectralLibrary(512, wlu='Nanometers', n_bands=[177, 6])
-        speclib.startEditing()
-        speclib.addSpeclib(sl2)
-        speclib.commitChanges()
-        slw = SpectralLibraryWidget(speclib=speclib)
-        pd.close()
+
+        sl1 = TestObjects.createSpectralLibrary(5, wlu='Nanometers', n_bands=[177, 6])
+        sl1.setName(' My Speclib')
+
+        sl2 = TestObjects.createSpectralLibrary(3, wlu='Nanometers', n_bands=[177, 6])
+
+        slw = SpectralLibraryWidget(speclib=sl1)
+
+        sl1.startEditing()
+        sl1.addSpeclib(sl2)
+
+        profiles = TestObjects.spectralProfiles(4, fields=sl1.fields(), n_bands=[7,12])
+        slw.setCurrentProfiles(profiles)
+        fids_a = sl1.allFeatureIds()
+        #sl1.commitChanges()
+        #fids_b = sl1.allFeatureIds()
+
+
         QgsProject.instance().addMapLayer(slw.speclib())
 
-        self.assertEqual(slw.speclib(), speclib)
+        self.assertEqual(slw.speclib(), sl1)
         self.assertIsInstance(slw.speclib(), SpectralLibrary)
         fieldNames = slw.speclib().fieldNames()
         self.assertIsInstance(fieldNames, list)
 
-        cs = [speclib[0], speclib[3], speclib[-1]]
-        l = len(speclib)
-        self.assertTrue(slw.speclib() == speclib)
+        cs = [sl1[0], sl1[3], sl1[-1]]
+        l = len(sl1)
+        self.assertTrue(slw.speclib() == sl1)
 
         from qps.resources import ResourceBrowser
         #b = ResourceBrowser()
