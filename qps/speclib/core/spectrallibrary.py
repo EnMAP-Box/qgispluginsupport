@@ -57,7 +57,7 @@ from qgis.core import QgsApplication, \
 
 from qgis.gui import \
     QgsGui
-from . import profile_fields, first_profile_field_index
+from . import profile_fields, first_profile_field_index, profile_field_indices
 
 from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
@@ -65,6 +65,7 @@ from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     qgsField, qgsFieldAttributes2List, qgsFields2str, str2QgsFields
 from ...plotstyling.plotstyling import PlotStyle
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
+from . import field_index
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
     SpectralSetting, groupBySpectralProperties
 from .. import SPECLIB_EPSG_CODE, FIELD_FID, FIELD_VALUES
@@ -159,7 +160,9 @@ def read_profiles(vectorlayer: QgsVectorLayer,
     """
     if profile_field is None:
         profile_field = first_profile_field_index(vectorlayer)
-
+    else:
+        assert isinstance(profile_field, (int, str, QgsField))
+        profile_field = field_index(vectorlayer, profile_field)
     featureRequest = QgsFeatureRequest()
     if fids:
         featureRequest.setFilterFids(fids)
@@ -1057,7 +1060,7 @@ class SpectralLibrary(QgsVectorLayer):
     def addSpeclib(self, speclib,
                    addMissingFields: bool = True,
                    copyEditorWidgetSetup: bool = True,
-                   progressDialog: QgsProcessingFeedback = None) -> typing.List[int]:
+                   feedback: QgsProcessingFeedback = None) -> typing.List[int]:
         """
         Adds profiles from another SpectraLibrary
         :param speclib: SpectralLibrary
@@ -1070,10 +1073,10 @@ class SpectralLibrary(QgsVectorLayer):
         assert isinstance(speclib, SpectralLibrary)
 
         fids_old = sorted(speclib.allFeatureIds(), key=lambda i: abs(i))
-        fids_new = self.addProfiles(speclib,
+        fids_new = self.addProfiles(speclib.getFeatures(),
                                     addMissingFields=addMissingFields,
                                     copyEditorWidgetSetup=copyEditorWidgetSetup,
-                                    feedback=progressDialog)
+                                    feedback=feedback)
 
         return fids_new
 
@@ -1086,13 +1089,13 @@ class SpectralLibrary(QgsVectorLayer):
         # todo: allow to add profiles with distinct key
         if isinstance(profiles, SpectralProfile):
             profiles = [profiles]
-
         if addMissingFields is None:
             addMissingFields = isinstance(profiles, SpectralLibrary)
 
-        nTotal = len(profiles)
-        if nTotal == 0:
-            return
+        if isinstance(profiles, (QgsFeatureIterator, typing.Generator)):
+            nTotal = -1
+        else:
+            nTotal = len(profiles)
 
         assert self.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(self.name())
 
@@ -1222,16 +1225,18 @@ class SpectralLibrary(QgsVectorLayer):
 
     def profileBlocks(self,
                       fids=None,
-                      value_fields=None,
-                      profile_keys=None,
+                      profile_field:typing.Union[int, str, QgsField]=None,
                       ) -> typing.List[SpectralProfileBlock]:
         """
         Reads SpectralProfiles into profile blocks with different spectral settings
         :param blob:
         :return:
         """
+        if profile_field is None:
+            profile_field = first_profile_field_index(self)
         return SpectralProfileBlock.fromSpectralProfiles(
-            self.profiles(fids=fids, value_fields=value_fields, profile_keys=profile_keys)
+            self.profiles(fids=fids, profile_field=profile_field),
+            profile_field=profile_field
         )
 
     def profile(self, fid: int, value_field=None) -> SpectralProfile:
@@ -1240,20 +1245,20 @@ class SpectralLibrary(QgsVectorLayer):
         return SpectralProfile.fromQgsFeature(self.getFeature(fid), profile_field=value_field)
 
     def profiles(self,
-                 fids=None,
-                 value_fields=None) -> typing.Generator[SpectralProfile, None, None]:
+                 fids:typing.List[int] = None,
+                 profile_field:typing.Union[int, str, QgsField] = None) -> typing.Generator[SpectralProfile, None, None]:
         """
         Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
         If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value profile_field.
-        :param value_fields:
-        :type value_fields:
+        :param profile_field:
+        :type profile_field:
         :param profile_keys:
         :type profile_keys:
         :param fids: optional, [int-list-of-feature-ids] to return
         :return: generator of [List-of-SpectralProfiles]
         """
 
-        return read_profiles(self, fids=fids, profile_field=value_fields)
+        return read_profiles(self, fids=fids, profile_field=profile_field)
 
     def groupBySpectralProperties(self,
                                   fids=None,
@@ -1271,7 +1276,7 @@ class SpectralLibrary(QgsVectorLayer):
         """
         return groupBySpectralProperties(self.profiles(
             fids=fids,
-            value_fields=value_fields,
+            profile_field=value_fields,
         ),
             excludeEmptyProfiles=excludeEmptyProfiles
         )

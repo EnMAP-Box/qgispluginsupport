@@ -1305,9 +1305,9 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
 
 class SpectralProcessingAlgorithmExample(QgsProcessingAlgorithm):
     NAME = 'spectral_processing_algorithm_example'
-    INPUT = 'Input_Profiles'
-    CODE = 'python_code'
-    OUTPUT = 'Output_Profiles'
+    INPUT = 'INPUT'
+    CODE = 'CODE'
+    OUTPUT = 'OUTPUT'
 
     def __init__(self):
         super().__init__()

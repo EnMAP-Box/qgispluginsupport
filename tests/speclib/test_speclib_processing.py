@@ -1,20 +1,22 @@
 # noinspection PyPep8Naming
 import unittest
-from datetime import datetime
+import datetime
 
 import xmlrunner
+from qgis._core import QgsProcessingOutputVectorLayer
 
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
 
 from qgis.core import QgsProcessingProvider
 
 from qps import initResources, initAll
+from qps.speclib.core import profile_field_lookup
 from qps.testing import TestObjects, StartOptions, SpectralProcessingAlgorithmExample
 from qps.speclib.gui.spectrallibrarywidget import *
 from qps.speclib.processing import *
 from qps.speclib.processingalgorithms import *
 from qps.testing import TestCase, TestAlgorithmProvider
-
+import numpy as np
 
 class SpectralProcessingExamples(TestCase):
     @classmethod
@@ -76,9 +78,11 @@ class SpectralProcessingExamples(TestCase):
         # internally, they use SpectralProfileBlocks to described
         # and transfer profile data of same spectral setting:
 
-        # create a SpectralLibrary of profiles with a different number of bands:
-        speclib: SpectralLibrary = TestObjects.createSpectralLibrary(10, n_bands=[6, 7, 10, 25])
-
+        # create a SpectralLibrary of profiles with a different number of bands per features:
+        speclib: SpectralLibrary = TestObjects.createSpectralLibrary(10, n_bands=[6, 10])
+        speclib.startEditing()
+        speclib.addSpeclib(TestObjects.createSpectralLibrary(10, n_bands=[5, 17]))
+        speclib.commitChanges()
         # use the spectral library as input
 
         parameters = {alg.INPUT: speclib}
@@ -91,9 +95,10 @@ class SpectralProcessingExamples(TestCase):
         profile_blocks = results.get(SpectralProcessingAlgorithmExample.OUTPUT, None)
         self.assertIsInstance(profile_blocks, list)
 
-        # as the spectral library contains profiles with 6, 7, 10 or 25 bands,
+        # the spectral library contains profiles with (field 1) 6 and 5 bands and (field 2) 10 and 17 bands,
         # they are grouped into 4 SpectralProfileBlocks
-        self.assertTrue(len(profile_blocks) == 4)
+        self.assertTrue(len(profile_blocks) == 2)
+
         for b, block in enumerate(profile_blocks):
             self.assertIsInstance(block, SpectralProfileBlock)
 
@@ -137,11 +142,20 @@ class SpectralProcessingExamples(TestCase):
         model = QgsProcessingModelAlgorithm()
         model.setName('ExampleModel')
 
+
         def createChildAlgorithm(algorithm_id: str, description='') -> QgsProcessingModelChildAlgorithm:
-            alg = QgsProcessingModelChildAlgorithm(algorithm_id)
-            alg.generateChildId(model)
-            alg.setDescription(description)
-            return alg
+            """
+            Helper function to create a QgsProcessingModelChildAlgorithm
+            :param algorithm_id: algorithm id, as available in the QgsProcessingRegistry
+            :param description:
+            :return: QgsProcessingModelChildAlgorithm
+            """
+            alg = QgsApplication.instance().processingRegistry().algorithmById(algorithm_id)
+            assert isinstance(alg, QgsProcessingAlgorithm), f'{algorithm_id} not registered in QgsProcessingRegistry'
+            child_alg = QgsProcessingModelChildAlgorithm(algorithm_id)
+            child_alg.generateChildId(model)
+            child_alg.setDescription(description)
+            return child_alg
 
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         alg = SpectralProcessingAlgorithmExample()
@@ -153,77 +167,85 @@ class SpectralProcessingExamples(TestCase):
         # 1. read spectral profiles from any QgsVectorLayer.
         #    The spectral_profile_reader can use standard QGIS input object, i.e. vector layer and vector fields
         #    Its output is a list of SpectralProfileBlocks
-        algR = reg.algorithmById('testalgorithmprovider:spectral_profile_reader')
 
-        # 2. read and process SpectralProfileBlocls
-        algP = reg.algorithmById('testalgorithmprovider:spectral_processing_algorithm_example')
+        # create child algorithms. Each represents an instances of a QgsProcessingAlgorithms
+        cidR: str = model.addChildAlgorithm(createChildAlgorithm('testalgorithmprovider:spectral_profile_reader',
+                                                                 'Read'))
+        cidP1: str = model.addChildAlgorithm(createChildAlgorithm('testalgorithmprovider:spectral_processing_algorithm_example',
+                                                                  'Process Step 1'))
+        cidP2: str = model.addChildAlgorithm(createChildAlgorithm('testalgorithmprovider:spectral_processing_algorithm_example',
+                                                                  'Process Step 2'))
+        cidW: str = model.addChildAlgorithm(createChildAlgorithm('testalgorithmprovider:spectral_profile_writer',
+                                                                 'Write'))
 
-        # 3. write SpectralProfileBlocks to standard QGIS output object, i.e. a BLOB profile_field of a QgsVectorLayer
-        algW = reg.algorithmById('testalgorithmprovider:spectral_profile_writer')
+        # set model inputs and outputs
+        mip_name_src = 'speclib_source'
+        mip_name_dst = 'speclib_target'
 
-        for a in [algP, algR, algW]:
-            self.assertIsInstance(a, QgsProcessingAlgorithm)
+        # define model inputs
+        model.addModelParameter(QgsProcessingParameterVectorLayer(mip_name_src, description='Source Speclib'),
+                                QgsProcessingModelParameter(mip_name_src))
+        model.addModelParameter(QgsProcessingParameterVectorLayer(mip_name_dst, description='Target Speclib'),
+                                QgsProcessingModelParameter(mip_name_dst))
 
-        # create child algorithms, i.e. instances of QgsProcessingAlgorithms
-        cidR: str = model.addChildAlgorithm(createChildAlgorithm(algR.id(), 'Read'))
-        cidP1: str = model.addChildAlgorithm(createChildAlgorithm(algP.id(), 'Process Step 1'))
-        cidP2: str = model.addChildAlgorithm(createChildAlgorithm(algP.id(), 'Process Step 2'))
-        cidW: str = model.addChildAlgorithm(createChildAlgorithm(algW.id(), 'Write'))
+        # define model outputs
+        mop_name_dst = 'speclib_output'
+        model.addOutput(QgsProcessingOutputVectorLayer(mop_name_dst))
 
-        # set model input / output
-        pname_src = 'speclib_source'
-        pname_dst = 'speclib_target'
-        pname_src_profiles = 'source_profiles'
-        pname_dst_profiles = 'processed_profiles'
-        model.addModelParameter(QgsProcessingParameterVectorLayer(pname_src, description='Source Speclib'),
-                                QgsProcessingModelParameter(pname_src))
-        model.addModelParameter(QgsProcessingParameterVectorLayer(pname_dst, description='Target Speclib'),
-                                QgsProcessingModelParameter(pname_dst))
-
-        # connect child inputs and outputs
-        calgR = model._algWrapper(cidR)
+        # connect child inputs with model inputs or child outputs
+        # 1. Read profiles from the input source
+        calgR: QgsProcessingModelChildAlgorithm = model.childAlgorithm(cidR)
         calgR.addParameterSources(
             SpectralProfileReader.INPUT,
-            [QgsProcessingModelChildParameterSource.fromModelParameter('speclib_source')]
-        )
-        calgR.addParameterSources(
-            SpectralProfileReader.INPUT_FIELD,
-            [QgsProcessingModelChildParameterSource.fromStaticValue('values')]
+            [QgsProcessingModelChildParameterSource.fromModelParameter(mip_name_src)]
         )
 
-        calgP1 = model._algWrapper(cidP1)
+        # 2. Processing Step 1: process profiles returned by the SpectralProfileReader
+        calgP1: QgsProcessingModelChildAlgorithm = model.childAlgorithm(cidP1)
         calgP1.addParameterSources(
             SpectralProcessingAlgorithmExample.INPUT,
             [QgsProcessingModelChildParameterSource.fromChildOutput(cidR, SpectralProfileReader.OUTPUT)]
         )
-        calgP2 = model._algWrapper(cidP2)
+
+        # 3. Processing Step 2: process profiles returned by Processing Step 1
+        calgP2: QgsProcessingModelChildAlgorithm = model.childAlgorithm(cidP2)
         calgP2.addParameterSources(
             SpectralProcessingAlgorithmExample.INPUT,
             [QgsProcessingModelChildParameterSource.fromChildOutput(cidP1, SpectralProcessingAlgorithmExample.OUTPUT)]
         )
 
-        # allow to write the processing alg outputs as new SpectralLibraries
-        model.addOutput(SpectralProcessingProfilesOutput(pname_src_profiles))
-        model.addOutput(SpectralProcessingProfilesOutput(pname_dst_profiles))
-
-        childOutputR = QgsProcessingModelOutput(pname_src_profiles)
-        childOutputR.setChildOutputName(SpectralProfileReader.OUTPUT)
-        calgR.setModelOutputs({pname_dst_profiles: childOutputR})
-
-        childOutputP2 = QgsProcessingModelOutput(pname_dst_profiles)
-        childOutputP2.setChildOutputName(SpectralProcessingAlgorithmExample.OUTPUT)
-        calgP2.setModelOutputs({pname_dst_profiles: childOutputP2})
-
-        calgW = model._algWrapper(cidW)
+        # 4. Write processed profiles from Step 2 to model destination
+        calgW = model.childAlgorithm(cidW)
         calgW.addParameterSources(
             SpectralProfileWriter.INPUT,
             [QgsProcessingModelChildParameterSource.fromChildOutput(cidP2, SpectralProcessingAlgorithmExample.OUTPUT)]
         )
+
         calgW.addParameterSources(
             SpectralProfileWriter.OUTPUT,
-            [QgsProcessingModelChildParameterSource.fromModelParameter(pname_dst)]
+            [QgsProcessingModelChildParameterSource.fromStaticValue('TEMP.gpkg')]
         )
 
+        m_output_dst = QgsProcessingModelOutput(mop_name_dst)
+        m_output_dst.setChildOutputName(SpectralProfileWriter.OUTPUT)
+        calgW.setModelOutputs({SpectralProfileWriter.OUTPUT: m_output_dst})
+        s = ""
+
+
+
+        s = ""
+        # Define which of the processing step results should be used as model output
+        # use sinks of last algorithm as model outputs
+        """
+        for i, sink in enumerate([p for p in calg.algorithm().parameterDefinitions()
+                                  if isinstance(p, SpectralProcessingProfilesSink)]):
+            outname = f'{self.OUTPUT_PROFILE_PREFIX}_{i + 1}'
+
+            childOutput = QgsProcessingModelOutput(outname)
+            childOutput.setChildOutputName(sink.name())
+            calg.setModelOutputs({outname: childOutput})
+            model.addOutput(SpectralProcessingProfilesOutput(outname))
+        """
         model.initAlgorithm(configuration)
 
         # set the positions for parameters and algorithms in the model canvas:
@@ -245,16 +267,20 @@ class SpectralProcessingExamples(TestCase):
             y += dy
 
         # outputID = calgW.modelOutput('speclib_target').childId()
-        parameters = {pname_src: speclib_source,
-                      pname_dst: speclib_target}
+        parameters = {mip_name_src: speclib_source,
+                      mip_name_dst: speclib_target
+                      }
 
-        self.assertTrue(model.prepareAlgorithm(parameters, context, feedback))
-
-        n0 = len(parameters[pname_src])
-        results, success = model.run(parameters, context, feedback)
-        self.assertTrue(success)
-        self.assertIsInstance(results, dict)
-        self.assertTrue(len(parameters[pname_dst]) == n0 + len(speclib_source))
+        success, msg = model.checkParameterValues(parameters, context)
+        self.assertTrue(success, msg=msg)
+        self.assertTrue(model.prepareAlgorithm(parameters, context, feedback), msg=feedback.textLog())
+        # model.preprocessParameters(parameters)
+        n0 = len(parameters[mip_name_src])
+        model_results, success = model.run(parameters, context, feedback)
+        self.assertTrue(success, msg=feedback.textLog())
+        self.assertIsInstance(model_results, dict)
+        model_result = outputParameterResult(model_results, mop_name_dst)
+        self.assertTrue(len(model_result[mip_name_dst]) == n0 + len(speclib_source))
 
         from processing.modeler.ModelerDialog import ModelerDialog
         d = ModelerDialog(model=model)
@@ -442,7 +468,8 @@ class SpectralProcessingTests(TestCase):
         speclib.commitChanges()
 
         parameters = {alg.INPUT: speclib,
-                      alg.INPUT_FIELD: 'values'}
+                      alg.INPUT_FIELD: None # automatically selected the 1st profile field
+                      }
         alg.initAlgorithm(configuration)
         alg.prepareAlgorithm(parameters, context, feedback)
         results = alg.processAlgorithm(parameters, context, feedback)
@@ -454,6 +481,55 @@ class SpectralProcessingTests(TestCase):
             self.assertIsInstance(block, SpectralProfileBlock)
             n += block.n_profiles()
         self.assertEqual(n, len(speclib))
+
+    def test_SpectralProfileWriter(self):
+        feedback = QgsProcessingFeedback()
+        context = QgsProcessingContext()
+        context.setProject(QgsProject.instance())
+        context.setFeedback(feedback)
+        configuration = {}
+        alg: SpectralProfileWriter = SpectralProfileWriter()
+        alg.initAlgorithm(configuration)
+        dummy = SpectralProfileBlock.dummy(n=5)
+
+        # 1. write into new spectral library
+
+        parameters = {alg.INPUT: dummy,
+                      alg.OUTPUT: 'TEMP',
+                      }
+
+        self.assertTrue(alg.prepareAlgorithm(parameters, context, feedback), msg=feedback.textLog())
+        results = alg.processAlgorithm(parameters, context, feedback)
+        speclib1 = results.get(alg.OUTPUT, None)
+        self.assertIsInstance(speclib1, SpectralLibrary)
+        self.assertEqual(dummy.n_profiles(), len(speclib1))
+
+        for i, profile in enumerate(speclib1):
+            yValueDummy = dummy.data()[:, :, i].flatten().tolist()
+            yValueProfile = profile.yValues()
+            self.assertListEqual(yValueDummy, yValueProfile)
+            self.assertEqual(profile.xValues(), list(dummy.spectralSetting().x()))
+            self.assertEqual(profile.xUnit(), dummy.spectralSetting().xUnit())
+
+        # 2. write to existing spectral library, new profile files
+        dummy2 = SpectralProfileBlock.dummy(n=10)
+        parameters = {alg.INPUT: dummy2,
+                      alg.OUTPUT_FIELD: 'profiles2',
+                      alg.OUTPUT: speclib1,
+                      }
+        self.assertTrue(alg.prepareAlgorithm(parameters, context, feedback), msg=feedback.textLog())
+        results = alg.processAlgorithm(parameters, context, feedback)
+        self.assertEqual(speclib1, results.get(alg.OUTPUT, None))
+
+        LUT = profile_field_lookup(speclib1)
+        self.assertTrue('profiles2' in LUT.keys())
+        self.assertTrue(len(speclib1) == dummy2.n_profiles())
+        for i, profile in enumerate(speclib1):
+            profile: SpectralProfile
+            profile.setCurrentProfileField('profiles2')
+            yValueDummy = dummy2.data()[:, :, i].flatten().tolist()
+            yValueProfile = profile.yValues()
+            self.assertListEqual(yValueDummy, yValueProfile)
 
     def test_SpectralXUnitConversion(self):
 
@@ -513,7 +589,7 @@ class SpectralProcessingTests(TestCase):
             'testalgorithmprovider:spectral_processing_algorithm_example')
 
         self.assertIsInstance(alg, QgsProcessingAlgorithm)
-        self.assertTrue(is_spectral_processing_algorithm(alg, check_in=True, check_out=True))
+        self.assertTrue(is_spectral_processing_algorithm(alg, SpectralProfileIOFlag.All))
 
         childAlg = QgsProcessingModelChildAlgorithm(alg.id())
         childAlg.generateChildId(model)

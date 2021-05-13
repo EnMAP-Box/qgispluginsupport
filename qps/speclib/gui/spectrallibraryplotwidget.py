@@ -1541,7 +1541,7 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         for fid, sp in task.RESULTS.items():
             for fidx in profile_field_indices:
                 # create the default model spectrum
-                self.mCache2ModelData[(fid, fidx, '')] = sp.values(profile_field=fidx)
+                self.mCache2ModelData[(fid, fidx, '')] = sp.values(profile_field_index=fidx)
 
         if len(updated) > 0:
             self.loadFeatureColors(fids=updated)

@@ -710,8 +710,6 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
     def __hash__(self):
         return hash((self.algorithm().name(), id(self)))
 
-
-
 class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
 
     sigModelVerified = pyqtSignal(bool, str)
