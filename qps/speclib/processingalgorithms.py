@@ -26,8 +26,12 @@
 """
 import typing
 
+import numpy as np
 from PyQt5.QtCore import QVariant
-from qgis._core import QgsField, QgsProcessingOutputVectorLayer, QgsFeatureRequest
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout
+from qgis._core import QgsField, QgsProcessingOutputVectorLayer, QgsFeatureRequest, QgsProcessingAlgorithm, \
+    QgsProcessingParameterString, QgsProcessingContext, QgsProcessingFeedback
 
 from qgis.core import \
     QgsProcessingAlgorithm, QgsProcessingParameterVectorLayer, \
@@ -40,6 +44,7 @@ from .core import field_index, profile_fields, create_profile_field
 
 from .core.spectrallibrary import SpectralSetting, SpectralProfileBlock, read_profiles, \
     SpectralLibrary, FIELD_VALUES
+from .core.spectralprofile import SpectralProfileBlock
 from .processing import \
     SpectralProcessingProfiles, SpectralProcessingProfilesOutput, \
     SpectralProcessingProfilesSink, parameterAsSpectralProfileBlockList
@@ -246,7 +251,7 @@ class SpectralProfileReader(_AbstractSpectralAlgorithm):
 class SpectralProfileWriter(_AbstractSpectralAlgorithm):
     INPUT = 'INPUT'
     MODE = 'MODE'
-    _MODES = ['Append', 'Overwrite', 'Match']
+    _MODES = ['Append', 'Match']
     OUTPUT = 'SPECLIB'
     OUTPUT_FIELD = 'PROFILE_FIELD'
 
@@ -265,7 +270,7 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
                                          defaultValue=FIELD_VALUES,
                                          optional=True,
                                          parentLayerParameterName=self.OUTPUT)
-        p4 = QgsProcessingParameterEnum(self.MODE, options=self._MODES, defaultValue=2)
+        p4 = QgsProcessingParameterEnum(self.MODE, options=self._MODES, defaultValue=1)
         self.addParameter(p1)
         self.addParameter(p2, createOutput=True)
         self.addParameter(p3)
@@ -290,6 +295,10 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
     def name(self):
         return 'spectral_profile_writer'
 
+    def parameterAsMode(self, parameters: dict, context: QgsProcessingContext):
+        mode = self.parameterAsEnum(parameters, self.MODE, context)
+        return self._MODES[mode].upper()
+
     def prepareAlgorithm(self,
                          parameters: dict,
                          context: QgsProcessingContext,
@@ -299,8 +308,7 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
             if key not in parameters.keys():
                 feedback.reportError(f'Missing parameter {key}')
                 return False
-        mode = self.parameterAsEnum(parameters, self.MODE, context)
-        mode = self._MODES[mode]
+
         speclib: QgsVectorLayer = self.parameterAsVectorLayer(parameters, self.OUTPUT, context)
         if isinstance(speclib, QgsVectorLayer):
 
@@ -348,10 +356,10 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
                          feedback: QgsProcessingFeedback):
 
 
-        input_profiles: typing.List[SpectralProfileBlock] = parameterAsSpectralProfileBlockList(parameters, self.INPUT,
-                                                                                                context)
-        mode = self.parameterAsEnum(parameters, self.MODE, context)
-        mode = self._MODES[mode]
+        input_profiles: typing.List[SpectralProfileBlock] = parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
+
+        mode = self.parameterAsMode(parameters, context)
+
         field = self.parameterAsFields(parameters, self.OUTPUT_FIELD, context)[0]
 
         speclib: SpectralLibrary = self.parameterAsVectorLayer(parameters, self.OUTPUT, context)
@@ -368,58 +376,35 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
         editable: bool = speclib.isEditable()
         assert speclib.startEditing()
         speclib.beginEditCommand(f'Write profiles to {field}')
-        if mode == 'Append':
-            for block in input_profiles:
-                # process block by block
-                assert isinstance(block, SpectralProfileBlock)
-                # append new features
-                new_features = []
-                for ba in block.profileValueByteArrays():
-                    f = QgsFeature(speclib.fields())
-                    f.setAttribute(i_field, ba)
-                    new_features.append(f)
-                # todo: allow to overwrite existing features
-                assert speclib.addFeatures(new_features)
-        elif mode == 'Overwrite':
-            gen = speclib.getFeatures()
-            for block in input_profiles:
-                # process block by block
-                assert isinstance(block, SpectralProfileBlock)
-                # append new features
-                new_features = []
-                for ba in block.profileValueByteArrays():
 
-                    f = QgsFeature(speclib.fields())
-                    f.setAttribute(i_field, ba)
-                    new_features.append(f)
-                # todo: allow to overwrite existing features
-                assert speclib.addFeatures(new_features)
-        elif mode == 'Match':
-            for block in input_profiles:
-                # process block by block
-                fids = block.fids()
-                existing = [f for f in fids if f in speclib.allFeatureIds()]
-                others = [f for f in fids if f not in existing]
-
+        for block in input_profiles:
+            # process block by block
+            fids = block.fids()
+            new_features = []
+            if fids and mode != 'APPEND':
+                # block profiles with FIDs -> handle mode
+                FEATURE_DATA = {fids[i]:ba for i, ba in enumerate(block.profileValueByteArrays())}
                 request = QgsFeatureRequest()
-                request.setFids(fids)
+                request.setFilterFids(fids)
                 for f in speclib.getFeatures(request):
-                    s = ""
+                    speclib.changeAttributeValue(f.id(), i_field, FEATURE_DATA.pop(f.id()))
 
-
-                assert isinstance(block, SpectralProfileBlock)
-                # append new features
-                new_features = []
-                for i, ba in enumerate(block.profileValueByteArrays()):
-                    fid = fids[i]
-
+                # append remaining byte arrays as new features
+                for ba in FEATURE_DATA.values():
                     f = QgsFeature(speclib.fields())
                     f.setAttribute(i_field, ba)
                     new_features.append(f)
-                # todo: allow to overwrite existing features
+
+            else:
+                # block profiles without FID -> just append new features
+                for ba in block.profileValueByteArrays():
+                    f = QgsFeature(speclib.fields())
+                    f.setAttribute(i_field, ba)
+                    new_features.append(f)
+
+            # append new features / features without fid
+            if len(new_features) > 0:
                 assert speclib.addFeatures(new_features)
-        else:
-            raise NotImplementedError()
 
         speclib.endEditCommand()
 
@@ -437,3 +422,167 @@ def createSpectralAlgorithms() -> typing.List[QgsProcessingAlgorithm]:
         SpectralProfileWriter(),
         SpectralXUnitConversion(),
     ]
+
+
+class SpectralPythonCodeProcessingAlgorithm(QgsProcessingAlgorithm):
+    NAME = 'spectral_python_code_processing'
+    INPUT = 'INPUT'
+    CODE = 'CODE'
+    OUTPUT = 'OUTPUT'
+
+    def __init__(self):
+        super().__init__()
+        self.mParameters = []
+        self.mFunction: typing.Callable = None
+
+        self.mInputProfileBlock: typing.List[SpectralProfileBlock] = None
+
+    def shortDescription(self) -> str:
+        return 'This is a spectral processing algorithm'
+
+    def initAlgorithm(self, configuration: dict):
+
+        p1 = SpectralProcessingProfiles(self.INPUT, description='Input Profiles')
+        self.addParameter(p1, createOutput=False)
+        self.addParameter(QgsProcessingParameterString(
+            self.CODE,
+            description='Python code',
+            defaultValue="""profiledata=profiledata\nx_unit=x_unit\nbbl=bbl""",
+            multiLine=True,
+            optional=False
+        ))
+        p3 = SpectralProcessingProfilesSink(self.OUTPUT, description='Output Profiles', optional=True)
+        self.addParameter(p3, createOutput=True)
+        # p2 = SpectralProcessingProfilesOutput(self.OUTPUT, description='Output Profiles')
+        # self.addOutput(p2)
+
+    def processAlgorithm(self,
+                         parameters: dict,
+                         context: QgsProcessingContext,
+                         feedback: QgsProcessingFeedback):
+
+        input_profiles: typing.List[SpectralProfileBlock] = \
+            parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
+
+        output_profiles: typing.List[SpectralProfileBlock] = []
+        user_code: str = self.parameterAsString(parameters, self.CODE, context)
+
+        n_block = len(input_profiles)
+        for i, profileBlock in enumerate(input_profiles):
+            # process block by block
+            assert isinstance(profileBlock, SpectralProfileBlock)
+            feedback.pushConsoleInfo(f'Process profile block {i + 1}/{n_block}')
+
+            resultBlock, msg = self.applyUserCode(user_code, profileBlock)
+
+            if isinstance(resultBlock, SpectralProfileBlock):
+                resultBlock.setFIDs(profileBlock.fids())
+                output_profiles.append(resultBlock)
+            else:
+                feedback
+            feedback.setProgress(100 * i / n_block)
+
+        OUTPUTS = dict()
+        OUTPUTS[self.OUTPUT] = output_profiles
+        return OUTPUTS
+
+    def setProcessingFunction(self, function: typing.Callable):
+
+        assert isinstance(function, typing.Callable)
+        self.mFunction = function
+
+    def canExecute(self) -> bool:
+        result: bool = True
+        msg = ''
+        return result, msg
+
+    def checkParameterValues(self,
+                             parameters: dict,
+                             context: QgsProcessingContext,
+                             ):
+
+        result, msg = super().checkParameterValues(parameters, context)
+        if not self.parameterDefinition(self.INPUT).checkValueIsAcceptable(parameters[self.INPUT], context):
+            msg += f'Unable to read {self.INPUT}'
+
+        code = self.parameterAsString(parameters, self.CODE, context)
+        # check if we can evaluate the python code
+        if not self.parameterDefinition(self.CODE).checkValueIsAcceptable(code, context):
+            msg += f'Unable to read {self.CODE}'
+
+        dummyblock = SpectralProfileBlock.dummy()
+        resultblock, msg2 = self.applyUserCode(code, dummyblock)
+        msg += msg2
+        return isinstance(resultblock, SpectralProfileBlock) and len(msg) == 0, msg
+
+    def createCustomParametersWidget(self) -> QWidget:
+        w = QWidget()
+        label = QLabel('Placeholder for custom widget')
+        l = QHBoxLayout()
+        l.addWidget(label)
+        w.setLayout(l)
+        return w
+
+    def createInstance(self):
+        alg = SpectralPythonCodeProcessingAlgorithm()
+        return alg
+
+    def displayName(self) -> str:
+
+        return 'Spectral Processing Algorithm Example'
+
+    def flags(self):
+        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagNoThreading
+
+    def group(self):
+        return 'Test Group'
+
+    def helpString(self) -> str:
+        return 'Help String'
+
+    def name(self):
+        return self.NAME
+
+    def icon(self):
+        return QIcon(':/qps/ui/icons/profile.svg')
+
+    def prepareAlgorithm(self,
+                         parameters: dict,
+                         context: QgsProcessingContext,
+                         feedback: QgsProcessingFeedback):
+
+        is_valid, msg = self.checkParameterValues(parameters, context)
+        if not is_valid:
+            feedback.reportError(msg)
+        else:
+
+            s = ""
+        return is_valid
+
+    def applyUserCode(self, code, profileBlock: SpectralProfileBlock) -> typing.Tuple[SpectralProfileBlock, str]:
+        """
+        Applies the python code to a SpectralProfile block
+        :param code: str with python code
+        :param profileBlock: SpectralProfile block
+        :return: (SpectralProfileBlock, '') in case of success, or (None, 'error message') else.
+        """
+        kwds_global = profileBlock.toVariantMap()
+        kwds_local = {}
+        msg = ''
+        result_block: SpectralProfileBlock = None
+        try:
+            exec(code, kwds_global, kwds_local)
+        except Exception as ex:
+            return None, str(ex)
+
+        if not isinstance(kwds_local.get('profiledata', None), np.ndarray):
+            msg = 'python code does not return "profiledata" of type numpy.array'
+        else:
+            try:
+                result = {'profiledata': kwds_local['profiledata']}
+                for k in ['x', 'x_unit', 'y_unit', 'bbl']:
+                    result[k] = kwds_local.get(k, kwds_global.get(k, None))
+                result_block = SpectralProfileBlock.fromVariantMap(result)
+            except Exception as ex:
+                msg = str(ex)
+        return result_block, msg

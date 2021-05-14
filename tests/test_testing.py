@@ -132,12 +132,13 @@ class test_TestObject(qps.testing.TestCase):
 
     def test_spectralProcessingAlgorithms(self):
 
-        from qps.testing import TestObjects, SpectralProcessingAlgorithmExample
+        from qps.testing import TestObjects
+        from qps.speclib.processingalgorithms import SpectralPythonCodeProcessingAlgorithm
         from qps.speclib.processing import is_spectral_processing_algorithm
 
-        alg: SpectralProcessingAlgorithmExample = TestObjects.createSpectralProcessingAlgorithm()
+        alg: SpectralPythonCodeProcessingAlgorithm = TestObjects.createSpectralProcessingAlgorithm()
         self.assertIsInstance(alg, QgsProcessingAlgorithm)
-        self.assertIsInstance(alg, SpectralProcessingAlgorithmExample)
+        self.assertIsInstance(alg, SpectralPythonCodeProcessingAlgorithm)
         self.assertTrue(is_spectral_processing_algorithm(alg))
 
         speclib = TestObjects.createSpectralLibrary()

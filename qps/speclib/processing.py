@@ -210,6 +210,32 @@ def parameterAsSpectralProfileBlockSink(parameters: dict,
     return None
     s = ""
 
+
+def structureModelGraphicItems(model: QgsProcessingModelAlgorithm):
+    # set the positions for parameters and algorithms in the model canvas:
+    x = 150
+    y = 50
+    dx = 100
+    dy = 75
+    components = model.parameterComponents()
+    for n, p in components.items():
+        p: QgsProcessingModelParameter
+        p.setPosition(QPointF(x, y))
+        x += dx
+    model.setParameterComponents(components)
+
+    y = 150
+    x = 250
+    childAlgs = [model.childAlgorithm(childId) for childId in model.childAlgorithms()]
+
+    for calg in childAlgs:
+        calg: QgsProcessingModelChildAlgorithm
+        calg.setPosition(QPointF(x, y))
+        y += dy
+    for outDef in model.outputDefinitions():
+        s = ""
+    s = ""
+
 def outputParameterResult(results: dict,
                           output_parameter: typing.Union[str, QgsProcessingOutputDefinition]):
     """
