@@ -703,8 +703,8 @@ class TestObjects(object):
             n_bands = [n_bands]
         slib: SpectralLibrary = SpectralLibrary()
         assert slib.startEditing()
-        for i in range(len(slib.spectralValueFields()), len(n_bands)):
-            slib.addSpectralProfileAttribute(f'{FIELD_VALUES}{i}')
+        for i in range(len(slib.spectralProfileFields()), len(n_bands)):
+            slib.addSpectralProfileField(f'{FIELD_VALUES}{i}')
         slib.commitChanges(stopEditing=False)
 
         profile_field_indices = profile_field_indices(slib)

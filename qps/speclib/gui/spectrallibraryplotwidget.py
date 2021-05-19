@@ -18,7 +18,8 @@ from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabe
 from PyQt5.QtXml import QDomElement, QDomDocument
 from qgis._core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsFieldProxyModel, QgsSettings, QgsApplication, QgsExpressionContext, \
-    QgsExpression, QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol
+    QgsExpression, QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
+    QgsFeature, QgsFeatureRequest, QgsProcessingException
 from qgis._gui import QgsAttributeTableFilterModel, QgsDualView, QgsAttributeTableModel, QgsFieldExpressionWidget
 
 
@@ -1164,6 +1165,7 @@ class SpectralProfilePlotControl(QAbstractTableModel):
             # self.CIX_MARKER: 'Here you can specify the marker symbol ofr each profile type'
         }
 
+        self.mChangedFIDs: typing.Set[int] = set()
         # self.mPlotDataItems: typing.List[SpectralProfilePlotDataItem] = list()
         self.mFID_VIS_Mapper: typing.Dict[
             typing.Tuple[FEATURE_ID, SpectralProfilePlotVisualization], SpectralProfilePlotDataItem]
@@ -1524,6 +1526,27 @@ class SpectralProfilePlotControl(QAbstractTableModel):
     def loadModelData(self, jobs: dict):
         if len(jobs) == 0:
             return
+
+        feedback = QgsProcessingFeedback()
+        for job_key, fids in jobs.items():
+            context = QgsProcessingContext()
+            context.setFeedback(feedback)
+
+            profile_field, model_id = job_key
+            request = QgsFeatureRequest()
+            request.setFilterFids(list(fids))
+            _, model = self.mModelList.findModelInstance(model_id)
+
+            blockList = list(SpectralProfileBlock.fromSpectralProfiles(self.speclib().getFeatures(request),
+                                                                  profile_field,
+                                                                  feedback))
+            parameters = {model.parameterDefinitions()[0].name(): blockList}
+            assert model.prepareAlgorithm(parameters, context, feedback)
+            try:
+                results = model.processAlgorithm(parameters, context, feedback)
+            except QgsProcessingException as ex:
+                feedback.reportError(str(ex))
+            s = ""
         s = ""
 
     def onProfilesLoaded(self, success: bool, task: SpectralProfileLoadingTask):
@@ -1635,6 +1658,7 @@ class SpectralProfilePlotControl(QAbstractTableModel):
             self.mDualView = dualView
             self.mDualView.tableView().selectionModel().selectionChanged.connect(self.onDualViewSelectionChanged)
             self.mDualView.tableView().verticalScrollBar().sliderMoved.connect(self.onDualViewSliderMoved)
+            # self.mDualView.view()
             speclib = dualView.masterModel().layer()
 
             if self.mSpeclib != speclib:
@@ -1646,6 +1670,7 @@ class SpectralProfilePlotControl(QAbstractTableModel):
                 self.mSpeclib.attributeDeleted.connect(self.onSpeclibAttributesChanged)
                 self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributesChanged)
                 self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
+                # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.committedFeaturesAdded.connect(self.onSpeclibCommittedFeaturesAdded)
 
                 self.mSpeclib.featuresDeleted.connect(self.onSpeclibFeaturesDeleted)
@@ -1697,6 +1722,11 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         self.mTemporaryProfileIDs = {OLD2NEW.get(fid, fid) for fid in self.mTemporaryProfileIDs}
         self.updatePlot(fids=OLD2NEW.values())
 
+    def onSpeclibAttributeValueChanged(self, fid:int, fidx:int, value):
+        feature = self.mCache1FeatureData.get(fid, None)
+        if isinstance(feature, QgsFeature):
+            feature.setAttribute(fidx, value)
+
     def onSpeclibRendererChanged(self, *args):
         self.loadFeatureColors()
         self.updatePlot()
@@ -1715,8 +1745,10 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         self.updatePlot()
 
     def onSpeclibEditCommandEnded(self, *args):
-        s = ""
-        self.updatePlot()
+        # changedFIDs1 = list(self.speclib().editBuffer().changedAttributeValues().keys())
+        changedFIDs2 = self.mChangedFIDs
+        self.onSpeclibFeaturesDeleted(sorted(changedFIDs2))
+        self.mChangedFIDs.clear()
 
     def onDualViewSliderMoved(self, *args):
         self.updatePlot()

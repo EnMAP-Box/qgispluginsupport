@@ -99,7 +99,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertEqual(visModel.rowCount(), 1)
 
         speclib.startEditing()
-        speclib.addSpectralProfileAttribute('profiles3')
+        speclib.addSpectralProfileField('profiles3')
         speclib.commitChanges(stopEditing=False)
         speclib.deleteAttribute(speclib.fields().lookupField('profiles3'))
         speclib.commitChanges(stopEditing=False)

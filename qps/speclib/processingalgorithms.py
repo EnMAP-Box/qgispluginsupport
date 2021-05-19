@@ -149,15 +149,19 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
                 f = self.mUnitConverterFunctionModel.convertFunction(spectralSetting.xUnit(), targetUnit)
                 if callable(f):
                     xValuesNew = f(profileBlock.xValues())
-                    settingOut = SpectralSetting(xValuesNew,
-                                                 xUnit=targetUnit,
-                                                 yUnit=spectralSetting.yUnit(),
-                                                 )
-                    blockOut = SpectralProfileBlock(profileBlock.data(),
-                                                    spectralSetting=settingOut,
-                                                    fids=profileBlock.fids(),
-                                                    metadata=profileBlock.metadata())
-                    output_profiles.append(blockOut)
+                    if xValuesNew is None:
+                        feedback.reportError(f'Unable to convert x-unit of {profileBlock.n_profiles()} profile(s) '
+                                             f'from "{spectralSetting.xUnit()}" to "{targetUnit}"')
+                    else:
+                        settingOut = SpectralSetting(xValuesNew,
+                                                     xUnit=targetUnit,
+                                                     yUnit=spectralSetting.yUnit(),
+                                                     )
+                        blockOut = SpectralProfileBlock(profileBlock.data(),
+                                                        spectralSetting=settingOut,
+                                                        fids=profileBlock.fids(),
+                                                        metadata=profileBlock.metadata())
+                        output_profiles.append(blockOut)
                 else:
                     feedback.pushConsoleInfo(f'Unable to convert {profileBlock.n_profiles()} profiles '
                                              f'with {spectralSetting} to {targetUnit}')

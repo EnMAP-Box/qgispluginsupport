@@ -516,10 +516,15 @@ class SpectralProcessingModelList(QAbstractListModel):
     def addModel(self, model: QgsProcessingModelAlgorithm):
         self.insertModel(-1, model)
 
-    def findModelInstance(self, model: QgsProcessingModelAlgorithm) -> typing.Tuple[int,QgsProcessingModelAlgorithm]:
+    def findModelInstance(self, model: typing.Union[str, QgsProcessingModelAlgorithm]) -> \
+            typing.Tuple[int,QgsProcessingModelAlgorithm]:
+        if isinstance(model, QgsProcessingModelAlgorithm):
+            model_id = model.id()
+        else:
+            model_id = model
         for i, m in enumerate(self):
             m: QgsProcessingModelAlgorithm
-            if m.id() == model.id():
+            if m.id() == model_id:
                 return i, m
         return None, None
 
@@ -1467,24 +1472,29 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
     def clearModel(self):
         self.mProcessingModelTableModel.clearModel()
 
-    def loadModel(self, filename):
-        filename = pathlib.Path(filename)
-        if filename.is_file():
-            # todo: load
-            model = QgsProcessingModelAlgorithm()
-            model.fromFile(filename.as_posix())
-            for cName, cAlg in model.childAlgorithms().items():
-                alg = cAlg.algorithm()
-                sources = cAlg.parameterSources()
-                w = self.mProcessingModelTableModel.addAlgorithm(alg.id(), name=cAlg.description())
-                for p in w.algorithm().parameterDefinitions():
-                    if not isinstance(p, SpectralProcessingProfiles) and p.name() in sources.keys():
-                        value = sources[p.name()][0].staticValue()
-                        if value:
-                            w.wrappers[p.name()].setParameterValue(value, self.mProcessingContext)
+    def loadModel(self, model: typing.Union[str, pathlib.Path, QgsProcessingModelAlgorithm]):
+        if isinstance(model, str):
+            model = pathlib.Path(model)
+        if isinstance(model, pathlib.Path):
+            assert model.is_file(), f'Not a model file: {model}'
+            m = QgsProcessingModelAlgorithm()
+            m.fromFile(model.as_posix())
+            model = m
+        assert isinstance(model, QgsProcessingModelAlgorithm)
+        if not is_spectral_processing_model(model):
+            s = ""
+        assert is_spectral_processing_model(model)
+        for cName, cAlg in model.childAlgorithms().items():
+            alg = cAlg.algorithm()
+            sources = cAlg.parameterSources()
+            w = self.mProcessingModelTableModel.addAlgorithm(alg.id(), name=cAlg.description())
+            for p in w.algorithm().parameterDefinitions():
+                if not isinstance(p, SpectralProcessingProfiles) and p.name() in sources.keys():
+                    value = sources[p.name()][0].staticValue()
+                    if value:
+                        w.wrappers[p.name()].setParameterValue(value, self.mProcessingContext)
 
     def saveModel(self, filename):
-
         model = self.mProcessingModelTableModel.createModel()
         if not isinstance(model, QgsProcessingModelAlgorithm):
             return

@@ -37,6 +37,8 @@ class SpectralProcessingExamples(TestCase):
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
         procGuiReg.addParameterWidgetFactory(SpectralProcessingAlgorithmInputWidgetFactory())
         procGuiReg.addParameterWidgetFactory(SpectralProcessingProfilesOutputWidgetFactory())
+        cls._profile_type = SpectralProcessingProfileType()
+        assert procReg.addParameterType(cls._profile_type)
 
         import processing.modeler.ModelerDialog
         import qgis.utils
@@ -319,8 +321,8 @@ class SpectralProcessingTests(TestCase):
         if TestAlgorithmProvider.NAME not in provider_names:
             procGuiReg.addParameterWidgetFactory(SpectralProcessingAlgorithmInputWidgetFactory())
             procGuiReg.addParameterWidgetFactory(SpectralProcessingProfilesOutputWidgetFactory())
-
-            self.assertTrue(procReg.addParameterType(SpectralProcessingProfileType()))
+            self._profile_type = SpectralProcessingProfileType()
+            self.assertTrue(procReg.addParameterType(self._profile_type))
 
             provider = TestAlgorithmProvider()
             self.assertTrue(procReg.addProvider(provider))
@@ -422,11 +424,13 @@ class SpectralProcessingTests(TestCase):
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
         w = SpectralLibraryWidget(speclib=sl)
-        SPW: SpectralProcessingWidget = w.pageProcessingWidget
 
-        from qps.resources import ResourceBrowser
-        rb = ResourceBrowser()
-        self.showGui([w,rb])
+        # create a new model
+        SPW: SpectralProcessingWidget = w.pageProcessingWidget
+        SPW.model()
+        # from qps.resources import ResourceBrowser
+        # rb = ResourceBrowser()
+        self.showGui(w)
         s = ""
         pass
 
@@ -733,6 +737,8 @@ class SpectralProcessingTests(TestCase):
         success, error = w.verifyModel()
 
         self.assertTrue(success, msg=error)
+        model = w.model()
+        self.assertTrue(is_spectral_processing_model(model))
 
         # save and load models
         test_dir = self.createTestOutputDirectory() / 'spectral_processing'
@@ -747,6 +753,9 @@ class SpectralProcessingTests(TestCase):
         self.assertTrue(len(wrappers_after) == len(wrappers_before))
         # for w_b, w_a in zip(wrappers_before, wrappers_after):
         #    self.assertEqual(w_b.name, w_a.name)
+
+        w.loadModel(model)
+
         self.showGui(M)
 
     def test_processing_algorithms(self):

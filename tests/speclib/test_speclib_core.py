@@ -485,17 +485,17 @@ class TestCore(TestCase):
 
         sl = SpectralLibrary(profile_fields=['profiles', 'derived1'])
 
-        fields = sl.spectralValueFields()
+        fields = sl.spectralProfileFields()
         self.assertIsInstance(fields, list)
         self.assertTrue(len(fields) == 2)
         for f in fields:
             self.assertIsInstance(f, QgsField)
             self.assertTrue(f.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY)
-        self.assertFalse(sl.addSpectralProfileAttribute('derived2'))
+        self.assertFalse(sl.addSpectralProfileField('derived2'))
         sl.startEditing()
-        self.assertTrue(sl.addSpectralProfileAttribute('derived2'))
+        self.assertTrue(sl.addSpectralProfileField('derived2'))
         self.assertTrue(sl.commitChanges())
-        self.assertTrue(len(sl.spectralValueFields()) == 3)
+        self.assertTrue(len(sl.spectralProfileFields()) == 3)
 
     def test_SpectralLibrary(self):
 

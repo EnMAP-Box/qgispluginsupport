@@ -57,7 +57,7 @@ from qgis.core import QgsApplication, \
 
 from qgis.gui import \
     QgsGui
-from . import profile_fields, first_profile_field_index, profile_field_indices
+from . import profile_fields, first_profile_field_index, profile_field_indices, create_profile_field
 
 from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
@@ -589,12 +589,12 @@ class SpectralLibrary(QgsVectorLayer):
         """
         assert self.isEditable()
         if destination is None:
-            destination = self.spectralValueFields()[0]
+            destination = self.spectralProfileFields()[0]
         else:
             destination = qgsField(self, destination)
 
         assert isinstance(destination, QgsField)
-        assert destination in self.spectralValueFields()
+        assert destination in self.spectralProfileFields()
 
         source = gdalDataset(raster)
         assert isinstance(source, gdal.Dataset)
@@ -857,12 +857,13 @@ class SpectralLibrary(QgsVectorLayer):
             existing_vsi_files = vsiSpeclibs()
             assert isinstance(existing_vsi_files, list)
             while True:
+                # create a temporary path in /vsimem/
                 path = pathlib.PurePosixPath(VSI_DIR) / f'{baseName}.{uuid.uuid4()}.gpkg'
                 path = path.as_posix().replace('\\', '/')
                 if not path in existing_vsi_files:
                     break
 
-            drv = ogr.GetDriverByName('GPKG')
+            drv: ogr.Driver = ogr.GetDriverByName('GPKG')
             missingGPKGInfo = \
                 "Your GDAL/OGR installation does not support the GeoPackage (GPKG) vector driver " + \
                 "(https://gdal.org/drivers/vector/gpkg.html).\n" + \
@@ -876,10 +877,9 @@ class SpectralLibrary(QgsVectorLayer):
             srs.ImportFromEPSG(SPECLIB_EPSG_CODE)
             co = ['GEOMETRY_NAME=geom',
                   'GEOMETRY_NULLABLE=YES',
-                  # 'FID=fid'
                   ]
 
-            lyr = dsSrc.CreateLayer(baseName, srs=srs, geom_type=ogr.wkbPoint, options=co)
+            dsSrc.CreateLayer(baseName, srs=srs, geom_type=ogr.wkbPoint, options=co)
             try:
                 dsSrc.FlushCache()
             except RuntimeError as rt:
@@ -892,64 +892,38 @@ class SpectralLibrary(QgsVectorLayer):
         super(SpectralLibrary, self).__init__(path, baseName, 'ogr', options)
 
         if create_new_speclib:
-            self.startEditing()
+            assert self.startEditing()
+            self.beginEditCommand('Add fields')
             # add profile fields
             names = self.fields().names()
-            for fieldname in profile_fields:
-                self.addAttribute(QgsField(fieldname, QVariant.ByteArray, 'Binary'))
-
             # add a single name profile_field (more is not required)
             if create_name_field:
-                self.addAttribute(QgsField('name', QVariant.String, 'varchar'))
-            self.commitChanges(stopEditing=True)
+                self.addAttribute(QgsField(name='name', type=QVariant.String))
+            for fieldname in profile_fields:
+                assert self.addSpectralProfileField(fieldname), f'Unable to add profile field "{fieldname}"'
 
-        # set binary array fields as spectral profile columns
-        for field in self.fields():
-            field: QgsField
-            if field.type() == QVariant.ByteArray:
-                self.setEditorWidgetSetup(self.fields().lookupField(field.name()),
-                                          QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
+            profile_indices = [self.fields().lookupField(f) for f in profile_fields]
+            self.endEditCommand()
+            fields=[]
+            for i in profile_indices:
+                assert self.editorWidgetSetup(i).type() == EDITOR_WIDGET_REGISTRY_KEY
+                s = ""
+            assert self.commitChanges(stopEditing=True)
+            for i in profile_indices:
+                assert self.editorWidgetSetup(i).type() == EDITOR_WIDGET_REGISTRY_KEY
 
-        # self.beforeCommitChanges.connect(self.onBeforeCommitChanges)
-
-        self.committedFeaturesAdded.connect(self.onCommittedFeaturesAdded)
-
-
-        self.attributeAdded.connect(self.onAttributeAdded)
-        self.attributeDeleted.connect(self.onFieldsChanged)
+        # self.attributeAdded.connect(self.onAttributeAdded)
 
         self.initTableConfig()
 
-
-    def onAttributeAdded(self, idx: int):
-
-        field: QgsField = self.fields().at(idx)
-        if field.type() == QVariant.ByteArray:
-            # let new ByteArray fields be SpectralProfile columns by default
-            self.setEditorWidgetSetup(idx, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
-
-    def onFieldsChanged(self):
-        pass
-        # self.mSpectralValueFields = spectralValueFields(self)
-
-    def onCommittedFeaturesAdded(self, id, features):
-
-        if id != self.id():
-            return
-
-        #newFIDs = [f.id() for f in features]
-        # see qgsvectorlayereditbuffer.cpp
-        #oldFIDs = list(reversed(list(self.editBuffer().addedFeatures().keys())))
-        #mFID2Style = self.style().mProfileKey2Style
-        #updates = dict()
-        #for fidOld, fidNew in zip(oldFIDs, newFIDs):
-        #     if fidOld in mFID2Style.keys():
-        #        updates[fidNew] = mFID2Style.pop(fidOld)
-        #mFID2Style.update(updates)
-
-    def setEditorWidgetSetup(self, index: int, setup: QgsEditorWidgetSetup):
-        super().setEditorWidgetSetup(index, setup)
-        self.onFieldsChanged()
+    def addAttribute(self, field: QgsField):
+        # workaround for https://github.com/qgis/QGIS/issues/43261
+        success = super().addAttribute(field)
+        if success:
+            i = self.fields().lookupField(field.name())
+            if i > 0:
+                self.setEditorWidgetSetup(i, field.editorWidgetSetup())
+        return success
 
     def initTableConfig(self):
         """
@@ -977,10 +951,10 @@ class SpectralLibrary(QgsVectorLayer):
             column.hidden = column.name in invisibleColumns
 
         # set column order
-        #c_action = [c for c in columns if c.type == QgsAttributeTableConfig.Action][0]
-        #c_name = [c for c in columns if c.name == FIELD_NAME][0]
-        #firstCols = [c_action, c_name]
-        #columns = [c_action, c_name] + [c for c in columns if c not in firstCols]
+        # c_action = [c for c in columns if c.type == QgsAttributeTableConfig.Action][0]
+        # c_name = [c for c in columns if c.name == FIELD_NAME][0]
+        # firstCols = [c_action, c_name]
+        # columns = [c_action, c_name] + [c for c in columns if c not in firstCols]
 
         conf = QgsAttributeTableConfig()
         conf.setColumns(columns)
@@ -1029,14 +1003,16 @@ class SpectralLibrary(QgsVectorLayer):
         # requiredFields = [f.name for f in ogrStandardFields()]
         return []
 
-    def addSpectralProfileAttribute(self, name: str, comment: str = None) -> bool:
+    def addSpectralProfileField(self, name: str, comment: str = None) -> bool:
+        return self.addAttribute(create_profile_field(name, comment)),
 
-        field = QgsField(name, QVariant.ByteArray, 'Binary', comment=comment)
-        b = self.addAttribute(field)
-        if b:
-            self.setEditorWidgetSetup(self.fields().lookupField(field.name()),
-                                      QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
-        return b
+   # def addAttribute(self, field: QgsField) -> bool:
+   #
+   #     if not super().addAttribute(field):
+   #         return False
+   #     field_index = self.fields().lookupField(field.name())
+   #     self.setEditorWidgetSetup(field_index, field.editorWidgetSetup())
+   #     return True
 
     def addMissingFields(self, fields: QgsFields, copyEditorWidgetSetup: bool = True):
         """
@@ -1241,7 +1217,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     def profile(self, fid: int, value_field=None) -> SpectralProfile:
         if value_field is None:
-            value_field = self.spectralValueFields()[0]
+            value_field = self.spectralProfileFields()[0]
         return SpectralProfile.fromQgsFeature(self.getFeature(fid), profile_field=value_field)
 
     def profiles(self,
@@ -1404,7 +1380,7 @@ class SpectralLibrary(QgsVectorLayer):
                 raise Exception(f'Filetype not supported: {path}')
         return []
 
-    def spectralValueFields(self) -> typing.List[QgsField]:
+    def spectralProfileFields(self) -> typing.List[QgsField]:
         return profile_fields(self)
 
     def yRange(self) -> typing.List[float]:
@@ -1522,7 +1498,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     def __getitem__(self, slice) -> typing.Union[SpectralProfile, typing.List[SpectralProfile]]:
         fids = sorted(self.allFeatureIds())[slice]
-        fields = self.spectralValueFields()
+        fields = self.spectralProfileFields()
         if len(fields) > 0:
             value_field = fields[0].name()
             if isinstance(fids, list):

@@ -7,6 +7,7 @@ from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
 
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 
+
 def create_profile_field(name: str, comment:str='')->QgsField:
     """
     Creates a QgsField to store spectral profiles
@@ -14,7 +15,7 @@ def create_profile_field(name: str, comment:str='')->QgsField:
     :param comment: field comment, optional
     :return: QgsField
     """
-    field = QgsField(name, type=QVariant.ByteArray, comment=comment)
+    field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
     field.setEditorWidgetSetup(setup)
     return field
