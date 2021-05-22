@@ -682,7 +682,7 @@ class SpectralSetting(object):
     3. an yUnit, e.g. 'reflectance'
     """
 
-    def __init__(self, x, xUnit: str = None, yUnit=None, bbl: list = None, field_name:str= None):
+    def __init__(self, x, xUnit: str = None, yUnit=None, bbl: list = None, field_name: str = None):
 
         assert isinstance(x, (tuple, list, np.ndarray))
 
@@ -703,7 +703,7 @@ class SpectralSetting(object):
         Returns the name of the QgsField to which profiles within this setting are linked to
         :return: str
         """
-        self._field_name
+        return self._field_name
 
     def __str__(self):
         return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
