@@ -428,29 +428,29 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
         self.mValueConversionIsPossible = success
         if success:
-            if True:
-                # handle failed removal of NaN
-                # see https://github.com/pyqtgraph/pyqtgraph/issues/1057
+            # handle failed removal of NaN
+            # see https://github.com/pyqtgraph/pyqtgraph/issues/1057
 
-                # 1. convert to numpy arrays
-                if not isinstance(y, np.ndarray):
-                    y = np.asarray(y, dtype=float)
-                if not isinstance(x, np.ndarray):
-                    x = np.asarray(x)
+            # 1. convert to numpy arrays
+            if not isinstance(y, np.ndarray):
+                y = np.asarray(y, dtype=float)
+            if not isinstance(x, np.ndarray):
+                x = np.asarray(x)
 
-                if self.mSortByXValues:
-                    idx = np.argsort(x)
-                    x = x[idx]
-                    y = y[idx]
+            if self.mSortByXValues:
+                idx = np.argsort(x)
+                x = x[idx]
+                y = y[idx]
 
-                is_finite = np.isfinite(y)
-                connected = np.logical_and(is_finite, np.roll(is_finite, -1))
-                keep = is_finite + connected
-                # y[np.logical_not(is_finite)] = np.nanmin(y)
-                y = y[keep]
-                x = x[keep]
-                connected = connected[keep]
+            is_finite = np.isfinite(y)
+            connected = np.logical_and(is_finite, np.roll(is_finite, -1))
+            keep = is_finite + connected
+            # y[np.logical_not(is_finite)] = np.nanmin(y)
+            y = y[keep]
+            x = x[keep]
 
+            connected = connected[keep]
+            if len(x) > 0:
                 # convert date units to float with decimal year and second precision
                 if isinstance(x[0], (datetime.datetime, datetime.date, datetime.time, np.datetime64)):
                     x = convertDateUnit(datetime64(x), 'DecimalYear')
@@ -460,13 +460,9 @@ class SpectralProfilePlotDataItem(PlotDataItem):
 
                 self.setData(x=x, y=y, connect=connected)
             else:
-                self.setData(x=x, y=y, connect='finite')
+                success = False
 
-            self.setVisible(True)
-        else:
-            # self.setData(x=[], y=[])
-            self.setVisible(False)
-
+        self.setVisible(success)
         return success
 
     def closestDataPoint(self, pos) -> typing.Tuple[int, float, float, float]:
