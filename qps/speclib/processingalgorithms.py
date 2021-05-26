@@ -30,7 +30,7 @@ import numpy as np
 from PyQt5.QtCore import QVariant
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout
-from qgis._core import QgsField, QgsProcessingOutputVectorLayer, QgsFeatureRequest, QgsProcessingAlgorithm, \
+from qgis.core import QgsField, QgsProcessingOutputVectorLayer, QgsFeatureRequest, QgsProcessingAlgorithm, \
     QgsProcessingParameterString, QgsProcessingContext, QgsProcessingFeedback
 
 from qgis.core import \
@@ -387,7 +387,7 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
             new_features = []
             if fids and mode != 'APPEND':
                 # block profiles with FIDs -> handle mode
-                FEATURE_DATA = {fids[i]:ba for i, ba in enumerate(block.profileValueByteArrays())}
+                FEATURE_DATA = {fid : ba for fid, ba in block.profileValueByteArrays()}
                 request = QgsFeatureRequest()
                 request.setFilterFids(fids)
                 for f in speclib.getFeatures(request):

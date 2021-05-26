@@ -268,7 +268,7 @@ class RasterSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
     @classmethod
     def readFrom(cls, path,
-                 progressDialog: QgsProcessingFeedback= None,
+                 feedback: QgsProcessingFeedback= None,
                  addAttributes: bool = True) -> SpectralLibrary:
 
         ds: gdal.Dataset = gdalDataset(path)
@@ -320,7 +320,7 @@ class RasterSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def write(cls, speclib: SpectralLibrary,
               path: str,
-              progressDialog: QgsProcessingFeedback= None):
+              feedback: QgsProcessingFeedback= None):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """

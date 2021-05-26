@@ -1238,7 +1238,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     def groupBySpectralProperties(self,
                                   fids=None,
-                                  value_fields=None,
+                                  profile_field=None,
                                   excludeEmptyProfiles: bool = True
                                   ) -> typing.Dict[SpectralSetting, typing.List[SpectralProfile]]:
         """
@@ -1252,7 +1252,7 @@ class SpectralLibrary(QgsVectorLayer):
         """
         return groupBySpectralProperties(self.profiles(
             fids=fids,
-            profile_field=value_fields,
+            profile_field=profile_field,
         ),
             excludeEmptyProfiles=excludeEmptyProfiles
         )

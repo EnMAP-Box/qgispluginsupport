@@ -1,7 +1,7 @@
 import typing
 
 from PyQt5.QtCore import QVariant
-from qgis._core import QgsEditorWidgetSetup
+from qgis.core import QgsEditorWidgetSetup
 
 from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
 

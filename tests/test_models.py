@@ -5,7 +5,7 @@ import os
 import numpy as np
 from PyQt5.QtCore import QSettings
 from PyQt5.QtGui import QColor
-from qgis._core import QgsSettings
+from qgis.core import QgsSettings
 
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication, QGridLayout, QLabel, QWidget, \

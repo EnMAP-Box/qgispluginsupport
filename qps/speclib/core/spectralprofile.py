@@ -9,7 +9,7 @@ from collections import namedtuple
 import json
 
 from PyQt5.QtCore import pyqtSignal, QObject
-from qgis._core import QgsTask, QgsVectorLayer, QgsField, QgsFeatureRequest, QgsFeature
+from qgis.core import QgsTask, QgsVectorLayer, QgsField, QgsFeatureRequest, QgsFeature
 
 from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray
 from qgis.PyQt.QtWidgets import QWidget
@@ -753,7 +753,7 @@ def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
     p_field_idx = None
 
     for p in profiles:
-        assert isinstance(p, SpectralProfile)
+        assert isinstance(p, QgsFeature)
         if p_field_idx is None:
             # initialize the profile field to group profiles on
             p_fields = profile_fields(p)
@@ -773,6 +773,9 @@ def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
             elif isinstance(profile_field, QgsField):
                 p_field_idx = p_field_indices[p_field_names.index(profile_field.name())]
                 p_field = p_fields[p_field_names.index(profile_field.name())]
+
+        if not isinstance(p, SpectralProfile):
+            p = SpectralProfile.fromQgsFeature(p, profile_field=p_field_idx)
 
         d = p.values(profile_field_index=p_field_idx)
 
@@ -987,9 +990,7 @@ class SpectralProfileBlock(object):
                 profile.setValues(x=xValues, y=yValues, xUnit=xUnit, yUnit=yUnit)
                 yield profile
 
-        encodeProfileValueDict()
-
-    def profileValueDictionaries(self) -> typing.List[dict]:
+    def profileValueDictionaries(self) -> typing.List[typing.Tuple[int, dict]]:
         """
         Converts the block data into profile value dictionaries
         :return:
@@ -1001,20 +1002,25 @@ class SpectralProfileBlock(object):
         yUnit = spectral_settings.yUnit()
         xValues = spectral_settings.x()
 
+        fids = self.fids()
+
         for j, i in zip(yy, xx):
             d = prepareProfileValueDict(x=xValues,
                                         y=self.mData[:, j, i],
                                         xUnit=xUnit,
                                         yUnit=yUnit)
-            yield d
+            if fids:
+                yield fids[i], d
+            else:
+                yield None, d
 
-    def profileValueByteArrays(self) -> typing.List[QByteArray]:
+    def profileValueByteArrays(self) -> typing.List[typing.Tuple[int, QByteArray]]:
         """
         Converts the block profiles data into serialized profile value dictionaries
         :return:
         """
-        for d in self.profileValueDictionaries():
-            yield encodeProfileValueDict(d)
+        for fid, d in self.profileValueDictionaries():
+            yield fid, encodeProfileValueDict(d)
 
     def data(self) -> np.ndarray:
         """

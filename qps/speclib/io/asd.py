@@ -415,7 +415,7 @@ class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def readFrom(cls, paths: typing.Union[str, list],
                  asdFields: typing.Iterable[str] = None,
-                 progressDialog: QgsProcessingFeedback= None) -> SpectralLibrary:
+                 feedback: QgsProcessingFeedback= None) -> SpectralLibrary:
         """
         :param paths: list of source paths
         :param asdFields: list of header information to be extracted from ASD binary files

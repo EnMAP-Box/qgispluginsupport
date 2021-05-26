@@ -61,7 +61,7 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
     def readFrom(cls, path: str,
                  wlu='nm',
                  delimiter=',',
-                 progressDialog: QgsProcessingFeedback = None) -> SpectralLibrary:
+                 feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
         """
          Returns the SpectralLibrary read from "path"
         :param path:
@@ -70,8 +70,8 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         :type wlu:
         :param delimiter:
         :type delimiter:
-        :param progressDialog:
-        :type progressDialog:
+        :param feedback:
+        :type feedback:
         :return:
         :rtype:
         """
@@ -170,7 +170,7 @@ class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return sl
 
     @classmethod
-    def write(cls, speclib:SpectralLibrary, path:str, progressDialog:QgsProcessingFeedback=None, delimiter:str=',') -> list:
+    def write(cls, speclib:SpectralLibrary, path:str, feedback:QgsProcessingFeedback=None, delimiter:str= ',') -> list:
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom(...)
         :param speclib: SpectralLibrary

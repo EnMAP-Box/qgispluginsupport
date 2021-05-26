@@ -6,7 +6,7 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import xmlrunner
-from qgis._core import QgsProcessingProvider, QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, \
+from qgis.core import QgsProcessingProvider, QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, \
     QgsProcessingAlgorithm
 
 from qgis.core import QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \

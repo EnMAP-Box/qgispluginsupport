@@ -16,13 +16,11 @@ from PyQt5.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QPa
 from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout
 from PyQt5.QtXml import QDomElement, QDomDocument
-from qgis._core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \
+from qgis.core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsFieldProxyModel, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsExpression, QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
     QgsFeature, QgsFeatureRequest, QgsProcessingException
-from qgis._gui import QgsAttributeTableFilterModel, QgsDualView, QgsAttributeTableModel, QgsFieldExpressionWidget
-
-
+from qgis.gui import QgsAttributeTableFilterModel, QgsDualView, QgsAttributeTableModel, QgsFieldExpressionWidget
 
 from ...externals import pyqtgraph as pg
 from ...externals.pyqtgraph import PlotDataItem, PlotWindow
@@ -34,7 +32,8 @@ from ..core.spectrallibrary import SpectralLibrary, DEBUG, containsSpeclib, defa
 from ..core import profile_fields, profile_field_indices
 from ..core.spectralprofile import SpectralProfile, SpectralProfileBlock, SpectralProfileLoadingTask
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
-    SpectralProcessingProfilesOutput, SpectralProcessingModelList, NO_MODEL_MODEL
+    SpectralProcessingProfilesOutput, SpectralProcessingModelList, NO_MODEL_MODEL, outputParameterResults, \
+    outputParameterResult
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, XUnitModel, UnitModel
 from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit
 
@@ -1178,7 +1177,7 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         # mCache1FeatureData[fid] -> QColor
         self.mCache1FeatureColors: typing.Dict[FEATURE_ID, QColor] = dict()
         # mCache2ModelData[(fid, fidx, modelId))] -> model /  raw profile data
-        self.mCache2ModelData: typing.Dict[MODEL_DATA_KEY, SpectralProfile] = dict()
+        self.mCache2ModelData: typing.Dict[MODEL_DATA_KEY, dict] = dict()
         # mCache2ModelData[(fid, fidx, modelId, xunit))] -> dict
         self.mCache3PlotData: typing.Dict[PLOT_DATA_KEY, dict] = dict()
 
@@ -1242,7 +1241,6 @@ class SpectralProfilePlotControl(QAbstractTableModel):
         self.mPlotWidget.sigPlotDataItemSelected.connect(self.onPlotSelectionRequest)
         self.setXUnit(self.mXUnitModel[0]) # required to set x unit in plot widget
 
-
     sigMaxProfilesChanged = pyqtSignal(int)
 
     def setMaxProfiles(self, n: int):
@@ -1259,6 +1257,9 @@ class SpectralProfilePlotControl(QAbstractTableModel):
 
     def __iter__(self) -> typing.Iterator[SpectralProfilePlotVisualization]:
         return iter(self.mProfileVisualizations)
+
+    def __getitem__(self, slice):
+        return self.mProfileVisualizations[slice]
 
     def profileFieldsModel(self) -> QgsFieldModel:
         return self.mProfileFieldModel
@@ -1544,6 +1545,19 @@ class SpectralProfilePlotControl(QAbstractTableModel):
             assert model.prepareAlgorithm(parameters, context, feedback)
             try:
                 results = model.processAlgorithm(parameters, context, feedback)
+                for p in model.outputDefinitions():
+                    if isinstance(p, SpectralProcessingProfilesOutput):
+                        parameterResult: typing.List[SpectralProfileBlock] = outputParameterResult(results, p.name())
+                        if isinstance(parameterResult, list):
+                            for block in parameterResult:
+                                if isinstance(block, SpectralProfileBlock):
+                                    for fid, d in block.profileValueDictionaries():
+                                        # MODEL_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME]
+                                        model_data_key: MODEL_DATA_KEY = (fid, profile_field, model_id)
+
+                                        self.mCache2ModelData[model_data_key] = d
+                                        block.fids()
+                        break
             except QgsProcessingException as ex:
                 feedback.reportError(str(ex))
             s = ""

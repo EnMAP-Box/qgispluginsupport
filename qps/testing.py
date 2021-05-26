@@ -39,7 +39,7 @@ import sip
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from osgeo import gdal, ogr, osr, gdal_array
-from qgis._core import QgsField
+from qgis.core import QgsField
 
 import qgis.testing
 import qgis.utils
@@ -419,6 +419,15 @@ class TestCase(qgis.testing.TestCase):
         os.makedirs(testDir, exist_ok=True)
         return testDir
 
+    def createProcessingFeedback(self) -> QgsProcessingFeedback:
+        """
+        Creates a QgsProcessingFeedback.
+        :return:
+        """
+        feedback = QgsProcessingFeedback()
+
+        return feedback
+
     def createImageCopy(self, path, overwrite_existing: bool = True) -> str:
         """
         Creates a save image copy to manipulate metadata
@@ -597,6 +606,8 @@ class TestObjects(object):
 
         return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
                TestObjects._coreDataGT, TestObjects._coreDataWkt
+
+
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
@@ -884,8 +895,10 @@ class TestObjects(object):
             provider = TestAlgorithmProvider()
             assert procReg.addProvider(provider)
             TestObjects.TEST_PROVIDER = provider
-
-        return procReg.providerById(TestObjects.TEST_PROVIDER.id())
+        for p in procReg.providers():
+            if p.name() == TestAlgorithmProvider.NAME:
+                return p
+        return None
 
     @staticmethod
     def createSpectralProcessingAlgorithm() -> QgsProcessingAlgorithm:
@@ -1108,11 +1121,6 @@ class TestObjects(object):
         assert vl.isValid()
         assert vl.featureCount() == lyr.GetFeatureCount()
         return vl
-
-    @staticmethod
-    def createDropEvent(mimeData: QMimeData):
-        """Creates a QDropEvent conaining the provided QMimeData"""
-        return QDropEvent(QPointF(0, 0), Qt.CopyAction, mimeData, Qt.LeftButton, Qt.NoModifier)
 
     @staticmethod
     def processingAlgorithm():

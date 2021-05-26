@@ -62,8 +62,8 @@ class TestIO(TestCase):
 
         slib1 = TestObjects.createSpectralLibrary()
         path = slib1.source()
-
-        slib2 = SpectralLibrary.readFrom(path, feedback=QProgressDialog())
+        feedback = self.createProcessingFeedback()
+        slib2 = SpectralLibrary.readFrom(path, feedback=feedback)
         self.assertIsInstance(slib2, SpectralLibrary)
         self.assertEqual(slib1, slib2)
         s = ""
@@ -170,15 +170,16 @@ class TestIO(TestCase):
     def test_CSV2(self):
         from qpstestdata import speclib
         from qps.speclib.io.csvdata import CSVSpectralLibraryIO
-        SLIB = SpectralLibrary.readFrom(speclib, feedback=QProgressDialog())
+        feedback = self.createProcessingFeedback()
+        SLIB = SpectralLibrary.readFrom(speclib, feedback=feedback)
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
 
-        CSVSpectralLibraryIO.write(SLIB, pathCSV, progressDialog=QProgressDialog())
+        CSVSpectralLibraryIO.write(SLIB, pathCSV, feedback=feedback)
 
         self.assertTrue(os.path.isfile(pathCSV))
         dialect = CSVSpectralLibraryIO.canRead(pathCSV)
         self.assertTrue(dialect is not None)
-        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, progressDialog=QProgressDialog())
+        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, feedback=feedback)
         self.assertTrue(len(SLIB) == len(speclib2))
         for i, (p1, p2) in enumerate(zip(SLIB[:], speclib2[:])):
             self.assertIsInstance(p1, SpectralProfile)
@@ -191,12 +192,12 @@ class TestIO(TestCase):
         # pathCSV = os.data_source.join(os.data_source.dirname(__file__), 'speclibcvs2.out.csv')
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
         print(pathCSV)
-        CSVSpectralLibraryIO.write(SLIB, pathCSV, progressDialog=QProgressDialog())
+        CSVSpectralLibraryIO.write(SLIB, pathCSV, feedback=feedback)
 
         self.assertTrue(os.path.isfile(pathCSV))
         dialect = CSVSpectralLibraryIO.canRead(pathCSV)
         self.assertTrue(dialect is not None)
-        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, progressDialog=QProgressDialog())
+        speclib2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, feedback=feedback)
         self.assertTrue(len(SLIB) == len(speclib2))
         for i, (p1, p2) in enumerate(zip(SLIB[:], speclib2[:])):
             self.assertIsInstance(p1, SpectralProfile)
@@ -211,17 +212,17 @@ class TestIO(TestCase):
 
         # addresses issue #8
         from qpstestdata import speclib
-        SL1 = SpectralLibrary.readFrom(speclib, feedback=QProgressDialog())
+        SL1 = SpectralLibrary.readFrom(speclib, feedback=feedback)
         self.assertIsInstance(SL1, SpectralLibrary)
 
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
         print(pathCSV)
         for dialect in [pycsv.excel_tab, pycsv.excel]:
             pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-            CSVSpectralLibraryIO.write(SL1, pathCSV, dialect=dialect, progressDialog=QProgressDialog())
+            CSVSpectralLibraryIO.write(SL1, pathCSV, dialect=dialect, feedback=feedback)
             d = CSVSpectralLibraryIO.canRead(pathCSV)
             self.assertEqual(d, dialect)
-            SL2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, progressDialog=QProgressDialog())
+            SL2 = CSVSpectralLibraryIO.readFrom(pathCSV, dialect=dialect, feedback=feedback)
             self.assertIsInstance(SL2, SpectralLibrary)
             self.assertTrue(len(SL1) == len(SL2))
 
@@ -234,10 +235,10 @@ class TestIO(TestCase):
 
         # addresses issue #8 loading modified CSV values
 
-        SL = SpectralLibrary.readFrom(speclib, feedback=QProgressDialog())
+        SL = SpectralLibrary.readFrom(speclib, feedback=feedback)
 
         pathCSV = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-        CSVSpectralLibraryIO.write(SL, pathCSV, progressDialog=QProgressDialog())
+        CSVSpectralLibraryIO.write(SL, pathCSV, feedback=feedback)
 
         with open(pathCSV, 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -265,7 +266,7 @@ class TestIO(TestCase):
         with open(pathCSV, 'w', encoding='utf-8') as f:
             f.writelines(lines)
 
-        SL2 = CSVSpectralLibraryIO.readFrom(pathCSV, progressDialog=QProgressDialog())
+        SL2 = CSVSpectralLibraryIO.readFrom(pathCSV, feedback=feedback)
 
         self.assertEqual(len(SL), len(SL2))
 
@@ -415,6 +416,8 @@ class TestIO(TestCase):
 
     def test_EcoSIS(self):
 
+        feedback = QgsProcessingFeedback()
+
         from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
         from qpstestdata import speclib
         self.assertFalse(EcoSISSpectralLibraryIO.canRead(speclib))
@@ -424,7 +427,7 @@ class TestIO(TestCase):
         for path in file_search(DIR_ECOSIS, '*.csv'):
             print('Read {}...'.format(path))
             self.assertTrue(EcoSISSpectralLibraryIO.canRead(path), msg='Unable to read {}'.format(path))
-            sl = EcoSISSpectralLibraryIO.readFrom(path, progressDialog=QProgressDialog())
+            sl = EcoSISSpectralLibraryIO.readFrom(path, feedback=feedback)
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) > 0)
 
@@ -440,14 +443,14 @@ class TestIO(TestCase):
         self.assertTrue(speclib.commitChanges())
 
         pathCSV = os.path.join(TEST_DIR, 'speclib.ecosys.csv')
-        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=QProgressDialog())
-        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, progressDialog=None)
+        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, feedback=QProgressDialog())
+        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, feedback=None)
         n = 0
         for p in csvFiles:
             self.assertTrue(os.path.isfile(p))
             self.assertTrue(EcoSISSpectralLibraryIO.canRead(p))
 
-            slPart = EcoSISSpectralLibraryIO.readFrom(p, progressDialog=QProgressDialog())
+            slPart = EcoSISSpectralLibraryIO.readFrom(p, feedback=QProgressDialog())
             self.assertIsInstance(slPart, SpectralLibrary)
 
             n += len(slPart)
@@ -463,7 +466,7 @@ class TestIO(TestCase):
         for path in reversed(list(file_search(DIR_SPECCHIO, '*.csv'))):
 
             self.assertTrue(SPECCHIOSpectralLibraryIO.canRead(path))
-            sl = SPECCHIOSpectralLibraryIO.readFrom(path, progressDialog=QProgressDialog())
+            sl = SPECCHIOSpectralLibraryIO.readFrom(path, feedback=QProgressDialog())
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertTrue(len(sl) > 0)
             for p in sl:
@@ -472,14 +475,14 @@ class TestIO(TestCase):
         # 2. write
         speclib = TestObjects.createSpectralLibrary(50, n_empty=1)
         pathCSV = os.path.join(TEST_DIR, 'speclib.specchio.csv')
-        csvFiles = SPECCHIOSpectralLibraryIO.write(speclib, pathCSV, progressDialog=QProgressDialog())
+        csvFiles = SPECCHIOSpectralLibraryIO.write(speclib, pathCSV, feedback=QProgressDialog())
 
         n = 0
         for p in csvFiles:
             self.assertTrue(os.path.isfile(p))
             self.assertTrue(SPECCHIOSpectralLibraryIO.canRead(p))
 
-            slPart = SPECCHIOSpectralLibraryIO.readFrom(p, progressDialog=QProgressDialog())
+            slPart = SPECCHIOSpectralLibraryIO.readFrom(p, feedback=QProgressDialog())
             self.assertIsInstance(slPart, SpectralLibrary)
             for p in slPart:
                 self.assertIsInstance(p, SpectralProfile)
@@ -514,11 +517,11 @@ class TestIO(TestCase):
 
             self.assertIsInstance(asdFile, ASDBinaryFile)
 
-            sl = ASDSpectralLibraryIO.readFrom(path, progressDialog=pd)
+            sl = ASDSpectralLibraryIO.readFrom(path, feedback=pd)
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertEqual(len(sl), 1)
 
-        sl = ASDSpectralLibraryIO.readFrom(binaryFiles, progressDialog=pd)
+        sl = ASDSpectralLibraryIO.readFrom(binaryFiles, feedback=pd)
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), len(binaryFiles))
 
@@ -526,11 +529,11 @@ class TestIO(TestCase):
         for path in textFiles:
             self.assertTrue(ASDSpectralLibraryIO.canRead(path))
 
-            sl = ASDSpectralLibraryIO.readFrom(path, progressDialog=pd)
+            sl = ASDSpectralLibraryIO.readFrom(path, feedback=pd)
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertEqual(len(sl), 1)
 
-        sl = ASDSpectralLibraryIO.readFrom(textFiles, progressDialog=pd)
+        sl = ASDSpectralLibraryIO.readFrom(textFiles, feedback=pd)
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), len(textFiles))
 
@@ -559,7 +562,7 @@ class TestIO(TestCase):
                 s = ""
 
             # write
-            writtenFiles = VectorSourceSpectralLibraryIO.write(slib, path, progressDialog=QProgressDialog())
+            writtenFiles = VectorSourceSpectralLibraryIO.write(slib, path, feedback=QProgressDialog())
             self.assertTrue(len(writtenFiles) == 1)
 
 
@@ -567,7 +570,7 @@ class TestIO(TestCase):
             file = writtenFiles[0]
             self.assertTrue(VectorSourceSpectralLibraryIO.canRead(file),
                             msg='Failed to read speclib from {}'.format(file))
-            sl = VectorSourceSpectralLibraryIO.readFrom(file, progressDialog=QProgressDialog())
+            sl = VectorSourceSpectralLibraryIO.readFrom(file, feedback=QProgressDialog())
             self.assertIsInstance(sl, SpectralLibrary)
             self.assertEqual(len(sl), len(slib))
 
@@ -592,19 +595,20 @@ class TestIO(TestCase):
             if len(p.yValues()) > 0:
                 nProfiles += 1
 
-        for c in allSubclasses(AbstractSpectralLibraryIO):
+        for ioClass in allSubclasses(AbstractSpectralLibraryIO):
             print('Test {}'.format(c.__name__))
+            c = ioClass()
             path = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
-            pd = QProgressDialog()
-            writtenFiles = c.write(slib, path, progressDialog=pd)
+            feedback = self.createProcessingFeedback()
+            writtenFiles = c.write(slib, path, feedback=feedback)
 
             # if it can write, it should read the profiles too
             if len(writtenFiles) > 0:
-
+                feedback = self.createProcessingFeedback()
                 n = 0
                 for path in writtenFiles:
                     self.assertTrue(os.path.isfile(path), msg='Failed to write file. {}'.format(c))
-                    sl = c.readFrom(path, feedback=pd)
+                    sl = c.readFrom(path, feedback=feedback)
                     self.assertIsInstance(sl, SpectralLibrary)
                     n += len(sl)
 
@@ -620,7 +624,7 @@ class TestIO(TestCase):
 
         self.assertTrue(ARTMOSpectralLibraryIO.canRead(p))
         pd = QProgressDialog()
-        sl = ARTMOSpectralLibraryIO.readFrom(p, progressDialog=pd)
+        sl = ARTMOSpectralLibraryIO.readFrom(p, feedback=pd)
 
         self.assertIsInstance(sl, SpectralLibrary)
         self.assertEqual(len(sl), 10)
@@ -636,7 +640,7 @@ class TestIO(TestCase):
         pathCSV1 = dirTMP / 'speclib1.csv'
         pathCSV2 = dirTMP / 'speclib2.csv'
 
-        writtenFiles = CSVSpectralLibraryIO.write(speclib, pathCSV1, progressDialog=QProgressDialog())
+        writtenFiles = CSVSpectralLibraryIO.write(speclib, pathCSV1, feedback=QProgressDialog())
         self.assertIsInstance(writtenFiles, list)
         self.assertTrue(len(writtenFiles) == 1)
 
@@ -645,7 +649,7 @@ class TestIO(TestCase):
         self.assertTrue(len(writtenFiles) == 1)
 
         self.assertTrue(CSVSpectralLibraryIO.canRead(pathCSV1), msg='Unable to read {}'.format(pathCSV1))
-        sl_read1 = CSVSpectralLibraryIO.readFrom(pathCSV1, progressDialog=QProgressDialog())
+        sl_read1 = CSVSpectralLibraryIO.readFrom(pathCSV1, feedback=QProgressDialog())
 
         self.assertTrue(VectorSourceSpectralLibraryIO.canRead(pathCSV2), msg='Unable to read {}'.format(pathCSV2))
         sl_read2 = SpectralLibrary.readFrom(pathCSV2, feedback=QProgressDialog())
@@ -773,8 +777,9 @@ class TestIO(TestCase):
         self.assertTrue(bin == speclibpath)
         self.assertTrue(hdr.endswith('.hdr'))
 
-        sl1 = SpectralLibrary.readFrom(binarypath, feedback=QProgressDialog())
-        sl2 = SpectralLibrary.readFrom(headerPath, feedback=QProgressDialog())
+        feedback = self.createProcessingFeedback()
+        sl1 = SpectralLibrary.readFrom(binarypath, feedback=feedback)
+        sl2 = SpectralLibrary.readFrom(headerPath, feedback=feedback)
 
         self.assertEqual(sl1, sl2)
 
@@ -811,8 +816,8 @@ class TestIO(TestCase):
         #self.assertEqual(p0.fieldNames(), ['fid', 'name', 'source', 'values'])
 
         #self.assertEqual(p0.attribute('name'), p0.name())
-
-        sl2 = SpectralLibrary.readFrom(pathESL, feedback=QProgressDialog())
+        feedback = self.createProcessingFeedback()
+        sl2 = SpectralLibrary.readFrom(pathESL, feedback=feedback)
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertEqual(sl1, sl2)
         p1 = sl2[0]
@@ -821,7 +826,7 @@ class TestIO(TestCase):
 
         # test ENVI Spectral Library
         pathTmp = tempfile.mktemp(prefix='tmpESL', suffix='.sli')
-        writtenFiles = EnviSpectralLibraryIO.write(sl1, pathTmp, progressDialog=QProgressDialog())
+        writtenFiles = EnviSpectralLibraryIO.write(sl1, pathTmp, feedback=QProgressDialog())
 
         nWritten = 0
         for pathHdr in writtenFiles:

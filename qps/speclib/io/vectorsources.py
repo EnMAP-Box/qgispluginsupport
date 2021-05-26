@@ -110,12 +110,12 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
     @classmethod
     def readFrom(cls, path,
-                 progressDialog: QgsProcessingFeedback= None,
+                 feedback: QgsProcessingFeedback= None,
                  addAttributes: bool = True) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
-        :param progressDialog:
-        :type progressDialog:
+        :param feedback:
+        :type feedback:
         :param path: source of SpectralLibrary
         :return: SpectralLibrary
         """
@@ -171,7 +171,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def write(cls, speclib: SpectralLibrary,
               path: str,
-              progressDialog: QgsProcessingFeedback= None,
+              feedback: QgsProcessingFeedback= None,
               options: QgsVectorFileWriter.SaveVectorOptions = None,
               filterFormat: QgsVectorFileWriter.FilterFormatDetails = None):
         """

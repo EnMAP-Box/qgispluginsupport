@@ -391,9 +391,6 @@ class SpectralProcessingTests(TestCase):
         n_profiles_per_n_bands = 5
         n_bands = [6, 30, 177]
 
-
-        s = ""
-
         if False:
             # speed-test for deleting features
             slibs = [TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands) for _ in range(4)]
@@ -423,14 +420,19 @@ class SpectralProcessingTests(TestCase):
             s = ""
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
-        w = SpectralLibraryWidget(speclib=sl)
+        SLW = SpectralLibraryWidget(speclib=sl)
 
         # create a new model
-        SPW: SpectralProcessingWidget = w.pageProcessingWidget
-        SPW.model()
+        spm = TestObjects.createSpectralProcessingModel()
+
+        PC: SpectralProfilePlotControl = SLW.plotControl()
+        PC.addModel(spm)
+
+        # set spectral mode to 1st item
+        PC.setData(PC.index(0,PC.CIX_MODEL), spm, role=Qt.EditRole)
         # from qps.resources import ResourceBrowser
         # rb = ResourceBrowser()
-        self.showGui(w)
+        self.showGui(SLW)
         s = ""
         pass
 

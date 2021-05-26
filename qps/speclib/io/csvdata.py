@@ -123,7 +123,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def write(cls, speclib: SpectralLibrary,
               path: str,
-              progressDialog: QgsProcessingFeedback = None,
+              feedback: QgsProcessingFeedback = None,
               dialect=pycsv.excel_tab) -> list:
         """
         Writes the speclib into a CSv file
@@ -141,7 +141,7 @@ class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
         return [path]
 
     @classmethod
-    def readFrom(cls, path=None, progressDialog:QgsProcessingFeedback=None, dialect=pycsv.excel_tab):
+    def readFrom(cls, path=None, feedback:QgsProcessingFeedback=None, dialect=pycsv.excel_tab):
         f = open(path, 'r', encoding='utf-8')
         text = f.read()
         f.close()

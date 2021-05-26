@@ -65,7 +65,7 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return False
 
     @classmethod
-    def readFrom(cls, path: str, progressDialog:QgsProcessingFeedback = None) -> SpectralLibrary:
+    def readFrom(cls, path: str, feedback:QgsProcessingFeedback = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary

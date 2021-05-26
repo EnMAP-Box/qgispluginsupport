@@ -3,7 +3,7 @@ import os
 from PyQt5.QtCore import QEvent, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
 from osgeo import gdal, ogr
-from qgis._gui import QgsMapCanvas, QgsDualView
+from qgis.gui import QgsMapCanvas, QgsDualView
 
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget

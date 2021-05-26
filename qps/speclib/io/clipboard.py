@@ -58,7 +58,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
 
     @classmethod
     def readFrom(cls, path=None,
-                 progressDialog:QgsProcessingFeedback=None) -> SpectralLibrary:
+                 feedback:QgsProcessingFeedback=None) -> SpectralLibrary:
 
         clipboard = QApplication.clipboard()
         mimeData = clipboard.mimeData()
@@ -79,7 +79,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
               mode=None,
               sep=None,
               newline=None,
-              progressDialog:QgsProcessingFeedback=None):
+              feedback:QgsProcessingFeedback=None):
 
         if mode is None:
             mode = ClipboardIO.WritingModes.ALL

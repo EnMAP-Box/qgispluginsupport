@@ -2,9 +2,11 @@ import typing
 
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QMenu
+from qgis.core import QgsField, QgsExpression, QgsExpressionContext
+
 from qgis.core import QgsProcessingFeedback
 from .spectrallibrary import SpectralLibrary
-
+from .spectralprofile import SpectralProfile
 
 class AbstractSpectralLibraryExportWidget(QWidget):
     """
@@ -42,6 +44,11 @@ class AbstractSpectralLibraryIO(object):
     """
     _SUB_CLASSES = []
 
+    def __init__(self):
+
+        self.mProfileNameDefault: QgsExpression = QgsExpression('Profile $id')
+        self.mProfileNameContext: QgsExpressionContext = QgsExpressionContext()
+
     @staticmethod
     def subClasses():
 
@@ -55,7 +62,7 @@ class AbstractSpectralLibraryIO(object):
         from ..io.specchio import SPECCHIOSpectralLibraryIO
 
         subClasses = [
-            VectorSourceSpectralLibraryIO,  # this is the prefered way to save/load speclibs
+            VectorSourceSpectralLibraryIO,  # this is the preferred way to save/load speclibs
             EnviSpectralLibraryIO,
             ASDSpectralLibraryIO,
             CSVSpectralLibraryIO,
@@ -84,11 +91,11 @@ class AbstractSpectralLibraryIO(object):
 
     @classmethod
     def readFrom(cls, path: str,
-                 progressDialog: QgsProcessingFeedback = None) -> SpectralLibrary:
+                 feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of Spectral Library
-        :param progressDialog: QProgressDialog, which well-behave implementations can use to show the import progress.
+        :param feedback: QProgressDialog, which well-behave implementations can use to show the import progress.
         :return: SpectralLibrary
         """
         return None
@@ -97,13 +104,18 @@ class AbstractSpectralLibraryIO(object):
     def write(cls,
               speclib: SpectralLibrary,
               path: str,
-              progressDialog: QgsProcessingFeedback = None) -> \
+              profile_field: typing.Union[int, str, QgsField] = None,
+              profile_name: QgsExpression = None,
+              feedback: QgsProcessingFeedback = None,
+              **kwargs) -> \
             typing.List[str]:
         """
         Writes the SpectralLibrary.
         :param speclib: SpectralLibrary to write
         :param path: file path to write the SpectralLibrary to
-        :param progressDialog:  QProgressDialog, which well-behave implementations can use to show the writing progress.
+        :param profile_field: the profile column with  which SpectralProfiles to write.
+        :param profile_name: a QgsExpression to generate a profile name string, e.g. based on other field attributes.
+        :param feedback:  QProgressDialog, which well-behave implementations can use to show the writing progress.
         :return: a list of paths that can be used to re-open all written profiles
         """
         assert isinstance(speclib, SpectralLibrary)

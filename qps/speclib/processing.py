@@ -253,6 +253,13 @@ def outputParameterResult(results: dict,
             return v
     return None
 
+
+def outputParameterResults(results: dict, model: QgsProcessingModelAlgorithm) -> typing.Dict[str, typing.Any]:
+    R: typing.Dict[str, typing.Any] = dict()
+    for p in model.outputDefinitions():
+        R[p.name()] = outputParameterResult(results, p)
+    return R
+
 def parameterAsSpectralProfileBlockList(parameters: dict,
                                         name: str,
                                         context: QgsProcessingContext) -> typing.List[SpectralProfileBlock]:
