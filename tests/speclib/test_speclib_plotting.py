@@ -71,17 +71,18 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryPlotWidget()
         w.setDualView(dv)
 
+        visModel = w.tableView.model()
+        self.assertEqual(visModel.rowCount(), 1)
+
         # add spectral processing models
         spm = TestObjects.createSpectralProcessingModel()
         from qps.speclib.processing import is_spectral_processing_model
         self.assertTrue(is_spectral_processing_model(spm))
         w.addSpectralModel(spm)
 
-        visModel = w.tableView.model()
-        self.assertEqual(visModel.rowCount(), 0)
         # add a VIS
         w.btnAddProfileVis.click()
-        self.assertEqual(visModel.rowCount(), 1)
+        self.assertEqual(visModel.rowCount(), 2)
 
         # click into each cell
         for row in range(visModel.rowCount()):
@@ -93,10 +94,10 @@ class TestSpeclibWidgets(TestCase):
         w.tableView.selectRow(0)
         w.btnRemoveProfileVis.click()
 
-        self.assertEqual(visModel.rowCount(), 0)
+        self.assertEqual(visModel.rowCount(), 1)
 
         w.actionAddProfileVis.trigger()
-        self.assertEqual(visModel.rowCount(), 1)
+        self.assertEqual(visModel.rowCount(), 2)
 
         speclib.startEditing()
         speclib.addSpectralProfileField('profiles3')
