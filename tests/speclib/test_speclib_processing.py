@@ -429,7 +429,7 @@ class SpectralProcessingTests(TestCase):
         PC.addModel(spm)
 
         # set spectral mode to 1st item
-        PC.setData(PC.index(0,PC.CIX_MODEL), spm, role=Qt.EditRole)
+        PC.setData(PC.index(0, PC.CIX_MODEL), spm, role=Qt.EditRole)
         # from qps.resources import ResourceBrowser
         # rb = ResourceBrowser()
         self.showGui(SLW)

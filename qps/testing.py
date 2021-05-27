@@ -949,6 +949,12 @@ class TestObjects(object):
             alg.INPUT,
             [QgsProcessingModelChildParameterSource.fromModelParameter(pname_src_profiles)])
 
+        code = "profiledata=profiledata*1.25"
+        calg.addParameterSources(
+            alg.CODE,
+            [QgsProcessingModelChildParameterSource.fromStaticValue(code)]
+        )
+
         # allow to write the processing alg outputs as new SpectralLibraries
         model.addOutput(SpectralProcessingProfilesOutput(pname_dst_profiles))
         childOutput = QgsProcessingModelOutput(pname_dst_profiles)

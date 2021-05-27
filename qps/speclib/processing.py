@@ -485,7 +485,8 @@ class NO_MODEL_MODEL(QgsProcessingModelAlgorithm):
         return ''
 
     def displayName(self):
-        return 'No Model'
+        return '   '
+
 
 class SpectralProcessingModelList(QAbstractListModel):
     """
