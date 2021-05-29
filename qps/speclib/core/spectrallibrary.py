@@ -1162,6 +1162,12 @@ class SpectralLibrary(QgsVectorLayer):
         speclib.commitChanges()
         return speclib
 
+    def renameAttribute(self, index, newName):
+
+        setup = self.editorWidgetSetup(index)
+        super().renameAttribute(index, newName)
+        self.setEditorWidgetSetup(index, setup)
+
     def removeProfiles(self, profiles):
         """
         Removes profiles from this ProfileSet

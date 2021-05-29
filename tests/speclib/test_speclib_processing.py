@@ -389,7 +389,7 @@ class SpectralProcessingTests(TestCase):
     def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
         n_profiles_per_n_bands = 5
-        n_bands = [6, 30, 177]
+        n_bands = [177, 6]
 
         if False:
             # speed-test for deleting features
@@ -420,6 +420,13 @@ class SpectralProcessingTests(TestCase):
             s = ""
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
+        RENAME = {'profiles': 'ASD', 'profiles1': 'Sentinel2'}
+        sl.startEditing()
+        for oldName, newName in RENAME.items():
+            idx = sl.fields().lookupField(oldName)
+            sl.renameAttribute(idx, newName)
+            s = ""
+        sl.commitChanges()
         SLW = SpectralLibraryWidget(speclib=sl)
 
         # create a new model
