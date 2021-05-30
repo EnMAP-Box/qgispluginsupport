@@ -625,14 +625,14 @@ class PlotStyle(QObject):
         """
         return QIcon(self.createPixmap(size=size))
 
-    def createPixmap(self, size: QSize = None) -> QPixmap:
+    def createPixmap(self, size: QSize = None, hline:bool=False) -> QPixmap:
         """
         Creates a QPixmap to show this PlotStyle
         :param size: QSize
         :return: QPixmap
         """
 
-        if size is None:
+        if not isinstance(size, QSize):
             size = QSize(60, 60)
 
         pm = QPixmap(size)
@@ -646,21 +646,17 @@ class PlotStyle(QObject):
 
             w, h = pm.width(), pm.height()
             path = QPainterPath()
-            path.moveTo(0, 0)
-            xvec = [0.2, 0.4, 0.5, 0.8, 1.0]
-            yvec = [0.2, 0.5, 0.5, 0.7, 0.6]
+            if hline:
+                xvec = [0.0, 0.5, 1.0]
+                yvec = [0.5, 0.5, 0.5]
+            else:
+                xvec = [0.0, 0.5, 1.0]
+                yvec = [0.8, 0.5, 0.7]
+
+            path.moveTo(xvec[0]*w, yvec[0]*h)
             for x, y in zip(xvec, yvec):
                 path.lineTo(x*w, y*h)
-            # path.cubicTo()
             p.drawPath(path)
-
-            hw, hh = int(w * 0.5), int(h * 0.5)
-            w2, h2 = int(w * 0.75), int(h * 0.75)
-            # p.drawLine(x1,y1,x2,y2)
-
-            # p.drawLine(2, h - 2, hw, hh)
-            # p.drawLine(hw, hh, w - 2, int(h * 0.3))
-
             p.translate(0.5 * pm.width(), 0.5 * pm.height())
             drawSymbol(p, self.markerSymbol, self.markerSize, self.markerPen, self.markerBrush)
             p.end()

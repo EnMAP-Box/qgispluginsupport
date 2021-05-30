@@ -1546,8 +1546,8 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
 
         if False:
             style: PlotStyle = vis.mPlotStyle
-            h = self.mTableView.verticalHeader().sectionSize(index.row())
-            w = self.mTableView.horizontalHeader().sectionSize(index.column())
+            h = self.mTreeView.verticalHeader().sectionSize(index.row())
+            w = self.mTreeView.horizontalHeader().sectionSize(index.column())
             if h > 0 and w > 0:
                 px = style.createPixmap(size=QSize(w, h))
                 painter.drawPixmap(option.rect, px)

@@ -145,7 +145,7 @@
         </layout>
        </item>
        <item row="2" column="0">
-        <widget class="SpectralProfilePlotControlView" name="tableView"/>
+        <widget class="SpectralProfilePlotControlView" name="treeView"/>
        </item>
       </layout>
      </widget>
@@ -253,13 +253,13 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SpectralProfilePlotControlView</class>
-   <extends>QTableView</extends>
+   <class>SpectralProfilePlotWidget</class>
+   <extends>QGraphicsView</extends>
    <header>qps.speclib.gui.spectrallibraryplotwidget</header>
   </customwidget>
   <customwidget>
-   <class>SpectralProfilePlotWidget</class>
-   <extends>QGraphicsView</extends>
+   <class>SpectralProfilePlotControlView</class>
+   <extends>QTreeView</extends>
    <header>qps.speclib.gui.spectrallibraryplotwidget</header>
   </customwidget>
  </customwidgets>

@@ -71,7 +71,7 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryPlotWidget()
         w.setDualView(dv)
 
-        visModel = w.tableView.model()
+        visModel = w.treeView.model().sourceModel()
         self.assertEqual(visModel.rowCount(), 1)
 
         # add spectral processing models
@@ -87,21 +87,17 @@ class TestSpeclibWidgets(TestCase):
         # click into each cell
         for row in range(visModel.rowCount()):
             for col in range(visModel.columnCount()):
-                idx = w.tableView.model().index(row, col)
-                w.tableView.edit(idx)
+                idx = w.treeView.model().index(row, col)
+                w.treeView.edit(idx)
 
-        # remove row
-        w.tableView.selectRow(0)
+        # remove vis
+
+        w.treeView.selectVisualizations(visModel[0])
         w.btnRemoveProfileVis.click()
-
-        self.assertEqual(visModel.rowCount(), 1)
-
-        w.actionAddProfileVis.trigger()
-        self.assertEqual(visModel.rowCount(), 2)
 
         speclib.startEditing()
         speclib.addSpectralProfileField('profiles3')
         speclib.commitChanges(stopEditing=False)
         speclib.deleteAttribute(speclib.fields().lookupField('profiles3'))
         speclib.commitChanges(stopEditing=False)
-        self.showGui([w, dv])
+        self.showGui([w])

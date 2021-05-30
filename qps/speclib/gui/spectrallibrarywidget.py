@@ -16,7 +16,7 @@ from ..core.spectrallibrary import SpectralLibrary
 from ..core.spectrallibraryio import AbstractSpectralLibraryIO
 from ..core.spectralprofile import SpectralProfile
 from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibraryPlotWidget, \
-    SpectralLibraryPlotItem, SpectralLibraryPlotStats, SpectralProfilePlotControl
+    SpectralLibraryPlotItem, SpectralLibraryPlotStats, SpectralProfilePlotControlModel
 from ..processing import SpectralProcessingWidget
 from ...unitmodel import BAND_NUMBER
 from ...utils import SpatialExtent, SpatialPoint
@@ -368,7 +368,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def plotWidget(self) -> SpectralProfilePlotWidget:
         return self.mSpeclibPlotWidget.plotWidget
 
-    def plotControl(self) -> SpectralProfilePlotControl:
+    def plotControl(self) -> SpectralProfilePlotControlModel:
         return self.mSpeclibPlotWidget.mPlotControlModel
 
     def plotItem(self) -> SpectralLibraryPlotItem:
