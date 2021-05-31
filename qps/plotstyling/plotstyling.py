@@ -625,7 +625,7 @@ class PlotStyle(QObject):
         """
         return QIcon(self.createPixmap(size=size))
 
-    def createPixmap(self, size: QSize = None, hline:bool=False) -> QPixmap:
+    def createPixmap(self, size: QSize = None, hline:bool=False, bc:QColor=None) -> QPixmap:
         """
         Creates a QPixmap to show this PlotStyle
         :param size: QSize
@@ -635,9 +635,12 @@ class PlotStyle(QObject):
         if not isinstance(size, QSize):
             size = QSize(60, 60)
 
+        if bc is None:
+            bc = self.backgroundColor
+
         pm = QPixmap(size)
         if self.isVisible():
-            pm.fill(self.backgroundColor)
+            pm.fill(bc)
 
             p = QPainter(pm)
             # draw the line
@@ -843,6 +846,7 @@ class PlotStyleWidget(QWidget):
         self.cbLinePenStyle.setPenStyle(style.linePen.style())
         self.sbLinePenWidth.setValue(style.linePen.width())
         self.cbIsVisible.setChecked(style.isVisible())
+        self.plotWidget.setBackground(style.backgroundColor)
         self.mBlockUpdates = False
 
         self.refreshPreview()

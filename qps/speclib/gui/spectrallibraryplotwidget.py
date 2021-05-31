@@ -1230,9 +1230,24 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mShowSelectedFeaturesOnly: bool = False
         self.mUseFeatureRenderer: bool = True
 
+        self.mPlotWidgetStyle: SpectralLibraryPlotWidgetStyle = SpectralLibraryPlotWidgetStyle.dark()
         self.mTemporaryProfileIDs: typing.Set[FEATURE_ID] = set()
-        self.mSelectedDataColor: QColor = QColor('yellow')
-        self.mTemporaryDataColor: QColor = QColor('green')
+        # self.mSelectedDataColor: QColor = QColor('yellow')
+        # self.mTemporaryDataColor: QColor = QColor('green')
+        # self.mBackgroundColor
+
+    def setPlotWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
+        self.mPlotWidgetStyle = style
+        if self.rowCount() > 0:
+            # set background color to each single plotstye
+            for vis in self.mProfileVisualizations:
+                vis.plotStyle().setBackgroundColor(style.backgroundColor)
+
+            # update plot backgrounds
+            self.dataChanged.emit(
+                self.index(0, 0),
+                self.index(self.rowCount()-1, 0)
+            )
 
     def parent(self, index: QModelIndex):
         if not index.isValid():
@@ -1488,7 +1503,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             symbolBrush = pg.mkBrush(style.markerBrush)
 
             if fid in self.mTemporaryProfileIDs:
-                featureColor: QColor = self.mTemporaryDataColor
+                featureColor: QColor = self.mPlotWidgetStyle.temporaryColor
                 linePen.setColor(featureColor)
                 symbolPen.setColor(featureColor)
                 symbolBrush.setColor(featureColor)
@@ -1501,10 +1516,11 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
             if fid in selected_fids:
                 # show all profiles, special highlight of selected
-                linePen.setColor(self.mSelectedDataColor)
+
+                linePen.setColor(self.mPlotWidgetStyle.selectionColor)
                 linePen.setWidth(style.lineWidth() + 2)
-                symbolPen.setColor(self.mSelectedDataColor)
-                symbolBrush.setColor(self.mSelectedDataColor)
+                symbolPen.setColor(self.mPlotWidgetStyle.selectionColor)
+                symbolBrush.setColor(self.mPlotWidgetStyle.selectionColor)
 
             symbol = style.markerSymbol
             symbolSize = style.markerSize
@@ -2106,7 +2122,7 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
         handle = index.data(Qt.UserRole)
-
+        # bc = self.model().mPlotWidgetStyle.backgroundColor
         if True and isinstance(handle, SpectralProfilePlotVisualization) and \
             index.column() == SpectralProfilePlotControlModel.CIX_NAME:
             super().paint(painter, option, index)
@@ -2355,9 +2371,10 @@ class SpectralLibraryPlotWidget(QWidget):
     def setPlotWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
         assert isinstance(style, SpectralLibraryPlotWidgetStyle)
         self.plotWidget.setWidgetStyle(style)
-        self.mPlotControlModel.mSelectedDataColor = QColor(style.selectionColor)
-        self.mPlotControlModel.mTemporaryDataColor = QColor(style.temporaryColor)
-
+        self.mPlotControlModel.setPlotWidgetStyle(style)
+        #self.mPlotControlModel.mSelectedDataColor = QColor(style.selectionColor)
+        #self.mPlotControlModel.mTemporaryDataColor = QColor(style.temporaryColor)
+        #self.mPlotControlModel.mBackgroundColor = QColor(style.backgroundColor)
         s = ""
 
     def populateProfilePlotContextMenu(self, listWrapper: SignalObjectWrapper):
@@ -2387,6 +2404,14 @@ class SpectralLibraryPlotWidget(QWidget):
 
     def createProfileVis(self, *args):
         item = SpectralProfilePlotVisualization()
+
+        existing_names = [v.name() for v in self.mPlotControlModel]
+        n = 1
+        name = 'Profile Type 1'
+        while name in existing_names:
+            n += 1
+            name = f'Profile Type {n}'
+        item.setName(name)
 
         # set defaults
         # set speclib
