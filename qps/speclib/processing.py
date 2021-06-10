@@ -474,18 +474,18 @@ class SpectralProcessingAlgorithmInputWidget(QgsProcessingAbstractParameterDefin
         return param
 
 
-class NO_MODEL_MODEL(QgsProcessingModelAlgorithm):
+class NULL_MODEL(QgsProcessingModelAlgorithm):
     """
     A proxy to represent None | NULL proxy values in a SpectralProcessingModelList
     """
     def __init__(self, *args, **kwds):
-        super(NO_MODEL_MODEL, self).__init__(*args, *kwds)
+        super(NULL_MODEL, self).__init__(*args, *kwds)
 
     def id(self):
         return ''
 
     def displayName(self):
-        return '   '
+        return ''
 
 
 class SpectralProcessingModelList(QAbstractListModel):
@@ -497,7 +497,7 @@ class SpectralProcessingModelList(QAbstractListModel):
         super(SpectralProcessingModelList, self).__init__(*args, **kwds)
         self.mModels: typing.List[QgsProcessingModelAlgorithm] = list()
         if allow_empty:
-            self.mModels.append(NO_MODEL_MODEL())
+            self.mModels.append(NULL_MODEL())
 
     def __iter__(self):
         return iter(self.mModels)
@@ -767,7 +767,6 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
         self.mTestBlocks: typing.List[SpectralProfileBlock] = [
             SpectralProfileBlock.dummy(5)]
 
-
     def supportedDropActions(self) -> Qt.DropActions:
         return Qt.MoveAction | Qt.CopyAction
 
@@ -799,7 +798,6 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
                     wrapper_rows.append(self.mAlgorithmWrappers.index(w))
                     wrapper_idx.append(idx)
 
-
         mimeData.setData(self.MIMEDATAKEY, QByteArray(pickle.dumps(wrapper_rows)))
         return mimeData
 
@@ -815,7 +813,7 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
         if self.MIMEDATAKEY in data.formats() and action == Qt.MoveAction:
             ba = bytes(data.data(self.MIMEDATAKEY))
             src_rows = pickle.loads(ba)
-            self.beginMoveRows(QModelIndex(),src_rows[0], src_rows[-1], QModelIndex(), row)
+            self.beginMoveRows(QModelIndex(), src_rows[0], src_rows[-1], QModelIndex(), row)
             for src_row in sorted(src_rows, reverse=True):
                 self.mAlgorithmWrappers.insert(max(0, row), self.mAlgorithmWrappers.pop(src_row))
             self.endMoveRows()

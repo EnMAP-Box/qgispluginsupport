@@ -7,15 +7,15 @@ import sys
 import textwrap
 import typing
 import warnings
-
+import pickle
 import numpy as np
 import sip
 from PyQt5.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex, QPoint, QObject, QAbstractTableModel, \
-    QSortFilterProxyModel, QSize, QVariant, QAbstractItemModel, QItemSelectionModel, QRect
+    QSortFilterProxyModel, QSize, QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
 from PyQt5.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QPainter, QIcon
 from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
-from PyQt5.QtXml import QDomElement, QDomDocument
+from PyQt5.QtXml import QDomElement, QDomDocument, QDomNode
 from qgis.core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsFieldProxyModel, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsExpression, QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
@@ -32,7 +32,7 @@ from ..core.spectrallibrary import SpectralLibrary, DEBUG, containsSpeclib, defa
 from ..core import profile_fields, profile_field_indices
 from ..core.spectralprofile import SpectralProfile, SpectralProfileBlock, SpectralProfileLoadingTask
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
-    SpectralProcessingProfilesOutput, SpectralProcessingModelList, NO_MODEL_MODEL, outputParameterResults, \
+    SpectralProcessingProfilesOutput, SpectralProcessingModelList, NULL_MODEL, outputParameterResults, \
     outputParameterResult
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, XUnitModel, UnitModel
 from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit
@@ -343,15 +343,125 @@ MouseClickData = collections.namedtuple('MouseClickData', ['idx', 'xValue', 'yVa
 
 class SpectralProfilePlotVisualization(QObject):
 
+    MIME_TYPE = 'application/SpectralProfilePlotVisualization'
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mName: str = 'Visualization'
-        self.mModel: QgsProcessingModelAlgorithm = NO_MODEL_MODEL()
+        self.mModel: QgsProcessingModelAlgorithm = NULL_MODEL()
         self.mSpeclib: QgsVectorLayer = None
         self.mField: QgsField = QgsField()
         self.mNameExpression: QgsExpression = QgsExpression('')
         self.mPlotStyle: PlotStyle = PlotStyle()
         self.mVisible: bool = True
+
+    XML_TAG = 'spectralprofileplotvisualization'
+
+    def writeXml(self, parentNode: QDomElement, doc: QDomDocument):
+        # appends this visualization to a parent node
+        visNode = doc.createElement(self.XML_TAG)
+        visNode.setAttribute('name', self.name())
+        visNode.setAttribute('field', self.field().name())
+        visNode.setAttribute('visible', '1' if self.isVisible() else '0')
+        # add speclib node
+        speclib = self.speclib()
+        if isinstance(speclib, QgsVectorLayer):
+            nodeSpeclib = doc.createElement('speclib')
+            nodeSpeclib.setAttribute('id', self.speclib().id())
+            visNode.appendChild(nodeSpeclib)
+
+        # add name expression node
+        label_expr = self.labelExpression()
+        if isinstance(label_expr, QgsExpression) and label_expr.expression() != '':
+            nodeNameExpr = doc.createElement('label_expression')
+            nodeNameExpr.setNodeValue(self.labelExpression().expression())
+            visNode.appendChild(nodeNameExpr)
+
+        # processing model
+        model = self.model()
+        if isinstance(model, QgsProcessingModelAlgorithm) and not isinstance(model, NULL_MODEL):
+            nodeModel = doc.createElement('model')
+            nodeModel.setAttribute('name', self.modelName())
+            nodeModel.setAttribute('id', self.modelId())
+            visNode.appendChild(nodeModel)
+
+        # add plot style node
+        self.plotStyle().writeXml(visNode, doc)
+
+        parentNode.appendChild(visNode)
+
+    @staticmethod
+    def fromXml(parentNode: QDomElement,
+                available_speclibs: typing.List[SpectralLibrary]=[],
+                available_models: typing.List[QgsProcessingModelAlgorithm] = []) \
+            -> typing.List['SpectralProfilePlotVisualization']:
+        # returns all child node visualization that are child nodes
+        visualizations = []
+        if parentNode.nodeName() == SpectralProfilePlotVisualization.XML_TAG:
+            visNodes = [parentNode]
+        else:
+            visNodes = []
+            candidates = parentNode.childNodes()
+            for i in range(candidates.count()):
+                node = candidates.at(i).toElement()
+                if node.nodeName() == SpectralProfilePlotVisualization.XML_TAG:
+                    visNodes.append(node)
+
+        for visNode in visNodes:
+            visNode: QDomElement
+
+            vis = SpectralProfilePlotVisualization()
+
+            vis.setName(visNode.attribute('name'))
+
+            vis.setVisible(visNode.attribute('visible').lower() in ['1','true', 'yes'])
+
+            speclibNode = visNode.firstChildElement('speclib')
+            speclib: QgsVectorLayer = None
+            if not speclibNode.isNull():
+                # try to restore the speclib
+                lyrId = speclibNode.attribute('id')
+
+                for sl in available_speclibs:
+                    if sl.id() == lyrId:
+                        speclib = sl
+
+            if isinstance(speclib, QgsVectorLayer):
+                vis.setSpeclib(speclib)
+
+            fieldName = visNode.attribute('field')
+            if isinstance(speclib, QgsVectorLayer) and fieldName in speclib.fields().names():
+                vis.setField(fieldName)
+
+            nameExprNode = visNode.firstChildElement('label_expression')
+            if not nameExprNode.isNull():
+                vis.setLabelExpression(nameExprNode.nodeValue())
+
+            modelNode = visNode.firstChildElement('model')
+            model: QgsProcessingModelAlgorithm = None
+            if not modelNode.isNull():
+                # try to restore the model
+                modelName = modelNode.attribute('name')
+                modelID = modelNode.attribute('id')
+                for m in available_models:
+                    if m.id() == modelID:
+                        model = m
+                        break
+                if not isinstance(model, QgsProcessingModelAlgorithm):
+                    for m in available_models:
+                        if m.name() == modelName:
+                            model = m
+                            break
+            if isinstance(model, QgsProcessingModelAlgorithm):
+                vis.setModel(model)
+
+            plotStyle = PlotStyle.readXml(visNode)
+            if isinstance(plotStyle, PlotStyle):
+                vis.setPlotStyle(plotStyle)
+
+            visualizations.append(vis)
+
+        return visualizations
 
     def __hash__(self):
         return hash(id(self))
@@ -366,11 +476,26 @@ class SpectralProfilePlotVisualization(QObject):
     def setName(self, name: str):
         self.mName = name
 
+    def setVisible(self, visible:bool):
+        assert isinstance(visible, bool)
+        self.mVisible = visible
+
     def isVisible(self) -> bool:
         return self.mVisible
 
+    def setSpeclib(self, speclib: QgsVectorLayer):
+        assert isinstance(speclib, QgsVectorLayer)
+        self.mSpeclib = speclib
+
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
+
+    def isComplete(self) -> bool:
+        speclib = self.speclib()
+        field = self.field()
+        return isinstance(speclib, QgsVectorLayer) \
+               and isinstance(field, QgsField) \
+               and field.name() in speclib.fields().names()
 
     def setLabelExpression(self, expression):
         if isinstance(expression, str):
@@ -387,17 +512,38 @@ class SpectralProfilePlotVisualization(QObject):
         """
         return self.mNameExpression
 
+    def setModel(self, model: QgsProcessingModelAlgorithm):
+        assert is_spectral_processing_model(model) or isinstance(model, NULL_MODEL)
+        self.mModel = model
+
+    def model(self) -> QgsProcessingModelAlgorithm:
+        return self.mModel
+
     def modelId(self) -> str:
         return self.mModel.id()
 
     def modelName(self) -> str:
         return self.mModel.displayName()
 
+    def setField(self, field: typing.Union[QgsField, str]):
+
+        if isinstance(field, str):
+            speclib = self.speclib()
+            assert isinstance(speclib, QgsVectorLayer), 'Speclib undefined'
+            field = speclib.fields().at(speclib.fields().lookupField(field))
+        assert isinstance(field, QgsField)
+        self.mField = field
+
     def field(self) -> QgsField:
         return self.mField
 
     def fieldIdx(self) -> int:
-        return self.speclib().fields().lookupField(self.mField.name())
+        return self.speclib().fields().lookupField(self.field().name())
+
+
+    def setPlotStyle(self, style:PlotStyle):
+        assert isinstance(style, PlotStyle)
+        self.mPlotStyle = style
 
     def plotStyle(self) -> PlotStyle:
         return self.mPlotStyle
@@ -996,7 +1142,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
             if isinstance(pdi, SpectralProfilePlotDataItem):
                 ptColor: QColor = self.mInfoScatterPoint.opts['brush'].color()
                 self.mInfoScatterPointHtml = f'<div style="color:{ptColor.name()}; text-align:right;">' + \
-                                             f'{vis.mField.name()},{fid} [{data.idx}]<br/>' + \
+                                             f'{vis.field().name()},{fid} [{data.idx}]<br/>' + \
                                              f'x={x} {xUnit}<br/>' + \
                                              f'y={y}<br/>' + \
                                              textwrap.shorten(name, width=self.mMaxInfoLength, placeholder='...') + \
@@ -1192,14 +1338,14 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
         self.mPropertyNames = {self.PIX_FIELD: 'Field',
                                self.PIX_MODEL: 'Model',
-                               self.PIX_LABEL: 'Name',
+                               self.PIX_LABEL: 'Label',
                                self.PIX_STYLE: 'Style',
                                }
         self.mPropertyTooltips = {
-            self.PIX_FIELD: 'Specifies the vector layer field that store profile data',
-            self.PIX_MODEL: 'Specifies a model to be applied on profile data. can be empty',
-            self.PIX_LABEL: 'Specifies how profile names are generated',
-            self.PIX_STYLE: 'Here you can specify the line style for each profile type',
+            self.PIX_FIELD: 'Field with profile values.',
+            self.PIX_MODEL: 'Model to process profile values "on-the-fly". Can be empty.',
+            self.PIX_LABEL: 'Field/Expression to generate profile names.',
+            self.PIX_STYLE: 'Profile styling.',
 
         }
 
@@ -1357,6 +1503,17 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
         self.updatePlot()
 
+    def removeRows(self, row: int, count: int, parent: QModelIndex = QModelIndex()) -> bool:
+        if not parent.isValid():
+            v = self[row]
+            assert isinstance(v, SpectralProfilePlotVisualization)
+            self.beginRemoveRows(QModelIndex(), row, row)
+            del self.mProfileVisualizations[row]
+            self.mNodeHandles.pop(v)
+            self.endRemoveRows()
+            return True
+        return False
+
     def removeVisualizations(self, vis: typing.Union[SpectralProfilePlotVisualization,
                                                      typing.List[SpectralProfilePlotVisualization]]):
 
@@ -1366,10 +1523,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             assert isinstance(v, SpectralProfilePlotVisualization)
             assert v in self.mProfileVisualizations
             i = self.mProfileVisualizations.index(v)
-            self.beginRemoveRows(QModelIndex(), i, i)
-            del self.mProfileVisualizations[i]
-            self.mNodeHandles.pop(v)
-            self.endRemoveRows()
+            self.removeRows(i, 1)
 
         self.updatePlot()
 
@@ -1396,6 +1550,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 self.mCache1FeatureColors[fid] = color
         renderer.stopRender(renderContext)
 
+
     def updatePlot(self, fids=[]):
 
         if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget) and isinstance(self.speclib(), QgsVectorLayer)):
@@ -1405,7 +1560,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         n_max_pdis = self.maxProfiles()
         NAME2FIELDIDX = {SL.fields().at(i).name(): i for i in range(SL.fields().count())}
         FIELDIDX2NAME = {i: SL.fields().at(i).name() for i in range(SL.fields().count())}
-        VIS2FIELD_INDEX = {v: SL.fields().lookupField(v.mField.name()) for v in self}
+        VIS2FIELD_INDEX = {v: SL.fields().lookupField(v.field().name()) for v in self}
         PFIELDS = {SL.fields().lookupField(f.name()): f for f in profile_fields(SL)}
 
         # get the data to display
@@ -1418,7 +1573,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         feature_priority = self.featurePriority()
 
         DATA_TO_VISUALIZE = list()
-        visualizations = [v for v in self if v.mVisible]
+
+        visualizations = [v for v in self if v.isVisible() and v.isComplete() and v.speclib() == self.mSpeclib]
 
         for fid in feature_priority:
             if len(DATA_TO_VISUALIZE) >= n_max_pdis:
@@ -1565,6 +1721,74 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.loadProfiles(PROFILES_TO_LOAD)
         self.loadModelData(MODELDATA_TO_LOAD)
         self.loadFeatureColors(COLORS_TO_LOAD)
+
+    def supportedDragActions(self) -> Qt.DropActions:
+        return Qt.CopyAction | Qt.MoveAction
+
+    def supportedDropActions(self) -> Qt.DropActions:
+        return Qt.CopyAction | Qt.MoveAction
+
+    def canDropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int, parent: QModelIndex) -> bool:
+
+        for f in data.formats():
+            if f == self.VIS_MIME_TYPE:
+                return True
+        return False
+
+    def dropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int, parent: QModelIndex) -> bool:
+
+        if action == Qt.IgnoreAction:
+            return True
+
+        ba = data.data(self.VIS_MIME_TYPE)
+        doc = QDomDocument()
+        doc.setContent(ba)
+        root = doc.firstChildElement('profile_visualizations')
+        if not root.isNull():
+            available_speclibs = [self.speclib()]
+            available_models = self.modelList()[:]
+            visualizations = SpectralProfilePlotVisualization.fromXml(root,
+                                                                      available_speclibs=available_speclibs,
+                                                                      available_models=available_models)
+            while parent.isValid():
+                row = parent.row()
+                parent = parent.parent()
+
+            for v in visualizations:
+                if v.speclib() != self.speclib():
+                    v.setSpeclib(self.speclib())
+
+            if len(visualizations) > 0:
+                self.insertVisualizations(row, visualizations)
+
+            return True
+
+        return False
+
+    VIS_MIME_TYPE = 'application/spectrallibraryplotwidget-items'
+
+    def mimeTypes(self) -> typing.List[str]:
+        return [self.VIS_MIME_TYPE]
+
+    def mimeData(self, indexes: typing.Iterable[QModelIndex]) -> QMimeData:
+        mimeData = QMimeData()
+        visualizations = []
+        rows = []
+        for idx in indexes:
+            vis = self.data(idx, role=Qt.UserRole)
+            if isinstance(vis, SpectralProfilePlotVisualization) and vis not in visualizations:
+                visualizations.append(vis)
+                rows.append(idx.row())
+
+        doc = QDomDocument()
+        root = doc.createElement('profile_visualizations')
+        for vis in visualizations:
+            vis.writeXml(root, doc)
+        doc.appendChild(root)
+
+        mimeData.setData(self.VIS_MIME_TYPE, doc.toByteArray())
+
+        return mimeData
 
     def modelDataToXUnitPlotData(self, modelData: dict, xUnit: str) -> dict:
         modelData = modelData.copy()
@@ -1745,8 +1969,10 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
         flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
         obj = index.internalPointer()
-        if isinstance(obj, SpectralProfilePlotVisualization) and index.column() == self.CIX_NAME:
-            flags = flags | Qt.ItemIsUserCheckable
+        if isinstance(obj, SpectralProfilePlotVisualization):
+            flags = flags | Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
+            if index.column() == self.CIX_NAME:
+                flags = flags | Qt.ItemIsUserCheckable
         if index.column() == self.CIX_VALUE:
             flags = flags | Qt.ItemIsEditable
         return flags
@@ -1888,7 +2114,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mProfileFieldModel.setFields(fields)
 
         # remove visualization for deleted fields
-        to_remove = [f for f in self if f.mField.name() not in fields.names()]
+        to_remove = [f for f in self if f.field().name() not in fields.names()]
         self.removeVisualizations(to_remove)
 
     def speclib(self) -> QgsVectorLayer:
@@ -1947,10 +2173,16 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 if role == Qt.ToolTipRole:
                     return self.mPropertyTooltips[row]
 
+                if role == Qt.DecorationRole:
+                    if row == self.PIX_FIELD:
+                        if not (isinstance(vis.field(), QgsField)
+                                and vis.field().name() in self.speclib().fields().names()):
+                            return QIcon(r':/images/themes/default/mIconWarning.svg')
+
             if col == self.CIX_VALUE:
                 if role == Qt.DisplayRole:
                     if row == self.PIX_FIELD:
-                        return vis.mField.name()
+                        return vis.field().name()
                     if row == self.PIX_MODEL:
                         return vis.modelName()
                     if row == self.PIX_LABEL:
@@ -1958,7 +2190,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 if role == Qt.ToolTipRole:
                     if row == self.PIX_FIELD:
-                        return vis.mField.name()
+                        return vis.field().name()
                     if row == self.PIX_MODEL:
                         return vis.modelName()
                     if row == self.PIX_LABEL:
@@ -1968,7 +2200,10 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 if role == Qt.SizeHintRole:
                     if row == self.PIX_STYLE:
-                        return QSize(75,50)
+                        return QSize(75, 50)
+
+        if role == Qt.DisplayRole:
+            s = ""
         return None
 
     def setData(self, index: QModelIndex, value: typing.Any, role=Qt.EditRole):
@@ -1988,9 +2223,14 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                         changed = True
                         visibility_changed = True
             elif index.column() == self.CIX_VALUE and role == Qt.EditRole:
-                    if handle.name() != value:
+                    # value is string? -> use as name
+                    if isinstance(value, str) and value != handle.name():
                         handle.setName(str(value))
                         changed = True
+
+                    # value is QgsProcessingModelAlgorithm? -> use as model
+                    if isinstance(value, QgsProcessingModelAlgorithm) and value in self.modelList():
+                        handle.setModel(value)
 
         elif isinstance(handle, SpectralProfilePlotControlModel.PropertyHandle):
             vis: SpectralProfilePlotVisualization = handle.parentVisualization()
@@ -1998,26 +2238,25 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 if role == Qt.EditRole:
                     if index.row() == self.PIX_FIELD:
                         assert isinstance(value, QgsField)
-                        vis.mField = value
+                        vis.setField(value)
                         changed = True
 
                     if index.row() == self.PIX_LABEL:
                         assert isinstance(value, str)
-                        if value != vis.mNameExpression.expression():
-                            vis.mNameExpression.setExpression(value)
+                        if value != vis.labelExpression():
+                            vis.setLabelExpression(value)
                             changed = True
 
                     if index.row() == self.PIX_MODEL:
                         assert isinstance(value, QgsProcessingModelAlgorithm)
                         assert value in self.modelList()
-                        if vis.mModel != value:
-                            vis.mModel = value
+                        if vis.model() != value:
+                            vis.setModel(value)
                             changed = True
 
                     if index.row() == self.PIX_STYLE:
-                        assert isinstance(value, PlotStyle)
                         if value != vis.mPlotStyle:
-                            vis.mPlotStyle = value
+                            vis.setPlotStyle(value)
                             changed = True
 
         if changed:
@@ -2089,6 +2328,8 @@ class SpectralProfilePlotControlView(QTreeView):
         super(SpectralProfilePlotControlView, self).__init__(*args, **kwds)
         # self.horizontalHeader().setStretchLastSection(True)
         # self.horizontalHeader().setResizeMode(QHeaderView.Stretch)
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
 
     def controlTable(self) -> SpectralProfilePlotControlModel:
         return self.model()
@@ -2128,17 +2369,21 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
             super().paint(painter, option, index)
             r = option.rect
             style: PlotStyle = handle.plotStyle()
-            ox = 25
+            s_x = 25
             h = self.mTreeView.rowHeight(index)
             w = self.mTreeView.columnWidth(index.column())-25
             #self.initStyleOption(option, index)
             if h > 0 and w > 0:
-                #painter.save()
-                px = style.createPixmap(size=QSize(w-25, h), hline=True)
+                if not handle.isComplete():
+                    dy = r.height()
+                    rect1 = QRect(r.x() + s_x, r.y(), dy, dy)
+                    icon = QIcon(r':/images/themes/default/mIconWarning.svg')
+                    icon.paint(painter, rect1)
+                    s_x += dy
 
-                rect2 = QRect(r.x()+25, r.y(), r.width()-25, r.height())
-                painter.drawPixmap(rect2, px)
-                #painter.restore()
+                pixmap = style.createPixmap(size=QSize(w-s_x, h), hline=True)
+                rect2 = QRect(r.x()+s_x, r.y(), r.width()-s_x, r.height())
+                painter.drawPixmap(rect2, pixmap)
 
         elif isinstance(handle, SpectralProfilePlotControlModel.PropertyHandle) and \
                 index.column() == SpectralProfilePlotControlModel.CIX_VALUE and \
@@ -2228,7 +2473,7 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
 
             if index.row() == SpectralProfilePlotControlModel.PIX_FIELD:
                 assert isinstance(editor, QComboBox)
-                idx = editor.model().indexFromName(vis.mField.name()).row()
+                idx = editor.model().indexFromName(vis.field().name()).row()
                 if idx == -1:
                     idx = 0
                 editor.setCurrentIndex(idx)

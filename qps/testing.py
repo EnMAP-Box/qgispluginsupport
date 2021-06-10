@@ -43,7 +43,8 @@ from qgis.core import QgsField
 
 import qgis.testing
 import qgis.utils
-from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, QgsCoordinateReferenceSystem, QgsProject, \
+from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
+    QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
     QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
     QgsProviderRegistry, QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge, \
@@ -556,6 +557,7 @@ class TestAlgorithmProvider(QgsProcessingProvider):
     def supportsNonFileBasedOutput(self) -> True:
         return True
 
+
 class SpectralProfileDataIterator(object):
 
     def __init__(self, n_bands_per_field: typing.Union[int, typing.List[int]]):
@@ -583,6 +585,7 @@ class SpectralProfileDataIterator(object):
             results.append((self.coredata[band_indices, y, x], self.wl[band_indices], self.wlu))
         return results
 
+
 class TestObjects(object):
     """
     Creates objects to be used for testing. It is preferred to generate objects in-memory.
@@ -606,8 +609,6 @@ class TestObjects(object):
 
         return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
                TestObjects._coreDataGT, TestObjects._coreDataWkt
-
-
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
@@ -672,7 +673,7 @@ class TestObjects(object):
         for i in range(n):
             field_data = profileGenerator.__next__()
             profile = SpectralProfile(fields=fields)
-            profile.setId(i+1)
+            profile.setId(i + 1)
             for j, field in enumerate(profile_fields):
                 (data, wl, data_wlu) = field_data[j]
                 if wlu is None:
@@ -688,6 +689,7 @@ class TestObjects(object):
     """
     Class with static routines to create test objects
     """
+
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
@@ -913,7 +915,7 @@ class TestObjects(object):
         return provider.algorithm(alg.name())
 
     @staticmethod
-    def createSpectralProcessingModel() -> QgsProcessingModelAlgorithm:
+    def createSpectralProcessingModel(name: str = 'Example Model') -> QgsProcessingModelAlgorithm:
 
         configuration = {}
         feedback = QgsProcessingFeedback()
@@ -921,7 +923,7 @@ class TestObjects(object):
         context.setFeedback(feedback)
 
         model = QgsProcessingModelAlgorithm()
-        model.setName('ExampleModel')
+        model.setName(name)
 
         def createChildAlgorithm(algorithm_id: str, description='') -> QgsProcessingModelChildAlgorithm:
             alg = QgsProcessingModelChildAlgorithm(algorithm_id)
@@ -1312,5 +1314,3 @@ class QgsPythonRunnerMockup(QgsPythonRunner):
             print('\n'.join(command), file=sys.stderr)
             raise ex
         return True
-
-

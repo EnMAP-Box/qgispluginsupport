@@ -470,6 +470,8 @@ class PlotStyle(QObject):
         if updateItem:
             pdi.updateItems()
 
+    XML_TAG = XMLTAG_PLOTSTYLENODE
+
     def writeXml(self, node: QDomElement, doc: QDomDocument) -> bool:
         """
         Writes the PlotStyle to a QDomNode
@@ -477,7 +479,8 @@ class PlotStyle(QObject):
         :param doc:
         :return:
         """
-        plotStyleNode = doc.createElement(XMLTAG_PLOTSTYLENODE)
+
+        plotStyleNode = doc.createElement(self.XML_TAG)
         cdata = doc.createCDATASection(self.json().replace('\n', ''))
         plotStyleNode.appendChild(cdata)
         node.appendChild(plotStyleNode)
