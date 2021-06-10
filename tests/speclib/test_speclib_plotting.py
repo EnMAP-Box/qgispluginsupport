@@ -2,10 +2,12 @@ import os
 
 from PyQt5.QtCore import QEvent, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtXml import QDomDocument
 from osgeo import gdal, ogr
 from qgis.gui import QgsMapCanvas, QgsDualView
 
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
+    SpectralProfilePlotVisualization
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import StartOptions, TestCase, TestObjects
 
@@ -43,6 +45,49 @@ class TestSpeclibWidgets(TestCase):
     def setUp(self):
         registerSpectralProfileEditorWidget()
         super().setUp()
+
+    def test_SpectralProfilePlotVisualization(self):
+
+        sl1 = TestObjects.createSpectralLibrary()
+        sl2 = TestObjects.createSpectralLibrary()
+
+        vis0 = SpectralProfilePlotVisualization()
+        vis1 = SpectralProfilePlotVisualization()
+        vis1.setSpeclib(sl1)
+
+        vis2 = SpectralProfilePlotVisualization()
+        vis2.setSpeclib(sl2)
+
+        model1 = TestObjects.createSpectralProcessingModel('model1')
+        model2 = TestObjects.createSpectralProcessingModel('model2')
+
+        vis1.setModel(model1)
+        vis2.setModel(model2)
+
+        doc = QDomDocument()
+        root = doc.createElement('root')
+
+        visList = [vis0, vis1, vis2]
+        for v in visList:
+            v.writeXml(root, doc)
+
+        available_speclibs = [sl1, sl2]
+        available_models = [model1, model2]
+        visList2 = SpectralProfilePlotVisualization.fromXml(root,
+                                                            available_speclibs=available_speclibs,
+                                                            available_models=available_models)
+
+        self.assertTrue(len(visList) == len(visList2))
+
+        for v1, v2 in zip(visList, visList2):
+            self.assertIsInstance(v1, SpectralProfilePlotVisualization)
+            self.assertIsInstance(v2, SpectralProfilePlotVisualization)
+
+            self.assertEqual(v1.name(), v2.name())
+            self.assertEqual(v1.labelExpression(), v2.labelExpression())
+            self.assertEqual(v1.plotStyle(), v2.plotStyle())
+            self.assertEqual(v1.speclib(), v2.speclib())
+            # speclib and model instances need to be restored differently
 
     def test_SpectralProfilePlotWidget(self):
 

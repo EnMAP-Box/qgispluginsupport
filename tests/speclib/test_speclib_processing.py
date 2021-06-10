@@ -429,17 +429,20 @@ class SpectralProcessingTests(TestCase):
         sl.commitChanges()
         SLW = SpectralLibraryWidget(speclib=sl)
 
+        SLW2 = SpectralLibraryWidget(speclib=TestObjects.createSpectralLibrary(20))
+
+
         # create a new model
         spm = TestObjects.createSpectralProcessingModel()
 
         PC: SpectralProfilePlotControlModel = SLW.plotControl()
         PC.addModel(spm)
 
-        # set spectral mode to 1st item
+        # set spectral model to 1st item
         PC.setData(PC.index(0, PC.PIX_MODEL), spm, role=Qt.EditRole)
         # from qps.resources import ResourceBrowser
         # rb = ResourceBrowser()
-        self.showGui(SLW)
+        self.showGui([SLW, SLW2])
         s = ""
         pass
 
