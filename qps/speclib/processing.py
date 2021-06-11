@@ -33,6 +33,10 @@ import sys
 import enum
 import pathlib
 import pickle
+
+from PyQt5.QtWidgets import QInputDialog
+from qgis._core import QgsProcessingProvider
+
 from qgis.PyQt.QtCore import QMimeData, Qt, pyqtSignal, QModelIndex, QAbstractListModel, QObject, QPointF, QByteArray
 from qgis.PyQt.QtGui import QColor, QFont, QContextMenuEvent
 from qgis.PyQt.QtWidgets import QWidget, QTableView, QTreeView, \
@@ -50,7 +54,8 @@ from qgis.gui import QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingParameterWidgetContext, QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, \
     QgsProcessingToolboxTreeView, QgsProcessingGui, QgsGui, QgsAbstractProcessingParameterWidgetWrapper, \
     QgsProcessingContextGenerator, QgsProcessingParametersWidget
-
+from processing.modeler.ProjectProvider import ProjectProvider
+from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider
 from .core.spectrallibrary import SpectralLibrary, SpectralProfile, SpectralProfileBlock
 from . import speclibUiPath
 from ..utils import loadUi
@@ -247,7 +252,6 @@ def outputParameterResult(results: dict,
     if isinstance(output_parameter, QgsProcessingOutputDefinition):
         output_parameter = output_parameter.name()
 
-    output_parameter = f':{output_parameter}'
     for k, v in results.items():
         if k.endswith(output_parameter):
             return v
@@ -487,7 +491,6 @@ class NULL_MODEL(QgsProcessingModelAlgorithm):
     def displayName(self):
         return ''
 
-
 class SpectralProcessingModelList(QAbstractListModel):
     """
     Contains a list of SpectralProcessingModels(QgsModelAlgorithms)
@@ -495,18 +498,40 @@ class SpectralProcessingModelList(QAbstractListModel):
     def __init__(self, *args, allow_empty: bool=False, **kwds):
 
         super(SpectralProcessingModelList, self).__init__(*args, **kwds)
-        self.mModels: typing.List[QgsProcessingModelAlgorithm] = list()
+
+        self.mModelIds: typing.List[str] = list()
+        self.mNullModel = NULL_MODEL()
         if allow_empty:
-            self.mModels.append(NULL_MODEL())
+            self.mModelIds.append('')
+
+        procReg = QgsApplication.instance().processingRegistry()
+        for p in procReg.providers():
+            p: QgsProcessingProvider
+            self.refreshProvider(p)
+            p.algorithmsLoaded.connect(lambda *args, p=p.id(): self.refreshProvider(p))
+
+    def refreshProvider(self, provider):
+
+        if isinstance(provider, str):
+            provider = QgsApplication.instance().processingRegistry().providerById(provider)
+        if isinstance(provider, QgsProcessingProvider):
+            old_models = [a for a in self.mModelIds if a.startswith(provider.id())]
+            all_models = [a.id() for a in provider.algorithms() if is_spectral_processing_model(a)]
+            to_remove = [a for a in old_models if a not in all_models]
+            to_add = [a for a in all_models if a not in old_models]
+            for m in to_remove:
+                self.removeModel(m)
+            for m in to_add:
+                self.addModel(m)
 
     def __iter__(self):
-        return iter(self.mModels)
+        return iter(self.mModelIds)
 
     def __getitem__(self, slice):
-        return self.mModels[slice]
+        return self.mModelIds[slice]
 
     def __len__(self):
-        return len(self.mModels)
+        return len(self.mModelIds)
 
     def flags(self, index: QModelIndex):
         if not index.isValid():
@@ -516,7 +541,7 @@ class SpectralProcessingModelList(QAbstractListModel):
         return flags
 
     def rowCount(self, parent=None, *args, **kwargs):
-        return len(self.mModels)
+        return len(self.mModelIds)
 
     def columnCount(self, *args, **kwargs):
         return 1
@@ -524,71 +549,80 @@ class SpectralProcessingModelList(QAbstractListModel):
     def addModel(self, model: QgsProcessingModelAlgorithm):
         self.insertModel(-1, model)
 
-    def findModelInstance(self, model: typing.Union[str, QgsProcessingModelAlgorithm]) -> \
-            typing.Tuple[int,QgsProcessingModelAlgorithm]:
+    def findModelId(self, model: typing.Union[str, QgsProcessingModelAlgorithm]) -> \
+            typing.Tuple[int, str]:
         if isinstance(model, QgsProcessingModelAlgorithm):
             model_id = model.id()
         else:
             model_id = model
-        for i, m in enumerate(self):
-            m: QgsProcessingModelAlgorithm
-            if m.id() == model_id:
-                return i, m
+        if model_id in self.mModelIds:
+            return self.mModelIds.index(model_id), model_id
         return None, None
 
-    def insertModel(self, row, model: QgsProcessingModelAlgorithm):
-        assert isinstance(model, QgsProcessingModelAlgorithm)
+    def modelId2model(self, modelId:str) -> QgsProcessingModelAlgorithm:
+        if modelId == '':
+            return self.mNullModel
+        else:
+            reg = QgsApplication.instance().processingRegistry()
+            model: QgsProcessingModelAlgorithm = reg.algorithmById(modelId)
+            assert is_spectral_processing_model(model)
+            return model
+
+    def insertModel(self, row, modelId: typing.Union[str, QgsProcessingModelAlgorithm]):
+        if isinstance(modelId, QgsProcessingModelAlgorithm):
+            assert is_spectral_processing_model(modelId)
+            modelId = modelId.id()
         if isinstance(row, QModelIndex):
             row = row.row()
 
-        assert is_spectral_processing_model(model)
-
-        i, existingModel = self.findModelInstance(model)
-        if isinstance(existingModel, QgsProcessingModelAlgorithm):
+        if modelId in self.mModelIds:
+            i = self.mModelIds.index(modelId)
             # update existing model
             idx = self.index(i, 0)
-            self.mModels[i] = model
             self.dataChanged.emit(idx, idx)
         else:
             if row < 0:
                 row = self.rowCount()
 
             self.beginInsertRows(QModelIndex(), row, row)
-            self.mModels.insert(row, model)
+            self.mModelIds.insert(row, modelId)
             self.endInsertRows()
 
-    def removeModel(self, model: QgsProcessingModelAlgorithm):
-        assert isinstance(model, QgsProcessingModelAlgorithm)
+    def removeModel(self, modelId: str):
+        if isinstance(modelId, QgsProcessingModelAlgorithm):
+            modelId = modelId.id()
 
-        row, modelInstance = self.findModelInstance(model)
-        if isinstance(row, int):
+        assert isinstance(modelId, str)
+        if modelId in self.mModelIds:
+            row = self.mModelIds.index(modelId)
             self.beginRemoveRows(QModelIndex(), row, row)
-            self.mModels.remove(modelInstance)
+            self.mModelIds.remove(modelId)
             self.endRemoveRows()
 
-    def indexFromModelId(self, id:str) -> int:
-        for row, m in enumerate(self.mModels):
-            if m.id() == id:
-                return row
-
-        return -1
-
     def index(self, row: int, column: int, parent: QModelIndex = None) -> QModelIndex:
-        if row < 0 or row >= len(self.mModels):
+        if row < 0 or row >= len(self.mModelIds):
             return QModelIndex()
-        model = self.mModels[row]
+        model = self.mModelIds[row]
         return self.createIndex(row, column, model)
 
     def data(self, index:QModelIndex, role=None):
         if not index.isValid():
             return None
-        model: QgsProcessingModelAlgorithm = self.mModels[index.row()]
+
+        modelId = self.mModelIds[index.row()]
+        model = self.modelId2model(modelId)
+
+        provider = model.provider()
+        if isinstance(provider, QgsProcessingProvider):
+            providerName = provider.name()+':'
+        else:
+            providerName = ''
 
         if role == Qt.DisplayRole:
             return f'{model.displayName()}'
 
         if role == Qt.ToolTipRole:
-            return f'{model.displayName()}'
+            return f'{model.id()}'
 
         if role == Qt.UserRole:
             return model
@@ -760,8 +794,8 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
         self.mColumnNames = {0: 'Algorithm',
                              1: 'Parameters'}
 
-        self.mModelName: str = 'SpectralProcessingModel'
-        self.mModelGroup: str = 'SpectralProcessingModels'
+        self.mModelName: str = 'New Model'
+        self.mModelGroup: str = ''
         self.mProcessingContext: QgsProcessingContext = QgsProcessingContext()
         self.mModelChildIds: typing.Dict[str, SpectralProcessingModelCreatorAlgorithmWrapper] = dict()
         self.mTestBlocks: typing.List[SpectralProfileBlock] = [
@@ -1344,7 +1378,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 5, 'um'))
         self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 3, '-')) # without unit
 
-        self.mAlgorithmModel = SpectralProcessingAlgorithmModel(self)
+        self.mProcessingAlgorithmModel = SpectralProcessingAlgorithmModel(self)
 
         self.mProcessingFeedback: QgsProcessingFeedback = QgsProcessingFeedback()
         self.mProcessingWidgetContext: QgsProcessingParameterWidgetContext = QgsProcessingParameterWidgetContext()
@@ -1373,12 +1407,12 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         self.mTableView.setDragEnabled(True)
         self.mTableView.setAcceptDrops(True)
         self.mTableView.setDropIndicatorShown(True)
-        self.mTreeView: SpectralProcessingAlgorithmTreeView
-        self.mTreeView.header().setVisible(False)
-        self.mTreeView.setDragDropMode(QTreeView.DragOnly)
-        self.mTreeView.setDropIndicatorShown(True)
-        self.mTreeView.doubleClicked.connect(self.onTreeViewDoubleClicked)
-        self.mTreeView.setToolboxProxyModel(self.mAlgorithmModel)
+        self.mTreeViewAlgorithms: SpectralProcessingAlgorithmTreeView
+        self.mTreeViewAlgorithms.header().setVisible(False)
+        self.mTreeViewAlgorithms.setDragDropMode(QTreeView.DragOnly)
+        self.mTreeViewAlgorithms.setDropIndicatorShown(True)
+        self.mTreeViewAlgorithms.doubleClicked.connect(self.onAlgorithmTreeViewDoubleClicked)
+        self.mTreeViewAlgorithms.setToolboxProxyModel(self.mProcessingAlgorithmModel)
 
         self.mTestProfile = QgsFeature()
         self.mCurrentFunction: QgsProcessingAlgorithm = None
@@ -1487,9 +1521,12 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             m.fromFile(model.as_posix())
             model = m
         assert isinstance(model, QgsProcessingModelAlgorithm)
+
         if not is_spectral_processing_model(model):
             s = ""
         assert is_spectral_processing_model(model)
+        self.mProcessingModelTableModel.clearModel()
+
         for cName, cAlg in model.childAlgorithms().items():
             alg = cAlg.algorithm()
             sources = cAlg.parameterSources()
@@ -1499,6 +1536,16 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
                     value = sources[p.name()][0].staticValue()
                     if value:
                         w.wrappers[p.name()].setParameterValue(value, self.mProcessingContext)
+        self.tbModelName.setText(model.name())
+        self.tbModelGroup.setText(model.group())
+
+    def projectProvider(self) -> ProjectProvider:
+        procReg = QgsApplication.instance().processingRegistry()
+        return procReg.providerById('project')
+
+    def modelerAlgorithmProvider(self) -> ModelerAlgorithmProvider:
+        procReg = QgsApplication.instance().processingRegistry()
+        return procReg.providerById('model')
 
     def saveModel(self, filename):
         model = self.mProcessingModelTableModel.createModel()
@@ -1507,19 +1554,29 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         if isinstance(filename, bool):
             filename = None
 
-        if filename is None:
-            from processing.modeler.ModelerUtils import ModelerUtils
+        projectProvider = self.projectProvider()
 
+        destinations = ['Project', 'File']
+        if filename != None:
+            destination = 'File'
+        else:
+            destination, success = QInputDialog.getItem(self, 'Save model', 'Save model to...', destinations,
+                                                        editable=False,)
+            if not success:
+                return
+
+        if destination == 'File':
+            from processing.modeler.ModelerUtils import ModelerUtils
             name = model.name()
             if name == '':
                 name = 'SpectralProcessingModel'
             default_path = pathlib.Path(ModelerUtils.modelsFolders()[0]) / f'{name}.model3'
-
             filename, filter = QFileDialog.getSaveFileName(self,
                                                            self.tr('Save Model'),
                                                            default_path.as_posix(),
                                                            self.tr('Processing models (*.model3 *.MODEL3)'))
-        if filename:
+        if destination == 'File' and filename is not None:
+            # save to file
             filename = pathlib.Path(filename).as_posix()
             if not filename.endswith('.model3'):
                 filename += '.model3'
@@ -1527,6 +1584,16 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             if not model.toFile(filename):
                 QMessageBox.warning(self, self.tr('I/O error'),
                                     self.tr('Unable to save edits. Reason:\n {0}').format(str(sys.exc_info()[1])))
+            else:
+                modelerProvider = self.modelerAlgorithmProvider()
+                # destFilename = os.path.join(ModelerUtils.modelsFolders()[0], os.path.basename(filename))
+                # shutil.copyfile(filename, destFilename)
+                modelerProvider.loadAlgorithms()
+
+        elif destination == 'Project':
+            # save to project
+            projectProvider.add_model(model)
+
 
     def verifyModel(self, *args) -> typing.Tuple[bool, str]:
         messages = []
@@ -1565,11 +1632,12 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             wrapper.setParent(self.gbParameterWidgets)
             grid.addWidget(wrapper, row,  0)
 
+    def onAlgorithmTreeViewDoubleClicked(self, *args):
 
-    def onTreeViewDoubleClicked(self, *args):
-
-        alg = self.mTreeView.selectedAlgorithm()
-        if is_spectral_processing_algorithm(alg, SpectralProfileIOFlag.Outputs | SpectralProfileIOFlag.Inputs):
+        alg = self.mTreeViewAlgorithms.selectedAlgorithm()
+        if is_spectral_processing_model(alg, SpectralProfileIOFlag.Outputs | SpectralProfileIOFlag.Inputs):
+            self.loadModel(alg)
+        elif is_spectral_processing_algorithm(alg, SpectralProfileIOFlag.Outputs | SpectralProfileIOFlag.Inputs):
             self.mProcessingModelTableModel.addAlgorithm(alg)
 
     def processingTableModel(self) -> SpectralProcessingModelCreatorTableModel:

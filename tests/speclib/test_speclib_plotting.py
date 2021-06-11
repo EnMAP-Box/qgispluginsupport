@@ -61,8 +61,8 @@ class TestSpeclibWidgets(TestCase):
         model1 = TestObjects.createSpectralProcessingModel('model1')
         model2 = TestObjects.createSpectralProcessingModel('model2')
 
-        vis1.setModel(model1)
-        vis2.setModel(model2)
+        vis1.setModelId(model1)
+        vis2.setModelId(model2)
 
         doc = QDomDocument()
         root = doc.createElement('root')
@@ -72,10 +72,8 @@ class TestSpeclibWidgets(TestCase):
             v.writeXml(root, doc)
 
         available_speclibs = [sl1, sl2]
-        available_models = [model1, model2]
         visList2 = SpectralProfilePlotVisualization.fromXml(root,
-                                                            available_speclibs=available_speclibs,
-                                                            available_models=available_models)
+                                                            available_speclibs=available_speclibs)
 
         self.assertTrue(len(visList) == len(visList2))
 
@@ -123,7 +121,7 @@ class TestSpeclibWidgets(TestCase):
         spm = TestObjects.createSpectralProcessingModel()
         from qps.speclib.processing import is_spectral_processing_model
         self.assertTrue(is_spectral_processing_model(spm))
-        w.addSpectralModel(spm)
+        # w.addSpectralModel(spm)
 
         # add a VIS
         w.btnAddProfileVis.click()

@@ -364,27 +364,40 @@ class SpectralProcessingTests(TestCase):
         m1 = self.create_spectral_processing_model('Model1')
         m2 = self.create_spectral_processing_model('Model2')
 
-        model = SpectralProcessingModelList()
-        self.assertTrue(model.rowCount() == 0)
+        modelList = SpectralProcessingModelList()
+        self.assertTrue(modelList.rowCount() == 0)
 
-        model.addModel(m1)
-        model.addModel(m1)
-        model.addModel(m2)
+        modelList.addModel(m1)
+        modelList.addModel(m1)
+        modelList.addModel(m2)
 
-        self.assertTrue(len(model) == 2)
-        self.assertTrue(model.rowCount() == 2)
-        self.assertEqual(m2, model[1])
-        idx = model.index(1, 0)
+        self.assertTrue(len(modelList) == 2)
+        self.assertTrue(modelList.rowCount() == 2)
+        self.assertEqual(m2, modelList[1])
+        idx = modelList.index(1, 0)
 
-        self.assertTrue(model.data(idx, Qt.DisplayRole) == m2.id())
-        self.assertEqual(m2, model.data(idx, Qt.UserRole))
-        self.assertEqual(m2.id(), model.data(idx, Qt.DisplayRole))
+        self.assertTrue(modelList.data(idx, Qt.DisplayRole) == m2.id())
+        self.assertEqual(m2, modelList.data(idx, Qt.UserRole))
+        self.assertEqual(m2.id(), modelList.data(idx, Qt.DisplayRole))
 
-        model.removeModel(m1)
+        modelList.removeModel(m1)
 
-        self.assertTrue(len(model) == 1)
-        self.assertFalse(m1 in model)
-        self.assertTrue(m2 in model)
+        self.assertTrue(len(modelList) == 1)
+        self.assertFalse(m1 in modelList)
+        self.assertTrue(m2 in modelList)
+
+    def test_SpectralProcessingModel(self):
+
+        model1 = TestObjects.createSpectralProcessingModel('MyModel')
+        self.assertIsInstance(model1, QgsProcessingModelAlgorithm)
+
+        variant1 = model1.toVariant()
+
+        model2 = QgsProcessingModelAlgorithm()
+        model2.loadVariant(variant1)
+
+
+        s = ""
 
     def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
@@ -435,8 +448,13 @@ class SpectralProcessingTests(TestCase):
         # create a new model
         spm = TestObjects.createSpectralProcessingModel()
 
+        procReg = QgsApplication.instance().processingRegistry()
+        provider = procReg.providerById('project')
+        from processing.modeler.ProjectProvider import ProjectProvider
+        self.assertIsInstance(provider, ProjectProvider)
+        provider.add_model(spm)
+
         PC: SpectralProfilePlotControlModel = SLW.plotControl()
-        PC.addModel(spm)
 
         # set spectral model to 1st item
         PC.setData(PC.index(0, PC.PIX_MODEL), spm, role=Qt.EditRole)

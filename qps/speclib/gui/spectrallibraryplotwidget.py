@@ -35,7 +35,7 @@ from ..processing import is_spectral_processing_model, SpectralProcessingProfile
     SpectralProcessingProfilesOutput, SpectralProcessingModelList, NULL_MODEL, outputParameterResults, \
     outputParameterResult
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, XUnitModel, UnitModel
-from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit
+from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit, nextColor
 
 
 class XAxisUnitWidgetAction(QWidgetAction):
@@ -348,7 +348,7 @@ class SpectralProfilePlotVisualization(QObject):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mName: str = 'Visualization'
-        self.mModel: QgsProcessingModelAlgorithm = NULL_MODEL()
+        self.mModelId: str = ''
         self.mSpeclib: QgsVectorLayer = None
         self.mField: QgsField = QgsField()
         self.mNameExpression: QgsExpression = QgsExpression('')
@@ -392,8 +392,7 @@ class SpectralProfilePlotVisualization(QObject):
 
     @staticmethod
     def fromXml(parentNode: QDomElement,
-                available_speclibs: typing.List[SpectralLibrary]=[],
-                available_models: typing.List[QgsProcessingModelAlgorithm] = []) \
+                available_speclibs: typing.List[SpectralLibrary]=[]) \
             -> typing.List['SpectralProfilePlotVisualization']:
         # returns all child node visualization that are child nodes
         visualizations = []
@@ -438,22 +437,13 @@ class SpectralProfilePlotVisualization(QObject):
                 vis.setLabelExpression(nameExprNode.nodeValue())
 
             modelNode = visNode.firstChildElement('model')
-            model: QgsProcessingModelAlgorithm = None
+            modelId = None
             if not modelNode.isNull():
-                # try to restore the model
-                modelName = modelNode.attribute('name')
-                modelID = modelNode.attribute('id')
-                for m in available_models:
-                    if m.id() == modelID:
-                        model = m
-                        break
-                if not isinstance(model, QgsProcessingModelAlgorithm):
-                    for m in available_models:
-                        if m.name() == modelName:
-                            model = m
-                            break
-            if isinstance(model, QgsProcessingModelAlgorithm):
-                vis.setModel(model)
+                # try to restore the model id
+                modelId = modelNode.attribute('id')
+
+            if isinstance(modelId, str):
+                vis.setModelId(modelId)
 
             plotStyle = PlotStyle.readXml(visNode)
             if isinstance(plotStyle, PlotStyle):
@@ -512,18 +502,26 @@ class SpectralProfilePlotVisualization(QObject):
         """
         return self.mNameExpression
 
-    def setModel(self, model: QgsProcessingModelAlgorithm):
-        assert is_spectral_processing_model(model) or isinstance(model, NULL_MODEL)
-        self.mModel = model
+    NULL_MODEL = NULL_MODEL()
+    def setModelId(self, modelId: typing.Union[str, QgsProcessingModelAlgorithm]):
+        if isinstance(modelId, QgsProcessingModelAlgorithm):
+            assert is_spectral_processing_model(modelId) or isinstance(modelId, NULL_MODEL)
+            modelId = modelId.id()
+        self.mModelId = modelId
 
     def model(self) -> QgsProcessingModelAlgorithm:
-        return self.mModel
+        if self.mModelId == '':
+            return self.NULL_MODEL
+        else:
+            reg = QgsApplication.processingRegistry()
+
+            return reg.algorithmById(self.mModelId)
 
     def modelId(self) -> str:
-        return self.mModel.id()
+        return self.mModelId
 
     def modelName(self) -> str:
-        return self.mModel.displayName()
+        return self.model().displayName()
 
     def setField(self, field: typing.Union[QgsField, str]):
 
@@ -1746,10 +1744,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         root = doc.firstChildElement('profile_visualizations')
         if not root.isNull():
             available_speclibs = [self.speclib()]
-            available_models = self.modelList()[:]
             visualizations = SpectralProfilePlotVisualization.fromXml(root,
-                                                                      available_speclibs=available_speclibs,
-                                                                      available_models=available_models)
+                                                                      available_speclibs=available_speclibs)
             while parent.isValid():
                 row = parent.row()
                 parent = parent.parent()
@@ -1834,7 +1830,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             profile_field, model_id = job_key
             request = QgsFeatureRequest()
             request.setFilterFids(list(fids))
-            _, model = self.mModelList.findModelInstance(model_id)
+            model = self.mModelList.modelId2model(model_id)
 
             blockList = list(SpectralProfileBlock.fromSpectralProfiles(self.speclib().getFeatures(request),
                                                                   profile_field,
@@ -2230,7 +2226,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                     # value is QgsProcessingModelAlgorithm? -> use as model
                     if isinstance(value, QgsProcessingModelAlgorithm) and value in self.modelList():
-                        handle.setModel(value)
+                        handle.setModelId(value)
 
         elif isinstance(handle, SpectralProfilePlotControlModel.PropertyHandle):
             vis: SpectralProfilePlotVisualization = handle.parentVisualization()
@@ -2248,10 +2244,13 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                             changed = True
 
                     if index.row() == self.PIX_MODEL:
-                        assert isinstance(value, QgsProcessingModelAlgorithm)
-                        assert value in self.modelList()
-                        if vis.model() != value:
-                            vis.setModel(value)
+                        if isinstance(value, QgsProcessingModelAlgorithm):
+                            modelId = value.id()
+                        else:
+                            modelId = str(value)
+                        assert modelId in self.modelList()
+                        if vis.modelId() != modelId:
+                            vis.setModelId(modelId)
                             changed = True
 
                     if index.row() == self.PIX_STYLE:
@@ -2284,13 +2283,13 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
         return None
 
-    def removeModel(self, model: QgsProcessingModelAlgorithm):
-        self.mModelList.removeModel(model)
+    #def removeModel(self, model: QgsProcessingModelAlgorithm):
+    #    self.mModelList.removeModel(model)
         # todo: disconnect model from visualiszations
 
-    def addModel(self, model: QgsProcessingModelAlgorithm):
-        assert is_spectral_processing_model(model)
-        self.mModelList.addModel(model)
+    #def addModel(self, model: QgsProcessingModelAlgorithm):
+    #    assert is_spectral_processing_model(model)
+    #    self.mModelList.addModel(model)
 
     def modelList(self) -> SpectralProcessingModelList:
         return self.mModelList
@@ -2480,8 +2479,8 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
 
             if index.row() == SpectralProfilePlotControlModel.PIX_MODEL:
                 assert isinstance(editor, QComboBox)
-                idx = editor.model().indexFromModelId(vis.modelId())
-                if idx == -1:
+                idx, _ = editor.model().findModelId(vis.modelId())
+                if idx is None:
                     idx = 0
                 editor.setCurrentIndex(idx)
 
@@ -2540,8 +2539,8 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mPlotControlModel = SpectralProfilePlotControlModel()
         self.mPlotControlModel.setPlotWidget(self.plotWidget)
         # self.mPlotControlModel.sigProgressChanged.connect(self.onProgressChanged)
-        self.mCurrentModel: QgsProcessingModelAlgorithm = None
-        self.setCurrentModel(self.mPlotControlModel.modelList()[0])
+        self.mCurrentModelId: str = None
+        self.setCurrentModel('')
 
         self.mProxyModel = QSortFilterProxyModel()
         self.mProxyModel.setSourceModel(self.mPlotControlModel)
@@ -2688,10 +2687,14 @@ class SpectralLibraryPlotWidget(QWidget):
         else:
             item.setLabelExpression('$id')
 
-        item.mModel = self.currentModel()
+        item.mModelId = self.currentModel()
 
         item.mPlotStyle = self.defaultStyle()
 
+        if len(self.mPlotControlModel) > 0:
+            lastVis = self.mPlotControlModel[-1]
+            color = lastVis.plotStyle().lineColor()
+            item.plotStyle().setLineColor(nextColor(color, mode='cat'))
         self.mPlotControlModel.insertVisualizations(-1, item)
 
     def defaultStyle(self) -> PlotStyle:
@@ -2720,22 +2723,21 @@ class SpectralLibraryPlotWidget(QWidget):
     def speclib(self) -> QgsVectorLayer:
         return self.mPlotControlModel.speclib()
 
-    def addSpectralModel(self, model):
-        self.mPlotControlModel.addModel(model)
+    #def addSpectralModel(self, model):
+    #    self.mPlotControlModel.addModel(model)
 
-    def currentModel(self) -> QgsProcessingModelAlgorithm:
-        return self.mCurrentModel
+    def currentModel(self) -> str:
+        return self.mCurrentModelId
 
-    def setCurrentModel(self, model: QgsProcessingModelAlgorithm):
-        assert isinstance(model, QgsProcessingModelAlgorithm)
+    def setCurrentModel(self, modelId: str):
+        if isinstance(modelId, QgsProcessingModelAlgorithm):
+            modelId = modelId.id()
+        assert isinstance(modelId, str)
+        assert modelId in self.mPlotControlModel.modelList()
+        self.mCurrentModelId = modelId
 
-        if model not in self.mPlotControlModel.modelList():
-            self.addSpectralModel(model)
-        else:
-            self.mCurrentModel = model
-
-    def removeModel(self, model):
-        self.mPlotControlModel.removeModel(model)
+    #def removeModel(self, model):
+    #    self.mPlotControlModel.removeModel(model)
 
     def setTemporaryProfiles(self, profiles: typing.Dict[SpectralProfile, QColor]):
         self.mPlotControlModel.setTemporaryProfile(profiles)

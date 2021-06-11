@@ -14,7 +14,7 @@
    <string>Spectral Processing Widget</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../../../QGIS/images/images.qrc">
+   <iconset>
     <normaloff>:/images/themes/default/mActionAddExpression.svg</normaloff>:/images/themes/default/mActionAddExpression.svg</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -63,7 +63,7 @@
       </property>
       <widget class="QgsCollapsibleGroupBox" name="mGroupBox">
        <property name="title">
-        <string>Spectral Processing Algorithms</string>
+        <string>Algorithms / Models</string>
        </property>
        <property name="checkable">
         <bool>false</bool>
@@ -85,7 +85,7 @@
          <number>2</number>
         </property>
         <item>
-         <widget class="SpectralProcessingAlgorithmTreeView" name="mTreeView">
+         <widget class="SpectralProcessingAlgorithmTreeView" name="mTreeViewAlgorithms">
           <property name="dragEnabled">
            <bool>true</bool>
           </property>
@@ -107,7 +107,7 @@
         </sizepolicy>
        </property>
        <property name="title">
-        <string>Spectral Processing Model</string>
+        <string>Model Definition</string>
        </property>
        <layout class="QGridLayout" name="gridLayout">
         <property name="leftMargin">
@@ -224,8 +224,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>424</width>
-             <height>405</height>
+             <width>423</width>
+             <height>402</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -337,7 +337,7 @@
   </layout>
   <action name="actionAddFunction">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionAddExpression.svg</normaloff>:/images/themes/default/mActionAddExpression.svg</iconset>
    </property>
    <property name="text">
@@ -352,7 +352,7 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">
@@ -364,7 +364,7 @@
   </action>
   <action name="actionLoadModel">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionFileOpen.svg</normaloff>:/images/themes/default/mActionFileOpen.svg</iconset>
    </property>
    <property name="text">
@@ -373,7 +373,7 @@
   </action>
   <action name="actionSaveModel">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionFileSave.svg</normaloff>:/images/themes/default/mActionFileSave.svg</iconset>
    </property>
    <property name="text">
@@ -382,7 +382,7 @@
   </action>
   <action name="actionApplyModel">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mTaskRunning.svg</normaloff>:/images/themes/default/mTaskRunning.svg</iconset>
    </property>
    <property name="text">
@@ -391,7 +391,7 @@
   </action>
   <action name="actionResetModel">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionReload.svg</normaloff>:/images/themes/default/mActionReload.svg</iconset>
    </property>
    <property name="text">
@@ -400,7 +400,7 @@
   </action>
   <action name="actionVerifyModel">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/algorithms/mAlgorithmCheckGeometry.svg</normaloff>:/images/themes/default/algorithms/mAlgorithmCheckGeometry.svg</iconset>
    </property>
    <property name="text">
@@ -409,7 +409,7 @@
   </action>
   <action name="actionCopyLog">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionEditCopy.svg</normaloff>:/images/themes/default/mActionEditCopy.svg</iconset>
    </property>
    <property name="text">
@@ -421,7 +421,7 @@
   </action>
   <action name="actionClearLog">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/console/iconClearConsole.svg</normaloff>:/images/themes/default/console/iconClearConsole.svg</iconset>
    </property>
    <property name="text">
@@ -433,7 +433,7 @@
   </action>
   <action name="actionSaveLog">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionFileSave.svg</normaloff>:/images/themes/default/mActionFileSave.svg</iconset>
    </property>
    <property name="text">

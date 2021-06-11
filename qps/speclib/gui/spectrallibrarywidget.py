@@ -80,8 +80,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mSpeclibPlotWidget.plotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
         self.pageProcessingWidget: SpectralProcessingWidget = SpectralProcessingWidget()
-        self.pageProcessingWidget.sigSpectralProcessingModelChanged.connect(
-            lambda *args: self.mSpeclibPlotWidget.addSpectralModel(self.pageProcessingWidget.model()))
+        #self.pageProcessingWidget.sigSpectralProcessingModelChanged.connect(
+        #    lambda *args: self.mSpeclibPlotWidget.addSpectralModel(self.pageProcessingWidget.model()))
 
         l = QVBoxLayout()
         l.addWidget(self.mSpeclibPlotWidget)
