@@ -453,7 +453,7 @@ class SpectralProcessingTests(TestCase):
         from processing.modeler.ProjectProvider import ProjectProvider
         self.assertIsInstance(provider, ProjectProvider)
         provider.add_model(spm)
-
+        
         PC: SpectralProfilePlotControlModel = SLW.plotControl()
 
         # set spectral model to 1st item

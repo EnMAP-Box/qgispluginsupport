@@ -79,7 +79,7 @@
             <string>+VIS</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -93,7 +93,7 @@
             <string>-VIS</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -107,7 +107,7 @@
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -121,7 +121,7 @@
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset resource="../../qpsresources.qrc">
+            <iconset>
              <normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -170,7 +170,7 @@
   </layout>
   <action name="actionAddProfileVis">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
    </property>
    <property name="text">
@@ -182,7 +182,7 @@
   </action>
   <action name="actionRemoveProfileVis">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">
@@ -197,7 +197,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</iconset>
    </property>
    <property name="text">
@@ -215,7 +215,7 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../qpsresources.qrc">
+    <iconset>
      <normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</iconset>
    </property>
    <property name="text">
@@ -227,7 +227,7 @@
   </action>
   <action name="optionCursorCrosshair">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/cursors/mCrossHair.svg</normaloff>:/images/themes/default/cursors/mCrossHair.svg</iconset>
    </property>
    <property name="text">
@@ -239,7 +239,7 @@
   </action>
   <action name="optionCursorPosition">
    <property name="icon">
-    <iconset resource="../../qpsresources.qrc">
+    <iconset>
      <normaloff>:/qps/ui/icons/cursorlocationinfo.svg</normaloff>:/qps/ui/icons/cursorlocationinfo.svg</iconset>
    </property>
    <property name="text">

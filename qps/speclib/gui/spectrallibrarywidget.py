@@ -92,8 +92,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.widgetRight.setVisible(True)
 
         self.widgetCenter.addWidget(self.pageProcessingWidget)
-        self.widgetCenter.currentChanged.connect(self.onCenterWidgetChanged)
-        self.mMainView.formModeChanged.connect(self.onCenterWidgetChanged)
+        self.widgetCenter.currentChanged.connect(self.updateToolbarVisibility)
+        self.mMainView.formModeChanged.connect(self.updateToolbarVisibility)
 
         # define Actions and Options
 
@@ -166,21 +166,19 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowFormView = QAction('Show Form View')
         self.actionShowFormView.setCheckable(True)
         self.actionShowFormView.setIcon(QIcon(':/images/themes/default/mActionFormView.svg'))
-        self.actionShowFormView.triggered.connect(
-            lambda: self.setCenterView(SpectralLibraryWidget.ViewType.FormView))
+        self.actionShowFormView.triggered.connect(self.setCenterView)
 
         self.actionShowAttributeTable = QAction('Show Attribute Table')
         self.actionShowAttributeTable.setCheckable(True)
         self.actionShowAttributeTable.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
-        self.actionShowAttributeTable.triggered.connect(
-            lambda: self.setCenterView(SpectralLibraryWidget.ViewType.AttributeTable))
+        self.actionShowAttributeTable.triggered.connect(self.setCenterView)
 
         self.actionShowProcessingWidget = QAction('Show Spectral Processing Options')
         self.actionShowProcessingWidget.setCheckable(True)
         self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
-        self.actionShowProcessingWidget.triggered.connect(
-            lambda: self.setCenterView(SpectralLibraryWidget.ViewType.ProcessingView))
-        self.mMainViewButtonGroup.buttonClicked.connect(self.onCenterWidgetChanged)
+        self.actionShowProcessingWidget.triggered.connect(self.setCenterView)
+
+        self.mMainViewButtonGroup.buttonClicked.connect(self.updateToolbarVisibility)
 
         self.tbSpectralProcessing = QToolBar('Spectral Processing')
 
@@ -198,7 +196,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
 
         # update toolbar visibilities
-        self.onCenterWidgetChanged()
+        self.updateToolbarVisibility()
 
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
 
@@ -218,47 +216,53 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # QIcon(':/images/themes/default/mActionMultiEdit.svg').pixmap(20,20).isNull()
         self.setAcceptDrops(True)
 
-    def setCenterView(self, view: typing.Union[QgsDualView.ViewMode,
-                                               typing.Optional['SpectralLibraryWidget.ViewType']]):
-        if isinstance(view, QgsDualView.ViewMode):
-            if view == QgsDualView.AttributeTable:
-                view = SpectralLibraryWidget.ViewType.AttributeTable
-            elif view == QgsDualView.AttributeEditor:
-                view = SpectralLibraryWidget.ViewType.FormView
+    def setCenterView(self, view: 'SpectralLibraryWidget.ViewType' = None):
 
-        assert isinstance(view, SpectralLibraryWidget.ViewType)
+        sender = self.sender()
 
-        if view == SpectralLibraryWidget.ViewType.AttributeTable:
-            self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
-            self.mMainView.setView(QgsDualView.AttributeTable)
+        exclusive_actions = [self.actionShowAttributeTable,
+                             self.actionShowFormView,
+                             self.actionShowProcessingWidget]
+        for a in exclusive_actions:
+            if a != sender:
+                a.setChecked(False)
 
-        elif view == SpectralLibraryWidget.ViewType.FormView:
-            self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
-            self.mMainView.setView(QgsDualView.AttributeEditor)
+        is_formview = self.actionShowFormView.isChecked()
+        is_tableview = self.actionShowAttributeTable.isChecked()
+        is_processingview = self.actionShowProcessingWidget.isChecked()
 
-        elif view == SpectralLibraryWidget.ViewType.ProcessingView:
-            self.widgetCenter.setCurrentWidget(self.pageProcessingWidget)
-
+        if not any([is_formview, is_tableview, is_processingview]):
+            self.widgetCenter.setVisible(False)
+        else:
+            if is_tableview:
+                self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
+                self.mMainView.setView(QgsDualView.AttributeTable)
+            elif is_formview:
+                self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
+                self.mMainView.setView(QgsDualView.AttributeEditor)
+            elif is_processingview:
+                self.widgetCenter.setCurrentWidget(self.pageProcessingWidget)
+            self.widgetCenter.setVisible(True)
         # legacy code
-        self.mMainViewButtonGroup.button(QgsDualView.AttributeTable) \
-            .setChecked(self.actionShowAttributeTable.isChecked())
-        self.mMainViewButtonGroup.button(QgsDualView.AttributeEditor) \
-            .setChecked(self.actionShowFormView.isChecked())
+        #self.mMainViewButtonGroup.button(QgsDualView.AttributeTable) \
+        #    .setChecked(self.actionShowAttributeTable.isChecked())
+        #self.mMainViewButtonGroup.button(QgsDualView.AttributeEditor) \
+       #     .setChecked(self.actionShowFormView.isChecked())
 
-    def onCenterWidgetChanged(self, *args):
+    def updateToolbarVisibility(self, *args):
         w = self.widgetCenter.currentWidget()
 
         self.mToolbar.setVisible(w == self.pageAttributeTable)
         self.tbSpectralProcessing.setVisible(w == self.pageProcessingWidget)
-        self.actionShowProcessingWidget.setChecked(w == self.pageProcessingWidget)
 
-        if w == self.pageAttributeTable:
-            viewMode: QgsDualView.ViewMode = self.mMainView.view()
-            self.actionShowAttributeTable.setChecked(viewMode == QgsDualView.AttributeTable)
-            self.actionShowFormView.setChecked(viewMode == QgsDualView.AttributeEditor)
-        else:
-            self.actionShowAttributeTable.setChecked(False)
-            self.actionShowFormView.setChecked(False)
+        # self.actionShowProcessingWidget.setChecked(w == self.pageProcessingWidget)
+        # if w == self.pageAttributeTable:
+        #    viewMode: QgsDualView.ViewMode = self.mMainView.view()
+        #    self.actionShowAttributeTable.setChecked(viewMode == QgsDualView.AttributeTable)
+        #    self.actionShowFormView.setChecked(viewMode == QgsDualView.AttributeEditor)
+        #else:
+        #    self.actionShowAttributeTable.setChecked(False)
+        #    self.actionShowFormView.setChecked(False)
 
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()
