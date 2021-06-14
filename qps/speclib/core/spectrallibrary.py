@@ -852,44 +852,52 @@ class SpectralLibrary(QgsVectorLayer):
             options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
 
         create_new_speclib = path is None
+        provider = 'ogr'
         if create_new_speclib:
-            # create a new, empty in-memory GPKG backend
-            existing_vsi_files = vsiSpeclibs()
-            assert isinstance(existing_vsi_files, list)
-            while True:
-                # create a temporary path in /vsimem/
-                path = pathlib.PurePosixPath(VSI_DIR) / f'{baseName}.{uuid.uuid4()}.gpkg'
-                path = path.as_posix().replace('\\', '/')
-                if not path in existing_vsi_files:
-                    break
+            if False:
+                # create a new, empty in-memory GPKG backend
+                existing_vsi_files = vsiSpeclibs()
+                assert isinstance(existing_vsi_files, list)
+                while True:
+                    # create a temporary path in /vsimem/
+                    path = pathlib.PurePosixPath(VSI_DIR) / f'{baseName}.{uuid.uuid4()}.gpkg'
+                    path = path.as_posix().replace('\\', '/')
+                    if not path in existing_vsi_files:
+                        break
 
-            drv: ogr.Driver = ogr.GetDriverByName('GPKG')
-            missingGPKGInfo = \
-                "Your GDAL/OGR installation does not support the GeoPackage (GPKG) vector driver " + \
-                "(https://gdal.org/drivers/vector/gpkg.html).\n" + \
-                "Linux users might need to install libsqlite3."
-            assert isinstance(drv, ogr.Driver), missingGPKGInfo
+                drv: ogr.Driver = ogr.GetDriverByName('GPKG')
+                missingGPKGInfo = \
+                    "Your GDAL/OGR installation does not support the GeoPackage (GPKG) vector driver " + \
+                    "(https://gdal.org/drivers/vector/gpkg.html).\n" + \
+                    "Linux users might need to install libsqlite3."
+                assert isinstance(drv, ogr.Driver), missingGPKGInfo
 
-            co = ['VERSION=AUTO']
-            dsSrc = drv.CreateDataSource(path, options=co)
-            assert isinstance(dsSrc, ogr.DataSource)
-            srs = osr.SpatialReference()
-            srs.ImportFromEPSG(SPECLIB_EPSG_CODE)
-            co = ['GEOMETRY_NAME=geom',
-                  'GEOMETRY_NULLABLE=YES',
-                  ]
+                co = ['VERSION=AUTO']
+                dsSrc = drv.CreateDataSource(path, options=co)
+                assert isinstance(dsSrc, ogr.DataSource)
+                srs = osr.SpatialReference()
+                srs.ImportFromEPSG(SPECLIB_EPSG_CODE)
+                co = ['GEOMETRY_NAME=geom',
+                      'GEOMETRY_NULLABLE=YES',
+                      ]
 
-            dsSrc.CreateLayer(baseName, srs=srs, geom_type=ogr.wkbPoint, options=co)
-            try:
-                dsSrc.FlushCache()
-            except RuntimeError as rt:
-                if 'failed: no such module: rtree' in str(rt):
-                    pass
-                else:
-                    raise rt
-
+                dsSrc.CreateLayer(baseName, srs=srs, geom_type=ogr.wkbPoint, options=co)
+                try:
+                    dsSrc.FlushCache()
+                except RuntimeError as rt:
+                    if 'failed: no such module: rtree' in str(rt):
+                        pass
+                    else:
+                        raise rt
+            else:
+                # QGIS In-Memory Layer
+                provider = 'memory'
+                path = "point?crs=epsg:4326&field=fid:integer"
+                # scratchLayer = QgsVectorLayer(uri, "Scratch point layer", "memory")
         assert isinstance(path, str)
-        super(SpectralLibrary, self).__init__(path, baseName, 'ogr', options)
+        super(SpectralLibrary, self).__init__(path, baseName, provider, options)
+
+        self.setCustomProperty('skipMemoryLayerCheck', 1)
 
         if create_new_speclib:
             assert self.startEditing()
