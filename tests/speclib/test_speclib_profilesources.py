@@ -107,7 +107,7 @@ class SpectralProcessingTests(TestCase):
         n_bands = [177, 6]
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
-
+        sl.setName('Speclib 1')
         RENAME = {'profiles': 'ASD', 'profiles1': 'Sentinel2'}
         sl.startEditing()
         for oldName, newName in RENAME.items():
@@ -116,14 +116,25 @@ class SpectralProcessingTests(TestCase):
             s = ""
         sl.commitChanges()
 
-        g = SpectralFeatureGenerator()
-        g.setSpeclib(sl)
+        slw1 = SpectralLibraryWidget(speclib=sl)
+        slw2 = SpectralLibraryWidget()
+        slw2.speclib().setName('Speclib 2')
 
-        model = TreeModel()
-        model.rootNode().appendChildNodes(g)
+        model = SpectralProfileBridgeV2()
+        model.createFeatureGenerator()
+        # model.createFeatureGenerator()
+        model.addSpectralLibraryWidget(slw1)
+        model.addSpectralLibraryWidget(slw2)
+
+        proxyModel = QSortFilterProxyModel()
+        proxyModel.setSourceModel(model)
+
         tv = TreeView()
-        tv.setModel(model)
+        tv.setModel(proxyModel)
 
+        delegate = SpectralProfileBridgeViewDelegateV2()
+        delegate.setItemDelegates(tv)
+        delegate.setBridge(model)
         self.showGui(tv)
 
 
