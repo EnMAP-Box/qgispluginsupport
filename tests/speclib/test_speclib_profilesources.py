@@ -97,14 +97,63 @@ class SpectralProcessingTests(TestCase):
                           TestObjects.createRasterLayer(nb=10)]
 
         panel = SpectralProfileSourcePanel()
-        panel.bridge().addSource(raster_sources)
+        panel.bridge().addSources(raster_sources)
         self.showGui([SLW, panel])
         s = ""
         pass
 
+
+    def test_ProfileSamplingModel(self):
+
+        from qpstestdata import enmap
+
+        lyr = QgsRasterLayer(enmap)
+        center = SpatialPoint.fromMapLayerCenter(lyr)
+
+        modes = [SingleProfileSamplingMode,
+                 KernelProfileSamplingMode]
+        for m in modes:
+            SpectralProfileSamplingModeModel.registerMode(m())
+        model = SpectralProfileSamplingModeModel()
+
+
+        for mode in model:
+            print(f'Test: {mode.__class__.__name__}')
+            assert isinstance(mode, SpectralProfileSamplingMode)
+            positions = mode.profilePositions(lyr, center)
+            self.assertIsInstance(positions, list)
+
+
+            p = center
+            bbox = QgsRectangle(center, center)
+            bbox.setXMaximum(bbox.xMinimum() + 100)
+            bbox.setYMinimum(bbox.yMinimum() - 100)
+
+            r1 = lyr.dataProvider().identify(p, QgsRaster.IdentifyFormatValue)
+            r2 = lyr.dataProvider().identify(p, QgsRaster.IdentifyFormatValue, boundingBox=bbox)
+
+            r3 = lyr.dataProvider().identify(p, QgsRaster.IdentifyFormatHtml)
+
+            for pos in positions:
+                self.assertIsInstance(pos, QgsPointXY)
+
+
+        cb = QComboBox()
+        cb.setModel(model)
+        self.showGui(cb)
+
     def test_SpectralFeatureGenerator(self):
         n_profiles_per_n_bands = 5
         n_bands = [177, 6]
+
+        from qpstestdata import enmap, hymap
+        lyr1 = QgsRasterLayer(enmap, 'EnMAP')
+        lyr2 = QgsRasterLayer(hymap, 'HyMAP')
+
+        modes = [SingleProfileSamplingMode,
+                 KernelProfileSamplingMode]
+        for m in modes:
+            SpectralProfileSamplingModeModel.registerMode(m())
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
         sl.setName('Speclib 1')
@@ -120,7 +169,8 @@ class SpectralProcessingTests(TestCase):
         slw2 = SpectralLibraryWidget()
         slw2.speclib().setName('Speclib 2')
 
-        model = SpectralProfileBridgeV2()
+        model = SpectralProfileBridge()
+        model.addSources([lyr1, lyr2])
         model.createFeatureGenerator()
         # model.createFeatureGenerator()
         model.addSpectralLibraryWidget(slw1)
