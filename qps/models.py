@@ -147,6 +147,9 @@ class OptionListModel(QAbstractListModel):
     def __iter__(self):
         return iter(self.mOptions)
 
+    def __getitem__(self, slice):
+        return self.mOptions[slice]
+
     def addOption(self, option):
         self.insertOptions([option])
 
@@ -383,8 +386,9 @@ class TreeNode(QObject):
         return self.mStatusTip
 
     def setCheckState(self, checkState):
-        assert isinstance(checkState, Qt.CheckState)
+        assert isinstance(checkState, (int, Qt.CheckState))
         self.mCheckState = checkState
+        self.sigUpdated.emit(self)
 
     def canFetchMore(self) -> bool:
         """
@@ -600,7 +604,6 @@ class TreeNode(QObject):
         """
         return self.mName
 
-
     def setValue(self, value):
         """
         Same as setValues([value])
@@ -646,14 +649,14 @@ class TreeNode(QObject):
         """Returns the number of child nodes"""
         return len(self.mChildren)
 
-    def childNodes(self) -> list:
+    def childNodes(self) -> typing.Iterator['TreeNode']:
         """
         Returns the child nodes
         :return: [list-of-TreeNodes]
         """
         return self.mChildren[:]
 
-    def findParentNode(self, nodeType):
+    def findParentNode(self, nodeType) -> typing.Type['TreeNode']:
         """
         Returns the next upper TreeNode of type "nodeType"
         :param nodeType:
@@ -683,6 +686,29 @@ class TreeNode(QObject):
                 results.extend(node.findChildNodes(type, recursive=True))
         return results
 
+
+class OptionTreeNode(TreeNode):
+
+    def __init__(self, optionModel:OptionListModel, *args, option: Option = None, **kwds):
+        super().__init__(*args, **kwds)
+
+        assert isinstance(optionModel, OptionListModel)
+        self.mOptionModel = optionModel
+        self.mOption: Option = None
+        if option is None and len(optionModel) > 0:
+            option = optionModel[0]
+        self.setOption(option)
+
+    def optionModel(self) -> OptionListModel:
+        return self.mOptionModel
+
+    def setOption(self, option: Option):
+        assert option in self.mOptionModel
+        self.mOption = option
+        self.setValue(option.name())
+
+    def option(self) -> Option:
+        return self.mOption
 
 class PyObjectTreeNode(TreeNode):
 
@@ -1123,6 +1149,9 @@ class TreeModel(QAbstractItemModel):
                 return node.icon()
             if role == Qt.ToolTipRole:
                 return node.toolTip()
+            if role == Qt.CheckStateRole and node.isCheckable():
+                return node.checkState()
+
         if col > 0:
             # first column is for the node name, other columns are for node values
             i = col - 1
