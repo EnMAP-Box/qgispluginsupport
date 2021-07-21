@@ -102,6 +102,15 @@ class SpectralProcessingTests(TestCase):
         s = ""
         pass
 
+    def test_SpectralProfileSourcePanel(self):
+
+        sources, widgets = self.createTestObjects()
+
+        panel = SpectralProfileSourcePanel()
+        panel.mBridge.addSources(sources)
+        panel.mBridge.addSpectralLibraryWidgets(widgets)
+        self.showGui(panel)
+
 
     def test_ProfileSamplingModel(self):
 
@@ -142,7 +151,9 @@ class SpectralProcessingTests(TestCase):
         cb.setModel(model)
         self.showGui(cb)
 
-    def test_SpectralFeatureGenerator(self):
+    def createTestObjects(self) -> typing.Tuple[
+        typing.List[QgsRasterLayer], typing.List[SpectralLibraryWidget]
+    ]:
         n_profiles_per_n_bands = 5
         n_bands = [177, 6]
 
@@ -169,17 +180,23 @@ class SpectralProcessingTests(TestCase):
         slw2 = SpectralLibraryWidget()
         slw2.speclib().setName('Speclib 2')
 
+        widgets = [slw1, slw2]
+        sources = [lyr1, lyr2]
+        return sources, widgets
+
+    def test_SpectralFeatureGenerator(self):
+        layers, widgets = self.initProcessingRegistry()
+
         model = SpectralProfileBridge()
-        model.addSources([lyr1, lyr2])
+        model.addSources(layers)
         model.createFeatureGenerator()
         # model.createFeatureGenerator()
-        model.addSpectralLibraryWidget(slw1)
-        model.addSpectralLibraryWidget(slw2)
+        model.addSpectralLibraryWidgets(widgets)
 
         proxyModel = QSortFilterProxyModel()
         proxyModel.setSourceModel(model)
 
-        tv = TreeView()
+        tv = SpectralProfileBridgeTreeView()
         tv.setModel(proxyModel)
 
         delegate = SpectralProfileBridgeViewDelegateV2()

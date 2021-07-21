@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>382</width>
-    <height>341</height>
+    <width>560</width>
+    <height>371</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -44,7 +44,7 @@
          <string>+</string>
         </property>
         <property name="icon">
-         <iconset>
+         <iconset resource="../../../../QGIS/images/images.qrc">
           <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
         </property>
         <property name="autoRaise">
@@ -58,8 +58,8 @@
          <string>-</string>
         </property>
         <property name="icon">
-         <iconset>
-          <normaloff>:/enmapbox/gui/ui/icons/mActionRemove.svg</normaloff>:/enmapbox/gui/ui/icons/mActionRemove.svg</iconset>
+         <iconset resource="../../../../QGIS/images/images.qrc">
+          <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
         </property>
         <property name="autoRaise">
          <bool>true</bool>
@@ -82,7 +82,7 @@
      </layout>
     </item>
     <item>
-     <widget class="TreeView" name="treeView">
+     <widget class="SpectralProfileBridgeTreeView" name="treeView">
       <property name="sizeAdjustPolicy">
        <enum>QAbstractScrollArea::AdjustIgnored</enum>
       </property>
@@ -132,7 +132,7 @@
   </widget>
   <action name="actionAddRelation">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
    </property>
    <property name="text">
@@ -141,7 +141,7 @@
   </action>
   <action name="actionRemoveRelation">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">
@@ -151,15 +151,15 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>TreeView</class>
+   <class>SpectralProfileBridgeTreeView</class>
    <extends>QTreeView</extends>
-   <header>qps.models</header>
+   <header>qps.speclib.gui.spectralprofilesources</header>
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../../../../../QGIS/images/images.qrc"/>
-  <include location="../../enmapboxresources.qrc"/>
-  <include location="../../externals/qps/qpsresources.qrc"/>
+  <include location="../../../../QGIS/images/images.qrc"/>
+  <include location="../../qpsresources.qrc"/>
+  <include location="../../qpsresources.qrc"/>
  </resources>
  <connections/>
 </ui>
