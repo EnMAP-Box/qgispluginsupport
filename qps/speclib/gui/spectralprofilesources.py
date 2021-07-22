@@ -342,6 +342,10 @@ class SpectralProfileSamplingMode(object):
         """
         return []
 
+    def mapOverlay(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> typing.Optional[QgsGeometry]:
+
+        return None
+
     def profilePositions(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> typing.List[SpatialPoint]:
         """
         Returns a list of spatial points to read the profile from0
