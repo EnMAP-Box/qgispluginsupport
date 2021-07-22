@@ -87,6 +87,12 @@ class SpectralProcessingTests(TestCase):
         panel.mBridge.addSpectralLibraryWidgets(widgets)
         self.showGui(panel)
 
+        a = np.ndarray
+
+        c = a != 2
+        b = a != a
+
+
 
     def test_ProfileSamplingModel(self):
 
