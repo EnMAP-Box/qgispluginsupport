@@ -198,6 +198,11 @@ class SpectralProfileSourceModel(QAbstractListModel):
         return None
 
 
+class SpectralProfileSourceProxyModel(QSortFilterProxyModel):
+
+    def __init__(self, *args, **kwds):
+        super(SpectralProfileSourceProxyModel, self).__init__(*args, **kwds)
+
 class SpectralProfileSourceNode(TreeNode):
 
     def __init__(self, *args, **kwds):
@@ -809,10 +814,13 @@ class SpectralProfileBridge(TreeModel):
         if generator not in self.rootNode().childNodes():
             self.rootNode().appendChildNodes(generator)
 
-    def removeFeatureGenerator(self, generator: SpectralFeatureGeneratorNode):
-
-        assert generator in self.rootNode().childNodes()
-        self.rootNode().removeChildNodes([generator])
+    def removeFeatureGenerators(self, generators: typing.List[SpectralFeatureGeneratorNode]):
+        if isinstance(generators, SpectralFeatureGeneratorNode):
+            generators = [generators]
+        for g in generators:
+            assert isinstance(g, SpectralFeatureGeneratorNode)
+            assert g in self.rootNode().childNodes()
+        self.rootNode().removeChildNodes(generators)
 
     def flags(self, index: QModelIndex):
 
@@ -1138,6 +1146,9 @@ class SpectralProfileBridgeTreeView(TreeView):
         super().__init__(*args, **kwds)
 
 
+    def selectedFeatureGenerators(self) -> typing.List[SpectralFeatureGeneratorNode]:
+        return [n for n in self.selectedNodes() if isinstance(n, SpectralFeatureGeneratorNode)]
+
 class SpectralProfileSourcePanel(QgsDockWidget):
 
     def __init__(self, *args, **kwds):
@@ -1145,15 +1156,21 @@ class SpectralProfileSourcePanel(QgsDockWidget):
 
         loadUi(speclibUiPath('spectralprofilesourcepanel.ui'), self)
         self.progressBar.setVisible(False)
-
+        self.treeView: SpectralProfileBridgeTreeView
         self.mBridge = SpectralProfileBridge()
        # self.mBridge.sigProgress.connect(self.progressBar.setValue)
-        self.mProxyModel = QSortFilterProxyModel()
+        self.mProxyModel = SpectralProfileSourceProxyModel()
         self.mProxyModel.setSourceModel(self.mBridge)
         self.treeView.setModel(self.mProxyModel)
+
+        self.mDelegate = SpectralProfileBridgeViewDelegateV2()
+        self.mDelegate.setBridge(self.mBridge)
+        self.mDelegate.setItemDelegates(self.treeView)
+
+
+        self.treeView.selectionModel().selectionChanged.connect(self.onSelectionChanged)
+
         # self.mProxyModel.rowsInserted.connect(self.tableView.resizeColumnsToContents)
-        # self.tableView.resizeColumnsToContents()
-        # self.tableView.selectionModel().selectionChanged.connect(self.onSelectionChanged)
 
         # self.mViewDelegate = SpectralProfileBridgeViewDelegate(self.tableView)
         # self.mViewDelegate.setItemDelegates(self.tableView)
@@ -1173,16 +1190,14 @@ class SpectralProfileSourcePanel(QgsDockWidget):
         self.bridge().setRunAsync(b)
 
     def onSelectionChanged(self, selected: QItemSelection, deselected: QItemSelection):
-        self.actionRemoveRelation.setEnabled(len(self.treeView.selectionModel().selectedRows()) > 0)
+
+        tv: SpectralProfileBridgeTreeView = self.treeView
+        gnodes = tv.selectedFeatureGenerators()
+        self.actionRemoveRelation.setEnabled(len(gnodes) > 0)
 
     def onRemoveRelations(self):
-        toRemove = []
-        for rowIdx in self.tableView.selectionModel().selectedRows():
-            assert isinstance(rowIdx, QModelIndex)
-            toRemove.append(self.bridge()[rowIdx.row()])
-
-        for item in toRemove:
-            self.bridge().removeProfileRelation(item)
+        tv: SpectralProfileBridgeTreeView = self.treeView
+        self.mBridge.removeFeatureGenerators(tv.selectedFeatureGenerators())
 
     def loadCurrentMapSpectra(self, spatialPoint: SpatialPoint, mapCanvas: QgsMapCanvas = None, runAsync: bool = None):
         self.bridge().loadProfiles(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)

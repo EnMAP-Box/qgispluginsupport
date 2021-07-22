@@ -77,30 +77,6 @@ class SpectralProcessingTests(TestCase):
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
 
-    def test_SpectralProfileSources(self):
-        # self.initProcessingRegistry()
-        n_profiles_per_n_bands = 5
-        n_bands = [177, 6]
-
-        sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
-
-        RENAME = {'profiles': 'ASD', 'profiles1': 'Sentinel2'}
-        sl.startEditing()
-        for oldName, newName in RENAME.items():
-            idx = sl.fields().lookupField(oldName)
-            sl.renameAttribute(idx, newName)
-            s = ""
-        sl.commitChanges()
-        SLW = SpectralLibraryWidget(speclib=sl)
-
-        raster_sources = [TestObjects.createRasterLayer(nb=5),
-                          TestObjects.createRasterLayer(nb=10)]
-
-        panel = SpectralProfileSourcePanel()
-        panel.bridge().addSources(raster_sources)
-        self.showGui([SLW, panel])
-        s = ""
-        pass
 
     def test_SpectralProfileSourcePanel(self):
 
@@ -193,7 +169,7 @@ class SpectralProcessingTests(TestCase):
         # model.createFeatureGenerator()
         model.addSpectralLibraryWidgets(widgets)
 
-        proxyModel = QSortFilterProxyModel()
+        proxyModel = SpectralProfileSourceProxyModel()
         proxyModel.setSourceModel(model)
 
         tv = SpectralProfileBridgeTreeView()

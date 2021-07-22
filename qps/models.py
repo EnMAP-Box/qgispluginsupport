@@ -1065,6 +1065,7 @@ class TreeModel(QAbstractItemModel):
             nodes = [nodes]
 
         for n in nodes:
+            assert isinstance(n, TreeNode)
             idx = self.node2idx(n)
             if idx.isValid():
                 n.parentNode().removeChildNodes(n)
