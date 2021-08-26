@@ -14,9 +14,11 @@ from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 
 from qgis.PyQt.QtWidgets import *
+
+import pyqtgraph
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
-from ..core import profile_fields, profile_field_names
+from ..core import profile_fields, profile_field_names, is_profile_field
 from ..core.spectralprofile import SpectralProfileBlock
 from ... import SpectralProfile
 
@@ -364,6 +366,13 @@ class SpectralProfileSamplingMode(object):
             lines.append(f'{k}: {v}')
         return '<br>'.join(lines)
 
+    def writeXml(self):
+        pass
+
+    @staticmethod
+    def fromXml(self):
+        pass
+
 
 class SpectralProfileSamplingModeNode(TreeNode):
 
@@ -401,8 +410,6 @@ class SpectralProfileSamplingModeNode(TreeNode):
     def onChildNodeUpdate(self):
 
         self.setValue(self.profileSamplingMode().name())
-
-
 
 
 class SingleProfileSamplingMode(SpectralProfileSamplingMode):
@@ -566,18 +573,45 @@ class SpectralProfileSamplingModeModel(QAbstractListModel):
 
 
 class FieldGeneratorNode(TreeNode):
-
+    """
+    Base-class for nodes that generate values for a QgsFeature field
+    """
     def __init__(self, *args, **kwds):
         
         super(FieldGeneratorNode, self).__init__(*args, **kwds)
         self.mField: QgsField = None
+        self.setCheckable(True)
+        self.setCheckState(Qt.Unchecked)
 
     def setField(self, field: QgsField):
+        """
+        Defines the QgsField the node is linked to
+        :param field:
+        :type field:
+        :return:
+        :rtype:
+        """
         assert isinstance(field, QgsField)
+        # todo: evaluate constraints. if field has to be present -> make uncheckable
         self.mField = field
 
     def field(self) -> QgsField:
+        """
+        Returns the QgsField the node is linked to
+        :return:
+        :rtype:
+        """
         return self.mField
+
+    def validate(self) -> typing.Tuple[bool, typing.List[str]]:
+        """
+        Returns (True, []) if all settings are fine (default) or (False, ['list of error messages']) if not.
+        :return:
+        :rtype:
+        """
+        if not isinstance(self.field(), QgsField):
+            return False, 'Field is not set'
+        return True, []
 
 class GeometryGeneratorNode(TreeNode):
 
@@ -603,7 +637,6 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def __init__(self, *args, **kwds):
         super(SpectralProfileGeneratorNode, self).__init__(*args, **kwds)
         self.setIcon(QIcon(r':/qps/ui/icons/profile.svg'))
-        self.setCheckable(True)
         self.setCheckState(Qt.Checked)
         self.sigUpdated.connect(self.onChildNodeUpdate)
         self.mSourceNode = SpectralProfileSourceNode('Source')
@@ -612,12 +645,13 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
     def validate(self) -> typing.Tuple[bool, typing.List[str]]:
 
-        errors = []
+        is_valid, errors = super().validate()
 
-        if not isinstance(self.source(), SpectralProfileSource):
-            errors.append('No source')
-        if not isinstance(self.sampling(), SpectralProfileSamplingMode):
-            errors.append('No sampling')
+        if is_valid:
+            if not isinstance(self.source(), SpectralProfileSource):
+                errors.append('No source')
+            if not isinstance(self.sampling(), SpectralProfileSamplingMode):
+                errors.append('No sampling')
 
         return len(errors) == 0, errors
 
@@ -653,26 +687,76 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
 
 class StandardFieldGeneratorNode(FieldGeneratorNode):
-    def __int__(self, *args, **kwds):
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.mExpressionString: str = ''
 
-        self.mExpression: str = ''
+    def expression(self) -> QgsExpression:
+        return QgsExpression(self.mExpressionString)
 
+    def setExpression(self, expression: typing.Union[str, QgsExpression]):
+        if isinstance(expression, QgsExpression):
+            expression = expression.expression()
+        self.mExpressionString = expression
+        self.setValue(self.mExpressionString)
+
+    def validate(self) -> typing.Tuple[bool, typing.List[str]]:
+
+        is_valid, errors = super().validate()
+
+        if is_valid:
+            expr = self.expression()
+
+            # todo: set context
+
+            if expr.expression().strip() == '':
+                errors.append('undefined')
+            else:
+                if not expr.isValid():
+                    if expr.hasParserError():
+                        errors.append(expr.parserErrorString().strip())
+                    if expr.hasEvalError():
+                        errors.append(expr.evalErrorString().strip())
+
+        return len(errors) == 0, errors
+
+class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGenerator):
+    """
+    A generator to create the context for a new SpectralProfile feature
+    """
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.mNode: SpectralFeatureGeneratorNode = None
+
+    def createExpressionContext(self) -> QgsExpressionContext:
+        context = QgsExpressionContext()
+        scope = QgsExpressionContextScope()
+        scope.addVariable(QgsExpressionContextScope.StaticVariable("profile_click", 9999))
+        context.appendScope(scope)
+        return context
 
 class SpectralFeatureGeneratorNode(TreeNode):
 
     def __init__(self, *args, **kwds):
         # assert isinstance(slw, SpectralLibraryWidget)
         super(SpectralFeatureGeneratorNode, self).__init__(*args, **kwds)
+
         self.setIcon(QIcon(r':/qps/ui/icons/speclib.svg'))
         self.mSpeclibWidget: SpectralLibraryWidget = None
         self.setCheckable(True)
         self.setCheckState(Qt.Checked)
+        self.mExpressionContextGenerator = SpectralFeatureGeneratorExpressionContextGenerator()
+        self.mExpressionContextGenerator.mNode = self
+
+    def expressionContextGenerator(self) -> SpectralFeatureGeneratorExpressionContextGenerator:
+        return self.mExpressionContextGenerator
 
     def copy(self):
         g = SpectralFeatureGeneratorNode()
         g.setSpeclibWidget(self.speclibWidget())
 
-        self.createFieldNodes(self.fieldNodeNames())
+        nodes = self.createFieldNodes(self.fieldNodeNames())
+        g.appendChildNodes(nodes)
 
         return g
 
@@ -706,8 +790,11 @@ class SpectralFeatureGeneratorNode(TreeNode):
             new_nodes.append(gnode)
 
             # 2. create spectral profile field nodes
-            for field in profile_fields(speclib):
-                self.createFieldNodes(field)
+            #new_nodes.append(self.createFieldNodes(profile_fields(speclib)))
+
+            #other_fields = [f for f in speclib.fields() if not f]
+            new_nodes.extend(self.createFieldNodes(speclib.fields()))
+            # 3. add other fields
 
             self.appendChildNodes(new_nodes)
 
@@ -726,6 +813,8 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
         if isinstance(fieldnames, QgsField):
             fieldnames = [fieldnames.name()]
+        elif isinstance(fieldnames, QgsFields):
+            fieldnames = fieldnames.names()
         elif isinstance(fieldnames, str):
             fieldnames = [fieldnames]
 
@@ -738,22 +827,31 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
         new_nodes: typing.List[FieldGeneratorNode] = []
 
-        pf_names = profile_field_names(self.speclib())
+        pfield_names = profile_field_names(self.speclib())
         for fname in fieldnames:
             new_node = None
+            idx = self.speclib().fields().lookupField(fname)
+            if idx < 0:
+                continue
 
-            if fname in pf_names:
+            field: QgsField = self.speclib().fields().at(idx)
+            if field.isReadOnly():
+                continue
+
+            constraints: QgsFieldConstraints = field.constraints()
+
+
+            if fname in pfield_names:
                 new_node = SpectralProfileGeneratorNode(fname)
+
             else:
                 new_node = StandardFieldGeneratorNode(fname)
 
+
             if isinstance(new_node, FieldGeneratorNode):
-                i = self.speclib().fields().lookupField(fname)
-                new_node.setField(self.speclib().fields().at(i))
+                new_node.setField(field)
                 new_nodes.append(new_node)
 
-        if len(new_nodes) > 0:
-            self.appendChildNodes(new_nodes)
         return new_nodes
 
     def updateNodeOrder(self):
@@ -762,6 +860,9 @@ class SpectralFeatureGeneratorNode(TreeNode):
         :return:
         """
         pass
+
+
+
 
 class SpectralProfileBridge(TreeModel):
 
@@ -838,7 +939,10 @@ class SpectralProfileBridge(TreeModel):
             flags = flags | Qt.ItemIsUserCheckable
 
         if col == 1:
-            if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileSourceNode, SpectralProfileSamplingModeNode)):
+            if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileSourceNode,
+                                 SpectralProfileSamplingModeNode, StandardFieldGeneratorNode)):
+                if isinstance(node, StandardFieldGeneratorNode):
+                    s = ""
                 flags = flags | Qt.ItemIsEditable
 
         return flags
@@ -851,7 +955,6 @@ class SpectralProfileBridge(TreeModel):
         c = index.column()
         if index.isValid():
             if isinstance(node, SpectralFeatureGeneratorNode):
-
                 if not isinstance(node.speclibWidget(), SpectralLibraryWidget):
                     if c == 0:
                         if role == Qt.DisplayRole:
@@ -873,20 +976,31 @@ class SpectralProfileBridge(TreeModel):
                              f'Features: {speclib.featureCount()}'
                         return tt
 
-            if isinstance(node, SpectralProfileGeneratorNode):
+            if isinstance(node, FieldGeneratorNode):
                 if c == 1:
+                    is_checked = node.checked()
+                    is_required = not node.isCheckable()
                     is_valid, errors = node.validate()
                     if not is_valid:
                         if role == Qt.DisplayRole:
-                            return '<span style="color:red;">{}</span>'.format(''.join(errors))
+                            if is_checked or is_required:
+                                return '<span style="color:red;font-style:italic">{}</span>'.format(''.join(errors))
+                            else:
+                                return '<span style="color:grey;font-style:italic">{}</span>'.format(''.join(errors))
                         if role == Qt.ToolTipRole:
                             return '<br>'.join(errors)
-                        if role == Qt.ForegroundRole:
-                            return QColor('red')
                         if role == Qt.FontRole:
                             f = QFont()
                             f.setItalic(True)
                             return f
+                    else:
+                        if isinstance(node, StandardFieldGeneratorNode):
+
+                            expr = str(node.mExpressionString).strip()
+                            if expr == '':
+                                if role == Qt.DisplayRole:
+                                    return '<span style="color:grey;font-style:italic">undefined</span>'
+
 
         return value
 
@@ -901,12 +1015,18 @@ class SpectralProfileBridge(TreeModel):
         roles = [role]
         changed = False # set only True if not handled by underlying TreeNode
 
-        if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode)) \
-                and role == Qt.CheckStateRole \
-                and value in [Qt.Checked, Qt.Unchecked]:
-                node.setCheckState(value)
+        if role == Qt.CheckStateRole \
+                and isinstance(node, TreeNode) \
+                and node.isCheckable() and \
+                value in [Qt.Checked, Qt.Unchecked]:
 
-        if isinstance(node, SpectralFeatureGeneratorNode):
+                node.setCheckState(value)
+                return True
+                #c0 = 0
+                #c1 = 1
+                #roles.append(Qt.DisplayRole)
+
+        elif isinstance(node, SpectralFeatureGeneratorNode):
             if col in [0, 1] and role == Qt.EditRole:
                 if isinstance(value, SpectralLibraryWidget):
                     changed = True
@@ -915,23 +1035,27 @@ class SpectralProfileBridge(TreeModel):
                     c1 = 1
                     roles = [Qt.DisplayRole, Qt.ForegroundRole, Qt.FontRole]
 
-        if isinstance(node, SpectralProfileGeneratorNode):
+        elif isinstance(node, SpectralProfileGeneratorNode):
             if isinstance(value, SpectralProfileSamplingMode):
                 node.setProfileSamplingMode(value)
                 changed = False
                 # important! node.setProfileSamplingMode has already updated the node
 
-        if isinstance(node, SpectralProfileSourceNode):
+        elif isinstance(node, SpectralProfileSourceNode):
             if isinstance(value, SpectralProfileSource):
                 node.setSpectralProfileSource(value)
 
-        if isinstance(node, SpectralProfileSamplingModeNode):
+        elif isinstance(node, SpectralProfileSamplingModeNode):
             if isinstance(value, SpectralProfileSamplingMode):
                 node.setProfileSamplingMode(value)
 
-        if isinstance(node, OptionTreeNode):
+        elif isinstance(node, OptionTreeNode):
             if isinstance(value, Option):
                 node.setOption(value)
+
+        elif isinstance(node, StandardFieldGeneratorNode):
+            if isinstance(value, (str, QgsExpression)):
+                node.setExpression(value)
 
         if changed:
             self.dataChanged.emit(self.index(r0, c0, parent=index.parent()),
@@ -992,19 +1116,19 @@ class SpectralProfileBridge(TreeModel):
         assert isinstance(slw, SpectralLibraryWidget)
         self.mDstModel.removeSpeclib(slw)
 
-class SpectralProfileBridgeViewDelegateV2(QStyledItemDelegate):
+class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
     """
 
     """
     def __init__(self, parent=None):
-        super(SpectralProfileBridgeViewDelegateV2, self).__init__(parent=parent)
+        super(SpectralProfileBridgeViewDelegate, self).__init__(parent=parent)
 
         self.mSpectralProfileBridge: SpectralProfileBridge = None
 
     def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QtCore.QModelIndex):
 
         node = index.data(Qt.UserRole)
-        if isinstance(node, (SpectralProfileGeneratorNode, OptionTreeNode)) and index.column() == 1:
+        if isinstance(node, (SpectralProfileGeneratorNode, FieldGeneratorNode, OptionTreeNode)) and index.column() == 1:
             # taken from https://stackoverflow.com/questions/1956542/how-to-make-item-view-render-rich-html-text-in-qt
             self.initStyleOption(option, index)
             painter.save()
@@ -1059,40 +1183,34 @@ class SpectralProfileBridgeViewDelegateV2(QStyledItemDelegate):
                 w.setModel(model)
                 s = ""
 
-            if isinstance(node, SpectralProfileSourceNode) and index.column() == 1:
+            elif isinstance(node, SpectralProfileSourceNode) and index.column() == 1:
                 w = QComboBox(parent=parent)
                 model = bridge.dataSourceModel()
                 w.setModel(model)
 
-            if isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
+            elif isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
                 w = QComboBox(parent=parent)
                 model = bridge.profileSamplingModeModel()
                 w.setModel(model)
 
-            if isinstance(node, OptionTreeNode) and index.column() == 1:
+            elif isinstance(node, OptionTreeNode) and index.column() == 1:
                 w = QComboBox(parent=parent)
                 w.setModel(node.optionModel())
 
-            # w = QComboBox(parent=parent)
-            # model = bridge.dataSourceModel()
-            # assert isinstance(model, SpectralProfileSourceModel)
-            # w.setModel(model)
-            # s = ""
+            elif isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
+                w = QgsFieldExpressionWidget(parent=parent)
+                field: QgsField = node.field()
 
-            #elif cname == bridge.cnDst:
+                genNode: SpectralFeatureGeneratorNode = node.parentNode()
+                w.registerExpressionContextGenerator(genNode.expressionContextGenerator())
+                # w.setField(field)
+                w.setExpressionDialogTitle(f'{field.name()}')
+                w.setToolTip(f'Set an expression to specify the field "{field.name()}"')
+                # w.setExpression(node.expression().expression())
+                # w.setLayer(vis.speclib())
+                # w.setFilters(QgsFieldProxyModel.String | QgsFieldProxyModel.Numeric)
+                s = ""
 
-            #elif cname == bridge.cnSampling:
-            #w = QComboBox(parent=parent)
-            #for mode in SpectralProfileSamplingMode:
-            #    assert isinstance(mode, SpectralProfileSamplingMode)
-            #    w.addItem(mode.name, mode)
-
-
-            #elif cname == bridge.cnScale:
-            #    w = QgsDoubleSpinBox(parent=parent)
-            #    w.setClearValue(1)
-            #    w.setMinimum(sys.float_info.min)
-            #    w.setMaximum(sys.float_info.max)
         return w
 
     def setEditorData(self, editor: QWidget, index: QModelIndex):
@@ -1113,17 +1231,21 @@ class SpectralProfileBridgeViewDelegateV2(QStyledItemDelegate):
             assert isinstance(editor, QComboBox)
             setCurrentComboBoxValue(editor, node.profileSamplingMode())
 
-        if isinstance(node, SpectralProfileSourceNode) and index.column() == 1:
+        elif isinstance(node, SpectralProfileSourceNode) and index.column() == 1:
             assert isinstance(editor, QComboBox)
             setCurrentComboBoxValue(editor, node.profileSource())
 
-        if isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
+        elif isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
             assert isinstance(editor, QComboBox)
             setCurrentComboBoxValue(editor, node.profileSamplingMode())
 
-        if isinstance(node, OptionTreeNode) and index.column() == 1:
+        elif isinstance(node, OptionTreeNode) and index.column() == 1:
             assert isinstance(editor, QComboBox)
             setCurrentComboBoxValue(editor, node.option())
+
+        elif isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
+            assert isinstance(editor, QgsFieldExpressionWidget)
+            editor.setExpression(node.expression().expression())
 
 
     def setModelData(self, w, bridge, index):
@@ -1142,7 +1264,10 @@ class SpectralProfileBridgeViewDelegateV2(QStyledItemDelegate):
             if index.column() in [1]:
                 assert isinstance(w, QComboBox)
                 bridge.setData(index, w.currentData(Qt.UserRole), Qt.EditRole)
-
+        if isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
+            assert isinstance(w, QgsFieldExpressionWidget)
+            expr = w.expression()
+            bridge.setData(index, expr, Qt.EditRole)
 
 class SpectralProfileBridgeTreeView(TreeView):
 
@@ -1167,7 +1292,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
         self.mProxyModel.setSourceModel(self.mBridge)
         self.treeView.setModel(self.mProxyModel)
 
-        self.mDelegate = SpectralProfileBridgeViewDelegateV2()
+        self.mDelegate = SpectralProfileBridgeViewDelegate()
         self.mDelegate.setBridge(self.mBridge)
         self.mDelegate.setItemDelegates(self.treeView)
 

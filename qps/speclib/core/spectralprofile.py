@@ -647,10 +647,10 @@ class SpectralProfile(QgsFeature):
 
         return hash(id(self))
 
-    def setId(self, id):
-        self.setAttribute(FIELD_FID, id)
-        if id is not None:
-            super(SpectralProfile, self).setId(id)
+    #def setId(self, id):
+    #    self.setAttribute(FIELD_FID, id)
+    #    if id is not None:
+    #        super(SpectralProfile, self).setId(id)
 
     """
     def __eq__(self, other):

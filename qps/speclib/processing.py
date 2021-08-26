@@ -139,7 +139,6 @@ def is_spectral_processing_algorithm(
     return flags in _flags
 
 
-
 class SpectralProcessingProfiles(QgsProcessingParameterDefinition):
     """
     SpectralAlgorithm Input definition, i.e. defines where the profiles come from

@@ -8,7 +8,7 @@ from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 
-def create_profile_field(name: str, comment:str='')->QgsField:
+def create_profile_field(name: str, comment:str='') -> QgsField:
     """
     Creates a QgsField to store spectral profiles
     :param name: field name
@@ -20,6 +20,15 @@ def create_profile_field(name: str, comment:str='')->QgsField:
     field.setEditorWidgetSetup(setup)
     return field
 
+def is_profile_field(field: QgsField) -> bool:
+    return isinstance(field, QgsField) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
+
+def is_spectral_library()-> bool:
+    pass
+
+def has_profile_fields()-> bool:
+    pass
+
 def profile_fields(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[QgsField]:
     """
     Returns the fields that contains values of SpectralProfiles
@@ -29,7 +38,7 @@ def profile_fields(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) ->
     fields = [f for f in spectralLibrary.fields() if
               f.type() == QVariant.ByteArray]
     if isinstance(spectralLibrary, QgsVectorLayer):
-        fields = [f for f in fields if f.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY]
+        fields = [f for f in fields if is_profile_field(f)]
     return fields
 
 def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> \
