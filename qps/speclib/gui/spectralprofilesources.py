@@ -1,4 +1,5 @@
 import copy
+import difflib
 import sys
 import typing
 import enum
@@ -15,7 +16,6 @@ from qgis.PyQt.QtGui import *
 
 from qgis.PyQt.QtWidgets import *
 
-import pyqtgraph
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_fields, profile_field_names, is_profile_field
@@ -25,9 +25,9 @@ from ... import SpectralProfile
 from ...plotstyling.plotstyling import PlotStyle, MarkerSymbol, PlotStyleButton
 import numpy as np
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
-from ...utils import SpatialPoint, loadUi
+from ...utils import SpatialPoint, loadUi, parseWavelength
 
-
+MINIMUM_SOURCENAME_SIMILARITY = 0.5
 
 class SpectralProfileSource(object):
 
@@ -348,9 +348,9 @@ class SpectralProfileSamplingMode(object):
 
         return None
 
-    def profilePositions(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> typing.List[SpatialPoint]:
+    def profilePositions(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> typing.List[QPoint]:
         """
-        Returns a list of spatial points to read the profile from0
+        Returns a list of pixel positions to read a profile from
         :param lyr:
         :param spatialPoint:
         :return:
@@ -658,8 +658,22 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def source(self) -> SpectralProfileSource:
         return self.mSourceNode.profileSource()
 
+    def setSource(self, source:SpectralProfileSource):
+        self.mSourceNode.setSpectralProfileSource(source)
+
     def sampling(self) -> SpectralProfileSamplingMode:
         return self.mSamplingNode.profileSamplingMode()
+
+    def profilePositions(self, spatialPoint: SpatialPoint) -> typing.Tuple[QgsRasterLayer, typing.List[QPoint]]:
+        source = self.source()
+        if not isinstance(source, SpectralProfileSource):
+            return []
+
+        # resolve the source layer
+        layer = source.rasterLayer()
+
+        # return profile positions
+        return layer, self.sampling().profilePositions(layer, spatialPoint)
 
     def onChildNodeUpdate(self):
         """
@@ -735,6 +749,8 @@ class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGen
         context.appendScope(scope)
         return context
 
+RX_MEMORY_UID = re.compile(r'.*uid=[{](?P<uid>[^}]+)}.*')
+
 class SpectralFeatureGeneratorNode(TreeNode):
 
     def __init__(self, *args, **kwds):
@@ -764,7 +780,10 @@ class SpectralFeatureGeneratorNode(TreeNode):
         return self.mSpeclibWidget
 
     def speclib(self) -> QgsVectorLayer:
-        return self.mSpeclibWidget.speclib()
+        if self.mSpeclibWidget:
+            return self.mSpeclibWidget.speclib()
+        else:
+            return None
 
     def setSpeclibWidget(self, speclibWidget: SpectralLibraryWidget):
 
@@ -779,35 +798,37 @@ class SpectralFeatureGeneratorNode(TreeNode):
         if isinstance(speclibWidget, SpectralLibraryWidget):
             self.mSpeclibWidget = speclibWidget
             speclib = self.mSpeclibWidget.speclib()
-            self.setName(speclib.name())
-            self.setValue(speclib.source())
+            if isinstance(speclib, QgsVectorLayer):
+                self.setName(speclib.name())
+                dp_name = speclib.dataProvider().name()
+                source = speclib.source()
+                if dp_name == 'memory':
+                    match = RX_MEMORY_UID.match(source)
+                    if match:
+                        source = f'memory uid={match.group("uid")}'
+                self.setValue(source)
 
-            new_nodes = []
+                new_nodes = []
 
-            # 1. create the geometry generator node
-            gnode = GeometryGeneratorNode()
-            gnode.setGeometryType(speclib.geometryType())
-            new_nodes.append(gnode)
+                # 1. create the geometry generator node
+                gnode = GeometryGeneratorNode()
+                gnode.setGeometryType(speclib.geometryType())
+                new_nodes.append(gnode)
 
-            # 2. create spectral profile field nodes
-            #new_nodes.append(self.createFieldNodes(profile_fields(speclib)))
+                # 2. create spectral profile field nodes
+                #new_nodes.append(self.createFieldNodes(profile_fields(speclib)))
 
-            #other_fields = [f for f in speclib.fields() if not f]
-            new_nodes.extend(self.createFieldNodes(speclib.fields()))
-            # 3. add other fields
+                #other_fields = [f for f in speclib.fields() if not f]
+                new_nodes.extend(self.createFieldNodes(speclib.fields()))
+                # 3. add other fields
 
-            self.appendChildNodes(new_nodes)
+                self.appendChildNodes(new_nodes)
+
+    def fieldNodes(self) -> typing.List[FieldGeneratorNode]:
+        return [n for n in self.childNodes() if isinstance(n, FieldGeneratorNode)]
 
     def fieldNodeNames(self) -> typing.List[str]:
-        names = []
-        for n in self.childNodes():
-            if isinstance(n, FieldGeneratorNode):
-                field = n.field()
-                if not isinstance(field, QgsField):
-                    s = ""
-                names.append(n.field().name())
-
-        return names
+        return [n.field().name() for n in self.fieldNodes()]
 
     def createFieldNodes(self, fieldnames: typing.List[str]):
 
@@ -827,6 +848,10 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
         new_nodes: typing.List[FieldGeneratorNode] = []
 
+        if not self.speclib():
+            # no speclibs connected, no nodes to create
+            return new_nodes
+
         pfield_names = profile_field_names(self.speclib())
         for fname in fieldnames:
             new_node = None
@@ -840,19 +865,20 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
             constraints: QgsFieldConstraints = field.constraints()
 
-
             if fname in pfield_names:
                 new_node = SpectralProfileGeneratorNode(fname)
 
             else:
                 new_node = StandardFieldGeneratorNode(fname)
 
-
             if isinstance(new_node, FieldGeneratorNode):
                 new_node.setField(field)
                 new_nodes.append(new_node)
 
         return new_nodes
+
+    def spectralProfileGeneratorNodes(self) -> typing.List[SpectralProfileGeneratorNode]:
+        return [n for n in self.childNodes() if isinstance(n, SpectralProfileGeneratorNode)]
 
     def updateNodeOrder(self):
         """
@@ -890,6 +916,67 @@ class SpectralProfileBridge(TreeModel):
     def __getitem__(self, slice):
         return self.rootNode().childNodes()[slice]
 
+    def loadProfiles(self, spatialPoint: SpatialPoint, mapCanvas: QgsMapCanvas=None, runAsync: bool = False):
+
+        """
+        Loads the spectral profiles as defined in the bridge model
+        :param spatialPoint:
+        :param mapCanvas:
+        :param runAsync:
+        :return:
+        """
+
+        # 1. collect required sources and source positions
+        SpectralProfile.fromRasterLayer()
+        SOURCE_PIXEL = dict()
+        SOURCE_PIXEL_SET = dict()
+        SOURCE2LYR = dict()
+
+        for g in self:
+            g: SpectralFeatureGeneratorNode
+
+            for n in g.spectralProfileGeneratorNodes():
+                n: SpectralProfileGeneratorNode
+
+                lyr, positions = n.profilePositions(spatialPoint)
+                source = lyr.source()
+                PIXEL: dict = SOURCE_PIXEL.get(lyr.source(), {})
+                PIXEL_SET: set = SOURCE_PIXEL_SET.get(lyr.source(), set())
+                PIXEL[n] = positions
+                PIXEL_SET.add(positions)
+                SOURCE_PIXEL[source] = PIXEL
+                SOURCE_PIXEL_SET[source] = PIXEL_SET
+
+                if source not in SOURCE2LYR.keys():
+                    SOURCE2LYR[source] = lyr
+
+        # 2. loads required source profiles
+        for source, pixel_positions in SOURCE_PIXEL_SET.items():
+            lyr: QgsRasterLayer = SOURCE2LYR[source]
+            # todo: optimize single-pixel / pixel-block reading
+            dp: QgsRasterDataProvider = lyr.dataProvider()
+
+            # read block of data
+            block: QgsRasterBlock = dp.block()
+            wl, wlu = parseWavelength(lyr)
+
+            # create profile block
+            s = ""
+
+            # create source context
+
+
+            # transform pixel data into final profiles
+
+
+            # create new speclib feature
+
+        # 3. distribute source profiles to spectral library widgets
+
+
+        pass
+
+
     def profileSamplingModeModel(self) -> SpectralProfileSamplingModeModel:
         return self.mProfileSamplingModeModel
 
@@ -913,6 +1000,7 @@ class SpectralProfileBridge(TreeModel):
             g = self[-1].copy()
 
         self.addFeatureGenerator(g)
+        self.setDefaultSources(g)
 
     def addFeatureGenerator(self, generator: SpectralFeatureGeneratorNode):
 
@@ -955,12 +1043,14 @@ class SpectralProfileBridge(TreeModel):
         c = index.column()
         if index.isValid():
             if isinstance(node, SpectralFeatureGeneratorNode):
-                if not isinstance(node.speclibWidget(), SpectralLibraryWidget):
+                if not isinstance(node.speclib(), QgsVectorLayer):
                     if c == 0:
                         if role == Qt.DisplayRole:
-                            return 'Not set'
+                            return 'Missing Spectral Library'
+
                         if role == Qt.ForegroundRole:
                             return QColor('grey')
+
                         if role == Qt.FontRole:
                             f = QFont()
                             f.setItalic(True)
@@ -970,6 +1060,7 @@ class SpectralProfileBridge(TreeModel):
                         return 'Select a Spectral Library Window'
                 else:
                     speclib = node.speclib()
+
                     if role == Qt.ToolTipRole:
                         tt = f'Spectral Library: {speclib.name()}<br>' \
                              f'Source: {speclib.source()}<br>' \
@@ -977,6 +1068,15 @@ class SpectralProfileBridge(TreeModel):
                         return tt
 
             if isinstance(node, FieldGeneratorNode):
+                field: QgsField = node.field()
+                editor = field.editorWidgetSetup().type()
+
+                if c == 0:
+                    if role == Qt.ToolTipRole:
+                        if isinstance(field, QgsField):
+                            return f'"{field.displayName()}" ' \
+                                   f'{field.displayType(True)} {editor}'
+
                 if c == 1:
                     is_checked = node.checked()
                     is_required = not node.isCheckable()
@@ -1001,7 +1101,6 @@ class SpectralProfileBridge(TreeModel):
                                 if role == Qt.DisplayRole:
                                     return '<span style="color:grey;font-style:italic">undefined</span>'
 
-
         return value
 
     def setData(self, index: QModelIndex, value: typing.Any, role: int = Qt.DisplayRole):
@@ -1019,12 +1118,12 @@ class SpectralProfileBridge(TreeModel):
                 and isinstance(node, TreeNode) \
                 and node.isCheckable() and \
                 value in [Qt.Checked, Qt.Unchecked]:
-
+                changed = True
                 node.setCheckState(value)
-                return True
-                #c0 = 0
-                #c1 = 1
-                #roles.append(Qt.DisplayRole)
+                # return True
+                c0 = 1
+                c1 = 1
+                roles.append(Qt.DisplayRole)
 
         elif isinstance(node, SpectralFeatureGeneratorNode):
             if col in [0, 1] and role == Qt.EditRole:
@@ -1090,27 +1189,61 @@ class SpectralProfileBridge(TreeModel):
 
         if not isinstance(slws, typing.Iterable):
             slws = [slws]
-        for slw in slws:
-            assert isinstance(slw, SpectralLibraryWidget)
-        for slw in slws:
-            assert isinstance(slw, SpectralLibraryWidget)
-            _slw = self.mDstModel.addSpectralLibraryWidget(slw)
-            if isinstance(_slw, SpectralLibraryWidget):
-                # add this SLW to generators without any other
-                slw_used: bool = False
-                for g in self:
-                    g: SpectralFeatureGeneratorNode
-                    target = g.speclibWidget()
-                    if not isinstance(target, SpectralLibraryWidget):
-                        g.setSpeclibWidget(_slw)
-                    if target == _slw:
-                        slw_used = True
 
-                # ensure that there is at least one feature generator for this SLW
-                if False and not slw_used:
-                    g = SpectralFeatureGeneratorNode()
-                    g.setSpeclibWidget(_slw)
-                    self.addFeatureGenerator(g)
+        for slw in slws:
+            assert isinstance(slw, SpectralLibraryWidget)
+
+        added_targets = []
+        for slw in slws:
+            assert isinstance(slw, SpectralLibraryWidget)
+            target = self.mDstModel.addSpectralLibraryWidget(slw)
+            if target:
+                added_targets.append(target)
+
+        if len(added_targets) == 0:
+            return
+        generators = self[:]
+        missing_target_generators = [g for g in generators
+                          if not isinstance(g.speclibWidget(), SpectralLibraryWidget)]
+        if len(generators) == 0:
+            # create a new generator for the 1st speclib target
+            g = SpectralFeatureGeneratorNode()
+            g.setSpeclibWidget(added_targets[0])
+            self.setDefaultSources(g)
+        else:
+            # add the speclib targets to existing generators
+            for g in missing_target_generators:
+                if len(added_targets) > 0:
+                    target = added_targets.pop(0)
+                g.setSpeclibWidget(target)
+                self.setDefaultSources(g)
+
+    def setDefaultSources(self, generator: SpectralFeatureGeneratorNode):
+        assert isinstance(generator, SpectralFeatureGeneratorNode)
+
+        existing_sources = self.sources()
+        if len(existing_sources) == 0:
+            return
+
+        missing_source_nodes = [n for n in generator.spectralProfileGeneratorNodes()
+                                    if n.source() is None]
+
+        source_names = [source.name() for source in existing_sources]
+
+        for n in missing_source_nodes:
+            n: SpectralProfileGeneratorNode
+            field_name = n.field().name().lower()
+
+            similarity = [difflib.SequenceMatcher(None, field_name, sn).ratio()
+                          for sn in source_names]
+            s_max = max(similarity)
+            if s_max > MINIMUM_SOURCENAME_SIMILARITY:
+                similar_source = existing_sources[similarity.index(max(similarity))]
+                n.setSource(similar_source)
+
+                # match to source with most-similar name
+
+
 
     def removeDestination(self, slw: SpectralLibraryWidget):
         assert isinstance(slw, SpectralLibraryWidget)
@@ -1128,7 +1261,8 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
     def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QtCore.QModelIndex):
 
         node = index.data(Qt.UserRole)
-        if isinstance(node, (SpectralProfileGeneratorNode, FieldGeneratorNode, OptionTreeNode)) and index.column() == 1:
+        if index.column() == 1:
+                # isinstance(node, (SpectralProfileGeneratorNode, FieldGeneratorNode, OptionTreeNode)) and index.column() == 1:
             # taken from https://stackoverflow.com/questions/1956542/how-to-make-item-view-render-rich-html-text-in-qt
             self.initStyleOption(option, index)
             painter.save()
@@ -1329,7 +1463,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
         self.mBridge.removeFeatureGenerators(tv.selectedFeatureGenerators())
 
     def loadCurrentMapSpectra(self, spatialPoint: SpatialPoint, mapCanvas: QgsMapCanvas = None, runAsync: bool = None):
-        self.bridge().loadProfiles(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)
+        self.mBridge.loadProfiles(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)
 
 
 def positionsToPixel(layer: QgsRasterLayer, positions: typing.List[QgsPointXY]) -> typing.List[QPoint]:

@@ -81,10 +81,31 @@ class SpectralProcessingTests(TestCase):
     def test_SpectralProfileSourcePanel(self):
 
         sources, widgets = self.createTestObjects()
+        canvas = QgsMapCanvas()
+        center = SpatialPoint.fromMapCanvasCenter(canvas)
 
         panel = SpectralProfileSourcePanel()
+        # panel.mBridge.addSources(sources)
+        # panel.mBridge.addSpectralLibraryWidgets(widgets)
+        panel.createRelation()
+        panel.createRelation()
+
+        # add sources
         panel.mBridge.addSources(sources)
+
+        # add widgets
         panel.mBridge.addSpectralLibraryWidgets(widgets)
+
+        panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
+
+        # remove sources
+        for s in sources:
+            panel.mBridge.removeSource(s)
+
+        # remove widgets
+        for w in widgets:
+            panel.mBridge.removeDestination(w)
+
         self.showGui(panel)
 
         a = np.ndarray
@@ -142,6 +163,7 @@ class SpectralProcessingTests(TestCase):
         from qpstestdata import enmap, hymap
         lyr1 = QgsRasterLayer(enmap, 'EnMAP')
         lyr2 = QgsRasterLayer(hymap, 'HyMAP')
+        lyr2 = QgsRasterLayer(hymap, 'Sentinel-2')
 
         modes = [SingleProfileSamplingMode,
                  KernelProfileSamplingMode]
@@ -164,6 +186,9 @@ class SpectralProcessingTests(TestCase):
 
         widgets = [slw1, slw2]
         sources = [lyr1, lyr2]
+
+
+
         return sources, widgets
 
     def test_SpectralFeatureGenerator(self):

@@ -609,7 +609,7 @@ class TreeNode(QObject):
         Same as setValues([value])
         :param value: any
         """
-        if value == None:
+        if value is None:
             self.setValues(None)
         else:
             self.setValues([value])
@@ -1292,14 +1292,15 @@ class TreeView(QTreeView):
 
         parent = tl.parent()
 
-        for row in range(tl.row(), br.row() + 1):
-            idx = self.model().index(row, 0, parent)
-            self.setColumnSpan(idx, None, None)
+        self.setColumnSpan(tl.parent(), tl.row(), br.row())
+        #for row in range(tl.row(), br.row() + 1):
+        #    idx = self.model().index(row, 0, parent)
+        #    self.setColumnSpan(idx, None, None)
         s = ""
 
     def setColumnSpan(self, parent: QModelIndex, first: int, last: int):
         """
-        Sets the column span for index `idx` and all child widgets
+        Sets the column span for the rows "first" to "last" recursively
         :param idx:
         :return:
         """
@@ -1307,8 +1308,11 @@ class TreeView(QTreeView):
         model: QAbstractItemModel = self.model()
         if not isinstance(model, QAbstractItemModel):
             return
+        assert isinstance(parent, QModelIndex)
 
         rows = model.rowCount(parent)
+        cols = model.columnCount(parent)
+
         if rows == 0:
             return
         if not isinstance(first, int):
@@ -1318,18 +1322,26 @@ class TreeView(QTreeView):
 
         assert last < rows
         for r in range(first, last + 1):
-            idx: QModelIndex = model.index(r, 0, parent)
-            idx2: QModelIndex = model.index(r, 1, parent)
+            idx0: QModelIndex = model.index(r, 0, parent)
 
-            if idx2.isValid():
-                txt = idx2.data(Qt.DisplayRole)
-                spanned = txt in [None, '']
-                # if spanned:
-                #    print(f'set spanned:: {idx.data(Qt.DisplayRole)}')
-                self.setFirstColumnSpanned(r, parent, spanned)
+            spanned = True
+            for c in range(1, cols):
+                idx_right = model.index(r, c, parent)
+                if idx_right.isValid():
+                    txt = idx_right.data(Qt.DisplayRole)
+                    if txt not in [None, '']:
+                        spanned = False
+                        break
+            self.setFirstColumnSpanned(r, parent, spanned)
 
-            self.setColumnSpan(idx, None, None)
+            # traverse sub-trees structure
+            self.setColumnSpan(idx0, None, None)
         return
+
+    def setRowColumnSpan(self, row, parent: QModelIndex):
+        cols = self.model().columnCount(parent)
+
+        self.setFirstColumnSpanned(r, parent, spanned)
 
         """
         assert isinstance(idx, QModelIndex)
