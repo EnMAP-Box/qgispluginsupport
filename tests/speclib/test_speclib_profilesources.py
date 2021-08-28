@@ -82,6 +82,9 @@ class SpectralProcessingTests(TestCase):
 
         sources, widgets = self.createTestObjects()
         canvas = QgsMapCanvas()
+        canvas.setLayers(sources)
+        canvas.setDestinationCrs(sources[0].crs())
+        canvas.zoomToFullExtent()
         center = SpatialPoint.fromMapCanvasCenter(canvas)
 
         panel = SpectralProfileSourcePanel()

@@ -24,7 +24,7 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-
+import math
 import os
 import sys
 import importlib
@@ -2083,6 +2083,18 @@ def px2geo(px: QPoint, gt, pxCenter: bool = True) -> QgsPointXY:
 
     return QgsPointXY(gx, gy)
 
+class HashablePoint(QPoint):
+    """
+    A QPoint that can be hashed, e.g. to be used in a set
+    """
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def __hash__(self):
+        return hash((self.x(), self.y()))
+
+    def __eq__(self, other):
+        return self.x() == other.x() and self.y() == other.y()
 
 class SpatialPoint(QgsPointXY):
     """
@@ -2133,7 +2145,31 @@ class SpatialPoint(QgsPointXY):
     def crs(self):
         return self.mCrs
 
-    def toPixelPosition(self, rasterDataSource, allowOutOfRaster=False):
+    def toPixel(self, layer: QgsMapLayer, allowOutOfRaster:bool=False) -> QPoint:
+        dp: QgsRasterDataProvider = layer.dataProvider()
+
+        pt = self.toCrs(layer.crs())
+        if not isinstance(pt, SpatialPoint):
+            return None
+
+        extent = dp.extent()
+        width = dp.xSize() if dp.capabilities() & dp.Size else 1000
+        height = dp.ySize() if dp.capabilities() & dp.Size else 1000
+        xres = extent.width() / width
+        yres = extent.height() / height
+
+        # slot called whenever mouse position changes
+        if extent.xMinimum() <= pt.x() <= extent.xMaximum() and \
+                extent.yMinimum() <= pt.y() <= extent.yMaximum():
+            col = int(math.floor((pt.x() - extent.xMinimum()) / xres))
+            row = int(math.floor((extent.yMaximum() - pt.y()) / yres))
+
+            # output row and column index to console
+            return QPoint(col, row)
+        else:
+            return None
+
+    def toPixelPosition(self, rasterDataSource, allowOutOfRaster=False) -> QPoint:
         """
         Returns the pixel position of this SpatialPoint within the rasterDataSource
         :param rasterDataSource: gdal.Dataset

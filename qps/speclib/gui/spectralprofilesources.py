@@ -25,7 +25,7 @@ from ... import SpectralProfile
 from ...plotstyling.plotstyling import PlotStyle, MarkerSymbol, PlotStyleButton
 import numpy as np
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
-from ...utils import SpatialPoint, loadUi, parseWavelength
+from ...utils import SpatialPoint, loadUi, parseWavelength, HashablePoint
 
 MINIMUM_SOURCENAME_SIMILARITY = 0.5
 
@@ -348,7 +348,8 @@ class SpectralProfileSamplingMode(object):
 
         return None
 
-    def profilePositions(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> typing.List[QPoint]:
+    def profilePositions(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> \
+            typing.Tuple[QgsRasterLayer, typing.List[QPoint]]:
         """
         Returns a list of pixel positions to read a profile from
         :param lyr:
@@ -425,7 +426,14 @@ class SingleProfileSamplingMode(SpectralProfileSamplingMode):
 
     def profilePositions(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> typing.List[QPoint]:
         assert isinstance(lyr, QgsRasterLayer)
-        return [spatialPoint.toCrs(lyr.crs())]
+
+        # convert point to pixel position of interest
+        px = spatialPoint.toPixel(lyr)
+        if px:
+            return [px]
+        else:
+            return []
+
 
     def profiles(self, pixelPositions, pixelProfiles: SpectralProfileBlock):
 
@@ -501,10 +509,10 @@ class KernelProfileSamplingMode(SpectralProfileSamplingMode):
     def profilePositions(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> typing.List[QPoint]:
         assert isinstance(lyr, QgsRasterLayer)
         spatialPoint = spatialPoint.toCrs(lyr.crs())
-        dx = lyr.rasterUnitsPerPixelX()
-        dy = lyr.rasterUnitsPerPixelY()
-        cx = spatialPoint.x()
-        cy = spatialPoint.y()
+        positions = []
+        centerPx = spatialPoint.toPixel(lyr)
+        positions.append(centerPx)
+
         positions = []
 
         return positions
@@ -667,7 +675,7 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def profilePositions(self, spatialPoint: SpatialPoint) -> typing.Tuple[QgsRasterLayer, typing.List[QPoint]]:
         source = self.source()
         if not isinstance(source, SpectralProfileSource):
-            return []
+            return None, []
 
         # resolve the source layer
         layer = source.rasterLayer()
@@ -927,7 +935,6 @@ class SpectralProfileBridge(TreeModel):
         """
 
         # 1. collect required sources and source positions
-        SpectralProfile.fromRasterLayer()
         SOURCE_PIXEL = dict()
         SOURCE_PIXEL_SET = dict()
         SOURCE2LYR = dict()
@@ -939,11 +946,17 @@ class SpectralProfileBridge(TreeModel):
                 n: SpectralProfileGeneratorNode
 
                 lyr, positions = n.profilePositions(spatialPoint)
+                if not (isinstance(lyr, QgsRasterLayer) and len(positions) > 0):
+                    # no positions found. continue
+                    continue
+
+                positions = [HashablePoint(p) for p in positions if not isinstance(p, HashablePoint)]
                 source = lyr.source()
                 PIXEL: dict = SOURCE_PIXEL.get(lyr.source(), {})
                 PIXEL_SET: set = SOURCE_PIXEL_SET.get(lyr.source(), set())
+
                 PIXEL[n] = positions
-                PIXEL_SET.add(positions)
+                PIXEL_SET.union(positions)
                 SOURCE_PIXEL[source] = PIXEL
                 SOURCE_PIXEL_SET[source] = PIXEL_SET
 
@@ -955,7 +968,7 @@ class SpectralProfileBridge(TreeModel):
             lyr: QgsRasterLayer = SOURCE2LYR[source]
             # todo: optimize single-pixel / pixel-block reading
             dp: QgsRasterDataProvider = lyr.dataProvider()
-
+            SpectralProfile
             # read block of data
             block: QgsRasterBlock = dp.block()
             wl, wlu = parseWavelength(lyr)
