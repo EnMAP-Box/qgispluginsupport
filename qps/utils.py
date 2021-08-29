@@ -75,7 +75,7 @@ jp = os.path.join
 dn = os.path.dirname
 
 
-QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.byte,
+QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.UInt16: np.uint16,
                          Qgis.Int16: np.int16,
                          Qgis.UInt32: np.uint32,
@@ -2291,44 +2291,53 @@ def rasterBlockArray(block: QgsRasterBlock) -> np.ndarray:
     :param block: QgsRasterBlock
     :return: np.ndarray
     """
-    return np.frombuffer(block.data(),
-                         dtype=QGIS2NUMPY_DATA_TYPES[block.dataType()])\
-        .reshape(block.height(), block.width())
+    dtype = QGIS2NUMPY_DATA_TYPES[block.dataType()]
+    return np.frombuffer(block.data(), dtype=dtype).reshape(block.height(), block.width())
 
 
 
 def rasterLayerArray(layer: QgsRasterLayer,
-                     ul: typing.Union[SpatialPoint, QPoint],
-                     lr: typing.Union[SpatialPoint, QPoint],
+                     ul: typing.Union[SpatialPoint, QPoint] = None,
+                     lr: typing.Union[SpatialPoint, QPoint] = None,
                      bands: typing.Union[str, int, typing.List[int]] = None) -> np.ndarray:
     """
     Returns the raster values of a QgsRasterLayer as 3D numpy array of shape (bands, height, width)
     :param layer: QgsRasterLayer
-    :param ul: upper-left corner, can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
-    :param lr: upper-left corner, can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
+    :param ul: upper-left corner,
+               can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
+               defaults to raster layers upper-left corner
+    :param lr: lower-right corner,
+               can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
+               default to raster layers lower-right corner
     :param bands: list of bands to return. defaults to "all". 1st band = [1]
     :return: numpy.ndarray
     """
-    assert isinstance(layer, QgsRasterLayer) and layer.isValid()
+    layer = qgsRasterLayer(layer)
 
-    resX = layer.extent().width() / layer.width()
-    resY = layer.extent().height() / layer.height()
+    ext = layer.extent()
+    resX = ext.width() / layer.width()
+    resY = ext.height() / layer.height()
 
     if isinstance(ul, QPoint):
         ul = px2spatialPoint(layer, ul, subpixel_pos=0.0)
     elif isinstance(ul, QgsPointXY):
         ul = SpatialPoint(layer.crs(), ul.x(), ul.y())
+    elif ul is None:
+        ul = SpatialPoint(layer.crs(), ext.xMinimum(), ext.yMaximum())
     else:
         assert isinstance(ul, SpatialPoint)
         ul = ul.toCrs(layer.crs())
 
     if isinstance(lr, QPoint):
         lr = px2spatialPoint(layer, lr, subpixel_pos=1.0)
-    elif isinstance(ul, QgsPointXY):
+    elif isinstance(lr, QgsPointXY):
         lr = SpatialPoint(layer.crs(), lr.x(), lr.y())
+    elif lr is None:
+        lr = SpatialPoint(layer.crs(), ext.xMaximum(), ext.yMinimum())
     else:
         assert isinstance(lr, SpatialPoint)
         lr = lr.toCrs(layer.crs())
+
     assert isinstance(lr, SpatialPoint)
 
     if bands in [None, 'all', '*']:

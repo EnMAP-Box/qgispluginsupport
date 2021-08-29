@@ -952,17 +952,19 @@ class SpectralProfileBridge(TreeModel):
                     continue
 
                 positions = [HashablePoint(p) for p in positions if not isinstance(p, HashablePoint)]
-                source = lyr.source()
-                PIXEL: dict = SOURCE_PIXEL.get(lyr.source(), {})
-                PIXEL_SET: set = SOURCE_PIXEL_SET.get(lyr.source(), set())
 
-                PIXEL[n] = positions
-                PIXEL_SET.union(positions)
-                SOURCE_PIXEL[source] = PIXEL
-                SOURCE_PIXEL_SET[source] = PIXEL_SET
+                if len(positions) > 0:
+                    source = lyr.source()
+                    PIXEL: dict = SOURCE_PIXEL.get(lyr.source(), {})
+                    PIXEL_SET: set = SOURCE_PIXEL_SET.get(lyr.source(), set())
 
-                if source not in SOURCE2LYR.keys():
-                    SOURCE2LYR[source] = lyr
+                    PIXEL[n] = positions
+                    PIXEL_SET = PIXEL_SET.union(positions)
+                    SOURCE_PIXEL[source] = PIXEL
+                    SOURCE_PIXEL_SET[source] = PIXEL_SET
+
+                    if source not in SOURCE2LYR.keys():
+                        SOURCE2LYR[source] = lyr
 
         # 2. loads required source profiles
         for source, pixel_positions in SOURCE_PIXEL_SET.items():
@@ -981,6 +983,7 @@ class SpectralProfileBridge(TreeModel):
 
             array = rasterLayerArray(lyr, QPoint(xmin, ymax), QPoint(xmax, ymin))
 
+            s  = ""
             if False:
                 pixel_profiles = dict()
                 for p in pixel_positions:

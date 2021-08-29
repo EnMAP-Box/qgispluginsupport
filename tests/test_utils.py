@@ -340,6 +340,19 @@ class TestUtils(TestCase):
                 bandG = ds.GetRasterBand(b+1).ReadAsArray()
                 self.assertTrue(np.all(band == bandG))
 
+
+        from qpstestdata import enmap, hymap
+
+        lyr1 = QgsRasterLayer(enmap, 'EnMAP')
+        lyr2 = QgsRasterLayer(hymap, 'HyMAP')
+
+        for lyr in [lyr1, lyr2]:
+            ds: gdal.Dataset = gdal.Open(lyr.source())
+            blockGDAL = ds.ReadAsArray()
+            blockAll = rasterLayerArray(lyr)
+            self.assertTrue(np.all(blockGDAL == blockAll))
+            self.assertEqual(blockGDAL.dtype, blockAll.dtype)
+
     def test_geo_coordinates(self):
 
         lyrR = TestObjects.createRasterLayer()
