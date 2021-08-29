@@ -25,7 +25,7 @@ from ... import SpectralProfile
 from ...plotstyling.plotstyling import PlotStyle, MarkerSymbol, PlotStyleButton
 import numpy as np
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
-from ...utils import SpatialPoint, loadUi, parseWavelength, HashablePoint
+from ...utils import SpatialPoint, loadUi, parseWavelength, HashablePoint, rasterLayerArray
 
 MINIMUM_SOURCENAME_SIMILARITY = 0.5
 
@@ -938,6 +938,7 @@ class SpectralProfileBridge(TreeModel):
         SOURCE_PIXEL = dict()
         SOURCE_PIXEL_SET = dict()
         SOURCE2LYR = dict()
+        SOURCE_VALUES: typing.Dict[str, typing.Tuple[HashablePoint, HashablePoint, np.ndarray]]
 
         for g in self:
             g: SpectralFeatureGeneratorNode
@@ -967,14 +968,25 @@ class SpectralProfileBridge(TreeModel):
         for source, pixel_positions in SOURCE_PIXEL_SET.items():
             lyr: QgsRasterLayer = SOURCE2LYR[source]
             # todo: optimize single-pixel / pixel-block reading
-            dp: QgsRasterDataProvider = lyr.dataProvider()
-            SpectralProfile
+
             # read block of data
-            block: QgsRasterBlock = dp.block()
+
             wl, wlu = parseWavelength(lyr)
 
             # create profile block
-            s = ""
+            xvec = [p.x() for p in pixel_positions]
+            yvec = [p.y() for p in pixel_positions]
+            xmin, xmax = min(xvec), max(xvec)
+            ymin, ymax = min(yvec), max(yvec)
+
+            array = rasterLayerArray(lyr, QPoint(xmin, ymax), QPoint(xmax, ymin))
+
+            if False:
+                pixel_profiles = dict()
+                for p in pixel_positions:
+                    i = p.x() - xmin
+                    j = ymax - p.y()
+                    pixel_profiles[p] = array[:, j, i]
 
             # create source context
 

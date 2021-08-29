@@ -13,6 +13,8 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import unittest
+
+import numpy as np
 import xmlrunner
 import pickle
 import xml.etree.ElementTree as ET
@@ -284,6 +286,59 @@ class TestUtils(TestCase):
             srs = osrSpatialReference(input)
             self.assertIsInstance(srs, osr.SpatialReference)
             self.assertTrue(srs.Validate() == ogr.OGRERR_NONE)
+
+    def test_pixelSpatialCoordinates(self):
+
+        lyrR = TestObjects.createRasterLayer()
+
+        upperLeft = px2spatialPoint(lyrR, QPoint(0, 0))
+        lowerRight = px2spatialPoint(lyrR, QPoint(lyrR.width()-1, lyrR.height()-1))
+        resX = lyrR.extent().width() / lyrR.width()
+        resY = lyrR.extent().height() / lyrR.height()
+        self.assertIsInstance(upperLeft, SpatialPoint)
+
+        self.assertAlmostEqual(upperLeft.x(), lyrR.extent().xMinimum() + 0.5 * resX, 5)
+        self.assertAlmostEqual(upperLeft.y(), lyrR.extent().yMaximum() - 0.5 * resY, 5)
+        self.assertAlmostEqual(lowerRight.x(), lyrR.extent().xMaximum() - 0.5 * resX, 5)
+        self.assertAlmostEqual(lowerRight.y(), lyrR.extent().yMinimum() + 0.5 * resY, 5)
+
+        upperLeftPx = spatialPoint2px(lyrR, upperLeft)
+        lowerRightPx = spatialPoint2px(lyrR, lowerRight)
+        self.assertIsInstance(upperLeftPx, QPoint)
+        self.assertEqual(upperLeftPx, QPoint(0, 0))
+        self.assertEqual(lowerRightPx, QPoint(lyrR.width()-1, lyrR.height()-1))
+        s = ""
+
+    def test_rasterLayerArray(self):
+
+        lyrR = TestObjects.createRasterLayer()
+        ext = lyrR.extent()
+        ul = SpatialPoint(lyrR.crs(), ext.xMinimum(), ext.yMaximum())
+        lr = SpatialPoint(lyrR.crs(), ext.xMaximum(), ext.yMinimum())
+
+        blockB = rasterLayerArray(lyrR, ul, lr)
+        blockA = rasterLayerArray(lyrR, QPoint(0, 0), QPoint(lyrR.width() - 1, lyrR.height() - 1))
+
+        ds: gdal.Dataset = gdal.Open(lyrR.source())
+        nb = ds.RasterCount
+        ns = ds.RasterXSize
+        nl = ds.RasterYSize
+
+        block = lyrR.dataProvider().block(1, ext, ns, nl)
+        band_array = rasterBlockArray(block)
+        self.assertIsInstance(band_array, np.ndarray)
+        self.assertTrue(band_array.shape == (nl, ns))
+
+        for block in [blockA, blockB]:
+            self.assertEqual(block.shape, (nb, nl, ns))
+
+        for block in [blockA, blockB]:
+            self.assertEqual(lyrR.bandCount(), nb)
+            self.assertEqual(block.shape[0], nb)
+            for b in range(nb):
+                band = block[b, :, :]
+                bandG = ds.GetRasterBand(b+1).ReadAsArray()
+                self.assertTrue(np.all(band == bandG))
 
     def test_geo_coordinates(self):
 

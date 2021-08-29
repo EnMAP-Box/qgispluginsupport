@@ -75,6 +75,18 @@ jp = os.path.join
 dn = os.path.dirname
 
 
+QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.byte,
+                         Qgis.UInt16: np.uint16,
+                         Qgis.Int16: np.int16,
+                         Qgis.UInt32: np.uint32,
+                         Qgis.Int32: np.int32,
+                         Qgis.Float32: np.float32,
+                         Qgis.Float64: np.float64,
+                         Qgis.CFloat32: np.complex,
+                         Qgis.CFloat64: np.complex64,
+                         Qgis.ARGB32: np.uint32,
+                         Qgis.ARGB32_Premultiplied: np.uint32}
+
 def rm(p):
     """
     Removes the file or directory `p`
@@ -913,10 +925,10 @@ def qgsVectorLayer(source) -> QgsVectorLayer:
 
 def qgsRasterLayer(source) -> QgsRasterLayer:
     """
-    Returns a QgsVectorLayer from different source types
-    :param source: QgsVectorLayer | ogr.DataSource | file path
-    :return: QgsVectorLayer
-    :rtype: QgsVectorLayer
+    Returns a QgsRasterLayer from different source types
+    :param source: QgsRasterLayer | gdal.Dataset | file path
+    :return: QgsRasterLayer
+    :rtype: QgsRasterLayer
     """
     if isinstance(source, QgsRasterLayer):
         return source
@@ -1530,6 +1542,10 @@ def displayBandNames(rasterSource, bands=None, leadingBandNumber=True):
     return None
 
 
+
+
+
+
 def defaultBands(dataset) -> list:
     """
     Returns a list of 3 default bands
@@ -1897,7 +1913,7 @@ def fileSizeString(num, suffix='B', div=1000) -> str:
     return "{:.1f} {}{}".format(num, unit, suffix)
 
 
-def geo2pxF(geo, gt) -> QPointF:
+def geo2pxF(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPointF:
     """
     Returns the pixel position related to a Geo-Coordinate in floating point precision.
     :param geo: Geo-Coordinate as QgsPoint
@@ -1911,7 +1927,7 @@ def geo2pxF(geo, gt) -> QPointF:
     return QPointF(px, py)
 
 
-def geo2px(geo, gt) -> QPoint:
+def geo2px(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPoint:
     """
     Returns the pixel position related to a Geo-Coordinate as integer number.
     Floating-point coordinate are casted to integer coordinate, e.g. the pixel coordinate (0.815, 23.42) is returned as (0,23)
@@ -2021,7 +2037,7 @@ def osrSpatialReference(input) -> osr.SpatialReference:
 def px2geocoordinates(raster, target_srs=None, pxCenter: bool = True) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
     Returns the pixel positions as geo-coordinates
-    :param raster: any, must be readible to as gdal.Dataset
+    :param raster: any, must be readable as gdal.Dataset
     :param target_srs: any, must be convertable to osr.SpatialReference
     :return:
     """
@@ -2227,6 +2243,120 @@ class SpatialPoint(QgsPointXY):
 
     def __repr__(self):
         return '{} {} {}'.format(self.x(), self.y(), self.crs().authid())
+
+
+
+def px2spatialPoint(layer: QgsRasterLayer, px: QPoint, subpixel_pos: float= 0.5) -> SpatialPoint:
+    """
+    Returns the pixel center as coordinate in a raster layer's CRS
+    :param layer: QgsRasterLayer
+    :param px: QPoint pixel position (0,0) = 1st pixel
+    :return: SpatialPoint
+    """
+    assert isinstance(layer, QgsRasterLayer) and layer.isValid()
+    # assert 0 <= px.x() < layer.width()
+    # assert 0 <= px.y() < layer.height()
+    assert 0 <= subpixel_pos <= 1.0
+
+    ext: QgsRectangle = layer.extent()
+
+    resX = layer.extent().width() / layer.width()
+    resY = layer.extent().height() / layer.height()
+
+    return SpatialPoint(layer.crs(),
+                        ext.xMinimum() + (px.x() + subpixel_pos) * resX,
+                        ext.yMaximum() - (px.y() + subpixel_pos) * resY)
+
+def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: SpatialPoint) -> QPoint:
+    """
+    Converts a spatial point into a raster pixel coordinate
+    :param layer:
+    :param spatialPoint:
+    :return:
+    """
+    spatialPoint = spatialPoint.toCrs(layer.crs())
+    ext = layer.extent()
+    resX = layer.extent().width() / layer.width()
+    resY = layer.extent().height() / layer.height()
+
+    x = int((spatialPoint.x() - ext.xMinimum()) / resX)
+    y = int((ext.yMaximum() - spatialPoint.y()) / resY)
+
+    return QPoint(x, y)
+
+
+def rasterBlockArray(block: QgsRasterBlock) -> np.ndarray:
+    """
+    Returns the content of a QgsRasterBlock as 2D numpy array
+    :param block: QgsRasterBlock
+    :return: np.ndarray
+    """
+    return np.frombuffer(block.data(),
+                         dtype=QGIS2NUMPY_DATA_TYPES[block.dataType()])\
+        .reshape(block.height(), block.width())
+
+
+
+def rasterLayerArray(layer: QgsRasterLayer,
+                     ul: typing.Union[SpatialPoint, QPoint],
+                     lr: typing.Union[SpatialPoint, QPoint],
+                     bands: typing.Union[str, int, typing.List[int]] = None) -> np.ndarray:
+    """
+    Returns the raster values of a QgsRasterLayer as 3D numpy array of shape (bands, height, width)
+    :param layer: QgsRasterLayer
+    :param ul: upper-left corner, can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
+    :param lr: upper-left corner, can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
+    :param bands: list of bands to return. defaults to "all". 1st band = [1]
+    :return: numpy.ndarray
+    """
+    assert isinstance(layer, QgsRasterLayer) and layer.isValid()
+
+    resX = layer.extent().width() / layer.width()
+    resY = layer.extent().height() / layer.height()
+
+    if isinstance(ul, QPoint):
+        ul = px2spatialPoint(layer, ul, subpixel_pos=0.0)
+    elif isinstance(ul, QgsPointXY):
+        ul = SpatialPoint(layer.crs(), ul.x(), ul.y())
+    else:
+        assert isinstance(ul, SpatialPoint)
+        ul = ul.toCrs(layer.crs())
+
+    if isinstance(lr, QPoint):
+        lr = px2spatialPoint(layer, lr, subpixel_pos=1.0)
+    elif isinstance(ul, QgsPointXY):
+        lr = SpatialPoint(layer.crs(), lr.x(), lr.y())
+    else:
+        assert isinstance(lr, SpatialPoint)
+        lr = lr.toCrs(layer.crs())
+    assert isinstance(lr, SpatialPoint)
+
+    if bands in [None, 'all', '*']:
+        bands = list(range(1, layer.bandCount() + 1))
+
+    boundingBox: QgsRectangle = QgsRectangle(ul, lr)
+
+    width_px = int(boundingBox.width() / resX)
+    height_px = int(boundingBox.height() / resY)
+
+    # npx = width_px * height_px
+    dp: QgsDataProvider = layer.dataProvider()
+    result_array: np.ndarray = None
+    bands = sorted(set(bands))
+    nb = len(bands)
+    assert nb > 0
+    for i, band in enumerate(bands):
+            band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px)
+            assert band_block.isValid()
+
+            assert isinstance(band_block, QgsRasterBlock)
+            band_array = rasterBlockArray(band_block)
+            assert band_array.shape == (height_px, width_px)
+            if i == 0:
+                result_array = np.empty((nb, height_px, width_px), dtype=band_array.dtype)
+            result_array[i, :, :] = band_array
+
+    return result_array
 
 
 def findParent(qObject, parentType, checkInstance=False):
