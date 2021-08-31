@@ -682,7 +682,12 @@ class SpectralSetting(object):
     3. an yUnit, e.g. 'reflectance'
     """
 
-    def __init__(self, x, xUnit: str = None, yUnit=None, bbl: list = None, field_name: str = None):
+    def __init__(self,
+                 x: typing.Union[tuple, list, np.ndarray],
+                 xUnit: str = None,
+                 yUnit: str = None,
+                 bbl: typing.Union[tuple, list, np.ndarray] = None,
+                 field_name: str = None):
 
         assert isinstance(x, (tuple, list, np.ndarray))
 

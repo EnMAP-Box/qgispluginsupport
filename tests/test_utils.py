@@ -316,8 +316,9 @@ class TestUtils(TestCase):
         ul = SpatialPoint(lyrR.crs(), ext.xMinimum(), ext.yMaximum())
         lr = SpatialPoint(lyrR.crs(), ext.xMaximum(), ext.yMinimum())
 
-        blockB = rasterLayerArray(lyrR, ul, lr)
-        blockA = rasterLayerArray(lyrR, QPoint(0, 0), QPoint(lyrR.width() - 1, lyrR.height() - 1))
+        blockB = rasterLayerArray(lyrR, ul=ul, lr=lr)
+        blockA = rasterLayerArray(lyrR, ul=QPoint(0, 0), lr=QPoint(lyrR.width() - 1, lyrR.height() - 1))
+        blockC = rasterLayerArray(lyrR, rect=QRect(0, 0, lyrR.width(), lyrR.height()))
 
         ds: gdal.Dataset = gdal.Open(lyrR.source())
         nb = ds.RasterCount
@@ -329,7 +330,7 @@ class TestUtils(TestCase):
         self.assertIsInstance(band_array, np.ndarray)
         self.assertTrue(band_array.shape == (nl, ns))
 
-        for block in [blockA, blockB]:
+        for block in [blockA, blockB, blockC]:
             self.assertEqual(block.shape, (nb, nl, ns))
 
         for block in [blockA, blockB]:

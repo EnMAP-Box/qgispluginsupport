@@ -137,7 +137,7 @@ class OptionListModel(QAbstractListModel):
     def __init__(self, options=None, parent=None):
         super(OptionListModel, self).__init__(parent)
 
-        self.mOptions = []
+        self.mOptions: typing.List[Option] = []
 
         self.insertOptions(options)
 
@@ -203,7 +203,7 @@ class OptionListModel(QAbstractListModel):
             value = Option(value, '{}'.format(value))
         return value
 
-    def options(self) -> list:
+    def options(self) -> typing.List[Option]:
         """
         :return: [list-of-Options]
         """
@@ -213,7 +213,7 @@ class OptionListModel(QAbstractListModel):
         """
         :return: [list-str-of-Option-Values]
         """
-        return [o.mValue for o in self.options()]
+        return [o.value() for o in self.options()]
 
     sigOptionsRemoved = pyqtSignal(list)
 
@@ -709,6 +709,9 @@ class OptionTreeNode(TreeNode):
 
     def option(self) -> Option:
         return self.mOption
+
+    def options(self) -> typing.List[Option]:
+        return self.mOptionModel.options()
 
 class PyObjectTreeNode(TreeNode):
 

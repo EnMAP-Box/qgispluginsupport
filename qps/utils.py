@@ -2112,6 +2112,15 @@ class HashablePoint(QPoint):
     def __eq__(self, other):
         return self.x() == other.x() and self.y() == other.y()
 
+class HashableRect(QRect):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def __hash__(self):
+        return hash((self.x(), self.y(), self.width(), self.height()))
+
+
 class SpatialPoint(QgsPointXY):
     """
     Object to keep QgsPoint and QgsCoordinateReferenceSystem together
@@ -2267,14 +2276,18 @@ def px2spatialPoint(layer: QgsRasterLayer, px: QPoint, subpixel_pos: float= 0.5)
                         ext.xMinimum() + (px.x() + subpixel_pos) * resX,
                         ext.yMaximum() - (px.y() + subpixel_pos) * resY)
 
-def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: SpatialPoint) -> QPoint:
+
+def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: typing.Union[QgsPointXY, SpatialPoint]) -> QPoint:
     """
     Converts a spatial point into a raster pixel coordinate
     :param layer:
     :param spatialPoint:
     :return:
     """
-    spatialPoint = spatialPoint.toCrs(layer.crs())
+    if isinstance(spatialPoint, SpatialPoint):
+        spatialPoint = spatialPoint.toCrs(layer.crs())
+    assert isinstance(spatialPoint, QgsPointXY)
+    assert isinstance(layer, QgsRasterLayer)
     ext = layer.extent()
     resX = layer.extent().width() / layer.width()
     resY = layer.extent().height() / layer.height()
@@ -2295,77 +2308,6 @@ def rasterBlockArray(block: QgsRasterBlock) -> np.ndarray:
     return np.frombuffer(block.data(), dtype=dtype).reshape(block.height(), block.width())
 
 
-
-def rasterLayerArray(layer: QgsRasterLayer,
-                     ul: typing.Union[SpatialPoint, QPoint] = None,
-                     lr: typing.Union[SpatialPoint, QPoint] = None,
-                     bands: typing.Union[str, int, typing.List[int]] = None) -> np.ndarray:
-    """
-    Returns the raster values of a QgsRasterLayer as 3D numpy array of shape (bands, height, width)
-    :param layer: QgsRasterLayer
-    :param ul: upper-left corner,
-               can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
-               defaults to raster layers upper-left corner
-    :param lr: lower-right corner,
-               can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
-               default to raster layers lower-right corner
-    :param bands: list of bands to return. defaults to "all". 1st band = [1]
-    :return: numpy.ndarray
-    """
-    layer = qgsRasterLayer(layer)
-
-    ext = layer.extent()
-    resX = ext.width() / layer.width()
-    resY = ext.height() / layer.height()
-
-    if isinstance(ul, QPoint):
-        ul = px2spatialPoint(layer, ul, subpixel_pos=0.0)
-    elif isinstance(ul, QgsPointXY):
-        ul = SpatialPoint(layer.crs(), ul.x(), ul.y())
-    elif ul is None:
-        ul = SpatialPoint(layer.crs(), ext.xMinimum(), ext.yMaximum())
-    else:
-        assert isinstance(ul, SpatialPoint)
-        ul = ul.toCrs(layer.crs())
-
-    if isinstance(lr, QPoint):
-        lr = px2spatialPoint(layer, lr, subpixel_pos=1.0)
-    elif isinstance(lr, QgsPointXY):
-        lr = SpatialPoint(layer.crs(), lr.x(), lr.y())
-    elif lr is None:
-        lr = SpatialPoint(layer.crs(), ext.xMaximum(), ext.yMinimum())
-    else:
-        assert isinstance(lr, SpatialPoint)
-        lr = lr.toCrs(layer.crs())
-
-    assert isinstance(lr, SpatialPoint)
-
-    if bands in [None, 'all', '*']:
-        bands = list(range(1, layer.bandCount() + 1))
-
-    boundingBox: QgsRectangle = QgsRectangle(ul, lr)
-
-    width_px = int(boundingBox.width() / resX)
-    height_px = int(boundingBox.height() / resY)
-
-    # npx = width_px * height_px
-    dp: QgsDataProvider = layer.dataProvider()
-    result_array: np.ndarray = None
-    bands = sorted(set(bands))
-    nb = len(bands)
-    assert nb > 0
-    for i, band in enumerate(bands):
-            band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px)
-            assert band_block.isValid()
-
-            assert isinstance(band_block, QgsRasterBlock)
-            band_array = rasterBlockArray(band_block)
-            assert band_array.shape == (height_px, width_px)
-            if i == 0:
-                result_array = np.empty((nb, height_px, width_px), dtype=band_array.dtype)
-            result_array[i, :, :] = band_array
-
-    return result_array
 
 
 def findParent(qObject, parentType, checkInstance=False):
@@ -2690,6 +2632,96 @@ class SpatialExtent(QgsRectangle):
         """
 
         return '{} {} {}'.format(self.upperLeft(), self.lowerRight(), self.crs().authid())
+
+
+
+def rasterLayerArray(layer: QgsRasterLayer,
+                     rect: typing.Union[QRect, QgsRasterLayer, SpatialExtent] = None,
+                     ul: typing.Union[SpatialPoint, QPoint] = None,
+                     lr: typing.Union[SpatialPoint, QPoint] = None,
+                     bands: typing.Union[str, int, typing.List[int]] = None) -> np.ndarray:
+    """
+    Returns the raster values of a QgsRasterLayer as 3D numpy array of shape (bands, height, width)
+    :param layer: QgsRasterLayer
+    :param ul: upper-left corner,
+               can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
+               defaults to raster layers upper-left corner
+    :param lr: lower-right corner,
+               can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
+               default to raster layers lower-right corner
+    :param bands: list of bands to return. defaults to "all". 1st band = [1]
+    :return: numpy.ndarray
+    """
+    layer = qgsRasterLayer(layer)
+
+    ext = layer.extent()
+    resX = ext.width() / layer.width()
+    resY = ext.height() / layer.height()
+
+    if rect:
+        if isinstance(rect, SpatialExtent):
+            rect = rect.toCrs(layer.crs())
+
+        if isinstance(rect, QgsRectangle):
+            ul = SpatialPoint(layer.crs(), rect.xMinimum(), rect.yMaximum())
+            lr = SpatialPoint(layer.crs(), rect.xMaximum(), rect.yMinimum())
+        elif isinstance(rect, QRect):
+            ul = QPoint(rect.x(), rect.y())
+            lr = QPoint(rect.x() + rect.width()-1,
+                        rect.y() + rect.height()-1)
+        else:
+            raise NotImplementedError()
+
+    if not isinstance(ul, SpatialPoint):
+        if isinstance(ul, QPoint):
+            ul = px2spatialPoint(layer, ul, subpixel_pos=0.0)
+        elif isinstance(ul, QgsPointXY):
+            ul = SpatialPoint(layer.crs(), ul.x(), ul.y())
+        elif ul is None:
+            ul = SpatialPoint(layer.crs(), ext.xMinimum(), ext.yMaximum())
+
+    assert isinstance(ul, SpatialPoint)
+    ul = ul.toCrs(layer.crs())
+
+    if not isinstance(lr, SpatialPoint):
+        if isinstance(lr, QPoint):
+            lr = px2spatialPoint(layer, lr, subpixel_pos=1.0)
+        elif isinstance(lr, QgsPointXY):
+            lr = SpatialPoint(layer.crs(), lr.x(), lr.y())
+        elif lr is None:
+            lr = SpatialPoint(layer.crs(), ext.xMaximum(), ext.yMinimum())
+
+    assert isinstance(lr, SpatialPoint)
+    lr = lr.toCrs(layer.crs())
+
+    assert isinstance(lr, SpatialPoint)
+
+    if bands in [None, 'all', '*']:
+        bands = list(range(1, layer.bandCount() + 1))
+
+    boundingBox: QgsRectangle = QgsRectangle(ul, lr)
+
+    width_px = int(boundingBox.width() / resX)
+    height_px = int(boundingBox.height() / resY)
+
+    # npx = width_px * height_px
+    dp: QgsDataProvider = layer.dataProvider()
+    result_array: np.ndarray = None
+    bands = sorted(set(bands))
+    nb = len(bands)
+    assert nb > 0
+    for i, band in enumerate(bands):
+            band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px)
+            assert band_block.isValid()
+
+            assert isinstance(band_block, QgsRasterBlock)
+            band_array = rasterBlockArray(band_block)
+            assert band_array.shape == (height_px, width_px)
+            if i == 0:
+                result_array = np.empty((nb, height_px, width_px), dtype=band_array.dtype)
+            result_array[i, :, :] = band_array
+
+    return result_array
 
 
 def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: list):

@@ -80,7 +80,7 @@ class SpectralProcessingTests(TestCase):
 
     def test_SpectralProfileSourcePanel(self):
 
-        sources, widgets = self.createTestObjects()
+        sources, spectralLibraryWidget = self.createTestObjects()
         canvas = QgsMapCanvas()
         canvas.setLayers(sources)
         canvas.setDestinationCrs(sources[0].crs())
@@ -94,27 +94,47 @@ class SpectralProcessingTests(TestCase):
         panel.createRelation()
 
         # add sources
-        panel.mBridge.addSources(sources)
+        panel.addSources(sources)
 
         # add widgets
-        panel.mBridge.addSpectralLibraryWidgets(widgets)
+        panel.addSpectralLibraryWidgets(spectralLibraryWidget)
+
+        slw = SpectralLibraryWidget()
+        panel.addSpectralLibraryWidgets(slw)
+
+        g = panel.createRelation()
+        self.assertIsInstance(g, SpectralFeatureGeneratorNode)
+        n = g.spectralProfileGeneratorNodes()[0]
+        self.assertIsInstance(n, SpectralProfileGeneratorNode)
+        lyrA = sources[0]
+        n.setSource(lyrA)
+        mode = n.setSampling(KernelProfileSamplingMode())
+        self.assertIsInstance(mode, KernelProfileSamplingMode)
+        size = mode.kernelSize()
+        g.spectralProfileGeneratorNodes()
 
         panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
 
         # remove sources
-        for s in sources:
-            panel.mBridge.removeSource(s)
+        panel.removeSources(sources)
 
         # remove widgets
-        for w in widgets:
-            panel.mBridge.removeDestination(w)
+        panel.removeSpectralLibraryWidgets(spectralLibraryWidget)
+
+        sources2, spectralLibraryWidgets2 = self.createTestObjects()
+
+        # re-add destinations
+        panel.addSpectralLibraryWidgets(spectralLibraryWidgets2[0])
+        panel.addSpectralLibraryWidgets(spectralLibraryWidgets2)
+
+        # re-add sources
+        panel.addSources(sources2[0])
+        panel.addSources(sources2)
+
+        panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
+
 
         self.showGui(panel)
-
-        a = np.ndarray
-
-        c = a != 2
-        b = a != a
 
 
 
@@ -135,7 +155,7 @@ class SpectralProcessingTests(TestCase):
         for mode in model:
             print(f'Test: {mode.__class__.__name__}')
             assert isinstance(mode, SpectralProfileSamplingMode)
-            positions = mode.profilePositions(lyr, center)
+            positions = mode.samplingBlockDescription(lyr, center)
             self.assertIsInstance(positions, list)
 
 
