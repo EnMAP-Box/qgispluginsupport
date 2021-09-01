@@ -433,12 +433,14 @@ class SpectralProcessingTests(TestCase):
             s = ""
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
-        RENAME = {'profiles': 'ASD', 'profiles1': 'Sentinel2'}
+        RENAME = {'profiles': 'ASD', 'profiles1': 'Ref'}
         sl.startEditing()
         for oldName, newName in RENAME.items():
             idx = sl.fields().lookupField(oldName)
             sl.renameAttribute(idx, newName)
             s = ""
+        # sl.addAttribute(QgsField(name='notes', type=QVariant.String)),
+        sl.addAttribute(QgsField(name='date', type=QVariant.Date)),
         sl.commitChanges()
         SLW = SpectralLibraryWidget(speclib=sl)
 
