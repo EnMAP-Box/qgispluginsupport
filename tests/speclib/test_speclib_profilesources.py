@@ -17,9 +17,11 @@ from qps.testing import TestObjects, StartOptions
 from qps.speclib.gui.spectrallibrarywidget import *
 from qps.speclib.processing import *
 from qps.speclib.processingalgorithms import *
-from qps.testing import TestCase, TestAlgorithmProvider
+from qps.testing import TestCase, TestAlgorithmProvider, start_app
 import numpy as np
 from qps.speclib.gui.spectralprofilesources import *
+from qps.externals.pyqtgraph import mkQApp
+
 
 class SpectralProcessingTests(TestCase):
 
@@ -79,6 +81,52 @@ class SpectralProcessingTests(TestCase):
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
 
+    def test_borderPixel(self):
+        from qpstestdata import enmap
+        lyr: QgsRasterLayer = QgsRasterLayer(enmap)
+        lyr.setName('EnMAP')
+        ext = lyr.extent()
+
+        dp: QgsRasterDataProvider = lyr.dataProvider()
+        nb, ns, nl = lyr.bandCount(), lyr.height(), lyr.width()
+        pxx, pxy = lyr.rasterUnitsPerPixelX(), lyr.rasterUnitsPerPixelY()
+
+        out_of_image = [
+            SpatialPoint(lyr.crs(), ext.xMinimum() - 0.0001 * pxx, ext.yMaximum()),
+            SpatialPoint(lyr.crs(), ext.xMaximum() + 0.0001 * pxx, ext.yMaximum())
+        ]
+
+        sp_mode = SingleProfileSamplingMode()
+        k_mode = KernelProfileSamplingMode()
+        k_mode.setKernelSize(3, 3)
+        k_mode.setAggregation(KernelProfileSamplingMode.NO_AGGREGATION)
+
+        for pt in out_of_image:
+            self.assertFalse(lyr.extent().contains(pt))
+            pos = spatialPoint2px(lyr, pt)
+            blockInfo = sp_mode.samplingBlockDescription(lyr, pt)
+            self.assertTrue(blockInfo is None)
+
+            blockInfo = k_mode.samplingBlockDescription(lyr, pt)
+            self.assertIsInstance(blockInfo, SamplingBlockDescription)
+            outputProfileBlock = self.simulate_block_reading(blockInfo, lyr)
+
+
+
+
+        slw = SpectralLibraryWidget()
+        panel = SpectralProfileSourcePanel()
+        panel.addSources(lyr)
+        panel.addSpectralLibraryWidgets(slw)
+
+        canvas = QgsMapCanvas()
+        canvas.setLayers([lyr])
+        canvas.zoomToFullExtent()
+        mt = CursorLocationMapTool(canvas, showCrosshair=True)
+        mt.sigLocationRequest.connect(lambda crs, pt: panel.loadCurrentMapSpectra(SpatialPoint(crs, pt)))
+        canvas.setMapTool(mt)
+
+        self.showGui([canvas, panel, slw])
 
     def test_SpectralProfileSourcePanel(self):
 
@@ -89,6 +137,7 @@ class SpectralProcessingTests(TestCase):
         canvas.zoomToFullExtent()
         mt = CursorLocationMapTool(canvas, True)
         canvas.setMapTool(mt)
+
         center = SpatialPoint.fromMapCanvasCenter(canvas)
 
         panel = SpectralProfileSourcePanel()
@@ -124,6 +173,8 @@ class SpectralProcessingTests(TestCase):
 
         # remove widgets
         panel.removeSpectralLibraryWidgets(spectralLibraryWidget)
+
+        slw.close()
 
         (src1, src2), (slw1, slw2) = self.createTestObjects()
 
@@ -165,13 +216,23 @@ class SpectralProcessingTests(TestCase):
         self.assertTrue(sl.id() in RESULTS.keys())
 
         btnAdd = QPushButton('Random click')
-        def onClicked():
 
+        def onClicked():
             ext = SpatialExtent.fromMapCanvas(canvas)
             x = random.uniform(ext.xMinimum(), ext.xMaximum())
             y = random.uniform(ext.yMinimum(), ext.yMaximum())
             pt = SpatialPoint(ext.crs(), x, y)
             panel.loadCurrentMapSpectra(pt, mapCanvas=canvas, runAsync=False)
+
+        def onDestroyed():
+            print('destroyed sli')
+
+        def onClosing():
+            print('Closing sli')
+
+        for sli in panel.mBridge.destinations():
+            sli.destroyed.connect(onDestroyed)
+            sli.sigWindowIsClosing.connect(onClosing)
 
         mt.sigLocationRequest.connect(lambda crs, pt: panel.loadCurrentMapSpectra(SpatialPoint(crs, pt)))
         btnAdd.clicked.connect(onClicked)
@@ -212,22 +273,27 @@ class SpectralProcessingTests(TestCase):
                 w, h = description.rect().width(), description.rect().height()
                 self.assertEqual((x, y), (w, h)), f'Sampling block size is {w}x{h} instead {kernel}'
 
-                # simulate reading of requested inputBlock
-                self.assertEqual(lyr, description.layer())
-                array = rasterLayerArray(lyr, description.rect())
-
-                self.assertEqual(array.shape, (lyr.bandCount(), y, x))
-
-                wl, wlu = parseWavelength(lyr)
-                spectral_setting = SpectralSetting(wl, xUnit=wlu)
-                inputBlock = SpectralProfileBlock(array, spectral_setting)
+                inputBlock = self.simulate_block_reading(description, lyr)
 
                 outputBlock = mode.profiles(inputBlock, description)
                 self.assertIsInstance(outputBlock, SpectralProfileBlock)
                 if aggregation == KernelProfileSamplingMode.NO_AGGREGATION:
-                   self.assertTrue(outputBlock.n_profiles() == x*y)
+                    self.assertTrue(outputBlock.n_profiles() == x * y)
                 else:
-                   self.assertTrue(outputBlock.n_profiles() == 1)
+                    self.assertTrue(outputBlock.n_profiles() == 1)
+
+    def simulate_block_reading(self,
+                               description: SamplingBlockDescription,
+                               lyr: QgsRasterLayer) -> SpectralProfileBlock:
+
+        # simulate reading of requested inputBlock
+        self.assertEqual(lyr, description.layer())
+        array = rasterLayerArray(lyr, description.rect())
+        self.assertEqual(array.shape, (lyr.bandCount(), description.rect().height(), description.rect().width()))
+        wl, wlu = parseWavelength(lyr)
+        spectral_setting = SpectralSetting(wl, xUnit=wlu)
+        inputBlock = SpectralProfileBlock(array, spectral_setting)
+        return inputBlock
 
     def test_ProfileSamplingModel(self):
 
@@ -245,23 +311,13 @@ class SpectralProcessingTests(TestCase):
         for mode in model:
             print(f'Test: {mode.__class__.__name__}')
             assert isinstance(mode, SpectralProfileSamplingMode)
-            positions = mode.samplingBlockDescription(lyr, center)
-            self.assertIsInstance(positions, list)
+            blockDescription = mode.samplingBlockDescription(lyr, center)
+            self.assertIsInstance(blockDescription, SamplingBlockDescription)
 
-
-            p = center
-            bbox = QgsRectangle(center, center)
-            bbox.setXMaximum(bbox.xMinimum() + 100)
-            bbox.setYMinimum(bbox.yMinimum() - 100)
-
-            r1 = lyr.dataProvider().identify(p, QgsRaster.IdentifyFormatValue)
-            r2 = lyr.dataProvider().identify(p, QgsRaster.IdentifyFormatValue, boundingBox=bbox)
-
-            r3 = lyr.dataProvider().identify(p, QgsRaster.IdentifyFormatHtml)
-
-            for pos in positions:
-                self.assertIsInstance(pos, QgsPointXY)
-
+            inputBlock = self.simulate_block_reading(blockDescription, lyr)
+            self.assertIsInstance(inputBlock, SpectralProfileBlock)
+            outputBlock = mode.profiles(inputBlock, blockDescription)
+            self.assertIsInstance(outputBlock, SpectralProfileBlock)
 
         cb = QComboBox()
         cb.setModel(model)
