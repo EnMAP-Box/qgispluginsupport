@@ -2292,8 +2292,8 @@ def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: typing.Union[QgsPointXY
     resX = layer.extent().width() / layer.width()
     resY = layer.extent().height() / layer.height()
 
-    x = int((spatialPoint.x() - ext.xMinimum()) / resX)
-    y = int((ext.yMaximum() - spatialPoint.y()) / resY)
+    x = math.floor((spatialPoint.x() - ext.xMinimum()) / resX)
+    y = math.floor((ext.yMaximum() - spatialPoint.y()) / resY)
 
     return QPoint(x, y)
 

@@ -367,60 +367,16 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
 class SpectralProfileEditorConfigWidget(QgsEditorConfigWidget):
 
     def __init__(self, vl: QgsVectorLayer, fieldIdx: int, parent: QWidget):
-
         super(SpectralProfileEditorConfigWidget, self).__init__(vl, fieldIdx, parent)
         loadUi(speclibUiPath('spectralprofileeditorconfigwidget.ui'), self)
 
-        self.mLastConfig: dict = {}
-        self.MYCACHE = dict()
-        self.mFieldExpressionName: QgsFieldExpressionWidget
-        self.mFieldExpressionSource: QgsFieldExpressionWidget
-
-        self.mFieldExpressionName.setLayer(vl)
-        self.mFieldExpressionSource.setLayer(vl)
-
-        self.mFieldExpressionName.setFilters(QgsFieldProxyModel.String)
-        self.mFieldExpressionSource.setFilters(QgsFieldProxyModel.String)
-
-        self.mFieldExpressionName.fieldChanged[str, bool].connect(self.onFieldChanged)
-        self.mFieldExpressionSource.fieldChanged[str, bool].connect(self.onFieldChanged)
-
-    def onFieldChanged(self, expr: str, valid: bool):
-        if valid:
-            self.changed.emit()
-
-    def expressionName(self) -> QgsExpression:
-        exp = QgsExpression(self.mFieldExpressionName.expression())
-        return exp
-
-    def expressionSource(self) -> QgsExpression:
-        exp = QgsExpression(self.mFieldExpressionSource.expression())
-        return exp
-
     def config(self, *args, **kwargs) -> dict:
-        config = {'expressionName': self.mFieldExpressionName.expression(),
-                  'expressionSource': self.mFieldExpressionSource.expression(),
-                  'mycache': self.MYCACHE}
+        config = {}
 
         return config
 
     def setConfig(self, config: dict):
-        self.mLastConfig = config
-        field: QgsField = self.layer().fields().at(self.field())
-        defaultExprName = "format('Profile %1 {}',$id)".format(field.name())
-        defaultExprSource = ""
-        # set some defaults
-        if True:
-            for field in self.layer().fields():
-                assert isinstance(field, QgsField)
-                if field.name() == 'name':
-                    defaultExprName = f'"{field.name()}"'
-                if field.name() == 'source':
-                    defaultExprSource = f'"{field.name()}"'
-
-        self.mFieldExpressionName.setExpression(config.get('expressionName', defaultExprName))
-        self.mFieldExpressionSource.setExpression(config.get('expressionSource', defaultExprSource))
-        # print('setConfig')
+        pass
 
 
 class SpectralProfileFieldFormatter(QgsFieldFormatter):

@@ -40,6 +40,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             speclib = SpectralLibrary()
 
         super().__init__(speclib)
+        # self.setAttribute(Qt.WA_DeleteOnClose, on=True)
         self.setWindowIcon(QIcon(':/qps/ui/icons/speclib.svg'))
         self.mQgsStatusBar = QgsStatusBar(self.statusBar())
         self.mQgsStatusBar.setParentStatusBar(self.statusBar())
@@ -424,6 +425,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :param profileStyles:
         :return:
         """
+        # print(f'set {currentProfiles}')
         if isinstance(currentProfiles, typing.Generator):
             currentProfiles = list(currentProfiles)
         assert isinstance(currentProfiles, (list,))

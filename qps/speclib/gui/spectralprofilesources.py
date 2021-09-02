@@ -1,5 +1,6 @@
 import copy
 import difflib
+import math
 import sys
 import typing
 import enum
@@ -351,30 +352,32 @@ class SpectralLibraryWidgetListModel(QAbstractListModel):
 
     def addSpectralLibraryWidget(self, slw: SpectralLibraryWidget) -> SpectralLibraryWidget:
         assert isinstance(slw, SpectralLibraryWidget)
-        i = self.speclibListIndex(slw)
+        i = self.spectralLibraryWidgetListIndex(slw)
         if i is None:
             i = len(self)
             self.beginInsertRows(QModelIndex(), i, i)
             self.mSLWs.insert(i, slw)
+            # slw.destroyed.connect(lambda s=slw: self.removeSpectralLibraryWidget(s))
+            slw.sigWindowIsClosing.connect(lambda s=slw: self.removeSpectralLibraryWidget(s))
             self.endInsertRows()
             return slw
         return None
 
-    def speclibListIndex(self, speclib: SpectralLibraryWidget) -> int:
+    def spectralLibraryWidgetListIndex(self, speclib: SpectralLibraryWidget) -> int:
         for i, sl in enumerate(self):
             if sl is speclib:
                 return i
         return None
 
-    def speclibModelIndex(self, speclibWidget: SpectralLibraryWidget) -> QModelIndex:
+    def spectralLibraryWidgetModelIndex(self, speclibWidget: SpectralLibraryWidget) -> QModelIndex:
 
-        i = self.speclibListIndex(speclibWidget)
+        i = self.spectralLibraryWidgetListIndex(speclibWidget)
         if isinstance(i, int):
             return self.createIndex(i, 0, speclibWidget)
         return QModelIndex()
 
-    def removeSpeclib(self, slw: SpectralLibraryWidget) -> SpectralLibraryWidget:
-        i = self.speclibListIndex(slw)
+    def removeSpectralLibraryWidget(self, slw: SpectralLibraryWidget) -> SpectralLibraryWidget:
+        i = self.spectralLibraryWidgetListIndex(slw)
         if isinstance(i, int):
             self.beginRemoveRows(QModelIndex(), i, i)
             self.mSLWs.remove(slw)
@@ -566,11 +569,13 @@ class SingleProfileSamplingMode(SpectralProfileSamplingMode):
         assert isinstance(lyr, QgsRasterLayer)
 
         # convert point to pixel position of interest
-        px = spatialPoint2px(lyr, point)
-        if px:
-            return SamplingBlockDescription(lyr, QRect(px, px))
 
-        return None
+        px = spatialPoint2px(lyr, point)
+
+        if 0 <= px.x() < lyr.width() and 0 <= px.y() < lyr.height():
+            return SamplingBlockDescription(lyr, QRect(px, px))
+        else:
+            return None
 
     def profiles(self,
                  profileBlock: SpectralProfileBlock,
@@ -705,13 +710,22 @@ class KernelProfileSamplingMode(SpectralProfileSamplingMode):
         meta = {'x': x, 'y': y,
                 'aggregation': self.aggregation()}
 
-        xmin = int(centerPx.x() - (x - 1) * 0.5)
-        ymin = int(centerPx.y() - (y - 1) * 0.5)
+        xmin = math.floor(centerPx.x() - (x - 1) * 0.5)
+        ymin = math.floor(centerPx.y() - (y - 1) * 0.5)
 
         xmax = xmin + x - 1
         ymax = ymin + y - 1
-        rect = QRect(QPoint(xmin, ymin), QPoint(xmax, ymax))
-        return SamplingBlockDescription(lyr, rect, meta=meta)
+
+        # fit reading bounds to existing pixels
+        xmin, ymin = max(0, xmin), max(0, ymin)
+        xmax, ymax = min(lyr.width()-1, xmax), min(lyr.height()-1, ymax)
+
+        if xmax < xmin or ymax < ymin:
+            # no overlap with existing pixel
+            return None
+        else:
+            rect = QRect(QPoint(xmin, ymin), QPoint(xmax, ymax))
+            return SamplingBlockDescription(lyr, rect, meta=meta)
 
     def profiles(self,
                  profileBlock: SpectralProfileBlock,
@@ -736,20 +750,21 @@ class KernelProfileSamplingMode(SpectralProfileSamplingMode):
 
 
 class SpectralProfileSamplingModeModel(QAbstractListModel):
-    MODES: typing.Dict[str, SpectralProfileSamplingMode] = dict()
+
+    SAMPLING_MODES: typing.Dict[str, SpectralProfileSamplingMode] = dict()
 
     @staticmethod
     def registerMode(mode: SpectralProfileSamplingMode):
         assert isinstance(mode, SpectralProfileSamplingMode)
 
-        if mode.__class__.__name__ not in SpectralProfileSamplingModeModel.MODES.keys():
-            SpectralProfileSamplingModeModel.MODES[mode.__class__.__name__] = mode
+        if mode.__class__.__name__ not in SpectralProfileSamplingModeModel.SAMPLING_MODES.keys():
+            SpectralProfileSamplingModeModel.SAMPLING_MODES[mode.__class__.__name__] = mode
         else:
-            warnings.warn(f'SpectralProfileSamplingMode "{mode.__class__.__name__}" already registered')
+            warnings.warn(f'SpectralProfileSamplingMode "{mode.__class__.__name__}" was already registered')
 
     @staticmethod
     def registeredModes() -> typing.List[SpectralProfileSamplingMode]:
-        return list(SpectralProfileSamplingModeModel.MODES.values())
+        return list(SpectralProfileSamplingModeModel.SAMPLING_MODES.values())
 
     def __init__(self, *args, **kwds):
 
@@ -771,7 +786,7 @@ class SpectralProfileSamplingModeModel(QAbstractListModel):
 
         self.beginResetModel()
         self.mSamplingMethods.clear()
-        for mode in SpectralProfileSamplingModeModel.MODES.values():
+        for mode in SpectralProfileSamplingModeModel.SAMPLING_MODES.values():
             self.mSamplingMethods.append(mode.__class__())
         self.endResetModel()
 
@@ -1055,7 +1070,7 @@ class SpectralFeatureGeneratorNode(TreeNode):
                     match = RX_MEMORY_UID.match(source)
                     if match:
                         source = f'memory uid={match.group("uid")}'
-                self.setValue(source)
+                # self.setValue(source)
 
                 new_nodes = []
 
@@ -1246,6 +1261,23 @@ class SpectralProfileBridge(TreeModel):
 
             for rect in list(BLOCKS.keys()):
                 array = rasterLayerArray(layer, rect)
+                if not isinstance(array, np.ndarray):
+                    continue
+                is_nodata = np.zeros(array.shape, dtype=bool)
+                dp: QgsRasterDataProvider = layer.dataProvider()
+                for b in range(dp.bandCount()):
+                    band = b+1
+                    band_mask = is_nodata[b, :, :]
+                    if dp.sourceHasNoDataValue(band):
+                        no_data = dp.sourceNoDataValue(band)
+                        band_mask = band_mask | array[b, :, :] == no_data
+                    for no_data in dp.userNoDataValues(band):
+                        band_mask = band_mask | array[b, :, :] == no_data
+                    is_nodata[b, :, :] = band_mask
+                if is_nodata.all():
+                    continue
+
+                array = np.ma.array(array, mask=is_nodata)
                 settings = SpectralSetting(wl, xUnit=wlu)
                 profileBlock = SpectralProfileBlock(array, settings)
                 BLOCKS[rect] = profileBlock
@@ -1273,6 +1305,8 @@ class SpectralProfileBridge(TreeModel):
 
                     FINAL_PROFILE_VALUES[pgnode] = []
                     for _, value_dictionary in values:
+                        if None in value_dictionary['y']:
+                            s = ""
                         FINAL_PROFILE_VALUES[pgnode].append(value_dictionary)
 
             n_new_features = 0
@@ -1297,29 +1331,23 @@ class SpectralProfileBridge(TreeModel):
 
                 new_speclib_features.append(new_feature)
 
-            if len(new_speclib_features) == 0:
-                continue
-
             speclib = fgnode.speclib()
-            if isinstance(speclib, QgsVectorLayer):
+            if isinstance(speclib, QgsVectorLayer) and len(new_speclib_features) > 0:
                 # increase click count
                 self.mClickCount[speclib.id()] = self.mClickCount.get(speclib.id(), 0) + 1
 
             for i, new_feature in enumerate(new_speclib_features):
                 # create context for other values
-
                 scope = fgnode.speclib().createExpressionContextScope()
                 scope.setVariable(SCOPE_VAR_SAMPLE_CLICK, self.mClickCount[speclib.id()])
                 scope.setVariable(SCOPE_VAR_SAMPLE_FEATURE, i + 1)
                 context = fgnode.expressionContextGenerator().createExpressionContext()
                 context.setFeature(new_feature)
                 context.appendScope(scope)
-
                 for node in fgnode.childNodes():
                     if isinstance(node, StandardFieldGeneratorNode) and node.checked():
                         expr = node.expression()
                         if expr.isValid():
-                            # todo: evaluate expression
                             new_feature[node.field().name()] = expr.evaluate(context)
             RESULTS[fgnode.speclib().id()] = new_speclib_features[:]
             fgnode.speclibWidget().setCurrentProfiles(new_speclib_features)
@@ -1373,8 +1401,11 @@ class SpectralProfileBridge(TreeModel):
 
         flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
         node = index.data(Qt.UserRole)
-        if col == 0 and isinstance(node, TreeNode) and node.isCheckable():
-            flags = flags | Qt.ItemIsUserCheckable
+        if col == 0:
+            if isinstance(node, TreeNode) and node.isCheckable():
+                flags = flags | Qt.ItemIsUserCheckable
+            if isinstance(node, SpectralFeatureGeneratorNode):
+                flag = flags | Qt.ItemIsEditable
 
         if col == 1:
             if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileSourceNode,
@@ -1599,7 +1630,7 @@ class SpectralProfileBridge(TreeModel):
             slws = [slws]
         for slw in slws:
             assert isinstance(slw, SpectralLibraryWidget)
-            self.mDstModel.removeSpeclib(slw)
+            self.mDstModel.removeSpectralLibraryWidget(slw)
 
 
 class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
@@ -1664,7 +1695,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         w = None
         if index.isValid():
             node = index.data(Qt.UserRole)
-            if isinstance(node, SpectralFeatureGeneratorNode) and index.column() == 1:
+            if isinstance(node, SpectralFeatureGeneratorNode) and index.column() in [0,1]:
                 w = QComboBox(parent=parent)
                 model = bridge.spectralLibraryModel()
                 assert isinstance(model, SpectralLibraryWidgetListModel)
@@ -1711,7 +1742,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             model: SpectralLibraryWidgetListModel = editor.model()
             slw = node.speclibWidget()
             if slw:
-                idx = model.speclibModelIndex(slw)
+                idx = model.spectralLibraryWidgetModelIndex(slw)
                 if idx.isValid():
                     editor.setCurrentIndex(idx.row())
 

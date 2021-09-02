@@ -1038,6 +1038,8 @@ def tr(t: str) -> str:
 
 class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
+    sigWindowIsClosing = pyqtSignal()
+
     def __init__(self, mLayer: QgsVectorLayer, *args,
                  initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowVisible,
                  **kwds):
@@ -1266,6 +1268,11 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.editingToggled()
 
         self._hide_unconnected_widgets()
+
+    def closeEvent(self, event: QCloseEvent):
+        super().closeEvent(event)
+        if event.isAccepted():
+            self.sigWindowIsClosing.emit()
 
     def setVectorLayerTools(self, tools: VectorLayerTools):
         assert isinstance(tools, VectorLayerTools)

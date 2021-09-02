@@ -870,13 +870,13 @@ class SpectralProfileBlock(object):
         setting = SpectralSetting(profile.xValues(), xUnit=profile.xUnit(), yUnit=profile.yUnit())
         return SpectralProfileBlock(data, setting, fids=[profile.id()])
 
-    def __init__(self, data: np.ndarray,
+    def __init__(self, data: typing.Union[np.ndarray, np.ma.masked_array],
                  spectralSetting: SpectralSetting,
                  fids: typing.List[int] = None,
                  metadata: dict = None):
 
         assert isinstance(spectralSetting, SpectralSetting)
-        assert isinstance(data, np.ndarray)
+        assert isinstance(data, (np.ndarray, np.ma.masked_array))
         assert data.ndim <= 3
         if data.ndim == 1:
             data = data.reshape((data.shape[0], 1, 1))
@@ -1012,10 +1012,15 @@ class SpectralProfileBlock(object):
         xValues = spectral_settings.x()
 
         fids = self.fids()
-
+        masked: bool = isinstance(self.mData, np.ma.MaskedArray)
         for j, i in zip(yy, xx):
+            yValues = self.mData[:, j, i]
+            if masked and np.ma.alltrue(yValues.mask):
+                # skip profile, as the entire profile is masked
+                continue
+
             d = prepareProfileValueDict(x=xValues,
-                                        y=self.mData[:, j, i],
+                                        y=yValues,
                                         xUnit=xUnit,
                                         yUnit=yUnit)
             if fids:

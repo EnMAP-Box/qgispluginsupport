@@ -1690,6 +1690,10 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 pdi: SpectralProfilePlotDataItem
                 pdi.setVisualizationKey(k)
             assert isinstance(pdi, SpectralProfilePlotDataItem)
+
+            if None in x or None in y:
+                s = ""
+
             pdi.setData(x=x, y=y, z=-1 * zValue,
                         name=name, pen=linePen,
                         symbol=symbol, symbolPen=symbolPen, symbolBrush=symbolBrush, symbolSize=symbolSize)

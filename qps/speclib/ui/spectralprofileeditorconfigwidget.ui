@@ -7,42 +7,22 @@
     <x>0</x>
     <y>0</y>
     <width>326</width>
-    <height>396</height>
+    <height>135</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QFormLayout" name="formLayout">
-   <item row="2" column="0">
+   <item row="0" column="1">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Name</string>
+      <string>A binary field to store Spectral Profiles</string>
      </property>
     </widget>
-   </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Source</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="1">
-    <widget class="QgsFieldExpressionWidget" name="mFieldExpressionSource"/>
-   </item>
-   <item row="2" column="1">
-    <widget class="QgsFieldExpressionWidget" name="mFieldExpressionName"/>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QgsFieldExpressionWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsfieldexpressionwidget.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>
