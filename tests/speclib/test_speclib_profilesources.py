@@ -96,6 +96,9 @@ class SpectralProcessingTests(TestCase):
             SpatialPoint(lyr.crs(), ext.xMaximum() + 0.0001 * pxx, ext.yMaximum())
         ]
 
+        SpectralProfileSamplingModeModel.registerMode(SingleProfileSamplingMode())
+        SpectralProfileSamplingModeModel.registerMode(KernelProfileSamplingMode())
+
         sp_mode = SingleProfileSamplingMode()
         k_mode = KernelProfileSamplingMode()
         k_mode.setKernelSize(3, 3)
@@ -111,16 +114,17 @@ class SpectralProcessingTests(TestCase):
             self.assertIsInstance(blockInfo, SamplingBlockDescription)
             outputProfileBlock = self.simulate_block_reading(blockInfo, lyr)
 
-
-
-
         slw = SpectralLibraryWidget()
         panel = SpectralProfileSourcePanel()
         panel.addSources(lyr)
         panel.addSpectralLibraryWidgets(slw)
+        gnode = panel.createRelation()
+        gnode.setSpeclibWidget(slw)
+        for n in gnode.spectralProfileGeneratorNodes():
+            n.setSource(lyr)
 
         canvas = QgsMapCanvas()
-        canvas.setLayers([lyr])
+        canvas.setLayers([slw.speclib(), lyr])
         canvas.zoomToFullExtent()
         mt = CursorLocationMapTool(canvas, showCrosshair=True)
         mt.sigLocationRequest.connect(lambda crs, pt: panel.loadCurrentMapSpectra(SpatialPoint(crs, pt)))

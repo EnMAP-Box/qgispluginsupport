@@ -648,22 +648,30 @@ class KernelProfileSamplingMode(SpectralProfileSamplingMode):
         return settings
 
     def updateProfilesPerClickNode(self):
-
-        x, y = self.kernelSize()
-        S = self.settings()
-        if S['aggregation'] is None:
+        """
+        Updates the description on how many profiles will be created
+        """
+        if self.aggregation() == KernelProfileSamplingMode.NO_AGGREGATION:
+            x, y = self.kernelSize()
             nProfiles = x * y
         else:
             nProfiles = 1
         self.mProfilesPerClick.setValue(nProfiles)
 
     def setKernelSize(self, x: int, y: int = None):
+        """
+        Sets the kernel size
+        :param x: str | int
+        :param y: int (optional)
+        """
         if isinstance(x, str):
             match = self.RX_KERNEL_SIZE.match(x)
             x = int(match.group('x'))
             y = int(match.group('y'))
-
         assert isinstance(x, int) and x > 0
+        if y is None:
+            y = x
+
         assert isinstance(y, int) and y > 0
         kernel_string = f'{x}x{y}'
         option = KernelProfileSamplingMode.KERNEL_MODEL.findOption(kernel_string)
