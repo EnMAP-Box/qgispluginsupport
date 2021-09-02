@@ -4,13 +4,14 @@ PyQtGraph - Scientific Graphics and GUI Library for Python
 www.pyqtgraph.org
 """
 
-__version__ = '0.12.1'
+__version__ = '0.12.2'
 
 ### import all the goodies and add some helper functions for easy CLI use
 
 ## 'Qt' is a local module; it is intended mainly to cover up the differences
 ## between PyQt4 and PySide.
-from .Qt import QtGui, mkQApp
+from .Qt import QtCore, QtGui, mkQApp
+from .Qt import exec_ as exec
 
 ## not really safe--If we accidentally create another QApplication, the process hangs (and it is very difficult to trace the cause)
 #if QtGui.QApplication.instance() is None:
@@ -56,6 +57,7 @@ CONFIG_OPTIONS = {
                                  # The default is 'col-major' for backward compatibility, but this may
                                  # change in the future.
     'useCupy': False,  # When True, attempt to use cupy ( currently only with ImageItem and related functions )
+    'useNumba': False, # When True, use numba
 } 
 
 
@@ -231,7 +233,8 @@ from .graphicsItems.LinearRegionItem import *
 from .graphicsItems.FillBetweenItem import * 
 from .graphicsItems.LegendItem import * 
 from .graphicsItems.ScatterPlotItem import * 
-from .graphicsItems.ItemGroup import * 
+from .graphicsItems.ItemGroup import *
+from .graphicsItems.TargetItem import * 
 
 from .widgets.MultiPlotWidget import * 
 from .widgets.ScatterPlotWidget import * 
@@ -276,6 +279,15 @@ from .colormap import *
 from .ptime import time
 from .Qt import isQObjectAlive
 from .ThreadsafeTimer import *
+
+# indirect imports used within library
+from .GraphicsScene import GraphicsScene
+from .python2_3 import asUnicode
+from .util.cupy_helper import getCupy
+
+# indirect imports known to be used outside of the library
+from .metaarray import MetaArray
+from .ordereddict import OrderedDict
 
 
 ##############################################################
