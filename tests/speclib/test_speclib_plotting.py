@@ -4,10 +4,14 @@ from PyQt5.QtCore import QEvent, QPointF, Qt
 from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtXml import QDomDocument
 from osgeo import gdal, ogr
+
+from qgis._core import QgsFeature, QgsRasterLayer
 from qgis.gui import QgsMapCanvas, QgsDualView
+from qps import SpectralProfile
 
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
     SpectralProfilePlotVisualization
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import StartOptions, TestCase, TestObjects
 
@@ -86,6 +90,18 @@ class TestSpeclibWidgets(TestCase):
             self.assertEqual(v1.plotStyle(), v2.plotStyle())
             self.assertEqual(v1.speclib(), v2.speclib())
             # speclib and model instances need to be restored differently
+
+    def test_SpectralLibraryWidget(self):
+        speclib = TestObjects.createSpectralLibrary(10)
+        slw = SpectralLibraryWidget(speclib=speclib)
+        speclib = slw.speclib()
+        speclib.startEditing()
+        speclib.selectAll()
+        speclib.deleteSelectedFeatures()
+        speclib.commitChanges()
+
+        self.showGui(slw)
+
 
     def test_SpectralProfilePlotWidget(self):
 

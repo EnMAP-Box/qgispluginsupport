@@ -1,4 +1,5 @@
 # noinspection PyPep8Naming
+import random
 import unittest
 import datetime
 
@@ -9,6 +10,7 @@ from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionD
 from qgis.core import QgsProcessingProvider
 
 from qps import initResources, initAll
+from qps.maptools import CursorLocationMapTool
 from qps.speclib.core import profile_field_lookup
 from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel
 from qps.testing import TestObjects, StartOptions
@@ -85,6 +87,8 @@ class SpectralProcessingTests(TestCase):
         canvas.setLayers(sources)
         canvas.setDestinationCrs(sources[0].crs())
         canvas.zoomToFullExtent()
+        mt = CursorLocationMapTool(canvas, True)
+        canvas.setMapTool(mt)
         center = SpatialPoint.fromMapCanvasCenter(canvas)
 
         panel = SpectralProfileSourcePanel()
@@ -113,7 +117,7 @@ class SpectralProcessingTests(TestCase):
         size = mode.kernelSize()
         g.spectralProfileGeneratorNodes()
 
-        panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
+        # panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
 
         # remove sources
         panel.removeSources(sources)
@@ -121,22 +125,109 @@ class SpectralProcessingTests(TestCase):
         # remove widgets
         panel.removeSpectralLibraryWidgets(spectralLibraryWidget)
 
-        sources2, spectralLibraryWidgets2 = self.createTestObjects()
+        (src1, src2), (slw1, slw2) = self.createTestObjects()
+
+        # re-add generators
+        fgnode1 = panel.createRelation()
+        fgnode2 = panel.createRelation()
+        for n in [fgnode1, fgnode2]:
+            self.assertIsInstance(n, SpectralFeatureGeneratorNode)
+        fgnode1.setSpeclibWidget(slw1)
+        fgnode2.setSpeclibWidget(slw2)
+
+        # clear test speclibs
+        for slw in [slw1, slw2]:
+            slw.speclib().startEditing()
+            slw.speclib().selectAll()
+            slw.speclib().deleteSelectedFeatures()
+            slw.speclib().commitChanges()
 
         # re-add destinations
-        panel.addSpectralLibraryWidgets(spectralLibraryWidgets2[0])
-        panel.addSpectralLibraryWidgets(spectralLibraryWidgets2)
+        panel.addSpectralLibraryWidgets([slw1, slw2])
 
         # re-add sources
-        panel.addSources(sources2[0])
-        panel.addSources(sources2)
+        panel.addSources([src1, src2])
 
-        panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
+        modes = SpectralProfileSamplingModeModel.registeredModes()
 
+        for pgnode in fgnode1.spectralProfileGeneratorNodes():
+            pgnode.setSource(src1)
+            self.assertIsInstance(pgnode.sampling(), SingleProfileSamplingMode)
+            pgnode.setSampling(modes[0])
 
-        self.showGui(panel)
+        for pgnode in fgnode2.spectralProfileGeneratorNodes():
+            pgnode.setSource(src2)
+            pgnode.setSampling(modes[1])
 
+        RESULTS = panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
+        sl = slw1.speclib()
+        self.assertTrue(sl.featureCount() == 1)
+        self.assertTrue(sl.id() in RESULTS.keys())
 
+        btnAdd = QPushButton('Random click')
+        def onClicked():
+
+            ext = SpatialExtent.fromMapCanvas(canvas)
+            x = random.uniform(ext.xMinimum(), ext.xMaximum())
+            y = random.uniform(ext.yMinimum(), ext.yMaximum())
+            pt = SpatialPoint(ext.crs(), x, y)
+            panel.loadCurrentMapSpectra(pt, mapCanvas=canvas, runAsync=False)
+
+        mt.sigLocationRequest.connect(lambda crs, pt: panel.loadCurrentMapSpectra(SpatialPoint(crs, pt)))
+        btnAdd.clicked.connect(onClicked)
+        hl = QHBoxLayout()
+        hl.addWidget(btnAdd)
+        vl = QVBoxLayout()
+        vl.addLayout(hl)
+        vl.addWidget(panel)
+        w = QWidget()
+        w.setLayout(vl)
+        self.showGui([w, slw1, slw2, canvas])
+
+    def test_kernelSampling(self):
+
+        mode = KernelProfileSamplingMode()
+
+        aggregations = [KernelProfileSamplingMode.NO_AGGREGATION,
+                        KernelProfileSamplingMode.AGGREGATE_MEAN,
+                        KernelProfileSamplingMode.AGGREGATE_MEDIAN,
+                        KernelProfileSamplingMode.AGGREGATE_MIN,
+                        KernelProfileSamplingMode.AGGREGATE_MAX]
+        kernels = ['3x3', '4x4', '5x5']
+        from qpstestdata import enmap
+        lyr = QgsRasterLayer(enmap)
+        center = lyr.extent().center()
+
+        for aggregation in aggregations:
+            for kernel in kernels:
+                mode.setKernelSize(kernel)
+                mode.setAggregation(aggregation)
+
+                x, y = mode.kernelSize()
+                self.assertEqual(kernel, f'{x}x{y}')
+                self.assertEqual(aggregation, mode.aggregation())
+
+                description = mode.samplingBlockDescription(lyr, center)
+                self.assertIsInstance(description, SamplingBlockDescription)
+                w, h = description.rect().width(), description.rect().height()
+                self.assertEqual((x, y), (w, h)), f'Sampling block size is {w}x{h} instead {kernel}'
+
+                # simulate reading of requested inputBlock
+                self.assertEqual(lyr, description.layer())
+                array = rasterLayerArray(lyr, description.rect())
+
+                self.assertEqual(array.shape, (lyr.bandCount(), y, x))
+
+                wl, wlu = parseWavelength(lyr)
+                spectral_setting = SpectralSetting(wl, xUnit=wlu)
+                inputBlock = SpectralProfileBlock(array, spectral_setting)
+
+                outputBlock = mode.profiles(inputBlock, description)
+                self.assertIsInstance(outputBlock, SpectralProfileBlock)
+                if aggregation == KernelProfileSamplingMode.NO_AGGREGATION:
+                   self.assertTrue(outputBlock.n_profiles() == x*y)
+                else:
+                   self.assertTrue(outputBlock.n_profiles() == 1)
 
     def test_ProfileSamplingModel(self):
 
@@ -150,7 +241,6 @@ class SpectralProcessingTests(TestCase):
         for m in modes:
             SpectralProfileSamplingModeModel.registerMode(m())
         model = SpectralProfileSamplingModeModel()
-
 
         for mode in model:
             print(f'Test: {mode.__class__.__name__}')
@@ -209,8 +299,6 @@ class SpectralProcessingTests(TestCase):
 
         widgets = [slw1, slw2]
         sources = [lyr1, lyr2]
-
-
 
         return sources, widgets
 
