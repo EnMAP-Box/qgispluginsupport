@@ -2308,8 +2308,6 @@ def rasterBlockArray(block: QgsRasterBlock) -> np.ndarray:
     return np.frombuffer(block.data(), dtype=dtype).reshape(block.height(), block.width())
 
 
-
-
 def findParent(qObject, parentType, checkInstance=False):
     parent = qObject.parent()
     if checkInstance:
@@ -2712,7 +2710,8 @@ def rasterLayerArray(layer: QgsRasterLayer,
     assert nb > 0
     for i, band in enumerate(bands):
             band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px)
-            assert band_block.isValid()
+            if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
+                return None
 
             assert isinstance(band_block, QgsRasterBlock)
             band_array = rasterBlockArray(band_block)

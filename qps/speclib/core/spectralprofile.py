@@ -179,8 +179,12 @@ class SpectralProfile(QgsFeature):
         :param position: SpatialPoint
         :return: SpectralProfile or None, if profile is out of layer bounds.
         """
+        if isinstance(position, QgsPointXY):
+            position = SpatialPoint(layer.crs(), position.x(), position.y())
+        else:
+            assert isinstance(position, SpatialPoint)
+            position = position.toCrs(layer.crs())
 
-        position = position.toCrs(layer.crs())
         if not layer.extent().contains(position):
             return None
 

@@ -1890,14 +1890,17 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             return []
 
         selectedOnly = self.mShowSelectedFeaturesOnly
+
+        EXISTING_IDs = self.speclib().allFeatureIds()
+
         selectedIds = self.speclib().selectedFeatureIds()
 
         dualView = self.dualView()
         if isinstance(dualView, QgsDualView) and dualView.filteredFeatureCount() > 0:
             allIDs = dualView.filteredFeatures()
-            selectedIds = [fid for fid in allIDs if fid in selectedIds]
         else:
-            allIDs = self.speclib().allFeatureIds()
+            allIDs = EXISTING_IDs[:]
+
 
         # Order:
         # 1. Visible in table
@@ -1933,6 +1936,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         toVisualize = sorted(set(priority1 + priority2 + priority3),
                              key=lambda k: (k not in priority1, k not in priority2, k))
 
+        # remove deleted FIDs -> see QGIS bug
+        toVisualize = [fid for fid in toVisualize if fid in EXISTING_IDs]
         return toVisualize
 
     def rowCount(self, parent=QModelIndex(), *args, **kwargs):
@@ -2064,6 +2069,10 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
     def onSpeclibFeaturesDeleted(self, fids_removed):
 
+        # todo: consider out-of-edit command values
+        self.speclib().isEditCommandActive()
+
+        # remove deleted features from internal caches
         self.mCache1FeatureColors = {k: v for k, v in self.mCache1FeatureColors.items() if k not in fids_removed}
         self.mCache1FeatureData = {k: v for k, v in self.mCache1FeatureData.items() if k not in fids_removed}
         self.mCache2ModelData = {k: v for k, v in self.mCache2ModelData.items() if k[0] not in fids_removed}
