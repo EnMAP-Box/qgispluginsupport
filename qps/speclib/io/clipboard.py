@@ -25,10 +25,11 @@
 ***************************************************************************
 """
 
-import typing
-from ..core import *
-from PyQt5.QtWidgets import QProgressDialog
+from ..core.spectrallibrary import *
 import locale
+
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+
 
 class ClipboardIO(AbstractSpectralLibraryIO):
     """
@@ -57,7 +58,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
 
     @classmethod
     def readFrom(cls, path=None,
-                 progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None) -> SpectralLibrary:
+                 feedback:QgsProcessingFeedback=None) -> SpectralLibrary:
 
         clipboard = QApplication.clipboard()
         mimeData = clipboard.mimeData()
@@ -78,7 +79,7 @@ class ClipboardIO(AbstractSpectralLibraryIO):
               mode=None,
               sep=None,
               newline=None,
-              progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None):
+              feedback:QgsProcessingFeedback=None):
 
         if mode is None:
             mode = ClipboardIO.WritingModes.ALL

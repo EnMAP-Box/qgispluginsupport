@@ -1,13 +1,13 @@
-from ..Qt import QtCore, QtGui, QtWidgets, QT_LIB
+from ..Qt import QtCore, QtGui, QtWidgets
 from OpenGL.GL import *
 import OpenGL.GL.framebufferobjects as glfbo
 import numpy as np
 from .. import Vector
 from .. import functions as fn
 import warnings
+from math import cos, sin, tan, radians
 ##Vector = QtGui.QVector3D
 
-ShareWidget = None
 
 class GLViewWidget(QtWidgets.QOpenGLWidget):
     
@@ -32,7 +32,7 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
 
         QtWidgets.QOpenGLWidget.__init__(self, parent)
         
-        self.setFocusPolicy(QtCore.Qt.ClickFocus)
+        self.setFocusPolicy(QtCore.Qt.FocusPolicy.ClickFocus)
 
         if rotationMethod not in {"euler", "quaternion"}:
             raise RuntimeError("Rotation method should be either 'euler' or 'quaternion'")
@@ -52,16 +52,12 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         self.reset()
         self.items = []
         
-        self.noRepeatKeys = [QtCore.Qt.Key_Right, QtCore.Qt.Key_Left, QtCore.Qt.Key_Up, QtCore.Qt.Key_Down, QtCore.Qt.Key_PageUp, QtCore.Qt.Key_PageDown]
+        self.noRepeatKeys = [QtCore.Qt.Key.Key_Right, QtCore.Qt.Key.Key_Left, QtCore.Qt.Key.Key_Up, QtCore.Qt.Key.Key_Down, QtCore.Qt.Key.Key_PageUp, QtCore.Qt.Key.Key_PageDown]
         self.keysPressed = {}
         self.keyTimer = QtCore.QTimer()
         self.keyTimer.timeout.connect(self.evalKeyState)
         self.makeCurrent()
 
-
-    @property
-    def _dpiRatio(self):
-        return self.devicePixelRatioF() or 1
 
     def _updateScreen(self, screen):
         self._updatePixelRatio()
@@ -79,16 +75,12 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         self._updateScreen(window.screen())
         
     def width(self):
-        if self._dpiRatio.is_integer():
-            return super().width()
-        else:
-            return int(super().width() * self._dpiRatio)
+        dpr = self.devicePixelRatio()
+        return int(super().width() * dpr)
     
     def height(self):
-        if self._dpiRatio.is_integer():
-            return super().height()
-        else:
-            return int(super().height() * self._dpiRatio)
+        dpr = self.devicePixelRatio()
+        return int(super().height() * dpr)
 
 
     def reset(self):
@@ -106,10 +98,11 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
 
     def addItem(self, item):
         self.items.append(item)
-        if hasattr(item, 'initializeGL'):
+
+        if self.isValid():
             self.makeCurrent()
             try:
-                item.initializeGL()
+                item.initialize()
             except:
                 self.checkOpenGLVersion('Error while adding item %s to GLViewWidget.' % str(item))
                 
@@ -135,7 +128,12 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         self.update()        
         
     def initializeGL(self):
-        self.resizeGL(self.width(), self.height())
+        """
+        Initialize items that were not initialized during addItem().
+        """
+        for item in self.items:
+            if not item.isInitialized():
+                item.initialize()
         
     def setBackgroundColor(self, *args, **kwds):
         """
@@ -147,10 +145,10 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         
     def getViewport(self):
         vp = self.opts['viewport']
-        dpr = self.devicePixelRatio()
         if vp is None:
-            return (0, 0, int(self.width() * dpr), int(self.height() * dpr))
+            return (0, 0, self.width(), self.height())
         else:
+            dpr = self.devicePixelRatio()
             return tuple([int(x * dpr) for x in vp])
         
     def devicePixelRatio(self):
@@ -158,7 +156,7 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         if dpr is not None:
             return dpr
         
-        return QtWidgets.QOpenGLWidget.devicePixelRatio(self)
+        return self.devicePixelRatioF()
         
     def resizeGL(self, w, h):
         pass
@@ -174,8 +172,7 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
 
     def projectionMatrix(self, region=None):
         if region is None:
-            dpr = self.devicePixelRatio()
-            region = (0, 0, self.width() * dpr, self.height() * dpr)
+            region = (0, 0, self.width(), self.height())
         
         x0, y0, w, h = self.getViewport()
         dist = self.opts['distance']
@@ -183,7 +180,7 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         nearClip = dist * 0.001
         farClip = dist * 1000.
 
-        r = nearClip * np.tan(fov * 0.5 * np.pi / 180.)
+        r = nearClip * tan(0.5 * radians(fov))
         t = r * h / w
 
         ## Note that X0 and width in these equations must be the values used in viewport
@@ -322,15 +319,15 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         center = self.opts['center']
         dist = self.opts['distance']
         if self.opts['rotationMethod'] == "quaternion":
-            pos = center - self.opts['rotation'].rotatedVector( Vector(0,0,dist) )
+            pos = Vector(center - self.opts['rotation'].rotatedVector(Vector(0,0,dist) ))
         else:
             # using 'euler' rotation method
-            elev = self.opts['elevation'] * np.pi / 180
-            azim = self.opts['azimuth'] * np.pi / 180
+            elev = radians(self.opts['elevation'])
+            azim = radians(self.opts['azimuth'])
             pos = Vector(
-                center.x() + dist * np.cos(elev) * np.cos(azim),
-                center.y() + dist * np.cos(elev) * np.sin(azim),
-                center.z() + dist * np.sin(elev)
+                center.x() + dist * cos(elev) * cos(azim),
+                center.y() + dist * cos(elev) * sin(azim),
+                center.z() + dist * sin(elev)
             )
         return pos
 
@@ -344,7 +341,7 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
             self.opts['rotation'] = q
         else: # default euler rotation method
             self.opts['azimuth'] += azim
-            self.opts['elevation'] = np.clip(self.opts['elevation'] + elev, -90, 90)
+            self.opts['elevation'] = fn.clip_scalar(self.opts['elevation'] + elev, -90., 90.)
         self.update()
         
     def pan(self, dx, dy, dz, relative='global'):
@@ -387,7 +384,7 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
             cPos = self.cameraPosition()
             cVec = self.opts['center'] - cPos
             dist = cVec.length()  ## distance from camera to center
-            xDist = dist * 2. * np.tan(0.5 * self.opts['fov'] * np.pi / 180.)  ## approx. width of view at distance of center point
+            xDist = dist * 2. * tan(0.5 * radians(self.opts['fov']))  ## approx. width of view at distance of center point
             xScale = xDist / self.width()
             zVec = QtGui.QVector3D(0,0,1)
             xVec = QtGui.QVector3D.crossProduct(zVec, cVec).normalized()
@@ -408,15 +405,15 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
                 # apply translation
                 self.opts['center'] += scale_factor * (xv*-dx + yv*dy + zv*dz)
             else: # use default euler rotation method
-                elev = np.radians(self.opts['elevation'])
-                azim = np.radians(self.opts['azimuth'])
-                fov = np.radians(self.opts['fov'])
+                elev = radians(self.opts['elevation'])
+                azim = radians(self.opts['azimuth'])
+                fov = radians(self.opts['fov'])
                 dist = (self.opts['center'] - self.cameraPosition()).length()
-                fov_factor = np.tan(fov / 2) * 2
+                fov_factor = tan(fov / 2) * 2
                 scale_factor = dist * fov_factor / self.width()
-                z = scale_factor * np.cos(elev) * dy
-                x = scale_factor * (np.sin(azim) * dx - np.sin(elev) * np.cos(azim) * dy)
-                y = scale_factor * (np.cos(azim) * dx + np.sin(elev) * np.sin(azim) * dy)
+                z = scale_factor * cos(elev) * dy
+                x = scale_factor * (sin(azim) * dx - sin(elev) * cos(azim) * dy)
+                y = scale_factor * (cos(azim) * dx + sin(elev) * sin(azim) * dy)
                 self.opts['center'] += QtGui.QVector3D(x, -y, z)
         else:
             raise ValueError("relative argument must be global, view, or view-upright")
@@ -434,24 +431,25 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
             dist = ((pos-cam)**2).sum(axis=-1)**0.5
         else:
             dist = (pos-cam).length()
-        xDist = dist * 2. * np.tan(0.5 * self.opts['fov'] * np.pi / 180.)
+        xDist = dist * 2. * tan(0.5 * radians(self.opts['fov']))
         return xDist / self.width()
         
     def mousePressEvent(self, ev):
-        self.mousePos = ev.localPos()
+        lpos = ev.position() if hasattr(ev, 'position') else ev.localPos()
+        self.mousePos = lpos
         
     def mouseMoveEvent(self, ev):
-        lpos = ev.localPos()
+        lpos = ev.position() if hasattr(ev, 'position') else ev.localPos()
         diff = lpos - self.mousePos
         self.mousePos = lpos
         
-        if ev.buttons() == QtCore.Qt.LeftButton:
-            if (ev.modifiers() & QtCore.Qt.ControlModifier):
+        if ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
+            if (ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier):
                 self.pan(diff.x(), diff.y(), 0, relative='view')
             else:
                 self.orbit(-diff.x(), diff.y())
-        elif ev.buttons() == QtCore.Qt.MiddleButton:
-            if (ev.modifiers() & QtCore.Qt.ControlModifier):
+        elif ev.buttons() == QtCore.Qt.MouseButton.MiddleButton:
+            if (ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier):
                 self.pan(diff.x(), 0, diff.y(), relative='view-upright')
             else:
                 self.pan(diff.x(), diff.y(), 0, relative='view-upright')
@@ -470,14 +468,10 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         #self.swapBuffers()
         
     def wheelEvent(self, ev):
-        delta = 0
-        if QT_LIB in ['PyQt4', 'PySide']:
-            delta = ev.delta()
-        else:
-            delta = ev.angleDelta().x()
-            if delta == 0:
-                delta = ev.angleDelta().y()
-        if (ev.modifiers() & QtCore.Qt.ControlModifier):
+        delta = ev.angleDelta().x()
+        if delta == 0:
+            delta = ev.angleDelta().y()
+        if (ev.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier):
             self.opts['fov'] *= 0.999**delta
         else:
             self.opts['distance'] *= 0.999**delta
@@ -506,17 +500,17 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         speed = 2.0
         if len(self.keysPressed) > 0:
             for key in self.keysPressed:
-                if key == QtCore.Qt.Key_Right:
+                if key == QtCore.Qt.Key.Key_Right:
                     self.orbit(azim=-speed, elev=0)
-                elif key == QtCore.Qt.Key_Left:
+                elif key == QtCore.Qt.Key.Key_Left:
                     self.orbit(azim=speed, elev=0)
-                elif key == QtCore.Qt.Key_Up:
+                elif key == QtCore.Qt.Key.Key_Up:
                     self.orbit(azim=0, elev=-speed)
-                elif key == QtCore.Qt.Key_Down:
+                elif key == QtCore.Qt.Key.Key_Down:
                     self.orbit(azim=0, elev=speed)
-                elif key == QtCore.Qt.Key_PageUp:
+                elif key == QtCore.Qt.Key.Key_PageUp:
                     pass
-                elif key == QtCore.Qt.Key_PageDown:
+                elif key == QtCore.Qt.Key.Key_PageDown:
                     pass
                 self.keyTimer.start(16)
         else:
@@ -565,15 +559,11 @@ class GLViewWidget(QtWidgets.QOpenGLWidget):
         pixels[...,3] = 255
         
         glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, pixels)
-        
-        # swap B,R channels for Qt
-        tmp = pixels[...,0].copy()
-        pixels[...,0] = pixels[...,2]
-        pixels[...,2] = tmp
-        pixels = pixels[::-1] # flip vertical
-        
-        img = fn.makeQImage(pixels, transpose=False)
-        return img
+
+        pixels = pixels[::-1].copy() # flip vertical
+
+        qimg = fn.ndarray_to_qimage(pixels, QtGui.QImage.Format.Format_RGBA8888)
+        return qimg
         
     def renderToArray(self, size, format=GL_BGRA, type=GL_UNSIGNED_BYTE, textureSize=1024, padding=256):
         w,h = map(int, size)

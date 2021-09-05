@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="qps">
+    <file>ui/icons/profile_processing.svg</file>
+    <file>ui/icons/profile_expression.svg</file>
     <file>ui/icons/export_symbology.svg</file>
     <file>ui/icons/import_symbology.svg</file>
     <file>ui/icons/speclib_usevectorrenderer.svg</file>

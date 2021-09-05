@@ -32,8 +32,8 @@ import warnings
 from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
 
-MIN_QGIS_VERSION = '3.14'
-__version__ = '1.2'
+MIN_QGIS_VERSION = '3.16'
+__version__ = '1.3'
 
 DIR_QPS = pathlib.Path(__file__).parent
 DIR_UI_FILES = DIR_QPS / 'ui'
@@ -117,10 +117,10 @@ def registerEditorWidgets():
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
 
     try:
-        from .speclib.gui import registerSpectralProfileEditorWidget
+        from .speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
         registerSpectralProfileEditorWidget()
     except Exception as ex:
-        print('Failed to call qps.speclib.core.registerSpectralProfileEditorWidget()', file=sys.stderr)
+        print('Failed to call .speclib.gui.gui.registerSpectralProfileEditorWidget()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
     try:
@@ -188,3 +188,7 @@ def unloadAll():
     unregisterExpressionFunctions()
     unregisterMapLayerConfigWidgetFactories()
 
+
+from .speclib.core.spectralprofile import SpectralProfile
+from .speclib.core.spectrallibrary import SpectralLibrary
+s = ""

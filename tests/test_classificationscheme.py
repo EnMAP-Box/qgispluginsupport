@@ -126,8 +126,11 @@ class TestsClassificationScheme(TestCase):
         lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point)
         for name in lyr.fields().names():
             cs = ClassificationScheme.fromUniqueFieldValues(lyr, name)
-            self.assertIsInstance(cs, ClassificationScheme)
-            self.assertTrue(len(cs) > 0)
+            values = list(lyr.uniqueValues(lyr.fields().lookupField(name)))
+            values = [v for v in values if v not in [None, NULL]]
+            if len(values) > 0:
+                self.assertIsInstance(cs, ClassificationScheme)
+                self.assertTrue(len(cs) > 0)
 
     def test_classificationmaplayercombobox(self):
 

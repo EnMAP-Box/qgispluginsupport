@@ -25,14 +25,15 @@
 ***************************************************************************
 """
 
-import os, sys, re, pathlib, json, io, re, linecache, collections, typing
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-import csv as pycsv
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
-    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, \
-    ProgressHandler
+import collections
+import os
+import re
+
+from qgis.PyQt.QtWidgets import QFileDialog, QMenu
+from qgis.core import QgsProcessingFeedback
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, createQgsField
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+
 
 class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
     """
@@ -64,7 +65,7 @@ class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
         return False
 
     @classmethod
-    def readFrom(cls, path: str, progressDialog:typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
+    def readFrom(cls, path: str, feedback:QgsProcessingFeedback = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary

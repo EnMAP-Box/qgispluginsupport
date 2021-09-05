@@ -1038,6 +1038,8 @@ def tr(t: str) -> str:
 
 class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
+    sigWindowIsClosing = pyqtSignal()
+
     def __init__(self, mLayer: QgsVectorLayer, *args,
                  initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowVisible,
                  **kwds):
@@ -1183,6 +1185,11 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mActionPanMapToSelectedRows.setIcon(QgsApplication.getThemeIcon("/mActionPanToSelected.svg"))
         self.mActionInvertSelection.setIcon(QgsApplication.getThemeIcon("/mActionInvertSelection.svg"))
         self.mActionToggleEditing.setIcon(QgsApplication.getThemeIcon("/mActionToggleEditing.svg"))
+        self.mActionToggleMultiEdit.setIcon(QgsApplication.getThemeIcon("/mActionMultiEdit.svg"))
+        self.mActionCutSelectedRows.setIcon(QgsApplication.getThemeIcon("/mActionEditCut.svg"))
+        self.mActionSearchForm.setIcon(QgsApplication.getThemeIcon("/mActionFilter2.svg"))
+        self.mActionSetStyles.setIcon(QgsApplication.getThemeIcon("/mActionConditionalFormatting.svg"))
+        self.mActionReload.setIcon(QgsApplication.getThemeIcon("/mActionRefresh.svg"))
         self.mActionSaveEdits.setIcon(QgsApplication.getThemeIcon("/mActionSaveEdits.svg"))
         self.mActionDeleteSelected.setIcon(QgsApplication.getThemeIcon("/mActionDeleteSelectedFeatures.svg"))
         self.mActionOpenFieldCalculator.setIcon(QgsApplication.getThemeIcon("/mActionCalculateField.svg"))
@@ -1261,6 +1268,11 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.editingToggled()
 
         self._hide_unconnected_widgets()
+
+    def closeEvent(self, event: QCloseEvent):
+        super().closeEvent(event)
+        if event.isAccepted():
+            self.sigWindowIsClosing.emit()
 
     def setVectorLayerTools(self, tools: VectorLayerTools):
         assert isinstance(tools, VectorLayerTools)

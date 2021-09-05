@@ -53,7 +53,7 @@ class LayerPropertyTests(TestCase):
 
     def test_subLayerDefinitions(self):
 
-        from qpstestdata import testvectordata, landcover, enmap
+        from qpstestdata import testvectordata, enmap_pixel, landcover, enmap
         from qps.layerproperties import subLayers, subLayerDefinitions
 
         p = enmap
@@ -65,7 +65,7 @@ class LayerPropertyTests(TestCase):
         vl = QgsVectorLayer(testvectordata)
         sLayers = subLayers(vl)
         self.assertIsInstance(sLayers, list)
-        self.assertTrue(len(sLayers) == 3)
+        self.assertTrue(len(sLayers) == 2)
 
     def test_defaultRenderer(self):
 
@@ -223,7 +223,7 @@ class LayerPropertyTests(TestCase):
         w = AttributeTableWidget(vl)
         vl.startEditing()
 
-        w.mUpdateExpressionText.setExpression("'dummy'")
+        w.mUpdateExpressionText.setField("'dummy'")
 
         self.showGui(w)
 

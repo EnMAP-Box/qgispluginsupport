@@ -26,13 +26,25 @@
 """
 
 import csv
+import os
+import re
+import sys
 import tempfile
 import time
+import typing
 import uuid
+import numpy as np
+from PyQt5.QtCore import QVariant
+from PyQt5.QtWidgets import QFileDialog, QMenu
+from osgeo import gdal, gdal_array
+from qgis.core import QgsExpression
 
-from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes
-from ..core import *
-
+from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes, QgsProcessingFeedback
+from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile
+from ..core.spectrallibrary import SpectralLibrary, VSI_DIR, LUT_IDL2GDAL
+from .. import createStandardFields, EMPTY_VALUES, FIELD_VALUES, FIELD_NAME, FIELD_FID
+from ...utils import toType, findTypeFromString
 # lookup GDAL Data Type and its size in bytes
 LUT_GDT_SIZE = {gdal.GDT_Byte: 1,
                 gdal.GDT_UInt16: 2,
@@ -295,7 +307,10 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
 
     REQUIRED_TAGS = ['byte order', 'data type', 'header offset', 'lines', 'samples', 'bands']
     SINGLE_VALUE_TAGS = REQUIRED_TAGS + ['description', 'wavelength', 'wavelength units']
-
+    
+    def __init__(self):
+        super(EnviSpectralLibraryIO, self).__init__()
+    
     @classmethod
     def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
@@ -344,7 +359,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         return True
 
     @classmethod
-    def readFrom(cls, path, progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None) -> SpectralLibrary:
+    def readFrom(cls, path, feedback: QgsProcessingFeedback= None) -> SpectralLibrary:
         """
         Reads an ENVI Spectral Library (ESL).
         :param path: path to ENVI Spectral Library
@@ -478,9 +493,12 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
         SLIB.readJSONProperties(pathESL)
         return SLIB
 
-    @classmethod
-    def write(cls, speclib: SpectralLibrary, path: str,
-              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None):
+    def write(self,
+              speclib: SpectralLibrary,
+              path: str,
+              profile_field: typing.Union[int, str, QgsField] = None,
+              profile_name: QgsExpression = None,
+              feedback: QgsProcessingFeedback= None):
         """
         Writes a SpectralLibrary as ENVI Spectral Library (ESL).
         See http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for ESL definition
@@ -509,14 +527,29 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             os.makedirs(dn)
 
         iGrp = -1
-        for key, profiles in speclib.groupBySpectralProperties().items():
+        for setting, profiles in speclib.groupBySpectralProperties(profile_field=profile_field).items():
             iGrp += 1
+            iField = speclib.fields().lookupField(setting.fieldName())
+            field = speclib.fields().at(iField)
+            s = ""
+            if not isinstance(profile_name, QgsExpression):
+                name_expr = QgsExpression(f'\'{setting.fieldName()}\' $id')
+            else:
+                name_expr = profile_name
+
             if len(profiles) == 0:
                 continue
-            xValues, wlu, yUnit = key
+            xValues, wlu, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
 
             # Ann Crabbé: bad bands list
             bbl = profiles[0].bbl()
+
+            # get profile names
+            profileNames = []
+            for p in profiles:
+                self.mExpressionContext.setFeature(p)
+                name = expr.evaluate(context)
+                profileNames.append(name)
 
             # stack profiles
             pData = [np.asarray(p.yValues()) for p in profiles]
@@ -526,7 +559,7 @@ class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
             if pData.dtype == np.int64:
                 pData = pData.astype(np.int32)
 
-            profileNames = [p.name() for p in profiles]
+            # todo: other cases?
 
             if iGrp == 0:
                 pathDst = os.path.join(dn, '{}{}'.format(bn, ext))

@@ -3,11 +3,17 @@ import unittest
 import xmlrunner
 import os
 import numpy as np
+from PyQt5.QtCore import QSettings
+from PyQt5.QtGui import QColor
+from qgis.core import QgsSettings
+
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication, QGridLayout, QLabel, QWidget, \
     QPushButton, QVBoxLayout, QHBoxLayout
 from qgis.gui import QgsMapCanvas
-from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option, PyObjectTreeNode
+from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option, PyObjectTreeNode, SettingsModel, \
+    SettingsTreeView, SettingsNode
+from qps.plotstyling.plotstyling import MarkerSymbol
 from qps.testing import TestCase
 
 
@@ -332,6 +338,55 @@ class ModelTests(TestCase):
 
         self.showGui(tv)
 
+    def test_SettingsModel(self):
+
+        settings = QSettings('my_app', application='my_model')
+        # clear
+        settings.clear()
+        settings.sync()
+
+        settings.setValue('MyColor', QColor('red'))
+        settings.beginGroup('Group1')
+        settings.setValue('My Group1 Text', 'text')
+        settings.endGroup()
+        settings.beginGroup('Group2')
+        settings.setValue('MyBool', False)
+        settings.setValue('Color2', QColor('orange'))
+        settings.setValue('My Group2 Text', 'text')
+        settings.setValue('Group2Options', 'A')
+        settings.setValue('MyRangedInt', 10)
+        settings.setValue('MyRangedFloat', 23)
+        settings.setValue('MySymbol', 'x')
+
+        settings.endGroup()
+
+        OPTIONS = dict()
+        RANGES = dict()
+        OPTIONS['Group2/Group2Options'] = [Option('A'), Option('B'), Option('C')]
+        OPTIONS['Group2/MySymbol'] = MarkerSymbol
+        RANGES['Group2/MyRangedInt'] = (0, 20)
+        RANGES['Group2/MyRangedFloat'] = (0.0, 20.0)
+
+
+        model = SettingsModel(settings,
+                              key_filter='Group2/.*',
+                              options=OPTIONS,
+                              ranges=RANGES)
+
+        if False:
+            idx = model.setting_key_node('Group2/Group2Options')
+            self.assertIsInstance(idx, QModelIndex)
+            node = idx.data(Qt.UserRole)
+            self.assertIsInstance(node, SettingsNode)
+            options = idx.data(Qt.UserRole + 1)
+            ranges = idx.data(Qt.UserRole + 2)
+            self.assertListEqual(OPTIONS['Group2/Group2Options'], options)
+            self.assertEqual(RANGES['Group2/RangedValue'], ranges)
+
+        view = SettingsTreeView()
+        view.setModel(model)
+
+        self.showGui(view)
 
 if __name__ == '__main__':
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

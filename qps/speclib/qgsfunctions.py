@@ -24,16 +24,15 @@
 ***************************************************************************
 """
 import typing
-import string
 import pathlib
 import json
 import sys
 import os
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import QgsExpression, QgsFeature, qgsfunction, QgsFeatureRequest, QgsExpressionFunction, \
+from qgis.core import QgsExpression, QgsFeature, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext
-from qgis.PyQt.QtCore import QByteArray, QVariant, NULL
-from .core import FIELD_VALUES, decodeProfileValueDict, SpectralProfile, encodeProfileValueDict
+from qgis.PyQt.QtCore import QVariant, NULL
+from ..speclib.core.spectrallibrary import FIELD_VALUES, SpectralProfile
 
 QGS_FUNCTION_GROUP = "Spectral Libraries"
 
@@ -195,7 +194,7 @@ class SpectralData(QgsExpressionFunction):
         name = 'spectralData'
 
         args = [
-            QgsExpressionFunction.Parameter('field', optional=True, defaultValue=FIELD_VALUES)
+            QgsExpressionFunction.Parameter('profile_field', optional=True, defaultValue=FIELD_VALUES)
         ]
 
         helptext = HM.helpText(name, args)
@@ -210,7 +209,7 @@ class SpectralData(QgsExpressionFunction):
         if not isinstance(feature, QgsFeature):
             return None
         try:
-            profile = SpectralProfile.fromQgsFeature(feature, value_field=value_field)
+            profile = SpectralProfile.fromQgsFeature(feature, profile_field=value_field)
             assert isinstance(profile, SpectralProfile)
             return profile.values()
         except Exception as ex:
@@ -235,7 +234,7 @@ class SpectralMath(QgsExpressionFunction):
 
         args = [
             QgsExpressionFunction.Parameter('expression', optional=False, isSubExpression=True),
-            QgsExpressionFunction.Parameter('field', optional=True, defaultValue=FIELD_VALUES)
+            QgsExpressionFunction.Parameter('profile_field', optional=True, defaultValue=FIELD_VALUES)
         ]
         helptext = HM.helpText(name, args)
         super().__init__(name, args, group, helptext)
@@ -249,13 +248,13 @@ class SpectralMath(QgsExpressionFunction):
         if not isinstance(feature, QgsFeature):
             return None
         try:
-            profile = SpectralProfile.fromQgsFeature(feature, value_field=value_field)
+            profile = SpectralProfile.fromQgsFeature(feature, profile_field=value_field)
             assert isinstance(profile, SpectralProfile)
             values = profile.values()
             exec(expression, values)
 
             newProfile = SpectralProfile(values=values)
-            return newProfile.attribute(profile.mValueField)
+            return newProfile.attribute(profile.mCurrentProfileFieldIndex)
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
             return None

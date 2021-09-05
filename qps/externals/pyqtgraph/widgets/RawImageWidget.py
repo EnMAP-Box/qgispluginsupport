@@ -18,6 +18,7 @@ except (ImportError, AttributeError):
     # AttributeError upon import
     HAVE_OPENGL = False
 
+__all__ = ['RawImageWidget']
 
 class RawImageWidget(QtGui.QWidget):
     """
@@ -32,7 +33,7 @@ class RawImageWidget(QtGui.QWidget):
         This also greatly reduces the speed at which it will draw frames.
         """
         QtGui.QWidget.__init__(self, parent)
-        self.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding))
+        self.setSizePolicy(QtGui.QSizePolicy(QtGui.QSizePolicy.Policy.Expanding, QtGui.QSizePolicy.Policy.Expanding))
         self.scaled = scaled
         self.opts = None
         self.image = None
@@ -78,6 +79,7 @@ class RawImageWidget(QtGui.QWidget):
 
 
 if HAVE_OPENGL:
+    __all__.append('RawImageGLWidget')
     class RawImageGLWidget(QOpenGLWidget):
         """
         Similar to RawImageWidget, but uses a GL widget to do all drawing.

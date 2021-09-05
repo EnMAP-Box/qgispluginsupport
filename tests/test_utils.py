@@ -13,6 +13,8 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import unittest
+
+import numpy as np
 import xmlrunner
 import pickle
 import xml.etree.ElementTree as ET
@@ -104,6 +106,17 @@ class TestUtils(TestCase):
                 size = gdalFileSize(path)
                 self.assertTrue(size > 0)
 
+    def test_qgsFieldAttributes2List(self):
+
+        bstr = b'\x80\x04\x95^\x00\x00\x00\x00\x00\x00\x00}\x94(\x8c\x01x\x94]\x94(M,\x01M\x90\x01MX\x02M\xb0\x04M\xc4\te\x8c\x01y\x94]\x94(G?\xcdp\xa3\xd7\n=qG?\xd9\x99\x99\x99\x99\x99\x9aG?\xd3333333G?\xe9\x99\x99\x99\x99\x99\x9aG?\xe6ffffffe\x8c\x05xUnit\x94\x8c\x02nm\x94u.'
+        attributes = [None, NULL, QVariant(None), '', 'None',
+                      QByteArray(bstr),
+                      bstr, bytes(bstr)]
+
+        a2 = qgsFieldAttributes2List(attributes)
+        dump = pickle.dumps(a2)
+        self.assertIsInstance(dump, bytes)
+
     def test_findmaplayerstores(self):
 
         ref = [QgsProject.instance(), QgsMapLayerStore(), QgsMapLayerStore()]
@@ -157,6 +170,15 @@ class TestUtils(TestCase):
         b = check_vsimem()
         self.assertIsInstance(b, bool)
 
+    def test_qgsField(self):
+
+        l = TestObjects.createVectorLayer()
+        for i, field in enumerate(l.fields()):
+            name = field.name()
+            self.assertEqual(field, qgsField(l, name))
+            self.assertEqual(field, qgsField(l, field))
+            self.assertEqual(field, qgsField(l, i))
+
     def test_qgsLayers(self):
 
         # raster
@@ -179,9 +201,7 @@ class TestUtils(TestCase):
                 self.assertIsInstance(l, QgsRasterLayer)
                 self.assertTrue(l.isValid())
 
-
     def test_spatialObjects(self):
-
 
         wkt = 'PROJCS["BU MEaSUREs Lambert Azimuthal Equal Area - SA - V01",GEOGCS["GCS_WGS_1984",DATUM["WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",-15],PARAMETER["longitude_of_center",-60],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
         crs = QgsCoordinateReferenceSystem.fromWkt(wkt)
@@ -263,6 +283,72 @@ class TestUtils(TestCase):
             srs = osrSpatialReference(input)
             self.assertIsInstance(srs, osr.SpatialReference)
             self.assertTrue(srs.Validate() == ogr.OGRERR_NONE)
+
+    def test_pixelSpatialCoordinates(self):
+
+        lyrR = TestObjects.createRasterLayer()
+
+        upperLeft = px2spatialPoint(lyrR, QPoint(0, 0))
+        lowerRight = px2spatialPoint(lyrR, QPoint(lyrR.width() - 1, lyrR.height() - 1))
+        resX = lyrR.extent().width() / lyrR.width()
+        resY = lyrR.extent().height() / lyrR.height()
+        self.assertIsInstance(upperLeft, SpatialPoint)
+
+        self.assertAlmostEqual(upperLeft.x(), lyrR.extent().xMinimum() + 0.5 * resX, 5)
+        self.assertAlmostEqual(upperLeft.y(), lyrR.extent().yMaximum() - 0.5 * resY, 5)
+        self.assertAlmostEqual(lowerRight.x(), lyrR.extent().xMaximum() - 0.5 * resX, 5)
+        self.assertAlmostEqual(lowerRight.y(), lyrR.extent().yMinimum() + 0.5 * resY, 5)
+
+        upperLeftPx = spatialPoint2px(lyrR, upperLeft)
+        lowerRightPx = spatialPoint2px(lyrR, lowerRight)
+        self.assertIsInstance(upperLeftPx, QPoint)
+        self.assertEqual(upperLeftPx, QPoint(0, 0))
+        self.assertEqual(lowerRightPx, QPoint(lyrR.width() - 1, lyrR.height() - 1))
+        s = ""
+
+    def test_rasterLayerArray(self):
+
+        lyrR = TestObjects.createRasterLayer()
+        ext = lyrR.extent()
+        ul = SpatialPoint(lyrR.crs(), ext.xMinimum(), ext.yMaximum())
+        lr = SpatialPoint(lyrR.crs(), ext.xMaximum(), ext.yMinimum())
+
+        blockB = rasterLayerArray(lyrR, ul=ul, lr=lr)
+        blockA = rasterLayerArray(lyrR, ul=QPoint(0, 0), lr=QPoint(lyrR.width() - 1, lyrR.height() - 1))
+        blockC = rasterLayerArray(lyrR, rect=QRect(0, 0, lyrR.width(), lyrR.height()))
+
+        ds: gdal.Dataset = gdal.Open(lyrR.source())
+        nb = ds.RasterCount
+        ns = ds.RasterXSize
+        nl = ds.RasterYSize
+
+        block = lyrR.dataProvider().block(1, ext, ns, nl)
+        band_array = rasterBlockArray(block)
+        self.assertIsInstance(band_array, np.ndarray)
+        self.assertTrue(band_array.shape == (nl, ns))
+
+        for block in [blockA, blockB, blockC]:
+            self.assertEqual(block.shape, (nb, nl, ns))
+
+        for block in [blockA, blockB]:
+            self.assertEqual(lyrR.bandCount(), nb)
+            self.assertEqual(block.shape[0], nb)
+            for b in range(nb):
+                band = block[b, :, :]
+                bandG = ds.GetRasterBand(b + 1).ReadAsArray()
+                self.assertTrue(np.all(band == bandG))
+
+        from qpstestdata import enmap, hymap
+
+        lyr1 = QgsRasterLayer(enmap, 'EnMAP')
+        lyr2 = QgsRasterLayer(hymap, 'HyMAP')
+
+        for lyr in [lyr1, lyr2]:
+            ds: gdal.Dataset = gdal.Open(lyr.source())
+            blockGDAL = ds.ReadAsArray()
+            blockAll = rasterLayerArray(lyr)
+            self.assertTrue(np.all(blockGDAL == blockAll))
+            self.assertEqual(blockGDAL.dtype, blockAll.dtype)
 
     def test_geo_coordinates(self):
 
@@ -600,5 +686,4 @@ class TestUtils(TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
