@@ -1,7 +1,5 @@
-from qgis._core import QgsProject, QgsRasterLayer
-from qgis._gui import QgsMapLayerComboBox
-
-from qgis.gui import QgsPalettedRendererWidget
+from qgis.core import QgsProject, QgsRasterLayer
+from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas, QgsPalettedRendererWidget
 from qps.testing import start_app, TestObjects
 app = start_app()
 
@@ -15,7 +13,7 @@ cb = QgsMapLayerComboBox()
 
 def onLayerChanged(*args):
     lyr = cb.currentLayer()
-    c = QgsMapCanvas/´()
+    c = QgsMapCanvas()
     if isinstance(lyr, QgsRasterLayer):
         w.setRasterLayer(lyr)
     s = ""

@@ -5,9 +5,8 @@ from PyQt5.QtGui import QMouseEvent
 from PyQt5.QtXml import QDomDocument
 from osgeo import gdal, ogr
 
-from qgis._core import QgsFeature, QgsRasterLayer
+
 from qgis.gui import QgsMapCanvas, QgsDualView
-from qps import SpectralProfile
 
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
     SpectralProfilePlotVisualization

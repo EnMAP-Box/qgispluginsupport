@@ -35,7 +35,7 @@ import pathlib
 import pickle
 
 from PyQt5.QtWidgets import QInputDialog
-from qgis._core import QgsProcessingProvider
+from qgis.core import QgsProcessingProvider
 
 from qgis.PyQt.QtCore import QMimeData, Qt, pyqtSignal, QModelIndex, QAbstractListModel, QObject, QPointF, QByteArray
 from qgis.PyQt.QtGui import QColor, QFont, QContextMenuEvent
