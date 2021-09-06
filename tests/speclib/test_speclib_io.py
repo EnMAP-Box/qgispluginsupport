@@ -596,7 +596,7 @@ class TestIO(TestCase):
                 nProfiles += 1
 
         for ioClass in allSubclasses(AbstractSpectralLibraryIO):
-            print('Test {}'.format(c.__name__))
+            print('Test {}'.format(ioClass.__name__))
             c = ioClass()
             path = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')
             feedback = self.createProcessingFeedback()
