@@ -693,7 +693,7 @@ class TestObjects(object):
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
-                              n_bands: typing.Union[int, typing.List[int]] = [-1],
+                              n_bands: typing.Union[int, typing.List[int], np.ndarray] = [-1],
                               wlu: str = None) -> 'SpectralLibrary':
         """
         Creates an Spectral Library
@@ -712,21 +712,33 @@ class TestObjects(object):
         assert 0 <= n_empty <= n
         from .speclib.core.spectrallibrary import SpectralLibrary, FIELD_VALUES
         from .speclib.core import profile_field_indices
-        if not isinstance(n_bands, list):
-            n_bands = [n_bands]
+
+        if isinstance(n_bands, int):
+            n_bands = np.asarray([[n_bands, ]])
+        elif isinstance(n_bands, list):
+            n_bands = np.asarray(n_bands)
+            if n_bands.ndim == 1:
+                n_bands = n_bands.reshape((1, n_bands.shape[0]))
+
+        assert isinstance(n_bands, np.ndarray)
+        assert n_bands.ndim == 2
         slib: SpectralLibrary = SpectralLibrary()
         assert slib.startEditing()
-        for i in range(len(slib.spectralProfileFields()), len(n_bands)):
+        for i in range(len(slib.spectralProfileFields()), n_bands.shape[1]):
             slib.addSpectralProfileField(f'{FIELD_VALUES}{i}')
         slib.commitChanges(stopEditing=False)
 
         profile_field_indices = profile_field_indices(slib)
-        profiles = list(TestObjects.spectralProfiles(n,
-                                                     fields=slib.fields(),
-                                                     n_bands=n_bands,
-                                                     wlu=wlu,
-                                                     profile_fields=profile_field_indices))
-        slib.addProfiles(profiles, addMissingFields=False)
+
+        for j in range(n_bands.shape[0]):
+
+            profiles = list(TestObjects.spectralProfiles(n,
+                                                         fields=slib.fields(),
+                                                         n_bands=n_bands[j, :].tolist(),
+                                                         wlu=wlu,
+                                                         profile_fields=profile_field_indices))
+
+            slib.addProfiles(profiles, addMissingFields=False)
 
         for i in range(n_empty):
             p = slib[i]
