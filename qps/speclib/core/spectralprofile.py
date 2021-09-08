@@ -19,7 +19,7 @@ from qgis.gui import QgsMapCanvas
 from osgeo import gdal, ogr
 import numpy as np
 
-from . import profile_fields, profile_field_indices, first_profile_field_index, field_index
+from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index
 
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, createQgsField, \
     qgsFields2str, str2QgsFields, qgsFieldAttributes2List, SignalObjectWrapper
@@ -765,7 +765,7 @@ def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
         assert isinstance(p, QgsFeature)
         if p_field_idx is None:
             # initialize the profile field to group profiles on
-            p_fields = profile_fields(p)
+            p_fields = profile_field_list(p)
             p_field_indices = profile_field_indices(p)
             p_field_names = [f.name() for f in p_fields]
 
@@ -1057,7 +1057,7 @@ class SpectralProfileLoadingTask(QgsTask):
         self.mSpeclib: QgsVectorLayer = speclib
         self.mSpeclibSource: str = speclib.source()
         self.mPathSpeclib: pathlib.Path = pathlib.Path(speclib.source())
-        self.mProfileFields: typing.List[QgsField] = profile_fields(speclib)
+        self.mProfileFields: typing.List[QgsField] = profile_field_list(speclib)
 
         if fids:
             #

@@ -13,7 +13,7 @@ from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttrib
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ..core.spectrallibrary import SpectralLibrary
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ..core.spectralprofile import SpectralProfile
 from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibraryPlotWidget, \
     SpectralLibraryPlotItem, SpectralLibraryPlotStats, SpectralProfilePlotControlModel
@@ -58,18 +58,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         from ..io.artmo import ARTMOSpectralLibraryIO
         from ..io.vectorsources import VectorSourceSpectralLibraryIO
         from ..io.rastersources import RasterSourceSpectralLibraryIO
-        self.mSpeclibIOInterfaces = [
-            EnviSpectralLibraryIO(),
-            CSVSpectralLibraryIO(),
-            ARTMOSpectralLibraryIO(),
-            ASDSpectralLibraryIO(),
-            EcoSISSpectralLibraryIO(),
-            SPECCHIOSpectralLibraryIO(),
-            VectorSourceSpectralLibraryIO(),
-            RasterSourceSpectralLibraryIO(),
-        ]
-
-        self.mSpeclibIOInterfaces = sorted(self.mSpeclibIOInterfaces, key=lambda c: c.__class__.__name__)
 
         self.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
         self.mMainView.showContextMenuExternally.connect(self.onShowContextMenuAttributeEditor)
@@ -136,20 +124,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionImportSpeclib = QAction('Import Spectral Profiles')
         self.actionImportSpeclib.setToolTip('Import spectral profiles from other data sources')
         self.actionImportSpeclib.setIcon(QIcon(':/qps/ui/icons/speclib_add.svg'))
-        m = QMenu()
-        m.addAction(self.actionImportVectorRasterSource)
-        m.addSeparator()
-        self.createSpeclibImportMenu(m)
-        self.actionImportSpeclib.setMenu(m)
         self.actionImportSpeclib.triggered.connect(self.onImportSpeclib)
 
         self.actionExportSpeclib = QAction('Export Spectral Profiles')
         self.actionExportSpeclib.setToolTip('Export spectral profiles to other data formats')
         self.actionExportSpeclib.setIcon(QIcon(':/qps/ui/icons/speclib_save.svg'))
-
-        m = QMenu()
-        self.createSpeclibExportMenu(m)
-        self.actionExportSpeclib.setMenu(m)
         self.actionExportSpeclib.triggered.connect(self.onExportSpectra)
 
         self.tbSpeclibAction = QToolBar('Spectral Profiles')
@@ -333,43 +312,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         s = ""
 
-    def createSpeclibImportMenu(self, menu: QMenu):
-        """
-        :return: QMenu with QActions and submenus to import SpectralProfiles
-        """
-        separated = []
-        from ..io.rastersources import RasterSourceSpectralLibraryIO
-
-        for iface in self.mSpeclibIOInterfaces:
-            assert isinstance(iface, AbstractSpectralLibraryIO), iface
-            if isinstance(iface, RasterSourceSpectralLibraryIO):
-                separated.append(iface)
-            else:
-                iface.addImportActions(self.speclib(), menu)
-
-        if len(separated) > 0:
-            menu.addSeparator()
-            for iface in separated:
-                iface.addImportActions(self.speclib(), menu)
-
-    def createSpeclibExportMenu(self, menu: QMenu):
-        """
-        :return: QMenu with QActions and submenus to export the SpectralLibrary
-        """
-        separated = []
-        from ..io.rastersources import RasterSourceSpectralLibraryIO
-        for iface in self.mSpeclibIOInterfaces:
-            assert isinstance(iface, AbstractSpectralLibraryIO)
-            if isinstance(iface, RasterSourceSpectralLibraryIO):
-                separated.append(iface)
-            else:
-                iface.addExportActions(self.speclib(), menu)
-
-        if len(separated) > 0:
-            menu.addSeparator()
-            for iface in separated:
-                iface.addExportActions(self.speclib(), menu)
-
     def plotWidget(self) -> SpectralProfilePlotWidget:
         return self.mSpeclibPlotWidget.plotWidget
 
@@ -488,13 +430,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def onImportSpeclib(self):
         """
         Imports a SpectralLibrary
-        :param path: str
         """
+        dialog = SpectralLibraryImportDialog(parent=self, speclib=self.speclib())
+        if dialog.exec_() == QDialog.Accepted:
+            profiles = dialog.importProfiles()
 
-        slib = SpectralLibrary.readFromSourceDialog(self)
-
-        if isinstance(slib, SpectralLibrary) and len(slib) > 0:
-            self.addSpeclib(slib)
+        dialog.close()
 
     def onImportFromRasterSource(self):
         from ..io.rastersources import SpectralProfileImportPointsDialog
@@ -528,9 +469,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.speclib().startEditing()
 
     def onExportSpectra(self, *args):
-        files = self.speclib().write(None)
-        if len(files) > 0:
-            self.sigFilesCreated.emit(files)
+
+        dialog = SpectralLibraryExportDialog(parent=self, speclib=self.speclib())
+        if dialog.exec_() == QDialog.Accepted:
+            dialog.exportProfiles()
+        dialog.close()
 
     def clearSpectralLibrary(self):
         """

@@ -29,7 +29,7 @@ from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, PlotStyleButton
 from .. import speclibUiPath, speclibSettings, SpectralLibrarySettingsKey
 from ..core.spectrallibrary import SpectralLibrary, DEBUG, containsSpeclib, defaultCurvePlotStyle
-from ..core import profile_fields, profile_field_indices
+from ..core import profile_field_list, profile_field_indices
 from ..core.spectralprofile import SpectralProfile, SpectralProfileBlock, SpectralProfileLoadingTask
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
     SpectralProcessingProfilesOutput, SpectralProcessingModelList, NULL_MODEL, outputParameterResults, \
@@ -1559,7 +1559,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         NAME2FIELDIDX = {SL.fields().at(i).name(): i for i in range(SL.fields().count())}
         FIELDIDX2NAME = {i: SL.fields().at(i).name() for i in range(SL.fields().count())}
         VIS2FIELD_INDEX = {v: SL.fields().lookupField(v.field().name()) for v in self}
-        PFIELDS = {SL.fields().lookupField(f.name()): f for f in profile_fields(SL)}
+        PFIELDS = {SL.fields().lookupField(f.name()): f for f in profile_field_list(SL)}
 
         # get the data to display
         PROFILES_TO_LOAD: typing.Set[int] = set()
@@ -2118,7 +2118,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
     def onSpeclibAttributesChanged(self):
         fields = QgsFields()
-        for field in profile_fields(self.mSpeclib):
+        for field in profile_field_list(self.mSpeclib):
             fields.append(field)
         self.mProfileFieldModel.setFields(fields)
 
@@ -2130,7 +2130,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         return self.mSpeclib
 
     def profileFields(self) -> typing.List[QgsField]:
-        return profile_fields(self.speclib())
+        return profile_field_list(self.speclib())
 
     def profileFieldIndices(self) -> typing.List[int]:
         return profile_field_indices(self.speclib())
@@ -2675,7 +2675,7 @@ class SpectralLibraryPlotWidget(QWidget):
         item.mSpeclib = self.speclib()
 
         # set profile source in speclib
-        for field in profile_fields(item.mSpeclib):
+        for field in profile_field_list(item.mSpeclib):
             item.mField = field
             break
 

@@ -57,7 +57,7 @@ from qgis.core import QgsApplication, \
 
 from qgis.gui import \
     QgsGui
-from . import profile_fields, first_profile_field_index, profile_field_indices, create_profile_field
+from . import profile_field_list, first_profile_field_index, profile_field_indices, create_profile_field
 
 from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
@@ -821,8 +821,8 @@ class SpectralLibrary(QgsVectorLayer):
                         sl.setName(os.path.basename(uri))
                     return sl
 
-        from .spectrallibraryio import AbstractSpectralLibraryIO
-        readers = AbstractSpectralLibraryIO.subClasses()
+        from .spectrallibraryio import SpectralLibraryIO
+        readers = SpectralLibraryIO.subClasses()
 
         for cls in sorted(readers, key=lambda r: r.score(uri), reverse=True):
             try:
@@ -1396,7 +1396,7 @@ class SpectralLibrary(QgsVectorLayer):
         return []
 
     def spectralProfileFields(self) -> typing.List[QgsField]:
-        return profile_fields(self)
+        return profile_field_list(self)
 
     def yRange(self) -> typing.List[float]:
         """

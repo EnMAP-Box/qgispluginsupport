@@ -45,9 +45,9 @@ from qgis._core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContex
 from qgis.core import QgsExpression
 
 from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes, QgsProcessingFeedback
-from ..core import profile_fields
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO, AbstractSpectralLibraryExportWidget, \
-    AbstractSpectralLibraryImportWidget
+from ..core import profile_field_list, create_profile_field, profile_fields
+from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
+    SpectralLibraryImportWidget
 from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile, groupBySpectralProperties
 from ..core.spectrallibrary import SpectralLibrary, VSI_DIR, LUT_IDL2GDAL
 from .. import createStandardFields, EMPTY_VALUES, FIELD_VALUES, FIELD_NAME, FIELD_FID
@@ -180,27 +180,27 @@ def value2hdrString(values):
 
 def readCSVMetadata(pathESL):
     """
-    Returns ESL metadata stored in a extra CSV file
+    Returns ESL metadata stored in an extra CSV file
     :param pathESL: str, path of ENVI spectral library
-    :return: ([list-of-tuples], QgsFields) or None
+    :return: ([list-of-tuples], QgsFields) or (None, None)
     """
 
     pathCSV = os.path.splitext(pathESL)[0] + '.csv'
     if not os.path.isfile(pathCSV):
-        return None
+        return None, None
 
     lines = None
     with open(pathCSV) as f:
         lines = f.readlines()
     if not isinstance(lines, list):
         print('Unable to read {}'.format(pathCSV))
-        return None
+        return None, None
 
     lines = [l.strip() for l in lines]
     lines = [l for l in lines if len(l) > 0]
     if len(lines) <= 1:
         print('CSV does not contain enough values')
-        return None
+        return None, None
 
     hasSpectrumNames = False
     match = re.search(r'spectra names[ ]*([;\t,])', lines[0])
@@ -243,8 +243,10 @@ def readCSVMetadata(pathESL):
             if lineValues[i] not in ['', None, 'NA']:
                 refValue = lineValues[i]
                 break
+
         if refValue is None:
             refValue = ''
+
         fieldType = findTypeFromString(refValue)
 
         if fieldType is str:
@@ -267,8 +269,6 @@ def readCSVMetadata(pathESL):
         line = METADATA_LINES[i]
         lineTuple = tuple(typeOrNone(cellValue, cellType) for cellValue, cellType in zip(line, QGSFIELD_PYTHON_TYPES))
         METADATA_LINES[i] = lineTuple
-
-    # METADATA_LINES = [tuple(typeOrNone(v, QGSFIELD_PYTHON_TYPES[i]) for i, v in enumerate(line)) for line in METADATA_LINES]
 
     return (METADATA_LINES, QGSFIELDS)
 
@@ -307,15 +307,19 @@ def writeCSVMetadata(pathCSV: str, profiles: typing.List[QgsFeature], profile_na
             writer.writerow(d)
 
 
-class EnviSpectralLibraryExportWidget(AbstractSpectralLibraryExportWidget):
+class EnviSpectralLibraryExportWidget(SpectralLibraryExportWidget):
 
     def __init__(self,  *args, **kwds):
         super().__init__(*args, **kwds)
+
+        self.mProfileField = QgsFieldComboBox()
         self.mNameExpr = QgsFieldExpressionWidget()
         layout: QFormLayout = self.layout()
+        layout.addRow('Profile Values', self.mProfileField)
         layout.addRow('Profile Name', self.mNameExpr)
 
     def setSpeclib(self, speclib: QgsVectorLayer):
+        self.mProfileField.setFields(profile_fields(speclib))
         self.mNameExpr.setFields(speclib.fields())
 
     def supportsMultipleSpectralSettings(self) -> bool:
@@ -325,7 +329,7 @@ class EnviSpectralLibraryExportWidget(AbstractSpectralLibraryExportWidget):
         return True
 
     def formatName(self) -> str:
-        return 'Envi Spectral Library'
+        return EnviSpectralLibraryIO.formatName()
 
     def filter(self) -> str:
         return "Envi Spectral Library (*.sli *.esl);;All files (*.*)"
@@ -339,8 +343,8 @@ class EnviSpectralLibraryExportWidget(AbstractSpectralLibraryExportWidget):
                        profiles: typing.List[QgsFeature],
                        feedback: QgsProcessingFeedback) -> typing.List[str]:
 
-        path = exportSettings[AbstractSpectralLibraryExportWidget.EXPORT_PATH]
-        profile_field = exportSettings[AbstractSpectralLibraryExportWidget.EXPORT_FIELDS][0]
+        path = exportSettings[SpectralLibraryExportWidget.EXPORT_PATH]
+        profile_field = exportSettings[SpectralLibraryExportWidget.EXPORT_FIELDS][0]
         expr = exportSettings['profile_name_expression']
         expr = QgsExpression(expr)
 
@@ -457,15 +461,33 @@ class EnviSpectralLibraryExportWidget(AbstractSpectralLibraryExportWidget):
 
         return writtenFiles
 
-class EnviSpectralLibraryImportWidget(AbstractSpectralLibraryImportWidget):
+
+class EnviSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
+        self.mENVIHdr: dict = dict()
 
-        self.mProfileField: QgsFieldComboBox = QgsFieldComboBox()
-        self.mNameField: QgsFieldComboBox = QgsFieldComboBox()
-        self.mNameField.setFilters(QgsFieldProxyModel.String)
-        self.layout().addRow('Profile Field', self.mProfileField)
+    def sourceFields(self) -> QgsFields:
+        fields = QgsFields()
+        fields.append(create_profile_field('profile'))
+        fields.append(QgsField('profile_name', QVariant.String))
+        return fields
+
+    def setSource(self, source: str):
+        self.mENVIHdr.clear()
+        readENVIHeader(source)
+        self.sigSourceChanged.emit()
+
+    def createExpressionContext(self) -> QgsExpressionContext:
+        context = QgsExpressionContext()
+
+        context.setFields(self.sourceFields())
+        scope = QgsExpressionContextScope()
+        for k, v in self.mENVIHdr.items():
+            scope.setVariable(k, str(v))
+        context.appendScope(scope)
+        return context
 
     def formatName(self) -> str:
         return 'Envi Spectral Library'
@@ -474,13 +496,8 @@ class EnviSpectralLibraryImportWidget(AbstractSpectralLibraryImportWidget):
         return "Envi Spectral Library (*.sli *.esl)"
 
     def setSpeclib(self, speclib: QgsVectorLayer):
-        fields = QgsFields()
-        for f in profile_fields(speclib):
-            fields.append(f)
-        self.mProfileField.setFields(fields)
 
-        fields = QgsFields()
-        self.mNameField.setFields(speclib.fields())
+        super().setSpeclib(speclib)
 
     def importSettings(self, settings: dict) -> dict:
         """
@@ -488,27 +505,20 @@ class EnviSpectralLibraryImportWidget(AbstractSpectralLibraryImportWidget):
         :param settings:
         :return:
         """
-        settings['target_field'] = self.mProfileField.currentField()
-        settings['name_field'] = self.mNameField.currentField()
         return settings
 
     @staticmethod
-    def importProfiles(importSettings: dict, feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
-
-        path = importSettings[AbstractSpectralLibraryImportWidget.IMPORT_PATH]
-        ALL_FIELDS = importSettings[AbstractSpectralLibraryImportWidget.IMPORT_FIELDS][0]
-        PROFILE_FIELD = importSettings['target_field']
-        PROFILE_NAME_FIELD = importSettings['name_field']
+    def importProfiles(path: str, importSettings: dict, feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
 
         assert isinstance(path, str)
 
         pathHdr, pathESL = findENVIHeader(path)
-        md = EnviSpectralLibraryIO.readENVIHeader(pathESL, typeConversion=True)
+        md = readENVIHeader(pathESL, typeConversion=True)
 
         data = None
 
         tmpVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt', dir=os.path.join(VSI_DIR, 'ENVIIO'))
-        ds = EnviSpectralLibraryIO.esl2vrt(pathESL, tmpVrt)
+        ds = esl2vrt(pathESL, tmpVrt)
         data = ds.ReadAsArray()
 
         # remove the temporary VRT, as it was created internally only
@@ -533,16 +543,15 @@ class EnviSpectralLibraryImportWidget(AbstractSpectralLibraryImportWidget):
             bbl = np.asarray(bbl, dtype=np.byte).tolist()
 
         # check for additional CSV metadata to enhance profile descriptions
-        CSV_METADATA = None
+        CSV_DATA = CSV_FIELDS = None
         try:
-            CSV_METADATA = readCSVMetadata(pathESL)
+            CSV_DATA, CSV_FIELDS = readCSVMetadata(pathESL)
         except Exception as ex:
             print(str(ex), file=sys.stderr)
 
         PROFILE2CSVLine = {}
 
-        if CSV_METADATA is not None:
-            CSV_DATA, CSV_FIELDS = CSV_METADATA
+        if CSV_DATA is not None:
 
             CSVLine2ESLProfile = {}
 
@@ -562,13 +571,13 @@ class EnviSpectralLibraryImportWidget(AbstractSpectralLibraryImportWidget):
                 indices = range(min(nSpectra, len(CSV_DATA)))
                 PROFILE2CSVLine = dict(zip(indices, indices))
 
-        if CSV_METADATA is not None:
+        if CSV_FIELDS is not None:
             sliceCSV = []
             sliceAttr = []
-            for slibField in SLIB.fields():
+            for slibField in [fields.at(i) for i in range(fields.count())]:
                 fieldName = slibField.name()
 
-                iSLIB = SLIB.fields().lookupField(fieldName)
+                iSLIB = fields.lookupField(fieldName)
                 iCSV = CSV_FIELDS.lookupField(fieldName)
 
                 if iCSV >= 0:
@@ -582,11 +591,11 @@ class EnviSpectralLibraryImportWidget(AbstractSpectralLibraryImportWidget):
         t0 = datetime.datetime.now()
         for i in range(nSpectra):
 
-            f = QgsFeature(ALL_FIELDS)
+            f = QgsFeature(fields)
 
             valueDict = {'x': xValues, 'y': data[i, :].tolist(), 'xUnit': xUnit, 'yUnit': yUnit, 'bbl': bbl}
 
-            if CSV_METADATA is not None:
+            if CSV_DATA is not None:
                 j = PROFILE2CSVLine.get(i, -1)
                 if j >= 0:
                     csvLine = CSV_DATA[j]
@@ -616,449 +625,143 @@ class EnviSpectralLibraryImportWidget(AbstractSpectralLibraryImportWidget):
         raise NotImplementedError()
 
 
-class EnviSpectralLibraryIO_V2(AbstractSpectralLibraryIO):
+class EnviSpectralLibraryIO(SpectralLibraryIO):
 
     def __init__(self, *args, **kwds):
-        super(EnviSpectralLibraryIO_V2, self).__init__(*args, **kwds)
+        super(EnviSpectralLibraryIO, self).__init__(*args, **kwds)
 
-    def createExportWidget(self) -> AbstractSpectralLibraryExportWidget:
+    @classmethod
+    def formatName(cls) -> str:
+        return 'ENVI Spectral Library'
+
+    @classmethod
+    def createExportWidget(cls) -> SpectralLibraryExportWidget:
         return EnviSpectralLibraryExportWidget()
 
-    def createImportWidget(self) -> AbstractSpectralLibraryImportWidget:
+    @classmethod
+    def createImportWidget(cls) -> SpectralLibraryImportWidget:
         return EnviSpectralLibraryImportWidget()
 
 
-class EnviSpectralLibraryIO(AbstractSpectralLibraryIO):
+REQUIRED_TAGS = ['byte order', 'data type', 'header offset', 'lines', 'samples', 'bands']
+SINGLE_VALUE_TAGS = REQUIRED_TAGS + ['description', 'wavelength', 'wavelength units']
+
+
+def canRead(pathESL) -> bool:
     """
-    IO of ENVI Spectral Libraries
-    see http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for format description
-    Additional profile metadata is written to/read from a *.csv of same base name as the ESL
+    Checks if a file can be read as SpectraLibrary
+    :param pathESL: path to ENVI Spectral Library (ESL)
+    :return: True, if pathESL can be read as Spectral Library.
+    """
+    pathESL = str(pathESL)
+    if not os.path.isfile(pathESL):
+        return False
+    hdr = readENVIHeader(pathESL, typeConversion=False)
+    if hdr is None or hdr['file type'] != 'ENVI Spectral Library':
+        return False
+    return True
+
+
+def esl2vrt(pathESL, pathVrt=None):
+    """
+    Creates a GDAL Virtual Raster (VRT) that allows to read an ENVI Spectral Library file
+    :param pathESL: path ENVI Spectral Library file (binary part)
+    :param pathVrt: (optional) path of created GDAL VRT.
+    :return: GDAL VRT
     """
 
-    REQUIRED_TAGS = ['byte order', 'data type', 'header offset', 'lines', 'samples', 'bands']
-    SINGLE_VALUE_TAGS = REQUIRED_TAGS + ['description', 'wavelength', 'wavelength units']
-    
-    def __init__(self):
-        super(EnviSpectralLibraryIO, self).__init__()
-    
-    @classmethod
-    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
-
-        def read(speclib: SpectralLibrary):
-
-            path, filter = QFileDialog.getOpenFileName(caption='ENVI Spectral Library',
-                                                       filter='All types (*.*);;Spectral Library files (*.sli)')
-            if os.path.isfile(path):
-
-                sl = EnviSpectralLibraryIO.readFrom(path)
-                if isinstance(sl, SpectralLibrary):
-                    speclib.startEditing()
-                    speclib.beginEditCommand('Add ENVI Spectral Library from {}'.format(path))
-                    speclib.addSpeclib(sl, addMissingFields=True)
-                    speclib.endEditCommand()
-                    speclib.commitChanges()
-
-        m = menu.addAction('ENVI')
-        m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
-
-    @classmethod
-    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
-
-        def write(speclib: SpectralLibrary):
-            path, filter = QFileDialog.getSaveFileName(caption='Write ENVI Spectral Library ',
-                                                       filter=FILTER_SLI)
-            if isinstance(path, str) and len(path) > 0:
-                EnviSpectralLibraryIO.write(speclib, path)
-
-        m = menu.addAction('ENVI')
-        m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
-
-    @classmethod
-    def canRead(cls, pathESL) -> bool:
-        """
-        Checks if a file can be read as SpectraLibrary
-        :param pathESL: path to ENVI Spectral Library (ESL)
-        :return: True, if pathESL can be read as Spectral Library.
-        """
-        pathESL = str(pathESL)
-        if not os.path.isfile(pathESL):
-            return False
-        hdr = cls.readENVIHeader(pathESL, typeConversion=False)
-        if hdr is None or hdr['file type'] != 'ENVI Spectral Library':
-            return False
-        return True
-
-    @classmethod
-    def readFrom(cls, path, feedback: QgsProcessingFeedback= None) -> SpectralLibrary:
-        """
-        Reads an ENVI Spectral Library (ESL).
-        :param path: path to ENVI Spectral Library
-        :return: SpectralLibrary
-        """
-        assert isinstance(path, str)
-        pathHdr, pathESL = findENVIHeader(path)
-        md = EnviSpectralLibraryIO.readENVIHeader(pathESL, typeConversion=True)
-
-        data = None
-
-        tmpVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt', dir=os.path.join(VSI_DIR, 'ENVIIO'))
-        ds = EnviSpectralLibraryIO.esl2vrt(pathESL, tmpVrt)
-        data = ds.ReadAsArray()
-
-        # remove the temporary VRT, as it was created internally only
-        ds.GetDriver().Delete(ds.GetDescription())
-        # gdal.Unlink(ds)
-
-        nSpectra, nbands = data.shape
-        yUnit = None
-        xUnit = md.get('wavelength units')
-        xValues = md.get('wavelength')
-        zPlotTitles = md.get('z plot titles')
-        if isinstance(zPlotTitles, str) and len(zPlotTitles.split(',')) >= 2:
-            xUnit, yUnit = zPlotTitles.split(',')[0:2]
-
-        # get official ENVI Spectral Library standard values
-        spectraNames = md.get('spectra names', ['Spectrum {}'.format(i + 1) for i in range(nSpectra)])
-
-        # thanks to Ann for https://bitbucket.org/jakimowb/qgispluginsupport/issues/3/speclib-envypy
-
-        bbl = md.get('bbl', None)
-        if bbl:
-            bbl = np.asarray(bbl, dtype=np.byte).tolist()
-
-        speclibFields = createStandardFields()
-
-        # check for additional CSV metadata to enhance profile descriptions
-        CSV_METADATA = None
-        try:
-            CSV_METADATA = readCSVMetadata(pathESL)
-        except Exception as ex:
-            print(str(ex), file=sys.stderr)
-
-        PROFILE2CSVLine = {}
-
-        if CSV_METADATA is not None:
-            CSV_DATA, CSV_FIELDS = CSV_METADATA
-
-            for csvField in CSV_FIELDS:
-                assert isinstance(csvField, QgsField)
-                if csvField.name() not in [speclibFields.names(), CSV_GEOMETRY_COLUMN] + CSV_PROFILE_NAME_COLUMN_NAMES:
-                    speclibFields.append(csvField)
-
-            CSVLine2ESLProfile = {}
-
-            # look if we can match a CSV column with names to profile names
-            for profileNameColumnName in CSV_PROFILE_NAME_COLUMN_NAMES:
-                if profileNameColumnName in CSV_FIELDS.names():
-                    c = CSV_FIELDS.lookupField(profileNameColumnName)
-                    for r, row in enumerate(CSV_DATA):
-                        nameCSV = row[c]
-                        if nameCSV in spectraNames:
-                            iProfile = spectraNames.index(nameCSV)
-                            CSVLine2ESLProfile[r] = iProfile
-                            PROFILE2CSVLine[iProfile] = r
-                    break
-            # backup: match csv line with profile index
-            if len(PROFILE2CSVLine) == 0:
-                indices = range(min(nSpectra, len(CSV_DATA)))
-                PROFILE2CSVLine = dict(zip(indices, indices))
-
-        SLIB = SpectralLibrary()
-        assert SLIB.startEditing()
-        SLIB.addMissingFields(speclibFields)
-
-        if CSV_METADATA is not None:
-            sliceCSV = []
-            sliceAttr = []
-            for slibField in SLIB.fields():
-                fieldName = slibField.name()
-
-                iSLIB = SLIB.fields().lookupField(fieldName)
-                iCSV = CSV_FIELDS.lookupField(fieldName)
-
-                if iCSV >= 0:
-                    sliceCSV.append(iCSV)
-                    sliceAttr.append(iSLIB)
-
-            iCSVGeometry = CSV_FIELDS.lookupField(CSV_GEOMETRY_COLUMN)
-
-        profiles = []
-        import datetime
-        t0 = datetime.datetime.now()
-        for i in range(nSpectra):
-
-            f = QgsFeature(SLIB.fields())
-
-            valueDict = {'x': xValues, 'y': data[i, :].tolist(), 'xUnit': xUnit, 'yUnit': yUnit, 'bbl': bbl}
-
-            if CSV_METADATA is not None:
-                j = PROFILE2CSVLine.get(i, -1)
-                if j >= 0:
-                    csvLine = CSV_DATA[j]
-                    attr = f.attributes()
-                    for iCSV, iAttr in zip(sliceCSV, sliceAttr):
-                        attr[iAttr] = csvLine[iCSV]
-                    f.setAttributes(attr)
-
-                    if iCSVGeometry > 0:
-                        wkt = csvLine[iCSVGeometry]
-                        if isinstance(wkt, str):
-                            g = QgsGeometry.fromWkt(wkt)
-                            if g.wkbType() == QgsWkbTypes.Point:
-                                f.setGeometry(g)
-
-            f.setAttribute(FIELD_VALUES, encodeProfileValueDict(valueDict))
-            f.setAttribute(FIELD_NAME, spectraNames[i])
-
-            profiles.append(f)
-
-        # print('Creation: {}'.format(datetime.datetime.now() - t0))
-        t0 = datetime.datetime.now()
-        SLIB.addFeatures(profiles)
-        # print('Adding: {}'.format(datetime.datetime.now() - t0))
-
-        assert SLIB.commitChanges()
-        assert SLIB.featureCount() == nSpectra
-
-        SLIB.readJSONProperties(pathESL)
-        return SLIB
-
-    def write(self,
-              speclib: SpectralLibrary,
-              path: str,
-              profile_field: typing.Union[int, str, QgsField] = None,
-              profile_name: QgsExpression = None,
-              feedback: QgsProcessingFeedback= None):
-        """
-        Writes a SpectralLibrary as ENVI Spectral Library (ESL).
-        See http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for ESL definition
-
-        Additional attributes (coordinate, user-defined attributes) will be written into a CSV text file with same basename
-
-        For example path 'myspeclib.sli' leads to:
-
-            myspeclib.sli <- ESL binary file
-            myspeclib.hdr <- ESL header file
-            myspeclib.csv <- CSV text file, tabulator separated columns (for being used in Excel)
-
-        :param speclib: SpectralLibrary
-        :param path: str
-        """
-        assert isinstance(path, str)
-
-        dn = os.path.dirname(path)
-        bn, ext = os.path.splitext(os.path.basename(path))
-        if not re.search(r'\.(sli|esl)', ext, re.I):
-            ext = '.sli'
-
-        writtenFiles = []
-
-        if not os.path.isdir(dn):
-            os.makedirs(dn)
-
-        iGrp = -1
-        for setting, profiles in speclib.groupBySpectralProperties(profile_field=profile_field).items():
-            iGrp += 1
-            iField = speclib.fields().lookupField(setting.fieldName())
-            field = speclib.fields().at(iField)
-            s = ""
-            if not isinstance(profile_name, QgsExpression):
-                name_expr = QgsExpression(f'\'{setting.fieldName()}\' $id')
-            else:
-                name_expr = profile_name
-
-            if len(profiles) == 0:
-                continue
-            xValues, wlu, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
-
-            # Ann Crabbé: bad bands list
-            bbl = profiles[0].bbl()
-
-            # get profile names
-            profileNames = []
-            for p in profiles:
-                self.mExpressionContext.setFeature(p)
-                name = expr.evaluate(context)
-                profileNames.append(name)
-
-            # stack profiles
-            pData = [np.asarray(p.yValues()) for p in profiles]
-            pData = np.vstack(pData)
-
-            # convert array to data type GDAL is able to write
-            if pData.dtype == np.int64:
-                pData = pData.astype(np.int32)
-
-            # todo: other cases?
-
-            if iGrp == 0:
-                pathDst = os.path.join(dn, '{}{}'.format(bn, ext))
-            else:
-                pathDst = os.path.join(dn, '{}.{}{}'.format(bn, iGrp, ext))
-
-            drv = gdal.GetDriverByName('ENVI')
-            assert isinstance(drv, gdal.Driver)
-
-            eType = gdal_array.NumericTypeCodeToGDALTypeCode(pData.dtype)
-
-            """
-            Create(utf8_path, int xsize, int ysize, int bands=1, GDALDataType eType, char ** options=None) -> Dataset
-            """
-
-            ds = drv.Create(pathDst, pData.shape[1], pData.shape[0], 1, eType)
-            band = ds.GetRasterBand(1)
-            assert isinstance(band, gdal.Band)
-            band.WriteArray(pData)
-
-            assert isinstance(ds, gdal.Dataset)
-
-            # write ENVI header metadata
-            ds.SetDescription(speclib.name())
-            ds.SetMetadataItem('band names', 'Spectral Library', 'ENVI')
-            ds.SetMetadataItem('spectra names', value2hdrString(profileNames), 'ENVI')
-
-            hdrString = value2hdrString(xValues)
-            if hdrString not in ['', None]:
-                ds.SetMetadataItem('wavelength', hdrString, 'ENVI')
-
-            if wlu not in ['', '-', None]:
-                ds.SetMetadataItem('wavelength units', wlu, 'ENVI')
-
-            if bbl not in ['', '-', None]:
-                ds.SetMetadataItem('bbl', value2hdrString(bbl), 'ENVI')
-
-            flushCacheWithoutException(ds)
-
-            pathHDR = ds.GetFileList()[1]
-            ds = None
-
-            # re-write ENVI Hdr with file type = ENVI Spectral Library
-            file = open(pathHDR)
-            hdr = file.readlines()
-            file.close()
-            for iLine in range(len(hdr)):
-                if re.search(r'file type =', hdr[iLine]):
-                    hdr[iLine] = 'file type = ENVI Spectral Library\n'
-                    break
-
-            file = open(pathHDR, 'w', encoding='utf-8')
-            file.writelines(hdr)
-            file.flush()
-            file.close()
-
-            # write JSON properties
-            # speclib.writeJSONProperties(pathDst)
-
-            # write other metadata to CSV
-            pathCSV = os.path.splitext(pathHDR)[0] + '.csv'
-
-            writeCSVMetadata(pathCSV, profiles)
-            writtenFiles.append(pathDst)
-
-        return writtenFiles
-
-    @classmethod
-    def esl2vrt(cls, pathESL, pathVrt=None):
-        """
-        Creates a GDAL Virtual Raster (VRT) that allows to read an ENVI Spectral Library file
-        :param pathESL: path ENVI Spectral Library file (binary part)
-        :param pathVrt: (optional) path of created GDAL VRT.
-        :return: GDAL VRT
-        """
-
-        hdr = cls.readENVIHeader(pathESL, typeConversion=False)
-        assert hdr is not None and hdr['file type'] == 'ENVI Spectral Library'
-
-        if hdr.get('file compression') == '1':
-            raise Exception('Can not read compressed spectral libraries')
-
-        eType = LUT_IDL2GDAL[int(hdr['data type'])]
-        xSize = int(hdr['samples'])
-        ySize = int(hdr['lines'])
-        bands = int(hdr['bands'])
-        byteOrder = 'LSB' if int(hdr['byte order']) == 0 else 'MSB'
-
-        if pathVrt is None:
-            id = uuid.UUID()
-            pathVrt = '/vsimem/{}.esl.vrt'.format(id)
-            # pathVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt')
-
-        ds = describeRawFile(pathESL, pathVrt, xSize, ySize, bands=bands, eType=eType, byteOrder=byteOrder)
-        for key, value in hdr.items():
-            if isinstance(value, list):
-                value = u','.join(v for v in value)
-            ds.SetMetadataItem(key, value, 'ENVI')
-        flushCacheWithoutException(ds)
-        return ds
-
-    @classmethod
-    def readENVIHeader(cls, pathESL, typeConversion=False):
-        """
-        Reads an ENVI Header File (*.hdr) and returns its values in a dictionary
-        :param pathESL: path to ENVI Header
-        :param typeConversion: Set on True to convert values related to header keys with numeric
-        values into numeric data types (int / float)
-        :return: dict
-        """
-        assert isinstance(pathESL, str)
-        if not os.path.isfile(pathESL):
+    hdr = readENVIHeader(pathESL, typeConversion=False)
+    assert hdr is not None and hdr['file type'] == 'ENVI Spectral Library'
+
+    if hdr.get('file compression') == '1':
+        raise Exception('Can not read compressed spectral libraries')
+
+    eType = LUT_IDL2GDAL[int(hdr['data type'])]
+    xSize = int(hdr['samples'])
+    ySize = int(hdr['lines'])
+    bands = int(hdr['bands'])
+    byteOrder = 'LSB' if int(hdr['byte order']) == 0 else 'MSB'
+
+    if pathVrt is None:
+        id = uuid.UUID()
+        pathVrt = '/vsimem/{}.esl.vrt'.format(id)
+        # pathVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt')
+
+    ds = describeRawFile(pathESL, pathVrt, xSize, ySize, bands=bands, eType=eType, byteOrder=byteOrder)
+    for key, value in hdr.items():
+        if isinstance(value, list):
+            value = u','.join(v for v in value)
+        ds.SetMetadataItem(key, value, 'ENVI')
+    flushCacheWithoutException(ds)
+    return ds
+
+def readENVIHeader(pathESL, typeConversion=False) -> dict:
+    """
+    Reads an ENVI Header File (*.hdr) and returns its values in a dictionary
+    :param pathESL: path to ENVI Header
+    :param typeConversion: Set on True to convert values related to header keys with numeric
+    values into numeric data types (int / float)
+    :return: dict
+    """
+    assert isinstance(pathESL, str)
+    if not os.path.isfile(pathESL):
+        return None
+
+    pathHdr, pathBin = findENVIHeader(pathESL)
+    if pathHdr is None:
+        return None
+
+    # hdr = open(pathHdr).readlines()
+    file = open(pathHdr, encoding='utf-8')
+    hdr = file.readlines()
+    file.close()
+
+    i = 0
+    while i < len(hdr):
+        if '{' in hdr[i]:
+            while not '}' in hdr[i]:
+                hdr[i] = hdr[i] + hdr.pop(i + 1)
+        i += 1
+
+    hdr = [''.join(re.split('\n[ ]*', line)).strip() for line in hdr]
+    # keep lines with <tag>=<value> structure only
+    hdr = [line for line in hdr if re.search(r'^[^=]+=', line)]
+
+    # restructure into dictionary of type
+    # md[key] = single value or
+    # md[key] = [list-of-values]
+    md = dict()
+    for line in hdr:
+        tmp = line.split('=')
+        key, value = tmp[0].strip(), '='.join(tmp[1:]).strip()
+        if value.startswith('{') and value.endswith('}'):
+            value = [v.strip() for v in value.strip('{}').split(',')]
+            if len(value) > 0 and len(value[0]) > 0:
+                md[key] = value
+        else:
+            if len(value) > 0:
+                md[key] = value
+
+    # check required metadata tegs
+    for k in EnviSpectralLibraryIO.REQUIRED_TAGS:
+        if not k in md.keys():
             return None
 
-        pathHdr, pathBin = findENVIHeader(pathESL)
-        if pathHdr is None:
-            return None
+    if typeConversion:
+        to_int = ['bands', 'lines', 'samples', 'data type', 'header offset', 'byte order']
+        to_float = ['fwhm', 'wavelength', 'reflectance scale factor']
+        for k in to_int:
+            if k in md.keys():
+                value = toType(int, md[k])
+                if value:
+                    md[k] = value
+        for k in to_float:
+            if k in md.keys():
+                value = toType(float, md[k])
+                if value:
+                    md[k] = value
 
-        # hdr = open(pathHdr).readlines()
-        file = open(pathHdr, encoding='utf-8')
-        hdr = file.readlines()
-        file.close()
-
-        i = 0
-        while i < len(hdr):
-            if '{' in hdr[i]:
-                while not '}' in hdr[i]:
-                    hdr[i] = hdr[i] + hdr.pop(i + 1)
-            i += 1
-
-        hdr = [''.join(re.split('\n[ ]*', line)).strip() for line in hdr]
-        # keep lines with <tag>=<value> structure only
-        hdr = [line for line in hdr if re.search(r'^[^=]+=', line)]
-
-        # restructure into dictionary of type
-        # md[key] = single value or
-        # md[key] = [list-of-values]
-        md = dict()
-        for line in hdr:
-            tmp = line.split('=')
-            key, value = tmp[0].strip(), '='.join(tmp[1:]).strip()
-            if value.startswith('{') and value.endswith('}'):
-                value = [v.strip() for v in value.strip('{}').split(',')]
-                if len(value) > 0 and len(value[0]) > 0:
-                    md[key] = value
-            else:
-                if len(value) > 0:
-                    md[key] = value
-
-        # check required metadata tegs
-        for k in EnviSpectralLibraryIO.REQUIRED_TAGS:
-            if not k in md.keys():
-                return None
-
-        if typeConversion:
-            to_int = ['bands', 'lines', 'samples', 'data type', 'header offset', 'byte order']
-            to_float = ['fwhm', 'wavelength', 'reflectance scale factor']
-            for k in to_int:
-                if k in md.keys():
-                    value = toType(int, md[k])
-                    if value:
-                        md[k] = value
-            for k in to_float:
-                if k in md.keys():
-                    value = toType(float, md[k])
-                    if value:
-                        md[k] = value
-
-        return md
+    return md
 
 
 def describeRawFile(pathRaw, pathVrt, xsize, ysize,

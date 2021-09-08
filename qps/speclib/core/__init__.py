@@ -33,7 +33,7 @@ def is_spectral_library(layer: QgsVectorLayer) -> bool:
     return False
 
 
-def profile_fields(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[QgsField]:
+def profile_field_list(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[QgsField]:
     """
     Returns the fields that contains values of SpectralProfiles
     :param spectralLibrary:
@@ -45,10 +45,15 @@ def profile_fields(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) ->
         fields = [f for f in fields if is_profile_field(f)]
     return fields
 
+def profile_fields(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> QgsFields:
+    fields = QgsFields()
+    for f in profile_field_list(spectralLibrary):
+        fields.append(f)
+    return fields
 
 def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> \
         typing.Dict[typing.Union[int, str], QgsField]:
-    fields = profile_fields(spectralLibrary)
+    fields = profile_field_list(spectralLibrary)
     D = {f.name(): f for f in fields}
     for f in fields:
         D[spectralLibrary.fields().lookupField(f.name())] = f
@@ -56,11 +61,11 @@ def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLaye
 
 
 def profile_field_indices(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[int]:
-    return [spectralLibrary.fields().lookupField(f.name()) for f in profile_fields(spectralLibrary)]
+    return [spectralLibrary.fields().lookupField(f.name()) for f in profile_field_list(spectralLibrary)]
 
 
 def profile_field_names(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[str]:
-    return [f.name() for f in profile_fields(spectralLibrary)]
+    return [f.name() for f in profile_field_list(spectralLibrary)]
 
 
 def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVectorLayer]) -> int:
@@ -70,7 +75,7 @@ def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVec
     :return:
     """
     if isinstance(source, QgsVectorLayer):
-        for f in profile_fields(source):
+        for f in profile_field_list(source):
             return source.fields().lookupField(f.name())
     elif isinstance(source, QgsFeature):
         return first_profile_field_index(source.fields())
