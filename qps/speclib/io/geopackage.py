@@ -27,7 +27,7 @@ class GeoPackageSpectralLibraryExportWidget(SpectralLibraryExportWidget):
         return True
 
     def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
-        return GeoPackageSpectralLibraryIO
+        return SpectralLibraryIO.spectralLibraryIOInstances(GeoPackageSpectralLibraryIO)
 
     def filter(self) -> str:
         return "Geopackage (*.gpkg);;SpatialLite (*.sqlite)"
@@ -53,7 +53,7 @@ class GeoPackageSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
     def setSource(self, source: str):
         lyr = QgsVectorLayer(source)
-        if isinstance(lyr, QgsVectorLayer):
+        if isinstance(lyr, QgsVectorLayer) and lyr.isValid():
             self.mSource = lyr
         self.sigSourceChanged.emit()
 
@@ -116,7 +116,7 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         :param transformContext: coordinate transform context
         :param options: save options
         """
-        write: QgsVectorFileWriter = None
+        writer: QgsVectorFileWriter = None
         saveVectorOptions = QgsVectorFileWriter.SaveVectorOptions()
         saveVectorOptions.feedback = feedback
         saveVectorOptions.driverName = 'GPKG'
@@ -144,7 +144,8 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def importProfiles(cls,
                        path: str,
-                       fields: QgsFields,
                        importSettings: dict,
                        feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
-        pass
+        lyr = QgsVectorLayer(path)
+        # todo: add filters
+        return lyr.getFeatures()

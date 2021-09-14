@@ -114,8 +114,13 @@ class TestIO(TestCase):
     def test_exportWidgets(self):
         self.registerIO()
 
-        widgets = [EnviSpectralLibraryExportWidget(),
-                   GeoPackageSpectralLibraryExportWidget()]
+        widgets = []
+        for io in SpectralLibraryIO.spectralLibraryIOs():
+            w = io.createExportWidget()
+            if isinstance(w, SpectralLibraryExportWidget):
+                widgets.append(w)
+
+
         import qpstestdata
         speclib = self.createTestSpeclib()
         filewidget = QgsFileWidget()
@@ -141,7 +146,7 @@ class TestIO(TestCase):
             features = list(speclib.getFeatures())
 
             io: SpectralLibraryIO = w.spectralLibraryIO()
-            self.assertTrue(type(io) == SpectralLibraryIO)
+            self.assertIsInstance(io, SpectralLibraryIO)
             files = io.exportProfiles(testpath, settings, features, feedback)
             self.assertIsInstance(files, list)
             self.assertTrue(len(files) > 0)
@@ -157,7 +162,7 @@ class TestIO(TestCase):
                     wImport.setSource(f)
                     importSettings = wImport.importSettings({})
                     sourceFields = wImport.sourceFields()
-                    importedProfiles = io.importProfiles(f, sourceFields, importSettings, feedback)
+                    importedProfiles = list(io.importProfiles(f, importSettings, feedback))
                     self.assertTrue(len(importedProfiles) > 0)
                     for p in importedProfiles:
                         self.assertIsInstance(p, QgsFeature)
@@ -247,6 +252,13 @@ class TestIO(TestCase):
 
         self.showGui(dialog)
 
+    def test_ImportDialog2(self):
+        self.registerIO()
+
+        speclib = SpectralLibrary()
+
+        results = SpectralLibraryImportDialog.importProfiles(speclib, defaultRoot=self.testDir())
+        s = ""
 
     def testDir(self) -> pathlib.Path:
         path = self.createTestOutputDirectory() / 'SPECLIB_IO'

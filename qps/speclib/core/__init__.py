@@ -15,7 +15,7 @@ def create_profile_field(name: str, comment: str = '') -> QgsField:
     :param comment: field comment, optional
     :return: QgsField
     """
-    field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
+    field = QgsField(name=name, type=QVariant.ByteArray, typeName='SpectralProfile', comment=comment)
     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
     field.setEditorWidgetSetup(setup)
     return field

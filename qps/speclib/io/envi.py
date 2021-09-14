@@ -337,7 +337,7 @@ class EnviSpectralLibraryExportWidget(SpectralLibraryExportWidget):
 
     @classmethod
     def spectralLibraryIO(cls) -> 'EnviSpectralLibraryIO':
-        return EnviSpectralLibraryIO
+        return SpectralLibraryIO.spectralLibraryIOInstances(EnviSpectralLibraryIO)
 
     def setSpeclib(self, speclib: QgsVectorLayer):
         self.mProfileField.setFields(profile_fields(speclib))
@@ -373,7 +373,7 @@ class EnviSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
     @classmethod
     def spectralLibraryIO(cls) -> 'EnviSpectralLibraryIO':
-        return EnviSpectralLibraryIO
+        return SpectralLibraryIO.spectralLibraryIOInstances(EnviSpectralLibraryIO)
 
     def sourceFields(self) -> QgsFields:
 
@@ -450,15 +450,26 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: str, fields: QgsFields, importSettings: dict, feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
+                       path: str,
+                       importSettings: dict,
+                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
 
         assert isinstance(path, str)
 
         pathHdr, pathESL = findENVIHeader(path)
         md = readENVIHeader(pathESL, typeConversion=True)
 
+
+
         PROFILE_FIELD = EnviSpectralLibraryImportWidget.FIELDNAME_PROFILE
         PROFILE_NAME_FIELD = EnviSpectralLibraryImportWidget.FIELDNAME_NAME
+
+        # define the fields that we map values too
+        fields = QgsFields()
+        fields.append(create_profile_field(PROFILE_FIELD))
+        fields.append(QgsField(name=PROFILE_NAME_FIELD, type=QVariant.String))
+
+
         data = None
 
         tmpVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt', dir=os.path.join(VSI_DIR, 'ENVIIO'))

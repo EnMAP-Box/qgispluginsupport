@@ -87,14 +87,11 @@ MIMEDATA_XQT_WINDOWS_CSV = 'application/x-qt-windows-mime;value="Csv"'
 MIMEDATA_TEXT = 'text/plain'
 MIMEDATA_URL = 'text/uri-list'
 
-
-
 SPECLIB_CLIPBOARD = weakref.WeakValueDictionary()
 DEFAULT_NAME = 'SpectralLibrary'
 
 OGR_EXTENSION2DRIVER = dict()
 OGR_EXTENSION2DRIVER[''] = []  # list all drivers without specific extension
-
 
 FILTERS = 'Geopackage (*.gpkg);;ENVI Spectral Library (*.sli *.esl);;CSV Table (*.csv);;GeoJSON (*.geojson)'
 
@@ -109,8 +106,6 @@ PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 # DEFAULT_SPECTRUM_STYLE.markerSymbol = None
 # DEFAULT_SPECTRUM_STYLE.linePen.setStyle(Qt.SolidLine)
 # DEFAULT_SPECTRUM_STYLE.linePen.setColor(Qt.white)
-
-
 
 
 VSI_DIR = r'/vsimem/speclibs/'
@@ -168,7 +163,6 @@ def read_profiles(vectorlayer: QgsVectorLayer,
         featureRequest.setFilterFids(fids)
     for f in vectorlayer.getFeatures(featureRequest):
         yield SpectralProfile.fromQgsFeature(f, profile_field=profile_field)
-
 
 
 def log(msg: str):
@@ -267,9 +261,6 @@ runRemoveFeatureActionRoutine(layerId, [% $id %])
     return QgsAction(QgsAction.GenericPython, 'Remove Spectrum', pythonCode, iconPath, True,
                      notificationMessage='msgRemoveSpectra',
                      actionScopes={'Feature'})
-
-
-
 
 
 # Lookup table for ENVI IDL DataTypes to GDAL Data Types
@@ -581,7 +572,7 @@ class SpectralLibrary(QgsVectorLayer):
             return spectral_library
 
     def reloadSpectralValues(self, raster, selectedOnly: bool = True,
-                             destination: typing.Union[QgsField, int, str]=None):
+                             destination: typing.Union[QgsField, int, str] = None):
         """
         Reloads the spectral values for each point based on the spectral values found in raster image "raster"
         :param raster: str | QgsRasterLayer | gdal.Dataset
@@ -854,47 +845,11 @@ class SpectralLibrary(QgsVectorLayer):
         create_new_speclib = path is None
         provider = 'ogr'
         if create_new_speclib:
-            if False:
-                # create a new, empty in-memory GPKG backend
-                existing_vsi_files = vsiSpeclibs()
-                assert isinstance(existing_vsi_files, list)
-                while True:
-                    # create a temporary path in /vsimem/
-                    path = pathlib.PurePosixPath(VSI_DIR) / f'{baseName}.{uuid.uuid4()}.gpkg'
-                    path = path.as_posix().replace('\\', '/')
-                    if not path in existing_vsi_files:
-                        break
-
-                drv: ogr.Driver = ogr.GetDriverByName('GPKG')
-                missingGPKGInfo = \
-                    "Your GDAL/OGR installation does not support the GeoPackage (GPKG) vector driver " + \
-                    "(https://gdal.org/drivers/vector/gpkg.html).\n" + \
-                    "Linux users might need to install libsqlite3."
-                assert isinstance(drv, ogr.Driver), missingGPKGInfo
-
-                co = ['VERSION=AUTO']
-                dsSrc = drv.CreateDataSource(path, options=co)
-                assert isinstance(dsSrc, ogr.DataSource)
-                srs = osr.SpatialReference()
-                srs.ImportFromEPSG(SPECLIB_EPSG_CODE)
-                co = ['GEOMETRY_NAME=geom',
-                      'GEOMETRY_NULLABLE=YES',
-                      ]
-
-                dsSrc.CreateLayer(baseName, srs=srs, geom_type=ogr.wkbPoint, options=co)
-                try:
-                    dsSrc.FlushCache()
-                except RuntimeError as rt:
-                    if 'failed: no such module: rtree' in str(rt):
-                        pass
-                    else:
-                        raise rt
-            else:
-                # QGIS In-Memory Layer
-                provider = 'memory'
-                #path = "point?crs=epsg:4326&field=fid:integer"
-                path = "point?crs=epsg:4326"
-                # scratchLayer = QgsVectorLayer(uri, "Scratch point layer", "memory")
+            # QGIS In-Memory Layer
+            provider = 'memory'
+            # path = "point?crs=epsg:4326&field=fid:integer"
+            path = "point?crs=epsg:4326"
+            # scratchLayer = QgsVectorLayer(uri, "Scratch point layer", "memory")
         assert isinstance(path, str)
         super(SpectralLibrary, self).__init__(path, baseName, provider, options)
 
@@ -913,7 +868,7 @@ class SpectralLibrary(QgsVectorLayer):
 
             profile_indices = [self.fields().lookupField(f) for f in profile_fields]
             self.endEditCommand()
-            fields=[]
+            fields = []
             for i in profile_indices:
                 assert self.editorWidgetSetup(i).type() == EDITOR_WIDGET_REGISTRY_KEY
                 s = ""
@@ -1014,14 +969,6 @@ class SpectralLibrary(QgsVectorLayer):
 
     def addSpectralProfileField(self, name: str, comment: str = None) -> bool:
         return self.addAttribute(create_profile_field(name, comment)),
-
-   # def addAttribute(self, field: QgsField) -> bool:
-   #
-   #     if not super().addAttribute(field):
-   #         return False
-   #     field_index = self.fields().lookupField(field.name())
-   #     self.setEditorWidgetSetup(field_index, field.editorWidgetSetup())
-   #     return True
 
     def addMissingFields(self, fields: QgsFields, copyEditorWidgetSetup: bool = True):
         """
@@ -1216,7 +1163,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     def profileBlocks(self,
                       fids=None,
-                      profile_field:typing.Union[int, str, QgsField]=None,
+                      profile_field: typing.Union[int, str, QgsField] = None,
                       ) -> typing.List[SpectralProfileBlock]:
         """
         Reads SpectralProfiles into profile blocks with different spectral settings
@@ -1236,8 +1183,9 @@ class SpectralLibrary(QgsVectorLayer):
         return SpectralProfile.fromQgsFeature(self.getFeature(fid), profile_field=value_field)
 
     def profiles(self,
-                 fids:typing.List[int] = None,
-                 profile_field:typing.Union[int, str, QgsField] = None) -> typing.Generator[SpectralProfile, None, None]:
+                 fids: typing.List[int] = None,
+                 profile_field: typing.Union[int, str, QgsField] = None) -> typing.Generator[
+        SpectralProfile, None, None]:
         """
         Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
         If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value profile_field.
@@ -1540,69 +1488,6 @@ class SpectralLibrary(QgsVectorLayer):
     def __hash__(self):
         # return super(SpectralLibrary, self).__hash__()
         return hash(self.id())
-
-
-class ConsistencyRequirement(enum.IntFlag):
-    HasWavelengths = 1,
-    UnifiedWavelengths = 2,
-    UnifiedWavelengthUnits = 4,
-    AttributesNotNone = 8
-
-
-class SpectralLibraryConsistencyCheckTask(QgsTask):
-
-    def __init__(self, path_speclib: str, flags, fields=typing.List[str], callback=None):
-        super().__init__('Check Speclib Consistency', QgsTask.CanCancel)
-        assert isinstance(path_speclib, str)
-
-        self.mPathSpeclib: str = path_speclib
-        self.mFlags = flags
-        self.mFields = fields
-        self.mCallback = callback
-        self.mTimeDeltaProgress = datetime.timedelta(seconds=1)
-
-    def run(self):
-        try:
-            t0 = datetime.datetime.now()
-            speclib = SpectralLibrary(path=self.mPathSpeclib)
-            n = len(speclib)
-            MISSING_FIELD_VALUE = dict()
-            for i, profile in enumerate(speclib):
-                # check this profile
-
-                for f in self.mFields:
-                    if profile.attribute(f) in ['', None]:
-                        fids = MISSING_FIELD_VALUE.get(f, [])
-                        fids.append(profile.id())
-                        MISSING_FIELD_VALUE[f] = fids
-
-                # report progress
-                tn = datetime.datetime.now()
-                if tn - t0 >= self.mTimeDeltaProgress:
-                    self.progressChanged.emit(i / n * 100)
-
-        except Exception as ex:
-            self.exception = ex
-            return False
-
-        return True
-
-    def finished(self, result):
-        if self.mCallback:
-            self.mCallback(result, self)
-
-
-def consistencyCheck(speclib: SpectralLibrary, requirements, notNoneAttributes=[], progressDialog=None) -> typing.Dict[
-    str, typing.List[int]]:
-    problems: typing.Dict[str, typing.List[int]] = dict()
-
-    bCheckWL = bool(requirements & ConsistencyRequirement.UnifiedWavelengths)
-    bCheckHasWL = bool(requirements & ConsistencyRequirement.HasWavelengths)
-    n = len(speclib)
-    for i, profile in enumerate(speclib):
-        fid = profile.id()
-
-    return problems
 
 
 def deleteSelected(layer):

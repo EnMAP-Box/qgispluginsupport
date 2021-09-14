@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QSt
     QLineEdit, QCheckBox
 
 from qgis._core import QgsVectorLayer, QgsFeature, QgsFields, QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
-    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsCoordinateReferenceSystem
+    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsCoordinateReferenceSystem, QgsExpressionContextScope
 
 from qgis._gui import QgsFileWidget, QgsFieldMappingWidget, QgsFieldMappingModel
 from qgis.core import QgsField, QgsExpression, QgsExpressionContext
@@ -221,7 +221,6 @@ class SpectralLibraryIO(object):
     @classmethod
     def importProfiles(cls,
                        path: str,
-                       fields: QgsFields,
                        importSettings: dict,
                        feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
         """
@@ -253,38 +252,63 @@ class SpectralLibraryIO(object):
 class SpectralLibraryImportDialog(QDialog):
 
     @staticmethod
-    def importProfiles(speclib: QgsVectorLayer):
+    def importProfiles(speclib: QgsVectorLayer,
+                       defaultRoot:typing.Union[str, pathlib.Path] = None,
+                       parent: QWidget = None):
+        assert isinstance(speclib, QgsVectorLayer) and speclib.isValid()
 
-        dialog = SpectralLibraryImportDialog(speclib=speclib)
+        dialog = SpectralLibraryImportDialog(parent=parent, speclib=speclib, defaultRoot=defaultRoot)
 
-        if dialog == QDialog.Accepted:
+        if dialog.exec_() == QDialog.Accepted:
 
             source = dialog.source()
+            propertyMap = dialog.fieldPropertyMap()
             format = dialog.currentImportWidget()
-            settings = format.importSettings()
-            sourceFields = format.sourceFields()
+            settings = format.importSettings({})
             io: SpectralLibraryIO = format.spectralLibraryIO()
-            speclib: QgsVectorLayer = dialog.setSpeclib()
+            speclib: QgsVectorLayer = dialog.speclib()
+
             feedback = QgsProcessingFeedback()
-            coreProfiles = io.importProfiles(source, sourceFields, settings, feedback)
-
-            mappingWidget = dialog.fieldMappingWidget()
-
-            mapping = mappingWidget.mapping()
-            propertyMap = mappingWidget.fieldPropertyMap()
+            profiles = io.importProfiles(source, settings, feedback)
+            profiles = list(profiles)
 
             sinkDefinition = QgsRemappingSinkDefinition()
             sinkDefinition.setDestinationFields(speclib.fields())
-            sinkDefinition.setSourceCrs()
-            sink = QgsRemappingProxyFeatureSink( speclib)
-            finalProfiles = []
-            for profile in coreProfiles:
-                pass
+            sinkDefinition.setSourceCrs(format.sourceCrs())
+            sinkDefinition.setDestinationWkbType(speclib.wkbType())
+            sinkDefinition.setFieldMap(propertyMap)
 
 
 
+            context = QgsExpressionContext()
+            context.setFields(profiles[0].fields())
+            context.setFeedback(feedback)
 
-    def __init__(self, *args, speclib: QgsVectorLayer = None, **kwds):
+            scope = QgsExpressionContextScope()
+            scope.setFields(profiles[0].fields())
+            context.appendScope(scope)
+
+            sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
+            sink.setExpressionContext(context)
+            stopEditing = speclib.startEditing()
+            speclib.beginEditCommand('Import profiles')
+            success = sink.addFeatures(profiles)
+            if not success:
+                print(f'Failed to import profiles: {sink.lastError()}')
+            speclib.endEditCommand()
+            speclib.commitChanges(stopEditing=stopEditing)
+            return success
+        else:
+            return False
+
+
+
+    def __init__(self,
+                 *args,
+                 speclib: QgsVectorLayer = None,
+                 defaultRoot:typing.Union[str, pathlib.Path] = None,
+                 **kwds):
+
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryimportdialog.ui'), self)
         self.setWindowIcon(QIcon(r':/qps/ui/icons/speclib_add.svg'))
@@ -293,11 +317,17 @@ class SpectralLibraryImportDialog(QDialog):
         self.fieldMappingWidget: QgsFieldMappingWidget
         self.buttonBox: QDialogButtonBox
         self.cbFormat.currentIndexChanged.connect(self.setImportWidget)
-        self.fileWidget.fileChanged.connect(self.setSource)
-        self.mSpeclib : QgsVectorLayer = None
+
+        self.fileWidget.fileChanged.connect(self.onFileChanged)
+
+        if defaultRoot:
+            self.fileWidget.setDefaultRoot(pathlib.Path(defaultRoot).as_posix())
+
+        self.mSpeclib: QgsVectorLayer = None
 
         self.mFIELD_PROPERTY_MAPS: typing.Dict[str, typing.Dict[str, QgsProperty]] = dict()
 
+        first_format = None
         for io in SpectralLibraryIO.spectralLibraryIOs():
             assert isinstance(io, SpectralLibraryIO)
             widget = io.createImportWidget()
@@ -308,19 +338,24 @@ class SpectralLibraryImportDialog(QDialog):
                 self.stackedWidgetFormatOptions.addWidget(widget)
                 self.cbFormat.addItem(name, widget)
                 self.cbFormat: QComboBox
+            if first_format is None:
+                first_format = widget
 
         if isinstance(speclib, QgsVectorLayer):
             self.setSpeclib(speclib)
 
-        self.accepted.connect(self.importProfiles)
-
+        if first_format:
+            self.setImportWidget(first_format)
 
     def onFileChanged(self, *args):
 
         w = self.currentImportWidget()
         if isinstance(w, SpectralLibraryImportWidget):
             w.setSource(self.source())
+            self.onSourceFieldsChanged()
 
+    def fieldPropertyMap(self):
+        return self.fieldMappingWidget.fieldPropertyMap()
 
     def findMatchingFormat(self) -> bool:
         source = self.source()
@@ -344,6 +379,7 @@ class SpectralLibraryImportDialog(QDialog):
     def onSourceFieldsChanged(self):
         w = self.currentImportWidget()
         if isinstance(w, SpectralLibraryImportWidget):
+            oldMap = self.fieldPropertyMap()
             self.fieldMappingWidget.setFieldPropertyMap({})
             self.fieldMappingWidget.setSourceFields(w.sourceFields())
             # self.fieldMappingWidget.registerExpressionContextGenerator(w)
