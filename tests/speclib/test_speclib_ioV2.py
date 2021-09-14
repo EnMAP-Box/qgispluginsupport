@@ -26,7 +26,8 @@ from qps.speclib.core import profile_field_names
 from qps.speclib.core.spectrallibrary import vsiSpeclibs
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
+    GeoPackageSpectralLibraryExportWidget
 from qps.testing import TestObjects, TestCase
 
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
@@ -59,6 +60,19 @@ class TestIO(TestCase):
                EnviSpectralLibraryIO(),
                ]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
+
+    def test_Mapping(self):
+
+        speclib1 = TestObjects.createSpectralLibrary()
+        speclib2 = TestObjects.createSpectralLibrary(n_bands=[24,25,36])
+        # w = QgsAggregateMappingWidget()
+        w = QgsFieldMappingWidget()
+        w.setSourceLayer(speclib1)
+        w.setDestinationFields(speclib2.fields())
+
+
+        self.showGui(w)
+
 
     def test_importWidgets(self):
 
@@ -97,6 +111,61 @@ class TestIO(TestCase):
             fields = w.sourceFields()
             self.assertIsInstance(fields, QgsFields)
 
+    def test_exportWidgets(self):
+        self.registerIO()
+
+        widgets = [EnviSpectralLibraryExportWidget(),
+                   GeoPackageSpectralLibraryExportWidget()]
+        import qpstestdata
+        speclib = self.createTestSpeclib()
+        filewidget = QgsFileWidget()
+
+        layername = 'testlayer'
+        for w in widgets:
+            print(f'Test {w.__class__.__name__}')
+            self.assertIsInstance(w, SpectralLibraryExportWidget)
+
+            testpath = (self.testDir() / 'testname').as_posix()
+
+            extensions = QgsFileUtils.extensionsFromFilter(w.filter())
+            testpath = QgsFileUtils.ensureFileNameHasExtension(testpath, extensions)
+            w.setSpeclib(speclib)
+
+            settings = w.exportSettings({})
+
+            if w.supportsLayerName():
+                settings['layer_name'] = layername
+
+            feedback = QgsProcessingFeedback()
+
+            features = list(speclib.getFeatures())
+
+            io: SpectralLibraryIO = w.spectralLibraryIO()
+            self.assertTrue(type(io) == SpectralLibraryIO)
+            files = io.exportProfiles(testpath, settings, features, feedback)
+            self.assertIsInstance(files, list)
+            self.assertTrue(len(files) > 0)
+            wImport = io.createImportWidget()
+            speclibImport = None
+            if isinstance(wImport, SpectralLibraryImportWidget):
+                speclibImport = self.createTestSpeclib()
+                wImport.setSpeclib(speclib)
+
+            for f in files:
+                self.assertTrue(os.path.isfile(f))
+                if isinstance(wImport, SpectralLibraryImportWidget):
+                    wImport.setSource(f)
+                    importSettings = wImport.importSettings({})
+                    sourceFields = wImport.sourceFields()
+                    importedProfiles = io.importProfiles(f, sourceFields, importSettings, feedback)
+                    self.assertTrue(len(importedProfiles) > 0)
+                    for p in importedProfiles:
+                        self.assertIsInstance(p, QgsFeature)
+
+
+
+
+
     def createTestSpeclib(self) -> QgsVectorLayer:
         n_bands = [1025, 240, 8]
         profile_field_names = ['ASD', 'EnMAP', 'Landsat']
@@ -106,8 +175,32 @@ class TestIO(TestCase):
         self.registerIO()
         speclib = self.createTestSpeclib()
         speclib.selectByIds([1, 3, 5, 7])
+
         dialog = SpectralLibraryExportDialog()
         dialog.setSpeclib(speclib)
+
+        def onAccepted():
+            w = dialog.currentExportWidget()
+            self.assertIsInstance(w, SpectralLibraryExportWidget)
+
+            settings = dialog.exportSettings()
+            self.assertIsInstance(settings, dict)
+            feedback = QgsProcessingFeedback()
+            path = dialog.exportPath()
+            self.assertIsInstance(path, str)
+
+            io = dialog.exportIO()
+            self.assertIsInstance(io, SpectralLibraryIO)
+
+            if dialog.saveSelectedFeaturesOnly():
+                profiles = speclib.getSelectedFeatures()
+            else:
+                profiles = speclib.getFeatures()
+
+            io.exportProfiles(path, settings, profiles, feedback)
+
+        dialog.accepted.connect(onAccepted)
+
         self.showGui(dialog)
 
 
@@ -119,6 +212,39 @@ class TestIO(TestCase):
 
         dialog = SpectralLibraryImportDialog()
         dialog.setSpeclib(speclib)
+
+        src = self.testDir() / 'envi.sli'
+        self.assertTrue(os.path.isfile(src))
+        dialog.setSource(src)
+        self.assertTrue(dialog.findMatchingFormat())
+
+        self.assertIsInstance(dialog.currentImportWidget(), EnviSpectralLibraryImportWidget)
+        source = dialog.source()
+        format = dialog.currentImportWidget()
+        io = format.spectralLibraryIO()
+
+        feedback = QgsProcessingFeedback()
+        coreProfiles = io.importProfiles(source, format.sourceFields(), format.importSettings({}), feedback)
+
+        mappingWidget = dialog.fieldMappingWidget
+
+        mapping = mappingWidget.mapping()
+        propertyMap = mappingWidget.fieldPropertyMap()
+
+        sinkDefinition = QgsRemappingSinkDefinition()
+        sinkDefinition.setDestinationFields(speclib.fields())
+        sinkDefinition.setSourceCrs(format.sourceCrs())
+        sinkDefinition.setDestinationWkbType(speclib.wkbType())
+        sinkDefinition.setFieldMap(mappingWidget.fieldPropertyMap())
+        sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
+        n = speclib.featureCount()
+
+        self.assertTrue(speclib.startEditing())
+        sink.addFeatures(coreProfiles)
+        self.assertTrue(speclib.commitChanges())
+        n2 = speclib.featureCount()
+        self.assertEqual(n2, n + len(coreProfiles))
+
         self.showGui(dialog)
 
 
@@ -129,7 +255,7 @@ class TestIO(TestCase):
 
 
 
-    def test_ENVI_Export(self):
+    def test_ENVI_IO(self):
 
         testdir = self.testDir()
 
@@ -139,55 +265,51 @@ class TestIO(TestCase):
         n_bands = np.asarray(n_bands)
         speclib = TestObjects.createSpectralLibrary(n_bands=n_bands)
 
-        w = EnviSpectralLibraryExportWidget()
-        w.setSpeclib(speclib)
-        self.assertEqual(EnviSpectralLibraryIO.formatName(), w.formatName())
-        filter = w.filter()
+        ENVI_IO = EnviSpectralLibraryIO()
+        wExport = ENVI_IO.createExportWidget()
+        self.assertIsInstance(wExport, SpectralLibraryExportWidget)
+        self.assertIsInstance(wExport, EnviSpectralLibraryExportWidget)
+        wExport.setSpeclib(speclib)
+        self.assertEqual(EnviSpectralLibraryIO.formatName(), wExport.formatName())
+        filter = wExport.filter()
         self.assertIsInstance(filter, str)
         self.assertTrue('*.sli' in filter)
 
-        settings = {SpectralLibraryExportWidget.EXPORT_PATH: (testdir / 'envi.sli').as_posix(),
-                    SpectralLibraryExportWidget.EXPORT_FORMAT: '*.sli',
-                    SpectralLibraryExportWidget.EXPORT_LAYERNAME: None,
-                    SpectralLibraryExportWidget.EXPORT_FIELDS: profile_field_names(speclib)[0:1]
-                    }
+        settings = dict()
+        settings = wExport.exportSettings(settings)
 
-        settings = w.exportSettings(settings)
         self.assertIsInstance(settings, dict)
         feedback = QgsProcessingFeedback()
         profiles = list(speclib.getFeatures())
-        files = w.exportProfiles(settings, profiles, feedback)
+        path = self.testDir() / 'exampleENVI.sli'
+        files = ENVI_IO.exportProfiles(path.as_posix(), settings, profiles, feedback)
         self.assertIsInstance(files, list)
         self.assertTrue(len(files) == n_bands.shape[0])
 
-    def test_ENVI_Import(self):
-        speclib = self.createTestSpeclib()
-        path_sli = qpstestdata.speclib
-        w = EnviSpectralLibraryImportWidget()
-        self.assertIsInstance(w, SpectralLibraryImportWidget)
-        w.setSpeclib(speclib)
-        self.assertIsInstance(w.sourceFields(), QgsFields)
-        w.setSource(path_sli)
+        speclib2 = SpectralLibrary()
+        wImport = ENVI_IO.createImportWidget()
+        self.assertIsInstance(wImport, SpectralLibraryImportWidget)
+        self.assertIsInstance(wImport, EnviSpectralLibraryImportWidget)
 
+        for path, nb in zip(files, n_bands[:, 0]):
+            self.assertTrue(os.path.exists(path))
 
-        w.importProfiles()
-        for f, nb in zip(files, n_bands[:, 0]):
-            self.assertTrue(os.path.exists(f))
-
-            importSettings = {SpectralLibraryImportWidget.IMPORT_PATH: f,
-                              }
-
-            importSettings = w.importSettings(importSettings)
+            wImport.setSpeclib(speclib2)
+            wImport.setSource(path)
+            importSettings = wImport.importSettings({})
             self.assertIsInstance(importSettings, dict)
-
             feedback = QgsProcessingFeedback()
-            profiles = w.importProfiles(speclib.fields(), importSettings, feedback)
+            fields = wImport.sourceFields()
+            self.assertIsInstance(fields, QgsFields)
+            self.assertTrue(fields.count() > 0)
+            self.assertTrue(len(profile_field_list(fields)) > 0)
+            ENVI_IO.importProfiles(path, fields, importSettings, feedback)
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)
             for profile in profiles:
                 self.assertIsInstance(profile, QgsFeature)
 
-        self.showGui([w])
+        self.showGui([wImport])
 
 if __name__ == '__main__':
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

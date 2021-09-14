@@ -36,13 +36,13 @@ from .. import createStandardFields
 from ...utils import toType, createQgsField, findTypeFromString, value2str
 from ..core.spectralprofile import SpectralProfile
 from ..core.spectrallibrary import SpectralLibrary
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO
 from .. import FIELD_VALUES
 # max size a CSV file can have, in MBytes
 MAX_CSV_SIZE = 5
 
 
-class CSVSpectralLibraryIO(AbstractSpectralLibraryIO):
+class CSVSpectralLibraryIO(SpectralLibraryIO):
     """
     SpectralLibrary IO with CSV files.
     """

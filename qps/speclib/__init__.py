@@ -44,36 +44,11 @@ FIELD_NAME = 'name'
 FIELD_FID = 'fid'
 
 
-def ogrStandardFields() -> list:
-    """Returns the minimum set of fields a Spectral Library should contains"""
-    fields = [
-        ogr.FieldDefn(FIELD_FID, ogr.OFTInteger),
-        ogr.FieldDefn(FIELD_NAME, ogr.OFTString),
-        ogr.FieldDefn('source', ogr.OFTString),
-        ogr.FieldDefn(FIELD_VALUES, ogr.OFTBinary),
-    ]
-    return fields
-
-
 def createStandardFields() -> QgsFields:
+    from .core import create_profile_field
     fields = QgsFields()
-    for f in ogrStandardFields():
-        assert isinstance(f, ogr.FieldDefn)
-        name = f.GetName()
-        ogrType = f.GetType()
-        if ogrType == ogr.OFTString:
-            a, b = QVariant.String, 'varchar'
-        elif ogrType in [ogr.OFTInteger, ogr.OFTInteger64]:
-            a, b = QVariant.Int, 'int'
-        elif ogrType in [ogr.OFTReal]:
-            a, b = QVariant.Double, 'double'
-        elif ogrType in [ogr.OFTBinary]:
-            a, b = QVariant.ByteArray, 'Binary'
-        else:
-            raise NotImplementedError()
-
-        fields.append(QgsField(name, a, b))
-
+    fields.append(create_profile_field('profiles'))
+    fields.append(QgsField('name', QVariant.String))
     return fields
 
 

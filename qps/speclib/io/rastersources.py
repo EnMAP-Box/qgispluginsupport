@@ -36,7 +36,7 @@ from qgis.PyQt.QtCore import *
 from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
     QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsFileUtils, QgsProcessingFeedback
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList
 
 PIXEL_LIMIT = 100*100
@@ -246,7 +246,7 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         return self.mapLayers()[1]
 
 
-class RasterSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
+class RasterSourceSpectralLibraryIO(SpectralLibraryIO):
     """
     I/O Interface for Raster files.
     """

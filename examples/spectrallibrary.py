@@ -1,8 +1,8 @@
-from qps.testing import start_app, TestObjects, findQGISResourceFiles
+from qps.testing import start_app, TestObjects, findQGISResourceFiles, StartOptions
 from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsPointXY
 from qps import initAll
 
-app = start_app(resources=findQGISResourceFiles())
+app = start_app(resources=findQGISResourceFiles(), options=StartOptions.EditorWidgets)
 initAll()
 
 from qps.speclib.core.spectralprofile import SpectralProfile

@@ -1,11 +1,15 @@
+import os
+import pathlib
 import typing
 import re
 
 from PyQt5.QtCore import pyqtSignal, QRegExp
 from PyQt5.QtGui import QIcon, QRegExpValidator
-from PyQt5.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, QLineEdit
+from PyQt5.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
+    QLineEdit, QCheckBox
 
-from qgis._core import QgsVectorLayer, QgsFeature, QgsFields, QgsExpressionContextGenerator, QgsProperty
+from qgis._core import QgsVectorLayer, QgsFeature, QgsFields, QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
+    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsCoordinateReferenceSystem
 
 from qgis._gui import QgsFileWidget, QgsFieldMappingWidget, QgsFieldMappingModel
 from qgis.core import QgsField, QgsExpression, QgsExpressionContext
@@ -26,17 +30,28 @@ class SpectralLibraryIOWidget(QWidget):
         l.setSpacing(7)
         self.setLayout(l)
 
-    def formatName(self) -> str:
+    def spectralLibraryIO(self) -> 'SpectralLibraryIO':
         raise NotImplementedError()
+
+    def formatName(self) -> str:
+        return self.spectralLibraryIO().formatName()
 
     def formatTooltip(self) -> str:
         return self.formatName()
 
     def setSpeclib(self, speclib: QgsVectorLayer):
+        """
+        Sets the spectral library to make IO operations with
+        :param speclib:
+        """
         assert is_spectral_library(speclib)
         self.mSpeclib = speclib
 
     def speclib(self) -> QgsVectorLayer:
+        """
+        Returns the spectral library to make IO operations with
+        :return: QgsVectorLayer
+        """
         return self.mSpeclib
 
 
@@ -44,11 +59,6 @@ class SpectralLibraryExportWidget(SpectralLibraryIOWidget):
     """
     Abstract Interface of an Widget to export / write a spectral library
     """
-
-    EXPORT_PATH = 'export_path'
-    EXPORT_FORMAT = 'export_format'
-    EXPORT_LAYERNAME = 'export_layername'
-    EXPORT_FIELDS = 'export_fields'
 
     def __init__(self, *args, **kwds):
         super(SpectralLibraryExportWidget, self).__init__(*args, **kwds)
@@ -77,9 +87,6 @@ class SpectralLibraryExportWidget(SpectralLibraryIOWidget):
         """
         return False
 
-    def setSpeclib(self, speclib: QgsVectorLayer):
-        raise NotImplementedError()
-
     def filter(self) -> str:
         """
         Returns a filter string like "Images (*.png *.xpm *.jpg);;Text files (*.txt);;XML files (*.xml)"
@@ -95,33 +102,13 @@ class SpectralLibraryExportWidget(SpectralLibraryIOWidget):
         """
         return settings
 
-    @staticmethod
-    def exportProfiles(exportSettings: dict,
-                       profiles: typing.List[QgsFeature],
-                       feedback: QgsProcessingFeedback) -> typing.List[str]:
-        """
-        Writes the files and returns a list of written files paths that can be used to import the profile
-        :param exportSettings:
-        :param profiles:
-        :param feedback:
-        :return:
-        """
-        raise NotImplementedError()
-
 
 class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextGenerator):
-    IMPORT_PATH = 'import_path'
-    IMPORT_FIELDS = 'import_fields'
-    IMPORT_LAYERNAME = 'import_layername'
-
     sigSourceChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
         super(SpectralLibraryImportWidget, self).__init__(*args, **kwds)
         self.mSource: str = None
-
-    def setSpeclib(self, speclib: QgsVectorLayer):
-        super(SpectralLibraryImportWidget, self).setSpeclib(speclib)
 
     def setSource(self, source: str):
         """
@@ -129,6 +116,20 @@ class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextG
         Needs to emit the sigSourceChanged afterwards.
         """
         raise NotImplementedError
+
+    def source(self) -> str:
+        """
+        Returns the source string
+        :return: str
+        """
+        return self.mSource
+
+    def sourceCrs(self) -> QgsCoordinateReferenceSystem:
+        """
+        The coordinate reference system in which source coordinates are delivered.
+        Defaults to EPSG:4326 lat/lon coordinates
+        """
+        return QgsCoordinateReferenceSystem('EPSG:4326')
 
     def filter(self) -> str:
         """
@@ -159,18 +160,6 @@ class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextG
         """
         return settings
 
-    @staticmethod
-    def importProfiles(path: str,
-                       importSettings: dict,
-                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
-        """
-        Import the profiles based on the import settings defined in 'importSettings'
-        :param importSettings:
-        :param feedback:
-        :return:
-        """
-        raise NotImplementedError()
-
 
 class SpectralLibraryIO(object):
     """
@@ -189,7 +178,7 @@ class SpectralLibraryIO(object):
             return
 
         assert isinstance(speclibIO, SpectralLibraryIO)
-        name = speclibIO.formatName()
+        name = speclibIO.__class__.__name__
         if name not in SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY.keys():
             SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY[name] = speclibIO
 
@@ -197,24 +186,102 @@ class SpectralLibraryIO(object):
     def spectralLibraryIOs() -> typing.List['SpectralLibraryIO']:
         return list(SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY.values())
 
-    @classmethod
-    def icon(cls) -> QIcon:
+    @staticmethod
+    def spectralLibraryIOInstances(formatName:str) -> 'SpectralLibraryIO':
+        if isinstance(formatName, type):
+            formatName = formatName.__name__
+
+        return SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY[formatName]
+
+    def icon(self) -> QIcon:
         return QIcon()
 
+    def formatName(self) -> str:
+        """
+        Returns a human-readible name of the Spectral Library Format
+        :return: str
+        """
+        raise NotImplementedError()
+
+    def createImportWidget(self) -> SpectralLibraryImportWidget:
+        """
+        Returns a widget to specific an import operation
+        :return: SpectralLibraryImportWidget
+        """
+        return None
+
+    def createExportWidget(self) -> SpectralLibraryExportWidget:
+        """
+        Returns a widget to specify an export opertation, if supported
+        :return: SpectralLibraryExportWidget
+        """
+        return None
+
     @classmethod
-    def formatName(cls) -> str:
+    def importProfiles(cls,
+                       path: str,
+                       fields: QgsFields,
+                       importSettings: dict,
+                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
+        """
+        Import the profiles based on the source specified in 'path' and further settings in 'importSettings'
+        :param path: str
+        :param fields: QgsFields
+        :param importSettings: dict
+        :param feedback:
+        :return: list of QgsFeatures
+        """
         raise NotImplementedError()
 
     @classmethod
-    def createImportWidget(cls) -> SpectralLibraryImportWidget:
-        return None
-
-    @classmethod
-    def createExportWidget(cls) -> SpectralLibraryExportWidget:
-        return None
+    def exportProfiles(cls,
+                       path: str,
+                       exportSettings: dict,
+                       profiles: typing.List[QgsFeature],
+                       feedback: QgsProcessingFeedback) -> typing.List[str]:
+        """
+        Writes the files and returns a list of written files paths that can be used to import the profile
+        :param exportSettings:
+        :param profiles:
+        :param feedback:
+        :return:
+        """
+        raise NotImplementedError()
 
 
 class SpectralLibraryImportDialog(QDialog):
+
+    @staticmethod
+    def importProfiles(speclib: QgsVectorLayer):
+
+        dialog = SpectralLibraryImportDialog(speclib=speclib)
+
+        if dialog == QDialog.Accepted:
+
+            source = dialog.source()
+            format = dialog.currentImportWidget()
+            settings = format.importSettings()
+            sourceFields = format.sourceFields()
+            io: SpectralLibraryIO = format.spectralLibraryIO()
+            speclib: QgsVectorLayer = dialog.setSpeclib()
+            feedback = QgsProcessingFeedback()
+            coreProfiles = io.importProfiles(source, sourceFields, settings, feedback)
+
+            mappingWidget = dialog.fieldMappingWidget()
+
+            mapping = mappingWidget.mapping()
+            propertyMap = mappingWidget.fieldPropertyMap()
+
+            sinkDefinition = QgsRemappingSinkDefinition()
+            sinkDefinition.setDestinationFields(speclib.fields())
+            sinkDefinition.setSourceCrs()
+            sink = QgsRemappingProxyFeatureSink( speclib)
+            finalProfiles = []
+            for profile in coreProfiles:
+                pass
+
+
+
 
     def __init__(self, *args, speclib: QgsVectorLayer = None, **kwds):
         super().__init__(*args, **kwds)
@@ -226,6 +293,7 @@ class SpectralLibraryImportDialog(QDialog):
         self.buttonBox: QDialogButtonBox
         self.cbFormat.currentIndexChanged.connect(self.setImportWidget)
         self.fileWidget.fileChanged.connect(self.setSource)
+        self.mSpeclib : QgsVectorLayer = None
 
         self.mFIELD_PROPERTY_MAPS: typing.Dict[str, typing.Dict[str, QgsProperty]] = dict()
 
@@ -234,9 +302,10 @@ class SpectralLibraryImportDialog(QDialog):
             widget = io.createImportWidget()
             if isinstance(widget, SpectralLibraryImportWidget):
                 name = widget.formatName()
+                assert isinstance(name, str)
                 widget.sigSourceChanged.connect(self.onSourceFieldsChanged)
                 self.stackedWidgetFormatOptions.addWidget(widget)
-                self.cbFormat.addItem(name)
+                self.cbFormat.addItem(name, widget)
                 self.cbFormat: QComboBox
 
         if isinstance(speclib, QgsVectorLayer):
@@ -244,11 +313,32 @@ class SpectralLibraryImportDialog(QDialog):
 
         self.accepted.connect(self.importProfiles)
 
-    def setSource(self, source: str):
-        assert isinstance(source, str)
+
+    def onFileChanged(self, *args):
+
         w = self.currentImportWidget()
         if isinstance(w, SpectralLibraryImportWidget):
-            w.setSource(source)
+            w.setSource(self.source())
+
+
+    def findMatchingFormat(self) -> bool:
+        source = self.source()
+        extension = os.path.splitext(source)[1][1:].lower()
+        for format in self.importWidgets():
+            filter = format.filter()
+            formatExtensions = QgsFileUtils.extensionsFromFilter(filter)
+            if extension in formatExtensions:
+                self.setImportWidget(format)
+                return True
+        return False
+
+    def setSource(self, source: typing.Union[str, pathlib.Path]):
+        if isinstance(source, pathlib.Path):
+            source = source.as_posix()
+        self.fileWidget.setFilePath(source)
+
+    def source(self) -> str:
+        return self.fileWidget.filePath()
 
     def onSourceFieldsChanged(self):
         w = self.currentImportWidget()
@@ -258,25 +348,32 @@ class SpectralLibraryImportDialog(QDialog):
             self.fieldMappingWidget.registerExpressionContextGenerator(w)
 
     def setImportWidget(self, import_format: typing.Union[int, str, SpectralLibraryImportWidget]):
+        self.cbFormat: QComboBox
         import_widgets = self.importWidgets()
         last_widget = self.currentImportWidget()
         if isinstance(last_widget, SpectralLibraryImportWidget):
             self.mFIELD_PROPERTY_MAPS[last_widget.formatName()] = self.fieldMappingWidget.fieldPropertyMap()
 
-        import_widget: SpectralLibraryImportWidget = None
         if isinstance(import_format, SpectralLibraryImportWidget):
+            for i, w in enumerate(import_widgets):
+                w: SpectralLibraryImportWidget
+                if w.formatName() == import_format.formatName():
+                    self.cbFormat.setCurrentIndex(i)
+                    return
 
-            import_widget = import_format
         elif isinstance(import_format, str):
             for i, w in enumerate(import_widgets):
                 w: SpectralLibraryImportWidget
                 if w.formatName() == import_format:
-                    import_widget = w
-                    break
-        elif isinstance(import_format, int):
-            import_widget = import_widgets[import_format]
-        else:
-            raise NotImplementedError()
+                    self.cbFormat.setCurrentIndex(i)
+                    return
+
+        assert isinstance(import_format, int)
+        if import_format != self.cbFormat.currentIndex():
+            self.cbFormat.setCurrentIndex(import_format)
+            return
+
+        import_widget: SpectralLibraryImportWidget = import_widgets[import_format]
 
         assert isinstance(import_widget, SpectralLibraryImportWidget)
         assert import_widget in import_widgets
@@ -289,9 +386,8 @@ class SpectralLibraryImportDialog(QDialog):
             self.fileWidget.setStorageMode(QgsFileWidget.GetFile)
 
         self.stackedWidgetFormatOptions.setCurrentWidget(import_widget)
-
         self.gbFormatOptions.setVisible(import_widget.findChild(QWidget) is not None)
-
+        import_widget.setSource(self.source())
         self.onSourceFieldsChanged()
 
     def importWidgets(self) -> typing.List[SpectralLibraryImportWidget]:
@@ -307,21 +403,37 @@ class SpectralLibraryImportDialog(QDialog):
         self.fieldMappingWidget.setDestinationFields(speclib.fields())
         for w in self.importWidgets():
             w.setSpeclib(speclib)
+        self.initFieldMapping()
+        self.mSpeclib = speclib
 
-    def importProfiles(self) -> typing.List[QgsFeature]:
+    def speclib(self) -> QgsVectorLayer:
+        return self.mSpeclib
 
-        return []
+    def initFieldMapping(self):
+        pass
 
 
 class SpectralLibraryExportDialog(QDialog):
+
+    @staticmethod
+    def exportProfiles(speclib: QgsVectorLayer, parent: QWidget = None):
+
+        dialog = SpectralLibraryExportDialog(parent=parent, speclib=speclib)
+
+        if dialog.exec_() == QDialog.Accepted:
+            w: SpectralLibraryExportWidget = dialog.currentExportWidget()
+            settings = dialog.currentExportWidget().exportSettings({})
 
     def __init__(self, *args, speclib: QgsVectorLayer = None, **kwds):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryexportdialog.ui'), self)
         self.setWindowIcon(QIcon(':/qps/ui/icons/speclib_save.svg'))
+
         self.cbFormat: QComboBox
+        self.cbSaveSelectedOnly: QCheckBox
         self.fileWidget: QgsFileWidget
         self.tbLayerName: QLineEdit
+
         self.mLayerNameValidator = QRegExpValidator(QRegExp('[A-Za-z0-9_]+'))
         self.tbLayerName.setValidator(self.mLayerNameValidator)
 
@@ -340,11 +452,42 @@ class SpectralLibraryExportDialog(QDialog):
         if isinstance(speclib, QgsVectorLayer):
             self.setSpeclib(speclib)
 
+        self.fileWidget.fileChanged.connect(self.validateInputs)
+        self.validateInputs()
+
+    def validateInputs(self):
+        path = self.exportPath().strip()
+        settings = self.exportSettings()
+
+        is_valid = path != '' and isinstance(settings, dict)
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(is_valid)
+
+    def exportIO(self) -> SpectralLibraryIO:
+        return self.currentExportWidget().spectralLibraryIO()
+
+    def setExportPath(self, path: str):
+        assert isinstance(path, str)
+        self.fileWidget.setFilePath(path)
+
+    def exportPath(self) -> str:
+        return self.fileWidget.filePath()
+
+    def exportSettings(self) -> dict:
+        settings = dict()
+        w = self.currentExportWidget()
+        if w.supportsLayerName():
+            settings['layer_name'] = self.tbLayerName.text()
+
+        return w.exportSettings(settings)
+
     def exportWidgets(self) -> typing.List[SpectralLibraryExportWidget]:
         self.stackedWidgetFormatOptions: QStackedWidget
         return [self.stackedWidgetFormatOptions.widget(i)
                 for i in range(self.stackedWidgetFormatOptions.count())
                 if isinstance(self.stackedWidgetFormatOptions.widget(i), SpectralLibraryExportWidget)]
+
+    def saveSelectedFeaturesOnly(self) -> bool:
+        return self.cbSaveSelectedOnly.isChecked()
 
     def currentExportWidget(self) -> SpectralLibraryExportWidget:
         return self.stackedWidgetFormatOptions.currentWidget()
@@ -367,6 +510,7 @@ class SpectralLibraryExportDialog(QDialog):
                     break
         assert isinstance(export_widget, SpectralLibraryExportWidget)
 
+        self.fileWidget.setFilter(export_widget.filter())
         self.stackedWidgetFormatOptions.setCurrentWidget(export_widget)
         b = export_widget.supportsLayerName()
         self.tbLayerName.setEnabled(b)
@@ -382,7 +526,6 @@ class SpectralLibraryExportDialog(QDialog):
         self.mSpeclib = speclib
         self.mSpeclib.selectionChanged.connect(self.onSelectionChanged)
         if self.tbLayerName.text() == '':
-
             self.tbLayerName.setText(re.sub(r'[^0-9a-zA-Z_]', '_', speclib.name()))
         for w in self.exportWidgets():
             w.setSpeclib(speclib)
@@ -399,7 +542,6 @@ class SpectralLibraryExportDialog(QDialog):
 
 
 def initSpectralLibraryIOs():
-
     from ..io.geopackage import GeoPackageSpectralLibraryIO
     from ..io.envi import EnviSpectralLibraryIO
 

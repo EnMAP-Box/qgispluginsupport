@@ -19,14 +19,14 @@ from qgis.gui import QgsMapCanvas
 from osgeo import gdal, ogr
 import numpy as np
 
-from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index
+from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields
 
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, createQgsField, \
-    qgsFields2str, str2QgsFields, qgsFieldAttributes2List, SignalObjectWrapper
+    qgsFields2str, str2QgsFields, qgsFieldAttributes2List, SignalObjectWrapper, spatialPoint2px
 from ...plotstyling.plotstyling import PlotStyle
 from ...externals import pyqtgraph as pg
 
-from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, FIELD_NAME, ogrStandardFields, createStandardFields
+from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
 
 # a single profile is identified by its QgsFeature id and profile_field index or profile_field name
 
@@ -191,11 +191,15 @@ class SpectralProfile(QgsFeature):
         results = layer.dataProvider().identify(position, QgsRaster.IdentifyFormatValue).results()
         wl, wlu = parseWavelength(layer)
 
+        px = spatialPoint2px(layer, position)
+
         y = list(results.values())
         y = [v if isinstance(v, (int, float)) else float('NaN') for v in y]
 
         profile = SpectralProfile()
         profile.setValues(x=wl, y=y, xUnit=wlu)
+        name = f'{layer.name()} {px.x()} {px.y()}'
+        profile.setAttribute("name", name)
         profile.setCoordinates(position)
 
         return profile
@@ -316,16 +320,11 @@ class SpectralProfile(QgsFeature):
         if isinstance(id, int):
             super().setId(id)
 
-        assert isinstance(fields, QgsFields)
         if profile_field is None:
-            for f in self.fields():
-                if f.type() == QVariant.ByteArray:
-                    profile_field = f
-                    break
+            profile_field = profile_fields(self.fields()).at(0)
 
         self.mCurrentProfileFieldIndex: int = self._profile_field_index(profile_field)
-        assert self.mCurrentProfileFieldIndex > 0, f'Unable to find BLOB profile_field "{profile_field}" with spectral profiles'
-        # self.mProfileKey: SpectralProfileKey = SpectralProfileKey(self.id(), profile_field)
+        assert self.mCurrentProfileFieldIndex >= 0, f'Unable to find field "{profile_field}" with spectral profiles'
 
         self.mValueCache: typing.Dict[int, dict] = dict()
 
