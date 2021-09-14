@@ -39,9 +39,9 @@ from PyQt5.QtCore import QVariant
 from PyQt5.QtWidgets import QFileDialog, QMenu, QLabel, QFormLayout
 from osgeo import gdal, gdal_array
 
-from qgis._gui import QgsFieldExpressionWidget, QgsFieldComboBox
+from qgis.gui import QgsFieldExpressionWidget, QgsFieldComboBox
 
-from qgis._core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope, QgsFieldProxyModel
+from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope, QgsFieldProxyModel
 from qgis.core import QgsExpression
 
 from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes, QgsProcessingFeedback

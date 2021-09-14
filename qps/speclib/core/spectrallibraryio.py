@@ -8,10 +8,10 @@ from PyQt5.QtGui import QIcon, QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox
 
-from qgis._core import QgsVectorLayer, QgsFeature, QgsFields, QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
+from qgis.core import QgsVectorLayer, QgsFeature, QgsFields, QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsCoordinateReferenceSystem, QgsExpressionContextScope
 
-from qgis._gui import QgsFileWidget, QgsFieldMappingWidget, QgsFieldMappingModel
+from qgis.gui import QgsFileWidget, QgsFieldMappingWidget, QgsFieldMappingModel
 from qgis.core import QgsField, QgsExpression, QgsExpressionContext
 
 from qgis.core import QgsProcessingFeedback

@@ -1,11 +1,11 @@
 import typing
 
 from PyQt5.QtWidgets import QFormLayout
-from qgis._core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
+from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsVectorFileWriter, QgsCoordinateTransformContext, QgsCoordinateReferenceSystem
 
-from qgis._gui import QgsFieldMappingWidget
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
+from qgis.gui import QgsFieldMappingWidget
+from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
     SpectralLibraryExportWidget
 
 
