@@ -108,6 +108,7 @@ class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextG
 
     def __init__(self, *args, **kwds):
         super(SpectralLibraryImportWidget, self).__init__(*args, **kwds)
+        QgsExpressionContextGenerator.__init__(self)
         self.mSource: str = None
 
     def setSource(self, source: str):
@@ -140,7 +141,7 @@ class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextG
         raise NotImplementedError()
 
     def createExpressionContext(self) -> QgsExpressionContext:
-        raise NotImplementedError()
+        return QgsExpressionContext()
 
     def sourceFields(self) -> QgsFields:
         raise NotImplementedError()
@@ -345,7 +346,8 @@ class SpectralLibraryImportDialog(QDialog):
         if isinstance(w, SpectralLibraryImportWidget):
             self.fieldMappingWidget.setFieldPropertyMap({})
             self.fieldMappingWidget.setSourceFields(w.sourceFields())
-            self.fieldMappingWidget.registerExpressionContextGenerator(w)
+            # self.fieldMappingWidget.registerExpressionContextGenerator(w)
+            s = ""
 
     def setImportWidget(self, import_format: typing.Union[int, str, SpectralLibraryImportWidget]):
         self.cbFormat: QComboBox
@@ -411,6 +413,9 @@ class SpectralLibraryImportDialog(QDialog):
 
     def initFieldMapping(self):
         pass
+
+    def fieldPropertyMap(self):
+        return self.fieldMappingWidget.fieldPropertyMap()
 
 
 class SpectralLibraryExportDialog(QDialog):

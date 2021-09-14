@@ -400,13 +400,15 @@ class EnviSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         self.sigSourceChanged.emit()
 
     def createExpressionContext(self) -> QgsExpressionContext:
+        print('Create Expression Context')
         context = QgsExpressionContext()
 
-        context.setFields(self.sourceFields())
-        scope = QgsExpressionContextScope()
-        for k, v in self.mENVIHdr.items():
-            scope.setVariable(k, str(v))
-        context.appendScope(scope)
+        #context.setFields(self.sourceFields())
+        #scope = QgsExpressionContextScope()
+        #for k, v in self.mENVIHdr.items():
+        #    scope.setVariable(k, str(v))
+        #context.appendScope(scope)
+        #self._c = context
         return context
 
     def formatName(self) -> str:
