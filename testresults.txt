@@ -1,0 +1,795 @@
+PYTHONPATH=D:\Repositories\qgispluginsupport\;D:\Repositories\qgispluginsupport\;D:\OSGeo4W\apps\qgis-dev\python;D:\OSGeo4W\apps\qgis-dev\python\plugins;
+Found "python3" command
+No file to run: 'D:\Repositories\qgispluginsupport\speclib\test_speclib_core.py'
+No file to run: 'D:\Repositories\qgispluginsupport\speclib\test_speclib_gui.py'
+No file to run: 'D:\Repositories\qgispluginsupport\speclib\test_speclib_io.py'
+No file to run: 'D:\Repositories\qgispluginsupport\speclib\test_speclib_plotting.py'
+No file to run: 'D:\Repositories\qgispluginsupport\speclib\test_speclib_processing.py'
+No file to run: 'D:\Repositories\qgispluginsupport\speclib\test_speclib_profilesources.py'
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathj6pqs30h\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathj6pqs30h\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.TestsClassificationScheme.test_ClassInfo
+TEAR DOWN __main__.TestsClassificationScheme.test_ClassInfo
+
+SET UP __main__.TestsClassificationScheme.test_ClassInfoComboBox
+TEAR DOWN __main__.TestsClassificationScheme.test_ClassInfoComboBox
+
+SET UP __main__.TestsClassificationScheme.test_ClassificationScheme
+TEAR DOWN __main__.TestsClassificationScheme.test_ClassificationScheme
+
+SET UP __main__.TestsClassificationScheme.test_ClassificationSchemeComboBox
+TEAR DOWN __main__.TestsClassificationScheme.test_ClassificationSchemeComboBox
+
+SET UP __main__.TestsClassificationScheme.test_ClassificationSchemeEditorWidgetFactory
+initialize EnMAP-Box editor widget factories
+TEAR DOWN __main__.TestsClassificationScheme.test_ClassificationSchemeEditorWidgetFactory
+
+SET UP __main__.TestsClassificationScheme.test_ClassificationSchemeFromField
+TEAR DOWN __main__.TestsClassificationScheme.test_ClassificationSchemeFromField
+
+SET UP __main__.TestsClassificationScheme.test_ClassificationSchemeWidget
+TEAR DOWN __main__.TestsClassificationScheme.test_ClassificationSchemeWidget
+
+SET UP __main__.TestsClassificationScheme.test_classificationmaplayercombobox
+TEAR DOWN __main__.TestsClassificationScheme.test_classificationmaplayercombobox
+
+SET UP __main__.TestsClassificationScheme.test_findMapLayerWithClassInfo
+TEAR DOWN __main__.TestsClassificationScheme.test_findMapLayerWithClassInfo
+
+SET UP __main__.TestsClassificationScheme.test_io_CSV
+TEAR DOWN __main__.TestsClassificationScheme.test_io_CSV
+
+SET UP __main__.TestsClassificationScheme.test_io_FeatureRenderer
+TEAR DOWN __main__.TestsClassificationScheme.test_io_FeatureRenderer
+
+SET UP __main__.TestsClassificationScheme.test_io_QML
+TEAR DOWN __main__.TestsClassificationScheme.test_io_QML
+
+SET UP __main__.TestsClassificationScheme.test_io_RasterRenderer
+TEAR DOWN __main__.TestsClassificationScheme.test_io_RasterRenderer
+
+SET UP __main__.TestsClassificationScheme.test_io_clipboard
+TEAR DOWN __main__.TestsClassificationScheme.test_io_clipboard
+
+SET UP __main__.TestsClassificationScheme.test_json_pickle
+TEAR DOWN __main__.TestsClassificationScheme.test_json_pickle
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathgvx308g3\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathgvx308g3\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.CrosshairTests.test_CRS
+TEAR DOWN __main__.CrosshairTests.test_CRS
+
+SET UP __main__.CrosshairTests.test_crosshair
+TEAR DOWN __main__.CrosshairTests.test_crosshair
+
+SET UP __main__.CrosshairTests.test_crosshair_maplayer
+TEAR DOWN __main__.CrosshairTests.test_crosshair_maplayer
+
+SET UP __main__.CrosshairTests.test_dialog
+TEAR DOWN __main__.CrosshairTests.test_dialog
+
+SET UP __main__.CrosshairTests.test_noCRS
+TEAR DOWN __main__.CrosshairTests.test_noCRS
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathtq92tpix\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathtq92tpix\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+TEAR DOWN __main__.CursorLocationTest.test_locallayers
+TEAR DOWN __main__.CursorLocationTest.test_maptool
+TEAR DOWN __main__.CursorLocationTest.test_weblayertest
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath9lcxid6a\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath9lcxid6a\profiles\default/qgis-auth.db
+
+
+SET UP __main__.ExampleCase.test_show_raster_icon
+TEAR DOWN __main__.ExampleCase.test_show_raster_icon
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath6n6bgc_j\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath6n6bgc_j\profiles\default/qgis-auth.db
+
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathkt_5nwqn\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathkt_5nwqn\profiles\default/qgis-auth.db
+
+load D:\Repositories\qgispluginsupport\qgisresources\images_rc.py
+load D:\Repositories\qgispluginsupport\qps\qpsresources_rc.py
+
+SET UP __main__.LayerConfigWidgetsTests.test_GDALBandNameModel
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_GDALBandNameModel
+
+SET UP __main__.LayerConfigWidgetsTests.test_GDALMetadataModel
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_GDALMetadataModel
+
+SET UP __main__.LayerConfigWidgetsTests.test_GDALMetadataModelConfigWidget
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_GDALMetadataModelConfigWidget
+
+SET UP __main__.LayerConfigWidgetsTests.test_GDALMetadataModelItemWidget
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_GDALMetadataModelItemWidget
+
+SET UP __main__.LayerConfigWidgetsTests.test_empty_gdalmetadata
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_empty_gdalmetadata
+
+SET UP __main__.LayerConfigWidgetsTests.test_fields_and_forms
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_fields_and_forms
+
+SET UP __main__.LayerConfigWidgetsTests.test_gdalmetadata
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_gdalmetadata
+
+SET UP __main__.LayerConfigWidgetsTests.test_histogram
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_histogram
+
+SET UP __main__.LayerConfigWidgetsTests.test_labels
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_labels
+
+SET UP __main__.LayerConfigWidgetsTests.test_metadata
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_metadata
+
+SET UP __main__.LayerConfigWidgetsTests.test_pyramids
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_pyramids
+
+SET UP __main__.LayerConfigWidgetsTests.test_rasterbandselection
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_rasterbandselection
+
+SET UP __main__.LayerConfigWidgetsTests.test_rasterbandselection2
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_rasterbandselection2
+
+SET UP __main__.LayerConfigWidgetsTests.test_rendering
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_rendering
+
+SET UP __main__.LayerConfigWidgetsTests.test_source
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_source
+
+SET UP __main__.LayerConfigWidgetsTests.test_symbology
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_symbology
+
+SET UP __main__.LayerConfigWidgetsTests.test_transparency
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_transparency
+
+SET UP __main__.LayerConfigWidgetsTests.test_vectorfieldmodels
+TEAR DOWN __main__.LayerConfigWidgetsTests.test_vectorfieldmodels
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathox__lf1w\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathox__lf1w\profiles\default/qgis-auth.db
+
+load D:\Repositories\qgispluginsupport\qgisresources\images_rc.py
+load D:\Repositories\qgispluginsupport\qps\qpsresources_rc.py
+
+SET UP __main__.LayerPropertyTests.test_AttributeTableWidget
+TEAR DOWN __main__.LayerPropertyTests.test_AttributeTableWidget
+
+SET UP __main__.LayerPropertyTests.test_LayerProperties
+TEAR DOWN __main__.LayerPropertyTests.test_LayerProperties
+
+SET UP __main__.LayerPropertyTests.test_LayerPropertiesDialog_Raster
+(0): Registered RasterBandConfigWidgetFactory
+(0): Registered GDALMetadataConfigWidgetFactory
+TEAR DOWN __main__.LayerPropertyTests.test_LayerPropertiesDialog_Raster
+
+SET UP __main__.LayerPropertyTests.test_LayerPropertiesDialog_Vector
+TEAR DOWN __main__.LayerPropertyTests.test_LayerPropertiesDialog_Vector
+
+SET UP __main__.LayerPropertyTests.test_RemoveAttributeDialog
+TEAR DOWN __main__.LayerPropertyTests.test_RemoveAttributeDialog
+
+SET UP __main__.LayerPropertyTests.test_SubLayerSelection
+TEAR DOWN __main__.LayerPropertyTests.test_SubLayerSelection
+
+SET UP __main__.LayerPropertyTests.test_add_attributes
+TEAR DOWN __main__.LayerPropertyTests.test_add_attributes
+
+SET UP __main__.LayerPropertyTests.test_defaultRenderer
+TEAR DOWN __main__.LayerPropertyTests.test_defaultRenderer
+
+SET UP __main__.LayerPropertyTests.test_enmapboxbug_452
+TEAR DOWN __main__.LayerPropertyTests.test_enmapboxbug_452
+
+SET UP __main__.LayerPropertyTests.test_equal_styles
+TEAR DOWN __main__.LayerPropertyTests.test_equal_styles
+
+SET UP __main__.LayerPropertyTests.test_p
+TEAR DOWN __main__.LayerPropertyTests.test_p
+
+SET UP __main__.LayerPropertyTests.test_subLayerDefinitions
+TEAR DOWN __main__.LayerPropertyTests.test_subLayerDefinitions
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathartqsyfm\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathartqsyfm\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+Unable to load icon from :/qps/ui/icons/cursor_zoom_fullextent.svg. Maybe resources not initialized?
+Unable to load icon from :/qps/ui/icons/cursor_zoom_pixelscale.svg. Maybe resources not initialized?
+Test MapTool ZoomIn...
+Test MapTool ZoomOut...
+Test MapTool ZoomFull...
+Test MapTool Pan...
+Test MapTool ZoomPixelScale...
+Test MapTool CursorLocation...
+Test MapTool SpectralProfile...
+Test MapTool TemporalProfile...
+Test MapTool MoveToCenter...
+Test MapTool AddFeature...
+Test MapTool SelectFeature...
+Test MapTool SelectFeatureByPolygon...
+Test MapTool SelectFeatureByFreehand...
+Test MapTool SelectFeatureByRadius...
+Unable to load icon from :/qps/ui/icons/cursor_zoom_pixelscale.svg. Maybe resources not initialized?
+Unable to load icon from :/qps/ui/icons/cursor_zoom_fullextent.svg. Maybe resources not initialized?
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath35j6nzgf\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath35j6nzgf\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.ModelTests.test_SettingsModel
+TEAR DOWN __main__.ModelTests.test_SettingsModel
+
+SET UP __main__.ModelTests.test_modelview
+TEAR DOWN __main__.ModelTests.test_modelview
+
+SET UP __main__.ModelTests.test_nodeColumnSpan
+TEAR DOWN __main__.ModelTests.test_nodeColumnSpan
+
+SET UP __main__.ModelTests.test_proxyModel
+TEAR DOWN __main__.ModelTests.test_proxyModel
+
+SET UP __main__.ModelTests.test_pyObjectNodes
+TEAR DOWN __main__.ModelTests.test_pyObjectNodes
+
+SET UP __main__.ModelTests.test_treeModel
+TEAR DOWN __main__.ModelTests.test_treeModel
+
+SET UP __main__.ModelTests.test_treeNode
+TEAR DOWN __main__.ModelTests.test_treeNode
+
+SET UP __main__.ModelTests.test_treeView
+TEAR DOWN __main__.ModelTests.test_treeView
+
+SET UP __main__.ModelTests.test_treeViewSpan
+TEAR DOWN __main__.ModelTests.test_treeViewSpan
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath_ercl6_k\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath_ercl6_k\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.PlotStyleTests.test_PlotStyle
+TEAR DOWN __main__.PlotStyleTests.test_PlotStyle
+
+SET UP __main__.PlotStyleTests.test_PlotStyleButton
+TEAR DOWN __main__.PlotStyleTests.test_PlotStyleButton
+
+SET UP __main__.PlotStyleTests.test_PlotStyleEditorWidgetFactory
+initialize EnMAP-Box editor widget factories
+TEAR DOWN __main__.PlotStyleTests.test_PlotStyleEditorWidgetFactory
+
+SET UP __main__.PlotStyleTests.test_PlotStyleQgsAction
+(1): Commit errors:
+  ERROR: 16 feature(s) not added.
+  
+  Provider errors:
+      Could not store attribute "fldstyle": String of length 351 exceeds maximum field length (255)
+TEAR DOWN __main__.PlotStyleTests.test_PlotStyleQgsAction
+
+SET UP __main__.PlotStyleTests.test_PlotStyleWidget
+TEAR DOWN __main__.PlotStyleTests.test_PlotStyleWidget
+
+SET UP __main__.PlotStyleTests.test_XML_IO
+TEAR DOWN __main__.PlotStyleTests.test_XML_IO
+
+SET UP __main__.PlotStyleTests.test_json
+TEAR DOWN __main__.PlotStyleTests.test_json
+
+SET UP __main__.PlotStyleTests.test_marker_symbols
+TEAR DOWN __main__.PlotStyleTests.test_marker_symbols
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathllu2r1k0\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathllu2r1k0\profiles\default/qgis-auth.db
+
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathh6j_hdoe\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathh6j_hdoe\profiles\default/qgis-auth.db
+
+Found existing QgsApplication.instance()
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathgwavawh8\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathgwavawh8\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.SearchFileDialogTest.test_search_files_dialog
+TEAR DOWN __main__.SearchFileDialogTest.test_search_files_dialog
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPatht9kttqor\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPatht9kttqor\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.SimpleWidgetTests.test_SliderSpinBox
+TEAR DOWN __main__.SimpleWidgetTests.test_SliderSpinBox
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath397z3uas\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath397z3uas\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.TestSubDataSets.test_subdatasetdescription
+TEAR DOWN __main__.TestSubDataSets.test_subdatasetdescription
+
+SET UP __main__.TestSubDataSets.test_subdatasetdialog
+TEAR DOWN __main__.TestSubDataSets.test_subdatasetdialog
+
+SET UP __main__.TestSubDataSets.test_subdatasettask
+TEAR DOWN __main__.TestSubDataSets.test_subdatasettask
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath6xhlknfl\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath6xhlknfl\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+=ExitCode=00000000
+ALLUSERSPROFILE=C:\ProgramData
+APPDATA=C:\Users\geo_beja\AppData\Roaming
+CAMELOT_DATADIR=D:\example_db\Camelot_database_ARM\camelot
+CI=True
+COMPUTERNAME=PC-16-0504
+CONDA_EXE=D:\miniconda3\envs\qgis_stable\condabin\..\Scripts\conda.exe
+ChocolateyInstall=C:\ProgramData\chocolatey
+ChocolateyLastPathUpdate=132383482972518157
+ComSpec=C:\WINDOWS\system32\cmd.exe
+CommonProgramFiles=C:\Program Files\Common Files
+CommonProgramFiles(x86)=C:\Program Files (x86)\Common Files
+CommonProgramW6432=C:\Program Files\Common Files
+DIR_GIT=C:\Program Files\Git\cmd
+DIR_LFS=C:\Program Files\Git LFS
+DokanLibrary1=C:\Program Files\Dokan\DokanLibrary-1.3.0\
+DriverData=C:\Windows\System32\Drivers\DriverData
+FPS_BROWSER_APP_PROFILE_STRING=Internet Explorer
+FPS_BROWSER_USER_PROFILE_STRING=Default
+GDAL_DATA=D:\OSGeo4W\share\gdal
+GDAL_DRIVER_PATH=D:\OSGeo4W\bin\gdalplugins
+GDAL_FILENAME_IS_UTF8=YES
+GIT_INSTALL_ROOT=C:\Users\geo_beja\scoop\apps\git\current
+GIT_LFS_PATH=C:\Users\geo_beja\AppData\Local\Programs\Git LFS
+GIT_SSH=C:\ProgramData\chocolatey\bin\PLINK.exe
+GOROOT=C:\Users\geo_beja\scoop\apps\go\current
+HOMEDRIVE=C:
+HOMEPATH=\Users\geo_beja
+IDEA_INITIAL_DIRECTORY=C:\Users\geo_beja\Desktop
+JAVA_HOME=C:\Program Files\Java\jdk-12.0.2
+JPEGMEM=1000000
+LOCALAPPDATA=C:\Users\geo_beja\AppData\Local
+LOGONSERVER=\\HUGEO02
+NUMBER_OF_PROCESSORS=4
+O4W_QT_BINARIES=D:/OSGeo4W/apps/Qt5/bin
+O4W_QT_DOC=D:/OSGeo4W/apps/Qt5/doc
+O4W_QT_HEADERS=D:/OSGeo4W/apps/Qt5/include
+O4W_QT_LIBRARIES=D:/OSGeo4W/apps/Qt5/lib
+O4W_QT_PLUGINS=D:/OSGeo4W/apps/Qt5/plugins
+O4W_QT_PREFIX=D:/OSGeo4W/apps/Qt5
+O4W_QT_TRANSLATIONS=D:/OSGeo4W/apps/Qt5/translations
+OPENSSL_ENGINES=D:\OSGeo4W\lib\engines-1_1
+OS=Windows_NT
+OSGEO4W_ROOT=D:\OSGeo4W
+OneDrive=C:\Users\geo_beja\OneDrive - Humboldt-Universitaet zu Berlin, CMS
+OneDriveCommercial=C:\Users\geo_beja\OneDrive - Humboldt-Universitaet zu Berlin, CMS
+OneDriveConsumer=C:\Users\geo_beja\OneDrive
+PATHEXT=.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.PY;.PYW
+PROCESSOR_ARCHITECTURE=AMD64
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 78 Stepping 3, GenuineIntel
+PROCESSOR_LEVEL=6
+PROCESSOR_REVISION=4e03
+PROJ_LIB=D:\OSGeo4W\share\proj
+PROMPT=$P$G
+PSModulePath=C:\Program Files\WindowsPowerShell\Modules;C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules
+PUBLIC=C:\Users\Public
+PYCHARM_EXE="C:\Program Files (x86)\JetBrains\PyCharm 2021.2\bin\pycharm64.exe"
+PYTHON=python3
+PYTHONHOME=D:\OSGeo4W\apps\Python39
+PYTHONPATH=D:\Repositories\qgispluginsupport\;D:\Repositories\qgispluginsupport\;D:\OSGeo4W\apps\qgis-dev\python;D:\OSGeo4W\apps\qgis-dev\python\plugins;
+PYTHONUTF8=1
+Path=D:\OSGeo4W\apps\qgis-dev\bin;C:\Program Files\Git\cmd;C:\Program Files\Git LFS;D:\OSGeo4W\apps\qt5\bin;D:\OSGeo4W\apps\Python39\Scripts;D:\OSGeo4W\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\system32\WBem
+ProgramData=C:\ProgramData
+ProgramFiles=C:\Program Files
+ProgramFiles(x86)=C:\Program Files (x86)
+ProgramW6432=C:\Program Files
+QGISDISTR=qgis-dev
+QGIS_CUSTOM_CONFIG_PATH=C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPath6xhlknfl
+QGIS_PREFIX_PATH=D:/OSGeo4W/apps/qgis-dev
+QGIS_REPO=D:\Repositories\QGIS
+QT_PLUGIN_PATH=D:\OSGeo4W\apps\qgis-dev\qtplugins;D:\OSGeo4W\apps\qt5\plugins
+QtMsBuild=C:\Users\geo_beja\AppData\Local\QtMsBuild
+SESSIONNAME=Console
+SystemDrive=C:
+SystemRoot=C:\WINDOWS
+TEMP=C:\Users\geo_beja\AppData\Local\Temp
+TERMINAL_EMULATOR=JetBrains-JediTerm
+TERM_SESSION_ID=79d1aac9-24ae-4c1b-aa1d-9091b5832676
+TMP=C:\Users\geo_beja\AppData\Local\Temp
+USERDNSDOMAIN=GEO.HU-BERLIN.DE
+USERDOMAIN=GEO
+USERDOMAIN_ROAMINGPROFILE=GEO
+USERNAME=geo_beja
+USERPROFILE=C:\Users\geo_beja
+VSI_CACHE=TRUE
+VSI_CACHE_SIZE=1000000
+__INTELLIJ_COMMAND_HISTFILE__=C:\Users\geo_beja\AppData\Local\JetBrains\PyCharm2021.2\terminal\history\qgispluginsupport-history1
+windir=C:\WINDOWS
+Found existing QgsApplication.instance()
+Found existing QgsApplication.instance()
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.test_TestObject.test_RasterData
+TEAR DOWN __main__.test_TestObject.test_RasterData
+
+SET UP __main__.test_TestObject.test_Speclibs
+TEAR DOWN __main__.test_TestObject.test_Speclibs
+
+SET UP __main__.test_TestObject.test_VectorLayers
+TEAR DOWN __main__.test_TestObject.test_VectorLayers
+
+SET UP __main__.test_TestObject.test_coredata
+TEAR DOWN __main__.test_TestObject.test_coredata
+
+SET UP __main__.test_TestObject.test_processingProvider
+#SpectralProcessingProfilesOutputWidgetFactory.parameterType: processing.py:1858
+#SpectralProcessingProfilesOutputWidgetFactory.parameterType: processing.py:1858
+#SpectralProcessingProfileType.id: processing.py:403
+#SpectralProcessingProfileType.id: processing.py:403
+TEAR DOWN __main__.test_TestObject.test_processingProvider
+
+SET UP __main__.test_TestObject.test_spectralProcessingAlgorithms
+Processing(0): Process profile block 1/1
+TEAR DOWN __main__.test_TestObject.test_spectralProcessingAlgorithms
+
+SET UP __main__.test_TestObject.test_spectralProcessingModel
+Processing(1): Could not load parameter input_profiles of type spectral_profile.
+Processing(0): Process profile block 1/1
+Processing(0): Model processed OK. Executed 1 algorithms total in 0.013 s.
+Processing(0): Process profile block 1/1
+Processing(0): Model processed OK. Executed 1 algorithms total in 0.006 s.
+TEAR DOWN __main__.test_TestObject.test_spectralProcessingModel
+
+SET UP __main__.test_TestObject.test_spectralProfiles
+TEAR DOWN __main__.test_TestObject.test_spectralProfiles
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathps9e8ngc\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathps9e8ngc\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.TestUtils.test_UnitLookup
+TEAR DOWN __main__.TestUtils.test_UnitLookup
+
+SET UP __main__.TestUtils.test_appendItemsToMenu
+TEAR DOWN __main__.TestUtils.test_appendItemsToMenu
+
+SET UP __main__.TestUtils.test_bandNames
+TEAR DOWN __main__.TestUtils.test_bandNames
+
+SET UP __main__.TestUtils.test_block_size
+TEAR DOWN __main__.TestUtils.test_block_size
+
+SET UP __main__.TestUtils.test_convertMetricUnits
+TEAR DOWN __main__.TestUtils.test_convertMetricUnits
+
+SET UP __main__.TestUtils.test_convertTimeUnits
+TEAR DOWN __main__.TestUtils.test_convertTimeUnits
+
+SET UP __main__.TestUtils.test_coordinateTransformations
+TEAR DOWN __main__.TestUtils.test_coordinateTransformations
+
+SET UP __main__.TestUtils.test_createQgsField
+Create QgsField for <class 'int'>
+Create QgsField for <class 'float'>
+Create QgsField for <class 'str'>
+Create QgsField for <class 'numpy.int8'>
+Create QgsField for <class 'numpy.int16'>
+Create QgsField for <class 'numpy.int32'>
+Create QgsField for <class 'numpy.int64'>
+Create QgsField for <class 'numpy.uint8'>
+Create QgsField for <class 'numpy.uint32'>
+Create QgsField for <class 'numpy.uint16'>
+Create QgsField for <class 'numpy.uint32'>
+Create QgsField for <class 'numpy.uint64'>
+Create QgsField for <class 'type'>
+Create QgsField for <class 'numpy.float16'>
+Create QgsField for <class 'numpy.float32'>
+Create QgsField for <class 'numpy.float64'>
+Create QgsField for <class 'PyQt5.QtCore.QByteArray'>
+TEAR DOWN __main__.TestUtils.test_createQgsField
+
+SET UP __main__.TestUtils.test_decimalYearConversions
+TEAR DOWN __main__.TestUtils.test_decimalYearConversions
+
+SET UP __main__.TestUtils.test_defaultBands
+TEAR DOWN __main__.TestUtils.test_defaultBands
+
+SET UP __main__.TestUtils.test_fid2pixelIndices
+TEAR DOWN __main__.TestUtils.test_fid2pixelIndices
+
+SET UP __main__.TestUtils.test_file_search
+TEAR DOWN __main__.TestUtils.test_file_search
+
+SET UP __main__.TestUtils.test_findmaplayerstores
+TEAR DOWN __main__.TestUtils.test_findmaplayerstores
+
+SET UP __main__.TestUtils.test_findwavelength
+TEAR DOWN __main__.TestUtils.test_findwavelength
+
+SET UP __main__.TestUtils.test_gdalDataset
+TEAR DOWN __main__.TestUtils.test_gdalDataset
+
+SET UP __main__.TestUtils.test_gdal_filesize
+TEAR DOWN __main__.TestUtils.test_gdal_filesize
+
+SET UP __main__.TestUtils.test_geo_coordinates
+TEAR DOWN __main__.TestUtils.test_geo_coordinates
+
+SET UP __main__.TestUtils.test_loadUi
+Try to load D:/Repositories/qgispluginsupport/qps/classification/classificationscheme.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/crosshair/crosshairwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/plotstyling/plotstylewidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/speclibattributedialog.ui as QDialog
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/speclibcsvexportdialog.ui as QDialog
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/speclibimportwidget.ui as QWidget
+D:\Repositories\qgispluginsupport\qps\speclib\ui\speclibimportwidget.ui
+refers to 1 none-existing resource (*.qrc) file(s):
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/spectrallibraryconsistencycheckwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/spectrallibraryplotwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/spectrallibraryplotwidgetstylewidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/spectralprocessingwidget.ui as QWidget
+D:\Repositories\qgispluginsupport\qps\speclib\ui\spectralprocessingwidget.ui
+refers to 1 none-existing resource (*.qrc) file(s):
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/spectralprofileeditorconfigwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/spectralprofileeditorwidget.ui as QGroupBox
+Try to load D:/Repositories/qgispluginsupport/qps/speclib/ui/spectralprofilesourcepanel.ui as QDockWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/attributetablewidget.ui as QMainWindow
+Try to load D:/Repositories/qgispluginsupport/qps/ui/cursorlocationinfodock.ui as QDockWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/gdalmetadatamodelitemwidget.ui as QDialog
+Try to load D:/Repositories/qgispluginsupport/qps/ui/gdalmetadatamodelwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/labelsconfigwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/layerattributeformconfigwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/layerfieldsconfigwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/layerpropertiesdialog.ui as QDialog
+Try to load D:/Repositories/qgispluginsupport/qps/ui/pyramidsconfigwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/qpsresourcebrowser.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/rasterbandconfigwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/renderingconfigwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/searchfilesdialog.ui as QDialog
+Try to load D:/Repositories/qgispluginsupport/qps/ui/sourceconfigwidget.ui as QWidget
+Try to load D:/Repositories/qgispluginsupport/qps/ui/subdatasetselectiondialog.ui as QDialog
+Try to load D:/Repositories/qgispluginsupport/qps/ui/symbologyconfigwidget.ui as QWidget
+TEAR DOWN __main__.TestUtils.test_loadUi
+
+SET UP __main__.TestUtils.test_maplayers
+TEAR DOWN __main__.TestUtils.test_maplayers
+
+SET UP __main__.TestUtils.test_nextColor
+TEAR DOWN __main__.TestUtils.test_nextColor
+
+SET UP __main__.TestUtils.test_osrSpatialReference
+TEAR DOWN __main__.TestUtils.test_osrSpatialReference
+
+SET UP __main__.TestUtils.test_pixelSpatialCoordinates
+TEAR DOWN __main__.TestUtils.test_pixelSpatialCoordinates
+
+SET UP __main__.TestUtils.test_qgsField
+TEAR DOWN __main__.TestUtils.test_qgsField
+
+SET UP __main__.TestUtils.test_qgsFieldAttributes2List
+TEAR DOWN __main__.TestUtils.test_qgsFieldAttributes2List
+
+SET UP __main__.TestUtils.test_qgsLayers
+TEAR DOWN __main__.TestUtils.test_qgsLayers
+
+SET UP __main__.TestUtils.test_rasterLayerArray
+TEAR DOWN __main__.TestUtils.test_rasterLayerArray
+
+SET UP __main__.TestUtils.test_relativePath
+TEAR DOWN __main__.TestUtils.test_relativePath
+
+SET UP __main__.TestUtils.test_savefilepath
+Test 1:"dsdsds.png"->"dsdsds.png"
+Test 2:"foo\\\?<>bar"->"foo______bar"
+Test 3:"None"->""
+Test 4:"_bound method TimeSeriesDatum.date of TimeSeriesDatum(2014-01-15,_class 'timeseriesviewer.timeseries.SensorInstrument'_ LS)_.Map View 1.png"->"_bound_method_TimeSeriesDatum.date_of_TimeSeriesDatum(2014-01-15__class__timeseriesviewer.timeseries.SensorInstrument___LS)_.Map_View_1.png"
+TEAR DOWN __main__.TestUtils.test_savefilepath
+
+SET UP __main__.TestUtils.test_selectMapLayersDialog
+TEAR DOWN __main__.TestUtils.test_selectMapLayersDialog
+
+SET UP __main__.TestUtils.test_spatialObjects
+TEAR DOWN __main__.TestUtils.test_spatialObjects
+
+SET UP __main__.TestUtils.test_value2string
+Test 1:[1, 2, 3]
+Test 2:1
+Test 3:
+Test 4:None
+Test 5:[[0. 0. 0.]
+ [0. 0. 0.]
+ [0. 0. 0.]]
+TEAR DOWN __main__.TestUtils.test_value2string
+
+SET UP __main__.TestUtils.test_vsimem
+TEAR DOWN __main__.TestUtils.test_vsimem
+Application state:
+QGIS_PREFIX_PATH env var:		D:/OSGeo4W/apps/qgis-dev
+Prefix:		D:/OSGeo4W/apps/qgis-dev
+Plugin Path:		D:/OSGeo4W/apps/qgis-dev/plugins
+Package Data Path:	D:/OSGeo4W/apps/qgis-dev/.
+Active Theme Name:	
+Active Theme Path:	D:/OSGeo4W/apps/qgis-dev/./resources/themes\\icons/
+Default Theme Path:	:/images/themes/default/
+SVG Search Paths:	D:/OSGeo4W/apps/qgis-dev/./svg/
+		C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathdve5ra9t\profiles\default/svg/
+User DB Path:	D:/OSGeo4W/apps/qgis-dev/./resources/qgis.db
+Auth DB Path:	C:\Users\geo_beja\AppData\Local\Temp\QGIS-PythonTestConfigPathdve5ra9t\profiles\default/qgis-auth.db
+
+Providers: DB2, OAPIF, WFS, arcgisfeatureserver, arcgismapserver, delimitedtext, ept, gdal, geonode, gpx, hana, mdal, memory, mesh_memory, mssql, ogr, oracle, pdal, postgres, postgresraster, spatialite, vectortile, virtual, virtualraster, wcs, wms
+
+SET UP __main__.TestCasesVectorLayerTools.test_VectorLayerTools
+TEAR DOWN __main__.TestCasesVectorLayerTools.test_VectorLayerTools
+No source for code: 'D:\Repositories\qgispluginsupport\qps\speclib\core.py'.
+Aborting report output, consider using -i.
