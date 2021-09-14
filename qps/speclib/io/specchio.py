@@ -33,10 +33,10 @@ from qgis.core import QgsProcessingFeedback
 import numpy as np
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, SpectralSetting
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO
 from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
 from ...utils import findTypeFromString, createQgsField
-class SPECCHIOSpectralLibraryIO(AbstractSpectralLibraryIO):
+class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
     """
     I/O Interface for the SPECCHIO spectral library .
     See https://ecosis.org for details.

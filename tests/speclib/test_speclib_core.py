@@ -128,7 +128,7 @@ class TestCore(TestCase):
         speclib = TestObjects.createSpectralLibrary(n=10, n_bands=[-1, 64])
         self.assertIsInstance(speclib, QgsVectorLayer)
         self.assertTrue(speclib.featureCount() == 10)
-        self.assertTrue(len(profile_fields(speclib)) == 2)
+        self.assertTrue(len(profile_field_list(speclib)) == 2)
 
         RESULTS = dict()
 

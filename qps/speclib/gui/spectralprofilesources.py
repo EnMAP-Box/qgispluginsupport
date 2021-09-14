@@ -20,7 +20,7 @@ from qgis.PyQt.QtWidgets import *
 
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
-from ..core import profile_fields, profile_field_names, is_profile_field
+from ..core import profile_field_list, profile_field_names, is_profile_field
 from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict
 from ... import SpectralProfile
 

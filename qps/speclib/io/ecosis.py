@@ -36,7 +36,7 @@ from qgis.PyQt.QtWidgets import QMenu, QFileDialog, QProgressDialog
 from qgis.core import QgsProcessingFeedback
 from .. import createStandardFields
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_FID, FIELD_VALUES, createQgsField
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO
 from ...utils import findTypeFromString
 
 
@@ -70,7 +70,7 @@ def findDialect(file) -> pycsv.Dialect:
     return dialect
 
 
-class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
+class EcoSISSpectralLibraryIO(SpectralLibraryIO):
     """
     I/O Interface for the EcoSIS spectral library format.
     See https://ecosis.org for details.

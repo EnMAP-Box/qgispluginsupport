@@ -32,7 +32,6 @@ from osgeo import ogr
 from qgis.PyQt import QtCore
 from qps.plotstyling.plotstyling import PlotStyle
 from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, XMLNODE_PROFILE_RENDERER
-from qps.speclib.gui.spectrallibraryconsistencywidget import SpectralLibraryConsistencyCheckWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem, \
     SpectralProfilePlotWidget, SpectralLibraryPlotWidgetStyle, SpectralLibraryPlotWidgetStyleWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel

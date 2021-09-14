@@ -32,10 +32,10 @@ import re
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsProcessingFeedback
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, createQgsField
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO
 
 
-class ARTMOSpectralLibraryIO(AbstractSpectralLibraryIO):
+class ARTMOSpectralLibraryIO(SpectralLibraryIO):
     """
     I/O Interface for ARTMO CSV profile outputs.
     See https://artmotoolbox.com/tools.html for details.

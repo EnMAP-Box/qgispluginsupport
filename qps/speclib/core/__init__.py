@@ -15,7 +15,7 @@ def create_profile_field(name: str, comment: str = '') -> QgsField:
     :param comment: field comment, optional
     :return: QgsField
     """
-    field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
+    field = QgsField(name=name, type=QVariant.ByteArray, typeName='SpectralProfile', comment=comment)
     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
     field.setEditorWidgetSetup(setup)
     return field
@@ -33,22 +33,33 @@ def is_spectral_library(layer: QgsVectorLayer) -> bool:
     return False
 
 
-def profile_fields(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[QgsField]:
+def profile_fields(fields: typing.Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsFields:
+    if isinstance(fields, QgsFeature):
+        fields = fields.fields()
+    elif isinstance(fields, QgsVectorLayer):
+        fields = fields.fields()
+
+    pfields = QgsFields()
+    for i in range(fields.count()):
+        f = fields.at(i)
+        if is_profile_field(f):
+            pfields.append(f)
+    return pfields
+
+
+def profile_field_list(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer, QgsFields]) -> typing.List[QgsField]:
     """
     Returns the fields that contains values of SpectralProfiles
     :param spectralLibrary:
     :return:
     """
-    fields = [f for f in spectralLibrary.fields() if
-              f.type() == QVariant.ByteArray]
-    if isinstance(spectralLibrary, QgsVectorLayer):
-        fields = [f for f in fields if is_profile_field(f)]
-    return fields
+    pfields = profile_fields(spectralLibrary)
+    return [pfields.at(i) for i in range(pfields.count())]
 
 
 def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> \
         typing.Dict[typing.Union[int, str], QgsField]:
-    fields = profile_fields(spectralLibrary)
+    fields = profile_field_list(spectralLibrary)
     D = {f.name(): f for f in fields}
     for f in fields:
         D[spectralLibrary.fields().lookupField(f.name())] = f
@@ -56,11 +67,11 @@ def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLaye
 
 
 def profile_field_indices(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[int]:
-    return [spectralLibrary.fields().lookupField(f.name()) for f in profile_fields(spectralLibrary)]
+    return [spectralLibrary.fields().lookupField(f.name()) for f in profile_field_list(spectralLibrary)]
 
 
 def profile_field_names(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[str]:
-    return [f.name() for f in profile_fields(spectralLibrary)]
+    return [f.name() for f in profile_field_list(spectralLibrary)]
 
 
 def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVectorLayer]) -> int:
@@ -70,7 +81,7 @@ def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVec
     :return:
     """
     if isinstance(source, QgsVectorLayer):
-        for f in profile_fields(source):
+        for f in profile_field_list(source):
             return source.fields().lookupField(f.name())
     elif isinstance(source, QgsFeature):
         return first_profile_field_index(source.fields())

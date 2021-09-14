@@ -36,7 +36,7 @@ import typing
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsProcessingFeedback
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO
 from ...utils import createQgsField
 
 """
@@ -334,7 +334,7 @@ class ASDBinaryFile(object):
         return self
 
 
-class ASDSpectralLibraryIO(AbstractSpectralLibraryIO):
+class ASDSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:

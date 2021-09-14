@@ -595,7 +595,7 @@ class TestIO(TestCase):
             if len(p.yValues()) > 0:
                 nProfiles += 1
 
-        for ioClass in allSubclasses(AbstractSpectralLibraryIO):
+        for ioClass in allSubclasses(SpectralLibraryIO):
             print('Test {}'.format(ioClass.__name__))
             c = ioClass()
             path = tempfile.mktemp(suffix='.csv', prefix='tmpSpeclib')

@@ -40,7 +40,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsVectorFileWriter, QgsProvider
 
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_VALUES
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO
 
 
 class VectorSourceFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
@@ -77,7 +77,7 @@ class VectorSourceFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         return field
 
 
-class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
+class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
     """
     I/O Interface for Vector File Formats.
     """
@@ -224,7 +224,6 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
                 path.as_posix(),
                 transform_context,
                 options)
-
 
         if errCode != QgsVectorFileWriter.NoError:
             raise Exception(errMsg)

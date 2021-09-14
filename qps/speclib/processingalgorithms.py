@@ -40,7 +40,7 @@ from qgis.core import \
     QgsFeature
 
 from qgis.PyQt.QtGui import QIcon
-from .core import field_index, profile_fields, create_profile_field
+from .core import field_index, profile_field_list, create_profile_field
 
 from .core.spectrallibrary import SpectralSetting, SpectralProfileBlock, read_profiles, \
     SpectralLibrary, FIELD_VALUES
@@ -316,7 +316,7 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
         speclib: QgsVectorLayer = self.parameterAsVectorLayer(parameters, self.OUTPUT, context)
         if isinstance(speclib, QgsVectorLayer):
 
-            existing_profile_fields = profile_fields(speclib)
+            existing_profile_fields = profile_field_list(speclib)
             field: typing.List[str] = self.parameterAsFields(parameters, self.OUTPUT_FIELD, context)
             field = None if len(field) == 0 else field[0]
 
@@ -339,7 +339,7 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
                 if not speclib.commitChanges(stopEditing=not is_editable):
                     feedback.reportError(f'Unable to create new profile field {field}')
                     return False
-                existing_profile_fields = profile_fields(speclib)
+                existing_profile_fields = profile_field_list(speclib)
 
             self.mProfileFieldIndex = speclib.fields().lookupField(field)
             for f in existing_profile_fields:

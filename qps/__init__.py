@@ -176,12 +176,20 @@ def initResources():
     initResourceFile(QPS_RESOURCE_FILE)
 
 
+def initSpectralLibraryIOs():
+    """
+    Initialized the IO options for the SpectralLibraryWidget
+    """
+    from .speclib.core.spectrallibraryio import initSpectralLibraryIOs as initIOs
+    initIOs()
+
+
 def initAll():
     initResources()
     registerEditorWidgets()
     registerExpressionFunctions()
     registerMapLayerConfigWidgetFactories()
-
+    initSpectralLibraryIOs()
 
 def unloadAll():
     unregisterEditorWidgets()

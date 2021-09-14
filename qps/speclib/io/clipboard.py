@@ -28,10 +28,10 @@
 from ..core.spectrallibrary import *
 import locale
 
-from ..core.spectrallibraryio import AbstractSpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO
 
 
-class ClipboardIO(AbstractSpectralLibraryIO):
+class ClipboardIO(SpectralLibraryIO):
     """
     Reads and write SpectralLibrary from/to system clipboard.
     """
