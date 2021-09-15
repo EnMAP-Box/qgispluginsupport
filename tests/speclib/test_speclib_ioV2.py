@@ -118,11 +118,15 @@ class TestIO(TestCase):
         feedback = QgsProcessingFeedback()
         rx = re.compile(r'\.(sli|asd|gpkg|csv)$')
         for uri in file_search(self.testDir(), rx, recursive=True):
-            speclib = SpectralLibraryIO.readLibraryFromUri(uri, feedback=feedback)
-            if speclib is None:
+            speclib1 = SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
+            speclib2 = SpectralLibrary.readFrom(uri, feedback=feedback)
+            if speclib1 is None:
                 continue
-            self.assertIsInstance(speclib, SpectralLibrary)
-            self.assertTrue(len(speclib) > 0)
+            self.assertIsInstance(speclib1, SpectralLibrary)
+            self.assertTrue(len(speclib1) > 0)
+
+            self.assertIsInstance(speclib2, SpectralLibrary)
+            self.assertTrue(len(speclib2) == len(speclib1))
 
     def test_exportWidgets(self):
         self.registerIO()

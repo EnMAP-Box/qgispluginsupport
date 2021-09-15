@@ -289,7 +289,7 @@ class SpectralLibraryIO(object):
         return []
 
     @staticmethod
-    def readLibraryFromUri(uri, feedback: QgsProcessingFeedback = None):
+    def readSpeclibFromUri(uri, feedback: QgsProcessingFeedback = None):
         speclib = None
         profiles = SpectralLibraryIO.readProfilesFromUri(uri)
         if len(profiles) > 0:
