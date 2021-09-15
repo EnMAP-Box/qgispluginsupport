@@ -83,6 +83,11 @@ class TestUtils(TestCase):
                     def __init__(self):
                         super().__init__()
                         loadUi(pathUi, self)
+            elif baseClass == 'QGroupBox':
+                class TestWidget(QGroupBox):
+                    def __init__(self):
+                        super().__init__(self)
+                        loadUi(pathUi, self)
             else:
                 warnings.warn('BaseClass {} not implemented\nto test {}'.format(baseClass, pathUi), Warning)
                 continue
@@ -132,9 +137,7 @@ class TestUtils(TestCase):
         from qpstestdata import enmap
 
         lyr = TestObjects.createRasterLayer()
-        paths = [lyr.source(),
-                 r'J:\diss_bj\level2\s-america\X0048_Y0027\20140608_LEVEL2_LND08_BOA.tif',
-                 ]
+        paths = [lyr.source()]
         for p in paths:
             ds = None
             try:
