@@ -3,7 +3,7 @@ import pathlib
 import typing
 import re
 
-from PyQt5.QtCore import pyqtSignal, QRegExp
+from PyQt5.QtCore import pyqtSignal, QRegExp, QUrl
 from PyQt5.QtGui import QIcon, QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox
@@ -188,7 +188,7 @@ class SpectralLibraryIO(object):
         return list(SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY.values())
 
     @staticmethod
-    def spectralLibraryIOInstances(formatName:str) -> 'SpectralLibraryIO':
+    def spectralLibraryIOInstances(formatName: str) -> 'SpectralLibraryIO':
         if isinstance(formatName, type):
             formatName = formatName.__name__
 
@@ -248,12 +248,67 @@ class SpectralLibraryIO(object):
         """
         raise NotImplementedError()
 
+    @staticmethod
+    def readProfilesFromUri(
+            uri: typing.Union[QUrl, str, pathlib.Path],
+            feedback: QgsProcessingFeedback = None) -> typing.List[QgsFeature]:
+
+        if isinstance(uri, QUrl):
+            if uri.isLocalFile():
+                uri = uri.toLocalFile()
+            else:
+                uri.toString()
+        if isinstance(uri, pathlib.Path):
+            uri = uri.as_posix()
+        global SpectralLibraryIO
+
+        if not isinstance(uri, str):
+            return []
+
+        ext = os.path.splitext(uri)[1]
+
+        matched_formats: typing.List[SpectralLibraryImportWidget] = []
+        for IO in SpectralLibraryIO.spectralLibraryIOs():
+            format = IO.createImportWidget()
+            if isinstance(format, SpectralLibraryImportWidget):
+                for e in QgsFileUtils.extensionsFromFilter(format.filter()):
+                    if ext.endswith(e):
+                        matched_formats.append(format)
+                        break
+
+        for format in matched_formats:
+            format.setSource(uri)
+            fields = format.sourceFields()
+            if fields.count() == 0:
+                continue
+            settings = format.importSettings({})
+            importedProfiles = IO.importProfiles(uri, settings, feedback=feedback)
+            if len(importedProfiles) > 0:
+                return importedProfiles
+
+        return []
+
+    @staticmethod
+    def readLibraryFromUri(uri, feedback: QgsProcessingFeedback = None):
+        speclib = None
+        profiles = SpectralLibraryIO.readProfilesFromUri(uri)
+        if len(profiles) > 0:
+            from .spectrallibrary import SpectralLibrary
+            speclib = SpectralLibrary(fields=profiles[0].fields())
+            speclib.startEditing()
+            speclib.beginEditCommand('Add profiles')
+            speclib.addFeatures(profiles)
+            speclib.endEditCommand()
+            speclib.commitChanges()
+
+        return speclib
+
 
 class SpectralLibraryImportDialog(QDialog):
 
     @staticmethod
     def importProfiles(speclib: QgsVectorLayer,
-                       defaultRoot:typing.Union[str, pathlib.Path] = None,
+                       defaultRoot: typing.Union[str, pathlib.Path] = None,
                        parent: QWidget = None):
         assert isinstance(speclib, QgsVectorLayer) and speclib.isValid()
 
@@ -278,8 +333,6 @@ class SpectralLibraryImportDialog(QDialog):
             sinkDefinition.setDestinationWkbType(speclib.wkbType())
             sinkDefinition.setFieldMap(propertyMap)
 
-
-
             context = QgsExpressionContext()
             context.setFields(profiles[0].fields())
             context.setFeedback(feedback)
@@ -301,12 +354,10 @@ class SpectralLibraryImportDialog(QDialog):
         else:
             return False
 
-
-
     def __init__(self,
                  *args,
                  speclib: QgsVectorLayer = None,
-                 defaultRoot:typing.Union[str, pathlib.Path] = None,
+                 defaultRoot: typing.Union[str, pathlib.Path] = None,
                  **kwds):
 
         super().__init__(*args, **kwds)

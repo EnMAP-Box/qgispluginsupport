@@ -18,6 +18,7 @@
 """
 # noinspection PyPep8Naming
 import os
+import re
 import unittest
 import xmlrunner
 
@@ -110,6 +111,18 @@ class TestIO(TestCase):
 
             fields = w.sourceFields()
             self.assertIsInstance(fields, QgsFields)
+
+    def test_readFrom(self):
+        self.registerIO()
+
+        feedback = QgsProcessingFeedback()
+        rx = re.compile(r'\.(sli|asd|gpkg|csv)$')
+        for uri in file_search(self.testDir(), rx, recursive=True):
+            speclib = SpectralLibraryIO.readLibraryFromUri(uri, feedback=feedback)
+            if speclib is None:
+                continue
+            self.assertIsInstance(speclib, SpectralLibrary)
+            self.assertTrue(len(speclib) > 0)
 
     def test_exportWidgets(self):
         self.registerIO()

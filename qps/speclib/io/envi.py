@@ -52,6 +52,7 @@ from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile, grou
 from ..core.spectrallibrary import SpectralLibrary, VSI_DIR, LUT_IDL2GDAL
 from .. import createStandardFields, EMPTY_VALUES, FIELD_VALUES, FIELD_NAME, FIELD_FID
 from ...utils import toType, findTypeFromString
+
 # lookup GDAL Data Type and its size in bytes
 LUT_GDT_SIZE = {gdal.GDT_Byte: 1,
                 gdal.GDT_UInt16: 2,
@@ -322,11 +323,10 @@ def writeCSVMetadata(pathCSV: str, profiles: typing.List[QgsFeature], profile_na
 
 
 class EnviSpectralLibraryExportWidget(SpectralLibraryExportWidget):
-
     PROFILE_FIELD = 'profile_field'
     PROFILE_NAMES = 'profile_names'
 
-    def __init__(self,  *args, **kwds):
+    def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
         self.mProfileField = QgsFieldComboBox()
@@ -361,9 +361,7 @@ class EnviSpectralLibraryExportWidget(SpectralLibraryExportWidget):
         return settings
 
 
-
 class EnviSpectralLibraryImportWidget(SpectralLibraryImportWidget):
-
     FIELDNAME_PROFILE = 'profile'
     FIELDNAME_NAME = 'name'
 
@@ -403,12 +401,12 @@ class EnviSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         print('Create Expression Context')
         context = QgsExpressionContext()
 
-        #context.setFields(self.sourceFields())
-        #scope = QgsExpressionContextScope()
-        #for k, v in self.mENVIHdr.items():
+        # context.setFields(self.sourceFields())
+        # scope = QgsExpressionContextScope()
+        # for k, v in self.mENVIHdr.items():
         #    scope.setVariable(k, str(v))
-        #context.appendScope(scope)
-        #self._c = context
+        # context.appendScope(scope)
+        # self._c = context
         return context
 
     def formatName(self) -> str:
@@ -428,7 +426,6 @@ class EnviSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         :return:
         """
         return settings
-
 
 
 class EnviSpectralLibraryIO(SpectralLibraryIO):
@@ -459,8 +456,6 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         pathHdr, pathESL = findENVIHeader(path)
         md = readENVIHeader(pathESL, typeConversion=True)
 
-
-
         PROFILE_FIELD = EnviSpectralLibraryImportWidget.FIELDNAME_PROFILE
         PROFILE_NAME_FIELD = EnviSpectralLibraryImportWidget.FIELDNAME_NAME
 
@@ -468,7 +463,6 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         fields = QgsFields()
         fields.append(create_profile_field(PROFILE_FIELD))
         fields.append(QgsField(name=PROFILE_NAME_FIELD, type=QVariant.String))
-
 
         data = None
 
@@ -589,7 +583,6 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
                        profiles: typing.List[QgsFeature],
                        feedback: QgsProcessingFeedback) -> typing.List[str]:
 
-
         profile_field = exportSettings[EnviSpectralLibraryExportWidget.PROFILE_FIELD]
         expr = QgsExpression(exportSettings[EnviSpectralLibraryExportWidget.PROFILE_NAMES])
 
@@ -603,7 +596,6 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         writtenFiles = []
 
         os.makedirs(dn, exist_ok=True)
-
 
         drv: gdal.Driver = gdal.GetDriverByName('ENVI')
         assert isinstance(drv, gdal.Driver)
@@ -706,6 +698,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
         return writtenFiles
 
+
 REQUIRED_TAGS = ['byte order', 'data type', 'header offset', 'lines', 'samples', 'bands']
 SINGLE_VALUE_TAGS = REQUIRED_TAGS + ['description', 'wavelength', 'wavelength units']
 
@@ -757,6 +750,7 @@ def esl2vrt(pathESL, pathVrt=None):
         ds.SetMetadataItem(key, value, 'ENVI')
     flushCacheWithoutException(ds)
     return ds
+
 
 def readENVIHeader(pathESL, typeConversion=False) -> dict:
     """

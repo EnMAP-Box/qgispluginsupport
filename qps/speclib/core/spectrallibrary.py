@@ -297,18 +297,18 @@ class SpectralLibrary(QgsVectorLayer):
         :param mimeData: QMimeData
         :return: SpectralLibrary
         """
-        if MIMEDATA_SPECLIB_LINK in mimeData.formats():
-            # extract from link
-            sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
-            global SPECLIB_CLIPBOARD
-            sl = SPECLIB_CLIPBOARD.get(sid)
-            if isinstance(sl, SpectralLibrary) and id(sl) == sid:
-                return sl
+        #if MIMEDATA_SPECLIB_LINK in mimeData.formats():
+        #    # extract from link
+        #    sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
+        #    global SPECLIB_CLIPBOARD
+        #    sl = SPECLIB_CLIPBOARD.get(sid)
+        #    if isinstance(sl, SpectralLibrary) and id(sl) == sid:
+        #        return sl
 
-        if MIMEDATA_SPECLIB in mimeData.formats():
-            sl = SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
-            if isinstance(sl, SpectralLibrary) and len(sl) > 0:
-                return sl
+        #if MIMEDATA_SPECLIB in mimeData.formats():
+        #    sl = SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
+        #    if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+        #        return sl
 
         if mimeData.hasUrls():
             urls = mimeData.urls()
@@ -317,12 +317,12 @@ class SpectralLibrary(QgsVectorLayer):
                 if isinstance(sl, SpectralLibrary) and len(sl) > 0:
                     return sl
 
-        if MIMEDATA_TEXT in mimeData.formats():
-            txt = mimeData.text()
-            from ..io.csvdata import CSVSpectralLibraryIO
-            sl = CSVSpectralLibraryIO.fromString(txt)
-            if isinstance(sl, SpectralLibrary) and len(sl) > 0:
-                return sl
+        #if MIMEDATA_TEXT in mimeData.formats():
+        #    txt = mimeData.text()
+        #    from ..io.csvdata import CSVSpectralLibraryIO
+        #    sl = CSVSpectralLibraryIO.fromString(txt)
+        #    if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+        #        return sl
 
         return None
 
@@ -784,48 +784,13 @@ class SpectralLibrary(QgsVectorLayer):
     def readFrom(uri, feedback: QgsProcessingFeedback = None):
         """
         Reads a Spectral Library from the source specified in "uri" (path, url, ...)
+        :param feedback:
         :param uri: path or uri of the source from which to read SpectralProfiles and return them in a SpectralLibrary
         :return: SpectralLibrary
         """
-        if isinstance(uri, QUrl):
-            if uri.isLocalFile():
-                uri = uri.toLocalFile()
-            else:
-                uri.toString()
-
-        if isinstance(uri, str) and uri.endswith('.gpkg'):
-            try:
-                return SpectralLibrary(path=uri)
-            except Exception as ex:
-                print(ex)
-                return None
-
-        if feedback:
-            assert isinstance(feedback, QgsProcessingFeedback)
-
-        if isinstance(uri, str) and uri.endswith('.sli'):
-            from ..io.envi import EnviSpectralLibraryIO
-            if EnviSpectralLibraryIO.canRead(uri):
-                sl = EnviSpectralLibraryIO.readFrom(uri, feedback=feedback)
-                if isinstance(sl, SpectralLibrary):
-                    if sl.name() in [DEFAULT_NAME, '']:
-                        sl.setName(os.path.basename(uri))
-                    return sl
-
         from .spectrallibraryio import SpectralLibraryIO
-        readers = SpectralLibraryIO.subClasses()
+        return SpectralLibraryIO.readSpeclibFrom(uri, feedback=feedback)
 
-        for cls in sorted(readers, key=lambda r: r.score(uri), reverse=True):
-            try:
-                if cls.canRead(uri):
-                    sl = cls.readFrom(uri, feedback=feedback)
-                    if isinstance(sl, SpectralLibrary):
-                        if sl.name() in [DEFAULT_NAME, '']:
-                            sl.setName(os.path.basename(uri))
-                        return sl
-            except Exception as ex:
-                s = ""
-        return None
 
     sigProgressInfo = pyqtSignal(int, int, str)
 
@@ -833,8 +798,20 @@ class SpectralLibrary(QgsVectorLayer):
                  path: str = None,
                  baseName: str = DEFAULT_NAME,
                  options: QgsVectorLayer.LayerOptions = None,
+                 fields: QgsFields = None,
                  profile_fields: typing.List[str] = [FIELD_VALUES],
                  create_name_field: bool = True):
+        """
+        Create a SpectralLibrary, i.e. a QgsVectorLayer with one or multiple binary fields that use the
+        the SpectralProfile editor widget
+        :param path: str
+        :param baseName: layer name
+        :param options: QgsVectorLayer.LayerOptions. Will be used if path refers to an existing layer
+        :param fields: QgsField. Described the fields to create.
+        :param profile_fields: list of field names to be used for profile fields (1).
+        :param create_name_field: bool, if True (default) a string field will be added to contain profile names (1).
+        (1) Only used of fields is None
+        """
 
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
@@ -856,25 +833,36 @@ class SpectralLibrary(QgsVectorLayer):
         self.setCustomProperty('skipMemoryLayerCheck', 1)
 
         if create_new_speclib:
-            assert self.startEditing()
-            self.beginEditCommand('Add fields')
-            # add profile fields
-            names = self.fields().names()
-            # add a single name profile_field (more is not required)
-            if create_name_field:
-                self.addAttribute(QgsField(name='name', type=QVariant.String))
-            for fieldname in profile_fields:
-                assert self.addSpectralProfileField(fieldname), f'Unable to add profile field "{fieldname}"'
 
-            profile_indices = [self.fields().lookupField(f) for f in profile_fields]
-            self.endEditCommand()
-            fields = []
-            for i in profile_indices:
-                assert self.editorWidgetSetup(i).type() == EDITOR_WIDGET_REGISTRY_KEY
-                s = ""
-            assert self.commitChanges(stopEditing=True)
-            for i in profile_indices:
-                assert self.editorWidgetSetup(i).type() == EDITOR_WIDGET_REGISTRY_KEY
+            if fields is None:
+                assert self.startEditing()
+                # add profile fields
+                self.beginEditCommand('Add fields')
+                names = self.fields().names()
+                # add a single name profile_field (more is not required)
+                if create_name_field:
+                    self.addAttribute(QgsField(name='name', type=QVariant.String))
+
+                for fieldname in profile_fields:
+                    assert self.addSpectralProfileField(fieldname), f'Unable to add profile field "{fieldname}"'
+
+                profile_indices = [self.fields().lookupField(f) for f in profile_fields]
+                self.endEditCommand()
+                fields = []
+                for i in profile_indices:
+                    assert self.editorWidgetSetup(i).type() == EDITOR_WIDGET_REGISTRY_KEY
+                    s = ""
+                assert self.commitChanges(stopEditing=True)
+                for i in profile_indices:
+                    assert self.editorWidgetSetup(i).type() == EDITOR_WIDGET_REGISTRY_KEY
+            else:
+                assert self.startEditing()
+                self.beginEditCommand('Add fields')
+                for i in range(fields.count()):
+                    field = fields.at(i)
+                    self.addAttribute(field)
+                self.endEditCommand()
+                assert self.commitChanges(stopEditing=True)
 
         # self.attributeAdded.connect(self.onAttributeAdded)
 
