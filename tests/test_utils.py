@@ -86,7 +86,7 @@ class TestUtils(TestCase):
             elif baseClass == 'QGroupBox':
                 class TestWidget(QGroupBox):
                     def __init__(self):
-                        super().__init__(self)
+                        super().__init__()
                         loadUi(pathUi, self)
             else:
                 warnings.warn('BaseClass {} not implemented\nto test {}'.format(baseClass, pathUi), Warning)
