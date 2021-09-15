@@ -2701,8 +2701,12 @@ def rasterLayerArray(layer: QgsRasterLayer,
 
     boundingBox: QgsRectangle = QgsRectangle(ul, lr)
 
-    width_px = int(boundingBox.width() / resX)
-    height_px = int(boundingBox.height() / resY)
+    if isinstance(rect, QRect):
+        width_px = rect.width()
+        height_px = rect.height()
+    else:
+        width_px = int(round(boundingBox.width() / resX))
+        height_px = int(round(boundingBox.height() / resY))
 
     # npx = width_px * height_px
     dp: QgsDataProvider = layer.dataProvider()
