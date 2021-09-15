@@ -1,8 +1,11 @@
-"""
-# This module htmlwidget.py was created by cj@apocalyptech.com
-# and originally published in https://apocalyptech.com/linux/qt/qcombobox_html/htmlwidgets.py
-"""
-
+#!/usr/bin/env python
+# vim: set expandtab tabstop=4 shiftwidth=4:
+# PyQt Functionality Snippet by Apocalyptech
+# "Licensed" in the Public Domain under CC0 1.0 Universal (CC0 1.0)
+# Public Domain Dedication.  Use it however you like!
+#
+# https://creativecommons.org/publicdomain/zero/1.0/
+# https://creativecommons.org/publicdomain/zero/1.0/legalcode
 
 import sys
 from PyQt5 import QtWidgets, QtGui, QtCore
