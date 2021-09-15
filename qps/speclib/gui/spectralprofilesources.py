@@ -64,7 +64,6 @@ class SpectralProfileSource(object):
 
 
 class MapCanvasLayerProfileSource(SpectralProfileSource):
-
     MODE_FIRST_LAYER = 'first'
     MODE_TOP_LAYER = 'top'
     MODE_BOTTOM_LAYER = 'bottom'
@@ -98,13 +97,15 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         else:
             raise NotImplementedError()
 
-    def rasterLayer(self, mapCanvas: QgsMapCanvas, position: SpatialPoint) -> QgsRasterLayer:
+    def rasterLayer(self, mapCanvas: QgsMapCanvas = None, position: SpatialPoint = None) -> QgsRasterLayer:
         """
         Searches for a raster layer in mapCanvas with valid pixel values at "position"
         :param mapCanvas:
         :param position:
         :return: QgsRasterLayer
         """
+        if not (isinstance(mapCanvas, QgsMapCanvas) and isinstance(position, QgsPointXY)):
+            return None
 
         raster_layers = [l for l in mapCanvas.layers() if isinstance(l, QgsRasterLayer) and l.isValid()]
 
@@ -112,16 +113,20 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
             raster_layers = raster_layers[0:1]
         elif self.mMode == self.MODE_BOTTOM_LAYER:
             raster_layers = raster_layers[-1:]
-
-        for lyr in raster_layers:
-            pt = position.toCrs(lyr.crs())
-            if not lyr.extent().contains(pt):
-                continue
-            dp: QgsRasterDataProvider = lyr.dataProvider()
-            result: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormatValue, QgsRectangle())
-            s = ""
-            if result.isValid():
-                return lyr
+        elif self.mMode == self.MODE_FIRST_LAYER:
+            # test which raster layer has a valid pixel
+            for lyr in raster_layers:
+                pt = position.toCrs(lyr.crs())
+                if not lyr.extent().contains(pt):
+                    continue
+                dp: QgsRasterDataProvider = lyr.dataProvider()
+                result: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormatValue, QgsRectangle())
+                s = ""
+                if result.isValid():
+                    for v in result.results().values():
+                        if v not in [None]:
+                            # a valid numeric value
+                            return lyr
 
         return None
 
@@ -942,7 +947,7 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
             return None
 
         # resolve the source layer
-        layer = source.rasterLayer(point=point, mapCanvas=mapCanvas)
+        layer = source.rasterLayer(mapCanvas=mapCanvas, position=point)
         if not isinstance(layer, QgsRasterLayer):
             return None
 
