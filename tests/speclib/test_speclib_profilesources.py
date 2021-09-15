@@ -161,6 +161,11 @@ class SpectralProcessingTests(TestCase):
 
         g = panel.createRelation()
         self.assertIsInstance(g, SpectralFeatureGeneratorNode)
+        self.assertEqual(g.name(), g.speclib().name())
+
+        g.speclib().setName('NewName')
+        self.assertEqual(g.name(), g.speclib().name())
+
         n = g.spectralProfileGeneratorNodes()[0]
         self.assertIsInstance(n, SpectralProfileGeneratorNode)
         lyrA = sources[0]

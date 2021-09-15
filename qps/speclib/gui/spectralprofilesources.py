@@ -1060,6 +1060,11 @@ class SpectralFeatureGeneratorNode(TreeNode):
     def setSpeclibWidget(self, speclibWidget: SpectralLibraryWidget):
 
         assert speclibWidget is None or isinstance(speclibWidget, SpectralLibraryWidget)
+
+        oldSpeclib = self.speclib()
+        if isinstance(oldSpeclib, QgsVectorLayer):
+            oldSpeclib.nameChanged.disconnect(self.updateSpeclibName)
+
         OLD_NODES = dict()
         for n in self.childNodes():
             OLD_NODES[n.name()] = n
@@ -1071,14 +1076,8 @@ class SpectralFeatureGeneratorNode(TreeNode):
             self.mSpeclibWidget = speclibWidget
             speclib = self.mSpeclibWidget.speclib()
             if isinstance(speclib, QgsVectorLayer):
-                self.setName(speclib.name())
-                dp_name = speclib.dataProvider().name()
-                source = speclib.source()
-                if dp_name == 'memory':
-                    match = RX_MEMORY_UID.match(source)
-                    if match:
-                        source = f'memory uid={match.group("uid")}'
-                # self.setValue(source)
+                speclib.nameChanged.connect(self.updateSpeclibName)
+                self.updateSpeclibName()
 
                 new_nodes = []
 
@@ -1151,6 +1150,18 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
     def spectralProfileGeneratorNodes(self) -> typing.List[SpectralProfileGeneratorNode]:
         return [n for n in self.childNodes() if isinstance(n, SpectralProfileGeneratorNode)]
+
+    def updateSpeclibName(self):
+        speclib = self.speclib()
+        if isinstance(speclib, QgsVectorLayer):
+            self.setName(speclib.name())
+            dp_name = speclib.dataProvider().name()
+            source = speclib.source()
+            if dp_name == 'memory':
+                match = RX_MEMORY_UID.match(source)
+                if match:
+                    source = f'memory uid={match.group("uid")}'
+        # self.setValue(source)
 
     def updateNodeOrder(self):
         """
@@ -1385,6 +1396,7 @@ class SpectralProfileBridge(TreeModel):
             g = self[-1].copy()
 
         self.addFeatureGenerator(g)
+        self.setDefaultDestination(g)
         self.setDefaultSources(g)
         return g
 
@@ -1606,6 +1618,16 @@ class SpectralProfileBridge(TreeModel):
                     target = added_targets.pop(0)
                 g.setSpeclibWidget(target)
                 self.setDefaultSources(g)
+
+    def setDefaultDestination(self, generator: SpectralFeatureGeneratorNode):
+        assert isinstance(generator, SpectralFeatureGeneratorNode)
+
+        destinations = self.destinations()
+        if len(destinations) == 0 or isinstance(generator.speclibWidget(), SpectralLibraryWidget):
+            # not possible / no need to set a spectral library widget
+            return
+
+        generator.setSpeclibWidget(destinations[-1])
 
     def setDefaultSources(self, generator: SpectralFeatureGeneratorNode):
         assert isinstance(generator, SpectralFeatureGeneratorNode)
