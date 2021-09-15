@@ -190,6 +190,21 @@ class SpectralProfileSourceModel(QAbstractListModel):
         super(SpectralProfileSourceModel, self).__init__(*args, **kwds)
 
         self.mSources: typing.List[SpectralProfileSource] = [None]
+        self.mDefaultSource: SpectralProfileSource = None
+
+    def setDefaultSource(self, source: SpectralProfileSource):
+        """
+        Sets a default SpectralProfileSource that is used for SpectralProfileGenerator Nodes
+        """
+        self.addSources(source)
+
+        self.mDefaultSource = source
+
+    def defaultSource(self) -> SpectralProfileSource:
+        """
+        Returns the default SpectralProfileSource
+        """
+        return self.mDefaultSource
 
     def __len__(self) -> int:
         return len(self.mSources)
@@ -214,6 +229,10 @@ class SpectralProfileSourceModel(QAbstractListModel):
 
         to_insert = []
         for source in sources:
+            if source is None:
+                # already in model
+                continue
+
             if isinstance(source, str):
                 source = QgsRasterLayer(source)
 
@@ -1213,6 +1232,7 @@ class SpectralProfileBridge(TreeModel):
         super().__init__(*args, **kwds)
         self.mSrcModel = SpectralProfileSourceModel()
         self.mDstModel = SpectralLibraryWidgetListModel()
+        self.mDefaultSource: SpectralProfileSource = None
 
         self.mProfileSamplingModeModel = SpectralProfileSamplingModeModel()
         self.mSrcModel.rowsRemoved.connect(self.updateSourceReferences)
@@ -1701,12 +1721,16 @@ class SpectralProfileBridge(TreeModel):
                 n.setProfileSource(similar_source)
 
         # match
-        # used_sources = generator.spectralProfileSources()
-        # unused_sources = [s for s in existing_sources if s not in used_sources]
-        # if len(unused_sources) > 0:
-        #    for n in missingSourceNodes(generator)
+        default_source = self.defaultSource()
+        if isinstance(default_source, SpectralProfileSource):
+            for n in missingSourceNodes(generator):
+                n.setProfileSource(default_source)
 
-        # # match spectral profile columns
+    def defaultSource(self) -> SpectralProfileSource:
+        return self.mSrcModel.defaultSource()
+
+    def setDefaultSource(self, source: SpectralProfileSource):
+        self.mSrcModel.setDefaultSource(source)
 
     def removeSpectralLibraryWidgets(self, slws: typing.Iterable[SpectralLibraryWidget]):
         if not isinstance(slws, typing.Iterable):
@@ -1885,6 +1909,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
         self.progressBar.setVisible(False)
         self.treeView: SpectralProfileBridgeTreeView
         self.mBridge = SpectralProfileBridge()
+        self.mBridge.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_FIRST_LAYER))
         # self.mBridge.addSources(MapCanvasLayerProfileSource())
         # self.mBridge.sigProgress.connect(self.progressBar.setValue)
         self.mProxyModel = SpectralProfileSourceProxyModel()
@@ -1910,6 +1935,12 @@ class SpectralProfileSourcePanel(QgsDockWidget):
 
     def createRelation(self) -> SpectralFeatureGeneratorNode:
         return self.mBridge.createFeatureGenerator()
+
+    def setDefaultSource(self, source: SpectralProfileSource):
+        self.mBridge.setDefaultSource(source)
+
+    def defaultSource(self) -> SpectralProfileSource:
+        return self.mBridge.defaultSource()
 
     def addSources(self, sources):
         self.mBridge.addSources(sources)
