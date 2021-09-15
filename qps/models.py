@@ -70,7 +70,14 @@ def setCurrentComboBoxValue(comboBox, value):
         i = comboBox.findData(value, role=Qt.DisplayRole)
         if i == -1:
             i = comboBox.findData(value, role=Qt.UserRole)
-
+        if i == -1:
+            for r in range(model.rowCount(QModelIndex())):
+                idx = model.index(r, 0)
+                displayData = model.data(idx, role=Qt.Unchecked)
+                userData = model.data(idx, role=Qt.UserRole)
+                if displayData == value or (userData is not None and userData == value):
+                    i = r
+                    break
         if i != -1:
             comboBox.setCurrentIndex(i)
             return True

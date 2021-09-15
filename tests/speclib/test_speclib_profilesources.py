@@ -121,7 +121,7 @@ class SpectralProcessingTests(TestCase):
         gnode = panel.createRelation()
         gnode.setSpeclibWidget(slw)
         for n in gnode.spectralProfileGeneratorNodes():
-            n.setSource(lyr)
+            n.setProfileSource(lyr)
 
         canvas = QgsMapCanvas()
         canvas.setLayers([slw.speclib(), lyr])
@@ -151,6 +151,8 @@ class SpectralProcessingTests(TestCase):
         panel.createRelation()
 
         # add sources
+        panel.addSources(MapCanvasLayerProfileSource())
+        panel.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_BOTTOM_LAYER))
         panel.addSources(sources)
 
         # add widgets
@@ -169,7 +171,7 @@ class SpectralProcessingTests(TestCase):
         n = g.spectralProfileGeneratorNodes()[0]
         self.assertIsInstance(n, SpectralProfileGeneratorNode)
         lyrA = sources[0]
-        n.setSource(lyrA)
+        n.setProfileSource(lyrA)
         mode = n.setSampling(KernelProfileSamplingMode())
         self.assertIsInstance(mode, KernelProfileSamplingMode)
         size = mode.kernelSize()
@@ -211,12 +213,12 @@ class SpectralProcessingTests(TestCase):
         modes = SpectralProfileSamplingModeModel.registeredModes()
 
         for pgnode in fgnode1.spectralProfileGeneratorNodes():
-            pgnode.setSource(src1)
+            pgnode.setProfileSource(src1)
             self.assertIsInstance(pgnode.sampling(), SingleProfileSamplingMode)
             pgnode.setSampling(modes[0])
 
         for pgnode in fgnode2.spectralProfileGeneratorNodes():
-            pgnode.setSource(src2)
+            pgnode.setProfileSource(src2)
             pgnode.setSampling(modes[1])
 
         RESULTS = panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)
@@ -368,10 +370,14 @@ class SpectralProcessingTests(TestCase):
         return sources, widgets
 
     def test_SpectralFeatureGenerator(self):
-        layers, widgets = self.initProcessingRegistry()
+        self.initProcessingRegistry()
+        sources, widgets = self.createTestObjects()
+
 
         model = SpectralProfileBridge()
-        model.addSources(layers)
+        model.addSources(MapCanvasLayerProfileSource())
+        model.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_BOTTOM_LAYER))
+        model.addSources(sources)
         model.createFeatureGenerator()
         # model.createFeatureGenerator()
         model.addSpectralLibraryWidgets(widgets)
