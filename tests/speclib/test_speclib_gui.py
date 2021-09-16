@@ -477,7 +477,6 @@ class TestSpeclibWidgets(TestCase):
         l3 = QgsVectorLayer(enmap_pixel, 'Points of Interest')
         QgsProject.instance().addMapLayers([l1, l2, l3])
 
-
         sl1 = TestObjects.createSpectralLibrary(5, wlu='Nanometers', n_bands=[177, 6])
         sl1.setName(' My Speclib')
 
