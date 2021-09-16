@@ -19,7 +19,13 @@ start %PYTHON% runfirst.py
 
 mkdir test-reports
 mkdir test-reports\today
-%PYTHON% -m coverage run --rcfile=.coveragec   tests/test_classificationscheme.py
+%PYTHON% -m coverage run --rcfile=.coveragec   speclib/test_speclib_core.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_gui.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_io.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_plotting.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_processing.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_profilesources.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_classificationscheme.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_crosshair.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_cursorlocationsvalues.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_example.py
@@ -31,12 +37,10 @@ mkdir test-reports\today
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_plotstyling.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_qgisissues.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_qgsfunctions.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_qps.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_resources.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_searchfiledialog.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_simplewidget.py
-%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_speclib_core.py
-%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_speclib_gui.py
-%PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_speclib_io.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_subdatasets.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_testing.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_utils.py

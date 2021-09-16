@@ -124,7 +124,7 @@ class MetaArray(object):
     nameTypes = [basestring, tuple]
     @staticmethod
     def isNameType(var):
-        return any([isinstance(var, t) for t in MetaArray.nameTypes])
+        return any(isinstance(var, t) for t in MetaArray.nameTypes)
         
         
     ## methods to wrap from embedded ndarray / HDF5 
@@ -132,6 +132,10 @@ class MetaArray(object):
   
     def __init__(self, data=None, info=None, dtype=None, file=None, copy=False, **kwargs):
         object.__init__(self)
+        warnings.warn(
+            'MetaArray is deprecated and will be removed in 0.14.',
+            DeprecationWarning, stacklevel=2
+        )    
         self._isHDF = False
         
         if file is not None:
@@ -1330,8 +1334,6 @@ if __name__ == '__main__':
     #### File I/O tests
     
     print("\n================  File I/O Tests  ===================\n")
-    import tempfile
-    tf = tempfile.mktemp()
     tf = 'test.ma'
     # write whole array
     

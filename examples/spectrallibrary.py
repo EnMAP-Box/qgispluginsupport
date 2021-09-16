@@ -1,12 +1,12 @@
-from qps.testing import start_app, TestObjects, findQGISResourceFiles
-from qgis.core import QgsRasterLayer
+from qps.testing import start_app, TestObjects, findQGISResourceFiles, StartOptions
+from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsPointXY
 from qps import initAll
 
-app = start_app(resources=findQGISResourceFiles())
+app = start_app(resources=findQGISResourceFiles(), options=StartOptions.EditorWidgets)
 initAll()
 
-from qps.speclib.core import SpectralProfile
-from qps.speclib.gui import SpectralLibraryWidget
+from qps.speclib.core.spectralprofile import SpectralProfile
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qgis.gui import QgsMapCanvas
 from qps.maptools import CursorLocationMapTool
 from qps.utils import SpatialPoint
@@ -14,33 +14,35 @@ from qps.utils import SpatialPoint
 slw = SpectralLibraryWidget()
 slw.show()
 
-c = QgsMapCanvas()
-l = TestObjects.createRasterLayer(nb=100)
-c.setLayers([l])
-c.setDestinationCrs(l.crs())
-c.setExtent(l.extent())
-c.show()
+canvas = QgsMapCanvas()
+layer = TestObjects.createRasterLayer(nb=100)
+canvas.setLayers([layer])
+canvas.setDestinationCrs(layer.crs())
+canvas.setExtent(layer.extent())
+canvas.show()
+
 
 def loadProfile(crs: QgsCoordinateReferenceSystem, pt: QgsPointXY):
     spatialPoint = SpatialPoint(crs, pt)
     profiles = []
-    for layer in c.layers():
+    for layer in canvas.layers():
         if isinstance(layer, QgsRasterLayer):
             profile = SpectralProfile.fromRasterLayer(layer, spatialPoint)
             if isinstance(profile, SpectralProfile):
-                profile.setName('Pt {} {}'.format(spatialPoint.x(), spatialPoint.y()))
                 profiles.append(profile)
 
     slw.setCurrentProfiles(profiles)
 
-m = CursorLocationMapTool(c)
-m.sigLocationRequest.connect(loadProfile)
 
-slw.sigLoadFromMapRequest.connect(lambda *args : c.setMapTool(m))
+m = CursorLocationMapTool(canvas)
+m.sigLocationRequest.connect(loadProfile)
+canvas.setMapTool(m)
+slw.actionSelectProfilesFromMap.setVisible(True)
+slw.sigLoadFromMapRequest.connect(lambda *args: canvas.setMapTool(m))
 
 # show canvas left to SpectralLibraryWidget
-p = c.pos()
-p.setX(p.x() - c.width())
+p = canvas.pos()
+p.setX(p.x() - canvas.width())
 p.setY(slw.pos().y())
-c.move(p)
+canvas.move(p)
 app.exec_()

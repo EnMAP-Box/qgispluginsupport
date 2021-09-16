@@ -36,12 +36,11 @@ from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
 
 from qgis.core import QgsField, QgsVectorLayer, QgsVectorFileWriter, QgsProviderRegistry, \
-    QgsProject, QgsProviderMetadata, QgsFileUtils
+    QgsProject, QgsProviderMetadata, QgsFileUtils, QgsProcessingFeedback
 
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
-    decodeProfileValueDict, encodeProfileValueDict, \
-    SerializationMode, \
-    FIELD_VALUES, FIELD_NAME, ProgressHandler
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_VALUES
+from ..core.spectrallibraryio import SpectralLibraryIO
 
 
 class VectorSourceFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
@@ -78,7 +77,7 @@ class VectorSourceFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         return field
 
 
-class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
+class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
     """
     I/O Interface for Vector File Formats.
     """
@@ -98,25 +97,25 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
             assert lyr.isValid()
 
             fieldNames = lyr.fields().names()
-            for fn in [FIELD_NAME, FIELD_VALUES]:
+            for fn in [FIELD_VALUES]:
                 assert fn in fieldNames
 
             typeName = lyr.fields().at(lyr.fields().lookupField(FIELD_NAME)).typeName()
             assert re.search('(string|varchar|char|json)', typeName, re.I)
 
             return True
-        except:
+        except Exception as ex:
             return False
         return False
 
     @classmethod
     def readFrom(cls, path,
-                 progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+                 feedback: QgsProcessingFeedback= None,
                  addAttributes: bool = True) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
-        :param progressDialog:
-        :type progressDialog:
+        :param feedback:
+        :type feedback:
         :param path: source of SpectralLibrary
         :return: SpectralLibrary
         """
@@ -150,7 +149,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
                 if TXT2BLOB and name == FIELD_VALUES:
                     jsonStr = feature.attribute(name)
                     d = json.loads(jsonStr)
-                    blob = encodeProfileValueDict(d, mode=SerializationMode.PICKLE)
+                    blob = encodeProfileValueDict(d)
                     profile.setAttribute(name, blob)
                 else:
                     profile.setAttribute(name, feature.attribute(name))
@@ -172,7 +171,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
     @classmethod
     def write(cls, speclib: SpectralLibrary,
               path: str,
-              progressDialog: typing.Union[QProgressDialog, ProgressHandler] = None,
+              feedback: QgsProcessingFeedback= None,
               options: QgsVectorFileWriter.SaveVectorOptions = None,
               filterFormat: QgsVectorFileWriter.FilterFormatDetails = None):
         """
@@ -213,7 +212,6 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
         if options.layerName in [None, '']:
             options.layerName = speclib.name()
         transform_context = QgsProject.instance().transformContext()
-
         if callable(getattr(QgsVectorFileWriter, "writeAsVectorFormatV3", None)):
             errCode, errMsg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(
                 speclib,
@@ -273,7 +271,7 @@ class VectorSourceSpectralLibraryIO(AbstractSpectralLibraryIO):
 
         m = menu.addAction('Vector Layer')
         m.setToolTip(
-            'Adds profiles from another vector source\'s "{}" and "{}" attributes.'.format(FIELD_VALUES, FIELD_NAME))
+            'Adds profiles from another vector source\'s "{}" attributes.'.format(FIELD_VALUES))
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
     @classmethod

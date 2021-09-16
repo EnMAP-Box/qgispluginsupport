@@ -39,7 +39,7 @@ from qgis.gui import QgsDialog, QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
 
 from ..externals import pyqtgraph as pg
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
-from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
+from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol, Symbols
 from ..utils import *
 
 DEBUG = False
@@ -103,6 +103,11 @@ class MarkerSymbol(enum.Enum):
     Star = 's'
     Plus = '+'
     Diamond = 'd'
+    Cross = 'x'
+    ArrowUp = 'arrow_up'
+    ArrowRight = 'arrow_right'
+    ArrowDown = 'arrow_down'
+    ArrowLeft = 'arrow_left'
     No_Symbol = None
 
     @staticmethod
@@ -465,6 +470,8 @@ class PlotStyle(QObject):
         if updateItem:
             pdi.updateItems()
 
+    XML_TAG = XMLTAG_PLOTSTYLENODE
+
     def writeXml(self, node: QDomElement, doc: QDomDocument) -> bool:
         """
         Writes the PlotStyle to a QDomNode
@@ -472,7 +479,8 @@ class PlotStyle(QObject):
         :param doc:
         :return:
         """
-        plotStyleNode = doc.createElement(XMLTAG_PLOTSTYLENODE)
+
+        plotStyleNode = doc.createElement(self.XML_TAG)
         cdata = doc.createCDATASection(self.json().replace('\n', ''))
         plotStyleNode.appendChild(cdata)
         node.appendChild(plotStyleNode)
@@ -620,19 +628,22 @@ class PlotStyle(QObject):
         """
         return QIcon(self.createPixmap(size=size))
 
-    def createPixmap(self, size: QSize = None) -> QPixmap:
+    def createPixmap(self, size: QSize = None, hline:bool=False, bc:QColor=None) -> QPixmap:
         """
         Creates a QPixmap to show this PlotStyle
         :param size: QSize
         :return: QPixmap
         """
 
-        if size is None:
+        if not isinstance(size, QSize):
             size = QSize(60, 60)
+
+        if bc is None:
+            bc = self.backgroundColor
 
         pm = QPixmap(size)
         if self.isVisible():
-            pm.fill(self.backgroundColor)
+            pm.fill(bc)
 
             p = QPainter(pm)
             # draw the line
@@ -640,15 +651,19 @@ class PlotStyle(QObject):
             p.setPen(self.linePen)
 
             w, h = pm.width(), pm.height()
+            path = QPainterPath()
+            if hline:
+                xvec = [0.0, 0.5, 1.0]
+                yvec = [0.5, 0.5, 0.5]
+            else:
+                xvec = [0.0, 0.5, 1.0]
+                yvec = [0.8, 0.5, 0.7]
 
-            hw, hh = int(w * 0.5), int(h * 0.5)
-            w2, h2 = int(w * 0.75), int(h * 0.75)
-            #p.drawLine(x1,y1,x2,y2)
-
-            p.drawLine(2, h - 2, hw, hh)
-            p.drawLine(hw, hh, w - 2, int(h * 0.3))
-
-            p.translate(pm.width() / 2, pm.height() / 2)
+            path.moveTo(xvec[0]*w, yvec[0]*h)
+            for x, y in zip(xvec, yvec):
+                path.lineTo(x*w, y*h)
+            p.drawPath(path)
+            p.translate(0.5 * pm.width(), 0.5 * pm.height())
             drawSymbol(p, self.markerSymbol, self.markerSize, self.markerPen, self.markerBrush)
             p.end()
         else:
@@ -834,6 +849,7 @@ class PlotStyleWidget(QWidget):
         self.cbLinePenStyle.setPenStyle(style.linePen.style())
         self.sbLinePenWidth.setValue(style.linePen.width())
         self.cbIsVisible.setChecked(style.isVisible())
+        self.plotWidget.setBackground(style.backgroundColor)
         self.mBlockUpdates = False
 
         self.refreshPreview()

@@ -275,11 +275,13 @@ def initResourceFile(path):
     if add_path:
         sys.path.append(path.parent.as_posix())
     try:
-        __import__(name)
+        rcModule = __import__(name)
         # spec = importlib.util.spec_from_file_location(name, path)
         # rcModule = importlib.util.module_from_spec(spec)
         # spec.loader.exec_module(rcModule)
         # rcModule.qInitResources()
+        rcModule.qInitResources()
+        s = ""
 
     except Exception as ex:
         print(ex, file=sys.stderr)
@@ -288,7 +290,7 @@ def initResourceFile(path):
         sys.path.remove(path.parent.as_posix())
 
 
-def findQGISResourceFiles():
+def findQGISResourceFiles() -> typing.List[pathlib.Path]:
     """
     Tries to find a folder 'qgisresources'.
     See snippets/create_qgisresourcefilearchive.py to create the 'qgisresources' folder.
@@ -368,6 +370,9 @@ class ResourceTableModel(QAbstractTableModel):
             if orientation == Qt.Horizontal:
                 return self.columnNames()[section]
 
+        if role == Qt.TextAlignmentRole and orientation == Qt.Vertical:
+            return Qt.AlignRight
+
         return super().headerData(section, orientation, role)
 
     def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
@@ -432,6 +437,7 @@ class ResourceBrowser(QWidget):
         self.tbFilter: QLineEdit
         self.tableView: ResourceTableView
         self.btnUseRegex: QToolButton
+        self.btnCaseSensitive: QToolButton
         self.btnReload: QToolButton
         self.preview: QLabel
 
@@ -453,8 +459,10 @@ class ResourceBrowser(QWidget):
 
         self.btnReload.setDefaultAction(self.actionReload)
         self.btnUseRegex.setDefaultAction(self.optionUseRegex)
+        self.btnCaseSensitive.setDefaultAction(self.optionCaseSensitive)
         self.actionReload.triggered.connect(self.resourceModel.reloadResources)
 
+        self.optionCaseSensitive.toggled.connect(self.updateFilter)
         self.optionUseRegex.toggled.connect(self.updateFilter)
         self.tbFilter.textChanged.connect(self.updateFilter)
 
@@ -468,6 +476,12 @@ class ResourceBrowser(QWidget):
             expr.setPatternSyntax(QRegExp.RegExp)
         else:
             expr.setPatternSyntax(QRegExp.Wildcard)
+
+        if self.optionCaseSensitive.isChecked():
+            expr.setCaseSensitivity(Qt.CaseSensitive)
+        else:
+            expr.setCaseSensitivity(Qt.CaseInsensitive)
+
         if expr.isValid():
             self.resourceProxyModel.setFilterRegExp(expr)
             self.info.setText('')

@@ -24,6 +24,7 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import re
 import warnings
 import copy
 import enum
@@ -34,6 +35,12 @@ import sip
 import collections.abc
 import numpy as np
 import inspect
+
+from PyQt5.QtCore import QAbstractTableModel
+from PyQt5.QtGui import QColor, QPainter
+from PyQt5.QtWidgets import QStyledItemDelegate, QTableView, QSpinBox
+from qgis.core import QgsSettings
+from qgis.gui import QgsColorButton, QgsSpinBox, QgsDoubleSpinBox
 from qgis.PyQt.QtCore import QModelIndex, QAbstractItemModel, QAbstractListModel, \
     pyqtSignal, Qt, QObject, QAbstractListModel, QSize, pyqtBoundSignal, QMetaEnum, QMetaType
 from qgis.PyQt.QtWidgets import QComboBox, QTreeView, QMenu
@@ -63,7 +70,14 @@ def setCurrentComboBoxValue(comboBox, value):
         i = comboBox.findData(value, role=Qt.DisplayRole)
         if i == -1:
             i = comboBox.findData(value, role=Qt.UserRole)
-
+        if i == -1:
+            for r in range(model.rowCount(QModelIndex())):
+                idx = model.index(r, 0)
+                displayData = model.data(idx, role=Qt.Unchecked)
+                userData = model.data(idx, role=Qt.UserRole)
+                if displayData == value or (userData is not None and userData == value):
+                    i = r
+                    break
         if i != -1:
             comboBox.setCurrentIndex(i)
             return True
@@ -130,7 +144,7 @@ class OptionListModel(QAbstractListModel):
     def __init__(self, options=None, parent=None):
         super(OptionListModel, self).__init__(parent)
 
-        self.mOptions = []
+        self.mOptions: typing.List[Option] = []
 
         self.insertOptions(options)
 
@@ -139,6 +153,9 @@ class OptionListModel(QAbstractListModel):
 
     def __iter__(self):
         return iter(self.mOptions)
+
+    def __getitem__(self, slice):
+        return self.mOptions[slice]
 
     def addOption(self, option):
         self.insertOptions([option])
@@ -174,12 +191,26 @@ class OptionListModel(QAbstractListModel):
 
             self.sigOptionsInserted.emit(options)
 
+    def findOption(self, value) -> Option:
+        """
+        Returns the option with value "value"
+        :param value:
+        :return:
+        """
+        if isinstance(value, Option):
+            if value in self.mOptions:
+                return self.mOptions[self.mOptions.index(value)]
+        for o in self:
+            if o.mValue == value:
+                return o
+        return None
+
     def o2o(self, value):
         if not isinstance(value, Option):
             value = Option(value, '{}'.format(value))
         return value
 
-    def options(self) -> list:
+    def options(self) -> typing.List[Option]:
         """
         :return: [list-of-Options]
         """
@@ -189,7 +220,7 @@ class OptionListModel(QAbstractListModel):
         """
         :return: [list-str-of-Option-Values]
         """
-        return [o.mValue for o in self.options()]
+        return [o.value() for o in self.options()]
 
     sigOptionsRemoved = pyqtSignal(list)
 
@@ -362,8 +393,9 @@ class TreeNode(QObject):
         return self.mStatusTip
 
     def setCheckState(self, checkState):
-        assert isinstance(checkState, Qt.CheckState)
+        assert isinstance(checkState, (int, Qt.CheckState))
         self.mCheckState = checkState
+        self.sigUpdated.emit(self)
 
     def canFetchMore(self) -> bool:
         """
@@ -584,10 +616,11 @@ class TreeNode(QObject):
         Same as setValues([value])
         :param value: any
         """
-        if value == None:
+        if value is None:
             self.setValues(None)
         else:
             self.setValues([value])
+
 
     def setValues(self, values: list):
         """
@@ -623,14 +656,14 @@ class TreeNode(QObject):
         """Returns the number of child nodes"""
         return len(self.mChildren)
 
-    def childNodes(self) -> list:
+    def childNodes(self) -> typing.Iterator['TreeNode']:
         """
         Returns the child nodes
         :return: [list-of-TreeNodes]
         """
         return self.mChildren[:]
 
-    def findParentNode(self, nodeType):
+    def findParentNode(self, nodeType) -> typing.Type['TreeNode']:
         """
         Returns the next upper TreeNode of type "nodeType"
         :param nodeType:
@@ -645,7 +678,7 @@ class TreeNode(QObject):
         else:
             return parent.findParentNode(nodeType)
 
-    def findChildNodes(self, type, recursive=True):
+    def findChildNodes(self, type, recursive: bool = True):
         """
         Returns a list of child nodes with node-type `type`.
         :param type: node-class
@@ -661,36 +694,31 @@ class TreeNode(QObject):
         return results
 
 
-class ArrayIterator(object):
-    def __init__(self, array: np.ndarray):
-        assert isinstance(array, np.ndarray)
+class OptionTreeNode(TreeNode):
 
-        self.array = array
-        self.n = array.shape[0]
-        self.i = -1
+    def __init__(self, optionModel:OptionListModel, *args, option: Option = None, **kwds):
+        super().__init__(*args, **kwds)
 
-    def name(self):
-        return 'array'
+        assert isinstance(optionModel, OptionListModel)
+        self.mOptionModel = optionModel
+        self.mOption: Option = None
+        if option is None and len(optionModel) > 0:
+            option = optionModel[0]
+        self.setOption(option)
 
-    def value(self):
-        return str(self.array)
+    def optionModel(self) -> OptionListModel:
+        return self.mOptionModel
 
-    def __iter__(self):
-        return self
+    def setOption(self, option: Option):
+        assert option in self.mOptionModel
+        self.mOption = option
+        self.setValue(option.name())
 
-    def __next__(self):
-        self.i += 1
-        if self.i == self.n:
-            raise StopIteration
-        else:
-            if self.array.ndim > 1:
-                return (self.i, ArrayIterator(self.array[self.i, :]))
-            else:
-                return (self.i, self.array[self.i].tolist())
+    def option(self) -> Option:
+        return self.mOption
 
-    def __len__(self) -> int:
-        return self.n
-
+    def options(self) -> typing.List[Option]:
+        return self.mOptionModel.options()
 
 class PyObjectTreeNode(TreeNode):
 
@@ -700,6 +728,7 @@ class PyObjectTreeNode(TreeNode):
         self.mPyObject = obj
         self.mFetchIterator = None
         self.mIsFetched: bool = False
+
         # end-nodes which cannot be fetched deeper
         if isinstance(obj, (int, float, str)):
             self.setValue(obj)
@@ -718,17 +747,16 @@ class PyObjectTreeNode(TreeNode):
             #    value = obj.__name__
             # else:
             #    value = type(obj).__name__
+
             if isinstance(obj, (np.ndarray,)):
                 value = np.array2string(obj, threshold=10)
-            elif isinstance(obj, ArrayIterator):
-                value = obj.value()
             elif isinstance(obj, (bytearray, bytes)):
                 value = str(obj)
             else:
                 # value = '{:1.256s}'.format(str(obj))
                 value = str(obj)  # .strip()
             value = value.replace('\n', ' ')
-            self.setValue(str(value))
+            self.setValue(value)
             self.setToolTip(f'{self.name()} {value}')
 
     def canFetchMore(self) -> bool:
@@ -745,27 +773,10 @@ class PyObjectTreeNode(TreeNode):
         FETCH_SIZE = 50
 
         if self.mFetchIterator is None:
-            if isinstance(self.mPyObject, typing.Iterator):
-                self.mFetchIterator = self.mPyObject
-                s = ""
             if isinstance(self.mPyObject, (list, tuple)):
                 self.mFetchIterator = enumerate(self.mPyObject)
             elif isinstance(self.mPyObject, dict):
                 self.mFetchIterator = iter(self.mPyObject.items())
-            elif isinstance(self.mPyObject, ArrayIterator):
-                self.mFetchIterator = self.mPyObject
-            elif isinstance(self.mPyObject, np.ndarray):
-
-                prefix = [('min', self.mPyObject.min()),
-                          ('max', self.mPyObject.max()),
-                          ('array', ArrayIterator(self.mPyObject)),
-                          ]
-                members = prefix + inspect.getmembers(self.mPyObject)
-                first_names = ['array', 'min', 'max', 'size', 'ndim', 'shape']
-                members = sorted(members,
-                                 key=lambda t: first_names.index(t[0]) if t[0] in first_names else len(first_names))
-
-                self.mFetchIterator = iter(members)
             elif isinstance(self.mPyObject, object):
                 self.mFetchIterator = iter(sorted(inspect.getmembers(self.mPyObject)))
             else:
@@ -782,7 +793,6 @@ class PyObjectTreeNode(TreeNode):
 
                 if isinstance(k, str) and k.startswith('__'):
                     continue
-
                 if isinstance(v, (types.BuiltinFunctionType,
                                   pyqtSignal,
                                   pyqtBoundSignal,
@@ -799,7 +809,6 @@ class PyObjectTreeNode(TreeNode):
 
         except StopIteration:
             self.mIsFetched = True
-            self.sigUpdated.emit(self)
 
         if len(newNodes) > 0:
             self.appendChildNodes(newNodes)
@@ -1066,6 +1075,7 @@ class TreeModel(QAbstractItemModel):
             nodes = [nodes]
 
         for n in nodes:
+            assert isinstance(n, TreeNode)
             idx = self.node2idx(n)
             if idx.isValid():
                 n.parentNode().removeChildNodes(n)
@@ -1150,13 +1160,17 @@ class TreeModel(QAbstractItemModel):
                 return node.icon()
             if role == Qt.ToolTipRole:
                 return node.toolTip()
+            if role == Qt.CheckStateRole and node.isCheckable():
+                return node.checkState()
+
         if col > 0:
             # first column is for the node name, other columns are for node values
             i = col - 1
 
             if len(node.values()) > i:
+
                 if role == Qt.DisplayRole:
-                    return str(node.values()[i]).replace('\n', ' ')
+                    return str(node.values()[i])
                 if role == Qt.EditRole:
                     return node.values()[i]
                 if role == Qt.ToolTipRole:
@@ -1288,14 +1302,15 @@ class TreeView(QTreeView):
 
         parent = tl.parent()
 
-        for row in range(tl.row(), br.row() + 1):
-            idx = self.model().index(row, 0, parent)
-            self.setColumnSpan(idx, None, None)
+        self.setColumnSpan(tl.parent(), tl.row(), br.row())
+        #for row in range(tl.row(), br.row() + 1):
+        #    idx = self.model().index(row, 0, parent)
+        #    self.setColumnSpan(idx, None, None)
         s = ""
 
     def setColumnSpan(self, parent: QModelIndex, first: int, last: int):
         """
-        Sets the column span for index `idx` and all child widgets
+        Sets the column span for the rows "first" to "last" recursively
         :param idx:
         :return:
         """
@@ -1303,8 +1318,11 @@ class TreeView(QTreeView):
         model: QAbstractItemModel = self.model()
         if not isinstance(model, QAbstractItemModel):
             return
+        assert isinstance(parent, QModelIndex)
 
         rows = model.rowCount(parent)
+        cols = model.columnCount(parent)
+
         if rows == 0:
             return
         if not isinstance(first, int):
@@ -1314,18 +1332,26 @@ class TreeView(QTreeView):
 
         assert last < rows
         for r in range(first, last + 1):
-            idx: QModelIndex = model.index(r, 0, parent)
-            idx2: QModelIndex = model.index(r, 1, parent)
+            idx0: QModelIndex = model.index(r, 0, parent)
 
-            if idx2.isValid():
-                txt = idx2.data(Qt.DisplayRole)
-                spanned = txt in [None, '']
-                # if spanned:
-                #    print(f'set spanned:: {idx.data(Qt.DisplayRole)}')
-                self.setFirstColumnSpanned(r, parent, spanned)
+            spanned = True
+            for c in range(1, cols):
+                idx_right = model.index(r, c, parent)
+                if idx_right.isValid():
+                    txt = idx_right.data(Qt.DisplayRole)
+                    if txt not in [None, '']:
+                        spanned = False
+                        break
+            self.setFirstColumnSpanned(r, parent, spanned)
 
-            self.setColumnSpan(idx, None, None)
+            # traverse sub-trees structure
+            self.setColumnSpan(idx0, None, None)
         return
+
+    def setRowColumnSpan(self, row, parent: QModelIndex):
+        cols = self.model().columnCount(parent)
+
+        self.setFirstColumnSpanned(r, parent, spanned)
 
         """
         assert isinstance(idx, QModelIndex)
@@ -1369,3 +1395,288 @@ class TreeView(QTreeView):
             if isinstance(node, TreeNode) and node not in nodes:
                 nodes.append(node)
         return nodes
+
+
+class SettingsNode(TreeNode):
+
+    def __init__(self, settings: QgsSettings, settings_key: str, **kwds):
+
+        super(SettingsNode, self).__init__(**kwds)
+        self.mSettings: QgsSettings = settings
+        self.mSettingsKey = f'{settings.group()}/{settings_key}'
+        self.mType = type(self.value())
+
+
+class SettingsModel(TreeModel):
+    sigSettingsValueChanged = pyqtSignal(str)
+
+    def __init__(self,
+                 settings: QgsSettings,
+                 key_filter: re.Pattern = '.*',
+                 options: typing.Dict = None,
+                 ranges: typing.Dict = None,
+                 parent: QObject = None):
+
+        super().__init__(parent=parent)
+
+        self.mRANGES: typing.Dict[str, typing.Tuple] = dict()
+        self.mOPTIONS: typing.Dict[str, typing.List[Option]] = dict()
+        self.mSettings: QgsSettings = None
+        self.initSettings(settings, key_filter=key_filter)
+        if options:
+            self.updateOptions(options)
+
+        if ranges:
+            self.updateRanges(ranges)
+
+    def flags(self, index: QModelIndex):
+        if not index.isValid():
+            return Qt.NoItemFlags
+        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        node = index.data(Qt.UserRole)
+
+        if isinstance(node, SettingsNode):
+            flags = flags | Qt.ItemIsEditable
+            if isinstance(node.value(), bool):
+                flags = flags | Qt.ItemIsUserCheckable
+        return flags
+
+    def keys(self) -> typing.List[str]:
+        keys = [n.mSettingsKey for n in self.findChildren(SettingsNode)]
+        return keys
+
+    def updateRanges(self, ranges: typing.Dict[str, typing.Tuple]):
+        for k, v in ranges.items():
+            assert len(v) >= 2
+
+        self.mRANGES.update(ranges)
+
+    def updateOptions(self, options: typing.Dict[str, typing.List[Option]]):
+        assert isinstance(options, dict)
+        opt = dict()
+        for k, olist in options.items():
+            olist2 = []
+            for o in olist:
+                if isinstance(o, enum.Enum):
+                    icon = None
+                    try:
+                        icon = o.icon(o.value)
+                    except:
+                        pass
+                    o = Option(value=o.value, name=o.name, toolTip=str(o), icon=icon)
+                if not isinstance(o, Option):
+                    o = Option(o)
+                olist2.append(o)
+
+            opt[k] = olist2
+
+        self.mOPTIONS.update(opt)
+
+    def initSettings(self, settings: QgsSettings,
+                     key_filter: typing.Union[typing.Pattern, str] = None):
+
+        self.mSettings = settings
+
+        if not isinstance(key_filter, list):
+            key_filter = [key_filter]
+
+        for i in range(len(key_filter)):
+            if isinstance(key_filter[i], str):
+                key_filter[i] = re.compile(key_filter[i])
+            assert isinstance(key_filter[i], typing.Pattern)
+
+        self.mRootNode.removeAllChildNodes()
+        self._readGroup(settings, '', self.mRootNode, key_filter)
+
+    def _readGroup(self, settings: QgsSettings, group: str, parent_node: TreeNode, key_filter):
+        settings.beginGroup(group)
+        added_nodes = []
+        for k in settings.childKeys():
+            longkey = f'{settings.group()}/{k}'
+            for filter in key_filter:
+                if filter.match(longkey):
+                    parts = k.split('/')
+                    value = settings.value(k)
+                    node = SettingsNode(settings, k, value=value, name=parts[-1])
+                    added_nodes.append(node)
+        for g in settings.childGroups():
+            node = TreeNode(name=g)
+            self._readGroup(settings, g, node, key_filter)
+            if len(node) > 0:
+                added_nodes.append(node)
+        settings.endGroup()
+        parent_node.appendChildNodes(added_nodes)
+
+    def setting_key_node(self, key: str) -> SettingsNode:
+
+        for n in self.mRootNode.findChildNodes(SettingsNode, recursive=True):
+            assert isinstance(n, SettingsNode)
+            if n.mSettingsKey == key:
+                return n
+        return None
+
+    def sync(self):
+        pass
+
+    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+
+        if not index.isValid():
+            return None
+
+        node = index.internalPointer()
+
+        if isinstance(node, SettingsNode) and index.column() == 1:
+            value = node.value()
+            k = node.mSettingsKey
+            option = None
+            for o in self.mOPTIONS.get(k, []):
+                o: Option
+                if o.value() == value:
+                    option = o
+                    break
+
+            # handle colors
+            if isinstance(value, QColor):
+                if role == Qt.DecorationRole:
+                    return value
+                if role == Qt.DisplayRole:
+                    return value.name()
+
+            if role == Qt.DecorationRole:
+                if isinstance(option, Option):
+                    return option.icon()
+
+            if role == Qt.ToolTipRole:
+                if isinstance(option, Option):
+                    return option.toolTip()
+                else:
+                    return f'{value}'
+
+            if role == Qt.EditRole:
+                return value
+
+            if role == Qt.UserRole + 1:
+                return self.mOPTIONS.get(node.mSettingsKey, None)
+
+            if role == Qt.UserRole + 2:
+                return self.mRANGES.get(node.mSettingsKey, None)
+
+        return super().data(index, role=role)
+
+    def setData(self, index: QModelIndex, value, role=None) -> bool:
+
+        if not index.isValid():
+            return False
+
+        node = index.data(Qt.UserRole)
+
+        if not isinstance(node, SettingsNode):
+            return False
+
+        old_value = node.value()
+        if old_value != value:
+            node.setValue(value) # this triggers the dataChanged signal
+            self.sigSettingsValueChanged.emit(node.mSettingsKey)
+            return True
+
+        return False
+
+
+class SettingsTreeViewDelegate(QStyledItemDelegate):
+    """
+
+    """
+
+    def __init__(self, parent=None):
+        super(SettingsTreeViewDelegate, self).__init__(parent=parent)
+
+    def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex):
+        # cName = self.mTableView.model().headerData(index.column(), Qt.Horizontal)
+        c = index.column()
+
+        value = index.data(Qt.UserRole)
+
+        if False:
+            style: PlotStyle = vis.mPlotStyle
+            h = self.mTreeView.verticalHeader().sectionSize(index.row())
+            w = self.mTreeView.horizontalHeader().sectionSize(index.column())
+            if h > 0 and w > 0:
+                px = style.createPixmap(size=QSize(w, h))
+                painter.drawPixmap(option.rect, px)
+            else:
+                super().paint(painter, option, index)
+        else:
+            super().paint(painter, option, index)
+
+    def setItemDelegates(self, tableView: QTableView):
+        for c in range(tableView.model().columnCount()):
+            tableView.setItemDelegateForColumn(c, self)
+
+    def createEditor(self, parent, option, index):
+        # cname = self.bridgeColumnName(index)
+        # bridge = self.bridge()
+        # pmodel = self.sortFilterProxyModel()
+
+        w = None
+        if index.isValid() and index.column() == 1:
+            value = index.data(Qt.EditRole)
+            options = index.data(Qt.UserRole + 1)
+            range = index.data(Qt.UserRole + 2)
+
+            if isinstance(value, QColor):
+                w = QgsColorButton(parent=parent)
+            elif isinstance(options, list):
+                w = QComboBox(parent=parent)
+                model = OptionListModel(options)
+                w.__model = model
+                w.setModel(model)
+
+            elif isinstance(range, tuple):
+                v_min, v_max = range[0], range[1]
+                if isinstance(v_min, int):
+                    w = QgsSpinBox(parent=parent)
+                    w.setRange(range[0], range[1])
+                elif isinstance(v_min, float):
+                    w = QgsDoubleSpinBox(parent=parent)
+                    w.setRange(range[0], range[1])
+            else:
+                w = super().createEditor(parent, option, index)
+        return w
+
+    def setEditorData(self, editor, index: QModelIndex):
+
+        if index.isValid():
+            value = index.data(Qt.EditRole)
+            if isinstance(editor, QgsColorButton):
+                assert isinstance(value, QColor)
+                editor.setColor(value)
+            elif isinstance(editor, QComboBox):
+                setCurrentComboBoxValue(editor, value)
+            elif isinstance(editor, (QgsSpinBox, QgsDoubleSpinBox)):
+                editor.setValue(value)
+            else:
+                super().setEditorData(editor, index)
+
+    def setModelData(self, w, model, index):
+
+        if index.isValid():
+            value_old = index.data(Qt.EditRole)
+            value_new = None
+            if isinstance(w, QgsColorButton):
+                model.setData(index, w.color())
+            elif isinstance(w, (QgsSpinBox, QgsDoubleSpinBox)):
+                model.setData(index, w.value())
+            elif isinstance(w, QComboBox):
+                value = currentComboBoxValue(w)
+                model.setData(index, value)
+            else:
+                super().setModelData(w, model, index)
+
+
+class SettingsTreeView(TreeView):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.setAutoExpansionDepth(2)
+        self.mDelegate = SettingsTreeViewDelegate(self)
+        self.setItemDelegate(self.mDelegate)

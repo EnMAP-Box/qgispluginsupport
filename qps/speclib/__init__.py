@@ -27,20 +27,38 @@
 ***************************************************************************
 """
 import enum
-from qgis.core import QgsSettings
+import pathlib
 
-EDITOR_WIDGET_REGISTRY_KEY = 'Spectral Profile'
+from qgis.core import QgsSettings, QgsCoordinateReferenceSystem, QgsField, QgsFields
+from qgis.PyQt.QtCore import NULL, QVariant
+from osgeo import ogr
+EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
+
+SPECLIB_EPSG_CODE = 4326
+SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))
+
+EMPTY_VALUES = [None, NULL, QVariant(), '', 'None']
+
+FIELD_VALUES = 'profiles'
+FIELD_NAME = 'name'
+FIELD_FID = 'fid'
 
 
-class SpectralLibrarySettingsKey(enum.Enum):
-    CURRENT_PROFILE_STYLE = 1
-    DEFAULT_PROFILE_STYLE = 2
-    BACKGROUND_COLOR = 3
-    FOREGROUND_COLOR = 4
-    INFO_COLOR = 5
-    USE_VECTOR_RENDER_COLORS = 6
-    SELECTION_COLOR = 7
+def createStandardFields() -> QgsFields:
+    from .core import create_profile_field
+    fields = QgsFields()
+    fields.append(create_profile_field('profiles'))
+    fields.append(QgsField('name', QVariant.String))
+    return fields
 
+
+class SpectralLibrarySettingsKey:
+    BACKGROUND_COLOR = 'BACKGROUND_COLOR'
+    FOREGROUND_COLOR = 'FOREGROUND_COLOR'
+    INFO_COLOR = 'INFO_COLOR'
+    CROSSHAIR_COLOR= 'CROSSHAIR_COLOR'
+    SELECTION_COLOR = 'SELECTION_COLOR'
+    TEMPORARY_COLOR = 'TEMPORARY_COLOR'
 
 def speclibSettings() -> QgsSettings:
     """
@@ -54,3 +72,16 @@ try:
     from ..speclib.io.envi import EnviSpectralLibraryIO
 except:
     pass
+
+
+def speclibUiPath(name: str) -> str:
+    """
+    Returns the path to a spectral library *.ui file
+    :param name: name
+    :type name: str
+    :return: absolute path to *.ui file
+    :rtype: str
+    """
+    path = pathlib.Path(__file__).parent / 'ui' / name
+    assert path.is_file(), f'File does not exist: {path}'
+    return path.as_posix()

@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>421</width>
+    <height>501</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>2</number>
+   </property>
+   <property name="leftMargin">
+    <number>2</number>
+   </property>
+   <property name="topMargin">
+    <number>2</number>
+   </property>
+   <property name="rightMargin">
+    <number>2</number>
+   </property>
+   <property name="bottomMargin">
+    <number>2</number>
+   </property>
+   <item>
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="opaqueResize">
+      <bool>false</bool>
+     </property>
+     <widget class="SpectralProfilePlotWidget" name="plotWidget">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>2</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
+     <widget class="QgsCollapsibleGroupBox" name="mGroupBox">
+      <property name="title">
+       <string>Visualization</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <property name="leftMargin">
+        <number>2</number>
+       </property>
+       <property name="topMargin">
+        <number>2</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="bottomMargin">
+        <number>2</number>
+       </property>
+       <property name="spacing">
+        <number>2</number>
+       </property>
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="visButtonLayout">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QToolButton" name="btnAddProfileVis">
+           <property name="text">
+            <string>+VIS</string>
+           </property>
+           <property name="icon">
+            <iconset>
+             <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnRemoveProfileVis">
+           <property name="text">
+            <string>-VIS</string>
+           </property>
+           <property name="icon">
+            <iconset>
+             <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnSelectedFeaturesOnly">
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="icon">
+            <iconset>
+             <normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnColorsFromFeatureRenderer">
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="icon">
+            <iconset>
+             <normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_2">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item row="2" column="0">
+        <widget class="SpectralProfilePlotControlView" name="treeView">
+         <property name="dragEnabled">
+          <bool>true</bool>
+         </property>
+         <property name="dragDropMode">
+          <enum>QAbstractItemView::DragDrop</enum>
+         </property>
+         <property name="defaultDropAction">
+          <enum>Qt::MoveAction</enum>
+         </property>
+         <property name="alternatingRowColors">
+          <bool>true</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::ExtendedSelection</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+  <action name="actionAddProfileVis">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
+   </property>
+   <property name="text">
+    <string>+ VIS</string>
+   </property>
+   <property name="toolTip">
+    <string>Specfiy a new visualization of spectral profiles</string>
+   </property>
+  </action>
+  <action name="actionRemoveProfileVis">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
+   </property>
+   <property name="text">
+    <string>- VIS</string>
+   </property>
+   <property name="toolTip">
+    <string>Remove the selected profile visualizations</string>
+   </property>
+  </action>
+  <action name="optionSelectedFeaturesOnly">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</iconset>
+   </property>
+   <property name="text">
+    <string>SelectedFeaturesOnly</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to show profiles for selected features only</string>
+   </property>
+  </action>
+  <action name="optionColorsFromFeatureRenderer">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</normaloff>:/qps/ui/icons/speclib_usevectorrenderer.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Color from Vector Renderer</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to draw profiles in same color as profile locations on the map</string>
+   </property>
+  </action>
+  <action name="optionCursorCrosshair">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/images/themes/default/cursors/mCrossHair.svg</normaloff>:/images/themes/default/cursors/mCrossHair.svg</iconset>
+   </property>
+   <property name="text">
+    <string>CursorCrosshair</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to show a crosshair </string>
+   </property>
+  </action>
+  <action name="optionCursorPosition">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/qps/ui/icons/cursorlocationinfo.svg</normaloff>:/qps/ui/icons/cursorlocationinfo.svg</iconset>
+   </property>
+   <property name="text">
+    <string>CursorPosition</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to show the values related to the cursor position.</string>
+   </property>
+  </action>
+  <action name="optionSortXValues">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>SortXValues</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to sort profile data by its x values</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>qgscollapsiblegroupbox.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>SpectralProfilePlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>qps.speclib.gui.spectrallibraryplotwidget</header>
+  </customwidget>
+  <customwidget>
+   <class>SpectralProfilePlotControlView</class>
+   <extends>QTreeView</extends>
+   <header>qps.speclib.gui.spectrallibraryplotwidget</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="../../../../QGIS/images/images.qrc"/>
+  <include location="../../qpsresources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

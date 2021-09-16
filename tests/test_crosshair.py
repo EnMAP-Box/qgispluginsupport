@@ -12,14 +12,13 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 import xmlrunner
-from qgis.core import QgsProject, QgsRectangle, QgsCoordinateReferenceSystem
-from qgis.gui import QgsMapCanvas
 from qps.testing import TestObjects, TestCase
 from qps.crosshair.crosshair import *
 
+
 class CrosshairTests(TestCase):
 
-    def test_crosshair(self):
+    def test_Crosshair(self):
         # add site-packages to sys.data_source as done by enmapboxplugin.py
 
         lyr = TestObjects.createRasterLayer()
@@ -46,9 +45,8 @@ class CrosshairTests(TestCase):
         self.showGui(refCanvas)
 
     def test_noCRS(self):
-
         refCanvas = QgsMapCanvas()
-        refCanvas.setExtent(QgsRectangle(-1,-1,1,1))
+        refCanvas.setExtent(QgsRectangle(-1, -1, 1, 1))
         style = CrosshairStyle()
         self.assertIsInstance(style, CrosshairStyle)
         item = CrosshairMapCanvasItem(refCanvas)
@@ -59,7 +57,6 @@ class CrosshairTests(TestCase):
         self.showGui(refCanvas)
 
     def test_CRS(self):
-
         refCanvas = QgsMapCanvas()
         refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
         style = CrosshairStyle()
@@ -72,15 +69,12 @@ class CrosshairTests(TestCase):
         self.showGui(refCanvas)
 
     def test_dialog(self):
-
         refCanvas = QgsMapCanvas()
         refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
         QTimer.singleShot(500, QApplication.closeAllWindows)
         style = getCrosshairStyle(mapCanvas=refCanvas)
 
-
     def test_crosshair_maplayer(self):
-
         canvas = QgsMapCanvas()
         mc = CrosshairMapCanvasItem(canvas)
 
@@ -98,7 +92,4 @@ class CrosshairTests(TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
-
-

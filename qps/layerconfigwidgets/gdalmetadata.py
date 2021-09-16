@@ -469,7 +469,7 @@ class GDALBandMetadataModelTableViewDelegate(QStyledItemDelegate):
         assert isinstance(tableView, GDALBandMetadataModelTableView)
         super().__init__(parent=parent)
         self.mTableView = tableView
-        # self.mTableView.model().rowsInserted.connect(self.onRowsInserted)
+        # self.mTreeView.model().rowsInserted.connect(self.onRowsInserted)
 
     def sortFilterProxyModel(self) -> QSortFilterProxyModel:
         return self.mTableView.model()

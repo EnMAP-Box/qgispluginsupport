@@ -33,7 +33,7 @@ from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
 
 MIN_QGIS_VERSION = '3.16'
-__version__ = '1.2'
+__version__ = '1.3'
 
 DIR_QPS = pathlib.Path(__file__).parent
 DIR_UI_FILES = DIR_QPS / 'ui'

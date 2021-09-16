@@ -1,6 +1,6 @@
 # PyQtGraph Library:
 PyQtGraph is a powerful library for interactive scientific plotting based on Qt
-PyQtGrapg was embedded into QPS as described in https://pyqtgraph.readthedocs.io/en/latest/how_to_use.html#embedding-pyqtgraph-as-a-sub-package-of-a-larger-project
+PyQtGraph was embedded into QPS as described in https://pyqtgraph.readthedocs.io/en/latest/how_to_use.html#embedding-pyqtgraph-as-a-sub-package-of-a-larger-project
 
 ## Links
 http://www.pyqtgraph.org/

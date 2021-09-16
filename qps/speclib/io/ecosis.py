@@ -25,16 +25,20 @@
 ***************************************************************************
 """
 
-import os, sys, re, pathlib, json, io, re, linecache, typing
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-from qgis.core import *
-
-
 import csv as pycsv
-from ..core import SpectralProfile, SpectralLibrary, AbstractSpectralLibraryIO, \
-    FIELD_FID, FIELD_VALUES, FIELD_NAME, findTypeFromString, createQgsField, ProgressHandler
+import io
+import os
+import re
+import sys
+
+from qgis.PyQt.QtCore import QObject, QVariant
+from qgis.PyQt.QtWidgets import QMenu, QFileDialog, QProgressDialog
+from qgis.core import QgsProcessingFeedback
+from .. import createStandardFields
+from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_FID, FIELD_VALUES, createQgsField
+from ..core.spectrallibraryio import SpectralLibraryIO
+from ...utils import findTypeFromString
+
 
 class EcoSISCSVDialect(pycsv.Dialect):
     delimiter = ','
@@ -47,7 +51,6 @@ class EcoSISCSVDialect(pycsv.Dialect):
 
 
 def findDialect(file) -> pycsv.Dialect:
-
     if isinstance(file, str):
         file = open(file, 'r', encoding='utf-8')
 
@@ -55,10 +58,8 @@ def findDialect(file) -> pycsv.Dialect:
     while len(line) == 0:
         line = file.readline()
 
-
     delimiters = [',', ';', '\t']
     counts = [len(line.split(delimiter)) for delimiter in delimiters]
-
 
     dialect = EcoSISCSVDialect()
     dialect.delimiter = delimiters[counts.index(max(counts))]
@@ -68,13 +69,15 @@ def findDialect(file) -> pycsv.Dialect:
     s = ""
     return dialect
 
-class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
+
+class EcoSISSpectralLibraryIO(SpectralLibraryIO):
     """
     I/O Interface for the EcoSIS spectral library format.
     See https://ecosis.org for details.
     """
+
     @classmethod
-    def canRead(cls, path:str) -> bool:
+    def canRead(cls, path: str) -> bool:
         """
         Returns true if it can read the source defined by path
         :param path: source uri
@@ -96,7 +99,9 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         return False
 
     @classmethod
-    def readFrom(cls, path, progressDialog:typing.Union[QProgressDialog, ProgressHandler]=None) -> SpectralLibrary:
+    def readFrom(cls,
+                 path,
+                 feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -117,7 +122,6 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
                 s = ""
             fieldnames = [n for n in fieldnames if len(n) > 0]
 
-
             xUnit = yUnit = None
             xValueNames = []
             for fieldName in reversed(fieldnames):
@@ -132,11 +136,11 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
             if xValues[0] > 200:
                 xUnit = 'nm'
 
-
             fieldnames = [n for n in fieldnames if n not in xValueNames]
 
             speclib = SpectralLibrary()
             speclib.startEditing()
+            speclib.addMissingFields(createStandardFields())
 
             profiles = []
             LUT_FIELD_TYPES = dict()
@@ -166,13 +170,12 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
                     profile.setAttribute(fieldName, fieldValue)
 
                 if FIELD_NAME not in fieldnames:
-                    profile.setName('{}:{}'.format(bn, i+1))
+                    profile.setAttribute(FIELD_NAME, '{}:{}'.format(bn, i + 1))
                 else:
-                    profile.setName(row[FIELD_NAME])
+                    profile.setAttribute(FIELD_NAME, row[FIELD_NAME])
                 profiles.append(profile)
 
             speclib.addProfiles(profiles)
-
 
             s = ""
         s = ""
@@ -180,7 +183,7 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         return speclib
 
     @classmethod
-    def write(cls, speclib:SpectralLibrary, path:str, progressDialog:QProgressDialog = None, delimiter:str=';'):
+    def write(cls, speclib: SpectralLibrary, path: str, feedback: QProgressDialog = None, delimiter: str = ';'):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """
@@ -191,16 +194,15 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         writtenFiles = []
         fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES, FIELD_FID]]
         groups = speclib.groupBySpectralProperties()
-        for i, grp in enumerate(groups.keys()):
+        for i, setting in enumerate(groups.keys()):
             # in-memory text buffer
             stream = io.StringIO()
-            xValues, xUnit, yUnit = grp
-            profiles = groups[grp]
+            xValues, xUnit, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
+            profiles = groups[setting]
             if i == 0:
                 path = basePath + ext
             else:
-                path = basePath + '{}{}'.format(i+1, ext)
-
+                path = basePath + '{}{}'.format(i + 1, ext)
 
             headerNames = fieldNames + [str(v) for v in xValues]
             W = pycsv.DictWriter(stream, fieldnames=headerNames, dialect=EcoSISCSVDialect())
@@ -236,7 +238,7 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         def read(speclib: SpectralLibrary):
 
             path, filter = QFileDialog.getOpenFileName(caption='EcoSIS CSV File',
-                                               filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
+                                                       filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
             if os.path.isfile(path):
 
                 sl = EcoSISSpectralLibraryIO.readFrom(path)
@@ -252,12 +254,11 @@ class EcoSISSpectralLibraryIO(AbstractSpectralLibraryIO):
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
     @classmethod
-    def addExportActions(cls, spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
+    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def write(speclib: SpectralLibrary):
-
             path, filter = QFileDialog.getSaveFileName(caption='Write to EcoSIS CSV File',
-                                                    filter='EcoSIS CSV (*.csv);;Text files (*.txt)')
+                                                       filter='EcoSIS CSV (*.csv);;Text files (*.txt)')
             if isinstance(path, str) and len(path) > 0:
                 sl = EcoSISSpectralLibraryIO.write(spectralLibrary, path)
 

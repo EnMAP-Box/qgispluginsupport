@@ -1081,19 +1081,18 @@ class ClassificationScheme(QAbstractTableModel):
             return scheme
 
         field = layer.fields().at(fieldIndex)
-        if re.search('int|string', field.typeName(), re.I):
-            values = layer.uniqueValues(fieldIndex, limit=MAX_UNIQUE_CLASSES)
-            values = sorted(values)
 
-            if len(values) > 0:
-                scheme = ClassificationScheme()
-                scheme.insertClass(ClassInfo(0, 'unclassified'))
-                if field.isNumeric():
-                    for v in values:
-                        scheme.insertClass(ClassInfo(int(v), name=str(v)))
-                else:
-                    for i, v in enumerate(values):
-                        scheme.insertClass(ClassInfo(i + 1, name=str(v)))
+        values = sorted(layer.uniqueValues(fieldIndex, limit=MAX_UNIQUE_CLASSES))
+        values = [v for v in values if v not in [None, NULL]]
+        if len(values) > 0:
+            scheme = ClassificationScheme()
+            scheme.insertClass(ClassInfo(0, 'unclassified'))
+            if field.isNumeric():
+                for v in values:
+                    scheme.insertClass(ClassInfo(int(v), name=str(v)))
+            else:
+                for i, v in enumerate(values):
+                    scheme.insertClass(ClassInfo(i + 1, name=str(v)))
 
         return scheme
 

@@ -52,7 +52,7 @@ linesBat.append('mkdir {}'.format(dirOut.replace('/', '\\')))
 linesSh.append('mkdir {}'.format(dirOut))
 
 bnDirTests = os.path.basename(DIR_TESTS)
-for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py')):
+for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py', recursive=True)):
     file = pathlib.Path(file)
     bn = os.path.basename(file)
     bn = os.path.splitext(bn)[0]

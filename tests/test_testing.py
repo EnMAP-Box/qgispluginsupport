@@ -6,14 +6,18 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import xmlrunner
+from qgis.core import QgsProcessingProvider, QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, \
+    QgsProcessingAlgorithm
 
-from qgis.core import QgsRasterLayer, QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
+from qgis.core import QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
     QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView,  QgisInterface, QgsGui
 import unittest
 import qps.testing
-from osgeo import gdal, gdal_array, ogr, osr
+from osgeo import gdal
 import numpy as np
+
+from qps.speclib.core.spectralprofile import SpectralProfileBlock
 
 
 class testClassTesting(unittest.TestCase):
@@ -78,6 +82,8 @@ class testClassTesting(unittest.TestCase):
         qgis_app.quit()
 
 
+
+
 class test_TestObject(qps.testing.TestCase):
 
     def test_spectralProfiles(self):
@@ -88,8 +94,8 @@ class test_TestObject(qps.testing.TestCase):
         self.assertTrue(len(profiles) == 10)
 
     def test_VectorLayers(self):
-        from qps.testing import TestObjects, start_app
-        from osgeo import ogr, osr
+        from qps.testing import TestObjects
+        from osgeo import ogr
 
         ds = TestObjects.createVectorDataSet(wkb=ogr.wkbPoint)
         self.assertIsInstance(ds, ogr.DataSource)
@@ -113,6 +119,82 @@ class test_TestObject(qps.testing.TestCase):
         self.assertTrue(lyr.isValid())
         self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
         self.assertTrue(lyr.crs().isValid())
+
+    def test_processingProvider(self):
+        from qps.testing import TestObjects
+        prov = TestObjects.createProcessingProvider()
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        self.assertIsInstance(prov, QgsProcessingProvider)
+        self.assertTrue(reg.providerById(prov.id()) == prov)
+
+        prov2 = TestObjects.createProcessingProvider()
+        self.assertEqual(prov, prov2)
+
+    def test_spectralProcessingAlgorithms(self):
+
+        from qps.testing import TestObjects
+        from qps.speclib.processingalgorithms import SpectralPythonCodeProcessingAlgorithm
+        from qps.speclib.processing import is_spectral_processing_algorithm
+
+        alg: SpectralPythonCodeProcessingAlgorithm = TestObjects.createSpectralProcessingAlgorithm()
+        self.assertIsInstance(alg, QgsProcessingAlgorithm)
+        self.assertIsInstance(alg, SpectralPythonCodeProcessingAlgorithm)
+        self.assertTrue(is_spectral_processing_algorithm(alg))
+
+        speclib = TestObjects.createSpectralLibrary()
+        feedback = QgsProcessingFeedback()
+        context = QgsProcessingContext()
+        context.setProject(QgsProject.instance())
+        context.setFeedback(feedback)
+
+        parameters = {alg.INPUT: speclib}
+        success, msg = alg.checkParameterValues(parameters, context)
+        self.assertTrue(success, msg=msg)
+        self.assertTrue(alg.prepareAlgorithm(parameters, context, feedback))
+
+        results, success = alg.run(parameters, context, feedback)
+        self.assertTrue(success)
+        self.assertTrue(alg.OUTPUT in results.keys())
+        self.assertIsInstance(results[alg.OUTPUT], list)
+        for block in results[alg.OUTPUT]:
+            assert isinstance(block, SpectralProfileBlock)
+
+    def test_spectralProcessingModel(self):
+
+        from qps.testing import TestObjects
+        from qps.speclib.processing import is_spectral_processing_model
+        model = TestObjects.createSpectralProcessingModel()
+        self.assertIsInstance(model, QgsProcessingModelAlgorithm)
+        self.assertTrue(is_spectral_processing_model(model))
+
+        speclib = TestObjects.createSpectralLibrary()
+
+        # outputID = calgW.modelOutput('speclib_target').childId()
+        parameters = {'input_profiles': speclib}
+        feedback = QgsProcessingFeedback()
+        context = QgsProcessingContext()
+        context.setProject(QgsProject.instance())
+        context.setFeedback(feedback)
+        success, msg = model.checkParameterValues(parameters, context)
+        self.assertTrue(success, msg=msg)
+        self.assertTrue(model.prepareAlgorithm(parameters, context, feedback))
+        results, success = model.run(parameters, context, feedback)
+        self.assertTrue(success)
+
+        results = model.processAlgorithm(parameters, context, feedback)
+        self.assertIsInstance(results, dict)
+
+        from qps.speclib.processing import outputParameterResult
+        for p in model.outputDefinitions():
+            result1 = outputParameterResult(results, p)
+            result2 = outputParameterResult(results, p.name())
+            self.assertEqual(result1, result2)
+            self.assertIsInstance(result1, list)
+            for b in result1:
+                self.assertIsInstance(b, SpectralProfileBlock)
+
+        self.assertTrue(success)
+
 
     def test_coredata(self):
         from qps.testing import TestObjects
@@ -153,7 +235,6 @@ class test_TestObject(qps.testing.TestCase):
         self.assertEqual(ds.GetRasterBand(1).DataType, gdal.GDT_Float32)
 
         dsSrc = TestObjects.createRasterDataset(100, 100, 1)
-        from qpstestdata import enmap
         woptions = gdal.WarpOptions(dstSRS='EPSG:4326')
         pathDst = '/vsimem/warpDest.tif'
         dsDst = gdal.Warp(pathDst, dsSrc, options=woptions)
@@ -161,7 +242,7 @@ class test_TestObject(qps.testing.TestCase):
 
     def test_Speclibs(self):
         from qps.testing import TestObjects
-        from qps.speclib.core import SpectralLibrary
+        from qps.speclib.core.spectrallibrary import SpectralLibrary
         slib = TestObjects.createSpectralLibrary(7)
         self.assertIsInstance(slib, SpectralLibrary)
         self.assertTrue(len(slib) == 7)
