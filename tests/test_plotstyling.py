@@ -50,6 +50,9 @@ class PlotStyleTests(TestCase):
         bt2 = PlotStyleButton()
         bt2.setCheckable(False)
 
+        bt3 = PlotStyleButton()
+        bt3.setColorWidgetVisibility(False)
+
         w = QWidget()
         g = QGridLayout()
         g.addWidget(QLabel('Checkable PlotStyleButton'), 0, 0)
@@ -57,6 +60,8 @@ class PlotStyleTests(TestCase):
         g.addWidget(QLabel('None-Checkable PlotStyleButton'), 1, 0)
         g.addWidget(bt2, 1, 1)
 
+        g.addWidget(QLabel('No color widgets'), 2, 0)
+        g.addWidget(bt3, 2, 1)
         w.setLayout(g)
         # w.setMaximumSize(200, 50)
         self.showGui(w)

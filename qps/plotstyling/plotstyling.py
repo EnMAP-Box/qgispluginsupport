@@ -790,6 +790,12 @@ class PlotStyleWidget(QWidget):
         self.setPlotStyle(plotStyle)
         self.refreshPreview()
 
+    def setColorWidgetVisibility(self, b:bool):
+        assert isinstance(b, bool)
+        self.btnMarkerBrushColor.setVisible(b)
+        self.btnMarkerPenColor.setVisible(b)
+        self.btnLinePenColor.setVisible(b)
+
     def toggleWidgetEnabled(self, cb: QComboBox, widgets: list):
         """
         Toggles if widgets are enabled according to the QComboBox text values
@@ -917,6 +923,9 @@ class PlotStyleButton(QToolButton):
         self.mDialog.setPlotStyle(self.mPlotStyle.clone())
         self.mDialog.activateWindow()
 
+    def setColorWidgetVisibility(self, b: bool):
+        self.mDialog.setColorWidgetVisibility(b)
+
     def onAccepted(self, *args):
         if isinstance(self.mDialog, PlotStyleDialog):
             ps = self.mDialog.plotStyle()
@@ -988,6 +997,9 @@ class PlotStyleDialog(QgsDialog):
         l.addWidget(self.w)
         if isinstance(plotStyle, PlotStyle):
             self.setPlotStyle(plotStyle)
+
+    def setColorWidgetVisibility(self, b:bool):
+        self.w.setColorWidgetVisibility(b)
 
     def plotStyleWidget(self) -> PlotStyleWidget:
         return self.w
