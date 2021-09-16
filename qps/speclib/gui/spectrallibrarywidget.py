@@ -129,10 +129,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionImportSpeclib)
         self.tbSpeclibAction.addAction(self.actionExportSpeclib)
 
-        self.tbSpeclibAction.addSeparator()
-        self.cbXAxisUnit = self.mSpeclibPlotWidget.optionXUnit.createUnitComboBox()
-        self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
-        self.tbSpeclibAction.addAction(self.mSpeclibPlotWidget.optionColorsFromFeatureRenderer)
+        # self.tbSpeclibAction.addSeparator()
+        # self.cbXAxisUnit = self.mSpeclibPlotWidget.optionXUnit.createUnitComboBox()
+        # self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
+        # self.tbSpeclibAction.addAction(self.mSpeclibPlotWidget.optionColorsFromFeatureRenderer)
 
         self.actionShowFormView = QAction('Show Form View')
         self.actionShowFormView.setCheckable(True)
@@ -183,6 +183,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionShowProperties)
         self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
                                              self.btnShowProperties)
+
+        # show attribute table by default
+        self.actionShowAttributeTable.trigger()
 
         # QIcon(':/images/themes/default/mActionMultiEdit.svg').pixmap(20,20).isNull()
         self.setAcceptDrops(True)
@@ -255,12 +258,15 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def addProfileStyleMenu(self, menu: QMenu):
         selectedFIDs = self.tableView().selectedFeaturesIds()
+        return
+
         n = len(selectedFIDs)
         menuProfileStyle = menu.addMenu('Profile Style')
         wa = QWidgetAction(menuProfileStyle)
 
         btnResetProfileStyles = QPushButton('Reset')
         btnApplyProfileStyle = QPushButton('Apply')
+
 
         plotStyle = self.plotWidget().profileRenderer().profileStyle
         if n == 0:
