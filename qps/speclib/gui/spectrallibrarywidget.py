@@ -42,11 +42,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
         super().__init__(speclib)
         # self.setAttribute(Qt.WA_DeleteOnClose, on=True)
         self.setWindowIcon(QIcon(':/qps/ui/icons/speclib.svg'))
-        self.mQgsStatusBar = QgsStatusBar(self.statusBar())
-        self.mQgsStatusBar.setParentStatusBar(self.statusBar())
-        self.mStatusLabel: SpectralLibraryInfoLabel = SpectralLibraryInfoLabel()
-        self.mStatusLabel.setTextFormat(Qt.RichText)
-        self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
+        # self.mQgsStatusBar = QgsStatusBar()
+        # self.mQgsStatusBar
+        # self.mQgsStatusBar.setParentStatusBar(self.statusBar())
+        # self.mStatusLabel: SpectralLibraryInfoLabel = SpectralLibraryInfoLabel()
+        # self.mStatusLabel.setTextFormat(Qt.RichText)
+        # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
+        # self.mQgsStatusBar.setVisible(False)
 
         self.mIODialogs: typing.List[QWidget] = list()
 
@@ -56,8 +58,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mSpeclibPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
         assert isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)
         self.mSpeclibPlotWidget.setDualView(self.mMainView)
-        self.mStatusLabel.setPlotWidget(self.mSpeclibPlotWidget)
-        self.mSpeclibPlotWidget.plotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
+        # self.mStatusLabel.setPlotWidget(self.mSpeclibPlotWidget)
+        # self.mSpeclibPlotWidget.plotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
         self.pageProcessingWidget: SpectralProcessingWidget = SpectralProcessingWidget()
 
@@ -364,7 +366,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         plotWidget: SpectralProfilePlotWidget = self.plotWidget()
 
         #  stop plot updates
-        plotWidget.mUpdateTimer.stop()
+        # plotWidget.mUpdateTimer.stop()
         restart_editing: bool = not speclib.startEditing()
         oldCurrentIDs = list(self.plotControl().mTemporaryProfileIDs)
         addAuto: bool = self.optionAddCurrentProfilesAutomatically.isChecked()

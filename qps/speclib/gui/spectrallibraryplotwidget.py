@@ -1111,9 +1111,9 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         pi.addItem(self.mInfoScatterPoint)
         self.proxy2D = pg.SignalProxy(self.scene().sigMouseMoved, rateLimit=100, slot=self.onMouseMoved2D)
 
-        self.mUpdateTimer = QTimer()
-        self.mUpdateTimer.setInterval(500)
-        self.mUpdateTimer.setSingleShot(False)
+        # self.mUpdateTimer = QTimer()
+        # self.mUpdateTimer.setInterval(500)
+        # self.mUpdateTimer.setSingleShot(False)
 
         self.mMaxInfoLength: int = 30
         self.mShowCrosshair: bool = True

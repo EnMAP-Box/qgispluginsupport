@@ -21,8 +21,8 @@ from qgis.PyQt.QtWidgets import *
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_names, is_profile_field
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict
-from ... import SpectralProfile
+from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, SpectralProfile
+
 
 from ...plotstyling.plotstyling import PlotStyle, MarkerSymbol, PlotStyleButton
 import numpy as np
