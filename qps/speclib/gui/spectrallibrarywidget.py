@@ -134,6 +134,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
         # self.tbSpeclibAction.addAction(self.mSpeclibPlotWidget.optionColorsFromFeatureRenderer)
 
+        self.actionShowProfileView = QAction('Show Profile Plot')
+        self.actionShowProfileView.setCheckable(True)
+        self.actionShowProfileView.setChecked(True)
+        self.actionShowProfileView.setIcon(QIcon(':/images/themes/default/mActionLocalHistogramStretch.svg'))
+        self.actionShowProfileView.triggered.connect(self.setCenterView)
+
         self.actionShowFormView = QAction('Show Form View')
         self.actionShowFormView.setCheckable(True)
         self.actionShowFormView.setIcon(QIcon(':/images/themes/default/mActionFormView.svg'))
@@ -162,6 +168,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.addToolBar(self.tbSpectralProcessing)
 
         r = self.tbSpeclibAction.addSeparator()
+        self.tbSpeclibAction.addAction(self.actionShowProfileView)
         self.tbSpeclibAction.addAction(self.actionShowFormView)
         self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
         self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
@@ -193,6 +200,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def setCenterView(self, view: 'SpectralLibraryWidget.ViewType' = None):
 
         sender = self.sender()
+
+        self.widgetRight.setVisible(self.actionShowProfileView.isChecked())
 
         exclusive_actions = [self.actionShowAttributeTable,
                              self.actionShowFormView,

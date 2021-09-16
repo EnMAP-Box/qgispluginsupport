@@ -23,7 +23,6 @@ from qgis.core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsPro
     QgsFeature, QgsFeatureRequest, QgsProcessingException
 from qgis.gui import QgsAttributeTableFilterModel, QgsDualView, QgsAttributeTableModel, QgsFieldExpressionWidget
 
-from htmlwidgets import HTMLComboBox
 from ...externals import pyqtgraph as pg
 from ...externals.htmlwidgets import HTMLComboBox
 from ...externals.pyqtgraph import PlotDataItem, PlotWindow
@@ -2682,8 +2681,8 @@ class SpectralLibraryPlotWidget(QWidget):
         self.optionSpectralProfileWidgetStyle.setDefaultWidget(self.optionSpectralProfileWidgetStyle.createWidget(None))
         self.optionSpectralProfileWidgetStyle.sigProfileWidgetStyleChanged.connect(self.setPlotWidgetStyle)
         self.visButtonLayout: QHBoxLayout
-        self.visButtonLayout.addWidget(self.optionXUnit.createUnitComboBox())
-        self.visButtonLayout.addWidget(self.optionMaxNumberOfProfiles.createWidget(self))
+        self.visButtonLayout.insertWidget(self.visButtonLayout.count()-1, self.optionXUnit.createUnitComboBox())
+        self.visButtonLayout.insertWidget(self.visButtonLayout.count()-1, self.optionMaxNumberOfProfiles.createWidget(self))
 
         widgetXAxis: QWidget = self.plotWidget.viewBox().menu.widgetGroups[0]
         widgetYAxis: QWidget = self.plotWidget.viewBox().menu.widgetGroups[1]
@@ -2697,7 +2696,7 @@ class SpectralLibraryPlotWidget(QWidget):
         self.btnAddProfileVis.setDefaultAction(self.actionAddProfileVis)
         self.btnRemoveProfileVis.setDefaultAction(self.actionRemoveProfileVis)
         self.btnSelectedFeaturesOnly.setDefaultAction(self.optionSelectedFeaturesOnly)
-        self.btnColorsFromFeatureRenderer.setDefaultAction(self.optionColorsFromFeatureRenderer)
+        # self.btnColorsFromFeatureRenderer.setDefaultAction(self.optionColorsFromFeatureRenderer)
 
         # set the default style
         self.setPlotWidgetStyle(SpectralLibraryPlotWidgetStyle.dark())
