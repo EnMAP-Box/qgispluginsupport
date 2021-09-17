@@ -218,14 +218,14 @@ def readCSVMetadata_depr(pathESL):
         return None, None
 
     hasSpectrumNames = False
-    match = re.search(r'spectra names[ ]*([;\t,])', lines[0])
-    if match:
-        sep = match.group(1)
+    matches = re.search(r'spectra names[ ]*([;\t,])', lines[0])
+    if matches:
+        sep = matches.group(1)
     else:
         # print('Unable to find column name "spectra names" in {}.'.format(pathCSV), file=sys.stderr)
-        match = re.search(r'name[ ]*([;\t,])', lines[0], re.I)
-        if match:
-            sep = match.group(1)
+        matches = re.search(r'name[ ]*([;\t,])', lines[0], re.I)
+        if matches:
+            sep = matches.group(1)
         else:
             print('Unable to find column name like "*name*" in {}. Use "," as delimiter'.format(pathCSV),
                   file=sys.stderr)

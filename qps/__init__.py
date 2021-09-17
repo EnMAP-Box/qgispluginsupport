@@ -117,17 +117,17 @@ def registerEditorWidgets():
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
 
     try:
-        from .speclib.gui import registerSpectralProfileEditorWidget
+        from .speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
         registerSpectralProfileEditorWidget()
     except Exception as ex:
-        print('Failed to call qps.speclib.core.registerSpectralProfileEditorWidget()', file=sys.stderr)
+        print('Failed to call registerSpectralProfileEditorWidget()', file=sys.stderr)
         print(ex, file=sys.stderr)
 
     try:
         from .classification.classificationscheme import registerClassificationSchemeEditorWidget
         registerClassificationSchemeEditorWidget()
     except Exception as ex:
-        print('Failed to call qps.classification.classificationscheme.registerClassificationSchemeEditorWidget()',
+        print('Failed to call registerClassificationSchemeEditorWidget()',
               file=sys.stderr)
         print(ex, file=sys.stderr)
 

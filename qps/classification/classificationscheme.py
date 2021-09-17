@@ -1194,8 +1194,8 @@ class ClassificationScheme(QAbstractTableModel):
         if len(lines) <= 1:
             raise Exception('CSV does not contain enough values')
 
-        match = re.search(r'ClassificationScheme\("(.*)"\)', text)
-        if match:
+        matches = re.search(r'ClassificationScheme\("(.*)"\)', text)
+        if matches:
             name = re.search(r'ClassificationScheme\("(.*)"\)', text).group(1)
         else:
             name = 'Classification'
@@ -1204,19 +1204,19 @@ class ClassificationScheme(QAbstractTableModel):
         columnNames = None
         delimiter = ';'
         for i, line in enumerate(lines):
-            match = re.search(r'^[ ]*(?P<label>label)[ ]*[;\t,][ ]*(?P<name>name)[ ]*([;\t,][ ]*(?P<color>color))?',
+            matches = re.search(r'^[ ]*(?P<label>label)[ ]*[;\t,][ ]*(?P<name>name)[ ]*([;\t,][ ]*(?P<color>color))?',
                               line, re.IGNORECASE)
-            if match:
+            if matches:
                 delimiter = re.search(r'[;\t,]', line).group()
                 b = True
                 break
 
-        if not match:
+        if not matches:
             raise Exception('Missing column header "label;name:color"')
 
-        cName = match.group('name')
-        cColor = match.group('color')
-        fieldnames = [match.group('label'), match.group('name'), match.group('color')]
+        cName = matches.group('name')
+        cColor = matches.group('color')
+        fieldnames = [matches.group('label'), matches.group('name'), matches.group('color')]
 
         cs = ClassificationScheme()
         cs.setName(name)
@@ -1250,12 +1250,12 @@ class ClassificationScheme(QAbstractTableModel):
             if iColor is not None:
                 colorValue = row[fieldnames[iColor]].strip()
 
-                match = re.search(r'^(?P<R>\d+),(?P<G>\d+),(?P<B>\d+)(,(?P<A>\d+))?$', colorValue)
-                if match:
-                    R = int(match.group('R'))
-                    G = int(match.group('G'))
-                    B = int(match.group('B'))
-                    A = match.group('B')
+                matches = re.search(r'^(?P<R>\d+),(?P<G>\d+),(?P<B>\d+)(,(?P<A>\d+))?$', colorValue)
+                if matches:
+                    R = int(matches.group('R'))
+                    G = int(matches.group('G'))
+                    B = int(matches.group('B'))
+                    A = matches.group('B')
                     if A:
                         A = int(A)
                     c.setColor(QColor(R, G, B, A))

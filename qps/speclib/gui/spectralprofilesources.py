@@ -1212,9 +1212,9 @@ class SpectralFeatureGeneratorNode(TreeNode):
             dp_name = speclib.dataProvider().name()
             source = speclib.source()
             if dp_name == 'memory':
-                match = RX_MEMORY_UID.match(source)
-                if match:
-                    source = f'memory uid={match.group("uid")}'
+                matches = RX_MEMORY_UID.match(source)
+                if matches:
+                    source = f'memory uid={matches.group("uid")}'
         # self.setValue(source)
 
     def updateNodeOrder(self):
