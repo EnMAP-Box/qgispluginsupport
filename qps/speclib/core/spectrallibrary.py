@@ -297,7 +297,7 @@ class SpectralLibrary(QgsVectorLayer):
         :param mimeData: QMimeData
         :return: SpectralLibrary
         """
-        #if MIMEDATA_SPECLIB_LINK in mimeData.formats():
+        # if MIMEDATA_SPECLIB_LINK in mimeData.formats():
         #    # extract from link
         #    sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
         #    global SPECLIB_CLIPBOARD
@@ -305,7 +305,7 @@ class SpectralLibrary(QgsVectorLayer):
         #    if isinstance(sl, SpectralLibrary) and id(sl) == sid:
         #        return sl
 
-        #if MIMEDATA_SPECLIB in mimeData.formats():
+        # if MIMEDATA_SPECLIB in mimeData.formats():
         #    sl = SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
         #    if isinstance(sl, SpectralLibrary) and len(sl) > 0:
         #        return sl
@@ -317,7 +317,7 @@ class SpectralLibrary(QgsVectorLayer):
                 if isinstance(sl, SpectralLibrary) and len(sl) > 0:
                     return sl
 
-        #if MIMEDATA_TEXT in mimeData.formats():
+        # if MIMEDATA_TEXT in mimeData.formats():
         #    txt = mimeData.text()
         #    from ..io.csvdata import CSVSpectralLibraryIO
         #    sl = CSVSpectralLibraryIO.fromString(txt)
@@ -791,12 +791,12 @@ class SpectralLibrary(QgsVectorLayer):
         from .spectrallibraryio import SpectralLibraryIO
         return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
 
-
     sigProgressInfo = pyqtSignal(int, int, str)
 
     def __init__(self,
                  path: str = None,
                  baseName: str = DEFAULT_NAME,
+                 provider: str = None,
                  options: QgsVectorLayer.LayerOptions = None,
                  fields: QgsFields = None,
                  profile_fields: typing.List[str] = [FIELD_VALUES],
@@ -820,7 +820,7 @@ class SpectralLibrary(QgsVectorLayer):
             options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
 
         create_new_speclib = path is None
-        provider = 'ogr'
+
         if create_new_speclib:
             # QGIS In-Memory Layer
             provider = 'memory'
