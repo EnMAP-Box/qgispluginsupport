@@ -40,6 +40,8 @@ import sip
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from osgeo import gdal, ogr, osr, gdal_array
+
+from qgis._core import QgsPointXY, QgsGeometry
 from qgis.core import QgsField
 
 import qgis.testing
@@ -63,7 +65,7 @@ from .speclib.processing import SpectralProcessingAlgorithmInputWidgetFactory, \
     SpectralProcessingProfilesOutputWidgetFactory, SpectralProcessingProfileType, SpectralProcessingProfilesOutput, \
     SpectralProcessingProfiles
 from .speclib.processingalgorithms import SpectralPythonCodeProcessingAlgorithm
-from .utils import UnitLookup
+from .utils import UnitLookup, px2geo, px2spatialPoint, SpatialPoint
 
 WMS_GMAPS = r'crs=EPSG:3857&' \
             r'format&' \
@@ -559,13 +561,28 @@ class TestAlgorithmProvider(QgsProcessingProvider):
         return True
 
 
+
 class SpectralProfileDataIterator(object):
 
-    def __init__(self, n_bands_per_field: typing.Union[int, typing.List[int]]):
+    def __init__(self,
+                 n_bands_per_field: typing.Union[int, typing.List[int]],
+                 target_crs=None):
+
         if not isinstance(n_bands_per_field, list):
             n_bands_per_field = [n_bands_per_field]
 
+        if not isinstance(target_crs, QgsCoordinateReferenceSystem):
+            target_crs = QgsCoordinateReferenceSystem('EPSG:4326')
+        self.target_crs = target_crs
         self.coredata, self.wl, self.wlu, self.gt, self.wkt = TestObjects.coreData()
+
+        px1 = px2geo(QPoint(0,0), self.gt, pxCenter=False)
+        px2 = px2geo(QPoint(1,1), self.gt, pxCenter=False)
+
+        self.dx = abs(px2.x()-px1.x())
+        self.dy = abs(px2.y()-px1.y())
+
+        self.source_crs = QgsCoordinateReferenceSystem(self.wkt)
         self.cnb, self.cnl, self.cns = self.coredata.shape
         n_bands_per_field = [self.cnb if nb == -1 else nb for nb in n_bands_per_field]
         for nb in n_bands_per_field:
@@ -582,6 +599,12 @@ class SpectralProfileDataIterator(object):
 
             self.band_indices.append(idx)
 
+    def sourceCrs(self) -> QgsCoordinateReferenceSystem:
+        return self.source_crs
+
+    def targetCrs(self) -> QgsCoordinateReferenceSystem:
+        return self.target_crs
+
     def __iter__(self):
         return self
 
@@ -590,6 +613,13 @@ class SpectralProfileDataIterator(object):
         x = random.randint(0, self.coredata.shape[2] - 1)
         y = random.randint(0, self.coredata.shape[1] - 1)
 
+        px = QPoint(x, y)
+        # from .utils import px2geo
+        pt = px2geo(px, self.gt, pxCenter=False)
+        pt = SpatialPoint(self.sourceCrs(),
+                          pt.x() + self.dx * random.uniform(0, 1),
+                        pt.y() - self.dy * random.uniform(0, 1))
+        pt = pt.toCrs(self.targetCrs())
         results = []
         for band_indices in self.band_indices:
             if band_indices.dtype == np.int16:
@@ -602,7 +632,7 @@ class SpectralProfileDataIterator(object):
             else:
                 raise NotImplementedError()
             results.append((yValues, xValues, self.wlu))
-        return results
+        return results, pt
 
 
 class TestObjects(object):
@@ -690,9 +720,11 @@ class TestObjects(object):
 
         profileGenerator = SpectralProfileDataIterator(n_bands)
         for i in range(n):
-            field_data = profileGenerator.__next__()
+            field_data, pt = profileGenerator.__next__()
+            g = QgsGeometry.fromQPointF(pt.toQPointF())
             profile = SpectralProfile(fields=fields)
             profile.setId(i + 1)
+            profile.setGeometry(g)
             for j, field in enumerate(profile_fields):
                 (data, wl, data_wlu) = field_data[j]
                 if wlu is None:

@@ -499,6 +499,16 @@ class TestCore(TestCase):
 
     def test_SpectralLibrary(self):
 
+        SLIB = SpectralLibrary()
+
+        self.assertIsInstance(SpectralLibrary(), QgsVectorLayer)
+        self.assertIsInstance(SpectralLibrary(baseName='myLib'), QgsVectorLayer)
+        #SLIB2 = SpectralLibrary(SLIB.dataProvider().dataSourceUri(), provider=SLIB.dataProvider().name())
+        self.assertIsInstance(SLIB2, QgsVectorLayer)
+        # self.assertTrue(SLIB != SLIB2)
+        #self.assertEqual(SLIB.source(), SLIB2.source())
+
+
         self.assertListEqual(vsiSpeclibs(), [])
 
         sp1 = SpectralProfile()
@@ -509,7 +519,7 @@ class TestCore(TestCase):
         # sp2.setName('Name 2')
         sp2.setValues(y=[2, 2, 2, 2, 2], x=[450, 500, 750, 1000, 1500])
 
-        SLIB = SpectralLibrary()
+
 
         self.assertEqual(SLIB.name(), 'SpectralLibrary')
         SLIB.setName('MySpecLib')

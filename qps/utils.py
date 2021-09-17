@@ -2257,7 +2257,11 @@ class SpatialPoint(QgsPointXY):
 
 
 
-def px2spatialPoint(layer: QgsRasterLayer, px: QPoint, subpixel_pos: float= 0.5) -> SpatialPoint:
+def px2spatialPoint(layer: QgsRasterLayer,
+                    px: QPoint,
+                    subpixel_pos: float= 0.5,
+                    subpixel_pos_x: float=None,
+                    subpixel_pos_y: float=None) -> SpatialPoint:
     """
     Returns the pixel center as coordinate in a raster layer's CRS
     :param layer: QgsRasterLayer
@@ -2269,14 +2273,23 @@ def px2spatialPoint(layer: QgsRasterLayer, px: QPoint, subpixel_pos: float= 0.5)
     # assert 0 <= px.y() < layer.height()
     assert 0 <= subpixel_pos <= 1.0
 
+    if subpixel_pos_x is None:
+        subpixel_pos_x = subpixel_pos
+
+    if subpixel_pos_y is None:
+        subpixel_pos_y = subpixel_pos
+
+    assert 0 <= subpixel_pos_x <= 1.0
+    assert 0 <= subpixel_pos_y <= 1.0
+
     ext: QgsRectangle = layer.extent()
 
     resX = layer.extent().width() / layer.width()
     resY = layer.extent().height() / layer.height()
 
     return SpatialPoint(layer.crs(),
-                        ext.xMinimum() + (px.x() + subpixel_pos) * resX,
-                        ext.yMaximum() - (px.y() + subpixel_pos) * resY)
+                        ext.xMinimum() + (px.x() + subpixel_pos_x) * resX,
+                        ext.yMaximum() - (px.y() + subpixel_pos_y) * resY)
 
 
 def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: typing.Union[QgsPointXY, SpatialPoint]) -> QPoint:

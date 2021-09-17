@@ -1,15 +1,16 @@
 import os
 
-from PyQt5.QtCore import QEvent, QPointF, Qt
+from PyQt5.QtCore import QEvent, QPointF, Qt, QVariant
 from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtWidgets import QHBoxLayout, QWidget
 from PyQt5.QtXml import QDomDocument
 from osgeo import gdal, ogr
 
-
+from qgis._core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
 
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
-    SpectralProfilePlotVisualization
+    SpectralProfilePlotVisualization, ColorFieldExpressionWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import StartOptions, TestCase, TestObjects
@@ -90,7 +91,7 @@ class TestSpeclibWidgets(TestCase):
             self.assertEqual(v1.speclib(), v2.speclib())
             # speclib and model instances need to be restored differently
 
-    def test_SpectralLibraryWidget(self):
+    def test_SpectralLibraryWidget_deleteFeatures(self):
         speclib = TestObjects.createSpectralLibrary(10)
         slw = SpectralLibraryWidget(speclib=speclib)
         speclib = slw.speclib()
@@ -101,6 +102,19 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(slw)
 
+    def test_colorexpressionwidget(self):
+        speclib: QgsVectorLayer = TestObjects.createSpectralLibrary()
+        speclib.startEditing()
+        colorField = QgsField('color', type=QVariant.String)
+        colorField.setEditorWidgetSetup(QgsEditorWidgetSetup('color', {}))
+        speclib.addAttribute(colorField)
+        speclib.commitChanges()
+
+        w = ColorFieldExpressionWidget()
+        w.registerExpressionContextGenerator(speclib)
+        w.setLayer(speclib)
+
+        self.showGui(w)
 
     def test_SpectralProfilePlotWidget(self):
 
@@ -159,3 +173,24 @@ class TestSpeclibWidgets(TestCase):
         speclib.deleteAttribute(speclib.fields().lookupField('profiles3'))
         speclib.commitChanges(stopEditing=False)
         self.showGui([w])
+
+    def test_rendering(self):
+
+
+
+        speclib = TestObjects.createSpectralLibrary()
+        QgsProject.instance().addMapLayers([speclib], False)
+        slw = SpectralLibraryWidget(speclib=speclib)
+
+        canvas = QgsMapCanvas()
+
+        canvas.setLayers([speclib])
+        canvas.zoomToFullExtent()
+
+        l = QHBoxLayout()
+        l.addWidget(canvas)
+        l.addWidget(slw)
+
+        w = QWidget()
+        w.setLayout(l)
+        self.showGui(w)
