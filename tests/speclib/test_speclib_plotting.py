@@ -1,19 +1,21 @@
 import os
 
 from PyQt5.QtCore import QEvent, QPointF, Qt, QVariant
-from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtGui import QMouseEvent, QColor
 from PyQt5.QtWidgets import QHBoxLayout, QWidget
 from PyQt5.QtXml import QDomDocument
 from osgeo import gdal, ogr
 
-from qgis._core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject
+from qgis._core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
+    QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
 
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
-    SpectralProfilePlotVisualization, ColorFieldExpressionWidget
+    SpectralProfilePlotVisualization, SpectralProfileColorPropertyWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import StartOptions, TestCase, TestObjects
+from qps.utils import nextColor
 
 
 class TestSpeclibWidgets(TestCase):
@@ -102,17 +104,45 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(slw)
 
-    def test_colorexpressionwidget(self):
+    def test_SpectralProfileColorProperty(self):
         speclib: QgsVectorLayer = TestObjects.createSpectralLibrary()
         speclib.startEditing()
         colorField = QgsField('color', type=QVariant.String)
         colorField.setEditorWidgetSetup(QgsEditorWidgetSetup('color', {}))
         speclib.addAttribute(colorField)
-        speclib.commitChanges()
+        speclib.commitChanges(False)
 
-        w = ColorFieldExpressionWidget()
-        w.registerExpressionContextGenerator(speclib)
+        color = QColor('green')
+        for i in range(5):
+            f = QgsFeature(speclib.fields())
+            f.setAttribute('color', color.name())
+            color = nextColor(color)
+            speclib.addFeature(f)
+        speclib.commitChanges(True)
+
+        prop = QgsProperty()
+        prop.setExpressionString('@symbol_color')
+
+        w = SpectralProfileColorPropertyWidget()
         w.setLayer(speclib)
+        w.setToProperty(prop)
+
+        p = w.toProperty()
+        renderContext = QgsRenderContext()
+        context = speclib.createExpressionContext()
+        context.setFeature(speclib.getFeature(1))
+
+        profile = speclib[0]
+
+        renderer = speclib.renderer().clone()
+        renderer.startRender(renderContext, speclib.fields())
+        symbol = renderer.symbolForFeature(profile, renderContext)
+        context.appendScope(symbol.symbolRenderContext().expressionContextScope())
+        color1 = symbol.color()
+        self.assertIsInstance(p, QgsProperty)
+        color2, success = p.valueAsColor(context)
+        renderer.stopRender(renderContext)
+        self.assertEqual(color1, color2)
 
         self.showGui(w)
 
