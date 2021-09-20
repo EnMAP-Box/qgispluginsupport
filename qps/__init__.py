@@ -182,6 +182,9 @@ def initAll():
     registerExpressionFunctions()
     registerMapLayerConfigWidgetFactories()
 
+    from .speclib.core.spectrallibraryio import initSpectralLibraryIOs
+    initSpectralLibraryIOs()
+
 
 def unloadAll():
     unregisterEditorWidgets()
