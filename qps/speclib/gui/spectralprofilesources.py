@@ -2063,3 +2063,14 @@ class SpectralProfileSourcePanel(QgsDockWidget):
                               mapCanvas: QgsMapCanvas = None,
                               runAsync: bool = None) -> typing.Dict[str, typing.List[QgsFeature]]:
         return self.mBridge.loadProfiles(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)
+
+
+def initSamplingModes():
+    """
+    Inititalizes known SpectralProfileSamplingModes to the SpectralProfileSamplingModeModel
+    :rtype:
+    """
+    for mode in [SingleProfileSamplingMode(),
+                 KernelProfileSamplingMode()]:
+
+        SpectralProfileSamplingModeModel.registerMode(mode)

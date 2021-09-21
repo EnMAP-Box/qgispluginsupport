@@ -153,6 +153,16 @@ def registerExpressionFunctions():
         print(ex, file=sys.stderr)
 
 
+def registerSpectralProfileSamplingModes():
+    from .speclib.gui.spectralprofilesources import initSamplingModes
+    initSamplingModes()
+
+
+def registerSpectralLibraryIOs():
+    from .speclib.core.spectrallibraryio import initSpectralLibraryIOs
+    initSpectralLibraryIOs()
+
+
 def unregisterExpressionFunctions():
     from .speclib.qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
     _unregisterQgsExpressionFunctions()
@@ -181,13 +191,11 @@ def initAll():
     registerEditorWidgets()
     registerExpressionFunctions()
     registerMapLayerConfigWidgetFactories()
-
-    from .speclib.core.spectrallibraryio import initSpectralLibraryIOs
-    initSpectralLibraryIOs()
+    registerSpectralProfileSamplingModes()
+    registerSpectralLibraryIOs()
 
 
 def unloadAll():
     unregisterEditorWidgets()
     unregisterExpressionFunctions()
     unregisterMapLayerConfigWidgetFactories()
-

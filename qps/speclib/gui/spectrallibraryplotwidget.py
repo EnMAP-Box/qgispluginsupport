@@ -1720,9 +1720,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 PROFILES_TO_LOAD.add(fid)
                 continue
 
-            #if not fid in self.mCache1FeatureColors.keys():
-            #    COLORS_TO_LOAD.add(fid)
-
             for vis in visualizations:
                 if len(DATA_TO_VISUALIZE) >= n_max_pdis:
                     break
@@ -1750,7 +1747,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 if self.mXUnitInitialized is False and modeldata.get('xUnit', None) is not None:
                     self.mXUnitInitialized = True
-                    self.setXUnit(modeldata['xUnit']) # this will call the updatePlot again
+                    # this will call updatePlot agai, so we can return afterwards
+                    self.setXUnit(modeldata['xUnit'])
                     return
 
                 if plotDataKey not in self.mCache3PlotData.keys():
