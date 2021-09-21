@@ -848,7 +848,7 @@ class KernelProfileSamplingMode(SpectralProfileSamplingMode):
 
         posX = profileBlock.mPositionsX
         posY = profileBlock.mPositionsY
-        if posX:
+        if isinstance(posX, np.ndarray):
             if aggregation != KernelProfileSamplingMode.NO_AGGREGATION:
                 posX = np.nanmean(posX)
                 posY = np.nanmean(posY)
