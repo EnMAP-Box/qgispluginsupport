@@ -24,6 +24,8 @@
 """
 import typing
 import pathlib
+
+from qgis._core import QgsRasterDataProvider
 from qgis.core import QgsRasterLayer, QgsMapLayer, \
     QgsRasterRenderer, \
     QgsSingleBandGrayRenderer, \
@@ -37,10 +39,48 @@ from qgis.core import QgsRasterLayer, QgsMapLayer, \
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
 
 from qgis.PyQt.QtWidgets import QSlider, QWidget, QStackedWidget, QLabel
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 import numpy as np
 from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
-from ..utils import loadUi, parseWavelength, UnitLookup
+from ..utils import loadUi, parseWavelength, UnitLookup, parseFWHM
+
+
+class RasterBandComboBox(QgsRasterBandComboBox):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.mWL = self.mWLU = self.mFWHM = None
+
+    def setLayer(self, layer):
+        """
+        Re-Implements void QgsRasterBandComboBox::setLayer( QgsMapLayer *layer ) with own band-name logic
+        :param layer: 
+        :type layer: qgis._core.QgsRasterLayer
+        :return: 
+        :rtype: None
+        """
+        super().setLayer(layer)
+
+        if not (isinstance(layer, QgsRasterLayer) and layer.isValid()):
+            return
+
+        WL, WLU = parseWavelength(layer)
+        FWHM = parseFWHM(layer)
+
+        offset = 1 if self.isShowingNotSetOption() else 0
+        for b in range(layer.bandCount()):
+            idx = b + offset
+            bandName = self.itemText(idx)
+            tooltip = bandName
+            if WLU and WLU not in bandName:
+                bandName += ' [{} {}]'.format(WL[b], WLU)
+                tooltip += ' {} {}'.format(WL[b], WLU)
+                if FWHM:
+                    tooltip += ' {}'.format(FWHM[b])
+
+            self.setItemText(idx, bandName)
+            self.setItemData(idx, tooltip, Qt.ToolTipRole)
 
 
 class RasterBandConfigWidget(QpsMapLayerConfigWidget):
@@ -61,6 +101,8 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.cbMultiBandRed.setLayer(self.mLayer)
         self.cbMultiBandGreen.setLayer(self.mLayer)
         self.cbMultiBandBlue.setLayer(self.mLayer)
+
+
 
         self.cbSingleBand.bandChanged.connect(self.widgetChanged)
         self.cbMultiBandRed.bandChanged.connect(self.widgetChanged)

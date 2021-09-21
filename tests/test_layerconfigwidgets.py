@@ -20,6 +20,8 @@ from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, \
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
+
+from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
 from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
 from qps.layerproperties import *
 from qps import registerMapLayerConfigWidgetFactories
@@ -238,6 +240,13 @@ class LayerConfigWidgetsTests(TestCase):
         self.assertIsInstance(w, RasterBandConfigWidget)
 
         self.showGui([cR, w])
+
+    def test_rasterbandComboBox(self):
+        lyr = TestObjects.createRasterLayer(nb=255)
+        cb = RasterBandComboBox()
+        cb.setLayer(lyr)
+
+        self.showGui(cb)
 
     def test_rasterbandselection(self):
         from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget, RasterBandConfigWidgetFactory
