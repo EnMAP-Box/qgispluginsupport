@@ -20,11 +20,8 @@
 import unittest
 import xmlrunner
 
-from qps.speclib.core.spectrallibrary import vsiSpeclibs
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import TestObjects, TestCase
-
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
 
 from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
@@ -55,8 +52,6 @@ class TestIO(TestCase):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
-        for file in vsiSpeclibs():
-            gdal.Unlink(file)
 
     def test_VSI(self):
 

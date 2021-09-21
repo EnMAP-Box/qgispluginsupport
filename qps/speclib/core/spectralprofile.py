@@ -1041,7 +1041,7 @@ class SpectralProfileBlock(object):
                                     fids=kwds.get('keys', None),
                                     metadata=kwds.get('metadata', None)
                                     )
-        if geodata:
+        if isinstance(geodata, tuple) and isinstance(geodata[0], np.ndarray):
             block.setPositions(*geodata)
         return block
 
@@ -1118,6 +1118,8 @@ class SpectralProfileBlock(object):
         :return:
         """
         shape = self.mData.shape[1:]
+        assert pos_x is not None
+        assert pos_y is not None
         if not isinstance(pos_x, np.ndarray):
             pos_x = np.asarray(pos_x).reshape(shape)
 

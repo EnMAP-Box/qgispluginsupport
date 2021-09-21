@@ -194,6 +194,8 @@ def vsiSpeclibs() -> list:
     Returns the URIs pointing on VSIMEM in memory speclibs
     :return: [list-of-str]
     """
+    warnings.warn(
+        DeprecationWarning('SpectralLibrary are not stored in VSI Mem anymore and use the QGIS Memory driver'))
     visSpeclibs = []
 
     entry = gdal.ReadDir(VSI_DIR)
@@ -862,6 +864,9 @@ class SpectralLibrary(QgsVectorLayer):
                     field = fields.at(i)
                     self.addAttribute(field)
                 self.endEditCommand()
+
+                # copy editor widget type
+
                 assert self.commitChanges(stopEditing=True)
 
         # self.attributeAdded.connect(self.onAttributeAdded)
@@ -873,7 +878,7 @@ class SpectralLibrary(QgsVectorLayer):
         success = super().addAttribute(field)
         if success:
             i = self.fields().lookupField(field.name())
-            if i > 0:
+            if i > -1:
                 self.setEditorWidgetSetup(i, field.editorWidgetSetup())
         return success
 
@@ -956,7 +961,7 @@ class SpectralLibrary(QgsVectorLayer):
         return []
 
     def addSpectralProfileField(self, name: str, comment: str = None) -> bool:
-        return self.addAttribute(create_profile_field(name, comment)),
+        return self.addAttribute(create_profile_field(name, comment))
 
     def addMissingFields(self, fields: QgsFields, copyEditorWidgetSetup: bool = True):
         """
@@ -1433,7 +1438,7 @@ class SpectralLibrary(QgsVectorLayer):
             if reoder:
                 attributes = [attributes[i] for i in order]
             feature.setAttributes(attributes)
-            feature.setAttribute(FIELD_FID, nextFID)
+            # feature.setAttribute(FIELD_FID, nextFID)
             feature.setGeometry(QgsGeometry.fromWkt(wkt))
             features.append(feature)
         self.addFeatures(features)

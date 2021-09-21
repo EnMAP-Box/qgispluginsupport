@@ -22,9 +22,7 @@ import re
 import unittest
 import xmlrunner
 
-import qpstestdata
-from qps.speclib.core import profile_field_names
-from qps.speclib.core.spectrallibrary import vsiSpeclibs
+
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \

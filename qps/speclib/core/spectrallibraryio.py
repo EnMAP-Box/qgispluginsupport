@@ -294,7 +294,9 @@ class SpectralLibraryIO(object):
         profiles = SpectralLibraryIO.readProfilesFromUri(uri)
         if len(profiles) > 0:
             from .spectrallibrary import SpectralLibrary
-            speclib = SpectralLibrary(fields=profiles[0].fields())
+            referenceProfile = profiles[0]
+
+            speclib = SpectralLibrary(fields=referenceProfile.fields())
             speclib.startEditing()
             speclib.beginEditCommand('Add profiles')
             speclib.addFeatures(profiles)

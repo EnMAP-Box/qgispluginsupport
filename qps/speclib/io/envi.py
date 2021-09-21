@@ -574,7 +574,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
         return profiles
 
-        raise NotImplementedError()
+
 
     @classmethod
     def exportProfiles(cls,

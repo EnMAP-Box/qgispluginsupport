@@ -1318,8 +1318,15 @@ def qgsFields2str(qgsFields: QgsFields) -> str:
     infos = []
     for field in qgsFields:
         assert isinstance(field, QgsField)
-        info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(), field.comment(),
-                field.subType()]
+        # info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(), field.comment(), field.subType()]
+        info = dict(name=field.name(),
+                    type=field.type(),
+                    typeName=field.typeName(),
+                    length=field.length(),
+                    precission=field.precision(),
+                    comment=field.comment(),
+                    subType=field.subType(),
+                    editorWidget=field.editorWidgetSetup().type())
         infos.append(info)
     return json.dumps(infos)
 
@@ -1331,7 +1338,15 @@ def str2QgsFields(fieldString: str) -> QgsFields:
     infos = json.loads(fieldString)
     assert isinstance(infos, list)
     for info in infos:
-        field = QgsField(*info)
+        field = QgsField(name=info['name'],
+                         type=info['type'],
+                         typeName=info['typeName'],
+                         len=info['length'],
+                         prec=info['precission'],
+                         comment=info['comment'],
+                         subType=info['subType']
+                         )
+        field.setEditorWidgetSetup(QgsEditorWidgetSetup(info['editorWidget'], {}))
         fields.append(field)
     return fields
 

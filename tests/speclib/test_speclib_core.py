@@ -41,13 +41,12 @@ class TestCore(TestCase):
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestCore, cls).setUpClass(*args, **kwds)
         initResources()
+        from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
+        initSpectralLibraryIOs()
 
     def setUp(self):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
-
-        for file in vsiSpeclibs():
-            gdal.Unlink(file)
 
     def test_fields(self):
 
@@ -481,7 +480,7 @@ class TestCore(TestCase):
             xunit = key.xUnit()
             yunit = key.yUnit()
 
-            self.assertTrue(xvalues is None or isinstance(xvalues, tuple) and len(xvalues) > 0)
+            self.assertTrue(xvalues is None or isinstance(xvalues, list) and len(xvalues) > 0)
             self.assertTrue(xunit is None or isinstance(xunit, str) and len(xunit) > 0)
             self.assertTrue(yunit is None or isinstance(yunit, str) and len(yunit) > 0)
 
@@ -520,7 +519,6 @@ class TestCore(TestCase):
         # self.assertTrue(SLIB != SLIB2)
         # self.assertEqual(SLIB.source(), SLIB2.source())
 
-        self.assertListEqual(vsiSpeclibs(), [])
 
         sp1 = SpectralProfile()
         # sp1.setName('Name 1')
@@ -576,11 +574,9 @@ class TestCore(TestCase):
         self.assertEqual(len(slSubset), 1)
         self.assertEqual(slSubset[0].values(), SLIB[1].values())
 
-        n = len(vsiSpeclibs())
         dump = pickle.dumps(SLIB)
         restoredSpeclib = pickle.loads(dump)
         self.assertIsInstance(restoredSpeclib, SpectralLibrary)
-        self.assertEqual(len(vsiSpeclibs()), n + 1)
         self.assertEqual(len(SLIB), len(restoredSpeclib))
 
         for i in range(len(SLIB)):
@@ -761,7 +757,7 @@ class TestCore(TestCase):
         from qpstestdata import speclib
 
         sl1 = SpectralLibrary.readFrom(speclib)
-
+        self.assertTrue(len(sl1) > 0)
         sl2 = SpectralLibrary()
 
         n = 3000
