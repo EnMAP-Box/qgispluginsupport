@@ -41,8 +41,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from osgeo import gdal, ogr, osr, gdal_array
 
-from qgis._core import QgsPointXY, QgsGeometry
-from qgis.core import QgsField
+from qgis.core import QgsField, QgsPointXY, QgsGeometry
 
 import qgis.testing
 import qgis.utils
@@ -475,8 +474,7 @@ class TestCase(qgis.testing.TestCase):
         """
         Call this to show GUI(s) in case we do not run within a CI system
         """
-        if str(os.environ.get('CI')).lower() not in ['', 'none', 'false', '0']:
-            return False
+
         if widgets is None:
             widgets = []
         if not isinstance(widgets, list):
@@ -490,6 +488,9 @@ class TestCase(qgis.testing.TestCase):
                 keepOpen = True
             elif callable(w):
                 w()
+
+        if str(os.environ.get('CI')).lower() not in ['', 'none', 'false', '0']:
+            return False
 
         app = QApplication.instance()
         if isinstance(app, QApplication) and keepOpen:

@@ -44,8 +44,6 @@ from qps.speclib.io.rastersources import *
 from qps.utils import *
 
 
-
-
 class TestIO(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
@@ -62,19 +60,6 @@ class TestIO(TestCase):
                ]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
-    def test_Mapping(self):
-
-        speclib1 = TestObjects.createSpectralLibrary()
-        speclib2 = TestObjects.createSpectralLibrary(n_bands=[24,25,36])
-        # w = QgsAggregateMappingWidget()
-        w = QgsFieldMappingWidget()
-        w.setSourceLayer(speclib1)
-        w.setDestinationFields(speclib2.fields())
-
-
-        self.showGui(w)
-
-
     def test_importWidgets(self):
 
         widgets = [EnviSpectralLibraryImportWidget(),
@@ -85,12 +70,11 @@ class TestIO(TestCase):
             EnviSpectralLibraryImportWidget.__name__: qpstestdata.speclib,
             GeoPackageSpectralLibraryImportWidget.__name__: gpkg.source()
         }
-        n_bands = [[25,75], [50,100]]
+        n_bands = [[25, 75], [50, 100]]
 
         speclib = TestObjects.createSpectralLibrary(n_bands=n_bands)
 
         for w in widgets:
-
             self.assertIsInstance(w, SpectralLibraryImportWidget)
             print(f'Test {w.__class__.__name__}: "{w.formatName()}"')
 
@@ -137,10 +121,7 @@ class TestIO(TestCase):
             if isinstance(w, SpectralLibraryExportWidget):
                 widgets.append(w)
 
-
-        import qpstestdata
         speclib = self.createTestSpeclib()
-        filewidget = QgsFileWidget()
 
         layername = 'testlayer'
         for w in widgets:
@@ -184,10 +165,6 @@ class TestIO(TestCase):
                     for p in importedProfiles:
                         self.assertIsInstance(p, QgsFeature)
 
-
-
-
-
     def createTestSpeclib(self) -> QgsVectorLayer:
         n_bands = [1025, 240, 8]
         profile_field_names = ['ASD', 'EnMAP', 'Landsat']
@@ -224,7 +201,6 @@ class TestIO(TestCase):
         dialog.accepted.connect(onAccepted)
 
         self.showGui(dialog)
-
 
     def test_importDialog(self):
 
@@ -282,8 +258,6 @@ class TestIO(TestCase):
         os.makedirs(path, exist_ok=True)
         return path
 
-
-
     def test_ENVI_IO(self):
 
         testdir = self.testDir()
@@ -339,6 +313,7 @@ class TestIO(TestCase):
                 self.assertIsInstance(profile, QgsFeature)
 
         self.showGui([wImport])
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

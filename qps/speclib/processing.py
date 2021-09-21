@@ -47,11 +47,13 @@ from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, 
     QgsProcessingParameterType, QgsProcessingModelChildParameterSource, \
     QgsProcessingModelAlgorithm, QgsApplication, QgsProcessingDestinationParameter, \
     QgsProcessingOutputDefinition, QgsProcessingModelChildAlgorithm, \
-    QgsProcessingRegistry, QgsProcessingModelOutput, QgsProcessingModelParameter, QgsProject, QgsProcessingException, Qgis
+    QgsProcessingRegistry, QgsProcessingModelOutput, QgsProcessingModelParameter, QgsProject, QgsProcessingException, \
+    Qgis
 
 from qgis.gui import QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
-    QgsProcessingParameterWidgetContext, QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, \
+    QgsProcessingParameterWidgetContext, QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, \
+    QgsProcessingRecentAlgorithmLog, \
     QgsProcessingToolboxTreeView, QgsProcessingGui, QgsGui, QgsAbstractProcessingParameterWidgetWrapper, \
     QgsProcessingContextGenerator, QgsProcessingParametersWidget
 from processing.modeler.ProjectProvider import ProjectProvider
@@ -240,6 +242,7 @@ def structureModelGraphicItems(model: QgsProcessingModelAlgorithm):
         s = ""
     s = ""
 
+
 def outputParameterResult(results: dict,
                           output_parameter: typing.Union[str, QgsProcessingOutputDefinition]):
     """
@@ -262,6 +265,7 @@ def outputParameterResults(results: dict, model: QgsProcessingModelAlgorithm) ->
     for p in model.outputDefinitions():
         R[p.name()] = outputParameterResult(results, p)
     return R
+
 
 def parameterAsSpectralProfileBlockList(parameters: dict,
                                         name: str,
@@ -481,6 +485,7 @@ class NULL_MODEL(QgsProcessingModelAlgorithm):
     """
     A proxy to represent None | NULL proxy values in a SpectralProcessingModelList
     """
+
     def __init__(self, *args, **kwds):
         super(NULL_MODEL, self).__init__(*args, *kwds)
 
@@ -490,12 +495,23 @@ class NULL_MODEL(QgsProcessingModelAlgorithm):
     def displayName(self):
         return ''
 
+
 class SpectralProcessingModelList(QAbstractListModel):
     """
     Contains a list of SpectralProcessingModels(QgsModelAlgorithms)
     """
-    def __init__(self, *args, allow_empty: bool=False, **kwds):
 
+    def __init__(self, *args,
+                 allow_empty: bool = False,
+                 init_models: bool = True,
+                 **kwds):
+        """
+        A list model that shows existing spectral processing models
+        :param args:
+        :param allow_empty: shows an "empty" model, e.g. to select None (NULL_MODEL())
+        :param init_models: True, if True, searches existing processing providers for spectral models
+        :param kwds:
+        """
         super(SpectralProcessingModelList, self).__init__(*args, **kwds)
 
         self.mModelIds: typing.List[str] = list()
@@ -503,11 +519,12 @@ class SpectralProcessingModelList(QAbstractListModel):
         if allow_empty:
             self.mModelIds.append('')
 
-        procReg = QgsApplication.instance().processingRegistry()
-        for p in procReg.providers():
-            p: QgsProcessingProvider
-            self.refreshProvider(p)
-            p.algorithmsLoaded.connect(lambda *args, p=p.id(): self.refreshProvider(p))
+        if init_models:
+            procReg = QgsApplication.instance().processingRegistry()
+            for p in procReg.providers():
+                p: QgsProcessingProvider
+                self.refreshProvider(p)
+                p.algorithmsLoaded.connect(lambda *args, p=p.id(): self.refreshProvider(p))
 
     def refreshProvider(self, provider):
 
@@ -528,6 +545,11 @@ class SpectralProcessingModelList(QAbstractListModel):
 
     def __getitem__(self, slice):
         return self.mModelIds[slice]
+
+    def __contains__(self, item):
+        if isinstance(item, QgsProcessingAlgorithm):
+            item = item.id()
+        return item in self.mModelIds
 
     def __len__(self):
         return len(self.mModelIds)
@@ -558,8 +580,8 @@ class SpectralProcessingModelList(QAbstractListModel):
             return self.mModelIds.index(model_id), model_id
         return None, None
 
-    def modelId2model(self, modelId:str) -> QgsProcessingModelAlgorithm:
-        if modelId == '':
+    def modelId2model(self, modelId: str) -> QgsProcessingModelAlgorithm:
+        if modelId == self.mNullModel.id():
             return self.mNullModel
         else:
             reg = QgsApplication.instance().processingRegistry()
@@ -571,6 +593,12 @@ class SpectralProcessingModelList(QAbstractListModel):
         if isinstance(modelId, QgsProcessingModelAlgorithm):
             assert is_spectral_processing_model(modelId)
             modelId = modelId.id()
+
+        assert isinstance(modelId, str)
+
+        if not isinstance(QgsApplication.processingRegistry().algorithmById(modelId), QgsProcessingModelAlgorithm):
+            raise Exception(f'Model {modelId} needs to be registered to a QgsProcessingProvider first')
+
         if isinstance(row, QModelIndex):
             row = row.row()
 
@@ -604,7 +632,7 @@ class SpectralProcessingModelList(QAbstractListModel):
         model = self.mModelIds[row]
         return self.createIndex(row, column, model)
 
-    def data(self, index:QModelIndex, role=None):
+    def data(self, index: QModelIndex, role=None):
         if not index.isValid():
             return None
 
@@ -613,7 +641,7 @@ class SpectralProcessingModelList(QAbstractListModel):
 
         provider = model.provider()
         if isinstance(provider, QgsProcessingProvider):
-            providerName = provider.name()+':'
+            providerName = provider.name() + ':'
         else:
             providerName = ''
 
@@ -670,7 +698,6 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         self.is_active: bool = True
 
         self.verify(self.mTestBlocks)
-
 
     def initWidgets(self):
         super().initWidgets()
@@ -782,8 +809,8 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
     def __hash__(self):
         return hash((self.algorithm().name(), id(self)))
 
-class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
 
+class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
     sigModelVerified = pyqtSignal(bool, str)
 
     def __init__(self, *args, **kwds):
@@ -814,6 +841,7 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
         return self.mProcessingContext
 
     MIMEDATAKEY = 'application/wrapperindices'
+
     def mimeTypes(self) -> typing.List[str]:
         return [self.MIMEDATAKEY]
 
@@ -834,7 +862,8 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
         mimeData.setData(self.MIMEDATAKEY, QByteArray(pickle.dumps(wrapper_rows)))
         return mimeData
 
-    def canDropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int, parent: QModelIndex) -> bool:
+    def canDropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int,
+                        parent: QModelIndex) -> bool:
 
         if self.MIMEDATAKEY in data.formats():
             return True
@@ -1002,6 +1031,7 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
 
         return self.createIndex(row, column, wrapper)
     """
+
     def verifyModel(self, test_blocks: typing.List[SpectralProfileBlock],
                     context: QgsProcessingContext,
                     feedback: QgsProcessingFeedback) -> \
@@ -1070,7 +1100,6 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
         flags = Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsEditable | Qt.ItemIsSelectable | \
                 Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
 
-
         return flags
 
     def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
@@ -1079,7 +1108,7 @@ class SpectralProcessingModelCreatorTableModel(QAbstractListModel):
             return None
         col = index.column()
         wrapper = self.idx2wrapper(index)
-        alg:QgsProcessingAlgorithm = wrapper.algorithm()
+        alg: QgsProcessingAlgorithm = wrapper.algorithm()
 
         if role == Qt.DisplayRole:
             if col == 0:
@@ -1375,7 +1404,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         self.mDummyBlocks: typing.List[SpectralProfileBlock] = []
         self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 7, 'nm'))
         self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 5, 'um'))
-        self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 3, '-')) # without unit
+        self.mDummyBlocks.append(SpectralProfileBlock.dummy(1, 3, '-'))  # without unit
 
         self.mProcessingAlgorithmModel = SpectralProcessingAlgorithmModel(self)
 
@@ -1439,14 +1468,14 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
 
         self.verifyModel()
 
-    def onRowsInserted(self, parent:QModelIndex, first:int, last:int):
+    def onRowsInserted(self, parent: QModelIndex, first: int, last: int):
 
         current = self.currentAlgorithm()
         idx = self.mProcessingModelTableModel.index(first, 0, parent)
         w = idx.data(Qt.UserRole)
 
         if not isinstance(current, SpectralProcessingModelCreatorAlgorithmWrapper) and \
-            isinstance(w, SpectralProcessingModelCreatorAlgorithmWrapper):
+                isinstance(w, SpectralProcessingModelCreatorAlgorithmWrapper):
             self.mTableView.setCurrentAlgorithmWrapper(w)
 
     def processingContext(self) -> QgsProcessingContext:
@@ -1458,7 +1487,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         mimeData.setHtml(self.tbLogs.toHtml())
         QgsApplication.clipboard().setMimeData(mimeData)
 
-    def onModelVerified(self, success: bool, message:str):
+    def onModelVerified(self, success: bool, message: str):
 
         self.actionApplyModel.setEnabled(success)
 
@@ -1469,7 +1498,6 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             self.mMessageBar.pushMessage('Model ready', level=Qgis.Success, duration=0)
 
     def onSaveLog(self):
-
 
         pass
 
@@ -1556,15 +1584,15 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         projectProvider = self.projectProvider()
 
         destinations = ['Project', 'File']
-        if filename != None:
+        if filename is not None:
             destination = 'File'
         else:
             destination, success = QInputDialog.getItem(self, 'Save model', 'Save model to...', destinations,
-                                                        editable=False,)
+                                                        editable=False, )
             if not success:
                 return
 
-        if destination == 'File':
+        if destination == 'File' and filename is None:
             from processing.modeler.ModelerUtils import ModelerUtils
             name = model.name()
             if name == '':
@@ -1592,7 +1620,6 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         elif destination == 'Project':
             # save to project
             projectProvider.add_model(model)
-
 
     def verifyModel(self, *args) -> typing.Tuple[bool, str]:
         messages = []
@@ -1629,7 +1656,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
 
             row = 0
             wrapper.setParent(self.gbParameterWidgets)
-            grid.addWidget(wrapper, row,  0)
+            grid.addWidget(wrapper, row, 0)
 
     def onAlgorithmTreeViewDoubleClicked(self, *args):
 
@@ -1685,7 +1712,6 @@ class SpectralProcessingProfilesWidgetWrapper(QgsAbstractProcessingParameterWidg
         self.label = self.createLabel(**kwargs)
 
         # super(SpectralProcessingProfilesWidgetWrapper, self).__init__(parameter, wtype, parent)
-
 
     def createWidget(self, *args, **kwargs):
         printCaller()

@@ -24,7 +24,7 @@ class testClassTesting(unittest.TestCase):
 
     def test_init(self):
         import qps.testing
-        self.assertTrue(qps.testing != None)
+        self.assertTrue(qps.testing is not None)
 
         qgis_app = qps.testing.start_app(options=qps.testing.StartOptions.All)
 

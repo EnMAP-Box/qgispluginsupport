@@ -1031,7 +1031,7 @@ class SpectralProfileBlock(object):
     def fromVariantMap(kwds: dict) -> typing.Optional['SpectralProfileBlock']:
         values = kwds['profiledata']
         assert isinstance(values, np.ndarray)
-        geodata = kwds.get['geodata']
+        geodata = kwds.get('geodata', None)
         SS = SpectralSetting(kwds.get('x', list(range(values.shape[0]))),
                              xUnit=kwds.get('x_unit', None),
                              yUnit=kwds.get('y_unit'),

@@ -35,13 +35,11 @@ import zipfile
 import itertools
 import pathlib
 import warnings
-import collections
 import copy
 import shutil
 import typing
 import json
 import gc
-import sip
 import traceback
 import calendar
 import datetime
@@ -53,7 +51,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataPro
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
     QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
     QgsFields
-from qgis.gui import *
+
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
 
 from qgis.PyQt.QtCore import *
@@ -2071,6 +2069,7 @@ def px2geocoordinatesV2(layer: QgsRasterLayer,
 def px2geocoordinates(raster, target_srs=None, pxCenter: bool = True) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
     Returns the pixel positions as geo-coordinates
+    :param pxCenter: bool, set True to return coordinates in pixel center
     :param raster: any, must be readable as gdal.Dataset
     :param target_srs: any, must be convertable to osr.SpatialReference
     :return:

@@ -81,10 +81,7 @@ class SpectralProcessingExamples(TestCase):
         # and transfer profile data of same spectral setting:
 
         # create a SpectralLibrary of profiles with a different number of bands per features:
-        speclib: SpectralLibrary = TestObjects.createSpectralLibrary(10, n_bands=[6, 10])
-        speclib.startEditing()
-        speclib.addSpeclib(TestObjects.createSpectralLibrary(10, n_bands=[5, 17]))
-        speclib.commitChanges()
+        speclib: SpectralLibrary = TestObjects.createSpectralLibrary(10, n_bands=[[6, 5], [10, 17]])
         # use the spectral library as input
 
         parameters = {alg.INPUT: speclib}
@@ -98,7 +95,7 @@ class SpectralProcessingExamples(TestCase):
         self.assertIsInstance(profile_blocks, list)
 
         # the spectral library contains profiles with (field 1) 6 and 5 bands and (field 2) 10 and 17 bands,
-        # they are grouped into 4 SpectralProfileBlocks
+        # they are grouped into 2 SpectralProfileBlocks
         self.assertTrue(len(profile_blocks) == 2)
 
         for b, block in enumerate(profile_blocks):
@@ -334,7 +331,12 @@ class SpectralProcessingTests(TestCase):
             ])
             provider.refreshAlgorithms()
             self.mPRov = provider
+            # procReg.addProvider(provider)
+
         return procReg, procGuiReg
+
+    def algorithmProviderTesting(self) -> 'TestAlgorithmProvider':
+        return QgsApplication.instance().processingRegistry().providerById(TestAlgorithmProvider.NAME.lower())
 
     def test_dualview(self):
 
@@ -360,25 +362,32 @@ class SpectralProcessingTests(TestCase):
         # self.showGui(dv)
 
     def test_SpectralProcessingModelList(self):
+        self.initProcessingRegistry()
 
         m1 = self.create_spectral_processing_model('Model1')
         m2 = self.create_spectral_processing_model('Model2')
 
-        modelList = SpectralProcessingModelList()
+        modelList = SpectralProcessingModelList(init_models=False)
         self.assertTrue(modelList.rowCount() == 0)
+
+        self.algorithmProviderTesting().addAlgorithm(m1)
+        self.algorithmProviderTesting().addAlgorithm(m1)
+        self.algorithmProviderTesting().addAlgorithm(m2)
 
         modelList.addModel(m1)
         modelList.addModel(m1)
         modelList.addModel(m2)
+        self.assertTrue(m1.id() in modelList)
+        self.assertTrue(m2.id() in modelList)
 
         self.assertTrue(len(modelList) == 2)
         self.assertTrue(modelList.rowCount() == 2)
-        self.assertEqual(m2, modelList[1])
+        self.assertEqual(m2.id(), modelList[1])
         idx = modelList.index(1, 0)
 
-        self.assertTrue(modelList.data(idx, Qt.DisplayRole) == m2.id())
+        self.assertTrue(modelList.data(idx, Qt.DisplayRole) == m2.displayName())
         self.assertEqual(m2, modelList.data(idx, Qt.UserRole))
-        self.assertEqual(m2.id(), modelList.data(idx, Qt.DisplayRole))
+        self.assertEqual(m2.displayName(), modelList.data(idx, Qt.DisplayRole))
 
         modelList.removeModel(m1)
 
@@ -699,7 +708,9 @@ class SpectralProcessingTests(TestCase):
         reg: QgsProcessingRegistry
         guiReg: QgsProcessingGuiRegistry
 
-        algs = [a for a in spectral_algorithms() if is_spectral_processing_algorithm(a, SpectralProfileIOFlag.All)]
+        algs = [a for a in spectral_algorithms()
+                if is_spectral_processing_algorithm(a, SpectralProfileIOFlag.All) and
+                not isinstance(a, QgsProcessingModelAlgorithm)]
         self.assertTrue(len(algs) > 0)
         m = SpectralProcessingModelCreatorTableModel()
         self.assertIsInstance(m, QAbstractListModel)
@@ -727,6 +738,7 @@ class SpectralProcessingTests(TestCase):
 
         configuration = {}
         feedback = QgsProcessingFeedback()
+        feedback
         context = QgsProcessingContext()
         context.setFeedback(feedback)
 
@@ -735,7 +747,7 @@ class SpectralProcessingTests(TestCase):
             if isinstance(p, SpectralProcessingProfiles):
                 parameters[p.name()] = TestObjects.createSpectralLibrary()
 
-        self.assertTrue(model.prepareAlgorithm(parameters, context, feedback))
+        self.assertTrue(model.prepareAlgorithm(parameters, context, feedback), msg=feedback.textLog())
         results = model.processAlgorithm(parameters, context, feedback)
         for o in model.outputDefinitions():
             values = outputParameterResult(results, o.name())
@@ -754,7 +766,8 @@ class SpectralProcessingTests(TestCase):
         # id2 = 'testalgorithmprovider:'
 
         for a in spectral_algorithms():
-            if is_spectral_processing_algorithm(a, SpectralProfileIOFlag.Inputs | SpectralProfileIOFlag.Outputs):
+            if is_spectral_processing_algorithm(a, SpectralProfileIOFlag.Inputs | SpectralProfileIOFlag.Outputs)\
+                    and not isinstance(a, QgsProcessingModelAlgorithm):
                 w.mProcessingModelTableModel.addAlgorithm(a)
                 w.mProcessingModelTableModel.addAlgorithm(a.id())
         # for i in range(w.mProcessingModelTableModel.rowCount()):

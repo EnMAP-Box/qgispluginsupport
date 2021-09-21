@@ -482,8 +482,13 @@ class SamplingBlockDescription(object):
         :param rect: QRect in pixel coordinates. Upper-Left image coordinate = (0,0)
         :param meta: dict with other information to be used in the SpectralProfileSamplingMode's .
         """
-        assert isinstance(point, SpatialPoint)
         assert isinstance(layer, QgsRasterLayer) and layer.isValid()
+        if not isinstance(point, SpatialPoint):
+            assert isinstance(point, QgsPointXY)
+            point = SpatialPoint(layer.crs(), point.x(), point.y())
+
+        assert isinstance(point, SpatialPoint)
+
         self.mPoint: SpatialPoint = point.toCrs(layer.crs())
         self.mLayer: QgsRasterLayer = layer
         assert rect.width() > 0
@@ -795,8 +800,11 @@ class KernelProfileSamplingMode(SpectralProfileSamplingMode):
             -> SamplingBlockDescription:
 
         assert isinstance(lyr, QgsRasterLayer)
-        centerPx: QPoint = spatialPoint2px(lyr, point)
+        if not isinstance(point, SpatialPoint):
+            assert isinstance(point, QgsPointXY)
+            point = SpatialPoint(lyr.crs(), point.x(), point.y())
 
+        centerPx: QPoint = spatialPoint2px(lyr, point)
         x, y = self.kernelSize()
         meta = {'x': x, 'y': y,
                 'aggregation': self.aggregation()}

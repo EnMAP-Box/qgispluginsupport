@@ -510,7 +510,7 @@ class SpectralPythonCodeProcessingAlgorithm(QgsProcessingAlgorithm):
                              ):
 
         result, msg = super().checkParameterValues(parameters, context)
-        if not self.parameterDefinition(self.INPUT).checkValueIsAcceptable(parameters[self.INPUT], context):
+        if not self.parameterDefinition(self.INPUT).checkValueIsAcceptable(parameters.get(self.INPUT), context):
             msg += f'Unable to read {self.INPUT}'
 
         code = self.parameterAsString(parameters, self.CODE, context)
@@ -588,7 +588,7 @@ class SpectralPythonCodeProcessingAlgorithm(QgsProcessingAlgorithm):
         else:
             try:
                 result = {'profiledata': kwds_local['profiledata']}
-                for k in ['x', 'x_unit', 'y_unit', 'bbl']:
+                for k in ['x', 'x_unit', 'y_unit', 'bbl', 'geodata']:
                     result[k] = kwds_local.get(k, kwds_global.get(k, None))
                 result_block = SpectralProfileBlock.fromVariantMap(result)
             except Exception as ex:

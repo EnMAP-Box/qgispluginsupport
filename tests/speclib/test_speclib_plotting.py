@@ -1,12 +1,13 @@
 import os
-
+import unittest
+import xmlrunner
 from PyQt5.QtCore import QEvent, QPointF, Qt, QVariant
 from PyQt5.QtGui import QMouseEvent, QColor
 from PyQt5.QtWidgets import QHBoxLayout, QWidget
 from PyQt5.QtXml import QDomDocument
 from osgeo import gdal, ogr
 
-from qgis._core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
+from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
 
@@ -139,12 +140,14 @@ class TestSpeclibWidgets(TestCase):
         symbol = renderer.symbolForFeature(profile, renderContext)
         context.appendScope(symbol.symbolRenderContext().expressionContextScope())
         color1 = symbol.color()
+        print(color1.name())
         self.assertIsInstance(p, QgsProperty)
-        color2, success = p.valueAsColor(context)
+        color2, success = p.valueAsColor(context, defaultColor=QColor('black'))
+        print(color2.name())
         renderer.stopRender(renderContext)
         self.assertEqual(color1, color2)
-
-        self.showGui(w)
+        del renderer
+        # self.showGui(w)
 
     def test_SpectralProfilePlotWidget(self):
 
@@ -224,3 +227,7 @@ class TestSpeclibWidgets(TestCase):
         w = QWidget()
         w.setLayout(l)
         self.showGui(w)
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

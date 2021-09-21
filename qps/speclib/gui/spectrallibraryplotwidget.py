@@ -17,10 +17,9 @@ from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabe
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem, \
     QRadioButton, QSizePolicy
 from PyQt5.QtXml import QDomElement, QDomDocument, QDomNode
-from qgis._gui import QgsColorTextWidget, QgsExpressionLineEdit, QgsColorButton, QgsPropertyOverrideButton
+from qgis.gui import QgsColorButton, QgsPropertyOverrideButton
 
-from qgis._core import QgsSingleSymbolRenderer, QgsSymbolLayer, QgsProperty, QgsSymbolLayerUtils, \
-    QgsExpressionContextScope
+from qgis.core import QgsProperty, QgsExpressionContextScope
 from qgis.core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsFieldProxyModel, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsExpression, QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
@@ -2972,7 +2971,9 @@ class SpectralLibraryPlotWidget(QWidget):
         if isinstance(modelId, QgsProcessingModelAlgorithm):
             modelId = modelId.id()
         assert isinstance(modelId, str)
-        assert modelId in self.mPlotControlModel.modelList()
+        if not modelId in self.mPlotControlModel.modelList():
+            s = ""
+        assert modelId in self.mPlotControlModel.modelList(), f'Model "{modelId}" is unknown'
         self.mCurrentModelId = modelId
 
     # def removeModel(self, model):
