@@ -343,7 +343,6 @@ class TestCore(TestCase):
 
     def test_SpectralProfileBlock(self):
 
-
         coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
 
         setting = SpectralSetting(core_wl, core_wlu)
@@ -370,7 +369,6 @@ class TestCore(TestCase):
 
             block3.toCrs(newCRS)
             self.assertTrue(block3.crs() == newCRS)
-
 
     def test_read_temporal_wavelength(self):
 
@@ -517,11 +515,10 @@ class TestCore(TestCase):
 
         self.assertIsInstance(SpectralLibrary(), QgsVectorLayer)
         self.assertIsInstance(SpectralLibrary(baseName='myLib'), QgsVectorLayer)
-        #SLIB2 = SpectralLibrary(SLIB.dataProvider().dataSourceUri(), provider=SLIB.dataProvider().name())
-        self.assertIsInstance(SLIB2, QgsVectorLayer)
+        # SLIB2 = SpectralLibrary(SLIB.dataProvider().dataSourceUri(), provider=SLIB.dataProvider().name())
+        # self.assertIsInstance(SLIB2, QgsVectorLayer)
         # self.assertTrue(SLIB != SLIB2)
-        #self.assertEqual(SLIB.source(), SLIB2.source())
-
+        # self.assertEqual(SLIB.source(), SLIB2.source())
 
         self.assertListEqual(vsiSpeclibs(), [])
 
@@ -532,8 +529,6 @@ class TestCore(TestCase):
         sp2 = SpectralProfile()
         # sp2.setName('Name 2')
         sp2.setValues(y=[2, 2, 2, 2, 2], x=[450, 500, 750, 1000, 1500])
-
-
 
         self.assertEqual(SLIB.name(), 'SpectralLibrary')
         SLIB.setName('MySpecLib')
@@ -708,7 +703,6 @@ class TestCore(TestCase):
             NAME2NAME[name] = color.name()
             profiles.append(p)
 
-
         import random
         profiles = random.choices(profiles, k=len(profiles))
 
@@ -722,7 +716,6 @@ class TestCore(TestCase):
         # assign styles
         for p in sl1:
             self.assertIsInstance(p, SpectralProfile)
-
 
     def test_writeAsRaster(self):
 
@@ -766,7 +759,6 @@ class TestCore(TestCase):
     def test_mergeSpeclibSpeed(self):
 
         from qpstestdata import speclib
-
 
         sl1 = SpectralLibrary.readFrom(speclib)
 
