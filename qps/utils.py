@@ -1665,7 +1665,7 @@ def parseBadBandList(dataset) -> typing.List[int]:
     return bbl
 
 
-def parseFWHM(dataset) -> typing.Tuple[np.ndarray]:
+def parseFWHM(dataset) -> np.ndarray:
     """
     Returns the full width half maximum
     :param dataset:
