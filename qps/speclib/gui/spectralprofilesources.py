@@ -28,7 +28,7 @@ from ...plotstyling.plotstyling import PlotStyle, MarkerSymbol, PlotStyleButton
 import numpy as np
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...utils import SpatialPoint, loadUi, parseWavelength, HashablePoint, rasterLayerArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoodinatesV2
+    HashableRect, px2spatialPoint, px2geocoordinatesV2
 from ...externals.htmlwidgets import HTMLComboBox
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
@@ -1420,7 +1420,7 @@ class SpectralProfileBridge(TreeModel):
                 px_x, px_y = np.meshgrid(np.arange(rect.width()), np.arange(rect.height()))
                 px_x = px_x + rect.x()
                 px_y = px_y + rect.y()
-                geo_x, geo_y = px2geocoodinatesV2(layer, px_x, px_y)
+                geo_x, geo_y = px2geocoordinatesV2(layer, px_x, px_y)
 
                 # get shift between pixel center and true click positions
                 if not self.mSnapToPixelCenter:

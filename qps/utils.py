@@ -74,7 +74,6 @@ REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInC
 jp = os.path.join
 dn = os.path.dirname
 
-
 QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.UInt16: np.uint16,
                          Qgis.Int16: np.int16,
@@ -86,6 +85,7 @@ QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.CFloat64: np.complex64,
                          Qgis.ARGB32: np.uint32,
                          Qgis.ARGB32_Premultiplied: np.uint32}
+
 
 def rm(p):
     """
@@ -1544,10 +1544,6 @@ def displayBandNames(rasterSource, bands=None, leadingBandNumber=True):
     return None
 
 
-
-
-
-
 def defaultBands(dataset) -> list:
     """
     Returns a list of 3 default bands
@@ -2036,11 +2032,11 @@ def osrSpatialReference(input) -> osr.SpatialReference:
     return srs
 
 
-def px2geocoodinatesV2(layer: QgsRasterLayer,
-                    xcoordinates: np.ndarray, ycoordinates: np.ndarray,
-                    subpixel_pos: float= 0.5,
-                    subpixel_pos_x: float=None,
-                    subpixel_pos_y: float=None) -> typing.Tuple[np.ndarray, np.ndarray]:
+def px2geocoordinatesV2(layer: QgsRasterLayer,
+                        xcoordinates: np.ndarray, ycoordinates: np.ndarray,
+                        subpixel_pos: float = 0.5,
+                        subpixel_pos_x: float = None,
+                        subpixel_pos_y: float = None) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
     Returns the pixel center as coordinate in a raster layer's CRS
     :param layer: QgsRasterLayer
@@ -2139,10 +2135,12 @@ def px2geo(px: QPoint, gt, pxCenter: bool = True) -> QgsPointXY:
 
     return QgsPointXY(gx, gy)
 
+
 class HashablePoint(QPoint):
     """
     A QPoint that can be hashed, e.g. to be used in a set
     """
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
@@ -2151,6 +2149,7 @@ class HashablePoint(QPoint):
 
     def __eq__(self, other):
         return self.x() == other.x() and self.y() == other.y()
+
 
 class HashableRect(QRect):
 
@@ -2210,7 +2209,7 @@ class SpatialPoint(QgsPointXY):
     def crs(self):
         return self.mCrs
 
-    def toPixel(self, layer: QgsMapLayer, allowOutOfRaster:bool=False) -> QPoint:
+    def toPixel(self, layer: QgsMapLayer, allowOutOfRaster: bool = False) -> QPoint:
         dp: QgsRasterDataProvider = layer.dataProvider()
 
         pt = self.toCrs(layer.crs())
@@ -2294,12 +2293,11 @@ class SpatialPoint(QgsPointXY):
         return '{} {} {}'.format(self.x(), self.y(), self.crs().authid())
 
 
-
 def px2spatialPoint(layer: QgsRasterLayer,
                     px: QPoint,
-                    subpixel_pos: float= 0.5,
-                    subpixel_pos_x: float=None,
-                    subpixel_pos_y: float=None) -> SpatialPoint:
+                    subpixel_pos: float = 0.5,
+                    subpixel_pos_x: float = None,
+                    subpixel_pos_y: float = None) -> SpatialPoint:
     """
     Returns the pixel center as coordinate in a raster layer's CRS
     :param layer: QgsRasterLayer
@@ -2325,10 +2323,10 @@ def px2spatialPoint(layer: QgsRasterLayer,
     resX = layer.extent().width() / layer.width()
     resY = layer.extent().height() / layer.height()
 
-
     return SpatialPoint(layer.crs(),
                         ext.xMinimum() + (px.x() + subpixel_pos_x) * resX,
                         ext.yMaximum() - (px.y() + subpixel_pos_y) * resY)
+
 
 def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: typing.Union[QgsPointXY, SpatialPoint]) -> QPoint:
     """
@@ -2430,7 +2428,7 @@ def saveTransform(geom: typing.Union[QgsPointXY, QgsRectangle,
         shape = xcoords.shape
         assert xcoords.shape == ycoords.shape
         n = np.prod(xcoords.shape)
-        results = [transform.transform(QgsPointXY(x,y))
+        results = [transform.transform(QgsPointXY(x, y))
                    for x, y in zip(xcoords.flatten(), ycoords.flatten())]
         xresults = np.asarray([r.x() for r in results])
         yresults = np.asarray([r.y() for r in results])
@@ -2697,7 +2695,6 @@ class SpatialExtent(QgsRectangle):
         return '{} {} {}'.format(self.upperLeft(), self.lowerRight(), self.crs().authid())
 
 
-
 def rasterLayerArray(layer: QgsRasterLayer,
                      rect: typing.Union[QRect, QgsRasterLayer, SpatialExtent] = None,
                      ul: typing.Union[SpatialPoint, QPoint] = None,
@@ -2730,8 +2727,8 @@ def rasterLayerArray(layer: QgsRasterLayer,
             lr = SpatialPoint(layer.crs(), rect.xMaximum(), rect.yMinimum())
         elif isinstance(rect, QRect):
             ul = QPoint(rect.x(), rect.y())
-            lr = QPoint(rect.x() + rect.width()-1,
-                        rect.y() + rect.height()-1)
+            lr = QPoint(rect.x() + rect.width() - 1,
+                        rect.y() + rect.height() - 1)
         else:
             raise NotImplementedError()
 
@@ -2778,16 +2775,16 @@ def rasterLayerArray(layer: QgsRasterLayer,
     nb = len(bands)
     assert nb > 0
     for i, band in enumerate(bands):
-            band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px)
-            if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
-                return None
+        band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px)
+        if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
+            return None
 
-            assert isinstance(band_block, QgsRasterBlock)
-            band_array = rasterBlockArray(band_block)
-            assert band_array.shape == (height_px, width_px)
-            if i == 0:
-                result_array = np.empty((nb, height_px, width_px), dtype=band_array.dtype)
-            result_array[i, :, :] = band_array
+        assert isinstance(band_block, QgsRasterBlock)
+        band_array = rasterBlockArray(band_block)
+        assert band_array.shape == (height_px, width_px)
+        if i == 0:
+            result_array = np.empty((nb, height_px, width_px), dtype=band_array.dtype)
+        result_array[i, :, :] = band_array
 
     return result_array
 
@@ -2912,6 +2909,7 @@ class SignalObjectWrapper(QObject):
     """
     A wrapper to transport python objects via signal-slot
     """
+
     def __init__(self, obj, *args, **kwds):
         super(SignalObjectWrapper, self).__init__(*args, **kwds)
         self.wrapped_object = obj

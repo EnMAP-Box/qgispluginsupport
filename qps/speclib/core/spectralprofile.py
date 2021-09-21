@@ -22,7 +22,7 @@ import numpy as np
 from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields
 
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, createQgsField, \
-    qgsFields2str, str2QgsFields, qgsFieldAttributes2List, SignalObjectWrapper, spatialPoint2px
+    qgsFields2str, str2QgsFields, qgsFieldAttributes2List, SignalObjectWrapper, spatialPoint2px, saveTransform
 from ...plotstyling.plotstyling import PlotStyle
 from ...externals import pyqtgraph as pg
 
@@ -650,7 +650,7 @@ class SpectralProfile(QgsFeature):
 
         return hash(id(self))
 
-    #def setId(self, id):
+    # def setId(self, id):
     #    self.setAttribute(FIELD_FID, id)
     #    if id is not None:
     #        super(SpectralProfile, self).setId(id)
@@ -842,8 +842,12 @@ class SpectralProfileBlock(object):
 
     @staticmethod
     def fromSpectralProfiles(profiles: typing.List[SpectralProfile],
-                             profile_field: typing.Union[int, str, QgsField],
+                             profile_field: typing.Union[int, str, QgsField] = None,
+                             crs: QgsCoordinateReferenceSystem = None,
                              feedback: QgsProcessingFeedback = None):
+
+        if crs is None:
+            crs = SPECLIB_CRS
 
         for spectral_setting, profiles in groupBySpectralProperties(profiles,
                                                                     profile_field=profile_field,
@@ -856,22 +860,54 @@ class SpectralProfileBlock(object):
             blockArray = np.empty((nb, 1, ns), dtype=dtype)
             blockArray[:, 0, 0] = ref_profile
 
-            for i in range(1, len(profiles)):
-                blockArray[:, 0, i] = np.asarray(profiles[i].yValues(), dtype=dtype)
+            pos_x_array = np.empty((1, ns), dtype=float)
+            pos_y_array = np.empty((1, ns), dtype=float)
+            pos_x_array.fill(np.NaN)
+            pos_y_array.fill(np.NaN)
+            del ref_profile
+
+            for i, profile in enumerate(profiles):
+
+                blockArray[:, 0, i] = np.asarray(profile.yValues(), dtype=dtype)
+                if profile.hasGeometry():
+                    pt: QgsPointXY = profile.geometry().asPoint()
+                    pos_x_array[0, i] = pt.x()
+                    pos_y_array[0, i] = pt.y()
+
             block = SpectralProfileBlock(blockArray, spectral_setting, fids=fids)
+            if np.any(np.isfinite(pos_x_array)):
+                block.setPositions(pos_x_array, pos_y_array, crs)
             yield block
 
     @staticmethod
-    def fromSpectralProfile(self, profile: SpectralProfile):
-
+    def fromSpectralProfile(profile: SpectralProfile,
+                            crs: QgsCoordinateReferenceSystem = None) -> 'SpectralProfileBlock':
+        """
+        Creates a SpectralProfileBlock consisting of a single spectral profile
+        :param profile: Spectra profile
+        :param crs: QgsCoordinateReferenceSystem of profile coordinate. default to EPSG:4326
+        :return: SpectralProfileBlock
+        """
         data = np.asarray(profile.yValues())
 
         setting = SpectralSetting(profile.xValues(), xUnit=profile.xUnit(), yUnit=profile.yUnit())
-        return SpectralProfileBlock(data, setting, fids=[profile.id()])
+        block = SpectralProfileBlock(data, setting, fids=[profile.id()])
+        g = profile.geometry()
+        if isinstance(g, QgsGeometry):
+            pt = g.asPoint()
+            x, y = pt.x()
+            if crs is None:
+                crs = SPECLIB_CRS
+            block.setPositions([x], [y], crs)
+        return block
 
-    def __init__(self, data: typing.Union[np.ndarray, np.ma.masked_array],
+    def __init__(self,
+                 data: typing.Union[np.ndarray, np.ma.masked_array],
                  spectralSetting: SpectralSetting,
                  fids: typing.List[int] = None,
+                 positionsX: np.ndarray = None,
+                 positionsY: np.ndarray = None,
+                 crs: QgsCoordinateReferenceSystem = None,
                  metadata: dict = None):
 
         assert isinstance(spectralSetting, SpectralSetting)
@@ -898,8 +934,15 @@ class SpectralProfileBlock(object):
             metadata = dict()
         self.mMetadata = metadata
 
+        self.mCrs: QgsCoordinateReferenceSystem = None
+        self.mPositionsX: np.ndarray = None
+        self.mPositionsY: np.ndarray = None
+
         if fids is not None:
             self.setFIDs(fids)
+
+        if positionsX:
+            self.setPositions(positionsX, positionsY, crs)
 
     def metadata(self) -> dict:
         """
@@ -918,31 +961,63 @@ class SpectralProfileBlock(object):
         self.mFIDs = fids
 
     def fids(self) -> typing.List[int]:
+        """
+        Returns the fid for each profile (flattened list)
+        :return: list
+        """
         return self.mFIDs
 
     def spectralSetting(self) -> SpectralSetting:
+        """
+        Returns the spectral setting of the profiles, i.e. wavelength information
+        :return: SpectralSetting
+        """
         return self.mSpectralSetting
 
     def xValues(self) -> np.ndarray:
+        """
+        Returns the x axis values, e.g. wavelenght for each band
+        :return: numpy array
+        """
         return self.mXValues
 
     def xUnit(self) -> str:
+        """
+        Returns the unit of the x axis values
+        :return:
+        """
         return self.mSpectralSetting.xUnit()
 
     def n_profiles(self) -> int:
+        """
+        Returns the number of profiles in the block (including masked!)
+        :return: int
+        """
         return int(np.product(self.mData.shape[1:]))
 
     def n_bands(self) -> int:
+        """
+        Returns the number of profile bands
+        :return: int
+        """
         return self.mData.shape[0]
 
     def yUnit(self) -> str:
+        """
+        Returns the unit of the profile values (y Unit)
+        :return: str
+        """
         return self.mSpectralSetting.yUnit()
 
     def toVariantMap(self) -> dict:
-
+        """
+        Convers the profile block into a dictionary
+        :return: dict
+        """
         kwds = dict()
         kwds['metadata'] = self.metadata()
         kwds['profiledata'] = self.mData
+        kwds['geodata'] = (self.mPositionsX, self.mPositionsY, self.mCrs)
         kwds['keys'] = self.mFIDs
         SS = self.spectralSetting()
         kwds['x'] = SS.x()
@@ -954,19 +1029,21 @@ class SpectralProfileBlock(object):
 
     @staticmethod
     def fromVariantMap(kwds: dict) -> typing.Optional['SpectralProfileBlock']:
-
         values = kwds['profiledata']
         assert isinstance(values, np.ndarray)
-
+        geodata = kwds.get['geodata']
         SS = SpectralSetting(kwds.get('x', list(range(values.shape[0]))),
                              xUnit=kwds.get('x_unit', None),
                              yUnit=kwds.get('y_unit'),
                              bbl=kwds.get('bbl')
                              )
-        return SpectralProfileBlock(values, SS,
+        block = SpectralProfileBlock(values, SS,
                                     fids=kwds.get('keys', None),
                                     metadata=kwds.get('metadata', None)
                                     )
+        if geodata:
+            block.setPositions(*geodata)
+        return block
 
     def __eq__(self, other):
         if not isinstance(other, SpectralProfileBlock):
@@ -984,24 +1061,98 @@ class SpectralProfileBlock(object):
     def __len__(self) -> int:
         return self.n_profiles()
 
+    def geoPositions(self) -> typing.Tuple[np.ndarray, np.ndarray, QgsCoordinateReferenceSystem]:
+        """
+        Returns the geoposition data for each pixel in the profile block data
+        :return: (numpy 2D array x coordinates,
+                  numpy 2D array y coordinates,
+                  QgsCoordinateReferenceSystem
+
+        """
+        assert self.hasGeoPositions()
+        assert self.mPositionsX.shape == self.mPositionsY.shape
+        assert self.mPositionsX.shape == self.mData.shape[1:]
+        return self.mPositionsX, self.mPositionsY, self.mCrs
+
+    def hasGeoPositions(self) -> bool:
+        """
+        Returns True if profile in the block .data() array is described by a geocoordinate
+        :return:
+        """
+        return isinstance(self.mPositionsY, np.ndarray) and \
+               isinstance(self.mPositionsX, np.ndarray) and \
+               isinstance(self.mCrs, QgsCoordinateReferenceSystem)
+
+    def crs(self) -> QgsCoordinateReferenceSystem:
+        """
+        Returns the coordinate reference system for internal geo-positions
+        :return: QgsCoordinateReferenceSystem
+        """
+        return self.mCrs
+
+    def toCrs(self, newCrs: QgsCoordinateReferenceSystem) -> bool:
+        """
+        Transform the internal geo-positions to a new coordinate reference system
+        :param newCrs: coordinate reference system
+        :return: bool, is True if the transformation was successful
+        """
+        assert isinstance(newCrs, QgsCoordinateReferenceSystem)
+        newPosX, newPosY = saveTransform((self.mPositionsX, self.mPositionsY), self.crs(), newCrs)
+        if isinstance(newPosX, np.ndarray):
+            self.mPositionsX = newPosX
+            self.mPositionsY = newPosY
+            self.mCrs = newCrs
+            return True
+        return False
+
+    def setPositions(self,
+                     pos_x: np.ndarray,
+                     pos_y: np.ndarray,
+                     crs: typing.Union[str, QgsCoordinateReferenceSystem]):
+        """
+        Sets the geo-positions of each spectral profile in this block.
+        If the, SpectralProfiles returned with .profiles() will contain a QgsGeometry in crs coordinates-
+        :param pos_x: array with x coordinates
+        :param pos_y: array with y coordinates
+        :param crs: coordinate reference system
+        :return:
+        """
+        shape = self.mData.shape[1:]
+        if not isinstance(pos_x, np.ndarray):
+            pos_x = np.asarray(pos_x).reshape(shape)
+
+        if not isinstance(pos_y, np.ndarray):
+            pos_y = np.asarray(pos_y).reshape(shape)
+
+        assert isinstance(pos_x, np.ndarray)
+        assert isinstance(pos_y, np.ndarray)
+        assert pos_x.shape == pos_y.shape
+        assert pos_x.shape == shape
+
+        crs = QgsCoordinateReferenceSystem(crs)
+        assert crs.isValid()
+        self.mPositionsX = pos_x
+        self.mPositionsY = pos_y
+        self.mCrs = crs
+
+    def profiles(self) -> typing.Iterable[SpectralProfile]:
+        """
+        Returns the profile block data as SpectralProfiles
+        :return: iterator
+        """
+        for fid, byteArray, geometry in self.profileValueByteArrays():
+            profile = SpectralProfile(id=fid)
+            profile.setGeometry(geometry)
+            profile.setAttribute(profile.currentProfileField(), byteArray)
+            yield profile
+
     def __iter__(self):
-        y, x = self.mData.shape[1:]
+        return self.profiles()
 
-        xValues = self.wavelengths()
-        xUnit = self.wavelengthUnit()
-        yUnit = self.yUnit()
-
-        for j in range(y):
-            for x in range(x):
-                yValues = self.mData[:, y, x]
-                profile = SpectralProfile()
-                profile.setValues(x=xValues, y=yValues, xUnit=xUnit, yUnit=yUnit)
-                yield profile
-
-    def profileValueDictionaries(self) -> typing.List[typing.Tuple[int, dict]]:
+    def profileValueDictionaries(self) -> typing.List[typing.Tuple[int, dict, QgsGeometry]]:
         """
         Converts the block data into profile value dictionaries
-        :return:
+        :return: (fid: int, value_dict: dict, geometry: QgsGeometry)
         """
         yy, xx = np.unravel_index(np.arange(self.n_profiles()), self.mData.shape[1:])
         spectral_settings = self.spectralSetting()
@@ -1010,6 +1161,8 @@ class SpectralProfileBlock(object):
         yUnit = spectral_settings.yUnit()
         xValues = spectral_settings.x()
 
+        hasGeoPositions = self.hasGeoPositions()
+
         fids = self.fids()
         masked: bool = isinstance(self.mData, np.ma.MaskedArray)
         for j, i in zip(yy, xx):
@@ -1017,23 +1170,31 @@ class SpectralProfileBlock(object):
             if masked and np.ma.alltrue(yValues.mask):
                 # skip profile, as the entire profile is masked
                 continue
-
+            if hasGeoPositions:
+                g = QgsGeometry.fromPointXY(QgsPointXY(self.mPositionsX[j, i],
+                                                       self.mPositionsY[j, i]))
+            else:
+                g = QgsGeometry()
             d = prepareProfileValueDict(x=xValues,
                                         y=yValues,
                                         xUnit=xUnit,
                                         yUnit=yUnit)
             if fids:
-                yield fids[i], d
+                yield fids[i], d, g
             else:
-                yield None, d
+                yield None, d, g
 
-    def profileValueByteArrays(self) -> typing.List[typing.Tuple[int, QByteArray]]:
+    def profileValueByteArrays(self) -> typing.List[typing.Tuple[int, QByteArray, QgsGeometry]]:
         """
-        Converts the block profiles data into serialized profile value dictionaries
+        Converts the block data into serialized value dictionaries
+        that can be stored in a QByteArray field
+        :return: (fid: int, value_dict: dict, geometry: QgsGeometry)
+            fid = profile id, might be None
+            geometry = profile geometry, might be None
         :return:
         """
-        for fid, d in self.profileValueDictionaries():
-            yield fid, encodeProfileValueDict(d)
+        for fid, d, g in self.profileValueDictionaries():
+            yield fid, encodeProfileValueDict(d), g
 
     def data(self) -> np.ndarray:
         """
