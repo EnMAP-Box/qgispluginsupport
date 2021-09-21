@@ -76,7 +76,7 @@ class RasterBandComboBox(QgsRasterBandComboBox):
             if WLU and WLU not in bandName:
                 bandName += ' [{} {}]'.format(WL[b], WLU)
                 tooltip += ' {} {}'.format(WL[b], WLU)
-                if FWHM:
+                if isinstance(FWHM, np.ndarray):
                     tooltip += ' {}'.format(FWHM[b])
 
             self.setItemText(idx, bandName)
