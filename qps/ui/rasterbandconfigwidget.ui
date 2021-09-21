@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>346</width>
+    <width>269</width>
     <height>299</height>
    </rect>
   </property>
@@ -24,7 +24,7 @@
    <item>
     <widget class="QStackedWidget" name="renderBandWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="pageSingleBand">
       <layout class="QGridLayout" name="gridLayout_2">
@@ -75,6 +75,21 @@
           <string>Wavelength</string>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <property name="leftMargin">
+           <number>2</number>
+          </property>
+          <property name="topMargin">
+           <number>2</number>
+          </property>
+          <property name="rightMargin">
+           <number>2</number>
+          </property>
+          <property name="bottomMargin">
+           <number>2</number>
+          </property>
           <item>
            <widget class="QToolButton" name="btnSetSBBand_B">
             <property name="minimumSize">
@@ -199,6 +214,21 @@
      </widget>
      <widget class="QWidget" name="pageMultiBand">
       <layout class="QGridLayout" name="gridLayout">
+       <property name="leftMargin">
+        <number>2</number>
+       </property>
+       <property name="topMargin">
+        <number>2</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="bottomMargin">
+        <number>2</number>
+       </property>
+       <property name="spacing">
+        <number>2</number>
+       </property>
        <item row="5" column="0" colspan="4">
         <widget class="QGroupBox" name="gbMultiBandWavelength">
          <property name="minimumSize">
@@ -228,6 +258,9 @@
           </property>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <property name="spacing">
+             <number>2</number>
+            </property>
             <property name="topMargin">
              <number>0</number>
             </property>
@@ -274,6 +307,9 @@
           </item>
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_3">
+            <property name="spacing">
+             <number>2</number>
+            </property>
             <property name="topMargin">
              <number>0</number>
             </property>
@@ -344,7 +380,7 @@
        <item row="4" column="3">
         <widget class="QSlider" name="sliderMultiBandBlue">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
            <horstretch>1</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -357,7 +393,7 @@
        <item row="0" column="3">
         <widget class="QSlider" name="sliderMultiBandRed">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
            <horstretch>1</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -384,7 +420,7 @@
        <item row="2" column="3">
         <widget class="QSlider" name="sliderMultiBandGreen">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
            <horstretch>1</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -581,11 +617,11 @@
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>120</x>
+     <x>105</x>
      <y>39</y>
     </hint>
     <hint type="destinationlabel">
-     <x>194</x>
+     <x>295</x>
      <y>40</y>
     </hint>
    </hints>
@@ -597,7 +633,7 @@
    <slot>setBand(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>266</x>
+     <x>295</x>
      <y>41</y>
     </hint>
     <hint type="destinationlabel">

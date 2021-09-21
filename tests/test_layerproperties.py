@@ -12,6 +12,7 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 import xmlrunner
+from qgis._gui import QgsRasterLayerProperties
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
     QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer
 
@@ -130,7 +131,7 @@ class LayerPropertyTests(TestCase):
 
         s  =""
 
-        lyr = TestObjects.createRasterLayer(nb=1, eType=gdal.GDT_UInt16)
+        lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
         QgsProject.instance().addMapLayer(lyr)
         c = QgsMapCanvas()
         c.setLayers([lyr])
