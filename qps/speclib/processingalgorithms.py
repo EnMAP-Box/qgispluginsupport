@@ -387,22 +387,26 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
             new_features = []
             if fids and mode != 'APPEND':
                 # block profiles with FIDs -> handle mode
-                FEATURE_DATA = {fid : ba for fid, ba in block.profileValueByteArrays()}
+                FEATURE_DATA = {fid : (ba, g) for fid, ba, g in block.profileValueByteArrays()}
                 request = QgsFeatureRequest()
                 request.setFilterFids(fids)
                 for f in speclib.getFeatures(request):
-                    speclib.changeAttributeValue(f.id(), i_field, FEATURE_DATA.pop(f.id()))
+                    ba, g = FEATURE_DATA.pop(f.id())
+                    speclib.changeGeometry(f.id(), g)
+                    speclib.changeAttributeValue(f.id(), i_field, ba)
 
                 # append remaining byte arrays as new features
-                for ba in FEATURE_DATA.values():
+                for (ba, g) in FEATURE_DATA.values():
                     f = QgsFeature(speclib.fields())
+                    f.setGeometry(g)
                     f.setAttribute(i_field, ba)
                     new_features.append(f)
 
             else:
                 # block profiles without FID -> just append new features
-                for ba in block.profileValueByteArrays():
+                for (fid, b, g) in block.profileValueByteArrays():
                     f = QgsFeature(speclib.fields())
+                    f.setGeometry(g)
                     f.setAttribute(i_field, ba)
                     new_features.append(f)
 

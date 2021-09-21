@@ -412,6 +412,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             # give current spectra the current spectral style
             self.plotControl().mTemporaryProfileIDs.update(addedKeys)
         self.plotControl().updatePlot()
+        self.speclib().triggerRepaint()
 
     def currentProfiles(self) -> typing.List[SpectralProfile]:
         return self.mSpeclibPlotWidget.plotWidget.currentProfiles()

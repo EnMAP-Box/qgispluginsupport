@@ -154,7 +154,7 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
         is called before our text has actually been loaded into the QTextDocument,
         but apparently seems to Do The Right Thing Anyway.
         """
-        return QtCore.QSize(self.doc.idealWidth(), self.doc.size().height())
+        return QtCore.QSize(int(self.doc.idealWidth()), int(self.doc.size().height()))
 
 
 class HTMLComboBox(QtWidgets.QComboBox):

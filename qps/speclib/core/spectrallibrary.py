@@ -825,7 +825,7 @@ class SpectralLibrary(QgsVectorLayer):
             # QGIS In-Memory Layer
             provider = 'memory'
             # path = "point?crs=epsg:4326&field=fid:integer"
-            path = "point?crs=epsg:4326"
+            path = f"point?crs={SPECLIB_EPSG_CODE}"
             # scratchLayer = QgsVectorLayer(uri, "Scratch point layer", "memory")
         assert isinstance(path, str)
         super(SpectralLibrary, self).__init__(path, baseName, provider, options)

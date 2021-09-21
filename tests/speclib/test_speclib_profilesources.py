@@ -204,6 +204,9 @@ class SpectralProcessingTests(TestCase):
             slw.speclib().deleteSelectedFeatures()
             slw.speclib().commitChanges()
 
+        speclib_sources =[slw1.speclib(), slw2.speclib()]
+        QgsProject.instance().addMapLayers(speclib_sources, False)
+        canvas.setLayers(speclib_sources + sources)
         # re-add destinations
         panel.addSpectralLibraryWidgets([slw1, slw2])
 
@@ -225,6 +228,10 @@ class SpectralProcessingTests(TestCase):
         sl = slw1.speclib()
         self.assertTrue(sl.featureCount() == 1)
         self.assertTrue(sl.id() in RESULTS.keys())
+        for speclib_ids, profiles in RESULTS.items():
+            for profile in profiles:
+                self.assertIsInstance(profile, QgsFeature)
+                self.assertTrue(profile.geometry().type() == QgsWkbTypes.PointGeometry)
 
         btnAdd = QPushButton('Random click')
 
@@ -254,7 +261,15 @@ class SpectralProcessingTests(TestCase):
         vl.addWidget(panel)
         w = QWidget()
         w.setLayout(vl)
-        self.showGui([w, slw1, slw2, canvas])
+
+        grid = QGridLayout()
+        grid.addWidget(canvas, 0, 0)
+        grid.addWidget(w, 1, 0)
+        grid.addWidget(slw1, 0, 1)
+        grid.addWidget(slw2, 1, 1)
+        w2 = QWidget()
+        w2.setLayout(grid)
+        self.showGui(w2)
 
     def test_kernelSampling(self):
 

@@ -343,13 +343,14 @@ class TestCore(TestCase):
 
     def test_SpectralProfileBlock(self):
 
-        profiles = TestObjects.spectralProfiles()
+
         coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
 
         setting = SpectralSetting(core_wl, core_wlu)
         block1 = SpectralProfileBlock(coredata, setting)
 
         self.assertIsInstance(block1, SpectralProfileBlock)
+        self.assertFalse(block1.hasGeoPositions())
 
         kwds = block1.toVariantMap()
         self.assertIsInstance(kwds, dict)
@@ -357,6 +358,19 @@ class TestCore(TestCase):
         block2 = SpectralProfileBlock.fromVariantMap(kwds)
         self.assertIsInstance(block2, SpectralProfileBlock)
         self.assertEqual(block1, block2)
+
+        newCRS = QgsCoordinateReferenceSystem('EPSG:32632')
+        profiles = TestObjects.spectralProfiles()
+        for block3 in SpectralProfileBlock.fromSpectralProfiles(profiles):
+            self.assertIsInstance(block3, SpectralProfileBlock)
+            self.assertTrue(block3.hasGeoPositions())
+
+            for i, p in enumerate(block3.profiles()):
+                self.assertIsInstance(p, SpectralProfile)
+
+            block3.toCrs(newCRS)
+            self.assertTrue(block3.crs() == newCRS)
+
 
     def test_read_temporal_wavelength(self):
 

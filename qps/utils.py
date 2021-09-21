@@ -2036,6 +2036,42 @@ def osrSpatialReference(input) -> osr.SpatialReference:
     return srs
 
 
+def px2geocoodinatesV2(layer: QgsRasterLayer,
+                    xcoordinates: np.ndarray, ycoordinates: np.ndarray,
+                    subpixel_pos: float= 0.5,
+                    subpixel_pos_x: float=None,
+                    subpixel_pos_y: float=None) -> typing.Tuple[np.ndarray, np.ndarray]:
+    """
+    Returns the pixel center as coordinate in a raster layer's CRS
+    :param layer: QgsRasterLayer
+    :param px: QPoint pixel position (0,0) = 1st pixel
+    :return: SpatialPoint
+    """
+    assert isinstance(layer, QgsRasterLayer) and layer.isValid()
+    # assert 0 <= px.x() < layer.width()
+    # assert 0 <= px.y() < layer.height()
+    assert 0 <= subpixel_pos <= 1.0
+
+    if subpixel_pos_x is None:
+        subpixel_pos_x = subpixel_pos
+
+    if subpixel_pos_y is None:
+        subpixel_pos_y = subpixel_pos
+
+    assert 0 <= subpixel_pos_x <= 1.0
+    assert 0 <= subpixel_pos_y <= 1.0
+
+    ext: QgsRectangle = layer.extent()
+
+    resX = layer.extent().width() / layer.width()
+    resY = layer.extent().height() / layer.height()
+
+    geo_x = ext.xMinimum() + (xcoordinates + subpixel_pos_x) * resX
+    geo_y = ext.yMaximum() - (ycoordinates + subpixel_pos_y) * resY
+
+    return geo_x, geo_y
+
+
 def px2geocoordinates(raster, target_srs=None, pxCenter: bool = True) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
     Returns the pixel positions as geo-coordinates
@@ -2075,6 +2111,8 @@ def px2geocoordinates(raster, target_srs=None, pxCenter: bool = True) -> typing.
 
         geo_x = dsMEM.GetRasterBand(1).ReadAsArray()
         geo_y = dsMEM.GetRasterBand(2).ReadAsArray()
+        del dsMEM
+
     return geo_x, geo_y
 
 
@@ -2287,10 +2325,10 @@ def px2spatialPoint(layer: QgsRasterLayer,
     resX = layer.extent().width() / layer.width()
     resY = layer.extent().height() / layer.height()
 
+
     return SpatialPoint(layer.crs(),
                         ext.xMinimum() + (px.x() + subpixel_pos_x) * resX,
                         ext.yMaximum() - (px.y() + subpixel_pos_y) * resY)
-
 
 def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: typing.Union[QgsPointXY, SpatialPoint]) -> QPoint:
     """
@@ -2349,10 +2387,13 @@ def createCRSTransform(src: QgsCoordinateReferenceSystem, dst: QgsCoordinateRefe
     return t
 
 
-def saveTransform(geom, crs1, crs2):
+def saveTransform(geom: typing.Union[QgsPointXY, QgsRectangle,
+                                     typing.Tuple[np.ndarray, np.ndarray]],
+                  crs1: QgsCoordinateReferenceSystem,
+                  crs2: QgsCoordinateReferenceSystem) -> typing.Union[QgsPointXY, QgsRectangle]:
     """
-
-    :param geom:
+    Transforms geometries from into another QgsCoordinateReferenceSystem
+    :param geom: QgsGeometry
     :param crs1:
     :param crs2:
     :return:
@@ -2360,14 +2401,13 @@ def saveTransform(geom, crs1, crs2):
     assert isinstance(crs1, QgsCoordinateReferenceSystem)
     assert isinstance(crs2, QgsCoordinateReferenceSystem)
 
+    transform = QgsCoordinateTransform(crs1, crs2, QgsProject.instance())
+
     result = None
     if isinstance(geom, QgsRectangle):
         if geom.isEmpty():
             return None
 
-        transform = QgsCoordinateTransform()
-        transform.setSourceCrs(crs1)
-        transform.setDestinationCrs(crs2)
         try:
             rect = transform.transformBoundingBox(geom);
             result = SpatialExtent(crs2, rect)
@@ -2377,15 +2417,25 @@ def saveTransform(geom, crs1, crs2):
 
     elif isinstance(geom, QgsPointXY):
 
-        transform = QgsCoordinateTransform();
-        transform.setSourceCrs(crs1)
-        transform.setDestinationCrs(crs2)
         try:
             pt = transform.transform(geom);
             result = SpatialPoint(crs2, pt)
         except:
             print('Can not transform from {} to {} on QgsPointXY {}'.format( \
                 crs1.description(), crs2.description(), str(geom)), file=sys.stderr)
+
+    elif isinstance(geom, tuple):
+
+        xcoords, ycoords = geom
+        shape = xcoords.shape
+        assert xcoords.shape == ycoords.shape
+        n = np.prod(xcoords.shape)
+        results = [transform.transform(QgsPointXY(x,y))
+                   for x, y in zip(xcoords.flatten(), ycoords.flatten())]
+        xresults = np.asarray([r.x() for r in results])
+        yresults = np.asarray([r.y() for r in results])
+
+        result = (xresults.reshape(shape), yresults.reshape(shape))
     return result
 
 

@@ -22,10 +22,21 @@ def create_profile_field(name: str, comment: str = '') -> QgsField:
 
 
 def is_profile_field(field: QgsField) -> bool:
+    """
+    Checks if a field is a valid spectra profile field, i.e.
+    is of type binary and has the editor widget setup set to EDITOR_WIDGET_REGISTRY_KEY
+    :param field: QgsField
+    :return: bool
+    """
     return isinstance(field, QgsField) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
 
 
 def is_spectral_library(layer: QgsVectorLayer) -> bool:
+    """
+    Returns True if a vector layer contains at least one spectral profile field
+    :param layer: QgsVectorLayer
+    :return: bool
+    """
     if isinstance(layer, QgsVectorLayer):
         for field in layer.fields():
             if is_profile_field(field):
@@ -34,6 +45,11 @@ def is_spectral_library(layer: QgsVectorLayer) -> bool:
 
 
 def profile_fields(fields: typing.Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsFields:
+    """
+    Returns the spectral profile fields
+    :param fields: fields to check
+    :return: QgsFields
+    """
     if isinstance(fields, QgsFeature):
         fields = fields.fields()
     elif isinstance(fields, QgsVectorLayer):
@@ -59,6 +75,11 @@ def profile_field_list(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer,
 
 def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> \
         typing.Dict[typing.Union[int, str], QgsField]:
+    """
+    Returns a dictionary to lookup spectral profile fields by name or field index
+    :param spectralLibrary: QgsVectorLayer
+    :return: dict
+    """
     fields = profile_field_list(spectralLibrary)
     D = {f.name(): f for f in fields}
     for f in fields:
@@ -67,10 +88,20 @@ def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLaye
 
 
 def profile_field_indices(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[int]:
+    """
+    Returns the indices of spectral profile fields
+    :param spectralLibrary: QgsVectorLayer
+    :return: [list of int]
+    """
     return [spectralLibrary.fields().lookupField(f.name()) for f in profile_field_list(spectralLibrary)]
 
 
 def profile_field_names(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[str]:
+    """
+    Returns the names of spectral profile fields
+    :param spectralLibrary: QgsVectorLayer
+    :return: [list of str]
+    """
     return [f.name() for f in profile_field_list(spectralLibrary)]
 
 
