@@ -45,7 +45,7 @@
        </sizepolicy>
       </property>
      </widget>
-     <widget class="QgsCollapsibleGroupBox" name="mGroupBox">
+     <widget class="QgsCollapsibleGroupBox" name="gbVisualization">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
         <horstretch>0</horstretch>
