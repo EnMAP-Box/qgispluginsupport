@@ -87,6 +87,8 @@ def printCaller(prefix=None, suffix=None):
     :param prefix: prefix text
     :param suffix: suffix text
     """
+    if not os.environ.get('DEBUG', '').lower() in ['1', 'true']:
+        return
     curFrame = inspect.currentframe()
     outerFrames = inspect.getouterframes(curFrame)
     FOI = outerFrames[1]
@@ -1378,18 +1380,17 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
         self.setRecursiveFilteringEnabled(True)
 
     def filterAcceptsRow(self, sourceRow: int, sourceParent: QModelIndex):
-        procReg = QgsApplication.instance().processingRegistry()
-        b = super().filterAcceptsRow(sourceRow, sourceParent)
-        if b:
-            sourceIdx = self.toolboxModel().index(sourceRow, 0, sourceParent)
-            if self.toolboxModel().isAlgorithm(sourceIdx):
-                algId = self.sourceModel().data(sourceIdx, QgsProcessingToolboxModel.RoleAlgorithmId)
-                alg = procReg.algorithmById(algId)
-                return is_spectral_processing_algorithm(alg,
-                                                        SpectralProfileIOFlag.Outputs | SpectralProfileIOFlag.Inputs)
-            else:
-                return False
-        return b
+
+        sourceIdx = self.toolboxModel().index(sourceRow, 0, sourceParent)
+        if self.toolboxModel().isAlgorithm(sourceIdx):
+            #algId = self.sourceModel().data(sourceIdx, QgsProcessingToolboxModel.RoleAlgorithmId)
+            #procReg = QgsApplication.instance().processingRegistry()
+            #alg = procReg.algorithmById(algId)
+            alg = self.toolboxModel().algorithmForIndex(sourceIdx)
+            return is_spectral_processing_algorithm(alg,
+                                                    SpectralProfileIOFlag.Outputs | SpectralProfileIOFlag.Inputs)
+        else:
+            return super().filterAcceptsRow(sourceRow, sourceParent)
 
 
 class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
