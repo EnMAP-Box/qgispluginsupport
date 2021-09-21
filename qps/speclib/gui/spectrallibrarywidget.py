@@ -363,6 +363,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.plotControl().mTemporaryProfileIDs.clear()
         self.plotControl().updatePlot(fids)
 
+    def spectralLibraryPlotWidget(self) -> SpectralLibraryPlotWidget:
+        return self.mSpeclibPlotWidget
+
+    def setVisualizationBoxCollapsed(self, collapse):
+        self.spectralLibraryPlotWidget().visualizationSettingsBox().setCollapsed(collapse)
+
     def setCurrentProfiles(self,
                            currentProfiles: typing.List[SpectralProfile]):
         """

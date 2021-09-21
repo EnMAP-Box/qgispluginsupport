@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabe
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem, \
     QRadioButton, QSizePolicy
 from PyQt5.QtXml import QDomElement, QDomDocument, QDomNode
+from qgis._gui import QgsCollapsibleGroupBox
 from qgis.gui import QgsColorButton, QgsPropertyOverrideButton
 
 from qgis.core import QgsProperty, QgsExpressionContextScope
@@ -2767,6 +2768,8 @@ class SpectralLibraryPlotWidget(QWidget):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
+        assert isinstance(self.gbVisualization, QgsCollapsibleGroupBox)
+
         assert isinstance(self.plotWidget, SpectralProfilePlotWidget)
         assert isinstance(self.treeView, SpectralProfilePlotControlView)
         self.plotWidget: SpectralProfilePlotWidget
@@ -2847,6 +2850,9 @@ class SpectralLibraryPlotWidget(QWidget):
 
         # set the default style
         self.setPlotWidgetStyle(SpectralLibraryPlotWidgetStyle.dark())
+
+    def visualizationSettingsBox(self) -> QgsCollapsibleGroupBox:
+        return self.gbVisualization
 
     def setPlotWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
         assert isinstance(style, SpectralLibraryPlotWidgetStyle)

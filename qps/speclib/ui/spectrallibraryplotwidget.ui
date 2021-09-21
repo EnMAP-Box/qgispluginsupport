@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>421</width>
-    <height>501</height>
+    <width>346</width>
+    <height>299</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -39,15 +39,24 @@
      </property>
      <widget class="SpectralProfilePlotWidget" name="plotWidget">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
         <horstretch>0</horstretch>
-        <verstretch>2</verstretch>
+        <verstretch>3</verstretch>
        </sizepolicy>
       </property>
      </widget>
      <widget class="QgsCollapsibleGroupBox" name="mGroupBox">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>1</verstretch>
+       </sizepolicy>
+      </property>
       <property name="title">
        <string>Visualization</string>
+      </property>
+      <property name="collapsed">
+       <bool>false</bool>
       </property>
       <layout class="QGridLayout" name="gridLayout">
        <property name="leftMargin">

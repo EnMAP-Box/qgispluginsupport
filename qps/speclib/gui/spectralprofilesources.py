@@ -1996,12 +1996,11 @@ class SpectralProfileSourcePanel(QgsDockWidget):
         super(SpectralProfileSourcePanel, self).__init__(*args, **kwds)
 
         loadUi(speclibUiPath('spectralprofilesourcepanel.ui'), self)
-        self.progressBar.setVisible(False)
+
         self.treeView: SpectralProfileBridgeTreeView
         self.mBridge = SpectralProfileBridge()
         self.mBridge.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_FIRST_LAYER))
-        # self.mBridge.addSources(MapCanvasLayerProfileSource())
-        # self.mBridge.sigProgress.connect(self.progressBar.setValue)
+
         self.mProxyModel = SpectralProfileSourceProxyModel()
         self.mProxyModel.setSourceModel(self.mBridge)
         self.treeView.setModel(self.mProxyModel)
