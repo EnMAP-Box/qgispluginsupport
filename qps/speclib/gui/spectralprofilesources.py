@@ -1319,10 +1319,11 @@ class SpectralProfileBridge(TreeModel):
         """
         Makes current profiles in connected spectral library destinations permanent
         """
-        for slw in self.destinations():
-            sl = slw.speclib()
+        for fgnode in self.featureGenerators(speclib=True, checked=True):
+            fgnode: SpectralFeatureGeneratorNode
+            sl = fgnode.speclib()
             if isinstance(sl, QgsVectorLayer) and sl.id() in self.mLastDestinations:
-                slw.addCurrentProfilesToSpeclib()
+                fgnode.speclibWidget().addCurrentProfilesToSpeclib()
 
     def setMinimumSourceNameSimilarity(self, threshold: float):
         assert 0 <= threshold <= 1.0
