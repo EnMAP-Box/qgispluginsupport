@@ -7,14 +7,19 @@ import enum
 import re
 import warnings
 
-from qgis.core import *
+from PyQt5.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
+    QSortFilterProxyModel, QItemSelection
+from PyQt5.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
+from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, QgsExpression, \
+    QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
+    QgsRasterIdentifyResult, QgsRaster, QgsRectangle
+
+from qgis.PyQt.QtCore import Qt
+from qgis.gui import QgsFieldExpressionWidget
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsApplication, QgsTask, \
     QgsTaskManager, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
 
-from qgis.gui import *
 from qgis.gui import QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
 
 from qgis.PyQt.QtWidgets import *
 
@@ -1294,6 +1299,8 @@ class SpectralProfileBridge(TreeModel):
         self.mDstModel = SpectralLibraryWidgetListModel()
         self.mDefaultSource: SpectralProfileSource = None
 
+        self.mLastDestinations: typing.Set[str] = set()
+
         self.mProfileSamplingModeModel = SpectralProfileSamplingModeModel()
         self.mSrcModel.rowsRemoved.connect(self.updateSourceReferences)
         # self.mSrcModel.rowsInserted.connect(lambda : self.updateListColumn(self.cnSrc))
@@ -1307,6 +1314,15 @@ class SpectralProfileBridge(TreeModel):
 
         self.mSnapToPixelCenter: bool = False
         self.mMinimumSourceNameSimilarity = 0.5
+
+    def addCurrentProfilesToSpeclib(self):
+        """
+        Makes current profiles in connected spectral library destinations permanent
+        """
+        for slw in self.destinations():
+            sl = slw.speclib()
+            if isinstance(sl, QgsVectorLayer) and sl.id() in self.mLastDestinations:
+                slw.addCurrentProfilesToSpeclib()
 
     def setMinimumSourceNameSimilarity(self, threshold: float):
         assert 0 <= threshold <= 1.0
@@ -1335,7 +1351,7 @@ class SpectralProfileBridge(TreeModel):
         self.removeFeatureGenerators(to_remove)
 
     def __iter__(self) -> typing.Iterator[SpectralFeatureGeneratorNode]:
-        return iter(self.rootNode().childNodes())
+        return iter(self.featureGenerators(speclib=False, checked=False))
 
     def __len__(self):
         return len(self.rootNode().childNodes())
@@ -1346,6 +1362,7 @@ class SpectralProfileBridge(TreeModel):
     def loadProfiles(self,
                      spatialPoint: SpatialPoint,
                      mapCanvas: QgsMapCanvas = None,
+                     add_permanent: bool = None,
                      runAsync: bool = False) -> typing.Dict[str, typing.List[QgsFeature]]:
         """
         Loads the spectral profiles as defined in the bridge model
@@ -1354,6 +1371,7 @@ class SpectralProfileBridge(TreeModel):
         :param runAsync:
         :return:
         """
+        self.mLastDestinations.clear()
         RESULTS: typing.Dict[str, typing.List[QgsFeature]] = dict()
 
         # 1. collect infos on sources, pixel positions and additional metadata
@@ -1499,7 +1517,6 @@ class SpectralProfileBridge(TreeModel):
 
                 new_speclib_features.append(new_feature)
 
-
             if isinstance(speclib, QgsVectorLayer) and len(new_speclib_features) > 0:
                 # increase click count
                 self.mClickCount[speclib.id()] = self.mClickCount.get(speclib.id(), 0) + 1
@@ -1518,7 +1535,8 @@ class SpectralProfileBridge(TreeModel):
                         if expr.isValid():
                             new_feature[node.field().name()] = expr.evaluate(context)
             RESULTS[fgnode.speclib().id()] = new_speclib_features[:]
-            fgnode.speclibWidget().setCurrentProfiles(new_speclib_features)
+            fgnode.speclibWidget().setCurrentProfiles(new_speclib_features, make_permanent=add_permanent)
+            self.mLastDestinations.add(fgnode.speclib().id())
 
         return RESULTS
 
@@ -1553,6 +1571,15 @@ class SpectralProfileBridge(TreeModel):
 
         if generator not in self.rootNode().childNodes():
             self.rootNode().appendChildNodes(generator)
+
+    def featureGenerators(self, speclib:bool = True, checked:bool = True) -> typing.List[SpectralFeatureGeneratorNode]:
+        for n in self.rootNode().childNodes():
+            if isinstance(n, SpectralFeatureGeneratorNode):
+                if speclib == True and not isinstance(n.speclib(), QgsVectorLayer):
+                    continue
+                if checked == True and not n.checked():
+                    continue
+                yield n
 
     def removeFeatureGenerators(self, generators: typing.List[SpectralFeatureGeneratorNode]):
         if isinstance(generators, SpectralFeatureGeneratorNode):
@@ -1840,7 +1867,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
         self.mSpectralProfileBridge: SpectralProfileBridge = None
 
-    def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QtCore.QModelIndex):
+    def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex):
 
         node = index.data(Qt.UserRole)
         if index.column() == 1:
@@ -2063,6 +2090,8 @@ class SpectralProfileSourcePanel(QgsDockWidget):
                               runAsync: bool = None) -> typing.Dict[str, typing.List[QgsFeature]]:
         return self.mBridge.loadProfiles(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)
 
+    def addCurrentProfilesToSpeclib(self):
+        self.mBridge.addCurrentProfilesToSpeclib()
 
 def initSamplingModes():
     """
