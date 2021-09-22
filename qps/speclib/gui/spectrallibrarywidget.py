@@ -370,10 +370,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.spectralLibraryPlotWidget().visualizationSettingsBox().setCollapsed(collapse)
 
     def setCurrentProfiles(self,
-                           currentProfiles: typing.List[SpectralProfile]):
+                           currentProfiles: typing.List[SpectralProfile],
+                           make_permanent: bool = None):
         """
         Sets temporary profiles for the spectral library.
         If not made permanent, they will be removes when adding the next set of temporary profiles
+        :param make_permanent: bool, if not note, overwrite the value returned by optionAddCurrentProfilesAutomatically
+        :type make_permanent:
         :param currentProfiles:
         :param profileStyles:
         :return:
@@ -390,12 +393,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # plotWidget.mUpdateTimer.stop()
         restart_editing: bool = not speclib.startEditing()
         oldCurrentIDs = list(self.plotControl().mTemporaryProfileIDs)
-        addAuto: bool = self.optionAddCurrentProfilesAutomatically.isChecked()
+
+        addAuto: bool = make_permanent if isinstance(make_permanent, bool) \
+                                       else self.optionAddCurrentProfilesAutomatically.isChecked()
 
         if addAuto:
             self.addCurrentSpectraToSpeclib()
         else:
-            # delete previous current profiles from speclib
+            # delete previous current profiles
             speclib.beginEditCommand('Remove temporary')
             speclib.deleteFeatures(oldCurrentIDs)
             speclib.endEditCommand()
