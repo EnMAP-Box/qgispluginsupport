@@ -17,8 +17,7 @@ from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabe
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem, \
     QRadioButton, QSizePolicy
 from PyQt5.QtXml import QDomElement, QDomDocument, QDomNode
-from qgis._gui import QgsCollapsibleGroupBox
-from qgis.gui import QgsColorButton, QgsPropertyOverrideButton
+from qgis.gui import QgsColorButton, QgsPropertyOverrideButton, QgsCollapsibleGroupBox
 
 from qgis.core import QgsProperty, QgsExpressionContextScope
 from qgis.core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \

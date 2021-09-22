@@ -25,8 +25,7 @@
 import typing
 import pathlib
 
-from qgis._core import QgsRasterDataProvider
-from qgis.core import QgsRasterLayer, QgsMapLayer, \
+from qgis.core import QgsRasterDataProvider, QgsRasterLayer, QgsMapLayer, \
     QgsRasterRenderer, \
     QgsSingleBandGrayRenderer, \
     QgsSingleBandColorDataRenderer, \
