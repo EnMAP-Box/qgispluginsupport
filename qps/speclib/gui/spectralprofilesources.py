@@ -1381,11 +1381,7 @@ class SpectralProfileBridge(TreeModel):
         SAMPLING_BLOCK_DESCRIPTIONS: typing.Dict[SpectralProfileGeneratorNode, SamplingBlockDescription] = dict()
         SAMPLING_FEATURES: typing.List[SpectralFeatureGeneratorNode] = []
         # 1. collect source infos
-        for fgnode in self:
-            fgnode: SpectralFeatureGeneratorNode
-
-            if not (isinstance(fgnode.speclib(), QgsVectorLayer) and fgnode.checked()):
-                continue
+        for fgnode in self.featureGenerators(speclib=True, checked=True):
 
             use_feature_generator: bool = False
             for pgnode in fgnode.spectralProfileGeneratorNodes():
@@ -1535,9 +1531,17 @@ class SpectralProfileBridge(TreeModel):
                         expr = node.expression()
                         if expr.isValid():
                             new_feature[node.field().name()] = expr.evaluate(context)
-            RESULTS[fgnode.speclib().id()] = new_speclib_features[:]
-            fgnode.speclibWidget().setCurrentProfiles(new_speclib_features, make_permanent=add_permanent)
+            sid = fgnode.speclib().id()
+
+
+            RESULTS[sid] = RESULTS.get(sid, []) + new_speclib_features
+
             self.mLastDestinations.add(fgnode.speclib().id())
+
+        for slw in self.destinations():
+            speclib = slw.speclib()
+            if isinstance(speclib, QgsVectorLayer) and speclib.id() in RESULTS.keys():
+                slw.setCurrentProfiles(RESULTS[speclib.id()], make_permanent=add_permanent)
 
         return RESULTS
 
