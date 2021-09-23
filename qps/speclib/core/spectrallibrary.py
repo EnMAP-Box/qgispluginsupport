@@ -299,13 +299,13 @@ class SpectralLibrary(QgsVectorLayer):
         :param mimeData: QMimeData
         :return: SpectralLibrary
         """
-        # if MIMEDATA_SPECLIB_LINK in mimeData.formats():
-        #    # extract from link
-        #    sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
-        #    global SPECLIB_CLIPBOARD
-        #    sl = SPECLIB_CLIPBOARD.get(sid)
-        #    if isinstance(sl, SpectralLibrary) and id(sl) == sid:
-        #        return sl
+        if MIMEDATA_SPECLIB_LINK in mimeData.formats():
+            # extract from link
+            sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
+            global SPECLIB_CLIPBOARD
+            sl = SPECLIB_CLIPBOARD.get(sid)
+            if isinstance(sl, SpectralLibrary) and id(sl) == sid:
+                return sl
 
         # if MIMEDATA_SPECLIB in mimeData.formats():
         #    sl = SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))

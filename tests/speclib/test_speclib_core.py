@@ -438,7 +438,11 @@ class TestCore(TestCase):
         self.assertEqual(slRetrieved, sl1)
 
         writeOnly = []
-        for format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT]:
+        formats = [MIMEDATA_SPECLIB_LINK,
+                   #MIMEDATA_SPECLIB,
+                   #MIMEDATA_TEXT
+                   ]
+        for format in formats:
             print('Test MimeData I/O "{}"'.format(format))
             mimeData = sl1.mimeData(format)
             self.assertIsInstance(mimeData, QMimeData)
