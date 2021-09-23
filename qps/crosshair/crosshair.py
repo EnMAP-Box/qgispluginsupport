@@ -295,7 +295,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     if unitString == 'meters':
                         labelText = scaledUnitString(pred, suffix='m')
                     else:
-                        labelText = '{}{}'.format(pred, unitString)
+                        labelText = '{} {}'.format(pred, unitString)
 
                     pen = QPen(Qt.SolidLine)
                     pen.setWidth(self.mCrosshairStyle.mThickness)
