@@ -367,7 +367,6 @@ class ModelTests(TestCase):
         RANGES['Group2/MyRangedInt'] = (0, 20)
         RANGES['Group2/MyRangedFloat'] = (0.0, 20.0)
 
-
         model = SettingsModel(settings,
                               key_filter='Group2/.*',
                               options=OPTIONS,
@@ -387,6 +386,7 @@ class ModelTests(TestCase):
         view.setModel(model)
 
         self.showGui(view)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

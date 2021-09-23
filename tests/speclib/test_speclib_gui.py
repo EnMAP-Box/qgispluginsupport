@@ -135,7 +135,8 @@ class TestSpeclibWidgets(TestCase):
         print('plot {}'.format(yValues))
         # w0 = pg.plot(yValues, connect='finite')
 
-        pdi = SpectralProfilePlotDataItem(profile)
+        pdi = SpectralProfilePlotDataItem()
+
         self.assertIsInstance(pdi, SpectralProfilePlotDataItem)
 
         style = PlotStyle.fromPlotDataItem(pdi)
@@ -451,14 +452,6 @@ class TestSpeclibWidgets(TestCase):
         w2.setLayout(l)
         self.showGui(w2)
 
-    def test_ConsistencyCheckDialog(self):
-
-        speclib = TestObjects.createSpectralLibrary(10)
-
-        d = SpectralLibraryConsistencyCheckWidget()
-        d.setSpeclib(speclib)
-
-        self.showGui(d)
 
     def test_SpectraLibraryWidget_Empty(self):
         w1 = QWidget()

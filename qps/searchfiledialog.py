@@ -39,7 +39,7 @@ import copy
 import shutil
 import typing
 import gc
-import sip
+from qgis.PyQt import sip
 import traceback
 import calendar
 import datetime

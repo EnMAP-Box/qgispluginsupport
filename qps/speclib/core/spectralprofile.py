@@ -577,9 +577,9 @@ class SpectralProfile(QgsFeature):
         """
         from ..gui.spectrallibraryplotwidget import SpectralProfilePlotDataItem
 
-        pdi = SpectralProfilePlotDataItem(self)
+        pdi = SpectralProfilePlotDataItem()
         pdi.setClickable(True)
-        pw = pg.plot(title=self.name())
+        pw = pg.plot()
         pw.getPlotItem().addItem(pdi)
 
         style = PlotStyle.fromPlotDataItem(pdi)

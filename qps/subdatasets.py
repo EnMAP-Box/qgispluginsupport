@@ -28,7 +28,7 @@
 import typing
 import re
 import sys
-import sip
+from qgis.PyQt import sip
 import pathlib
 import collections
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsTaskManager, QgsApplication, QgsTask

@@ -36,7 +36,7 @@ import warnings
 
 import mock
 import numpy as np
-import sip
+from qgis.PyQt import sip
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from osgeo import gdal, ogr, osr, gdal_array

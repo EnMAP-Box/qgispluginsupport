@@ -9,7 +9,7 @@ import typing
 import warnings
 import pickle
 import numpy as np
-import sip
+from qgis.PyQt import sip
 from PyQt5.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex, QPoint, QObject, QAbstractTableModel, \
     QSortFilterProxyModel, QSize, QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
 from PyQt5.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QPainter, QIcon

@@ -30,7 +30,7 @@ import copy
 import enum
 import typing
 import types
-import sip
+from qgis.PyQt import sip
 
 import collections.abc
 import numpy as np
