@@ -33,7 +33,8 @@ from qgis.PyQt import QtCore
 from qps.plotstyling.plotstyling import PlotStyle
 from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, XMLNODE_PROFILE_RENDERER
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem, \
-    SpectralProfilePlotWidget, SpectralLibraryPlotWidgetStyle, SpectralLibraryPlotWidgetStyleWidget
+    SpectralProfilePlotWidget, SpectralLibraryPlotWidgetStyle, SpectralLibraryPlotWidgetStyleWidget, \
+    SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileTableModel, SpectralProfileEditorWidget, \
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorConfigWidget, SpectralProfileEditorWidgetFactory, \
@@ -214,20 +215,15 @@ class TestSpeclibWidgets(TestCase):
         slib.startEditing()
         slib.addProfiles([p1, p2])
         slib.commitChanges()
-        pw = SpectralProfilePlotWidget()
-        pw.setSpeclib(slib)
+        dualView = QgsDualView()
+        canvas = QgsMapCanvas()
+        dualView.init(slib, canvas)
+
+        pw = SpectralLibraryPlotWidget()
+        pw.setDualView(dualView)
 
         self.showGui(pw)
 
-    @unittest.skipIf(False, '')
-    def test_SpectralLibraryPlotWidgetSimple(self):
-
-        speclib = TestObjects.createSpectralLibrary(10)
-        # speclib = SpectralLibrary()
-        w = SpectralProfilePlotWidget()
-        w.setSpeclib(speclib)
-
-        self.showGui(w)
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorSchemeWidget(self):
@@ -386,9 +382,9 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryWidget()
         from qpstestdata import speclib_labeled
         sl = SpectralLibrary.readFrom(speclib_labeled)
-        self.assertIsInstance(sl, SpectralLibrary)
-        self.assertTrue(len(sl) > 0)
-        w.addSpeclib(sl)
+        #self.assertIsInstance(sl, SpectralLibrary)
+        #self.assertTrue(len(sl) > 0)
+        # w.addSpeclib(sl)
         self.showGui(w)
 
     def test_dropping_speclibs(self):
@@ -601,6 +597,7 @@ class TestSpeclibWidgets(TestCase):
 
         if True and os.path.exists(pathSL):
             t0 = datetime.datetime.now()
+
             speclib = SpectralLibrary.readFrom(pathSL)
 
             dt = datetime.datetime.now() - t0
@@ -759,7 +756,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(sw, SpectralLibraryWidget)
         pw = sw.plotWidget()
         self.assertIsInstance(pw, SpectralProfilePlotWidget)
-        self.assertEqual(pw.xUnit(), BAND_NUMBER)
+        self.assertEqual(pw.xAxis().unit(), BAND_NUMBER)
         slib = TestObjects.createSpectralLibrary(10)
 
         xunits = []

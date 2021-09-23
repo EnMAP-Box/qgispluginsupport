@@ -333,7 +333,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         return self.plotWidget().getPlotItem()
 
     def updatePlot(self):
-        self.plotWidget().updatePlot()
+        self.plotControl().updatePlot()
 
     def speclib(self) -> SpectralLibrary:
         return self.mLayer
@@ -351,8 +351,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
             sl.beginEditCommand(info)
             sl.addSpeclib(speclib)
             sl.endEditCommand()
+
             if not wasEditable:
                 sl.commitChanges()
+                s = ""
+
         except Exception as ex:
             print(ex, file=sys.stderr)
             pass

@@ -17,6 +17,9 @@ class UnitModel(QAbstractListModel):
         self.mDescription = dict()
         self.mToolTips = dict()
 
+    def __contains__(self, item):
+        return item in self.mUnits
+
     def __iter__(self):
         return iter(self.mUnits)
 

@@ -1466,6 +1466,7 @@ class SpectralLibrary(QgsVectorLayer):
         profiles = self[slice]
         self.removeProfiles(profiles)
 
+    """
     def __eq__(self, other):
         if not isinstance(other, SpectralLibrary):
             return False
@@ -1477,6 +1478,7 @@ class SpectralLibrary(QgsVectorLayer):
             if not p1 == p2:
                 return False
         return True
+    """
 
     def __hash__(self):
         # return super(SpectralLibrary, self).__hash__()

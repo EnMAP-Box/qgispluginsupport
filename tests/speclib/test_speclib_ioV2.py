@@ -200,49 +200,6 @@ class TestIO(TestCase):
 
         self.showGui(dialog)
 
-    def test_importDialog(self):
-
-        self.registerIO()
-        n_bands = [25, 50, 34]
-        speclib = TestObjects.createSpectralLibrary(n_bands=n_bands)
-
-        dialog = SpectralLibraryImportDialog()
-        dialog.setSpeclib(speclib)
-
-        src = self.testDir() / 'envi.sli'
-        self.assertTrue(os.path.isfile(src))
-        dialog.setSource(src)
-        self.assertTrue(dialog.findMatchingFormat())
-
-        self.assertIsInstance(dialog.currentImportWidget(), EnviSpectralLibraryImportWidget)
-        source = dialog.source()
-        format = dialog.currentImportWidget()
-        io = format.spectralLibraryIO()
-
-        feedback = QgsProcessingFeedback()
-        coreProfiles = io.importProfiles(source, format.sourceFields(), format.importSettings({}), feedback)
-
-        mappingWidget = dialog.fieldMappingWidget
-
-        mapping = mappingWidget.mapping()
-        propertyMap = mappingWidget.fieldPropertyMap()
-
-        sinkDefinition = QgsRemappingSinkDefinition()
-        sinkDefinition.setDestinationFields(speclib.fields())
-        sinkDefinition.setSourceCrs(format.sourceCrs())
-        sinkDefinition.setDestinationWkbType(speclib.wkbType())
-        sinkDefinition.setFieldMap(mappingWidget.fieldPropertyMap())
-        sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
-        n = speclib.featureCount()
-
-        self.assertTrue(speclib.startEditing())
-        sink.addFeatures(coreProfiles)
-        self.assertTrue(speclib.commitChanges())
-        n2 = speclib.featureCount()
-        self.assertEqual(n2, n + len(coreProfiles))
-
-        self.showGui(dialog)
-
     def test_ImportDialog2(self):
         self.registerIO()
 
@@ -304,7 +261,7 @@ class TestIO(TestCase):
             self.assertIsInstance(fields, QgsFields)
             self.assertTrue(fields.count() > 0)
             self.assertTrue(len(profile_field_list(fields)) > 0)
-            ENVI_IO.importProfiles(path, fields, importSettings, feedback)
+            ENVI_IO.importProfiles(path, importSettings, feedback)
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)
             for profile in profiles:

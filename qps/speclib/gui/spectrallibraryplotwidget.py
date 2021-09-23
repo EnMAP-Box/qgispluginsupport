@@ -146,6 +146,13 @@ class SpectralXAxis(pg.AxisItem):
         else:
             self.setLabel(unit)
 
+    def unit(self) -> str:
+        """
+        Returns the unit set for this axis.
+        :return:
+        """
+        return self.mUnit
+
 
 class SpectralLibraryPlotItem(pg.PlotItem):
     sigPopulateContextMenuItems = pyqtSignal(SignalObjectWrapper)
@@ -1427,6 +1434,9 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mProfileVisualizations: typing.List[SpectralProfilePlotVisualization] = []
         self.mNodeHandles: typing.Dict[object, SpectralProfilePlotControlModel.PropertyHandle] = dict()
 
+        # # workaround https://github.com/qgis/QGIS/issues/45228
+        self.mStartedCommitEditWrapper: bool = False
+
         self.mModelList: SpectralProcessingModelList = SpectralProcessingModelList(allow_empty=True)
         self.mProfileFieldModel: QgsFieldModel = QgsFieldModel()
 
@@ -1480,7 +1490,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mSpeclib: QgsVectorLayer = None
 
         self.mXUnitModel: XUnitModel = XUnitModel()
-        self.mXUnit: str = None
+        self.mXUnit: str = self.mXUnitModel[0]
         self.mXUnitInitialized: bool = False
         self.mMaxProfiles: int = 64
         self.mShowSelectedFeaturesOnly: bool = False
@@ -1493,6 +1503,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         # self.mBackgroundColor
         #self.mExampleContext: QgsExpressionContext = QgsExpressionContext()
         #self.updateExampleContext()
+
+
 
     def createPropertyColor(self, property:QgsProperty, fid:int=1) -> QColor:
         assert isinstance(property, QgsProperty)
@@ -1609,7 +1621,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
     def setPlotWidget(self, plotWidget: SpectralProfilePlotWidget):
         self.mPlotWidget = plotWidget
         self.mPlotWidget.sigPlotDataItemSelected.connect(self.onPlotSelectionRequest)
-        self.mXUnit = self.mXUnitModel[0]  # required to set x unit in plot widget
+        self.mPlotWidget.xAxis().setUnit(self.xUnit())# required to set x unit in plot widget
         self.mXUnitInitialized = False
 
     sigMaxProfilesChanged = pyqtSignal(int)
@@ -2178,14 +2190,18 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
             if self.mSpeclib != speclib:
                 if isinstance(self.mSpeclib, QgsVectorLayer):
+                    # unregister signales
                     self.mSpeclib.attributeDeleted.disconnect(self.onSpeclibAttributesChanged)
                     self.mSpeclib.attributeAdded.disconnect(self.onSpeclibAttributesChanged)
 
+                # register signals
                 self.mSpeclib = speclib
                 self.mSpeclib.attributeDeleted.connect(self.onSpeclibAttributesChanged)
                 self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributesChanged)
                 self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
                 # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
+                self.mSpeclib.beforeCommitChanges.connect(self.onSpeclibBeforeCommitChanges)
+                self.mSpeclib.afterCommitChanges.connect(self.onSpeclibAfterCommitChanges)
                 self.mSpeclib.committedFeaturesAdded.connect(self.onSpeclibCommittedFeaturesAdded)
 
                 self.mSpeclib.featuresDeleted.connect(self.onSpeclibFeaturesDeleted)
@@ -2193,6 +2209,22 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 self.mSpeclib.rendererChanged.connect(self.onSpeclibRendererChanged)
                 self.onSpeclibAttributesChanged()
                 # self.loadFeatureColors()
+
+    def onSpeclibBeforeCommitChanges(self):
+        """
+        Workaround for https://github.com/qgis/QGIS/issues/45228
+        """
+        self.mStartedCommitEditWrapper = not self.speclib().isEditCommandActive()
+        if self.mStartedCommitEditWrapper:
+            self.speclib().beginEditCommand('Before commit changes')
+
+    def onSpeclibAfterCommitChanges(self):
+        """
+        Workaround for https://github.com/qgis/QGIS/issues/45228
+        """
+        if self.mStartedCommitEditWrapper and self.speclib().isEditCommandActive():
+            self.speclib().endEditCommand()
+        self.mStartedCommitEditWrapper = False
 
     def onSpeclibCommittedFeaturesAdded(self, id, features):
 
@@ -2253,6 +2285,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
     def onSpeclibFeaturesDeleted(self, fids_removed):
 
         # todo: consider out-of-edit command values
+        if len(fids_removed) == 0:
+            return
         self.speclib().isEditCommandActive()
 
         # remove deleted features from internal caches
@@ -2872,6 +2906,9 @@ class SpectralLibraryPlotWidget(QWidget):
         # m2 = QMenu('Others')
 
         itemList.extend([m1])
+
+    def plotControlModel(self) -> SpectralProfilePlotControlModel:
+        return self.mPlotControlModel
 
     def updatePlot(self):
         self.mPlotControlModel.updatePlot()

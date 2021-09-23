@@ -1,3 +1,4 @@
+import os
 import typing
 
 from PyQt5.QtWidgets import QFormLayout
@@ -33,8 +34,10 @@ class GeoPackageSpectralLibraryExportWidget(SpectralLibraryExportWidget):
         return "Geopackage (*.gpkg);;SpatialLite (*.sqlite)"
 
     def exportSettings(self, settings: dict) -> dict:
-        settings['crs'] = self.speclib().crs()
-        settings['wkbType'] = self.speclib().wkbType()
+        speclib = self.speclib()
+        if isinstance(speclib, QgsVectorLayer):
+            settings['crs'] = speclib.crs()
+            settings['wkbType'] = speclib.wkbType()
         return settings
 
 
@@ -121,6 +124,10 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         saveVectorOptions.feedback = feedback
         saveVectorOptions.driverName = 'GPKG'
 
+        newLayerName = exportSettings.get('layer_name', '')
+        if newLayerName == '':
+            newLayerName = os.path.basename(newLayerName)
+
         transformContext = QgsCoordinateTransformContext()
         for i, profile in enumerate(profiles):
             if i == 0:
@@ -133,7 +140,7 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
                     transformContext=transformContext,
                     options=saveVectorOptions,
                     #sinkFlags=None,
-                    newLayer=None,
+                    newLayer=newLayerName,
                     newFilename=None
                 )
 

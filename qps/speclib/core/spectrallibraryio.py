@@ -278,7 +278,7 @@ class SpectralLibraryIO(object):
 
         for format in matched_formats:
             format.setSource(uri)
-            fields = format.sourceFields()
+            fields = QgsFields(format.sourceFields())
             if fields.count() == 0:
                 continue
             settings = format.importSettings({})
@@ -624,8 +624,8 @@ class SpectralLibraryExportDialog(QDialog):
 
         self.mSpeclib = speclib
         self.mSpeclib.selectionChanged.connect(self.onSelectionChanged)
-        if self.tbLayerName.text() == '':
-            self.tbLayerName.setText(re.sub(r'[^0-9a-zA-Z_]', '_', speclib.name()))
+        # if self.tbLayerName.text() == '':
+        #     self.tbLayerName.setText(re.sub(r'[^0-9a-zA-Z_]', '_', speclib.name()))
         for w in self.exportWidgets():
             w.setSpeclib(speclib)
 
