@@ -2451,11 +2451,12 @@ def saveTransform(geom: typing.Union[QgsPointXY, QgsRectangle,
     return result
 
 
-def scaledUnitString(num, infix=' ', suffix='B', div=1000):
+def scaledUnitString(num: float, infix: str = ' ', suffix: str = 'B', div: float = 1000):
     """
     Returns a human-readable file size string.
     thanks to Fred Cirera
     http://stackoverflow.com/questions/1094841/reusable-library-to-get-human-readable-version-of-file-size
+    :param infix:
     :param num: number in bytes
     :param suffix: 'B' for bytes by default.
     :param div: divisor of num, 1000 by default.
