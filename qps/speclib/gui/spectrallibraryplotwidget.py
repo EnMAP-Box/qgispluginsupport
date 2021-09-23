@@ -3011,8 +3011,8 @@ class SpectralLibraryPlotWidget(QWidget):
         if isinstance(modelId, QgsProcessingModelAlgorithm):
             modelId = modelId.id()
         assert isinstance(modelId, str)
-        if not modelId in self.mPlotControlModel.modelList():
-            s = ""
+        # if modelId not in self.mPlotControlModel.modelList():
+        #    return
         assert modelId in self.mPlotControlModel.modelList(), f'Model "{modelId}" is unknown'
         self.mCurrentModelId = modelId
 

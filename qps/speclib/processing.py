@@ -533,7 +533,7 @@ class SpectralProcessingModelList(QAbstractListModel):
         if isinstance(provider, str):
             provider = QgsApplication.instance().processingRegistry().providerById(provider)
         if isinstance(provider, QgsProcessingProvider):
-            old_models = [a for a in self.mModelIds if a.startswith(provider.id())]
+            old_models = [a for a in self.mModelIds if a.startswith(provider.id()) and a != '']
             all_models = [a.id() for a in provider.algorithms() if is_spectral_processing_model(a)]
             to_remove = [a for a in old_models if a not in all_models]
             to_add = [a for a in all_models if a not in old_models]
