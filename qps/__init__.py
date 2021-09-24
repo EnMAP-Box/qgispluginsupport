@@ -31,6 +31,8 @@ import typing
 import warnings
 from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
+import qgis.core
+# os.environ['PYQTGRAPH_QT_LIB'] = 'qgis.PyQt'
 
 MIN_QGIS_VERSION = '3.16'
 __version__ = '1.3'
