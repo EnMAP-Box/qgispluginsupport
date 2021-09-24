@@ -7,7 +7,7 @@ from PyQt5.QtCore import pyqtSignal, Qt, QModelIndex
 from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QLabel
-from qgis._core import QgsVectorLayer
+from qgis.core import QgsVectorLayer
 
 from qgis.core import QgsFeature
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
