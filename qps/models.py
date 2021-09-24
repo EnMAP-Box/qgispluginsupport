@@ -1351,30 +1351,6 @@ class TreeView(QTreeView):
             self.setColumnSpan(idx0, None, None)
         return
 
-    def setRowColumnSpan(self, row, parent: QModelIndex):
-        cols = self.model().columnCount(parent)
-
-        self.setFirstColumnSpanned(r, parent, spanned)
-
-        """
-        assert isinstance(idx, QModelIndex)
-        if not idx.isValid():
-            return
-
-        row = idx.row()
-        nRows = self.model().rowCount(idx)
-        node = self.model().data(idx, role=Qt.UserRole)
-        if isinstance(node, TreeNode):
-            span = len(node.values()) == 0
-            if span == True and node.value() != None:
-                s = ""
-            self.setFirstColumnSpanned(idx.row(), idx.parent(), span)
-
-            for row in range(self.model().rowCount(idx)):
-                idx2 = self.model().index(row, 0, idx)
-                self.setColumnSpan(idx2)
-        """
-
     def selectedNode(self) -> TreeNode:
         """
         Returns the first of all selected TreeNodes
