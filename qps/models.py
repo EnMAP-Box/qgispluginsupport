@@ -950,7 +950,7 @@ class TreeModel(QAbstractItemModel):
         """
         return self.mColumnNames[:]
 
-    def printModel(self, index: QModelIndex, prefix=''):
+    def printModel(self, index: QModelIndex, prefix='', depth: int=1):
         """
         Prints the model oder a sub-node specified by index
         :param index:
@@ -960,14 +960,17 @@ class TreeModel(QAbstractItemModel):
         :return:
         :rtype:
         """
+        if depth == -1:
+            return
         if index is None:
             index = QModelIndex()
         if isinstance(index, TreeNode):
             index = self.node2idx(index)
         print(f'{prefix} {self.data(index, role=Qt.DisplayRole)}')
+        depth = depth - 1
         for r in range(self.rowCount(index)):
             idx = self.index(r, 0, parent=index)
-            self.printModel(idx, prefix=f'{prefix}-')
+            self.printModel(idx, prefix=f'{prefix}-', depth=depth)
 
     def span(self, idx) -> QSize():
 
