@@ -35,7 +35,7 @@ start %PYTHON% runfirst.py
 
 PREFACE_SH = \
 """#!/bin/bash
-export QT_QPA_PLATFORM=offscree
+export QT_QPA_PLATFORM=offscreen
 export CI=True
 
 find . -name "*.pyc" -exec rm -f {} \;
