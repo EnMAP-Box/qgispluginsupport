@@ -134,37 +134,9 @@ class SerializationMode(enum.Enum):
     JSON = 1
     PICKLE = 2
 
-
-def read_profiles(vectorlayer: QgsVectorLayer,
-                  fids: typing.List[int] = None,
-                  profile_field: typing.Union[int, str, QgsField] = None,
-                  ) -> typing.Generator[
-    SpectralProfile, None, None]:
-    """
-    Reads SpectralProfiles from a vector layers BLOB 'profile_field'.
-
-    Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
-    If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value profile_field.
-    SpectralProfiles are returned for profile_field != NULL only
-    :param vectorlayer:
-    :param profile_field:
-    :type profile_field:
-    :param profile_keys:
-    :type profile_keys:
-    :param fids: optional, [int-list-of-feature-ids] to return
-    :return: generator of [List-of-SpectralProfiles]
-    """
-    if profile_field is None:
-        profile_field = first_profile_field_index(vectorlayer)
-    else:
-        assert isinstance(profile_field, (int, str, QgsField))
-        profile_field = field_index(vectorlayer, profile_field)
-    featureRequest = QgsFeatureRequest()
-    if fids:
-        featureRequest.setFilterFids(fids)
-    for f in vectorlayer.getFeatures(featureRequest):
-        yield SpectralProfile.fromQgsFeature(f, profile_field=profile_field)
-
+def read_profiles(*args, **kwds):
+    warnings.warn('Use SpectralProfileUtils.profiles() instead')
+    return SpectralLibraryUtils.readProfiles(*args, **kwds)
 
 def log(msg: str):
     if DEBUG:
@@ -288,9 +260,9 @@ def defaultCurvePlotStyle() -> PlotStyle:
     return ps
 
 
-class SpectralLibrary(QgsVectorLayer):
+class SpectralLibraryUtils:
     """
-    SpectralLibrary
+    This class provides methods to handel SpectralProfiles in a QgsVectorLayer
     """
 
     @staticmethod
@@ -328,6 +300,374 @@ class SpectralLibrary(QgsVectorLayer):
         #        return sl
 
         return None
+
+    @staticmethod
+    def addAttribute(speclib: QgsVectorLayer, field: QgsField) -> bool:
+        # workaround for https://github.com/qgis/QGIS/issues/43261
+        if isinstance(speclib, SpectralLibrary):
+            success = super(SpectralLibrary, speclib).addAttribute(field)
+        else:
+            success = speclib.addAttribute(field)
+
+        if success:
+            i = speclib.fields().lookupField(field.name())
+            if i > -1:
+                speclib.setEditorWidgetSetup(i, field.editorWidgetSetup())
+        return success
+
+    @staticmethod
+    def initTableConfig(speclib: QgsVectorLayer):
+        """
+        Initializes the QgsAttributeTableConfig and further options
+        """
+        assert isinstance(speclib, QgsVectorLayer)
+        mgr = speclib.actions()
+        assert isinstance(mgr, QgsActionManager)
+        mgr.clearActions()
+
+        # actionSetStyle = createSetPlotStyleAction(self.fields().at(self.fields().lookupField(FIELD_STYLE)))
+        # assert isinstance(actionSetStyle, QgsAction)
+        # mgr.addAction(actionSetStyle)
+
+        actionRemoveSpectrum = createRemoveFeatureAction()
+        assert isinstance(actionRemoveSpectrum, QgsAction)
+        mgr.addAction(actionRemoveSpectrum)
+
+        columns = speclib.attributeTableConfig().columns()
+
+        # to discuss: invisible columns?
+        invisibleColumns = []
+
+        for column in columns:
+            assert isinstance(column, QgsAttributeTableConfig.ColumnConfig)
+            column.hidden = column.name in invisibleColumns
+
+        # set column order
+        # c_action = [c for c in columns if c.type == QgsAttributeTableConfig.Action][0]
+        # c_name = [c for c in columns if c.name == FIELD_NAME][0]
+        # firstCols = [c_action, c_name]
+        # columns = [c_action, c_name] + [c for c in columns if c not in firstCols]
+
+        conf = QgsAttributeTableConfig()
+        conf.setColumns(columns)
+        conf.setActionWidgetVisible(False)
+        conf.setActionWidgetStyle(QgsAttributeTableConfig.ButtonList)
+
+        speclib.setAttributeTableConfig(conf)
+
+    @staticmethod
+    def mimeData(speclib: QgsVectorLayer, formats: list = None) -> QMimeData:
+        """
+        Wraps this Speclib into a QMimeData object
+        :return: QMimeData
+        """
+        assert isinstance(speclib, QgsVectorLayer)
+        if isinstance(formats, str):
+            formats = [formats]
+        elif formats is None:
+            formats = [MIMEDATA_SPECLIB_LINK]
+
+        mimeData = QMimeData()
+
+        for format in formats:
+            assert format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_URL]
+            if format == MIMEDATA_SPECLIB_LINK:
+                global SPECLIB_CLIPBOARD
+                thisID = id(speclib)
+                SPECLIB_CLIPBOARD[thisID] = speclib
+
+                mimeData.setData(MIMEDATA_SPECLIB_LINK, pickle.dumps(thisID))
+            elif format == MIMEDATA_SPECLIB:
+                mimeData.setData(MIMEDATA_SPECLIB, pickle.dumps(speclib))
+            elif format == MIMEDATA_URL:
+                mimeData.setUrls([QUrl(speclib.source())])
+            elif format == MIMEDATA_TEXT:
+                from ..io.csvdata import CSVSpectralLibraryIO
+                txt = CSVSpectralLibraryIO.asString(speclib)
+                mimeData.setText(txt)
+
+        return mimeData
+
+    @staticmethod
+    def addSpectralProfileField(speclib: QgsVectorLayer, name: str, comment: str = None) -> bool:
+        return speclib.addAttribute(create_profile_field(name, comment))
+
+    @staticmethod
+    def addMissingFields(speclib: QgsVectorLayer, fields: QgsFields, copyEditorWidgetSetup: bool = True):
+        """
+        :param fields: list of QgsFields
+        :param copyEditorWidgetSetup: if True (default), the editor widget setup is copied for each profile_field
+        """
+        assert isinstance(speclib, QgsVectorLayer)
+        missingFields = []
+        for field in fields:
+            assert isinstance(field, QgsField)
+            i = speclib.fields().lookupField(field.name())
+            if i == -1:
+                missingFields.append(field)
+
+        if len(missingFields) > 0:
+            for fOld in missingFields:
+                speclib.addAttribute(QgsField(fOld))
+
+            if copyEditorWidgetSetup:
+                SpectralLibraryUtils.copyEditorWidgetSetup(speclib, missingFields)
+
+    @staticmethod
+    def addSpeclib(speclibDst, speclibSrc,
+                   addMissingFields: bool = True,
+                   copyEditorWidgetSetup: bool = True,
+                   feedback: QgsProcessingFeedback = None) -> typing.List[int]:
+        """
+        Adds profiles from another SpectraLibrary
+        :param speclib: SpectralLibrary
+        :param addMissingFields: if True (default), missing fields / attributes will be added automatically
+        :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied for each added profile_field
+        :param progressDialog: QProgressDialog or qps.speclib.core.ProgressHandler
+
+        :returns: set of added feature ids
+        """
+        assert is_spectral_library(speclibSrc)
+        assert is_spectral_library(speclibDst)
+
+        fids_old = sorted(speclibSrc.allFeatureIds(), key=lambda i: abs(i))
+        fids_new = SpectralLibraryUtils.addProfiles(
+            speclibDst,
+            speclibSrc.getFeatures(),
+            addMissingFields=addMissingFields,
+            copyEditorWidgetSetup=copyEditorWidgetSetup,
+            feedback=feedback)
+
+        return fids_new
+
+    @staticmethod
+    def addProfiles(speclibDst: QgsVectorLayer,
+                    profiles: typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
+                    addMissingFields: bool = None, \
+                    copyEditorWidgetSetup: bool = True, \
+                    feedback: QgsProcessingFeedback = None) -> typing.List[int]:
+
+        # todo: allow to add profiles with distinct key
+        if isinstance(profiles, SpectralProfile):
+            profiles = [profiles]
+        if addMissingFields is None:
+            addMissingFields = is_spectral_library(profiles)
+
+        if isinstance(profiles, (QgsFeatureIterator, typing.Generator)):
+            nTotal = -1
+        else:
+            nTotal = len(profiles)
+        assert isinstance(speclibDst, QgsVectorLayer)
+        assert speclibDst.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(
+            speclibSrc.name())
+
+        keysBefore = set(speclibDst.editBuffer().addedFeatures().keys())
+
+        lastTime = datetime.datetime.now()
+        dt = datetime.timedelta(seconds=2)
+
+        if isinstance(feedback, QgsProcessingFeedback):
+            feedback.setProgressText('Add {} profiles'.format(len(profiles)))
+            feedback.setProgress(0)
+
+        iSrcList = []
+        iDstList = []
+
+        bufferLength = 1000
+        profileBuffer = []
+
+        nAdded = 0
+
+        def flushBuffer(triggerProgressBar: bool = False):
+            nonlocal speclibDst, nAdded, profileBuffer, feedback, lastTime, dt
+            if not speclibDst.addFeatures(profileBuffer):
+                speclibDst.raiseError()
+            nAdded += len(profileBuffer)
+            profileBuffer.clear()
+
+            if isinstance(feedback, QgsProcessingFeedback):
+                # update progressbar in intervals of dt
+                if triggerProgressBar or (lastTime + dt) < datetime.datetime.now():
+                    feedback.setProgress(nAdded)
+                    lastTime = datetime.datetime.now()
+
+        new_edit_command: bool = not speclibDst.isEditCommandActive()
+        if new_edit_command:
+            speclibDst.beginEditCommand('Add profiles')
+
+        for i, pSrc in enumerate(profiles):
+            if i == 0:
+                if addMissingFields:
+                    SpectralLibrary.addMissingFields(speclibDst, pSrc.fields(),
+                                                     copyEditorWidgetSetup=copyEditorWidgetSetup)
+
+                for iSrc, srcName in enumerate(pSrc.fields().names()):
+                    if srcName == FIELD_FID:
+                        continue
+                    iDst = speclibDst.fields().lookupField(srcName)
+                    if iDst >= 0:
+                        iSrcList.append(iSrc)
+                        iDstList.append(iDst)
+                    elif addMissingFields:
+                        raise Exception('Missing profile_field: "{}"'.format(srcName))
+
+            # create new feature + copy geometry
+            pDst = QgsFeature(speclibDst.fields())
+            pDst.setGeometry(pSrc.geometry())
+
+            # copy attributes
+            for iSrc, iDst in zip(iSrcList, iDstList):
+                pDst.setAttribute(iDst, pSrc.attribute(iSrc))
+
+            profileBuffer.append(pDst)
+
+            if len(profileBuffer) >= bufferLength:
+                flushBuffer()
+
+        # final buffer call
+        flushBuffer(triggerProgressBar=True)
+
+        if new_edit_command:
+            speclibDst.endEditCommand()
+
+        # return the edited features
+        MAP = speclibDst.editBuffer().addedFeatures()
+        fids_inserted = [MAP[k].id() for k in reversed(list(MAP.keys())) if k not in keysBefore]
+        return fids_inserted
+
+    @staticmethod
+    def speclibFromFeatureIDs(speclib: QgsVectorLayer, fids):
+        if isinstance(fids, int):
+            fids = [fids]
+        assert isinstance(fids, list)
+
+        profiles = list(speclib.profiles(fids))
+
+        speclib = SpectralLibrary()
+        speclib.startEditing()
+        speclib.addMissingFields(speclib.fields())
+        speclib.addProfiles(profiles)
+        speclib.commitChanges()
+        return speclib
+
+    @staticmethod
+    def renameAttribute(speclib: QgsVectorLayer, index, newName):
+        setup = speclib.editorWidgetSetup(index)
+        if isinstance(speclib, SpectralLibrary):
+            super(SpectralLibrary, speclib).renameAttribute(index, newName)
+        else:
+            speclib.renameAttribute(index, newName)
+        speclib.setEditorWidgetSetup(index, setup)
+
+    @staticmethod
+    def profileBlocks(speclib: QgsVectorLayer,
+                      fids=None,
+                      profile_field: typing.Union[int, str, QgsField] = None,
+                      ) -> typing.List[SpectralProfileBlock]:
+        """
+        Reads SpectralProfiles into profile blocks with different spectral settings
+        :param blob:
+        :return:
+        """
+        if profile_field is None:
+            profile_field = first_profile_field_index(speclib)
+        return SpectralProfileBlock.fromSpectralProfiles(
+            SpectralLibraryUtils.profiles(speclib, fids=fids, profile_field=profile_field),
+            profile_field=profile_field
+        )
+
+    @staticmethod
+    def profile(speclib: QgsVectorLayer, fid: int, value_field=None) -> SpectralProfile:
+        assert is_spectral_library(speclib)
+        if value_field is None:
+            value_field = profile_field_list(speclib)[0]
+        return SpectralProfile.fromQgsFeature(speclib.getFeature(fid), profile_field=value_field)
+
+    @staticmethod
+    def profiles(vectorlayer: QgsVectorLayer,
+                 fids: typing.List[int] = None,
+                 profile_field: typing.Union[int, str, QgsField] = None,
+                 ) -> typing.Generator[
+        SpectralProfile, None, None]:
+        """
+        Reads SpectralProfiles from a vector layers BLOB 'profile_field'.
+
+        Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
+        If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value profile_field.
+        SpectralProfiles are returned for profile_field != NULL only
+        :param vectorlayer:
+        :param profile_field:
+        :type profile_field:
+        :param profile_keys:
+        :type profile_keys:
+        :param fids: optional, [int-list-of-feature-ids] to return
+        :return: generator of [List-of-SpectralProfiles]
+        """
+        if profile_field is None:
+            profile_field = first_profile_field_index(vectorlayer)
+        else:
+            assert isinstance(profile_field, (int, str, QgsField))
+            profile_field = field_index(vectorlayer, profile_field)
+        featureRequest = QgsFeatureRequest()
+        if fids:
+            featureRequest.setFilterFids(fids)
+        for f in vectorlayer.getFeatures(featureRequest):
+            yield SpectralProfile.fromQgsFeature(f, profile_field=profile_field)
+
+    @staticmethod
+    def plot(speclib: QgsVectorLayer) -> 'SpectralLibraryWidget':
+        assert is_spectral_library(speclib)
+        app = None
+        if not isinstance(QgsApplication.instance(), QgsApplication):
+            from ...testing import start_app
+            app = start_app()
+
+        from ..gui.spectrallibrarywidget import SpectralLibraryWidget
+
+        w = SpectralLibraryWidget(speclib=speclib)
+        w.show()
+
+        if app:
+            app.exec_()
+
+        return w
+
+    @staticmethod
+    def copyEditorWidgetSetup(speclib: QgsVectorLayer, fields: typing.Union[QgsVectorLayer, typing.List[QgsField]]):
+        """
+
+        :param fields:
+        :type fields:
+        :return:
+        :rtype:
+        """
+        """Copies the editor widget setup from another vector layer or list of QgsField"""
+        if isinstance(fields, QgsVectorLayer):
+            fields = fields.fields()
+
+        for fSrc in fields:
+            assert isinstance(fSrc, QgsField)
+            idx = speclib.fields().indexOf(fSrc.name())
+
+            if idx == -1:
+                # profile_field name does not exist
+                continue
+            fDst = speclib.fields().at(idx)
+            assert isinstance(fDst, QgsField)
+
+            setup = fSrc.editorWidgetSetup()
+            if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(speclib, idx):
+                speclib.setEditorWidgetSetup(idx, setup)
+
+
+class SpectralLibrary(QgsVectorLayer):
+    """
+    SpectralLibrary
+    """
+
+    @staticmethod
+    def readFromMimeData(*args, **kwds):
+        return SpectralLibraryUtils.readFromMimeData(*args, **kwds)
 
     @staticmethod
     def readFromPickleDump(data):
@@ -581,6 +921,7 @@ class SpectralLibrary(QgsVectorLayer):
         :param raster: str | QgsRasterLayer | gdal.Dataset
         :param selectedOnly: bool, if True (default) spectral values will be retireved for selected features only.
         """
+        raise NotImplementedError()
         assert self.isEditable()
         if destination is None:
             destination = self.spectralProfileFields()[0]
@@ -598,7 +939,7 @@ class SpectralLibrary(QgsVectorLayer):
         geoPositions = []
         fids = []
 
-        features = self.selectedFeatures() if selectedOnly else self.features()
+        features = self.selectedFeatures() if selectedOnly else self.getFeatures()
         for f in features:
             assert isinstance(f, QgsFeature)
             if f.hasGeometry():
@@ -757,31 +1098,8 @@ class SpectralLibrary(QgsVectorLayer):
 
         return jsonData
 
-    def copyEditorWidgetSetup(self, fields: typing.Union[QgsVectorLayer, typing.List[QgsField]]):
-        """
-
-        :param fields:
-        :type fields:
-        :return:
-        :rtype:
-        """
-        """Copies the editor widget setup from another vector layer or list of QgsField"""
-        if isinstance(fields, QgsVectorLayer):
-            fields = fields.fields()
-
-        for fSrc in fields:
-            assert isinstance(fSrc, QgsField)
-            idx = self.fields().indexOf(fSrc.name())
-
-            if idx == -1:
-                # profile_field name does not exist
-                continue
-            fDst = self.fields().at(idx)
-            assert isinstance(fDst, QgsField)
-
-            setup = fSrc.editorWidgetSetup()
-            if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(self, idx):
-                self.setEditorWidgetSetup(idx, setup)
+    def copyEditorWidgetSetup(self, *args, **kwds):
+        SpectralLibraryUtils.copyEditorWidgetSetup(self, *args, **kwds)
 
     @staticmethod
     def readFrom(uri, feedback: QgsProcessingFeedback = None):
@@ -874,249 +1192,36 @@ class SpectralLibrary(QgsVectorLayer):
 
         self.initTableConfig()
 
-    def addAttribute(self, field: QgsField):
-        # workaround for https://github.com/qgis/QGIS/issues/43261
-        success = super().addAttribute(field)
-        if success:
-            i = self.fields().lookupField(field.name())
-            if i > -1:
-                self.setEditorWidgetSetup(i, field.editorWidgetSetup())
-        return success
+    def addAttribute(self, field):
+        return SpectralLibraryUtils.addAttribute(self, field)
 
     def initTableConfig(self):
+
         """
         Initializes the QgsAttributeTableConfig and further options
         """
-        mgr = self.actions()
-        assert isinstance(mgr, QgsActionManager)
-        mgr.clearActions()
+        SpectralLibraryUtils.initTableConfig(self)
 
-        # actionSetStyle = createSetPlotStyleAction(self.fields().at(self.fields().lookupField(FIELD_STYLE)))
-        # assert isinstance(actionSetStyle, QgsAction)
-        # mgr.addAction(actionSetStyle)
+    def mimeData(self, *args, **kwds) -> QMimeData:
+        return SpectralLibraryUtils.mimeData(self, *args, **kwds)
 
-        actionRemoveSpectrum = createRemoveFeatureAction()
-        assert isinstance(actionRemoveSpectrum, QgsAction)
-        mgr.addAction(actionRemoveSpectrum)
+    def addSpectralProfileField(self, *args, **kwds) -> bool:
+        return SpectralLibraryUtils.addSpectralProfileField(self, *args, **kwds)
 
-        columns = self.attributeTableConfig().columns()
+    def addMissingFields(self, *args, **kwds):
+        SpectralLibraryUtils.addMissingFields(self, *args, **kwds)
 
-        # to discuss: invisible columns?
-        invisibleColumns = []
+    def addSpeclib(self, *args, **kwds):
+        return SpectralLibraryUtils.addSpeclib(self, *args, **kwds)
 
-        for column in columns:
-            assert isinstance(column, QgsAttributeTableConfig.ColumnConfig)
-            column.hidden = column.name in invisibleColumns
+    def addProfiles(self, *args, **kwds):
+        return SpectralLibraryUtils.addProfiles(self, *args, **kwds)
 
-        # set column order
-        # c_action = [c for c in columns if c.type == QgsAttributeTableConfig.Action][0]
-        # c_name = [c for c in columns if c.name == FIELD_NAME][0]
-        # firstCols = [c_action, c_name]
-        # columns = [c_action, c_name] + [c for c in columns if c not in firstCols]
+    def speclibFromFeatureIDs(self, *args, **kwds):
+        return SpectralLibraryUtils.speclibFromFeatureIDs(self, *args, **kwds)
 
-        conf = QgsAttributeTableConfig()
-        conf.setColumns(columns)
-        conf.setActionWidgetVisible(False)
-        conf.setActionWidgetStyle(QgsAttributeTableConfig.ButtonList)
-
-        self.setAttributeTableConfig(conf)
-
-    def mimeData(self, formats: list = None) -> QMimeData:
-        """
-        Wraps this Speclib into a QMimeData object
-        :return: QMimeData
-        """
-        if isinstance(formats, str):
-            formats = [formats]
-        elif formats is None:
-            formats = [MIMEDATA_SPECLIB_LINK]
-
-        mimeData = QMimeData()
-
-        for format in formats:
-            assert format in [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_URL]
-            if format == MIMEDATA_SPECLIB_LINK:
-                global SPECLIB_CLIPBOARD
-                thisID = id(self)
-                SPECLIB_CLIPBOARD[thisID] = self
-
-                mimeData.setData(MIMEDATA_SPECLIB_LINK, pickle.dumps(thisID))
-            elif format == MIMEDATA_SPECLIB:
-                mimeData.setData(MIMEDATA_SPECLIB, pickle.dumps(self))
-            elif format == MIMEDATA_URL:
-                mimeData.setUrls([QUrl(self.source())])
-            elif format == MIMEDATA_TEXT:
-                from ..io.csvdata import CSVSpectralLibraryIO
-                txt = CSVSpectralLibraryIO.asString(self)
-                mimeData.setText(txt)
-
-        return mimeData
-
-    def optionalFieldNames(self) -> list:
-        """
-        Returns the names of additions fields / attributes
-        :return: [list-of-str]
-        """
-        warnings.warn('Deprecated and desimplemented', DeprecationWarning)
-        # requiredFields = [f.name for f in ogrStandardFields()]
-        return []
-
-    def addSpectralProfileField(self, name: str, comment: str = None) -> bool:
-        return self.addAttribute(create_profile_field(name, comment))
-
-    def addMissingFields(self, fields: QgsFields, copyEditorWidgetSetup: bool = True):
-        """
-        :param fields: list of QgsFields
-        :param copyEditorWidgetSetup: if True (default), the editor widget setup is copied for each profile_field
-        """
-        missingFields = []
-        for field in fields:
-            assert isinstance(field, QgsField)
-            i = self.fields().lookupField(field.name())
-            if i == -1:
-                missingFields.append(field)
-
-        if len(missingFields) > 0:
-            for fOld in missingFields:
-                self.addAttribute(QgsField(fOld))
-
-            if copyEditorWidgetSetup:
-                self.copyEditorWidgetSetup(missingFields)
-
-    def addSpeclib(self, speclib,
-                   addMissingFields: bool = True,
-                   copyEditorWidgetSetup: bool = True,
-                   feedback: QgsProcessingFeedback = None) -> typing.List[int]:
-        """
-        Adds profiles from another SpectraLibrary
-        :param speclib: SpectralLibrary
-        :param addMissingFields: if True (default), missing fields / attributes will be added automatically
-        :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied for each added profile_field
-        :param progressDialog: QProgressDialog or qps.speclib.core.ProgressHandler
-
-        :returns: set of added feature ids
-        """
-        assert is_spectral_library(speclib)
-
-        fids_old = sorted(speclib.allFeatureIds(), key=lambda i: abs(i))
-        fids_new = self.addProfiles(speclib.getFeatures(),
-                                    addMissingFields=addMissingFields,
-                                    copyEditorWidgetSetup=copyEditorWidgetSetup,
-                                    feedback=feedback)
-
-        return fids_new
-
-    def addProfiles(self,
-                    profiles: typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
-                    addMissingFields: bool = None, \
-                    copyEditorWidgetSetup: bool = True, \
-                    feedback: QgsProcessingFeedback = None) -> typing.List[int]:
-
-        # todo: allow to add profiles with distinct key
-        if isinstance(profiles, SpectralProfile):
-            profiles = [profiles]
-        if addMissingFields is None:
-            addMissingFields = is_spectral_library(profiles)
-
-        if isinstance(profiles, (QgsFeatureIterator, typing.Generator)):
-            nTotal = -1
-        else:
-            nTotal = len(profiles)
-
-        assert self.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(self.name())
-
-        keysBefore = set(self.editBuffer().addedFeatures().keys())
-
-        lastTime = datetime.datetime.now()
-        dt = datetime.timedelta(seconds=2)
-
-        if isinstance(feedback, QgsProcessingFeedback):
-            feedback.setProgressText('Add {} profiles'.format(len(profiles)))
-            feedback.setProgress(0)
-
-        iSrcList = []
-        iDstList = []
-
-        bufferLength = 1000
-        profileBuffer = []
-
-        nAdded = 0
-
-        def flushBuffer(triggerProgressBar: bool = False):
-            nonlocal self, nAdded, profileBuffer, feedback, lastTime, dt
-            if not self.addFeatures(profileBuffer):
-                self.raiseError()
-            nAdded += len(profileBuffer)
-            profileBuffer.clear()
-
-            if isinstance(feedback, QgsProcessingFeedback):
-                # update progressbar in intervals of dt
-                if triggerProgressBar or (lastTime + dt) < datetime.datetime.now():
-                    feedback.setProgress(nAdded)
-                    lastTime = datetime.datetime.now()
-
-        new_edit_command: bool = not self.isEditCommandActive()
-        if new_edit_command:
-            self.beginEditCommand('Add profiles')
-
-        for i, pSrc in enumerate(profiles):
-            if i == 0:
-                if addMissingFields:
-                    self.addMissingFields(pSrc.fields(), copyEditorWidgetSetup=copyEditorWidgetSetup)
-
-                for iSrc, srcName in enumerate(pSrc.fields().names()):
-                    if srcName == FIELD_FID:
-                        continue
-                    iDst = self.fields().lookupField(srcName)
-                    if iDst >= 0:
-                        iSrcList.append(iSrc)
-                        iDstList.append(iDst)
-                    elif addMissingFields:
-                        raise Exception('Missing profile_field: "{}"'.format(srcName))
-
-            # create new feature + copy geometry
-            pDst = QgsFeature(self.fields())
-            pDst.setGeometry(pSrc.geometry())
-
-            # copy attributes
-            for iSrc, iDst in zip(iSrcList, iDstList):
-                pDst.setAttribute(iDst, pSrc.attribute(iSrc))
-
-            profileBuffer.append(pDst)
-
-            if len(profileBuffer) >= bufferLength:
-                flushBuffer()
-
-        # final buffer call
-        flushBuffer(triggerProgressBar=True)
-
-        if new_edit_command:
-            self.endEditCommand()
-
-        # return the edited features
-        MAP = self.editBuffer().addedFeatures()
-        fids_inserted = [MAP[k].id() for k in reversed(list(MAP.keys())) if k not in keysBefore]
-        return fids_inserted
-
-    def speclibFromFeatureIDs(self, fids):
-        if isinstance(fids, int):
-            fids = [fids]
-        assert isinstance(fids, list)
-
-        profiles = list(self.profiles(fids))
-
-        speclib = SpectralLibrary()
-        speclib.startEditing()
-        speclib.addMissingFields(self.fields())
-        speclib.addProfiles(profiles)
-        speclib.commitChanges()
-        return speclib
-
-    def renameAttribute(self, index, newName):
-
-        setup = self.editorWidgetSetup(index)
-        super().renameAttribute(index, newName)
-        self.setEditorWidgetSetup(index, setup)
+    def renameAttribute(self, *args, **kwds):
+        SpectralLibraryUtils.renameAttribute(self, *args, **kwds)
 
     def removeProfiles(self, profiles):
         """
@@ -1124,6 +1229,7 @@ class SpectralLibrary(QgsVectorLayer):
         :param profiles: Profile or [list-of-profiles] to be removed
         :return: [list-of-remove profiles] (only profiles that existed in this set before)
         """
+        warnings.warn(DeprecationWarning)
         if not isinstance(profiles, list):
             profiles = [profiles]
 
@@ -1137,61 +1243,14 @@ class SpectralLibrary(QgsVectorLayer):
         assert self.isEditable()
         self.deleteFeatures(fids)
 
-    def features(self, fids=None) -> QgsFeatureIterator:
-        """
-        Returns the QgsFeatures stored in this QgsVectorLayer
-        :param fids: optional, [int-list-of-feature-ids] to return
-        :return: QgsFeatureIterator
-        """
-        featureRequest = QgsFeatureRequest()
-        if fids is not None:
-            if isinstance(fids, int):
-                fids = [fids]
-            if not isinstance(fids, list):
-                fids = list(fids)
-            for fid in fids:
-                assert isinstance(fid, int)
-            featureRequest.setFilterFids(fids)
-        # features = [f for f in self.features() if f.id() in keys_to_remove]
-        return self.getFeatures(featureRequest)
+    def profileBlocks(self, *args, **kwds):
+        return SpectralLibraryUtils.profileBlocks(self, *args, **kwds)
 
-    def profileBlocks(self,
-                      fids=None,
-                      profile_field: typing.Union[int, str, QgsField] = None,
-                      ) -> typing.List[SpectralProfileBlock]:
-        """
-        Reads SpectralProfiles into profile blocks with different spectral settings
-        :param blob:
-        :return:
-        """
-        if profile_field is None:
-            profile_field = first_profile_field_index(self)
-        return SpectralProfileBlock.fromSpectralProfiles(
-            self.profiles(fids=fids, profile_field=profile_field),
-            profile_field=profile_field
-        )
+    def profile(self, *args, **kwds):
+        return SpectralLibraryUtils.profile(self, *args, **kwds)
 
-    def profile(self, fid: int, value_field=None) -> SpectralProfile:
-        if value_field is None:
-            value_field = self.spectralProfileFields()[0]
-        return SpectralProfile.fromQgsFeature(self.getFeature(fid), profile_field=value_field)
-
-    def profiles(self,
-                 fids: typing.List[int] = None,
-                 profile_field: typing.Union[int, str, QgsField] = None) -> typing.Generator[
-        SpectralProfile, None, None]:
-        """
-        Like features(keys_to_remove=None), but converts each returned QgsFeature into a SpectralProfile.
-        If multiple value fields are set, profiles are returned ordered by (i) fid and (ii) value profile_field.
-        :param profile_field:
-        :type profile_field:
-        :param profile_keys:
-        :type profile_keys:
-        :param fids: optional, [int-list-of-feature-ids] to return
-        :return: generator of [List-of-SpectralProfiles]
-        """
-
-        return read_profiles(self, fids=fids, profile_field=profile_field)
+    def profiles(self, *args, **kwds):
+        return SpectralLibraryUtils.profiles(self, *args, **kwds)
 
     def groupBySpectralProperties(self,
                                   fids=None,
@@ -1214,40 +1273,13 @@ class SpectralLibrary(QgsVectorLayer):
             excludeEmptyProfiles=excludeEmptyProfiles
         )
 
-    def exportNamedStyle(self,
-                         doc: QDomDocument,
-                         context: QgsReadWriteContext,
-                         categories: QgsMapLayer.StyleCategories
-                         ) -> str:
-
-        msg = super(SpectralLibrary, self).exportNamedStyle(doc, context=context, categories=categories)
-        if msg == '':
-            qgsNode = doc.documentElement().toElement()
-            # style issues?
-
-        return msg
-
-    def importNamedStyle(self, doc: QDomDocument,
-                         categories: QgsMapLayer.StyleCategories = QgsMapLayer.AllStyleCategories):
-
-        success, errorMsg = super(SpectralLibrary, self).importNamedStyle(doc, categories)
-
-        return success, errorMsg
-
-        if success:
-            elem = doc.documentElement().firstChildElement(XMLNODE_PROFILE_RENDERER)
-            if not elem.isNull():
-                # load styles?
-                pass
-
-        return success, errorMsg
-
     def exportProfiles(self, *args, **kwds) -> list:
         warnings.warn('Use SpectralLibrary.write() instead', DeprecationWarning)
         return self.write(*args, **kwds)
 
     def writeRasterImages(self, pathOne: typing.Union[str, pathlib.Path], drv: str = 'GTiff') -> typing.List[
         pathlib.Path]:
+        warnings.warn(DeprecationWarning)
         """
         Writes the SpectralLibrary into images of same spectral properties
         :return: list of image paths
@@ -1340,42 +1372,12 @@ class SpectralLibrary(QgsVectorLayer):
     def spectralProfileFields(self) -> typing.List[QgsField]:
         return profile_field_list(self)
 
-    def yRange(self) -> typing.List[float]:
-        """
-        Returns the maximum y range
-        :return:
-        :rtype:
-        """
-
-        minY = maxY = 0
-
-        for p in self.profiles():
-            yValues = p.yValues()
-            minY = min(minY, min(yValues))
-            maxY = max(maxY, max(yValues))
-
-        return minY, maxY
-
     def __repr__(self):
         return str(self.__class__) + '"{}" {} feature(s)'.format(self.name(), self.dataProvider().featureCount())
 
     def plot(self) -> QWidget:
         """Create a plot widget and shows all SpectralProfile in this SpectralLibrary."""
-
-        app = None
-        if not isinstance(QgsApplication.instance(), QgsApplication):
-            from ...testing import start_app
-            app = start_app()
-
-        from ..gui.spectrallibrarywidget import SpectralLibraryWidget
-
-        w = SpectralLibraryWidget(speclib=self)
-        w.show()
-
-        if app:
-            app.exec_()
-
-        return w
+        return SpectralLibraryUtils.plot(self)
 
     def fieldNames(self) -> list:
         """
@@ -1395,7 +1397,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         fields = qgsFields2str(self.fields())
         data = []
-        for feature in self.features():
+        for feature in self.getFeatures():
             data.append((feature.geometry().asWkt(),
                          qgsFieldAttributes2List(feature.attributes())
                          ))
@@ -1412,7 +1414,7 @@ class SpectralLibrary(QgsVectorLayer):
         """
         name, fields, data = pickle.loads(state)
         self.setName(name)
-        fieldNames = self.fieldNames()
+        fieldNames = self.fields().names()
         dataFields = str2QgsFields(fields)
         fieldsToAdd = [f for f in dataFields if f.name() not in fieldNames]
         self.startEditing()
@@ -1424,7 +1426,7 @@ class SpectralLibrary(QgsVectorLayer):
             self.commitChanges()
             self.startEditing()
 
-        fieldNames = self.fieldNames()
+        fieldNames = self.fields().names()
         order = [fieldNames.index(f.name()) for f in dataFields]
         reoder = list(range(len(dataFields))) != order
 
@@ -1465,21 +1467,15 @@ class SpectralLibrary(QgsVectorLayer):
 
     def __delitem__(self, slice):
         profiles = self[slice]
-        self.removeProfiles(profiles)
+        if not isinstance(profiles, list):
+            profiles = [profiles]
 
-    """
-    def __eq__(self, other):
-        if not is_spectral_library(other):
-            return False
+        fids = [p.id() for p in profiles if isinstance(p, QgsFeature)]
+        if len(fids) == 0:
+            return
 
-        if len(self) != len(other):
-            return False
-
-        for p1, p2 in zip(self.__iter__(), other.__iter__()):
-            if not p1 == p2:
-                return False
-        return True
-    """
+        assert self.isEditable()
+        self.deleteFeatures(fids)
 
     def __hash__(self):
         # return super(SpectralLibrary, self).__hash__()

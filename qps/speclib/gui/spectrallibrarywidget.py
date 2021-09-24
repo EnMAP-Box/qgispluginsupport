@@ -7,6 +7,8 @@ from PyQt5.QtCore import pyqtSignal, Qt, QModelIndex
 from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QLabel
+from qgis._core import QgsVectorLayer
+
 from qgis.core import QgsFeature
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
     QgsActionMenu, QgsStatusBar
@@ -336,13 +338,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def updatePlot(self):
         self.plotControl().updatePlot()
 
-    def speclib(self) -> SpectralLibrary:
+    def speclib(self) -> QgsVectorLayer:
         return self.mLayer
 
-    def spectralLibrary(self) -> SpectralLibrary:
+    def spectralLibrary(self) -> QgsVectorLayer:
         return self.speclib()
 
-    def addSpeclib(self, speclib: SpectralLibrary):
+    def addSpeclib(self, speclib: QgsVectorLayer):
         assert is_spectral_library(speclib)
         sl = self.speclib()
         wasEditable = sl.isEditable()

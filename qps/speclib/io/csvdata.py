@@ -298,7 +298,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
                     p.setValues(y=y, x=x, xUnit=xUnit, yUnit=yUnit)
 
                 # add other attributes
-                for n in [n for n in p.fieldNames() if n in list(columnVectors.keys())]:
+                for n in [n for n in p.fields().names() if n in list(columnVectors.keys())]:
 
                     p.setAttribute(n, columnVectors[n][i])
 
@@ -320,7 +320,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
         """
         assert is_spectral_library(speclib)
 
-        attributeNames = [n for n in speclib.fieldNames() if n not in [FIELD_VALUES]]
+        attributeNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES]]
 
         # in-memory text buffer
         stream = io.StringIO()

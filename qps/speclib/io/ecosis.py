@@ -144,7 +144,7 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
             profiles = []
             LUT_FIELD_TYPES = dict()
-            missing_field_definitions = [n for n in fieldnames if n not in speclib.fieldNames()]
+            missing_field_definitions = [n for n in fieldnames if n not in speclib.fields().names()]
             for i, row in enumerate(reader):
                 if len(missing_field_definitions) > 0:
                     for fieldName in missing_field_definitions[:]:

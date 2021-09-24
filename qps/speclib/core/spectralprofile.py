@@ -624,12 +624,12 @@ class SpectralProfile(QgsFeature):
     def __eq__(self, other):
         if not isinstance(other, SpectralProfile):
             return False
-        if not np.array_equal(self.fieldNames(), other.fieldNames()):
+        if not np.array_equal(self.fields().names(), other.fields().names()):
             return False
 
-        names1 = self.fieldNames()
-        names2 = other.fieldNames()
-        for i1, n in enumerate(self.fieldNames()):
+        names1 = self.fields().names()
+        names2 = other.fields().names()
+        for i1, n in enumerate(self.fields().names()):
             if n == FIELD_FID:
                 continue
             elif n == FIELD_VALUES:
@@ -835,10 +835,12 @@ class SpectralProfileBlock(object):
         if profile_field is None:
             profile_field = first_profile_field_index(speclib)
             assert profile_field > -1, 'QgsVectorLayer does not contain a profile column'
-        from .spectrallibrary import read_profiles
-        return SpectralProfileBlock.fromSpectralProfiles(read_profiles(speclib, profile_field=profile_field),
-                                                         profile_field=profile_field,
-                                                         feedback=feedback)
+        from .spectrallibrary import SpectralLibraryUtils
+        return SpectralProfileBlock.fromSpectralProfiles(
+            SpectralLibraryUtils.profiles(speclib,
+                                          profile_field=profile_field),
+                                          profile_field=profile_field,
+                                          feedback=feedback)
 
     @staticmethod
     def fromSpectralProfiles(profiles: typing.List[SpectralProfile],

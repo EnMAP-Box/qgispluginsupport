@@ -382,9 +382,7 @@ class TestIO(TestCase):
         print('start editing', flush=True)
         speclibA.startEditing()
         QApplication.processEvents()
-        print('reload spectral values', flush=True)
-        speclibA.reloadSpectralValues(enmap)
-        self.assertTrue(speclibA.commitChanges())
+
 
         print('Compare speclibA with speclibREF', flush=True)
         for a, b in zip(speclibA[:], speclibREF[:]):

@@ -443,7 +443,7 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
                     if not asdFieldsInitialized:
                         sl.startEditing()
 
-                        asdFields = [n for n in asdFields if n not in sl.fieldNames() and n in asd.__dict__.keys()]
+                        asdFields = [n for n in asdFields if n not in sl.fields().names() and n in asd.__dict__.keys()]
                         for n in asdFields:
                             v = asd.__dict__[n]
                             if isinstance(v, TM_STRUCT):

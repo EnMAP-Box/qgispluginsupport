@@ -146,7 +146,7 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
 
         for feature in lyr.getFeatures():
             profile = SpectralProfile(fields=speclib.fields())
-            for i, name in enumerate(speclib.fieldNames()):
+            for i, name in enumerate(speclib.fields().names()):
                 if TXT2BLOB and name == FIELD_VALUES:
                     jsonStr = feature.attribute(name)
                     d = json.loads(jsonStr)

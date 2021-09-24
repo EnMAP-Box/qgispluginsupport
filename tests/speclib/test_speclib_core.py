@@ -684,6 +684,7 @@ class TestCore(TestCase):
         self.assertTrue(len(sp1), n)
 
         sp1.startEditing()
+        self.assertTrue(sp1.isEditable())
         sp1.addSpeclib(sp2)
         self.assertTrue(len(sp1), n + len(sp2))
 
@@ -729,23 +730,6 @@ class TestCore(TestCase):
 
         groups = speclib.groupBySpectralProperties()
 
-        pathOne = '/vsimem/tempraster.tif'
-        images = speclib.writeRasterImages(pathOne)
-        from qps.unitmodel import XUnitModel
-        xUnitModel = XUnitModel()
-
-        for image, item in zip(images, groups.items()):
-            settings, profiles = item
-            xunits = settings.x()
-            xunit = settings.xUnit()
-            yunit = settings.yUnit()
-            ds: gdal.Dataset = gdal.Open(image.as_posix())
-            self.assertIsInstance(ds, gdal.Dataset)
-            wl, wlu = parseWavelength(ds)
-            xunit = xUnitModel.findUnit(xunit)
-            self.assertListEqual(list(xunits), wl.tolist())
-            self.assertEqual(xunit, wlu)
-            self.assertEqual(ds.RasterCount, len(xunits))
 
     def test_multiinstances(self):
 

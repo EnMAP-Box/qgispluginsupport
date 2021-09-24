@@ -133,7 +133,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
 
             sl.beginEditCommand('Set metadata columns')
             for k in metadataKeys:
-                if k in sl.fieldNames():
+                if k in sl.fields().names():
                     continue
 
                 k2 = k.replace(' ', '_')

@@ -42,7 +42,7 @@ from qgis.core import \
 from qgis.PyQt.QtGui import QIcon
 from .core import field_index, profile_field_list, create_profile_field, is_spectral_library
 
-from .core.spectrallibrary import SpectralSetting, SpectralProfileBlock, read_profiles, \
+from .core.spectrallibrary import SpectralSetting, \
     SpectralLibrary, FIELD_VALUES
 from .core.spectralprofile import SpectralProfileBlock
 from .processing import \
