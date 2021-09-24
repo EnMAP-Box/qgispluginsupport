@@ -591,7 +591,8 @@ class SpectralLibraryInfoLabel(QLabel):
     def onSelectAxisUnitIncompatibleProfiles(self):
         incompatible = []
         pw: SpectralProfilePlotWidget = self.plotWidget()
-        if not isinstance(pw, SpectralProfilePlotWidget) or not isinstance(pw.speclib(), SpectralLibrary):
+        if not isinstance(pw, SpectralProfilePlotWidget) or \
+                not is_spectral_library(pw.speclib()):
             return
 
         targetUnit = pw.xUnit()

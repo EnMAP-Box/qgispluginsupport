@@ -34,7 +34,7 @@ from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, PlotStyleButton
 from .. import speclibUiPath, speclibSettings, SpectralLibrarySettingsKey
 from ..core.spectrallibrary import SpectralLibrary, DEBUG, containsSpeclib, defaultCurvePlotStyle
-from ..core import profile_field_list, profile_field_indices
+from ..core import profile_field_list, profile_field_indices, is_spectral_library
 from ..core.spectralprofile import SpectralProfile, SpectralProfileBlock, SpectralProfileLoadingTask
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
     SpectralProcessingProfilesOutput, SpectralProcessingModelList, NULL_MODEL, outputParameterResults, \
@@ -2082,7 +2082,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         1st position = most important, should be plotted on top of all other profiles
         Last position = can be skipped if n_max is reached
         """
-        if not isinstance(self.speclib(), SpectralLibrary):
+        if not is_spectral_library(self.speclib()):
             return []
 
         selectedOnly = self.mShowSelectedFeaturesOnly
