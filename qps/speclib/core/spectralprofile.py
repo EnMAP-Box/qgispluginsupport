@@ -1134,7 +1134,7 @@ class SpectralProfileBlock(object):
         assert pos_x.shape == shape
 
         crs = QgsCoordinateReferenceSystem(crs)
-        assert crs.isValid()
+        # assert crs.isValid()
         self.mPositionsX = pos_x
         self.mPositionsY = pos_y
         self.mCrs = crs
