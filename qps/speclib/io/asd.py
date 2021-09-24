@@ -346,7 +346,7 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
 
             if len(pathes) > 0:
                 sl = ASDSpectralLibraryIO.readFrom(pathes)
-                if isinstance(sl, SpectralLibrary):
+                if is_spectral_library(sl):
                     speclib.startEditing()
                     speclib.beginEditCommand('Add ASD profiles')
                     speclib.addSpeclib(sl, True)

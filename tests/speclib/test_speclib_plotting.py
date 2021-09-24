@@ -131,9 +131,9 @@ class TestSpeclibWidgets(TestCase):
         p = w.toProperty()
         renderContext = QgsRenderContext()
         context = speclib.createExpressionContext()
-        context.setFeature(speclib.getFeature(1))
 
         profile = speclib[0]
+        context.setFeature(profile)
 
         renderer = speclib.renderer().clone()
         renderer.startRender(renderContext, speclib.fields())

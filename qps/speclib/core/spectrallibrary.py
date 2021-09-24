@@ -57,7 +57,8 @@ from qgis.core import QgsApplication, \
 
 from qgis.gui import \
     QgsGui
-from . import profile_field_list, first_profile_field_index, profile_field_indices, create_profile_field
+from . import profile_field_list, first_profile_field_index, profile_field_indices, create_profile_field, \
+    is_spectral_library
 
 from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
@@ -304,26 +305,26 @@ class SpectralLibrary(QgsVectorLayer):
             sid = pickle.loads(mimeData.data(MIMEDATA_SPECLIB_LINK))
             global SPECLIB_CLIPBOARD
             sl = SPECLIB_CLIPBOARD.get(sid)
-            if isinstance(sl, SpectralLibrary) and id(sl) == sid:
+            if is_spectral_library(sl) and id(sl) == sid:
                 return sl
 
         # if MIMEDATA_SPECLIB in mimeData.formats():
         #    sl = SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
-        #    if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+        #    if is_spectral_library(sl) and len(sl) > 0:
         #        return sl
 
         if mimeData.hasUrls():
             urls = mimeData.urls()
             if isinstance(urls, list) and len(urls) > 0:
                 sl = SpectralLibrary.readFrom(urls[0])
-                if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+                if is_spectral_library(sl) and len(sl) > 0:
                     return sl
 
         # if MIMEDATA_TEXT in mimeData.formats():
         #    txt = mimeData.text()
         #    from ..io.csvdata import CSVSpectralLibraryIO
         #    sl = CSVSpectralLibraryIO.fromString(txt)
-        #    if isinstance(sl, SpectralLibrary) and len(sl) > 0:
+        #    if is_spectral_library(sl) and len(sl) > 0:
         #        return sl
 
         return None
@@ -366,7 +367,7 @@ class SpectralLibrary(QgsVectorLayer):
         speclib.startEditing()
         for u in uris:
             sl = SpectralLibrary.readFrom(str(u))
-            if isinstance(sl, SpectralLibrary):
+            if is_spectral_library(sl):
                 speclib.addProfiles(sl)
         assert speclib.commitChanges()
         return speclib
@@ -995,7 +996,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         :returns: set of added feature ids
         """
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
 
         fids_old = sorted(speclib.allFeatureIds(), key=lambda i: abs(i))
         fids_new = self.addProfiles(speclib.getFeatures(),
@@ -1015,7 +1016,7 @@ class SpectralLibrary(QgsVectorLayer):
         if isinstance(profiles, SpectralProfile):
             profiles = [profiles]
         if addMissingFields is None:
-            addMissingFields = isinstance(profiles, SpectralLibrary)
+            addMissingFields = is_spectral_library(profiles)
 
         if isinstance(profiles, (QgsFeatureIterator, typing.Generator)):
             nTotal = -1
@@ -1468,7 +1469,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     """
     def __eq__(self, other):
-        if not isinstance(other, SpectralLibrary):
+        if not is_spectral_library(other):
             return False
 
         if len(self) != len(other):

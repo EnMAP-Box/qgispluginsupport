@@ -68,7 +68,7 @@ class ClipboardIO(SpectralLibraryIO):
         if MIMEDATA_SPECLIB in mimeData.formats():
             b = mimeData.data(MIMEDATA_SPECLIB)
             speclib = pickle.loads(b)
-            assert isinstance(speclib, SpectralLibrary)
+            assert is_spectral_library(speclib)
             return speclib
 
         return None
@@ -83,7 +83,7 @@ class ClipboardIO(SpectralLibraryIO):
 
         if mode is None:
             mode = ClipboardIO.WritingModes.ALL
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
 
         mimeData = QMimeData()
 

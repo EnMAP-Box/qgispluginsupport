@@ -187,7 +187,7 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
         basePath, ext = os.path.splitext(path)
         s = ""
 
@@ -242,7 +242,7 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
             if os.path.isfile(path):
 
                 sl = EcoSISSpectralLibraryIO.readFrom(path)
-                if isinstance(sl, SpectralLibrary):
+                if is_spectral_library(sl):
                     speclib.startEditing()
                     speclib.beginEditCommand('Add EcoSIS profiles from {}'.format(path))
                     speclib.addSpeclib(sl, True)

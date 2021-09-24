@@ -154,7 +154,7 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
             if os.path.isfile(path):
 
                 sl = ARTMOSpectralLibraryIO.readFrom(path)
-                if isinstance(sl, SpectralLibrary):
+                if is_spectral_library(sl):
                     speclib.startEditing()
                     speclib.beginEditCommand('Add ARTMO profiles from {}'.format(path))
                     speclib.addSpeclib(sl, True)

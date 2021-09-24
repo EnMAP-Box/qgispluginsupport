@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToo
 from qgis.core import QgsFeature
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
     QgsActionMenu, QgsStatusBar
+from ..core import is_spectral_library
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ..core.spectrallibrary import SpectralLibrary
@@ -36,7 +37,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def __init__(self, *args, speclib: SpectralLibrary = None, mapCanvas: QgsMapCanvas = None, **kwds):
 
-        if not isinstance(speclib, SpectralLibrary):
+        if not is_spectral_library(speclib):
             speclib = SpectralLibrary()
 
         super().__init__(speclib)
@@ -342,7 +343,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         return self.speclib()
 
     def addSpeclib(self, speclib: SpectralLibrary):
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
         sl = self.speclib()
         wasEditable = sl.isEditable()
         try:
@@ -375,7 +376,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def deleteCurrentProfilesFromSpeclib(self, *args):
         # delete previous current profiles
         speclib = self.speclib()
-        if isinstance(speclib, SpectralLibrary):
+        if is_spectral_library(speclib):
             oldCurrentIDs = list(self.plotControl().mTemporaryProfileIDs)
             restart_editing: bool = not speclib.startEditing()
             speclib.beginEditCommand('Remove temporary')

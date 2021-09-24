@@ -59,7 +59,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
             if isinstance(path, str) and os.path.isfile(path):
 
                 sl = CSVSpectralLibraryIO.readFrom(path, dialect)
-                if isinstance(sl, SpectralLibrary):
+                if is_spectral_library(sl):
                     speclib.addSpeclib(sl, True)
         m = menu.addMenu('CSV')
 
@@ -132,7 +132,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
         :param dialect: CSV dialect, python csv.excel_tab by default
         :return: [list-with-csv-filepath]
         """
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
 
         text = CSVSpectralLibraryIO.asString(speclib, dialect=dialect)
         file = open(path, 'w')
@@ -318,7 +318,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
         :param skipGeometry:
         :return: str
         """
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
 
         attributeNames = [n for n in speclib.fieldNames() if n not in [FIELD_VALUES]]
 

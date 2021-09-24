@@ -58,6 +58,7 @@ from qgis.gui import QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingContextGenerator, QgsProcessingParametersWidget
 from processing.modeler.ProjectProvider import ProjectProvider
 from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider
+from .core import is_spectral_library
 from .core.spectrallibrary import SpectralLibrary, SpectralProfile, SpectralProfileBlock
 from . import speclibUiPath
 from ..utils import loadUi
@@ -283,7 +284,7 @@ def parameterAsSpectralProfileBlockList(parameters: dict,
     feedback = context.feedback()
     value = parameters[name]
     blocks = None
-    if isinstance(value, SpectralLibrary):
+    if is_spectral_library(value):
         blocks = list(value.profileBlocks())
     elif isinstance(value, SpectralProfile):
         blocks = [SpectralProfileBlock.fromSpectralProfile(value)]

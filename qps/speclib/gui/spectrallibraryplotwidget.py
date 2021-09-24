@@ -890,7 +890,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        # loadUi(speclibUiPath('spectralprofilecolorexpressionwidget.ui'), self)
+
         self.mContext: QgsExpressionContext = QgsExpressionContext()
         self.mRenderContext: QgsRenderContext = QgsRenderContext()
         self.mRenderer: QgsFeatureRenderer = None

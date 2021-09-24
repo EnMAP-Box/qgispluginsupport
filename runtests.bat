@@ -22,6 +22,7 @@ mkdir test-reports\today
 %PYTHON% -m coverage run --rcfile=.coveragec   speclib/test_speclib_core.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_gui.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_io.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_ioV2.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_plotting.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_processing.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_profilesources.py

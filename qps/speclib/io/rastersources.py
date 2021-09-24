@@ -276,7 +276,7 @@ class RasterSourceSpectralLibraryIO(SpectralLibraryIO):
             return None
 
         speclib = SpectralLibrary()
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
         sourcepath = ds.GetDescription()
         basename = os.path.basename(ds.GetDescription())
         speclib.setName(basename)
@@ -342,7 +342,7 @@ class RasterSourceSpectralLibraryIO(SpectralLibraryIO):
 
                 try:
                     sl = RasterSourceSpectralLibraryIO.readFrom(path)
-                    if isinstance(sl, SpectralLibrary):
+                    if is_spectral_library(sl):
                         speclib.startEditing()
                         speclib.beginEditCommand('Add Spectral Library from {}'.format(path))
                         speclib.addSpeclib(sl, addMissingFields=True)

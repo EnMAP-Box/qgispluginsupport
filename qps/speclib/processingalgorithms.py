@@ -40,7 +40,7 @@ from qgis.core import \
     QgsFeature
 
 from qgis.PyQt.QtGui import QIcon
-from .core import field_index, profile_field_list, create_profile_field
+from .core import field_index, profile_field_list, create_profile_field, is_spectral_library
 
 from .core.spectrallibrary import SpectralSetting, SpectralProfileBlock, read_profiles, \
     SpectralLibrary, FIELD_VALUES
@@ -367,7 +367,7 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
         field = self.parameterAsFields(parameters, self.OUTPUT_FIELD, context)[0]
 
         speclib: SpectralLibrary = self.parameterAsVectorLayer(parameters, self.OUTPUT, context)
-        if not isinstance(speclib, SpectralLibrary):
+        if not is_spectral_library(speclib):
             # create new speclib
             speclib = SpectralLibrary(profile_fields=[field])
             context.temporaryLayerStore().addMapLayer(speclib)

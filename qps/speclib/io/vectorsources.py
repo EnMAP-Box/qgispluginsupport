@@ -31,6 +31,7 @@ import pathlib
 import re
 import sys
 import typing
+from ..core import is_spectral_library
 
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
@@ -125,7 +126,7 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
         assert isinstance(lyr, QgsVectorLayer)
 
         speclib = SpectralLibrary()
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
         speclib.setName(lyr.name())
 
         assert speclib.startEditing()
@@ -177,7 +178,7 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
         """
-        assert isinstance(speclib, SpectralLibrary)
+        assert is_spectral_library(speclib)
         path = pathlib.Path(path)
         basePath, ext = os.path.splitext(path)
 
@@ -262,7 +263,7 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
                                                        )
             if os.path.isfile(path) and VectorSourceSpectralLibraryIO.canRead(path):
                 sl = VectorSourceSpectralLibraryIO.readFrom(path)
-                if isinstance(sl, SpectralLibrary):
+                if is_spectral_library(sl):
                     speclib.startEditing()
                     speclib.beginEditCommand('Add Spectral Library profiles from {}'.format(path))
                     speclib.addSpeclib(sl, True)
