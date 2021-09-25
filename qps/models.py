@@ -734,29 +734,15 @@ class PyObjectTreeNode(TreeNode):
         if isinstance(obj, (int, float, str)):
             self.setValue(obj)
             self.mIsFetched = True
-            """
-            elif isinstance(obj, (np.ndarray,)):
-                value = np.array2string(obj, threshold=25)
-                self.setValue(value)
-                self.mIsFetched = True
-            else:
-                value = '{:1.25}'.format(str(obj)).strip()
-                self.setValue(value)
-            """
+
         else:
-            # if hasattr(obj, '__name__'):
-            #    value = obj.__name__
-            # else:
-            #    value = type(obj).__name__
 
             if isinstance(obj, (np.ndarray,)):
                 value = np.array2string(obj, threshold=10)
             elif isinstance(obj, (bytearray, bytes)):
                 value = str(obj)
             else:
-                # value = '{:1.256s}'.format(str(obj))
-                value = str(obj)  # .strip()
-            value = value.replace('\n', ' ')
+                value = str(obj)
             self.setValue(value)
             self.setToolTip(f'{self.name()} {value}')
 
@@ -781,7 +767,6 @@ class PyObjectTreeNode(TreeNode):
             elif isinstance(self.mPyObject, object):
                 self.mFetchIterator = iter(sorted(inspect.getmembers(self.mPyObject)))
             else:
-                s = ""
                 self.mIsFetched = True
                 return
 

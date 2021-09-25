@@ -45,9 +45,15 @@ class ModelTests(TestCase):
         m = TreeModel()
         if True:
             tv = TreeView()
-            tv.setAutoExpansionDepth(15)
+            tv.setAutoExpansionDepth(1)
         else:
             tv = QTreeView()
+
+        longString = ''
+        for b in 'abcdefghijklmsdsfdfdsfv':
+            for a in range(500):
+                longString += b
+            longString += '\n'
 
         root = m.rootNode()
 
@@ -57,6 +63,7 @@ class ModelTests(TestCase):
                      'B2': {'DDD': root},
                      'NP': np.arange(256),
                      'Array2': np.asarray([[1, 2, 3], [4, 5, 6]]),
+                     'Long String': longString,
                      'M': m},
                 'CA': QgsMapCanvas(),
                 }
