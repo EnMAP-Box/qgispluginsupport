@@ -496,7 +496,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def onExportProfiles(self, *args):
 
-        SpectralLibraryExportDialog.exportProfiles(self.speclib(), parent=self)
+        files = SpectralLibraryExportDialog.exportProfiles(self.speclib(), parent=self)
+        if len(files) > 0:
+            self.sigFilesCreated.emit(files)
 
     def clearSpectralLibrary(self):
         """
