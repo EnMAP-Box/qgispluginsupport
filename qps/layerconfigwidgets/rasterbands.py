@@ -27,6 +27,7 @@ import pathlib
 
 from PyQt5.QtWidgets import QGroupBox, QToolButton, QPushButton
 
+from qgis._core import QgsHillshadeRenderer
 from qgis.core import QgsRasterDataProvider, QgsRasterLayer, QgsMapLayer, \
     QgsRasterRenderer, \
     QgsSingleBandGrayRenderer, \
@@ -145,6 +146,15 @@ BAND_COMBINATIONS += [
     BandCombination(('NIR', 'SWIR', 'R'))
 ]
 
+
+RENDER_TYPE2NAME = {
+    'multibandcolor': 'Multiband color',
+    'paletted': 'Paletted/Unique values',
+    'contour': 'Contours',
+    'hillshade': 'Hillshade',
+    'singlebandpseudocolor': 'Singleband pseudocolor',
+    'singlebandgray': 'Singleband gray',
+}
 
 class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
@@ -281,6 +291,12 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
                 newRenderer.setBlueBand(self.cbMultiBandBlue.currentBand())
         return newRenderer
 
+    def rendererName(self, renderer: typing.Union[str, QgsRasterRenderer]) -> str:
+        if isinstance(renderer, QgsRasterRenderer):
+            renderer = renderer.type()
+        return RENDER_TYPE2NAME.get(renderer, renderer)
+        assert isinstance(renderer, str)
+
     def setRenderer(self, renderer: QgsRasterRenderer):
         if not isinstance(renderer, QgsRasterRenderer):
             return
@@ -289,7 +305,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         assert isinstance(self.labelRenderType, QLabel)
         assert isinstance(w, QStackedWidget)
 
-        self.labelRenderType.setText(str(renderer.type()))
+        self.labelRenderType.setText(self.rendererName(renderer))
         if isinstance(renderer, (
                 QgsSingleBandGrayRenderer,
                 QgsSingleBandColorDataRenderer,

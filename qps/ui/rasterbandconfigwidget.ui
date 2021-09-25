@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>321</width>
-    <height>299</height>
+    <height>216</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -149,6 +149,9 @@
        </item>
        <item row="4" column="0">
         <widget class="QLabel" name="label_6">
+         <property name="toolTip">
+          <string>Blue band</string>
+         </property>
          <property name="text">
           <string>B</string>
          </property>
@@ -182,6 +185,9 @@
        </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_4">
+         <property name="toolTip">
+          <string>Red band</string>
+         </property>
          <property name="text">
           <string>R</string>
          </property>
@@ -189,6 +195,9 @@
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_5">
+         <property name="toolTip">
+          <string>Green band</string>
+         </property>
          <property name="text">
           <string>G</string>
          </property>
@@ -215,6 +224,9 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="toolTip">
+          <string>Select the band for red color values</string>
+         </property>
          <property name="editable">
           <bool>true</bool>
          </property>
@@ -228,6 +240,9 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="toolTip">
+          <string>Select the band for green color values</string>
+         </property>
          <property name="editable">
           <bool>true</bool>
          </property>
@@ -240,6 +255,9 @@
            <horstretch>1</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>Select the band for blue color values</string>
          </property>
          <property name="editable">
           <bool>true</bool>

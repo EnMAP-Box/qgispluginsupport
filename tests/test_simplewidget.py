@@ -17,7 +17,7 @@ class SimpleWidgetTests(TestCase):
         w = QGroupBox()
         l = FlowLayout()
         l.setSpacing(0)
-        l.setContentsMargins(0,0,0,0)
+        l.setContentsMargins(0, 0, 0, 0)
         for i in range(10):
             btn = QPushButton(f'Button {i+1}')
             l.addWidget(btn)
