@@ -209,8 +209,8 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.gbSingleBandWavelength.setEnabled(hasWL)
 
         def createButton(bc: BandCombination) -> QPushButton:
-            btn = QToolButton()
-            btn.setAutoRaise(False)
+            btn = QPushButton()
+            # btn.setAutoRaise(False)
             btn.setText(bc.name())
             btn.setIcon(bc.icon())
             btn.setToolTip(bc.tooltip(self.mWL))
