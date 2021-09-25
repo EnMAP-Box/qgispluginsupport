@@ -84,6 +84,19 @@ QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.ARGB32: np.uint32,
                          Qgis.ARGB32_Premultiplied: np.uint32}
 
+QGIS_DATATYPE_NAMES = {
+                     Qgis.Byte: 'Byte',
+                     Qgis.UInt16: 'UInt16',
+                     Qgis.Int16: 'Int16',
+                     Qgis.UInt32: 'UInt32',
+                     Qgis.Int32: 'Int32',
+                     Qgis.Float32: 'Float32',
+                     Qgis.Float64: 'Float64',
+                     Qgis.CFloat32: 'Complex',
+                     Qgis.CFloat64: 'Complex64',
+                     Qgis.ARGB32: 'UInt32',
+                     Qgis.ARGB32_Premultiplied: 'Int32'}
+
 
 def rm(p):
     """
