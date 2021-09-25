@@ -1112,7 +1112,7 @@ class SpectralLibrary(QgsVectorLayer):
         from .spectrallibraryio import SpectralLibraryIO
         return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
 
-    sigProgressInfo = pyqtSignal(int, int, str)
+    # sigProgressInfo = pyqtSignal(int, int, str)
 
     def __init__(self,
                  path: str = None,
