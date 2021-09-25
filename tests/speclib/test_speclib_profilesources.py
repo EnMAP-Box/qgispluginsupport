@@ -141,6 +141,7 @@ class SpectralProcessingTests(TestCase):
         canvas.setLayers(sources)
         canvas.setDestinationCrs(sources[0].crs())
         canvas.zoomToFullExtent()
+        canvas.setExtent(sources[0].extent())
         mt = CursorLocationMapTool(canvas, True)
         canvas.setMapTool(mt)
 

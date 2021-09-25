@@ -1136,6 +1136,8 @@ def loadUi(uifile: typing.Union[str, pathlib.Path],
             from .. import qps
         except ImportError:
             import qps
+        except ValueError:
+            import qps
 
         elem = doc.elementsByTagName('customwidget')
         for child in [elem.item(i) for i in range(elem.count())]:

@@ -408,6 +408,17 @@ class SpectralLibraryWidgetListModel(QAbstractListModel):
             return slw
         return None
 
+    def item(self, i) -> QListWidgetItem:
+        idx = self.index(i, 0)
+        item = QListWidgetItem()
+        item.setIcon(self.data(idx, Qt.DecorationRole))
+        item.setToolTip(self.data(idx, Qt.ToolTipRole))
+        # item.setCheckState(self.data(idx, Qt.CheckStateRole))
+        # item.setData(self.data(idx, Qt.UserRole))
+        # item.setFont(self.data(idx, Qt.FontRole))
+        item.setText(self.data(idx, Qt.DisplayRole))
+        return item
+
     def spectralLibraryWidgetListIndex(self, speclib: SpectralLibraryWidget) -> int:
         for i, sl in enumerate(self):
             if sl is speclib:
