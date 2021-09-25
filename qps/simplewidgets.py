@@ -7,11 +7,13 @@ from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtWidgets import QWidget, QAbstractSpinBox, QSpinBox, QDoubleSpinBox, \
     QHBoxLayout, QVBoxLayout, QSlider, QLayout, QLayoutItem, QStyle
 
+
 class FlowLayout(QLayout):
     """
     A FlowLayout, as descrbied in  https://doc.qt.io/qt-5/qtwidgets-layouts-flowlayout-example.html
     """
-    def __init__(self, parent: QWidget = None, margin:int = -1, hSpacing:int = -1, vSpacing:int = -1):
+
+    def __init__(self, parent: QWidget = None, margin: int = -1, hSpacing: int = -1, vSpacing: int = -1):
 
         super().__init__(parent)
 
@@ -19,6 +21,10 @@ class FlowLayout(QLayout):
         self.m_vSpace = vSpacing
         self.m_itemlist: typing.List[QLayoutItem] = []
         self.setContentsMargins(margin, margin, margin, margin)
+
+    def setSpacing(self, space: int) -> None:
+        self.m_vSpace = space
+        self.m_vSpace = space
 
     def addItem(self, item: QLayoutItem):
         assert isinstance(item, QLayoutItem)
@@ -40,7 +46,7 @@ class FlowLayout(QLayout):
     def count(self) -> int:
         return len(self.m_itemlist)
 
-    def itemAt(self, index:int) -> QLayoutItem:
+    def itemAt(self, index: int) -> QLayoutItem:
         if 0 <= index < len(self.m_itemlist):
             return self.m_itemlist[index]
         return None
@@ -76,7 +82,7 @@ class FlowLayout(QLayout):
         size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
         return size
 
-    def doLayout(self, rect:QRect, testOnly:bool) -> int:
+    def doLayout(self, rect: QRect, testOnly: bool) -> int:
         left, top, right, bottom = self.getContentsMargins()
         effectiveRect: QRect = rect.adjusted(+left, +top, -right, -bottom)
         x: int = effectiveRect.x()
@@ -100,7 +106,7 @@ class FlowLayout(QLayout):
                 lineHeight = 0
 
             if not testOnly:
-                item.setGeometry(QRect(QPoint(x,y), item.sizeHint()))
+                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
 
             x = nextX
             lineHeight = max(lineHeight, item.sizeHint().height())

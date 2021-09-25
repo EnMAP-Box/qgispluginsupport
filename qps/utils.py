@@ -456,7 +456,7 @@ convertDateUnit = UnitLookup.convertDateUnit
 
 METRIC_EXPONENTS = UnitLookup.METRIC_EXPONENTS
 
-# contains the wavelengths
+# contains a lookup for wavelengths in nanometers
 LUT_WAVELENGTH = dict({'B': 480,
                        'G': 570,
                        'R': 660,
@@ -465,6 +465,15 @@ LUT_WAVELENGTH = dict({'B': 480,
                        'SWIR1': 1650,
                        'SWIR2': 2150
                        })
+WAVELENGTH_DESCRIPTION = {
+    'B': f'Visible blue at {LUT_WAVELENGTH["B"]} nm',
+    'G': f'Visible green at {LUT_WAVELENGTH["G"]} nm',
+    'R': f'Visible red at {LUT_WAVELENGTH["R"]} nm',
+    'NIR': f'Near infrared at {LUT_WAVELENGTH["NIR"]} nm',
+    'SWIR': f'Shortwave infrared at {LUT_WAVELENGTH["SWIR"]} nm',
+    'SWIR1': f'Shortwave infrared at {LUT_WAVELENGTH["SWIR1"]} nm',
+    'SWIR2': f'Shortwave infrared at {LUT_WAVELENGTH["SWIR2"]} nm',
+}
 
 NEXT_COLOR_HUE_DELTA_CON = 10
 NEXT_COLOR_HUE_DELTA_CAT = 100
