@@ -1,7 +1,120 @@
+import typing
+from PyQt5.QtCore import QObject, QRect, QSize, QPoint
+from PyQt5.QtWidgets import QSizePolicy
+
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 
 from qgis.PyQt.QtWidgets import QWidget, QAbstractSpinBox, QSpinBox, QDoubleSpinBox, \
-    QHBoxLayout, QVBoxLayout, QSlider
+    QHBoxLayout, QVBoxLayout, QSlider, QLayout, QLayoutItem, QStyle
+
+class FlowLayout(QLayout):
+    """
+    A FlowLayout, as descrbied in  https://doc.qt.io/qt-5/qtwidgets-layouts-flowlayout-example.html
+    """
+    def __init__(self, parent: QWidget = None, margin:int = -1, hSpacing:int = -1, vSpacing:int = -1):
+
+        super().__init__(parent)
+
+        self.m_hSpace = hSpacing
+        self.m_vSpace = vSpacing
+        self.m_itemlist: typing.List[QLayoutItem] = []
+        self.setContentsMargins(margin, margin, margin, margin)
+
+    def addItem(self, item: QLayoutItem):
+        assert isinstance(item, QLayoutItem)
+
+        self.m_itemlist.append(item)
+
+    def horizontalSpacing(self) -> int:
+        if self.m_hSpace >= 0:
+            return self.m_hSpace
+        else:
+            return self.smartSpacing(QStyle.PM_LayoutHorizontalSpacing)
+
+    def verticalSpacing(self) -> int:
+        if self.m_vSpace >= 0:
+            return self.m_vSpace
+        else:
+            return self.smartSpacing(QStyle.PM_LayoutVerticalSpacing)
+
+    def count(self) -> int:
+        return len(self.m_itemlist)
+
+    def itemAt(self, index:int) -> QLayoutItem:
+        if 0 <= index < len(self.m_itemlist):
+            return self.m_itemlist[index]
+        return None
+
+    def takeAt(self, index: int) -> QLayoutItem:
+        if 0 <= index < len(self.m_itemlist):
+            return self.m_itemlist.pop(index)
+        return None
+
+    def expandingDirections(self) -> Qt.Orientations:
+        return Qt.Horizontal | Qt.Vertical
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def heightForWidth(self, width: int) -> int:
+        return self.doLayout(QRect(0, 0, width, 0), True)
+
+    def setGeometry(self, rect: QRect):
+        super().setGeometry(rect)
+        self.doLayout(rect, False)
+
+    def sizeHint(self) -> QSize:
+        return self.minimumSize()
+
+    def minimumSize(self) -> QSize:
+        size = QSize()
+
+        for item in self.m_itemlist:
+            size.expandedTo(item.minimumSize())
+
+        margins = self.contentsMargins()
+        size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+        return size
+
+    def doLayout(self, rect:QRect, testOnly:bool) -> int:
+        left, top, right, bottom = self.getContentsMargins()
+        effectiveRect: QRect = rect.adjusted(+left, +top, -right, -bottom)
+        x: int = effectiveRect.x()
+        y: int = effectiveRect.y()
+        lineHeight = 0
+
+        for item in self.m_itemlist:
+            wid = item.widget()
+            spaceX = self.horizontalSpacing()
+            if spaceX == -1:
+                spaceX = wid.style().layoutSpacing(QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Horizontal)
+            spaceY = self.verticalSpacing()
+            if spaceY == -1:
+                spaceY = wid.style().layoutSpacing(QSizePolicy.PushButton, QSizePolicy.PushButton, Qt.Vertical)
+
+            nextX = x + item.sizeHint().width() + spaceX
+            if (nextX - spaceX > effectiveRect.right()) and lineHeight > 0:
+                x = effectiveRect.x()
+                y = y + lineHeight + spaceY
+                nextX = x + item.sizeHint().width() + spaceX
+                lineHeight = 0
+
+            if not testOnly:
+                item.setGeometry(QRect(QPoint(x,y), item.sizeHint()))
+
+            x = nextX
+            lineHeight = max(lineHeight, item.sizeHint().height())
+        return y + lineHeight - rect.y() + bottom
+
+    def smartSpacing(self, pm: QStyle.PixelMetric):
+        parent = self.parent()
+        if not isinstance(parent, QObject):
+            return -1
+
+        if isinstance(parent, QWidget):
+            return parent.style().pixelMetric(pm, None, parent)
+        elif isinstance(parent, QLayout):
+            return parent.spacing()
 
 
 class SliderSpinBox(QWidget):

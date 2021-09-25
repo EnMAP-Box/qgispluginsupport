@@ -183,21 +183,25 @@
      bordercolor="#666666"
      borderopacity="1"
      objecttolerance="10"
-     gridtolerance="10"
+     gridtolerance="10000"
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:window-width="1920"
      inkscape:window-height="1137"
      id="namedview32"
-     showgrid="false"
-     inkscape:zoom="1.7861812"
-     inkscape:cx="88.120834"
-     inkscape:cy="69.825615"
+     showgrid="true"
+     inkscape:zoom="2.5260417"
+     inkscape:cx="93.585919"
+     inkscape:cy="202.09107"
      inkscape:window-x="1912"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg30" />
+     inkscape:current-layer="svg30">
+    <inkscape:grid
+       type="xygrid"
+       id="grid1993" />
+  </sodipodi:namedview>
   <path
      d="M 10.863913,10.304059 H 120.06813 V 119.50827 H 10.863913 Z"
      fill="#e6e6e6"
@@ -251,10 +255,11 @@
        sodipodi:nodetypes="ccccaaacccccc" />
   </g>
   <path
-     d="M 160.75459,144.12778 H 269.95881 V 253.332 H 160.75459 Z"
+     d="M 160,145 H 270 V 255 H 160 Z"
      fill="#e6e6e6"
      id="path2-8"
-     style="stroke:#6e97c4;stroke-width:6.69571" />
+     style="stroke:#6e97c4;stroke-width:6.69571"
+     sodipodi:nodetypes="ccccc" />
   <g
      id="g984"
      transform="matrix(0.82474458,0,0,0.82474458,40.855724,28.52411)">
@@ -282,14 +287,16 @@
   </g>
   <path
      style="fill:#000000;fill-opacity:0;stroke:#555753;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
-     d="m 171.61503,241.0707 -1.11971,-86.41526"
+     d="M 170,245 V 155"
      id="path986"
      inkscape:path-effect="#path-effect988"
-     inkscape:original-d="m 171.61503,241.0707 c -0.37224,-28.80416 -0.74548,-57.60925 -1.11971,-86.41526" />
+     inkscape:original-d="m 170,245 c -0.37224,-28.80416 0.37423,-61.19399 0,-90"
+     sodipodi:nodetypes="cc" />
   <path
      style="fill:#000000;fill-opacity:0;stroke:#555753;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
-     d="m 171.61503,241.0707 86.41525,-1.11971"
+     d="m 170,245 h 90"
      id="path986-3"
      inkscape:path-effect="#path-effect1973"
-     inkscape:original-d="m 171.61503,241.0707 c 28.80415,-0.37225 57.60925,-0.74548 86.41525,-1.11971" />
+     inkscape:original-d="m 170,245 c 28.80415,-0.37225 61.194,0.37423 90,0"
+     sodipodi:nodetypes="cc" />
 </svg>
