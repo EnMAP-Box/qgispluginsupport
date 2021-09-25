@@ -67,10 +67,10 @@ class RasterValueSet(SourceValueSet):
 
             self.bandIndex = bandIndex
             self.bandValue = bandValue
-            self.bandName = bandName
+            self.bandName: str = bandName
             self.classInfo = classInfo
 
-    def __init__(self, source, point, pxPosition):
+    def __init__(self, source, point, pxPosition: QPoint):
         assert isinstance(pxPosition, QPoint)
         super(RasterValueSet, self).__init__(source, point)
         self.pxPosition = pxPosition
@@ -189,7 +189,8 @@ class CursorLocationInfoModel(TreeModel):
 
             for bv in sourceValueSet.bandValues:
                 if isinstance(bv, RasterValueSet.BandInfo):
-                    n = TreeNode(name='Band {}'.format(bv.bandIndex + 1))
+                    #n = TreeNode(name='Band {}'.format(bv.bandIndex + 1))
+                    n = TreeNode(name = bv.bandName)
                     n.setToolTip('Band {} {}'.format(bv.bandIndex + 1, bv.bandName).strip())
                     n.setValues([bv.bandValue, bv.bandName])
                     subNodes.append(n)

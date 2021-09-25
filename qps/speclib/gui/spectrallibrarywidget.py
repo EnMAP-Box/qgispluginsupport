@@ -143,7 +143,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProfileView = QAction('Show Profile Plot', parent=self)
         self.actionShowProfileView.setCheckable(True)
         self.actionShowProfileView.setChecked(True)
-        self.actionShowProfileView.setIcon(QIcon(':/images/themes/default/mActionLocalHistogramStretch.svg'))
+        self.actionShowProfileView.setIcon(QIcon(self.mSpeclibPlotWidget.windowIcon()))
         self.actionShowProfileView.triggered.connect(self.setCenterView)
 
         self.actionShowFormView = QAction('Show Form View', parent=self)
@@ -496,7 +496,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def onExportProfiles(self, *args):
 
-        SpectralLibraryExportDialog.exportProfiles(self.speclib(), parent=self)
+        files = SpectralLibraryExportDialog.exportProfiles(self.speclib(), parent=self)
+        if len(files) > 0:
+            self.sigFilesCreated.emit(files)
 
     def clearSpectralLibrary(self):
         """

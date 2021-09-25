@@ -2,6 +2,8 @@ import os
 import typing
 
 from PyQt5.QtWidgets import QFormLayout
+
+from qgis._core import QgsProject
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsVectorFileWriter, QgsCoordinateTransformContext, QgsCoordinateReferenceSystem
 
@@ -102,7 +104,6 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
     def createImportWidget(cls) -> SpectralLibraryImportWidget:
         return GeoPackageSpectralLibraryImportWidget()
 
-
     @classmethod
     def exportProfiles(cls,
                        path: str,
@@ -123,12 +124,15 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         saveVectorOptions = QgsVectorFileWriter.SaveVectorOptions()
         saveVectorOptions.feedback = feedback
         saveVectorOptions.driverName = 'GPKG'
+        saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
+        saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
 
         newLayerName = exportSettings.get('layer_name', '')
         if newLayerName == '':
             newLayerName = os.path.basename(newLayerName)
 
-        transformContext = QgsCoordinateTransformContext()
+        writer: QgsVectorFileWriter = None
+        transformContext = QgsProject.instance().transformContext()
         for i, profile in enumerate(profiles):
             if i == 0:
                 # init file writer based on 1st feature fields
@@ -139,13 +143,22 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
                     srs=exportSettings['crs'],
                     transformContext=transformContext,
                     options=saveVectorOptions,
-                    #sinkFlags=None,
-                    newLayer=newLayerName,
+                    # sinkFlags=None,
+                    # newLayer=newLayerName,
                     newFilename=None
                 )
+                if writer.hasError() != QgsVectorFileWriter.NoError:
+                    raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
 
-            writer.addFeature(profile)
+            if not writer.addFeature(profile):
+                if writer.hasError() != QgsVectorFileWriter.NoError:
+                    raise Exception(f'Error when creating feature: {writer.errorMessage()}')
 
+        if True:
+            lyr = QgsVectorLayer(path)
+            if lyr.isValid():
+                s = ""
+            s = ""
         return [path]
 
     @classmethod

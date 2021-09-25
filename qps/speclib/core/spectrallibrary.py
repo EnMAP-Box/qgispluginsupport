@@ -65,11 +65,11 @@ from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     fid2pixelindices, parseWavelength, parseBadBandList, optimize_block_size, \
     qgsField, qgsFieldAttributes2List, qgsFields2str, str2QgsFields
 from ...plotstyling.plotstyling import PlotStyle
-from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
+from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from . import field_index
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
     SpectralSetting, groupBySpectralProperties
-from .. import SPECLIB_EPSG_CODE, FIELD_FID, FIELD_VALUES
+from .. import SPECLIB_CRS, FIELD_FID, FIELD_VALUES
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -459,7 +459,7 @@ class SpectralLibraryUtils:
             nTotal = len(profiles)
         assert isinstance(speclibDst, QgsVectorLayer)
         assert speclibDst.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(
-            speclibSrc.name())
+            speclibDst.name())
 
         keysBefore = set(speclibDst.editBuffer().addedFeatures().keys())
 
@@ -1146,7 +1146,7 @@ class SpectralLibrary(QgsVectorLayer):
             # QGIS In-Memory Layer
             provider = 'memory'
             # path = "point?crs=epsg:4326&field=fid:integer"
-            path = f"point?crs={SPECLIB_EPSG_CODE}"
+            path = f"point?crs=epsg:{SPECLIB_EPSG_CODE}"
             # scratchLayer = QgsVectorLayer(uri, "Scratch point layer", "memory")
         assert isinstance(path, str)
         super(SpectralLibrary, self).__init__(path, baseName, provider, options)

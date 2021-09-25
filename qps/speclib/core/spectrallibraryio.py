@@ -512,13 +512,24 @@ class SpectralLibraryImportDialog(QDialog):
 class SpectralLibraryExportDialog(QDialog):
 
     @staticmethod
-    def exportProfiles(speclib: QgsVectorLayer, parent: QWidget = None):
+    def exportProfiles(speclib: QgsVectorLayer, parent: QWidget = None) -> typing.List[str]:
 
         dialog = SpectralLibraryExportDialog(parent=parent, speclib=speclib)
 
         if dialog.exec_() == QDialog.Accepted:
             w: SpectralLibraryExportWidget = dialog.currentExportWidget()
-            settings = dialog.currentExportWidget().exportSettings({})
+            io: SpectralLibraryIO =dialog.exportIO()
+            settings = dialog.exportSettings()
+            if isinstance(io, SpectralLibraryIO):
+                feedback = QgsProcessingFeedback()
+                path = dialog.exportPath()
+                if dialog.saveSelectedFeaturesOnly():
+                    profiles = speclib.getSelectedFeatures()
+                else:
+                    profiles = speclib.getFeatures()
+
+                return io.exportProfiles(path, settings, profiles, feedback)
+        return []
 
     def __init__(self, *args, speclib: QgsVectorLayer = None, **kwds):
         super().__init__(*args, **kwds)

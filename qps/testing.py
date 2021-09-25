@@ -855,12 +855,17 @@ class TestObjects(object):
 
         ds: gdal.Driver = drv.Create(path, ns, nl, bands=nb, eType=eType)
         assert isinstance(ds, gdal.Dataset)
+        for b in range(ds.RasterCount):
+            band: gdal.Band = ds.GetRasterBand(b + 1)
+            band.SetDescription(f'Test Band {b+1}')
+
         if no_data_rectangle > 0:
             no_data_rectangle = min([no_data_rectangle, ns])
             no_data_rectangle = min([no_data_rectangle, nl])
             for b in range(ds.RasterCount):
                 band: gdal.Band = ds.GetRasterBand(b + 1)
                 band.SetNoDataValue(no_data_value)
+
 
         coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
 
