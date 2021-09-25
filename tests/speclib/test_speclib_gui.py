@@ -448,14 +448,6 @@ class TestSpeclibWidgets(TestCase):
         w2.setLayout(l)
         self.showGui(w2)
 
-
-    def test_SpectraLibraryWidget_Empty(self):
-        w1 = QWidget()
-        w1.show()
-        w = SpectralLibraryWidget()
-
-        self.showGui(w)
-
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 

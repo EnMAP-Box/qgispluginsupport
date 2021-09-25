@@ -1,14 +1,27 @@
 import unittest
 import xmlrunner
+from PyQt5.QtWidgets import QPushButton
+
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QGridLayout
 from qps.testing import TestObjects, TestCase
 from qgis.gui import QgsSpinBox
 
-from qps.simplewidgets import SliderSpinBox, DoubleSliderSpinBox
+from qps.simplewidgets import SliderSpinBox, DoubleSliderSpinBox, FlowLayout
 
 class SimpleWidgetTests(TestCase):
 
+    def test_FlowLayout(self):
+
+
+        w = QWidget()
+        l = FlowLayout()
+
+        for i in range(10):
+            btn = QPushButton(f'Button {i+1}')
+            l.addWidget(btn)
+        w.setLayout(l)
+        self.showGui(w)
 
     def test_SliderSpinBox(self):
 
