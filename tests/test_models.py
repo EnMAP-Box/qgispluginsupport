@@ -45,7 +45,9 @@ class ModelTests(TestCase):
         m = TreeModel()
         if True:
             tv = TreeView()
-            tv.setAutoExpansionDepth(1)
+            tv.setUniformRowHeights(True)
+            tv.setAutoExpansionDepth(5)
+            tv.setIndentation(12)
         else:
             tv = QTreeView()
 

@@ -720,6 +720,34 @@ class OptionTreeNode(TreeNode):
     def options(self) -> typing.List[Option]:
         return self.mOptionModel.options()
 
+class NumpyArrayIterator(object):
+    """
+    Iterator for numpy.ndArrays
+    """
+
+
+    def __init__(self, array: np.ndarray):
+        assert isinstance(array, np.ndarray)
+        self.mArray = array
+        self.mIndex = -1
+        self.mMax = array.shape[0]
+
+    def __str__(self):
+        return 'NumpyArrayIterator'
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.mIndex += 1
+        if self.mIndex < self.mArray.shape[0]:
+            if self.mArray.ndim > 1:
+                return self.mIndex, self.mArray[self.mIndex, :]
+            else:
+                return self.mIndex, self.mArray[self.mIndex]
+        else:
+            raise StopIteration
+
 
 class PyObjectTreeNode(TreeNode):
 
@@ -736,15 +764,22 @@ class PyObjectTreeNode(TreeNode):
             self.mIsFetched = True
 
         else:
-
-            if isinstance(obj, (np.ndarray,)):
-                value = np.array2string(obj, threshold=10)
+            subnodes = []
+            if isinstance(obj, np.ndarray):
+                subnodes.append(TreeNode('min', value=obj.min()))
+                subnodes.append(TreeNode('max', value=obj.max()))
+                subnodes.append(TreeNode('shape', value=obj.shape))
+                subnodes.append(TreeNode('dtype', value=obj.dtype))
+                subnodes.append(TreeNode('size', value=obj.size))
+                value = np.array2string(obj, max_line_width=512)
             elif isinstance(obj, (bytearray, bytes)):
                 value = str(obj)
             else:
                 value = str(obj)
             self.setValue(value)
             self.setToolTip(f'{self.name()} {value}')
+            if len(subnodes) > 0:
+                self.appendChildNodes(subnodes)
 
     def canFetchMore(self) -> bool:
         return not self.mIsFetched
@@ -762,10 +797,19 @@ class PyObjectTreeNode(TreeNode):
         if self.mFetchIterator is None:
             if isinstance(self.mPyObject, (list, tuple)):
                 self.mFetchIterator = enumerate(self.mPyObject)
+            elif isinstance(self.mPyObject, np.ndarray):
+                # self.mFetchIterator = iter(self.mPyObject[:,])
+                self.mFetchIterator = iter({'array': NumpyArrayIterator(self.mPyObject),
+                                           #'internals': iter(self.mPyObject)
+                                            }.items())
+            elif isinstance(self.mPyObject, NumpyArrayIterator):
+                self.mFetchIterator = self.mPyObject
             elif isinstance(self.mPyObject, dict):
                 self.mFetchIterator = iter(self.mPyObject.items())
             elif isinstance(self.mPyObject, object):
                 self.mFetchIterator = iter(sorted(inspect.getmembers(self.mPyObject)))
+            elif isinstance(iter(self.mPyObject), typing.Iterator):
+                self.mFetchIterator = self.mPyObject
             else:
                 self.mIsFetched = True
                 return
