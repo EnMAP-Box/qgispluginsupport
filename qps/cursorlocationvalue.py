@@ -481,7 +481,7 @@ class CursorLocationInfoDock(QDockWidget):
                         classScheme = ClassificationScheme.fromRasterRenderer(l.renderer())
                     for b in bandNumbers:
                         if b in results.keys():
-                            bandValue = results[b] # always a float
+                            bandValue = results[b]
                             if bandValue:
                                 bandValue = as_py_value(bandValue, l.dataProvider().dataType(b))
 
