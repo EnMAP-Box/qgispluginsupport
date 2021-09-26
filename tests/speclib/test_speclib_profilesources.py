@@ -137,6 +137,7 @@ class SpectralProcessingTests(TestCase):
     def test_SpectralProfileSourcePanel(self):
 
         sources, spectralLibraryWidget = self.createTestObjects()
+        sources.append(TestObjects.createMultiMaskExample(nb=10, ns=30, nl=50))
         canvas = QgsMapCanvas()
         canvas.setLayers(sources)
         canvas.setDestinationCrs(sources[0].crs())
@@ -209,12 +210,21 @@ class SpectralProcessingTests(TestCase):
 
         speclib_sources =[slw1.speclib(), slw2.speclib()]
         QgsProject.instance().addMapLayers(speclib_sources, False)
-        canvas.setLayers(speclib_sources + sources)
+        maskLayer = TestObjects.createMultiMaskExample(nb=25, ns=50, nl=50)
+
+        if False:
+            map_sources = [src1, src2]
+        else:
+            map_sources = [maskLayer]
+
+        QgsProject.instance().addMapLayers(map_sources, False)
+        canvas.setLayers(map_sources)
+        canvas.zoomToFullExtent()
         # re-add destinations
         panel.addSpectralLibraryWidgets([slw1, slw2])
 
         # re-add sources
-        panel.addSources([src1, src2])
+        panel.addSources(map_sources)
 
         modes = SpectralProfileSamplingModeModel.registeredModes()
 

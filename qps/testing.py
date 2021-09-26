@@ -848,6 +848,7 @@ class TestObjects(object):
             band.SetDescription(ds.GetRasterBand(b+1).GetDescription())
         ds2.FlushCache()
         lyr = QgsRasterLayer(path)
+        lyr.setName('Multiband Mask')
         assert lyr.isValid()
 
         return lyr

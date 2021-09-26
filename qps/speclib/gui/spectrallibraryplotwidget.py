@@ -1878,10 +1878,12 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 pdi.setVisualizationKey(k)
             assert isinstance(pdi, SpectralProfilePlotDataItem)
 
-            if None in x or None in y:
-                s = ""
-
+            # replace None by NaN
+            x = np.asarray(x, dtype=float)
+            y = np.asarray(y, dtype=float)
+            connect = np.isfinite(x) & np.isfinite(y)
             pdi.setData(x=x, y=y, z=-1 * zValue,
+                        connect=connect,
                         name=name, pen=linePen,
                         symbol=symbol, symbolPen=symbolPen, symbolBrush=symbolBrush, symbolSize=symbolSize)
 
@@ -2063,7 +2065,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         updated = self.mCache1FeatureData.keys()
         # save the entire spectral profiles
         self.mCache1FeatureData.update(task.RESULTS)
-        SL = self.speclib()
+
         profile_field_indices = self.profileFieldIndices()
         for fid, sp in task.RESULTS.items():
             for fidx in profile_field_indices:
