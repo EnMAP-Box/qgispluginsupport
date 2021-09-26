@@ -58,13 +58,15 @@ class SourceValueSet(object):
 
 class RasterValueSet(SourceValueSet):
     class BandInfo(object):
-        def __init__(self, bandIndex, bandValue, bandName, classInfo=None):
+        def __init__(self, bandIndex, bandValue, bandName,
+                     is_nodata: bool =False, classInfo=None):
             assert bandIndex >= 0
             if bandValue is not None:
                 assert type(bandValue) in [float, int]
             if bandName is not None:
                 assert isinstance(bandName, str)
 
+            self.is_nodata: bool = bool(is_nodata)
             self.bandIndex = bandIndex
             self.bandValue = bandValue
             self.bandName: str = bandName
@@ -472,13 +474,16 @@ class CursorLocationInfoDock(QDockWidget):
                         assert isinstance(block, QgsRasterBlock)
                         v.bandValues.append(QColor(block.color(0, 0)))
                 else:
-                    results = l.dataProvider().identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
+                    dp: QgsRasterDataProvider = l.dataProvider()
+                    results = dp.identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
                     classScheme = None
                     if isinstance(l.renderer(), QgsPalettedRasterRenderer):
                         classScheme = ClassificationScheme.fromRasterRenderer(l.renderer())
                     for b in bandNumbers:
                         if b in results.keys():
-                            bandValue = as_py_value(results[b], l.dataProvider().dataType(b))
+                            bandValue = results[b] # always a float
+                            if bandValue:
+                                bandValue = as_py_value(bandValue, l.dataProvider().dataType(b))
 
                             classInfo = None
                             if isinstance(bandValue, (int, float)) \

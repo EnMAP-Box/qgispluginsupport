@@ -815,6 +815,44 @@ class TestObjects(object):
         return TestObjects.createRasterDataset(*args, **kwds)
 
     @staticmethod
+    def createMultiMaskExample(*args, **kwds) -> QgsRasterLayer:
+
+        path = '/vsimem/testMaskImage.{}.tif'.format(str(uuid.uuid4()))
+        ds = TestObjects.createRasterDataset(*args, **kwds)
+        nb = ds.RasterCount
+        nl, ns = ds.RasterYSize, ds.RasterXSize
+        arr: np.ndarray = ds.ReadAsArray()
+        arr = arr.reshape((nb, nl, ns))
+        nodata_values = []
+
+        d = int(min(nl, ns) * 0.25)
+
+        global_nodata = -9999
+        for b in range(nb):
+
+            x = random.randint(0, ns-1)
+            y = random.randint(0, nl-1)
+
+            #nodata = b
+            nodata = global_nodata
+            nodata_values.append(nodata)
+            arr[b,
+                max(y-d, 0):min(y+d, nl-1),
+                max(x-d, 0):min(x+d, ns-1)] = nodata
+
+        ds2: gdal.Dataset = gdal_array.SaveArray(arr, path, prototype=ds)
+
+        for b, nd in enumerate(nodata_values):
+            band: gdal.Band = ds2.GetRasterBand(b+1)
+            band.SetNoDataValue(nd)
+            band.SetDescription(ds.GetRasterBand(b+1).GetDescription())
+        ds2.FlushCache()
+        lyr = QgsRasterLayer(path)
+        assert lyr.isValid()
+
+        return lyr
+
+    @staticmethod
     def createRasterDataset(ns=10, nl=20, nb=1,
                             crs=None, gt=None,
                             eType: int = gdal.GDT_Int16,

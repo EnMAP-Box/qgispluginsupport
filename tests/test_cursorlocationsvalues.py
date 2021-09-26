@@ -50,6 +50,7 @@ class CursorLocationTest(TestCase):
     def test_maptool(self):
 
         lyrR = TestObjects.createRasterLayer(ns=50, nl=50, no_data_rectangle=40)
+        lyrR = TestObjects.createMultiMaskExample(nb=3, ns=50, nl=50)
         lyrV = TestObjects.createVectorLayer()
         layers = [lyrR, lyrV]
         QgsProject.instance().addMapLayers(layers)
