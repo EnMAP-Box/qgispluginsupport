@@ -1849,16 +1849,20 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 renderContext.expressionContext().setFeature(profile)
 
                 renderer.startRender(renderContext, profile.fields())
-                symbol = renderer.symbolForFeature(profile, renderContext)
-                symbolScope = symbol.symbolRenderContext().expressionContextScope()
+                qgssymbol = renderer.symbolForFeature(profile, renderContext)
+                if isinstance(qgssymbol, QgsSymbol):
+                    symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
+                    context.appendScope(symbolScope)
 
-                context.setFeature(profile)
-                context.appendScope(symbolScope)
                 prop = vis.colorProperty()
                 featureColor, success = prop.valueAsColor(context, defaultColor=QColor('white'))
                 renderer.stopRender(renderContext)
-                context.popScope()
+                if isinstance(qgssymbol, QgsSymbol):
 
+                    context.popScope()
+                    pass
+                if not success:
+                    s = ""
                 linePen.setColor(featureColor)
                 symbolPen.setColor(featureColor)
                 symbolBrush.setColor(featureColor)
