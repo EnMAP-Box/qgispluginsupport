@@ -264,6 +264,32 @@ class SpectralLibraryUtils:
     """
     This class provides methods to handel SpectralProfiles in a QgsVectorLayer
     """
+    @staticmethod
+    def readFromSource(source: typing.Union[str, QgsVectorLayer]) -> QgsVectorLayer:
+        """
+        Returns a vector layer as Spectral Library vector layer.
+        It is assumed that binary fields without special editor widget setup are Spectral Profile fields.
+        :param source: str | QgsVectorLayer
+        :return: QgsVectorLayer
+        """
+        if isinstance(source, str):
+            source = QgsVectorLayer(source)
+
+        if not isinstance(source, QgsVectorLayer):
+            return None
+        if not source.isValid():
+            return None
+
+        # assume that binary fields without other editor widgets are Spectral Profile Widgets
+        for i in range(source.fields().count()):
+            field: QgsField = source.fields().at(i)
+            if field.type() == QVariant.ByteArray and field.editorWidgetSetup().type() == '':
+                source.setEditorWidgetSetup(i, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
+
+        if not is_spectral_library(source):
+            return None
+
+        return source
 
     @staticmethod
     def readFromMimeData(mimeData: QMimeData):
@@ -658,6 +684,7 @@ class SpectralLibraryUtils:
             setup = fSrc.editorWidgetSetup()
             if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(speclib, idx):
                 speclib.setEditorWidgetSetup(idx, setup)
+    # assign
 
 
 class SpectralLibrary(QgsVectorLayer):
