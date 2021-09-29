@@ -512,6 +512,18 @@ class TestCore(TestCase):
         self.assertTrue(sl.commitChanges())
         self.assertTrue(len(sl.spectralProfileFields()) == 3)
 
+    def test_SpectralLibraryUtils(self):
+
+        from qpstestdata import speclib
+
+        vl = SpectralLibraryUtils.readFromSource(speclib)
+        self.assertIsInstance(vl, QgsVectorLayer)
+        self.assertTrue(is_spectral_library(vl))
+
+        vl2 = SpectralLibraryUtils.readFromVectorLayer(vl)
+        self.assertTrue(vl2, QgsVectorLayer)
+        self.assertTrue(is_spectral_library(vl2))
+
     def test_SpectralLibrary(self):
 
         SLIB = SpectralLibrary()
