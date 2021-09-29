@@ -1187,8 +1187,15 @@ class SpectralLibrary(QgsVectorLayer):
                 # copy editor widget type
 
                 assert self.commitChanges(stopEditing=True)
-
-        # self.attributeAdded.connect(self.onAttributeAdded)
+        else:
+            fields: QgsFields = self.fields()
+            for name in profile_fields:
+                i = fields.lookupField(name)
+                if i > -1:
+                    field: QgsField = fields.at(i)
+                    editorWidget: QgsEditorWidgetSetup = field.editorWidgetSetup()
+                    if field.type() == QVariant.ByteArray and editorWidget.type() == '':
+                        self.setEditorWidgetSetup(i, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
         self.initTableConfig()
 
