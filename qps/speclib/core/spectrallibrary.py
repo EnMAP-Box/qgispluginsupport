@@ -264,8 +264,14 @@ class SpectralLibraryUtils:
     """
     This class provides methods to handel SpectralProfiles in a QgsVectorLayer
     """
+
     @staticmethod
-    def readFromSource(source: typing.Union[str, QgsVectorLayer]) -> QgsVectorLayer:
+    def readFromSource(uri: str, feedback: QgsProcessingFeedback = None):
+        from .spectrallibraryio import SpectralLibraryIO
+        return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
+
+    @staticmethod
+    def readFromVectorLayer(source: typing.Union[str, QgsVectorLayer]) -> QgsVectorLayer:
         """
         Returns a vector layer as Spectral Library vector layer.
         It is assumed that binary fields without special editor widget setup are Spectral Profile fields.
@@ -1136,8 +1142,7 @@ class SpectralLibrary(QgsVectorLayer):
         :param uri: path or uri of the source from which to read SpectralProfiles and return them in a SpectralLibrary
         :return: SpectralLibrary
         """
-        from .spectrallibraryio import SpectralLibraryIO
-        return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
+        return SpectralLibraryUtils.readFromSource(uri, feedback)
 
     # sigProgressInfo = pyqtSignal(int, int, str)
 
