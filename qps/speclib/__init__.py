@@ -33,6 +33,7 @@ from qgis.core import QgsSettings, QgsCoordinateReferenceSystem, QgsField, QgsFi
 from qgis.PyQt.QtCore import NULL, QVariant
 from osgeo import ogr
 EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
+EDITOR_WIDGET_REGISTRY_NAME = 'Spectral Profile'
 
 SPECLIB_EPSG_CODE = 4326
 SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))

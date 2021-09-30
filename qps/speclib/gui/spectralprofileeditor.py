@@ -8,7 +8,7 @@ from qgis.core import QgsVectorLayer, QgsExpression, QgsFieldProxyModel, QgsFiel
 from qgis.gui import QgsEditorWidgetWrapper, QgsFieldExpressionWidget, QgsEditorConfigWidget, QgsGui, \
      QgsEditorWidgetFactory
 from qgis.PyQt.QtCore import NULL
-from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY
+from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core.spectralprofile import SpectralProfile, encodeProfileValueDict, decodeProfileValueDict
 from ...unitmodel import BAND_INDEX, XUnitModel
 from ...utils import loadUi
@@ -490,13 +490,13 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
 
 def registerSpectralProfileEditorWidget():
     widgetRegistry = QgsGui.editorWidgetRegistry()
-    fieldFormaterRegistry = QgsApplication.instance().fieldFormatterRegistry()
+    fieldFormatterRegistry = QgsApplication.instance().fieldFormatterRegistry()
 
     if not EDITOR_WIDGET_REGISTRY_KEY in widgetRegistry.factories().keys():
         global SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY
         global SPECTRAL_PROFILE_FIELD_FORMATTER
-        SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
+        SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_NAME)
         SPECTRAL_PROFILE_FIELD_FORMATTER = SpectralProfileFieldFormatter()
         widgetRegistry.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
-        fieldFormaterRegistry.addFieldFormatter(SPECTRAL_PROFILE_FIELD_FORMATTER)
+        fieldFormatterRegistry.addFieldFormatter(SPECTRAL_PROFILE_FIELD_FORMATTER)
         s = ""
