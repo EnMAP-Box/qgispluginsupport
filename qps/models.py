@@ -929,6 +929,7 @@ class TreeModel(QAbstractItemModel):
         idx = self.node2idx(node)
         idx2 = self.index(idx.row(), node.columnCount() - 1, parent=idx.parent())
         self.dataChanged.emit(idx, idx2)
+        s = ""
 
     def headerData(self, section, orientation, role):
         assert isinstance(section, int)
@@ -960,6 +961,7 @@ class TreeModel(QAbstractItemModel):
         else:
             idx = self.node2idx(parentNode)
             return self.createIndex(idx.row(), idx.column(), parentNode)
+        s = ""
 
     def rowCount(self, parent: QModelIndex = None) -> int:
         """
@@ -1247,6 +1249,11 @@ class TreeView(QTreeView):
         self.mAutoExpansionDepth: int = 1
         self.mModel = None
         self.mNodeExpansion: typing.Dict[str, bool] = dict()
+        self.mAutoFirstColumnSpan: bool = True
+
+    def setAutoFirstColumnSpan(self, b:bool):
+        assert isinstance(b, bool)
+        self.mAutoFirstColumnSpan = b
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         """
@@ -1266,6 +1273,7 @@ class TreeView(QTreeView):
         if not menu.isEmpty():
             menu.exec_(self.viewport().mapToGlobal(event.pos()))
 
+
     def setAutoExpansionDepth(self, depth: int):
         """
         Sets the depth until which new TreeNodes will be opened
@@ -1276,6 +1284,7 @@ class TreeView(QTreeView):
         """
         assert isinstance(depth, int)
         self.mAutoExpansionDepth = depth
+
 
     def updateNodeExpansion(self, restore: bool,
                             index: QModelIndex = None, prefix='') -> typing.Dict[str, bool]:
@@ -1313,6 +1322,7 @@ class TreeView(QTreeView):
 
         return self.mNodeExpansion
 
+
     def setModel(self, model: QAbstractItemModel):
         """
         Sets the TreeModel
@@ -1324,14 +1334,14 @@ class TreeView(QTreeView):
         if isinstance(self.mModel, QAbstractItemModel):
             self.mModel.modelReset.connect(self.onModelReset)
             self.mModel.dataChanged.connect(self.onDataChanged)
-            # self.mModel.rowsAboutToBeInserted.connect(self.onAboutRowsInserted)
             self.mModel.rowsInserted.connect(self.onRowsInserted)
 
         # update column spans
-        # self.onModelReset()
+        self.onModelReset()
 
     def onModelReset(self):
-        self.setColumnSpan(QModelIndex(), None, None)
+        if self.mAutoFirstColumnSpan:
+            self.setColumnSpan(QModelIndex(), None, None)
 
     def nodeDepth(self, index: QModelIndex) -> int:
         if not index.isValid():
@@ -1340,16 +1350,17 @@ class TreeView(QTreeView):
 
     def onRowsInserted(self, parent: QModelIndex, first: int, last: int):
 
-        node = self.model().data(parent, Qt.UserRole)
-        if True:
+        if self.mAutoFirstColumnSpan:
             self.setColumnSpan(parent, first, last)
+
         if True:
             level = self.nodeDepth(parent)
             if level < self.mAutoExpansionDepth:
                 self.setExpanded(parent, True)
 
     def onDataChanged(self, tl: QModelIndex, br: QModelIndex, roles):
-        self.setColumnSpan(tl.parent(), tl.row(), br.row())
+        if self.mAutoFirstColumnSpan:
+            self.setColumnSpan(tl.parent(), tl.row(), br.row())
 
     def setColumnSpan(self, parent: QModelIndex, first: int, last: int):
         """
@@ -1364,6 +1375,9 @@ class TreeView(QTreeView):
             return
         assert isinstance(parent, QModelIndex)
 
+        if parent.column() != 0:
+            return
+
         rows = model.rowCount(parent)
         cols = model.columnCount(parent)
 
@@ -1375,10 +1389,11 @@ class TreeView(QTreeView):
             last = rows - 1
 
         assert last < rows
+
         for r in range(first, last + 1):
             idx0: QModelIndex = model.index(r, 0, parent)
 
-            spanned = True
+            spanned: bool = True
             for c in range(1, cols):
                 idx_right = model.index(r, c, parent)
                 if idx_right.isValid():
@@ -1386,10 +1401,13 @@ class TreeView(QTreeView):
                     if txt not in [None, '']:
                         spanned = False
                         break
+
+            print(f'COL SPANNED {txt} {spanned}', flush=True)
+
             self.setFirstColumnSpanned(r, parent, spanned)
 
             # traverse sub-trees structure
-            self.setColumnSpan(idx0, None, None)
+            # self.setColumnSpan(idx0, None, None)
         return
 
     def selectedNode(self) -> TreeNode:
