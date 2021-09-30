@@ -13,7 +13,9 @@ temp/
 doc/build/*
 vrtbuilder/ui/resources.py
 vrtbuilder/externals/qps/qpsresources.py
-qps/enmap.*
+qps/enmap*.*
+qps/enmap.tif
+qps/enmap.tif.aux.xml
 tests/outputs
 tests/outputs/*
 test-reports.txt
