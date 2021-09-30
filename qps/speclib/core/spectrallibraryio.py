@@ -241,6 +241,8 @@ class SpectralLibraryIO(object):
                        feedback: QgsProcessingFeedback) -> typing.List[str]:
         """
         Writes the files and returns a list of written files paths that can be used to import the profile
+        :param path:
+        :type path:
         :param exportSettings:
         :param profiles:
         :param feedback:

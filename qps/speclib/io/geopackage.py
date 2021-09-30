@@ -3,7 +3,7 @@ import typing
 
 from PyQt5.QtWidgets import QFormLayout
 
-from qgis._core import QgsProject
+from qgis._core import QgsProject, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsVectorFileWriter, QgsCoordinateTransformContext, QgsCoordinateReferenceSystem
 
@@ -125,7 +125,7 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         saveVectorOptions.feedback = feedback
         saveVectorOptions.driverName = 'GPKG'
         saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
-        saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
+        saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
 
         newLayerName = exportSettings.get('layer_name', '')
         if newLayerName == '':
@@ -139,8 +139,8 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
                 writer = QgsVectorFileWriter.create(
                     fileName=path,
                     fields=profile.fields(),
-                    geometryType=exportSettings['wkbType'],
-                    srs=exportSettings['crs'],
+                    geometryType=exportSettings.get('wkbType', QgsWkbTypes.NoGeometry),
+                    srs=QgsCoordinateReferenceSystem(exportSettings.get('crs', QgsCoordinateReferenceSystem())),
                     transformContext=transformContext,
                     options=saveVectorOptions,
                     # sinkFlags=None,
