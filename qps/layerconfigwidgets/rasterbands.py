@@ -27,7 +27,7 @@ import pathlib
 
 from PyQt5.QtWidgets import QGroupBox, QToolButton, QPushButton
 
-from qgis._core import QgsHillshadeRenderer
+from qgis.core import QgsHillshadeRenderer
 from qgis.core import QgsRasterDataProvider, QgsRasterLayer, QgsMapLayer, \
     QgsRasterRenderer, \
     QgsSingleBandGrayRenderer, \

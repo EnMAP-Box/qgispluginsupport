@@ -148,7 +148,7 @@ def unregisterEditorWidgets():
 
 def registerExpressionFunctions():
     try:
-        from qps.qgsfunctions import registerQgsExpressionFunctions
+        from .qgsfunctions import registerQgsExpressionFunctions
         registerQgsExpressionFunctions()
     except Exception as ex:
         print('Failed to call qps.speclib.qgsfunctions.registerQgsExpressionFunctions()', file=sys.stderr)
@@ -166,7 +166,7 @@ def registerSpectralLibraryIOs():
 
 
 def unregisterExpressionFunctions():
-    from qps.qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
+    from .qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
     _unregisterQgsExpressionFunctions()
 
 

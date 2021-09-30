@@ -32,6 +32,8 @@ class ResourceTests(unittest.TestCase):
                     if rxTest3.search(line):
                         errors.append(f'File "{path}", line {i+1}, "{line.strip()}"')
                     elif rxTest1.search(line) or rxTest2.search(line):
+                        if path.name == 'utils.py' and rxTest2.search(line):
+                            continue
                         if not (lastLine and 'except ImportError:' in lastLine):
                             errors.append(f'File "{path}", line {i+1}, "{line.strip()}"')
                     lastLine = line
@@ -40,3 +42,7 @@ class ResourceTests(unittest.TestCase):
 
 
 
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

@@ -3,7 +3,7 @@ import typing
 
 from PyQt5.QtWidgets import QFormLayout
 
-from qgis._core import QgsFeatureSink, QgsVectorLayerExporter
+from qgis.core import QgsFeatureSink, QgsVectorLayerExporter
 from qgis.core import QgsProject, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsVectorFileWriter, QgsCoordinateTransformContext, QgsCoordinateReferenceSystem
