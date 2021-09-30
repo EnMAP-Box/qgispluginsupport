@@ -256,16 +256,15 @@ class SpectralLibraryIO(object):
             feedback: QgsProcessingFeedback = None) -> typing.List[QgsFeature]:
 
         if isinstance(uri, QUrl):
-            if uri.isLocalFile():
-                uri = uri.toLocalFile()
-            else:
-                uri.toString()
-        if isinstance(uri, pathlib.Path):
+            uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
+
+        elif isinstance(uri, pathlib.Path):
             uri = uri.as_posix()
-        global SpectralLibraryIO
 
         if not isinstance(uri, str):
             return []
+
+        global SpectralLibraryIO
 
         ext = os.path.splitext(uri)[1]
 
@@ -299,7 +298,11 @@ class SpectralLibraryIO(object):
         :return: SpectralLibrary
         """
         speclib = None
-
+        if isinstance(uri, QUrl):
+            uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
+        elif isinstance(uri, pathlib.Path):
+            uri = uri.as_posix()
+        assert isinstance(uri, str)
         # 1. Try to open directly as vector layer
         try:
             from .spectrallibrary import SpectralLibrary
