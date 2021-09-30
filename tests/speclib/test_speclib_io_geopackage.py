@@ -58,5 +58,6 @@ class TestIO(TestCase):
             lyr = QgsVectorLayer(file)
             self.assertIsInstance(lyr, QgsVectorLayer)
             self.assertTrue(lyr.isValid())
+            self.assertTrue(lyr.featureCount() > 0)
 
         s = ""
