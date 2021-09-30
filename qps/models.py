@@ -1392,6 +1392,12 @@ class TreeView(QTreeView):
 
         for r in range(first, last + 1):
             idx0: QModelIndex = model.index(r, 0, parent)
+            node = idx0.data(Qt.UserRole)
+            if isinstance(node, PyObjectTreeNode):
+                # workaround for EnMAP-Box issue 672 and issue 737
+                # https://bitbucket.org/hu-geomatics/enmap-box/issues/672
+                # https://bitbucket.org/hu-geomatics/enmap-box/issues/737
+                continue
 
             spanned: bool = True
             for c in range(1, cols):
