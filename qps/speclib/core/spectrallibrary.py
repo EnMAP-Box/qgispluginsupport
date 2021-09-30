@@ -1149,7 +1149,7 @@ class SpectralLibrary(QgsVectorLayer):
     def __init__(self,
                  path: str = None,
                  baseName: str = DEFAULT_NAME,
-                 provider: str = None,
+                 provider: str = 'ogr',
                  options: QgsVectorLayer.LayerOptions = None,
                  fields: QgsFields = None,
                  profile_fields: typing.List[str] = [FIELD_VALUES],
