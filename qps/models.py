@@ -1273,7 +1273,6 @@ class TreeView(QTreeView):
         if not menu.isEmpty():
             menu.exec_(self.viewport().mapToGlobal(event.pos()))
 
-
     def setAutoExpansionDepth(self, depth: int):
         """
         Sets the depth until which new TreeNodes will be opened
@@ -1285,9 +1284,10 @@ class TreeView(QTreeView):
         assert isinstance(depth, int)
         self.mAutoExpansionDepth = depth
 
-
-    def updateNodeExpansion(self, restore: bool,
-                            index: QModelIndex = None, prefix='') -> typing.Dict[str, bool]:
+    def updateNodeExpansion(self,
+                            restore: bool,
+                            index: QModelIndex = None,
+                            prefix='') -> typing.Dict[str, bool]:
         """
         Allows to save and restore the state of node expansion
         :param restore: bool, set True to save the state, False to restore it
@@ -1321,7 +1321,6 @@ class TreeView(QTreeView):
                     self.updateNodeExpansion(restore, index=idx, prefix=nodeName)
 
         return self.mNodeExpansion
-
 
     def setModel(self, model: QAbstractItemModel):
         """
@@ -1364,10 +1363,10 @@ class TreeView(QTreeView):
 
     def setColumnSpan(self, parent: QModelIndex, first: int, last: int):
         """
-        Sets the column span for the rows "first" to "last" recursively
+        Sets the column span for node in rows "first" to "last" recursively
         :param parent:
-        :param idx:
-        :return:
+        :param first: (optional) 1st row to set column span for. Defaults to 0
+        :param last: (optional) last row to set column span for. Defaults to rowCount()-1 of parent
         """
 
         model: QAbstractItemModel = self.model()
@@ -1389,6 +1388,7 @@ class TreeView(QTreeView):
             last = rows - 1
 
         assert last < rows
+        assert first <= last
 
         for r in range(first, last + 1):
             idx0: QModelIndex = model.index(r, 0, parent)
@@ -1401,8 +1401,6 @@ class TreeView(QTreeView):
                     if txt not in [None, '']:
                         spanned = False
                         break
-
-            print(f'COL SPANNED {txt} {spanned}', flush=True)
 
             self.setFirstColumnSpanned(r, parent, spanned)
 
