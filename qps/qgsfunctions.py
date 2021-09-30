@@ -2,8 +2,9 @@
 # noinspection PyPep8Naming
 """
 ***************************************************************************
-    speclib/qgsfunctions.py
-    qgsfunctions to be used in QgsExpressions to access SpectralLibrary data
+    qgsfunctions.py
+    QgsFunctions to be used in QgsExpressions,
+    e.g. to access SpectralLibrary data
     ---------------------
     Date                 : Okt 2018
     Copyright            : (C) 2018 by Benjamin Jakimow
@@ -32,11 +33,11 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsExpression, QgsFeature, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext
 from qgis.PyQt.QtCore import QVariant, NULL
-from ..speclib.core.spectrallibrary import FIELD_VALUES, SpectralProfile
+from qps.speclib.core.spectrallibrary import FIELD_VALUES, SpectralProfile
 
-QGS_FUNCTION_GROUP = "Spectral Libraries"
+SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
-QGIS_FUNCTION_INSTANCES = dict()
+QGIS_FUNCTION_INSTANCES: typing.Dict[str, QgsExpressionFunction] = dict()
 
 
 class HelpStringMaker(object):
@@ -152,6 +153,8 @@ def format_py(fmt: str, *args):
 
     return fmt.format(*fmtArgs)
 """
+
+
 class Format_Py(QgsExpressionFunction):
 
     def __init__(self):
@@ -190,7 +193,7 @@ class Format_Py(QgsExpressionFunction):
 
 class SpectralData(QgsExpressionFunction):
     def __init__(self):
-        group = QGS_FUNCTION_GROUP
+        group = SPECLIB_FUNCTION_GROUP
         name = 'spectralData'
 
         args = [
@@ -229,7 +232,7 @@ class SpectralData(QgsExpressionFunction):
 class SpectralMath(QgsExpressionFunction):
 
     def __init__(self):
-        group = QGS_FUNCTION_GROUP
+        group = SPECLIB_FUNCTION_GROUP
         name = 'spectralMath'
 
         args = [
@@ -275,23 +278,28 @@ def registerQgsExpressionFunctions():
     """
     global QGIS_FUNCTION_INSTANCES
     for func in [Format_Py(), SpectralMath(), SpectralData()]:
-        QGIS_FUNCTION_INSTANCES[func.name()] = func
+
         if QgsExpression.isFunctionName(func.name()):
-            if not QgsExpression.unregisterFunction(func.name()):
-                msg = QCoreApplication.translate("UserExpressions",
-                                                 "User expression {0} already exists and "
-                                                 "can not be unregistered.").format(func.name)
-                QgsMessageLog.logMessage(msg + "\n", level=Qgis.Warning)
-                return None
-        if QgsExpression.registerFunction(func):
-            QgsMessageLog.logMessage(f'Registered {func.name()}', level=Qgis.Info)
+            msg = QCoreApplication.translate("UserExpressions",
+                                             "User expression {0} already exists").format(func.name)
+            QgsMessageLog.logMessage(msg + "\n", level=Qgis.Warning)
         else:
-            QgsMessageLog.logMessage(f'Failed to register {func.name()}', level=Qgis.Warning)
+            if func.name() in QGIS_FUNCTION_INSTANCES.keys():
+                QgsMessageLog.logMessage(f'{func.name()} not registered, but python instance exists', level=Qgis.Info)
+                func = QGIS_FUNCTION_INSTANCES[func.name()]
+
+            if QgsExpression.registerFunction(func):
+                QgsMessageLog.logMessage(f'Registered {func.name()}', level=Qgis.Info)
+                QGIS_FUNCTION_INSTANCES[func.name()] = func
+            else:
+                QgsMessageLog.logMessage(f'Failed to register {func.name()}', level=Qgis.Warning)
 
 
 def unregisterQgsExpressionFunctions():
     for name, func in QGIS_FUNCTION_INSTANCES.items():
-        if QgsExpression.unregisterFunction(name):
-            QgsMessageLog.logMessage(f'Unregistered {name}', level=Qgis.Info)
-        else:
-            QgsMessageLog.logMessage(f'Unable to unregister {name}',level=Qgis.Warning)
+        assert name == func.name()
+        if QgsExpression.isFunctionName(name):
+            if QgsExpression.unregisterFunction(name):
+                QgsMessageLog.logMessage(f'Unregistered {name}', level=Qgis.Info)
+            else:
+                QgsMessageLog.logMessage(f'Unable to unregister {name}', level=Qgis.Warning)

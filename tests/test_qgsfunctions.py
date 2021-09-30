@@ -1,7 +1,7 @@
 import unittest
 import xmlrunner
-from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils
-from qps.speclib.qgsfunctions import SpectralMath, HelpStringMaker, registerQgsExpressionFunctions, Format_Py
+from qgis.core import QgsExpressionFunction, QgsExpression
+from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py
 from qps.testing import TestObjects
 
 
@@ -12,7 +12,7 @@ class QgsFunctionTests(unittest.TestCase):
         f = SpectralMath()
 
         self.assertIsInstance(f, QgsExpressionFunction)
-        b = QgsExpression.registerFunction(f)
+        self.assertTrue(QgsExpression.registerFunction(f))
         HM = HelpStringMaker()
         html = HM.helpText(f.name(), f.parameters())
 
@@ -21,16 +21,17 @@ class QgsFunctionTests(unittest.TestCase):
         exp = QgsExpression("SpectralMath('foobar')")
         self.assertTrue(QgsExpression.isFunctionName(f.name()))
         h = QgsExpression.helpText(f.name())
-        s = ""
+        self.assertTrue(QgsExpression.unregisterFunction(f.name()))
 
     def test_format_py(self):
         f = Format_Py()
-        b = QgsExpression.registerFunction(f)
+        self.assertTrue(QgsExpression.registerFunction(f))
         self.assertTrue(QgsExpression.isFunctionName(f.name()))
 
         HM = HelpStringMaker()
         html = HM.helpText(f.name(), f.parameters())
         self.assertIsInstance(html, str)
+        self.assertTrue(QgsExpression.unregisterFunction(f.name()))
 
 
 if __name__ == '__main__':

@@ -31,7 +31,7 @@ import typing
 import warnings
 from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
-import qgis.core
+
 # os.environ['PYQTGRAPH_QT_LIB'] = 'qgis.PyQt'
 
 MIN_QGIS_VERSION = '3.16'
@@ -148,7 +148,7 @@ def unregisterEditorWidgets():
 
 def registerExpressionFunctions():
     try:
-        from .speclib.qgsfunctions import registerQgsExpressionFunctions
+        from qps.qgsfunctions import registerQgsExpressionFunctions
         registerQgsExpressionFunctions()
     except Exception as ex:
         print('Failed to call qps.speclib.qgsfunctions.registerQgsExpressionFunctions()', file=sys.stderr)
@@ -166,7 +166,7 @@ def registerSpectralLibraryIOs():
 
 
 def unregisterExpressionFunctions():
-    from .speclib.qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
+    from qps.qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
     _unregisterQgsExpressionFunctions()
 
 
