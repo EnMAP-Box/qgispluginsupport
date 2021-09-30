@@ -361,7 +361,10 @@ class SpectralLibraryImportDialog(QDialog):
 
             context = QgsExpressionContext()
             context.setFields(profiles[0].fields())
-            context.setFeedback(feedback)
+
+            if hasattr(context, 'setFeedback'):
+                # available since QGIS 3.20
+                context.setFeedback(feedback)
 
             scope = QgsExpressionContextScope()
             scope.setFields(profiles[0].fields())
