@@ -152,7 +152,12 @@ if QT_LIB == PYQT5:
     _copy_attrs(PyQt5.QtGui, QtGui)
     _copy_attrs(PyQt5.QtWidgets, QtWidgets)
 
-    from PyQt5 import sip, uic
+    #from PyQt5 import sip, uic
+    from PyQt5 import uic
+    try:
+        from PyQt5 import sip
+    except ImportError:
+        import sip
 
     try:
         from PyQt5 import QtSvg
