@@ -187,8 +187,6 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui([w, rb])
 
-
-
     def test_UnitConverterFunctionModel(self):
 
         m = UnitConverterFunctionModel()
@@ -223,7 +221,6 @@ class TestSpeclibWidgets(TestCase):
         pw.setDualView(dualView)
 
         self.showGui(pw)
-
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorSchemeWidget(self):
@@ -382,8 +379,8 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryWidget()
         from qpstestdata import speclib_labeled
         sl = SpectralLibrary.readFrom(speclib_labeled)
-        #self.assertIsInstance(sl, SpectralLibrary)
-        #self.assertTrue(len(sl) > 0)
+        # self.assertIsInstance(sl, SpectralLibrary)
+        # self.assertTrue(len(sl) > 0)
         # w.addSpeclib(sl)
         self.showGui(w)
 
@@ -432,8 +429,8 @@ class TestSpeclibWidgets(TestCase):
     def test_CurrentProfiles(self):
         w = SpectralLibraryWidget()
 
-
         styles = dict()
+
         def onClicked(*args):
             sl = TestObjects.createSpectralLibrary(2)
             w.setCurrentProfiles(sl[:])
@@ -498,12 +495,11 @@ class TestSpeclibWidgets(TestCase):
         sl1.startEditing()
         sl1.addSpeclib(sl2)
 
-        profiles = TestObjects.spectralProfiles(4, fields=sl1.fields(), n_bands=[7,12])
+        profiles = TestObjects.spectralProfiles(4, fields=sl1.fields(), n_bands=[7, 12])
         slw.setCurrentProfiles(profiles)
         fids_a = sl1.allFeatureIds()
-        #sl1.commitChanges()
-        #fids_b = sl1.allFeatureIds()
-
+        # sl1.commitChanges()
+        # fids_b = sl1.allFeatureIds()
 
         QgsProject.instance().addMapLayer(slw.speclib())
 
@@ -517,7 +513,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertTrue(slw.speclib() == sl1)
 
         from qps.resources import ResourceBrowser
-        #b = ResourceBrowser()
+        # b = ResourceBrowser()
         self.showGui([slw])
 
     @unittest.skipIf(False, '')

@@ -213,6 +213,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
 
+        # self.mSpeclibPlotWidget.splitter.setSizes([90, 10])
+
     def setViewVisibility(self, viewType: ViewType):
         """
         Sets the visibility of views
