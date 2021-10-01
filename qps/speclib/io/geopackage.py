@@ -80,13 +80,6 @@ class GeoPackageSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
         return context
 
-    @staticmethod
-    def importProfiles(path: str,
-                       importSettings: dict,
-                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
-        lyr = QgsVectorLayer(path)
-        return lyr.getFeatures()
-
 
 class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 

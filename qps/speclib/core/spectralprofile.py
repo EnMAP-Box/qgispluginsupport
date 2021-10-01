@@ -36,6 +36,12 @@ EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None, 'bbl
 def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = None, bbl=None, prototype: dict = None):
     """
     Creates a profile value dictionary from inputs
+    :param y:
+    :param prototype:
+    :param bbl:
+    :param yUnit:
+    :param xUnit:
+    :param x:
     :param d:
     :return:
     """
