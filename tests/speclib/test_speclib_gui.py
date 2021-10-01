@@ -187,8 +187,6 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui([w, rb])
 
-
-
     def test_UnitConverterFunctionModel(self):
 
         m = UnitConverterFunctionModel()
@@ -223,7 +221,6 @@ class TestSpeclibWidgets(TestCase):
         pw.setDualView(dualView)
 
         self.showGui(pw)
-
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPlotColorSchemeWidget(self):
@@ -382,8 +379,8 @@ class TestSpeclibWidgets(TestCase):
         w = SpectralLibraryWidget()
         from qpstestdata import speclib_labeled
         sl = SpectralLibrary.readFrom(speclib_labeled)
-        #self.assertIsInstance(sl, SpectralLibrary)
-        #self.assertTrue(len(sl) > 0)
+        # self.assertIsInstance(sl, SpectralLibrary)
+        # self.assertTrue(len(sl) > 0)
         # w.addSpeclib(sl)
         self.showGui(w)
 
@@ -432,8 +429,8 @@ class TestSpeclibWidgets(TestCase):
     def test_CurrentProfiles(self):
         w = SpectralLibraryWidget()
 
-
         styles = dict()
+
         def onClicked(*args):
             sl = TestObjects.createSpectralLibrary(2)
             w.setCurrentProfiles(sl[:])
@@ -447,6 +444,36 @@ class TestSpeclibWidgets(TestCase):
         l.addWidget(w)
         w2.setLayout(l)
         self.showGui(w2)
+
+    def test_SpectralLibraryWidget_ViewTypes(self):
+
+        w = SpectralLibraryWidget()
+        w.show()
+
+        w.setViewVisibility(SpectralLibraryWidget.ViewType.Empty)
+        self.assertFalse(w.mSpeclibPlotWidget.isVisible())
+        self.assertFalse(w.pageProcessingWidget.isVisible())
+        self.assertFalse(w.mMainView.isVisible())
+
+        w.setViewVisibility(SpectralLibraryWidget.ViewType.ProcessingView)
+        self.assertFalse(w.mSpeclibPlotWidget.isVisible())
+        self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
+        self.assertFalse(w.mMainView.isVisible())
+        self.assertTrue(w.pageProcessingWidget.isVisible())
+
+        w.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
+        self.assertFalse(w.pageProcessingWidget.isVisible())
+        self.assertTrue(w.mMainView.isVisible())
+        self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
+        self.assertTrue(w.mSpeclibPlotWidget.isVisible())
+        self.assertTrue(w.mMainView.isVisible())
+
+        w.setViewVisibility(SpectralLibraryWidget.ViewType.ProfileView)
+        self.assertTrue(w.mSpeclibPlotWidget.isVisible())
+        self.assertFalse(w.mMainView.isVisible())
+        self.assertFalse(w.pageProcessingWidget.isVisible())
+
+        self.showGui(w)
 
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
@@ -468,12 +495,11 @@ class TestSpeclibWidgets(TestCase):
         sl1.startEditing()
         sl1.addSpeclib(sl2)
 
-        profiles = TestObjects.spectralProfiles(4, fields=sl1.fields(), n_bands=[7,12])
+        profiles = TestObjects.spectralProfiles(4, fields=sl1.fields(), n_bands=[7, 12])
         slw.setCurrentProfiles(profiles)
         fids_a = sl1.allFeatureIds()
-        #sl1.commitChanges()
-        #fids_b = sl1.allFeatureIds()
-
+        # sl1.commitChanges()
+        # fids_b = sl1.allFeatureIds()
 
         QgsProject.instance().addMapLayer(slw.speclib())
 
@@ -487,7 +513,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertTrue(slw.speclib() == sl1)
 
         from qps.resources import ResourceBrowser
-        #b = ResourceBrowser()
+        # b = ResourceBrowser()
         self.showGui([slw])
 
     @unittest.skipIf(False, '')

@@ -61,3 +61,7 @@ class TestIO(TestCase):
             self.assertTrue(lyr.featureCount() > 0)
 
         s = ""
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

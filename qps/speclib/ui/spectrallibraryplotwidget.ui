@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>346</width>
-    <height>299</height>
+    <width>548</width>
+    <height>324</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,27 +19,24 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
-    <number>2</number>
+    <number>0</number>
    </property>
    <property name="leftMargin">
-    <number>2</number>
+    <number>0</number>
    </property>
    <property name="topMargin">
-    <number>2</number>
+    <number>0</number>
    </property>
    <property name="rightMargin">
-    <number>2</number>
+    <number>0</number>
    </property>
    <property name="bottomMargin">
-    <number>2</number>
+    <number>0</number>
    </property>
    <item>
     <widget class="QSplitter" name="splitter">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
-     </property>
-     <property name="opaqueResize">
-      <bool>false</bool>
      </property>
      <widget class="SpectralProfilePlotWidget" name="plotWidget">
       <property name="sizePolicy">
@@ -145,6 +142,12 @@
        </item>
        <item row="2" column="0">
         <widget class="SpectralProfilePlotControlView" name="treeView">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>1</verstretch>
+          </sizepolicy>
+         </property>
          <property name="dragEnabled">
           <bool>true</bool>
          </property>
