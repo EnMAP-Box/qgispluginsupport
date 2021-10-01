@@ -679,10 +679,12 @@ class SpectralLibraryExportDialog(QDialog):
 def initSpectralLibraryIOs():
     from ..io.geopackage import GeoPackageSpectralLibraryIO
     from ..io.envi import EnviSpectralLibraryIO
+    from ..io.asd import ASDSpectralLibraryIO
 
     speclibIOs = [
         GeoPackageSpectralLibraryIO(),
-        EnviSpectralLibraryIO()
+        EnviSpectralLibraryIO(),
+        ASDSpectralLibraryIO()
     ]
 
     for speclibIO in speclibIOs:

@@ -465,7 +465,7 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def formatName(cls) -> str:
-        return 'ASD'
+        return 'ASD Field Spectrometer'
 
     @classmethod
     def createImportWidget(cls) -> SpectralLibraryImportWidget:
