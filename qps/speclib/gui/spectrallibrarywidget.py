@@ -56,6 +56,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
 
+        self.mToolbar: QToolBar
         self.mIODialogs: typing.List[QWidget] = list()
 
         self.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
@@ -137,8 +138,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProperties.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
         self.actionShowProperties.triggered.connect(self.showProperties)
 
-        self.tbSpeclibAction = QToolBar('Spectral Profiles')
+        self.tbSpeclibAction = QToolBar('Spectral Library')
         self.tbSpeclibAction.setObjectName('SpectralLibraryToolbar')
+        self.tbSpeclibAction.setFloatable(False)
+        self.tbSpeclibAction.setMovable(False)
+        # self.tbSpeclibAction.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tbSpeclibAction.addAction(self.actionSelectProfilesFromMap)
         self.tbSpeclibAction.addAction(self.actionAddProfiles)
         self.tbSpeclibAction.addAction(self.actionImportSpeclib)
@@ -178,14 +182,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mMainViewButtonGroup.buttonClicked.connect(self.updateToolbarVisibility)
 
         self.tbSpectralProcessing = QToolBar('Spectral Processing')
-
+        self.tbSpectralProcessing.setMovable(False)
+        self.tbSpectralProcessing.setFloatable(False)
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionApplyModel)
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionVerifyModel)
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionSaveModel)
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionLoadModel)
         self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionRemoveFunction)
-
-        self.addToolBar(self.tbSpectralProcessing)
 
         r = self.tbSpeclibAction.addSeparator()
         self.tbSpeclibAction.addAction(self.actionShowProfileView)
@@ -193,10 +196,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
         self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
 
+        self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
+        self.insertToolBar(self.mToolbar, self.tbSpectralProcessing)
+
         # update toolbar visibilities
         self.updateToolbarVisibility()
 
-        self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
 
         # property button now shown in speclib action toolbar only
         # self.btnShowProperties = QToolButton()
