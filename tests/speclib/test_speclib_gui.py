@@ -448,6 +448,36 @@ class TestSpeclibWidgets(TestCase):
         w2.setLayout(l)
         self.showGui(w2)
 
+    def test_SpectralLibraryWidget_ViewTypes(self):
+
+        w = SpectralLibraryWidget()
+        w.show()
+
+        w.setViewVisibility(SpectralLibraryWidget.ViewType.Empty)
+        self.assertFalse(w.mSpeclibPlotWidget.isVisible())
+        self.assertFalse(w.pageProcessingWidget.isVisible())
+        self.assertFalse(w.mMainView.isVisible())
+
+        w.setViewVisibility(SpectralLibraryWidget.ViewType.ProcessingView)
+        self.assertFalse(w.mSpeclibPlotWidget.isVisible())
+        self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
+        self.assertFalse(w.mMainView.isVisible())
+        self.assertTrue(w.pageProcessingWidget.isVisible())
+
+        w.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
+        self.assertFalse(w.pageProcessingWidget.isVisible())
+        self.assertTrue(w.mMainView.isVisible())
+        self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
+        self.assertTrue(w.mSpeclibPlotWidget.isVisible())
+        self.assertTrue(w.mMainView.isVisible())
+
+        w.setViewVisibility(SpectralLibraryWidget.ViewType.ProfileView)
+        self.assertTrue(w.mSpeclibPlotWidget.isVisible())
+        self.assertFalse(w.mMainView.isVisible())
+        self.assertFalse(w.pageProcessingWidget.isVisible())
+
+        self.showGui(w)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 
