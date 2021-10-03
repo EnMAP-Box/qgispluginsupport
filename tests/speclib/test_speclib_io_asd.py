@@ -54,7 +54,6 @@ class TestIO(TestCase):
             for p in profiles:
                 self.assertTrue(is_spectral_feature(p))
 
-
     def asdBinFiles(self) -> typing.List[str]:
         import qpstestdata
         ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd'

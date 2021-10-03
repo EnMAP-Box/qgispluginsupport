@@ -1370,6 +1370,7 @@ class SpectralLibrary(QgsVectorLayer):
         return imageFiles
 
     def write(self, path: str, **kwds) -> typing.List[str]:
+        warnings.warn(DeprecationWarning)
         """
         Exports profiles to a file.
         This wrapper tries to identify a fitting AbstractSpectralLibraryIO from the

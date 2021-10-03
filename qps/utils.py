@@ -2070,20 +2070,27 @@ def osrSpatialReference(input) -> osr.SpatialReference:
 
 
 def px2geocoordinatesV2(layer: QgsRasterLayer,
-                        xcoordinates: np.ndarray, ycoordinates: np.ndarray,
+                        xcoordinates: np.ndarray = None,
+                        ycoordinates: np.ndarray = None,
                         subpixel_pos: float = 0.5,
                         subpixel_pos_x: float = None,
                         subpixel_pos_y: float = None) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
-    Returns the pixel center as coordinate in a raster layer's CRS
+    Returns the pixel centers as coordinate in a raster layer's CRS
     :param layer: QgsRasterLayer
     :param px: QPoint pixel position (0,0) = 1st pixel
-    :return: SpatialPoint
+    :return: geo_x, geo_y numpy arrays
     """
     assert isinstance(layer, QgsRasterLayer) and layer.isValid()
     # assert 0 <= px.x() < layer.width()
     # assert 0 <= px.y() < layer.height()
     assert 0 <= subpixel_pos <= 1.0
+
+    if xcoordinates is None:
+        xcoordinates = np.arange(layer.width())
+
+    if ycoordinates is None:
+        ycoordinates = np.arange(layer.height())
 
     if subpixel_pos_x is None:
         subpixel_pos_x = subpixel_pos

@@ -486,8 +486,8 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
         :return:
         """
         path = pathlib.Path(filePath)
-        ASDBinaryFile(path)
-        pass
+        return ASDBinaryFile(path).asFeature()
+
 
     @classmethod
     def readCSVFile(cls, filePath: str) -> typing.List[QgsFeature]:

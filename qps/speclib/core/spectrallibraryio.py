@@ -149,7 +149,9 @@ class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextG
     def supportsMultipleFiles(self) -> bool:
         """
         Returns True if profiles can be read from multiple files.
-        :return: bool
+                False if profiles can be read from single files only and
+                None if no files are read at all, e.g. because input is handled in the options widget
+        :return: bool | None
         """
         return False
 
@@ -199,7 +201,7 @@ class SpectralLibraryIO(object):
 
     def formatName(self) -> str:
         """
-        Returns a human-readible name of the Spectral Library Format
+        Returns a human-readable name of the Spectral Library Format
         :return: str
         """
         raise NotImplementedError()
@@ -342,9 +344,17 @@ class SpectralLibraryImportDialog(QDialog):
 
             source = dialog.source()
             propertyMap = dialog.fieldPropertyMap()
+
             format = dialog.currentImportWidget()
             if not isinstance(format, SpectralLibraryImportWidget):
                 return False
+
+            required_input_fields = set()
+            for k, prop in propertyMap.items():
+                prop: QgsProperty
+                ref_fields = prop.referencedFields(format.createExpressionContext())
+                required_input_fields.update(ref_fields)
+                s = ""
             settings = format.importSettings({})
             io: SpectralLibraryIO = format.spectralLibraryIO()
             speclib: QgsVectorLayer = dialog.speclib()
@@ -498,10 +508,17 @@ class SpectralLibraryImportDialog(QDialog):
 
         self.fileWidget.setFilter(import_widget.filter())
 
-        if import_widget.supportsMultipleFiles():
-            self.fileWidget.setStorageMode(QgsFileWidget.GetMultipleFiles)
+        support = import_widget.supportsMultipleFiles()
+        if support is None:
+            self.fileWidget.setVisible(False)
+            self.labelFilename.setVisible(False)
         else:
-            self.fileWidget.setStorageMode(QgsFileWidget.GetFile)
+            self.fileWidget.setVisible(True)
+            self.labelFilename.setVisible(True)
+            if support:
+                self.fileWidget.setStorageMode(QgsFileWidget.GetMultipleFiles)
+            else:
+                self.fileWidget.setStorageMode(QgsFileWidget.GetFile)
 
         self.stackedWidgetFormatOptions.setCurrentWidget(import_widget)
         self.gbFormatOptions.setVisible(import_widget.findChild(QWidget) is not None)
