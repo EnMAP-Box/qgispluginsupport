@@ -5,7 +5,7 @@ import typing
 import unittest
 import xmlrunner
 
-
+from qps.speclib.core import is_spectral_feature
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -39,17 +39,31 @@ class TestIO(TestCase):
 
     def test_read_asdFile(self):
 
-        for file in self.asdFiles():
+        for file in self.asdBinFiles():
             print(f'read {file}')
             asd = ASDBinaryFile(file)
             self.assertIsInstance(asd, ASDBinaryFile)
             profile = asd.asFeature()
-            self.assertIsInstance(profile, QgsFeature)
+            self.assertTrue(is_spectral_feature(profile))
 
-    def asdFiles(self) -> typing.List[str]:
+        for file in self.asdCSVFiles():
+
+            profiles = ASDSpectralLibraryIO.readCSVFile(file)
+            self.assertIsInstance(profiles, list)
+            self.assertTrue(len(profiles) > 0)
+            for p in profiles:
+                self.assertTrue(is_spectral_feature(p))
+
+
+    def asdBinFiles(self) -> typing.List[str]:
         import qpstestdata
-        ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd' / 'bin'
+        ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd'
         return list(file_search(ASD_DIR, '*.asd', recursive=True))
+
+    def asdCSVFiles(self):
+        import qpstestdata
+        ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd'
+        return list(file_search(ASD_DIR, '*.txt', recursive=True))
 
     def test_read_profiles(self):
         self.registerIO()
@@ -61,12 +75,18 @@ class TestIO(TestCase):
         sl: QgsVectorLayer = TestObjects.createSpectralLibrary()
         importWidget.setSpeclib(sl)
 
+        files = self.asdBinFiles() + self.asdCSVFiles()
 
         paths = '"' + '" "'.join(files) + '"'
         feedback = QgsProcessingFeedback()
-        profiles = IO.importProfiles(paths, {}, feedback )
+        profiles = IO.importProfiles(paths, {}, feedback)
+        self.assertTrue(len(profiles) == len(files))
+        for p in profiles:
+            self.assertTrue(is_spectral_feature(p))
+
         self.showGui(importWidget)
-        s = ""
+
+
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()

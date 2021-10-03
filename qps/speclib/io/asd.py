@@ -280,7 +280,6 @@ class ASDBinaryFile(object):
         self.Reference = None
 
         if path is not None:
-            path = pathlib.Path(path)
             self.readFromBinaryFile(path)
 
     def xValues(self) -> np.ndarray:
@@ -299,6 +298,10 @@ class ASDBinaryFile(object):
         return self.Reference
 
     def asFeature(self) -> QgsFeature:
+        """
+        Returns the input as QgsFeature with attributes defined in ASD_FIELDS
+        :return:
+        """
 
         f = QgsFeature(ASD_FIELDS)
         f.setAttribute('co', self.co)
@@ -308,20 +311,24 @@ class ASDBinaryFile(object):
 
         x = self.xValues()
         ySpectrum = self.yValuesSpectrum()
-        if ySpectrum:
+        if ySpectrum is not None:
             spectrum_dict = prepareProfileValueDict(x=x, y=self.yValuesSpectrum(), xUnit='nm')
             f.setAttribute('spectrum', encodeProfileValueDict(spectrum_dict))
 
         yReference = self.yValuesReference()
-        if yReference:
+        if yReference is not None:
             reference_dict = prepareProfileValueDict(x=x, y=self.yValuesReference(), xUnit='nm')
             f.setAttribute('reference', encodeProfileValueDict(reference_dict))
 
         return f
 
-
-
-    def readFromBinaryFile(self, path: str):
+    def readFromBinaryFile(self, path: typing.Union[str, pathlib.Path]):
+        """
+        Reads data from a binary file
+        :param path:
+        :return:
+        """
+        path = pathlib.Path(path)
         with open(path, 'rb') as f:
             DATA = f.read()
 
@@ -408,17 +415,17 @@ class ASDBinaryFile(object):
             #
             o = 484 + size - 1
             self.ReferenceFlag = struct.unpack('<?', sub(o + 1, 1))[0]
+            if self.ReferenceFlag:
+    #           self.ReferenceTime = np.datetime64('1970-01-01') + np.timedelta64(
+    #                struct.unpack('<l', DATA[(o + 3):(o + 3 + 8)])[0], 's')
+    #           self.SpectrumTime = np.datetime64('1970-01-01') + np.timedelta64(
+    #                struct.unpack('<l', DATA[o + 11:o + 11 + 8])[0], 's')
 
-#           self.ReferenceTime = np.datetime64('1970-01-01') + np.timedelta64(
-#                struct.unpack('<l', DATA[(o + 3):(o + 3 + 8)])[0], 's')
-#           self.SpectrumTime = np.datetime64('1970-01-01') + np.timedelta64(
-#                struct.unpack('<l', DATA[o + 11:o + 11 + 8])[0], 's')
+                reftime = struct.unpack('<8B', sub(o +3, 8))
+                self.SpectrumDescription, o = n_string(o + 19)
 
-            reftime = struct.unpack('<8B', sub(o +3, 8))
-            self.SpectrumDescription, o = n_string(o + 19)
-
-            # reference data
-            self.Reference = np.array(struct.unpack(fmt, sub(o , size)))
+                # reference data
+                self.Reference = np.array(struct.unpack(fmt, sub(o , size)))
 
             s = ""
 
@@ -472,29 +479,80 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
         return ASDSpectralLibraryImportWidget()
 
     @classmethod
+    def readBinaryFile(cls, filePath: str) -> QgsFeature:
+        """
+        Reads a binary ASD file (*.asd, *.as7)
+        :param filePath:
+        :return:
+        """
+        path = pathlib.Path(filePath)
+        ASDBinaryFile(path)
+        pass
+
+    @classmethod
+    def readCSVFile(cls, filePath: str) -> typing.List[QgsFeature]:
+        """
+        Read profiles from a text file
+        :param filePath:
+        :return: list of QgsFeatures
+        """
+        profiles = []
+
+        with open(filePath, 'r', encoding='utf-8') as f:
+            profiles = []
+            lines = f.readlines()
+            delimiter = ';'
+            if len(lines) >= 2:
+                hdrLine = lines[0].strip().split(delimiter)
+                if len(hdrLine) >= 2:
+                    profileNames = hdrLine[1:]
+
+                    xValues = []
+                    DATA = dict()
+                    for line in lines[1:]:
+                        line = line.split(delimiter)
+                        wl = float(line[0])
+                        xValues.append(wl)
+                        DATA[wl] = [float(v) for v in line[1:]]
+
+                    for i, name in enumerate(profileNames):
+                        yValues = [DATA[wl][i] for wl in xValues]
+                        xUnit = 'nm'
+
+                        profile = QgsFeature(ASD_FIELDS)
+                        spectrum_dict = prepareProfileValueDict(x=xValues, y=yValues, xUnit=xUnit)
+                        profile.setAttribute('Spectrum', encodeProfileValueDict(spectrum_dict))
+
+                        profiles.append(profile)
+
+        return profiles
+
+    @classmethod
     def importProfiles(cls,
                        path: str,
                        importSettings: dict,
                        feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
         s = ""
-        fields = ASD_FIELDS
         profiles = []
         sources = QgsFileWidget.splitFilePaths(path)
-        for file in sources:
-            asd: ASDBinaryFile = None
-            # try:
-            asd: ASDBinaryFile = ASDBinaryFile(file)
-            # except Exception as ex:
-            #    s = ""
 
-            if isinstance(asd, ASDBinaryFile):
+        rxCSV = re.compile(r'.*\.(csv|txt)$')
+        for file in sources:
+            file = pathlib.Path(file)
+
+            if rxCSV.search(file.name):
+                profiles.extend(ASDSpectralLibraryIO.readCSVFile(file))
+            else:
+                asd: ASDBinaryFile = ASDBinaryFile(file)
                 profiles.append(asd.asFeature())
 
         return profiles
 
 
 class DEPR_ASDSpectralLibraryIO(SpectralLibraryIO):
-
+    """
+    DEPRECATED, will be removed soon
+    """
     @classmethod
     def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 

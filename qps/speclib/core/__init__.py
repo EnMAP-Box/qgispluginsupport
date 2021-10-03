@@ -31,17 +31,40 @@ def is_profile_field(field: QgsField) -> bool:
     return isinstance(field, QgsField) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
 
 
+def contains_profile_field(object: typing.Union[QgsVectorLayer, QgsFeature, QgsFields]) -> bool:
+    """
+    Returns True if the input contains a QgsField of type binary and editorWidget SpectralProfile
+    :param object:
+    :return: bool
+    """
+    fields = None
+    if isinstance(object, (QgsVectorLayer, QgsFeature)):
+        fields = object.fields()
+    elif isinstance(object, QgsFields):
+        fields = object
+    if isinstance(fields, QgsFields):
+        for field in fields:
+            if is_profile_field(field):
+                return True
+    return False
+
+
 def is_spectral_library(layer: QgsVectorLayer) -> bool:
     """
     Returns True if a vector layer contains at least one spectral profile field
     :param layer: QgsVectorLayer
     :return: bool
     """
-    if isinstance(layer, QgsVectorLayer):
-        for field in layer.fields():
-            if is_profile_field(field):
-                return True
-    return False
+    return contains_profile_field(layer)
+
+
+def is_spectral_feature(feature: QgsFeature) -> bool:
+    """
+    Returns True if a QgsFeatures contains at least oe spectral profile field
+    :param feature:
+    :return:
+    """
+    return contains_profile_field(feature)
 
 
 def profile_fields(fields: typing.Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsFields:
