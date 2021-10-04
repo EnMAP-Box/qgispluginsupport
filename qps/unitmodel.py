@@ -74,7 +74,8 @@ class UnitModel(QAbstractListModel):
             self.mUnits.remove(unit)
             self.endRemoveRows()
 
-    def addUnit(self, unit: str,
+    def addUnit(self,
+                unit: str,
                 description: str = None,
                 tooltip: str = None,
                 aliases: typing.List[str] = []):
@@ -203,9 +204,9 @@ class XUnitModel(UnitModel):
             assert isinstance(baseUnit, str), u
             self.addUnit(baseUnit, description='{} [{}]'.format(u, baseUnit))
 
-        self.addUnit('DateTime', description='Date')
-        self.addUnit('DecimalYear', description='Date [Decimal Year]')
-        self.addUnit('DOY', description='Day of Year [DOY]')
+        self.addUnit('DateTime', description='Date Time')
+        self.addUnit('DecimalYear', description='Decimal Year')
+        self.addUnit('DOY', description='Day of Year')
 
     def findUnit(self, unit):
         if unit in [None, NULL]:

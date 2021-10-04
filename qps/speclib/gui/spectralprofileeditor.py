@@ -8,9 +8,10 @@ from qgis.core import QgsVectorLayer, QgsExpression, QgsFieldProxyModel, QgsFiel
 from qgis.gui import QgsEditorWidgetWrapper, QgsFieldExpressionWidget, QgsEditorConfigWidget, QgsGui, \
      QgsEditorWidgetFactory
 from qgis.PyQt.QtCore import NULL
+from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core.spectralprofile import SpectralProfile, encodeProfileValueDict, decodeProfileValueDict
-from ...unitmodel import BAND_INDEX, XUnitModel
+from ...unitmodel import BAND_INDEX
 from ...utils import loadUi
 
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
@@ -233,7 +234,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.mModel.rowsInserted.connect(self.onBandsChanged)
         self.mModel.rowsRemoved.connect(self.onBandsChanged)
         self.mModel.dataChanged.connect(lambda *args: self.onProfileChanged())
-        self.mXUnitModel: XUnitModel = XUnitModel()
+        self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel()
         self.cbXUnit.setModel(self.mXUnitModel)
         self.cbXUnit.currentIndexChanged.connect(
             lambda *args: self.mModel.setXUnit(self.cbXUnit.currentData(Qt.UserRole)))

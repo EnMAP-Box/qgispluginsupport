@@ -45,12 +45,12 @@ from .core import field_index, profile_field_list, create_profile_field, is_spec
 from .core.spectrallibrary import SpectralSetting, \
     SpectralLibrary, FIELD_VALUES
 from .core.spectralprofile import SpectralProfileBlock
+from .gui.spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .processing import \
     SpectralProcessingProfiles, SpectralProcessingProfilesOutput, \
     SpectralProcessingProfilesSink, parameterAsSpectralProfileBlockList
 
-from ..unitmodel import UnitConverterFunctionModel, XUnitModel
-
+from ..unitmodel import UnitConverterFunctionModel
 
 class _AbstractSpectralAlgorithm(QgsProcessingAlgorithm):
 
@@ -86,7 +86,7 @@ class SpectralXUnitConversion(_AbstractSpectralAlgorithm):
     def __init__(self):
         super().__init__()
         self.mUnitConverterFunctionModel = UnitConverterFunctionModel()
-        self.mUnitModel = XUnitModel()
+        self.mUnitModel = SpectralProfilePlotXAxisUnitModel()
         self.mParameters = []
 
     def name(self):
