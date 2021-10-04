@@ -388,7 +388,7 @@ class SpectralLibraryIO(object):
                 from .spectrallibrary import SpectralLibrary
                 referenceProfile = profiles[0]
 
-                speclib = SpectralLibrary(fields=referenceProfile.fields())
+                speclib = SpectralLibrary(fields=QgsFields(referenceProfile.fields()))
                 speclib.startEditing()
                 speclib.beginEditCommand('Add profiles')
                 speclib.addFeatures(profiles)

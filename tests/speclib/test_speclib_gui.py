@@ -426,6 +426,7 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(slw)
 
+
     def test_CurrentProfiles(self):
         w = SpectralLibraryWidget()
 
@@ -755,6 +756,7 @@ class TestSpeclibWidgets(TestCase):
 
         # self.showGui(d)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Opens blocking dialog')
     def test_AttributeDialog(self):
 
         SLIB = TestObjects.createSpectralLibrary()

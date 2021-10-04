@@ -266,7 +266,7 @@ class SpectralLibraryUtils:
     """
 
     @staticmethod
-    def writeToSource(speclib: QgsVectorLayer, uri: str, feedback: QgsProcessingFeedback = None):
+    def writeToSource(speclib: QgsVectorLayer, uri: str, feedback: QgsProcessingFeedback = None) -> typing.List[str]:
         from .spectrallibraryio import SpectralLibraryIO
         return SpectralLibraryIO.writeSpeclibToUri(speclib, uri, feedback=feedback)
 
@@ -1375,35 +1375,7 @@ class SpectralLibrary(QgsVectorLayer):
         return imageFiles
 
     def write(self, uri, feedback: QgsProcessingFeedback = None) -> typing.List[str]:
-        return SpectralLibraryUtils.writeToSource(uri, feedback)
-
-
-        if path is None:
-            path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'),
-                                                       caption='Save Spectral Library',
-                                                       directory=QgsFileUtils.stringToSafeFilename(
-                                                           self.name() + '.gpkg'),
-                                                       filter=FILTERS,
-                                                       initialFilter='Geopackage (*.gpkg)')
-
-        if isinstance(path, pathlib.Path):
-            path = path.as_posix()
-
-        if len(path) > 0:
-            ext = os.path.splitext(path)[-1].lower()
-            from ..io.csvdata import CSVSpectralLibraryIO
-            from ..io.vectorsources import VectorSourceSpectralLibraryIO
-            from ..io.envi import EnviSpectralLibraryIO
-
-            # todo: implement filter strings in AbstractSpectralLibraryIOs to auto-match file extensions
-            if ext in ['.sli', '.esl']:
-                return EnviSpectralLibraryIO.write(self, path, **kwds)
-
-            elif ext in ['.json', '.geojson', '.geojsonl', '.csv', '.gpkg']:
-                return VectorSourceSpectralLibraryIO.write(self, path, **kwds)
-            else:
-                raise Exception(f'Filetype not supported: {path}')
-        return []
+        return SpectralLibraryUtils.writeToSource(self, uri, feedback)
 
     def spectralProfileFields(self) -> typing.List[QgsField]:
         return profile_field_list(self)

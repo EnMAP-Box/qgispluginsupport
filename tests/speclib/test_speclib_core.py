@@ -652,7 +652,8 @@ class TestCore(TestCase):
         SLIB2.loadNamedStyle(pathQml.as_posix())
 
         for p1, p2 in zip(SLIB, SLIB2):
-            self.assertEqual(p1, p2)
+            for field in p1.fields():
+                self.assertEqual(p1.attribute(field.name()), p2.attribute(field.name()))
 
     def test_others(self):
 
