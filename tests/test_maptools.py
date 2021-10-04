@@ -91,12 +91,16 @@ class TestMapTools(TestCase):
         me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, 0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         me2 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         me3 = QMouseEvent(QEvent.MouseButtonPress, QPointF(h, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-        me4 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * h, 0.5 * w), Qt.RightButton, Qt.RightButton,
-                          Qt.NoModifier)
+
+
+
         canvas.mousePressEvent(me1)
         canvas.mousePressEvent(me2)
         canvas.mousePressEvent(me3)
-        canvas.mousePressEvent(me4)
+        if not self.runsInCI():
+            me4 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * h, 0.5 * w), Qt.RightButton, Qt.RightButton,
+                              Qt.NoModifier)
+            canvas.mousePressEvent(me4)
 
         mt = SpatialExtentMapTool(canvas)
 

@@ -391,7 +391,6 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
     def createImportWidget(cls) -> SpectralLibraryImportWidget:
         return RasterLayerSpectralLibraryImportWidget()
 
-
     @classmethod
     def importProfiles(cls,
                        path: str,

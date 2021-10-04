@@ -200,6 +200,7 @@ class TestIO(TestCase):
 
         self.showGui(dialog)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Opens blocking dialog')
     def test_ImportDialog2(self):
         self.registerIO()
 

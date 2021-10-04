@@ -266,6 +266,11 @@ class SpectralLibraryUtils:
     """
 
     @staticmethod
+    def writeToSource(speclib: QgsVectorLayer, uri: str, feedback: QgsProcessingFeedback = None):
+        from .spectrallibraryio import SpectralLibraryIO
+        return SpectralLibraryIO.writeSpeclibToUri(speclib, uri, feedback=feedback)
+
+    @staticmethod
     def readFromSource(uri: str, feedback: QgsProcessingFeedback = None):
         from .spectrallibraryio import SpectralLibraryIO
         return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
@@ -1328,7 +1333,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         basename, ext = os.path.splitext(pathOne.name)
 
-        assert pathOne.as_posix().startswith('/vsimem/') or pathOne.parent.is_dir(), f'Canot write to {pathOne}'
+        assert pathOne.as_posix().startswith('/vsimem/') or pathOne.parent.is_dir(), f'Cannot write to {pathOne}'
         imageFiles = []
         for setting, profiles in self.groupBySpectralProperties().items():
             xValues = setting.x()
@@ -1369,18 +1374,9 @@ class SpectralLibrary(QgsVectorLayer):
             del dsDst
         return imageFiles
 
-    def write(self, path: str, **kwds) -> typing.List[str]:
-        warnings.warn(DeprecationWarning)
-        """
-        Exports profiles to a file.
-        This wrapper tries to identify a fitting AbstractSpectralLibraryIO from the
-        file extension in `path`.
-        To ensure the way how the SpectralLibrary is written into file data, use
-        a AbstractSpectralLibraryIO implementation of choice.
-        :param path: str, filepath
-        :param kwds: keywords to be used in specific `AbstractSpectralLibraryIO.write(...)` methods.
-        :return: list of written files
-        """
+    def write(self, uri, feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+        return SpectralLibraryUtils.writeToSource(uri, feedback)
+
 
         if path is None:
             path, filter = QFileDialog.getSaveFileName(parent=kwds.get('parent'),

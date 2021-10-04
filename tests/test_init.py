@@ -26,8 +26,6 @@ class testClassTesting(unittest.TestCase):
 
         self.app = app
 
-        paths = [p for p in scanResources() if p.startswith(':/qps/')]
-        self.assertTrue(len(paths) == 0)
         qps.initResources()
 
         paths = [p for p in scanResources() if p.startswith(':/qps/')]

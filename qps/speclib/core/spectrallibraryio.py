@@ -294,11 +294,62 @@ class SpectralLibraryIO(object):
                         break
 
         for format in matched_formats:
+            format: SpectralLibraryImportWidget
+            IO: SpectralLibraryIO = format.spectralLibraryIO()
             format.setSource(uri)
             fields = QgsFields(format.sourceFields())
             if fields.count() == 0:
                 continue
-            settings = format.importSettings({})
+            settings = dict(fields=QgsFields(format.sourceFields()))
+            settings = format.importSettings(settings)
+            importedProfiles = IO.importProfiles(uri, settings, feedback=feedback)
+            if len(importedProfiles) > 0:
+                return importedProfiles
+
+        return []
+
+    @staticmethod
+    def writeSpeclibToUri(speclib: QgsVectorLayer, uri, feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+        return SpectralLibraryIO.writeProfilesToUri(speclib.getFeatures(), uri, crs=speclib.crs(), feedback=feedback)
+
+    @staticmethod
+    def writeProfilesToUri(profiles: typing.List[QgsFeature],
+                           uri,
+                           feedback: QgsProcessingFeedback = None,
+                           crs: QgsCoordinateReferenceSystem = None) -> typing.List[str]:
+
+        if isinstance(uri, QUrl):
+            uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
+
+        elif isinstance(uri, pathlib.Path):
+            uri = uri.as_posix()
+
+        if not isinstance(uri, str):
+            return []
+
+        if crs is None:
+            crs = QgsCoordinateReferenceSystem()
+
+        ext = os.path.splitext(uri)[1]
+
+        matched_formats: typing.List[SpectralLibraryImportWidget] = []
+        for IO in SpectralLibraryIO.spectralLibraryIOs():
+            format = IO.createExportWidget()
+            if isinstance(format, SpectralLibraryImportWidget):
+                for e in QgsFileUtils.extensionsFromFilter(format.filter()):
+                    if ext.endswith(e):
+                        matched_formats.append(format)
+                        break
+
+        for format in matched_formats:
+            format: SpectralLibraryExportWidget
+            IO: SpectralLibraryIO = format.spectralLibraryIO()
+            format.setSpeclib(uri)
+            fields = QgsFields(format.sourceFields())
+            if fields.count() == 0:
+                continue
+            settings = dict(fields=QgsFields(format.sourceFields()))
+            settings = format.importSettings(settings)
             importedProfiles = IO.importProfiles(uri, settings, feedback=feedback)
             if len(importedProfiles) > 0:
                 return importedProfiles
@@ -323,7 +374,10 @@ class SpectralLibraryIO(object):
         try:
             from .spectrallibrary import SpectralLibrary
             speclib = SpectralLibrary(uri)
+            if not speclib.isValid():
+                speclib = None
         except:
+            s = ""
             pass
 
         # 2. Search for suited IO options
