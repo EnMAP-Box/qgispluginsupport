@@ -8,6 +8,7 @@ from .utils import UnitLookup, METRIC_EXPONENTS, datetime64
 BAND_INDEX = 'Band Index'
 BAND_NUMBER = 'Band Number'
 
+
 class UnitModel(QAbstractListModel):
 
     def __init__(self, *args, **kwds):
@@ -146,7 +147,7 @@ class UnitConverterFunctionModel(object):
         self.mLUT = dict()
 
         self.func_return_band_index = lambda v, *args: np.arange(len(v))
-        self.func_return_band_number = lambda v, *args: np.arange(len(v))+1
+        self.func_return_band_number = lambda v, *args: np.arange(len(v)) + 1
         self.func_return_none = lambda v, *args: None
         self.func_return_same = lambda v, *args: v
         self.func_return_decimalyear = lambda v, *args: UnitLookup.convertDateUnit(v, 'DecimalYear')

@@ -53,6 +53,7 @@ class TestIO(TestCase):
     def test_write_raster(self):
         self.registerIO()
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Test skipped because it opens a blocking dialog')
     def test_dialog(self):
         self.registerIO()
         layers = [TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon),

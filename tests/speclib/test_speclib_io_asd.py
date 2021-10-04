@@ -85,13 +85,14 @@ class TestIO(TestCase):
 
         self.showGui(importWidget)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()
         import qpstestdata.asd
         root = pathlib.Path(qpstestdata.__file__).parent / 'asd'
 
-        SpectralLibraryImportDialog.importProfiles(sl, defaultRoot= root.as_posix())
+        SpectralLibraryImportDialog.importProfiles(sl, defaultRoot=root.as_posix())
 
 
 if __name__ == '__main__':
