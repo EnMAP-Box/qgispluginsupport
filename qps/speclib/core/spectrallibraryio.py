@@ -19,6 +19,7 @@ from . import is_spectral_library
 from .. import speclibUiPath
 from ...utils import loadUi
 
+IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS = 'required_source_fields'
 
 class SpectralLibraryIOWidget(QWidget):
 
@@ -141,7 +142,11 @@ class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextG
         raise NotImplementedError()
 
     def createExpressionContext(self) -> QgsExpressionContext:
-        return QgsExpressionContext()
+        context = QgsExpressionContext()
+        fields = self.sourceFields()
+        if isinstance(fields, QgsFields):
+            context.setFields(QgsFields(fields))
+        return context
 
     def sourceFields(self) -> QgsFields:
         raise NotImplementedError()
@@ -157,9 +162,12 @@ class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextG
 
     def importSettings(self, settings: dict) -> dict:
         """
-        Returns the settings required to import the library
-        :param settings:
-        :return:
+        Returns the settings dictionary that is used as import for SpectralLibraryIO.importProfiles(...).
+        If called from SpectralLibraryImportDialog, settings will be pre-initialized with:
+        * 'required_source_fields' = set of field names (str) that are expected to be in each returned QgsFeature.
+
+        :param settings: dict
+        :return: dict
         """
         return settings
 
@@ -169,6 +177,9 @@ class SpectralLibraryIO(object):
     Abstract class interface to define I/O operations for spectral libraries
     """
     SPECTRAL_LIBRARY_IO_REGISTRY: typing.Dict[str, typing.Callable] = dict()
+
+    IMPSET_FIELDS = 'fields'
+    IMPSET_REQUIRED_FIELDS = 'required_fields'
 
     @staticmethod
     def registerSpectralLibraryIO(speclibIO: typing.Union[
@@ -226,11 +237,14 @@ class SpectralLibraryIO(object):
                        importSettings: dict,
                        feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
         """
-        Import the profiles based on the source specified in 'path' and further settings in 'importSettings'
+        Import the profiles based on the source specified by 'path' and further settings in 'importSettings'.
+        Returns QgsFeatures
+        Well-implemented SpectralLibraryIOs check if IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS exists in
+        importSettings and optimize import speed by returning only fields in
+        the set in importSettings[IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS]
         :param path: str
-        :param fields: QgsFields
         :param importSettings: dict
-        :param feedback:
+        :param feedback: QgsProcessingFeedback
         :return: list of QgsFeatures
         """
         raise NotImplementedError()
@@ -332,6 +346,7 @@ class SpectralLibraryIO(object):
 
 class SpectralLibraryImportDialog(QDialog):
 
+
     @staticmethod
     def importProfiles(speclib: QgsVectorLayer,
                        defaultRoot: typing.Union[str, pathlib.Path] = None,
@@ -349,13 +364,17 @@ class SpectralLibraryImportDialog(QDialog):
             if not isinstance(format, SpectralLibraryImportWidget):
                 return False
 
-            required_input_fields = set()
+            expressionContext = format.createExpressionContext()
+            requiredSourceFields = set()
             for k, prop in propertyMap.items():
                 prop: QgsProperty
-                ref_fields = prop.referencedFields(format.createExpressionContext())
-                required_input_fields.update(ref_fields)
-                s = ""
-            settings = format.importSettings({})
+                ref_fields = prop.referencedFields(expressionContext)
+                requiredSourceFields.update(ref_fields)
+
+            settings = dict()
+            settings[IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS] = requiredSourceFields
+
+            settings = format.importSettings(settings)
             io: SpectralLibraryIO = format.spectralLibraryIO()
             speclib: QgsVectorLayer = dialog.speclib()
 
@@ -697,11 +716,13 @@ def initSpectralLibraryIOs():
     from ..io.geopackage import GeoPackageSpectralLibraryIO
     from ..io.envi import EnviSpectralLibraryIO
     from ..io.asd import ASDSpectralLibraryIO
+    from ..io.rastersources import RasterLayerSpectralLibraryIO
 
     speclibIOs = [
         GeoPackageSpectralLibraryIO(),
         EnviSpectralLibraryIO(),
-        ASDSpectralLibraryIO()
+        ASDSpectralLibraryIO(),
+        RasterLayerSpectralLibraryIO()
     ]
 
     for speclibIO in speclibIOs:

@@ -45,7 +45,8 @@ from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
 from .. import speclibUiPath
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
+from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget, \
+    IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
     rasterLayerArray, qgsRasterLayer, px2geocoordinatesV2, optimize_block_size, px2geocoordinates, fid2pixelindices
@@ -375,11 +376,6 @@ class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):
     def sourceFields(self) -> QgsFields:
         return QgsFields(self.mFields)
 
-    def createExpressionContext(self) -> QgsExpressionContext:
-        context = QgsExpressionContext()
-
-        return context
-
 
 class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
@@ -402,7 +398,16 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                        importSettings: dict,
                        feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
 
-        fields = QgsFields(importSettings['fields'])
+        required_fields = QgsFields()
+        available_fields: QgsFields = QgsFields(importSettings['fields'])
+
+        if IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS in importSettings.keys():
+            for name in importSettings[IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS]:
+                if name in available_fields.names():
+                    required_fields.append(available_fields.field(name))
+        else:
+            required_fields = available_fields
+
         rl = importSettings['raster_layer']
         vl = importSettings.get('vector_layer', None)
         all_touched = importSettings.get('all_touched', False)
@@ -410,9 +415,9 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
             rl = QgsRasterLayer(rl)
 
         if vl is None:
-            return RasterLayerSpectralLibraryIO.readRaster(rl, fields)
+            return RasterLayerSpectralLibraryIO.readRaster(rl, required_fields)
         else:
-            return RasterLayerSpectralLibraryIO.readRasterVector(rl, vl, fields, all_touched)
+            return RasterLayerSpectralLibraryIO.readRasterVector(rl, vl, required_fields, all_touched)
 
 
     @staticmethod
@@ -425,6 +430,8 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         except Exception as ex:
             warnings.warn(f'Unable to open {raster} as QgsRasterLayer.\n{ex}')
             raise StopIteration
+
+        assert isinstance(fields, QgsFields)
 
         raster_source = raster.source()
         raster_name = pathlib.Path(raster_source).name
@@ -460,25 +467,36 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         else:
             xvalues = (np.arange(ds.RasterCount) + 1).tolist()
 
-        # RASTER_FIELDS.append(create_profile_field('raster_profile'))
-        # RASTER_FIELDS.append(QgsField('raster_name', QVariant.String))
-        # RASTER_FIELDS.append(QgsField('raster_px_x', QVariant.Int))
-        # RASTER_FIELDS.append(QgsField('raster_px_y', QVariant.Int))
+        i_RF_NAME = fields.lookupField(RF_NAME)
+        i_RF_SOURCE = fields.lookupField(RF_SOURCE)
+        i_RF_PX_X = fields.lookupField(RF_PX_X)
+        i_RF_PX_Y = fields.lookupField(RF_PX_Y)
+        i_RF_PROFILE = fields.lookupField(RF_PROFILE)
+
         for y, x in zip(*valid):
 
             yvalues = array[:, y, x]
 
             p = QgsFeature(fields)
-            p.setAttribute(RF_NAME, raster_name)
-            p.setAttribute(RF_SOURCE, raster_source)
-            p.setAttribute(RF_PX_X, x)
-            p.setAttribute(RF_PX_Y, y)
+
+            if i_RF_NAME >= 0:
+                p.setAttribute(i_RF_NAME, raster_name)
+
+            if i_RF_SOURCE >= 0:
+                p.setAttribute(i_RF_SOURCE, raster_source)
+
+            if i_RF_PX_X >= 0:
+                p.setAttribute(i_RF_PX_X, x)
+
+            if i_RF_PX_Y >= 0:
+                p.setAttribute(i_RF_PX_Y, y)
 
             gx, gy = geo_x[x], geo_y[y]
             p.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(gx, gy)))
 
-            spectrum_dict = prepareProfileValueDict(x=xvalues, y=yvalues, xUnit=wlu)
-            p.setAttribute(RF_PROFILE, encodeProfileValueDict(spectrum_dict))
+            if i_RF_PROFILE >= 0:
+                spectrum_dict = prepareProfileValueDict(x=xvalues, y=yvalues, xUnit=wlu)
+                p.setAttribute(i_RF_PROFILE, encodeProfileValueDict(spectrum_dict))
 
             yield p
 
@@ -488,9 +506,12 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                          all_touched: bool,
                          cache: int = 5 * 2 ** 20) -> typing.Generator[QgsFeature, None, None]:
 
-
         ds: gdal.Dataset = gdalDataset(raster)
         assert isinstance(ds, gdal.Dataset), f'Unable to open {raster.source()} as gdal.Dataset'
+
+        path = pathlib.Path(ds.GetDescription())
+        raster_name = path.name
+        raster_source = path.as_posix()
 
         bbl = parseBadBandList(ds)
         wl, wlu = parseWavelength(ds)
@@ -516,11 +537,15 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                                                  layer=layer,
                                                  all_touched=all_touched)
 
+        i_RF_NAME = fields.lookupField(RF_NAME)
+        i_RF_SOURCE = fields.lookupField(RF_SOURCE)
+        i_RF_PX_X = fields.lookupField(RF_PX_X)
+        i_RF_PX_Y = fields.lookupField(RF_PX_Y)
+        i_RF_PROFILE = fields.lookupField(RF_PROFILE)
+
         PROFILE_COUNTS = dict()
 
         FEATURES: typing.Dict[int, QgsFeature] = dict()
-
-        block_profiles = []
 
         for y in range(nYBlocks):
             yoff = y * block_size[1]
@@ -559,16 +584,26 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                             PROFILE_COUNTS[fid] = PROFILE_COUNTS.get(fid, 0) + 1
                             # sp.setName(f'{fid_basename}_{PROFILE_COUNTS[fid]}')
 
-                            spectrum_dict = prepareProfileValueDict(x=wl, y=fid_profiles[:, i], xUnit=wlu, bbl=bbl)
-                            p.setAttribute(RF_PROFILE, encodeProfileValueDict(spectrum_dict))
+                            if i_RF_NAME >= 0:
+                                p.setAttribute(i_RF_NAME, raster_name)
+
+                            if i_RF_SOURCE >= 0:
+                                p.setAttribute(i_RF_SOURCE, raster_source)
+
+                            if i_RF_PROFILE >= 0:
+                                spectrum_dict = prepareProfileValueDict(x=wl, y=fid_profiles[:, i], xUnit=wlu, bbl=bbl)
+                                p.setAttribute(i_RF_PROFILE, encodeProfileValueDict(spectrum_dict))
+
+                            if i_RF_PX_X >= 0:
+                                p[i_RF_PX_X] = int(profile_px_x[i])
+
+                            if i_RF_PX_Y >= 0:
+                                p[i_RF_PX_Y] = int(profile_px_y[i])
 
                             if isinstance(vectorFeature, QgsFeature) and vectorFeature.isValid():
                                 for field in vectorFeature.fields():
                                     if field in fields:
                                         p.setAttribute(field.name(), vectorFeature.attribute(field.name()))
-
-                            p[RF_PX_X] = int(profile_px_x[i])
-                            p[RF_PX_Y] = int(profile_px_y[i])
 
                             yield p
 

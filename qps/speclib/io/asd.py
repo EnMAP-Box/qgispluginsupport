@@ -45,7 +45,8 @@ from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsProcessingFeedback
 from ..core import create_profile_field, is_spectral_library
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, SpectralLibraryImportWidget
+from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, SpectralLibraryImportWidget, \
+    SpectralLibraryImportDialog
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...utils import createQgsField
 
@@ -297,13 +298,18 @@ class ASDBinaryFile(object):
     def yValuesReference(self) -> np.ndarray:
         return self.Reference
 
-    def asFeature(self) -> QgsFeature:
+    def asFeature(self, fields: QgsFields=None) -> QgsFeature:
         """
         Returns the input as QgsFeature with attributes defined in ASD_FIELDS
         :return:
         """
 
-        f = QgsFeature(ASD_FIELDS)
+        if not isinstance(fields, QgsFields):
+            fields = ASD_FIELDS
+
+        f = QgsFeature(fields)
+        field_names = fields.names()
+
         f.setAttribute('co', self.co)
         f.setAttribute('instrument', self.instrument)
         f.setAttribute('instrument_num', self.instrument_num)
@@ -488,7 +494,6 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
         path = pathlib.Path(filePath)
         return ASDBinaryFile(path).asFeature()
 
-
     @classmethod
     def readCSVFile(cls, filePath: str) -> typing.List[QgsFeature]:
         """
@@ -535,6 +540,8 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
         s = ""
         profiles = []
         sources = QgsFileWidget.splitFilePaths(path)
+
+        # expected_fields = importSettings.get()
 
         rxCSV = re.compile(r'.*\.(csv|txt)$')
         for file in sources:

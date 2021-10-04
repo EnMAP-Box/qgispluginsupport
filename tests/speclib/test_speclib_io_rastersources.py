@@ -17,9 +17,8 @@ from qps.testing import TestObjects, TestCase
 
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
 
-
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, GeoPackageSpectralLibraryExportWidget
-
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
+    GeoPackageSpectralLibraryExportWidget
 
 from qps.utils import *
 
@@ -34,13 +33,10 @@ class TestIO(TestCase):
         super(TestIO, cls).tearDownClass()
 
     def registerIO(self):
-
         ios = [RasterLayerSpectralLibraryIO()]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
-
     def test_raster_input_widget(self):
-
         layers = [TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon),
                   TestObjects.createVectorLayer(wkbType=QgsWkbTypes.LineString),
                   TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Point),
@@ -57,7 +53,6 @@ class TestIO(TestCase):
     def test_write_raster(self):
         self.registerIO()
 
-
     def test_dialog(self):
         self.registerIO()
         layers = [TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon),
@@ -72,5 +67,8 @@ class TestIO(TestCase):
 
         root = pathlib.Path(qpstestdata.__file__).parent
 
-        SpectralLibraryImportDialog.importProfiles(sl, defaultRoot= root.as_posix())
+        SpectralLibraryImportDialog.importProfiles(sl, defaultRoot=root.as_posix())
 
+
+if __name__ == '__main__':
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

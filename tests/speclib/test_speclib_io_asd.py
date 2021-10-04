@@ -85,7 +85,6 @@ class TestIO(TestCase):
 
         self.showGui(importWidget)
 
-
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()
@@ -94,3 +93,6 @@ class TestIO(TestCase):
 
         SpectralLibraryImportDialog.importProfiles(sl, defaultRoot= root.as_posix())
 
+
+if __name__ == '__main__':
+    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
