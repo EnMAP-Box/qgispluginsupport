@@ -383,6 +383,10 @@ class QgisMockup(QgisInterface):
 
 class TestCase(qgis.testing.TestCase):
 
+    @staticmethod
+    def runsInCI() -> True:
+        return str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0']
+
     @classmethod
     def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
 
@@ -489,7 +493,7 @@ class TestCase(qgis.testing.TestCase):
             elif callable(w):
                 w()
 
-        if str(os.environ.get('CI')).lower() not in ['', 'none', 'false', '0']:
+        if self.runsInCI():
             return False
 
         app = QApplication.instance()
