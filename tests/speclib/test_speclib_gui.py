@@ -34,7 +34,7 @@ from qps.plotstyling.plotstyling import PlotStyle
 from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, XMLNODE_PROFILE_RENDERER
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem, \
     SpectralProfilePlotWidget, SpectralLibraryPlotWidgetStyle, SpectralLibraryPlotWidgetStyleWidget, \
-    SpectralLibraryPlotWidget
+    SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileTableModel, SpectralProfileEditorWidget, \
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorConfigWidget, SpectralProfileEditorWidgetFactory, \
@@ -44,7 +44,7 @@ from qgis.core import QgsApplication, QgsProject, QgsRasterLayer, QgsVectorLayer
     QgsActionManager
 from qgis.gui import QgsOptionsDialogBase, QgsAttributeForm, QgsSearchWidgetWrapper, QgsMessageBar, QgsMapCanvas, \
     QgsDualView, QgsGui
-from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER, XUnitModel
+from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER
 from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS, SpatialPoint
 from qpstestdata import enmap, hymap
 from qpstestdata import speclib as speclibpath
@@ -162,9 +162,9 @@ class TestSpeclibWidgets(TestCase):
         speclib = SpectralLibrary()
 
         sp1 = SpectralProfile()
-        xvalues = np.datetime64('2012-08-15') + np.arange(10)
-        yvalues = np.arange(10)
-        sp1.setValues(x=xvalues, y=yvalues, xUnit='Date')
+        xvalues = np.datetime64('2012-08-15T15') + np.arange(255)
+        yvalues = np.arange(len(xvalues))
+        sp1.setValues(x=xvalues, y=yvalues, xUnit='DateTime')
 
         sp2 = SpectralProfile()
         sp2.setValues(x=[230, 240], y=[3, 2], xUnit='DOY')
@@ -295,7 +295,7 @@ class TestSpeclibWidgets(TestCase):
     def test_UnitComboBox(self):
 
         cb = QComboBox()
-        model = XUnitModel()
+        model = SpectralProfilePlotXAxisUnitModel()
         for k in METRIC_EXPONENTS.keys():
             model.addUnit(k)
 
