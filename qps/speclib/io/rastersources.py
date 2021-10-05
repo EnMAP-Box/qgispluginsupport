@@ -32,9 +32,9 @@ import warnings
 
 from osgeo import gdal
 import numpy as np
-from qgis._core import QgsFields, QgsField, QgsExpressionContext, Qgis, QgsFeature, QgsRasterDataProvider, \
+from qgis.core import QgsFields, QgsField, QgsExpressionContext, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY, QgsPoint
-from qgis._gui import QgsMapLayerComboBox
+from qgis.gui import QgsMapLayerComboBox
 
 from qgis.PyQt import sip
 from qgis.PyQt.QtWidgets import *

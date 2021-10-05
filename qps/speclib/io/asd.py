@@ -37,9 +37,9 @@ import numpy as np
 import typing
 
 from PyQt5.QtCore import QVariant
-from qgis._core import QgsVectorLayer, QgsFields, QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, \
+from qgis.core import QgsVectorLayer, QgsFields, QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, \
     QgsVectorFileWriter, QgsField
-from qgis._gui import QgsFileWidget
+from qgis.gui import QgsFileWidget
 
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsProcessingFeedback

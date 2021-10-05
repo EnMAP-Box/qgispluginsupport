@@ -4,7 +4,10 @@ import xml.etree.ElementTree as ET
 import pathlib
 import os
 import re
+
 DIR_QPS = pathlib.Path(__file__).parents[1] / 'qps'
+
+
 class ResourceTests(unittest.TestCase):
 
     def test_imports(self):
@@ -30,18 +33,14 @@ class ResourceTests(unittest.TestCase):
                 lastLine = None
                 for i, line in enumerate(f.readlines()):
                     if rxTest3.search(line):
-                        errors.append(f'File "{path}", line {i+1}, "{line.strip()}"')
+                        errors.append(f'File "{path}", line {i + 1}, "{line.strip()}"')
                     elif rxTest1.search(line) or rxTest2.search(line):
                         if path.name == 'utils.py' and rxTest2.search(line):
                             continue
                         if not (lastLine and 'except ImportError:' in lastLine):
-                            errors.append(f'File "{path}", line {i+1}, "{line.strip()}"')
+                            errors.append(f'File "{path}", line {i + 1}, "{line.strip()}"')
                     lastLine = line
         self.assertTrue(len(errors) == 0, msg=f'{len(errors)} Absolute imports:\n' + '\n'.join(errors))
-
-
-
-
 
 
 if __name__ == '__main__':
