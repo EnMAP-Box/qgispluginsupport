@@ -2687,10 +2687,10 @@ class SpectralProfilePlotControlView(QTreeView):
         a = menu.addAction('Paste visualization')
         a.setIcon(QIcon(r':/images/themes/default/mActionEditPaste.svg'))
         a.setEnabled(QApplication.clipboard().mimeData().hasFormat(SpectralProfilePlotVisualization.MIME_TYPE))
-
         a.triggered.connect(lambda *args: self.pasteVis())
-        a.setIcon(QIcon(r':/qps/ui/icons/speclib_usevectorrenderer.svg'))
+
         a = menu.addAction('User colors from symbol renderer')
+        a.setIcon(QIcon(r':/qps/ui/icons/speclib_usevectorrenderer.svg'))
         a.triggered.connect(lambda *args, v=selected_vis: self.userColorsFromSymbolRenderer(v))
 
         if not menu.isEmpty():
