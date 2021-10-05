@@ -514,13 +514,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         slNew = SpectralLibraryUtils.readFromMimeData(event.mimeData())
 
         if isinstance(slNew, QgsVectorLayer) and slNew.featureCount() > 0:
-
-            # todo: open windows for attribute matching?
-            editable = sl.isEditable()
-            sl.startEditing()
-
-            # SpectralLibraryUtils.addSpeclib(self.speclib(), sl)
-            sl.commitChanges(not editable)
+            self.addSpeclib(slNew)
             event.acceptProposedAction()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
