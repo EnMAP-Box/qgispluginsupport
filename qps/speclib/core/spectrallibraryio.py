@@ -8,6 +8,7 @@ from PyQt5.QtGui import QIcon, QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox
 
+from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer, QgsFeature, QgsFields, QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsCoordinateReferenceSystem, QgsExpressionContextScope
 
@@ -439,6 +440,7 @@ class SpectralLibraryImportDialog(QDialog):
             sinkDefinition = QgsRemappingSinkDefinition()
             sinkDefinition.setDestinationFields(speclib.fields())
             sinkDefinition.setSourceCrs(format.sourceCrs())
+            sinkDefinition.setDestinationCrs(speclib.crs())
             sinkDefinition.setDestinationWkbType(speclib.wkbType())
             sinkDefinition.setFieldMap(propertyMap)
 
@@ -455,6 +457,8 @@ class SpectralLibraryImportDialog(QDialog):
 
             sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
             sink.setExpressionContext(context)
+            sink.setTransformContext(QgsProject.instance().transformContext())
+
             stopEditing = speclib.startEditing()
             speclib.beginEditCommand('Import profiles')
             success = sink.addFeatures(profiles)
