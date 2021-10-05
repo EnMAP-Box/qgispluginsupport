@@ -783,9 +783,30 @@ def ogrDataSource(data_source) -> ogr.DataSource:
 
     if isinstance(data_source, QgsVectorLayer):
         dpn = data_source.dataProvider().name()
+        uri = None
         if dpn not in ['ogr']:
+            context = QgsProcessingContext()
+            feedback = QgsProcessingFeedback()
+            alg: QgsProcessingAlgorithm = QgsApplication.processingRegistry().algorithmById('native:savefeatures').create({})
+            parameters = dict(DATASOURCE_OPTIONS='',
+                              INPUT=data_source.source(),
+                              LAYER_NAME='',
+                              LAYER_OPTIONS='',
+                              OUTPUT='TEMPORARY_OUTPUT'
+            )
+
+            assert alg.prepareAlgorithm(parameters, context, feedback), feedback.textLog()
+
+            results = alg.processAlgorithm(parameters, context, feedback)
+            print(results)
+            if not results:
+                raise Exception(f'Unable to convert {dpn} to temporary ogr format')
+            else:
+                uri = results['OUTPUT']
+        else:
+            uri = data_source.source().split('|')[0]
+        if uri is None:
             raise Exception(f'Unsupported vector data provider: {dpn}')
-        uri = data_source.source().split('|')[0]
         return ogrDataSource(uri)
 
     if isinstance(data_source, pathlib.Path):
