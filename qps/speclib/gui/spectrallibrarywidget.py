@@ -397,17 +397,17 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def addSpeclib(self, speclib: QgsVectorLayer):
         assert is_spectral_library(speclib)
-        sl = self.speclib()
-        wasEditable = sl.isEditable()
+        speclib_dst = self.speclib()
+        wasEditable = speclib_dst.isEditable()
         try:
-            sl.startEditing()
+            speclib_dst.startEditing()
             info = 'Add {} profiles from {} ...'.format(len(speclib), speclib.name())
-            sl.beginEditCommand(info)
-            sl.addSpeclib(speclib)
-            sl.endEditCommand()
+            speclib_dst.beginEditCommand(info)
+            SpectralLibraryUtils.addSpeclib(speclib_dst, speclib)
+            speclib_dst.endEditCommand()
 
             if not wasEditable:
-                sl.commitChanges()
+                speclib_dst.commitChanges()
                 s = ""
 
         except Exception as ex:
