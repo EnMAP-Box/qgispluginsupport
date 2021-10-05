@@ -73,12 +73,23 @@ def profile_fields(fields: typing.Union[QgsFeature, QgsVectorLayer, QgsFields]) 
     :param fields: fields to check
     :return: QgsFields
     """
+    pfields = QgsFields()
+
     if isinstance(fields, QgsFeature):
         fields = fields.fields()
     elif isinstance(fields, QgsVectorLayer):
         fields = fields.fields()
+    elif isinstance(fields, list):
+        fds = QgsFields()
+        for f in fields:
+            assert isinstance(f, QgsField)
+            fds.append(f)
+        fields = fds
+    elif isinstance(fields, QgsFields):
+        pass
+    if not isinstance(fields, QgsFields):
+        return pfields
 
-    pfields = QgsFields()
     for i in range(fields.count()):
         f = fields.at(i)
         if is_profile_field(f):
