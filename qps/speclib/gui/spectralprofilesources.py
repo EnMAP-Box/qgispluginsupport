@@ -1332,6 +1332,8 @@ class SpectralProfileScalingNode(TreeNode):
         self.nOffset.sigUpdated.connect(self.updateInfo)
         self.nScale.sigUpdated.connect(self.updateInfo)
 
+        self.updateInfo()
+
     def updateInfo(self):
 
         info = f"{self.offset()} + {self.scale()} * y"
@@ -2013,7 +2015,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
                 # w.setLayer(vis.speclib())
                 # w.setFilters(QgsFieldProxyModel.String | QgsFieldProxyModel.Numeric)
                 s = ""
-            elif isinstance(node, TreeNode):
+            elif isinstance(node, FloatValueNode):
                 w = super().createEditor(parent, option, index)
         return w
 
@@ -2046,7 +2048,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         elif isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
             assert isinstance(editor, QgsFieldExpressionWidget)
             editor.setExpression(node.expression().expression())
-        elif isinstance(node, TreeNode) and index.column() == 1:
+        elif isinstance(node, FloatValueNode) and index.column() == 1:
             if isinstance(editor, QDoubleSpinBox):
                 editor.setValue(node.value())
 
@@ -2070,7 +2072,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             assert isinstance(w, QgsFieldExpressionWidget)
             expr = w.expression()
             bridge.setData(index, expr, Qt.EditRole)
-        elif isinstance(node, TreeNode) and index.column() == 1:
+        elif isinstance(node, FloatValueNode) and index.column() == 1:
             if isinstance(w, (QDoubleSpinBox, QSpinBox)):
                 bridge.setData(index, w.value(), Qt.EditRole)
 
