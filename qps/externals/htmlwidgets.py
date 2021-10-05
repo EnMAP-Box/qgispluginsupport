@@ -6,9 +6,14 @@
 #
 # https://creativecommons.org/publicdomain/zero/1.0/
 # https://creativecommons.org/publicdomain/zero/1.0/legalcode
+#
+# changes by Benjamin Jakimow (BJ) marked in source code
+#
 
 import sys
 from PyQt5 import QtWidgets, QtGui, QtCore
+
+from qgis.PyQt import Qt
 
 
 class HTMLStyle(QtWidgets.QProxyStyle):
@@ -186,8 +191,13 @@ class HTMLComboBox(QtWidgets.QComboBox):
             max_w = 0
             max_h = 0
             for rownum in range(model.rowCount()):
-                item = model.item(rownum)
-                doc.setHtml(item.text())
+                # change by BJ
+                if hasattr(model, 'item'):
+                    item = model.item(rownum)
+                    doc.setHtml(item.text())
+                else:
+                    idx = model.index(rownum, 0)
+                    doc.setHtml(model.data(idx, role=Qt.DisplayRole))
                 size = doc.size()
                 if size.width() > max_w:
                     max_w = size.width()
