@@ -2691,7 +2691,8 @@ class SpectralProfilePlotControlView(QTreeView):
         a.setEnabled(QApplication.clipboard().mimeData().hasFormat(SpectralProfilePlotVisualization.MIME_TYPE))
         a.triggered.connect(lambda *args: self.pasteVis())
 
-        a = menu.addAction('User colors from symbol renderer')
+        a = menu.addAction('Use vector symbol colors')
+        a.setToolTip('Use map vector symbol colors as profile color.')
         a.setIcon(QIcon(r':/qps/ui/icons/speclib_usevectorrenderer.svg'))
         a.triggered.connect(lambda *args, v=selected_vis: self.userColorsFromSymbolRenderer(v))
 
