@@ -191,7 +191,7 @@ class HTMLComboBox(QtWidgets.QComboBox):
             max_w = 0
             max_h = 0
             for rownum in range(model.rowCount()):
-                # change by BJ
+                # change by BJ: account for older Qt version / models without .item
                 if hasattr(model, 'item'):
                     item = model.item(rownum)
                     doc.setHtml(item.text())
