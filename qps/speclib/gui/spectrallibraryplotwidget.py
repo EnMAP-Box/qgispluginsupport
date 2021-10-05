@@ -175,9 +175,11 @@ class SpectralXAxis(pg.AxisItem):
 
             strns = []
             for v in values64:
-                strns.append(v.astype(object).strftime(self.mDateTimeFormat))
-
-            # print(strns)
+                dt = v.astype(object)
+                if isinstance(dt, datetime.datetime):
+                    strns.append(dt.strftime(self.mDateTimeFormat))
+                else:
+                    strns.append('')
             return strns
         else:
             return super(SpectralXAxis, self).tickStrings(values, scale, spacing)
