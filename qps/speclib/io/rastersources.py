@@ -553,7 +553,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                 xsize = min(block_size[0], ds.RasterXSize - xoff)
                 ysize = min(block_size[1], ds.RasterYSize - yoff)
                 cube: np.ndarray = ds.ReadAsArray(xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize)
-                cube = cube.reshape((ds.RasterCount, ds.RasterYSize, ds.RasterXSize))
+                cube = cube.reshape((ds.RasterCount, ysize, xsize))
                 fid_pos = fid_positions[yoff:yoff + ysize, xoff:xoff + xsize]
                 assert cube.shape[1:] == fid_pos.shape
 
