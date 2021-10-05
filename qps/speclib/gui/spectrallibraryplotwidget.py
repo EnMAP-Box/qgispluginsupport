@@ -2848,6 +2848,8 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
 
 
 class SpectralLibraryPlotWidget(QWidget):
+    sigDragEnterEvent = pyqtSignal(QDragEnterEvent)
+    sigDropEvent = pyqtSignal(QDropEvent)
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -3029,13 +3031,11 @@ class SpectralLibraryPlotWidget(QWidget):
             item.plotStyle().setLineColor(nextColor(color, mode='cat'))
         self.mPlotControlModel.insertVisualizations(-1, item)
 
-    def dragEnterEvent(self, ev: QDragEnterEvent):
-
-        s = ""
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        self.sigDragEnterEvent.emit(event)
 
     def dropEvent(self, event: QDropEvent) -> None:
-
-        s = ""
+        self.sigDropEvent.emit(event)
 
     def defaultStyle(self) -> PlotStyle:
 

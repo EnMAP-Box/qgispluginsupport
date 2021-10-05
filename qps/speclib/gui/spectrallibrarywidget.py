@@ -65,6 +65,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mSpeclibPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
         assert isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)
         self.mSpeclibPlotWidget.setDualView(self.mMainView)
+        self.mSpeclibPlotWidget.sigDragEnterEvent.connect(self.dragEnterEvent)
+        self.mSpeclibPlotWidget.sigDropEvent.connect(self.dropEvent)
+
         # self.mStatusLabel.setPlotWidget(self.mSpeclibPlotWidget)
         # self.mSpeclibPlotWidget.plotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
@@ -504,14 +507,25 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def dropEvent(self, event: QDropEvent):
 
-        sl = SpectralLibraryUtils.readFromMimeData(event.mimeData())
-        if isinstance(sl, QgsVectorLayer) and sl.featureCount() > 0:
+        if not isinstance(self.speclib(), QgsVectorLayer):
+            return
+        sl: QgsVectorLayer = self.speclib()
 
+        slNew = SpectralLibraryUtils.readFromMimeData(event.mimeData())
+
+        if isinstance(slNew, QgsVectorLayer) and slNew.featureCount() > 0:
+
+            # todo: open windows for attribute matching?
+            editable = sl.isEditable()
+            sl.startEditing()
+
+            # SpectralLibraryUtils.addSpeclib(self.speclib(), sl)
+            sl.commitChanges(not editable)
             event.acceptProposedAction()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
 
-        if SpectralLibraryUtils.canReadFromMimeData(event.mimeData()):
+        if event.proposedAction() == Qt.CopyAction and SpectralLibraryUtils.canReadFromMimeData(event.mimeData()):
             event.acceptProposedAction()
 
     def onImportProfiles(self):
