@@ -548,7 +548,6 @@ class SpectralProfilePlotVisualization(QObject):
         """
         return self.mColorProperty
 
-
     def name(self) -> str:
         """
         Returns the name of this visualization
@@ -576,7 +575,8 @@ class SpectralProfilePlotVisualization(QObject):
     def isComplete(self) -> bool:
         speclib = self.speclib()
         field = self.field()
-        return isinstance(speclib, QgsVectorLayer) \
+        return isinstance(speclib, QgsVectorLayer) and \
+               not sip.isdeleted(speclib) \
                and isinstance(field, QgsField) \
                and field.name() in speclib.fields().names()
 
@@ -1282,6 +1282,10 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mShowCrosshair: bool = True
         self.mShowCursorInfo: bool = True
 
+    def dragEnterEvent(self, ev: QDragEnterEvent):
+
+        s = ""
+
     def onProfileClicked(self, data: MouseClickData):
         """
         Slot to react to mouse-clicks on SpectralProfilePlotDataItems
@@ -1341,6 +1345,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     def clearInfoScatterPoint(self):
         self.mInfoScatterPoint.setVisible(False)
         self.mInfoScatterPointHtml = ''
+
 
     def spectralProfilePlotDataItems(self) -> typing.List[SpectralProfilePlotDataItem]:
         return [item for item in self.plotItem.listDataItems()
@@ -2860,6 +2865,8 @@ class SpectralLibraryPlotWidget(QWidget):
         # self.mPlotControlModel.sigProgressChanged.connect(self.onProgressChanged)
         self.mCurrentModelId: str = None
         self.setCurrentModel('')
+        self.setAcceptDrops(True)
+
 
         self.mProxyModel = QSortFilterProxyModel()
         self.mProxyModel.setSourceModel(self.mPlotControlModel)
@@ -3021,6 +3028,14 @@ class SpectralLibraryPlotWidget(QWidget):
             color = lastVis.plotStyle().lineColor()
             item.plotStyle().setLineColor(nextColor(color, mode='cat'))
         self.mPlotControlModel.insertVisualizations(-1, item)
+
+    def dragEnterEvent(self, ev: QDragEnterEvent):
+
+        s = ""
+
+    def dropEvent(self, event: QDropEvent) -> None:
+
+        s = ""
 
     def defaultStyle(self) -> PlotStyle:
 

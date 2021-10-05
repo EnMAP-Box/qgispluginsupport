@@ -303,7 +303,7 @@ class SpectralLibraryUtils:
         return source
 
     @staticmethod
-    def readFromMimeData(mimeData: QMimeData):
+    def readFromMimeData(mimeData: QMimeData) -> QgsVectorLayer:
         """
         Reads a SpectraLibrary from mime data.
         :param mimeData: QMimeData
@@ -393,6 +393,14 @@ class SpectralLibraryUtils:
         speclib.setAttributeTableConfig(conf)
 
     @staticmethod
+    def canReadFromMimeData(mimeData: QMimeData) -> bool:
+        formats = [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_URL]
+        for format in formats:
+            if format in mimeData.formats():
+                return True
+        return False
+
+    @staticmethod
     def mimeData(speclib: QgsVectorLayer, formats: list = None) -> QMimeData:
         """
         Wraps this Speclib into a QMimeData object
@@ -416,8 +424,10 @@ class SpectralLibraryUtils:
                 mimeData.setData(MIMEDATA_SPECLIB_LINK, pickle.dumps(thisID))
             elif format == MIMEDATA_SPECLIB:
                 mimeData.setData(MIMEDATA_SPECLIB, pickle.dumps(speclib))
+
             elif format == MIMEDATA_URL:
                 mimeData.setUrls([QUrl(speclib.source())])
+
             elif format == MIMEDATA_TEXT:
                 from ..io.csvdata import CSVSpectralLibraryIO
                 txt = CSVSpectralLibraryIO.asString(speclib)

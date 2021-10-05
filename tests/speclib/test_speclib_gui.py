@@ -402,7 +402,6 @@ class TestSpeclibWidgets(TestCase):
         event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
         print('Drop {}'.format(speclib), flush=True)
         slw.dropEvent(event)
-        QApplication.processEvents()
         self.assertEqual(len(slw.speclib()), len(sl))
 
         # drop random files
@@ -426,11 +425,9 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(slw)
 
-
     def test_CurrentProfiles(self):
-        w = SpectralLibraryWidget()
 
-        styles = dict()
+        w = SpectralLibraryWidget()
 
         def onClicked(*args):
             sl = TestObjects.createSpectralLibrary(2)
@@ -438,7 +435,7 @@ class TestSpeclibWidgets(TestCase):
 
         btnAddTempProfiles = QPushButton('Add Temp Profiles')
         btnAddTempProfiles.clicked.connect(onClicked)
-        # w.setCurrentProfiles([p1, p2, p3])
+
         w2 = QWidget()
         l = QVBoxLayout()
         l.addWidget(btnAddTempProfiles)
@@ -641,8 +638,8 @@ class TestSpeclibWidgets(TestCase):
         w.show()
 
         QgsProject.instance().removeAllMapLayers()
-        del speclib
-        assert w.plotWidget().speclib() is None
+
+        assert w.speclib() is None
 
     def test_speclibImportSpeed(self):
 

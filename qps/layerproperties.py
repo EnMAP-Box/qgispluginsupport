@@ -1142,7 +1142,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         # info from layer to table
         mLayer.editingStarted.connect(self.editingToggled)
         mLayer.editingStopped.connect(self.editingToggled)
-        mLayer.destroyed.connect(self.mMainView.cancelProgress)
+        mLayer.destroyed.connect(self.onLayerDestroyed)
         mLayer.selectionChanged.connect(self.updateTitle)
         mLayer.editCommandEnded.connect(self.scheduleTitleUpdate)
         mLayer.featuresDeleted.connect(self.updateTitle)
@@ -1664,6 +1664,10 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
     def mActionDeleteSelected_triggered(self):
         self.vectorLayerTools().deleteSelection(self.mLayer)
+
+    def onLayerDestroyed(self):
+        self.mMainView.cancelProgress()
+        self.mLayer = None
 
     def reloadModel(self):
         """

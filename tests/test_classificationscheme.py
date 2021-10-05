@@ -21,7 +21,6 @@ from qps.utils import *
 from qps.classification.classificationscheme import *
 
 
-
 class TestsClassificationScheme(TestCase):
 
     @classmethod
@@ -546,5 +545,4 @@ class TestsClassificationScheme(TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

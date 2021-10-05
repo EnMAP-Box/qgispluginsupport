@@ -4,7 +4,7 @@ import typing
 import warnings
 
 from PyQt5.QtCore import pyqtSignal, Qt, QModelIndex
-from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent
+from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QLabel
 from qgis.core import QgsVectorLayer
@@ -15,7 +15,7 @@ from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttrib
 from ..core import is_spectral_library
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
-from ..core.spectrallibrary import SpectralLibrary
+from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ..core.spectralprofile import SpectralProfile
 from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibraryPlotWidget, \
@@ -502,11 +502,17 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         return self.mMapCanvas
 
-    def dropEvent(self, event):
-        self.plotWidget().dropEvent(event)
+    def dropEvent(self, event: QDropEvent):
+
+        sl = SpectralLibraryUtils.readFromMimeData(event.mimeData())
+        if isinstance(sl, QgsVectorLayer) and sl.featureCount() > 0:
+
+            event.acceptProposedAction()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
-        self.plotWidget().dragEnterEvent(event)
+
+        if SpectralLibraryUtils.canReadFromMimeData(event.mimeData()):
+            event.acceptProposedAction()
 
     def onImportProfiles(self):
         """

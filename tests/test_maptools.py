@@ -169,16 +169,17 @@ class TestMapTools(TestCase):
         canvas = self.createCanvas()
         canvas.show()
         canvas.setCurrentLayer(canvas.layers()[0])
-        mt = QgsMapToolSelect(canvas)
-        mt.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectRadius)
-        canvas.setMapTool(mt)
+        mt1 = QgsMapToolSelect(canvas)
+        mt1.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectRadius)
+        canvas.setMapTool(mt1)
 
-        m2 = QgsMapToolZoom(canvas, True)
-        canvas.setMapTool(m2)
+        mt2 = QgsMapToolZoom(canvas, True)
+        canvas.setMapTool(mt2)
 
-        canvas.setMapTool(mt)
+        canvas.setMapTool(mt1)
 
         self.showGui(canvas)
+        print('DONE')
 
     def test_AddFeature(self):
 

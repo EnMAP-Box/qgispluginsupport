@@ -16,8 +16,10 @@ qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'i
 class Example1(unittest.TestCase):
     resource_path = ':/images/icons/qgis_icon.svg'
 
-    @unittest.skipIf(qgis_images_resources.is_file() is False or QFile(resource_path).exists(),
+    @unittest.skipIf(qgis_images_resources.is_file() is False,
                      'Resource file does not exist: {}'.format(qgis_images_resources))
+    @unittest.skipIf(QFile(resource_path).exists(),
+                     'Resource already loaded: {}'.format(resource_path))
     def test_startQgsApplication(self):
         """
         This example shows how to initialize a QgsApplication on TestCase start up
