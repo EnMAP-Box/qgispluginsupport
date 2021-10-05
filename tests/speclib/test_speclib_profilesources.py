@@ -265,7 +265,8 @@ class SpectralProcessingTests(TestCase):
             sli.destroyed.connect(onDestroyed)
             sli.sigWindowIsClosing.connect(onClosing)
 
-        mt.sigLocationRequest.connect(lambda crs, pt: panel.loadCurrentMapSpectra(SpatialPoint(crs, pt)))
+        mt.sigLocationRequest.connect(lambda crs, pt, c=canvas:
+                                      panel.loadCurrentMapSpectra(SpatialPoint(crs, pt), mapCanvas= canvas))
         btnAdd.clicked.connect(onClicked)
         hl = QHBoxLayout()
         hl.addWidget(btnAdd)
