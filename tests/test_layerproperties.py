@@ -12,7 +12,7 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 import xmlrunner
-from qgis._gui import QgsRasterLayerProperties
+from qgis.gui import QgsRasterLayerProperties
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
     QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer
 
