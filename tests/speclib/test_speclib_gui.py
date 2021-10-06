@@ -410,7 +410,7 @@ class TestSpeclibWidgets(TestCase):
                 break
             md = QMimeData()
             md.setUrls([QUrl.fromLocalFile(file.as_posix())])
-            print('Drop {}'.format(file.name), flush=True)
+            print('# Drop {}'.format(file.name), flush=True)
             event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
             slw.dropEvent(event)
             QApplication.processEvents()
@@ -418,6 +418,7 @@ class TestSpeclibWidgets(TestCase):
             slw.speclib().startEditing()
             slw.speclib().deleteFeatures(slw.speclib().allFeatureIds())
             slw.speclib().commitChanges()
+            s = ""
 
         self.showGui(slw)
 
@@ -715,8 +716,8 @@ class TestSpeclibWidgets(TestCase):
         vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
         vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
 
-        layers = [speclib1, vl1, vl2, vl3]
-        layers = [speclib1]
+        layers = [vl1, vl2, vl3]
+        # layers = [speclib1]
 
         QgsProject.instance().addMapLayers(layers)
         from qps.speclib.io.rastersources import SpectralProfileImportPointsDialog
@@ -743,7 +744,7 @@ class TestSpeclibWidgets(TestCase):
             self.assertEqual(vl, d.vectorSource())
 
             d.finished.connect(onFinished)
-            d.run()
+            d.run(run_async=False)
             while not d.isFinished():
                 QApplication.processEvents()
             d.hide()

@@ -490,7 +490,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         # add current profiles to speclib
         oldIDs = set(speclib.allFeatureIds())
+
+        speclib.beginEditCommand('Add current profiles')
         addedKeys = speclib.addProfiles(currentProfiles)
+        speclib.endEditCommand()
 
         if not addAuto:
             # give current spectra the current spectral style

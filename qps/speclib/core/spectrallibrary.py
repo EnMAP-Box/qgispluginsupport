@@ -862,8 +862,6 @@ class SpectralLibrary(QgsVectorLayer):
         nBlocksTotal = nXBlocks * nYBlocks
         nBlocksDone = 0
 
-        if progress_handler:
-            progress_handler.setRange(0, nBlocksTotal + 1)
 
         # pixel center coordinates as geolocation
         geo_x, geo_y = px2geocoordinates(ds,
