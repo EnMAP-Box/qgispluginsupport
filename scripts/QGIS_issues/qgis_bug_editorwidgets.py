@@ -2,10 +2,11 @@ import os
 import pathlib
 import re
 import xml.etree.ElementTree as ElementTree
-from PyQt5.QtXml import QDomDocument
 
+from qgis._gui import QgsEditorWidgetWrapper, QgsAttributeTypeLoadDialog, QgsVectorLayerProperties, QgsMapCanvas, \
+    QgsMessageBar
 from qgis.core import QgsVectorLayerExporter, QgsVectorLayer, QgsEditorWidgetSetup
-from qgis.gui import QgsEditorWidgetRegistry, QgsEditorWidgetFactory, QgsEditorConfigWidget, QgsGui
+from qgis.gui import QgsEditorWidgetFactory, QgsEditorConfigWidget, QgsGui
 from qgis.testing import start_app, TestCase
 
 qgis_app = start_app()
@@ -79,10 +80,18 @@ class TestQgsRangeWidgetSetup(TestCase):
         self.assertEqual(configA['Max'], 256)
         self.assertEqual(configA['Min'], 1)
 
+        wr: QgsEditorWidgetWrapper = QgsGui.editorWidgetRegistry().createConfigWidget('sdsd', lyr2, lyr2.fields().lookupField('number'), None)
+
         # test loaded QgsEditorConfigWidget
         cw: QgsEditorConfigWidget = factory.configWidget(lyr2, lyr2.fields().lookupField('number'), None)
-        configB = cw.config()
-        self.assertEqual(configB['Max'], 256)
-        self.assertEqual(configB['Min'], 1)
+        # cw.setConfig(configA) # <-- seems to be missed
+        configC = cw.config()
+        self.assertEqual(configC['Max'], 256)
+        self.assertEqual(configC['Min'], 1)
 
+        if False:
+            canvas = QgsMapCanvas()
+            mbar = QgsMessageBar()
+            d = QgsVectorLayerProperties(canvas, mbar, lyr2, None)
+            d.exec_()
 

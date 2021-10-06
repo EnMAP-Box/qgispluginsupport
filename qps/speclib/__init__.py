@@ -32,6 +32,7 @@ import pathlib
 from qgis.core import QgsSettings, QgsCoordinateReferenceSystem, QgsField, QgsFields
 from qgis.PyQt.QtCore import NULL, QVariant
 from osgeo import ogr
+
 EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
 EDITOR_WIDGET_REGISTRY_NAME = 'Spectral Profile'
 
@@ -57,9 +58,10 @@ class SpectralLibrarySettingsKey:
     BACKGROUND_COLOR = 'BACKGROUND_COLOR'
     FOREGROUND_COLOR = 'FOREGROUND_COLOR'
     INFO_COLOR = 'INFO_COLOR'
-    CROSSHAIR_COLOR= 'CROSSHAIR_COLOR'
+    CROSSHAIR_COLOR = 'CROSSHAIR_COLOR'
     SELECTION_COLOR = 'SELECTION_COLOR'
     TEMPORARY_COLOR = 'TEMPORARY_COLOR'
+
 
 def speclibSettings() -> QgsSettings:
     """
