@@ -19,6 +19,7 @@
 
 from qgis.PyQt.QtWidgets import *
 # auto-generated file.
+from qgis.gui import QgsRasterLayerProperties, QgsGui
 from qgis.core import \
     Qgis, \
     QgsAction, \
@@ -1010,18 +1011,24 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
 
     else:
         dialog = None
-        if False and isinstance(layer, QgsRasterLayer):
+
+        if True:
             if not isinstance(canvas, QgsMapCanvas):
                 canvas = QgsMapCanvas()
-            dialog = QgsRasterLayerProperties(layer, canvas)
-            from . import MAPLAYER_CONFIGWIDGET_FACTORIES
-            for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
-                dialog.addPropertiesPageFactory(f)
+
+            if isinstance(layer, QgsRasterLayer):
+                dialog = QgsRasterLayerProperties(layer, canvas)
+                if hasattr(dialog, 'addPropertiesPageFactory'):
+                    from . import MAPLAYER_CONFIGWIDGET_FACTORIES
+                    for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
+                        dialog.addPropertiesPageFactory(f)
+            elif isinstance(layer, QgsVectorLayer):
+                dialog = LayerPropertiesDialog(layer, canvas=canvas)
         else:
             dialog = LayerPropertiesDialog(layer, canvas=canvas)
 
         if dialog:
-            if modal == True:
+            if modal:
                 dialog.setModal(True)
                 return dialog.exec_()
             else:
@@ -1037,7 +1044,6 @@ def tr(t: str) -> str:
 
 
 class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
-
     sigWindowIsClosing = pyqtSignal()
 
     def __init__(self, mLayer: QgsVectorLayer, *args,
