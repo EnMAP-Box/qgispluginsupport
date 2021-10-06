@@ -497,14 +497,16 @@ def registerSpectralProfileEditorWidget():
     if not EDITOR_WIDGET_REGISTRY_KEY in widgetRegistry.factories().keys():
         global SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY
         global SPECTRAL_PROFILE_FIELD_FORMATTER
-
-        SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_NAME)
         SPECTRAL_PROFILE_FIELD_FORMATTER = SpectralProfileFieldFormatter()
+
         if True:
             # workaround as long human-readible name needs to be in QML
-            widgetRegistry.registerWidget(EDITOR_WIDGET_REGISTRY_NAME, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
+            SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
+            widgetRegistry.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
         else:
             # as it should be
+            SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_NAME)
             widgetRegistry.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
+
         fieldFormatterRegistry.addFieldFormatter(SPECTRAL_PROFILE_FIELD_FORMATTER)
-        s = ""
+
