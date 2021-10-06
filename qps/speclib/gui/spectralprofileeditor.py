@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QGroupBox, QWidget, QLabel
 from qgis.core import QgsVectorLayer, QgsExpression, QgsFieldProxyModel, QgsField, QgsFieldFormatter, QgsApplication
 
 from qgis.gui import QgsEditorWidgetWrapper, QgsFieldExpressionWidget, QgsEditorConfigWidget, QgsGui, \
-     QgsEditorWidgetFactory
+    QgsEditorWidgetFactory
 from qgis.PyQt.QtCore import NULL
 from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
@@ -18,6 +18,7 @@ SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
 SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY: None
 SPECTRAL_PROFILE_FIELD_FORMATTER: None
+
 
 class SpectralProfileTableModel(QAbstractTableModel):
     """
