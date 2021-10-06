@@ -825,7 +825,7 @@ class SpectralLibrary(QgsVectorLayer):
         assert isinstance(ds, gdal.Dataset), f'Unable to open {raster.source()} as gdal.Dataset'
 
         if progress_handler:
-            progress_handler.setLabelText('Calculate profile positions...')
+            progress_handler.setProgressText('Calculate profile positions...')
 
         bbl = parseBadBandList(ds)
         wl, wlu = parseWavelength(ds)
@@ -862,8 +862,6 @@ class SpectralLibrary(QgsVectorLayer):
         nBlocksTotal = nXBlocks * nYBlocks
         nBlocksDone = 0
 
-        if progress_handler:
-            progress_handler.setRange(0, nBlocksTotal + 1)
 
         # pixel center coordinates as geolocation
         geo_x, geo_y = px2geocoordinates(ds,
@@ -881,7 +879,7 @@ class SpectralLibrary(QgsVectorLayer):
                                                  all_touched=all_touched)
 
         if progress_handler:
-            progress_handler.setLabelText('Read profile values..')
+            progress_handler.setProgressText('Read profile values..')
             progress_handler.setValue(progress_handler.value() + 1)
 
         PROFILE_COUNTS = dict()
@@ -1035,10 +1033,9 @@ class SpectralLibrary(QgsVectorLayer):
 
         nTotal = len(positions)
         if isinstance(progressDialog, QgsProcessingFeedback):
-            progressDialog.setMinimum(0)
-            progressDialog.setMaximum(nTotal)
-            progressDialog.setValue(0)
-            progressDialog.setLabelText('Extract pixel profiles...')
+
+            progressDialog.setProgress(0)
+            progressDialog.setProgressText('Extract pixel profiles...')
 
         for p, position in enumerate(positions):
 

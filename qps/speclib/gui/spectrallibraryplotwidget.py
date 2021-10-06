@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabe
 from PyQt5.QtXml import QDomElement, QDomDocument, QDomNode
 
 from qgis.PyQt.QtCore import NULL
-from qgis._core import QgsPropertyDefinition
+from qgis.core import QgsPropertyDefinition
 from qgis.gui import QgsColorButton, QgsPropertyOverrideButton, QgsCollapsibleGroupBox
 
 from qgis.core import QgsProperty, QgsExpressionContextScope
@@ -2031,8 +2031,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
     def mimeData(self, indexes: typing.Iterable[QModelIndex]) -> QMimeData:
 
-
-
         visualizations = []
         rows = []
         for idx in indexes:
@@ -2249,7 +2247,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             self.mDualView = dualView
 
             if isinstance(self.mDualView, QgsDualView):
-
                 self.mDualView.tableView().selectionModel().selectionChanged.connect(self.onDualViewSelectionChanged)
                 self.mDualView.tableView().verticalScrollBar().sliderMoved.connect(self.onDualViewSliderMoved)
                 # self.mDualView.view()
@@ -2287,7 +2284,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 self.mSpeclib.rendererChanged.connect(self.onSpeclibRendererChanged)
                 self.onSpeclibAttributesChanged()
 
-
     def onSpeclibBeforeCommitChanges(self):
         """
         Workaround for https://github.com/qgis/QGIS/issues/45228
@@ -2295,6 +2291,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mStartedCommitEditWrapper = not self.speclib().isEditCommandActive()
         if self.mStartedCommitEditWrapper:
             self.speclib().beginEditCommand('Before commit changes')
+            s = ""
 
     def onSpeclibAfterCommitChanges(self):
         """
@@ -2773,7 +2770,8 @@ class SpectralProfilePlotControlView(QTreeView):
             property.setExpressionString('@symbol_color')
 
             model: QAbstractItemModel = self.model()
-            idx = model.index(SpectralProfilePlotControlModel.PIX_COLOR, SpectralProfilePlotControlModel.CIX_VALUE, parentIdx)
+            idx = model.index(SpectralProfilePlotControlModel.PIX_COLOR, SpectralProfilePlotControlModel.CIX_VALUE,
+                              parentIdx)
             self.model().setData(idx, property, role=Qt.EditRole)
         pass
 

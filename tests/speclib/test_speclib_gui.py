@@ -53,14 +53,12 @@ from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.layerproperties import AddAttributeDialog
 
-TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
-
 
 class TestSpeclibWidgets(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
-        os.makedirs(TEST_DIR, exist_ok=True)
+
         options = StartOptions.All
 
         super(TestSpeclibWidgets, cls).setUpClass(*args, options=options)
@@ -98,9 +96,7 @@ class TestSpeclibWidgets(TestCase):
     @classmethod
     def tearDownClass(cls):
         super(TestSpeclibWidgets, cls).tearDownClass()
-        if os.path.isdir(TEST_DIR):
-            import shutil
-            shutil.rmtree(TEST_DIR)
+
 
     @unittest.skipIf(False, '')
     def test_PyQtGraphPlot(self):
@@ -414,7 +410,7 @@ class TestSpeclibWidgets(TestCase):
                 break
             md = QMimeData()
             md.setUrls([QUrl.fromLocalFile(file.as_posix())])
-            print('Drop {}'.format(file.name), flush=True)
+            print('# Drop {}'.format(file.name), flush=True)
             event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
             slw.dropEvent(event)
             QApplication.processEvents()
@@ -422,6 +418,7 @@ class TestSpeclibWidgets(TestCase):
             slw.speclib().startEditing()
             slw.speclib().deleteFeatures(slw.speclib().allFeatureIds())
             slw.speclib().commitChanges()
+            s = ""
 
         self.showGui(slw)
 
@@ -442,6 +439,7 @@ class TestSpeclibWidgets(TestCase):
         l.addWidget(w)
         w2.setLayout(l)
         self.showGui(w2)
+        s = ""
 
     def test_SpectralLibraryWidget_ViewTypes(self):
 
@@ -510,8 +508,9 @@ class TestSpeclibWidgets(TestCase):
         l = len(sl1)
         self.assertTrue(slw.speclib() == sl1)
 
-        from qps.resources import ResourceBrowser
+        # from qps.resources import ResourceBrowser
         # b = ResourceBrowser()
+
         self.showGui([slw])
 
     @unittest.skipIf(False, '')
@@ -717,8 +716,8 @@ class TestSpeclibWidgets(TestCase):
         vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
         vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
 
-        layers = [speclib1, vl1, vl2, vl3]
-        layers = [speclib1]
+        layers = [vl1, vl2, vl3]
+        # layers = [speclib1]
 
         QgsProject.instance().addMapLayers(layers)
         from qps.speclib.io.rastersources import SpectralProfileImportPointsDialog
@@ -745,7 +744,7 @@ class TestSpeclibWidgets(TestCase):
             self.assertEqual(vl, d.vectorSource())
 
             d.finished.connect(onFinished)
-            d.run()
+            d.run(run_async=False)
             while not d.isFinished():
                 QApplication.processEvents()
             d.hide()

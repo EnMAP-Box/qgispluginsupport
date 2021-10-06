@@ -340,7 +340,11 @@ class EnviSpectralLibraryExportWidget(SpectralLibraryExportWidget):
         return SpectralLibraryIO.spectralLibraryIOInstances(EnviSpectralLibraryIO)
 
     def setSpeclib(self, speclib: QgsVectorLayer):
-        self.mProfileField.setFields(profile_fields(speclib))
+        pfields: QgsFields = profile_fields(speclib)
+        self.mProfileField.setFields(pfields)
+        if pfields.count() > 0 and self.mProfileField.currentIndex() < 0:
+            self.mProfileField.setCurrentIndex(0)
+
         self.mNameExpr.setFields(speclib.fields())
 
     def supportsMultipleSpectralSettings(self) -> bool:
@@ -584,6 +588,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
                        feedback: QgsProcessingFeedback) -> typing.List[str]:
 
         profile_field = exportSettings[EnviSpectralLibraryExportWidget.PROFILE_FIELD]
+        assert profile_field != ''
         expr = QgsExpression(exportSettings[EnviSpectralLibraryExportWidget.PROFILE_NAMES])
 
         path = pathlib.Path(path)
