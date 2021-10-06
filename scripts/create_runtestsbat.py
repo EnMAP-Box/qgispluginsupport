@@ -58,11 +58,11 @@ for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py', recursive=True)):
     bn = os.path.splitext(bn)[0]
     #lineBat = 'call %PYTHON% -m nose2 -s {3} {0} & move {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
     do_append = '' if i == 0 else '--append'
-    pathTest = str(pathlib.Path(*file.parts[-2:]).as_posix())
+    pathTest = file.relative_to(DIR_TESTS.parent)
     #lineBat = '%PYTHON% -m coverage run --source qps --omit qps/externals/*  {}  {}'.format(do_append, pathTest)
-    lineBat = '%PYTHON% -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest)
+    lineBat = '%PYTHON% -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
     #lineSh = 'python3 -m coverage run --source qps  --omit qps/externals/* {} {}'.format(do_append, pathTest)
-    lineSh = 'python3 -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest)
+    lineSh = 'python3 -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
 
     linesBat.append(lineBat)
     linesSh.append(lineSh)
