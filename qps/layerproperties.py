@@ -19,7 +19,7 @@
 
 from qgis.PyQt.QtWidgets import *
 # auto-generated file.
-from qgis.gui import QgsRasterLayerProperties, QgsGui
+from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties
 from qgis.core import \
     Qgis, \
     QgsAction, \
@@ -969,6 +969,7 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
                               canvas: QgsMapCanvas = None,
                               parent: QObject = None,
                               modal: bool = True,
+                              messageBar: QgsMessageBar = None,
                               useQGISDialog: bool = False) -> typing.Union[QDialog.DialogCode, QDialog]:
     """
     Opens a dialog to adjust map layer settings.
@@ -1011,19 +1012,22 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
 
     else:
         dialog = None
-
+        if not isinstance(canvas, QgsMapCanvas):
+            canvas = QgsMapCanvas()
+        if not isinstance(messageBar, QgsMessageBar):
+            messageBar = QgsMessageBar()
         if True:
-            if not isinstance(canvas, QgsMapCanvas):
-                canvas = QgsMapCanvas()
-
             if isinstance(layer, QgsRasterLayer):
-                dialog = QgsRasterLayerProperties(layer, canvas)
+                dialog = QgsRasterLayerProperties(layer, canvas, parent=parent)
                 if hasattr(dialog, 'addPropertiesPageFactory'):
                     from . import MAPLAYER_CONFIGWIDGET_FACTORIES
                     for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
                         dialog.addPropertiesPageFactory(f)
+                dialog.restoreLastPage()
+
             elif isinstance(layer, QgsVectorLayer):
-                dialog = LayerPropertiesDialog(layer, canvas=canvas)
+                dialog = QgsVectorLayerProperties(canvas=canvas, messageBar=messageBar, lyr=layer, parent=parent)
+                dialog.restoreLastPage()
         else:
             dialog = LayerPropertiesDialog(layer, canvas=canvas)
 
