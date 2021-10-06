@@ -1351,7 +1351,8 @@ class TreeView(QTreeView):
 
         if self.mAutoFirstColumnSpan:
             self.setColumnSpan(parent, first, last)
-
+        else:
+            s = ""
         if True:
             level = self.nodeDepth(parent)
             if level < self.mAutoExpansionDepth:
@@ -1374,7 +1375,7 @@ class TreeView(QTreeView):
             return
         assert isinstance(parent, QModelIndex)
 
-        if parent.column() != 0:
+        if parent.column() > 0:
             return
 
         rows = model.rowCount(parent)
@@ -1400,6 +1401,7 @@ class TreeView(QTreeView):
                 continue
 
             spanned: bool = True
+
             for c in range(1, cols):
                 idx_right = model.index(r, c, parent)
                 if idx_right.isValid():
@@ -1408,6 +1410,10 @@ class TreeView(QTreeView):
                         spanned = False
                         break
 
+            # if spanned:
+            #     txt0 = model.index(r, 0, parent).data(Qt.DisplayRole)
+            #     data0 = model.index(r, 0, parent).data(Qt.UserRole)
+            #     print(f'spanned: {data0} {txt0}')
             self.setFirstColumnSpanned(r, parent, spanned)
 
             # traverse sub-trees structure
