@@ -53,14 +53,12 @@ from qps.speclib.io.envi import *
 from qps.speclib.io.asd import *
 from qps.layerproperties import AddAttributeDialog
 
-TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
-
 
 class TestSpeclibWidgets(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
-        os.makedirs(TEST_DIR, exist_ok=True)
+
         options = StartOptions.All
 
         super(TestSpeclibWidgets, cls).setUpClass(*args, options=options)
@@ -98,9 +96,7 @@ class TestSpeclibWidgets(TestCase):
     @classmethod
     def tearDownClass(cls):
         super(TestSpeclibWidgets, cls).tearDownClass()
-        if os.path.isdir(TEST_DIR):
-            import shutil
-            shutil.rmtree(TEST_DIR)
+
 
     @unittest.skipIf(False, '')
     def test_PyQtGraphPlot(self):
@@ -442,6 +438,7 @@ class TestSpeclibWidgets(TestCase):
         l.addWidget(w)
         w2.setLayout(l)
         self.showGui(w2)
+        s = ""
 
     def test_SpectralLibraryWidget_ViewTypes(self):
 
@@ -510,8 +507,9 @@ class TestSpeclibWidgets(TestCase):
         l = len(sl1)
         self.assertTrue(slw.speclib() == sl1)
 
-        from qps.resources import ResourceBrowser
+        # from qps.resources import ResourceBrowser
         # b = ResourceBrowser()
+
         self.showGui([slw])
 
     @unittest.skipIf(False, '')

@@ -23,14 +23,14 @@ from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpe
 from qps.utils import *
 
 
-class TestIO(TestCase):
+class TestSpeclibIO_Raster(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
-        super(TestIO, cls).setUpClass(*args, **kwds)
+        super(TestSpeclibIO_Raster, cls).setUpClass(*args, **kwds)
 
     @classmethod
     def tearDownClass(cls):
-        super(TestIO, cls).tearDownClass()
+        super(TestSpeclibIO_Raster, cls).tearDownClass()
 
     def registerIO(self):
         ios = [RasterLayerSpectralLibraryIO()]
