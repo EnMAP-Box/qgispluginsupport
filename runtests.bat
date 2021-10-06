@@ -30,9 +30,13 @@ mkdir test-reports\today
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_example.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_plotting.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_io.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_io_asd.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_processing.py
-%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_ioV2.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_core.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_io_rastersources.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_io_envi.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_io_DEPR.py
+%PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_io_geopackage.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_gui.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  speclib/test_speclib_profilesources.py
 %PYTHON% -m coverage run --rcfile=.coveragec --append  tests/test_layerproperties.py
