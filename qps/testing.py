@@ -41,6 +41,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
 from osgeo import gdal, ogr, osr, gdal_array
 
+from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.core import QgsField, QgsPointXY, QgsGeometry
 
 import qgis.testing
@@ -221,6 +222,8 @@ class QgisMockup(QgisInterface):
     def __init__(self, *args):
         super(QgisMockup, self).__init__()
 
+        self.mMapLayerPanelFactories: typing.List[QgsMapLayerConfigWidgetFactory] = []
+
         self.mCanvas = QgsMapCanvas()
         self.mCanvas.blockSignals(False)
         self.mCanvas.setCanvasColor(Qt.black)
@@ -268,6 +271,14 @@ class QgisMockup(QgisInterface):
                     inspect.getfullargspec(getattr(self, n))
                 except:
                     setattr(self, n, getattr(self._mock, n))
+
+    def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
+        assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+        self.mMapLayerPanelFactories.append(factory)
+
+    def unregisterMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
+        assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+        self.mMapLayerPanelFactories = [f for f in self.mMapLayerPanelFactories if f.title() != factory.title()]
 
     def addLegendLayers(self, mapLayers: typing.List[QgsMapLayer]):
         for l in mapLayers:

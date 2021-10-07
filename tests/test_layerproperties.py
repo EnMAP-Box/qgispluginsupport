@@ -18,7 +18,7 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer,
 
 from qgis.gui import QgsMapLayerConfigWidget, QgsRendererPropertiesDialog, QgsMapCanvas, \
     QgsMapLayerStyleManagerWidget, QgsRendererRasterPropertiesWidget, QgsRasterTransparencyWidget, \
-    QgsTextFormatPanelWidget
+    QgsTextFormatPanelWidget, QgsGui
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
@@ -100,6 +100,17 @@ class LayerPropertyTests(TestCase):
         style = QgsStyle()
         d = QgsRendererPropertiesDialog(lyr, style, embedded=True)
         self.showGui(d)
+
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    def test_layer_properties(self):
+        from qps import registerMapLayerConfigWidgetFactories
+        registerMapLayerConfigWidgetFactories()
+
+        vl = TestObjects.createVectorLayer()
+        showLayerPropertiesDialog(vl)
+
+        rl = TestObjects.createRasterLayer()
+        showLayerPropertiesDialog(rl)
 
     def test_LayerPropertiesDialog_Vector(self):
         registerMapLayerConfigWidgetFactories()

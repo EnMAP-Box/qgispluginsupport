@@ -290,7 +290,7 @@ class OptionListModel(QAbstractListModel):
         elif role == Qt.ToolTipRole:
             result = '{}'.format(option.mName if option.mTooltip is None else option.mTooltip)
         elif role == Qt.DecorationRole:
-            result = option.mIcon
+            result = QIcon(option.mIcon)
         elif role == Qt.UserRole:
             result = option
         return result

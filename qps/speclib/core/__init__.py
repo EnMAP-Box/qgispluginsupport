@@ -8,14 +8,16 @@ from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
 from ...speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 
-def create_profile_field(name: str, comment: str = '') -> QgsField:
+def create_profile_field(name: str, comment: str = None) -> QgsField:
     """
     Creates a QgsField to store spectral profiles
     :param name: field name
     :param comment: field comment, optional
     :return: QgsField
     """
-    field = QgsField(name=name, type=QVariant.ByteArray, typeName='SpectralProfile', comment=comment)
+    if not isinstance(comment, str):
+        comment = 'Spectral Profile Field'
+    field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
     field.setEditorWidgetSetup(setup)
     return field

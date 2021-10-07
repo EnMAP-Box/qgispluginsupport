@@ -16,6 +16,7 @@
 *                                                                         *
 ***************************************************************************
 """
+import typing
 
 from qgis.PyQt.QtWidgets import *
 # auto-generated file.
@@ -85,6 +86,7 @@ from qgis.gui import \
 
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
+from .speclib.core import create_profile_field
 from .utils import *
 from . import DIR_UI_FILES
 from .vectorlayertools import VectorLayerTools
@@ -169,9 +171,33 @@ class AddAttributeDialog(QDialog):
         self.cbType = QComboBox()
         self.typeModel = OptionListModel()
 
-        for ntype in self.mLayer.dataProvider().nativeTypes():
+        nativeTypes: typing.List[QgsVectorDataProvider.NativeType] = self.mLayer.dataProvider().nativeTypes()
+
+        self.mRefByteArray = None
+        for nType in nativeTypes:
+            if nType.mType == QVariant.ByteArray:
+                self.mRefByteArray = nType
+                break
+        if self.mRefByteArray:
+            nTypeProfile = QgsVectorDataProvider.NativeType('Spectral Profile Field',
+                                                            'Spectral Profile',
+                                                            self.mRefByteArray.mType,
+                                                            minLen=self.mRefByteArray.mMinLen,
+                                                            maxLen=self.mRefByteArray.mMaxLen,
+                                                            minPrec=self.mRefByteArray.mMinPrec,
+                                                            maxPrec=self.mRefByteArray.mMaxPrec,
+                                                            subType=self.mRefByteArray.mSubType)
+
+            nativeTypes.insert(nativeTypes.index(self.mRefByteArray), nTypeProfile)
+
+        for ntype in nativeTypes:
             assert isinstance(ntype, QgsVectorDataProvider.NativeType)
-            o = Option(ntype, name=ntype.mTypeName, toolTip=ntype.mTypeDesc)
+
+            if ntype.mTypeName == 'Spectral Profile':
+                icon = QIcon(r':/qps/ui/icons/profile.svg')
+            else:
+                icon = QgsFields.iconForFieldType(ntype.mType)
+            o = Option(ntype, name=ntype.mTypeName, toolTip=ntype.mTypeDesc, icon=icon)
             self.typeModel.addOption(o)
 
         self.cbType.setModel(self.typeModel)
@@ -237,14 +263,23 @@ class AddAttributeDialog(QDialog):
         :return:
         """
         ntype = self.currentNativeType()
-        return QgsField(name=self.tbName.text(),
-                        type=QVariant(ntype.mType).type(),
-                        typeName=ntype.mTypeName,
-                        len=self.sbLength.value(),
-                        prec=self.sbPrecision.value(),
-                        comment=self.tbComment.text())
 
-    def currentNativeType(self):
+        fname = self.tbName.text()
+        fcomment = self.tbComment.text()
+        ftype = QVariant(ntype.mType).type()
+        if ntype.mTypeName == 'Spectral Profile':
+            field = create_profile_field(name=fname, comment=fcomment)
+            field.setTypeName(self.mRefByteArray.mTypeName)
+            return field
+        else:
+            return QgsField(name=fname,
+                            type=ftype,
+                            typeName=ntype.mTypeName,
+                            len=self.sbLength.value(),
+                            prec=self.sbPrecision.value(),
+                            comment=fcomment)
+
+    def currentNativeType(self) -> QgsVectorDataProvider.NativeType:
         return self.cbType.currentData().value()
 
     def onTypeChanged(self, *args):
@@ -969,6 +1004,7 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
                               canvas: QgsMapCanvas = None,
                               parent: QObject = None,
                               modal: bool = True,
+                              page: str = None,
                               messageBar: QgsMessageBar = None,
                               useQGISDialog: bool = False) -> typing.Union[QDialog.DialogCode, QDialog]:
     """
@@ -1019,15 +1055,23 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
         if True:
             if isinstance(layer, QgsRasterLayer):
                 dialog = QgsRasterLayerProperties(layer, canvas, parent=parent)
-                if hasattr(dialog, 'addPropertiesPageFactory'):
-                    from . import MAPLAYER_CONFIGWIDGET_FACTORIES
-                    for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
-                        dialog.addPropertiesPageFactory(f)
-                dialog.restoreLastPage()
 
             elif isinstance(layer, QgsVectorLayer):
                 dialog = QgsVectorLayerProperties(canvas=canvas, messageBar=messageBar, lyr=layer, parent=parent)
-                dialog.restoreLastPage()
+
+            if dialog:
+                if hasattr(dialog, 'addPropertiesPageFactory'):
+                    #  QgsGui::providerGuiRegistry()->mapLayerConfigWidgetFactories( mapLayer )
+                    from . import MAPLAYER_CONFIGWIDGET_FACTORIES
+                    for factory in QgsGui.providerGuiRegistry().mapLayerConfigWidgetFactories(layer):
+                        dialog.addPropertiesPageFactory(factory)
+                    # for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
+                    #    dialog.addPropertiesPageFactory(f)
+
+                if page:
+                    dialog.setCurrentPage(page)
+                else:
+                    dialog.restoreLastPage()
         else:
             dialog = LayerPropertiesDialog(layer, canvas=canvas)
 
