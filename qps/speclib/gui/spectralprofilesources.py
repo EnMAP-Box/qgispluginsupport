@@ -7,6 +7,7 @@ import enum
 import re
 import warnings
 
+import numpy
 from PyQt5.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
     QSortFilterProxyModel, QItemSelection
 from PyQt5.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
@@ -1195,6 +1196,8 @@ class SpectralFeatureGeneratorNode(TreeNode):
         oldSpeclib = self.speclib()
         if isinstance(oldSpeclib, QgsVectorLayer):
             oldSpeclib.nameChanged.disconnect(self.updateSpeclibName)
+            oldSpeclib.attributeAdded.disconnect(self.updateFieldNodes)
+            oldSpeclib.attributeDeleted.disconnect(self.updateFieldNodes)
 
         OLD_NODES = dict()
         for n in self.childNodes():
@@ -1208,6 +1211,9 @@ class SpectralFeatureGeneratorNode(TreeNode):
             speclib = self.mSpeclibWidget.speclib()
             if isinstance(speclib, QgsVectorLayer):
                 speclib.nameChanged.connect(self.updateSpeclibName)
+                speclib.attributeAdded.connect(self.updateFieldNodes)
+                speclib.attributeDeleted.connect(self.updateFieldNodes)
+
                 self.updateSpeclibName()
 
                 new_nodes = []
@@ -1298,6 +1304,43 @@ class SpectralFeatureGeneratorNode(TreeNode):
         """
         return {n.profileSource() for n in self.spectralProfileGeneratorNodes() if
                 isinstance(n.profileSource(), SpectralProfileSource)}
+
+
+    def updateFieldNodes(self, *args):
+
+
+        if not isinstance(self.speclib(), QgsVectorLayer):
+            return
+
+        OLD: typing.Dict[str, FieldGeneratorNode] = {n.name(): n for n in self.fieldNodes()}
+
+
+        to_remove = []
+        to_add = []
+
+        field_names = self.speclib().fields().names()
+
+        for name in field_names:
+            if name not in OLD.keys():
+                to_add.append(name)
+        to_add = self.createFieldNodes(to_add)
+        for name, node in OLD.items():
+            if name not in self.speclib().fields().names():
+                to_remove.append(node)
+
+        if len(to_remove) > 0:
+            self.removeChildNodes(to_remove)
+
+        if len(to_add) > 0:
+            for node in to_add:
+                i = field_names.index(node.name())
+
+                self.insertChildNodes(i, [node])
+
+
+    def onAttributeDeleted(self, idx: int):
+
+        pass
 
     def updateSpeclibName(self):
         speclib = self.speclib()

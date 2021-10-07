@@ -1769,13 +1769,15 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
         if isinstance(vis, SpectralProfilePlotVisualization):
             vis = [vis]
-        for v in vis:
-            assert isinstance(v, SpectralProfilePlotVisualization)
-            assert v in self.mProfileVisualizations
-            i = self.mProfileVisualizations.index(v)
-            self.removeRows(i, 1)
 
-        self.updatePlot()
+        if len(vis) > 0:
+            for v in vis:
+                assert isinstance(v, SpectralProfilePlotVisualization)
+                assert v in self.mProfileVisualizations
+                i = self.mProfileVisualizations.index(v)
+                self.removeRows(i, 1)
+
+            self.updatePlot()
 
     def updateData(self, fids: typing.List[int], models: typing.List[QgsProcessingModelAlgorithm]):
         # loads SpectralProfiles for the requested FIDs and calculates the model results on it
@@ -1909,14 +1911,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
             featureColor: QColor = vis.plotStyle().lineColor()
 
-            if fid in self.mTemporaryProfileIDs:
-                # special color
-                featureColor = self.mPlotWidgetStyle.temporaryColor
-                linePen.setColor(featureColor)
-                symbolPen.setColor(featureColor)
-                symbolBrush.setColor(featureColor)
 
-            elif fid in selected_fids:
+            if fid in selected_fids:
 
                 # show all profiles, special highlight of selected
 
@@ -1924,6 +1920,14 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 linePen.setWidth(style.lineWidth() + 2)
                 symbolPen.setColor(self.mPlotWidgetStyle.selectionColor)
                 symbolBrush.setColor(self.mPlotWidgetStyle.selectionColor)
+
+            elif fid in self.mTemporaryProfileIDs:
+                # special color
+                featureColor = self.mPlotWidgetStyle.temporaryColor
+                linePen.setColor(featureColor)
+                symbolPen.setColor(featureColor)
+                symbolBrush.setColor(featureColor)
+
             else:
 
                 renderer, renderContext = VIS_RENDERERS[vis]
@@ -2086,30 +2090,41 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             profile_field, model_id = job_key
             request = QgsFeatureRequest()
             request.setFilterFids(list(fids))
-            model = self.mModelList.modelId2model(model_id)
+
+
+            # self.mCache2ModelData[(fid, fidx, '')] = sp.values(profile_field_index=fidx)
 
             blockList = list(SpectralProfileBlock.fromSpectralProfiles(self.speclib().getFeatures(request),
-                                                                       profile_field,
-                                                                       feedback))
-            parameters = {model.parameterDefinitions()[0].name(): blockList}
-            assert model.prepareAlgorithm(parameters, context, feedback)
-            try:
-                results = model.processAlgorithm(parameters, context, feedback)
-                for p in model.outputDefinitions():
-                    if isinstance(p, SpectralProcessingProfilesOutput):
-                        parameterResult: typing.List[SpectralProfileBlock] = outputParameterResult(results, p.name())
-                        if isinstance(parameterResult, list):
-                            for block in parameterResult:
-                                if isinstance(block, SpectralProfileBlock):
-                                    for fid, d in block.profileValueDictionaries():
-                                        # MODEL_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME]
-                                        model_data_key: MODEL_DATA_KEY = (fid, profile_field, model_id)
+                                                                       profile_field=profile_field,
+                                                                       feedback=feedback))
 
-                                        self.mCache2ModelData[model_data_key] = d
-                                        block.fids()
-                        break
-            except QgsProcessingException as ex:
-                feedback.reportError(str(ex))
+            if model_id == '':
+                for block in blockList:
+                    block: SpectralProfileBlock
+                    for fid, d, g in block.profileValueDictionaries():
+                        model_data_key: MODEL_DATA_KEY = (fid, profile_field, model_id)
+                        self.mCache2ModelData[model_data_key] = d
+            else:
+                model = self.mModelList.modelId2model(model_id)
+                parameters = {model.parameterDefinitions()[0].name(): blockList}
+                assert model.prepareAlgorithm(parameters, context, feedback)
+                try:
+                    results = model.processAlgorithm(parameters, context, feedback)
+                    for p in model.outputDefinitions():
+                        if isinstance(p, SpectralProcessingProfilesOutput):
+                            parameterResult: typing.List[SpectralProfileBlock] = outputParameterResult(results, p.name())
+                            if isinstance(parameterResult, list):
+                                for block in parameterResult:
+                                    if isinstance(block, SpectralProfileBlock):
+                                        for fid, d, g in block.profileValueDictionaries():
+                                            # MODEL_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME]
+                                            model_data_key: MODEL_DATA_KEY = (fid, profile_field, model_id)
+
+                                            self.mCache2ModelData[model_data_key] = d
+                                            block.fids()
+                            break
+                except QgsProcessingException as ex:
+                    feedback.reportError(str(ex))
             s = ""
         s = ""
 
