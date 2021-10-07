@@ -2016,7 +2016,11 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
                 # w.setFilters(QgsFieldProxyModel.String | QgsFieldProxyModel.Numeric)
                 s = ""
             elif isinstance(node, FloatValueNode):
-                w = super().createEditor(parent, option, index)
+                w = QgsDoubleSpinBox(parent=parent)
+                w.setSingleStep(1)
+                w.setMinimum(sys.float_info.min)
+                w.setMaximum(sys.float_info.max)
+                # w = super().createEditor(parent, option, index)
         return w
 
     def setEditorData(self, editor: QWidget, index: QModelIndex):
