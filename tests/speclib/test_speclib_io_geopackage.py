@@ -50,6 +50,12 @@ class TestSpeclibIO_GPKG(TestCase):
 
         files = sl.write(path)
         self.assertTrue(len(files) == 1)
+
+        # overwrite
+        files = sl.write(path)
+        self.assertTrue(len(files) == 1)
+
+
         exportSettings = dict()
         feedback = QgsProcessingFeedback()
         files = IO.exportProfiles(path.as_posix(), exportSettings, sl.getFeatures(), feedback)
