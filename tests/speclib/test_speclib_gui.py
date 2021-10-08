@@ -471,6 +471,15 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(w)
 
+    def test_SpectralLibraryWidget_empty_vectorlayer(self):
+
+        vl = TestObjects.createVectorLayer()
+
+        slw = SpectralLibraryWidget(speclib=vl)
+        self.assertTrue(not is_spectral_library(slw.speclib()))
+        self.assertIsInstance(slw, SpectralLibraryWidget)
+        self.showGui(slw)
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryWidget(self):
 

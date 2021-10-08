@@ -42,7 +42,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def __init__(self, *args, speclib: SpectralLibrary = None, mapCanvas: QgsMapCanvas = None, **kwds):
 
-        if not is_spectral_library(speclib):
+        if not isinstance(speclib, QgsVectorLayer):
             speclib = SpectralLibrary()
 
         super().__init__(speclib)
