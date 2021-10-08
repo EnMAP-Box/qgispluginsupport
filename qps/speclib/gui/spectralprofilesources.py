@@ -35,7 +35,7 @@ from ...plotstyling.plotstyling import PlotStyle, MarkerSymbol, PlotStyleButton
 import numpy as np
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...utils import SpatialPoint, loadUi, parseWavelength, HashablePoint, rasterLayerArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2
+    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType
 from ...externals.htmlwidgets import HTMLComboBox
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
@@ -991,6 +991,7 @@ class FieldGeneratorNode(TreeNode):
         assert isinstance(field, QgsField)
         # todo: evaluate constraints. if field has to be present -> make uncheckable
         self.mField = field
+        self.setIcon(iconForFieldType(field))
 
     def field(self) -> QgsField:
         """
@@ -1034,7 +1035,7 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
     def __init__(self, *args, **kwds):
         super(SpectralProfileGeneratorNode, self).__init__(*args, **kwds)
-        self.setIcon(QIcon(r':/qps/ui/icons/profile.svg'))
+
         self.setCheckState(Qt.Checked)
         self.sigUpdated.connect(self.onChildNodeUpdate)
         self.mSourceNode = SpectralProfileSourceNode('Source')

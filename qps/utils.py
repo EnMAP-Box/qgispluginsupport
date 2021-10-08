@@ -64,7 +64,6 @@ from osgeo import gdal, ogr, osr, gdal_array
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 
-# dictionary to store form classes and avoid multiple calls to read <myui>.i
 QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
@@ -2434,6 +2433,34 @@ def findParent(qObject, parentType, checkInstance=False):
         while parent != None and type(parent) != parentType:
             parent = parent.parent()
     return parent
+
+
+def iconForFieldType(field: typing.Union[QgsField, QgsVectorDataProvider.NativeType]) -> QIcon:
+    """
+    Returns an icon for field types, including own defined
+    :return:
+    """
+    from .speclib.core import is_profile_field, create_profile_field
+
+    if isinstance(field, QgsVectorDataProvider.NativeType):
+        if field.mTypeName.replace(' ', '').lower() == 'spectralprofile':
+            field = create_profile_field('dummy')
+        else:
+            field = QgsField(
+                name='dummy',
+                type=field.mType,
+                typeName=field.mTypeName,
+                len=field.mMaxLen,
+                prec=field.mMaxPrec,
+                # comment=field.comment,
+                subType=field.mSubType
+            )
+
+    assert isinstance(field, QgsField)
+    if is_profile_field(field):
+        return QIcon(r':/qps/ui/icons/profile.svg')
+    else:
+        return QgsFields.iconForFieldType(field.type())
 
 
 def createCRSTransform(src: QgsCoordinateReferenceSystem, dst: QgsCoordinateReferenceSystem):

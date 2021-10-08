@@ -193,11 +193,11 @@ class AddAttributeDialog(QDialog):
         for ntype in nativeTypes:
             assert isinstance(ntype, QgsVectorDataProvider.NativeType)
 
-            if ntype.mTypeName == 'Spectral Profile':
-                icon = QIcon(r':/qps/ui/icons/profile.svg')
-            else:
-                icon = QgsFields.iconForFieldType(ntype.mType)
-            o = Option(ntype, name=ntype.mTypeName, toolTip=ntype.mTypeDesc, icon=icon)
+            o = Option(ntype,
+                       name=ntype.mTypeName,
+                       toolTip=ntype.mTypeDesc,
+                       icon=iconForFieldType(ntype))
+
             self.typeModel.addOption(o)
 
         self.cbType.setModel(self.typeModel)
