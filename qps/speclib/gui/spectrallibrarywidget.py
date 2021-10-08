@@ -519,9 +519,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
             missing_visualization = [a for a in affected_profile_fields.keys() if a not in visualized_attributes]
 
             for attribute in missing_visualization:
-                color: QColor = affected_profile_fields[attribute]
-                # make the default color a bit darker
-                color = nextColor(color, 'darker')
+                if False:
+                    # create new vis color similar to temporal profile overly
+                    color: QColor = affected_profile_fields[attribute]
+                    # make the default color a bit darker
+                    color = nextColor(color, 'darker')
+                else:
+                    color = None
+
                 self.spectralLibraryPlotWidget().createProfileVis(field=attribute, color=color)
 
         self.plotControl().updatePlot()

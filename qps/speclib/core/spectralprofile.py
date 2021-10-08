@@ -1119,7 +1119,7 @@ class SpectralProfileBlock(object):
                      crs: typing.Union[str, QgsCoordinateReferenceSystem]):
         """
         Sets the geo-positions of each spectral profile in this block.
-        If the, SpectralProfiles returned with .profiles() will contain a QgsGeometry in crs coordinates-
+        If set, SpectralProfiles returned with .profiles() will contain a QgsGeometry in crs coordinates-
         :param pos_x: array with x coordinates
         :param pos_y: array with y coordinates
         :param crs: coordinate reference system
