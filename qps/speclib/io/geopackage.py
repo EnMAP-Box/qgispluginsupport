@@ -115,13 +115,13 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         :param transformContext: coordinate transform context
         :param options: save options
         """
-        writer: QgsVectorFileWriter = None
-        saveVectorOptions = QgsVectorFileWriter.SaveVectorOptions()
-        saveVectorOptions.feedback = feedback
-        saveVectorOptions.driverName = 'GPKG'
-        saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
-        saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
-        saveVectorOptions.layerOptions = ['OVERWRITE=YES', 'TRUNCATE_FIELDS=YES']
+        #writer: QgsVectorFileWriter = None
+        #saveVectorOptions = QgsVectorFileWriter.SaveVectorOptions()
+        #saveVectorOptions.feedback = feedback
+        #saveVectorOptions.driverName = 'GPKG'
+        #saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
+        #saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
+        #saveVectorOptions.layerOptions = ['OVERWRITE=YES', 'TRUNCATE_FIELDS=YES']
         newLayerName = exportSettings.get('layer_name', '')
         if newLayerName == '':
             newLayerName = os.path.basename(newLayerName)

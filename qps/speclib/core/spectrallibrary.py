@@ -262,7 +262,7 @@ def defaultCurvePlotStyle() -> PlotStyle:
 
 class SpectralLibraryUtils:
     """
-    This class provides methods to handel SpectralProfiles in a QgsVectorLayer
+    This class provides methods to handle SpectralProfiles in a QgsVectorLayer
     """
 
     @staticmethod
