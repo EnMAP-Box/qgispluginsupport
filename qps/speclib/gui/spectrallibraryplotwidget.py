@@ -46,7 +46,7 @@ from ..processing import is_spectral_processing_model, SpectralProcessingProfile
     SpectralProcessingProfilesOutput, SpectralProcessingModelList, NULL_MODEL, outputParameterResults, \
     outputParameterResult
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
-from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit, nextColor
+from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField
 
 
 class SpectralProfilePlotXAxisUnitModel(UnitModel):
@@ -578,6 +578,14 @@ class SpectralProfilePlotVisualization(QObject):
         :rtype:
         """
         return self.mColorProperty
+
+    def color(self, context: QgsExpressionContext = QgsExpressionContext()):
+        return self.colorProperty().valueAsColor(context, self.plotStyle().lineColor())[0]
+
+    def setColor(self, color: typing.Union[str, QColor]):
+        c = QColor(color)
+        self.colorProperty().setStaticValue(c)
+        self.plotStyle().setLineColor(c)
 
     def name(self) -> str:
         """
@@ -1733,6 +1741,9 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
     def profileFieldsModel(self) -> QgsFieldModel:
         return self.mProfileFieldModel
+
+    def visualizations(self) -> typing.List[SpectralProfilePlotVisualization]:
+        return self.mProfileVisualizations[:]
 
     def insertVisualizations(self,
                              index: typing.Union[int, QModelIndex],
@@ -3298,25 +3309,42 @@ class SpectralLibraryPlotWidget(QWidget):
         rows = self.treeView.selectionModel().selectedRows()
         self.actionRemoveProfileVis.setEnabled(len(rows) > 0)
 
-    def createProfileVis(self, *args):
+    def createProfileVis(self, *args,
+                         name: str = None,
+                         field: typing.Union[QgsField, int, str] = None,
+                         color: typing.Union[str, QColor] = None):
         item = SpectralProfilePlotVisualization()
-
-        existing_names = [v.name() for v in self.mPlotControlModel]
-        n = 1
-        name = 'Profile Type 1'
-        while name in existing_names:
-            n += 1
-            name = f'Profile Type {n}'
-        item.setName(name)
 
         # set defaults
         # set speclib
         item.mSpeclib = self.speclib()
 
         # set profile source in speclib
-        for field in profile_field_list(item.mSpeclib):
-            item.mField = field
-            break
+        if field:
+            item.mField = qgsField(item.mSpeclib, field)
+        else:
+            existing_fields = [v.field() for v in self.mPlotControlModel if isinstance(v.field(), QgsField)]
+            for fld in profile_field_list(item.mSpeclib):
+                if fld not in existing_fields:
+                    item.mField = fld
+                    break
+            if item.mField.name() == '' and len(existing_fields) > 0:
+                item.mField = existing_fields[-1]
+
+        if name is None:
+            if isinstance(item.field(), QgsField):
+                _name = f'{item.field().name()}'
+            else:
+                _name = 'Profile'
+
+            existing_names = [v.name() for v in self.mPlotControlModel]
+            n = 1
+            name = _name
+            while name in existing_names:
+                n += 1
+                name = f'{_name} {n}'
+
+        item.setName(name)
 
         if isinstance(item.mSpeclib, QgsVectorLayer):
             # get a good guess for the name expression
@@ -3345,11 +3373,19 @@ class SpectralLibraryPlotWidget(QWidget):
 
         item.mPlotStyle = self.defaultStyle()
 
-        if len(self.mPlotControlModel) > 0:
-            lastVis = self.mPlotControlModel[-1]
-            color = lastVis.plotStyle().lineColor()
-            item.plotStyle().setLineColor(nextColor(color, mode='cat'))
+        if color is None:
+
+            if len(self.mPlotControlModel) > 0:
+                lastVis = self.mPlotControlModel[-1]
+                lastColor = lastVis.color()
+                color = nextColor(lastColor, mode='cat')
+
+        item.setColor(color)
+
         self.mPlotControlModel.insertVisualizations(-1, item)
+
+    def profileVisualization(self) -> typing.List[SpectralProfilePlotVisualization]:
+        return self.mPlotControlModel
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         self.sigDragEnterEvent.emit(event)
@@ -3378,7 +3414,6 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mDualView = dualView
 
         self.mPlotControlModel.setDualView(dualView)
-        self.createProfileVis()
 
     def speclib(self) -> QgsVectorLayer:
         return self.mPlotControlModel.speclib()

@@ -35,7 +35,7 @@ from ...plotstyling.plotstyling import PlotStyle, MarkerSymbol, PlotStyleButton
 import numpy as np
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...utils import SpatialPoint, loadUi, parseWavelength, HashablePoint, rasterLayerArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType
+    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
 from ...externals.htmlwidgets import HTMLComboBox
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
@@ -1046,6 +1046,12 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
         self.appendChildNodes([self.mColorNode, self.mSourceNode, self.mSamplingNode, self.mScalingNode])
 
+    def setColor(self, *args, **kwds):
+        self.mColorNode.setColor(*args, **kwds)
+
+    def setScaling(self, *args, **kwds):
+        self.mScalingNode.setScaling(*args, **kwds)
+
     def scale(self) -> float:
         return self.mScalingNode.scale()
 
@@ -1309,7 +1315,12 @@ class SpectralFeatureGeneratorNode(TreeNode):
                 new_node = SpectralProfileGeneratorNode(fname)
                 slw = self.speclibWidget()
                 if isinstance(slw, SpectralLibraryWidget):
-                    new_node.mColorNode.setValue(slw.plotControl().mPlotWidgetStyle.temporaryColor)
+                    color = slw.plotControl().mPlotWidgetStyle.temporaryColor
+                    for vis in slw.plotControl().visualizations():
+                        if vis.field().name() == fname:
+                            color = nextColor(vis.color(), 'brighter')
+                            break
+                    new_node.setColor(color)
 
             else:
                 new_node = StandardFieldGeneratorNode(fname)
@@ -1406,6 +1417,10 @@ class SpectralProfileScalingNode(TreeNode):
     def updateInfo(self):
         info = f"{self.offset()} + {self.scale()} * y"
         self.setValue(info)
+
+    def setScaling(self, offset, scale):
+        self.nOffset.setValue(offset)
+        self.nScale.setValue(scale)
 
     def scale(self) -> float:
         return float(self.nScale.value())

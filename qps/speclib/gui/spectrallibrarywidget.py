@@ -22,7 +22,7 @@ from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibrar
     SpectralLibraryPlotItem, SpectralLibraryPlotStats, SpectralProfilePlotControlModel
 from ..processing import SpectralProcessingWidget
 from ...unitmodel import BAND_NUMBER
-from ...utils import SpatialExtent, SpatialPoint
+from ...utils import SpatialExtent, SpatialPoint, nextColor
 
 
 class SpectralLibraryWidget(AttributeTableWidget):
@@ -501,6 +501,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         if not addAuto:
             # give current spectra the current spectral style
             self.plotControl().mTemporaryProfileIDs.update(addedKeys)
+
+            affected_profile_fields: typing.Dict[str, QColor] = dict()
+
             if isinstance(currentProfileColors, list):
                 if len(currentProfileColors) == len(addedKeys):
                     for fid, profile_colors in zip(addedKeys, currentProfileColors):
@@ -508,10 +511,19 @@ class SpectralLibraryWidget(AttributeTableWidget):
                             attribute, color = t
                             if isinstance(attribute, int):
                                 attribute = speclib.fields().at(attribute).name()
-
+                            if attribute not in affected_profile_fields.keys():
+                                affected_profile_fields[attribute] = color
                             self.plotControl().mTemporaryProfileColors[(fid, attribute)] = color
 
-            self.plotControl().mTemporaryProfileColors
+            visualized_attributes = [v.field().name() for v in self.plotControl().visualizations()]
+            missing_visualization = [a for a in affected_profile_fields.keys() if a not in visualized_attributes]
+
+            for attribute in missing_visualization:
+                color: QColor = affected_profile_fields[attribute]
+                # make the default color a bit darker
+                color = nextColor(color, 'darker')
+                self.spectralLibraryPlotWidget().createProfileVis(field=attribute, color=color)
+
         self.plotControl().updatePlot()
         self.speclib().triggerRepaint()
 
