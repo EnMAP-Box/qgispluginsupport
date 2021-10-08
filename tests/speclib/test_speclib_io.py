@@ -22,7 +22,7 @@ import re
 import unittest
 import xmlrunner
 
-
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
@@ -46,6 +46,7 @@ class TestIO(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestIO, cls).setUpClass(*args, **kwds)
+        cls.registerIO(cls)
 
     @classmethod
     def tearDownClass(cls):
@@ -109,6 +110,32 @@ class TestIO(TestCase):
 
             self.assertIsInstance(speclib2, SpectralLibrary)
             self.assertTrue(len(speclib2) == len(speclib1))
+
+    def test_writeTo(self):
+
+        DIR = self.createTestOutputDirectory()
+
+        sl = TestObjects.createSpectralLibrary(n_bands=[[25, 45],[10,5]])
+
+        COUNTS = SpectralLibraryUtils.countProfiles(sl)
+
+        self.assertIsInstance(sl, SpectralLibrary)
+        for ext in ['gpkg', 'sli']:
+
+            path = DIR / f'test.speclib.{ext}'
+            print(f'Test export to {path.name}')
+            files = sl.write(path)
+            self.assertIsInstance(files, list)
+            self.assertTrue(len(files) > 0)
+            COUNTS2 = dict()
+            for file in files:
+                sl2 = SpectralLibrary.readFrom(file)
+                CNT = SpectralLibraryUtils.countProfiles(sl2)
+                for k, cnt in CNT.items():
+                    COUNTS2[k] = COUNTS2.get(k, 0) + cnt
+                self.assertIsInstance(sl2, SpectralLibrary)
+                self.assertTrue(len(sl2) > 0)
+            self.assertEqual(COUNTS, COUNTS2)
 
     def test_exportWidgets(self):
         self.registerIO()

@@ -46,7 +46,7 @@ class SpectralLibraryIOWidget(QWidget):
         Sets the spectral library to make IO operations with
         :param speclib:
         """
-        assert is_spectral_library(speclib)
+        # assert is_spectral_library(speclib)
         self.mSpeclib = speclib
 
     def speclib(self) -> QgsVectorLayer:
@@ -310,14 +310,30 @@ class SpectralLibraryIO(object):
         return []
 
     @staticmethod
-    def writeSpeclibToUri(speclib: QgsVectorLayer, uri, feedback: QgsProcessingFeedback = None) -> typing.List[str]:
-        return SpectralLibraryIO.writeProfilesToUri(speclib.getFeatures(), uri, crs=speclib.crs(), feedback=feedback)
+    def writeSpeclibToUri(speclib: QgsVectorLayer, uri,
+                          settings: dict = None,
+                          feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+
+        return SpectralLibraryIO.writeProfilesToUri(speclib.getFeatures(), speclib, uri,
+                                                    settings = settings,
+                                                    feedback=feedback)
 
     @staticmethod
     def writeProfilesToUri(profiles: typing.List[QgsFeature],
+                           speclib: QgsVectorLayer,
                            uri,
+                           settings: dict = None,
                            feedback: QgsProcessingFeedback = None,
                            crs: QgsCoordinateReferenceSystem = None) -> typing.List[str]:
+
+        if profiles is None:
+            profiles = speclib.getFeatures()
+        elif speclib is None:
+            profiles = list(profiles)
+            # create fake speclib
+            refProfile = profiles[0]
+            g = refProfile.geometry()
+            speclib = QgsVectorLayer('point', "Scratch point layer", "memory")
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
@@ -336,25 +352,26 @@ class SpectralLibraryIO(object):
         matched_formats: typing.List[SpectralLibraryImportWidget] = []
         for IO in SpectralLibraryIO.spectralLibraryIOs():
             format = IO.createExportWidget()
-            if isinstance(format, SpectralLibraryImportWidget):
+            if isinstance(format, SpectralLibraryExportWidget):
                 for e in QgsFileUtils.extensionsFromFilter(format.filter()):
                     if ext.endswith(e):
                         matched_formats.append(format)
                         break
 
+        if not isinstance(settings,dict):
+            settings = dict()
+
         for format in matched_formats:
             format: SpectralLibraryExportWidget
             IO: SpectralLibraryIO = format.spectralLibraryIO()
-            format.setSpeclib(uri)
-            fields = QgsFields(format.sourceFields())
-            if fields.count() == 0:
-                continue
-            settings = dict(fields=QgsFields(format.sourceFields()))
-            settings = format.importSettings(settings)
-            importedProfiles = IO.importProfiles(uri, settings, feedback=feedback)
-            if len(importedProfiles) > 0:
-                return importedProfiles
+            format.setSpeclib(speclib)
+            _settings = dict()
+            _settings = format.exportSettings(_settings)
+            # update with globals settings (if defined)
+            _settings.update(settings)
+            create_files = IO.exportProfiles(uri, _settings, profiles, feedback=feedback)
 
+            return create_files
         return []
 
     @staticmethod
