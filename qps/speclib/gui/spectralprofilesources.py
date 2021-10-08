@@ -353,8 +353,8 @@ class SpectralProfileSourceNode(TreeNode):
         self.setValue('No Source')
         self.setToolTip('Please select a raster source')
 
-    def icon(self) -> QIcon:
-        return QIcon(r':/images/themes/default/mIconRaster.svg')
+    #def icon(self) -> QIcon:
+    #    return QIcon(r':/images/themes/default/mIconRaster.svg')
 
     def profileSource(self) -> SpectralProfileSource:
         return self.mProfileSource
