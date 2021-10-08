@@ -1395,8 +1395,10 @@ class SpectralLibrary(QgsVectorLayer):
             del dsDst
         return imageFiles
 
-    def write(self, uri, feedback: QgsProcessingFeedback = None) -> typing.List[str]:
-        return SpectralLibraryUtils.writeToSource(self, uri, feedback)
+    def write(self, uri,
+              settings: dict = None,
+              feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+        return SpectralLibraryUtils.writeToSource(self, uri, settings=settings, feedback=feedback)
 
     def spectralProfileFields(self) -> typing.List[QgsField]:
         return profile_field_list(self)
