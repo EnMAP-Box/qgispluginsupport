@@ -445,6 +445,7 @@ class SpectralProfilePlotVisualization(QObject):
         self.mSpeclib: QgsVectorLayer = None
         self.mField: QgsField = QgsField()
         self.mNameExpression: QgsExpression = QgsExpression('')
+        self.mFilterExpression: QgsExpression = QgsExpression('')
         self.mPlotStyle: PlotStyle = PlotStyle()
         self.mVisible: bool = True
         self.mColorProperty: QgsProperty = QgsProperty()
@@ -472,6 +473,13 @@ class SpectralProfilePlotVisualization(QObject):
             nodeNameExpr = doc.createElement('label_expression')
             nodeNameExpr.setNodeValue(self.labelExpression().expression())
             visNode.appendChild(nodeNameExpr)
+
+        # add filter expression node
+        filter_expr = self.filterExpression()
+        if isinstance(filter_expr, QgsExpression) and filter_expr.expression() != '':
+            nodeFilterExpr = doc.createElement('filter_expression')
+            nodeFilterExpr.setNodeValue(self.filterExpression().expression())
+            visNode.appendChild(nodeFilterExpr)
 
         # add color expression node
         color_expr = self.colorProperty()
@@ -538,6 +546,10 @@ class SpectralProfilePlotVisualization(QObject):
             nameExprNode = visNode.firstChildElement('label_expression')
             if not nameExprNode.isNull():
                 vis.setLabelExpression(nameExprNode.nodeValue())
+
+            filterExprNode = visNode.firstChildElement('filter_expression')
+            if not nameExprNode.isNull():
+                vis.setFilterExpression(filterExprNode.nodeValue())
 
             colorExprNode = visNode.firstChildElement('color_expression')
             if not colorExprNode.isNull():
@@ -621,6 +633,22 @@ class SpectralProfilePlotVisualization(QObject):
                not sip.isdeleted(speclib) \
                and isinstance(field, QgsField) \
                and field.name() in speclib.fields().names()
+
+
+    def setFilterExpression(self, expression):
+        if isinstance(expression, str):
+            self.mFilterExpression.setExpression(expression)
+        elif isinstance(expression, QgsExpression):
+            self.mFilterExpression.setExpression(expression.expression())
+        else:
+            raise NotImplementedError()
+
+    def filterExpression(self) -> QgsExpression:
+        """
+        Returns the filter expression that describes included profiles
+        :return: str
+        """
+        return self.mFilterExpression
 
     def setLabelExpression(self, expression):
         if isinstance(expression, str):
@@ -1546,6 +1574,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
     PIX_LABEL = 2
     PIX_COLOR = 3
     PIX_STYLE = 4
+    PIX_FILTER = 5
+
 
     CIX_NAME = 0
     CIX_VALUE = 1
@@ -1594,6 +1624,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                                self.PIX_LABEL: 'Label',
                                self.PIX_COLOR: 'Color',
                                self.PIX_STYLE: 'Style',
+                               self.PIX_FILTER: 'Filter',
                                }
         self.mPropertyTooltips = {
             self.PIX_FIELD: 'Field with profile values.',
@@ -1601,6 +1632,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             self.PIX_LABEL: 'Field/Expression to generate profile names.',
             self.PIX_COLOR: 'Field/Expression to generate profile colors.',
             self.PIX_STYLE: 'Profile styling.',
+            self.PIX_FILTER: 'Filter to exclude/include profiles. If empty, all features are used.'
 
         }
 
@@ -2107,10 +2139,21 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             fid, idx, modelName, xUnit = plotDataKey
             aid = (fid, vis.field().name())
             profile = self.mCache1FeatureData[fid]
+            profile = self.mVectorLayerCache.getFeature(fid)
+            print(f'{profile.id()}: {profile.attributes()}')
+
             context.setFeature(profile)
+
+            filter_expr: QgsExpression = vis.filterExpression()
+            if filter_expr.expression() != '':
+                p = QgsProperty.fromExpression(filter_expr.expression())
+                b, success = p.valueAsBool(context, False)
+                if success:
+                    if not b:
+                        continue
             plotData = self.mCache3PlotData[plotDataKey]
-            expr: QgsExpression = vis.labelExpression()
-            name = expr.evaluate(context)
+            name_expr: QgsExpression = vis.labelExpression()
+            name = name_expr.evaluate(context)
             if name in [None, NULL]:
                 name = None
             else:
@@ -2726,6 +2769,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                         return vis.modelName()
                     if row == self.PIX_LABEL:
                         return vis.mNameExpression.expression()
+                    if row == self.PIX_FILTER:
+                        return vis.mFilterExpression.expression()
 
                 if role == Qt.ToolTipRole:
                     if row == self.PIX_FIELD:
@@ -2734,6 +2779,9 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                         return vis.modelName()
                     if row == self.PIX_LABEL:
                         return vis.mNameExpression.expression()
+                    if row == self.PIX_FILTER:
+                        return vis.mFilterExpression.expression()
+
                     if row == self.PIX_COLOR:
                         return 'Line and Symbol color'
 
@@ -2789,6 +2837,13 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                         if value != vis.labelExpression():
                             vis.setLabelExpression(value)
                             changed = True
+
+                    if index.row() == self.PIX_FILTER:
+                        assert isinstance(value, str)
+                        if value != vis.filterExpression():
+                            vis.setFilterExpression(value)
+                            changed = True
+
 
                     if index.row() == self.PIX_COLOR:
                         assert isinstance(value, QgsProperty)
@@ -3113,6 +3168,14 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
                     w.setLayer(vis.speclib())
                     w.setFilters(QgsFieldProxyModel.String | QgsFieldProxyModel.Numeric)
 
+                if row == SpectralProfilePlotControlModel.PIX_FILTER:
+                    w = QgsFieldExpressionWidget(parent=parent)
+                    w.setExpressionDialogTitle('Profile Filter')
+                    w.setToolTip('Set an expression to filter visualized profiles')
+                    w.setExpression(vis.filterExpression().expression())
+                    w.setLayer(vis.speclib())
+                    w.setFilters(QgsFieldProxyModel.String | QgsFieldProxyModel.Numeric)
+
                 if row == SpectralProfilePlotControlModel.PIX_COLOR:
                     w = SpectralProfileColorPropertyWidget(parent=parent)
                     if isinstance(speclib, QgsVectorLayer):
@@ -3160,6 +3223,14 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
                     editor.setLayer(speclib)
                     editor.setField(vis.labelExpression().expression())
 
+            if index.row() == SpectralProfilePlotControlModel.PIX_FILTER:
+                assert isinstance(editor, QgsFieldExpressionWidget)
+                editor.setProperty('lastexpr', vis.filterExpression().expression())
+                if isinstance(speclib, QgsVectorLayer):
+                    editor.setLayer(speclib)
+                    editor.setField(vis.filterExpression().expression())
+
+
             if index.row() == SpectralProfilePlotControlModel.PIX_COLOR:
                 assert isinstance(editor, SpectralProfileColorPropertyWidget)
                 if isinstance(speclib, QgsVectorLayer):
@@ -3192,7 +3263,8 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
                 pmodel = w.currentData(Qt.UserRole)
                 model.setData(index, pmodel, Qt.EditRole)
 
-            if index.row() == SpectralProfilePlotControlModel.PIX_LABEL:
+            if index.row() in [SpectralProfilePlotControlModel.PIX_LABEL,
+                               SpectralProfilePlotControlModel.PIX_FILTER]:
                 assert isinstance(w, QgsFieldExpressionWidget)
                 if w.isValidExpression():
                     model.setData(index, w.asExpression(), Qt.EditRole)
