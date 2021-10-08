@@ -2213,6 +2213,21 @@ def px2geo(px: QPoint, gt, pxCenter: bool = True) -> QgsPointXY:
     return QgsPointXY(gx, gy)
 
 
+class HashablePointF(QPointF):
+    """
+        A QPointF that can be hashed, e.g. to be used in a set
+    """
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def __hash__(self):
+        return hash((self.x(), self.y()))
+
+    def __eq__(self, other):
+        return self.x() == other.x() and self.y() == other.y()
+
+
 class HashablePoint(QPoint):
     """
     A QPoint that can be hashed, e.g. to be used in a set
