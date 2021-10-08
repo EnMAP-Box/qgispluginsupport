@@ -1796,8 +1796,12 @@ class SpectralProfileBridge(TreeModel):
                         return tt
 
             if isinstance(node, ColorNode):
-                if c == 1 and role == Qt.BackgroundColorRole:
-                    return node.value()
+                if c == 1:
+                    if role == Qt.DisplayRole:
+                        return node.color().name(QColor.HexArgb)
+
+                    if role == Qt.DecorationRole:
+                        return node.color()
 
             if isinstance(node, FieldGeneratorNode):
                 field: QgsField = node.field()
