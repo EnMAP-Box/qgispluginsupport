@@ -142,7 +142,7 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
 
         # Calculating some rendering geometry.
         textRect = style.subElementRect(
-            QtWidgets.QStyle.SE_ItemViewItemText, options)
+            QtWidgets.QStyle.SE_ItemViewItemText, options, options.widget)
         textRect.adjust(3, 0, 0, 0)
         painter.translate(textRect.topLeft())
         painter.setClipRect(textRect.translated(-textRect.topLeft()))
