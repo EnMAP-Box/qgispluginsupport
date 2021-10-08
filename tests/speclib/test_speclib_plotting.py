@@ -89,7 +89,7 @@ class TestSpeclibWidgets(TestCase):
             self.assertIsInstance(v2, SpectralProfilePlotVisualization)
 
             self.assertEqual(v1.name(), v2.name())
-            self.assertEqual(v1.labelExpression(), v2.labelExpression())
+            self.assertEqual(v1.labelProperty(), v2.labelProperty())
             self.assertEqual(v1.plotStyle(), v2.plotStyle())
             self.assertEqual(v1.speclib(), v2.speclib())
             # speclib and model instances need to be restored differently
