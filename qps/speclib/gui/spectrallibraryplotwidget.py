@@ -3441,9 +3441,9 @@ class SpectralLibraryPlotWidget(QWidget):
 
         if name is None:
             if isinstance(item.field(), QgsField):
-                _name = f'{item.field().name()}'
+                _name = f'Profiles "{item.field().name()}"'
             else:
-                _name = 'Profile'
+                _name = 'Profiles'
 
             existing_names = [v.name() for v in self.mPlotControlModel]
             n = 1

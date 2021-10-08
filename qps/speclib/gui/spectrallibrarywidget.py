@@ -12,7 +12,7 @@ from qgis.core import QgsVectorLayer
 from qgis.core import QgsFeature
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
     QgsActionMenu, QgsStatusBar
-from ..core import is_spectral_library
+from ..core import is_spectral_library, profile_field_list
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
@@ -220,6 +220,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.setAcceptDrops(True)
 
         self.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
+
+        if self.speclib().featureCount() > 0:
+            for field in profile_field_list(self.speclib()):
+                self.spectralLibraryPlotWidget().createProfileVis(field=field)
 
         # self.mSpeclibPlotWidget.splitter.setSizes([90, 10])
 
