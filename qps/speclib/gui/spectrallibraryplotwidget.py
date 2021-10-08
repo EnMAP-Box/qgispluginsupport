@@ -34,6 +34,9 @@ from ...externals import pyqtgraph as pg
 from ...externals.htmlwidgets import HTMLComboBox
 from ...externals.pyqtgraph import PlotDataItem, PlotWindow
 from ...externals.pyqtgraph import AxisItem
+from ...externals.pyqtgraph.graphicsItems.ScatterPlotItem import SpotItem
+from ...externals.pyqtgraph.Point import Point as pgPoint
+
 from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, PlotStyleButton
 from .. import speclibUiPath, speclibSettings, SpectralLibrarySettingsKey
@@ -45,7 +48,8 @@ from ..processing import is_spectral_processing_model, SpectralProcessingProfile
     SpectralProcessingProfilesOutput, SpectralProcessingModelList, NULL_MODEL, outputParameterResults, \
     outputParameterResult
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
-from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField
+from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField, \
+    HashablePointF
 
 
 class SpectralProfilePlotXAxisUnitModel(UnitModel):
@@ -1297,7 +1301,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         pi: SpectralLibraryPlotItem = self.getPlotItem()
         assert isinstance(pi, SpectralLibraryPlotItem) and pi == self.plotItem
 
-        self.mCurrentMousePosition: QPointF = None
+        self.mCurrentMousePosition: QPointF = QPointF()
         self.setAntialiasing(True)
         self.setAcceptDrops(True)
 
@@ -1305,12 +1309,12 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH = pg.InfiniteLine(angle=0, movable=False)
 
         self.mInfoLabelCursor = pg.TextItem(text='<cursor position>', anchor=(1.0, 0.0))
-        self.mInfoScatterPoint: pg.ScatterPlotItem = pg.ScatterPlotItem()
-        self.mInfoScatterPoint.sigClicked.connect(self.onInfoScatterClicked)
-        self.mInfoScatterPoint.setZValue(9999999)
-        self.mInfoScatterPoint.setBrush(self.mCrosshairLineH.pen.color())
+        self.mInfoScatterPoints: pg.ScatterPlotItem = pg.ScatterPlotItem()
+        self.mInfoScatterPoints.sigClicked.connect(self.onInfoScatterClicked)
+        self.mInfoScatterPoints.setZValue(9999999)
+        self.mInfoScatterPoints.setBrush(self.mCrosshairLineH.pen.color())
 
-        self.mInfoScatterPointHtml: str = ""
+        self.mInfoScatterPointHtml: typing.Dict[pgPoint, str] = dict()
 
         self.mCrosshairLineH.pen.setWidth(2)
         self.mCrosshairLineV.pen.setWidth(2)
@@ -1323,7 +1327,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
         pi.addItem(self.mCrosshairLineV, ignoreBounds=True)
         pi.addItem(self.mCrosshairLineH, ignoreBounds=True)
-        pi.addItem(self.mInfoScatterPoint)
+        pi.addItem(self.mInfoScatterPoints)
         self.proxy2D = pg.SignalProxy(self.scene().sigMouseMoved, rateLimit=100, slot=self.onMouseMoved2D)
 
         # self.mUpdateTimer = QTimer()
@@ -1355,27 +1359,39 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         if modifiers == Qt.AltModifier:
             x = data.xValue
             y = data.yValue
+            pt = HashablePointF(x, y)
+            if pt not in self.mInfoScatterPointHtml.keys():
 
-            if isinstance(pdi, SpectralProfilePlotDataItem):
-                ptColor: QColor = self.mInfoScatterPoint.opts['brush'].color()
-                self.mInfoScatterPointHtml = f'<div style="color:{ptColor.name()}; text-align:right;">' + \
-                                             f'{vis.field().name()},{fid} [{data.idx}]<br/>' + \
-                                             f'x={x} {xUnit}<br/>' + \
-                                             f'y={y}<br/>' + \
-                                             textwrap.shorten(name, width=self.mMaxInfoLength, placeholder='...') + \
-                                             f'</div>'
-            else:
-                s = ""
-            self.mInfoScatterPoint.setData(x=[x],
-                                           y=[y],
-                                           symbol='o')
-            self.mInfoScatterPoint.setVisible(True)
+                if isinstance(pdi, SpectralProfilePlotDataItem):
+                    ptColor: QColor = self.mInfoScatterPoints.opts['brush'].color()
+                    # ptInfo =  f'<div style="color:{ptColor.name()}; text-align:right;">' + \
+                    #                                      f'{vis.field().name()},{fid} [{data.idx}]<br/>' + \
+                    #                                      f'x={x} {xUnit}<br/>' + \
+                    #                                      f'y={y}<br/>' + \
+                    #                                      textwrap.shorten(name, width=self.mMaxInfoLength, placeholder='...') + \
+                    #                                      f'</div>'
+
+                    ptInfo = f'<div style="color:{ptColor.name()}; text-align:right;">{x} {xUnit},{y} {textwrap.shorten(name, width=self.mMaxInfoLength, placeholder="...")} </div>'
+
+                    self.mInfoScatterPointHtml[pt] = ptInfo
+
+                    existingpoints = self.existingInfoScatterPoints()
+                    if pt not in existingpoints:
+                        existingpoints.append(pt)
+                        self.mInfoScatterPoints.setData(x=[p.x() for p in existingpoints],
+                                                        y=[p.y() for p in existingpoints],
+                                                        symbol='o')
+                        # self.mInfoScatterPoints.setData(x=xcoords, y=ycoords, symbol='o')
+                    self.mInfoScatterPoints.setPointsVisible(len(existingpoints) > 0)
 
         else:
             if isinstance(pdi, SpectralProfilePlotDataItem):
                 self.sigPlotDataItemSelected.emit(pdi, modifiers)
 
         self.updatePositionInfo()
+
+    def existingInfoScatterPoints(self) -> typing.List[HashablePointF]:
+        return [HashablePointF(p.pos()) for p in self.mInfoScatterPoints.points()]
 
     def setShowCrosshair(self, b: bool):
         assert isinstance(b, bool)
@@ -1394,9 +1410,43 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     def viewBox(self) -> SpectralViewBox:
         return self.plotItem.getViewBox()
 
-    def clearInfoScatterPoint(self):
-        self.mInfoScatterPoint.setVisible(False)
-        self.mInfoScatterPointHtml = ''
+    def clearInfoScatterPoints(self):
+
+        self.mInfoScatterPointHtml.clear()
+        self.mInfoScatterPoints.setData(x=[], y=[])
+        self.mInfoScatterPoints.setPointsVisible(False)
+
+    def onInfoScatterClicked(self, a, spotItems):
+        # remove info point
+        existing_points = self.existingInfoScatterPoints()
+        for spotItem in spotItems:
+            if isinstance(spotItem, SpotItem):
+                pt = HashablePointF(spotItem.pos())
+                if pt in existing_points:
+                    existing_points.remove(pt)
+
+        for pt in [p for p in list(self.mInfoScatterPointHtml.keys()) if p not in existing_points]:
+            self.mInfoScatterPointHtml.pop(pt)
+
+        self.mInfoScatterPoints.setData(x=[p.x() for p in existing_points],
+                                        y=[p.y() for p in existing_points],
+                                        symbol='o')
+        self.mInfoScatterPoints.setPointsVisible(len(existing_points) > 0)
+
+    def updatePositionInfo(self):
+        x, y = self.mCurrentMousePosition.x(), self.mCurrentMousePosition.y()
+        positionInfoHtml = '<html><body>'
+        if self.xAxis().mUnit == 'DateTime':
+            positionInfoHtml += 'x:{}\ny:{:0.5f}'.format(datetime64(x), y)
+        elif self.xAxis().mUnit == 'DOY':
+            positionInfoHtml += 'x:{}\ny:{:0.5f}'.format(int(x), y)
+        else:
+            positionInfoHtml += 'x:{:0.5f}\ny:{:0.5f}'.format(x, y)
+
+        for pt, v in self.mInfoScatterPointHtml.items():
+            positionInfoHtml += f'{v}'
+        positionInfoHtml += '</body></html>'
+        self.mInfoLabelCursor.setHtml(positionInfoHtml)
 
     def spectralProfilePlotDataItems(self) -> typing.List[SpectralProfilePlotDataItem]:
         return [item for item in self.plotItem.listDataItems()
@@ -1405,8 +1455,8 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     def setWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
 
         self.mInfoLabelCursor.setColor(style.textColor)
-        self.mInfoScatterPoint.opts['pen'].setColor(QColor(style.selectionColor))
-        self.mInfoScatterPoint.opts['brush'].setColor(QColor(style.selectionColor))
+        self.mInfoScatterPoints.opts['pen'].setColor(QColor(style.selectionColor))
+        self.mInfoScatterPoints.opts['brush'].setColor(QColor(style.selectionColor))
         self.mCrosshairLineH.pen.setColor(style.crosshairColor)
         self.mCrosshairLineV.pen.setColor(style.crosshairColor)
         self.setBackground(style.backgroundColor)
@@ -1419,20 +1469,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
                 ai.setTextPen(style.foregroundColor)
                 ai.label.setDefaultTextColor(style.foregroundColor)
 
-    def updatePositionInfo(self):
-        x, y = self.mCurrentMousePosition.x(), self.mCurrentMousePosition.y()
-        positionInfoHtml = '<html><body>'
-        if self.xAxis().mUnit == 'DateTime':
-            positionInfoHtml += 'x:{}\ny:{:0.5f}'.format(datetime64(x), y)
-        elif self.xAxis().mUnit == 'DOY':
-            positionInfoHtml += 'x:{}\ny:{:0.5f}'.format(int(x), y)
-        else:
-            positionInfoHtml += 'x:{:0.5f}\ny:{:0.5f}'.format(x, y)
-
-        positionInfoHtml += self.mInfoScatterPointHtml
-        positionInfoHtml += '</body></html>'
-        self.mInfoLabelCursor.setHtml(positionInfoHtml)
-
     def leaveEvent(self, ev):
         super().leaveEvent(ev)
 
@@ -1440,10 +1476,6 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mCrosshairLineH.setVisible(False)
         self.mCrosshairLineV.setVisible(False)
         self.mInfoLabelCursor.setVisible(False)
-
-    def onInfoScatterClicked(self, a, b):
-        self.mInfoScatterPoint.setVisible(False)
-        self.mInfoScatterPointHtml = ""
 
     def onMouseClicked(self, event):
         # print(event[0].accepted)
@@ -1463,7 +1495,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
             nearest_item = None
             nearest_index = -1
             nearest_distance = sys.float_info.max
-            sx, sy = self.mInfoScatterPoint.getData()
+            sx, sy = self.mInfoScatterPoints.getData()
 
             self.updatePositionInfo()
 
@@ -1704,7 +1736,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             #  baseUnit = UnitLookup.baseUnit(unit_)
             labelName = self.mXUnitModel.unitData(unit_, Qt.DisplayRole)
             self.mPlotWidget.xAxis().setUnit(unit, labelName=labelName)
-            self.mPlotWidget.clearInfoScatterPoint()
+            self.mPlotWidget.clearInfoScatterPoints()
             # self.mPlotWidget.xAxis().setLabel(text='x values', unit=unit_)
             self.updatePlot()
             self.sigXUnitChanged.emit(self.mXUnit)
@@ -1873,7 +1905,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 featureColor: QColor = vis.plotStyle().lineColor()
 
-
                 if feature.id() in selected_fids:
 
                     # show all profiles, special highlight of selected
@@ -1960,8 +1991,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             to_add = [pdi for pdi in PLOT_DATA_ITEMS.values() if pdi not in spdis]
             for pdi in to_add:
                 self.mPlotWidget.addItem(pdi)
-
-
 
     def updatePlot(self, fids=[]):
 
@@ -2082,15 +2111,16 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             plotData = self.mCache3PlotData[plotDataKey]
             expr: QgsExpression = vis.labelExpression()
             name = expr.evaluate(context)
-            if not isinstance(name, str):
+            if name in [None, NULL]:
                 name = None
+            else:
+                name = str(name)
             style: PlotStyle = vis.plotStyle()
             linePen = pg.mkPen(style.linePen)
             symbolPen = pg.mkPen(style.markerPen)
             symbolBrush = pg.mkBrush(style.markerBrush)
 
             featureColor: QColor = vis.plotStyle().lineColor()
-
 
             if fid in selected_fids:
 
@@ -2170,6 +2200,9 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         for v, t in VIS_RENDERERS.items():
             renderer, renderContext = t
             # renderer.stopRender(renderContext)
+
+        # workaround
+        # v1 = self.mPlotWidget.mInfoScatterPoint.isVisible()
 
         to_remove = [pdi for pdi in spdis if pdi not in PLOT_DATA_ITEMS.values()]
         for pdi in to_remove:
@@ -2271,7 +2304,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             request = QgsFeatureRequest()
             request.setFilterFids(list(fids))
 
-
             # self.mCache2ModelData[(fid, fidx, '')] = sp.values(profile_field_index=fidx)
 
             blockList = list(SpectralProfileBlock.fromSpectralProfiles(self.speclib().getFeatures(request),
@@ -2292,7 +2324,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     results = model.processAlgorithm(parameters, context, feedback)
                     for p in model.outputDefinitions():
                         if isinstance(p, SpectralProcessingProfilesOutput):
-                            parameterResult: typing.List[SpectralProfileBlock] = outputParameterResult(results, p.name())
+                            parameterResult: typing.List[SpectralProfileBlock] = outputParameterResult(results,
+                                                                                                       p.name())
                             if isinstance(parameterResult, list):
                                 for block in parameterResult:
                                     if isinstance(block, SpectralProfileBlock):
@@ -2569,6 +2602,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mCache3PlotData = {k: v for k, v in self.mCache3PlotData.items() if k[0] not in fids_removed}
 
         self.updatePlot()
+        s = ""
 
     def onSpeclibEditCommandEnded(self, *args):
         # changedFIDs1 = list(self.speclib().editBuffer().changedAttributeValues().keys())
