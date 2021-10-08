@@ -64,7 +64,6 @@ from osgeo import gdal, ogr, osr, gdal_array
 import numpy as np
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 
-# dictionary to store form classes and avoid multiple calls to read <myui>.i
 QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
@@ -85,17 +84,17 @@ QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.ARGB32_Premultiplied: np.uint32}
 
 QGIS_DATATYPE_NAMES = {
-                     Qgis.Byte: 'Byte',
-                     Qgis.UInt16: 'UInt16',
-                     Qgis.Int16: 'Int16',
-                     Qgis.UInt32: 'UInt32',
-                     Qgis.Int32: 'Int32',
-                     Qgis.Float32: 'Float32',
-                     Qgis.Float64: 'Float64',
-                     Qgis.CFloat32: 'Complex',
-                     Qgis.CFloat64: 'Complex64',
-                     Qgis.ARGB32: 'UInt32',
-                     Qgis.ARGB32_Premultiplied: 'Int32'}
+    Qgis.Byte: 'Byte',
+    Qgis.UInt16: 'UInt16',
+    Qgis.Int16: 'Int16',
+    Qgis.UInt32: 'UInt32',
+    Qgis.Int32: 'Int32',
+    Qgis.Float32: 'Float32',
+    Qgis.Float64: 'Float64',
+    Qgis.CFloat32: 'Complex',
+    Qgis.CFloat64: 'Complex64',
+    Qgis.ARGB32: 'UInt32',
+    Qgis.ARGB32_Premultiplied: 'Int32'}
 
 
 def rm(p):
@@ -490,6 +489,7 @@ WAVELENGTH_DESCRIPTION = {
 
 NEXT_COLOR_HUE_DELTA_CON = 10
 NEXT_COLOR_HUE_DELTA_CAT = 100
+NEXT_COLOR_DELTA_VALUE = 50
 
 
 def nextColor(color, mode='cat') -> QColor:
@@ -498,15 +498,22 @@ def nextColor(color, mode='cat') -> QColor:
     :param color: QColor
     :param mode: str, 'cat' for categorical colors (much difference from 'color')
                       'con' for continuous colors (similar to 'color')
+                      'darker' for decreased brightness (if possible)
+                      'brighter' for increased brightness (if possible)
     :return: QColor
     """
-    assert mode in ['cat', 'con']
+    assert mode in ['cat', 'con', 'darker', 'brighter']
     assert isinstance(color, QColor)
-    hue, sat, value, alpha = color.getHsl()
+    hue, sat, value, alpha = color.getHsv()
     if mode == 'cat':
         hue += NEXT_COLOR_HUE_DELTA_CAT
     elif mode == 'con':
         hue += NEXT_COLOR_HUE_DELTA_CON
+    elif mode == 'darker':
+        value = max(0, value - NEXT_COLOR_DELTA_VALUE)
+    elif mode == 'brighter':
+        value = max(255, value + NEXT_COLOR_DELTA_VALUE)
+
     if sat == 0:
         sat = 255
         value = 128
@@ -515,7 +522,7 @@ def nextColor(color, mode='cat') -> QColor:
     while hue >= 360:
         hue -= 360
 
-    return QColor.fromHsl(hue, sat, value, alpha)
+    return QColor.fromHsv(hue, sat, value, alpha)
 
 
 def findMapLayerStores() -> typing.List[typing.Union[QgsProject, QgsMapLayerStore]]:
@@ -787,13 +794,14 @@ def ogrDataSource(data_source) -> ogr.DataSource:
         if dpn not in ['ogr']:
             context = QgsProcessingContext()
             feedback = QgsProcessingFeedback()
-            alg: QgsProcessingAlgorithm = QgsApplication.processingRegistry().algorithmById('native:savefeatures').create({})
+            alg: QgsProcessingAlgorithm = QgsApplication.processingRegistry().algorithmById(
+                'native:savefeatures').create({})
             parameters = dict(DATASOURCE_OPTIONS='',
                               INPUT=data_source.source(),
                               LAYER_NAME='',
                               LAYER_OPTIONS='',
                               OUTPUT='TEMPORARY_OUTPUT'
-            )
+                              )
 
             assert alg.prepareAlgorithm(parameters, context, feedback), feedback.textLog()
 
@@ -987,22 +995,25 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
 
-def qgsField(layer: QgsVectorLayer, field) -> QgsField:
+def qgsField(layer_fields: QgsVectorLayer, field: typing.Union[QgsField, str, int]) -> QgsField:
     """
     Returns the QgsField relating to the input value in "field"
-    :param layer:
-    :param field:
-    :return: QgsField
+    :param layer_fields: QgsVectorLayer | QgsFields
+    :param field: QgsField | str or int index of field in layer_fields
+    :return: QgsField or None, if not found
     """
-    assert isinstance(layer, QgsVectorLayer)
+    if isinstance(layer_fields, QgsVectorLayer):
+        layer_fields = layer_fields.fields()
+
+    assert isinstance(layer_fields, QgsFields)
 
     if isinstance(field, QgsField):
-        return qgsField(layer, layer.fields().lookupField(field.name()))
+        return qgsField(layer_fields, layer_fields.lookupField(field.name()))
     elif isinstance(field, str):
-        return qgsField(layer, layer.fields().lookupField(field))
+        return qgsField(layer_fields, layer_fields.lookupField(field))
     elif isinstance(field, int):
-        if 0 <= field < layer.fields().count():
-            return layer.fields().at(field)
+        if 0 <= field < layer_fields.count():
+            return layer_fields.at(field)
     return None
 
 
@@ -2434,6 +2445,34 @@ def findParent(qObject, parentType, checkInstance=False):
         while parent != None and type(parent) != parentType:
             parent = parent.parent()
     return parent
+
+
+def iconForFieldType(field: typing.Union[QgsField, QgsVectorDataProvider.NativeType]) -> QIcon:
+    """
+    Returns an icon for field types, including own defined
+    :return:
+    """
+    from .speclib.core import is_profile_field, create_profile_field
+
+    if isinstance(field, QgsVectorDataProvider.NativeType):
+        if field.mTypeName.replace(' ', '').lower() == 'spectralprofile':
+            field = create_profile_field('dummy')
+        else:
+            field = QgsField(
+                name='dummy',
+                type=field.mType,
+                typeName=field.mTypeName,
+                len=field.mMaxLen,
+                prec=field.mMaxPrec,
+                # comment=field.comment,
+                subType=field.mSubType
+            )
+
+    assert isinstance(field, QgsField)
+    if is_profile_field(field):
+        return QIcon(r':/qps/ui/icons/profile.svg')
+    else:
+        return QgsFields.iconForFieldType(field.type())
 
 
 def createCRSTransform(src: QgsCoordinateReferenceSystem, dst: QgsCoordinateReferenceSystem):

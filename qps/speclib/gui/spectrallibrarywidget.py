@@ -4,7 +4,7 @@ import typing
 import warnings
 
 from PyQt5.QtCore import pyqtSignal, Qt, QModelIndex
-from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent
+from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent, QColor
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QLabel
 from qgis.core import QgsVectorLayer
@@ -22,7 +22,7 @@ from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibrar
     SpectralLibraryPlotItem, SpectralLibraryPlotStats, SpectralProfilePlotControlModel
 from ..processing import SpectralProcessingWidget
 from ...unitmodel import BAND_NUMBER
-from ...utils import SpatialExtent, SpatialPoint
+from ...utils import SpatialExtent, SpatialPoint, nextColor
 
 
 class SpectralLibraryWidget(AttributeTableWidget):
@@ -42,7 +42,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def __init__(self, *args, speclib: SpectralLibrary = None, mapCanvas: QgsMapCanvas = None, **kwds):
 
-        if not is_spectral_library(speclib):
+        if not isinstance(speclib, QgsVectorLayer):
             speclib = SpectralLibrary()
 
         super().__init__(speclib)
@@ -424,6 +424,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         fids = list(self.plotControl().mTemporaryProfileIDs)
         self.plotControl().mTemporaryProfileIDs.clear()
+        self.plotControl().mTemporaryProfileColors.clear()
         self.plotControl().updatePlot(fids)
 
     def deleteCurrentProfilesFromSpeclib(self, *args):
@@ -447,14 +448,15 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def setCurrentProfiles(self,
                            currentProfiles: typing.List[SpectralProfile],
-                           make_permanent: bool = None):
+                           make_permanent: bool = None,
+                           currentProfileColors: typing.List[typing.Tuple[int, QColor]] = None):
         """
         Sets temporary profiles for the spectral library.
         If not made permanent, they will be removes when adding the next set of temporary profiles
+        :param colors:
         :param make_permanent: bool, if not note, overwrite the value returned by optionAddCurrentProfilesAutomatically
         :type make_permanent:
         :param currentProfiles:
-        :param profileStyles:
         :return:
         """
         # print(f'set {currentProfiles}')
@@ -479,6 +481,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
             # now there shouldn't be any PDI or style ref related to an old ID
         self.plotControl().mTemporaryProfileIDs.clear()
+        self.plotControl().mTemporaryProfileColors.clear()
 
         # if necessary, convert QgsFeatures to SpectralProfiles
         # for i in range(len(currentProfiles)):
@@ -498,6 +501,29 @@ class SpectralLibraryWidget(AttributeTableWidget):
         if not addAuto:
             # give current spectra the current spectral style
             self.plotControl().mTemporaryProfileIDs.update(addedKeys)
+
+            affected_profile_fields: typing.Dict[str, QColor] = dict()
+
+            if isinstance(currentProfileColors, list):
+                if len(currentProfileColors) == len(addedKeys):
+                    for fid, profile_colors in zip(addedKeys, currentProfileColors):
+                        for t in profile_colors:
+                            attribute, color = t
+                            if isinstance(attribute, int):
+                                attribute = speclib.fields().at(attribute).name()
+                            if attribute not in affected_profile_fields.keys():
+                                affected_profile_fields[attribute] = color
+                            self.plotControl().mTemporaryProfileColors[(fid, attribute)] = color
+
+            visualized_attributes = [v.field().name() for v in self.plotControl().visualizations()]
+            missing_visualization = [a for a in affected_profile_fields.keys() if a not in visualized_attributes]
+
+            for attribute in missing_visualization:
+                color: QColor = affected_profile_fields[attribute]
+                # make the default color a bit darker
+                color = nextColor(color, 'darker')
+                self.spectralLibraryPlotWidget().createProfileVis(field=attribute, color=color)
+
         self.plotControl().updatePlot()
         self.speclib().triggerRepaint()
 

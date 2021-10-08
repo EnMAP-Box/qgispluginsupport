@@ -228,13 +228,14 @@ class SpectralProcessingTests(TestCase):
 
         modes = SpectralProfileSamplingModeModel.registeredModes()
 
-        for pgnode in fgnode1.spectralProfileGeneratorNodes():
-            pgnode.setProfileSource(src1)
+        for o, pgnode in enumerate(fgnode1.spectralProfileGeneratorNodes()):
+            pgnode.setProfileSource(map_sources[0])
             self.assertIsInstance(pgnode.sampling(), SingleProfileSamplingMode)
             pgnode.setSampling(modes[0])
+            pgnode.setScaling(o*10, 1)
 
         for pgnode in fgnode2.spectralProfileGeneratorNodes():
-            pgnode.setProfileSource(src2)
+            pgnode.setProfileSource(map_sources[-1])
             pgnode.setSampling(modes[1])
 
         RESULTS = panel.loadCurrentMapSpectra(center, mapCanvas=canvas, runAsync=False)

@@ -4,7 +4,7 @@ import re
 import unittest
 import xmlrunner
 
-
+from qps.speclib.core.spectrallibrary import SpectralLibrary
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -25,7 +25,7 @@ class TestSpeclibIO_GPKG(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_GPKG, cls).setUpClass(*args, **kwds)
-
+        cls.registerIO(cls)
     @classmethod
     def tearDownClass(cls):
         super(TestSpeclibIO_GPKG, cls).tearDownClass()
@@ -41,12 +41,21 @@ class TestSpeclibIO_GPKG(TestCase):
 
         exportWidget = IO.createExportWidget()
         self.assertIsInstance(exportWidget, GeoPackageSpectralLibraryExportWidget)
-        sl: QgsVectorLayer = TestObjects.createSpectralLibrary()
+        sl: SpectralLibrary = TestObjects.createSpectralLibrary()
         exportWidget.setSpeclib(sl)
         testdir = self.createTestOutputDirectory() / 'Geopackage'
         os.makedirs(testdir, exist_ok=True)
 
         path = testdir / 'exported_profiles.gpkg'
+
+        files = sl.write(path)
+        self.assertTrue(len(files) == 1)
+
+        # overwrite
+        files = sl.write(path)
+        self.assertTrue(len(files) == 1)
+
+
         exportSettings = dict()
         feedback = QgsProcessingFeedback()
         files = IO.exportProfiles(path.as_posix(), exportSettings, sl.getFeatures(), feedback)

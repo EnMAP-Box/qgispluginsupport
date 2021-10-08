@@ -262,13 +262,16 @@ def defaultCurvePlotStyle() -> PlotStyle:
 
 class SpectralLibraryUtils:
     """
-    This class provides methods to handel SpectralProfiles in a QgsVectorLayer
+    This class provides methods to handle SpectralProfiles in a QgsVectorLayer
     """
 
     @staticmethod
-    def writeToSource(speclib: QgsVectorLayer, uri: str, feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+    def writeToSource(speclib: QgsVectorLayer,
+                      uri: str,
+                      settings: dict = None,
+                      feedback: QgsProcessingFeedback = None) -> typing.List[str]:
         from .spectrallibraryio import SpectralLibraryIO
-        return SpectralLibraryIO.writeSpeclibToUri(speclib, uri, feedback=feedback)
+        return SpectralLibraryIO.writeSpeclibToUri(speclib, uri, settings=settings, feedback=feedback)
 
     @staticmethod
     def readFromSource(uri: str, feedback: QgsProcessingFeedback = None):
@@ -622,6 +625,17 @@ class SpectralLibraryUtils:
             SpectralLibraryUtils.profiles(speclib, fids=fids, profile_field=profile_field),
             profile_field=profile_field
         )
+
+    @staticmethod
+    def countProfiles(speclib: QgsVectorLayer) -> typing.Dict[str, int]:
+        COUNTS = dict()
+        for field in profile_field_list(speclib):
+            requests = QgsFeatureRequest()
+            requests.setFilterExpression(f'"{field.name()}" is not NULL')
+            n = len(list(speclib.getFeatures(requests)))
+
+            COUNTS[field.name()] = n
+        return COUNTS
 
     @staticmethod
     def profile(speclib: QgsVectorLayer, fid: int, value_field=None) -> SpectralProfile:
@@ -1381,8 +1395,10 @@ class SpectralLibrary(QgsVectorLayer):
             del dsDst
         return imageFiles
 
-    def write(self, uri, feedback: QgsProcessingFeedback = None) -> typing.List[str]:
-        return SpectralLibraryUtils.writeToSource(self, uri, feedback)
+    def write(self, uri,
+              settings: dict = None,
+              feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+        return SpectralLibraryUtils.writeToSource(self, uri, settings=settings, feedback=feedback)
 
     def spectralProfileFields(self) -> typing.List[QgsField]:
         return profile_field_list(self)
