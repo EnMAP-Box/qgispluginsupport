@@ -22,6 +22,7 @@ import unittest
 import xmlrunner
 from qgis.gui import QgsMapCanvas
 from qgis.core import QgsField, QgsFields, QgsProject, QgsGeometry, QgsRasterLayer
+from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase
 from qpstestdata import hymap
 from qpstestdata import speclib as speclibpath
@@ -47,6 +48,20 @@ class TestCore(TestCase):
     def setUp(self):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
+
+        reg = QgsGui.editorWidgetRegistry()
+        if len(reg.factories()) == 0:
+            reg.initEditors()
+
+        registerSpectralProfileEditorWidget()
+        from qps import registerEditorWidgets
+        registerEditorWidgets()
+
+        from qps import registerMapLayerConfigWidgetFactories
+        registerMapLayerConfigWidgetFactories()
+
+
+
 
     def test_fields(self):
 
@@ -654,6 +669,11 @@ class TestCore(TestCase):
         for p1, p2 in zip(SLIB, SLIB2):
             for field in p1.fields():
                 self.assertEqual(p1.attribute(field.name()), p2.attribute(field.name()))
+
+    def test_SpectralLibrary_readFrom(self):
+        from qpstestdata import speclib_labeled
+        sl = SpectralLibrary.readFrom(speclib_labeled)
+        self.assertIsInstance(sl, QgsVectorLayer)
 
     def test_others(self):
 

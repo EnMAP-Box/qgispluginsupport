@@ -9,7 +9,6 @@ import typing
 import warnings
 import pickle
 import numpy as np
-from qgis._core import QgsFeatureIterator, QgsVectorLayerCache
 
 from qgis.PyQt import sip
 from PyQt5.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex, QPoint, QObject, QAbstractTableModel, \
@@ -21,7 +20,7 @@ from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabe
 from PyQt5.QtXml import QDomElement, QDomDocument, QDomNode
 
 from qgis.PyQt.QtCore import NULL
-from qgis.core import QgsPropertyDefinition
+from qgis.core import QgsPropertyDefinition, QgsFeatureIterator, QgsVectorLayerCache
 from qgis.gui import QgsColorButton, QgsPropertyOverrideButton, QgsCollapsibleGroupBox
 
 from qgis.core import QgsProperty, QgsExpressionContextScope

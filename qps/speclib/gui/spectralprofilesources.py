@@ -11,14 +11,14 @@ import numpy
 from PyQt5.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
     QSortFilterProxyModel, QItemSelection
 from PyQt5.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
-from qgis._gui import QgsColorButton, QgsFilterLineEdit
+
 
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRaster, QgsRectangle
 
 from qgis.PyQt.QtCore import Qt
-from qgis.gui import QgsFieldExpressionWidget
+from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsApplication, QgsTask, \
     QgsTaskManager, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
 
