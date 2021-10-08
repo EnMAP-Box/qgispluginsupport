@@ -2523,7 +2523,7 @@ def saveTransform(geom: typing.Union[QgsPointXY, QgsRectangle,
 
     result = None
     if isinstance(geom, QgsRectangle):
-        if geom.isEmpty():
+        if geom.isNull() or not geom.isFinite():
             return None
 
         try:
