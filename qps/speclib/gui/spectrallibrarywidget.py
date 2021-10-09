@@ -79,8 +79,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # l.addWidget(self.pageProcessingWidget)
         l.setContentsMargins(0, 0, 0, 0)
         l.setSpacing(2)
-        self.widgetRight.setLayout(l)
-        self.widgetRight.setVisible(True)
+        self.widgetLeft.setLayout(l)
+        self.widgetLeft.setVisible(True)
+        self.widgetRight.setVisible(False)
 
         self.widgetCenter.addWidget(self.pageProcessingWidget)
         self.widgetCenter.currentChanged.connect(self.updateToolbarVisibility)
@@ -231,6 +232,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
             for field in profile_field_list(self.speclib()):
                 self.spectralLibraryPlotWidget().createProfileVis(field=field)
 
+        self.splitter.setStretchFactor(0, 4)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setStretchFactor(2, 0)
         # self.mSpeclibPlotWidget.splitter.setSizes([90, 10])
 
     def setViewVisibility(self, viewType: ViewType):
@@ -282,7 +286,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         is_tableview = self.actionShowAttributeTable.isChecked()
         is_processingview = self.actionShowProcessingWidget.isChecked()
 
-        self.widgetRight.setVisible(is_profileview)
+        self.widgetLeft.setVisible(is_profileview)
 
         if not any([is_formview, is_tableview, is_processingview]):
             self.widgetCenter.setVisible(False)

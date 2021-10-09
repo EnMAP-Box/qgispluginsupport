@@ -44,7 +44,7 @@
       <property name="opaqueResize">
        <bool>false</bool>
       </property>
-      <widget class="QWidget" name="widgetRight" native="true"/>
+      <widget class="QWidget" name="widgetLeft" native="true"/>
       <widget class="QStackedWidget" name="widgetCenter">
        <widget class="QWidget" name="pageAttributeTable">
         <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -251,7 +251,7 @@
         </layout>
        </widget>
       </widget>
-      <widget class="QWidget" name="widgetLeft" native="true"/>
+      <widget class="QWidget" name="widgetRight" native="true"/>
      </widget>
     </item>
    </layout>
