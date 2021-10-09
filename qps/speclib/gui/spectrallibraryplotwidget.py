@@ -3144,7 +3144,7 @@ class SpectralLibraryPlotWidget(QWidget):
         self.optionShowVisualizationSettings: QAction
         self.optionShowVisualizationSettings.setCheckable(True)
         self.optionShowVisualizationSettings.setChecked(True)
-        self.optionShowVisualizationSettings.setIcon(QgsApplication.getThemeIcon(r':/images/themes/default/legend.svg'))
+        self.optionShowVisualizationSettings.setIcon(QgsApplication.getThemeIcon(r'/legend.svg'))
         self.optionShowVisualizationSettings.toggled.connect(self.panelVisualization.setVisible)
 
         self.actionAddProfileVis: QAction
