@@ -17,11 +17,8 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-import time
 import unittest
 import xmlrunner
-from qgis.gui import QgsMapCanvas
-from qgis.core import QgsField, QgsFields, QgsProject, QgsGeometry, QgsRasterLayer
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase
 from qpstestdata import hymap
@@ -241,6 +238,33 @@ class TestCore(TestCase):
             self.assertListEqual(sp2.yValues(), [n / v for v in y])
             sp3 = sp / sp
             self.assertListEqual(sp3.yValues(), [v / v for v in y])
+
+    def test_FeatureReferenceIterator(self):
+        sl = TestObjects.createSpectralLibrary(10)
+        all_profiles = list(sl.getFeatures())
+
+        def check_profiles(profiles):
+            profiles = list(profiles)
+            self.assertEqual(len(profiles), len(all_profiles))
+            for i, p in enumerate(profiles):
+                self.assertIsInstance(p, QgsFeature)
+                self.assertEqual(p.attributes(), all_profiles[i].attributes())
+
+        fpi = FeatureReferenceIterator([])
+        self.assertTrue(fpi.referenceFeature() is None)
+        self.assertEqual(len(list(fpi)), 0)
+
+        fpi = FeatureReferenceIterator(sl.getFeatures())
+        self.assertIsInstance(fpi.referenceFeature(), QgsFeature)
+        check_profiles(fpi)
+
+        fpi = FeatureReferenceIterator(sl)
+        self.assertIsInstance(fpi.referenceFeature(), QgsFeature)
+        check_profiles(fpi)
+
+        fpi = FeatureReferenceIterator(all_profiles)
+        self.assertIsInstance(fpi.referenceFeature(), QgsFeature)
+        check_profiles(fpi)
 
     def test_SpectralProfile(self):
 

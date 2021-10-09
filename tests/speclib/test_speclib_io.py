@@ -120,7 +120,7 @@ class TestIO(TestCase):
         COUNTS = SpectralLibraryUtils.countProfiles(sl)
 
         self.assertIsInstance(sl, SpectralLibrary)
-        for ext in ['gpkg', 'sli']:
+        for ext in ['sli', 'gpkg']:
 
             path = DIR / f'test.speclib.{ext}'
             print(f'Test export to {path.name}')
@@ -135,7 +135,8 @@ class TestIO(TestCase):
                     COUNTS2[k] = COUNTS2.get(k, 0) + cnt
                 self.assertIsInstance(sl2, SpectralLibrary)
                 self.assertTrue(len(sl2) > 0)
-            self.assertEqual(COUNTS, COUNTS2)
+            self.assertEqual(sum(COUNTS.values()), sum(COUNTS2.values()),
+                             msg=f'Not all profiles written automatically: {path}')
 
     def test_exportWidgets(self):
         self.registerIO()

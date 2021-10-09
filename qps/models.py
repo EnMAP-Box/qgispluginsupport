@@ -720,11 +720,11 @@ class OptionTreeNode(TreeNode):
     def options(self) -> typing.List[Option]:
         return self.mOptionModel.options()
 
+
 class NumpyArrayIterator(object):
     """
     Iterator for numpy.ndArrays
     """
-
 
     def __init__(self, array: np.ndarray):
         assert isinstance(array, np.ndarray)
@@ -800,7 +800,7 @@ class PyObjectTreeNode(TreeNode):
             elif isinstance(self.mPyObject, np.ndarray):
                 # self.mFetchIterator = iter(self.mPyObject[:,])
                 self.mFetchIterator = iter({'array': NumpyArrayIterator(self.mPyObject),
-                                           #'internals': iter(self.mPyObject)
+                                            # 'internals': iter(self.mPyObject)
                                             }.items())
             elif isinstance(self.mPyObject, NumpyArrayIterator):
                 self.mFetchIterator = self.mPyObject
@@ -1251,7 +1251,7 @@ class TreeView(QTreeView):
         self.mNodeExpansion: typing.Dict[str, bool] = dict()
         self.mAutoFirstColumnSpan: bool = True
 
-    def setAutoFirstColumnSpan(self, b:bool):
+    def setAutoFirstColumnSpan(self, b: bool):
         assert isinstance(b, bool)
         self.mAutoFirstColumnSpan = b
 

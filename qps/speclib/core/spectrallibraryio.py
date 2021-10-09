@@ -16,9 +16,10 @@ from qgis.gui import QgsFileWidget, QgsFieldMappingWidget, QgsFieldMappingModel
 from qgis.core import QgsField, QgsExpression, QgsExpressionContext
 
 from qgis.core import QgsProcessingFeedback
-from . import is_spectral_library
+from . import is_spectral_library, is_profile_field, profile_field_list
+from .spectralprofile import groupBySpectralProperties
 from .. import speclibUiPath
-from ...utils import loadUi
+from ...utils import loadUi, FeatureReferenceIterator
 
 IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS = 'required_source_fields'
 
@@ -321,57 +322,133 @@ class SpectralLibraryIO(object):
     @staticmethod
     def writeProfilesToUri(profiles: typing.List[QgsFeature],
                            speclib: QgsVectorLayer,
-                           uri,
+                           uri: typing.Union[str, pathlib.Path],
                            settings: dict = None,
                            feedback: QgsProcessingFeedback = None,
                            crs: QgsCoordinateReferenceSystem = None) -> typing.List[str]:
 
-        if profiles is None:
+        if profiles is None and isinstance(speclib, QgsVectorLayer):
             profiles = speclib.getFeatures()
-        elif speclib is None:
-            profiles = list(profiles)
-            # create fake speclib
-            refProfile = profiles[0]
+
+        featureIterator = FeatureReferenceIterator(profiles)
+        referenceProfile = featureIterator.referenceFeature()
+
+
+        if not isinstance(referenceProfile, QgsFeature):
+            print('No features to write')
+            return []
+
+        profile_fields = profile_field_list(referenceProfile)
+        if len(profile_fields) == 0:
+            print('No profile fieds to write')
+            return []
+
+        if not isinstance(settings,dict):
+            settings = dict()
+
+        if not isinstance(crs, QgsCoordinateReferenceSystem):
+            if isinstance(speclib, QgsVectorLayer):
+                crs = speclib.crs()
+            else:
+                crs = QgsCoordinateReferenceSystem()
+
+        def createDummySpeclib(refProfile: QgsFeature, profile_field:str=None) -> QgsVectorLayer:
             g = refProfile.geometry()
-            speclib = QgsVectorLayer('point', "Scratch point layer", "memory")
+            dummy = QgsVectorLayer('point', "Scratch point layer", "memory")
+            assert dummy.isValid()
+            if isinstance(crs, QgsCoordinateReferenceSystem):
+                dummy.setCrs(crs)
+
+            dummy.startEditing()
+            for f in refProfile.fields():
+                f: QgsField
+                if profile_field and is_profile_field(f) and f.name() != profile_field:
+                    continue
+                dummy.addAttribute(f)
+            assert dummy.commitChanges()
+            return dummy
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
 
-        elif isinstance(uri, pathlib.Path):
-            uri = uri.as_posix()
+        uri = pathlib.Path(uri)
 
-        if not isinstance(uri, str):
-            return []
-
-        if crs is None:
-            crs = QgsCoordinateReferenceSystem()
-
-        ext = os.path.splitext(uri)[1]
+        uri_bn, uri_ext = os.path.splitext(uri.name)
 
         matched_formats: typing.List[SpectralLibraryImportWidget] = []
         for IO in SpectralLibraryIO.spectralLibraryIOs():
             format = IO.createExportWidget()
             if isinstance(format, SpectralLibraryExportWidget):
                 for e in QgsFileUtils.extensionsFromFilter(format.filter()):
-                    if ext.endswith(e):
+                    if uri_ext.endswith(e):
                         matched_formats.append(format)
                         break
-
-        if not isinstance(settings,dict):
-            settings = dict()
 
         for format in matched_formats:
             format: SpectralLibraryExportWidget
             IO: SpectralLibraryIO = format.spectralLibraryIO()
-            format.setSpeclib(speclib)
-            _settings = dict()
-            _settings = format.exportSettings(_settings)
-            # update with globals settings (if defined)
-            _settings.update(settings)
-            create_files = IO.exportProfiles(uri, _settings, profiles, feedback=feedback)
 
-            return create_files
+            # consider that not every format allows to
+            # 1. write profiles from different fields
+            # 2. profiles of different wavelength
+
+            GROUPS: typing.Dict[str, typing.List[typing.List[QgsFeature]]] = dict()
+
+            needs_field_separation = len(profile_fields) > 1 and not format.supportsMultipleProfileFields()
+            needs_setting_groups = not format.supportsMultipleSpectralSettings()
+
+            if not (needs_setting_groups or needs_field_separation):
+                GROUPS[''] = [featureIterator]
+            else:
+                all_profiles = list(featureIterator)
+
+                if needs_setting_groups:
+                    for field in profile_fields:
+                        for setting, profiles in groupBySpectralProperties(all_profiles, profile_field=field):
+                            GROUPS[field.name()] = GROUPS.get(field.name(), []).append(list(profiles))
+                else:
+                    # needs_field_separation:
+                    for field in profile_fields:
+                        GROUPS[field.name()] = [all_profiles]
+
+            # iterate over profile fields
+
+            files_creates = []
+            # iterate over profile groups
+
+            nFields = 0
+
+            for fieldName, profilesGroups in GROUPS.items():
+
+                nFields += 1
+
+                # use a separated file name for each field
+                if len(profile_fields) > 1 and fieldName != '':
+                    dummy = createDummySpeclib(referenceProfile)
+                    uri_field = f'{uri_bn}.{fieldName}'
+                else:
+                    dummy = createDummySpeclib(referenceProfile, fieldName)
+                    uri_field = uri_bn
+
+                for iGrp, profiles in enumerate(profilesGroups):
+
+                    # use a separated file name for each profile group
+                    if iGrp == 0:
+                        _uri = uri.parent / f'{uri_field}{uri_ext}'
+                    else:
+                        _uri = uri.parent / f'{uri_field}.{iGrp}{uri_ext}'
+
+                    format.setSpeclib(dummy)
+                    _settings = dict()
+                    if fieldName != '':
+                        _settings['profile_field'] = fieldName
+                    _settings = format.exportSettings(_settings)
+                    # update with globals settings (if defined)
+                    _settings.update(settings)
+
+                    create_files = IO.exportProfiles(_uri.as_posix(), _settings, profiles, feedback=feedback)
+                    files_creates.extend(create_files)
+            return files_creates
         return []
 
     @staticmethod

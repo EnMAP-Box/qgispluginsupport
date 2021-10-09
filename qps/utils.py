@@ -24,45 +24,42 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import calendar
+import copy
+import datetime
+import fnmatch
+import gc
+import importlib
+import io
+import itertools
+import json
 import math
 import os
-import sys
-import importlib
-import re
-import fnmatch
-import io
-import zipfile
-import itertools
 import pathlib
-import warnings
-import copy
+import re
 import shutil
-import typing
-import json
-import gc
+import sys
 import traceback
-import calendar
-import datetime
+import typing
+import warnings
+import zipfile
 
-from PyQt5.QtCore import QObject
+import numpy as np
+from osgeo import gdal, ogr, osr, gdal_array
 
+from qgis.PyQt import uic
+from qgis.PyQt.QtCore import *
+from qgis.PyQt.QtGui import *
+from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
+from qgis.PyQt.QtXml import *
+from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import *
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
     QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
     QgsFields
-
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
-
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtXml import *
-from qgis.PyQt.QtXml import QDomDocument
-from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import *
-from osgeo import gdal, ogr, osr, gdal_array
-import numpy as np
-from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -3034,3 +3031,40 @@ class SignalObjectWrapper(QObject):
     def __init__(self, obj, *args, **kwds):
         super(SignalObjectWrapper, self).__init__(*args, **kwds)
         self.wrapped_object = obj
+
+
+class FeatureReferenceIterator(object):
+    """
+    Iterator for QgsFeatures that uses the 1st feature as reference
+    """
+    def __init__(self, features: typing.Iterable[QgsFeature]):
+
+        self.mNextFeatureIndex = -1
+        self.mReferenceFeature = None
+        if isinstance(features, QgsVectorLayer):
+            self.mFeatureIterator = features.getFeatures()
+        else:
+            self.mFeatureIterator = iter(features)
+        try:
+            self.mReferenceFeature = self.mFeatureIterator.__next__()
+            self.mNextFeatureIndex += 1
+        except StopIteration:
+            pass
+
+    def referenceFeature(self) -> QgsFeature:
+        return self.mReferenceFeature
+
+    def __str__(self):
+        return 'FeaturePreviewIterator'
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self.mNextFeatureIndex += 1
+        if self.mNextFeatureIndex == 0:
+            raise StopIteration
+        elif self.mNextFeatureIndex == 1:
+            return self.referenceFeature()
+        else:
+            return self.mFeatureIterator.__next__()
