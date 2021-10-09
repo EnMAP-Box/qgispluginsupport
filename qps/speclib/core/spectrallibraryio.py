@@ -2,6 +2,7 @@ import os
 import pathlib
 import typing
 import re
+import warnings
 
 from PyQt5.QtCore import pyqtSignal, QRegExp, QUrl
 from PyQt5.QtGui import QIcon, QRegExpValidator
@@ -376,6 +377,12 @@ class SpectralLibraryIO(object):
         uri_bn, uri_ext = os.path.splitext(uri.name)
 
         matched_formats: typing.List[SpectralLibraryImportWidget] = []
+
+        if len(SpectralLibraryIO.spectralLibraryIOs()) == 0:
+            warnings.warn('No SpectralLibraryIO registered. Register SpectralLibraryIOs with '
+                          'SpectralLibraryIO.registerSpectralLibraryIO(<IO>) first.')
+            return []
+
         for IO in SpectralLibraryIO.spectralLibraryIOs():
             format = IO.createExportWidget()
             if isinstance(format, SpectralLibraryExportWidget):
@@ -384,6 +391,10 @@ class SpectralLibraryIO(object):
                         matched_formats.append(format)
                         break
 
+        if len(matched_formats) == 0:
+            warnings.warn(f'No SpectralLibraryIO export format found for file type "*{uri_ext}"')
+            return []
+        
         for format in matched_formats:
             format: SpectralLibraryExportWidget
             IO: SpectralLibraryIO = format.spectralLibraryIO()
