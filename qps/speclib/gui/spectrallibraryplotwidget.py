@@ -9,7 +9,7 @@ import typing
 import warnings
 import pickle
 import numpy as np
-from qgis._gui import QgsPropertyAssistantWidget, QgsFilterLineEdit
+from qgis.gui import QgsPropertyAssistantWidget, QgsFilterLineEdit
 
 from qgis.PyQt import sip
 from PyQt5.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex, QPoint, QObject, QAbstractTableModel, \

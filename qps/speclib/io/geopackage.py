@@ -2,7 +2,7 @@ import os
 import typing
 
 from PyQt5.QtWidgets import QFormLayout
-from qgis._core import Qgis
+from qgis.core import Qgis
 
 from qgis.core import QgsFeatureSink, QgsVectorLayerExporter
 from qgis.core import QgsProject, QgsWkbTypes
