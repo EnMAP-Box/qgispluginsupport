@@ -163,6 +163,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProfileView.setIcon(QIcon(self.mSpeclibPlotWidget.windowIcon()))
         self.actionShowProfileView.triggered.connect(self.setCenterView)
 
+        self.actionShowVisualizationSettings = self.mSpeclibPlotWidget.optionShowVisualizationSettings
+        self.actionShowProfileView.toggled.connect(self.actionShowVisualizationSettings.setEnabled)
+
         # show Attribute Table / Form View buttons in menu bar only
         self.mAttributeViewButton.setVisible(False)
         self.mTableViewButton.setVisible(False)
@@ -195,6 +198,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         r = self.tbSpeclibAction.addSeparator()
         self.tbSpeclibAction.addAction(self.actionShowProfileView)
+        self.tbSpeclibAction.addAction(self.actionShowVisualizationSettings)
+        self.tbSpeclibAction.addSeparator()
         self.tbSpeclibAction.addAction(self.actionShowFormView)
         self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
         self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
@@ -446,9 +451,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def spectralLibraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget
-
-    def setVisualizationBoxCollapsed(self, collapse):
-        self.spectralLibraryPlotWidget().visualizationSettingsBox().setCollapsed(collapse)
 
     def setCurrentProfiles(self,
                            currentProfiles: typing.List[SpectralProfile],

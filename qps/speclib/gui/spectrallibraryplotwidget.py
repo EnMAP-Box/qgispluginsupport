@@ -9,7 +9,7 @@ import typing
 import warnings
 import pickle
 import numpy as np
-from qgis._gui import QgsPropertyAssistantWidget
+from qgis._gui import QgsPropertyAssistantWidget, QgsFilterLineEdit
 
 from qgis.PyQt import sip
 from PyQt5.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex, QPoint, QObject, QAbstractTableModel, \
@@ -17,7 +17,7 @@ from PyQt5.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex,
 from PyQt5.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
 from PyQt5.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem, \
-    QRadioButton, QSizePolicy, QSplitter
+    QRadioButton, QSizePolicy, QSplitter, QGroupBox
 from PyQt5.QtXml import QDomElement, QDomDocument, QDomNode
 
 from qgis.PyQt.QtCore import NULL
@@ -48,6 +48,7 @@ from ..core.spectralprofile import SpectralProfile, SpectralProfileBlock, Spectr
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
     SpectralProcessingProfilesOutput, SpectralProcessingModelList, NULL_MODEL, outputParameterResults, \
     outputParameterResult
+from ...simplewidgets import FlowLayout
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
 from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField, \
     HashablePointF
@@ -1571,6 +1572,14 @@ class SpectralLibraryPlotStats(object):
         return True
 
 
+class SpectralProfilePlotControlModelProxyModel(QSortFilterProxyModel):
+
+    def __init__(self, *args, **kwds):
+        super(SpectralProfilePlotControlModelProxyModel, self).__init__(*args, **kwds)
+        self.setRecursiveFilteringEnabled(True)
+        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+
+
 class SpectralProfilePlotControlModel(QAbstractItemModel):
     PIX_FIELD = 0
     PIX_MODEL = 1
@@ -1578,7 +1587,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
     PIX_COLOR = 3
     PIX_STYLE = 4
     PIX_FILTER = 5
-
 
     CIX_NAME = 0
     CIX_VALUE = 1
@@ -2688,9 +2696,9 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
     def profileFieldNames(self) -> typing.List[str]:
         return profile_field_indices()
 
-
-    PropertyDefinitionRole = Qt.UserRole + 1
-    PropertyRole = Qt.UserRole + 2
+    PropertyIndexRole = Qt.UserRole + 1
+    PropertyDefinitionRole = Qt.UserRole + 2
+    PropertyRole = Qt.UserRole + 3
 
     def data(self, index: QModelIndex, role=None):
         if not index.isValid():
@@ -2730,6 +2738,10 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             vis: SpectralProfilePlotVisualization
             if role == Qt.ForegroundRole and not vis.isVisible():
                 return QColor('grey')
+
+            if role == SpectralProfilePlotControlModel.PropertyIndexRole:
+                # returns the row = PIX_ value
+                return row
 
             if col == self.CIX_NAME:
                 if role == Qt.DisplayRole:
@@ -3112,7 +3124,7 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
 
         elif isinstance(handle, SpectralProfilePlotControlModel.PropertyHandle) and \
                 index.column() == SpectralProfilePlotControlModel.CIX_VALUE and \
-                index.row() == SpectralProfilePlotControlModel.PIX_STYLE:
+                index.data(SpectralProfilePlotControlModel.PropertyIndexRole) == SpectralProfilePlotControlModel.PIX_STYLE:
             # self.initStyleOption(option, index)
             style: PlotStyle = handle.parentVisualization().plotStyle()
             h = self.mTreeView.rowHeight(index)
@@ -3155,7 +3167,7 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
                 return super().createEditor(parent, option, index)
 
             elif isinstance(handle, SpectralProfilePlotControlModel.PropertyHandle):
-                row: int = index.row()
+                row: int = index.data(SpectralProfilePlotControlModel.PropertyIndexRole)
                 vis: SpectralProfilePlotVisualization = handle.parentVisualization()
                 speclib = vis.speclib()
                 if row == SpectralProfilePlotControlModel.PIX_FIELD:
@@ -3209,21 +3221,22 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
                 index.column() == SpectralProfilePlotControlModel.CIX_VALUE:
             vis: SpectralProfilePlotVisualization = handle.parentVisualization()
             speclib: QgsVectorLayer = vis.speclib()
-            if index.row() == SpectralProfilePlotControlModel.PIX_FIELD:
+            PIX = index.data(SpectralProfilePlotControlModel.PropertyIndexRole)
+            if PIX == SpectralProfilePlotControlModel.PIX_FIELD:
                 assert isinstance(editor, QComboBox)
                 idx = editor.model().indexFromName(vis.field().name()).row()
                 if idx == -1:
                     idx = 0
                 editor.setCurrentIndex(idx)
 
-            if index.row() == SpectralProfilePlotControlModel.PIX_MODEL:
+            if PIX == SpectralProfilePlotControlModel.PIX_MODEL:
                 assert isinstance(editor, QComboBox)
                 idx, _ = editor.model().findModelId(vis.modelId())
                 if idx is None:
                     idx = 0
                 editor.setCurrentIndex(idx)
 
-            if index.row() in [SpectralProfilePlotControlModel.PIX_LABEL,
+            if PIX in [SpectralProfilePlotControlModel.PIX_LABEL,
                                 SpectralProfilePlotControlModel.PIX_FILTER]:
                 assert isinstance(editor, QgsFieldExpressionWidget)
                 property: QgsProperty = index.data(SpectralProfilePlotControlModel.PropertyRole)
@@ -3233,13 +3246,13 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
                 if isinstance(speclib, QgsVectorLayer):
                     editor.setLayer(speclib)
 
-            if index.row() == SpectralProfilePlotControlModel.PIX_COLOR:
+            if PIX == SpectralProfilePlotControlModel.PIX_COLOR:
                 assert isinstance(editor, SpectralProfileColorPropertyWidget)
                 if isinstance(speclib, QgsVectorLayer):
                     editor.setLayer(speclib)
                     editor.setToProperty(vis.colorProperty())
 
-            if index.row() == SpectralProfilePlotControlModel.PIX_STYLE:
+            if PIX == SpectralProfilePlotControlModel.PIX_STYLE:
                 assert isinstance(editor, PlotStyleButton)
                 editor.setPlotStyle(vis.plotStyle())
         else:
@@ -3252,32 +3265,32 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
         handle = index.data(Qt.UserRole)
         if isinstance(handle, SpectralProfilePlotControlModel.PropertyHandle):
             vis: SpectralProfilePlotVisualization = handle.parentVisualization()
-
-            if index.row() == SpectralProfilePlotControlModel.PIX_FIELD:
+            PIX = index.data(SpectralProfilePlotControlModel.PropertyIndexRole)
+            if PIX == SpectralProfilePlotControlModel.PIX_FIELD:
                 assert isinstance(w, QComboBox)
                 i = w.currentIndex()
                 if i >= 0:
                     field: QgsField = w.model().fields().at(i)
                     model.setData(index, field, Qt.EditRole)
 
-            if index.row() == SpectralProfilePlotControlModel.PIX_MODEL:
+            if PIX == SpectralProfilePlotControlModel.PIX_MODEL:
                 assert isinstance(w, QComboBox)
                 pmodel = w.currentData(Qt.UserRole)
                 model.setData(index, pmodel, Qt.EditRole)
 
-            if index.row() in [SpectralProfilePlotControlModel.PIX_LABEL,
+            if PIX in [SpectralProfilePlotControlModel.PIX_LABEL,
                                SpectralProfilePlotControlModel.PIX_FILTER]:
                 assert isinstance(w, QgsFieldExpressionWidget)
                 expr = w.asExpression()
                 if w.isValidExpression() or expr == '' and w.allowEmptyFieldName():
                     model.setData(index, expr, Qt.EditRole)
 
-            if index.row() == SpectralProfilePlotControlModel.PIX_COLOR:
+            if PIX == SpectralProfilePlotControlModel.PIX_COLOR:
                 assert isinstance(w, SpectralProfileColorPropertyWidget)
                 prop: QgsProperty = w.toProperty()
                 model.setData(index, prop, Qt.EditRole)
 
-            if index.row() == SpectralProfilePlotControlModel.PIX_STYLE:
+            if PIX == SpectralProfilePlotControlModel.PIX_STYLE:
                 assert isinstance(w, PlotStyleButton)
                 bridge.setData(index, w.plotStyle(), Qt.EditRole)
         else:
@@ -3292,22 +3305,28 @@ class SpectralLibraryPlotWidget(QWidget):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
-        assert isinstance(self.gbVisualization, QgsCollapsibleGroupBox)
+        assert isinstance(self.panelVisualization, QFrame)
 
         assert isinstance(self.plotWidget, SpectralProfilePlotWidget)
         assert isinstance(self.treeView, SpectralProfilePlotControlView)
+
         self.plotWidget: SpectralProfilePlotWidget
         assert isinstance(self.plotWidget, SpectralProfilePlotWidget)
         # self.plotWidget.sigPopulateContextMenuItems.connect(self.onPopulatePlotContextMenu)
         self.mPlotControlModel = SpectralProfilePlotControlModel()
         self.mPlotControlModel.setPlotWidget(self.plotWidget)
+
         # self.mPlotControlModel.sigProgressChanged.connect(self.onProgressChanged)
         self.mCurrentModelId: str = None
         self.setCurrentModel('')
         self.setAcceptDrops(True)
 
-        self.mProxyModel = QSortFilterProxyModel()
+        self.mProxyModel = SpectralProfilePlotControlModelProxyModel()
         self.mProxyModel.setSourceModel(self.mPlotControlModel)
+
+        self.mFilterLineEdit: QgsFilterLineEdit
+        self.mFilterLineEdit.textChanged.connect(self.setFilter)
+
         self.treeView.setModel(self.mProxyModel)
         self.treeView.selectionModel().selectionChanged.connect(self.onVisSelectionChanged)
 
@@ -3316,6 +3335,12 @@ class SpectralLibraryPlotWidget(QWidget):
 
         self.mDualView: QgsDualView = None
         self.mSettingsModel = SettingsModel(QgsSettings('qps'), key_filter='qps/spectrallibrary')
+
+        self.optionShowVisualizationSettings: QAction
+        self.optionShowVisualizationSettings.setCheckable(True)
+        self.optionShowVisualizationSettings.setChecked(True)
+        self.optionShowVisualizationSettings.setIcon(QgsApplication.getThemeIcon(r':/images/themes/default/legend.svg'))
+        self.optionShowVisualizationSettings.toggled.connect(self.panelVisualization.setVisible)
 
         self.actionAddProfileVis: QAction
         self.actionAddProfileVis.triggered.connect(self.createProfileVis)
@@ -3355,10 +3380,25 @@ class SpectralLibraryPlotWidget(QWidget):
         self.optionSpectralProfileWidgetStyle: SpectralProfileWidgetStyleAction = SpectralProfileWidgetStyleAction(None)
         self.optionSpectralProfileWidgetStyle.setDefaultWidget(self.optionSpectralProfileWidgetStyle.createWidget(None))
         self.optionSpectralProfileWidgetStyle.sigProfileWidgetStyleChanged.connect(self.setPlotWidgetStyle)
+
+
+
         self.visButtonLayout: QHBoxLayout
-        self.visButtonLayout.insertWidget(self.visButtonLayout.count() - 1, self.optionXUnit.createUnitComboBox())
-        self.visButtonLayout.insertWidget(self.visButtonLayout.count() - 1,
-                                          self.optionMaxNumberOfProfiles.createWidget(self))
+        self.visLayoutTop: QHBoxLayout
+        #self.visButtonLayout.insertWidget(self.visButtonLayout.count() - 1,
+        #                                  self.optionMaxNumberOfProfiles.createWidget(self))
+
+        #self.visLayoutTop = QHBoxLayout()
+        cb: QComboBox = self.optionXUnit.createUnitComboBox()
+        # cb.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
+        self.visLayoutTop.addWidget(cb)
+        self.visLayoutTop.setStretchFactor(cb, 3)
+        self.visButtonLayout.insertWidget(self.visButtonLayout.count()-1, self.optionMaxNumberOfProfiles.createWidget(self))
+        #self.visLayoutTop.setSpacing(2)
+        #self.visLayoutTop.setContentsMargins(0, 0,0,0)
+
+        #idx = self.gbVisualization.layout().indexOf(self.visButtonLayout)
+        #self.gbVisualization.layout().insertLayout(idx, visLayout0)
 
         widgetXAxis: QWidget = self.plotWidget.viewBox().menu.widgetGroups[0]
         widgetYAxis: QWidget = self.plotWidget.viewBox().menu.widgetGroups[1]
@@ -3377,8 +3417,6 @@ class SpectralLibraryPlotWidget(QWidget):
         # set the default style
         self.setPlotWidgetStyle(SpectralLibraryPlotWidgetStyle.dark())
 
-    def visualizationSettingsBox(self) -> QgsCollapsibleGroupBox:
-        return self.gbVisualization
 
     def setPlotWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
         assert isinstance(style, SpectralLibraryPlotWidgetStyle)
@@ -3529,6 +3567,9 @@ class SpectralLibraryPlotWidget(QWidget):
 
     # def addSpectralModel(self, model):
     #    self.mPlotControlModel.addModel(model)
+
+    def setFilter(self, pattern:str):
+        self.mProxyModel.setFilterWildcard(pattern)
 
     def currentModel(self) -> str:
         return self.mCurrentModelId
