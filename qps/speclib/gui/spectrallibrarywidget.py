@@ -212,7 +212,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # update toolbar visibilities
         self.updateToolbarVisibility()
 
-
         # property button now shown in speclib action toolbar only
         # self.btnShowProperties = QToolButton()
         # self.btnShowProperties.setAutoRaise(True)
@@ -232,10 +231,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
             for field in profile_field_list(self.speclib()):
                 self.spectralLibraryPlotWidget().createProfileVis(field=field)
 
+        # try to give the plot widget most space
         self.splitter.setStretchFactor(0, 4)
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setStretchFactor(2, 0)
-        # self.mSpeclibPlotWidget.splitter.setSizes([90, 10])
+        self.splitter.setSizes([200, 10, 0])
 
     def setViewVisibility(self, viewType: ViewType):
         """
@@ -347,7 +347,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         btnResetProfileStyles = QPushButton('Reset')
         btnApplyProfileStyle = QPushButton('Apply')
-
 
         plotStyle = self.plotWidget().profileRenderer().profileStyle
         if n == 0:
@@ -484,7 +483,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         restart_editing: bool = not speclib.startEditing()
 
         addAuto: bool = make_permanent if isinstance(make_permanent, bool) \
-                                       else self.optionAddCurrentProfilesAutomatically.isChecked()
+            else self.optionAddCurrentProfilesAutomatically.isChecked()
 
         if addAuto:
             self.addCurrentProfilesToSpeclib()
