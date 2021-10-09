@@ -394,7 +394,7 @@ class SpectralLibraryIO(object):
         if len(matched_formats) == 0:
             warnings.warn(f'No SpectralLibraryIO export format found for file type "*{uri_ext}"')
             return []
-        
+
         for format in matched_formats:
             format: SpectralLibraryExportWidget
             IO: SpectralLibraryIO = format.spectralLibraryIO()
