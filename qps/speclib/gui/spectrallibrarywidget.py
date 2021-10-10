@@ -120,13 +120,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.optionAddCurrentProfilesAutomatically.setCheckable(True)
         self.optionAddCurrentProfilesAutomatically.setChecked(False)
 
-        self.actionImportVectorRasterSource = QAction('Import profiles from raster + vector source', parent=self)
-        self.actionImportVectorRasterSource.setToolTip('Import spectral profiles from a raster image '
-                                                       'based on vector geometries (Points).')
-        self.actionImportVectorRasterSource.setIcon(QIcon(':/images/themes/default/mActionAddOgrLayer.svg'))
-
-        self.actionImportVectorRasterSource.triggered.connect(self.onImportFromRasterSource)
-
         m = QMenu()
         m.addAction(self.actionAddCurrentProfiles)
         m.addAction(self.optionAddCurrentProfilesAutomatically)
@@ -566,7 +559,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         Imports a SpectralLibrary
         """
+        n_p = self.speclib().featureCount()
+        n_v = len(self.spectralLibraryPlotWidget().profileVisualizations())
         SpectralLibraryImportDialog.importProfiles(self.speclib(), parent=self)
+
+        # add a new visualization if no one exists
+        if n_p == 0 and n_v == 0 and self.speclib().featureCount() > 0:
+            self.spectralLibraryPlotWidget().createProfileVis()
 
     def onImportFromRasterSource(self):
         from ..io.rastersources import SpectralProfileImportPointsDialog

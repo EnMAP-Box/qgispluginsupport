@@ -3610,8 +3610,8 @@ class SpectralLibraryPlotWidget(QWidget):
 
         self.mPlotControlModel.insertVisualizations(-1, item)
 
-    def profileVisualization(self) -> typing.List[SpectralProfilePlotVisualization]:
-        return self.mPlotControlModel
+    def profileVisualizations(self) -> typing.List[SpectralProfilePlotVisualization]:
+        return self.mPlotControlModel.visualizations()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         self.sigDragEnterEvent.emit(event)
