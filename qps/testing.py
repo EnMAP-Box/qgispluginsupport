@@ -36,6 +36,8 @@ import warnings
 
 import mock
 import numpy as np
+from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
+
 from qgis.PyQt import sip
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
@@ -311,14 +313,18 @@ class QgisMockup(QgisInterface):
     def pasteFromClipboard(self, pasteVectorLayer: QgsMapLayer):
         if not isinstance(pasteVectorLayer, QgsVectorLayer):
             return
-        """
+
         # todo: implement
-        pasteVectorLayer.beginEditCommand('Features pasted')
+
         features = self.mClipBoard.transformedCopyOf(pasteVectorLayer.crs(), pasteVectorLayer.fields())
-        nTotalFeatures = features.count()
-        context = pasteVectorLayer.createExpressionContext()
-        compatibleFeatures = QgsVectorLayerUtils.makeFeatureCompatible(features, pasteVectorLayer)
-        """
+        compatibleFeatures = []
+        for f in features:
+            compatibleFeatures.extend(QgsVectorLayerUtils.makeFeatureCompatible(f, pasteVectorLayer))
+        pasteVectorLayer.beginEditCommand('Features pasted')
+        pasteVectorLayer.addFeatures(compatibleFeatures)
+        pasteVectorLayer.endEditCommand()
+
+
 
         return
 
@@ -1374,23 +1380,33 @@ class QgsClipboardMockup(QObject):
         self.mUseSystemClipboard = False
         QApplication.clipboard().dataChanged.connect(self.systemClipboardChanged)
 
-    def replaceWithCopyOf(self, src):
+    def replaceWithCopyOf(self, src: QgsVectorLayer):
         if isinstance(src, QgsVectorLayer):
             self.mFeatureFields = src.fields()
             self.mFeatureClipboard = src.selectedFeatures()
             self.mCRS = src.crs()
             self.mSrcLayer = src
 
-            """
-                        self.setSystemClipBoard()
-                        self.mUseSystemClipboard = False
-                        self.changed.emit()
-            """
             return
-
 
         elif isinstance(src, QgsFeatureStore):
             raise NotImplementedError()
+
+    def copyOf(self, field: QgsFields):
+
+        return self.mFeatureClipboard
+
+    def transformedCopyOf(self, crs: QgsCoordinateReferenceSystem, fields: QgsFields) -> typing.List[QgsFeature]:
+
+        features = self.copyOf(fields)
+        ct = QgsCoordinateTransform(self.mCRS, crs, QgsProject.instance())
+
+        for f in features:
+            g: QgsGeometry = f.geometry()
+            g.transform(ct)
+            f.setGeometry(g)
+
+        return features
 
     def setSystemClipBoard(self):
         """

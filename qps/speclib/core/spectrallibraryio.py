@@ -24,6 +24,7 @@ from ...utils import loadUi, FeatureReferenceIterator
 
 IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS = 'required_source_fields'
 
+
 class SpectralLibraryIOWidget(QWidget):
 
     def __init__(self, *args, **kwds):
@@ -317,7 +318,7 @@ class SpectralLibraryIO(object):
                           feedback: QgsProcessingFeedback = None) -> typing.List[str]:
 
         return SpectralLibraryIO.writeProfilesToUri(speclib.getFeatures(), speclib, uri,
-                                                    settings = settings,
+                                                    settings=settings,
                                                     feedback=feedback)
 
     @staticmethod
@@ -334,7 +335,6 @@ class SpectralLibraryIO(object):
         featureIterator = FeatureReferenceIterator(profiles)
         referenceProfile = featureIterator.referenceFeature()
 
-
         if not isinstance(referenceProfile, QgsFeature):
             print('No features to write')
             return []
@@ -344,7 +344,7 @@ class SpectralLibraryIO(object):
             print('No profile fieds to write')
             return []
 
-        if not isinstance(settings,dict):
+        if not isinstance(settings, dict):
             settings = dict()
 
         if not isinstance(crs, QgsCoordinateReferenceSystem):
@@ -353,7 +353,7 @@ class SpectralLibraryIO(object):
             else:
                 crs = QgsCoordinateReferenceSystem()
 
-        def createDummySpeclib(refProfile: QgsFeature, profile_field:str=None) -> QgsVectorLayer:
+        def createDummySpeclib(refProfile: QgsFeature, profile_field: str = None) -> QgsVectorLayer:
             g = refProfile.geometry()
             dummy = QgsVectorLayer('point', "Scratch point layer", "memory")
             assert dummy.isValid()
@@ -505,7 +505,6 @@ class SpectralLibraryIO(object):
 
 
 class SpectralLibraryImportDialog(QDialog):
-
 
     @staticmethod
     def importProfiles(speclib: QgsVectorLayer,
