@@ -216,8 +216,10 @@ class CopyAttributesDialog(QDialog):
         if d.exec_() == QDialog.Accepted:
             was_editable = layer.isEditable()
             layer.startEditing()
+            layer.beginEditCommand('Add attributes')
             for f in d.selectedFields():
                 layer.addAttribute(f)
+            layer.endEditCommand()
             layer.commitChanges(stopEditing=not was_editable)
             return True
         return False
