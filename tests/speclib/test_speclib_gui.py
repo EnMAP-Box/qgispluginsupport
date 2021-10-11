@@ -636,6 +636,8 @@ class TestSpeclibWidgets(TestCase):
 
         w = SpectralLibraryWidget()
         w.addSpeclib(speclib)
+        for field in profile_field_list(speclib):
+            w.spectralLibraryPlotWidget().createProfileVis(field=field)
         dt = datetime.datetime.now() - t0
         print('Adding speclib required : {}'.format(dt))
 

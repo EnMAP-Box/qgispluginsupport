@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>677</width>
-    <height>507</height>
+    <width>568</width>
+    <height>505</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -33,8 +33,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>655</width>
-        <height>390</height>
+        <width>546</width>
+        <height>388</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -127,7 +127,55 @@
            <number>2</number>
           </property>
           <item>
-           <widget class="QgsFieldMappingWidget" name="fieldMappingWidget" native="true"/>
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
+             <widget class="QLabel" name="label">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                <horstretch>0</horstretch>
+                <verstretch>1</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Copy missing source fields</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="btnAddMissingSourceFields">
+              <property name="text">
+               <string>...</string>
+              </property>
+              <property name="icon">
+               <iconset resource="../../../../QGIS/images/images.qrc">
+                <normaloff>:/images/themes/default/mSourceFields.svg</normaloff>:/images/themes/default/mSourceFields.svg</iconset>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QgsFieldMappingWidget" name="fieldMappingWidget" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>1</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -177,6 +225,18 @@
     <widget class="QComboBox" name="cbFormat"/>
    </item>
   </layout>
+  <action name="actionAddMissingSourceFields">
+   <property name="icon">
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mSourceFields.svg</normaloff>:/images/themes/default/mSourceFields.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Add Missing Source Fields</string>
+   </property>
+   <property name="toolTip">
+    <string>Creates new fields that exists in the source but not the spectral library</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -197,7 +257,9 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../../../../QGIS/images/images.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>buttonBox</sender>

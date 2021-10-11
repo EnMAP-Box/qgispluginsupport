@@ -17,6 +17,7 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
+import datetime
 import unittest
 import xmlrunner
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
@@ -450,6 +451,74 @@ class TestCore(TestCase):
         sp = SpectralProfile.fromRasterLayer(lyr, outOfImage)
         self.assertTrue(sp == None)
 
+
+    def test_spectralProfileSpeedUpacking(self):
+
+        n_profiles = 10000
+        n_bands = 300
+        pinfo = f'{n_profiles} profiles[{n_bands} bands]'
+        print(f'Test loading/writing times for {pinfo}')
+
+        def now():
+            return datetime.datetime.now()
+
+        t0 = now()
+        sl = TestObjects.createSpectralLibrary(n_profiles, n_bands=[n_bands])
+        print(f'Initialized in-memory speclib with {pinfo}: {now()-t0}')
+        sl: SpectralLibrary
+        n_profiles = sl.featureCount()
+        DIR = self.createTestOutputDirectory()
+        path_local = DIR / 'speedtest.gpkg'
+        files = sl.write(path_local)
+        pfield = profile_field_list(sl)[0]
+        sl = SpectralLibrary(path_local)
+        self.assertIsInstance(sl, QgsVectorLayer)
+        self.assertEqual(sl.featureCount(), n_profiles)
+        DATA = dict()
+
+
+        # test decoding
+        t0 = now()
+
+        for f in sl.getFeatures():
+            ba = f.attribute(pfield.name())
+        print(f'{pinfo}: read only: {now() - t0}')
+        t0 = now()
+        for f in sl.getFeatures():
+            ba = f.attribute(pfield.name())
+            DATA[f.id()] = decodeProfileValueDict(ba)
+        print(f'{pinfo}: read & decode: {now() - t0}')
+        self.assertEqual(n_profiles, sl.featureCount())
+
+        t0 = now()
+
+        for f in sl.getFeatures():
+            ba = encodeProfileValueDict(DATA[f.id()])
+            f.setAttribute(pfield.name(), ba)
+
+        print(f'{pinfo}: encode & write: {now() - t0}')
+
+        n_reads = 10
+        t0 = now()
+        for i in range(n_reads):
+
+            for j, f in enumerate(sl.getFeatures()):
+                ba = f.attribute(pfield.name())
+                DATA[f.id()] = decodeProfileValueDict(ba)
+            assert j == n_profiles - 1
+        print(f'{pinfo}: read & decode {n_reads}x without feature cache: {now() - t0}')
+
+        cacheSizes = [256, 512, 1024, 2048, 4096]
+        for cacheSize in cacheSizes:
+            cache = QgsVectorLayerCache(sl, cacheSize)
+            t0 = now()
+            for i in range(n_reads):
+                for j, f in enumerate(cache.getFeatures()):
+                    ba = f.attribute(pfield.name())
+                    DATA[f.id()] = decodeProfileValueDict(ba)
+                assert j == n_profiles - 1
+            print(f'{pinfo}: read & decode {n_reads}x with feature cache ({cacheSize}): {now() - t0}')
+
     def test_speclib_mimedata(self):
 
         sp1 = SpectralProfile()
@@ -805,7 +874,7 @@ class TestCore(TestCase):
         self.assertTrue(len(sl1) > 0)
         sl2 = SpectralLibrary()
 
-        n = 3000
+        n = 4000
         p = sl1[0]
         profiles = []
 

@@ -129,16 +129,138 @@ MDF_QGIS_LAYER_STYLE = 'application/qgis.style'
 MDF_TEXT_PLAIN = 'text/plain'
 
 
-class FieldListModel(QAbstractListModel):
+class CopyAttributesFieldModel(QgsFieldModel):
 
-    def __init__(self, *args, layer: QgsVectorLayer = None, **kwds):
+    def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-    def setLayer(self, layer: QgsVectorLayer):
-        self.mLayer = layer
+        self.mSelected: typing.Dict[int, bool] = dict()
+        self.mDisabled: typing.Dict[int, bool] = dict()
 
-    def flags(self, index: QModelIndex):
-        pass
+    def setDisabledFields(self, disabled: QgsFields):
+
+        if isinstance(disabled, QgsFields):
+            disabled = disabled.names()
+
+        for r in range(self.rowCount()):
+            field = self.fields().at(r)
+            self.mDisabled[r] = field.name() in disabled or r in disabled
+
+    def selectedFields(self) -> QgsFields:
+
+        fields = QgsFields()
+        for r in range(self.rowCount()):
+            if self.mSelected.get(r, False) and not self.mDisabled.get(r, False):
+                fields.append(self.fields().at(r))
+        return fields
+
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+
+        # flags = super().flags(index)
+        if self.mDisabled.get(index.row(), False):
+            flags = Qt.NoItemFlags
+        else:
+            flags = Qt.ItemIsUserCheckable | Qt.ItemIsEnabled
+
+        return flags
+
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int) -> typing.Any:
+
+        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
+            if section == 0:
+                return 'Field Name'
+        return super(CopyAttributesFieldModel, self).headerData(section, orientation, role)
+
+    def data(self, index: QModelIndex, role):
+        if not index.isValid():
+            return None
+
+        row = index.row()
+        field: QgsField = self.fields().at(row)
+
+        if role == Qt.CheckStateRole:
+            b = self.mSelected.get(row, False)
+            return Qt.Checked if b else Qt.Unchecked
+        if role == Qt.DecorationRole:
+            return iconForFieldType(field)
+
+        return super().data(index, role)
+
+    def setData(self, index: QModelIndex, value: typing.Any, role) -> bool:
+        if not index.isValid():
+            return None
+
+        row = index.row()
+
+        changed = None
+
+        if role == Qt.CheckStateRole:
+            self.mSelected[row] = value == Qt.Checked
+            changed = True
+
+        if changed is None:
+            return super().setData(index, value, role)
+        elif changed:
+            self.dataChanged.emit(index, index, [role])
+        return changed
+
+
+class CopyAttributesDialog(QDialog):
+
+    @staticmethod
+    def copyLayerFields(layer: QgsVectorLayer,
+                        fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature],
+                        parent=None) -> bool:
+
+        d = CopyAttributesDialog(layer, fields)
+        if d.exec_() == QDialog.Accepted:
+            was_editable = layer.isEditable()
+            layer.startEditing()
+            layer.beginEditCommand('Add attributes')
+            for f in d.selectedFields():
+                layer.addAttribute(f)
+            layer.endEditCommand()
+            layer.commitChanges(stopEditing=not was_editable)
+            return True
+        return False
+
+    def __init__(self,
+                 layer: QgsVectorLayer,
+                 fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature],
+                 parent=None, **kwds):
+
+        super().__init__(parent, **kwds)
+        self.setWindowTitle('Copy attributes')
+
+        fields = qgsFields(fields)
+        assert isinstance(fields, QgsFields)
+
+        self.mTableView = QTableView()
+
+        self.mFieldModel = CopyAttributesFieldModel()
+        self.mFieldModel.setFields(fields)
+        self.mFieldModel.setDisabledFields(layer.fields())
+        self.mFieldModel.dataChanged.connect(self.onFieldSelectionChanged)
+        self.mTableView.setModel(self.mFieldModel)
+
+        l = QVBoxLayout()
+        l.addWidget(self.mTableView)
+
+        self.mButtonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.mButtonBox.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
+        self.mButtonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+        l.addWidget(self.mButtonBox)
+
+        self.setLayout(l)
+
+        self.onFieldSelectionChanged()
+
+    def selectedFields(self) -> QgsFields:
+        return self.mFieldModel.selectedFields()
+
+    def onFieldSelectionChanged(self):
+        fields = self.mFieldModel.selectedFields()
+        self.mButtonBox.button(QDialogButtonBox.Ok).setEnabled(fields.count() > 0)
 
 
 class AddAttributeDialog(QDialog):

@@ -992,6 +992,18 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
 
+def qgsFields(source: typing.Union[QgsFeature, QgsFields, QgsVectorLayer]) -> QgsFields:
+    """
+    Returns the QgsFields of its inputs
+    :return: QgsFields
+    """
+    if isinstance(source, QgsFields):
+        return source
+    elif isinstance(source, (QgsFeature, QgsVectorLayer)):
+        return source.fields()
+    return None
+
+
 def qgsField(layer_fields: QgsVectorLayer, field: typing.Union[QgsField, str, int]) -> QgsField:
     """
     Returns the QgsField relating to the input value in "field"

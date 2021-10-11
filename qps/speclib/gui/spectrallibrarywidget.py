@@ -57,6 +57,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
 
+        self._SHOW_MODEL: bool = False
+
         self.mToolbar: QToolBar
         self.mIODialogs: typing.List[QWidget] = list()
 
@@ -64,6 +66,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mMainView.showContextMenuExternally.connect(self.onShowContextMenuAttributeEditor)
 
         self.mSpeclibPlotWidget: SpectralLibraryPlotWidget = SpectralLibraryPlotWidget()
+        self.mSpeclibPlotWidget.plotControlModel()._SHOW_MODEL = self._SHOW_MODEL
+
         assert isinstance(self.mSpeclibPlotWidget, SpectralLibraryPlotWidget)
         self.mSpeclibPlotWidget.setDualView(self.mMainView)
         self.mSpeclibPlotWidget.sigDragEnterEvent.connect(self.dragEnterEvent)
@@ -115,13 +119,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.optionAddCurrentProfilesAutomatically.setIcon(QIcon(':/qps/ui/icons/profile_add_auto.svg'))
         self.optionAddCurrentProfilesAutomatically.setCheckable(True)
         self.optionAddCurrentProfilesAutomatically.setChecked(False)
-
-        self.actionImportVectorRasterSource = QAction('Import profiles from raster + vector source', parent=self)
-        self.actionImportVectorRasterSource.setToolTip('Import spectral profiles from a raster image '
-                                                       'based on vector geometries (Points).')
-        self.actionImportVectorRasterSource.setIcon(QIcon(':/images/themes/default/mActionAddOgrLayer.svg'))
-
-        self.actionImportVectorRasterSource.triggered.connect(self.onImportFromRasterSource)
 
         m = QMenu()
         m.addAction(self.actionAddCurrentProfiles)
@@ -186,6 +183,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProcessingWidget.setCheckable(True)
         self.actionShowProcessingWidget.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
         self.actionShowProcessingWidget.triggered.connect(self.setCenterView)
+        self.actionShowProcessingWidget.setEnabled(self._SHOW_MODEL)
 
         self.mMainViewButtonGroup.buttonClicked.connect(self.updateToolbarVisibility)
 
@@ -204,7 +202,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addSeparator()
         self.tbSpeclibAction.addAction(self.actionShowFormView)
         self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
-        self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
+
+        if self._SHOW_MODEL:
+            self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
 
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
         self.insertToolBar(self.mToolbar, self.tbSpectralProcessing)
@@ -304,21 +304,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.updateToolbarVisibility()
 
     def updateToolbarVisibility(self, *args):
-        # w = self.widgetCenter.currentWidget()
-
-        # self.mToolbar.setVisible(w == self.pageAttributeTable)
-        # self.tbSpectralProcessing.setVisible(w == self.pageProcessingWidget)
 
         self.mToolbar.setVisible(self.pageAttributeTable.isVisibleTo(self))
         self.tbSpectralProcessing.setVisible(self.pageProcessingWidget.isVisibleTo(self))
-        # self.actionShowProcessingWidget.setChecked(w == self.pageProcessingWidget)
-        # if w == self.pageAttributeTable:
-        #    viewMode: QgsDualView.ViewMode = self.mMainView.view()
-        #    self.actionShowAttributeTable.setChecked(viewMode == QgsDualView.AttributeTable)
-        #    self.actionShowFormView.setChecked(viewMode == QgsDualView.AttributeEditor)
-        # else:
-        #    self.actionShowAttributeTable.setChecked(False)
-        #    self.actionShowFormView.setChecked(False)
 
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()
@@ -571,7 +559,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         Imports a SpectralLibrary
         """
+        n_p = self.speclib().featureCount()
+        n_v = len(self.spectralLibraryPlotWidget().profileVisualizations())
         SpectralLibraryImportDialog.importProfiles(self.speclib(), parent=self)
+
+        # add a new visualization if no one exists
+        if n_p == 0 and n_v == 0 and self.speclib().featureCount() > 0:
+            self.spectralLibraryPlotWidget().createProfileVis()
 
     def onImportFromRasterSource(self):
         from ..io.rastersources import SpectralProfileImportPointsDialog

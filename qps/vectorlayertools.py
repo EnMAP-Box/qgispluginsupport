@@ -104,9 +104,7 @@ class VectorLayerTools(QgsVectorLayerTools):
 
     def pasteFromClipboard(self, layer: QgsVectorLayer):
         import qgis.utils
-        if isinstance(layer, QgsVectorLayer) \
-                and layer.isEditable() \
-                and isinstance(qgis.utils.iface, QgisInterface):
+        if isinstance(layer, QgsVectorLayer) and layer.isEditable() and isinstance(qgis.utils.iface, QgisInterface):
             qgis.utils.iface.pasteFromClipboard(layer)
 
     def invertSelection(self, layer: QgsVectorLayer):

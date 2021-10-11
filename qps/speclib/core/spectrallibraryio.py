@@ -7,7 +7,7 @@ import warnings
 from PyQt5.QtCore import pyqtSignal, QRegExp, QUrl
 from PyQt5.QtGui import QIcon, QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
-    QLineEdit, QCheckBox
+    QLineEdit, QCheckBox, QToolButton, QAction
 
 from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer, QgsFeature, QgsFields, QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
@@ -20,9 +20,11 @@ from qgis.core import QgsProcessingFeedback
 from . import is_spectral_library, is_profile_field, profile_field_list
 from .spectralprofile import groupBySpectralProperties
 from .. import speclibUiPath
+from ...layerproperties import CopyAttributesDialog
 from ...utils import loadUi, FeatureReferenceIterator
 
 IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS = 'required_source_fields'
+
 
 class SpectralLibraryIOWidget(QWidget):
 
@@ -317,7 +319,7 @@ class SpectralLibraryIO(object):
                           feedback: QgsProcessingFeedback = None) -> typing.List[str]:
 
         return SpectralLibraryIO.writeProfilesToUri(speclib.getFeatures(), speclib, uri,
-                                                    settings = settings,
+                                                    settings=settings,
                                                     feedback=feedback)
 
     @staticmethod
@@ -334,7 +336,6 @@ class SpectralLibraryIO(object):
         featureIterator = FeatureReferenceIterator(profiles)
         referenceProfile = featureIterator.referenceFeature()
 
-
         if not isinstance(referenceProfile, QgsFeature):
             print('No features to write')
             return []
@@ -344,7 +345,7 @@ class SpectralLibraryIO(object):
             print('No profile fieds to write')
             return []
 
-        if not isinstance(settings,dict):
+        if not isinstance(settings, dict):
             settings = dict()
 
         if not isinstance(crs, QgsCoordinateReferenceSystem):
@@ -353,7 +354,7 @@ class SpectralLibraryIO(object):
             else:
                 crs = QgsCoordinateReferenceSystem()
 
-        def createDummySpeclib(refProfile: QgsFeature, profile_field:str=None) -> QgsVectorLayer:
+        def createDummySpeclib(refProfile: QgsFeature, profile_field: str = None) -> QgsVectorLayer:
             g = refProfile.geometry()
             dummy = QgsVectorLayer('point', "Scratch point layer", "memory")
             assert dummy.isValid()
@@ -506,7 +507,6 @@ class SpectralLibraryIO(object):
 
 class SpectralLibraryImportDialog(QDialog):
 
-
     @staticmethod
     def importProfiles(speclib: QgsVectorLayer,
                        defaultRoot: typing.Union[str, pathlib.Path] = None,
@@ -588,6 +588,12 @@ class SpectralLibraryImportDialog(QDialog):
         self.fileWidget: QgsFileWidget
         self.fieldMappingWidget: QgsFieldMappingWidget
         self.buttonBox: QDialogButtonBox
+
+        self.btnAddMissingSourceFields: QToolButton
+        self.actionAddMissingSourceFields: QAction
+        self.actionAddMissingSourceFields.triggered.connect(self.onAddMissingSourceFields)
+        self.btnAddMissingSourceFields.setDefaultAction(self.actionAddMissingSourceFields)
+
         self.cbFormat.currentIndexChanged.connect(self.setImportWidget)
 
         self.fileWidget.fileChanged.connect(self.onFileChanged)
@@ -655,7 +661,10 @@ class SpectralLibraryImportDialog(QDialog):
             self.fieldMappingWidget.setFieldPropertyMap({})
             self.fieldMappingWidget.setSourceFields(w.sourceFields())
             # self.fieldMappingWidget.registerExpressionContextGenerator(w)
-            s = ""
+            fields = w.sourceFields()
+            self.actionAddMissingSourceFields.setEnabled(fields.count() > 0)
+        else:
+            self.actionAddMissingSourceFields.setEnabled(False)
 
     def setImportWidget(self, import_format: typing.Union[int, str, SpectralLibraryImportWidget]):
         self.cbFormat: QComboBox
@@ -712,6 +721,17 @@ class SpectralLibraryImportDialog(QDialog):
         return [self.stackedWidgetFormatOptions.widget(i)
                 for i in range(self.stackedWidgetFormatOptions.count())
                 if isinstance(self.stackedWidgetFormatOptions.widget(i), SpectralLibraryImportWidget)]
+
+    def onAddMissingSourceFields(self):
+        sourceFields = None
+        w = self.currentImportWidget()
+        if isinstance(w, SpectralLibraryImportWidget):
+            sourceFields = w.sourceFields()
+        speclib = self.speclib()
+
+        if isinstance(sourceFields, QgsFields) and sourceFields.count() > 0 and isinstance(speclib, QgsVectorLayer):
+            if CopyAttributesDialog.copyLayerFields(speclib, sourceFields):
+                self.fieldMappingWidget.setDestinationFields(speclib.fields())
 
     def currentImportWidget(self) -> SpectralLibraryImportWidget:
         return self.stackedWidgetFormatOptions.currentWidget()

@@ -136,11 +136,9 @@ class LayerPropertyTests(TestCase):
 
     def test_LayerPropertiesDialog_Raster(self):
 
-
-
         registerMapLayerConfigWidgetFactories()
 
-        s  =""
+        s = ""
 
         lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
         QgsProject.instance().addMapLayer(lyr)
@@ -178,12 +176,12 @@ class LayerPropertyTests(TestCase):
             self.assertTrue(dialog.isVisible())
 
             # self.showGui(dialog)
-            #dialog.btnCancel.click()
-            #self.assertTrue(dialog.result() == QDialog.Rejected)
+            # dialog.btnCancel.click()
+            # self.assertTrue(dialog.result() == QDialog.Rejected)
 
-            #dialog = showLayerPropertiesDialog(lyr, modal=False)
-            #dialog.btnOk.click()
-            #self.assertTrue(dialog.result() == QDialog.Accepted)
+            # dialog = showLayerPropertiesDialog(lyr, modal=False)
+            # dialog.btnOk.click()
+            # self.assertTrue(dialog.result() == QDialog.Accepted)
 
     def test_add_attributes(self):
 
@@ -230,6 +228,22 @@ class LayerPropertyTests(TestCase):
         self.assertListEqual(d.fieldNames(), [])
         self.showGui(d)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    def test_CopyAttributesDialog(self):
+
+        sl: QgsVectorLayer = TestObjects.createSpectralLibrary()
+        lyr = TestObjects.createVectorLayer()
+        lyr.startEditing()
+        lyr.renameAttribute(lyr.fields().lookupField('Name'), 'name')
+        lyr.commitChanges()
+        d = CopyAttributesDialog(sl, lyr.fields())
+
+        if d.exec_() == QDialog.Accepted:
+            sl.startEditing()
+            for f in d.selectedFields():
+                sl.addAttribute(f)
+            self.assertTrue(sl.commitChanges())
+
     def test_AttributeTableWidget(self):
         vl = TestObjects.createVectorLayer()
         w = AttributeTableWidget(vl)
@@ -241,5 +255,4 @@ class LayerPropertyTests(TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
