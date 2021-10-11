@@ -2255,6 +2255,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     # special color
                     featureColor = self.mTemporaryProfileColors.get(aid, self.mPlotWidgetStyle.temporaryColor)
                     linePen.setColor(featureColor)
+                    linePen.setWidth(style.lineWidth() + 2)
                     symbolPen.setColor(featureColor)
                     symbolBrush.setColor(featureColor)
 
