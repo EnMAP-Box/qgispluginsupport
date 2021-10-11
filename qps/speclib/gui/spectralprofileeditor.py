@@ -508,5 +508,6 @@ def registerSpectralProfileEditorWidget():
             SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_NAME)
             widgetRegistry.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
 
-        fieldFormatterRegistry.addFieldFormatter(SPECTRAL_PROFILE_FIELD_FORMATTER)
+        # uncomment when https://github.com/qgis/QGIS/issues/45478 is fixed
+        # fieldFormatterRegistry.addFieldFormatter(SPECTRAL_PROFILE_FIELD_FORMATTER)
 
