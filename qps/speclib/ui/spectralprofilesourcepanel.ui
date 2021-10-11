@@ -97,6 +97,9 @@
     </item>
     <item>
      <widget class="QgsFilterLineEdit" name="mFilterLineEdit">
+      <property name="placeholderText">
+       <string>Filter</string>
+      </property>
       <property name="qgisRelation" stdset="0">
        <string notr="true"/>
       </property>
