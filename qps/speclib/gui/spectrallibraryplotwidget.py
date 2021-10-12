@@ -43,7 +43,8 @@ from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, PlotStyleButton
 from .. import speclibUiPath, speclibSettings, SpectralLibrarySettingsKey
 from ..core.spectrallibrary import SpectralLibrary, DEBUG, containsSpeclib, defaultCurvePlotStyle
-from ..core import profile_field_list, profile_field_indices, is_spectral_library, create_profile_field
+from ..core import profile_field_list, profile_field_indices, is_spectral_library, create_profile_field, \
+    is_profile_field, profile_fields
 from ..core.spectralprofile import SpectralProfile, SpectralProfileBlock, SpectralProfileLoadingTask, \
     decodeProfileValueDict
 from ..processing import is_spectral_processing_model, SpectralProcessingProfiles, \
@@ -2581,8 +2582,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         if self.mSpeclib != speclib:
             if isinstance(self.mSpeclib, QgsVectorLayer):
                 # unregister signals
-                self.mSpeclib.attributeDeleted.disconnect(self.onSpeclibAttributesChanged)
-                self.mSpeclib.attributeAdded.disconnect(self.onSpeclibAttributesChanged)
+                self.mSpeclib.updatedFields.disconnect(self.onSpeclibAttributesUpdated)
+                # self.mSpeclib.attributeAdded.disconnect(self.onSpeclibAttributeDeleted)
                 self.mSpeclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
                 # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.beforeCommitChanges.disconnect(self.onSpeclibBeforeCommitChanges)
@@ -2598,8 +2599,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
             # register signals
             if isinstance(self.mSpeclib, QgsVectorLayer):
-                self.mSpeclib.attributeDeleted.connect(self.onSpeclibAttributesChanged)
-                self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributesChanged)
+                self.mSpeclib.updatedFields.connect(self.onSpeclibAttributesUpdated)
+                # self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributeDeleted)
                 self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
                 # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.beforeCommitChanges.connect(self.onSpeclibBeforeCommitChanges)
@@ -2609,7 +2610,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 self.mSpeclib.featuresDeleted.connect(self.onSpeclibFeaturesDeleted)
                 self.mSpeclib.selectionChanged.connect(self.onSpeclibSelectionChanged)
                 self.mSpeclib.styleChanged.connect(self.onSpeclibStyleChanged)
-                self.onSpeclibAttributesChanged()
+                self.onSpeclibAttributesUpdated()
 
     def onSpeclibBeforeCommitChanges(self):
         """
@@ -2671,11 +2672,11 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mTemporaryProfileIDs = {OLD2NEW.get(fid, fid) for fid in self.mTemporaryProfileIDs}
         self.updatePlot(fids_to_update=OLD2NEW.values())
 
-    def onSpeclibAttributeValueChanged(self, fid: int, fidx: int, value):
-        pass
-        # feature = self.mCache1FeatureData.get(fid, None)
-        # if isinstance(feature, QgsFeature):
-        #    feature.setAttribute(fidx, value)
+    def onSpeclibAttributesUpdated(self, *args):
+        fields = QgsFields()
+        for f in profile_field_list(self.mSpeclib):
+            fields.append(f)
+        self.mProfileFieldModel.setFields(fields)
 
     def onSpeclibStyleChanged(self, *args):
         # self.loadFeatureColors()
@@ -2741,15 +2742,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                         fids.append(fid)
                 speclib.selectByIds(fids)
 
-    def onSpeclibAttributesChanged(self):
-        fields = QgsFields()
-        for field in profile_field_list(self.mSpeclib):
-            fields.append(field)
-        self.mProfileFieldModel.setFields(fields)
-
-        # remove visualization for deleted fields
-        to_remove = [f for f in self if f.field().name() not in fields.names()]
-        self.removeVisualizations(to_remove)
 
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
@@ -3526,6 +3518,23 @@ class SpectralLibraryPlotWidget(QWidget):
         rows = self.treeView.selectionModel().selectedRows()
         self.actionRemoveProfileVis.setEnabled(len(rows) > 0)
 
+    def onSpeclibFieldsUpdated(self, *args):
+
+        profilefields = profile_fields(self.speclib())
+        to_remove = []
+        to_add = []
+
+        for vis in self.profileVisualizations():
+            if vis.field().name() not in profilefields.names():
+                to_remove.append(vis)
+        self.mPlotControlModel.removeVisualizations(to_remove)
+
+        fieldnames = [v.field().name() for v in self.profileVisualizations()]
+        for field in profilefields:
+            if field.name() not in fieldnames:
+                self.createProfileVis(field=field)
+
+
     def createProfileVis(self, *args,
                          name: str = None,
                          field: typing.Union[QgsField, int, str] = None,
@@ -3628,10 +3637,17 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mPlotControlModel.removeVisualizations(to_remove)
 
     def setDualView(self, dualView):
-        # self.plotWidget.setDualView(dualView)
-        self.mDualView = dualView
+        sl = self.speclib()
+        if isinstance(sl, QgsVectorLayer):
+            sl.updatedFields.disconnect(self.onSpeclibFieldsUpdated)
 
+        self.mDualView = dualView
         self.mPlotControlModel.setDualView(dualView)
+
+        sl = self.speclib()
+        if isinstance(sl, QgsVectorLayer):
+            sl.updatedFields.connect(self.onSpeclibFieldsUpdated)
+        self.onSpeclibFieldsUpdated()
 
     def speclib(self) -> QgsVectorLayer:
         return self.mPlotControlModel.speclib()

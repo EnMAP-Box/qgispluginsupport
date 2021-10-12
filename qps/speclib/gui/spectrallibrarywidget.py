@@ -6,14 +6,14 @@ import warnings
 from PyQt5.QtCore import pyqtSignal, Qt, QModelIndex
 from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent, QColor
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
-    QHBoxLayout, QFrame, QDialog, QLabel
+    QHBoxLayout, QFrame, QDialog, QLabel, QMessageBox
 from qgis.core import QgsVectorLayer
 
 from qgis.core import QgsFeature
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
     QgsActionMenu, QgsStatusBar
 from ..core import is_spectral_library, profile_field_list
-from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog
+from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog, SpectralLibraryExportDialog
@@ -397,10 +397,28 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def spectralLibrary(self) -> QgsVectorLayer:
         return self.speclib()
 
-    def addSpeclib(self, speclib: QgsVectorLayer):
+    def addSpeclib(self, speclib: QgsVectorLayer, askforNewFields :bool = False):
+        """
+        :param speclib: QgsVectorLayer
+        :param askforNewFields: bool, if True and speclib to add contains other fields, a dialog will be shown
+                that asks to add them first
+        """
         assert is_spectral_library(speclib)
         speclib_dst = self.speclib()
         wasEditable = speclib_dst.isEditable()
+
+        if askforNewFields:
+            dst_fields = speclib_dst.fields().names()
+            missing = [f for f in speclib.fields() if f.name() not in dst_fields]
+            if len(missing) > 0:
+                result = QMessageBox.question(self, 'Create additional field(s)?',
+                                     f'Data has {len(missing)} other field(s).\n'
+                                     f'Do you like to copy them?')
+
+                if result == QMessageBox.Yes:
+                    if not CopyAttributesDialog.copyLayerFields(speclib_dst, speclib, parent=self):
+                        return
+
         try:
             speclib_dst.startEditing()
             info = 'Add {} profiles from {} ...'.format(len(speclib), speclib.name())
@@ -547,7 +565,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         slNew = SpectralLibraryUtils.readFromMimeData(event.mimeData())
 
         if isinstance(slNew, QgsVectorLayer) and slNew.featureCount() > 0:
-            self.addSpeclib(slNew)
+            self.addSpeclib(slNew, askforNewFields=True)
             event.acceptProposedAction()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
