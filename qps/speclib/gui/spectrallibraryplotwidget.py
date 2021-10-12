@@ -1719,9 +1719,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 renderer.startRender(renderContext, speclib.fields())
                 symbol = renderer.symbolForFeature(feature, renderContext)
-                symbol.symbolRenderContext().expressionContextScope()
-                context.appendScope(QgsExpressionContextScope(symbol.symbolRenderContext().expressionContextScope()))
-                # return defaultColor
+                if isinstance(symbol, QgsSymbol):
+                    context.appendScope(QgsExpressionContextScope(symbol.symbolRenderContext().expressionContextScope()))
 
         color, success = property.valueAsColor(context, defaultColor=defaultColor)
         if isinstance(renderer, QgsFeatureRenderer):
@@ -2229,9 +2228,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     # profile data can not be transformed to requested x-unit
                     continue
 
-                if len(new_spdis) == self.maxProfiles():
-                    profile_limit_reached = True
-                    break
+
 
                 name, success = vis.labelProperty().valueAsString(context, defaultString='')
 
@@ -2277,10 +2274,15 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                         context.popScope()
                         pass
                     if not success:
-                        s = ""
+                        # no color, no profile, e.g. if profile
+                        continue
                     linePen.setColor(featureColor)
                     symbolPen.setColor(featureColor)
                     symbolBrush.setColor(featureColor)
+
+                if len(new_spdis) == self.maxProfiles():
+                    profile_limit_reached = True
+                    break
 
                 symbol = style.markerSymbol
                 symbolSize = style.markerSize
