@@ -1680,7 +1680,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mXUnitInitialized: bool = False
         self.mMaxProfiles: int = 200
         self.mShowSelectedFeaturesOnly: bool = False
-        self.mUseFeatureRenderer: bool = True
 
         self.mPlotWidgetStyle: SpectralLibraryPlotWidgetStyle = SpectralLibraryPlotWidgetStyle.dark()
         self.mTemporaryProfileIDs: typing.Set[FEATURE_ID] = set()
@@ -1767,17 +1766,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
     def showSelectedFeaturesOnly(self) -> bool:
         return self.mShowSelectedFeaturesOnly
-
-    sigUseFeatureRendererChanged = pyqtSignal(bool)
-
-    def setUseFeatureRenderer(self, b: bool):
-        if self.mUseFeatureRenderer != b:
-            self.mUseFeatureRenderer = b
-            self.updatePlot()
-            self.sigUseFeatureRendererChanged.emit(self.mUseFeatureRenderer)
-
-    def useFeatureRenderer(self) -> bool:
-        return self.mUseFeatureRenderer
 
     sigXUnitChanged = pyqtSignal(str)
 
@@ -2603,7 +2591,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 self.mSpeclib.featuresDeleted.disconnect(self.onSpeclibFeaturesDeleted)
                 self.mSpeclib.selectionChanged.disconnect(self.onSpeclibSelectionChanged)
-                self.mSpeclib.rendererChanged.disconnect(self.onSpeclibRendererChanged)
+                self.mSpeclib.styleChanged.disconnect(self.onSpeclibStyleChanged)
 
             self.mSpeclib = speclib
             self.mVectorLayerCache = QgsVectorLayerCache(speclib, 1000)
@@ -2620,7 +2608,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 self.mSpeclib.featuresDeleted.connect(self.onSpeclibFeaturesDeleted)
                 self.mSpeclib.selectionChanged.connect(self.onSpeclibSelectionChanged)
-                self.mSpeclib.rendererChanged.connect(self.onSpeclibRendererChanged)
+                self.mSpeclib.styleChanged.connect(self.onSpeclibStyleChanged)
                 self.onSpeclibAttributesChanged()
 
     def onSpeclibBeforeCommitChanges(self):
@@ -2689,9 +2677,16 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         # if isinstance(feature, QgsFeature):
         #    feature.setAttribute(fidx, value)
 
-    def onSpeclibRendererChanged(self, *args):
+    def onSpeclibStyleChanged(self, *args):
         # self.loadFeatureColors()
-        self.updatePlot()
+        b = False
+        for vis in self.visualizations():
+            if vis.isVisible() and 'symbol_color' in vis.colorProperty().expressionString():
+                b = True
+                break
+
+        if b:
+            self.updatePlot()
 
     def onSpeclibSelectionChanged(self, selected: typing.List[int], deselected: typing.List[int], clearAndSelect: bool):
         s = ""
@@ -3439,11 +3434,6 @@ class SpectralLibraryPlotWidget(QWidget):
         self.optionSelectedFeaturesOnly.setIcon(QgsApplication.getThemeIcon("/mActionShowSelectedLayers.svg"))
         self.mPlotControlModel.sigShowSelectedFeaturesOnlyChanged.connect(self.optionSelectedFeaturesOnly.setChecked)
 
-        self.optionColorsFromFeatureRenderer: QAction
-        self.optionColorsFromFeatureRenderer.toggled.connect(self.mPlotControlModel.setUseFeatureRenderer)
-        self.optionColorsFromFeatureRenderer.setIcon(QIcon(':/qps/ui/icons/speclib_usevectorrenderer.svg'))
-        self.mPlotControlModel.sigUseFeatureRendererChanged.connect(self.optionColorsFromFeatureRenderer.setChecked)
-
         self.sbMaxProfiles: QSpinBox
         self.sbMaxProfiles.valueChanged.connect(self.mPlotControlModel.setMaxProfiles)
         self.labelMaxProfiles: QLabel
@@ -3495,7 +3485,6 @@ class SpectralLibraryPlotWidget(QWidget):
         self.btnAddProfileVis.setDefaultAction(self.actionAddProfileVis)
         self.btnRemoveProfileVis.setDefaultAction(self.actionRemoveProfileVis)
         self.btnSelectedFeaturesOnly.setDefaultAction(self.optionSelectedFeaturesOnly)
-        # self.btnColorsFromFeatureRenderer.setDefaultAction(self.optionColorsFromFeatureRenderer)
 
         # set the default style
         self.setPlotWidgetStyle(SpectralLibraryPlotWidgetStyle.dark())
