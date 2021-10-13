@@ -11,7 +11,7 @@ import numpy
 from PyQt5.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
     QSortFilterProxyModel, QItemSelection
 from PyQt5.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
-
+from qgis.core import QgsLayerItem
 
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
@@ -142,7 +142,10 @@ class StandardLayerProfileSource(SpectralProfileSource):
 
     @staticmethod
     def fromRasterLayer(lyr: QgsRasterLayer):
-        return StandardLayerProfileSource(lyr.source(), lyr.name(), lyr.providerType(), lyr.renderer().clone())
+        if lyr.isValid():
+            return StandardLayerProfileSource(lyr.source(), lyr.name(), lyr.providerType(), lyr.renderer().clone())
+        else:
+            return None
 
     def __init__(self, uri: str, name: str, provider: str, renderer: QgsRasterRenderer = None):
         super().__init__()
@@ -1021,14 +1024,13 @@ class GeometryGeneratorNode(TreeNode):
 
         return None
 
-    def setGeometryType(self, wkbType: QgsWkbTypes.GeometryType):
-        assert isinstance(wkbType, QgsWkbTypes.GeometryType)
+    def setWkbType(self, wkbType: QgsWkbTypes.Type):
+        assert isinstance(wkbType, QgsWkbTypes.Type)
 
-        if wkbType == QgsWkbTypes.PointGeometry:
-            self.setIcon(QIcon(r':/images/themes/default/mActionCapturePoint.svg'))
-            self.setName('Point')
-        else:
-            raise NotImplementedError()
+        icon = QgsLayerItem.iconForWkbType(wkbType)
+        name = QgsWkbTypes.displayString(wkbType)
+        self.setIcon(icon)
+        self.setName(name)
 
 
 class SpectralProfileGeneratorNode(FieldGeneratorNode):
@@ -1253,7 +1255,7 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
                 # 1. create the geometry generator node
                 gnode = GeometryGeneratorNode()
-                gnode.setGeometryType(speclib.geometryType())
+                gnode.setWkbType(speclib.wkbType())
                 new_nodes.append(gnode)
 
                 # 2. create spectral profile field nodes
