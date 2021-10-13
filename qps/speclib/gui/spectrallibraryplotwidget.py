@@ -2389,7 +2389,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         func = self.mUnitConverterFunctionModel.convertFunction(modelData['xUnit'], xUnit)
         x = func(modelData['x'])
         y = modelData['y']
-        if x is None:
+        if x is None or len(x) == 0:
             return None
         else:
             # convert date units to float values with decimal year and second precision to make them plotable
