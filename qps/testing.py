@@ -121,7 +121,23 @@ class StartOptions(enum.IntFlag):
     All = EditorWidgets | ProcessingFramework | PythonRunner | PrintProviders
 
 
-def start_app(cleanup=True, options=StartOptions.Minimized, resources: list = None) -> QgsApplication:
+def stop_app():
+    """
+    Stops the QGIS Application, if started via qgis.test.start_app()
+    """
+    if isinstance(getattr(qgis.testing, 'QGISAPP', None), QgsApplication):
+        qgis.testing.stop_app()
+
+
+def start_app(cleanup: bool = True,
+              options=StartOptions.Minimized,
+              resources: typing.List[typing.Union[str, pathlib.Path]] = None) -> QgsApplication:
+    """
+    :param cleanup:
+    :param options: combination of StartOptions
+    :param resources: list of resource files (*_rc.py) to load on start-up into Qt resource system
+    :return:
+    """
     if resources is None:
         resources = []
 
@@ -324,8 +340,6 @@ class QgisMockup(QgisInterface):
         pasteVectorLayer.addFeatures(compatibleFeatures)
         pasteVectorLayer.endEditCommand()
 
-
-
         return
 
     def iconSize(self, dockedToolbar=False):
@@ -421,16 +435,8 @@ class TestCase(qgis.testing.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        if False and isinstance(QgsApplication.instance(), QgsApplication):
-            QgsApplication.exitQgis()
-            QApplication.quit()
-            import gc
-            gc.collect()
-
-    # @unittest.skip("deprectated method")
-    # def testOutputDirectory(self, *args, **kwds):
-    #    warnings.warn('Use createTestOutputDirectory(...) instead', DeprecationWarning)
-    #    self.createTestOutputDirectory(*args, **kwds)
+        if False: # bug in qgis
+            stop_app()
 
     def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
         """
@@ -583,7 +589,6 @@ class TestAlgorithmProvider(QgsProcessingProvider):
         return True
 
 
-
 class SpectralProfileDataIterator(object):
 
     def __init__(self,
@@ -598,18 +603,18 @@ class SpectralProfileDataIterator(object):
         self.target_crs = target_crs
         self.coredata, self.wl, self.wlu, self.gt, self.wkt = TestObjects.coreData()
 
-        px1 = px2geo(QPoint(0,0), self.gt, pxCenter=False)
-        px2 = px2geo(QPoint(1,1), self.gt, pxCenter=False)
+        px1 = px2geo(QPoint(0, 0), self.gt, pxCenter=False)
+        px2 = px2geo(QPoint(1, 1), self.gt, pxCenter=False)
 
-        self.dx = abs(px2.x()-px1.x())
-        self.dy = abs(px2.y()-px1.y())
+        self.dx = abs(px2.x() - px1.x())
+        self.dy = abs(px2.y() - px1.y())
 
         self.source_crs = QgsCoordinateReferenceSystem(self.wkt)
         self.cnb, self.cnl, self.cns = self.coredata.shape
         n_bands_per_field = [self.cnb if nb == -1 else nb for nb in n_bands_per_field]
         for nb in n_bands_per_field:
             assert 0 < nb
-            #assert 0 < nb <= self.cnb, f'Max. number of bands can be {self.cnb}'
+            # assert 0 < nb <= self.cnb, f'Max. number of bands can be {self.cnb}'
         self.band_indices: typing.List[np.ndarray] = []
         for nb in n_bands_per_field:
             idx: np.ndarray = None
@@ -640,7 +645,7 @@ class SpectralProfileDataIterator(object):
         pt = px2geo(px, self.gt, pxCenter=False)
         pt = SpatialPoint(self.sourceCrs(),
                           pt.x() + self.dx * random.uniform(0, 1),
-                        pt.y() - self.dy * random.uniform(0, 1))
+                          pt.y() - self.dy * random.uniform(0, 1))
         pt = pt.toCrs(self.targetCrs())
         results = []
         for band_indices in self.band_indices:
@@ -812,7 +817,6 @@ class TestObjects(object):
         profile_field_indices = profile_field_indices(slib)
 
         for j in range(n_bands.shape[0]):
-
             profiles = list(TestObjects.spectralProfiles(n,
                                                          fields=slib.fields(),
                                                          n_bands=n_bands[j, :].tolist(),
@@ -850,23 +854,22 @@ class TestObjects(object):
 
         global_nodata = -9999
         for b in range(nb):
+            x = random.randint(0, ns - 1)
+            y = random.randint(0, nl - 1)
 
-            x = random.randint(0, ns-1)
-            y = random.randint(0, nl-1)
-
-            #nodata = b
+            # nodata = b
             nodata = global_nodata
             nodata_values.append(nodata)
             arr[b,
-                max(y-d, 0):min(y+d, nl-1),
-                max(x-d, 0):min(x+d, ns-1)] = nodata
+            max(y - d, 0):min(y + d, nl - 1),
+            max(x - d, 0):min(x + d, ns - 1)] = nodata
 
         ds2: gdal.Dataset = gdal_array.SaveArray(arr, path, prototype=ds)
 
         for b, nd in enumerate(nodata_values):
-            band: gdal.Band = ds2.GetRasterBand(b+1)
+            band: gdal.Band = ds2.GetRasterBand(b + 1)
             band.SetNoDataValue(nd)
-            band.SetDescription(ds.GetRasterBand(b+1).GetDescription())
+            band.SetDescription(ds.GetRasterBand(b + 1).GetDescription())
         ds2.FlushCache()
         lyr = QgsRasterLayer(path)
         lyr.setName('Multiband Mask')
@@ -917,7 +920,7 @@ class TestObjects(object):
         assert isinstance(ds, gdal.Dataset)
         for b in range(ds.RasterCount):
             band: gdal.Band = ds.GetRasterBand(b + 1)
-            band.SetDescription(f'Test Band {b+1}')
+            band.SetDescription(f'Test Band {b + 1}')
 
         if no_data_rectangle > 0:
             no_data_rectangle = min([no_data_rectangle, ns])
@@ -925,7 +928,6 @@ class TestObjects(object):
             for b in range(ds.RasterCount):
                 band: gdal.Band = ds.GetRasterBand(b + 1)
                 band.SetNoDataValue(no_data_value)
-
 
         coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
 
