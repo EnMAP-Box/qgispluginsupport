@@ -12,9 +12,9 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 import xmlrunner
-from qgis.gui import QgsRasterLayerProperties
+from qgis.gui import QgsRasterLayerProperties, QgsOptionsDialogBase
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
-    QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer
+    QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer, QgsProject
 
 from qgis.gui import QgsMapLayerConfigWidget, QgsRendererPropertiesDialog, QgsMapCanvas, \
     QgsMapLayerStyleManagerWidget, QgsRendererRasterPropertiesWidget, QgsRasterTransparencyWidget, \
@@ -222,10 +222,7 @@ class LayerPropertyTests(TestCase):
     def test_RemoveAttributeDialog(self):
         vl = TestObjects.createVectorLayer()
         d = RemoveAttributeDialog(vl)
-        d.tvFieldNames.selectAll()
-        self.assertListEqual(d.fieldNames(), vl.fields().names())
-        d.tvFieldNames.clearSelection()
-        self.assertListEqual(d.fieldNames(), [])
+
         self.showGui(d)
 
     @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')

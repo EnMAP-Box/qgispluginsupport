@@ -1192,10 +1192,11 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
                     #  QgsGui::providerGuiRegistry()->mapLayerConfigWidgetFactories( mapLayer )
                     from . import MAPLAYER_CONFIGWIDGET_FACTORIES
                     added = []
-                    for factory in QgsGui.providerGuiRegistry().mapLayerConfigWidgetFactories(layer):
-                        factory: QgsMapLayerConfigWidgetFactory
-                        added.append(factory.title())
-                        dialog.addPropertiesPageFactory(factory)
+                    if Qgis.versionInt() >= 32000:
+                        for factory in QgsGui.providerGuiRegistry().mapLayerConfigWidgetFactories(layer):
+                            factory: QgsMapLayerConfigWidgetFactory
+                            added.append(factory.title())
+                            dialog.addPropertiesPageFactory(factory)
                     for factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
                         factory: QgsMapLayerConfigWidgetFactory
                         if factory.title() not in added:

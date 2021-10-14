@@ -1294,7 +1294,7 @@ class SpectralLibrary(QgsVectorLayer):
         :param profiles: Profile or [list-of-profiles] to be removed
         :return: [list-of-remove profiles] (only profiles that existed in this set before)
         """
-        warnings.warn(DeprecationWarning)
+        warnings.warn('will be removed', DeprecationWarning)
         if not isinstance(profiles, list):
             profiles = [profiles]
 
@@ -1344,7 +1344,7 @@ class SpectralLibrary(QgsVectorLayer):
 
     def writeRasterImages(self, pathOne: typing.Union[str, pathlib.Path], drv: str = 'GTiff') -> typing.List[
         pathlib.Path]:
-        warnings.warn(DeprecationWarning)
+        warnings.warn('will be removed', DeprecationWarning)
         """
         Writes the SpectralLibrary into images of same spectral properties
         :return: list of image paths

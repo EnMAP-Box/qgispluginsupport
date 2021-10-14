@@ -2405,7 +2405,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             return modelData
 
     def loadModelData(self, jobs: dict):
-        warnings.warn(DeprecationWarning)
+        warnings.warn('will be removed', DeprecationWarning)
         if len(jobs) == 0:
             return
 

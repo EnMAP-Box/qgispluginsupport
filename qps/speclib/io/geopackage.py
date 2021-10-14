@@ -137,6 +137,11 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 
         fields: QgsFields = None
 
+        if Qgis.versionInt() < 32000:
+            successCode = QgsVectorLayerExporter.NoError
+        else:
+            successCode = Qgis.VectorExportResult.Success
+
         for i, profile in enumerate(profiles):
             if i == 0:
                 # init file writer based on 1st feature fields
@@ -145,11 +150,11 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
                                                 options=options,
                                                 overwrite=True)
 
-                if writer.errorCode() != Qgis.VectorExportResult.Success:
+                if writer.errorCode() != successCode:
                     raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
 
             if not writer.addFeature(profile):
-                if writer.errorCode() != Qgis.VectorExportResult.Success:
+                if writer.errorCode() != successCode:
                     raise Exception(f'Error when creating feature: {writer.errorMessage()}')
 
         if True:
