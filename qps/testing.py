@@ -34,7 +34,7 @@ import typing
 import uuid
 import warnings
 
-import mock
+from unittest import mock
 import numpy as np
 from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 
