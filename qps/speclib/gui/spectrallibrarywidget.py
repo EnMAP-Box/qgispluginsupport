@@ -423,7 +423,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             speclib_dst.startEditing()
             info = 'Add {} profiles from {} ...'.format(len(speclib), speclib.name())
             speclib_dst.beginEditCommand(info)
-            SpectralLibraryUtils.addSpeclib(speclib_dst, speclib)
+            SpectralLibraryUtils.addSpeclib(speclib_dst, speclib, addMissingFields=False)
             speclib_dst.endEditCommand()
 
             if not wasEditable:
