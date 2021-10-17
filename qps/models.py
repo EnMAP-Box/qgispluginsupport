@@ -1284,6 +1284,15 @@ class TreeView(QTreeView):
         assert isinstance(depth, int)
         self.mAutoExpansionDepth = depth
 
+    def expandSelectedNodes(self, expand: bool):
+        indices = self.selectedIndexes()
+        if len(indices) == 0:
+            self.selectAll()
+            indices += self.selectedIndexes()
+            # treeView.clearSelection()
+        for idx in indices:
+            self.setExpanded(idx, expand)
+
     def updateNodeExpansion(self,
                             restore: bool,
                             index: QModelIndex = None,
