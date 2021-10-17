@@ -3387,6 +3387,8 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mPlotControlModel.setPlotWidget(self.plotWidget)
         self.mPlotControlModel.setMaxProfiles(self.sbMaxProfiles.value())
 
+        self.mINITIALIZED_VISUALIZATIONS = set()
+
         # self.mPlotControlModel.sigProgressChanged.connect(self.onProgressChanged)
         self.mCurrentModelId: str = None
         self.setCurrentModel('')
@@ -3524,16 +3526,21 @@ class SpectralLibraryPlotWidget(QWidget):
         to_remove = []
         to_add = []
 
+        # remove visualizations for removed fields
         for vis in self.profileVisualizations():
             if vis.field().name() not in profilefields.names():
                 to_remove.append(vis)
         self.mPlotControlModel.removeVisualizations(to_remove)
-
+        for name in list(self.mINITIALIZED_VISUALIZATIONS):
+            if name not in profilefields.names():
+                self.mINITIALIZED_VISUALIZATIONS.remove(name)
         fieldnames = [v.field().name() for v in self.profileVisualizations()]
         for field in profilefields:
-            if field.name() not in fieldnames:
+            name = field.name()
+            if name not in self.mINITIALIZED_VISUALIZATIONS:
                 self.createProfileVis(field=field)
-
+                # keep in mind if a visualization was created at least once for a profile field
+                self.mINITIALIZED_VISUALIZATIONS.add(name)
 
     def createProfileVis(self, *args,
                          name: str = None,

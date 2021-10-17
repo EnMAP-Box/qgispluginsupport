@@ -227,9 +227,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
 
-        if self.speclib().featureCount() > 0:
-            for field in profile_field_list(self.speclib()):
-                self.spectralLibraryPlotWidget().createProfileVis(field=field)
+        #if self.speclib().featureCount() > 0:
+        #    for field in profile_field_list(self.speclib()):
+        #        self.spectralLibraryPlotWidget().createProfileVis(field=field)
 
         # try to give the plot widget most space
         self.splitter.setStretchFactor(0, 4)
