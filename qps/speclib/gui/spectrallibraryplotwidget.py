@@ -1715,12 +1715,14 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 context.setFeature(feature)
 
                 renderContext = QgsRenderContext()
-                renderer = speclib.renderer().clone()
+                if isinstance(speclib.renderer(), QgsFeatureRenderer):
+                    renderer = speclib.renderer().clone()
 
-                renderer.startRender(renderContext, speclib.fields())
-                symbol = renderer.symbolForFeature(feature, renderContext)
-                if isinstance(symbol, QgsSymbol):
-                    context.appendScope(QgsExpressionContextScope(symbol.symbolRenderContext().expressionContextScope()))
+                    renderer.startRender(renderContext, speclib.fields())
+                    symbol = renderer.symbolForFeature(feature, renderContext)
+                    if isinstance(symbol, QgsSymbol):
+                        context.appendScope(QgsExpressionContextScope(
+                            symbol.symbolRenderContext().expressionContextScope()))
 
         color, success = property.valueAsColor(context, defaultColor=defaultColor)
         if isinstance(renderer, QgsFeatureRenderer):
@@ -2133,12 +2135,17 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         for vis in visualizations:
             vis: SpectralProfilePlotVisualization
 
-            renderer: QgsFeatureRenderer = self.speclib().renderer().clone()
-            renderContext = QgsRenderContext()
-            # renderer.startRender(renderContext, self.speclib().fields())
-            renderContext.setExpressionContext(self.speclib().createExpressionContext())
+            renderer: QgsFeatureRenderer = self.speclib().renderer()
+            if isinstance(renderer, QgsFeatureRenderer):
+                renderer = renderer.clone()
+                renderContext = QgsRenderContext()
+                # renderer.startRender(renderContext, self.speclib().fields())
+                renderContext.setExpressionContext(self.speclib().createExpressionContext())
 
-            VIS_RENDERERS[vis] = (renderer, renderContext)
+                VIS_RENDERERS[vis] = (renderer, renderContext)
+            else:
+                VIS_RENDERERS[vis] = (None, None)
+
             VIS_HAS_FILTER[vis] = vis.filterProperty().expressionString().strip() != ''
 
         request = QgsFeatureRequest()
@@ -2249,19 +2256,24 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     symbolBrush.setColor(featureColor)
 
                 else:
-
+                    qgssymbol = None
                     renderer, renderContext = VIS_RENDERERS[vis]
-                    renderContext.expressionContext().setFeature(feature)
 
-                    renderer.startRender(renderContext, feature.fields())
-                    qgssymbol = renderer.symbolForFeature(feature, renderContext)
-                    if isinstance(qgssymbol, QgsSymbol):
-                        symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
-                        context.appendScope(symbolScope)
+                    if isinstance(renderer, QgsFeatureRenderer):
+                        renderContext.expressionContext().setFeature(feature)
+                        renderer.startRender(renderContext, feature.fields())
+                        qgssymbol = renderer.symbolForFeature(feature, renderContext)
+
+                        if isinstance(qgssymbol, QgsSymbol):
+                            symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
+                            context.appendScope(symbolScope)
 
                     prop = vis.colorProperty()
                     featureColor, success = prop.valueAsColor(context, defaultColor=QColor('white'))
-                    renderer.stopRender(renderContext)
+
+                    if isinstance(renderer, QgsFeatureRenderer):
+                        renderer.stopRender(renderContext)
+
                     if isinstance(qgssymbol, QgsSymbol):
                         context.popScope()
                         pass
@@ -2316,9 +2328,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 new_spdis.append(pdi)
 
         s = ""
-        for v, t in VIS_RENDERERS.items():
-            renderer, renderContext = t
-            # renderer.stopRender(renderContext)
+
 
         to_remove = [p for p in old_spdis if p not in new_spdis]
         for p in to_remove:
