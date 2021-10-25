@@ -106,11 +106,11 @@ class LayerPropertyTests(TestCase):
         from qps import registerMapLayerConfigWidgetFactories
         registerMapLayerConfigWidgetFactories()
 
+        rl = TestObjects.createRasterLayer(nb=300)
+        showLayerPropertiesDialog(rl)
+
         vl = TestObjects.createVectorLayer()
         showLayerPropertiesDialog(vl)
-
-        rl = TestObjects.createRasterLayer()
-        showLayerPropertiesDialog(rl)
 
     def test_LayerPropertiesDialog_Vector(self):
         registerMapLayerConfigWidgetFactories()
