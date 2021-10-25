@@ -628,7 +628,7 @@ class PlotStyle(QObject):
         """
         return QIcon(self.createPixmap(size=size))
 
-    def createPixmap(self, size: QSize = None, hline:bool=False, bc:QColor=None) -> QPixmap:
+    def createPixmap(self, size: QSize = None, hline: bool = False, bc: QColor = None) -> QPixmap:
         """
         Creates a QPixmap to show this PlotStyle
         :param size: QSize
@@ -659,9 +659,9 @@ class PlotStyle(QObject):
                 xvec = [0.0, 0.5, 1.0]
                 yvec = [0.8, 0.5, 0.7]
 
-            path.moveTo(xvec[0]*w, yvec[0]*h)
+            path.moveTo(xvec[0] * w, yvec[0] * h)
             for x, y in zip(xvec, yvec):
-                path.lineTo(x*w, y*h)
+                path.lineTo(x * w, y * h)
             p.drawPath(path)
             p.translate(0.5 * pm.width(), 0.5 * pm.height())
             drawSymbol(p, self.markerSymbol, self.markerSize, self.markerPen, self.markerBrush)
@@ -790,7 +790,7 @@ class PlotStyleWidget(QWidget):
         self.setPlotStyle(plotStyle)
         self.refreshPreview()
 
-    def setColorWidgetVisibility(self, b:bool):
+    def setColorWidgetVisibility(self, b: bool):
         assert isinstance(b, bool)
         self.btnMarkerBrushColor.setVisible(b)
         self.btnMarkerPenColor.setVisible(b)
@@ -807,6 +807,16 @@ class PlotStyleWidget(QWidget):
         for w in widgets:
             assert isinstance(w, QWidget)
             w.setEnabled(enabled)
+
+    def setVisibilityCheckboxVisible(self, b: bool):
+        """
+        Sets the visibility of the visibility checkbox.
+        :param b:
+        :type b: bool
+        :return:
+        :rtype:
+        """
+        self.cbIsVisible.setVisible(b)
 
     def setPreviewVisible(self, b: bool):
         """
@@ -854,7 +864,9 @@ class PlotStyleWidget(QWidget):
         self.btnLinePenColor.setColor(style.linePen.color())
         self.cbLinePenStyle.setPenStyle(style.linePen.style())
         self.sbLinePenWidth.setValue(style.linePen.width())
-        self.cbIsVisible.setChecked(style.isVisible())
+
+        if self.cbIsVisible.isVisible():
+            self.cbIsVisible.setChecked(style.isVisible())
         self.plotWidget.setBackground(style.backgroundColor)
         self.mBlockUpdates = False
 
@@ -877,7 +889,10 @@ class PlotStyleWidget(QWidget):
         style.linePen.setColor(self.btnLinePenColor.color())
         style.linePen.setWidth(self.sbLinePenWidth.value())
         style.linePen.setStyle(self.cbLinePenStyle.penStyle())
-        style.setVisibility(self.cbIsVisible.isChecked())
+
+        if self.cbIsVisible.isVisible():
+            style.setVisibility(self.cbIsVisible.isChecked())
+
         return style
 
 
@@ -896,7 +911,7 @@ class PlotStyleButton(QToolButton):
         self.mMenu = QMenu(parent=self)
         self.mMenu.triggered.connect(self.onAboutToShowMenu)
 
-        self.mDialog = PlotStyleDialog()
+        self.mDialog: PlotStyleDialog = PlotStyleDialog()
         self.mDialog.setModal(False)
         self.mDialog.setPlotStyle(self.mPlotStyle)
         self.mDialog.accepted.connect(self.onAccepted)
@@ -925,6 +940,9 @@ class PlotStyleButton(QToolButton):
 
     def setColorWidgetVisibility(self, b: bool):
         self.mDialog.setColorWidgetVisibility(b)
+
+    def setVisibilityCheckboxVisible(self, b: bool):
+        self.mDialog.setVisibilityCheckboxVisible(b)
 
     def onAccepted(self, *args):
         if isinstance(self.mDialog, PlotStyleDialog):
@@ -998,8 +1016,11 @@ class PlotStyleDialog(QgsDialog):
         if isinstance(plotStyle, PlotStyle):
             self.setPlotStyle(plotStyle)
 
-    def setColorWidgetVisibility(self, b:bool):
+    def setColorWidgetVisibility(self, b: bool):
         self.w.setColorWidgetVisibility(b)
+
+    def setVisibilityCheckboxVisible(self, b: bool):
+        self.w.setVisibilityCheckboxVisible(b)
 
     def plotStyleWidget(self) -> PlotStyleWidget:
         return self.w

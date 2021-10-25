@@ -2974,6 +2974,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     if index.row() == self.PIX_STYLE:
                         if value != vis.mPlotStyle:
                             vis.setPlotStyle(value)
+                            # vis.setVisible(value.isVisible())
                             changed = True
 
         if changed:
@@ -3298,6 +3299,7 @@ class SpectralProfilePlotControlViewDelegate(QStyledItemDelegate):
                     w.setMinimumSize(5, 5)
                     w.setPlotStyle(vis.plotStyle())
                     w.setColorWidgetVisibility(False)
+                    w.setVisibilityCheckboxVisible(False)
                     w.setToolTip('Set curve style')
 
         return w
