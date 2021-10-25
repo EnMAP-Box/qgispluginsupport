@@ -26,6 +26,7 @@ import typing
 import pathlib
 
 from PyQt5.QtWidgets import QGroupBox, QToolButton, QPushButton
+from qgis.gui import QgsRasterLayerProperties
 
 from qgis.core import QgsHillshadeRenderer
 from qgis.core import QgsRasterDataProvider, QgsRasterLayer, QgsMapLayer, \
@@ -175,10 +176,10 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.cbMultiBandGreen.setLayer(self.mLayer)
         self.cbMultiBandBlue.setLayer(self.mLayer)
 
-        self.cbSingleBand.bandChanged.connect(self.widgetChanged)
-        self.cbMultiBandRed.bandChanged.connect(self.widgetChanged)
-        self.cbMultiBandGreen.bandChanged.connect(self.widgetChanged)
-        self.cbMultiBandBlue.bandChanged.connect(self.widgetChanged)
+        self.cbSingleBand.bandChanged.connect(self.onWidgetChanged)
+        self.cbMultiBandRed.bandChanged.connect(self.onWidgetChanged)
+        self.cbMultiBandGreen.bandChanged.connect(self.onWidgetChanged)
+        self.cbMultiBandBlue.bandChanged.connect(self.onWidgetChanged)
 
         assert isinstance(self.sliderSingleBand, QSlider)
         self.sliderSingleBand.setRange(1, self.mLayer.bandCount())
@@ -238,10 +239,13 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self._ref_multi = lMulti
         self._ref_single = lSingle
 
-
         self.syncToLayer()
 
         self.setPanelTitle('Band Selection')
+
+    def onWidgetChanged(self, *args):
+        self.apply()
+        # self.widgetChanged.emit()
 
     def icon(self) -> QIcon:
         return QIcon(':/qps/ui/icons/rasterband_select.svg')
@@ -343,6 +347,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         if isinstance(newRenderer, QgsRasterRenderer) and isinstance(self.mLayer, QgsRasterLayer):
             newRenderer.setInput(self.mLayer.dataProvider())
             self.mLayer.setRenderer(newRenderer)
+            # self.mLayer.emitStyleChanged()
             self.widgetChanged.emit()
 
     def wlBand(self, wlKey: str) -> int:
@@ -411,6 +416,8 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def createWidget(self, layer: QgsMapLayer, canvas: QgsMapCanvas, dockWidget: bool = True,
                      parent=None) -> QgsMapLayerConfigWidget:
         w = RasterBandConfigWidget(layer, canvas, parent=parent)
+        if isinstance(parent, QgsRasterLayerProperties):
+            w.widgetChanged.connect(parent.syncToLayer)
         w.setWindowTitle(self.title())
         w.setWindowIcon(self.icon())
         return w
