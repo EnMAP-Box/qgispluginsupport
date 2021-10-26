@@ -255,7 +255,7 @@ class ClassificationScheme(QAbstractTableModel):
 
     def __init__(self, name: str = None, zero_based: bool = False):
         super(ClassificationScheme, self).__init__()
-        self.mClasses = []
+        self.mClasses: typing.List[ClassInfo] = []
         self.mName = name
         self.mIsEditable = True
 
@@ -390,6 +390,25 @@ class ClassificationScheme(QAbstractTableModel):
         row = self.mClasses.index(classInfo)
         return self.createIndex(row, 0)
 
+    def classInfos(self) -> typing.List[ClassInfo]:
+        return self.mClasses[:]
+
+    def classInfo(self, label: typing.Any = None, name: str = None) -> ClassInfo:
+        """
+        Returns the 1st ClassInfo instance that matches a given label or class name
+        :param label: the class label to match with
+        :param value: the class name to match with
+        """
+        if label:
+            for c in self.classInfos():
+                if c.label() == label:
+                    return c
+        elif name:
+            for c in self.classInfos():
+                if c.name() == name:
+                    return c
+        return None
+
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole):
         if not index.isValid():
             return None
@@ -481,7 +500,7 @@ class ClassificationScheme(QAbstractTableModel):
         if self.mIsEditable:
             flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
             if self.isEditable():
-                if col == 0  and not self.mZeroBased:
+                if col == 0 and not self.mZeroBased:
                     flags |= Qt.ItemIsEditable
                 elif col == 1:
                     flags |= Qt.ItemIsEditable
@@ -1205,7 +1224,7 @@ class ClassificationScheme(QAbstractTableModel):
         delimiter = ';'
         for i, line in enumerate(lines):
             matches = re.search(r'^[ ]*(?P<label>label)[ ]*[;\t,][ ]*(?P<name>name)[ ]*([;\t,][ ]*(?P<color>color))?',
-                              line, re.IGNORECASE)
+                                line, re.IGNORECASE)
             if matches:
                 delimiter = re.search(r'[;\t,]', line).group()
                 b = True
@@ -1958,7 +1977,6 @@ class ClassificationSchemeEditorConfigWidget(QgsEditorConfigWidget):
                 has_classes = r.classAttribute() in self.layer().fields().names()
 
         self.mActionImport.setEnabled(has_classes)
-
 
     def config(self, *args, **kwargs) -> dict:
         return classSchemeToConfig(self.mSchemeWidget.classificationScheme())

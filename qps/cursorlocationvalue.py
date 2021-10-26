@@ -485,11 +485,11 @@ class CursorLocationInfoDock(QDockWidget):
                             if bandValue:
                                 bandValue = as_py_value(bandValue, l.dataProvider().dataType(b))
 
-                            classInfo = None
+                            classInfo: ClassInfo = None
                             if isinstance(bandValue, (int, float)) \
                                     and isinstance(classScheme, ClassificationScheme) \
                                     and 0 <= bandValue < len(classScheme):
-                                classInfo = classScheme[int(bandValue)]
+                                classInfo = classScheme.classInfo(label=int(bandValue))
                             info = RasterValueSet.BandInfo(b - 1, bandValue, l.bandName(b), classInfo=classInfo)
                             v.bandValues.append(info)
 
