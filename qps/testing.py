@@ -443,7 +443,7 @@ class TestCase(qgis.testing.TestCase):
         Returns the path to a test output directory
         :return:
         """
-        repo = findUpwardPath(__file__, '.git').parent
+        repo = findUpwardPath(inspect.getfile(self.__class__), '.git').parent
 
         testDir = repo / name
         os.makedirs(testDir, exist_ok=True)
