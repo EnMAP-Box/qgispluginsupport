@@ -1805,7 +1805,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         if n != self.mMaxProfiles:
             if n < self.mMaxProfiles:
                 # remove spdis
-                spdis = sorted(self.mPlotWidget.spectralProfilePlotDataItems(), key= lambda k:k.zValue())
+                spdis = sorted(self.mPlotWidget.spectralProfilePlotDataItems(), key=lambda k: k.zValue())
                 while len(spdis) > n:
                     self.mPlotWidget.removeItem(spdis.pop())
                 self.mMaxProfiles = n
@@ -2177,13 +2177,13 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 # context.appendScope(vis.createExpressionContextScope())
 
                 if not (fid in selected_fids or fid in temporal_fids) and VIS_HAS_FILTER[vis]:
-                        b, success = vis.filterProperty().valueAsBool(context, defaultValue=False)
-                        if not b:
-                            # feature does not match with visualization filter
-                            continue
-                        else:
+                    b, success = vis.filterProperty().valueAsBool(context, defaultValue=False)
+                    if not b:
+                        # feature does not match with visualization filter
+                        continue
+                    else:
 
-                            s = ""
+                        s = ""
 
                 # mCACHE_PROFILE_DATA keys:
                 #   None -> no binary data / cannot be decoded
@@ -2227,9 +2227,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     # profile data can not be transformed to requested x-unit
                     continue
 
-
-
-                name, success = vis.labelProperty().valueAsString(context, defaultString='')
+                label, success = vis.labelProperty().valueAsString(context, defaultString='')
 
                 style: PlotStyle = vis.plotStyle()
                 linePen = pg.mkPen(style.linePen)
@@ -2311,13 +2309,13 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 connect = np.isfinite(x) & np.isfinite(y)
                 pdi.setData(x=x, y=y, z=-1 * zValue,
                             connect=connect,
-                            name=name, pen=linePen,
+                            name=label, pen=linePen,
                             symbol=symbol, symbolPen=symbolPen, symbolBrush=symbolBrush, symbolSize=symbolSize)
 
                 tooltip = f'<html><body><table>' \
-                          f'<tr><td>name</td><td>{name}</td></tr>' \
-                          f'<tr><td>fid</td><td>{fid}</td></tr>' \
-                          f'<tr><td>field</td><td>{vis.field().name()}</td></tr>' \
+                          f'<tr><td>Label</td><td>{label}</td></tr>' \
+                          f'<tr><td>FID</td><td>{fid}</td></tr>' \
+                          f'<tr><td>Field</td><td>{vis.field().name()}</td></tr>' \
                           f'</table></body></html>'
 
                 pdi.setToolTip(tooltip)
@@ -2328,7 +2326,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 new_spdis.append(pdi)
 
         s = ""
-
 
         to_remove = [p for p in old_spdis if p not in new_spdis]
         for p in to_remove:
@@ -2754,7 +2751,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     else:
                         fids.append(fid)
                 speclib.selectByIds(fids)
-
 
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
@@ -3399,6 +3395,7 @@ class SpectralLibraryPlotWidget(QWidget):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
+        loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
         assert isinstance(self.panelVisualization, QFrame)
