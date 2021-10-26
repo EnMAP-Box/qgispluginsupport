@@ -3,7 +3,7 @@
 from PyQt5.QtCore import QByteArray
 import pickle
 
-from qgis._gui import QgsMapCanvas
+from qgis.gui import QgsMapCanvas
 
 from qgis.testing import start_app, stop_app
 app = start_app()
@@ -35,8 +35,10 @@ f.setAttribute('blob', QByteArray(blob))
 f.setAttribute('text1', 'foo')
 f.setAttribute('text2', 'bar')
 lyr.addFeature(f)
-lyr.commitChanges()
+lyr.commitChanges(False)
 
+
+lyr.deleteAttribute(1)
 s = ""
 
 # add to legend

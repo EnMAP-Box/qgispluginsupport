@@ -1,42 +1,28 @@
 """
 Example for Workaround for https://github.com/qgis/QGIS/issues/45228
 """
-from qgis.core import QgsVectorLayer, QgsFeature, edit
+from qgis.core import QgsVectorLayer, QgsFeature
 
-uri = "point?crs=epsg:4326&field=name:string"
-lyr = QgsVectorLayer(uri, "Scratch point layer",  "memory")
+temp_fids = []
 
-def onFeaturesDeleted(fids):
-    print(f'deleted feature IDs: {fids}')
 
-lyr.featuresDeleted.connect(onFeaturesDeleted)
+def onFeaturesDeleted(deleted_fids):
+    assert len(deleted_fids) == len(temp_fids), \
+        f'featuresDeleted returned {deleted_fids} instead {temp_fids}'
+    for d in deleted_fids:
+        assert d in temp_fids
 
-features = []
-for i in range(2):
-    f = QgsFeature(lyr.fields())
-    f.setAttribute('name', f'F{i+1}')
-    features.append(f)
 
-if False:
-    with edit(lyr):
-        lyr.addFeatures(features)
-else:
-    lyr.startEditing()
-    lyr.beginEditCommand(f'added {len(features)} features')
-    lyr.addFeatures(features)
-    lyr.endEditCommand()
-    print(f'added feature IDs: {lyr.allFeatureIds()}')
+layer = QgsVectorLayer("point?crs=epsg:4326&field=name:string", "Scratch point layer", "memory")
+layer.featuresDeleted.connect(onFeaturesDeleted)
 
-    wrap_commit = True
+layer.startEditing()
+layer.beginEditCommand(f'add 2 features')
+layer.addFeature(QgsFeature(layer.fields()))
+layer.addFeature(QgsFeature(layer.fields()))
+layer.endEditCommand()
+temp_fids.extend(layer.allFeatureIds())
 
-    if wrap_commit:
-        print('wrap commit with editcommand')
-        lyr.beginEditCommand('Wrap Commit')
-    lyr.commitChanges(stopEditing=False)
+layer.commitChanges()
 
-    if wrap_commit:
-        lyr.endEditCommand()
-
-print(f'committed features IDs: {lyr.allFeatureIds()}')
-
-s = ""
+print('Finished')
