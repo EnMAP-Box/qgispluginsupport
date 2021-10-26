@@ -3396,7 +3396,6 @@ class SpectralLibraryPlotWidget(QWidget):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
-        loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
 
         assert isinstance(self.panelVisualization, QFrame)
 
