@@ -397,7 +397,7 @@ class ClassificationScheme(QAbstractTableModel):
         """
         Returns the 1st ClassInfo instance that matches a given label or class name
         :param label: the class label to match with
-        :param value: the class name to match with
+        :param name: the class name to match with
         """
         if label:
             for c in self.classInfos():
