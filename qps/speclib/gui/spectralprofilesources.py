@@ -1748,17 +1748,18 @@ class SpectralProfileBridge(TreeModel):
             return Qt.NoItemFlags
         col = index.column()
 
-        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
+        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
         node = index.data(Qt.UserRole)
         if col == 0:
             if isinstance(node, TreeNode) and node.isCheckable():
                 flags = flags | Qt.ItemIsUserCheckable
-            if isinstance(node, (SpectralFeatureGeneratorNode, FloatValueNode)):
+            if isinstance(node, (SpectralFeatureGeneratorNode,)):
                 flags = flags | Qt.ItemIsEditable
 
         if col == 1:
             if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileSourceNode,
-                                 SpectralProfileSamplingModeNode, StandardFieldGeneratorNode)):
+                                 SpectralProfileSamplingModeNode, StandardFieldGeneratorNode,
+                                 FloatValueNode, ColorNode)):
                 if isinstance(node, StandardFieldGeneratorNode):
                     s = ""
                 flags = flags | Qt.ItemIsEditable
