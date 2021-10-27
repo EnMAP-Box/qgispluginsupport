@@ -2124,7 +2124,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             elif isinstance(node, FloatValueNode):
                 w = QgsDoubleSpinBox(parent=parent)
                 w.setSingleStep(1)
-                w.setMinimum(sys.float_info.min)
+                w.setMinimum(-1*sys.float_info.max)
                 w.setMaximum(sys.float_info.max)
                 # w = super().createEditor(parent, option, index)
             elif isinstance(node, ColorNode):
