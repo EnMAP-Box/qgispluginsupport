@@ -211,6 +211,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         # update toolbar visibilities
         self.updateToolbarVisibility()
+        self.updateActions()
 
         # property button now shown in speclib action toolbar only
         # self.btnShowProperties = QToolButton()
@@ -388,6 +389,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         return self.plotWidget().getPlotItem()
 
+    def updateActions(self):
+        """
+        Updates action appearance according to internal states
+        :return:
+        :rtype:
+        """
+        self.actionAddProfiles.setEnabled(len(self.temporaryProfileIDs()) > 0)
+
     def updatePlot(self):
         self.plotControl().updatePlot()
 
@@ -446,6 +455,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.plotControl().mTemporaryProfileIDs.clear()
         self.plotControl().mTemporaryProfileColors.clear()
         self.plotControl().updatePlot(fids)
+        self.updateActions()
+
+    def temporaryProfileIDs(self) -> typing.Set[int]:
+        return self.plotControl().mTemporaryProfileIDs
 
     def deleteCurrentProfilesFromSpeclib(self, *args):
         # delete previous current profiles
@@ -459,6 +472,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
             if restart_editing:
                 speclib.startEditing()
+
+        self.updateActions()
 
     def spectralLibraryPlotWidget(self) -> SpectralLibraryPlotWidget:
         return self.mSpeclibPlotWidget
@@ -547,6 +562,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
                 self.spectralLibraryPlotWidget().createProfileVis(field=attribute, color=color)
 
         self.plotControl().updatePlot()
+        self.actionAddProfiles.setEnabled(len(self.temporaryProfileIDs()) > 0)
         self.speclib().triggerRepaint()
 
     def canvas(self) -> QgsMapCanvas:
