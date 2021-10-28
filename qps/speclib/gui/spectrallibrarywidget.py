@@ -395,7 +395,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :return:
         :rtype:
         """
-        self.actionAddProfiles.setEnabled(len(self.temporaryProfileIDs()) > 0)
+        self.actionAddCurrentProfiles.setEnabled(len(self.temporaryProfileIDs()) > 0)
 
     def updatePlot(self):
         self.plotControl().updatePlot()
