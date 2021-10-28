@@ -481,7 +481,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             currentProfiles = list(currentProfiles)
         assert isinstance(currentProfiles, (list,))
 
-        speclib: SpectralLibrary = self.speclib()
+        speclib: QgsVectorLayer = self.speclib()
         plotWidget: SpectralProfilePlotWidget = self.plotWidget()
 
         #  stop plot updates
@@ -512,7 +512,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         oldIDs = set(speclib.allFeatureIds())
 
         speclib.beginEditCommand('Add current profiles')
-        addedKeys = speclib.addProfiles(currentProfiles)
+        addedKeys = SpectralLibraryUtils.addProfiles(speclib, currentProfiles)
         speclib.endEditCommand()
 
         if not addAuto:
@@ -607,11 +607,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
         w.close()
 
     def addProfiles(self, profiles, add_missing_fields: bool = False):
-        stopEditing = self.speclib().startEditing()
-        self.speclib().beginEditCommand('Add {} profiles'.format(len(profiles)))
-        self.speclib().addProfiles(profiles, addMissingFields=add_missing_fields)
-        self.speclib().endEditCommand()
-        self.speclib().commitChanges(stopEditing=stopEditing)
+        sl = self.speclib()
+        if isinstance(sl, QgsVectorLayer):
+            stopEditing = sl.startEditing()
+
+            sl.beginEditCommand('Add {} profiles'.format(len(profiles)))
+            SpectralLibraryUtils.addProfiles(sl, profiles, addMissingFields=add_missing_fields)
+            sl.endEditCommand()
+            sl.commitChanges(stopEditing=stopEditing)
 
     def onExportProfiles(self, *args):
 

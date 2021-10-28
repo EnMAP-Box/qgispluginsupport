@@ -586,19 +586,19 @@ class SpectralLibraryUtils:
         return fids_inserted
 
     @staticmethod
-    def speclibFromFeatureIDs(speclib: QgsVectorLayer, fids):
+    def speclibFromFeatureIDs(layer: QgsVectorLayer, fids):
         if isinstance(fids, int):
             fids = [fids]
         assert isinstance(fids, list)
 
-        profiles = list(speclib.profiles(fids))
+        features = list(layer.getFeatures(fids))
 
-        speclib = SpectralLibrary()
-        speclib.startEditing()
-        speclib.addMissingFields(speclib.fields())
-        speclib.addProfiles(profiles)
-        speclib.commitChanges()
-        return speclib
+        sl = SpectralLibrary()
+        sl.startEditing()
+        SpectralLibraryUtils.addMissingFields(sl, layer.fields())
+        sl.addFeatures(features)
+        sl.commitChanges()
+        return sl
 
     @staticmethod
     def renameAttribute(speclib: QgsVectorLayer, index, newName):
@@ -770,7 +770,7 @@ class SpectralLibrary(QgsVectorLayer):
         for u in uris:
             sl = SpectralLibrary.readFrom(str(u))
             if is_spectral_library(sl):
-                speclib.addProfiles(sl)
+                SpectralLibraryUtils.addProfiles(speclib, sl)
         assert speclib.commitChanges()
         return speclib
 
@@ -1282,7 +1282,7 @@ class SpectralLibrary(QgsVectorLayer):
     def addProfiles(self, *args, **kwds):
         return SpectralLibraryUtils.addProfiles(self, *args, **kwds)
 
-    def speclibFromFeatureIDs(self, *args, **kwds):
+    def speclibFromFeatureIDs(self, *args, **kwds) -> QgsVectorLayer:
         return SpectralLibraryUtils.speclibFromFeatureIDs(self, *args, **kwds)
 
     def renameAttribute(self, *args, **kwds):

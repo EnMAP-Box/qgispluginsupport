@@ -451,7 +451,7 @@ class TestCore(TestCase):
         sp = SpectralProfile.fromRasterLayer(lyr, outOfImage)
         self.assertTrue(sp == None)
 
-
+    @unittest.SkipTest
     def test_spectralProfileSpeedUpacking(self):
 
         n_profiles = 10000
