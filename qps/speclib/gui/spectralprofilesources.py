@@ -1759,7 +1759,7 @@ class SpectralProfileBridge(TreeModel):
         if col == 1:
             if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileSourceNode,
                                  SpectralProfileSamplingModeNode, StandardFieldGeneratorNode,
-                                 FloatValueNode, ColorNode)):
+                                 FloatValueNode, ColorNode, OptionTreeNode)):
                 if isinstance(node, StandardFieldGeneratorNode):
                     s = ""
                 flags = flags | Qt.ItemIsEditable
