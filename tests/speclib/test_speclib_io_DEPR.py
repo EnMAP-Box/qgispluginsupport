@@ -201,50 +201,6 @@ class TestIO(TestCase):
             self.assertEqual(p.yValues()[99], 42)
 
 
-    @unittest.skip('EcoSIS driver needs refactoring')
-    def test_EcoSIS(self):
-
-        feedback = QgsProcessingFeedback()
-
-        from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
-        from qpstestdata import speclib
-        self.assertFalse(EcoSISSpectralLibraryIO.canRead(speclib))
-
-        # 1. read
-        from qpstestdata import DIR_ECOSIS
-        for path in file_search(DIR_ECOSIS, '*.csv'):
-            print('Read {}...'.format(path))
-            self.assertTrue(EcoSISSpectralLibraryIO.canRead(path), msg='Unable to read {}'.format(path))
-            sl = EcoSISSpectralLibraryIO.readFrom(path, feedback=feedback)
-            self.assertIsInstance(sl, SpectralLibrary)
-            self.assertTrue(len(sl) > 0)
-
-        # 2. write
-        speclib = TestObjects.createSpectralLibrary(50)
-
-        # remove x/y values from first profile. this profile should be skipped in the outputs
-        p0 = speclib[0]
-        self.assertIsInstance(p0, SpectralProfile)
-        p0.setValues(x=[], y=[])
-        speclib.startEditing()
-        speclib.updateFeature(p0)
-        self.assertTrue(speclib.commitChanges())
-
-        pathCSV = os.path.join(TEST_DIR, 'speclib.ecosys.csv')
-        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, feedback=QProgressDialog())
-        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, feedback=None)
-        n = 0
-        for p in csvFiles:
-            self.assertTrue(os.path.isfile(p))
-            self.assertTrue(EcoSISSpectralLibraryIO.canRead(p))
-
-            slPart = EcoSISSpectralLibraryIO.readFrom(p, feedback=QProgressDialog())
-            self.assertIsInstance(slPart, SpectralLibrary)
-
-            n += len(slPart)
-
-        self.assertEqual(len(speclib) - 1, n)
-
     @unittest.skip('SPECCHIO driver needs refactoring')
     def test_SPECCHIO(self):
 
