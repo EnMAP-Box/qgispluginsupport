@@ -2291,7 +2291,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
 
 def initSamplingModes():
     """
-    Inititalizes known SpectralProfileSamplingModes to the SpectralProfileSamplingModeModel
+    Initializes known SpectralProfileSamplingModes to the SpectralProfileSamplingModeModel
     :rtype:
     """
     for mode in [SingleProfileSamplingMode(),
