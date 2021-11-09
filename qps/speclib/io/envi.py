@@ -194,101 +194,6 @@ def readCSVMetadata(pathESL) -> QgsVectorLayer:
         return None
 
 
-def readCSVMetadata_depr(pathESL):
-    """
-    Returns ESL metadata stored in an extra CSV file
-    :param pathESL: str, path of ENVI spectral library
-    :return: ([list-of-tuples], QgsFields) or (None, None)
-    """
-
-    pathCSV = os.path.splitext(pathESL)[0] + '.csv'
-    if not os.path.isfile(pathCSV):
-        return None, None
-
-    lines = None
-    with open(pathCSV) as f:
-        lines = f.readlines()
-    if not isinstance(lines, list):
-        print('Unable to read {}'.format(pathCSV))
-        return None, None
-
-    lines = [l.strip() for l in lines]
-    lines = [l for l in lines if len(l) > 0]
-    if len(lines) <= 1:
-        print('CSV does not contain enough values')
-        return None, None
-
-    hasSpectrumNames = False
-    matches = re.search(r'spectra names[ ]*([;\t,])', lines[0])
-    if matches:
-        sep = matches.group(1)
-    else:
-        # print('Unable to find column name "spectra names" in {}.'.format(pathCSV), file=sys.stderr)
-        matches = re.search(r'name[ ]*([;\t,])', lines[0], re.I)
-        if matches:
-            sep = matches.group(1)
-        else:
-            print('Unable to find column name like "*name*" in {}. Use "," as delimiter'.format(pathCSV),
-                  file=sys.stderr)
-            sep = ','
-
-    METADATA_LINES = []
-    fieldNames = lines[0].split(sep)
-
-    # read CSV data
-    reader = csv.DictReader(lines[1:], fieldnames=fieldNames, delimiter=sep)
-    for i, row in enumerate(reader):
-        METADATA_LINES.append(tuple(row.values()))
-
-    # set an emtpy value to None
-    def stripped(value: str):
-        if value is None:
-            return None
-        value = value.strip()
-        return None if len(value) == 0 else value
-
-    METADATA_LINES = [tuple([stripped(v) for v in row]) for row in METADATA_LINES]
-
-    # find type for undefined metadata names
-    QGSFIELD_PYTHON_TYPES = []
-    QGSFIELDS = QgsFields()
-    for i, fieldName in enumerate(fieldNames):
-        refValue = None
-        for lineValues in METADATA_LINES:
-
-            if lineValues[i] not in ['', None, 'NA']:
-                refValue = lineValues[i]
-                break
-
-        if refValue is None:
-            refValue = ''
-
-        fieldType = findTypeFromString(refValue)
-
-        if fieldType is str:
-            a, b = QVariant.String, 'varchar'
-        elif fieldType is float:
-            a, b = QVariant.Double, 'double'
-        elif fieldType is int:
-            a, b = QVariant.Int, 'int'
-        else:
-            raise NotImplementedError()
-
-        QGSFIELD_PYTHON_TYPES.append(fieldType)
-        QGSFIELDS.append(QgsField(fieldName, a, b))
-
-    # convert metadata string values to basic python type
-    def typeOrNone(value: str, t: type):
-        return value if value is None else t(value)
-
-    for i in range(len(METADATA_LINES)):
-        line = METADATA_LINES[i]
-        lineTuple = tuple(typeOrNone(cellValue, cellType) for cellValue, cellType in zip(line, QGSFIELD_PYTHON_TYPES))
-        METADATA_LINES[i] = lineTuple
-
-    return (METADATA_LINES, QGSFIELDS)
-
-
 def writeCSVMetadata(pathCSV: str, profiles: typing.List[QgsFeature], profile_names: typing.List[str]):
     """
     :param pathCSV:
@@ -578,8 +483,6 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         t0 = datetime.datetime.now()
 
         return profiles
-
-
 
     @classmethod
     def exportProfiles(cls,
