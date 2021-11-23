@@ -252,7 +252,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
     def syncToLayer(self, *args):
         super().syncToLayer(*args)
-        renderer = self.mLayer.renderer()
+        renderer = self.mLayer.renderer().clone()
         self.setRenderer(renderer)
 
     def renderer(self) -> QgsRasterRenderer:
