@@ -2566,7 +2566,11 @@ def saveTransform(geom: typing.Union[QgsPointXY, QgsRectangle,
     return result
 
 
-def scaledUnitString(num: float, infix: str = ' ', suffix: str = 'B', div: float = 1000):
+def scaledUnitString(num: float,
+                     infix: str = ' ',
+                     suffix: str = 'B',
+                     largest_si_prefix: str = None,
+                     div: float = 1000):
     """
     Returns a human-readable file size string.
     thanks to Fred Cirera
@@ -2577,11 +2581,14 @@ def scaledUnitString(num: float, infix: str = ' ', suffix: str = 'B', div: float
     :param div: divisor of num, 1000 by default.
     :return: the file size string
     """
-    for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
-        if abs(num) < div:
-            return "{:3.1f}{}{}{}".format(num, infix, unit, suffix)
+    si_prefixes = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z']
+    if largest_si_prefix is None:
+        largest_si_prefix = si_prefixes[-1]
+    for si_prefix in si_prefixes:
+        if abs(num) < div or si_prefix == largest_si_prefix:
+            return "{:3.1f}{}{}{}".format(num, infix, si_prefix, suffix)
         num /= div
-    return "{:.1f}{}{}{}".format(num, infix, unit, suffix)
+    return "{:.1f}{}{}{}".format(num, infix, si_prefix, suffix)
 
 
 class SpatialExtent(QgsRectangle):

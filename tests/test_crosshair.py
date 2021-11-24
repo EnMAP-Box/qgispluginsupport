@@ -57,6 +57,7 @@ class CrosshairTests(TestCase):
         self.showGui(refCanvas)
 
     def test_CRS(self):
+
         refCanvas = QgsMapCanvas()
         refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
         style = CrosshairStyle()
