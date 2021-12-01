@@ -20,6 +20,8 @@
 import datetime
 import unittest
 import xmlrunner
+
+from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase
 from qpstestdata import hymap
@@ -631,6 +633,18 @@ class TestCore(TestCase):
         vl2 = SpectralLibraryUtils.readFromVectorLayer(vl)
         self.assertTrue(vl2, QgsVectorLayer)
         self.assertTrue(is_spectral_library(vl2))
+
+    def test_SpectralLibraryRasterDataProvider(self):
+
+        SLIB = TestObjects.createSpectralLibrary()
+
+        dp = SpectralLibraryRasterDataProvider()
+        self.assertIsInstance(dp, QgsRasterDataProvider)
+        dp.setSpeclib(SLIB)
+
+
+
+
 
     def test_SpectralLibrary(self):
 

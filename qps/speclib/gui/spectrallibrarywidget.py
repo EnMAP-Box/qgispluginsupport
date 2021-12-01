@@ -32,6 +32,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
     sigMapCenterRequested = pyqtSignal(SpatialPoint)
     sigCurrentProfilesChanged = pyqtSignal(list)
 
+    _SHOW_MODEL: bool = False
+
     class ViewType(enum.Flag):
         Empty = enum.auto()
         ProfileView = enum.auto()
@@ -57,7 +59,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
 
-        self._SHOW_MODEL: bool = False
+
 
         self.mToolbar: QToolBar
         self.mIODialogs: typing.List[QWidget] = list()

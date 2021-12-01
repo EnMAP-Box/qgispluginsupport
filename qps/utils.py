@@ -30,6 +30,7 @@ import datetime
 import fnmatch
 import gc
 import importlib
+import inspect
 import io
 import itertools
 import json
@@ -3087,3 +3088,25 @@ class FeatureReferenceIterator(object):
             return self.referenceFeature()
         else:
             return self.mFeatureIterator.__next__()
+
+
+def printCaller(prefix=None, suffix=None):
+    """
+    prints out the current code location in calling method
+    :param prefix: prefix text
+    :param suffix: suffix text
+    """
+    if not os.environ.get('DEBUG', '').lower() in ['1', 'true']:
+        return
+    curFrame = inspect.currentframe()
+    outerFrames = inspect.getouterframes(curFrame)
+    FOI = outerFrames[1]
+    stack = inspect.stack()
+    stack_class = stack[1][0].f_locals["self"].__class__.__name__
+    stack_method = stack[1][0].f_code.co_name
+    info = f'{stack_class}.{FOI.function}: {os.path.basename(FOI.filename)}:{FOI.lineno}'
+
+    prefix = f'{prefix}:' if prefix else ''
+    suffix = f':{suffix}' if suffix else ''
+
+    print(f'#{prefix}{info}{suffix}')

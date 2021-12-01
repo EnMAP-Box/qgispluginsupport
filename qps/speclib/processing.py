@@ -26,8 +26,6 @@
 """
 import collections
 import typing
-import inspect
-import os
 import re
 import sys
 import enum
@@ -52,7 +50,7 @@ from qgis.core import QgsFeature, QgsProcessingAlgorithm, QgsProcessingContext, 
 
 from qgis.gui import QgsProcessingParameterWidgetFactoryInterface, \
     QgsProcessingModelerParameterWidget, QgsProcessingAbstractParameterDefinitionWidget, \
-    QgsProcessingParameterWidgetContext, QgsProcessingToolboxModel, QgsProcessingToolboxProxyModel, \
+    QgsProcessingParameterWidgetContext, QgsProcessingToolboxProxyModel, \
     QgsProcessingRecentAlgorithmLog, \
     QgsProcessingToolboxTreeView, QgsProcessingGui, QgsGui, QgsAbstractProcessingParameterWidgetWrapper, \
     QgsProcessingContextGenerator, QgsProcessingParametersWidget
@@ -61,7 +59,7 @@ from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider
 from .core import is_spectral_library
 from .core.spectrallibrary import SpectralLibrary, SpectralProfile, SpectralProfileBlock
 from . import speclibUiPath
-from ..utils import loadUi
+from ..utils import loadUi, printCaller
 
 SpectralMathResult = collections.namedtuple('SpectralMathResult', ['x', 'y', 'x_unit', 'y_unit'])
 
@@ -80,28 +78,6 @@ def keepRef(o):
     # REFS.remove(d)
     # REFS[id(o)] = o
     REFS.append(o)
-
-
-def printCaller(prefix=None, suffix=None):
-    """
-    prints out the current code location in calling method
-    :param prefix: prefix text
-    :param suffix: suffix text
-    """
-    if not os.environ.get('DEBUG', '').lower() in ['1', 'true']:
-        return
-    curFrame = inspect.currentframe()
-    outerFrames = inspect.getouterframes(curFrame)
-    FOI = outerFrames[1]
-    stack = inspect.stack()
-    stack_class = stack[1][0].f_locals["self"].__class__.__name__
-    stack_method = stack[1][0].f_code.co_name
-    info = f'{stack_class}.{FOI.function}: {os.path.basename(FOI.filename)}:{FOI.lineno}'
-
-    prefix = f'{prefix}:' if prefix else ''
-    suffix = f':{suffix}' if suffix else ''
-
-    print(f'#{prefix}{info}{suffix}')
 
 
 class SpectralProfileIOFlag(enum.Flag):

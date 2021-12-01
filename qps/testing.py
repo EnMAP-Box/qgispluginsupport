@@ -1054,6 +1054,16 @@ class TestObjects(object):
         return provider.algorithm(alg.name())
 
     @staticmethod
+    def createRasterProcessingModel(name: str = 'Example Raster Model') -> QgsProcessingModelAlgorithm:
+
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        alg = reg.algorithmById('gdal:rearrange_bands')
+        from qps.speclib.gui.spectralprocessingwidget import alg2model
+        return alg2model(alg)
+
+
+
+    @staticmethod
     def createSpectralProcessingModel(name: str = 'Example Model') -> QgsProcessingModelAlgorithm:
 
         configuration = {}
