@@ -120,6 +120,70 @@ def decodeProfileValueDict(dump: QByteArray) -> dict:
         d.update(d2)
     return d
 
+class SpectralSetting(object):
+    """
+    A spectral settings described the boundary conditions of one or multiple spectral profiles with
+    n y-values, e.g. reflectances or radiances, by
+    1. n x values, e.g. the wavelenght of each band
+    2. an xUnit, e.g. the wavelength unit 'micrometers'
+    3. an yUnit, e.g. 'reflectance'
+    """
+
+    def __init__(self,
+                 x: typing.Union[tuple, list, np.ndarray],
+                 xUnit: str = None,
+                 yUnit: str = None,
+                 bbl: typing.Union[tuple, list, np.ndarray] = None,
+                 field_name: str = None):
+
+        assert isinstance(x, (tuple, list, np.ndarray))
+
+        if isinstance(x, np.ndarray):
+            x = x.tolist()
+        if isinstance(x, list):
+            x = tuple(x)
+
+        self._x: typing.Tuple = x
+        self._xUnit: str = xUnit
+        self._yUnit: str = yUnit
+        self._bbl: tuple = tuple(bbl)
+        self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
+        self._field_name: str = field_name
+
+    def fieldName(self) -> str:
+        """
+        Returns the name of the QgsField to which profiles within this setting are linked to
+        :return: str
+        """
+        return self._field_name
+
+    def __str__(self):
+        return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
+
+    def x(self) -> typing.List:
+        return list(self._x)
+
+    def n_bands(self) -> int:
+        return len(self._x)
+
+    def yUnit(self):
+        return self._yUnit
+
+    def xUnit(self):
+        return self._xUnit
+
+    def bbl(self):
+        return self._bbl
+
+    def __eq__(self, other):
+        if not isinstance(other, SpectralSetting):
+            return False
+        return self._hash == other._hash
+
+    def __hash__(self):
+        return self._hash
+
+
 
 class SpectralProfile(QgsFeature):
     """
@@ -431,6 +495,26 @@ class SpectralProfile(QgsFeature):
     def currentProfileField(self) -> int:
         return self.mCurrentProfileFieldIndex
 
+    def currentSpectralSetting(self) -> SpectralSetting:
+        """
+        Returns the SpectralSetting for the profile in the current profile field
+        :return: SpectralSetting
+        """
+        i = self.currentProfileField()
+
+        return SpectralSetting(x=self.xValues(i),
+                               xUnit=self.xUnit(i),
+                               yUnit=self.yUnit(i),
+                               bbl=self.bbl(i)
+                               )
+
+    def spectralSettings(self, profile_field) -> SpectralSetting:
+        return SpectralSetting(x=self.xValues(profile_field),
+                               xUnit=self.xUnit(profile_field),
+                               yUnit=self.yUnit(profile_field),
+                               bbl=self.bbl(profile_field)
+                               )
+
     def setCoordinates(self, pt):
         if isinstance(pt, SpatialPoint):
             sp = pt.toCrs(SpectralProfile.crs)
@@ -535,6 +619,8 @@ class SpectralProfile(QgsFeature):
         if not isinstance(bbl, list):
             bbl = np.ones(self.nb(profile_field=profile_field), dtype=np.byte).tolist()
         return bbl
+
+
 
     def setXUnit(self, unit: str, profile_field=None):
         d = self.values(profile_field_index=profile_field)
@@ -676,70 +762,6 @@ class SpectralProfile(QgsFeature):
 
     def __len__(self):
         return len(self.yValues())
-
-
-class SpectralSetting(object):
-    """
-    A spectral settings described the boundary conditions of one or multiple spectral profiles with
-    n y-values, e.g. reflectances or radiances, by
-    1. n x values, e.g. the wavelenght of each band
-    2. an xUnit, e.g. the wavelength unit 'micrometers'
-    3. an yUnit, e.g. 'reflectance'
-    """
-
-    def __init__(self,
-                 x: typing.Union[tuple, list, np.ndarray],
-                 xUnit: str = None,
-                 yUnit: str = None,
-                 bbl: typing.Union[tuple, list, np.ndarray] = None,
-                 field_name: str = None):
-
-        assert isinstance(x, (tuple, list, np.ndarray))
-
-        if isinstance(x, np.ndarray):
-            x = x.tolist()
-        if isinstance(x, list):
-            x = tuple(x)
-
-        self._x: typing.Tuple = x
-        self._xUnit: str = xUnit
-        self._yUnit: str = yUnit
-        self._bbl: list = bbl
-        self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
-        self._field_name: str = field_name
-
-    def fieldName(self) -> str:
-        """
-        Returns the name of the QgsField to which profiles within this setting are linked to
-        :return: str
-        """
-        return self._field_name
-
-    def __str__(self):
-        return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
-
-    def x(self) -> typing.List:
-        return list(self._x)
-
-    def n_bands(self) -> int:
-        return len(self._x)
-
-    def yUnit(self):
-        return self._yUnit
-
-    def xUnit(self):
-        return self._xUnit
-
-    def bbl(self):
-        return self._bbl
-
-    def __eq__(self, other):
-        if not isinstance(other, SpectralSetting):
-            return False
-        return self._hash == other._hash
-
-    def __hash__(self):
-        return self._hash
 
 
 def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
@@ -1015,7 +1037,7 @@ class SpectralProfileBlock(object):
 
     def toVariantMap(self) -> dict:
         """
-        Convers the profile block into a dictionary
+        Converts the profile block into a dictionary
         :return: dict
         """
         kwds = dict()

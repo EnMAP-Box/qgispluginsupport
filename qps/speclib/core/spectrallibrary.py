@@ -677,6 +677,7 @@ class SpectralLibraryUtils:
         for f in vectorlayer.getFeatures(featureRequest):
             yield SpectralProfile.fromQgsFeature(f, profile_field=profile_field)
 
+
     @staticmethod
     def plot(speclib: QgsVectorLayer) -> 'SpectralLibraryWidget':
         assert is_spectral_library(speclib)
