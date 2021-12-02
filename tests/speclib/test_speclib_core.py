@@ -21,9 +21,12 @@ import datetime
 import unittest
 import xmlrunner
 
-from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider
+import qgis._core
+from qps.speclib.core import is_profile_field
+from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider, featuresToArrays, \
+    registerDataProvider
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCase, WMS_GMAPS
 from qpstestdata import hymap
 from qpstestdata import speclib as speclibpath
 
@@ -59,9 +62,6 @@ class TestCore(TestCase):
 
         from qps import registerMapLayerConfigWidgetFactories
         registerMapLayerConfigWidgetFactories()
-
-
-
 
     def test_fields(self):
 
@@ -466,7 +466,7 @@ class TestCore(TestCase):
 
         t0 = now()
         sl = TestObjects.createSpectralLibrary(n_profiles, n_bands=[n_bands])
-        print(f'Initialized in-memory speclib with {pinfo}: {now()-t0}')
+        print(f'Initialized in-memory speclib with {pinfo}: {now() - t0}')
         sl: SpectralLibrary
         n_profiles = sl.featureCount()
         DIR = self.createTestOutputDirectory()
@@ -477,7 +477,6 @@ class TestCore(TestCase):
         self.assertIsInstance(sl, QgsVectorLayer)
         self.assertEqual(sl.featureCount(), n_profiles)
         DATA = dict()
-
 
         # test decoding
         t0 = now()
@@ -549,8 +548,8 @@ class TestCore(TestCase):
 
         writeOnly = []
         formats = [MIMEDATA_SPECLIB_LINK,
-                   #MIMEDATA_SPECLIB,
-                   #MIMEDATA_TEXT
+                   # MIMEDATA_SPECLIB,
+                   # MIMEDATA_TEXT
                    ]
         for format in formats:
             print('Test MimeData I/O "{}"'.format(format))
@@ -634,17 +633,103 @@ class TestCore(TestCase):
         self.assertTrue(vl2, QgsVectorLayer)
         self.assertTrue(is_spectral_library(vl2))
 
-    def test_SpectralLibraryRasterDataProvider(self):
+    def test_featuresToArrays(self):
+        # lyrWMS = QgsRasterLayer(WMS_GMAPS, 'test', 'wms')
 
-        SLIB = TestObjects.createSpectralLibrary()
+        # lyr = TestObjects.createRasterProcessingModel()
+        n_bands = [[256, 2500],
+                   [123, 42]]
+        n_features = 500
+
+        SLIB = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
+
+        pfields = profile_fields(SLIB)
+
+        ARRAYS = featuresToArrays(SLIB, spectral_profile_fields=pfields)
+
+        self.assertIsInstance(ARRAYS, dict)
+        self.assertTrue(len(ARRAYS) == 2)
+        for i, nbs in enumerate(n_bands):
+            settings = list(ARRAYS.keys())[i]
+            fids, arrays = list(ARRAYS.values())[i]
+            self.assertEqual(len(fids), n_features)
+            for j, (nb, setting) in enumerate(zip(nbs, settings)):
+                self.assertIsInstance(setting, SpectralSetting)
+                self.assertEqual(nb, setting.n_bands())
+                array = arrays[j]
+                self.assertIsInstance(array, np.ndarray)
+                self.assertEqual(array.shape[0], setting.n_bands())
+                self.assertEqual(array.shape[1], len(fids))
+
+    def test_SpectralLibraryRasterDataProvider(self):
+        n_bands = [[256, 2500],
+                   [123, 42]]
+        n_features = 500
+
+        registerDataProvider()
+
+        SLIB = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
+        # SLIB = TestObjects.createSpectralLibrary()
 
         dp = SpectralLibraryRasterDataProvider()
+
+        self.assertIsInstance(dp, QgsRasterInterface)
         self.assertIsInstance(dp, QgsRasterDataProvider)
-        dp.setSpeclib(SLIB)
 
+        dp.initData(SLIB)
 
+        pfields = dp.profileFields()
 
+        self.assertIsInstance(pfields, QgsFields)
+        self.assertTrue(pfields.count() > 0)
 
+        settingsList = dp.profileSettingsList()
+        self.assertTrue(len(settingsList) > 0)
+        layers = []
+        for settings in settingsList:
+            self.assertEqual(len(settings), pfields.count())
+            dp.setActiveProfileSettings(settings)
+
+            fids = dp.profileFIDs(settings)
+            self.assertIsInstance(fids, np.ndarray)
+            self.assertEqual(len(fids), n_features)
+
+            for iField, pfield in enumerate(pfields):
+                self.assertIsInstance(pfield, QgsField)
+                setting = settings[iField]
+                dp.setActiveProfileField(pfield)
+
+                array = dp.profileArray()
+
+                self.assertIsInstance(array, np.ndarray)
+                self.assertEqual(array.ndim, 2)
+                self.assertEqual(array.shape[0], setting.n_bands())
+                self.assertEqual(array.shape[1], n_features)
+
+                self.assertEqual(dp.xSize(), n_features)
+                self.assertEqual(dp.ySize(), 1)
+                self.assertEqual(dp.bandCount(), setting.n_bands())
+                self.assertIsInstance(dp.dataType(1), Qgis.DataType)
+                self.assertTrue(dp.dataType(1) != Qgis.DataType.UnknownDataType)
+
+                layer = QgsRasterLayer('', 'Test', SpectralLibraryRasterDataProvider.providerKey())
+                dp2 = layer.dataProvider()
+                self.assertIsInstance(dp2, SpectralLibraryRasterDataProvider)
+                self.assertFalse(dp2.isValid())
+                dp2.linkProvider(dp)
+                self.assertTrue(dp2.isValid())
+
+                dp2.setActiveProfileField(dp.activeProfileField())
+                dp2.setActiveProfileSettings(dp.activeProfileSettings())
+                layers.append(layer)
+
+        canvas = QgsMapCanvas()
+        QgsProject.instance().addMapLayers(layers)
+        canvas.setLayers(layers)
+        canvas.zoomToFullExtent()
+
+        self.showGui(canvas)
+        s = ""
 
     def test_SpectralLibrary(self):
 
@@ -656,7 +741,6 @@ class TestCore(TestCase):
         # self.assertIsInstance(SLIB2, QgsVectorLayer)
         # self.assertTrue(SLIB != SLIB2)
         # self.assertEqual(SLIB.source(), SLIB2.source())
-
 
         sp1 = SpectralProfile()
         # sp1.setName('Name 1')
@@ -869,7 +953,6 @@ class TestCore(TestCase):
         self.assertIsInstance(speclib, SpectralLibrary)
 
         groups = speclib.groupBySpectralProperties()
-
 
     def test_multiinstances(self):
 
