@@ -5,18 +5,20 @@ import typing
 
 from PyQt5.QtCore import pyqtSignal, QObject, QModelIndex, QMimeData, Qt, QPointF
 from PyQt5.QtWidgets import QWidget, QFileDialog, QInputDialog, QMessageBox, QGridLayout, QToolButton, QAction, QMenu, \
-    QTreeView, QGroupBox, QLabel, QHBoxLayout
+    QTreeView, QGroupBox, QLabel, QHBoxLayout, QComboBox
 from qgis._core import QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, QgsProcessingRegistry, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
     QgsProcessingParameterRasterLayer, QgsProcessingOutputRasterLayer, QgsProject, QgsProcessingParameterDefinition, \
-    QgsProcessingModelChildAlgorithm, QgsProcessingException, QgsRasterDataProvider
+    QgsProcessingModelChildAlgorithm, QgsProcessingException, QgsRasterDataProvider, QgsMapLayer, QgsRasterLayer
 from qgis._gui import QgsProcessingContextGenerator, QgsProcessingParameterWidgetContext, \
     QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxTreeView, \
-    QgsProcessingParametersWidget, QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui
+    QgsProcessingParametersWidget, QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
+    QgsFieldComboBox
 
 from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider
 from processing.modeler.ProjectProvider import ProjectProvider
 from qps.speclib import speclibUiPath
+from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider
 from qps.speclib.core.spectralprofile import SpectralProfileBlock
 from qps.speclib.gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from qps.speclib.processing import SpectralProcessingAlgorithmTreeView
@@ -122,6 +124,27 @@ class SpectralProcessingAlgorithmTreeView(QgsProcessingToolboxTreeView):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.setHeaderHidden(True)
+
+class SpectralProfileFieldAsRasterLayerComboBox(QgsFieldComboBox):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.mLayers: typing.List[QgsRasterLayer] = None
+        self.mProvider: SpectralLibraryRasterDataProvider = None
+
+    def setLayer(self, layer: QgsMapLayer):
+
+        if isinstance(layer, QgsVectorLayer):
+            self.mSpeclib = layer
+        else:
+            self.mSpeclib = None
+
+        self._updateFields()
+
+    def _updateFields(self):
+
+        pass
 
 
 class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):

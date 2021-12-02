@@ -237,15 +237,6 @@
     <string>Load Model</string>
    </property>
   </action>
-  <action name="actionSaveModel">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mActionFileSave.svg</normaloff>:/images/themes/default/mActionFileSave.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Save Model</string>
-   </property>
-  </action>
   <action name="actionApplyModel">
    <property name="icon">
     <iconset>
