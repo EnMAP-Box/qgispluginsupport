@@ -14,7 +14,7 @@
    <string>Spectral Processing Widget</string>
   </property>
   <property name="windowIcon">
-   <iconset>
+   <iconset resource="../../../../QGIS/images/images.qrc">
     <normaloff>:/images/themes/default/mActionAddExpression.svg</normaloff>:/images/themes/default/mActionAddExpression.svg</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_4">
@@ -169,6 +169,32 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="tabHelp">
+       <attribute name="title">
+        <string>Help</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QTextBrowser" name="textBrowser">
+          <property name="html">
+           <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:7.8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Here you can apply raster processing models to spectral profiles in a spectral library.&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;1. Select processing algorithms or processing model&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;2. Define Inputs. Each profile columns can be translated into a raster images&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;3. Define processing parameter&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;4. Define output paramters. Created raster images will be translated into profiles of an existing or new profile column&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
      </widget>
      <widget class="QGroupBox" name="groupBox">
       <property name="title">
@@ -212,14 +238,14 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_2">
+      <widget class="QPushButton" name="btnRun">
        <property name="text">
         <string>Run</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton">
+      <widget class="QPushButton" name="btnCancel">
        <property name="text">
         <string>Cancel</string>
        </property>
@@ -230,7 +256,7 @@
   </layout>
   <action name="actionLoadModel">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionFileOpen.svg</normaloff>:/images/themes/default/mActionFileOpen.svg</iconset>
    </property>
    <property name="text">
@@ -239,7 +265,7 @@
   </action>
   <action name="actionApplyModel">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mTaskRunning.svg</normaloff>:/images/themes/default/mTaskRunning.svg</iconset>
    </property>
    <property name="text">
@@ -248,7 +274,7 @@
   </action>
   <action name="actionCopyLog">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionEditCopy.svg</normaloff>:/images/themes/default/mActionEditCopy.svg</iconset>
    </property>
    <property name="text">
@@ -260,7 +286,7 @@
   </action>
   <action name="actionClearLog">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/console/iconClearConsole.svg</normaloff>:/images/themes/default/console/iconClearConsole.svg</iconset>
    </property>
    <property name="text">
@@ -272,7 +298,7 @@
   </action>
   <action name="actionSaveLog">
    <property name="icon">
-    <iconset>
+    <iconset resource="../../../../QGIS/images/images.qrc">
      <normaloff>:/images/themes/default/mActionFileSave.svg</normaloff>:/images/themes/default/mActionFileSave.svg</iconset>
    </property>
    <property name="text">
@@ -280,6 +306,15 @@
    </property>
    <property name="toolTip">
     <string>Saves the log to file</string>
+   </property>
+  </action>
+  <action name="actionCancelProcessing">
+   <property name="icon">
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mTaskCancel.svg</normaloff>:/images/themes/default/mTaskCancel.svg</iconset>
+   </property>
+   <property name="text">
+    <string>CancelProcessing</string>
    </property>
   </action>
  </widget>
@@ -298,7 +333,7 @@
  </customwidgets>
  <resources>
   <include location="../../qpsresources.qrc"/>
-  <include location="../../qpsresources.qrc"/>
+  <include location="../../../../QGIS/images/images.qrc"/>
  </resources>
  <connections/>
 </ui>

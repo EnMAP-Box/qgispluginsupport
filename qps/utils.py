@@ -79,7 +79,21 @@ QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.CFloat32: complex,
                          Qgis.CFloat64: np.complex64,
                          Qgis.ARGB32: np.uint32,
-                         Qgis.ARGB32_Premultiplied: np.uint32}
+                         Qgis.ARGB32_Premultiplied: np.uint32
+                         }
+
+NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.Byte,
+                         bool: Qgis.Byte,
+                         np.uint16: Qgis.UInt16,
+                         np.uint32: Qgis.UInt32,
+                         np.int16: Qgis.Int16,
+                         np.int32: Qgis.Int32,
+                         np.float32: Qgis.Float32,
+                         np.float64: Qgis.Float64,
+                         complex: Qgis.CFloat32,
+                         np.complex64: Qgis.CFloat64,
+                         np.uint32: Qgis.ARGB32,
+                         }
 
 QGIS_DATATYPE_NAMES = {
     Qgis.Byte: 'Byte',
@@ -1933,6 +1947,14 @@ class Singleton(type):
         return cls._instances[cls]
 
 
+def qgisToNumpyDataType(t: Qgis.DataType) -> np.dtype:
+    return QGIS2NUMPY_DATA_TYPES.get(t, None)
+
+
+def numpyToQgisDataType(t) -> Qgis.DataType:
+    return NUMPY2QGIS_DATA_TYPES.get(t, None)
+
+
 def qgisAppQgisInterface() -> QgisInterface:
     """
     Returns the QgisInterface of the QgisApp in case everything was started from within the QGIS Main Application
@@ -3057,6 +3079,7 @@ class FeatureReferenceIterator(object):
     """
     Iterator for QgsFeatures that uses the 1st feature as reference
     """
+
     def __init__(self, features: typing.Iterable[QgsFeature]):
 
         self.mNextFeatureIndex = -1
