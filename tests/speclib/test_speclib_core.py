@@ -712,10 +712,10 @@ class TestCore(TestCase):
                 self.assertIsInstance(dp.dataType(1), Qgis.DataType)
                 self.assertTrue(dp.dataType(1) != Qgis.DataType.UnknownDataType)
 
-                layer = QgsRasterLayer('', 'Test', SpectralLibraryRasterDataProvider.providerKey())
+                layer = QgsRasterLayer('source', 'Test', SpectralLibraryRasterDataProvider.providerKey())
                 dp2 = layer.dataProvider()
                 self.assertIsInstance(dp2, SpectralLibraryRasterDataProvider)
-                self.assertFalse(dp2.isValid())
+
                 dp2.linkProvider(dp)
                 self.assertTrue(dp2.isValid())
 
@@ -723,12 +723,34 @@ class TestCore(TestCase):
                 dp2.setActiveProfileSettings(dp.activeProfileSettings())
                 layers.append(layer)
 
+        for layer in layers:
+            self.assertIsInstance(layer, QgsRasterLayer)
+            self.assertTrue(layer.isValid())
+            self.assertTrue(layer.bandCount() > 0)
+            self.assertTrue(layer.dataProvider().description() == SpectralLibraryRasterDataProvider.description())
+            self.assertIsInstance(layer.crs(), QgsCoordinateReferenceSystem)
+            self.assertIsInstance(layer.extent(), QgsRectangle)
+
+            for b in range(layer.bandCount()):
+                bn = layer.bandName(b+1)
+                self.assertIsInstance(bn, str)
+                self.assertTrue(bn != '')
+                self.assertTrue(layer.dataProvider().dataType(b) != Qgis.DataType.UnknownDataType)
+
+        model = QgsMapLayerModel(layers)
+        cb = QgsMapLayerComboBox()
+        cb.setModel(model)
         canvas = QgsMapCanvas()
         QgsProject.instance().addMapLayers(layers)
         canvas.setLayers(layers)
         canvas.zoomToFullExtent()
 
-        self.showGui(canvas)
+        l = QVBoxLayout()
+        l.addWidget(cb)
+        l.addWidget(canvas)
+        w = QWidget()
+        w.setLayout(l)
+        self.showGui(w)
         s = ""
 
     def test_SpectralLibrary(self):

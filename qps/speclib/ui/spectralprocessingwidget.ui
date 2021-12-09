@@ -14,27 +14,12 @@
    <string>Spectral Processing Widget</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="../../../../QGIS/images/images.qrc">
-    <normaloff>:/images/themes/default/mActionAddExpression.svg</normaloff>:/images/themes/default/mActionAddExpression.svg</iconset>
+   <iconset resource="../../qpsresources.qrc">
+    <normaloff>:/qps/ui/icons/profile_processing.svg</normaloff>:/qps/ui/icons/profile_processing.svg</iconset>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_4">
-   <property name="spacing">
-    <number>0</number>
-   </property>
-   <property name="leftMargin">
-    <number>2</number>
-   </property>
-   <property name="topMargin">
-    <number>2</number>
-   </property>
-   <property name="rightMargin">
-    <number>2</number>
-   </property>
-   <property name="bottomMargin">
-    <number>2</number>
-   </property>
+  <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
-    <widget class="QSplitter" name="splitter_2">
+    <widget class="QSplitter" name="splitter">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
        <horstretch>0</horstretch>
@@ -52,17 +37,58 @@
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
+      <widget class="QWidget" name="tabProcessingAlgorithm">
+       <attribute name="title">
+        <string>1. Algorithm</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QgsFilterLineEdit" name="tbAlgorithmFilter">
+          <property name="qgisRelation" stdset="0">
+           <string notr="true"/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Select Processing Algorithm / Model (double click)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="SpectralProcessingAlgorithmTreeView" name="mTreeViewAlgorithms">
+          <property name="dragEnabled">
+           <bool>true</bool>
+          </property>
+          <property name="dragDropMode">
+           <enum>QAbstractItemView::DragOnly</enum>
+          </property>
+          <attribute name="headerVisible">
+           <bool>false</bool>
+          </attribute>
+         </widget>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="tabCurrentParameters">
        <attribute name="title">
-        <string>Parameters</string>
+        <string>2. Parameters</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
          <widget class="QLabel" name="tbModelName">
           <property name="text">
            <string>&lt;no algorithm / model selected&gt;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="cbSelectedFeaturesOnly">
+          <property name="text">
+           <string>Only process selected features</string>
           </property>
          </widget>
         </item>
@@ -88,8 +114,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>383</width>
-             <height>475</height>
+             <width>651</width>
+             <height>416</height>
             </rect>
            </property>
           </widget>
@@ -99,7 +125,7 @@
       </widget>
       <widget class="QWidget" name="tabLog">
        <attribute name="title">
-        <string>Log</string>
+        <string>3. Log</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <property name="spacing">
@@ -118,7 +144,7 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="QTextEdit" name="tbLogs"/>
+         <widget class="QTextEdit" name="tbLog"/>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
@@ -183,38 +209,19 @@ p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:7.8pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Here you can apply raster processing models to spectral profiles in a spectral library.&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;1. Select processing algorithms or processing model&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;1. Select a raster image processing algorithm / model. &lt;br /&gt;You can create new models in the QGIS model builder.&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;2. Define Inputs. Each profile columns can be translated into a raster images&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;2. Define inputs, parameters and outputs of the processing algorithm / model.&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;3. Define processing parameter&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt; Spectral profile colums will be translated into raster images&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt; Created raster images will be translated back into spectral profiles&lt;/p&gt;
 &lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;4. Define output paramters. Created raster images will be translated into profiles of an existing or new profile column&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;3. Run the algorithm / model&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
        </layout>
       </widget>
-     </widget>
-     <widget class="QGroupBox" name="groupBox">
-      <property name="title">
-       <string>Processing Toolbox</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <widget class="SpectralProcessingAlgorithmTreeView" name="mTreeViewAlgorithms">
-         <property name="dragEnabled">
-          <bool>true</bool>
-         </property>
-         <property name="dragDropMode">
-          <enum>QAbstractItemView::DragOnly</enum>
-         </property>
-         <attribute name="headerVisible">
-          <bool>false</bool>
-         </attribute>
-        </widget>
-       </item>
-      </layout>
      </widget>
     </widget>
    </item>
@@ -319,6 +326,11 @@ p, li { white-space: pre-wrap; }
   </action>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>QgsFilterLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>qgsfilterlineedit.h</header>
+  </customwidget>
   <customwidget>
    <class>SpectralProcessingAlgorithmTreeView</class>
    <extends>QTreeView</extends>

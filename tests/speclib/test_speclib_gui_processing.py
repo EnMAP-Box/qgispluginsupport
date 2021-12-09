@@ -11,6 +11,7 @@ from qgis._core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm,
     QgsProcessingRegistry, QgsApplication
 from qgis._gui import QgsGui, QgsProcessingParameterWidgetContext
 
+from processing.gui.BatchPanel import BatchPanel
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
 
 from qgis.core import QgsProcessingProvider
@@ -221,9 +222,23 @@ class SpectralProcessingTests(TestCase):
                 comment = dlg.comments()
                 comment_color = dlg.commentColor()
 
+    def test_SpectralProcessing_Sandbox(self):
+        from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
+        registerDataProvider()
+        n_bands = [[256, 2500],
+                   [123, 42]]
+
     def test_SpectralProcessingWidget(self):
         self.initProcessingRegistry()
-        speclib = TestObjects.createSpectralLibrary()
+
+        from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
+        registerDataProvider()
+        n_bands = [[256, 2500],
+                   [123, 42]]
+        n_features = 500
+        speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
+        speclib: QgsVectorLayer
+        speclib.selectByIds([1,2,3,4])
         w = SpectralProcessingWidget()
         w.setSpeclib(speclib)
 
@@ -231,23 +246,27 @@ class SpectralProcessingTests(TestCase):
 
         # model = TestObjects.createRasterProcessingModel()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg = reg.algorithmById('gdal:rearrange_bands')
-        w.loadModel(alg)
+        alg1 = reg.algorithmById('gdal:rearrange_bands')
+        alg2 = reg.algorithmById('native:rescaleraster')
+        w.setAlgorithm(alg1)
 
-        from qgis.PyQt.QtWidgets import QMainWindow
-        M = QMainWindow()
-        M.setCentralWidget(w)
-        toolbar = QToolBar()
-        for a in w.findChildren(QAction):
-            toolbar.addAction(a)
-        M.addToolBar(toolbar)
-        # save and load models
-        test_dir = self.createTestOutputDirectory() / 'spectral_processing'
-        os.makedirs(test_dir, exist_ok=True)
-        path = test_dir / 'mymodel.model3'
+        w.applyModel()
 
-
-        self.showGui(M)
+        if True:
+            self.showGui(w)
+        else:
+            from qgis.PyQt.QtWidgets import QMainWindow
+            M = QMainWindow()
+            M.setCentralWidget(w)
+            toolbar = QToolBar()
+            for a in w.findChildren(QAction):
+                toolbar.addAction(a)
+            M.addToolBar(toolbar)
+            # save and load models
+            test_dir = self.createTestOutputDirectory() / 'spectral_processing'
+            os.makedirs(test_dir, exist_ok=True)
+            path = test_dir / 'mymodel.model3'
+            self.showGui(M)
 
     def test_SpectralProcessingAlgorithmTreeView(self):
 
