@@ -731,14 +731,17 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
             # copy and replace input rasters with temporary data sets
             # that contain spectral profiles
             parametersHard = parameters.copy()
+            FID_LOOKUP = dict()
             if True:
                 for k, v in parameters.items():
                     if isinstance(v, QgsRasterLayer) and isinstance(v.dataProvider(), SpectralLibraryRasterDataProvider):
-                        dp = v.dataProvider()
+                        dp: SpectralLibraryRasterDataProvider = v.dataProvider()
+                        FID_LOOKUP[k] = dp.activeProfileFIDs()
                         fb = QgsRasterBlockFeedback()
-                        file_name = f'{QgsProcessing.TEMPORARY_OUTPUT}_temp.tif'
-                        file_name = pathlib.Path(QgsProcessingUtils.tempFolder()) / 'temp.tif'
-                        file_writer = QgsRasterFileWriter(file_name.as_posix())
+                        #file_name = f'{QgsProcessing.TEMPORARY_OUTPUT}_temp.tif'
+                        #file_name = pathlib.Path(QgsProcessingUtils.tempFolder()) / 'temp.tif'
+                        file_name = QgsProcessingUtils.generateTempFilename(k)
+                        file_writer = QgsRasterFileWriter(file_name)
                         pipe = QgsRasterPipe()
 
                         if not pipe.set(dp):
@@ -753,10 +756,10 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
                             transformContext,
                             fb
                         )
-                        parametersHard[k] = file_name.as_posix()
-                        lyr = QgsRasterLayer(file_name.as_posix())
-                        tmp = rasterLayerArray(lyr)
-                        s = ""
+                        parametersHard[k] = file_name
+                        # lyr = QgsRasterLayer(file_name.as_posix())
+                        # tmp = rasterLayerArray(lyr)
+                        # s = ""
 
             from processing.gui.AlgorithmExecutor import execute as executeAlg
             feedback = QgsProcessingFeedback()
@@ -766,8 +769,18 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
 
             results, ok = alg.run(parameters, context, feedback)
             ok, results = executeAlg(alg, parametersHard, feedback=feedback, catch_exceptions=True)
-            lyr = QgsRasterLayer(results['OUTPUT'])
-            tmp = rasterLayerArray(lyr)
+            if ok:
+
+                OUT_RASTERS = dict()
+
+                for parameter in alg.outputDefinitions():
+                    if isinstance(parameter, QgsProcessingOutputRasterLayer):
+                        lyr = QgsRasterLayer(results[parameter.name()])
+                        tmp = rasterLayerArray(lyr)
+                        OUT_RASTERS[parameter.name()] = tmp
+
+                # map raster to profile
+                s = ""
             self.log(feedback.htmlLog())
 
         except AlgorithmDialogBase.InvalidParameterValue as ex1:

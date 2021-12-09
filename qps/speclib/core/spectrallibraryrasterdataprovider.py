@@ -265,6 +265,8 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
         i = self.profileFields().indexOf(self.activeProfileField().name())
         return self.activeProfileSettings()[i]
 
+    def activeProfileFIDs(self) -> typing.List[int]:
+        return self.profileFIDs(self.activeProfileSettings())
 
     def setActiveProfileSettings(self, settings: typing.Tuple[SpectralSetting, ...]):
         assert settings in self.mARRAYS.keys()
