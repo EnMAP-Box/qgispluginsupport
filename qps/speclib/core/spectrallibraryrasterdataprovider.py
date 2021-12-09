@@ -4,7 +4,8 @@ import pathlib
 import numpy as np
 from PyQt5.QtCore import QModelIndex
 from PyQt5.QtGui import QIcon
-from qgis._core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer
+from qgis._core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
+    QgsRasterBandStats
 
 from qgis.PyQt import Qt
 from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, QgsRasterDataProvider, QgsField, \
@@ -281,6 +282,9 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
         else:
             return 0
 
+    def sourceDataType(self, bandNo):
+        return self.dataType(bandNo)
+
     def dataType(self, bandNo: int) -> Qgis.DataType:
         array = self.profileArray()
         t = Qgis.DataType.UnknownDataType
@@ -303,6 +307,28 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
         block = QgsRasterBlock(dt, width, height)
         block.setData(band_data.tobytes())
         return block
+
+    def bandStatistics(self,
+                       bandNo: int,
+                       stats: QgsRasterBandStats.Stats = QgsRasterBandStats.Stats.All,
+                       extent: QgsRectangle = QgsRectangle(),
+                       sampleSize: int = 0,
+                       feedback: QgsRasterBlockFeedback = None) -> QgsRasterBandStats:
+
+        if extent is None:
+            extent = QgsRectangle()
+        else:
+            extent = QgsRectangle(extent)
+
+        stats = QgsRasterBandStats()
+        band_data: np.ndarray = self.profileArray()[bandNo-1, :]
+
+        stats.sum = band_data.sum()
+        stats.minimumValue = band_data.min()
+        stats.maximumValue = band_data.max()
+        stats.mean = band_data.mean()
+        stats.extent = extent
+        return stats
 
     def generateBandName(self, band_no: int):
         setting = self.profileSetting()
