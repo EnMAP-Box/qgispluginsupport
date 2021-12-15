@@ -87,6 +87,10 @@
         </item>
         <item>
          <widget class="QCheckBox" name="cbSelectedFeaturesOnly">
+          <property name="styleSheet">
+           <string notr="true">
+background-color: rgba(255, 0, 0, 100);</string>
+          </property>
           <property name="text">
            <string>Only process selected features</string>
           </property>
