@@ -114,6 +114,12 @@ class SpectralLibraryRasterLayerModel(QgsMapLayerModel):
         else:
             return super().data(index, role)
 
+class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
+    """
+    A QgsRasterDataProvider to access fields values of a QgsVectorLayer
+    """
+    def __init__(self, *args, **kwds):
+        pass
 
 
 class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
