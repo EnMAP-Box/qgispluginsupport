@@ -2,10 +2,10 @@ import typing
 import pathlib
 
 import numpy as np
-from PyQt5.QtCore import QModelIndex
+from PyQt5.QtCore import QModelIndex, QUrl, QUrlQuery
 from PyQt5.QtGui import QIcon
 from qgis._core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
-    QgsRasterBandStats
+    QgsRasterBandStats, QgsProject, QgsVectorLayerCache
 
 from qgis.PyQt import Qt
 from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, QgsRasterDataProvider, QgsField, \
@@ -114,12 +114,101 @@ class SpectralLibraryRasterLayerModel(QgsMapLayerModel):
         else:
             return super().data(index, role)
 
+
 class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     """
-    A QgsRasterDataProvider to access fields values of a QgsVectorLayer
+    A QgsRasterDataProvider to access the field values of a QgsVectorLayer like a raster layer
+
     """
-    def __init__(self, *args, **kwds):
-        pass
+    def __init__(self,
+                 uri:str,
+                 options:QgsDataProvider.ProviderOptions,
+                 flags:QgsDataProvider.ReadFlags,
+                 vecorLayerCache: QgsVectorLayerCache=None):
+
+        super().__init__(uri, options, flags)
+
+        url: QUrl = QUrl(uri)
+        query: QUrlQuery = QUrlQuery(url)
+
+        if query.hasQueryItem('lid'):
+            layerID = query.queryItemValue('lid')
+            layer = QgsProject.instance().mapLayer(layerID)
+
+        if query.hasQueryItem('field'):
+            fieldName = query.queryItemValue('field')
+
+        self.mVectorLayerCache: QgsVectorLayerCache = None
+        self.mVectorLayer: QgsVectorLayer = None
+        self.mField: QgsField = None
+        self.mFeatureIDs: typing.List[int] = []
+
+    def setVectorLayerCache(self, vectorLayerCache: QgsVectorLayerCache):
+        assert isinstance(vectorLayerCache, QgsVectorLayerCache)
+        self.mVectorLayerCache = vectorLayerCache
+
+    def fields(self):
+        return self.mVectorLayerCache.fields()
+
+    def vectorLayer(self) -> QgsVectorLayer:
+        return self.mVectorLayerCache.layer()
+
+    def extent(self) -> QgsRectangle:
+
+        rect = QgsRectangle()
+        rect.setXMaximum(self.xSize())
+        rect.setYMaximum(self.ySize())
+        return rect
+
+    def dataType(self, bandNo: int) -> Qgis.DataType:
+        t = Qgis.DataType.UnknownDataType
+        if isinstance(self.mField, QgsField):
+            t = self.mField.type()
+        return t
+
+    def bandCount(self) -> int:
+        return 1
+
+    def xSize(self) -> int:
+        return len(self.mFeatureIDs)
+
+    def ySize(self) -> int:
+        if len(self.mFeatureIDs) > 0:
+            return 1
+        else:
+            return 0
+
+
+    def capabilities(self):
+        caps = QgsRasterInterface.Size | QgsRasterInterface.Identify | QgsRasterInterface.IdentifyValue
+        return QgsRasterDataProvider.ProviderCapabilities(caps)
+
+    def name(self):
+        return 'Name'
+
+    @classmethod
+    def providerKey(cls) -> str:
+        return 'vectorlayerfieldraster'
+
+    @classmethod
+    def description(self) -> str:
+        return 'VectorLayerFieldRasterDataProvider'
+
+    @classmethod
+    def createProvider(cls, uri, providerOptions, flags=None):
+        # compatibility with Qgis < 3.16, ReadFlags only available since 3.16
+        flags = QgsDataProvider.ReadFlags()
+        provider = VectorLayerFieldRasterDataProvider(uri, providerOptions, flags)
+        return provider
+
+    def dataSourceUri(self, expandAuthConfig=False):
+        s = ""
+
+    def crs(self) -> QgsCoordinateReferenceSystem:
+        return QgsCoordinateReferenceSystem()
+
+    def isValid(self) -> bool:
+        return True
 
 
 class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
@@ -406,3 +495,12 @@ def registerDataProvider():
     registry = QgsProviderRegistry.instance()
     registry.registerProvider(metadata)
     QgsMessageLog.logMessage('SpectralLibraryRasterDataProvider registered')
+
+    metadata = QgsProviderMetadata(
+        VectorLayerFieldRasterDataProvider.providerKey(),
+        VectorLayerFieldRasterDataProvider.description(),
+        VectorLayerFieldRasterDataProvider.createProvider
+    )
+    registry.registerProvider(metadata)
+    QgsMessageLog.logMessage('VectorLayerRasterDataProvider registered')
+
