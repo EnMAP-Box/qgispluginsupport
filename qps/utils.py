@@ -1019,7 +1019,7 @@ def qgsFields(source: typing.Union[QgsFeature, QgsFields, QgsVectorLayer]) -> Qg
     return None
 
 
-def qgsField(layer_fields: QgsVectorLayer, field: typing.Union[QgsField, str, int]) -> QgsField:
+def qgsField(layer_fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature], field: typing.Union[QgsField, str, int]) -> QgsField:
     """
     Returns the QgsField relating to the input value in "field"
     :param layer_fields: QgsVectorLayer | QgsFields
@@ -1027,6 +1027,8 @@ def qgsField(layer_fields: QgsVectorLayer, field: typing.Union[QgsField, str, in
     :return: QgsField or None, if not found
     """
     if isinstance(layer_fields, QgsVectorLayer):
+        layer_fields = layer_fields.fields()
+    elif isinstance(layer_fields, QgsFeature):
         layer_fields = layer_fields.fields()
 
     assert isinstance(layer_fields, QgsFields)
