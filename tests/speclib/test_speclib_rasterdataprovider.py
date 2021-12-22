@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from qgis._core import QgsMapLayerModel, QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRectangle, \
-    QgsField, QgsFields, QgsRasterDataProvider, QgsRasterInterface
+    QgsField, QgsFields, QgsRasterDataProvider, QgsRasterInterface, QgsRasterRange
 
 from qgis._gui import QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 
@@ -38,14 +38,68 @@ class TestCore(TestCase):
 
     def test_VectorLayerRasterDataProvider(self):
         vl = TestObjects.createVectorLayer()
+        QgsProject.instance().addMapLayer(vl)
+
+        fids = vl.allFeatureIds()
+        layers = []
+        dpList = []
         registerDataProvider()
         for field in vl.fields():
-            print(f'Test {field.name()}:{field.typeName()}')
+            name = f'Test {field.name()}:{field.typeName()}'
+            print(name)
             src = f'?lid={{{vl.id()}}}&field={field.name()}'
-            layer = QgsRasterLayer(src, 'Test', VectorLayerFieldRasterDataProvider.providerKey())
+            layer = QgsRasterLayer(src, name, VectorLayerFieldRasterDataProvider.providerKey())
             dp = layer.dataProvider()
 
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
+            self.assertTrue(dp.vectorLayer() == vl)
+            crs = dp.crs()
+
+            self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
+
+            nb = dp.bandCount()
+            for b in range(1, nb+1):
+                bandName = dp.generateBandName(b)
+                displayName = dp.displayBandName(b)
+
+                dp.setActiveFeatureIds(fids)
+
+                self.assertIsInstance(bandName, str)
+                self.assertTrue(bandName != '')
+                self.assertTrue(displayName, str)
+                self.assertTrue(displayName != '')
+
+                dt = dp.sourceDataType(b)
+                self.assertIsInstance(dt, Qgis.DataType)
+                src_nodata = dp.sourceNoDataValue(b)
+                self.assertTrue(src_nodata is not None)
+                usr_nodata = dp.userNoDataValues(b)
+                self.assertIsInstance(usr_nodata, list)
+                for nd in usr_nodata:
+                    self.assertIsInstance(nd, QgsRasterRange)
+
+            dpList.append(dp)
+            layers.append(layer)
+
+        QgsProject.instance().addMapLayers(layers, False)
+
+
+        model = QgsMapLayerModel(layers)
+        cb = QgsMapLayerComboBox()
+        cb.setModel(model)
+        canvas = QgsMapCanvas()
+        canvas.setLayers(layers[0:1])
+        canvas.zoomToFullExtent()
+
+        l = QVBoxLayout()
+        l.addWidget(cb)
+        l.addWidget(canvas)
+        w = QWidget()
+        w.setLayout(l)
+        self.showGui(w)
+
+
+
 
     def test_SpectralLibraryRasterDataProvider(self):
         n_bands = [[256, 2500],
