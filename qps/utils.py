@@ -1954,7 +1954,9 @@ def qgisToNumpyDataType(t: Qgis.DataType) -> np.dtype:
 
 
 def numpyToQgisDataType(t) -> Qgis.DataType:
-    return NUMPY2QGIS_DATA_TYPES.get(t, None)
+    if isinstance(t, np.dtype):
+        t = t.type
+    return NUMPY2QGIS_DATA_TYPES.get(t, Qgis.DataType.UnknownDataType)
 
 
 def qgisAppQgisInterface() -> QgisInterface:
@@ -2276,6 +2278,13 @@ class HashablePoint(QPoint):
     def __eq__(self, other):
         return self.x() == other.x() and self.y() == other.y()
 
+class HashableRectangle(QgsRectangle):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def __hash__(self):
+        return hash((self.xMinimum(), self.yMinimum(), self.xMaximum(), self.yMaximum()))
 
 class HashableRect(QRect):
 
@@ -3134,4 +3143,4 @@ def printCaller(prefix=None, suffix=None):
     prefix = f'{prefix}:' if prefix else ''
     suffix = f':{suffix}' if suffix else ''
 
-    print(f'#{prefix}{info}{suffix}')
+    print(f'#{prefix}{info}{suffix}', flush=True)

@@ -36,6 +36,7 @@ class SpectralProcessingTests(TestCase):
         super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initAll()
 
+
     def initProcessingRegistry(self) -> typing.Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
         procReg = QgsApplication.instance().processingRegistry()
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()

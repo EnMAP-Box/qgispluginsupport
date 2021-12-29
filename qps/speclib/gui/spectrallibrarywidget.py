@@ -78,7 +78,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mStatusLabel.setPlotWidget(self.mSpeclibPlotWidget)
         # self.mSpeclibPlotWidget.plotWidget.mUpdateTimer.timeout.connect(self.mStatusLabel.update)
 
-        self.pageProcessingWidget: SpectralProcessingWidget = SpectralProcessingWidget()
+        #self.pageProcessingWidget: SpectralProcessingWidget = SpectralProcessingWidget()
 
         l = QVBoxLayout()
         l.addWidget(self.mSpeclibPlotWidget)
@@ -89,7 +89,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.widgetLeft.setVisible(True)
         self.widgetRight.setVisible(False)
 
-        self.widgetCenter.addWidget(self.pageProcessingWidget)
+        # self.widgetCenter.addWidget(self.pageProcessingWidget)
         self.widgetCenter.currentChanged.connect(self.updateToolbarVisibility)
         # self.widgetCenter.visibilityChanged.connect(self.updateToolbarVisibility)
         self.mMainView.formModeChanged.connect(self.updateToolbarVisibility)
@@ -190,14 +190,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.mMainViewButtonGroup.buttonClicked.connect(self.updateToolbarVisibility)
 
-        self.tbSpectralProcessing = QToolBar('Spectral Processing')
-        self.tbSpectralProcessing.setMovable(False)
-        self.tbSpectralProcessing.setFloatable(False)
-        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionApplyModel)
-        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionVerifyModel)
-        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionSaveModel)
-        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionLoadModel)
-        self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionRemoveFunction)
+        #self.tbSpectralProcessing = QToolBar('Spectral Processing')
+        #self.tbSpectralProcessing.setMovable(False)
+        #self.tbSpectralProcessing.setFloatable(False)
+        #self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionApplyModel)
+        #self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionVerifyModel)
+        #self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionSaveModel)
+        #self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionLoadModel)
+        #self.tbSpectralProcessing.addAction(self.pageProcessingWidget.actionRemoveFunction)
 
         r = self.tbSpeclibAction.addSeparator()
         self.tbSpeclibAction.addAction(self.actionShowProfileView)
@@ -210,7 +210,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.tbSpeclibAction.addAction(self.actionShowProcessingWidget)
 
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
-        self.insertToolBar(self.mToolbar, self.tbSpectralProcessing)
+        # self.insertToolBar(self.mToolbar, self.tbSpectralProcessing)
 
         # update toolbar visibilities
         self.updateToolbarVisibility()
@@ -302,7 +302,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
                 self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
                 self.mMainView.setView(QgsDualView.AttributeEditor)
             elif is_processingview:
-                self.widgetCenter.setCurrentWidget(self.pageProcessingWidget)
+                pass
+                # self.widgetCenter.setCurrentWidget(self.pageProcessingWidget)
             self.widgetCenter.setVisible(True)
 
         self.updateToolbarVisibility()
@@ -310,7 +311,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def updateToolbarVisibility(self, *args):
 
         self.mToolbar.setVisible(self.pageAttributeTable.isVisibleTo(self))
-        self.tbSpectralProcessing.setVisible(self.pageProcessingWidget.isVisibleTo(self))
+        # self.tbSpectralProcessing.setVisible(self.pageProcessingWidget.isVisibleTo(self))
 
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()

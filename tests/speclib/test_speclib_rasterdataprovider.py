@@ -1,30 +1,33 @@
 import numpy as np
 from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from qgis._core import QgsMapLayerModel, QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRectangle, \
-    QgsField, QgsFields, QgsRasterDataProvider, QgsRasterInterface, QgsRasterRange
+    QgsField, QgsFields, QgsRasterDataProvider, QgsRasterInterface, QgsRasterRange, QgsMapLayerStore, QgsRasterPipe
 
 from qgis._gui import QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 
 from qps import initResources
+from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider, registerDataProvider, \
-    VectorLayerFieldRasterDataProvider
+    VectorLayerFieldRasterDataProvider, createExampleLayers
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase
 
 
-class TestCore(TestCase):
+class RasterDataProviderTests(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
-        super(TestCore, cls).setUpClass(*args, **kwds)
+        super(RasterDataProviderTests, cls).setUpClass(*args, **kwds)
         initResources()
         from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
         initSpectralLibraryIOs()
+        registerDataProvider()
 
     def setUp(self):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
 
+        self.mapLayerStore = QgsMapLayerStore()
         reg = QgsGui.editorWidgetRegistry()
         if len(reg.factories()) == 0:
             reg.initEditors()
@@ -41,6 +44,7 @@ class TestCore(TestCase):
         QgsProject.instance().addMapLayer(vl)
 
         fids = vl.allFeatureIds()
+        features = vl.getFeatures()
         layers = []
         dpList = []
         registerDataProvider()
@@ -49,20 +53,18 @@ class TestCore(TestCase):
             print(name)
             src = f'?lid={{{vl.id()}}}&field={field.name()}'
             layer = QgsRasterLayer(src, name, VectorLayerFieldRasterDataProvider.providerKey())
-            dp = layer.dataProvider()
+            dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
 
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
-            self.assertTrue(dp.vectorLayer() == vl)
+            self.assertTrue(dp.fields() == vl.fields())
             crs = dp.crs()
-
+            dp.setActiveFeatures(features)
             self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
 
             nb = dp.bandCount()
             for b in range(1, nb+1):
                 bandName = dp.generateBandName(b)
                 displayName = dp.displayBandName(b)
-
-                dp.setActiveFeatureIds(fids)
 
                 self.assertIsInstance(bandName, str)
                 self.assertTrue(bandName != '')
@@ -81,32 +83,62 @@ class TestCore(TestCase):
             dpList.append(dp)
             layers.append(layer)
 
-        QgsProject.instance().addMapLayers(layers, False)
+        lyr = layers[0]
+        c = self.rasterProviderTestSuite(lyr)
+        self.showGui(c)
+        #print('SHOW GUI')
 
 
-        model = QgsMapLayerModel(layers)
+    def rasterProviderTestSuite(self, layer: QgsRasterLayer) -> QgsMapCanvas:
+        self.assertIsInstance(layer, QgsRasterLayer)
+
+        QgsProject.instance().addMapLayer(layer, False)
+        
+        pipe = layer.pipe()
+        self.assertIsInstance(pipe, QgsRasterPipe)
         cb = QgsMapLayerComboBox()
-        cb.setModel(model)
-        canvas = QgsMapCanvas()
-        canvas.setLayers(layers[0:1])
-        canvas.zoomToFullExtent()
+        cb.setLayer(layer)
+        c: QgsMapCanvas = QgsMapCanvas()
+
+        c.setLayers([layer])
+        c.zoomToFullExtent()
 
         l = QVBoxLayout()
         l.addWidget(cb)
-        l.addWidget(canvas)
+        l.addWidget(c)
         w = QWidget()
         w.setLayout(l)
-        self.showGui(w)
+        w.show()
+        return w
 
 
+        return c
 
+    def test_createExampleLayers(self):
 
+        vl = TestObjects.createSpectralLibrary(20, n_bands=[[13, 25, 5], [22, None, 42]], n_empty=2)
+        fields = profile_fields(vl)
+        layers = createExampleLayers(vl, fields.at(1))
+        for lyr in layers:
+            self.assertIsInstance(lyr, QgsRasterLayer)
+            dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
+            self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
+            self.assertTrue(len(dp.activeFeatureIds()) == 20)
+
+        layers = createExampleLayers(vl)
+        for lyr in layers:
+            self.assertIsInstance(lyr, QgsRasterLayer)
+            dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
+            self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
+
+        s = ""
     def test_SpectralLibraryRasterDataProvider(self):
         n_bands = [[256, 2500],
                    [123, 42]]
         n_features = 500
 
-        registerDataProvider()
+
+
 
         SLIB = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         # SLIB = TestObjects.createSpectralLibrary()

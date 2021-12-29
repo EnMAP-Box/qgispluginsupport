@@ -1,21 +1,74 @@
+import math
 import re
 import typing
 import pathlib
+import warnings
 
 import numpy as np
-from PyQt5.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDate, QDateTime, QByteArray
+from PyQt5.QtGui import QIcon, QColor
 from qgis._core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
-    QgsRasterBandStats, QgsProject, QgsVectorLayerCache
+    QgsRasterBandStats, QgsProject, QgsVectorLayerCache, QgsPointXY, QgsRaster, QgsRasterIdentifyResult, \
+    QgsColorRampShader
 
 from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, QgsRasterDataProvider, QgsField, \
     QgsDataSourceUri, QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
     QgsProviderRegistry, QgsMessageLog
 
 from qps.speclib.core import profile_fields, is_profile_field, profile_field_indices
-from qps.speclib.core.spectralprofile import SpectralSetting, groupBySpectralProperties, SpectralProfile
-from qps.utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType
+from qps.speclib.core.spectralprofile import SpectralSetting, groupBySpectralProperties, SpectralProfile, \
+    decodeProfileValueDict
+from qps.utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextColor, numpyToQgisDataType, \
+    HashableRectangle, printCaller, qgsFields
+
+
+def createExampleLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],
+                        fields = None) -> typing.List[QgsRasterLayer]:
+    if isinstance(features, QgsVectorLayer):
+        features = list(features.getFeatures())
+
+    layers = []
+    if len(features) == 0:
+        return layers
+
+    all_fields = features[0].fields()
+    if fields is None:
+        fields = [f for f in all_fields]
+    else:
+        if isinstance(fields, QgsField):
+            fields = [fields]
+        elif isinstance(fields, QgsFields):
+            fields = [f for f in fields]
+    for f in fields:
+        assert isinstance(f, QgsField)
+    for field in fields:
+        if is_profile_field(field):
+            GROUPS = groupBySpectralProperties(features, profile_field=field)
+
+            for setting, profiles in GROUPS.items():
+                name = f'{field.name()} ({setting.n_bands()} bands, {setting.xUnit()})'
+                lyr = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+                dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
+                dp.setActiveFeatures(profiles, field=field)
+                layers.append(lyr)
+        else:
+            name = f'{field.name()} ({field.typeName()})'
+            layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+            dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
+            dp.setActiveFeatures(features, field=field)
+            layers.append(layer)
+    return layers
+
+
+def nn_resample(img, shape):
+    def per_axis(in_sz, out_sz):
+        ratio = 0.5 * in_sz / out_sz
+        return np.round(np.linspace(ratio - 0.5, in_sz - ratio - 0.5, num=out_sz)).astype(int)
+
+    return img[per_axis(img.shape[0], shape[0])[:, None],
+               per_axis(img.shape[1], shape[1])]
 
 
 def featuresToArrays(speclib: QgsVectorLayer,
@@ -109,7 +162,7 @@ class SpectralLibraryRasterLayerModel(QgsMapLayerModel):
         if isEmpty or additionalIndex >= 0:
             return None
 
-        layer = self.layerFromIndex(index.row() - ( 1 if self.allowEmptyLayer() else 0 ) )
+        layer = self.layerFromIndex(index.row() - (1 if self.allowEmptyLayer() else 0))
         if isinstance(layer, QgsRasterLayer) and isinstance(layer.dataProvider(), SpectralLibraryRasterDataProvider):
             return QIcon(r':/qps/ui/icons/profile.svg')
         else:
@@ -118,7 +171,7 @@ class SpectralLibraryRasterLayerModel(QgsMapLayerModel):
 
 class FieldToRasterValueConverter(QObject):
     """
-    This class converts QgsFeauture values of a field from / to array raster layer values
+    This class converts QgsFeature values of a field from / to array raster layer values
     """
     LUT_FIELD_TYPES = {
         QVariant.Bool: Qgis.DataType.Byte,
@@ -133,17 +186,20 @@ class FieldToRasterValueConverter(QObject):
         QVariant.Time: Qgis.DataType.Int32,
     }
 
+    NO_DATA_CANDIDATES = [-1, -9999]
+
     @classmethod
     def supportsField(cls, field: QgsField) -> bool:
         return field.type() in FieldToRasterValueConverter.LUT_FIELD_TYPES.keys()
 
-    def __init__(self, field: QgsField, parent: QObject = None):
-        super().__init__(parent)
+    def __init__(self, field: QgsField, ):
+        super().__init__(None)
 
         assert isinstance(field, QgsField)
         self.mField: QgsField = field
-        self.mNoData = None
-
+        # there need to be a numeric no-data value
+        self.mNoData = -1
+        self.mColorTable = list()
         self.mRasterData: np.ndarray = None
 
     def isValid(self) -> bool:
@@ -152,14 +208,35 @@ class FieldToRasterValueConverter(QObject):
     def updateRasterData(self, features: typing.List[QgsFeature]):
 
         self.mRasterData = None
-
         fieldValues = [f.attribute(self.mField.name()) for f in features]
-        self.mRasterData = self.toRasterValues(fieldValues)
+        self.mRasterData, self.mColorTable, self.mNoData = self.toRasterValues(fieldValues)
+
+    def colorInterpretationName(self, bandNo: int):
+        return QgsRaster.UndefinedColorInterpretation
+
+    def htmlMetadata(self) -> str:
+        return f'Field: {self.field().name()} Type: {self.field().typeName()}'
+
+    def isClassification(self) -> bool:
+
+        return self.field().type() == QVariant.String
+
+    def colorInterpretation(self, bandNo: int) -> int:
+        if self.isClassification():
+            return QgsRaster.PalettedColor
+        else:
+            return QgsRaster.GrayIndex
+
+    def colorTable(self, bandNo: int) -> typing.List[QgsColorRampShader.ColorRampItem]:
+        return self.mColorTable[:]
+
+    def field(self) -> QgsField:
+        return self.mField
 
     def rasterDataArray(self) -> np.ndarray:
         return self.mRasterData
 
-    def rasterBandCount(self) -> int:
+    def bandCount(self) -> int:
         """
         One field, one raster band
         :return:
@@ -167,61 +244,201 @@ class FieldToRasterValueConverter(QObject):
         """
         return 1
 
-    def rasterSourceNoDataValue(self, band: int):
+    def bandScale(self, bandNo: int) -> float:
+        return 1
 
-        s = ""
+    def bandOffset(self, bandNo: int) -> float:
+        return 0
+
+    def sourceNoDataValue(self, band: int):
+        return self.mNoData
 
     def rasterDataTypeSize(self, band: int):
-
-
         s = ""
 
-    def rasterSourceDataType(self, band: int) -> Qgis.DataType:
+    def generateBandName(self, band: int):
+        digits = int(math.log10(self.bandCount())) + 1
+        return '{} Band {}'.format(self.field().name(), str(band).zfill(digits))
+
+    def dataType(self, band: int) -> Qgis.DataType:
         return FieldToRasterValueConverter.LUT_FIELD_TYPES.get(self.mField.type(), Qgis.DataType.UnknownDataType)
 
-    def toRasterValues(self, fieldValues: typing.List) -> np.ndarray:
+    def toRasterValues(self, fieldValues: typing.List) -> typing.Tuple[
+        np.ndarray,
+        typing.List[QgsColorRampShader.ColorRampItem],
+        typing.Any]:
         ns = len(fieldValues)
-        nb = self.rasterBandCount()
-        dtype = qgisToNumpyDataType(self.rasterSourceDataType(1))
-        array = np.asarray(fieldValues, dtype=dtype)
-        array = array.reshape((nb, 1, ns))
+        nb = self.bandCount()
+        field = self.mField
+        dtype = qgisToNumpyDataType(self.dataType(1))
+
+        colorTable: typing.List[QgsColorRampShader.ColorRampItem] = []
+
+        noData = None
+        numericValues = None
+
+        if field.type() == QVariant.String:
+            # convert values class values
+            noData = 0
+            uniqueValues = set(fieldValues)
+            uniqueValues = sorted(uniqueValues, key=lambda v: v not in [None, NULL])
+
+            LUT = {None: noData,
+                   NULL: noData
+                   }
+            color = QColor('black')
+            colorTable.append(QgsColorRampShader.ColorRampItem(float(noData), color, 'no data'))
+            for v in uniqueValues:
+                if v not in LUT.keys():
+                    LUT[v] = len(LUT) - 1
+                    color = nextColor(color, mode='cat')
+                    colorTable.append(QgsColorRampShader.ColorRampItem(
+                        float(LUT[v]), color, str(v)))
+
+            numericValues = [LUT[v] for v in fieldValues]
+
+        elif field.type() in [QVariant.Bool,
+                              QVariant.Int, QVariant.UInt,
+                              QVariant.LongLong, QVariant.ULongLong,
+                              QVariant.Double]:
+
+            for c in self.NO_DATA_CANDIDATES:
+                if c not in fieldValues:
+                    noData = c
+                    break
+
+            if noData is None:
+                noData = min(fieldValues) - 1
+
+            numericValues = []
+            for v in fieldValues:
+                if v in [None, NULL]:
+                    numericValues.append(noData)
+                else:
+                    numericValues.append(v)
+        elif field.type() == QVariant.DateTime:
+            numericValues = []
+            noData = -9999
+            for v in fieldValues:
+                if isinstance(v, QDateTime):
+                    numericValues.append(v.toSecsSinceEpoch())
+                else:
+                    numericValues.append(noData)
+
+        if noData is not None and numericValues is not None:
+            array = np.asarray(numericValues, dtype=dtype)
+            array = array.reshape((nb, 1, ns))
+        else:
+            # fallback: empty image
+            noData = -9999
+            array = noData * np.ones((nb, 1, ns))
+
         assert array.ndim == 3
-        return array
+        return array, colorTable, noData
 
     def toFieldValues(self, rasterValue: np.ndarray) -> typing.List:
         raise NotImplementedError
 
 
+class SpectralProfileValueConverter(FieldToRasterValueConverter):
+
+    @classmethod
+    def supportsField(cls, field: QgsField) -> bool:
+        return is_profile_field(field)
+
+    def __init__(self, field: QgsField):
+        assert is_profile_field(field)
+        super(SpectralProfileValueConverter, self).__init__(field)
+        self.mSpectralSetting: SpectralSetting = None
+
+    def colorInterpretation(self, bandNo: int) -> int:
+        return QgsRaster.MultiBandColor
+
+    def activeSpectralSetting(self) -> SpectralSetting:
+        return self.mSpectralSetting
+
+    def bandCount(self) -> int:
+        if isinstance(self.mSpectralSetting, SpectralSetting):
+            return self.mSpectralSetting.n_bands()
+        else:
+            return 0
+
+    def dataType(self, band: int) -> Qgis.DataType:
+        if isinstance(self.mRasterData, np.ndarray):
+            return numpyToQgisDataType(self.mRasterData.dtype)
+
+        else:
+            return Qgis.DataType.UnknownDataType
+
+    def toRasterValues(self, fieldValues: typing.List) -> typing.Tuple[
+        np.ndarray,
+        typing.List[QgsColorRampShader.ColorRampItem],
+        typing.Any]:
+
+        # get spectral setting
+        self.mSpectralSetting = None
+
+        ns = len(fieldValues)
+        nb = 0
+        profileData: typing.List = []
+        profileIndices: typing.List[int] = []
+
+        for i, v in enumerate(fieldValues):
+            if isinstance(v, QByteArray):
+                d = decodeProfileValueDict(v)
+                s = SpectralSetting.fromDictionary(d)
+                if isinstance(s, SpectralSetting):
+                    if self.mSpectralSetting is None:
+                        self.mSpectralSetting = s
+                        nb = s.n_bands()
+                    if s == self.mSpectralSetting:
+                        profileData.append(d['y'])
+                        profileIndices.append(i)
+
+        profileIndices = np.asarray(profileIndices)
+        profileData2 = np.asarray(profileData)
+        # p1 = profileData[0]
+        profileData = np.asarray(profileData).transpose().reshape(nb, 1, len(profileIndices))
+
+        uniqueValues = np.unique(profileData)
+
+        noData = None
+        for c in self.NO_DATA_CANDIDATES + [profileData.min() - 1]:
+            if c not in uniqueValues:
+                noData = c
+                break
+
+        rasterData = np.ones((nb, 1, ns), dtype=profileData.dtype) * noData
+        rasterData[:, :, profileIndices] = profileData
+        return rasterData, [], noData
+
+        s = ""
 
 
-class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
+class SpectralProfileValueConverter(QgsRasterDataProvider):
     """
     A QgsRasterDataProvider to access the field values in a QgsVectorLayer like a raster layer
     """
+    PARENT = QObject()
 
-    FIELD_CONVERTER = [FieldToRasterValueConverter]
+    FIELD_CONVERTER = [FieldToRasterValueConverter, SpectralProfileValueConverter]
 
     def __init__(self,
                  uri: str,
                  providerOptions: QgsDataProvider.ProviderOptions = QgsDataProvider.ProviderOptions(),
                  flags: typing.Union[QgsDataProvider.ReadFlags, QgsDataProvider.ReadFlag] = QgsDataProvider.ReadFlags(),
-                 vectorLayerCache: QgsVectorLayerCache = None,
                  ):
 
         super().__init__(uri, providerOptions=providerOptions, flags=flags)
         self.mProviderOptions = providerOptions
         self.mFlags = flags
-        self.mVectorLayerCache: QgsVectorLayerCache = vectorLayerCache
-        self.mVectorLayer: QgsVectorLayer = None
         self.mField: QgsField = None
         self.mFieldConverter: FieldToRasterValueConverter = None
         self.mFeatures: typing.List[QgsFeature] = []
-        self.mFeatureFieldData: list = None
-
-        if not isinstance(vectorLayerCache, QgsVectorLayerCache):
-            self.initWithDataSourceUri(self.dataSourceUri())
-        else:
-            self.setVectorLayerCache(vectorLayerCache)
+        self.mStatsCache = dict()
+        self.mYOffset: int = 0
+        self.mYOffsetManual: bool = False
+        self.initWithDataSourceUri(self.dataSourceUri())
 
     def activeFeatures(self) -> typing.List[QgsFeature]:
         return self.mFeatures
@@ -246,32 +463,28 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         if isinstance(layer, QgsVectorLayer):
             if query.hasQueryItem('cachesize'):
                 cs = int(query.queryItemValue('cachesize'))
-                assert cs > 0, 'cachsize needs to be > 0'
+                assert cs > 0, 'cachesize needs to be > 0'
                 cacheSize = cs
-            vectorLayerCache = QgsVectorLayerCache(layer, cacheSize)
-            self.setVectorLayerCache(vectorLayerCache)
 
-            if query.hasQueryItem('field'):
-                self.setActiveField(query.queryItemValue('field'))
+            if layer.featureCount() > 0:
+                self.setActiveFeatures(layer.getFeatures())
 
-            if vectorLayerCache.featureCount() > 0:
-                self.setActiveFeatureIds(vectorLayerCache.layer().allFeatureIds()[0:1])
+                if query.hasQueryItem('field'):
+                    self.setActiveField(query.queryItemValue('field'))
+                else:
+                    self.setActiveField(self.fields()[0])
 
-    def setVectorLayerCache(self, vectorLayerCache: QgsVectorLayerCache):
-        assert isinstance(vectorLayerCache, QgsVectorLayerCache)
-        self.mVectorLayerCache = vectorLayerCache
-
-        if self.activeField() not in self.fields():
-            self.setActiveField(self.fields()[0])
-
-    def vectorLayerCache(self) -> QgsVectorLayerCache:
-        return self.mVectorLayerCache
-
-    def fields(self):
-        return self.mVectorLayerCache.fields()
+    def fields(self) -> QgsFields:
+        if len(self.mFeatures) > 0:
+            return self.mFeatures[0].fields()
+        else:
+            return QgsFields()
 
     def generateBandName(self, bandNumber: int) -> str:
-        return f'{self.activeField().name()} Band {bandNumber} '
+        if self.hasFieldConverter():
+            return self.fieldConverter().generateBandName(bandNumber)
+        else:
+            return f'{self.activeField().name()} Band {bandNumber} '
 
     def block(self,
               bandNo: int,
@@ -280,75 +493,173 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
               height: int,
               feedback: typing.Optional[QgsRasterBlockFeedback] = None) -> QgsRasterBlock:
 
-        s = ""
-        s = ""
+        # print(f'# block: {bandNo}: {boundingBox} : {width} : {height}', flush=True)
 
-    def _feature_data(self) -> list:
-        if not (isinstance(self.mFeatureFieldData, list) and len(self.mFeatureFieldData) == len(self.mFeatures)):
-            self.mFeatureFieldData = [f.attribute(self.activeField().name()) for f in self.activeFeatures()]
-        return self.mFeatureFieldData
+        dt = self.dataType(bandNo)
+        block = QgsRasterBlock(dt, width, height)
+
+        mExtent = self.extent()
+        if not mExtent.intersects(boundingBox):
+            block.setIsNoData()
+            return block
+
+        if not mExtent.contains(boundingBox):
+            subRect = QgsRasterBlock.subRect(boundingBox, width, height, mExtent)
+            block.setIsNoDataExcept(subRect)
+
+        self._readBlock(bandNo, boundingBox, width, height, block, feedback)
+
+        return block
+
+    def _readBlock(self, bandNo: int, reqExtent: QgsRectangle,
+                   bufferWidthPix: int, bufferHeightPix: int, block: QgsRasterBlock,
+                   feedback: QgsRasterBlockFeedback) -> bool:
+        fullExtent = self.extent()
+        intersectExtent = reqExtent.intersect(fullExtent)
+        if intersectExtent.isEmpty():
+            print('# draw request outside view extent', flush=True)
+            return False
+
+        converter = self.fieldConverter()
+        if isinstance(converter, FieldToRasterValueConverter):
+            x0, x1 = round(intersectExtent.xMinimum()), round(intersectExtent.xMaximum())
+            y0, y1 = round(intersectExtent.yMinimum()), round(intersectExtent.yMaximum())
+            import scipy.interpolate as interp
+            band_slice = converter.rasterDataArray()[bandNo - 1, 0:1, int(x0):int(x1)]
+
+            band_data = nn_resample(band_slice, (bufferHeightPix, bufferWidthPix))
+
+            # print(f'# Extents:\nF={fullExtent}\nR={reqExtent}\nI={intersectExtent}\n w={bufferWidthPix} h={bufferHeightPix}')
+
+            # print(f'# band_data: {band_data.shape} {band_data.min()} to {band_data.max()}')
+            block.setData(band_data.tobytes())
+
+        return True
 
     def fieldValues(self) -> list:
         return [f.attribute(self.activeField().name()) for f in self.activeFeatures()]
 
-    def bandStatistics(self, bandNo: int, stats: int = ..., extent: QgsRectangle = ..., sampleSize: int = ..., feedback: typing.Optional['QgsRasterBlockFeedback'] = ...) -> 'QgsRasterBandStats':
+    def hasStatistics(self,
+                      bandNo: int,
+                      stats: int = ...,
+                      extent: QgsRectangle = ...,
+                      sampleSize: int = ...,
+                      feedback: typing.Optional['QgsRasterBlockFeedback'] = ...) -> bool:
+        return True
+        statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
+        return statsKey in self.mStatsCache.keys()
 
+    def _statsKey(self, bandNo, stats, extent, sampleSize):
+        return (bandNo, stats, HashableRectangle(extent))
+
+    def bandStatistics(self,
+                       bandNo: int,
+                       stats: int = ...,
+                       extent: QgsRectangle = ...,
+                       sampleSize: int = ...,
+                       feedback: typing.Optional['QgsRasterBlockFeedback'] = ...) -> 'QgsRasterBandStats':
+
+        statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
+        if statsKey in self.mStatsCache.keys():
+            return self.mStatsCache[statsKey]
+        print(f'# statistics')
         if extent is None:
             extent = QgsRectangle()
         else:
             extent = QgsRectangle(extent)
 
         stats = QgsRasterBandStats()
-        band_data: np.ndarray = self.fieldConverter().rasterDataArray()
+        if self.hasFieldConverter():
+            band_data: np.ndarray = self.fieldConverter().rasterDataArray()[bandNo - 1, :, :]
 
-        stats.sum = band_data[bandNo-1, :, :].sum()
-        stats.minimumValue = band_data[bandNo-1, :, :].min()
-        stats.maximumValue = band_data[bandNo-1, :, :].max()
-        stats.mean = band_data[bandNo-1, :, :].mean()
-        stats.extent = extent
-        stats.elementCount = len(band_data)
-        stats.height = band_data.shape[1]
-        stats.width = band_data.shape[2]
+            stats.sum = np.nansum(band_data)
+            stats.minimumValue = np.nanmin(band_data)
+            stats.maximumValue = np.nanmax(band_data)
+            stats.mean = np.nanmean(band_data)
+            stats.extent = extent
+            stats.elementCount = len(band_data)
+            stats.height = band_data.shape[-2]
+            stats.width = band_data.shape[-1]
+
+            # set statsGathered! if not, the default renderer won't consider the value range
+            stats.statsGathered = True
+            self.mStatsCache[statsKey] = stats
         return stats
 
+    def hasFieldConverter(self) -> bool:
+        return isinstance(self.mFieldConverter, FieldToRasterValueConverter)
+
     def bandScale(self, bandNo: int) -> float:
-        s = ""
+        if self.hasFieldConverter():
+            return self.fieldConverter().bandScale(bandNo)
+        else:
+            return 1
 
     def bandOffset(self, bandNo: int) -> float:
-        s = ""
+        if self.hasFieldConverter():
+            return self.fieldConverter().bandOffset(bandNo)
+        else:
+            return 0
 
     def setActiveField(self, field: typing.Union[str, int, QgsField]):
+        lastField: QgsField = self.activeField()
+
         activeField = qgsField(self.fields(), field)
+
         assert isinstance(activeField, QgsField), f'Field not found/supported: {field}'
 
-        if not (isinstance(self.fieldConverter(), FieldToRasterValueConverter) and
-                self.fieldConverter().supportsField(activeField)):
+        if activeField != self.mField or not \
+                (isinstance(self.fieldConverter(), FieldToRasterValueConverter) and
+                 self.fieldConverter().supportsField(activeField)):
             self.mFieldConverter = None
             for c in VectorLayerFieldRasterDataProvider.FIELD_CONVERTER:
                 if c.supportsField(activeField):
                     self.mField = activeField
                     self.setFieldConverter(c(activeField))
                     break
-        assert isinstance(self.fieldConverter(), FieldToRasterValueConverter), f'Did not found field converter for {field}'
+
+        if not isinstance(self.fieldConverter(), FieldToRasterValueConverter):
+            warnings.warn(f'Did not found converter for field "{field}"')
+            self.mField = activeField
+            self.mFieldConverter = FieldToRasterValueConverter(self.mField)
+
+        if lastField != self.mField:
+            self.fieldConverter().updateRasterData(self.activeFeatures())
+
+        # set the extent Y offset
+        if not self.mYOffsetManual:
+            fields = self.fields()
+            if fields.count() > 0:
+                self.mYOffset = fields.lookupField(self.mField.name())
+
+        self.mStatsCache.clear()
+
+    def setExtentYOffset(self, offset: int):
+        assert offset >= 0
+        self.mYOffset = offset
+        self.mYOffsetManual = True
 
     def activeField(self) -> QgsField:
         return self.mField
 
-    def setActiveFeatureIds(self, fids):
-
-        request = QgsFeatureRequest()
-        request.setFilterFids(fids)
-        self.setActiveFeatures(list(self.mVectorLayerCache.getFeatures(request)))
-
-    def setActiveFeatures(self, features: typing.List[QgsFeature]):
+    def setActiveFeatures(self, features: typing.List[QgsFeature], field: QgsField = None):
+        if not isinstance(features, list):
+            features = list(features)
         assert isinstance(features, list)
         self.mFeatures.clear()
         self.mFeatures.extend(features)
 
+        if isinstance(field, QgsField):
+            self.setActiveField(field)
+
         if self.fieldConverter():
             self.fieldConverter().updateRasterData(self.activeFeatures())
 
-    def activeFeatureIds(self):
+        self.mStatsCache.clear()
+        self.fullExtentCalculated.emit()
+        self.dataChanged.emit()
+
+    def activeFeatureIds(self) -> typing.List[int]:
         return [f.id() for f in self.mFeatures]
 
     def setFieldConverter(self, converter: FieldToRasterValueConverter):
@@ -360,29 +671,40 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def fieldConverter(self) -> FieldToRasterValueConverter:
         return self.mFieldConverter
 
-    def vectorLayer(self) -> QgsVectorLayer:
-        return self.mVectorLayerCache.layer()
+    def enableProviderResampling(self, enable: bool) -> bool:
+        return True
 
     def extent(self) -> QgsRectangle:
-
         rect = QgsRectangle()
+        rect.setXMinimum(0)
+        rect.setYMinimum(self.mYOffset)
         rect.setXMaximum(self.xSize())
-        rect.setYMaximum(self.ySize())
+        rect.setYMaximum(self.mYOffset + self.ySize())
+        # print(f'#exent {self.xSize()} {self.ySize()}')
         return rect
 
     def sourceDataType(self, bandNo: int) -> Qgis.DataType:
         return self.dataType(bandNo)
 
+    def sourceHasNoDataValue(self, bandNo):
+        return True
+
+    def sourceNoDataValue(self, bandNo):
+        if self.hasFieldConverter():
+            return self.fieldConverter().sourceNoDataValue(bandNo)
+        else:
+            return FieldToRasterValueConverter.NO_DATA_CANDIDATES[0]
+
     def dataType(self, bandNo: int) -> Qgis.DataType:
 
-        if self.isValid():
-            return self.fieldConverter().rasterSourceDataType(bandNo)
+        if self.hasFieldConverter():
+            return self.fieldConverter().dataType(bandNo)
         else:
             return Qgis.DataType.UnknownDataType
 
     def bandCount(self) -> int:
-        if self.isValid():
-            return self.mFieldConverter.rasterBandCount()
+        if self.hasFieldConverter():
+            return self.mFieldConverter.bandCount()
         else:
             return 0
 
@@ -396,8 +718,14 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             return 0
 
     def capabilities(self):
-        caps = QgsRasterInterface.Size | QgsRasterInterface.Identify | QgsRasterInterface.IdentifyValue
+        caps = QgsRasterInterface.Size | QgsRasterInterface.IdentifyValue | QgsRasterInterface.Identify
+        # QgsRasterInterface.IdentifyHtml | QgsRasterInterface.IdentifyText
         return QgsRasterDataProvider.ProviderCapabilities(caps)
+
+    def htmlMetadata(self) -> str:
+        md = ' Dummy '
+        md += self.fieldConverter().htmlMetadata()
+        return md
 
     def name(self):
         return 'Name2'
@@ -417,20 +745,59 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         provider = VectorLayerFieldRasterDataProvider(uri, providerOptions, flags)
         return provider
 
+    def colorInterpretation(self, bandNo: int) -> int:
+        if self.hasFieldConverter():
+            return self.fieldConverter().colorInterpretation(bandNo)
+        else:
+            return QgsRaster.GrayIndex
+
+    def colorTable(self, bandNo: int) -> typing.List[QgsColorRampShader.ColorRampItem]:
+        return self.fieldConverter().colorTable(bandNo)
+
     def clone(self) -> 'VectorLayerFieldRasterDataProvider':
         dp = VectorLayerFieldRasterDataProvider(None)
         dp.setDataSourceUri(self.dataSourceUri(expandAuthConfig=True))
         # share vector layer cache
-        dp.setVectorLayerCache(self.vectorLayerCache())
-        dp.setActiveField(self.activeField())
+
         dp.setActiveFeatures(self.activeFeatures())
+        dp.setActiveField(self.activeField())
+        dp.setParent(VectorLayerFieldRasterDataProvider.PARENT)
+        # print(f'#CLONE  {self.extent()}  ->  {dp.extent()}')
+        # self._refs_.append(dp)
         return dp
 
     def crs(self) -> QgsCoordinateReferenceSystem:
         return QgsCoordinateReferenceSystem()
 
     def isValid(self) -> bool:
-        return isinstance(self.mFieldConverter, FieldToRasterValueConverter)
+        return True
+        return isinstance(self.mVectorLayerCache, QgsVectorLayerCache) and \
+               isinstance(self.mFieldConverter, FieldToRasterValueConverter)
+
+    def identify(self, point: QgsPointXY, format: QgsRaster.IdentifyFormat,
+                 boundingBox: QgsRectangle = ..., width: int = ..., height: int = ...,
+                 dpi: int = ...) -> QgsRasterIdentifyResult:
+
+        results = dict()
+
+        x = int(point.x())
+        array = self.fieldConverter().rasterDataArray()
+
+        r = None
+        if format == QgsRaster.IdentifyFormatValue:
+
+            if 0 <= x < array.shape[-1]:
+                for b in range(self.bandCount()):
+                    results[b + 1] = float(array[b, 0, x])
+        elif format in [QgsRaster.IdentifyFormatHtml, QgsRaster.IdentifyFormatText]:
+            results[0] = 'Dummy HTML / Text'
+
+        info = f'# identify results ({len(results)}):'
+        for k, v in results.items():
+            info += f'\n\t {k}:{v}'
+        print(info)
+        r = QgsRasterIdentifyResult(format, results)
+        return r
 
 
 class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
@@ -438,20 +805,19 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
     An
     """
 
-    def __init__(self, *args, speclib=None, fids: typing.List[int]=None, **kwds):
+    def __init__(self, *args, speclib=None, fids: typing.List[int] = None, **kwds):
 
         super().__init__(*args, **kwds)
 
         self.mSpeclib: QgsVectorLayer = None
         self.mProfileFields: QgsFields = QgsFields()
         self.mARRAYS: typing.Dict[typing.Tuple[SpectralSetting, ...],
-                      typing.Tuple[np.ndarray, typing.List[np.ndarray]]] = dict()
+                                  typing.Tuple[np.ndarray, typing.List[np.ndarray]]] = dict()
         self.mActiveProfileSettings: typing.Tuple[SpectralSetting, ...] = None
         self.mActiveProfileField: QgsField = None
 
         if speclib:
             self.initData(speclib, fids)
-
 
     def createFieldLayer(self,
                          field: QgsField,
@@ -619,7 +985,7 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
               width: int,
               height: int,
               feedback: QgsRasterBlockFeedback = None) -> QgsRasterBlock:
-        band_data: np.ndarray = self.profileArray()[bandNo-1, :]
+        band_data: np.ndarray = self.profileArray()[bandNo - 1, :]
 
         data_subset = band_data
         dt = self.dataType(bandNo)
@@ -640,7 +1006,7 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
             extent = QgsRectangle(extent)
 
         stats = QgsRasterBandStats()
-        band_data: np.ndarray = self.profileArray()[bandNo-1, :]
+        band_data: np.ndarray = self.profileArray()[bandNo - 1, :]
 
         stats.sum = band_data.sum()
         stats.minimumValue = band_data.min()
@@ -652,8 +1018,8 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
     def generateBandName(self, band_no: int):
         setting = self.profileSetting()
 
-        if isinstance(setting, SpectralSetting) and band_no > 0  and band_no <= setting.n_bands():
-            wl = setting.x()[band_no-1]
+        if isinstance(setting, SpectralSetting) and band_no > 0 and band_no <= setting.n_bands():
+            wl = setting.x()[band_no - 1]
             wlu = setting.xUnit()
             return f'Band {band_no} {wl} {wlu}'
 
@@ -708,7 +1074,6 @@ def myfunc(*args, **kwds):
 
 
 def registerDataProvider():
-
     metadata = QgsProviderMetadata(
         SpectralLibraryRasterDataProvider.providerKey(),
         SpectralLibraryRasterDataProvider.description(),
@@ -725,4 +1090,3 @@ def registerDataProvider():
     )
     registry.registerProvider(metadata)
     QgsMessageLog.logMessage('VectorLayerRasterDataProvider registered')
-

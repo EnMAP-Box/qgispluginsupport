@@ -129,6 +129,24 @@ class SpectralSetting(object):
     3. an yUnit, e.g. 'reflectance'
     """
 
+    @classmethod
+    def fromDictionary(cls, d:dict) -> 'SpectralSetting':
+        if not 'x' in d.keys():
+            return None
+
+        return SpectralSetting(d['x'],
+                               xUnit=d.get('xUnit', None),
+                               yUnit=d.get('yUnit', None),
+                               bbl=d.get('bbl', None)
+                               )
+
+    @classmethod
+    def fromByteArray(cls, ba: QByteArray) -> 'SpectralSetting':
+        if not isinstance(ba, QByteArray):
+            return None
+        return SpectralSetting.fromDictionary(decodeProfileValueDict(ba))
+
+
     def __init__(self,
                  x: typing.Union[tuple, list, np.ndarray],
                  xUnit: str = None,
@@ -143,10 +161,13 @@ class SpectralSetting(object):
         if isinstance(x, list):
             x = tuple(x)
 
+        if bbl:
+            bbl = tuple(bbl)
+
         self._x: typing.Tuple = x
         self._xUnit: str = xUnit
         self._yUnit: str = yUnit
-        self._bbl: tuple = tuple(bbl)
+        self._bbl: typing.Tuple = bbl
         self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
         self._field_name: str = field_name
 
