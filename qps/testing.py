@@ -613,16 +613,19 @@ class SpectralProfileDataIterator(object):
         self.cnb, self.cnl, self.cns = self.coredata.shape
         n_bands_per_field = [self.cnb if nb == -1 else nb for nb in n_bands_per_field]
         for nb in n_bands_per_field:
-            assert 0 < nb
+            assert nb is None or 0 < nb
             # assert 0 < nb <= self.cnb, f'Max. number of bands can be {self.cnb}'
         self.band_indices: typing.List[np.ndarray] = []
         for nb in n_bands_per_field:
-            idx: np.ndarray = None
-            if nb <= self.cnb:
-                idx = np.linspace(0, self.cnb - 1, num=nb, dtype=np.int16)
+            if nb is None:
+                self.band_indices.append(None)
             else:
-                # get nb bands positions along wavelength
-                idx = np.linspace(self.wl[0], self.wl[-1], num=nb, dtype=float)
+                idx: np.ndarray = None
+                if nb <= self.cnb:
+                    idx = np.linspace(0, self.cnb - 1, num=nb, dtype=np.int16)
+                else:
+                    # get nb bands positions along wavelength
+                    idx = np.linspace(self.wl[0], self.wl[-1], num=nb, dtype=float)
 
             self.band_indices.append(idx)
 
@@ -649,16 +652,19 @@ class SpectralProfileDataIterator(object):
         pt = pt.toCrs(self.targetCrs())
         results = []
         for band_indices in self.band_indices:
-            if band_indices.dtype == np.int16:
-                yValues = self.coredata[band_indices, y, x]
-                xValues = self.wl[band_indices]
-            elif band_indices.dtype == float:
-                xValues = band_indices
-                yValues = self.coredata[:, y, x]
-                yValues = np.interp(xValues, self.wl, yValues)
+            if band_indices is None:
+                results.append((None, None, None))
             else:
-                raise NotImplementedError()
-            results.append((yValues, xValues, self.wlu))
+                if band_indices.dtype == np.int16:
+                    yValues = self.coredata[band_indices, y, x]
+                    xValues = self.wl[band_indices]
+                elif band_indices.dtype == float:
+                    xValues = band_indices
+                    yValues = self.coredata[:, y, x]
+                    yValues = np.interp(xValues, self.wl, yValues)
+                else:
+                    raise NotImplementedError()
+                results.append((yValues, xValues, self.wlu))
         return results, pt
 
 
@@ -743,7 +749,7 @@ class TestObjects(object):
         elif isinstance(n_bands, int):
             n_bands = [n_bands]
 
-        assert len(n_bands) == len(profile_fields)
+        # assert len(n_bands) == len(profile_fields)
 
         profileGenerator = SpectralProfileDataIterator(n_bands)
         for i in range(n):
@@ -752,16 +758,18 @@ class TestObjects(object):
             profile = SpectralProfile(fields=fields)
             profile.setId(i + 1)
             profile.setGeometry(g)
-            for j, field in enumerate(profile_fields):
+            for j, field_index in enumerate(profile_fields):
                 (data, wl, data_wlu) = field_data[j]
-                if wlu is None:
-                    wlu = data_wlu
-                elif wlu == '-':
-                    wl = wlu = None
-                elif wlu != data_wlu:
-                    wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
-
-                profile.setValues(profile_field=field, y=data, x=wl, xUnit=wlu)
+                if data is None:
+                    profile.setAttribute(field_index, None)
+                else:
+                    if wlu is None:
+                        wlu = data_wlu
+                    elif wlu == '-':
+                        wl = wlu = None
+                    elif wlu != data_wlu:
+                        wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
+                    profile.setValues(profile_field=field_index, y=data, x=wl, xUnit=wlu)
             yield profile
 
     """
@@ -775,7 +783,7 @@ class TestObjects(object):
                               profile_field_names: typing.List[str] = None,
                               wlu: str = None) -> 'SpectralLibrary':
         """
-        Creates an Spectral Library
+        Creates a Spectral Library
         :param n_bands:
         :type n_bands:
         :param wlu:
@@ -803,7 +811,7 @@ class TestObjects(object):
         assert n_bands.ndim == 2
         slib: SpectralLibrary = SpectralLibrary()
         assert slib.startEditing()
-        n_profile_columns = n_bands.shape[1]
+        n_profile_columns = n_bands.shape[0]
         for i in range(len(slib.spectralProfileFields()), n_profile_columns):
             slib.addSpectralProfileField(f'{FIELD_VALUES}{i}')
 
@@ -816,10 +824,11 @@ class TestObjects(object):
 
         profile_field_indices = profile_field_indices(slib)
 
-        for j in range(n_bands.shape[0]):
+        for groupIndex in range(n_bands.shape[-1]):
+            bandsPerField = n_bands[:, groupIndex].tolist()
             profiles = list(TestObjects.spectralProfiles(n,
                                                          fields=slib.fields(),
-                                                         n_bands=n_bands[j, :].tolist(),
+                                                         n_bands=bandsPerField,
                                                          wlu=wlu,
                                                          profile_fields=profile_field_indices))
 
