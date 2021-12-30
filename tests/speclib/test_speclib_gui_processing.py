@@ -240,27 +240,32 @@ class SpectralProcessingTests(TestCase):
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
         speclib.selectByIds([1,2,3,4])
-        w = SpectralProcessingWidget()
-        w.setSpeclib(speclib)
+        procw = SpectralProcessingWidget()
+        procw.setSpeclib(speclib)
+        speclib.startEditing()
 
-        self.assertTrue(w.model() is None)
+        slw = SpectralLibraryWidget(speclib=speclib)
+        slw.show()
+        self.assertTrue(procw.model() is None)
 
         # model = TestObjects.createRasterProcessingModel()
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         alg1 = reg.algorithmById('gdal:rearrange_bands')
         alg2 = reg.algorithmById('native:rescaleraster')
-        w.setAlgorithm(alg1)
+        procw.setAlgorithm(alg1)
 
-        w.applyModel()
+        procw.applyModel()
 
         if True:
-            self.showGui(w)
+            self.showGui(procw)
+
+
         else:
             from qgis.PyQt.QtWidgets import QMainWindow
             M = QMainWindow()
-            M.setCentralWidget(w)
+            M.setCentralWidget(procw)
             toolbar = QToolBar()
-            for a in w.findChildren(QAction):
+            for a in procw.findChildren(QAction):
                 toolbar.addAction(a)
             M.addToolBar(toolbar)
             # save and load models

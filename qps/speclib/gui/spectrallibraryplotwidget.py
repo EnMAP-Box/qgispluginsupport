@@ -2597,7 +2597,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 self.mSpeclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
                 # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.beforeCommitChanges.disconnect(self.onSpeclibBeforeCommitChanges)
-                self.mSpeclib.afterCommitChanges.disconnect(self.onSpeclibAfterCommitChanges)
+                # self.mSpeclib.afterCommitChanges.disconnect(self.onSpeclibAfterCommitChanges)
                 self.mSpeclib.committedFeaturesAdded.disconnect(self.onSpeclibCommittedFeaturesAdded)
 
                 self.mSpeclib.featuresDeleted.disconnect(self.onSpeclibFeaturesDeleted)
@@ -2612,7 +2612,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 self.mSpeclib.updatedFields.connect(self.onSpeclibAttributesUpdated)
                 # self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributeDeleted)
                 self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
-                # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
+                self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.beforeCommitChanges.connect(self.onSpeclibBeforeCommitChanges)
                 self.mSpeclib.afterCommitChanges.connect(self.onSpeclibAfterCommitChanges)
                 self.mSpeclib.committedFeaturesAdded.connect(self.onSpeclibCommittedFeaturesAdded)

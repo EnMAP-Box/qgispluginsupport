@@ -336,7 +336,8 @@ class FieldToRasterValueConverter(QObject):
         assert array.ndim == 3
         return array, colorTable, noData
 
-    def toFieldValues(self, rasterValue: np.ndarray) -> typing.List:
+    @classmethod
+    def toFieldValues(cls, field: QgsField, rasterValues: np.ndarray) -> typing.List:
         raise NotImplementedError
 
 
@@ -403,19 +404,23 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         uniqueValues = np.unique(profileData)
 
         noData = None
-        for c in self.NO_DATA_CANDIDATES + [profileData.min() - 1]:
+        no_data_candidates = self.NO_DATA_CANDIDATES[:]
+        if len(profileData) > 0:
+            no_data_candidates.append(profileData.min() - 1)
+        for c in no_data_candidates:
             if c not in uniqueValues:
                 noData = c
                 break
 
         rasterData = np.ones((nb, 1, ns), dtype=profileData.dtype) * noData
-        rasterData[:, :, profileIndices] = profileData
+        if len(profileIndices) > 0:
+            rasterData[:, :, profileIndices] = profileData
         return rasterData, [], noData
 
         s = ""
 
 
-class SpectralProfileValueConverter(QgsRasterDataProvider):
+class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     """
     A QgsRasterDataProvider to access the field values in a QgsVectorLayer like a raster layer
     """
