@@ -154,7 +154,7 @@ class SpectralSetting(object):
                  bbl: typing.Union[tuple, list, np.ndarray] = None,
                  field_name: str = None):
 
-        assert isinstance(x, (tuple, list, np.ndarray))
+        assert isinstance(x, (tuple, list, np.ndarray)), f'{x}'
 
         if isinstance(x, np.ndarray):
             x = x.tolist()

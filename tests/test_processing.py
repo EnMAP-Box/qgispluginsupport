@@ -5,7 +5,7 @@
 
     ---------------------
     Date                 :
-    Copyright            : (C) 2017 by Benjamin Jakimow
+    Copyright            : (C) 2021 by Benjamin Jakimow
     Email                : benjamin jakimow at geo dot hu-berlin dot de
 ***************************************************************************
 *                                                                         *

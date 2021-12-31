@@ -5,7 +5,7 @@ import datetime
 
 import xmlrunner
 from PyQt5.QtWidgets import QComboBox
-from qgis._core import QgsRasterLayer
+from qgis._core import QgsRasterLayer, QgsProject
 
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
 
@@ -17,7 +17,7 @@ from qps.speclib.core import profile_field_lookup
 from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel
 from qps.testing import TestObjects, StartOptions
 from qps.speclib.gui.spectrallibrarywidget import *
-from qps.speclib.processing import *
+
 from qps.speclib.processingalgorithms import *
 from qps.testing import TestCase, TestAlgorithmProvider, start_app
 import numpy as np
@@ -35,30 +35,6 @@ class SpectralProcessingTests(TestCase):
         resources.append(QPS_RESOURCE_FILE)
         super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initAll()
-
-    def initProcessingRegistry(self) -> typing.Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
-        procReg = QgsApplication.instance().processingRegistry()
-        procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
-        assert isinstance(procReg, QgsProcessingRegistry)
-
-        provider_names = [p.name() for p in procReg.providers()]
-        if TestAlgorithmProvider.NAME not in provider_names:
-            procGuiReg.addParameterWidgetFactory(SpectralProcessingAlgorithmInputWidgetFactory())
-            procGuiReg.addParameterWidgetFactory(SpectralProcessingProfilesOutputWidgetFactory())
-            self._profile_type = SpectralProcessingProfileType()
-            self.assertTrue(procReg.addParameterType(self._profile_type))
-
-            provider = TestAlgorithmProvider()
-            self.assertTrue(procReg.addProvider(provider))
-            provider._algs.extend([
-                SpectralProfileReader(),
-                SpectralProfileWriter(),
-                SpectralXUnitConversion(),
-                SpectralPythonCodeProcessingAlgorithm()
-            ])
-            provider.refreshAlgorithms()
-            self.mPRov = provider
-        return procReg, procGuiReg
 
     def test_dualview(self):
 
@@ -208,7 +184,7 @@ class SpectralProcessingTests(TestCase):
             slw.speclib().deleteSelectedFeatures()
             slw.speclib().commitChanges()
 
-        speclib_sources =[slw1.speclib(), slw2.speclib()]
+        speclib_sources = [slw1.speclib(), slw2.speclib()]
         QgsProject.instance().addMapLayers(speclib_sources, False)
         maskLayer = TestObjects.createMultiMaskExample(nb=25, ns=50, nl=50)
 
@@ -232,7 +208,7 @@ class SpectralProcessingTests(TestCase):
             pgnode.setProfileSource(map_sources[0])
             self.assertIsInstance(pgnode.sampling(), SingleProfileSamplingMode)
             pgnode.setSampling(modes[0])
-            pgnode.setScaling(o*10, 1)
+            pgnode.setScaling(o * 10, 1)
 
         for pgnode in fgnode2.spectralProfileGeneratorNodes():
             pgnode.setProfileSource(map_sources[-1])
@@ -267,7 +243,7 @@ class SpectralProcessingTests(TestCase):
             sli.sigWindowIsClosing.connect(onClosing)
 
         mt.sigLocationRequest.connect(lambda crs, pt, c=canvas:
-                                      panel.loadCurrentMapSpectra(SpatialPoint(crs, pt), mapCanvas= canvas))
+                                      panel.loadCurrentMapSpectra(SpatialPoint(crs, pt), mapCanvas=canvas))
         btnAdd.clicked.connect(onClicked)
         hl = QHBoxLayout()
         hl.addWidget(btnAdd)
@@ -400,9 +376,8 @@ class SpectralProcessingTests(TestCase):
         return sources, widgets
 
     def test_SpectralFeatureGenerator(self):
-        self.initProcessingRegistry()
-        sources, widgets = self.createTestObjects()
 
+        sources, widgets = self.createTestObjects()
 
         model = SpectralProfileBridge()
         model.addSources(MapCanvasLayerProfileSource())

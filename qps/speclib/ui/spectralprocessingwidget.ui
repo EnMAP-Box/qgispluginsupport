@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>701</width>
-    <height>593</height>
+    <height>509</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -37,71 +37,65 @@
        </sizepolicy>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
-      <widget class="QWidget" name="tabProcessingAlgorithm">
+      <widget class="QWidget" name="tabParameters">
        <attribute name="title">
-        <string>1. Algorithm</string>
+        <string>Parameters</string>
        </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_4">
-        <item>
-         <widget class="QgsFilterLineEdit" name="tbAlgorithmFilter">
-          <property name="qgisRelation" stdset="0">
-           <string notr="true"/>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="1" column="0">
+         <widget class="QPushButton" name="btnAlgorithm">
+          <property name="toolTip">
+           <string>Select a raster processing algorithm / model</string>
           </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QLabel" name="label">
           <property name="text">
-           <string>Select Processing Algorithm / Model (double click)</string>
+           <string>Algorithm</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/processingAlgorithm.svg</normaloff>:/images/themes/default/processingAlgorithm.svg</iconset>
           </property>
          </widget>
         </item>
-        <item>
-         <widget class="SpectralProcessingAlgorithmTreeView" name="mTreeViewAlgorithms">
-          <property name="dragEnabled">
+        <item row="1" column="1">
+         <widget class="QLabel" name="tbAlgorithmName">
+          <property name="autoFillBackground">
            <bool>true</bool>
           </property>
-          <property name="dragDropMode">
-           <enum>QAbstractItemView::DragOnly</enum>
+          <property name="styleSheet">
+           <string notr="true">color:&quot;red&quot;;</string>
           </property>
-          <attribute name="headerVisible">
-           <bool>false</bool>
-          </attribute>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="tabCurrentParameters">
-       <attribute name="title">
-        <string>2. Parameters</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout">
-        <item>
-         <widget class="QLabel" name="tbModelName">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Plain</enum>
+          </property>
           <property name="text">
-           <string>&lt;no algorithm / model selected&gt;</string>
+           <string>Select a raster processing algorithm / model</string>
+          </property>
+          <property name="scaledContents">
+           <bool>false</bool>
           </property>
          </widget>
         </item>
-        <item>
+        <item row="2" column="0" colspan="2">
          <widget class="QCheckBox" name="cbSelectedFeaturesOnly">
           <property name="styleSheet">
-           <string notr="true">
-background-color: rgba(255, 0, 0, 100);</string>
+           <string notr="true"/>
           </property>
           <property name="text">
            <string>Only process selected features</string>
           </property>
          </widget>
         </item>
-        <item>
+        <item row="3" column="0" colspan="2">
          <widget class="QScrollArea" name="scrollArea">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
             <horstretch>5</horstretch>
-            <verstretch>0</verstretch>
+            <verstretch>2</verstretch>
            </sizepolicy>
           </property>
           <property name="frameShape">
@@ -119,7 +113,7 @@ background-color: rgba(255, 0, 0, 100);</string>
              <x>0</x>
              <y>0</y>
              <width>651</width>
-             <height>416</height>
+             <height>312</height>
             </rect>
            </property>
           </widget>
@@ -129,7 +123,7 @@ background-color: rgba(255, 0, 0, 100);</string>
       </widget>
       <widget class="QWidget" name="tabLog">
        <attribute name="title">
-        <string>3. Log</string>
+        <string>Log</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_5">
         <property name="spacing">
@@ -328,18 +322,20 @@ p, li { white-space: pre-wrap; }
     <string>CancelProcessing</string>
    </property>
   </action>
+  <action name="actionSetAlgorithm">
+   <property name="icon">
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/processingAlgorithm.svg</normaloff>:/images/themes/default/processingAlgorithm.svg</iconset>
+   </property>
+   <property name="text">
+    <string>SetAlgorithm</string>
+   </property>
+   <property name="toolTip">
+    <string>Select a raster processing algorithm / model</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>QgsFilterLineEdit</class>
-   <extends>QLineEdit</extends>
-   <header>qgsfilterlineedit.h</header>
-  </customwidget>
-  <customwidget>
-   <class>SpectralProcessingAlgorithmTreeView</class>
-   <extends>QTreeView</extends>
-   <header>qps.speclib.processing</header>
-  </customwidget>
   <customwidget>
    <class>QgsMessageBar</class>
    <extends>QFrame</extends>

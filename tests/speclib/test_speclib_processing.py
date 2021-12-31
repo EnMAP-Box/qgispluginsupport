@@ -789,12 +789,12 @@ class SpectralProcessingTests(TestCase):
         test_dir = self.createTestOutputDirectory() / 'spectral_processing'
         os.makedirs(test_dir, exist_ok=True)
         path = test_dir / 'mymodel.model3'
-        wrappers_before = [w for w in w.mProcessingModelTableModel if w.is_active]
+        wrappers_before = [w for w in w.mProcessingModelTableModel if w.mIs_active]
         w.saveModel(path)
         w.clearModel()
         self.assertTrue(len(w.mProcessingModelTableModel) == 0)
         w.loadModel(path)
-        wrappers_after = [w for w in w.mProcessingModelTableModel if w.is_active]
+        wrappers_after = [w for w in w.mProcessingModelTableModel if w.mIs_active]
         self.assertTrue(len(wrappers_after) == len(wrappers_before))
         # for w_b, w_a in zip(wrappers_before, wrappers_after):
         #    self.assertEqual(w_b.name, w_a.name)

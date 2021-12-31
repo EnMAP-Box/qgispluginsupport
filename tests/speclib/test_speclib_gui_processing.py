@@ -5,11 +5,12 @@ import datetime
 
 import xmlrunner
 from PyQt5.QtCore import QVariant
+from PyQt5.QtWidgets import QGridLayout
 from qgis._core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm, QgsProject, QgsProcessingModelOutput, \
     QgsField, QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingParameterRasterLayer, \
     QgsProcessingOutputRasterLayer, QgsProcessingFeedback, QgsProcessingContext, QgsProcessingModelAlgorithm, \
-    QgsProcessingRegistry, QgsApplication
-from qgis._gui import QgsGui, QgsProcessingParameterWidgetContext
+    QgsProcessingRegistry, QgsApplication, QgsProcessingParameterMultipleLayers
+from qgis._gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator
 
 from processing.gui.BatchPanel import BatchPanel
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
@@ -20,9 +21,11 @@ from qps import initResources, initAll
 from qps.speclib.core import profile_field_lookup
 from qps.testing import TestObjects, StartOptions
 from qps.speclib.gui.spectrallibrarywidget import *
-from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget, SpectralProcessingAlgorithmTreeView, SpectralProcessingAlgorithmModel
+from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget, SpectralProcessingAlgorithmModel, \
+    SpectralProcessingRasterLayerWidgetWrapper
 from qps.testing import TestCase, TestAlgorithmProvider
 import numpy as np
+
 
 class SpectralProcessingTests(TestCase):
 
@@ -36,14 +39,12 @@ class SpectralProcessingTests(TestCase):
         super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initAll()
 
-
     def initProcessingRegistry(self) -> typing.Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
         procReg = QgsApplication.instance().processingRegistry()
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
         assert isinstance(procReg, QgsProcessingRegistry)
 
         provider_names = [p.name() for p in procReg.providers()]
-
 
         return procReg, procGuiReg
 
@@ -93,7 +94,6 @@ class SpectralProcessingTests(TestCase):
 
         SLW2 = SpectralLibraryWidget(speclib=TestObjects.createSpectralLibrary(20))
 
-
         # create a new model
         spm = TestObjects.createSpectralProcessingModel()
 
@@ -102,7 +102,7 @@ class SpectralProcessingTests(TestCase):
         from processing.modeler.ProjectProvider import ProjectProvider
         self.assertIsInstance(provider, ProjectProvider)
         provider.add_model(spm)
-        
+
         PC: SpectralProfilePlotControlModel = SLW.plotControl()
 
         # set spectral model to 1st item
@@ -112,7 +112,6 @@ class SpectralProcessingTests(TestCase):
         self.showGui([SLW, SLW2])
         s = ""
         pass
-
 
     def test_simple_processing_model(self):
 
@@ -223,11 +222,77 @@ class SpectralProcessingTests(TestCase):
                 comment = dlg.comments()
                 comment_color = dlg.commentColor()
 
-    def test_SpectralProcessing_Sandbox(self):
+
+    def test_SpectralProcessingWidget2(self):
+        self.initProcessingRegistry()
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
         registerDataProvider()
-        n_bands = [[256, 2500],
-                   [123, 42]]
+        n_bands = [256]
+        n_features = 2
+        speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
+        speclib: QgsVectorLayer
+
+        speclib.startEditing()
+        procw = SpectralProcessingWidget()
+        procw.setSpeclib(speclib)
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        alg1 = reg.algorithmById('gdal:rearrange_bands')
+        alg2 = reg.algorithmById('native:rescaleraster')
+
+        procw.setAlgorithm(alg2)
+
+        self.showGui(procw)
+
+    def test_SpectralProcessingRasterLayerWidgetWrapper(self):
+
+        parameters = [
+            QgsProcessingParameterRasterLayer('rasterlayer'),
+            QgsProcessingParameterMultipleLayers('multiplelayers')
+        ]
+
+        l = QGridLayout()
+
+        layers = [TestObjects.createRasterLayer(),
+                  TestObjects.createRasterLayer(),
+                  TestObjects.createVectorLayer()]
+        class ContextGenerator(QgsProcessingContextGenerator):
+
+            def __init__(self, context):
+                super().__init__()
+                self.processing_context = context
+
+            def processingContext(self):
+                return self.processing_context
+
+        widget_context = QgsProcessingParameterWidgetContext()
+        widget_context.setProject(QgsProject.instance())
+        processing_context = QgsProcessingContext()
+        context_generator = ContextGenerator(processing_context)
+        parameters_generator = None
+
+        def onValueChanged(*args):
+            print(args)
+        wrappers = dict()
+        widgets = []
+        for i, param in enumerate(parameters):
+            wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.Standard)
+            wrapper.setRasterLayers(layers)
+            wrapper.setWidgetContext(widget_context)
+            wrapper.registerProcessingContextGenerator(context_generator)
+            wrapper.registerProcessingParametersGenerator(parameters_generator)
+            wrapper.widgetValueHasChanged.connect(onValueChanged)
+            # store wrapper instance
+            wrappers[param.name()] = wrapper
+            label = wrapper.createWrappedLabel()
+            #self.addParameterLabel(param, label)
+            widget = wrapper.createWrappedWidget(processing_context)
+            widgets.append((label, widget))
+            l.addWidget(label, i, 0)
+            l.addWidget(widget, i, 1)
+
+        w = QWidget()
+        w.setLayout(l)
+        self.showGui(w)
 
     def test_SpectralProcessingWidget(self):
         self.initProcessingRegistry()
@@ -239,49 +304,9 @@ class SpectralProcessingTests(TestCase):
         n_features = 500
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
-        speclib.selectByIds([1,2,3,4])
-        procw = SpectralProcessingWidget()
-        procw.setSpeclib(speclib)
-        speclib.startEditing()
-
+        speclib.selectByIds([1, 2, 3, 4])
         slw = SpectralLibraryWidget(speclib=speclib)
-        slw.show()
-        self.assertTrue(procw.model() is None)
-
-        # model = TestObjects.createRasterProcessingModel()
-        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg1 = reg.algorithmById('gdal:rearrange_bands')
-        alg2 = reg.algorithmById('native:rescaleraster')
-        procw.setAlgorithm(alg1)
-
-        procw.applyModel()
-
-        if True:
-            self.showGui(procw)
-
-
-        else:
-            from qgis.PyQt.QtWidgets import QMainWindow
-            M = QMainWindow()
-            M.setCentralWidget(procw)
-            toolbar = QToolBar()
-            for a in procw.findChildren(QAction):
-                toolbar.addAction(a)
-            M.addToolBar(toolbar)
-            # save and load models
-            test_dir = self.createTestOutputDirectory() / 'spectral_processing'
-            os.makedirs(test_dir, exist_ok=True)
-            path = test_dir / 'mymodel.model3'
-            self.showGui(M)
-
-    def test_SpectralProcessingAlgorithmTreeView(self):
-
-        self.initProcessingRegistry()
-        tv = SpectralProcessingAlgorithmTreeView()
-        m = SpectralProcessingAlgorithmModel(tv)
-        tv.setModel(m)
-
-        self.showGui(tv)
+        self.showGui(slw)
 
 
 if __name__ == '__main__':

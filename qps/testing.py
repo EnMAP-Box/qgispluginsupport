@@ -63,9 +63,7 @@ from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, Qgs
 
 from .resources import *
 from .speclib import createStandardFields
-from .speclib.processing import SpectralProcessingAlgorithmInputWidgetFactory, \
-    SpectralProcessingProfilesOutputWidgetFactory, SpectralProcessingProfileType, SpectralProcessingProfilesOutput, \
-    SpectralProcessingProfiles
+
 from .speclib.processingalgorithms import SpectralPythonCodeProcessingAlgorithm
 from .utils import UnitLookup, px2geo, px2spatialPoint, SpatialPoint
 
@@ -1028,29 +1026,6 @@ class TestObjects(object):
     TEST_PROVIDER = None
 
     @staticmethod
-    def createProcessingProvider() -> typing.Optional['TestAlgorithmProvider']:
-        """
-        Returns an
-        :return:
-        """
-        procReg = QgsApplication.instance().processingRegistry()
-        procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
-        assert isinstance(procReg, QgsProcessingRegistry)
-
-        provider_names = [p.name() for p in procReg.providers()]
-        if TestAlgorithmProvider.NAME not in provider_names:
-            procGuiReg.addParameterWidgetFactory(SpectralProcessingAlgorithmInputWidgetFactory())
-            procGuiReg.addParameterWidgetFactory(SpectralProcessingProfilesOutputWidgetFactory())
-            assert procReg.addParameterType(SpectralProcessingProfileType())
-            provider = TestAlgorithmProvider()
-            assert procReg.addProvider(provider)
-            TestObjects.TEST_PROVIDER = provider
-        for p in procReg.providers():
-            if p.name() == TestAlgorithmProvider.NAME:
-                return p
-        return None
-
-    @staticmethod
     def createSpectralProcessingAlgorithm() -> QgsProcessingAlgorithm:
 
         alg = SpectralPythonCodeProcessingAlgorithm()
@@ -1067,82 +1042,9 @@ class TestObjects(object):
 
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         alg = reg.algorithmById('gdal:rearrange_bands')
-        from qps.speclib.gui.spectralprocessingwidget import alg2model
-        return alg2model(alg)
 
+        return alg
 
-
-    @staticmethod
-    def createSpectralProcessingModel(name: str = 'Example Model') -> QgsProcessingModelAlgorithm:
-
-        configuration = {}
-        feedback = QgsProcessingFeedback()
-        context = QgsProcessingContext()
-        context.setFeedback(feedback)
-
-        model = QgsProcessingModelAlgorithm()
-        model.setName(name)
-
-        def createChildAlgorithm(algorithm_id: str, description='') -> QgsProcessingModelChildAlgorithm:
-            alg = QgsProcessingModelChildAlgorithm(algorithm_id)
-            alg.generateChildId(model)
-            alg.setDescription(description)
-            return alg
-
-        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg = TestObjects.createSpectralProcessingAlgorithm()
-
-        # self.testProvider().addAlgorithm(alg)
-        # self.assertIsInstance(self.testProvider().algorithm(alg.name()), SpectralProcessingAlgorithmExample)
-        # create child algorithms, i.e. instances of QgsProcessingAlgorithms
-        cid: str = model.addChildAlgorithm(createChildAlgorithm(alg.id(), 'Process Step 1'))
-
-        # set model input / output
-        pname_src_profiles = 'input_profiles'
-        pname_dst_profiles = 'processed_profiles'
-        model.addModelParameter(SpectralProcessingProfiles(pname_src_profiles, description='Source profiles'),
-                                QgsProcessingModelParameter(pname_src_profiles))
-
-        # connect child inputs and outputs
-        calg = model.childAlgorithm(cid)
-        calg.addParameterSources(
-            alg.INPUT,
-            [QgsProcessingModelChildParameterSource.fromModelParameter(pname_src_profiles)])
-
-        code = "profiledata=profiledata*1.25"
-        calg.addParameterSources(
-            alg.CODE,
-            [QgsProcessingModelChildParameterSource.fromStaticValue(code)]
-        )
-
-        # allow to write the processing alg outputs as new SpectralLibraries
-        model.addOutput(SpectralProcessingProfilesOutput(pname_dst_profiles))
-        childOutput = QgsProcessingModelOutput(pname_dst_profiles)
-        childOutput.setChildOutputName(alg.OUTPUT)
-        childOutput.setChildId(calg.childId())
-        calg.setModelOutputs({pname_dst_profiles: childOutput})
-
-        model.initAlgorithm(configuration)
-
-        # set the positions for parameters and algorithms in the model canvas:
-        x = 150
-        y = 50
-        dx = 100
-        dy = 75
-        components = model.parameterComponents()
-        for n, p in components.items():
-            p.setPosition(QPointF(x, y))
-            x += dx
-        model.setParameterComponents(components)
-
-        y = 150
-        x = 250
-        for calg in [calg]:
-            calg: QgsProcessingModelChildAlgorithm
-            calg.setPosition(QPointF(x, y))
-            y += dy
-
-        return model
 
     @staticmethod
     def createRasterLayer(*args, **kwds) -> QgsRasterLayer:
