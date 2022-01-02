@@ -10,6 +10,7 @@ from osgeo import gdal, ogr
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
+from qps.speclib.core import create_profile_field, profile_fields
 
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
     SpectralProfilePlotVisualization, SpectralProfileColorPropertyWidget
@@ -105,6 +106,33 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(slw)
 
+    def test_SpectralLibraryWidget_addField(self):
+        speclib = TestObjects.createSpectralLibrary(10)
+        slw = SpectralLibraryWidget(speclib=speclib)
+        speclib: QgsVectorLayer = slw.speclib()
+        slw.show()
+        speclib.startEditing()
+        pfields = profile_fields(speclib)
+        speclib.beginEditCommand('Add profile field')
+        new_field = create_profile_field('new_field')
+        speclib.addAttribute(new_field)
+        speclib.endEditCommand()
+        speclib.commitChanges(False)
+        i0 = speclib.fields().lookupField(pfields.names()[0])
+        i1 = speclib.fields().lookupField(new_field.name())
+        self.assertTrue(i0 >= 0)
+        self.assertTrue(i1 >= 0 and i0 != i1)
+
+        speclib.beginEditCommand('Modify profiles')
+        for i, f in enumerate(speclib.getFeatures()):
+            ba = f.attribute(i0)
+            if i % 2 == 0:
+                f.setAttribute(i1, ba)
+                speclib.updateFeature(f)
+        speclib.endEditCommand()
+
+        self.showGui(slw)
+
     @unittest.skipIf(True, '')
     def test_SpectralProfileColorProperty(self):
         speclib: QgsVectorLayer = TestObjects.createSpectralLibrary()
@@ -152,8 +180,6 @@ class TestSpeclibWidgets(TestCase):
 
     def test_SpectralProfilePlotWidget(self):
 
-        speclib = TestObjects.createSpectralLibrary()
-
         pw = SpectralProfilePlotWidget()
         self.assertIsInstance(pw, SpectralProfilePlotWidget)
         pw.show()
@@ -179,12 +205,6 @@ class TestSpeclibWidgets(TestCase):
 
         visModel = w.treeView.model().sourceModel()
         self.assertEqual(visModel.rowCount(), 1)
-
-        # add spectral processing models
-        spm = TestObjects.createSpectralProcessingModel()
-        from qps.speclib.processing import is_spectral_processing_model
-        self.assertTrue(is_spectral_processing_model(spm))
-        # w.addSpectralModel(spm)
 
         # add a VIS
         w.btnAddProfileVis.click()
