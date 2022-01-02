@@ -46,6 +46,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         if not isinstance(speclib, QgsVectorLayer):
             speclib = SpectralLibrary()
 
+        self.actionShowSpectralProcessingDialog = QAction('Spectral Processing')
         super().__init__(speclib)
         # self.setAttribute(Qt.WA_DeleteOnClose, on=True)
         self.setWindowIcon(QIcon(':/qps/ui/icons/speclib.svg'))
@@ -147,12 +148,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
         # self.tbSpeclibAction.addAction(self.mSpeclibPlotWidget.optionColorsFromFeatureRenderer)
 
-        self.actionShowSpectralProcessingDialog = QAction('Spectral Processing', parent=self)
+
+        self.actionShowSpectralProcessingDialog.setParent(self)
         self.actionShowSpectralProcessingDialog.setCheckable(False)
         self.actionShowSpectralProcessingDialog.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
         self.actionShowSpectralProcessingDialog.triggered.connect(lambda: showSpectralProcessingWidget(self.speclib()))
         self.mToolbar.insertAction(self.mActionOpenFieldCalculator, self.actionShowSpectralProcessingDialog)
-
+        self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
 
         self.actionShowProfileView = QAction('Show Profile Plot', parent=self)
         self.actionShowProfileView.setCheckable(True)
@@ -162,7 +164,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.actionShowProfileViewSettings = self.mSpeclibPlotWidget.optionShowVisualizationSettings
         self.actionShowProfileView.toggled.connect(self.actionShowProfileViewSettings.setEnabled)
-
 
         # show Attribute Table / Form View buttons in menu bar only
         self.mAttributeViewButton.setVisible(False)
@@ -217,6 +218,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setStretchFactor(2, 0)
         self.splitter.setSizes([200, 10, 0])
+
+    def editingToggled(self):
+        super().editingToggled()
+        self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
 
     def setViewVisibility(self, viewType: ViewType):
         """

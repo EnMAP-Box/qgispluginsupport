@@ -1,6 +1,6 @@
 import pathlib
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QModelIndex
 from PyQt5.QtWidgets import QDialog, QTreeView, QDialogButtonBox, QPushButton
 
 from qgis._gui import QgsFilterLineEdit, QgsProcessingToolboxTreeView, QgsProcessingToolboxProxyModel
@@ -11,7 +11,6 @@ from qps.utils import loadUi
 
 
 class ProcessingAlgorithmDialog(QDialog):
-
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -28,6 +27,7 @@ class ProcessingAlgorithmDialog(QDialog):
         self.mTreeViewAlgorithms.setDropIndicatorShown(False)
         self.mTreeViewAlgorithms.setToolboxProxyModel(self.mAlgorithmModel)
         self.mTreeViewAlgorithms.selectionModel().selectionChanged.connect(self.onAlgorithmTreeSelectionChanged)
+        self.mTreeViewAlgorithms.doubleClicked.connect(self.onDoubleClicked)
         # self.mTreeViewAlgorithms.selectionModel().currentChanged.connect(self.onAlgorithmTreeSelectionChanged)
 
         self.mSelectedAlgorithm: QgsProcessingAlgorithm = None
@@ -54,11 +54,16 @@ class ProcessingAlgorithmDialog(QDialog):
     def setAlgorithmFilter(self, pattern: str):
         self.mTreeViewAlgorithms.setFilterString(pattern)
 
-    def onAlgorithmTreeSelectionChanged(self, selected, deselected):
+    def onDoubleClicked(self, index: QModelIndex):
+        alg = self.mTreeViewAlgorithms.algorithmForIndex(index)
+        if isinstance(alg, QgsProcessingAlgorithm):
+            self.mSelectedAlgorithm = alg
+            self.setResult(QDialog.Accepted)
+            self.buttonBox.button(QDialogButtonBox.Ok).click()
 
+    def onAlgorithmTreeSelectionChanged(self, selected, deselected):
         self.mSelectedAlgorithm = self.mTreeViewAlgorithms.selectedAlgorithm()
         b = isinstance(self.mSelectedAlgorithm, QgsProcessingAlgorithm)
 
         btnOk = self.buttonBox.button(QDialogButtonBox.Ok)
         btnOk.setEnabled(b)
-

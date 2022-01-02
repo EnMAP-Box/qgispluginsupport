@@ -222,13 +222,12 @@ class SpectralProcessingTests(TestCase):
                 comment = dlg.comments()
                 comment_color = dlg.commentColor()
 
-
     def test_SpectralProcessingWidget2(self):
         self.initProcessingRegistry()
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
         registerDataProvider()
         n_bands = [256]
-        n_features = 2
+        n_features = 20
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
 
@@ -255,6 +254,7 @@ class SpectralProcessingTests(TestCase):
         layers = [TestObjects.createRasterLayer(),
                   TestObjects.createRasterLayer(),
                   TestObjects.createVectorLayer()]
+
         class ContextGenerator(QgsProcessingContextGenerator):
 
             def __init__(self, context):
@@ -272,6 +272,7 @@ class SpectralProcessingTests(TestCase):
 
         def onValueChanged(*args):
             print(args)
+
         wrappers = dict()
         widgets = []
         for i, param in enumerate(parameters):
@@ -284,7 +285,7 @@ class SpectralProcessingTests(TestCase):
             # store wrapper instance
             wrappers[param.name()] = wrapper
             label = wrapper.createWrappedLabel()
-            #self.addParameterLabel(param, label)
+            # self.addParameterLabel(param, label)
             widget = wrapper.createWrappedWidget(processing_context)
             widgets.append((label, widget))
             l.addWidget(label, i, 0)
