@@ -2146,9 +2146,10 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 if plotData == NOT_INITIALIZED:
                     # load profile data
                     auid_raw = (fid, vis.fieldIdx(), '__raw__')
+                    byteArray: QByteArray = feature.attribute(vis.fieldIdx())
                     raw_data = self.mCACHE_PROFILE_DATA.get(auid_raw, NOT_INITIALIZED)
-                    if raw_data == NOT_INITIALIZED:
-                        raw_data = decodeProfileValueDict(feature.attribute(vis.fieldIdx()))
+                    if isinstance(byteArray, QByteArray) and raw_data == NOT_INITIALIZED:
+                        raw_data = decodeProfileValueDict(byteArray)
                         ruid = (aid[0], aid[1], raw_data['xUnit'])
 
                         if raw_data['y'] is None:
@@ -2160,7 +2161,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                             self.mCACHE_PROFILE_DATA[auid_raw] = raw_data
                             self.mCACHE_PROFILE_DATA[ruid] = raw_data
 
-                    raw_data = self.mCACHE_PROFILE_DATA[auid_raw]
+                    raw_data = self.mCACHE_PROFILE_DATA.get(auid_raw, None)
                     if raw_data is None:
                         # binary data cannot be decoded to spectral profile values
                         continue
@@ -2699,7 +2700,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     return handle.name()
 
             if role == Qt.ToolTipRole:
-                return f'{handle.name()}:<br/>field: {handle.field().name()}<br/>model: {handle.modelName()}'
+                return f'{handle.name()}:<br/>field: {handle.field().name()}'
 
             if role == Qt.ForegroundRole and not handle.isVisible():
                 return QColor('grey')
@@ -2817,9 +2818,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     handle.setName(str(value))
                     changed = True
 
-                # value is QgsProcessingModelAlgorithm? -> use as model
-                if isinstance(value, QgsProcessingModelAlgorithm) and value in self.modelList():
-                    handle.setModelId(value)
 
         elif isinstance(handle, SpectralProfilePlotControlModel.PropertyHandle):
             vis: SpectralProfilePlotVisualization = handle.parentVisualization()
@@ -2885,14 +2883,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             return col + 1
 
         return None
-
-    # def removeModel(self, model: QgsProcessingModelAlgorithm):
-    #    self.mModelList.removeModel(model)
-    # todo: disconnect model from visualiszations
-
-    # def addModel(self, model: QgsProcessingModelAlgorithm):
-    #    assert is_spectral_processing_model(model)
-    #    self.mModelList.addModel(model)
 
 
 class PDIGenerator(object):

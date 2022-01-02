@@ -394,7 +394,7 @@ class SpectralProfileFieldFormatter(QgsFieldFormatter):
         if value not in [None, NULL]:
             return SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE
         else:
-            return 'Empty'
+            return 'NULL'
         s = ""
 
 
@@ -509,5 +509,5 @@ def registerSpectralProfileEditorWidget():
             widgetRegistry.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
 
         # uncomment when https://github.com/qgis/QGIS/issues/45478 is fixed
-        # fieldFormatterRegistry.addFieldFormatter(SPECTRAL_PROFILE_FIELD_FORMATTER)
+        fieldFormatterRegistry.addFieldFormatter(SPECTRAL_PROFILE_FIELD_FORMATTER)
 

@@ -168,10 +168,8 @@ class SpectralSetting(object):
         self._xUnit: str = xUnit
         self._yUnit: str = yUnit
         self._bbl: typing.Tuple = bbl
-        try:
-            self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
-        except Exception as ex:
-            s = ""
+        self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
+
         self._field_name: str = field_name
 
     def fieldName(self) -> str:
