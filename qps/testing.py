@@ -63,9 +63,7 @@ from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, Qgs
 
 from .resources import *
 from .speclib import createStandardFields
-from .speclib.processing import SpectralProcessingAlgorithmInputWidgetFactory, \
-    SpectralProcessingProfilesOutputWidgetFactory, SpectralProcessingProfileType, SpectralProcessingProfilesOutput, \
-    SpectralProcessingProfiles
+
 from .speclib.processingalgorithms import SpectralPythonCodeProcessingAlgorithm
 from .utils import UnitLookup, px2geo, px2spatialPoint, SpatialPoint
 
@@ -613,16 +611,19 @@ class SpectralProfileDataIterator(object):
         self.cnb, self.cnl, self.cns = self.coredata.shape
         n_bands_per_field = [self.cnb if nb == -1 else nb for nb in n_bands_per_field]
         for nb in n_bands_per_field:
-            assert 0 < nb
+            assert nb is None or 0 < nb
             # assert 0 < nb <= self.cnb, f'Max. number of bands can be {self.cnb}'
         self.band_indices: typing.List[np.ndarray] = []
         for nb in n_bands_per_field:
-            idx: np.ndarray = None
-            if nb <= self.cnb:
-                idx = np.linspace(0, self.cnb - 1, num=nb, dtype=np.int16)
+            if nb is None:
+                self.band_indices.append(None)
             else:
-                # get nb bands positions along wavelength
-                idx = np.linspace(self.wl[0], self.wl[-1], num=nb, dtype=float)
+                idx: np.ndarray = None
+                if nb <= self.cnb:
+                    idx = np.linspace(0, self.cnb - 1, num=nb, dtype=np.int16)
+                else:
+                    # get nb bands positions along wavelength
+                    idx = np.linspace(self.wl[0], self.wl[-1], num=nb, dtype=float)
 
             self.band_indices.append(idx)
 
@@ -649,16 +650,19 @@ class SpectralProfileDataIterator(object):
         pt = pt.toCrs(self.targetCrs())
         results = []
         for band_indices in self.band_indices:
-            if band_indices.dtype == np.int16:
-                yValues = self.coredata[band_indices, y, x]
-                xValues = self.wl[band_indices]
-            elif band_indices.dtype == float:
-                xValues = band_indices
-                yValues = self.coredata[:, y, x]
-                yValues = np.interp(xValues, self.wl, yValues)
+            if band_indices is None:
+                results.append((None, None, None))
             else:
-                raise NotImplementedError()
-            results.append((yValues, xValues, self.wlu))
+                if band_indices.dtype == np.int16:
+                    yValues = self.coredata[band_indices, y, x]
+                    xValues = self.wl[band_indices]
+                elif band_indices.dtype == float:
+                    xValues = band_indices
+                    yValues = self.coredata[:, y, x]
+                    yValues = np.interp(xValues, self.wl, yValues)
+                else:
+                    raise NotImplementedError()
+                results.append((yValues, xValues, self.wlu))
         return results, pt
 
 
@@ -743,7 +747,7 @@ class TestObjects(object):
         elif isinstance(n_bands, int):
             n_bands = [n_bands]
 
-        assert len(n_bands) == len(profile_fields)
+        # assert len(n_bands) == len(profile_fields)
 
         profileGenerator = SpectralProfileDataIterator(n_bands)
         for i in range(n):
@@ -752,16 +756,18 @@ class TestObjects(object):
             profile = SpectralProfile(fields=fields)
             profile.setId(i + 1)
             profile.setGeometry(g)
-            for j, field in enumerate(profile_fields):
+            for j, field_index in enumerate(profile_fields):
                 (data, wl, data_wlu) = field_data[j]
-                if wlu is None:
-                    wlu = data_wlu
-                elif wlu == '-':
-                    wl = wlu = None
-                elif wlu != data_wlu:
-                    wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
-
-                profile.setValues(profile_field=field, y=data, x=wl, xUnit=wlu)
+                if data is None:
+                    profile.setAttribute(field_index, None)
+                else:
+                    if wlu is None:
+                        wlu = data_wlu
+                    elif wlu == '-':
+                        wl = wlu = None
+                    elif wlu != data_wlu:
+                        wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
+                    profile.setValues(profile_field=field_index, y=data, x=wl, xUnit=wlu)
             yield profile
 
     """
@@ -775,7 +781,7 @@ class TestObjects(object):
                               profile_field_names: typing.List[str] = None,
                               wlu: str = None) -> 'SpectralLibrary':
         """
-        Creates an Spectral Library
+        Creates a Spectral Library
         :param n_bands:
         :type n_bands:
         :param wlu:
@@ -803,7 +809,7 @@ class TestObjects(object):
         assert n_bands.ndim == 2
         slib: SpectralLibrary = SpectralLibrary()
         assert slib.startEditing()
-        n_profile_columns = n_bands.shape[1]
+        n_profile_columns = n_bands.shape[0]
         for i in range(len(slib.spectralProfileFields()), n_profile_columns):
             slib.addSpectralProfileField(f'{FIELD_VALUES}{i}')
 
@@ -816,10 +822,11 @@ class TestObjects(object):
 
         profile_field_indices = profile_field_indices(slib)
 
-        for j in range(n_bands.shape[0]):
+        for groupIndex in range(n_bands.shape[-1]):
+            bandsPerField = n_bands[:, groupIndex].tolist()
             profiles = list(TestObjects.spectralProfiles(n,
                                                          fields=slib.fields(),
-                                                         n_bands=n_bands[j, :].tolist(),
+                                                         n_bands=bandsPerField,
                                                          wlu=wlu,
                                                          profile_fields=profile_field_indices))
 
@@ -1019,29 +1026,6 @@ class TestObjects(object):
     TEST_PROVIDER = None
 
     @staticmethod
-    def createProcessingProvider() -> typing.Optional['TestAlgorithmProvider']:
-        """
-        Returns an
-        :return:
-        """
-        procReg = QgsApplication.instance().processingRegistry()
-        procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
-        assert isinstance(procReg, QgsProcessingRegistry)
-
-        provider_names = [p.name() for p in procReg.providers()]
-        if TestAlgorithmProvider.NAME not in provider_names:
-            procGuiReg.addParameterWidgetFactory(SpectralProcessingAlgorithmInputWidgetFactory())
-            procGuiReg.addParameterWidgetFactory(SpectralProcessingProfilesOutputWidgetFactory())
-            assert procReg.addParameterType(SpectralProcessingProfileType())
-            provider = TestAlgorithmProvider()
-            assert procReg.addProvider(provider)
-            TestObjects.TEST_PROVIDER = provider
-        for p in procReg.providers():
-            if p.name() == TestAlgorithmProvider.NAME:
-                return p
-        return None
-
-    @staticmethod
     def createSpectralProcessingAlgorithm() -> QgsProcessingAlgorithm:
 
         alg = SpectralPythonCodeProcessingAlgorithm()
@@ -1054,76 +1038,13 @@ class TestObjects(object):
         return provider.algorithm(alg.name())
 
     @staticmethod
-    def createSpectralProcessingModel(name: str = 'Example Model') -> QgsProcessingModelAlgorithm:
-
-        configuration = {}
-        feedback = QgsProcessingFeedback()
-        context = QgsProcessingContext()
-        context.setFeedback(feedback)
-
-        model = QgsProcessingModelAlgorithm()
-        model.setName(name)
-
-        def createChildAlgorithm(algorithm_id: str, description='') -> QgsProcessingModelChildAlgorithm:
-            alg = QgsProcessingModelChildAlgorithm(algorithm_id)
-            alg.generateChildId(model)
-            alg.setDescription(description)
-            return alg
+    def createRasterProcessingModel(name: str = 'Example Raster Model') -> QgsProcessingModelAlgorithm:
 
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg = TestObjects.createSpectralProcessingAlgorithm()
+        alg = reg.algorithmById('gdal:rearrange_bands')
 
-        # self.testProvider().addAlgorithm(alg)
-        # self.assertIsInstance(self.testProvider().algorithm(alg.name()), SpectralProcessingAlgorithmExample)
-        # create child algorithms, i.e. instances of QgsProcessingAlgorithms
-        cid: str = model.addChildAlgorithm(createChildAlgorithm(alg.id(), 'Process Step 1'))
+        return alg
 
-        # set model input / output
-        pname_src_profiles = 'input_profiles'
-        pname_dst_profiles = 'processed_profiles'
-        model.addModelParameter(SpectralProcessingProfiles(pname_src_profiles, description='Source profiles'),
-                                QgsProcessingModelParameter(pname_src_profiles))
-
-        # connect child inputs and outputs
-        calg = model.childAlgorithm(cid)
-        calg.addParameterSources(
-            alg.INPUT,
-            [QgsProcessingModelChildParameterSource.fromModelParameter(pname_src_profiles)])
-
-        code = "profiledata=profiledata*1.25"
-        calg.addParameterSources(
-            alg.CODE,
-            [QgsProcessingModelChildParameterSource.fromStaticValue(code)]
-        )
-
-        # allow to write the processing alg outputs as new SpectralLibraries
-        model.addOutput(SpectralProcessingProfilesOutput(pname_dst_profiles))
-        childOutput = QgsProcessingModelOutput(pname_dst_profiles)
-        childOutput.setChildOutputName(alg.OUTPUT)
-        childOutput.setChildId(calg.childId())
-        calg.setModelOutputs({pname_dst_profiles: childOutput})
-
-        model.initAlgorithm(configuration)
-
-        # set the positions for parameters and algorithms in the model canvas:
-        x = 150
-        y = 50
-        dx = 100
-        dy = 75
-        components = model.parameterComponents()
-        for n, p in components.items():
-            p.setPosition(QPointF(x, y))
-            x += dx
-        model.setParameterComponents(components)
-
-        y = 150
-        x = 250
-        for calg in [calg]:
-            calg: QgsProcessingModelChildAlgorithm
-            calg.setPosition(QPointF(x, y))
-            y += dy
-
-        return model
 
     @staticmethod
     def createRasterLayer(*args, **kwds) -> QgsRasterLayer:

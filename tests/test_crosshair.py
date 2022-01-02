@@ -21,8 +21,10 @@ class CrosshairTests(TestCase):
     def test_Crosshair(self):
         # add site-packages to sys.data_source as done by enmapboxplugin.py
 
-        lyr = TestObjects.createRasterLayer()
-        lyr2 = TestObjects.createRasterLayer(ns=2000, nl=3000, nb=3)
+
+        lyr = TestObjects.createVectorLayer()
+        # lyr2 = TestObjects.createRasterLayer(ns=2000, nl=3000, nb=3)
+        lyr2 = TestObjects.createRasterLayer()
         layers = [lyr, lyr2]
         QgsProject.instance().addMapLayers(layers)
         refCanvas = QgsMapCanvas()
@@ -33,7 +35,7 @@ class CrosshairTests(TestCase):
 
         self.assertIsInstance(item, CrosshairMapCanvasItem)
         item.setRasterGridLayer(lyr)
-        item.setPosition(SpatialPoint.fromMapLayerCenter(lyr2))
+        item.setPosition(SpatialPoint.fromMapCanvasCenter(refCanvas))
         item.setVisibility(True)
         style = CrosshairStyle()
         self.assertIsInstance(style, CrosshairStyle)

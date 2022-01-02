@@ -30,6 +30,7 @@ import datetime
 import fnmatch
 import gc
 import importlib
+import inspect
 import io
 import itertools
 import json
@@ -78,7 +79,21 @@ QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.CFloat32: complex,
                          Qgis.CFloat64: np.complex64,
                          Qgis.ARGB32: np.uint32,
-                         Qgis.ARGB32_Premultiplied: np.uint32}
+                         Qgis.ARGB32_Premultiplied: np.uint32
+                         }
+
+NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.Byte,
+                         bool: Qgis.Byte,
+                         np.uint16: Qgis.UInt16,
+                         np.uint32: Qgis.UInt32,
+                         np.int16: Qgis.Int16,
+                         np.int32: Qgis.Int32,
+                         np.float32: Qgis.Float32,
+                         np.float64: Qgis.Float64,
+                         complex: Qgis.CFloat32,
+                         np.complex64: Qgis.CFloat64,
+                         np.uint32: Qgis.ARGB32,
+                         }
 
 QGIS_DATATYPE_NAMES = {
     Qgis.Byte: 'Byte',
@@ -1004,7 +1019,7 @@ def qgsFields(source: typing.Union[QgsFeature, QgsFields, QgsVectorLayer]) -> Qg
     return None
 
 
-def qgsField(layer_fields: QgsVectorLayer, field: typing.Union[QgsField, str, int]) -> QgsField:
+def qgsField(layer_fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature], field: typing.Union[QgsField, str, int]) -> QgsField:
     """
     Returns the QgsField relating to the input value in "field"
     :param layer_fields: QgsVectorLayer | QgsFields
@@ -1012,6 +1027,8 @@ def qgsField(layer_fields: QgsVectorLayer, field: typing.Union[QgsField, str, in
     :return: QgsField or None, if not found
     """
     if isinstance(layer_fields, QgsVectorLayer):
+        layer_fields = layer_fields.fields()
+    elif isinstance(layer_fields, QgsFeature):
         layer_fields = layer_fields.fields()
 
     assert isinstance(layer_fields, QgsFields)
@@ -1932,6 +1949,16 @@ class Singleton(type):
         return cls._instances[cls]
 
 
+def qgisToNumpyDataType(t: Qgis.DataType) -> np.dtype:
+    return QGIS2NUMPY_DATA_TYPES.get(t, None)
+
+
+def numpyToQgisDataType(t) -> Qgis.DataType:
+    if isinstance(t, np.dtype):
+        t = t.type
+    return NUMPY2QGIS_DATA_TYPES.get(t, Qgis.DataType.UnknownDataType)
+
+
 def qgisAppQgisInterface() -> QgisInterface:
     """
     Returns the QgisInterface of the QgisApp in case everything was started from within the QGIS Main Application
@@ -2251,6 +2278,13 @@ class HashablePoint(QPoint):
     def __eq__(self, other):
         return self.x() == other.x() and self.y() == other.y()
 
+class HashableRectangle(QgsRectangle):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def __hash__(self):
+        return hash((self.xMinimum(), self.yMinimum(), self.xMaximum(), self.yMaximum()))
 
 class HashableRect(QRect):
 
@@ -3056,6 +3090,7 @@ class FeatureReferenceIterator(object):
     """
     Iterator for QgsFeatures that uses the 1st feature as reference
     """
+
     def __init__(self, features: typing.Iterable[QgsFeature]):
 
         self.mNextFeatureIndex = -1
@@ -3087,3 +3122,25 @@ class FeatureReferenceIterator(object):
             return self.referenceFeature()
         else:
             return self.mFeatureIterator.__next__()
+
+
+def printCaller(prefix=None, suffix=None):
+    """
+    prints out the current code location in calling method
+    :param prefix: prefix text
+    :param suffix: suffix text
+    """
+    if not os.environ.get('DEBUG', '').lower() in ['1', 'true']:
+        return
+    curFrame = inspect.currentframe()
+    outerFrames = inspect.getouterframes(curFrame)
+    FOI = outerFrames[1]
+    stack = inspect.stack()
+    stack_class = stack[1][0].f_locals["self"].__class__.__name__
+    stack_method = stack[1][0].f_code.co_name
+    info = f'{stack_class}.{FOI.function}: {os.path.basename(FOI.filename)}:{FOI.lineno}'
+
+    prefix = f'{prefix}:' if prefix else ''
+    suffix = f':{suffix}' if suffix else ''
+
+    print(f'#{prefix}{info}{suffix}', flush=True)

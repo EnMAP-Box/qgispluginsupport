@@ -268,14 +268,28 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
             lines.append(QLineF(centerPx.x(), y1, centerPx.x(), centerPx.y() + gap))
 
             if self.mCrosshairStyle.mShowDistanceMarker:
+                crs: QgsCoordinateReferenceSystem = self.mCanvas.mapSettings().destinationCrs()
+                distanceArea = QgsDistanceArea()
+                distanceArea.setSourceCrs(crs, self.mCanvas.mapSettings().transformContext())
 
                 extent = self.mCanvas.extent()
+
                 maxD = 0.5 * min([extent.width(), extent.height()])
+                # pred = nicePredecessor(maxD)
 
-                pred = nicePredecessor(maxD)
 
-                pt = m2p.transform(QgsPointXY(centerGeo.x() - pred, centerGeo.y()))
+                x0 = QgsPointXY(centerGeo.x() - maxD, centerGeo.y())
+                x1 = QgsPointXY(centerGeo.x(), centerGeo.y())
+                example_distance = distanceArea.measureLine(x0, x1)
+                # print(example_distance)
+                pred = nicePredecessor(example_distance)
+                print( (example_distance, pred))
+                x0 = QgsPointXY(centerGeo.x() - pred, centerGeo.y())
+                example_distance = distanceArea.measureLine(x0, x1)
+                # example_distance = centerGeo.x() - pred
 
+                # pt = m2p.transform(QgsPointXY(example_distance, centerGeo.y()))
+                pt = m2p.transform(x0)
                 line = QLineF((pt + QgsVector(0, ml)).toQPointF(),
                               (pt - QgsVector(0, ml)).toQPointF())
                 lines.append(line)
@@ -288,20 +302,22 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     font = painter.font()
                     ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))
 
-                    crs = self.mCanvas.mapSettings().destinationCrs()
-                    assert isinstance(crs, QgsCoordinateReferenceSystem)
-                    unitString = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
-                    if unitString == 'meters':
-                        if pred < 0.1:
-                            labelText = '{} m'.format(pred)
-                        else:
-                            labelText = scaledUnitString(pred,
-                                                         suffix='m',
-                                                         largest_si_prefix='k'  # let kilometers be the largest unit
-                                                         )
-                    else:
-                        labelText = '{} {}'.format(pred, unitString)
 
+
+                    if False:
+                        unitString = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
+                        if unitString == 'meters':
+                            if pred < 0.1:
+                                labelText = '{} m'.format(pred)
+                            else:
+                                labelText = scaledUnitString(pred,
+                                                             suffix='m',
+                                                             largest_si_prefix='k'  # let kilometers be the largest unit
+                                                             )
+                        else:
+                            labelText = '{} {}'.format(pred, unitString)
+
+                    labelText = QgsDistanceArea.formatDistance(example_distance, 0, distanceArea.lengthUnits())
                     pen = QPen(Qt.SolidLine)
                     pen.setWidth(self.mCrosshairStyle.mThickness)
                     pen.setColor(self.mCrosshairStyle.mColor)
@@ -355,9 +371,10 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         y2 = ex.yMaximum() - (y * yres)
                         return QgsPointXY(x2, y2)
 
-                    lyrCoord2CanvasPx = lambda x, y,: self.toCanvasCoordinates(
+                    lyrCoord2CanvasPx = lambda x, y : self.toCanvasCoordinates(
                         ms.layerToMapCoordinates(lyr,
                                                  px2LayerGeo(x, y)))
+
                     if pxX >= 0 and pxY >= 0 and pxX < ns and pxY < nl:
                         # get pixel edges in map canvas coordinates
 

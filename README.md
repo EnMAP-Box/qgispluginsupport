@@ -1,12 +1,11 @@
 # QGIS Plugin Support (QPS) 
 ![build status](https://img.shields.io/bitbucket/pipelines/jakimowb/qgispluginsupport.svg)
 
+The QPS library aims to support the creation of QGIS Plugins with a focus on remote sensing applications.
 
 
 
-This is a small library to support the creation of QGIS Plugins. 
-
-OPS is used in other project like:
+QPS is used in other project like:
 
 EnMAP-Box https://bitbucket.org/hu-geomatics/enmap-box
 

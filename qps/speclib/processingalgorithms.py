@@ -46,11 +46,9 @@ from .core.spectrallibrary import SpectralSetting, \
     SpectralLibrary, FIELD_VALUES
 from .core.spectralprofile import SpectralProfileBlock
 from .gui.spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
-from .processing import \
-    SpectralProcessingProfiles, SpectralProcessingProfilesOutput, \
-    SpectralProcessingProfilesSink, parameterAsSpectralProfileBlockList
 
 from ..unitmodel import UnitConverterFunctionModel
+
 
 class _AbstractSpectralAlgorithm(QgsProcessingAlgorithm):
 
@@ -359,8 +357,8 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
                          context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
 
-
-        input_profiles: typing.List[SpectralProfileBlock] = parameterAsSpectralProfileBlockList(parameters, self.INPUT, context)
+        input_profiles: typing.List[SpectralProfileBlock] = parameterAsSpectralProfileBlockList(parameters, self.INPUT,
+                                                                                                context)
 
         mode = self.parameterAsMode(parameters, context)
 
@@ -387,7 +385,7 @@ class SpectralProfileWriter(_AbstractSpectralAlgorithm):
             new_features = []
             if fids and mode != 'APPEND':
                 # block profiles with FIDs -> handle mode
-                FEATURE_DATA = {fid : (ba, g) for fid, ba, g in block.profileValueByteArrays()}
+                FEATURE_DATA = {fid: (ba, g) for fid, ba, g in block.profileValueByteArrays()}
                 request = QgsFeatureRequest()
                 request.setFilterFids(fids)
                 for f in speclib.getFeatures(request):
