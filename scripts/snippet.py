@@ -7,6 +7,8 @@ from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from qgis._core import QgsMapLayerModel, QgsApplication, QgsRasterDataProvider, Qgis
 
 from qgis._gui import QgsMapToolIdentify
+
+import qps
 from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas
 from qgis.core import QgsProject, QgsRasterLayer, QgsContrastEnhancement
 from qps.speclib.core.spectralprofile import groupBySpectralProperties
@@ -27,25 +29,28 @@ from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvi
 from qps.testing import TestObjects, start_app
 from qps.utils import qgisAppQgisInterface
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
+
 APP = None
 if not isinstance(QgsApplication.instance(), QgsApplication):
     APP = start_app()
 else:
     APP = QgsApplication.instance()
 
+qps.initAll()
+
 if False:
     from test_speclib_rasterdataprovider import RasterDataProviderTests
+
     T = RasterDataProviderTests()
     T.setUpClass()
     T.setUp()
     T.test_VectorLayerRasterDataProvider()
 else:
     vl = TestObjects.createVectorLayer()
-    vl = TestObjects.createSpectralLibrary(n_empty=3, n_bands=[[25,], [255,]])
+    vl = TestObjects.createSpectralLibrary(n_empty=3, n_bands=[[25, ], [255, ]])
     QgsProject.instance().addMapLayer(vl)
 
     p_field = profile_fields(vl)
-
 
     fids = vl.allFeatureIds()
     layers = []
@@ -76,7 +81,7 @@ else:
         dpList.append(dp)
         layers.append(layer)
 
-        #break
+        # break
 
         nb = dp.bandCount()
         for b in range(1, nb + 1):
@@ -104,8 +109,8 @@ else:
     def onIdentifyResults(results):
         print(results, flush=True)
 
-    if qgisAppQgisInterface() is None:
 
+    if qgisAppQgisInterface() is None:
         c = QgsMapCanvas()
         c.setLayers(layers)
         c.zoomToFullExtent()

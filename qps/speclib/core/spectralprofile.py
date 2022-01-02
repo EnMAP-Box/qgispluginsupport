@@ -161,14 +161,17 @@ class SpectralSetting(object):
         if isinstance(x, list):
             x = tuple(x)
 
-        if bbl:
+        if bbl is not None:
             bbl = tuple(bbl)
 
         self._x: typing.Tuple = x
         self._xUnit: str = xUnit
         self._yUnit: str = yUnit
         self._bbl: typing.Tuple = bbl
-        self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
+        try:
+            self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
+        except Exception as ex:
+            s = ""
         self._field_name: str = field_name
 
     def fieldName(self) -> str:

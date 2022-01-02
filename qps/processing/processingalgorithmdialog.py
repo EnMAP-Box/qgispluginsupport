@@ -46,6 +46,7 @@ class ProcessingAlgorithmDialog(QDialog):
         self.mTreeViewAlgorithms.setToolboxProxyModel(model)
         self.mTreeViewAlgorithms.selectionModel().selectionChanged.connect(self.onAlgorithmTreeSelectionChanged)
         self.mAlgorithmModel = model
+        self.tbAlgorithmFilter.setText(model.filterString())
 
     def algorithm(self) -> QgsProcessingAlgorithm:
         return self.mSelectedAlgorithm

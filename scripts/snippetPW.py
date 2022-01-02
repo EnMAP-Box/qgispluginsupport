@@ -4,6 +4,15 @@ import importlib
 
 from PyQt5.QtCore import QVariant
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QGridLayout
+
+if not '__file__' in locals():
+    __file__ = r'D:\Repositories\qgispluginsupport\scripts\snippet.py'
+REPO = pathlib.Path(__file__).parents[1]
+print(REPO)
+site.addsitedir(REPO)
+
+TESTS = REPO / 'tests' / 'speclib'
+site.addsitedir(TESTS)
 from qgis._core import QgsMapLayerModel, QgsApplication, QgsRasterDataProvider, Qgis, QgsProcessingParameterRasterLayer, \
     QgsProcessingParameterMultipleLayers, QgsProcessingContext, QgsVectorLayer, QgsProcessingRegistry
 
@@ -15,16 +24,6 @@ from qps import initAll
 from qps.speclib.core.spectralprofile import groupBySpectralProperties
 from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingRasterLayerWidgetWrapper, \
     SpectralProcessingWidget
-
-if not '__file__' in locals():
-    __file__ = r'D:\Repositories\qgispluginsupport\scripts\snippet.py'
-REPO = pathlib.Path(__file__).parents[1]
-print(REPO)
-site.addsitedir(REPO)
-
-TESTS = REPO / 'tests' / 'speclib'
-site.addsitedir(TESTS)
-
 from qps.speclib.core import spectrallibraryrasterdataprovider, profile_fields
 
 importlib.reload(spectrallibraryrasterdataprovider)
