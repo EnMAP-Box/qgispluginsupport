@@ -7,7 +7,7 @@ import warnings
 import numpy as np
 from PyQt5.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDate, QDateTime, QByteArray
 from PyQt5.QtGui import QIcon, QColor
-from qgis._core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
+from qgis.core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
     QgsRasterBandStats, QgsProject, QgsVectorLayerCache, QgsPointXY, QgsRaster, QgsRasterIdentifyResult, \
     QgsColorRampShader
 
@@ -17,10 +17,10 @@ from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, 
     QgsDataSourceUri, QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
     QgsProviderRegistry, QgsMessageLog
 
-from qps.speclib.core import profile_fields, is_profile_field, profile_field_indices
-from qps.speclib.core.spectralprofile import SpectralSetting, groupBySpectralProperties, SpectralProfile, \
+from ..core import profile_fields, is_profile_field, profile_field_indices
+from ..core.spectralprofile import SpectralSetting, groupBySpectralProperties, SpectralProfile, \
     decodeProfileValueDict
-from qps.utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextColor, numpyToQgisDataType, \
+from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextColor, numpyToQgisDataType, \
     HashableRectangle, printCaller, qgsFields
 
 
@@ -387,7 +387,10 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         for i, v in enumerate(fieldValues):
             if isinstance(v, QByteArray):
                 d = decodeProfileValueDict(v)
-                s = SpectralSetting.fromDictionary(d)
+                try:
+                    s = SpectralSetting.fromDictionary(d)
+                except Exception as ex:
+                    s = ""
                 if isinstance(s, SpectralSetting):
                     if self.mSpectralSetting is None:
                         self.mSpectralSetting = s

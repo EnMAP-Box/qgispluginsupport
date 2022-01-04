@@ -7,12 +7,14 @@ from PyQt5.QtCore import pyqtSignal, Qt, QModelIndex
 from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent, QColor
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QLabel, QMessageBox
+
+from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry
 from qgis.core import QgsVectorLayer
 
 from qgis.core import QgsFeature
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
     QgsActionMenu, QgsStatusBar
-from .spectralprocessingwidget import showSpectralProcessingWidget
+from .spectralprocessingwidget import SpectralProcessingWidget
 from ..core import is_spectral_library, profile_field_list
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
@@ -57,6 +59,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mStatusLabel.setTextFormat(Qt.RichText)
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
+
+        self.mSpectralProcessingWidget: SpectralProcessingWidget = None
 
         self.mToolbar: QToolBar
         self.mIODialogs: typing.List[QWidget] = list()
@@ -152,7 +156,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowSpectralProcessingDialog.setParent(self)
         self.actionShowSpectralProcessingDialog.setCheckable(False)
         self.actionShowSpectralProcessingDialog.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
-        self.actionShowSpectralProcessingDialog.triggered.connect(lambda: showSpectralProcessingWidget(self.speclib()))
+        self.actionShowSpectralProcessingDialog.triggered.connect(self.showSpectralProcessingWidget)
         self.mToolbar.insertAction(self.mActionOpenFieldCalculator, self.actionShowSpectralProcessingDialog)
         self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
 
@@ -421,6 +425,29 @@ class SpectralLibraryWidget(AttributeTableWidget):
         except Exception as ex:
             print(ex, file=sys.stderr)
             pass
+
+    def showSpectralProcessingWidget(self):
+        alg_key = 'qps/processing/last_alg_id'
+        if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingWidget):
+            self.mSpectralProcessingWidget = SpectralProcessingWidget(speclib=self.speclib())
+            alg_id = self.property(alg_key)
+            if isinstance(alg_id, str):
+                reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+                alg = reg.algorithmById(alg_id)
+                if isinstance(alg, QgsProcessingAlgorithm):
+                    self.mSpectralProcessingWidget.setAlgorithm(alg_id)
+
+            def disconnect():
+                if isinstance(self.mSpectralProcessingWidget, SpectralProcessingWidget):
+                    alg = self.mSpectralProcessingWidget.processingAlgorithm()
+                    if isinstance(alg, QgsProcessingAlgorithm):
+                        self.setProperty(alg_key, alg.id())
+
+                    self.mSpectralProcessingWidget = None
+
+            self.mSpectralProcessingWidget.sigAboutToBeClosed.connect(disconnect)
+        self.mSpectralProcessingWidget.show()
+
 
     def addCurrentProfilesAutomatically(self, b: bool):
         self.optionAddCurrentProfilesAutomatically.setChecked(b)

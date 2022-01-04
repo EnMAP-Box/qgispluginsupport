@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>845</width>
+    <width>1000</width>
     <height>452</height>
    </rect>
   </property>
@@ -300,6 +300,7 @@
    <addaction name="separator"/>
    <addaction name="mActionAddAttribute"/>
    <addaction name="mActionRemoveAttribute"/>
+   <addaction name="mActionOrganizeColumns"/>
    <addaction name="mActionOpenFieldCalculator"/>
    <addaction name="separator"/>
    <addaction name="mActionSetStyles"/>
@@ -636,6 +637,18 @@
    </property>
    <property name="text">
     <string>Set Filter</string>
+   </property>
+  </action>
+  <action name="mActionOrganizeColumns">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionEditTable.svg</normaloff>:/images/themes/default/mActionEditTable.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Organize Columns</string>
+   </property>
+   <property name="toolTip">
+    <string>Organize Columns</string>
    </property>
   </action>
  </widget>

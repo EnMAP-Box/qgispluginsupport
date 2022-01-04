@@ -1,7 +1,6 @@
-from qgis._core import QgsMapLayer, QgsVectorLayer
-from qgis._gui import QgsFieldComboBox
-
-from qps.speclib.core import profile_fields
+from qgis.core import QgsMapLayer, QgsVectorLayer
+from qgis.gui import QgsFieldComboBox
+from ..core import profile_fields
 
 
 class SpectralProfileFieldComboBox(QgsFieldComboBox):

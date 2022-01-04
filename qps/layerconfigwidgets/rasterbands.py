@@ -60,7 +60,7 @@ class RasterBandComboBox(QgsRasterBandComboBox):
         """
         Re-Implements void QgsRasterBandComboBox::setLayer( QgsMapLayer *layer ) with own band-name logic
         :param layer: 
-        :type layer: qgis._core.QgsRasterLayer
+        :type layer: qgis.core.QgsRasterLayer
         :return: 
         :rtype: None
         """

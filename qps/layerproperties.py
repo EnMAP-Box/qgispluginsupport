@@ -20,6 +20,7 @@ import typing
 
 from qgis.PyQt.QtWidgets import *
 # auto-generated file.
+from qgis.gui import QgsOrganizeTableColumnsDialog
 from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties
 from qgis.core import \
     Qgis, \
@@ -1228,6 +1229,10 @@ def tr(t: str) -> str:
 
 
 class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
+    """
+    Reimplements QgsAttributeTableDialog which unfortunately is not
+    available in PyQGIS (see QGIS code src/app/qgsattributetabledialog.cpp).
+    """
     sigWindowIsClosing = pyqtSignal()
 
     def __init__(self, mLayer: QgsVectorLayer, *args,
@@ -1240,7 +1245,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.widgetRight.setVisible(False)
 
         settings = QgsSettings()
-
+        self.mMainView: QgsDualView
         self.mActionCutSelectedRows.triggered.connect(self.mActionCutSelectedRows_triggered)
         self.mActionCopySelectedRows.triggered.connect(self.mActionCopySelectedRows_triggered)
         self.mActionPasteFeatures.triggered.connect(self.mActionPasteFeatures_triggered)
@@ -1255,7 +1260,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mActionSelectedToTop.toggled.connect(self.mMainView.setSelectedOnTop)
         self.mActionAddAttribute.triggered.connect(self.mActionAddAttribute_triggered)
         self.mActionRemoveAttribute.triggered.connect(self.mActionRemoveAttribute_triggered)
-        # self.mActionOpenFieldCalculator.triggered.connect(self.mActionOpenFieldCalculator_triggered)
+        self.mActionOrganizeColumns.triggered.connect(self.mActionOrganizeColumns_triggered)
+        self.mActionOpenFieldCalculator.triggered.connect(self.mActionOpenFieldCalculator_triggered)
         self.mActionDeleteSelected.triggered.connect(self.mActionDeleteSelected_triggered)
         self.mMainView.currentChanged.connect(self.mMainView_currentChanged)
         self.mActionAddFeature.triggered.connect(self.mActionAddFeature_triggered)
@@ -1877,6 +1883,29 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                 field = d.field()
                 self.mLayer.addAttribute(field)
                 self.reloadModel()
+
+    def mActionOpenFieldCalculator_triggered(self):
+        if not isinstance(self.mLayer, QgsVectorLayer):
+            return
+
+        masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
+        # todo: uncomment after QgsFieldCalculator has become public API
+        """
+        calc: QgsFieldCalculator =  QgsFieldCalculator(self.mLayer, self)
+        if calc.exec_() == QDialog.Accepted:
+            col = masterModel.fieldCol(calc.changedAttributeId())
+            if col >= 0:
+                masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount()-1, col))
+        """
+
+    def mActionOrganizeColumns_triggered(self):
+        if not isinstance(self.mLayer, QgsVectorLayer):
+            return
+
+        dlg = QgsOrganizeTableColumnsDialog(self.mLayer, self.mLayer.attributeTableConfig(), self)
+        if dlg.exec_() == QDialog.Accepted:
+            config = dlg.config()
+            self.mMainView.setAttributeTableConfig(config)
 
     def mActionRemoveAttribute_triggered(self):
         if not (isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.isEditable()):

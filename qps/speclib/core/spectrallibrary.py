@@ -40,7 +40,7 @@ import warnings
 from osgeo import gdal, ogr, osr, gdal_array
 import uuid
 import numpy as np
-from qgis._core import QgsRasterDataProvider, QgsDataProvider, QgsRectangle
+from qgis.core import QgsRasterDataProvider, QgsDataProvider, QgsRectangle
 
 from qgis.PyQt.QtCore import Qt, QVariant, QPoint, QUrl, QMimeData, \
     QFileInfo, pyqtSignal

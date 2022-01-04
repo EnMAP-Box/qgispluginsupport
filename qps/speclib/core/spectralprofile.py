@@ -123,18 +123,21 @@ def decodeProfileValueDict(dump: QByteArray) -> dict:
 class SpectralSetting(object):
     """
     A spectral settings described the boundary conditions of one or multiple spectral profiles with
-    n y-values, e.g. reflectances or radiances, by
-    1. n x values, e.g. the wavelenght of each band
+    n y-values, e.g. reflectance or radiance, by
+    1. n x values, e.g. the wavelength of each band
     2. an xUnit, e.g. the wavelength unit 'micrometers'
     3. an yUnit, e.g. 'reflectance'
     """
 
     @classmethod
     def fromDictionary(cls, d:dict) -> 'SpectralSetting':
-        if not 'x' in d.keys():
+        if not 'y' in d.keys():
+            # no spectral values no spectral setting
             return None
-
-        return SpectralSetting(d['x'],
+        x = d.get('x', None)
+        if x is None:
+            x = list(range(len(d['y'])))
+        return SpectralSetting(x,
                                xUnit=d.get('xUnit', None),
                                yUnit=d.get('yUnit', None),
                                bbl=d.get('bbl', None)
@@ -145,7 +148,6 @@ class SpectralSetting(object):
         if not isinstance(ba, QByteArray):
             return None
         return SpectralSetting.fromDictionary(decodeProfileValueDict(ba))
-
 
     def __init__(self,
                  x: typing.Union[tuple, list, np.ndarray],

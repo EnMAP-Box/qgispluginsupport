@@ -1,7 +1,7 @@
 import typing
 from PyQt5.QtCore import QObject, QRect, QSize, QPoint
 from PyQt5.QtWidgets import QSizePolicy, QComboBox
-from qgis._core import QgsMapLayer, QgsMapLayerModel
+from qgis.core import QgsMapLayer, QgsMapLayerModel
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt
 

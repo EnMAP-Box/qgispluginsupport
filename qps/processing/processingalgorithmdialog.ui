@@ -11,11 +11,20 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Selecte Processing Algorithm / Model</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QgsFilterLineEdit" name="tbAlgorithmFilter">
+     <property name="placeholderText">
+      <string>Filter</string>
+     </property>
+     <property name="nullValue">
+      <string/>
+     </property>
+     <property name="showSearchIcon">
+      <bool>true</bool>
+     </property>
      <property name="qgisRelation" stdset="0">
       <string notr="true"/>
      </property>

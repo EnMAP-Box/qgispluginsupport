@@ -34,7 +34,7 @@ import sys
 import typing
 
 from PyQt5.QtCore import QUrlQuery
-from qgis._core import QgsFeature, QgsFields, QgsField, QgsExpressionContext, QgsVectorLayer
+from qgis.core import QgsFeature, QgsFields, QgsField, QgsExpressionContext, QgsVectorLayer
 
 from qgis.PyQt.QtCore import QObject, QVariant
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog, QProgressDialog

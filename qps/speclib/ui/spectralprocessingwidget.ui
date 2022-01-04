@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>701</width>
+    <width>725</width>
     <height>509</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Spectral Processing Widget</string>
@@ -16,6 +22,9 @@
   <property name="windowIcon">
    <iconset resource="../../qpsresources.qrc">
     <normaloff>:/qps/ui/icons/profile_processing.svg</normaloff>:/qps/ui/icons/profile_processing.svg</iconset>
+  </property>
+  <property name="autoFillBackground">
+   <bool>true</bool>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
@@ -44,7 +53,7 @@
         <string>Parameters</string>
        </attribute>
        <layout class="QFormLayout" name="formLayout">
-        <item row="1" column="0">
+        <item row="0" column="0">
          <widget class="QPushButton" name="btnAlgorithm">
           <property name="toolTip">
            <string>Select a raster processing algorithm / model</string>
@@ -58,25 +67,22 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
-         <widget class="QLabel" name="tbAlgorithmName">
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="tbAlgorithmName">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="autoFillBackground">
            <bool>true</bool>
           </property>
-          <property name="styleSheet">
-           <string notr="true">color:&quot;red&quot;;</string>
+          <property name="readOnly">
+           <bool>true</bool>
           </property>
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Plain</enum>
-          </property>
-          <property name="text">
+          <property name="placeholderText">
            <string>Select a raster processing algorithm / model</string>
-          </property>
-          <property name="scaledContents">
-           <bool>false</bool>
           </property>
          </widget>
         </item>
@@ -112,8 +118,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>651</width>
-             <height>312</height>
+             <width>675</width>
+             <height>292</height>
             </rect>
            </property>
           </widget>
@@ -224,23 +230,46 @@ p, li { white-space: pre-wrap; }
     </widget>
    </item>
    <item>
-    <widget class="QgsMessageBar" name="mMessageBar">
-     <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Raised</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QProgressBar" name="progressBar">
+      <widget class="QProgressBar" name="mProgressBar">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="value">
         <number>0</number>
        </property>
       </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnCancel">
+       <property name="text">
+        <string>Cancel</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
      </item>
      <item>
       <widget class="QPushButton" name="btnRun">
@@ -250,9 +279,9 @@ p, li { white-space: pre-wrap; }
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="btnCancel">
+      <widget class="QPushButton" name="btnClose">
        <property name="text">
-        <string>Cancel</string>
+        <string>Close</string>
        </property>
       </widget>
      </item>
@@ -335,14 +364,6 @@ p, li { white-space: pre-wrap; }
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>QgsMessageBar</class>
-   <extends>QFrame</extends>
-   <header>qgis.gui</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="../../qpsresources.qrc"/>
   <include location="../../../../QGIS/images/images.qrc"/>

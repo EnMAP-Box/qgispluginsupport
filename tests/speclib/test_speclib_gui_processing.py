@@ -10,7 +10,8 @@ from qgis._core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm,
     QgsField, QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingParameterRasterLayer, \
     QgsProcessingOutputRasterLayer, QgsProcessingFeedback, QgsProcessingContext, QgsProcessingModelAlgorithm, \
     QgsProcessingRegistry, QgsApplication, QgsProcessingParameterMultipleLayers
-from qgis._gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator
+from qgis._gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator, \
+    QgsProcessingAlgorithmDialogBase
 
 from processing.gui.BatchPanel import BatchPanel
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
@@ -295,6 +296,16 @@ class SpectralProcessingTests(TestCase):
         w.setLayout(l)
         self.showGui(w)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Sandbox only')
+    def test_dialog(self):
+        class D(QgsProcessingAlgorithmDialogBase):
+            def __init__(self, *args, **kwds):
+                super().__init__(*args, **kwds)
+        d = D()
+        d.exec_()
+
+
+
     def test_SpectralProcessingWidget(self):
         self.initProcessingRegistry()
 
@@ -306,6 +317,7 @@ class SpectralProcessingTests(TestCase):
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
         speclib.selectByIds([1, 2, 3, 4])
+        speclib.startEditing()
         slw = SpectralLibraryWidget(speclib=speclib)
         self.showGui(slw)
 
