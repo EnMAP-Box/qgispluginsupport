@@ -176,15 +176,12 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         assert isinstance(parameter, QgsProcessingParameterRasterLayer)
         self.mMapLayerWidget: QWidget = None
         self.mMapLayerModel: QgsMapLayerModel = None
-        self.mLayers: typing.List[QgsRasterLayer] = list()
+
         self.mLabel: QLabel = None
 
         super(SpectralProcessingRasterLayerWidgetWrapper, self).__init__(parameter, dialogType, parent)
         self.mProfileField: str = None
 
-    def setRasterLayers(self, layers: typing.List[QgsRasterLayer]):
-        self.mLayers.clear()
-        self.mLayers.extend(layers)
 
     def createWidget(self):
 
@@ -369,7 +366,6 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             if isinstance(param, QgsProcessingParameterRasterLayer):
                 # workaround https://github.com/qgis/QGIS/issues/46673
                 wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.Standard)
-                wrapper.setRasterLayers(self.mProject.mapLayers())
             else:
                 wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
 
@@ -501,7 +497,6 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         loadUi(speclibUiPath('spectralprocessingwidget.ui'), self)
 
         self.cbSelectedFeaturesOnly: QCheckBox
-        self.cbSelectedFeaturesOnly.toggled.connect(self.updateSpeclibRasterDataProvider)
 
         self.mProcessingAlgorithmModel: SpectralProcessingAlgorithmModel = SpectralProcessingAlgorithmModel(self)
 
@@ -512,7 +507,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         self.mProcessingContext.setTransformContext(QgsProject.instance().transformContext())
         self.mProcessingFeedback.progressChanged.connect(self.mProgressBar.setValue)
         self.mProcessingWidgetContext: QgsProcessingParameterWidgetContext = QgsProcessingParameterWidgetContext()
-        self.mProcessingWidgetContext.setMessageBar(self.mMessageBar)
+        # self.mProcessingWidgetContext.setMessageBar(self.mMessageBar)
 
         self.mProcessingAlg: QgsProcessingAlgorithm = None
         self.mProcessingAlgParametersStore: dict = dict()
@@ -859,7 +854,7 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
         self.mSpeclib.willBeDeleted.connect(self.close)
 
         self.updateGui()
-        self.updateSpeclibRasterDataProvider()
+
 
     def updateGui(self):
 
@@ -890,12 +885,6 @@ class SpectralProcessingWidget(QWidget, QgsProcessingContextGenerator):
                   self.scrollArea,
                   ]:
             w.setEnabled(hasAlg)
-
-    def updateSpeclibRasterDataProvider(self):
-        fids = None
-        if self.selectedFeaturesOnly():
-            fids = self.speclib().selectedFeatureIds()
-        # self.mSpeclibRasterDataProvider.initData(self.mSpeclib, fids=fids)
 
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib

@@ -247,7 +247,7 @@ class SpectralProcessingTests(TestCase):
 
         parameters = [
             QgsProcessingParameterRasterLayer('rasterlayer'),
-            QgsProcessingParameterMultipleLayers('multiplelayers')
+
         ]
 
         l = QGridLayout()
@@ -265,8 +265,10 @@ class SpectralProcessingTests(TestCase):
             def processingContext(self):
                 return self.processing_context
 
+        project = QgsProject()
+        project.addMapLayers(layers)
         widget_context = QgsProcessingParameterWidgetContext()
-        widget_context.setProject(QgsProject.instance())
+        widget_context.setProject(project)
         processing_context = QgsProcessingContext()
         context_generator = ContextGenerator(processing_context)
         parameters_generator = None
@@ -278,7 +280,6 @@ class SpectralProcessingTests(TestCase):
         widgets = []
         for i, param in enumerate(parameters):
             wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.Standard)
-            wrapper.setRasterLayers(layers)
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(context_generator)
             wrapper.registerProcessingParametersGenerator(parameters_generator)
