@@ -1,3 +1,7 @@
+"""
+Example that addresses https://github.com/qgis/QGIS/issues/46673
+
+"""
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout
 from qgis.core import QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
     QgsVectorLayer, QgsProject, QgsProcessingParameterVectorLayer
