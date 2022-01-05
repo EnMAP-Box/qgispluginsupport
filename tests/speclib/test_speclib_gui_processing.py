@@ -223,6 +223,25 @@ class SpectralProcessingTests(TestCase):
                 comment = dlg.comments()
                 comment_color = dlg.commentColor()
 
+    def test_algwidget(self):
+        self.initProcessingRegistry()
+        from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
+        registerDataProvider()
+        n_bands = [256]
+        n_features = 20
+        speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
+        speclib: QgsVectorLayer
+
+        speclib.startEditing()
+        procw = SpectralProcessingWidget(speclib=speclib)
+        # procw.setSpeclib(speclib)
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        alg1 = reg.algorithmById('gdal:rearrange_bands')
+        alg2 = reg.algorithmById('native:rescaleraster')
+
+        procw.setAlgorithm(alg2)
+        self.showGui(procw)
+
     def test_SpectralProcessingWidget2(self):
         self.initProcessingRegistry()
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider

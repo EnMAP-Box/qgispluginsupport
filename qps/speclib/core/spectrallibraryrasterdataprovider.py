@@ -24,8 +24,14 @@ from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextC
     HashableRectangle, printCaller, qgsFields
 
 
-def createExampleLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],
-                        fields = None) -> typing.List[QgsRasterLayer]:
+def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],
+                       fields = None) -> typing.List[QgsRasterLayer]:
+    """
+    Converts a list of QgsFeatures into a set of QgsRasterLayers
+    :param features:
+    :param fields:
+    :return:
+    """
     if isinstance(features, QgsVectorLayer):
         features = list(features.getFeatures())
 
@@ -41,9 +47,9 @@ def createExampleLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFe
             fields = [fields]
         elif isinstance(fields, QgsFields):
             fields = [f for f in fields]
-    for f in fields:
-        assert isinstance(f, QgsField)
+
     for field in fields:
+        assert isinstance(field, QgsField)
         if is_profile_field(field):
             GROUPS = groupBySpectralProperties(features, profile_field=field)
 
@@ -59,6 +65,7 @@ def createExampleLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFe
             dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
             dp.setActiveFeatures(features, field=field)
             layers.append(layer)
+
     return layers
 
 
@@ -531,8 +538,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         converter = self.fieldConverter()
         if isinstance(converter, FieldToRasterValueConverter):
             x0, x1 = round(intersectExtent.xMinimum()), round(intersectExtent.xMaximum())
-            y0, y1 = round(intersectExtent.yMinimum()), round(intersectExtent.yMaximum())
-            import scipy.interpolate as interp
+            # y0, y1 = round(intersectExtent.yMinimum()), round(intersectExtent.yMaximum())
+            # import scipy.interpolate as interp
             band_slice = converter.rasterDataArray()[bandNo - 1, 0:1, int(x0):int(x1)]
 
             band_data = nn_resample(band_slice, (bufferHeightPix, bufferWidthPix))
@@ -688,7 +695,6 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         rect.setYMinimum(self.mYOffset)
         rect.setXMaximum(self.xSize())
         rect.setYMaximum(self.mYOffset + self.ySize())
-        # print(f'#exent {self.xSize()} {self.ySize()}')
         return rect
 
     def sourceDataType(self, bandNo: int) -> Qgis.DataType:

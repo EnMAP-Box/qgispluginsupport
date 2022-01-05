@@ -8,7 +8,7 @@ from qgis._gui import QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 from qps import initResources
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider, registerDataProvider, \
-    VectorLayerFieldRasterDataProvider, createExampleLayers
+    VectorLayerFieldRasterDataProvider, createRasterLayers
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase
 
@@ -118,14 +118,14 @@ class RasterDataProviderTests(TestCase):
 
         vl = TestObjects.createSpectralLibrary(20, n_bands=[[13, 25, 5], [22, None, 42]], n_empty=2)
         fields = profile_fields(vl)
-        layers = createExampleLayers(vl, fields.at(1))
+        layers = createRasterLayers(vl, fields.at(1))
         for lyr in layers:
             self.assertIsInstance(lyr, QgsRasterLayer)
             dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
             self.assertTrue(len(dp.activeFeatureIds()) == 20)
 
-        layers = createExampleLayers(vl)
+        layers = createRasterLayers(vl)
         for lyr in layers:
             self.assertIsInstance(lyr, QgsRasterLayer)
             dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()

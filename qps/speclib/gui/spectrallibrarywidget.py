@@ -430,6 +430,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         alg_key = 'qps/processing/last_alg_id'
         if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingWidget):
             self.mSpectralProcessingWidget = SpectralProcessingWidget(speclib=self.speclib())
+            self.mSpectralProcessingWidget.setMainMessageBar(self.mainMessageBar())
+
             alg_id = self.property(alg_key)
             if isinstance(alg_id, str):
                 reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
@@ -447,7 +449,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
             self.mSpectralProcessingWidget.sigAboutToBeClosed.connect(disconnect)
         self.mSpectralProcessingWidget.show()
-
 
     def addCurrentProfilesAutomatically(self, b: bool):
         self.optionAddCurrentProfilesAutomatically.setChecked(b)
