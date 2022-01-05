@@ -17,7 +17,8 @@ import numpy as np
 
 from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields
 
-from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, qgsFieldAttributes2List, \
+from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
+    qgsFieldAttributes2List, \
     spatialPoint2px, saveTransform
 from ...plotstyling.plotstyling import PlotStyle
 from ...externals import pyqtgraph as pg
@@ -103,13 +104,16 @@ def encodeProfileValueDict(d: dict) -> QByteArray:
         v = d.get(k)
         # save keys with information only
         if v is not None:
+            if isinstance(v, np.ndarray):
+                v = v.tolist()
             d2[k] = v
     return QByteArray(pickle.dumps(d2))
 
 
-def decodeProfileValueDict(dump: QByteArray) -> dict:
+def decodeProfileValueDict(dump: QByteArray, numpy_arrays:bool=False) -> dict:
     """
     Converts a json / pickle dump  into a SpectralProfile value dictionary
+    :param numpy_arrays:
     :param dump: str
     :return: dict
     """
@@ -118,11 +122,17 @@ def decodeProfileValueDict(dump: QByteArray) -> dict:
     if dump not in EMPTY_VALUES:
         d2 = pickle.loads(dump)
         d.update(d2)
+
+    if numpy_arrays:
+        for k in ['x', 'y', 'bbl']:
+            if k in d.keys():
+                d[k] = np.asarray(d[k])
     return d
+
 
 class SpectralSetting(object):
     """
-    A spectral settings described the boundary conditions of one or multiple spectral profiles with
+    A spectral settings describes general "Sensor" properties of one or multiple spectral profiles.
     n y-values, e.g. reflectance or radiance, by
     1. n x values, e.g. the wavelength of each band
     2. an xUnit, e.g. the wavelength unit 'micrometers'
@@ -130,7 +140,7 @@ class SpectralSetting(object):
     """
 
     @classmethod
-    def fromDictionary(cls, d:dict) -> 'SpectralSetting':
+    def fromDictionary(cls, d: dict) -> 'SpectralSetting':
         if not 'y' in d.keys():
             # no spectral values no spectral setting
             return None
@@ -166,47 +176,59 @@ class SpectralSetting(object):
         if bbl is not None:
             bbl = tuple(bbl)
 
-        self._x: typing.Tuple = x
-        self._xUnit: str = xUnit
-        self._yUnit: str = yUnit
-        self._bbl: typing.Tuple = bbl
-        self._hash = hash((self._x, self._xUnit, self._yUnit, self._bbl))
+        #
+        self.mX: typing.Tuple = x
+        self.mXUnit: str = xUnit
+        self.mYUnit: str = yUnit
+        self.mBadBandList: typing.Tuple = bbl
+        self.mHash = hash((self.mX, self.mXUnit, self.mYUnit, self.mBadBandList))
 
-        self._field_name: str = field_name
+        # other properties, which will not be used to distinct SpectralSettings from each other
+        self.mFieldName: str = field_name
 
     def fieldName(self) -> str:
         """
         Returns the name of the QgsField to which profiles within this setting are linked to
         :return: str
         """
-        return self._field_name
+        return self.mFieldName
 
     def __str__(self):
         return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
 
     def x(self) -> typing.List:
-        return list(self._x)
+        return list(self.mX)
 
     def n_bands(self) -> int:
-        return len(self._x)
+        return len(self.mX)
 
-    def yUnit(self):
-        return self._yUnit
+    def yUnit(self) -> str:
+        return self.mYUnit
 
-    def xUnit(self):
-        return self._xUnit
+    def xUnit(self) -> str:
+        return self.mXUnit
 
     def bbl(self):
-        return self._bbl
+        """
+        Shortcut for bad band list
+        :return:
+        """
+        return self.badBandList()
+
+    def badBandList(self):
+        """
+        Returns the band band list
+        :return:
+        """
+        return self.mBadBandList
 
     def __eq__(self, other):
         if not isinstance(other, SpectralSetting):
             return False
-        return self._hash == other._hash
+        return self.mHash == other.mHash
 
     def __hash__(self):
-        return self._hash
-
+        return self.mHash
 
 
 class SpectralProfile(QgsFeature):
@@ -644,8 +666,6 @@ class SpectralProfile(QgsFeature):
             bbl = np.ones(self.nb(profile_field=profile_field), dtype=np.byte).tolist()
         return bbl
 
-
-
     def setXUnit(self, unit: str, profile_field=None):
         d = self.values(profile_field_index=profile_field)
         d['xUnit'] = unit
@@ -887,8 +907,8 @@ class SpectralProfileBlock(object):
         return SpectralProfileBlock.fromSpectralProfiles(
             SpectralLibraryUtils.profiles(speclib,
                                           profile_field=profile_field),
-                                          profile_field=profile_field,
-                                          feedback=feedback)
+            profile_field=profile_field,
+            feedback=feedback)
 
     @staticmethod
     def fromSpectralProfiles(profiles: typing.List[SpectralProfile],
@@ -1088,9 +1108,9 @@ class SpectralProfileBlock(object):
                              bbl=kwds.get('bbl')
                              )
         block = SpectralProfileBlock(values, SS,
-                                    fids=kwds.get('keys', None),
-                                    metadata=kwds.get('metadata', None)
-                                    )
+                                     fids=kwds.get('keys', None),
+                                     metadata=kwds.get('metadata', None)
+                                     )
         if isinstance(geodata, tuple) and isinstance(geodata[0], np.ndarray):
             block.setPositions(*geodata)
         return block

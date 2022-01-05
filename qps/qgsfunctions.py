@@ -29,11 +29,16 @@ import pathlib
 import json
 import sys
 import os
+
+from PyQt5.QtCore import QByteArray
+
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis._core import QgsExpressionNodeFunction
 from qgis.core import QgsExpression, QgsFeature, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext
 from qgis.PyQt.QtCore import QVariant, NULL
 from .speclib.core.spectrallibrary import FIELD_VALUES, SpectralProfile
+from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
@@ -139,6 +144,22 @@ class HelpStringMaker(object):
 
             html.append(f'</table></div>')
 
+
+        examples = JSON.get('examples', None)
+        if examples:
+            html.append(f'<h4>Examples</h4>\n<div class=\"examples\">\n<ul>\n')
+
+            for example in examples:
+                str_exp = example['expression']
+                str_ret = example['returns']
+                str_note = example.get('note')
+                html.append(f'<li><code>{str_exp}</code> &rarr; <code>{str_ret}</code>')
+                if str_note:
+                    html.append(f'({str_note})')
+                html.append('</li>')
+            html.append('</ul>\n</div>\n')
+
+            
         return '\n'.join(html)
 
 
@@ -197,24 +218,29 @@ class SpectralData(QgsExpressionFunction):
         name = 'spectralData'
 
         args = [
-            QgsExpressionFunction.Parameter('profile_field', optional=True, defaultValue=FIELD_VALUES)
+            QgsExpressionFunction.Parameter('profile_field', optional=False)
         ]
 
         helptext = HM.helpText(name, args)
         super().__init__(name, args, group, helptext)
 
-    def func(self, values, context: QgsExpressionContext, parent, node):
+    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
-        value_field = values[0]
-        feature = None
-        if context:
-            feature = context.feature()
-        if not isinstance(feature, QgsFeature):
+        ba = values[0]
+
+        if not isinstance(context, QgsExpressionContext):
             return None
+
+        if ba is None:
+            return None
+
         try:
-            profile = SpectralProfile.fromQgsFeature(feature, profile_field=value_field)
-            assert isinstance(profile, SpectralProfile)
-            return profile.values()
+            assert context.fields()
+            assert isinstance(ba, QByteArray)
+            return decodeProfileValueDict(ba)
+            # profile = SpectralProfile.fromQgsFeature(feature, profile_field=profile_field)
+            # assert isinstance(profile, SpectralProfile)
+            # return profile.values()
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
             return None
@@ -226,7 +252,7 @@ class SpectralData(QgsExpressionFunction):
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:
-        return False
+        return True
 
 
 class SpectralMath(QgsExpressionFunction):
@@ -237,27 +263,30 @@ class SpectralMath(QgsExpressionFunction):
 
         args = [
             QgsExpressionFunction.Parameter('expression', optional=False, isSubExpression=True),
-            QgsExpressionFunction.Parameter('profile_field', optional=True, defaultValue=FIELD_VALUES)
+            QgsExpressionFunction.Parameter('profile_field', optional=False)
         ]
         helptext = HM.helpText(name, args)
         super().__init__(name, args, group, helptext)
 
     def func(self, values, context: QgsExpressionContext, parent, node):
 
-        expression, value_field = values
-        feature = None
+        expression, ba = values
         if context:
             feature = context.feature()
-        if not isinstance(feature, QgsFeature):
+        if not isinstance(context, QgsExpressionContext):
             return None
+
+        if ba is None:
+            return None
+
         try:
-            profile = SpectralProfile.fromQgsFeature(feature, profile_field=value_field)
-            assert isinstance(profile, SpectralProfile)
-            values = profile.values()
+            assert context.fields()
+            assert isinstance(ba, QByteArray)
+            values = decodeProfileValueDict(ba, numpy_arrays=True)
             exec(expression, values)
 
-            newProfile = SpectralProfile(values=values)
-            return newProfile.attribute(profile.mCurrentProfileFieldIndex)
+            new_ba = encodeProfileValueDict(values)
+            return new_ba
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
             return None

@@ -1,11 +1,19 @@
 # QGIS Plugin Support (QPS) 
 ![build status](https://img.shields.io/bitbucket/pipelines/jakimowb/qgispluginsupport.svg)
 
-The QPS library aims to support the creation of QGIS Plugins with a focus on remote sensing applications.
+The QGIS Plugin Support (QPS) library aims at the development of remote sensing applications using the QGIS python API.
 
 
+This includes, for example
+- Remote sensing specific metadata handling
+- Spectral Libraries
+- Interactive plotting
+- Tools to test python code that uses the QGIS API
 
-QPS is used in other project like:
+QPS is designed as python package that can be included as subpackage of other QGIS python plugins. This  
+
+
+QPS is used in other projects, for example:
 
 EnMAP-Box https://bitbucket.org/hu-geomatics/enmap-box
 
@@ -13,6 +21,9 @@ EO Time Series Viewer https://bitbucket.org/jakimowb/eo-time-series-viewer
 
 Virtual Raster Builder https://bitbucket.org/jakimowb/virtual-raster-builder
 
+## Code Design
+
+Ideally, QPS becomes obsolete by providing every feature  every feature  
 
 ## Installation ##
 
