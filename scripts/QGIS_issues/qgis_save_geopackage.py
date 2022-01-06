@@ -3,8 +3,8 @@ import os
 import random
 import pickle
 
-from PyQt5.QtCore import QVariant, QByteArray
-from qgis._core import QgsProject, QgsFields, QgsField, QgsFeature, QgsWkbTypes, QgsCoordinateReferenceSystem
+from qgis.PyQt.QtCore import QVariant, QByteArray
+from qgis.core import QgsProject, QgsFields, QgsField, QgsFeature, QgsWkbTypes, QgsCoordinateReferenceSystem
 from qgis.core import QgsVectorFileWriter, QgsProcessingFeedback
 
 feedback = QgsProcessingFeedback()
@@ -16,9 +16,9 @@ saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
 saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
 
 path = pathlib.Path('~').expanduser() / 'test.gpkg'
-#if path.is_file() and saveVectorOptions.actionOnExistingFile != QgsVectorFileWriter.CreateOrOverwriteLayer:
+# if path.is_file() and saveVectorOptions.actionOnExistingFile != QgsVectorFileWriter.CreateOrOverwriteLayer:
 #    os.remove(path)
-#assert not path.is_file()
+# assert not path.is_file()
 print(f'file exists: {path}')
 fields = QgsFields()
 fields.append(QgsField('name', QVariant.String))
@@ -26,7 +26,7 @@ fields.append(QgsField('num', QVariant.Int))
 fields.append(QgsField('binary', QVariant.ByteArray))
 
 features = []
-for i, n in enumerate(['A','B','C','D']):
+for i, n in enumerate(['A', 'B', 'C', 'D']):
     feature = QgsFeature(fields)
     feature.setAttribute('name', n)
     feature.setAttribute('num', random.randint(0, 100))
