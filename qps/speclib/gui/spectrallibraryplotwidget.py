@@ -1102,7 +1102,7 @@ FIELD_NAME = str
 MODEL_NAME = str
 X_UNIT = str
 
-ATTRIBUTE_ID = typing.Tuple[FEATURE_ID, str]
+ATTRIBUTE_ID = typing.Tuple[FEATURE_ID, FIELD_INDEX]
 MODEL_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME]
 PLOT_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME, X_UNIT]
 PROFILE_DATA_CACHE_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX]
@@ -1581,7 +1581,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         # # workaround https://github.com/qgis/QGIS/issues/45228
         self.mStartedCommitEditWrapper: bool = False
 
-
         self.mCACHE_PROFILE_DATA = dict()
 
         self.mProfileFieldModel: QgsFieldModel = QgsFieldModel()
@@ -1617,13 +1616,14 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.mVectorLayerCache: QgsVectorLayerCache = None
 
         self.mChangedFIDs: typing.Set[int] = set()
+        self.mChangedAttributes: typing.Set[typing.Tuple[int, int]] = set()
         # self.mPlotDataItems: typing.List[SpectralProfilePlotDataItem] = list()
 
         # Update plot data and colors
 
-        self.mCache2ModelData: typing.Dict[MODEL_DATA_KEY, dict] = dict()
+        # .mCache2ModelData: typing.Dict[MODEL_DATA_KEY, dict] = dict()
         # mCache2ModelData[(fid, fidx, modelId, xunit))] -> dict
-        self.mCache3PlotData: typing.Dict[PLOT_DATA_KEY, dict] = dict()
+        # self.mCache3PlotData: typing.Dict[PLOT_DATA_KEY, dict] = dict()
 
         self.mUnitConverterFunctionModel = UnitConverterFunctionModel()
         self.mDualView: QgsDualView = None
@@ -1842,205 +1842,226 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         t0 = datetime.datetime.now()
         if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget) and isinstance(self.speclib(), QgsVectorLayer)):
             return
-        SL: QgsVectorLayer = self.speclib()
-        n_max_pdis = self.maxProfiles()
-        FIELDIDX2NAME = {i: SL.fields().at(i).name() for i in range(SL.fields().count())}
-        VIS2FIELD_INDEX = {v: SL.fields().lookupField(v.field().name()) for v in self}
-
-        # get the data to display
-        MODELDATA_TO_LOAD: typing.Dict[str, set] = dict()
 
         feature_priority = self.featurePriority()
 
         if self.mShowSelectedFeaturesOnly:
             selected_fids = set()
+            # feature_priority already contains selected fids only
         else:
             selected_fids = self.speclib().selectedFeatureIds()
 
+        temporal_fids = self.mTemporaryProfileIDs
         visualizations = [v for v in self if v.isVisible() and v.isComplete() and v.speclib() == self.mSpeclib]
 
         xunit = self.xUnit()
 
-        DATA_TO_VISUALIZE = list()
-
-        for fid in feature_priority:
-            if len(DATA_TO_VISUALIZE) >= n_max_pdis:
-                break
-
-            # profile: SpectralProfile = self.mCache1FeatureData.get(fid, None)
-            # if not isinstance(profile, SpectralProfile):
-            #    PROFILES_TO_LOAD.add(fid)
-            #    continue
-
-            for vis in visualizations:
-                if len(DATA_TO_VISUALIZE) >= n_max_pdis:
-                    break
-                # this key describes the actually plotted values
-                # plotDataKey = (fid, fidx, mid, xunit)
-                plotDataKey = (fid, VIS2FIELD_INDEX[vis], vis.modelId(), xunit)
-
-                # this key describes what is visualized by a Plot Data Item (PDI)
-                # Visualization + Plot Data Key
-                visKey = (vis, plotDataKey)
-
-                #
-                modelDataKey = (fid, VIS2FIELD_INDEX[vis], vis.modelId())
-                modeldata = self.mCache2ModelData.get(modelDataKey, None)
-                if not isinstance(modeldata, dict):
-                    loadKey = (modelDataKey[1], modelDataKey[2])
-                    fids_to_update = MODELDATA_TO_LOAD.get(loadKey, set())
-                    fids_to_update.add(fid)
-                    MODELDATA_TO_LOAD[loadKey] = fids_to_update
-                    continue
-
-                if modeldata['y'] is None:
-                    # empty profile, nothing to plot
-                    continue
-
-                if self.mXUnitInitialized is False and self.mXUnitModel.findUnit(modeldata['xUnit']):
-                    self.mXUnitInitialized = True
-                    # this will call updatePlot again, so we can return afterwards
-                    self.setXUnit(modeldata['xUnit'])
-                    return
-
-                if plotDataKey not in self.mCache3PlotData.keys():
-                    # convert model data to unit
-                    convertedData = self.modelDataToXUnitPlotData(modeldata, xunit)
-                    self.mCache3PlotData[plotDataKey] = convertedData
-                else:
-                    convertedData = self.mCache3PlotData[plotDataKey]
-
-                if convertedData is None:
-                    continue
-
-                DATA_TO_VISUALIZE.append(visKey)
-
-        if len(MODELDATA_TO_LOAD) > 0:
-            self.loadModelData(MODELDATA_TO_LOAD)
-            self.updatePlot()
-            return
-
-        # Update plot items
+        # Recycle plot items
         old_spdis: typing.List[SpectralProfilePlotDataItem] = self.mPlotWidget.spectralProfilePlotDataItems()
         new_spdis: typing.List[SpectralProfilePlotDataItem] = []
+
         pdiGenerator = PDIGenerator(old_spdis, onProfileClicked=self.mPlotWidget.onProfileClicked)
 
+        # init renderers
         VIS_RENDERERS: typing.Dict[SpectralProfilePlotVisualization,
                                    typing.Tuple[QgsFeatureRenderer, QgsRenderContext]] = dict()
 
+        VIS_HAS_FILTER: typing.Dict[SpectralProfilePlotVisualization, bool] = dict()
         for vis in visualizations:
             vis: SpectralProfilePlotVisualization
 
-            renderer: QgsFeatureRenderer = self.speclib().renderer().clone()
-            renderContext = QgsRenderContext()
-            # renderer.startRender(renderContext, self.speclib().fields())
-            renderContext.setExpressionContext(self.speclib().createExpressionContext())
+            renderer: QgsFeatureRenderer = self.speclib().renderer()
+            if isinstance(renderer, QgsFeatureRenderer):
+                renderer = renderer.clone()
+                renderContext = QgsRenderContext()
+                # renderer.startRender(renderContext, self.speclib().fields())
+                renderContext.setExpressionContext(self.speclib().createExpressionContext())
 
-            VIS_RENDERERS[vis] = (renderer, renderContext)
+                VIS_RENDERERS[vis] = (renderer, renderContext)
+            else:
+                VIS_RENDERERS[vis] = (None, None)
 
-        context = self.speclib().createExpressionContext()
+            VIS_HAS_FILTER[vis] = vis.filterProperty().expressionString().strip() != ''
 
-        for zValue, k in enumerate(DATA_TO_VISUALIZE):
-            vis, plotDataKey = k
-            fid, idx, modelName, xUnit = plotDataKey
-            aid = (fid, vis.field().name())
-            # profile = self.mCache1FeatureData[fid]
-            profile = self.mVectorLayerCache.getFeature(fid)
-            # print(f'{profile.id()}: {profile.attributes()}')
+        request = QgsFeatureRequest()
+        request.setFilterFids(feature_priority)
 
-            context.setFeature(profile)
-            if vis.filterProperty().expressionString().strip() != '':
-                b, success = vis.filterProperty().valueAsBool(context, defaultValue=False)
-                if not b:
+        # PROFILE_DATA: typing.Dict[tuple, dict] = dict()
+
+        profile_limit_reached: bool = False
+        context: QgsExpressionContext = self.speclib().createExpressionContext()
+
+        NOT_INITIALIZED = -1
+
+        for fid in feature_priority:
+            # self.mVectorLayerCache.getFeatures(feature_priority):
+            feature: QgsFeature = self.mVectorLayerCache.getFeature(fid)
+            assert fid == feature.id()
+            # fid = feature.id()
+            if profile_limit_reached:
+                break
+
+            context.setFeature(feature)
+
+            for vis in visualizations:
+
+                vis: SpectralProfilePlotVisualization
+                data_id_raw = (fid, vis.fieldIdx())
+                data_id_plot = (fid, vis.fieldIdx(), xunit)
+
+                # context.appendScope(vis.createExpressionContextScope())
+
+                if not (fid in selected_fids or fid in temporal_fids) and VIS_HAS_FILTER[vis]:
+                    b, success = vis.filterProperty().valueAsBool(context, defaultValue=False)
+                    if not b:
+                        # feature does not match with visualization filter
+                        continue
+                    else:
+
+                        s = ""
+
+                # mCACHE_PROFILE_DATA keys:
+                #   None -> no binary data / cannot be decoded
+                # (fid, field index, '__raw__') = dict -> decoded as is
+                # (fid, field index, '<x unit>') = dict -> '__raw__' converted to x unit
+                plotData = self.mCACHE_PROFILE_DATA.get(data_id_raw, NOT_INITIALIZED)
+                if plotData == NOT_INITIALIZED:
+                    # load profile data
+                    auid_raw = (fid, vis.fieldIdx(), '__raw__')
+                    byteArray: QByteArray = feature.attribute(vis.fieldIdx())
+                    raw_data = self.mCACHE_PROFILE_DATA.get(auid_raw, NOT_INITIALIZED)
+                    if isinstance(byteArray, QByteArray) and raw_data == NOT_INITIALIZED:
+                        raw_data = decodeProfileValueDict(byteArray)
+                        ruid = (aid[0], aid[1], raw_data['xUnit'])
+
+                        if raw_data['y'] is None:
+                            # empty profile, nothing to plot
+                            # create empty entries (=None)
+                            self.mCACHE_PROFILE_DATA[auid_raw] = None
+                            self.mCACHE_PROFILE_DATA[ruid] = None
+                        else:
+                            self.mCACHE_PROFILE_DATA[auid_raw] = raw_data
+                            self.mCACHE_PROFILE_DATA[ruid] = raw_data
+
+                    raw_data = self.mCACHE_PROFILE_DATA.get(auid_raw, None)
+                    if raw_data is None:
+                        # binary data cannot be decoded to spectral profile values
+                        continue
+
+                    if self.mXUnitInitialized is False and self.mXUnitModel.findUnit(raw_data['xUnit']):
+                        self.mXUnitInitialized = True
+                        self.setXUnit(raw_data['xUnit'])
+                        # this will call updatePlot again, so we can return afterwards
+                        return
+
+                    # convert profile data to xUnit
+                    # if not possible, entry will be set to None
+                    self.mCACHE_PROFILE_DATA[auid] = self.modelDataToXUnitPlotData(raw_data, xunit)
+                    plotData = self.mCACHE_PROFILE_DATA[auid]
+
+                if not isinstance(plotData, dict):
+                    # profile data can not be transformed to requested x-unit
                     continue
 
-            plotData = self.mCache3PlotData[plotDataKey]
-            name, success = vis.labelProperty().valueAsString(context, defaultString='')
+                label, success = vis.labelProperty().valueAsString(context, defaultString='')
 
-            style: PlotStyle = vis.plotStyle()
-            linePen = pg.mkPen(style.linePen)
-            symbolPen = pg.mkPen(style.markerPen)
-            symbolBrush = pg.mkBrush(style.markerBrush)
+                style: PlotStyle = vis.plotStyle()
+                linePen = pg.mkPen(style.linePen)
+                symbolPen = pg.mkPen(style.markerPen)
+                symbolBrush = pg.mkBrush(style.markerBrush)
 
-            featureColor: QColor = vis.plotStyle().lineColor()
+                # featureColor: QColor = vis.plotStyle().lineColor()
 
-            if fid in selected_fids:
+                if fid in selected_fids:
 
-                # show all profiles, special highlight of selected
+                    # show all profiles, special highlight of selected
 
-                linePen.setColor(self.mPlotWidgetStyle.selectionColor)
-                linePen.setWidth(style.lineWidth() + 2)
-                symbolPen.setColor(self.mPlotWidgetStyle.selectionColor)
-                symbolBrush.setColor(self.mPlotWidgetStyle.selectionColor)
+                    linePen.setColor(self.mPlotWidgetStyle.selectionColor)
+                    linePen.setWidth(style.lineWidth() + 2)
+                    symbolPen.setColor(self.mPlotWidgetStyle.selectionColor)
+                    symbolBrush.setColor(self.mPlotWidgetStyle.selectionColor)
 
-            elif fid in self.mTemporaryProfileIDs:
-                # special color
-                featureColor = self.mTemporaryProfileColors.get(aid, self.mPlotWidgetStyle.temporaryColor)
-                linePen.setColor(featureColor)
-                symbolPen.setColor(featureColor)
-                symbolBrush.setColor(featureColor)
+                elif fid in temporal_fids:
+                    # special color
+                    featureColor = self.mTemporaryProfileColors.get(aid, self.mPlotWidgetStyle.temporaryColor)
+                    linePen.setColor(featureColor)
+                    linePen.setWidth(style.lineWidth() + 2)
+                    symbolPen.setColor(featureColor)
+                    symbolBrush.setColor(featureColor)
 
-            else:
+                else:
+                    qgssymbol = None
+                    renderer, renderContext = VIS_RENDERERS[vis]
 
-                renderer, renderContext = VIS_RENDERERS[vis]
-                renderContext.expressionContext().setFeature(profile)
+                    if isinstance(renderer, QgsFeatureRenderer):
+                        renderContext.expressionContext().setFeature(feature)
+                        renderer.startRender(renderContext, feature.fields())
+                        qgssymbol = renderer.symbolForFeature(feature, renderContext)
 
-                renderer.startRender(renderContext, profile.fields())
-                qgssymbol = renderer.symbolForFeature(profile, renderContext)
-                if isinstance(qgssymbol, QgsSymbol):
-                    symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
-                    context.appendScope(symbolScope)
+                        if isinstance(qgssymbol, QgsSymbol):
+                            symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
+                            context.appendScope(symbolScope)
 
-                prop = vis.colorProperty()
-                featureColor, success = prop.valueAsColor(context, defaultColor=QColor('white'))
-                renderer.stopRender(renderContext)
-                if isinstance(qgssymbol, QgsSymbol):
-                    context.popScope()
-                    pass
-                if not success:
-                    s = ""
-                linePen.setColor(featureColor)
-                symbolPen.setColor(featureColor)
-                symbolBrush.setColor(featureColor)
+                    prop = vis.colorProperty()
+                    featureColor, success = prop.valueAsColor(context, defaultColor=QColor('white'))
 
-            symbol = style.markerSymbol
-            symbolSize = style.markerSize
+                    if isinstance(renderer, QgsFeatureRenderer):
+                        renderer.stopRender(renderContext)
 
-            x = plotData['x']
-            y = plotData['y']
-            if isinstance(x[0], (datetime.date, datetime.datetime)):
-                x = np.asarray(x, dtype=np.datetime64)
+                    if isinstance(qgssymbol, QgsSymbol):
+                        context.popScope()
+                        pass
+                    if not success:
+                        # no color, no profile, e.g. if profile
+                        continue
+                    linePen.setColor(featureColor)
+                    symbolPen.setColor(featureColor)
+                    symbolBrush.setColor(featureColor)
 
-            pdi = pdiGenerator.__next__()
-            pdi: SpectralProfilePlotDataItem
-            pdi.setVisualizationKey(k)
-            assert isinstance(pdi, SpectralProfilePlotDataItem)
+                if len(new_spdis) == self.maxProfiles():
+                    profile_limit_reached = True
+                    break
 
-            # replace None by NaN
-            x = np.asarray(x, dtype=float)
-            y = np.asarray(y, dtype=float)
-            connect = np.isfinite(x) & np.isfinite(y)
-            pdi.setData(x=x, y=y, z=-1 * zValue,
-                        connect=connect,
-                        name=name, pen=linePen,
-                        symbol=symbol, symbolPen=symbolPen, symbolBrush=symbolBrush, symbolSize=symbolSize)
+                symbol = style.markerSymbol
+                symbolSize = style.markerSize
 
-            tooltip = f'<html><body><table>' \
-                      f'<tr><td>name</td><td>{name}</td></tr>' \
-                      f'<tr><td>fid</td><td>{fid}</td></tr>' \
-                      f'<tr><td>field</td><td>{FIELDIDX2NAME[idx]}</td></tr>' \
-                      f'</table></body></html>'
+                x = plotData['x']
+                y = plotData['y']
+                if isinstance(x[0], (datetime.date, datetime.datetime)):
+                    x = np.asarray(x, dtype=np.datetime64)
 
-            pdi.setToolTip(tooltip)
-            pdi.curve.setToolTip(tooltip)
-            pdi.scatter.setToolTip(tooltip)
-            pdi.setZValue(-1 * zValue)
+                pdi = pdiGenerator.__next__()
+                pdi: SpectralProfilePlotDataItem
 
-            new_spdis.append(pdi)
+                zValue = pdiGenerator.zValue()
+
+                k = (vis, (fid, vis.fieldIdx(), '', xunit))
+                pdi.setVisualizationKey(k)
+                assert isinstance(pdi, SpectralProfilePlotDataItem)
+
+                # replace None by NaN
+                x = np.asarray(x, dtype=float)
+                y = np.asarray(y, dtype=float)
+                connect = np.isfinite(x) & np.isfinite(y)
+                pdi.setData(x=x, y=y, z=-1 * zValue,
+                            connect=connect,
+                            name=label, pen=linePen,
+                            symbol=symbol, symbolPen=symbolPen, symbolBrush=symbolBrush, symbolSize=symbolSize)
+
+                tooltip = f'<html><body><table>' \
+                          f'<tr><td>Label</td><td>{label}</td></tr>' \
+                          f'<tr><td>FID</td><td>{fid}</td></tr>' \
+                          f'<tr><td>Field</td><td>{vis.field().name()}</td></tr>' \
+                          f'</table></body></html>'
+
+                pdi.setToolTip(tooltip)
+                pdi.curve.setToolTip(tooltip)
+                pdi.scatter.setToolTip(tooltip)
+                pdi.setZValue(-1 * zValue)
+
+                new_spdis.append(pdi)
+
         s = ""
-        for v, t in VIS_RENDERERS.items():
-            renderer, renderContext = t
-            # renderer.stopRender(renderContext)
 
         to_remove = [p for p in old_spdis if p not in new_spdis]
         for p in to_remove:
@@ -2051,8 +2072,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             if p not in existing:
                 self.mPlotWidget.addItem(p)
 
-        # load missing data
-        # self.loadModelData(MODELDATA_TO_LOAD)
+        self.updateProfileLabel(len(new_spdis), profile_limit_reached)
 
         debugLog(f'updatePlot: {datetime.datetime.now() - t0} {len(new_spdis)} plot data items')
 
@@ -2124,9 +2144,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             for vis in visualizations:
 
                 vis: SpectralProfilePlotVisualization
-                aid = (fid, vis.field().name())
-                auid = (fid, vis.fieldIdx(), xunit)
-
+                id_plot_data = (fid, vis.fieldIdx(), xunit)
+                id_attribute = (fid, vis.fieldIdx())
                 # context.appendScope(vis.createExpressionContextScope())
 
                 if not (fid in selected_fids or fid in temporal_fids) and VIS_HAS_FILTER[vis]:
@@ -2134,48 +2153,43 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                     if not b:
                         # feature does not match with visualization filter
                         continue
-                    else:
-
-                        s = ""
 
                 # mCACHE_PROFILE_DATA keys:
                 #   None -> no binary data / cannot be decoded
-                # (fid, field index, '__raw__') = dict -> decoded as is
-                # (fid, field index, '<x unit>') = dict -> '__raw__' converted to x unit
-                plotData = self.mCACHE_PROFILE_DATA.get(aid, NOT_INITIALIZED)
+                # (fid, field index) = dict -> raw value dict, decoded as is
+                # (fid, field index, '<x unit>') = dict -> converted to x unit
+
+                plotData = self.mCACHE_PROFILE_DATA.get(id_plot_data, NOT_INITIALIZED)
                 if plotData == NOT_INITIALIZED:
-                    # load profile data
-                    auid_raw = (fid, vis.fieldIdx(), '__raw__')
-                    byteArray: QByteArray = feature.attribute(vis.fieldIdx())
-                    raw_data = self.mCACHE_PROFILE_DATA.get(auid_raw, NOT_INITIALIZED)
-                    if isinstance(byteArray, QByteArray) and raw_data == NOT_INITIALIZED:
-                        raw_data = decodeProfileValueDict(byteArray)
-                        ruid = (aid[0], aid[1], raw_data['xUnit'])
 
-                        if raw_data['y'] is None:
-                            # empty profile, nothing to plot
-                            # create empty entries (=None)
-                            self.mCACHE_PROFILE_DATA[auid_raw] = None
-                            self.mCACHE_PROFILE_DATA[ruid] = None
-                        else:
-                            self.mCACHE_PROFILE_DATA[auid_raw] = raw_data
-                            self.mCACHE_PROFILE_DATA[ruid] = raw_data
+                    rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, NOT_INITIALIZED)
+                    if rawData == NOT_INITIALIZED:
+                        # load profile data
+                        byteArray: QByteArray = feature.attribute(vis.fieldIdx())
+                        rawData = None
+                        if isinstance(byteArray, QByteArray):
+                            rawData = decodeProfileValueDict(byteArray)
+                            if rawData['y'] is None:
+                                # empty profile, nothing to plot
+                                # create empty entries (=None)
+                                rawData = None
+                        self.mCACHE_PROFILE_DATA[id_attribute] = rawData
 
-                    raw_data = self.mCACHE_PROFILE_DATA.get(auid_raw, None)
-                    if raw_data is None:
-                        # binary data cannot be decoded to spectral profile values
-                        continue
-
-                    if self.mXUnitInitialized is False and self.mXUnitModel.findUnit(raw_data['xUnit']):
+                        if rawData is None:
+                            # cannot load raw data
+                            self.mCACHE_PROFILE_DATA[id_plot_data] = None
+                            continue
+                    assert isinstance(rawData, dict)
+                    if self.mXUnitInitialized is False and self.mXUnitModel.findUnit(rawData['xUnit']):
                         self.mXUnitInitialized = True
-                        self.setXUnit(raw_data['xUnit'])
+                        self.setXUnit(rawData['xUnit'])
                         # this will call updatePlot again, so we can return afterwards
                         return
 
                     # convert profile data to xUnit
                     # if not possible, entry will be set to None
-                    self.mCACHE_PROFILE_DATA[auid] = self.modelDataToXUnitPlotData(raw_data, xunit)
-                    plotData = self.mCACHE_PROFILE_DATA[auid]
+                    self.mCACHE_PROFILE_DATA[id_plot_data] = self.modelDataToXUnitPlotData(rawData, xunit)
+                    plotData = self.mCACHE_PROFILE_DATA[id_plot_data]
 
                 if not isinstance(plotData, dict):
                     # profile data can not be transformed to requested x-unit
@@ -2201,7 +2215,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 elif fid in temporal_fids:
                     # special color
-                    featureColor = self.mTemporaryProfileColors.get(aid, self.mPlotWidgetStyle.temporaryColor)
+                    featureColor = self.mTemporaryProfileColors.get(id_attribute, self.mPlotWidgetStyle.temporaryColor)
                     linePen.setColor(featureColor)
                     linePen.setWidth(style.lineWidth() + 2)
                     symbolPen.setColor(featureColor)
@@ -2511,7 +2525,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 self.mSpeclib.updatedFields.connect(self.onSpeclibAttributesUpdated)
                 # self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributeDeleted)
                 self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
-                # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
+                self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.committedAttributeValuesChanges.connect(self.onSpeclibCommittedAttributeValuesChanges)
                 self.mSpeclib.beforeCommitChanges.connect(self.onSpeclibBeforeCommitChanges)
                 self.mSpeclib.afterCommitChanges.connect(self.onSpeclibAfterCommitChanges)
@@ -2539,6 +2553,13 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             self.speclib().endEditCommand()
         self.mStartedCommitEditWrapper = False
 
+    def onSpeclibAttributeValueChanged(self, fid, idx, value):
+        # warnings.warn('To expansive. Will be called for each single feature!')
+        fid_idx = (fid, idx)
+        self.mChangedAttributes.add(fid_idx)
+        #self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if (k[0], k[1]) != fid_idx}
+        #self.updatePlot([fid])
+
     def onSpeclibCommittedFeaturesAdded(self, id, features):
 
         if id != self.speclib().id():
@@ -2556,14 +2577,14 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         #    self.mCache1FeatureData[OLD2NEW[o]] = self.mCache1FeatureData.pop(o)
 
         # rename fid in cache2
-        for modelDataKey in [mk for mk in self.mCache2ModelData.keys() if mk[0] in oldFIDs]:
-            self.mCache2ModelData[(OLD2NEW[modelDataKey[0]], modelDataKey[1], modelDataKey[2])] = \
-                self.mCache2ModelData.pop(modelDataKey)
+        #for modelDataKey in [mk for mk in self.mCache2ModelData.keys() if mk[0] in oldFIDs]:
+        #    self.mCache2ModelData[(OLD2NEW[modelDataKey[0]], modelDataKey[1], modelDataKey[2])] = \
+        #        self.mCache2ModelData.pop(modelDataKey)
 
         # rename fid in cache3
-        for plotDataKey in [pk for pk in self.mCache3PlotData.keys() if pk[0] in oldFIDs]:
-            self.mCache3PlotData[(OLD2NEW[plotDataKey[0]], plotDataKey[1], plotDataKey[2], plotDataKey[3])] = \
-                self.mCache3PlotData.pop(plotDataKey)
+        # for plotDataKey in [pk for pk in self.mCache3PlotData.keys() if pk[0] in oldFIDs]:
+        #    self.mCache3PlotData[(OLD2NEW[plotDataKey[0]], plotDataKey[1], plotDataKey[2], plotDataKey[3])] = \
+        #        self.mCache3PlotData.pop(plotDataKey)
 
         # rename fids in feature color cache
         # for o in [k for k in self.mCache1FeatureColors if k in oldFIDs]:
@@ -2613,23 +2634,32 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         # remove deleted features from internal caches
         # self.mCache1FeatureColors = {k: v for k, v in self.mCache1FeatureColors.items() if k not in fids_removed}
         # self.mCache1FeatureData = {k: v for k, v in self.mCache1FeatureData.items() if k not in fids_removed}
-        self.mCache2ModelData = {k: v for k, v in self.mCache2ModelData.items() if k[0] not in fids_removed}
-        self.mCache3PlotData = {k: v for k, v in self.mCache3PlotData.items() if k[0] not in fids_removed}
+        # self.mCache2ModelData = {k: v for k, v in self.mCache2ModelData.items() if k[0] not in fids_removed}
+        # self.mCache3PlotData = {k: v for k, v in self.mCache3PlotData.items() if k[0] not in fids_removed}
 
         self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if k[0] not in fids_removed}
         self.updatePlot()
         s = ""
 
     def onSpeclibCommittedAttributeValuesChanges(self, lid:str, changedAttributeValues: typing.Dict[int, dict]):
+        changedAttributes = set()
         for fid, attributeMap in changedAttributeValues.items():
-            pass
+            for i in attributeMap.keys():
+                changedAttributes.add((fid, i))
+
+        self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if (k[0], k[1]) != changedAttributes}
+        self.updatePlot()
         s = ""
 
     def onSpeclibEditCommandEnded(self, *args):
         # changedFIDs1 = list(self.speclib().editBuffer().changedAttributeValues().keys())
         changedFIDs2 = self.mChangedFIDs
-        self.onSpeclibFeaturesDeleted(sorted(changedFIDs2))
-        self.mChangedFIDs.clear()
+
+        self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if (k[0], k[1]) not in self.mChangedAttributes}
+        self.mChangedAttributes.clear()
+        self.updatePlot()
+        # self.onSpeclibFeaturesDeleted(sorted(changedFIDs2))
+        # self.mChangedFIDs.clear()
 
     def onDualViewSliderMoved(self, *args):
         self.updatePlot()
