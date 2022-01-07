@@ -1,44 +1,39 @@
 import os
 import pathlib
-import re
-import sys
 import typing
-
-from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, QMimeData, Qt, QPointF, QSortFilterProxyModel, QTimer, \
-    QVariant
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QInputDialog, QMessageBox, QGridLayout, QToolButton, QAction, \
-    QMenu, \
-    QTreeView, QGroupBox, QLabel, QHBoxLayout, QComboBox, QLineEdit, QCheckBox, QTabWidget, QTextEdit, QDialog, \
-    QListWidget, QListView, QTextBrowser, QPushButton, QSizePolicy
-
-from qgis.gui import QgsMessageBar, QgsProcessingAlgorithmDialogBase, QgsPanelWidget, QgsProcessingParametersGenerator
-from qgis.core import QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
-    QgsProcessingRegistry, \
-    QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
-    QgsProcessingParameterRasterLayer, QgsProcessingOutputRasterLayer, QgsProject, QgsProcessingParameterDefinition, \
-    QgsProcessingModelChildAlgorithm, QgsProcessingException, QgsRasterDataProvider, QgsMapLayer, QgsRasterLayer, \
-    QgsMapLayerModel, QgsProcessingParameterRasterDestination, QgsFields, QgsProcessingOutputLayerDefinition, \
-    QgsRasterFileWriter, QgsRasterBlockFeedback, QgsRasterPipe, QgsProcessingUtils, QgsCoordinateTransformContext, \
-    QgsField, QgsProcessingParameterMultipleLayers
-from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidgetContext, \
-    QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxTreeView, \
-    QgsProcessingParametersWidget, QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
-    QgsFieldComboBox, QgsMapLayerComboBox, QgsProcessingHiddenWidgetWrapper, QgsFilterLineEdit
 
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider
 from processing.modeler.ProjectProvider import ProjectProvider
-from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, QMimeData, Qt, QTimer, \
+    QVariant
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QGridLayout, QToolButton, QAction, \
+    QMenu, \
+    QLabel, QComboBox, QLineEdit, QCheckBox, QTabWidget, QTextEdit, QDialog, \
+    QTextBrowser, QPushButton, QSizePolicy
+from qgis.core import QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
+    QgsProcessingRegistry, \
+    QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
+    QgsProcessingParameterRasterLayer, QgsProcessingOutputRasterLayer, QgsProject, QgsProcessingParameterDefinition, \
+    QgsRasterLayer, \
+    QgsMapLayerModel, QgsProcessingParameterRasterDestination, QgsFields, QgsProcessingOutputLayerDefinition, \
+    QgsRasterFileWriter, QgsRasterBlockFeedback, QgsRasterPipe, QgsProcessingUtils, QgsField, \
+    QgsProcessingParameterMultipleLayers
+from qgis.gui import QgsMessageBar, QgsProcessingAlgorithmDialogBase, QgsPanelWidget, QgsProcessingParametersGenerator
+from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidgetContext, \
+    QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingParametersWidget, \
+    QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
+    QgsProcessingHiddenWidgetWrapper
 from .. import speclibUiPath
 from ..core import create_profile_field, is_profile_field
-from ..core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider, \
-    SpectralLibraryRasterLayerModel, VectorLayerFieldRasterDataProvider, createRasterLayers
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, prepareProfileValueDict, \
+from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers
+from ..core.spectralprofile import prepareProfileValueDict, \
     encodeProfileValueDict
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
-from ...utils import loadUi, printCaller, rasterLayerArray, iconForFieldType, numpyToQgisDataType
+from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from ...utils import loadUi, rasterLayerArray, iconForFieldType, numpyToQgisDataType
 
 
 def has_raster_io(alg: QgsProcessingAlgorithm) -> bool:

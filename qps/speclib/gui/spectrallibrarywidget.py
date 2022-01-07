@@ -5,25 +5,21 @@ import warnings
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent, QColor
-from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
+from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QLabel, QMessageBox
-
 from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry
 from qgis.core import QgsVectorLayer
-
-from qgis.core import QgsFeature
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
-    QgsActionMenu, QgsStatusBar
-from .spectralprocessingwidget import SpectralProcessingWidget
-from ..core import is_spectral_library, profile_field_list
-from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
-from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
-from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog, SpectralLibraryExportDialog
-from ..core.spectralprofile import SpectralProfile
+    QgsActionMenu
 from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibraryPlotWidget, \
     SpectralLibraryPlotItem, SpectralLibraryPlotStats, SpectralProfilePlotControlModel
-
+from .spectralprocessingwidget import SpectralProcessingWidget
+from ..core import is_spectral_library
+from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
+from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
+from ..core.spectralprofile import SpectralProfile
+from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
+from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ...unitmodel import BAND_NUMBER
 from ...utils import SpatialExtent, SpatialPoint, nextColor
 

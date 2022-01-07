@@ -1,27 +1,25 @@
 import math
 import re
 import typing
-import pathlib
 import warnings
 
 import numpy as np
-from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDate, QDateTime, QByteArray
+
+from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import NULL
+from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDateTime, QByteArray
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
     QgsRasterBandStats, QgsProject, QgsVectorLayerCache, QgsPointXY, QgsRaster, QgsRasterIdentifyResult, \
     QgsColorRampShader
-
-from qgis.PyQt import Qt
-from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, QgsRasterDataProvider, QgsField, \
-    QgsDataSourceUri, QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
+    QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
     QgsProviderRegistry, QgsMessageLog
-
-from ..core import profile_fields, is_profile_field, profile_field_indices
+from ..core import profile_fields, is_profile_field
 from ..core.spectralprofile import SpectralSetting, groupBySpectralProperties, SpectralProfile, \
     decodeProfileValueDict
 from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextColor, numpyToQgisDataType, \
-    HashableRectangle, printCaller, qgsFields
+    HashableRectangle
 
 
 def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],

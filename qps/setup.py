@@ -25,7 +25,9 @@
 ***************************************************************************
 """
 
-import os, sys, pathlib
+import os
+import sys
+
 
 def compileQPSResources():
     pathQPSDir = os.path.dirname(__file__)

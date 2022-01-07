@@ -25,43 +25,9 @@
 ***************************************************************************
 """
 
-import os
-import sys
-import importlib
-import re
-import fnmatch
-import io
-import zipfile
-import pathlib
-import warnings
-import collections
-import copy
-import shutil
-import typing
-import gc
-from qgis.PyQt import sip
-import traceback
-import calendar
-import datetime
-from qgis.core import *
-from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
-    QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
-    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry
-from qgis.gui import *
-from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
-
 from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtXml import *
-from qgis.PyQt.QtXml import QDomDocument
-from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import *
-from qgis.core import *
-from qgis.gui import *
 from qgis.gui import QgsFileWidget
-from osgeo import gdal, ogr, osr, gdal_array
-import numpy as np
-from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from . import DIR_UI_FILES
 from .utils import loadUi
 

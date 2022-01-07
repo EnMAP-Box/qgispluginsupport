@@ -26,12 +26,10 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import enum
 import pathlib
 
-from qgis.core import QgsSettings, QgsCoordinateReferenceSystem, QgsField, QgsFields
 from qgis.PyQt.QtCore import NULL, QVariant
-from osgeo import ogr
+from qgis.core import QgsSettings, QgsCoordinateReferenceSystem, QgsField, QgsFields
 
 EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
 EDITOR_WIDGET_REGISTRY_NAME = 'Spectral Profile'
@@ -69,12 +67,6 @@ def speclibSettings() -> QgsSettings:
     :return: QSettings
     """
     return QgsSettings('HUB', 'speclib')
-
-
-try:
-    from ..speclib.io.envi import EnviSpectralLibraryIO
-except:
-    pass
 
 
 def speclibUiPath(name: str) -> str:

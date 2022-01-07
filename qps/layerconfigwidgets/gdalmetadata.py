@@ -21,30 +21,28 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import pathlib
-import typing
-import re
-import pathlib
-import sys
 import copy
+import pathlib
+import re
+import sys
+import typing
+
+import numpy as np
+from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, QRegExp, pyqtSignal, QAbstractTableModel, QMimeData, \
     QTimer, Qt
 from qgis.PyQt.QtGui import QColor, QFont, QIcon, QContextMenuEvent
 from qgis.PyQt.QtWidgets import QLineEdit, QTableView, QDialogButtonBox, QStyledItemDelegate, QComboBox, QWidget, \
     QApplication, QMenu, QDoubleSpinBox, QDialog
-from osgeo import gdal, ogr
-import numpy as np
-
-
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
     QgsVectorDataProvider, QgsRasterDataProvider, Qgis
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsDoubleSpinBox, QgsMessageBar
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
+from ..unitmodel import BAND_INDEX
 from ..utils import loadUi, gdalDataset, parseWavelength, parseFWHM
-from ..unitmodel import BAND_INDEX, XUnitModel
 
 TYPE_LOOKUP = {
     ':STATISTICS_MAXIMUM': float,

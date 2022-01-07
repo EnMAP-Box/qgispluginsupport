@@ -22,13 +22,15 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import typing, pathlib, enum
+import enum
+
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import *
 from qgis.core import *
 from qgis.gui import *
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtGui import QIcon
-from ..utils import loadUi
 from .core import QpsMapLayerConfigWidget, configWidgetUi
+from ..utils import loadUi
+
 
 class LabelingConfigWidget(QpsMapLayerConfigWidget):
     """

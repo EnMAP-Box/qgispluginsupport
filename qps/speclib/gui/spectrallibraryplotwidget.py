@@ -1,56 +1,46 @@
 import collections
 import copy
 import datetime
-import enum
 import re
 import sys
 import textwrap
 import typing
-import warnings
-import pickle
+
 import numpy as np
-from qgis.gui import QgsPropertyAssistantWidget, QgsFilterLineEdit
+from PyQt5.QtXml import QDomElement, QDomDocument
 
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import pyqtSignal, QTimer, QPointF, pyqtSlot, Qt, QModelIndex, QPoint, QObject, QAbstractTableModel, \
-    QSortFilterProxyModel, QSize, QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
-from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDragMoveEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
+from qgis.PyQt.QtCore import NULL
+from qgis.PyQt.QtCore import pyqtSignal, QPointF, Qt, QModelIndex, QPoint, QObject, QSortFilterProxyModel, QSize, \
+    QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
+from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
 from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem, \
-    QRadioButton, QSizePolicy, QSplitter, QGroupBox
-from PyQt5.QtXml import QDomElement, QDomDocument, QDomNode
-
-from qgis.PyQt.QtCore import NULL
-from qgis.core import QgsPropertyDefinition, QgsFeatureIterator, QgsVectorLayerCache
-from qgis.gui import QgsColorButton, QgsPropertyOverrideButton, QgsCollapsibleGroupBox
-
+    QSizePolicy
+from qgis.core import QgsField, \
+    QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
+    QgsExpression, QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
 from qgis.core import QgsProperty, QgsExpressionContextScope
-from qgis.core import QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, QgsProject, QgsField, \
-    QgsVectorLayer, QgsFieldModel, QgsFields, QgsFieldProxyModel, QgsSettings, QgsApplication, QgsExpressionContext, \
-    QgsExpression, QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, \
-    QgsFeature, QgsFeatureRequest, QgsProcessingException
-from qgis.gui import QgsAttributeTableFilterModel, QgsDualView, QgsAttributeTableModel, QgsFieldExpressionWidget
+from qgis.core import QgsPropertyDefinition, QgsVectorLayerCache
+from qgis.gui import QgsAttributeTableFilterModel, QgsDualView, QgsFieldExpressionWidget
+from qgis.gui import QgsColorButton, QgsPropertyOverrideButton
+from qgis.gui import QgsFilterLineEdit
+from .. import speclibUiPath, speclibSettings, SpectralLibrarySettingsKey
+from ..core import profile_field_list, profile_field_indices, is_spectral_library, create_profile_field, \
+    profile_fields
+from ..core.spectrallibrary import SpectralLibrary, defaultCurvePlotStyle
+from ..core.spectralprofile import decodeProfileValueDict
 from ... import debugLog
-
 from ...externals import pyqtgraph as pg
 from ...externals.htmlwidgets import HTMLComboBox
-from ...externals.pyqtgraph import PlotDataItem, PlotWindow
 from ...externals.pyqtgraph import AxisItem
-from ...externals.pyqtgraph.graphicsItems.ScatterPlotItem import SpotItem
+from ...externals.pyqtgraph import PlotDataItem, PlotWindow
 from ...externals.pyqtgraph.Point import Point as pgPoint
-
+from ...externals.pyqtgraph.graphicsItems.ScatterPlotItem import SpotItem
 from ...models import SettingsModel, SettingsTreeView
-from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget, PlotStyleButton
-from .. import speclibUiPath, speclibSettings, SpectralLibrarySettingsKey
-from ..core.spectrallibrary import SpectralLibrary, DEBUG, containsSpeclib, defaultCurvePlotStyle
-from ..core import profile_field_list, profile_field_indices, is_spectral_library, create_profile_field, \
-    is_profile_field, profile_fields
-from ..core.spectralprofile import SpectralProfile, SpectralProfileBlock, SpectralProfileLoadingTask, \
-    decodeProfileValueDict
-
-from ...simplewidgets import FlowLayout
+from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
-from ...utils import datetime64, UnitLookup, chunks, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField, \
+from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField, \
     HashablePointF
 
 

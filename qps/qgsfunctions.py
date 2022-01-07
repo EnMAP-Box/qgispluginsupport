@@ -24,20 +24,20 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import typing
-import pathlib
 import json
-import sys
 import os
+import pathlib
+import sys
+import typing
+
+from qgis._core import QgsExpressionNodeFunction
 
 from qgis.PyQt.QtCore import QByteArray
-
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis._core import QgsExpressionNodeFunction
-from qgis.core import QgsExpression, QgsFeature, QgsFeatureRequest, QgsExpressionFunction, \
-    QgsMessageLog, Qgis, QgsExpressionContext
 from qgis.PyQt.QtCore import QVariant, NULL
-from .speclib.core.spectrallibrary import FIELD_VALUES, SpectralProfile
+from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
+    QgsMessageLog, Qgis, QgsExpressionContext
+from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"

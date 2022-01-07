@@ -1,23 +1,19 @@
 import os
 import pathlib
 import typing
-import re
 import warnings
 
 from qgis.PyQt.QtCore import pyqtSignal, QRegExp, QUrl
 from qgis.PyQt.QtGui import QIcon, QRegExpValidator
-from qgis.PyQt.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
+from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox, QToolButton, QAction
-
+from qgis.core import QgsField, QgsExpressionContext
+from qgis.core import QgsProcessingFeedback
 from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer, QgsFeature, QgsFields, QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsCoordinateReferenceSystem, QgsExpressionContextScope
-
-from qgis.gui import QgsFileWidget, QgsFieldMappingWidget, QgsFieldMappingModel
-from qgis.core import QgsField, QgsExpression, QgsExpressionContext
-
-from qgis.core import QgsProcessingFeedback
-from . import is_spectral_library, is_profile_field, profile_field_list
+from qgis.gui import QgsFileWidget, QgsFieldMappingWidget
+from . import is_profile_field, profile_field_list
 from .spectralprofile import groupBySpectralProperties
 from .. import speclibUiPath
 from ...layerproperties import CopyAttributesDialog

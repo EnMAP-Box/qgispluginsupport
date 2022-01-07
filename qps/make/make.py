@@ -22,10 +22,11 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-from osgeo import gdal, ogr, osr
 import warnings
 
 from .. import resources
+
+
 def compileResourceFiles(*args, **kwds):
     warnings.warn('Use qps.resources.compileResourceFiles() instead', DeprecationWarning, stacklevel=2)
     return resources.compileResourceFiles(*args, **kwds)

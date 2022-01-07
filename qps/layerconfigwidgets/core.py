@@ -22,19 +22,19 @@
 ***************************************************************************
 """
 
-import typing
 import os
 import pathlib
-import enum
 import re
-from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsFileUtils, QgsSettings, \
-    QgsStyle, QgsMapLayerStyle, QgsApplication
-from qgis.gui import QgsRasterHistogramWidget, QgsMapCanvas, QgsMapLayerConfigWidget,  \
-    QgsLayerTreeEmbeddedConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRendererRasterPropertiesWidget, \
-    QgsRendererPropertiesDialog, QgsRasterTransparencyWidget, QgsProjectionSelectionWidget
+import typing
+
+from qgis.PyQt.QtGui import QIcon
 #
 from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtGui import QIcon
+from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsFileUtils, QgsSettings, \
+    QgsStyle, QgsMapLayerStyle, QgsApplication
+from qgis.gui import QgsRasterHistogramWidget, QgsMapCanvas, QgsMapLayerConfigWidget, \
+    QgsLayerTreeEmbeddedConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRendererRasterPropertiesWidget, \
+    QgsRendererPropertiesDialog, QgsRasterTransparencyWidget, QgsProjectionSelectionWidget
 from ..utils import loadUi
 
 

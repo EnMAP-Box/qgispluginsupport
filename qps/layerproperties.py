@@ -16,57 +16,8 @@
 *                                                                         *
 ***************************************************************************
 """
-import typing
-
-
-# auto-generated file.
-from qgis.gui import QgsOrganizeTableColumnsDialog
-from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties
-from qgis.core import \
-    Qgis, \
-    QgsAction, \
-    QgsApplication, \
-    QgsCategorizedSymbolRenderer, \
-    QgsContrastEnhancement, \
-    QgsDataProvider, \
-    QgsDistanceArea, \
-    QgsEditFormConfig, \
-    QgsExpression, \
-    QgsExpressionContext, \
-    QgsExpressionContextGenerator, \
-    QgsExpressionContextScope, \
-    QgsExpressionContextUtils, \
-    QgsFeature, \
-    QgsFeatureRenderer, \
-    QgsFeatureRequest, \
-    QgsField, \
-    QgsFieldProxyModel, \
-    QgsHillshadeRenderer, \
-    QgsLayerTreeGroup, \
-    QgsLayerTreeLayer, \
-    QgsMapLayer, \
-    QgsMapLayerStyle, \
-    QgsMultiBandColorRenderer, \
-    QgsPalettedRasterRenderer, \
-    QgsProject, \
-    QgsProviderRegistry, \
-    QgsRasterBandStats, \
-    QgsRasterDataProvider, \
-    QgsRasterLayer, \
-    QgsRasterRenderer, \
-    QgsReadWriteContext, \
-    QgsRectangle, \
-    QgsScopedProxyProgressTask, \
-    QgsSettings, \
-    QgsSingleBandGrayRenderer, \
-    QgsSingleBandPseudoColorRenderer, \
-    QgsSingleSymbolRenderer, \
-    QgsVectorDataProvider, \
-    QgsVectorLayer, \
-    QgsWkbTypes
 
 from qgis.gui import \
-    QgisInterface, \
     QgsActionMenu, \
     QgsAttributeEditorContext, \
     QgsAttributeForm, \
@@ -75,7 +26,6 @@ from qgis.gui import \
     QgsDockWidget, \
     QgsDualView, \
     QgsExpressionSelectionDialog, \
-    QgsMapCanvas, \
     QgsMapLayerConfigWidget, \
     QgsMapLayerConfigWidgetFactory, \
     QgsMessageBar, \
@@ -84,12 +34,14 @@ from qgis.gui import \
     QgsSublayersDialog, \
     QgsFilterLineEdit, \
     QgsExpressionBuilderDialog
-
+# auto-generated file.
+from qgis.gui import QgsOrganizeTableColumnsDialog
+from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties
+from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .speclib.core import create_profile_field
 from .utils import *
-from . import DIR_UI_FILES
 from .vectorlayertools import VectorLayerTools
 
 """
@@ -477,7 +429,6 @@ class RemoveAttributeDialog(QDialog):
         self.setWindowTitle('Remove Fields')
         self.setWindowIcon(QIcon(r':/images/themes/default/mActionDeleteAttribute.svg'))
         self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
-        from .layerconfigwidgets.vectorlayerfields import LayerFieldsListModel
         self.fieldModel = CheckableQgsFieldModel()
         self.fieldModel.setLayer(self.mLayer)
         self.fieldModel.setAllowEmptyFieldName(False)

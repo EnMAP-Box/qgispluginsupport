@@ -22,29 +22,25 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import typing
 import pathlib
+import typing
 
-from qgis.PyQt.QtWidgets import QGroupBox, QToolButton, QPushButton
-from qgis.gui import QgsRasterLayerProperties
+import numpy as np
 
-from qgis.core import QgsHillshadeRenderer
-from qgis.core import QgsRasterDataProvider, QgsRasterLayer, QgsMapLayer, \
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QPushButton
+from qgis.PyQt.QtWidgets import QSlider, QWidget, QStackedWidget, QLabel
+from qgis.core import QgsRasterLayer, QgsMapLayer, \
     QgsRasterRenderer, \
     QgsSingleBandGrayRenderer, \
     QgsSingleBandColorDataRenderer, \
     QgsSingleBandPseudoColorRenderer, \
     QgsMultiBandColorRenderer, \
     QgsPalettedRasterRenderer, \
-    QgsColorRampShader, QgsRasterShaderFunction, QgsRasterShader, \
-    QgsApplication
-
+    QgsColorRampShader, QgsRasterShaderFunction, QgsRasterShader
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
-
-from qgis.PyQt.QtWidgets import QSlider, QWidget, QStackedWidget, QLabel
-from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QIcon
-import numpy as np
+from qgis.gui import QgsRasterLayerProperties
 from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
 from ..simplewidgets import FlowLayout
 from ..utils import loadUi, parseWavelength, UnitLookup, parseFWHM, LUT_WAVELENGTH, WAVELENGTH_DESCRIPTION

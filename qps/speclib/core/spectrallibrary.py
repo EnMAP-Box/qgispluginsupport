@@ -25,53 +25,46 @@
 ***************************************************************************
 """
 
+import datetime
+import enum
 # see http://python-future.org/str_literals.html for str issue discussion
 import json
-import enum
-import pickle
-import typing
-import pathlib
 import os
-import datetime
+import pathlib
+import pickle
 import re
 import sys
-import weakref
+import typing
 import warnings
-from osgeo import gdal, ogr, osr, gdal_array
-import uuid
+import weakref
+
 import numpy as np
-from qgis.core import QgsRasterDataProvider, QgsDataProvider, QgsRectangle
+from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.PyQt.QtCore import Qt, QVariant, QPoint, QUrl, QMimeData, \
-    QFileInfo, pyqtSignal
-from qgis.PyQt.QtXml import QDomDocument
+    QFileInfo
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QDialog
-
 from qgis.core import QgsApplication, \
-    QgsFeature, QgsVectorLayer, QgsMapLayer, QgsRasterLayer, \
+    QgsFeature, QgsVectorLayer, QgsRasterLayer, \
     QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
     QgsActionManager, QgsFeatureIterator, QgsFeatureRequest, \
-    QgsGeometry, QgsPointXY, QgsPoint, QgsDefaultValue, QgsReadWriteContext, \
-    QgsMapLayerProxyModel, \
-    QgsEditorWidgetSetup, QgsAction, QgsTask, QgsMessageLog, QgsFileUtils, \
-    QgsProcessingFeedback
-
+    QgsGeometry, QgsPointXY, QgsPoint, QgsDefaultValue, QgsMapLayerProxyModel, \
+    QgsEditorWidgetSetup, QgsAction, QgsMessageLog, QgsProcessingFeedback
 from qgis.gui import \
     QgsGui
-from . import profile_field_list, first_profile_field_index, profile_field_indices, create_profile_field, \
+from . import field_index
+from . import profile_field_list, first_profile_field_index, create_profile_field, \
     is_spectral_library
-
+from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
+    SpectralSetting, groupBySpectralProperties
+from .. import FIELD_FID, FIELD_VALUES
+from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
+from ...plotstyling.plotstyling import PlotStyle
 from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
     fid2pixelindices, parseWavelength, parseBadBandList, optimize_block_size, \
     qgsField, qgsFieldAttributes2List, qgsFields2str, str2QgsFields
-from ...plotstyling.plotstyling import PlotStyle
-from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
-from . import field_index
-from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
-    SpectralSetting, groupBySpectralProperties
-from .. import SPECLIB_CRS, FIELD_FID, FIELD_VALUES
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None

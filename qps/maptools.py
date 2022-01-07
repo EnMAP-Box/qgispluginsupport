@@ -23,35 +23,28 @@
 
 import enum
 import math
-from qgis import *
-from qgis.core import *
-from qgis.gui import *
+import sys
 
-from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
-    QgsVectorDataProvider, QgsApplication, Qgis, \
-    QgsLineString, QgsMultiPoint, QgsCurvePolygon, QgsRectangle, QgsPolygon, \
-    QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
-    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
-    QgsSettings, QgsPoint, QgsFeatureRequest, \
-    QgsWkbTypes, QgsCsException, QgsDistanceArea, QgsAction, \
-    QgsExpressionContextUtils, QgsRenderContext, QgsFeatureIterator, QgsVectorLayerTools, \
-    QgsEditFormConfig, QgsVectorLayerUtils, QgsExpressionContextScope, QgsPointLocator
+from PyQt5.QtCore import pyqtSignal, QTimer, QObject, QPoint, QRect, QSize, QEvent
+from PyQt5.QtGui import QColor, QKeyEvent, QIcon, QCursor
+from PyQt5.QtWidgets import QApplication, QAction, QLabel, QHBoxLayout, QWidget, QSizePolicy, QAbstractButton
 
-from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsAttributeEditorContext, \
+from qgis.PyQt import Qt
+from qgis._core import QgsWkbTypes, QgsVectorLayerTools, QgsProject, QgsVectorLayer, QgsPoint, QgsGeometry, \
+    QgsCoordinateReferenceSystem, QgsPointXY, QgsFeature, QgsSettings, QgsEditFormConfig, QgsMultiPoint, \
+    QgsFeatureRequest, QgsExpressionContextUtils, QgsRenderContext, QgsCsException, QgsDistanceArea, QgsLineString, \
+    QgsRectangle, QgsVectorLayerUtils, QgsVectorDataProvider, Qgis, QgsRasterLayer, QgsAction, QgsMapLayer, \
+    QgsApplication, QgsPointLocator, QgsCurvePolygon, QgsPolygon, QgsFeatureIterator, QgsCoordinateTransform, \
+    QgsExpressionContextScope
+from qgis.gui import QgsAttributeEditorContext, \
     QgsMapTool, QgsMapToolZoom, QgsMapToolPan, QgsMapToolCapture, QgsMapToolIdentify, QgsMapToolEmitPoint, \
     QgsAttributeDialog, QgsIdentifyMenu, QgsSnapIndicator, QgsMapCanvas, QgsRubberBand, QgsMapMouseEvent, \
     QgsAttributeForm, \
     QgsUserInputWidget, QgsFloatingWidget, QgsAdvancedDigitizingDockWidget, \
     QgsDoubleSpinBox, \
     QgsVertexMarker, QgsHighlight
+from .utils import SpatialPoint, SpatialExtent
 
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtXml import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-
-import numpy as np
-from .utils import *
 from .vectorlayertools import VectorLayerTools
 
 
@@ -314,7 +307,7 @@ class MapToolCenter(CursorLocationMapTool):
         :type canvas: QgsMapCanvas
         """
         super(MapToolCenter, self).__init__(canvas)
-        self.sigLocationRequest[QgsCoordinateReferenceSystem, QgsPointXY].\
+        self.sigLocationRequest[QgsCoordinateReferenceSystem, QgsPointXY]. \
             connect(lambda crs, pt: self.setMapCenter(SpatialPoint(crs, pt)))
 
     def flags(self) -> QgsMapTool.Flags:
@@ -405,6 +398,7 @@ class PointLayersMapTool(CursorLocationMapTool):
 
     def flags(self) -> QgsMapTool.Flags:
         return QgsMapTool.ShowContextMenu
+
 
 class SpatialExtentMapTool(QgsMapToolEmitPoint):
     """
@@ -934,7 +928,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                     g = QgsGeometry(savePoint)
                 elif QgsWkbTypes.isMultiType(layerWKBType) and not QgsWkbTypes.hasZ(layerWKBType):
                     # g = QgsGeometry::fromMultiPointXY( QgsMultiPointXY() << savePoint );
-                    #g = QgsGeometry.fromMultiPointXY(savePoint)
+                    # g = QgsGeometry.fromMultiPointXY(savePoint)
                     g = QgsGeometry(savePoint)
                 elif not QgsWkbTypes.isMultiType(layerWKBType) and QgsWkbTypes.hasZ(layerWKBType):
                     g = QgsGeometry(QgsPoint(savePoint.x(), savePoint.y(),
@@ -1037,7 +1031,6 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                 else:
 
                     curveToAdd = self.captureCurve().curveToLine()
-                    snappingMatchesList = self.snappingMatches()
 
                 if self.mode() == self.CaptureLine:
 
@@ -1181,7 +1174,7 @@ class QgsDistanceWidget(QWidget):
 
     def eventFilter(self, obj: QObject, ev: QEvent) -> bool:
 
-        if (obj == self.mDistanceSpinBox and ev.type() == QEvent.KeyPress):
+        if obj == self.mDistanceSpinBox and ev.type() == QEvent.KeyPress:
 
             event = QKeyEvent(ev)
             if event.key() == Qt.Key_Escape:
@@ -1372,15 +1365,15 @@ class QgsMapToolSelectUtils(object):
         foundSingleFeature = False
         # double closestFeatureDist = std::numeric_limits<double>::max();
         closestFeatureDist = sys.float_info.max
-        while (fit.nextFeature(f)):
+        while fit.nextFeature(f):
             context.expressionContext().setFeature(f)
             # // make sure to only use features that are visible
-            if (r and not r.willRenderFeature(f, context)):
+            if r and not r.willRenderFeature(f, context):
                 continue
 
             g = f.geometry()
-            if (doContains):
-                if (not selectGeomTrans.contains(g)):
+            if doContains:
+                if not selectGeomTrans.contains(g):
                     continue
             else:
                 if (not selectGeomTrans.intersects(g)):
@@ -1399,7 +1392,7 @@ class QgsMapToolSelectUtils(object):
 
                 newSelectedFeatures.append(f.id())
 
-        if (singleSelect and foundSingleFeature):
+        if singleSelect and foundSingleFeature:
             newSelectedFeatures.append(closestFeatureId)
 
         if (r):
@@ -1423,6 +1416,7 @@ class QgsMapToolSelectionHandler(QObject):
 
     def __init__(self, canvas: QgsMapCanvas, selectionMode):
         super(QgsMapToolSelectionHandler, self).__init__()
+        self.mSelectionGeometry = None
         assert isinstance(selectionMode, QgsMapToolSelectionHandler.SelectionMode)
         self.mCanvas = canvas
         assert isinstance(canvas, QgsMapCanvas)
@@ -1758,7 +1752,7 @@ class QgsMapToolSelect(QgsMapTool):
         self.mSelectionHandler.canvasReleaseEvent(e)
 
     def keyReleaseEvent(self, e: QKeyEvent):
-        if (self.mSelectionHandler.keyReleaseEvent(e)):
+        if self.mSelectionHandler.keyReleaseEvent(e):
             return
 
         super(QgsMapToolSelect, self).keyPressEvent(e)

@@ -28,15 +28,8 @@
 ***************************************************************************
 """
 
-import os, warnings
-from qgis.core import *
 from qgis.gui import *
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-import numpy as np
 
-from .. import DIR_UI_FILES
 from ..utils import *
 
 

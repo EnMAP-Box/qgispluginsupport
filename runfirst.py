@@ -45,7 +45,7 @@ def setupRepository():
     try:
         import os.path
         import qps.qpsresources
-
+        qps.resources
         pathQrc = DIR_REPO / 'qps' / 'qpsresources.qrc'
         pathPy = DIR_REPO / 'qps' / 'qpsresources.py'
 

@@ -25,21 +25,12 @@
 # noinspection PyPep8Naming
 
 import enum
-import json
 
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.core import *
-from qgis.gui import *
-from qgis.core import QgsField, QgsSymbolLayerUtils, QgsAction, \
-    QgsVectorLayer, QgsRasterLayer, QgsMapLayer
-from qgis.gui import QgsDialog, QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
+from qgis.gui import QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
     QgsSearchWidgetWrapper, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsGui
-
 from ..externals import pyqtgraph as pg
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
-from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol, Symbols
+from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
 from ..utils import *
 
 DEBUG = False

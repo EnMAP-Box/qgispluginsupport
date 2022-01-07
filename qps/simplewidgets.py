@@ -1,10 +1,8 @@
 import typing
+
 from qgis.PyQt.QtCore import QObject, QRect, QSize, QPoint
-from qgis.PyQt.QtWidgets import QSizePolicy, QComboBox
-from qgis.core import QgsMapLayer, QgsMapLayerModel
-
 from qgis.PyQt.QtCore import pyqtSignal, Qt
-
+from qgis.PyQt.QtWidgets import QSizePolicy
 from qgis.PyQt.QtWidgets import QWidget, QAbstractSpinBox, QSpinBox, QDoubleSpinBox, \
     QHBoxLayout, QVBoxLayout, QSlider, QLayout, QLayoutItem, QStyle
 

@@ -30,42 +30,31 @@ import itertools
 import random
 import sqlite3
 import traceback
-import typing
 import uuid
 import warnings
-
 from unittest import mock
+
 import numpy as np
-from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
-
-from qgis.PyQt import sip
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout
 from osgeo import gdal, ogr, osr, gdal_array
-
-from qgis.gui import QgsMapLayerConfigWidgetFactory
-from qgis.core import QgsField, QgsPointXY, QgsGeometry
 
 import qgis.testing
 import qgis.utils
+from qgis.PyQt import sip
+from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
     QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
     QgsProviderRegistry, QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge, \
-    QgsProcessingModelAlgorithm, QgsProcessingRegistry, QgsProcessingModelChildAlgorithm, \
-    QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingModelOutput, \
-    QgsProcessingContext, \
+    QgsProcessingModelAlgorithm, QgsProcessingRegistry, QgsProcessingContext, \
     QgsProcessingFeedback
-
+from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
+from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
-    QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel, QgsProcessingGuiRegistry
-
+    QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
 from .resources import *
 from .speclib import createStandardFields
-
-from .speclib.processingalgorithms import SpectralPythonCodeProcessingAlgorithm
-from .utils import UnitLookup, px2geo, px2spatialPoint, SpatialPoint
+from .utils import UnitLookup, px2geo, SpatialPoint
 
 WMS_GMAPS = r'crs=EPSG:3857&' \
             r'format&' \

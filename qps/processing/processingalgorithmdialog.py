@@ -1,12 +1,10 @@
 import pathlib
 
-from qgis.PyQt.QtCore import pyqtSignal, QModelIndex
-from qgis.PyQt.QtWidgets import QDialog, QTreeView, QDialogButtonBox, QPushButton
-
-from qgis.gui import QgsFilterLineEdit, QgsProcessingToolboxTreeView, QgsProcessingToolboxProxyModel
-
+from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtWidgets import QDialog, QTreeView, QDialogButtonBox
 from qgis.core import QgsProcessingAlgorithm
+from qgis.gui import QgsFilterLineEdit, QgsProcessingToolboxTreeView, QgsProcessingToolboxProxyModel
 from ..utils import loadUi
 
 

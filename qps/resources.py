@@ -30,14 +30,16 @@ import pathlib
 import re
 import sys
 import typing
-import site
 
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
+from PyQt5.QtCore import QFile, QModelIndex, QTextStream, QSortFilterProxyModel, QDirIterator, QAbstractTableModel, \
+    QRegExp
+from PyQt5.QtGui import QPixmap, QContextMenuEvent, QIcon
+from PyQt5.QtWidgets import QWidget, QGraphicsPixmapItem, QApplication, QTextBrowser, QGraphicsScene, QToolButton, \
+    QLabel, QMenu, QGraphicsView, QAction, QLineEdit, QTableView
+from PyQt5.QtXml import QDomElement, QDomDocument
+
+from qgis.PyQt import Qt
 from qgis.PyQt.QtSvg import QGraphicsSvgItem
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtXml import *
-
 from .utils import file_search, findUpwardPath
 
 REGEX_FILEXTENSION_IMAGE = re.compile(r'\.([^.]+)$')
@@ -60,6 +62,7 @@ def compileResourceFiles(dirRoot: str,
                          skip_qgis_images: bool = True):
     """
     Searches for *.ui files and compiles the *.qrc files they use.
+    :param suffix:
     :param skip_qgis_images:
     :type skip_qgis_images: bool, if True (default), qrc paths to the qgis images.qrc will be skipped
     :param dirRoot: str, root directory, in which to search for *.qrc files or a list of *.ui file paths.

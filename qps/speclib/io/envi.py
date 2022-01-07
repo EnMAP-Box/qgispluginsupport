@@ -29,20 +29,19 @@ import csv
 import os
 import pathlib
 import re
-import sys
 import tempfile
 import time
 import typing
 import uuid
 
 import numpy as np
-from qgis.PyQt.QtCore import QVariant
-from qgis.PyQt.QtWidgets import QFormLayout
 from osgeo import gdal, gdal_array
 
 from qgis.PyQt.QtCore import NULL
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QFormLayout
 from qgis.core import QgsExpression
-from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes, QgsProcessingFeedback
+from qgis.core import QgsField, QgsFields, QgsFeature, QgsProcessingFeedback
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope
 from qgis.gui import QgsFieldExpressionWidget, QgsFieldComboBox
 from .. import EMPTY_VALUES, FIELD_VALUES, FIELD_FID

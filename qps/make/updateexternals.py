@@ -27,8 +27,13 @@
 ***************************************************************************
 """
 
-import os, sys, re, shutil, zipfile, datetime, pathlib
-import git # install with: pip install gitpython
+import os
+import pathlib
+import shutil
+import sys
+
+import git  # install with: pip install gitpython
+
 REMOTEINFOS = dict()
 
 DIR_REPO = None

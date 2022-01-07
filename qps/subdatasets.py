@@ -25,19 +25,20 @@
 ***************************************************************************
 """
 
-import typing
+import collections
+import pathlib
 import re
 import sys
+import typing
+
+from osgeo import gdal
+
 from qgis.PyQt import sip
-import pathlib
-import collections
-from qgis.core import QgsMapLayer, QgsRasterLayer, QgsTaskManager, QgsApplication, QgsTask
-from qgis.gui import *
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtWidgets import *
-from osgeo import gdal
-from .utils import loadUi
+from qgis.core import QgsTaskManager, QgsApplication, QgsTask
 from . import DIR_UI_FILES
+from .utils import loadUi
 
 
 # read https://gdal.org/user/raster_data_model.html#subdatasets-domain

@@ -25,22 +25,24 @@
 ***************************************************************************
 """
 
-import os
 import collections
-import numpy as np
-from qgis.core import *
+import os
+import typing
+
+from PyQt5.QtCore import QModelIndex, QPoint, QAbstractListModel, pyqtSignal
+from PyQt5.QtGui import QIcon, QClipboard, QColor
+from PyQt5.QtWidgets import QMenu, QApplication, QDockWidget
+
+from qgis.PyQt import Qt
+from qgis._core import QgsRasterDataProvider
 from qgis.core import QgsCoordinateReferenceSystem, QgsWkbTypes, QgsField, QgsFeature, \
     QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsPointXY, QgsRectangle, QgsTolerance, \
     QgsFeatureRequest, QgsRasterBlock, QgsPalettedRasterRenderer, QgsRaster
-from qgis.gui import *
 from qgis.gui import QgsMapCanvas
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
 from . import DIR_UI_FILES
-from .utils import *
-from .models import *
 from .classification.classificationscheme import ClassInfo, ClassificationScheme
+from .models import TreeNode, TreeModel, TreeView
+from .utils import SpatialPoint, geo2px, as_py_value, loadUi
 
 
 class SourceValueSet(object):
@@ -59,7 +61,7 @@ class SourceValueSet(object):
 class RasterValueSet(SourceValueSet):
     class BandInfo(object):
         def __init__(self, bandIndex, bandValue, bandName,
-                     is_nodata: bool =False, classInfo=None):
+                     is_nodata: bool = False, classInfo=None):
             assert bandIndex >= 0
             if bandValue is not None:
                 assert type(bandValue) in [float, int]
@@ -181,7 +183,7 @@ class CursorLocationInfoModel(TreeModel):
             root = TreeNode(bn)
             root.setIcon(QIcon(':/images/themes/default/mIconRasterLayer.svg'))
 
-            # add subnodes
+            # add sub-nodes
             pxNode = PixelPositionTreeNode(sourceValueSet.pxPosition,
                                            self.mCursorLocation,
                                            name='Pixel',
@@ -191,8 +193,8 @@ class CursorLocationInfoModel(TreeModel):
 
             for bv in sourceValueSet.bandValues:
                 if isinstance(bv, RasterValueSet.BandInfo):
-                    #n = TreeNode(name='Band {}'.format(bv.bandIndex + 1))
-                    n = TreeNode(name = bv.bandName)
+                    # n = TreeNode(name='Band {}'.format(bv.bandIndex + 1))
+                    n = TreeNode(name=bv.bandName)
                     n.setToolTip('Band {} {}'.format(bv.bandIndex + 1, bv.bandName).strip())
                     n.setValues([bv.bandValue, bv.bandName])
                     subNodes.append(n)
@@ -383,7 +385,7 @@ class CursorLocationInfoDock(QDockWidget):
         layerMode = self.mLayerModeModel.index2option(self.cbLayerModes.currentIndex()).value
         rasterBands = self.mRasterBandsModel.index2option(self.cbRasterBands.currentIndex()).value
 
-        return (layerMode, layerType, rasterBands)
+        return layerMode, layerType, rasterBands
 
     def loadCursorLocation(self, point: SpatialPoint, canvas: QgsMapCanvas):
         """
@@ -499,11 +501,12 @@ class CursorLocationInfoDock(QDockWidget):
             if isinstance(lyr, QgsVectorLayer):
                 # searchRect = QgsRectangle(pt, pt)
 
-                # searchRadius = QgsTolerance.toleranceInMapUnits(1, lyr, self.mCanvas.mapRenderer(), QgsTolerance.Pixels)
+                # searchRadius = QgsTolerance.toleranceInMapUnits(1, lyr, self.mCanvas.mapRenderer(),
+                # QgsTolerance.Pixels)
                 searchRadius = QgsTolerance.toleranceInMapUnits(1, lyr, self.mCanvases[0].mapSettings(),
                                                                 QgsTolerance.Pixels)
-                # searchRadius = QgsTolerance.defaultTolerance(lyr, self.mCanvas.mapSettings())
-                # searchRadius = QgsTolerance.toleranceInProjectUnits(1, self.mCanvas.mapRenderer(), QgsTolerance.Pixels)
+                # searchRadius = QgsTolerance.defaultTolerance(lyr, self.mCanvas.mapSettings()) searchRadius =
+                # QgsTolerance.toleranceInProjectUnits(1, self.mCanvas.mapRenderer(), QgsTolerance.Pixels)
                 searchRect = QgsRectangle()
                 searchRect.setXMinimum(pointLyr.x() - searchRadius);
                 searchRect.setXMaximum(pointLyr.x() + searchRadius);
@@ -512,8 +515,8 @@ class CursorLocationInfoDock(QDockWidget):
 
                 flags = QgsFeatureRequest.ExactIntersect
                 features = lyr.getFeatures(QgsFeatureRequest() \
-                                         .setFilterRect(searchRect) \
-                                         .setFlags(flags))
+                                           .setFilterRect(searchRect) \
+                                           .setFlags(flags))
                 feature = QgsFeature()
                 s = VectorValueSet(lyr.source(), pointLyr)
                 while features.nextFeature(feature):
@@ -528,9 +531,8 @@ class CursorLocationInfoDock(QDockWidget):
 
     def setCursorLocation(self, spatialPoint: SpatialPoint):
         """
-        Set the cursor lcation to be loaded.
-        :param crs: QgsCoordinateReferenceSystem
-        :param point: QgsPointXY
+        Set the cursor location to be loaded.
+        :param spatialPoint:
         """
         assert isinstance(spatialPoint, SpatialPoint)
         self.mLocationHistory.insert(0, spatialPoint)

@@ -25,23 +25,30 @@
 ***************************************************************************
 """
 
-import os, json, pickle, warnings, csv, re, sys, typing, pathlib
-from qgis.core import *
-from qgis.core import Qgis, QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsReadWriteContext, \
-    QgsRasterRenderer, QgsCategorizedSymbolRenderer, QgsPalettedRasterRenderer, \
-    QgsField, QgsRendererCategory, QgsProject, QgsProviderRegistry, \
-    QgsMarkerSymbol, QgsFillSymbol, QgsLineSymbol, QgsFillSymbol
+import csv
+import json
+import os
+import pathlib
+import pickle
+import re
+import sys
+import typing
+import warnings
 
-from qgis.gui import *
-from qgis.gui import QgsMapLayerComboBox, QgsEditorConfigWidget, QgsGui, QgsEditorWidgetFactory, \
-    QgsDialog, QgsEditorWidgetWrapper
+import numpy as np
+from osgeo import gdal
+
 from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtGui import *
 from qgis.PyQt.QtWidgets import *
 from qgis.PyQt.QtXml import *
-import numpy as np
-from osgeo import gdal
-from ..utils import gdalDataset, nextColor, findMapLayer, registeredMapLayers, loadUi
+from qgis.core import Qgis, QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsReadWriteContext, \
+    QgsRasterRenderer, QgsCategorizedSymbolRenderer, QgsPalettedRasterRenderer, \
+    QgsField, QgsRendererCategory, QgsProject, QgsProviderRegistry, \
+    QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol
+from qgis.gui import QgsMapLayerComboBox, QgsEditorConfigWidget, QgsGui, QgsEditorWidgetFactory, \
+    QgsDialog, QgsEditorWidgetWrapper
+from ..utils import gdalDataset, nextColor, registeredMapLayers, loadUi
 
 DEFAULT_UNCLASSIFIEDCOLOR = QColor('black')
 DEFAULT_FIRST_COLOR = QColor('#a6cee3')

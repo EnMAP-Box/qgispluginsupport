@@ -24,30 +24,25 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import re
-import warnings
 import copy
 import enum
-import typing
+import inspect
+import re
 import types
+import typing
 
+import numpy as np
 from PyQt5.QtWidgets import QStyleOptionViewItem
 
 from qgis.PyQt import sip
-
-import collections.abc
-import numpy as np
-import inspect
-
-from qgis.PyQt.QtCore import QAbstractTableModel
+from qgis.PyQt.QtCore import QModelIndex, QAbstractItemModel, pyqtSignal, Qt, QObject, QAbstractListModel, QSize, \
+    pyqtBoundSignal
 from qgis.PyQt.QtGui import QColor, QPainter
-from qgis.PyQt.QtWidgets import QStyledItemDelegate, QTableView, QSpinBox
+from qgis.PyQt.QtGui import QIcon, QContextMenuEvent
+from qgis.PyQt.QtWidgets import QComboBox, QTreeView, QMenu
+from qgis.PyQt.QtWidgets import QStyledItemDelegate, QTableView
 from qgis.core import QgsSettings
 from qgis.gui import QgsColorButton, QgsSpinBox, QgsDoubleSpinBox
-from qgis.PyQt.QtCore import QModelIndex, QAbstractItemModel, QAbstractListModel, \
-    pyqtSignal, Qt, QObject, QAbstractListModel, QSize, pyqtBoundSignal, QMetaEnum, QMetaType
-from qgis.PyQt.QtWidgets import QComboBox, QTreeView, QMenu
-from qgis.PyQt.QtGui import QIcon, QContextMenuEvent
 
 
 def currentComboBoxValue(comboBox):
