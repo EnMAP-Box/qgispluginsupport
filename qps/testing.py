@@ -422,7 +422,7 @@ class TestCase(qgis.testing.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        if False: # bug in qgis
+        if False:  # bug in qgis
             stop_app()
 
     def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
@@ -1033,7 +1033,6 @@ class TestObjects(object):
         alg = reg.algorithmById('gdal:rearrange_bands')
 
         return alg
-
 
     @staticmethod
     def createRasterLayer(*args, **kwds) -> QgsRasterLayer:

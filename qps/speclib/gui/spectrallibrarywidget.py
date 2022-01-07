@@ -148,7 +148,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
         # self.tbSpeclibAction.addAction(self.mSpeclibPlotWidget.optionColorsFromFeatureRenderer)
 
-
         self.actionShowSpectralProcessingDialog.setParent(self)
         self.actionShowSpectralProcessingDialog.setCheckable(False)
         self.actionShowSpectralProcessingDialog.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))

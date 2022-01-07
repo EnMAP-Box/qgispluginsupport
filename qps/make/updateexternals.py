@@ -39,6 +39,7 @@ REMOTEINFOS = dict()
 DIR_REPO = None
 REPO = None
 
+
 def setProjectRepository(path):
     """
     Sets the project root directory which contains the `.git` folder
@@ -48,8 +49,6 @@ def setProjectRepository(path):
     global DIR_REPO, REPO
     DIR_REPO = path
     REPO = git.Repo(DIR_REPO)
-
-
 
 
 class RemoteInfo(object):
@@ -100,9 +99,7 @@ class RemoteInfo(object):
             return self.remoteBranch + ':' + self.prefixRemote
 
 
-
-
-def updateRemote(remoteInfo:RemoteInfo):
+def updateRemote(remoteInfo: RemoteInfo):
     """
     Updates the sources from the remote repository described in `remoteInfo`
     :param remoteInfo: RemoteInfo
@@ -166,7 +163,7 @@ def addRemote(remoteInfo):
     newRemote.fetch(remoteInfo.remoteBranch)
 
 
-def updateRemoteLocations(locationsToUpdate:list):
+def updateRemoteLocations(locationsToUpdate: list):
     if not isinstance(locationsToUpdate, list):
         locationsToUpdate = list(locationsToUpdate)
 
@@ -197,4 +194,3 @@ def updateRemoteLocations(locationsToUpdate:list):
         except Exception as ex:
             print(ex, file=sys.stderr)
     print('Updates finished')
-

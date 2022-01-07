@@ -144,7 +144,6 @@ class HelpStringMaker(object):
 
             html.append(f'</table></div>')
 
-
         examples = JSON.get('examples', None)
         if examples:
             html.append(f'<h4>Examples</h4>\n<div class=\"examples\">\n<ul>\n')
@@ -159,7 +158,6 @@ class HelpStringMaker(object):
                 html.append('</li>')
             html.append('</ul>\n</div>\n')
 
-            
         return '\n'.join(html)
 
 

@@ -37,6 +37,7 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
     Emulates the QGS Layer Property Dialogs "Labels" page and basically reimplements the qgslabelingwidget.cpp from the
     QGIS APP
     """
+
     class Mode(enum.IntEnum):
         NoLabels = enum.auto()
         Single = enum.auto()
@@ -52,14 +53,18 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
         self.pageRulebasedLabels: QWidget
         self.pageBlockingLabels: QWidget
 
-        self.mOldSettings : QgsAbstractVectorLayerLabeling = None
-        self.mSimpleSettings : QgsPalLayerSettings = QgsPalLayerSettings()
+        self.mOldSettings: QgsAbstractVectorLayerLabeling = None
+        self.mSimpleSettings: QgsPalLayerSettings = QgsPalLayerSettings()
         self.mOldLabelsEnabled: bool = False
         assert isinstance(self.stackedWidget, QStackedWidget)
-        self.comboBox.addItem(QgsApplication.getThemeIcon('labelingNone.svg'), 'No Labels', LabelingConfigWidget.Mode.NoLabels)
-        self.comboBox.addItem(QgsApplication.getThemeIcon('labelingSingle.svg'), 'Single Labels', LabelingConfigWidget.Mode.Single)
-        self.comboBox.addItem(QgsApplication.getThemeIcon('labelingRuleBased.svg'), 'Rule-based Labeling', LabelingConfigWidget.Mode.RuleBased)
-        self.comboBox.addItem(QgsApplication.getThemeIcon('labelingObstacle.svg'), 'Blocking', LabelingConfigWidget.Mode.Blocking)
+        self.comboBox.addItem(QgsApplication.getThemeIcon('labelingNone.svg'), 'No Labels',
+                              LabelingConfigWidget.Mode.NoLabels)
+        self.comboBox.addItem(QgsApplication.getThemeIcon('labelingSingle.svg'), 'Single Labels',
+                              LabelingConfigWidget.Mode.Single)
+        self.comboBox.addItem(QgsApplication.getThemeIcon('labelingRuleBased.svg'), 'Rule-based Labeling',
+                              LabelingConfigWidget.Mode.RuleBased)
+        self.comboBox.addItem(QgsApplication.getThemeIcon('labelingObstacle.svg'), 'Blocking',
+                              LabelingConfigWidget.Mode.Blocking)
 
         textFormat = QgsTextFormat()
         self.mFieldExpressionWidget.setLayer(layer)
@@ -96,8 +101,6 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
 
     def labelingGui(self) -> QWidget:
         return self.stackedWidget.currentWidget()
-
-
 
     def labeling(self) -> QgsAbstractVectorLayerLabeling:
         page = self.labelingGui()
@@ -172,20 +175,16 @@ class LabelingConfigWidget(QpsMapLayerConfigWidget):
         self.panelSingleLabels = QgsTextFormatPanelWidget(settings.format(), self.canvas(), None, self.mapLayer())
         self.pageSingleLabels.layout().insertWidget(1, self.panelSingleLabels)
 
-
-        s = ""
-
-
     def labeling_rulebased(self) -> QgsRuleBasedLabeling:
         return None
 
-    def set_labeling_rulebased(self, labeling:QgsRuleBasedLabeling):
+    def set_labeling_rulebased(self, labeling: QgsRuleBasedLabeling):
         pass
 
     def labeling_blocking(self) -> QgsVectorLayerSimpleLabeling:
         return None
 
-    def set_labeling_blocking(self, labeling:QgsVectorLayerSimpleLabeling):
+    def set_labeling_blocking(self, labeling: QgsVectorLayerSimpleLabeling):
         pass
 
     def writeSettingsToLayer(self):

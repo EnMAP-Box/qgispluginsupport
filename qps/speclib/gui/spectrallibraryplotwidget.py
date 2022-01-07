@@ -2263,8 +2263,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         # warnings.warn('To expansive. Will be called for each single feature!')
         fid_idx = (fid, idx)
         self.mChangedAttributes.add(fid_idx)
-        #self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if (k[0], k[1]) != fid_idx}
-        #self.updatePlot([fid])
+        # self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if (k[0], k[1]) != fid_idx}
+        # self.updatePlot([fid])
 
     def onSpeclibCommittedFeaturesAdded(self, id, features):
 
@@ -2283,7 +2283,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         #    self.mCache1FeatureData[OLD2NEW[o]] = self.mCache1FeatureData.pop(o)
 
         # rename fid in cache2
-        #for modelDataKey in [mk for mk in self.mCache2ModelData.keys() if mk[0] in oldFIDs]:
+        # for modelDataKey in [mk for mk in self.mCache2ModelData.keys() if mk[0] in oldFIDs]:
         #    self.mCache2ModelData[(OLD2NEW[modelDataKey[0]], modelDataKey[1], modelDataKey[2])] = \
         #        self.mCache2ModelData.pop(modelDataKey)
 
@@ -2347,13 +2347,14 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         self.updatePlot()
         s = ""
 
-    def onSpeclibCommittedAttributeValuesChanges(self, lid:str, changedAttributeValues: typing.Dict[int, dict]):
+    def onSpeclibCommittedAttributeValuesChanges(self, lid: str, changedAttributeValues: typing.Dict[int, dict]):
         changedAttributes = set()
         for fid, attributeMap in changedAttributeValues.items():
             for i in attributeMap.keys():
                 changedAttributes.add((fid, i))
 
-        self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if (k[0], k[1]) != changedAttributes}
+        self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if
+                                    (k[0], k[1]) != changedAttributes}
         self.updatePlot()
         s = ""
 
@@ -2361,7 +2362,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
         # changedFIDs1 = list(self.speclib().editBuffer().changedAttributeValues().keys())
         changedFIDs2 = self.mChangedFIDs
 
-        self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if (k[0], k[1]) not in self.mChangedAttributes}
+        self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if
+                                    (k[0], k[1]) not in self.mChangedAttributes}
         self.mChangedAttributes.clear()
         self.updatePlot()
         # self.onSpeclibFeaturesDeleted(sorted(changedFIDs2))
@@ -2553,7 +2555,6 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 if isinstance(value, str) and value != handle.name():
                     handle.setName(str(value))
                     changed = True
-
 
         elif isinstance(handle, SpectralProfilePlotControlModel.PropertyHandle):
             vis: SpectralProfilePlotVisualization = handle.parentVisualization()

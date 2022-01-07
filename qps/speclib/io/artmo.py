@@ -41,6 +41,7 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
     I/O Interface for ARTMO CSV profile outputs.
     See https://artmotoolbox.com/tools.html for details.
     """
+
     @classmethod
     def canRead(cls, path: str) -> bool:
         """
@@ -66,7 +67,7 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
         return False
 
     @classmethod
-    def readFrom(cls, path: str, feedback:QgsProcessingFeedback = None) -> SpectralLibrary:
+    def readFrom(cls, path: str, feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -76,11 +77,10 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
         xUnit = 'nm'
         bn = os.path.basename(path)
 
-        pathMeta = os.path.splitext(path)[0]+'_meta.txt'
+        pathMeta = os.path.splitext(path)[0] + '_meta.txt'
 
         assert os.path.isfile(path)
         assert os.path.isfile(pathMeta)
-
 
         with open(pathMeta, 'r', encoding='utf-8') as f:
 
@@ -92,9 +92,7 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
 
         COLUMNS = collections.OrderedDict()
         for c, name in re.findall(r'Column (\d+): ([^\t]+)', meta):
-            COLUMNS[int(c)-1] = name
-
-
+            COLUMNS[int(c) - 1] = name
 
         speclib = SpectralLibrary()
         speclib.startEditing()
@@ -102,7 +100,6 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
         for name in COLUMNS.values():
             speclib.addAttribute(createQgsField(name, 1.0))
         speclib.commitChanges()
-
 
         profiles = []
 
@@ -119,13 +116,12 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
                     xValues = [float(v) for v in parts[firstXValueColumn:]]
                 elif iLine > firstLine:
 
-
                     yValues = [float(v) for v in parts[firstXValueColumn:]]
                     profile = SpectralProfile(fields=speclib.fields())
 
                     name = None
                     if name is None:
-                        name = '{}:{}'.format(bn, len(profiles) +1)
+                        name = '{}:{}'.format(bn, len(profiles) + 1)
 
                     profile.setName(name)
 
@@ -135,15 +131,10 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
                     profile.setValues(x=xValues, y=yValues, xUnit=xUnit)
                     profiles.append(profile)
 
-
-
-
-
         speclib.startEditing()
         speclib.addProfiles(profiles)
         speclib.commitChanges()
         return speclib
-
 
     @classmethod
     def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
@@ -151,7 +142,7 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
         def read(speclib: SpectralLibrary):
 
             path, filter = QFileDialog.getOpenFileName(caption='ARTMO CSV File',
-                                               filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
+                                                       filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
             if os.path.isfile(path):
 
                 sl = ARTMOSpectralLibraryIO.readFrom(path)
@@ -165,4 +156,3 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
         m = menu.addAction('ARTMO')
         m.setToolTip('Adds profiles from an ARTMO csv text file.')
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
-

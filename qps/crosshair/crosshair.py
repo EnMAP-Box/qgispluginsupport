@@ -270,13 +270,12 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                 maxD = 0.5 * min([extent.width(), extent.height()])
                 # pred = nicePredecessor(maxD)
 
-
                 x0 = QgsPointXY(centerGeo.x() - maxD, centerGeo.y())
                 x1 = QgsPointXY(centerGeo.x(), centerGeo.y())
                 example_distance = distanceArea.measureLine(x0, x1)
                 # print(example_distance)
                 pred = nicePredecessor(example_distance)
-                print( (example_distance, pred))
+                print((example_distance, pred))
                 x0 = QgsPointXY(centerGeo.x() - pred, centerGeo.y())
                 example_distance = distanceArea.measureLine(x0, x1)
                 # example_distance = centerGeo.x() - pred
@@ -294,8 +293,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     painter.setFont(QFont('Courier', pointSize=10))
                     font = painter.font()
                     ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))
-
-
 
                     if False:
                         unitString = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
@@ -364,7 +361,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         y2 = ex.yMaximum() - (y * yres)
                         return QgsPointXY(x2, y2)
 
-                    lyrCoord2CanvasPx = lambda x, y : self.toCanvasCoordinates(
+                    lyrCoord2CanvasPx = lambda x, y: self.toCanvasCoordinates(
                         ms.layerToMapCoordinates(lyr,
                                                  px2LayerGeo(x, y)))
 

@@ -730,7 +730,6 @@ class DEPR_ASDSpectralLibraryIO(SpectralLibraryIO):
                         sl.commitChanges()
                         sl.startEditing()
 
-
             else:
                 print('Unable to read {}'.format(filePath), file=sys.stderr)
 

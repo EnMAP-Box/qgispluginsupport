@@ -961,8 +961,6 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                 # // we are done with digitizing for now so instruct advanced digitizing dock to reset its CAD points
                 self.cadDockWidget().clearPoints()
 
-
-
         # // LINE AND POLYGON CAPTURING
         elif self.mode() == self.CaptureLine or self.mode() == self.CapturePolygon:
 
@@ -1119,8 +1117,6 @@ class QgsMapToolAddFeature(QgsMapToolDigitizeFeature):
                     # //can only add topological points if background layer is editable...
                     if vl.geometryType() == QgsWkbTypes.PolygonGeometry and vl.isEditable():
                         vl.addTopologicalPoints(f.geometry())
-
-
 
             elif topologicalEditing:
 
@@ -1386,7 +1382,6 @@ class QgsMapToolSelectUtils(object):
                 if (distance <= closestFeatureDist):
                     closestFeatureDist = distance
                     closestFeatureId = f.id()
-
 
             else:
 
