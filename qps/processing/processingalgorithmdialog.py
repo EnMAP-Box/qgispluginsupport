@@ -1,7 +1,7 @@
 import pathlib
 
-from PyQt5.QtCore import pyqtSignal, QModelIndex
-from PyQt5.QtWidgets import QDialog, QTreeView, QDialogButtonBox, QPushButton
+from qgis.PyQt.QtCore import pyqtSignal, QModelIndex
+from qgis.PyQt.QtWidgets import QDialog, QTreeView, QDialogButtonBox, QPushButton
 
 from qgis.gui import QgsFilterLineEdit, QgsProcessingToolboxTreeView, QgsProcessingToolboxProxyModel
 

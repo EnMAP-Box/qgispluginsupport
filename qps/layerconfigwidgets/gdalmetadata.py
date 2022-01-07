@@ -28,10 +28,10 @@ import pathlib
 import sys
 import copy
 
-from PyQt5.QtCore import QModelIndex, QSortFilterProxyModel, QRegExp, pyqtSignal, QAbstractTableModel, QMimeData, \
+from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, QRegExp, pyqtSignal, QAbstractTableModel, QMimeData, \
     QTimer, Qt
-from PyQt5.QtGui import QColor, QFont, QIcon, QContextMenuEvent
-from PyQt5.QtWidgets import QLineEdit, QTableView, QDialogButtonBox, QStyledItemDelegate, QComboBox, QWidget, \
+from qgis.PyQt.QtGui import QColor, QFont, QIcon, QContextMenuEvent
+from qgis.PyQt.QtWidgets import QLineEdit, QTableView, QDialogButtonBox, QStyledItemDelegate, QComboBox, QWidget, \
     QApplication, QMenu, QDoubleSpinBox, QDialog
 from osgeo import gdal, ogr
 import numpy as np

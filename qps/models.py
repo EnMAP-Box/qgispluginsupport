@@ -36,9 +36,9 @@ import collections.abc
 import numpy as np
 import inspect
 
-from PyQt5.QtCore import QAbstractTableModel
-from PyQt5.QtGui import QColor, QPainter
-from PyQt5.QtWidgets import QStyledItemDelegate, QTableView, QSpinBox
+from qgis.PyQt.QtCore import QAbstractTableModel
+from qgis.PyQt.QtGui import QColor, QPainter
+from qgis.PyQt.QtWidgets import QStyledItemDelegate, QTableView, QSpinBox
 from qgis.core import QgsSettings
 from qgis.gui import QgsColorButton, QgsSpinBox, QgsDoubleSpinBox
 from qgis.PyQt.QtCore import QModelIndex, QAbstractItemModel, QAbstractListModel, \

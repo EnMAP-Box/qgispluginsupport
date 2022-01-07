@@ -5,8 +5,8 @@ import pathlib
 import warnings
 
 import numpy as np
-from PyQt5.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDate, QDateTime, QByteArray
-from PyQt5.QtGui import QIcon, QColor
+from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDate, QDateTime, QByteArray
+from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
     QgsRasterBandStats, QgsProject, QgsVectorLayerCache, QgsPointXY, QgsRaster, QgsRasterIdentifyResult, \
     QgsColorRampShader

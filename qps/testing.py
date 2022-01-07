@@ -39,8 +39,8 @@ import numpy as np
 from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 
 from qgis.PyQt import sip
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QHBoxLayout
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout
 from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.gui import QgsMapLayerConfigWidgetFactory

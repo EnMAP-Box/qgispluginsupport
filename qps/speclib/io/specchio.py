@@ -32,15 +32,19 @@ import io
 from qgis.core import QgsProcessingFeedback
 import numpy as np
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog
+from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, SpectralSetting
 from ..core.spectrallibraryio import SpectralLibraryIO
 from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
 from ...utils import findTypeFromString, createQgsField
+
+
 class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
     """
     I/O Interface for the SPECCHIO spectral library .
     See https://ecosis.org for details.
     """
+
     @classmethod
     def canRead(cls, path) -> bool:
         """
@@ -112,7 +116,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                         s = ""
                 except Exception as ex:
                     print(ex, file=sys.stderr)
-                    print('Line {}:{}'.format(i+1, line), file=sys.stderr)
+                    print('Line {}:{}'.format(i + 1, line), file=sys.stderr)
 
             numericValueKeys = []
             metadataKeys = []
@@ -140,7 +144,6 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                 qgsField = createQgsField(k, DATA[k][0])
                 assert sl.addAttribute(qgsField)
 
-
             sl.endEditCommand()
             sl.commitChanges(stopEditing=False)
 
@@ -151,7 +154,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                 if FIELD_NAME in metadataKeys:
                     profile.setAttribute(FIELD_NAME, DATA[FIELD_NAME][i])
                 else:
-                    profile.setAttribute(FIELD_NAME, '{}:{}'.format(bn, i+1))
+                    profile.setAttribute(FIELD_NAME, '{}:{}'.format(bn, i + 1))
 
                 # add profile values
                 yValues = [float(DATA[k][i]) for k in numericValueKeys]
@@ -170,7 +173,8 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         return sl
 
     @classmethod
-    def write(cls, speclib:SpectralLibrary, path:str, feedback:QgsProcessingFeedback=None, delimiter:str= ',') -> list:
+    def write(cls, speclib: SpectralLibrary, path: str, feedback: QgsProcessingFeedback = None,
+              delimiter: str = ',') -> list:
         """
         Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom(...)
         :param speclib: SpectralLibrary
@@ -232,12 +236,11 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         return writtenFiles
 
     @classmethod
-    def addExportActions(cls, spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
+    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
         def write(speclib: SpectralLibrary):
-
             path, filter = QFileDialog.getSaveFileName(caption='Write SPECCHIO CSV Spectral Library ',
-                                                    filter='Textfile (*.csv)')
+                                                       filter='Textfile (*.csv)')
             if isinstance(path, str) and len(path) > 0:
                 SPECCHIOSpectralLibraryIO.write(spectralLibrary, path)
 
@@ -251,7 +254,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         def read(speclib: SpectralLibrary):
 
             path, filter = QFileDialog.getOpenFileName(caption='Read SPECCHIO CSV File',
-                                               filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
+                                                       filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
             if os.path.isfile(path):
 
                 sl = SPECCHIOSpectralLibraryIO.readFrom(path)

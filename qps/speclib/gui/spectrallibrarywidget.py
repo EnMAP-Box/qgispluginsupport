@@ -3,9 +3,9 @@ import sys
 import typing
 import warnings
 
-from PyQt5.QtCore import pyqtSignal, Qt, QModelIndex
-from PyQt5.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent, QColor
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
+from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
+from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent, QColor
+from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QToolButton, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QLabel, QMessageBox
 
 from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry

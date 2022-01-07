@@ -31,10 +31,12 @@ import pathlib
 import re
 import sys
 import typing
-from ..core import is_spectral_library
 
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QMenu, QFileDialog
+
+from .. import FIELD_NAME
+from ..core import is_spectral_library
 
 from qgis.core import QgsField, QgsVectorLayer, QgsVectorFileWriter, QgsProviderRegistry, \
     QgsProject, QgsProviderMetadata, QgsFileUtils, QgsProcessingFeedback

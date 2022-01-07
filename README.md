@@ -111,9 +111,9 @@ See `tests/test_example.py`
 import os, pathlib, unittest
 from qps.testing import TestCase, StartOptions, start_app
 
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import QSize, QFile, QDir
+from qgis.PyQt.QtWidgets import QLabel
+from qgis.PyQt.QtGui import QIcon, QPixmap
+from qgis.PyQt.QtCore import QSize, QFile, QDir
 from qgis.core import QgsApplication
 
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'

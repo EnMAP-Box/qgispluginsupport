@@ -24,26 +24,23 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import os
 import pathlib
 import sys
 import typing
 import warnings
 
-from osgeo import gdal
 import numpy as np
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
+from osgeo import gdal
 
-from qgis.core import QgsProviderRegistry
-from qgis.core import QgsFields, QgsField, QgsExpressionContext, Qgis, QgsFeature, QgsRasterDataProvider, \
+from qgis.PyQt import sip, Qt
+from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY, QgsPoint
-from qgis.gui import QgsMapLayerComboBox
-
-from qgis.PyQt import sip
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtCore import *
-
+from qgis.core import QgsProviderRegistry
 from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
-    QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsFileUtils, QgsProcessingFeedback
+    QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsProcessingFeedback
+from qgis.gui import QgsMapLayerComboBox
 from .. import speclibUiPath
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
@@ -108,9 +105,9 @@ class SpectralProfileLoadingTask(QgsTask):
         super().cancel()
 
     def finished(self, result):
-        if result == True:
+        if result is True:
             s = ""
-        elif result == False:
+        elif result is False:
 
             if isinstance(self.exception, Exception):
                 print(self.exception, file=sys.stderr)

@@ -4,9 +4,9 @@ import typing
 import re
 import warnings
 
-from PyQt5.QtCore import pyqtSignal, QRegExp, QUrl
-from PyQt5.QtGui import QIcon, QRegExpValidator
-from PyQt5.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
+from qgis.PyQt.QtCore import pyqtSignal, QRegExp, QUrl
+from qgis.PyQt.QtGui import QIcon, QRegExpValidator
+from qgis.PyQt.QtWidgets import QWidget, QMenu, QDialog, QFormLayout, QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox, QToolButton, QAction
 
 from qgis.core import QgsProject

@@ -27,9 +27,9 @@
 import typing
 
 import numpy as np
-from PyQt5.QtCore import QVariant
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QWidget, QLabel, QHBoxLayout
 from qgis.core import QgsField, QgsProcessingOutputVectorLayer, QgsFeatureRequest, QgsProcessingAlgorithm, \
     QgsProcessingParameterString, QgsProcessingContext, QgsProcessingFeedback
 

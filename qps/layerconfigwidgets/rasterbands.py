@@ -25,7 +25,7 @@
 import typing
 import pathlib
 
-from PyQt5.QtWidgets import QGroupBox, QToolButton, QPushButton
+from qgis.PyQt.QtWidgets import QGroupBox, QToolButton, QPushButton
 from qgis.gui import QgsRasterLayerProperties
 
 from qgis.core import QgsHillshadeRenderer

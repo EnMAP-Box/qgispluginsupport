@@ -33,21 +33,21 @@ import re
 import sys
 import typing
 
-from PyQt5.QtCore import QUrlQuery
-from qgis.core import QgsFeature, QgsFields, QgsField, QgsExpressionContext, QgsVectorLayer
+from qgis.PyQt.QtCore import QUrlQuery
 
-from qgis.PyQt.QtCore import QObject, QVariant
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog, QProgressDialog
+from qgis.core import QgsFeature, QgsFields, QgsField, QgsExpressionContext, QgsVectorLayer
 from qgis.core import QgsProcessingFeedback
-from .. import createStandardFields
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, FIELD_FID, FIELD_VALUES, createQgsField
-from ..core.spectrallibraryio import SpectralLibraryIO
+from .envi import readCSVMetadata
+from .. import createStandardFields, FIELD_NAME
+from ..core import create_profile_field, is_spectral_library
+from ..core.spectrallibrary import FIELD_FID, FIELD_VALUES, createQgsField
+from ..core.spectrallibrary import SpectralLibrary
+from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
+from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile
 from ...utils import findTypeFromString
-from ..core import profile_field_list, create_profile_field, profile_fields
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
-    SpectralLibraryImportWidget
-from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile, groupBySpectralProperties
-from ..core.spectrallibrary import SpectralLibrary, VSI_DIR, LUT_IDL2GDAL
+
 
 class EcoSISCSVDialect(pycsv.Dialect):
     delimiter = ','
@@ -189,8 +189,6 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
         # the EcoSIS CSV outputs are encoded as UTF-8 with BOM
         with open(path, 'r', encoding='utf-8-sig') as f:
-
-            bn = os.path.basename(path)
 
             dialect = findDialect(f)
 

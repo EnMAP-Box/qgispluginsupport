@@ -36,7 +36,7 @@ import warnings
 import numpy as np
 import typing
 
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsVectorLayer, QgsFields, QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, \
     QgsVectorFileWriter, QgsField
 from qgis.gui import QgsFileWidget

@@ -30,7 +30,7 @@ import json
 import sys
 import os
 
-from PyQt5.QtCore import QByteArray
+from qgis.PyQt.QtCore import QByteArray
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis._core import QgsExpressionNodeFunction

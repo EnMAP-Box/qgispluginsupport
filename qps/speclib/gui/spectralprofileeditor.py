@@ -1,8 +1,8 @@
 import typing
 
 import numpy as np
-from PyQt5.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant
-from PyQt5.QtWidgets import QGroupBox, QWidget, QLabel
+from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant
+from qgis.PyQt.QtWidgets import QGroupBox, QWidget, QLabel
 from qgis.core import QgsVectorLayer, QgsExpression, QgsFieldProxyModel, QgsField, QgsFieldFormatter, QgsApplication
 
 from qgis.gui import QgsEditorWidgetWrapper, QgsFieldExpressionWidget, QgsEditorConfigWidget, QgsGui, \

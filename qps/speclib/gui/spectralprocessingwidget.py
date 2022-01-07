@@ -4,10 +4,10 @@ import re
 import sys
 import typing
 
-from PyQt5.QtCore import pyqtSignal, QObject, QModelIndex, QMimeData, Qt, QPointF, QSortFilterProxyModel, QTimer, \
+from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, QMimeData, Qt, QPointF, QSortFilterProxyModel, QTimer, \
     QVariant
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QFileDialog, QInputDialog, QMessageBox, QGridLayout, QToolButton, QAction, QMenu, \
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QInputDialog, QMessageBox, QGridLayout, QToolButton, QAction, QMenu, \
     QTreeView, QGroupBox, QLabel, QHBoxLayout, QComboBox, QLineEdit, QCheckBox, QTabWidget, QTextEdit, QDialog, \
     QListWidget, QListView, QTextBrowser, QPushButton, QSizePolicy
 
@@ -968,9 +968,7 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
         super().__init__(parent=parent)
         # QgsProcessingContextGenerator.__init__(self)
 
-
         self.setWindowIcon(QIcon(r':/qps/ui/icons/profile_processing.svg'))
-        #self.cbSelectedFeaturesOnly: QCheckBox
         self.btnAlgorithm: QPushButton = QPushButton('Algorithm')
         self.btnAlgorithm.setIcon(QIcon(':/images/themes/default/processingAlgorithm.svg'))
         self.btnAlgorithm.clicked.connect(self.onSetAlgorithm)
@@ -1000,8 +998,6 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
         self.mProcessingContext.setTransformContext(QgsProject.instance().transformContext())
         self.mProcessingFeedback.progressChanged.connect(self.setPercentage)
         self.mProcessingWidgetContext: QgsProcessingParameterWidgetContext = QgsProcessingParameterWidgetContext()
-        # self.mProcessingWidgetContext.setMessageBar(self.mMessageBar)
-
 
         self.mProcessingAlgParametersStore: dict = dict()
 

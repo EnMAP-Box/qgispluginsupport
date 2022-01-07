@@ -1,7 +1,7 @@
 import os
 import typing
 
-from PyQt5.QtWidgets import QFormLayout
+from qgis.PyQt.QtWidgets import QFormLayout
 from qgis.core import Qgis
 
 from qgis.core import QgsFeatureSink, QgsVectorLayerExporter
@@ -106,7 +106,6 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
                        profiles: typing.Iterable[QgsFeature],
                        feedback: QgsProcessingFeedback) -> typing.List[str]:
 
-
         """
         :param fileName: file name to write to
         :param fields: fields to write
@@ -115,13 +114,13 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         :param transformContext: coordinate transform context
         :param options: save options
         """
-        #writer: QgsVectorFileWriter = None
-        #saveVectorOptions = QgsVectorFileWriter.SaveVectorOptions()
-        #saveVectorOptions.feedback = feedback
-        #saveVectorOptions.driverName = 'GPKG'
-        #saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
-        #saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
-        #saveVectorOptions.layerOptions = ['OVERWRITE=YES', 'TRUNCATE_FIELDS=YES']
+        # writer: QgsVectorFileWriter = None
+        # saveVectorOptions = QgsVectorFileWriter.SaveVectorOptions()
+        # saveVectorOptions.feedback = feedback
+        # saveVectorOptions.driverName = 'GPKG'
+        # saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
+        # saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
+        # saveVectorOptions.layerOptions = ['OVERWRITE=YES', 'TRUNCATE_FIELDS=YES']
         newLayerName = exportSettings.get('layer_name', '')
         if newLayerName == '':
             newLayerName = os.path.basename(newLayerName)
@@ -131,7 +130,7 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         wkbType = exportSettings.get('wkbType', QgsWkbTypes.NoGeometry)
         crs = QgsCoordinateReferenceSystem(exportSettings.get('crs', QgsCoordinateReferenceSystem()))
 
-        #writer: QgsVectorFileWriter = None
+        # writer: QgsVectorFileWriter = None
         writer: QgsVectorLayerExporter = None
         transformContext = QgsProject.instance().transformContext()
 

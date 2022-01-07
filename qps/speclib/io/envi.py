@@ -34,25 +34,24 @@ import tempfile
 import time
 import typing
 import uuid
+
 import numpy as np
-from PyQt5.QtCore import QVariant
-from PyQt5.QtWidgets import QFileDialog, QMenu, QLabel, QFormLayout
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QFormLayout
 from osgeo import gdal, gdal_array
 
 from qgis.PyQt.QtCore import NULL
-from qgis.gui import QgsFieldExpressionWidget, QgsFieldComboBox
-
-from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope, QgsFieldProxyModel
 from qgis.core import QgsExpression
-
 from qgis.core import QgsField, QgsFields, QgsFeature, QgsGeometry, QgsWkbTypes, QgsProcessingFeedback
-from ..core import profile_field_list, create_profile_field, profile_fields
+from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope
+from qgis.gui import QgsFieldExpressionWidget, QgsFieldComboBox
+from .. import EMPTY_VALUES, FIELD_VALUES, FIELD_FID
+from ..core import create_profile_field, profile_fields
+from ..core.spectrallibrary import VSI_DIR, LUT_IDL2GDAL
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
     SpectralLibraryImportWidget
 from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile, groupBySpectralProperties
-from ..core.spectrallibrary import SpectralLibrary, VSI_DIR, LUT_IDL2GDAL
-from .. import createStandardFields, EMPTY_VALUES, FIELD_VALUES, FIELD_NAME, FIELD_FID
-from ...utils import toType, findTypeFromString
+from ...utils import toType
 
 # lookup GDAL Data Type and its size in bytes
 LUT_GDT_SIZE = {gdal.GDT_Byte: 1,
@@ -685,7 +684,7 @@ def readENVIHeader(pathESL, typeConversion=False) -> dict:
     i = 0
     while i < len(hdr):
         if '{' in hdr[i]:
-            while not '}' in hdr[i]:
+            while '}' not in hdr[i]:
                 hdr[i] = hdr[i] + hdr.pop(i + 1)
         i += 1
 
@@ -710,7 +709,7 @@ def readENVIHeader(pathESL, typeConversion=False) -> dict:
 
     # check required metadata tegs
     for k in REQUIRED_TAGS:
-        if not k in md.keys():
+        if k not in md.keys():
             return None
 
     if typeConversion:
@@ -794,17 +793,6 @@ def describeRawFile(pathRaw, pathVrt, xsize, ysize,
         options.append('PixelOffset={}'.format(pixelOffset))
         options.append('LineOffset={}'.format(lineOffset))
         options.append('ByteOrder={}'.format(byteOrder))
-
-        xml = """<SourceFilename relativetoVRT="{relativeToVRT}">{srcFilename}</SourceFilename>
-            <ImageOffset>{imageOffset}</ImageOffset>
-            <PixelOffset>{pixelOffset}</PixelOffset>
-            <LineOffset>{lineOffset}</LineOffset>
-            <ByteOrder>{byteOrder}</ByteOrder>""".format(relativeToVRT=relativeToVRT,
-                                                         srcFilename=srcFilename,
-                                                         imageOffset=imageOffset,
-                                                         pixelOffset=pixelOffset,
-                                                         lineOffset=lineOffset,
-                                                         byteOrder=byteOrder)
 
         # md = {}
         # md['source_0'] = xml

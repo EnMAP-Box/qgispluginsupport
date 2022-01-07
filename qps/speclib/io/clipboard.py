@@ -24,6 +24,8 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+from qgis.PyQt.QtCore import QByteArray
+from qgis.PyQt.QtWidgets import QApplication
 
 from ..core.spectrallibrary import *
 import locale
