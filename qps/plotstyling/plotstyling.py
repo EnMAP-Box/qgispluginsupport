@@ -1011,8 +1011,8 @@ class PlotStyleDialog(QgsDialog):
                                               **kwds)
         self.w: PlotStyleWidget = PlotStyleWidget(parent=self)
         self.setWindowTitle(title)
-        l = self.layout()
-        l.addWidget(self.w)
+        layout = self.layout()
+        layout.addWidget(self.w)
         if isinstance(plotStyle, PlotStyle):
             self.setPlotStyle(plotStyle)
 

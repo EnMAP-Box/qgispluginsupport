@@ -179,8 +179,8 @@ class OptionListModel(QAbstractListModel):
 
         options = [o for o in options if o not in self.mOptions]
 
-        l = len(options)
-        if l > 0:
+        n_options = len(options)
+        if n_options > 0:
             if i is None:
                 i = len(self.mOptions)
             self.beginInsertRows(QModelIndex(), i, i + len(options) - 1)
@@ -488,10 +488,10 @@ class TreeNode(QObject):
 
         child_nodes = unique
 
-        l = len(child_nodes)
-        if l == 0:
+        n_nodes = len(child_nodes)
+        if n_nodes == 0:
             return
-        idxLast = index + l - 1
+        idxLast = index + n_nodes - 1
         self.sigWillAddChildren.emit(self, index, idxLast)
 
         for i, node in enumerate(child_nodes):

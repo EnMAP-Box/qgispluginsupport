@@ -31,10 +31,10 @@ class SpectralLibraryIOWidget(QWidget):
     def __init__(self, *args, **kwds):
         super(SpectralLibraryIOWidget, self).__init__(*args, **kwds)
         self.mSpeclib: QgsVectorLayer = None
-        l = QFormLayout()
-        l.setContentsMargins(0, 0, 0, 0)
-        l.setSpacing(7)
-        self.setLayout(l)
+        fl = QFormLayout()
+        fl.setContentsMargins(0, 0, 0, 0)
+        fl.setSpacing(7)
+        self.setLayout(fl)
 
     def spectralLibraryIO(self) -> 'SpectralLibraryIO':
         raise NotImplementedError()

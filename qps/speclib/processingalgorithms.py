@@ -524,9 +524,9 @@ class SpectralPythonCodeProcessingAlgorithm(QgsProcessingAlgorithm):
     def createCustomParametersWidget(self) -> QWidget:
         w = QWidget()
         label = QLabel('Placeholder for custom widget')
-        l = QHBoxLayout()
-        l.addWidget(label)
-        w.setLayout(l)
+        hl = QHBoxLayout()
+        hl.addWidget(label)
+        w.setLayout(hl)
         return w
 
     def createInstance(self):

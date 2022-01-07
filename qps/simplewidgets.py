@@ -145,23 +145,23 @@ class SliderSpinBox(QWidget):
         self.spinbox.valueChanged.connect(self.onSpinboxValueChanged)
 
         if spinbox_position in [Qt.AlignLeft, Qt.AlignRight]:
-            l = QHBoxLayout()
+            layout = QHBoxLayout()
         elif spinbox_position in [Qt.AlignTop, Qt.AlignBottom]:
-            l = QVBoxLayout()
+            layout = QVBoxLayout()
         else:
             raise NotImplementedError()
 
         if spinbox_position in [Qt.AlignLeft, Qt.AlignTop]:
-            l.addWidget(self.spinbox)
-            l.addWidget(self.slider)
+            layout.addWidget(self.spinbox)
+            layout.addWidget(self.slider)
         else:
-            l.addWidget(self.slider)
-            l.addWidget(self.spinbox)
+            layout.addWidget(self.slider)
+            layout.addWidget(self.spinbox)
 
-        l.setContentsMargins(0, 0, 0, 0)
-        l.setSpacing(2)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
 
-        self.setLayout(l)
+        self.setLayout(layout)
 
     def onSliderValueChanged(self, value):
         v = self.slider2spinboxvalue(value)

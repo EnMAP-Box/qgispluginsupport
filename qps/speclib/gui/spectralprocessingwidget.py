@@ -12,7 +12,7 @@ from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QInputDialog, QMessageBox,
     QTreeView, QGroupBox, QLabel, QHBoxLayout, QComboBox, QLineEdit, QCheckBox, QTabWidget, QTextEdit, QDialog, \
     QListWidget, QListView, QTextBrowser, QPushButton, QSizePolicy
 
-from qgis._gui import QgsMessageBar, QgsProcessingAlgorithmDialogBase, QgsPanelWidget, QgsProcessingParametersGenerator
+from qgis.gui import QgsMessageBar, QgsProcessingAlgorithmDialogBase, QgsPanelWidget, QgsProcessingParametersGenerator
 from qgis.core import QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
     QgsProcessingRegistry, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
@@ -110,10 +110,10 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
 
     def createLabel(self) -> QLabel:
         # l = QLabel(f'<html><img width="20"px" height="20" src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
-        l = QLabel(f'{self.parameterDefinition().description()} (to field)')
-        l.setToolTip('Select a target field or create a new one')
-        self.mLabel = l
-        return l
+        label = QLabel(f'{self.parameterDefinition().description()} (to field)')
+        label.setToolTip('Select a target field or create a new one')
+        self.mLabel = label
+        return label
 
     def wrappedLabel(self) -> QLabel:
         if not isinstance(self.mLabel, QLabel):
@@ -234,17 +234,17 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
     def createLabel(self) -> QLabel:
         # l = QLabel(f'<html><img width="20"px" height="20" src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
         param = self.parameterDefinition()
-        l = None
+        label = None
         if isinstance(param, QgsProcessingParameterRasterLayer):
-            l = QLabel(f'{self.parameterDefinition().description()} (from profile field)')
-            l.setToolTip('Select the profile source column')
+            label = QLabel(f'{self.parameterDefinition().description()} (from profile field)')
+            label.setToolTip('Select the profile source column')
         elif isinstance(param, QgsProcessingParameterMultipleLayers):
-            l = QLabel(f'{self.parameterDefinition().description()} (from profile fields)')
-            l.setToolTip('Select the source columns')
+            label = QLabel(f'{self.parameterDefinition().description()} (from profile fields)')
+            label.setToolTip('Select the source columns')
         else:
             raise NotImplementedError()
-        self.mLabel = l
-        return l
+        self.mLabel = label
+        return label
 
     def wrappedLabel(self) -> QLabel:
         if not isinstance(self.mLabel, QLabel):

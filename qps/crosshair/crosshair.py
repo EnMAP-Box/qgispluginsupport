@@ -418,23 +418,23 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                 painter.drawLine(p)
 
 
-def nicePredecessor(l):
-    mul = -1 if l < 0 else 1
-    l = np.abs(l)
-    if l > 1.0:
-        exp = np.fix(np.log10(l))
+def nicePredecessor(number):
+    mul = -1 if number < 0 else 1
+    number = np.abs(number)
+    if number > 1.0:
+        exp = np.fix(np.log10(number))
         # normalize to [0.0,1.0]
-        l2 = l / 10 ** (exp)
+        l2 = number / 10 ** (exp)
         m = np.fix(l2)
         rest = l2 - m
         if rest >= 0.5:
             m += 0.5
         return mul * m * 10 ** exp
 
-    elif l < 1.0 and l > 0:
-        exp = np.fix(np.log10(l))
+    elif 1.0 > number > 0:
+        exp = np.fix(np.log10(number))
         # normalize to [0.0,1.0]
-        m = l / 10 ** (exp - 1)
+        m = number / 10 ** (exp - 1)
         if m >= 5:
             m = 5.0
         else:
@@ -566,9 +566,9 @@ class CrosshairDialog(QgsDialog):
         buttonBar = QHBoxLayout()
         # buttonBar.addWidget(self.btCancel)
         # buttonBar.addWidget(self.btOk)
-        l = self.layout()
-        l.addWidget(self.w)
-        l.addLayout(buttonBar)
+        layout = self.layout()
+        layout.addWidget(self.w)
+        layout.addLayout(buttonBar)
         # self.setLayout(l)
 
         if isinstance(mapCanvas, QgsMapCanvas):

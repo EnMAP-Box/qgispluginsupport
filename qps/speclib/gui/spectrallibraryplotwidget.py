@@ -125,16 +125,16 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
     def createWidget(self, parent: QWidget) -> QWidget:
         # define the widget to set X-Axis options
         frame = QFrame(parent)
-        l = QGridLayout()
-        frame.setLayout(l)
+        gl = QGridLayout()
+        frame.setLayout(gl)
 
         mCBXAxisUnit = self.createUnitComboBox()
 
-        l.addWidget(QLabel('Unit'), 2, 0)
-        l.addWidget(mCBXAxisUnit, 2, 1)
-        l.setMargin(0)
-        l.setSpacing(6)
-        frame.setMinimumSize(l.sizeHint())
+        gl.addWidget(QLabel('Unit'), 2, 0)
+        gl.addWidget(mCBXAxisUnit, 2, 1)
+        gl.setMargin(0)
+        gl.setSpacing(6)
+        frame.setMinimumSize(gl.sizeHint())
         return frame
 
 
@@ -326,7 +326,7 @@ class MaxNumberOfProfilesWidgetAction(QWidgetAction):
         self.mNProfiles = 256
 
     def createWidget(self, parent: QWidget):
-        l = QGridLayout()
+        gridLayout = QGridLayout()
         sbMaxProfiles = QSpinBox()
         sbMaxProfiles.setToolTip('Maximum number of profiles to plot.')
         sbMaxProfiles.setRange(0, np.iinfo(np.int16).max)
@@ -334,10 +334,10 @@ class MaxNumberOfProfilesWidgetAction(QWidgetAction):
         self.sigMaxNumberOfProfilesChanged.connect(lambda n, sb=sbMaxProfiles: sb.setValue(n))
         sbMaxProfiles.valueChanged[int].connect(self.setMaxProfiles)
 
-        l.addWidget(QLabel('Max. Profiles'), 0, 0)
-        l.addWidget(sbMaxProfiles, 0, 1)
+        gridLayout.addWidget(QLabel('Max. Profiles'), 0, 0)
+        gridLayout.addWidget(sbMaxProfiles, 0, 1)
         frame = QFrame(parent)
-        frame.setLayout(l)
+        frame.setLayout(gridLayout)
         return frame
 
     def setMaxProfiles(self, n: int):
@@ -1000,13 +1000,13 @@ class SpectralProfileColorPropertyWidget(QWidget):
         self.mPropertyOverrideButton = QgsPropertyOverrideButton()
         self.mPropertyOverrideButton.registerLinkedWidget(self.mColorButton)
         # self.mPropertyOverrideButton.aboutToShowMenu.connect(self.updateOverrideMenu)
-        l = QHBoxLayout()
-        l.addWidget(self.mColorButton)
-        l.addWidget(self.mPropertyOverrideButton)
-        l.setSpacing(2)
-        l.setContentsMargins(0, 0, 0, 0)
+        hl = QHBoxLayout()
+        hl.addWidget(self.mColorButton)
+        hl.addWidget(self.mPropertyOverrideButton)
+        hl.setSpacing(2)
+        hl.setContentsMargins(0, 0, 0, 0)
         self.sizePolicy().setHorizontalPolicy(QSizePolicy.Preferred)
-        self.setLayout(l)
+        self.setLayout(hl)
 
         self.mPropertyDefinition = QgsPropertyDefinition()
         self.mPropertyDefinition.setName('Profile line color')

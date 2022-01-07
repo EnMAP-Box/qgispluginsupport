@@ -3021,8 +3021,8 @@ class SelectMapLayersDialog(QgsDialog):
         QgsProject.instance().addMapLayer(layer)
 
         for i in range(box.count()):
-            l = box.layer(i)
-            if isinstance(l, QgsMapLayer) and l == layer:
+            boxLayer = box.layer(i)
+            if isinstance(boxLayer, QgsMapLayer) and boxLayer == layer:
                 box.setCurrentIndex(i)
                 break
 

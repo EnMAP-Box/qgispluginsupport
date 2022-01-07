@@ -249,16 +249,16 @@ class CopyAttributesDialog(QDialog):
         self.mFieldModel.dataChanged.connect(self.onFieldSelectionChanged)
         self.mTableView.setModel(self.mFieldModel)
         self.mTableView.horizontalHeader()
-        l = QVBoxLayout()
-        l.addWidget(self.mLabel)
-        l.addWidget(self.mTableView)
+        layout = QVBoxLayout()
+        layout.addWidget(self.mLabel)
+        layout.addWidget(self.mTableView)
 
         self.mButtonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.mButtonBox.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
         self.mButtonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
-        l.addWidget(self.mButtonBox)
+        layout.addWidget(self.mButtonBox)
 
-        self.setLayout(l)
+        self.setLayout(layout)
 
         self.onFieldSelectionChanged()
 
@@ -287,19 +287,19 @@ class AddAttributeDialog(QDialog):
         self.mLayer = layer
         self.mCaseSensitive = case_sensitive
         self.setWindowTitle('Add Field')
-        l = QGridLayout()
+        layout = QGridLayout()
 
         self.tbName = QLineEdit('Name')
         self.tbName.setPlaceholderText('Name')
         self.tbName.textChanged.connect(self.validate)
 
-        l.addWidget(QLabel('Name'), 0, 0)
-        l.addWidget(self.tbName, 0, 1)
+        layout.addWidget(QLabel('Name'), 0, 0)
+        layout.addWidget(self.tbName, 0, 1)
 
         self.tbComment = QLineEdit()
         self.tbComment.setPlaceholderText('Comment')
-        l.addWidget(QLabel('Comment'), 1, 0)
-        l.addWidget(self.tbComment, 1, 1)
+        layout.addWidget(QLabel('Comment'), 1, 0)
+        layout.addWidget(self.tbComment, 1, 1)
 
         self.cbType = QComboBox()
         self.typeModel = OptionListModel()
@@ -335,31 +335,31 @@ class AddAttributeDialog(QDialog):
 
         self.cbType.setModel(self.typeModel)
         self.cbType.currentIndexChanged.connect(self.onTypeChanged)
-        l.addWidget(QLabel('Type'), 2, 0)
-        l.addWidget(self.cbType, 2, 1)
+        layout.addWidget(QLabel('Type'), 2, 0)
+        layout.addWidget(self.cbType, 2, 1)
 
         self.sbLength = QSpinBox()
         self.sbLength.setRange(0, 99)
         self.sbLength.valueChanged.connect(lambda: self.setPrecisionMinMax())
         self.lengthLabel = QLabel('Length')
-        l.addWidget(self.lengthLabel, 3, 0)
-        l.addWidget(self.sbLength, 3, 1)
+        layout.addWidget(self.lengthLabel, 3, 0)
+        layout.addWidget(self.sbLength, 3, 1)
 
         self.sbPrecision = QSpinBox()
         self.sbPrecision.setRange(0, 99)
         self.precisionLabel = QLabel('Precision')
-        l.addWidget(self.precisionLabel, 4, 0)
-        l.addWidget(self.sbPrecision, 4, 1)
+        layout.addWidget(self.precisionLabel, 4, 0)
+        layout.addWidget(self.sbPrecision, 4, 1)
 
         self.tbValidationInfo = QLabel()
         self.tbValidationInfo.setStyleSheet("QLabel { color : red}")
-        l.addWidget(self.tbValidationInfo, 5, 0, 1, 2)
+        layout.addWidget(self.tbValidationInfo, 5, 0, 1, 2)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
         self.buttons.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
-        l.addWidget(self.buttons, 6, 1)
-        self.setLayout(l)
+        layout.addWidget(self.buttons, 6, 1)
+        self.setLayout(layout)
         self.mLayer = layer
         self.onTypeChanged()
 
@@ -492,11 +492,11 @@ class RemoveAttributeDialog(QDialog):
 
         self.label = QLabel('Select Fields to remove')
 
-        l = QVBoxLayout()
-        l.addWidget(self.label)
-        l.addWidget(self.tvFieldNames)
-        l.addWidget(self.btnBox)
-        self.setLayout(l)
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        layout.addWidget(self.tvFieldNames)
+        layout.addWidget(self.btnBox)
+        self.setLayout(layout)
 
     def fields(self) -> typing.List[QgsField]:
         """
@@ -595,15 +595,15 @@ def defaultRasterRenderer(layer: QgsRasterLayer, bandIndices: list = None, sampl
 
     nb = layer.bandCount()
 
-    # band names are defined explicitley
+    # band names are defined explicitly
     if isinstance(bandIndices, list):
-        bandIndices = [b for b in bandIndices if b >= 0 and b < nb]
-        l = len(bandIndices)
-        if l == 0:
+        bandIndices = [b for b in bandIndices if 0 <= b < nb]
+        n = len(bandIndices)
+        if n == 0:
             bandIndices = None
-        if l >= 3:
+        if n >= 3:
             bandIndices = bandIndices[0:3]
-        elif l < 3:
+        elif n < 3:
             bandIndices = bandIndices[0:1]
 
     if not isinstance(bandIndices, list):

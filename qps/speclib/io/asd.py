@@ -343,14 +343,14 @@ class ASDBinaryFile(object):
 
             def n_string(start: int) -> typing.Tuple[str, int]:
                 # 2 byte int for length
-                # 2 + lenght
+                # 2 + length
                 # empty string = 2 byte = 0
                 # h = short, H = unsigned short
-                l = struct.unpack('<H', sub(start, 2))[0]
+                n = struct.unpack('<H', sub(start, 2))[0]
                 result = ''
-                if l > 0:
-                    result = struct.unpack('<c', sub(start + 2, l))[0]
-                return result, start + l + 2
+                if n > 0:
+                    result = struct.unpack('<c', sub(start + 2, n))[0]
+                return result, start + n + 2
 
             self.co = DATA[0:3].decode('utf-8')
             self.comments = DATA[3:(3 + 157)].decode('utf-8')

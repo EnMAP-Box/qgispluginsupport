@@ -1208,8 +1208,8 @@ class ClassificationScheme(QAbstractTableModel):
             raise Exception('Unable to read {}'.format(pathCSV))
 
         lines = text.splitlines()
-        lines = [l.strip() for l in lines]
-        lines = [l for l in lines if len(l) > 0]
+        lines = [line.strip() for line in lines]
+        lines = [line for line in lines if len(line) > 0]
         if len(lines) <= 1:
             raise Exception('CSV does not contain enough values')
 
@@ -1411,8 +1411,8 @@ class ClassificationMapLayerComboBox(QgsMapLayerComboBox):
 
     def updateExceptedLayerList(self):
 
-        toExclude = [l for l in QgsProject.instance().mapLayers().values()
-                     if ClassificationScheme.fromMapLayer(l) is None
+        toExclude = [lyr for lyr in QgsProject.instance().mapLayers().values()
+                     if ClassificationScheme.fromMapLayer(lyr) is None
                      ]
         self.setExceptedLayerList(toExclude)
 
@@ -1629,7 +1629,7 @@ class ClassificationSchemeWidget(QWidget):
                 QMessageBox.information(self, 'Load classes from layer',
                                         'No layers with categorical render styles available.')
             else:
-                choices = ['{} ({})'.format(l.name(), l.source()) for l in possibleLayers]
+                choices = ['{} ({})'.format(lyr.name(), lyr.source()) for lyr in possibleLayers]
 
                 dialog = QInputDialog(parent=self)
                 dialog.setWindowTitle('Load classes from layer')
@@ -1822,9 +1822,9 @@ class ClassificationSchemeDialog(QgsDialog):
         buttonBar = QHBoxLayout()
         # buttonBar.addWidget(self.btCancel)
         # buttonBar.addWidget(self.btOk)
-        l = self.layout()
-        l.addWidget(self.w)
-        l.addLayout(buttonBar)
+        layout = self.layout()
+        layout.addWidget(self.w)
+        layout.addLayout(buttonBar)
         # self.setLayout(l)
 
         if isinstance(classificationScheme, ClassificationScheme):

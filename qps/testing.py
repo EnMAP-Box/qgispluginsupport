@@ -265,12 +265,12 @@ class QgisMockup(QgisInterface):
         mainFrame = QFrame()
         self.ui.setCentralWidget(mainFrame)
         self.ui.setWindowTitle('QGIS Mockup')
-        l = QHBoxLayout()
-        l.addWidget(self.mLayerTreeView)
-        l.addWidget(self.mCanvas)
+        hl = QHBoxLayout()
+        hl.addWidget(self.mLayerTreeView)
+        hl.addWidget(self.mCanvas)
         v = QVBoxLayout()
         v.addWidget(self.mMessageBar)
-        v.addLayout(l)
+        v.addLayout(hl)
         mainFrame.setLayout(v)
         self.ui.setCentralWidget(mainFrame)
         self.lyrs = []
@@ -297,8 +297,8 @@ class QgisMockup(QgisInterface):
         self.mMapLayerPanelFactories = [f for f in self.mMapLayerPanelFactories if f.title() != factory.title()]
 
     def addLegendLayers(self, mapLayers: typing.List[QgsMapLayer]):
-        for l in mapLayers:
-            self.mRootNode.addLayer(l)
+        for lyr in mapLayers:
+            self.mRootNode.addLayer(lyr)
 
     def pluginManagerInterface(self) -> QgsPluginManagerInterface:
         return self.mPluginManager
@@ -356,10 +356,10 @@ class QgisMockup(QgisInterface):
         if basename is None:
             basename = os.path.basename(path)
 
-        l = QgsVectorLayer(path, basename, providerkey)
-        assert l.isValid()
-        QgsProject.instance().addMapLayer(l, True)
-        self.mRootNode.addLayer(l)
+        lyr = QgsVectorLayer(path, basename, providerkey)
+        assert lyr.isValid()
+        QgsProject.instance().addMapLayer(lyr, True)
+        self.mRootNode.addLayer(lyr)
         self.mLayerTreeMapCanvasBridge.setCanvasLayers()
 
     def legendInterface(self):
@@ -372,11 +372,11 @@ class QgisMockup(QgisInterface):
         return self.mLayerTreeView
 
     def addRasterLayer(self, path, baseName: str = '') -> QgsRasterLayer:
-        l = QgsRasterLayer(path, os.path.basename(path))
-        self.lyrs.append(l)
-        QgsProject.instance().addMapLayer(l, True)
-        self.mRootNode.addLayer(l)
-        return l
+        lyr = QgsRasterLayer(path, os.path.basename(path))
+        self.lyrs.append(lyr)
+        QgsProject.instance().addMapLayer(lyr, True)
+        self.mRootNode.addLayer(lyr)
+        return lyr
 
     def createActions(self):
         m = self.ui.menuBar().addAction('Add Vector')

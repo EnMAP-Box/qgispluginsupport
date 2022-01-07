@@ -75,11 +75,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mSpeclibPlotWidget.sigDragEnterEvent.connect(self.dragEnterEvent)
         self.mSpeclibPlotWidget.sigDropEvent.connect(self.dropEvent)
 
-        l = QVBoxLayout()
-        l.addWidget(self.mSpeclibPlotWidget)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.setSpacing(2)
-        self.widgetLeft.setLayout(l)
+        vl = QVBoxLayout()
+        vl.addWidget(self.mSpeclibPlotWidget)
+        vl.setContentsMargins(0, 0, 0, 0)
+        vl.setSpacing(2)
+        self.widgetLeft.setLayout(vl)
         self.widgetLeft.setVisible(True)
         self.widgetRight.setVisible(False)
 
@@ -344,12 +344,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         hb = QHBoxLayout()
         hb.addWidget(btnResetProfileStyles)
         hb.addWidget(btnApplyProfileStyle)
-        l = QVBoxLayout()
-        l.addWidget(psw)
-        l.addLayout(hb)
+        vl = QVBoxLayout()
+        vl.addWidget(psw)
+        vl.addLayout(hb)
 
         frame = QFrame()
-        frame.setLayout(l)
+        frame.setLayout(vl)
         wa.setDefaultWidget(frame)
         menuProfileStyle.addAction(wa)
 

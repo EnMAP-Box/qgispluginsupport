@@ -330,8 +330,8 @@ class GDALBandMetadataModel(QAbstractTableModel):
     def isDateUnit(self) -> bool:
         return re.search(r'Date|DOY|Week', self.mWavelengthUnit, re.IGNORECASE) is not None
 
-    def isValidTypeList(self, l: list, t):
-        for i in l:
+    def isValidTypeList(self, typeList: list, t):
+        for i in typeList:
             try:
                 v = t(i)
             except:

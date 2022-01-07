@@ -417,9 +417,9 @@ class CursorLocationInfoDock(QDockWidget):
             assert isinstance(canvas, QgsMapCanvas)
             lyrs = canvas.layers()
             if lyrtype == 'VECTOR':
-                lyrs = [l for l in lyrs if isinstance(l, QgsVectorLayer)]
+                lyrs = [lyr for lyr in lyrs if isinstance(lyr, QgsVectorLayer)]
             if lyrtype == 'RASTER':
-                lyrs = [l for l in lyrs if isinstance(l, QgsRasterLayer)]
+                lyrs = [lyr for lyr in lyrs if isinstance(lyr, QgsRasterLayer)]
 
             return lyrs
 
@@ -431,22 +431,22 @@ class CursorLocationInfoDock(QDockWidget):
         self.mLocationInfoModel.clear()
         self.mLocationInfoModel.setCursorLocation(self.cursorLocation())
 
-        for l in lyrs:
-            assert isinstance(l, QgsMapLayer)
+        for lyr in lyrs:
+            assert isinstance(lyr, QgsMapLayer)
             if mode == 'TOP_LAYER' and self.mLocationInfoModel.rootNode().childCount() > 0:
                 s = ""
                 break
 
-            assert isinstance(l, QgsMapLayer)
+            assert isinstance(lyr, QgsMapLayer)
 
-            pointLyr = ptInfo.toCrs(l.crs())
-            if not (isinstance(pointLyr, SpatialPoint) and l.extent().contains(pointLyr)):
+            pointLyr = ptInfo.toCrs(lyr.crs())
+            if not (isinstance(pointLyr, SpatialPoint) and lyr.extent().contains(pointLyr)):
                 continue
 
-            if isinstance(l, QgsRasterLayer):
-                renderer = l.renderer()
-                px = geo2px(pointLyr, l)
-                v = RasterValueSet(l.name(), pointLyr, px)
+            if isinstance(lyr, QgsRasterLayer):
+                renderer = lyr.renderer()
+                px = geo2px(pointLyr, lyr)
+                v = RasterValueSet(lyr.name(), pointLyr, px)
 
                 # !Note: b is not zero-based -> 1st band means b == 1
                 if rasterbands == 'VISIBLE':
@@ -454,55 +454,55 @@ class CursorLocationInfoDock(QDockWidget):
                         bandNumbers = renderer.usesBands()
                         # sometime the renderer is set to band 0 (which does not exist)
                         # QGIS bug
-                        if bandNumbers == [0] and l.bandCount() > 0:
+                        if bandNumbers == [0] and lyr.bandCount() > 0:
                             bandNumbers = [1]
                     else:
                         bandNumbers = renderer.usesBands()
 
                 elif rasterbands == 'ALL':
-                    bandNumbers = list(range(1, l.bandCount() + 1))
+                    bandNumbers = list(range(1, lyr.bandCount() + 1))
                 else:
                     bandNumbers = [1]
 
-                pt2 = QgsPointXY(pointLyr.x() + l.rasterUnitsPerPixelX() * 3,
-                                 pointLyr.y() - l.rasterUnitsPerPixelY() * 3)
+                pt2 = QgsPointXY(pointLyr.x() + lyr.rasterUnitsPerPixelX() * 3,
+                                 pointLyr.y() - lyr.rasterUnitsPerPixelY() * 3)
                 ext2Px = QgsRectangle(pointLyr.x(), pt2.y(), pt2.x(), pointLyr.y())
 
-                if l.dataProvider().name() in ['wms']:
+                if lyr.dataProvider().name() in ['wms']:
                     for b in bandNumbers:
-                        block = l.renderer().block(b, ext2Px, 3, 3)
+                        block = lyr.renderer().block(b, ext2Px, 3, 3)
                         assert isinstance(block, QgsRasterBlock)
                         v.bandValues.append(QColor(block.color(0, 0)))
                 else:
-                    dp: QgsRasterDataProvider = l.dataProvider()
+                    dp: QgsRasterDataProvider = lyr.dataProvider()
                     results = dp.identify(pointLyr, QgsRaster.IdentifyFormatValue).results()
                     classScheme = None
-                    if isinstance(l.renderer(), QgsPalettedRasterRenderer):
-                        classScheme = ClassificationScheme.fromRasterRenderer(l.renderer())
+                    if isinstance(lyr.renderer(), QgsPalettedRasterRenderer):
+                        classScheme = ClassificationScheme.fromRasterRenderer(lyr.renderer())
                     for b in bandNumbers:
                         if b in results.keys():
                             bandValue = results[b]
                             if bandValue:
-                                bandValue = as_py_value(bandValue, l.dataProvider().dataType(b))
+                                bandValue = as_py_value(bandValue, lyr.dataProvider().dataType(b))
 
                             classInfo: ClassInfo = None
                             if isinstance(bandValue, (int, float)) \
                                     and isinstance(classScheme, ClassificationScheme) \
                                     and 0 <= bandValue < len(classScheme):
                                 classInfo = classScheme.classInfo(label=int(bandValue))
-                            info = RasterValueSet.BandInfo(b - 1, bandValue, l.bandName(b), classInfo=classInfo)
+                            info = RasterValueSet.BandInfo(b - 1, bandValue, lyr.bandName(b), classInfo=classInfo)
                             v.bandValues.append(info)
 
                 self.mLocationInfoModel.addSourceValues(v)
                 s = ""
 
-            if isinstance(l, QgsVectorLayer):
+            if isinstance(lyr, QgsVectorLayer):
                 # searchRect = QgsRectangle(pt, pt)
 
-                # searchRadius = QgsTolerance.toleranceInMapUnits(1, l, self.mCanvas.mapRenderer(), QgsTolerance.Pixels)
-                searchRadius = QgsTolerance.toleranceInMapUnits(1, l, self.mCanvases[0].mapSettings(),
+                # searchRadius = QgsTolerance.toleranceInMapUnits(1, lyr, self.mCanvas.mapRenderer(), QgsTolerance.Pixels)
+                searchRadius = QgsTolerance.toleranceInMapUnits(1, lyr, self.mCanvases[0].mapSettings(),
                                                                 QgsTolerance.Pixels)
-                # searchRadius = QgsTolerance.defaultTolerance(l, self.mCanvas.mapSettings())
+                # searchRadius = QgsTolerance.defaultTolerance(lyr, self.mCanvas.mapSettings())
                 # searchRadius = QgsTolerance.toleranceInProjectUnits(1, self.mCanvas.mapRenderer(), QgsTolerance.Pixels)
                 searchRect = QgsRectangle()
                 searchRect.setXMinimum(pointLyr.x() - searchRadius);
@@ -511,11 +511,11 @@ class CursorLocationInfoDock(QDockWidget):
                 searchRect.setYMaximum(pointLyr.y() + searchRadius);
 
                 flags = QgsFeatureRequest.ExactIntersect
-                features = l.getFeatures(QgsFeatureRequest() \
+                features = lyr.getFeatures(QgsFeatureRequest() \
                                          .setFilterRect(searchRect) \
                                          .setFlags(flags))
                 feature = QgsFeature()
-                s = VectorValueSet(l.source(), pointLyr)
+                s = VectorValueSet(lyr.source(), pointLyr)
                 while features.nextFeature(feature):
                     s.features.append(QgsFeature(feature))
 
