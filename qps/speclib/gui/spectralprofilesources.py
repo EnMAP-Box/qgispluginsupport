@@ -1,42 +1,31 @@
-import copy
 import difflib
 import math
+import re
 import sys
 import typing
-import enum
-import re
-import warnings
 
-import numpy
+import numpy as np
+from PyQt5.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget
+
 from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
     QSortFilterProxyModel, QItemSelection
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
-from qgis.core import QgsLayerItem
-
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRaster, QgsRectangle
-
-from qgis.PyQt.QtCore import Qt
+from qgis.core import QgsLayerItem
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsApplication, QgsTask, \
-    QgsTaskManager, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
-
 from qgis.gui import QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
-
-from qgis.PyQt.QtWidgets import *
-
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
-from ..core import profile_field_list, profile_field_names, is_profile_field
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, SpectralProfile
-
-from ...plotstyling.plotstyling import PlotStyle, MarkerSymbol, PlotStyleButton
-import numpy as np
-from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
-from ...utils import SpatialPoint, loadUi, parseWavelength, HashablePoint, rasterLayerArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
+from ..core import profile_field_names
+from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting
 from ...externals.htmlwidgets import HTMLComboBox
+from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
+from ...utils import SpatialPoint, loadUi, parseWavelength, rasterLayerArray, spatialPoint2px, \
+    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
@@ -114,7 +103,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         if not (isinstance(mapCanvas, QgsMapCanvas) and isinstance(position, QgsPointXY)):
             return None
 
-        raster_layers = [l for l in mapCanvas.layers() if isinstance(l, QgsRasterLayer) and l.isValid()]
+        raster_layers = [layer for layer in mapCanvas.layers() if isinstance(layer, QgsRasterLayer) and layer.isValid()]
 
         if self.mMode == self.MODE_TOP_LAYER:
             raster_layers = raster_layers[0:1]
@@ -347,6 +336,7 @@ class SpectralProfileSourceProxyModel(QSortFilterProxyModel):
         self.setRecursiveFilteringEnabled(True)
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
 
+
 class SpectralProfileSourceNode(TreeNode):
 
     def __init__(self, *args, **kwds):
@@ -356,7 +346,7 @@ class SpectralProfileSourceNode(TreeNode):
         self.setValue('No Source')
         self.setToolTip('Please select a raster source')
 
-    #def icon(self) -> QIcon:
+    # def icon(self) -> QIcon:
     #    return QIcon(r':/images/themes/default/mIconRaster.svg')
 
     def profileSource(self) -> SpectralProfileSource:
@@ -1021,7 +1011,6 @@ class GeometryGeneratorNode(TreeNode):
         super().__init__(*args, **kwds)
 
     def geometry(self, point_clicked: SpatialPoint) -> QgsGeometry:
-
         return None
 
     def setWkbType(self, wkbType: QgsWkbTypes.Type):
@@ -1687,8 +1676,8 @@ class SpectralProfileBridge(TreeModel):
             speclib = slw.speclib()
             if isinstance(speclib, QgsVectorLayer) and speclib.id() in RESULTS.keys():
                 slw.setCurrentProfiles(RESULTS[speclib.id()],
-                                       make_permanent = add_permanent,
-                                       currentProfileColors = TEMPORAL_COLORS[speclib.id()])
+                                       make_permanent=add_permanent,
+                                       currentProfileColors=TEMPORAL_COLORS[speclib.id()])
 
         return RESULTS
 
@@ -2124,7 +2113,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             elif isinstance(node, FloatValueNode):
                 w = QgsDoubleSpinBox(parent=parent)
                 w.setSingleStep(1)
-                w.setMinimum(-1*sys.float_info.max)
+                w.setMinimum(-1 * sys.float_info.max)
                 w.setMaximum(sys.float_info.max)
                 # w = super().createEditor(parent, option, index)
             elif isinstance(node, ColorNode):

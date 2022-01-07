@@ -139,11 +139,11 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
             'Activate to copy vector attributes into the Spectral Library'
         )
 
-        l = QHBoxLayout()
-        l.addWidget(self.mCbTouched)
-        l.addWidget(self.mCbAllAttributes)
+        layout = QHBoxLayout()
+        layout.addWidget(self.mCbTouched)
+        layout.addWidget(self.mCbAllAttributes)
         i = self.mGrid.rowCount()
-        self.mGrid.addLayout(l, i, 1)
+        self.mGrid.addLayout(layout, i, 1)
 
         self.mProgressBar = QProgressBar(self)
         self.mProgressBar.setRange(0, 100)
@@ -238,9 +238,6 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
             task.run()
             self.onCompleted(task)
 
-
-
-
     def allAttributes(self) -> bool:
         """
         Returns True if the "All Attributes" combo box is enabled and checked.
@@ -333,8 +330,7 @@ class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         has_vector = isinstance(vl, QgsVectorLayer)
 
         # self.mCbAllAttributes.setEnabled(has_vector)
-        self.mCbTouched.setEnabled(has_vector and
-                                   QgsWkbTypes.geometryType(vl.wkbType()) == QgsWkbTypes.PolygonGeometry)
+        self.mCbTouched.setEnabled(has_vector and QgsWkbTypes.geometryType(vl.wkbType()) == QgsWkbTypes.PolygonGeometry)
 
         if has_vector:
             info = 'Extract raster profiles for geometry positions'
@@ -626,4 +622,3 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                                         p.setAttribute(field.name(), vectorFeature.attribute(field.name()))
 
                             yield p
-

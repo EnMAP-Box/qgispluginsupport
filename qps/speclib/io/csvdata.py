@@ -38,6 +38,7 @@ from ..core.spectralprofile import SpectralProfile
 from ..core.spectrallibrary import SpectralLibrary
 from ..core.spectrallibraryio import SpectralLibraryIO
 from .. import FIELD_VALUES
+
 # max size a CSV file can have, in MBytes
 MAX_CSV_SIZE = 5
 
@@ -46,21 +47,24 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
     """
     SpectralLibrary IO with CSV files.
     """
-    STD_NAMES = ['WKT']+[n for n in createStandardFields().names()]
-    REGEX_HEADERLINE = re.compile('^'+'[\t;,]'.join(STD_NAMES)+'\\t.*')
-    REGEX_BANDVALUE_COLUMN = re.compile(r'^(?P<bandprefix>\D+)?(?P<band>\d+)[ _]*(?P<xvalue>-?\d+\.?\d*)?[ _]*(?P<xunit>\D+)?', re.IGNORECASE)
+    STD_NAMES = ['WKT'] + [n for n in createStandardFields().names()]
+    REGEX_HEADERLINE = re.compile('^' + '[\t;,]'.join(STD_NAMES) + '\\t.*')
+    REGEX_BANDVALUE_COLUMN = re.compile(
+        r'^(?P<bandprefix>\D+)?(?P<band>\d+)[ _]*(?P<xvalue>-?\d+\.?\d*)?[ _]*(?P<xunit>\D+)?', re.IGNORECASE)
 
     @classmethod
-    def addImportActions(cls, spectralLibrary:SpectralLibrary, menu:QMenu) -> list:
+    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 
-        def read(speclib:SpectralLibrary, dialect):
+        def read(speclib: SpectralLibrary, dialect):
 
-            path, ext = QFileDialog.getOpenFileName(caption='Import CSV File', filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
+            path, ext = QFileDialog.getOpenFileName(caption='Import CSV File',
+                                                    filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
             if isinstance(path, str) and os.path.isfile(path):
 
                 sl = CSVSpectralLibraryIO.readFrom(path, dialect)
                 if is_spectral_library(sl):
                     speclib.addSpeclib(sl, True)
+
         m = menu.addMenu('CSV')
 
         a = m.addAction('Excel (TAB)')
@@ -79,7 +83,6 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
                                                        filter='CSV (*.csv);;Text files (*.txt)')
             if isinstance(path, str) and len(path) > 0:
                 CSVSpectralLibraryIO.write(spectralLibrary, path)
-
 
         m = menu.addAction('CSV Table')
         m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
@@ -141,7 +144,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
         return [path]
 
     @classmethod
-    def readFrom(cls, path=None, feedback:QgsProcessingFeedback=None, dialect=pycsv.excel_tab):
+    def readFrom(cls, path=None, feedback: QgsProcessingFeedback = None, dialect=pycsv.excel_tab):
         f = open(path, 'r', encoding='utf-8')
         text = f.read()
         f.close()
@@ -149,7 +152,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
         return CSVSpectralLibraryIO.fromString(text, dialect=dialect)
 
     @classmethod
-    def extractDataBlocks(cls, text:str) -> (list, list):
+    def extractDataBlocks(cls, text: str) -> (list, list):
         # divides a text into blocks of CSV rows with same column structure
         lines = text.splitlines(keepends=True)
         # lines = [l.strip() for l in lines]
@@ -195,7 +198,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
                 currentBlock += line
 
         # add last block to list
-        if currentBlock not in [None, ''] :
+        if currentBlock not in [None, '']:
             BLOCKMETADATA.append(headerLineMetadata(iBlockStart))
             BLOCKDATA.append(currentBlock)
 
@@ -203,7 +206,7 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
         return BLOCKDATA, BLOCKMETADATA
 
     @classmethod
-    def fromString(cls, text:str, dialect=pycsv.excel_tab) -> SpectralLibrary:
+    def fromString(cls, text: str, dialect=pycsv.excel_tab) -> SpectralLibrary:
         """
         Reads oneCSV
         :param text:
@@ -299,17 +302,15 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
 
                 # add other attributes
                 for n in [n for n in p.fields().names() if n in list(columnVectors.keys())]:
-
                     p.setAttribute(n, columnVectors[n][i])
 
                 SLIB.addFeature(p)
-
 
         SLIB.commitChanges()
         return SLIB
 
     @classmethod
-    def asString(cls, speclib:SpectralLibrary, dialect=pycsv.excel_tab, skipValues=False, skipGeometry=False) -> str:
+    def asString(cls, speclib: SpectralLibrary, dialect=pycsv.excel_tab, skipValues=False, skipGeometry=False) -> str:
         """
         Returns a SpectralLibrary as CSV string
         :param speclib:
@@ -336,7 +337,8 @@ class CSVSpectralLibraryIO(SpectralLibraryIO):
             assert isinstance(refProfile, SpectralProfile)
             nbands = len(refProfile.xValues())
             nattributes = len(refProfile.attributes())
-            jsonData = {'xvalues': xvalues, 'xunit': xunit, 'yunit': yunit, 'nbands': nbands, 'nattributes': nattributes}
+            jsonData = {'xvalues': xvalues, 'xunit': xunit, 'yunit': yunit, 'nbands': nbands,
+                        'nattributes': nattributes}
             jsonString = json.dumps(jsonData)
             stream.write('#META={}\n'.format(jsonString))
 
@@ -383,6 +385,7 @@ class CSVWriterFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
     """
     A QgsVectorFileWriter.FieldValueConverter to converts SpectralLibrary values into strings
     """
+
     def __init__(self, speclib):
         super(CSVWriterFieldValueConverter, self).__init__()
         self.mSpeclib = speclib
@@ -390,7 +393,7 @@ class CSVWriterFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         self.mCharactersToReplace = '\t'
         self.mReplacement = ' '
 
-    def setSeparatorCharactersToReplace(self, charactersToReplace, replacement:str= ' '):
+    def setSeparatorCharactersToReplace(self, charactersToReplace, replacement: str = ' '):
         """
         Specifies characters that need to be masked in string, i.e. the separator, to not violate the CSV structure.
         :param charactersToReplace: str | list of strings
@@ -419,4 +422,3 @@ class CSVWriterFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
     def fieldDefinition(self, field):
         return field
-

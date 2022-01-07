@@ -158,11 +158,11 @@ def value2hdrString(values):
         lines = ['{']
         values = ['{}'.format(v).replace(',', '-') if v is not None else '' for v in values]
         line = ' '
-        l = len(values)
+        n_values = len(values)
         for i, v in enumerate(values):
             line += v
 
-            if i < l - 1:
+            if i < n_values - 1:
                 line += ', '
 
             if len(line) > maxwidth:
@@ -254,9 +254,6 @@ class EnviSpectralLibraryExportWidget(SpectralLibraryExportWidget):
 
     def supportsMultipleSpectralSettings(self) -> bool:
         return False
-
-    def supportsMultipleSpectralSettings(self) -> bool:
-        return True
 
     def formatName(self) -> str:
         return EnviSpectralLibraryIO.formatName()

@@ -113,8 +113,6 @@ class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         self.mSource = source
         self.mENVIHdr.clear()
 
-
-
         self.sigSourceChanged.emit()
 
     def createExpressionContext(self) -> QgsExpressionContext:
@@ -148,7 +146,6 @@ class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         return settings
 
 
-
 class EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
     def __init__(self, *args, **kwds):
@@ -157,7 +154,6 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def formatName(cls) -> str:
         return 'EcoSYS Spectral Library'
-
 
     @classmethod
     def createImportWidget(cls) -> SpectralLibraryImportWidget:
@@ -254,6 +250,7 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
                 profiles.append(feature)
         return profiles
+
 
 class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
     """

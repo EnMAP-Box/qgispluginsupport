@@ -18,7 +18,7 @@
 """
 import typing
 
-from qgis.PyQt.QtWidgets import *
+
 # auto-generated file.
 from qgis.gui import QgsOrganizeTableColumnsDialog
 from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties

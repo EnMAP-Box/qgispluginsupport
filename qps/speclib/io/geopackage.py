@@ -1,15 +1,11 @@
 import os
 import typing
 
-from qgis.PyQt.QtWidgets import QFormLayout
 from qgis.core import Qgis
-
-from qgis.core import QgsFeatureSink, QgsVectorLayerExporter
 from qgis.core import QgsProject, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
-    QgsVectorFileWriter, QgsCoordinateTransformContext, QgsCoordinateReferenceSystem
-
-from qgis.gui import QgsFieldMappingWidget
+    QgsCoordinateReferenceSystem
+from qgis.core import QgsVectorLayerExporter
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
     SpectralLibraryExportWidget
 

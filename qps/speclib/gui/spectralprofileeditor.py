@@ -1,13 +1,13 @@
 import typing
 
 import numpy as np
+
+from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant
 from qgis.PyQt.QtWidgets import QGroupBox, QWidget, QLabel
-from qgis.core import QgsVectorLayer, QgsExpression, QgsFieldProxyModel, QgsField, QgsFieldFormatter, QgsApplication
-
-from qgis.gui import QgsEditorWidgetWrapper, QgsFieldExpressionWidget, QgsEditorConfigWidget, QgsGui, \
+from qgis.core import QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication
+from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, \
     QgsEditorWidgetFactory
-from qgis.PyQt.QtCore import NULL
 from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core.spectralprofile import SpectralProfile, encodeProfileValueDict, decodeProfileValueDict
@@ -510,4 +510,3 @@ def registerSpectralProfileEditorWidget():
 
         # uncomment when https://github.com/qgis/QGIS/issues/45478 is fixed
         fieldFormatterRegistry.addFieldFormatter(SPECTRAL_PROFILE_FIELD_FORMATTER)
-

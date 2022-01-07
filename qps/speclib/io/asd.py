@@ -31,22 +31,20 @@ import pathlib
 import re
 import struct
 import sys
+import typing
 import warnings
 
 import numpy as np
-import typing
 
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsVectorLayer, QgsFields, QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, \
-    QgsVectorFileWriter, QgsField
-from qgis.gui import QgsFileWidget
-
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsProcessingFeedback
+from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
+    QgsField
+from qgis.gui import QgsFileWidget
 from ..core import create_profile_field, is_spectral_library
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, SpectralLibraryImportWidget, \
-    SpectralLibraryImportDialog
+from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...utils import createQgsField
 
@@ -166,12 +164,14 @@ class SmartDetectorType(object):
             DETECTOR = [None, None, None, None, None, None, None, None]
         self.serial_number, self.Signal, self.dark, self.ref, self.Status, self.avg, self.humid, self.temp = DETECTOR
 
+
 class UTC_TIME(object):
 
     def __init__(self, DATA):
         self.tm_year, self.tm_mon, self.tm_mday, \
         self.tm_hour, self.tm_min, self.tm_sec, \
         self.tm_wday, self.tm_yday, self.tm_isdst = struct.Struct("= 9h").unpack(DATA)
+
 
 class TM_STRUCT(object):
 
@@ -298,7 +298,7 @@ class ASDBinaryFile(object):
     def yValuesReference(self) -> np.ndarray:
         return self.Reference
 
-    def asFeature(self, fields: QgsFields=None) -> QgsFeature:
+    def asFeature(self, fields: QgsFields = None) -> QgsFeature:
         """
         Returns the input as QgsFeature with attributes defined in ASD_FIELDS
         :return:
@@ -351,6 +351,7 @@ class ASDBinaryFile(object):
                 if l > 0:
                     result = struct.unpack('<c', sub(start + 2, l))[0]
                 return result, start + l + 2
+
             self.co = DATA[0:3].decode('utf-8')
             self.comments = DATA[3:(3 + 157)].decode('utf-8')
 
@@ -422,16 +423,16 @@ class ASDBinaryFile(object):
             o = 484 + size - 1
             self.ReferenceFlag = struct.unpack('<?', sub(o + 1, 1))[0]
             if self.ReferenceFlag:
-    #           self.ReferenceTime = np.datetime64('1970-01-01') + np.timedelta64(
-    #                struct.unpack('<l', DATA[(o + 3):(o + 3 + 8)])[0], 's')
-    #           self.SpectrumTime = np.datetime64('1970-01-01') + np.timedelta64(
-    #                struct.unpack('<l', DATA[o + 11:o + 11 + 8])[0], 's')
+                #           self.ReferenceTime = np.datetime64('1970-01-01') + np.timedelta64(
+                #                struct.unpack('<l', DATA[(o + 3):(o + 3 + 8)])[0], 's')
+                #           self.SpectrumTime = np.datetime64('1970-01-01') + np.timedelta64(
+                #                struct.unpack('<l', DATA[o + 11:o + 11 + 8])[0], 's')
 
-                reftime = struct.unpack('<8B', sub(o +3, 8))
+                reftime = struct.unpack('<8B', sub(o + 3, 8))
                 self.SpectrumDescription, o = n_string(o + 19)
 
                 # reference data
-                self.Reference = np.array(struct.unpack(fmt, sub(o , size)))
+                self.Reference = np.array(struct.unpack(fmt, sub(o, size)))
 
             s = ""
 
@@ -560,6 +561,7 @@ class DEPR_ASDSpectralLibraryIO(SpectralLibraryIO):
     """
     DEPRECATED, will be removed soon
     """
+
     @classmethod
     def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
 

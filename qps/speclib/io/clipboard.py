@@ -24,13 +24,20 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import pickle
+
+from PyQt5.QtCore import QMimeData, QVariant
+
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtWidgets import QApplication
 
-from ..core.spectrallibrary import *
 import locale
 
+from qgis.core import QgsProcessingFeedback, QgsPoint
+from ..core import is_spectral_library
+from ..core.spectrallibrary import MIMEDATA_SPECLIB, MIMEDATA_XQT_WINDOWS_CSV, SpectralLibrary
 from ..core.spectrallibraryio import SpectralLibraryIO
+from ..core.spectralprofile import SpectralProfile
 
 
 class ClipboardIO(SpectralLibraryIO):
@@ -60,7 +67,7 @@ class ClipboardIO(SpectralLibraryIO):
 
     @classmethod
     def readFrom(cls, path=None,
-                 feedback:QgsProcessingFeedback=None) -> SpectralLibrary:
+                 feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
 
         clipboard = QApplication.clipboard()
         mimeData = clipboard.mimeData()
@@ -81,7 +88,7 @@ class ClipboardIO(SpectralLibraryIO):
               mode=None,
               sep=None,
               newline=None,
-              feedback:QgsProcessingFeedback=None):
+              feedback: QgsProcessingFeedback = None):
 
         if mode is None:
             mode = ClipboardIO.WritingModes.ALL
@@ -89,13 +96,11 @@ class ClipboardIO(SpectralLibraryIO):
 
         mimeData = QMimeData()
 
-
         if not isinstance(sep, str):
             sep = '\t'
 
         if not isinstance(newline, str):
             newline = '\r\n'
-
 
         csvlines = []
         fields = speclib.fields()

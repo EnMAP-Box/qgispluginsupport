@@ -7,7 +7,8 @@ import typing
 from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, QMimeData, Qt, QPointF, QSortFilterProxyModel, QTimer, \
     QVariant
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QInputDialog, QMessageBox, QGridLayout, QToolButton, QAction, QMenu, \
+from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QInputDialog, QMessageBox, QGridLayout, QToolButton, QAction, \
+    QMenu, \
     QTreeView, QGroupBox, QLabel, QHBoxLayout, QComboBox, QLineEdit, QCheckBox, QTabWidget, QTextEdit, QDialog, \
     QListWidget, QListView, QTextBrowser, QPushButton, QSizePolicy
 
@@ -183,7 +184,6 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
         super(SpectralProcessingRasterLayerWidgetWrapper, self).__init__(parameter, dialogType, parent)
         self.mProfileField: str = None
-
 
     def createWidget(self):
 
@@ -870,7 +870,6 @@ class SpectralProcessingWidgetOLD(QWidget, QgsProcessingContextGenerator):
 
         self.updateGui()
 
-
     def updateGui(self):
 
         sl = self.speclib()
@@ -964,7 +963,7 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
     sigSpectralProcessingModelChanged = pyqtSignal()
     sigAboutToBeClosed = pyqtSignal()
 
-    def __init__(self, *args, speclib: QgsVectorLayer = None, parent:QWidget=None, **kwds):
+    def __init__(self, *args, speclib: QgsVectorLayer = None, parent: QWidget = None, **kwds):
         super().__init__(parent=parent)
         # QgsProcessingContextGenerator.__init__(self)
 
@@ -1090,7 +1089,7 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
                         affected_features.intersection_update(fids)
 
             if len(affected_features) == 0:
-                self.log(f'Feature ID of selected spectral profile images do not overlap', isError=True)
+                self.log('Feature ID of selected spectral profile images do not overlap', isError=True)
                 return None
             else:
                 self.log(f'Process {len(affected_features)} features')
@@ -1281,8 +1280,8 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
         super().setAlgorithm(alg.create())
         self.mAlg = alg
         w = self.getParametersPanel(alg, self)
-        #mw = self.mainWidget()
-        #if isinstance(mw, QWidget):
+        # mw = self.mainWidget()
+        # if isinstance(mw, QWidget):
         #    mw.setParent(None)
         if isinstance(w, QgsPanelWidget):
             self.setMainWidget(w)
@@ -1290,12 +1289,13 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
         self.mPanelWidget = w
         self.updateGui()
 
-    def getParametersPanel(self, alg: QgsProcessingAlgorithm, parent: QWidget) -> SpectralProcessingModelCreatorAlgorithmWrapper:
+    def getParametersPanel(self, alg: QgsProcessingAlgorithm,
+                           parent: QWidget) -> SpectralProcessingModelCreatorAlgorithmWrapper:
         if isinstance(self.mSpeclib, QgsVectorLayer):
             panel = SpectralProcessingModelCreatorAlgorithmWrapper(alg,
                                                                    self.mSpeclib,
-                                                                    processingContext=self.mProcessingContext,
-                                                                    )
+                                                                   processingContext=self.mProcessingContext,
+                                                                   )
         else:
             panel = QgsPanelWidget()
             panel.layout().addWidget(QLabel('Missing spectral library'))
@@ -1343,4 +1343,3 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
 
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
-
