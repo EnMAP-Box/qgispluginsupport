@@ -464,7 +464,7 @@ class SpectralLibraryIO(object):
         return []
 
     @staticmethod
-    def readSpeclibFromUri(uri, feedback: QgsProcessingFeedback = None) -> 'SpectralLibrary':
+    def readSpeclibFromUri(uri, feedback: QgsProcessingFeedback = None) -> QgsVectorLayer:
         """
         Tries to open a source uri as SpectralLibrary
         :param uri: str

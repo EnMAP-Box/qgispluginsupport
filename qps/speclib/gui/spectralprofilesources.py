@@ -5,7 +5,8 @@ import sys
 import typing
 
 import numpy as np
-from PyQt5.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget
+from PyQt5.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
+    QTableView, QStyle, QStyleOptionViewItem
 
 from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
     QSortFilterProxyModel, QItemSelection
@@ -2025,7 +2026,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
         self.mSpectralProfileBridge: SpectralProfileBridge = None
 
-    def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex):
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
 
         node = index.data(Qt.UserRole)
         if index.column() == 1:

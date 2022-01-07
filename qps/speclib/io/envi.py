@@ -397,53 +397,6 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         if bbl:
             bbl = np.asarray(bbl, dtype=np.byte).tolist()
 
-        # check for additional CSV metadata to enhance profile descriptions
-        CSVlayer = readCSVMetadata(pathESL)
-        if False:
-            CSV_DATA = CSV_FIELDS = None
-            try:
-                CSV_LAYER = readCSVMetadata2(pathESL)
-                CSV_DATA, CSV_FIELDS = readCSVMetadata(pathESL)
-            except Exception as ex:
-                print(str(ex), file=sys.stderr)
-
-            PROFILE2CSVLine = {}
-
-            if CSV_DATA is not None:
-
-                CSVLine2ESLProfile = {}
-
-                # look if we can match a CSV column with names to profile names
-                for profileNameColumnName in CSV_PROFILE_NAME_COLUMN_NAMES:
-                    if profileNameColumnName in CSV_FIELDS.names():
-                        c = CSV_FIELDS.lookupField(profileNameColumnName)
-                        for r, row in enumerate(CSV_DATA):
-                            nameCSV = row[c]
-                            if nameCSV in spectraNames:
-                                iProfile = spectraNames.index(nameCSV)
-                                CSVLine2ESLProfile[r] = iProfile
-                                PROFILE2CSVLine[iProfile] = r
-                        break
-                # backup: match csv line with profile index
-                if len(PROFILE2CSVLine) == 0:
-                    indices = range(min(nSpectra, len(CSV_DATA)))
-                    PROFILE2CSVLine = dict(zip(indices, indices))
-
-            if CSV_FIELDS is not None:
-                sliceCSV = []
-                sliceAttr = []
-                for slibField in [fields.at(i) for i in range(fields.count())]:
-                    fieldName = slibField.name()
-
-                    iSLIB = fields.lookupField(fieldName)
-                    iCSV = CSV_FIELDS.lookupField(fieldName)
-
-                    if iCSV >= 0:
-                        sliceCSV.append(iCSV)
-                        sliceAttr.append(iSLIB)
-
-                iCSVGeometry = CSV_FIELDS.lookupField(CSV_GEOMETRY_COLUMN)
-
         profiles: typing.List[QgsFeature] = []
         import datetime
         t0 = datetime.datetime.now()
@@ -453,7 +406,8 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
             valueDict = {'x': xValues, 'y': data[i, :].tolist(), 'xUnit': xUnit, 'yUnit': yUnit, 'bbl': bbl}
 
-            if False and CSV_DATA is not None:
+            """
+            if CSV_DATA is not None:
                 j = PROFILE2CSVLine.get(i, -1)
                 if j >= 0:
                     csvLine = CSV_DATA[j]
@@ -468,7 +422,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
                             g = QgsGeometry.fromWkt(wkt)
                             if g.wkbType() == QgsWkbTypes.Point:
                                 f.setGeometry(g)
-
+            """
             f.setAttribute(PROFILE_FIELD, encodeProfileValueDict(valueDict))
             if PROFILE_NAME_FIELD:
                 f.setAttribute(PROFILE_NAME_FIELD, spectraNames[i])

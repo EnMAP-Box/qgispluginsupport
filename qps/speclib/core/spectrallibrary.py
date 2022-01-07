@@ -136,9 +136,11 @@ class SerializationMode(enum.Enum):
     JSON = 1
     PICKLE = 2
 
+
 def read_profiles(*args, **kwds):
     warnings.warn('Use SpectralProfileUtils.profiles() instead')
     return SpectralLibraryUtils.readProfiles(*args, **kwds)
+
 
 def log(msg: str):
     if DEBUG:
@@ -677,9 +679,8 @@ class SpectralLibraryUtils:
         for f in vectorlayer.getFeatures(featureRequest):
             yield SpectralProfile.fromQgsFeature(f, profile_field=profile_field)
 
-
     @staticmethod
-    def plot(speclib: QgsVectorLayer) -> 'SpectralLibraryWidget':
+    def plot(speclib: QgsVectorLayer) -> QWidget:
         assert is_spectral_library(speclib)
         app = None
         if not isinstance(QgsApplication.instance(), QgsApplication):
@@ -879,7 +880,6 @@ class SpectralLibrary(QgsVectorLayer):
         nBlocksTotal = nXBlocks * nYBlocks
         nBlocksDone = 0
 
-
         # pixel center coordinates as geolocation
         geo_x, geo_y = px2geocoordinates(ds,
                                          target_srs=spectral_library.crs(),
@@ -1050,7 +1050,6 @@ class SpectralLibrary(QgsVectorLayer):
 
         nTotal = len(positions)
         if isinstance(progressDialog, QgsProcessingFeedback):
-
             progressDialog.setProgress(0)
             progressDialog.setProgressText('Extract pixel profiles...')
 

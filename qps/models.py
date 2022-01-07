@@ -30,6 +30,9 @@ import copy
 import enum
 import typing
 import types
+
+from PyQt5.QtWidgets import QStyleOptionViewItem
+
 from qgis.PyQt import sip
 
 import collections.abc
@@ -1646,23 +1649,13 @@ class SettingsTreeViewDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super(SettingsTreeViewDelegate, self).__init__(parent=parent)
 
-    def paint(self, painter: QPainter, option: 'QStyleOptionViewItem', index: QModelIndex):
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
         # cName = self.mTableView.model().headerData(index.column(), Qt.Horizontal)
         c = index.column()
 
         value = index.data(Qt.UserRole)
 
-        if False:
-            style: PlotStyle = vis.mPlotStyle
-            h = self.mTreeView.verticalHeader().sectionSize(index.row())
-            w = self.mTreeView.horizontalHeader().sectionSize(index.column())
-            if h > 0 and w > 0:
-                px = style.createPixmap(size=QSize(w, h))
-                painter.drawPixmap(option.rect, px)
-            else:
-                super().paint(painter, option, index)
-        else:
-            super().paint(painter, option, index)
+        super().paint(painter, option, index)
 
     def setItemDelegates(self, tableView: QTableView):
         for c in range(tableView.model().columnCount()):

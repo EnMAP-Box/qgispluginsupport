@@ -88,7 +88,7 @@ class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         self.mENVIHdr: dict = dict()
 
     @classmethod
-    def spectralLibraryIO(cls) -> 'EnviSpectralLibraryIO':
+    def spectralLibraryIO(cls) -> 'EcoSISSpectralLibraryIO':
         return SpectralLibraryIO.spectralLibraryIOInstances(EcoSISSpectralLibraryIO)
 
     def sourceFields(self) -> QgsFields:

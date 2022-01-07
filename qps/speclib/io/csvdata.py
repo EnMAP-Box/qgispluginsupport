@@ -33,6 +33,7 @@ import csv as pycsv
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsProcessingFeedback, QgsVectorFileWriter, QgsGeometry
 from .. import createStandardFields
+from ..core import is_spectral_library
 from ...utils import toType, createQgsField, findTypeFromString, value2str
 from ..core.spectralprofile import SpectralProfile
 from ..core.spectrallibrary import SpectralLibrary
