@@ -332,7 +332,7 @@ class GDALBandMetadataModel(QAbstractTableModel):
         for i in typeList:
             try:
                 v = t(i)
-            except:
+            except Exception:
                 return False
         return True
 
@@ -854,7 +854,7 @@ class GDALMetadataModel(QAbstractTableModel):
                 try:
                     item.setEditorValue(value)
                     changed = True
-                except:
+                except Exception:
                     pass
 
         if changed:

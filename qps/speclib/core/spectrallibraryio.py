@@ -479,7 +479,7 @@ class SpectralLibraryIO(object):
             speclib = SpectralLibrary(uri)
             if not speclib.isValid():
                 speclib = None
-        except:
+        except Exception:
             s = ""
             pass
 

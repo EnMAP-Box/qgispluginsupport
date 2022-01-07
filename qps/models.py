@@ -1515,7 +1515,7 @@ class SettingsModel(TreeModel):
                     icon = None
                     try:
                         icon = o.icon(o.value)
-                    except:
+                    except Exception:
                         pass
                     o = Option(value=o.value, name=o.name, toolTip=str(o), icon=icon)
                 if not isinstance(o, Option):

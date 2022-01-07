@@ -190,13 +190,13 @@ class SpectralProfileTableModel(QAbstractTableModel):
                 try:
                     self.mValuesX[i] = float(value)
                     modified = True
-                except:
+                except (TypeError, ValueError):
                     pass
             elif c == 1:
                 try:
                     self.mValuesY[i] = float(value)
                     modified = True
-                except:
+                except (TypeError, ValueError):
                     pass
 
         if modified:

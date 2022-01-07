@@ -67,7 +67,7 @@ class DatasetInfo(object):
         if isinstance(obj, str):
             try:
                 obj = gdal.Open(obj)
-            except:
+            except Exception:
                 pass
         if isinstance(obj, gdal.Dataset):
             subs = obj.GetSubDatasets()

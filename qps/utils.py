@@ -1116,14 +1116,14 @@ def qgsMapLayer(value: typing.Any) -> QgsMapLayer:
         lyr = qgsRasterLayer(value)
         if isinstance(lyr, QgsRasterLayer):
             return lyr
-    except:
+    except Exception:
         pass
 
     try:
         lyr = qgsVectorLayer(value)
         if isinstance(lyr, QgsVectorLayer):
             return lyr
-    except:
+    except Exception:
         pass
 
     return None
@@ -1710,7 +1710,7 @@ def bandClosestToWavelength(dataset, wl, wl_unit='nm') -> int:
             if ds_wlu != wl_unit:
                 wl = UnitLookup.convertMetricUnit(wl, wl_unit, ds_wlu)
             return int(np.argmin(np.abs(ds_wl - wl)))
-        except:
+        except Exception:
             pass
     return 0
 
@@ -1727,7 +1727,7 @@ def parseBadBandList(dataset) -> typing.List[int]:
 
     try:
         dataset = gdalDataset(dataset)
-    except:
+    except Exception:
         return None
         pass
 
@@ -1755,7 +1755,7 @@ def parseFWHM(dataset) -> np.ndarray:
     """
     try:
         dataset = gdalDataset(dataset)
-    except:
+    except Exception:
         return None
 
     key_positions = [('fwhm', None),
@@ -1770,7 +1770,7 @@ def parseFWHM(dataset) -> np.ndarray:
                     values = np.fromstring(values, sep=',', count=dataset.RasterCount)
                     if len(values) == dataset.RasterCount:
                         return values
-                except:
+                except Exception:
                     pass
 
         # search band by band
@@ -1972,7 +1972,7 @@ def qgisAppQgisInterface() -> QgisInterface:
         if not isinstance(mainWindow, QMainWindow) or mainWindow.objectName() != 'QgisApp':
             return None
         return qgis.utils.iface
-    except:
+    except Exception:
         return None
 
 
@@ -2572,18 +2572,18 @@ def saveTransform(geom: typing.Union[QgsPointXY, QgsRectangle,
         try:
             rect = transform.transformBoundingBox(geom);
             result = SpatialExtent(crs2, rect)
-        except:
-            print('Can not transform from {} to {} on rectangle {}'.format( \
-                crs1.description(), crs2.description(), str(geom)), file=sys.stderr)
+        except Exception as ex:
+            print(f'Can not transform from {crs1.description()} to {crs2.description()} '
+                  f'on rectangle {geom}.\n{ex}')
 
     elif isinstance(geom, QgsPointXY):
 
         try:
-            pt = transform.transform(geom);
+            pt = transform.transform(geom)
             result = SpatialPoint(crs2, pt)
-        except:
-            print('Can not transform from {} to {} on QgsPointXY {}'.format( \
-                crs1.description(), crs2.description(), str(geom)), file=sys.stderr)
+        except Exception as ex:
+            print(f'Can not transform from {crs1.description()} to {crs2.description()} '
+                  f'on QgsPointXY {geom}\n{ex}')
 
     elif isinstance(geom, tuple):
 

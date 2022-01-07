@@ -277,7 +277,7 @@ class SpectralLibraryPlotItem(pg.PlotItem):
             """Remove an item from this view."""
             try:
                 self.vb.addedItems.remove(item)
-            except:
+            except ValueError:
                 pass
             scene = self.vb.scene()
             if scene is not None:

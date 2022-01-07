@@ -247,7 +247,7 @@ class ClassInfo(QObject):
             label, name, color = json.loads(jsonString)
             color = QColor(color)
             return ClassInfo(label=label, name=name, color=color)
-        except:
+        except (TypeError, ValueError, json.decoder.JSONDecodeError):
             return None
 
 

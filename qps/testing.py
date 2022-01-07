@@ -35,6 +35,9 @@ import warnings
 from unittest import mock
 
 import numpy as np
+from PyQt5.QtCore import QObject, QPoint, QSize, QVariant, pyqtSignal, QMimeData, QPointF, QDir
+from PyQt5.QtGui import QImage, QDropEvent
+from PyQt5.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow
 from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
@@ -218,6 +221,7 @@ def start_app(cleanup: bool = True,
     return qgsApp
 
 
+
 class QgisMockup(QgisInterface):
     """
     A "fake" QGIS Desktop instance that should provide all the interfaces a plugin developer might need (and nothing more)
@@ -273,7 +277,7 @@ class QgisMockup(QgisInterface):
             if not n.startswith('_') and n not in excluded:
                 try:
                     inspect.getfullargspec(getattr(self, n))
-                except:
+                except Exception:
                     setattr(self, n, getattr(self._mock, n))
 
     def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
@@ -1012,18 +1016,6 @@ class TestObjects(object):
         return ds
 
     TEST_PROVIDER = None
-
-    @staticmethod
-    def createSpectralProcessingAlgorithm() -> QgsProcessingAlgorithm:
-
-        alg = SpectralPythonCodeProcessingAlgorithm()
-        provider = TestObjects.createProcessingProvider()
-        if not isinstance(provider.algorithm(alg.name()), SpectralPythonCodeProcessingAlgorithm):
-            provider.addAlgorithm(alg)
-
-        assert isinstance(provider.algorithm(alg.name()), SpectralPythonCodeProcessingAlgorithm)
-
-        return provider.algorithm(alg.name())
 
     @staticmethod
     def createRasterProcessingModel(name: str = 'Example Raster Model') -> QgsProcessingModelAlgorithm:

@@ -194,7 +194,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
                 try:
                     mWL = UnitLookup.convertMetricUnit(mWL, mWLUnit, 'nm')
                     mWLUnit = 'nm'
-                except:
+                except Exception:
                     mWL = None
                     mWLUnit = None
 
