@@ -112,10 +112,10 @@ class PixelPositionTreeNode(TreeNode):
 
         if self.mZeroBased:
             self.setValues([(px.x(), px.y())])
-            self.setToolTip(f'Pixel Coordinate (upper-left = (0,0) )')
+            self.setToolTip('Pixel Coordinate (upper-left = (0,0) )')
         else:
             self.setValues([(px.x() + 1, px.y() + 1)])
-            self.setToolTip(f'Pixel Coordinate (upper-left = (1,1) )')
+            self.setToolTip('Pixel Coordinate (upper-left = (1,1) )')
 
     def populateContextMenu(self, menu: QMenu):
 

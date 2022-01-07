@@ -845,7 +845,7 @@ class SpectralLibraryPlotWidgetStyle(object):
             if self.__dict__[k] != renderer.__dict__[k]:
                 differences.append(f'{k}: {self.__dict__[k]} != {renderer.__dict__[k]}')
         if len(differences) == 0:
-            print(f'# no differences')
+            print('# no differences')
         else:
             print(f'# {len(differences)} differences:')
             for d in differences:
@@ -2020,10 +2020,10 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
             if limit_reached:
                 css = 'color: rgb(255, 0, 0);'
-                tt = f'Profile limit reached. Increase to show more profiles at the same time (decreases speed)'
+                tt = 'Profile limit reached. Increase to show more profiles at the same time (decreases speed)'
             else:
                 css = ''
-                tt = f''
+                tt = ''
             self.mMaxProfilesWidget.setStyleSheet(css)
             self.mMaxProfilesWidget.setToolTip(tt)
 

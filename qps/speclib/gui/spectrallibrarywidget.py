@@ -673,8 +673,8 @@ class SpectralLibraryInfoLabel(QLabel):
         if self.mLastStats == stats:
             return
 
-        msg = f'<html><head/><body>'
-        ttp = f'<html><head/><body><p>'
+        msg = '<html><head/><body>'
+        ttp = '<html><head/><body><p>'
 
         # total + filtering
         if stats.filter_mode == QgsAttributeTableFilterModel.ShowFilteredList:

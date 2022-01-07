@@ -557,7 +557,7 @@ class GDALBandMetadataModelTableView(QTableView):
 
             cname = self.model().headerData(index.column(), Qt.Horizontal)
             m = QMenu()
-            a = m.addAction(f'Copy value(s)')
+            a = m.addAction('Copy value(s)')
             a.triggered.connect(lambda *args, idx=selectedIndexes: self.copyValues(idx, sep='\n'))
 
             a = m.addAction(f'Copy "{cname}" (newline)')
@@ -570,7 +570,7 @@ class GDALBandMetadataModelTableView(QTableView):
             a.triggered.connect(lambda *args, idx=index: self.pasteValues(idx))
 
             m.addSeparator()
-            a = m.addAction(f'Clear selected')
+            a = m.addAction('Clear selected')
             a.setEnabled(len(selectedIndexes) > 0)
             a.triggered.connect(lambda *args, idx=selectedIndexes: self.clearValues(idx))
 

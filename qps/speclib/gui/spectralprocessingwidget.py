@@ -620,7 +620,7 @@ class SpectralProcessingWidgetOLD(QWidget, QgsProcessingContextGenerator):
             # copy and replace input raster's with temporary data sets
             # that contain spectral profiles
 
-            self.log(f'Calculate feature intersection')
+            self.log('Calculate feature intersection')
             affected_features = set()
 
             if self.selectedFeaturesOnly():
@@ -636,7 +636,7 @@ class SpectralProcessingWidgetOLD(QWidget, QgsProcessingContextGenerator):
                         affected_features.intersection_update(fids)
 
             if len(affected_features) == 0:
-                self.log(f'Feature ID of selected spectral profile images do not overlap', isError=True)
+                self.log('Feature ID of selected spectral profile images do not overlap', isError=True)
                 return None
             else:
                 self.log(f'Process {len(affected_features)} features')
@@ -644,7 +644,7 @@ class SpectralProcessingWidgetOLD(QWidget, QgsProcessingContextGenerator):
             activeFeatureIDs = [f.id() for f in activeFeatures]
 
             parametersHard = parameters.copy()
-            self.log(f'Make virtual raster permanent')
+            self.log('Make virtual raster permanent')
 
             for k, v in parametersHard.items():
                 param = alg.parameterDefinition(k)
@@ -757,7 +757,7 @@ class SpectralProcessingWidgetOLD(QWidget, QgsProcessingContextGenerator):
             # self.tabWidget.setCurrentWidget(self.tabLog)
             self.highlightParameterWidget(ex1.parameter, ex1.widget)
         except AlgorithmDialogBase.InvalidOutputExtension as ex2:
-            msg = f'Invalid Output Extension'
+            msg = 'Invalid Output Extension'
             self.log(msg, isError=True)
         except Exception as ex3:
             msg = f'{ex3}'
@@ -1068,7 +1068,7 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
             # copy and replace input raster's with temporary data sets
             # that contain spectral profiles
 
-            self.log(f'Calculate feature intersection')
+            self.log('Calculate feature intersection')
             affected_features = set()
 
             if self.selectedFeaturesOnly():
@@ -1092,7 +1092,7 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
             activeFeatureIDs = [f.id() for f in activeFeatures]
 
             parametersHard = parameters.copy()
-            self.log(f'Make virtual raster permanent')
+            self.log('Make virtual raster permanent')
 
             for k, v in parametersHard.items():
                 param = alg.parameterDefinition(k)
@@ -1205,7 +1205,7 @@ class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
             # self.tabWidget.setCurrentWidget(self.tabLog)
             self.highlightParameterWidget(ex1.parameter, ex1.widget)
         except AlgorithmDialogBase.InvalidOutputExtension as ex2:
-            msg = f'Invalid Output Extension'
+            msg = 'Invalid Output Extension'
             self.log(msg, isError=True)
         except Exception as ex3:
             msg = f'{ex3}'

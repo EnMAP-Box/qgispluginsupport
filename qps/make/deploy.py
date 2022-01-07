@@ -79,9 +79,9 @@ class QGISMetadataFileWriter(object):
         lines.append('tags={}'.format(', '.join(self.mTags)))
         lines.append('category={}'.format(self.mRepository))
         if self.mHasProcessingProvider:
-            lines.append(f'hasProcessingProvider=yes')
+            lines.append('hasProcessingProvider=yes')
         else:
-            lines.append(f'hasProcessingProvider=no')
+            lines.append('hasProcessingProvider=no')
         lines.append('homepage={}'.format(self.mHomepage))
         if self.mTracker:
             lines.append('tracker={}'.format(self.mTracker))

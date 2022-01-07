@@ -574,7 +574,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
         if statsKey in self.mStatsCache.keys():
             return self.mStatsCache[statsKey]
-        print(f'# statistics')
+        print('# statistics')
         if extent is None:
             extent = QgsRectangle()
         else:
@@ -837,7 +837,7 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
         assert i >= 0
 
         layer = QgsRasterLayer(self.speclib().source(),
-                               f'<no name>',
+                               '<no name>',
                                SpectralLibraryRasterDataProvider.providerKey())
         assert layer.isValid()
         dp: SpectralLibraryRasterDataProvider = layer.dataProvider()

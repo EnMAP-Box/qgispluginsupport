@@ -95,7 +95,7 @@ class HelpStringMaker(object):
         arguments = JSON.get('arguments', None)
         if arguments:
             hasOptionalArgs: bool = False
-            html.append(f'<h4>Syntax</h4>')
+            html.append('<h4>Syntax</h4>')
             syntax = f'<div class="syntax">\n<code>{name}('
 
             if len(parameters) > 0:
@@ -133,8 +133,8 @@ class HelpStringMaker(object):
             html.append(syntax)
 
             if len(parameters) > 0:
-                html.append(f'<h4>Arguments</h4>')
-                html.append(f'<div class="arguments"><table>')
+                html.append('<h4>Arguments</h4>')
+                html.append('<div class="arguments"><table>')
 
                 for P in parameters:
                     assert isinstance(P, QgsExpressionFunction.Parameter)
@@ -142,11 +142,11 @@ class HelpStringMaker(object):
                     description = ARGUMENT_DESCRIPTIONS.get(P.name(), '')
                     html.append(f'<tr><td class="argument">{P.name()}</td><td>{description}</td></tr>')
 
-            html.append(f'</table></div>')
+            html.append('</table></div>')
 
         examples = JSON.get('examples', None)
         if examples:
-            html.append(f'<h4>Examples</h4>\n<div class=\"examples\">\n<ul>\n')
+            html.append('<h4>Examples</h4>\n<div class=\"examples\">\n<ul>\n')
 
             for example in examples:
                 str_exp = example['expression']
