@@ -1714,8 +1714,9 @@ class SpectralProfileBridge(TreeModel):
         if generator not in self.rootNode().childNodes():
             self.rootNode().appendChildNodes(generator)
 
-    def featureGenerators(self, speclib: bool = True, checked: bool = True) -> typing.List[
-        SpectralFeatureGeneratorNode]:
+    def featureGenerators(self, speclib: bool = True, checked: bool = True) -> \
+            typing.List[SpectralFeatureGeneratorNode]:
+
         for n in self.rootNode().childNodes():
             if isinstance(n, SpectralFeatureGeneratorNode):
                 if speclib is True and not isinstance(n.speclib(), QgsVectorLayer):

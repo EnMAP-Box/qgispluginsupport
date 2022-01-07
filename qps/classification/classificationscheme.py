@@ -648,8 +648,9 @@ class ClassificationScheme(QAbstractTableModel):
 
         return cs
 
-    def featureRenderer(self, symbolType: typing.Union[
-        QgsMarkerSymbol, QgsFillSymbol, QgsLineSymbol] = QgsFillSymbol) -> QgsCategorizedSymbolRenderer:
+    def featureRenderer(self,
+                        symbolType: typing.Union[QgsMarkerSymbol, QgsFillSymbol, QgsLineSymbol] = QgsFillSymbol) -> \
+            QgsCategorizedSymbolRenderer:
         """
         Returns the ClassificationScheme as QgsCategorizedSymbolRenderer
         :return: ClassificationScheme

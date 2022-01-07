@@ -645,8 +645,8 @@ class SpectralLibraryUtils:
     def profiles(vectorlayer: QgsVectorLayer,
                  fids: typing.List[int] = None,
                  profile_field: typing.Union[int, str, QgsField] = None,
-                 ) -> typing.Generator[
-        SpectralProfile, None, None]:
+                 ) -> \
+            typing.Generator[SpectralProfile, None, None]:
         """
         Reads SpectralProfiles from a vector layers BLOB 'profile_field'.
 
@@ -1337,8 +1337,8 @@ class SpectralLibrary(QgsVectorLayer):
         warnings.warn('Use SpectralLibrary.write() instead', DeprecationWarning)
         return self.write(*args, **kwds)
 
-    def writeRasterImages(self, pathOne: typing.Union[str, pathlib.Path], drv: str = 'GTiff') -> typing.List[
-        pathlib.Path]:
+    def writeRasterImages(self, pathOne: typing.Union[str, pathlib.Path], drv: str = 'GTiff') -> \
+            typing.List[pathlib.Path]:
         warnings.warn('will be removed', DeprecationWarning)
         """
         Writes the SpectralLibrary into images of same spectral properties

@@ -268,10 +268,10 @@ class FieldToRasterValueConverter(QObject):
     def dataType(self, band: int) -> Qgis.DataType:
         return FieldToRasterValueConverter.LUT_FIELD_TYPES.get(self.mField.type(), Qgis.DataType.UnknownDataType)
 
-    def toRasterValues(self, fieldValues: typing.List) -> typing.Tuple[
-        np.ndarray,
-        typing.List[QgsColorRampShader.ColorRampItem],
-        typing.Any]:
+    def toRasterValues(self, fieldValues: typing.List) -> \
+            typing.Tuple[np.ndarray,
+                         typing.List[QgsColorRampShader.ColorRampItem],
+                         typing.Any]:
         ns = len(fieldValues)
         nb = self.bandCount()
         field = self.mField
@@ -376,10 +376,9 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         else:
             return Qgis.DataType.UnknownDataType
 
-    def toRasterValues(self, fieldValues: typing.List) -> typing.Tuple[
-        np.ndarray,
-        typing.List[QgsColorRampShader.ColorRampItem],
-        typing.Any]:
+    def toRasterValues(self, fieldValues: typing.List) -> \
+            typing.Tuple[np.ndarray, typing.List[QgsColorRampShader.ColorRampItem],
+                         typing.Any]:
 
         # get spectral setting
         self.mSpectralSetting = None
