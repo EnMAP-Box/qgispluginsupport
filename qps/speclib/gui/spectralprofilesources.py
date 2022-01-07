@@ -1718,9 +1718,9 @@ class SpectralProfileBridge(TreeModel):
         SpectralFeatureGeneratorNode]:
         for n in self.rootNode().childNodes():
             if isinstance(n, SpectralFeatureGeneratorNode):
-                if speclib == True and not isinstance(n.speclib(), QgsVectorLayer):
+                if speclib is True and not isinstance(n.speclib(), QgsVectorLayer):
                     continue
-                if checked == True and not n.checked():
+                if checked is True and not n.checked():
                     continue
                 yield n
 
@@ -1923,8 +1923,8 @@ class SpectralProfileBridge(TreeModel):
     def sources(self) -> typing.List[SpectralProfileSource]:
         return self.mSrcModel.sources()
 
-    def addSpectralLibraryWidgets(self, slws: typing.Union[
-        SpectralLibraryWidget, typing.Iterable[SpectralLibraryWidget]]):
+    def addSpectralLibraryWidgets(self, slws: typing.Union[SpectralLibraryWidget,
+                                                           typing.Iterable[SpectralLibraryWidget]]):
 
         if not isinstance(slws, typing.Iterable):
             slws = [slws]

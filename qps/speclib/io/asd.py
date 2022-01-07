@@ -169,16 +169,16 @@ class UTC_TIME(object):
 
     def __init__(self, DATA):
         self.tm_year, self.tm_mon, self.tm_mday, \
-        self.tm_hour, self.tm_min, self.tm_sec, \
-        self.tm_wday, self.tm_yday, self.tm_isdst = struct.Struct("= 9h").unpack(DATA)
+            self.tm_hour, self.tm_min, self.tm_sec, \
+            self.tm_wday, self.tm_yday, self.tm_isdst = struct.Struct("= 9h").unpack(DATA)
 
 
 class TM_STRUCT(object):
 
     def __init__(self, DATA):
         self.tm_sec, self.tm_min, self.tm_hour, self.tm_mday, \
-        self.tm_mon, self.tm_year, self.tm_wday, \
-        self.tm_yday, self.tm_isdst = struct.Struct("= 9h").unpack(DATA)
+            self.tm_mon, self.tm_year, self.tm_wday, \
+            self.tm_yday, self.tm_isdst = struct.Struct("= 9h").unpack(DATA)
 
     def date(self):
         return datetime.date(self.year(), self.month(), self.day())

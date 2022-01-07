@@ -1,5 +1,11 @@
 [flake8]
-ignore = D203, E501
+ignore = D203, E501,
+    # allow line break before binary operator
+    W503
+    # allow continuation line over-indented for hanging indent
+    E126
+    # allow complex functions
+    C901,
     # allow unused local variables
     F841,
 exclude =
@@ -11,7 +17,8 @@ exclude =
     docs/source/conf.py,
     tests,
     scripts,
-    qps/externals
+    qps/externals,
+    qps/qgisclasses.py,
     # This contains our built documentation
     build, docs, test-reports, test-outputs, qgisresources
 
