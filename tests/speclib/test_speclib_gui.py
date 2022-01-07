@@ -22,9 +22,9 @@ import unittest
 import random
 import math
 import xmlrunner
-from PyQt5.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
-from PyQt5.QtGui import QDropEvent, QColor
-from PyQt5.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QHBoxLayout, QVBoxLayout, QPushButton, \
+from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
+from qgis.PyQt.QtGui import QDropEvent, QColor
+from qgis.PyQt.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QHBoxLayout, QVBoxLayout, QPushButton, \
     QToolButton, QAction, QComboBox, QWidget, QDialog
 from PyQt5.QtXml import QDomDocument
 from osgeo import ogr

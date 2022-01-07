@@ -11,7 +11,7 @@ import re
 import xmlrunner
 from qgis.core import QgsApplication
 from qgis.gui import QgsEditorWidgetFactory
-from PyQt5.QtGui import *
+from qgis.PyQt.QtGui import *
 
 
 class testClassTesting(unittest.TestCase):

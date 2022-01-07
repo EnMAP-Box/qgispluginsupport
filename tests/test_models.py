@@ -3,8 +3,8 @@ import unittest
 import xmlrunner
 import os
 import numpy as np
-from PyQt5.QtCore import QSettings
-from PyQt5.QtGui import QColor
+from qgis.PyQt.QtCore import QSettings
+from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsSettings
 
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, Qt

@@ -4,8 +4,8 @@ import unittest
 import datetime
 
 import xmlrunner
-from PyQt5.QtCore import QVariant
-from PyQt5.QtWidgets import QGridLayout
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QGridLayout
 from qgis._core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm, QgsProject, QgsProcessingModelOutput, \
     QgsField, QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingParameterRasterLayer, \
     QgsProcessingOutputRasterLayer, QgsProcessingFeedback, QgsProcessingContext, QgsProcessingModelAlgorithm, \
@@ -258,7 +258,7 @@ class SpectralProcessingTests(TestCase):
         alg1 = reg.algorithmById('gdal:rearrange_bands')
         alg2 = reg.algorithmById('native:rescaleraster')
 
-        procw.setAlgorithm(alg2)
+        # procw.setAlgorithm(alg2)
 
         self.showGui(procw)
 

@@ -1,6 +1,6 @@
 # relates to https://github.com/qgis/QGIS/issues/45490
 
-from PyQt5.QtGui import QColor
+from qgis.PyQt.QtGui import QColor
 
 from qgis.testing import start_app
 

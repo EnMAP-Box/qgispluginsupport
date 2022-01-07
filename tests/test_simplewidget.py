@@ -1,6 +1,6 @@
 import unittest
 import xmlrunner
-from PyQt5.QtWidgets import QPushButton, QGroupBox
+from qgis.PyQt.QtWidgets import QPushButton, QGroupBox
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QGridLayout

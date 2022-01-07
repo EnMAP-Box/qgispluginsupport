@@ -1,7 +1,7 @@
 import typing
 
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QLineEdit, QHBoxLayout, QWidget, QCheckBox
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QLineEdit, QHBoxLayout, QWidget, QCheckBox
 from qgis._core import QgsVectorLayer, QgsFeature, QgsCategorizedSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory, \
     QgsRenderContext, QgsProperty, QgsPropertyTransformer,  QgsPropertyDefinition
 

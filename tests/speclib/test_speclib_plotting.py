@@ -1,9 +1,9 @@
 import os
 import unittest
 import xmlrunner
-from PyQt5.QtCore import QEvent, QPointF, Qt, QVariant
-from PyQt5.QtGui import QMouseEvent, QColor
-from PyQt5.QtWidgets import QHBoxLayout, QWidget
+from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
+from qgis.PyQt.QtGui import QMouseEvent, QColor
+from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from PyQt5.QtXml import QDomDocument
 from osgeo import gdal, ogr
 

@@ -1,7 +1,7 @@
 """
 Example for Workaround for https://github.com/qgis/QGIS/issues/45228
 """
-from qgis.core import QgsVectorLayer, QgsFeature, edit
+from qgis.core import QgsVectorLayer, QgsFeature
 from qgis.testing import TestCase
 
 class Tests(TestCase):
@@ -24,7 +24,7 @@ class Tests(TestCase):
         layer.featuresDeleted.connect(onFeaturesDeleted)
 
         layer.startEditing()
-        layer.beginEditCommand(f'add 2 features')
+        layer.beginEditCommand('add 2 features')
         layer.addFeature(QgsFeature(layer.fields()))
         layer.addFeature(QgsFeature(layer.fields()))
         layer.endEditCommand()

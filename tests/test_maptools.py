@@ -20,9 +20,9 @@ from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, 
 from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle,   \
     QgsRasterLayer, QgsVectorLayer,  QgsWkbTypes
 
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
+from qgis.PyQt.QtGui import *
+from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtCore import *
 from osgeo import gdal, ogr, osr
 
 from qps.utils import *

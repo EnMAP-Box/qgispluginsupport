@@ -2,8 +2,8 @@
 import site
 import pathlib
 
-from PyQt5.QtCore import QSize
-from PyQt5.QtGui import QResizeEvent
+from qgis.PyQt.QtCore import QSize
+from qgis.PyQt.QtGui import QResizeEvent
 
 DIR_QGIS_REPO = pathlib.Path(r'F:\Repositories\QGIS')
 assert DIR_QGIS_REPO.is_dir()

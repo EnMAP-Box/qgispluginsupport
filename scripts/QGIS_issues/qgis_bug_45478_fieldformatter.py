@@ -1,6 +1,6 @@
 # see https://github.com/qgis/QGIS/issues/45478
 
-from PyQt5.QtCore import QByteArray
+from qgis.PyQt.QtCore import QByteArray
 import pickle
 from qgis.utils import iface
 from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsProject

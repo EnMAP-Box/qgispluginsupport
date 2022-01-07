@@ -2,8 +2,8 @@ import site
 import pathlib
 import importlib
 
-from PyQt5.QtCore import QVariant
-from PyQt5.QtWidgets import QVBoxLayout, QWidget
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis._core import QgsMapLayerModel, QgsApplication, QgsRasterDataProvider, Qgis
 
 from qgis._gui import QgsMapToolIdentify

@@ -4,7 +4,7 @@ import unittest
 import datetime
 
 import xmlrunner
-from PyQt5.QtWidgets import QComboBox
+from qgis.PyQt.QtWidgets import QComboBox
 from qgis._core import QgsRasterLayer, QgsProject
 
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog

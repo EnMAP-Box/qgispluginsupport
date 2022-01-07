@@ -2,8 +2,8 @@ import site
 import pathlib
 import importlib
 
-from PyQt5.QtCore import QVariant
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QGridLayout
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QGridLayout
 
 if not '__file__' in locals():
     __file__ = r'D:\Repositories\qgispluginsupport\scripts\snippet.py'
@@ -14,7 +14,7 @@ site.addsitedir(REPO)
 TESTS = REPO / 'tests' / 'speclib'
 site.addsitedir(TESTS)
 from qgis._core import QgsMapLayerModel, QgsApplication, QgsRasterDataProvider, Qgis, QgsProcessingParameterRasterLayer, \
-    QgsProcessingParameterMultipleLayers, QgsProcessingContext, QgsVectorLayer, QgsProcessingRegistry
+    QgsProcessingParameterMultipleLayers, QgsProcessingContext, QgsVectorLayer, QgsProcessingRegistry, QgsFeature
 
 from qgis._gui import QgsMapToolIdentify, QgsProcessingContextGenerator, QgsProcessingParameterWidgetContext, \
     QgsProcessingGui
@@ -31,42 +31,33 @@ from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvi
 from qps.testing import TestObjects, start_app, StartOptions
 from qps.utils import qgisAppQgisInterface
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-APP = None
-if not isinstance(QgsApplication.instance(), QgsApplication):
-    APP = start_app(options=StartOptions.All)
-    initAll()
+
+uri = 'Point?crs=epsg:4326&field=name:string(20)'
+layer = QgsVectorLayer(uri, 'Layer', 'memory')
+layer.startEditing()
+f = QgsFeature(layer.fields())
+f.setAttribute('name', 'A')
+layer.addFeature(f)
+
+if True:
+    print('Feature not committed')
 else:
-    APP = QgsApplication.instance()
+    layer.commitChanges(False)
+    print('Feature committed')
 
-if False:
-    from test_speclib_rasterdataprovider import RasterDataProviderTests
-    T = RasterDataProviderTests()
-    T.setUpClass()
-    T.setUp()
-    T.test_VectorLayerRasterDataProvider()
-else:
-    vl = TestObjects.createVectorLayer()
-    vl = TestObjects.createSpectralLibrary(n_empty=3, n_bands=[[25,], [255,]])
-    QgsProject.instance().addMapLayer(vl)
+def onAttributeValueChanged(fid, i, newValue):
+    print(f'AttributeValueChanged: ({fid},{i})={newValue}')
 
-    from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
+def onEditCommandEnded(*args):
+    print('changedAttributeValues() after editCommandEnded:')
+    print(layer.editBuffer().changedAttributeValues())
 
-    registerDataProvider()
-    n_bands = [256]
-    n_features = 2
-    speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
-    speclib: QgsVectorLayer
+layer.attributeValueChanged.connect(onAttributeValueChanged)
+layer.editCommandEnded.connect(onEditCommandEnded)
 
-    speclib.startEditing()
-    procw = SpectralProcessingWidget()
-    procw.setSpeclib(speclib)
-    reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-    alg1 = reg.algorithmById('gdal:rearrange_bands')
-    alg2 = reg.algorithmById('native:rescaleraster')
+layer.beginEditCommand('Change attribute values')
+i = layer.fields().lookupField('name')
+for f in layer.getFeatures():
+    layer.changeAttributeValue(f.id(), i, 'B')
+layer.endEditCommand()
 
-    procw.setAlgorithm(alg2)
-    procw.show()
-    if qgisAppQgisInterface() is None:
-
-
-        APP.exec_()

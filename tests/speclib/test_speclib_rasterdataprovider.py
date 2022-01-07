@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt5.QtWidgets import QVBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis._core import QgsMapLayerModel, QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRectangle, \
     QgsField, QgsFields, QgsRasterDataProvider, QgsRasterInterface, QgsRasterRange, QgsMapLayerStore, QgsRasterPipe
 

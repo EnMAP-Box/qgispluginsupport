@@ -2,9 +2,9 @@ import pathlib
 import unittest
 import xmlrunner
 
-from PyQt5.QtCore import QSize, QFile
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QLabel
+from qgis.PyQt.QtCore import QSize, QFile
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QLabel
 
 from qgis.core import QgsApplication
 from qps.testing import TestCase, StartOptions, start_app
