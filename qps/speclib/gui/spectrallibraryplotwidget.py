@@ -847,8 +847,8 @@ class SpectralLibraryPlotWidgetStyle(object):
     def printDifferences(self, renderer):
         assert isinstance(renderer, SpectralLibraryPlotWidgetStyle)
         keys = [k for k in self.__dict__.keys()
-                if not k.startswith('_') and
-                k not in ['name', 'mInputSource']]
+                if not k.startswith('_')
+                and k not in ['name', 'mInputSource']]
 
         differences = []
         for k in keys:
@@ -867,8 +867,8 @@ class SpectralLibraryPlotWidgetStyle(object):
             return False
         else:
             keys = [k for k in self.__dict__.keys()
-                    if not k.startswith('_') and
-                    k not in ['name', 'mInputSource']]
+                    if not k.startswith('_')
+                    and k not in ['name', 'mInputSource']]
 
             for k in keys:
                 if self.__dict__[k] != other.__dict__[k]:
@@ -959,8 +959,8 @@ class SpectralLibraryPlotWidgetStyleWidget(QWidget):
 
     def onStyleChanged(self, *args):
         if not self.mBlocked:
-            self.btnReset.setEnabled(isinstance(self.mResetStyle, SpectralLibraryPlotWidgetStyle) and
-                                     self.spectralProfileWidgetStyle() != self.mResetStyle)
+            self.btnReset.setEnabled(isinstance(self.mResetStyle, SpectralLibraryPlotWidgetStyle)
+                                     and self.spectralProfileWidgetStyle() != self.mResetStyle)
             self.sigStyleChanged.emit(self.spectralProfileWidgetStyle())
 
     def spectralProfileWidgetStyle(self) -> SpectralLibraryPlotWidgetStyle:

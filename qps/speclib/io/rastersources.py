@@ -166,8 +166,8 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.reject()
 
     def onVectorLayerChanged(self, layer: QgsVectorLayer):
-        self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer) and
-                                   QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
+        self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer)
+                                   and QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
 
     def profiles(self) -> typing.List[SpectralProfile]:
         return self.mProfiles[:]

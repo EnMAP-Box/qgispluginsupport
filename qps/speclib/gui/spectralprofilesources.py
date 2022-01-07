@@ -1279,9 +1279,9 @@ class SpectralFeatureGeneratorNode(TreeNode):
         for fieldname in fieldnames:
             assert isinstance(fieldname, str)
 
-        fieldnames = [n for n in fieldnames if
-                      n not in self.fieldNodeNames() and
-                      n in self.speclib().fields().names()]
+        fieldnames = [n for n in fieldnames
+                      if n not in self.fieldNodeNames()
+                      and n in self.speclib().fields().names()]
 
         new_nodes: typing.List[FieldGeneratorNode] = []
 

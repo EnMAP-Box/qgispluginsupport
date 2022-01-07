@@ -624,8 +624,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         assert isinstance(activeField, QgsField), f'Field not found/supported: {field}'
 
         if activeField != self.mField or not \
-                (isinstance(self.fieldConverter(), FieldToRasterValueConverter) and
-                 self.fieldConverter().supportsField(activeField)):
+                (isinstance(self.fieldConverter(), FieldToRasterValueConverter)
+                 and self.fieldConverter().supportsField(activeField)):
             self.mFieldConverter = None
             for c in VectorLayerFieldRasterDataProvider.FIELD_CONVERTER:
                 if c.supportsField(activeField):

@@ -1803,11 +1803,11 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             canDeleteFeatures and self.mLayer.isEditable() and self.mLayer.selectedFeatureCount() > 0)
         self.mActionAddFeature.setEnabled(canAddFeatures and self.mLayer.isEditable())
         self.mActionPasteFeatures.setEnabled(canAddFeatures and self.mLayer.isEditable())
-        self.mActionToggleEditing.setEnabled((canChangeAttributes or
-                                              canDeleteFeatures or
-                                              canAddAttributes or
-                                              canDeleteAttributes or
-                                              canAddFeatures) and not self.mLayer.readOnly())
+        self.mActionToggleEditing.setEnabled((canChangeAttributes
+                                              or canDeleteFeatures
+                                              or canAddAttributes
+                                              or canDeleteAttributes
+                                              or canAddFeatures) and not self.mLayer.readOnly())
 
         self.mUpdateExpressionBox.setVisible(self.mLayer.isEditable())
         if self.mLayer.isEditable() and self.mFieldCombo.currentIndex() == -1:
