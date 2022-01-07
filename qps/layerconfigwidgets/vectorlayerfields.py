@@ -171,7 +171,7 @@ class LayerFieldsListModel(QgsFieldModel):
                 self.mColumnNames[col] = value
                 result = True
 
-        if result == True:
+        if result is True:
             self.headerDataChanged.emit(orientation, col, col)
         return result
 

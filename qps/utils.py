@@ -210,7 +210,7 @@ def file_search(rootdir,
     regType = type(re.compile('.*'))
 
     for entry in os.scandir(rootdir):
-        if directories == False:
+        if directories is False:
             if entry.is_file():
                 if fullpath:
                     name = entry.path
@@ -223,12 +223,12 @@ def file_search(rootdir,
                 elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
                         or fnmatch.fnmatch(name, pattern):
                     yield entry.path.replace('\\', '/')
-            elif entry.is_dir() and recursive == True:
+            elif entry.is_dir() and recursive is True:
                 for r in file_search(entry.path, pattern, recursive=recursive, directories=directories):
                     yield r
         else:
             if entry.is_dir():
-                if recursive == True:
+                if recursive is True:
                     for d in file_search(entry.path, pattern, recursive=recursive, directories=directories):
                         yield d
 
@@ -1019,7 +1019,8 @@ def qgsFields(source: typing.Union[QgsFeature, QgsFields, QgsVectorLayer]) -> Qg
     return None
 
 
-def qgsField(layer_fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature], field: typing.Union[QgsField, str, int]) -> QgsField:
+def qgsField(layer_fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature],
+             field: typing.Union[QgsField, str, int]) -> QgsField:
     """
     Returns the QgsField relating to the input value in "field"
     :param layer_fields: QgsVectorLayer | QgsFields
@@ -2278,6 +2279,7 @@ class HashablePoint(QPoint):
     def __eq__(self, other):
         return self.x() == other.x() and self.y() == other.y()
 
+
 class HashableRectangle(QgsRectangle):
 
     def __init__(self, *args, **kwds):
@@ -2285,6 +2287,7 @@ class HashableRectangle(QgsRectangle):
 
     def __hash__(self):
         return hash((self.xMinimum(), self.yMinimum(), self.xMaximum(), self.yMaximum()))
+
 
 class HashableRect(QRect):
 

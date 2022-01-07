@@ -927,7 +927,7 @@ class ClassificationScheme(QAbstractTableModel):
                 i = classNames.index(value)
 
         # 2. not found? match on similarity
-        if i == -1 and matchSimilarity == True:
+        if i == -1 and matchSimilarity is True:
             if isinstance(value, (int, float)):
                 pass
 

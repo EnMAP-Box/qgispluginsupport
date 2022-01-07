@@ -122,7 +122,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
 
         bbl = [self.mValuesBBL.get(b, None) for b in range(nb)]
         bbl = np.asarray(bbl, dtype=bool)
-        if np.any(bbl == False) == False:
+        if not np.any(np.equal(bbl, False)):
             bbl = None
         p.setValues(x, y, xUnit=self.xUnit(), yUnit=self.yUnit(), bbl=bbl)
 

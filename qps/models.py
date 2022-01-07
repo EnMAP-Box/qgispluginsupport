@@ -373,7 +373,7 @@ class TreeNode(QObject):
         return len(self.mValues) + 1
 
     def expanded(self) -> bool:
-        return self.mExpanded == True
+        return self.mExpanded is True
 
     def setStatusTip(self, statusTip: str):
         """
@@ -417,7 +417,7 @@ class TreeNode(QObject):
         return self.isCheckable() and self.mCheckState == Qt.Checked
 
     def isCheckable(self) -> bool:
-        return self.mCheckable == True
+        return self.mCheckable is True
 
     def setCheckable(self, b: bool):
         assert isinstance(b, bool)
