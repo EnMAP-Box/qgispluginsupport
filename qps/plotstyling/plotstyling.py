@@ -1188,7 +1188,7 @@ EDITOR_WIDGET_REGISTRY_KEY = 'Plot Settings'
 def registerPlotStyleEditorWidget():
     reg = QgsGui.editorWidgetRegistry()
 
-    if not EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys():
+    if EDITOR_WIDGET_REGISTRY_KEY not in reg.factories().keys():
         global PLOTSTYLE_EDITOR_WIDGET_FACTORY
         PLOTSTYLE_EDITOR_WIDGET_FACTORY = PlotStyleEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
         reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, PLOTSTYLE_EDITOR_WIDGET_FACTORY)

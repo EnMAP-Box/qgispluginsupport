@@ -196,14 +196,13 @@ def start_app(cleanup: bool = True,
     if StartOptions.ProcessingFramework in options:
 
         pfProviderIds = [p.id() for p in QgsApplication.processingRegistry().providers()]
-        if not 'native' in pfProviderIds:
+        if 'native' not in pfProviderIds:
             from qgis.analysis import QgsNativeAlgorithms
             QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 
-        qgisCorePythonPluginDir = pathlib.Path(QgsApplication.pkgDataPath()) \
-                                  / 'python' / 'plugins'
+        qgisCorePythonPluginDir = pathlib.Path(QgsApplication.pkgDataPath()) / 'python' / 'plugins'
         assert os.path.isdir(qgisCorePythonPluginDir)
-        if not qgisCorePythonPluginDir in sys.path:
+        if qgisCorePythonPluginDir not in sys.path:
             sys.path.append(qgisCorePythonPluginDir.as_posix())
 
         required = ['qgis', 'gdal']  # at least these should be available

@@ -141,7 +141,7 @@ class SpectralSetting(object):
 
     @classmethod
     def fromDictionary(cls, d: dict) -> 'SpectralSetting':
-        if not 'y' in d.keys():
+        if 'y' not in d.keys():
             # no spectral values no spectral setting
             return None
         x = d.get('x', None)

@@ -494,7 +494,7 @@ def registerSpectralProfileEditorWidget():
     widgetRegistry = QgsGui.editorWidgetRegistry()
     fieldFormatterRegistry = QgsApplication.instance().fieldFormatterRegistry()
 
-    if not EDITOR_WIDGET_REGISTRY_KEY in widgetRegistry.factories().keys():
+    if EDITOR_WIDGET_REGISTRY_KEY not in widgetRegistry.factories().keys():
         global SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY
         global SPECTRAL_PROFILE_FIELD_FORMATTER
         SPECTRAL_PROFILE_FIELD_FORMATTER = SpectralProfileFieldFormatter()

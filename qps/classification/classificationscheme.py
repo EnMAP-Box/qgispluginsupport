@@ -2126,7 +2126,7 @@ EDITOR_WIDGET_REGISTRY_KEY = 'Raster Classification'
 def registerClassificationSchemeEditorWidget():
     reg = QgsGui.editorWidgetRegistry()
 
-    if not EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys():
+    if EDITOR_WIDGET_REGISTRY_KEY not in reg.factories().keys():
         global CLASS_SCHEME_EDITOR_WIDGET_FACTORY
         factory = ClassificationSchemeWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
         reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, factory)

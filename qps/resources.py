@@ -100,7 +100,7 @@ def compileResourceFiles(dirRoot: str,
 
                 elif not qrc_path.as_posix().startswith(dirRoot.as_posix()):
                     # skip resource files out of the root directory
-                    if not qrc_path in qrc_files_skipped:
+                    if qrc_path not in qrc_files_skipped:
                         qrc_files_skipped.append(qrc_path)
 
                     continue

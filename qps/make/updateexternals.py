@@ -55,7 +55,7 @@ class RemoteInfo(object):
     @staticmethod
     def create(*args, **kwds):
         info = RemoteInfo(*args, **kwds)
-        if not info.key in REMOTEINFOS.keys():
+        if info.key not in REMOTEINFOS.keys():
             REMOTEINFOS[info.key] = []
         REMOTEINFOS[info.key].append(info)
 
