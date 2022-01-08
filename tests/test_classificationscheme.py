@@ -6,19 +6,31 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
+import os
+import pathlib
 import unittest
 import tempfile
 import xmlrunner
+from PyQt5.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex, QFile
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
+from PyQt5.QtXml import QDomDocument
+
+from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsRasterRenderer, QgsRasterLayer, QgsVectorLayer, QgsProject, \
     QgsMapLayerStore, QgsFeature, QgsEditorWidgetSetup, \
     QgsPalettedRasterRenderer, QgsCategorizedSymbolRenderer, \
     QgsReadWriteContext, QgsFeatureRenderer, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsRendererCategory, \
     QgsField, QgsWkbTypes
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsMapLayerComboBox, QgsGui, QgsSearchWidgetWrapper
+from qps.classification.classificationscheme import ClassificationScheme, ClassInfo, EDITOR_WIDGET_REGISTRY_KEY, \
+    ClassificationMapLayerComboBox, DEFAULT_UNCLASSIFIEDCOLOR, MIMEDATA_KEY, ClassificationSchemeComboBox, \
+    registerClassificationSchemeEditorWidget, ClassificationSchemeWidgetFactory, ClassificationSchemeEditorConfigWidget, \
+    ClassificationSchemeEditorWidgetWrapper, findMapLayersWithClassInfo, ClassificationSchemeWidget, \
+    ClassificationSchemeComboBoxModel, MIMEDATA_KEY_QGIS_STYLE
 
 from qps.testing import start_app, TestObjects, TestCase
-from qps.utils import *
-from qps.classification.classificationscheme import *
+from qps.utils import MAP_LAYER_STORES, registerMapLayerStore, file_search
 
 
 class TestsClassificationScheme(TestCase):

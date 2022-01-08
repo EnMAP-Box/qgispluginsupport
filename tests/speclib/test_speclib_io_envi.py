@@ -1,26 +1,21 @@
 # noinspection PyPep8Naming
 import os
-import re
+import pathlib
 import unittest
+
+import numpy as np
 import xmlrunner
 
-from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog
-from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
-    GeoPackageSpectralLibraryExportWidget
+from qgis.core import QgsProcessingFeedback, QgsFeature, QgsFields
+from qps.speclib.core import profile_field_list
+from qps.speclib.core.spectrallibrary import SpectralLibrary
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
+    SpectralLibraryImportWidget
+from qps.speclib.io.envi import EnviSpectralLibraryIO, findENVIHeader, EnviSpectralLibraryExportWidget, \
+    EnviSpectralLibraryImportWidget
 from qps.testing import TestObjects, TestCase
-
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
-
-from qpstestdata import enmap, landcover
+from qpstestdata import enmap
 from qpstestdata import speclib as speclibpath
-
-from qps.speclib.io.vectorsources import *
-from qps.speclib.io.csvdata import *
-from qps.speclib.io.envi import *
-from qps.speclib.io.rastersources import *
-
-from qps.utils import *
 
 
 class TestSpeclibIO_ENVI(TestCase):

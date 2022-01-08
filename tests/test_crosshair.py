@@ -12,8 +12,16 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 import xmlrunner
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
+
+from qgis._gui import QgsMapCanvas
+
+from qgis._core import QgsCoordinateReferenceSystem, QgsRectangle, QgsProject
+
+from qps.crosshair.crosshair import CrosshairStyle, CrosshairMapCanvasItem, getCrosshairStyle
 from qps.testing import TestObjects, TestCase
-from qps.crosshair.crosshair import *
+from qps.utils import SpatialPoint
 
 
 class CrosshairTests(TestCase):

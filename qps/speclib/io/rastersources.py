@@ -30,11 +30,11 @@ import typing
 import warnings
 
 import numpy as np
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant, Qt
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
 from osgeo import gdal
 
-from qgis.PyQt import sip, Qt
+from qgis.PyQt import sip
 from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY, QgsPoint
 from qgis.core import QgsProviderRegistry

@@ -8,11 +8,13 @@ __date__ = '2019/01/21'
 __revision__ = '$Format:%H$'
 
 import xmlrunner
+from qgis.PyQt.QtGui import QMouseEvent
+from qgis.PyQt.QtCore import QPointF, Qt, QEvent
 from osgeo import gdal
 from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem
 from qgis.gui import QgsMapCanvas, QgsMapMouseEvent
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
+
+
 from qgis.testing import start_app, unittest, stop_app
 
 

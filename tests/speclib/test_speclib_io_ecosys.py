@@ -1,27 +1,13 @@
 # noinspection PyPep8Naming
 import os
+import pathlib
 import re
-import unittest
-import xmlrunner
 
-from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog
-from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
+from qgis._core import QgsProcessingFeedback
+
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
-    GeoPackageSpectralLibraryExportWidget
 from qps.testing import TestObjects, TestCase
-
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
-
-from qpstestdata import enmap, landcover
-from qpstestdata import speclib as speclibpath
-
-from qps.speclib.io.vectorsources import *
-from qps.speclib.io.csvdata import *
-from qps.speclib.io.envi import *
-from qps.speclib.io.rastersources import *
-
-from qps.utils import *
 
 
 class TestSpeclibIO_EcoSIS(TestCase):
@@ -58,7 +44,6 @@ class TestSpeclibIO_EcoSIS(TestCase):
         # 1. read
         feedback = QgsProcessingFeedback()
 
-        from qpstestdata import DIR_ECOSIS
         for path in ecosysFiles:
 
             print('Read {}...'.format(path))

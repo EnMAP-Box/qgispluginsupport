@@ -1,4 +1,4 @@
-from qgis.core import *
+
 from osgeo import ogr
 from qps.testing import start_app
 start_app()

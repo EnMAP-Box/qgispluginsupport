@@ -13,6 +13,11 @@ __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 
 import unittest
 import xmlrunner
+from PyQt5.QtCore import QPointF, Qt, QEvent, QTimer, pyqtSlot
+from PyQt5.QtGui import QMouseEvent
+
+from qps.maptools import SpatialExtentMapTool, QgsMapToolSelectionHandler, QgsMapToolAddFeature, MapToolCenter, \
+    QgsMapToolSelect, MapTools, PixelScaleExtentMapTool, FullExtentMapTool
 from qps.testing import TestObjects, TestCase
 
 from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, QgsMapToolZoom, \
@@ -20,13 +25,12 @@ from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, 
 from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle,   \
     QgsRasterLayer, QgsVectorLayer,  QgsWkbTypes
 
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtCore import *
+
+
+
 from osgeo import gdal, ogr, osr
 
-from qps.utils import *
-from qps.maptools import *
+from qps.utils import SpatialExtent
 
 
 class TestMapTools(TestCase):
@@ -191,6 +195,7 @@ class TestMapTools(TestCase):
                 canvas.setCurrentLayer(l)
                 l.startEditing()
                 break
+        from qps.maptools import QgsMapToolDigitizeFeature
         mt = QgsMapToolAddFeature(canvas, QgsMapToolDigitizeFeature.CaptureNone, cadDockWidget)
         canvas.setMapTool(mt)
         self.showGui(canvas)

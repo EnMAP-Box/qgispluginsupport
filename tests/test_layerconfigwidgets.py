@@ -14,16 +14,21 @@ import unittest
 import time
 import xmlrunner
 import tempfile
+
+from PyQt5.QtCore import QSortFilterProxyModel, Qt, QVariant
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QTableView, QGridLayout, QPushButton, QHBoxLayout
+
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsField, QgsAbstractVectorLayerLabeling
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, \
     QgsMapLayerComboBox, QgsRasterBandComboBox, QgsRasterTransparencyWidget, QgsMapLayerConfigWidgetFactory
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtCore import *
+
+
 from osgeo import gdal, ogr, osr
 
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
-from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
-from qps.layerproperties import *
+from qps.testing import TestObjects, TestCase, StartOptions
+from qps.resources import initQtResources
+
 from qps import registerMapLayerConfigWidgetFactories
 
 LAYER_WIDGET_REPS = 5

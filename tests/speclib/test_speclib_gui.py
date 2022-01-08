@@ -16,42 +16,43 @@
 *                                                                         *
 ***************************************************************************
 """
-# noinspection PyPep8Naming
-import pathlib
-import unittest
-import random
+import datetime
 import math
+# noinspection PyPep8Naming
+import os
+import pathlib
+import time
+import unittest
+import numpy as np
 import xmlrunner
-from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
-from qgis.PyQt.QtGui import QDropEvent, QColor
-from qgis.PyQt.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QHBoxLayout, QVBoxLayout, QPushButton, \
-    QToolButton, QAction, QComboBox, QWidget, QDialog
-from qgis.PyQt.QtXml import QDomDocument
-from osgeo import ogr
+from PyQt5.QtCore import QVariant
+from osgeo import ogr, gdal
 
-from qgis.PyQt.QtCore import QtCore
+from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
+from qgis.PyQt.QtGui import QDropEvent
+from qgis.PyQt.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QVBoxLayout, QPushButton, \
+    QToolButton, QAction, QComboBox, QWidget, QDialog
+from qgis.core import QgsApplication, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes, \
+    QgsActionManager
+from qgis.gui import QgsOptionsDialogBase, QgsSearchWidgetWrapper, QgsMapCanvas, \
+    QgsDualView, QgsGui
+from qps.layerproperties import AddAttributeDialog
 from qps.plotstyling.plotstyling import PlotStyle
-from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, XMLNODE_PROFILE_RENDERER
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem, \
-    SpectralProfilePlotWidget, SpectralLibraryPlotWidgetStyle, SpectralLibraryPlotWidgetStyleWidget, \
+from qps.speclib import FIELD_VALUES
+from qps.speclib.core import profile_field_list, is_spectral_library
+from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibrary
+from qps.speclib.core.spectralprofile import SpectralProfile
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotDataItem, \
+    SpectralProfilePlotWidget, SpectralLibraryPlotWidgetStyleWidget, \
     SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileTableModel, SpectralProfileEditorWidget, \
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorConfigWidget, SpectralProfileEditorWidgetFactory, \
     registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase, StartOptions
-from qgis.core import QgsApplication, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes, \
-    QgsActionManager
-from qgis.gui import QgsOptionsDialogBase, QgsAttributeForm, QgsSearchWidgetWrapper, QgsMessageBar, QgsMapCanvas, \
-    QgsDualView, QgsGui
 from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER
-from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS, SpatialPoint
+from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
 from qpstestdata import enmap, hymap
-from qpstestdata import speclib as speclibpath
-import qps.externals.pyqtgraph as pg
-from qps.speclib.io.envi import *
-from qps.speclib.io.asd import *
-from qps.layerproperties import AddAttributeDialog
 
 
 class TestSpeclibWidgets(TestCase):

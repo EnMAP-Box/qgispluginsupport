@@ -21,7 +21,7 @@ from qgis.core import QgsProcessingProvider
 from qps import initResources, initAll
 from qps.speclib.core import profile_field_lookup
 from qps.testing import TestObjects, StartOptions
-from qps.speclib.gui.spectrallibrarywidget import *
+
 from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget, SpectralProcessingAlgorithmModel, \
     SpectralProcessingRasterLayerWidgetWrapper
 from qps.testing import TestCase, TestAlgorithmProvider

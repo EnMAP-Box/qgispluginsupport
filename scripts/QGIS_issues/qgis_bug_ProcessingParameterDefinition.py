@@ -83,8 +83,8 @@ class MyParameterType(QgsProcessingParameterType):
         return MY_TYPE_ID
 
 
-from qgis.gui import *
-from qgis.core import *
+
+
 from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsActionManager, \
     QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry,  \
     QgsProcessingContext, QgsProcessingParameterDefinition, QgsProcessingModelAlgorithm
@@ -97,10 +97,10 @@ import math
 import xmlrunner
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
-from qps.speclib.io.envi import *
-from qps.speclib.io.asd import *
-from qps.speclib.gui.gui import *
-from qps.speclib.processing import *
+
+
+
+
 from qps.testing import TestCase
 from qps.models import TreeView, TreeNode, TreeModel
 

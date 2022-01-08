@@ -39,7 +39,7 @@ from qgis.gui import QgsMapCanvas, QgsDialog, QgsMapCanvasItem
 from qgis.core import QgsRectangle, QgsCoordinateReferenceSystem, QgsPointXY, QgsDistanceArea, QgsVector, \
     QgsRasterLayer
 
-from qps.utils import loadUi
+from ..utils import loadUi
 
 
 class CrosshairStyle(object):

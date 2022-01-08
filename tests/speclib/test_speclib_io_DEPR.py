@@ -26,12 +26,12 @@ from qps.testing import TestObjects, TestCase
 from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
 
-from qps.speclib.io.vectorsources import *
-from qps.speclib.io.csvdata import *
-from qps.speclib.io.envi import *
-from qps.speclib.io.rastersources import *
 
-from qps.utils import *
+
+
+
+
+
 TEST_DIR = os.path.join(os.path.dirname(__file__), 'temp')
 
 

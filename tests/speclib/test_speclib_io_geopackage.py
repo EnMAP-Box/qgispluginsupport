@@ -3,7 +3,9 @@ import os
 import re
 import unittest
 import xmlrunner
+from osgeo import ogr
 
+from qgis._core import QgsProcessingFeedback
 from qps.speclib.core.spectrallibrary import SpectralLibrary
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
     SpectralLibraryIO
@@ -14,11 +16,8 @@ from qps.testing import TestObjects, TestCase
 
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
 
-
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, GeoPackageSpectralLibraryExportWidget
-
-
-from qps.utils import *
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
+    GeoPackageSpectralLibraryExportWidget
 
 
 class TestSpeclibIO_GPKG(TestCase):
@@ -26,17 +25,16 @@ class TestSpeclibIO_GPKG(TestCase):
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_GPKG, cls).setUpClass(*args, **kwds)
         cls.registerIO(cls)
+
     @classmethod
     def tearDownClass(cls):
         super(TestSpeclibIO_GPKG, cls).tearDownClass()
 
     def registerIO(self):
-
         ios = [GeoPackageSpectralLibraryIO()]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
     def test_write_profiles(self):
-
         IO = GeoPackageSpectralLibraryIO()
 
         exportWidget = IO.createExportWidget()
@@ -54,7 +52,6 @@ class TestSpeclibIO_GPKG(TestCase):
         # overwrite
         files = sl.write(path)
         self.assertTrue(len(files) == 1)
-
 
         exportSettings = dict()
         feedback = QgsProcessingFeedback()

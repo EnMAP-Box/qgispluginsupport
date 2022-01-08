@@ -66,12 +66,6 @@ class TestSpeclibWidgets(TestCase):
         vis2 = SpectralProfilePlotVisualization()
         vis2.setSpeclib(sl2)
 
-        model1 = TestObjects.createSpectralProcessingModel('model1')
-        model2 = TestObjects.createSpectralProcessingModel('model2')
-
-        vis1.setModelId(model1)
-        vis2.setModelId(model2)
-
         doc = QDomDocument()
         root = doc.createElement('root')
 

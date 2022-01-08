@@ -1,7 +1,7 @@
 import time, typing, multiprocessing, os
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtWidgets import *
-from qgis.core import *
+
+
+
 from qgis.testing import start_app
 
 

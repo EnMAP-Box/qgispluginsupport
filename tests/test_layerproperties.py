@@ -11,21 +11,23 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
+
 import xmlrunner
-from qgis.gui import QgsRasterLayerProperties, QgsOptionsDialogBase
+from PyQt5.QtWidgets import QDialog, QHBoxLayout, QWidget
+from osgeo import gdal
+
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
     QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer, QgsProject
-
 from qgis.gui import QgsMapLayerConfigWidget, QgsRendererPropertiesDialog, QgsMapCanvas, \
     QgsMapLayerStyleManagerWidget, QgsRendererRasterPropertiesWidget, QgsRasterTransparencyWidget, \
-    QgsTextFormatPanelWidget, QgsGui
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtCore import *
-from osgeo import gdal, ogr, osr
-from qps.testing import TestObjects, TestCase, StartOptions, initQtResources
-from qps.layerproperties import *
+    QgsTextFormatPanelWidget
+from qgis.gui import QgsRasterLayerProperties, QgsOptionsDialogBase
 from qps import registerMapLayerConfigWidgetFactories
-from qps.resources import findQGISResourceFiles
+from qps.layerproperties import RemoveAttributeDialog, AttributeTableWidget, CopyAttributesDialog, AddAttributeDialog, \
+    showLayerPropertiesDialog, LayerPropertiesDialog, defaultRasterRenderer, equal_styles
+from qps.resources import findQGISResourceFiles, initQtResources
+from qps.testing import TestObjects, TestCase, StartOptions
+from qps.utils import createQgsField
 
 LAYER_WIDGET_REPS = 5
 
@@ -54,8 +56,8 @@ class LayerPropertyTests(TestCase):
 
     def test_subLayerDefinitions(self):
 
-        from qpstestdata import testvectordata, enmap_pixel, landcover, enmap
-        from qps.layerproperties import subLayers, subLayerDefinitions
+        from qpstestdata import testvectordata, enmap
+        from qps.layerproperties import subLayers
 
         p = enmap
         rl = QgsRasterLayer(p)

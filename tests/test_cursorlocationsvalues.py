@@ -19,9 +19,9 @@ from osgeo import gdal
 from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, \
     QgsProject, QgsCoordinateReferenceSystem
 from qgis.gui import QgsMapCanvas, QgsMapTool
-from qgis.PyQt.QtGui import *
+
 from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout, QTreeView
-from qgis.PyQt.QtCore import *
+
 from qps.testing import TestObjects, TestCase
 from qps.utils import SpatialPoint, SpatialExtent
 

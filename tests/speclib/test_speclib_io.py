@@ -34,12 +34,12 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidge
 from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
 
-from qps.speclib.io.vectorsources import *
-from qps.speclib.io.csvdata import *
-from qps.speclib.io.envi import *
-from qps.speclib.io.rastersources import *
 
-from qps.utils import *
+
+
+
+
+
 
 
 class TestIO(TestCase):

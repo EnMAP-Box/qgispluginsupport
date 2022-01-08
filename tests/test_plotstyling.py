@@ -17,14 +17,22 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
+import os
 import unittest
 
 import xmlrunner
+from PyQt5.QtCore import QVariant, QSize
+from PyQt5.QtGui import QPen, QColor
+from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QCheckBox, QComboBox
+from PyQt5.QtXml import QDomDocument
 
 from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableConfig, \
     QgsEditorWidgetSetup, QgsActionManager, QgsAction
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
-from qps.plotstyling.plotstyling import *
+from qps.plotstyling.plotstyling import PlotStyleButton, pen2tuple, PlotStyle, XMLTAG_PLOTSTYLENODE, \
+    createSetPlotStyleAction, MarkerSymbol, tuple2pen, registerPlotStyleEditorWidget, PlotStyleEditorWidgetFactory, \
+    PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget
+
 from qps.testing import TestCase
 
 

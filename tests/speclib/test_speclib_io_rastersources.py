@@ -1,10 +1,12 @@
 # noinspection PyPep8Naming
 import os
+import pathlib
 import re
 import typing
 import unittest
 import xmlrunner
 
+from qgis._core import QgsWkbTypes
 from qps.speclib.core import is_spectral_feature
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
     SpectralLibraryIO
@@ -20,7 +22,7 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidge
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
     GeoPackageSpectralLibraryExportWidget
 
-from qps.utils import *
+
 
 
 class TestSpeclibIO_Raster(TestCase):

@@ -1,8 +1,14 @@
+import os
+import pathlib
 import unittest
 import xmlrunner
 import xml.etree.ElementTree as ET
+
+from qgis.PyQt.QtWidgets import QWidget
+
+from qps.resources import scanResources, ResourceBrowser, ResourceTableModel
 from qps.testing import start_app
-from qps.resources import *
+
 from qps import QPS_RESOURCE_FILE
 
 

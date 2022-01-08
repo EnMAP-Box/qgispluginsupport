@@ -1,8 +1,8 @@
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtGui import *
-from qgis.core import *
-from qgis.gui import *
+
+
+
+
+
 from qps.testing import initQgisApplication, TestObjects
 import qgis.utils
 QAPP = initQgisApplication()

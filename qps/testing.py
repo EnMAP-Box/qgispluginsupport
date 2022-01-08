@@ -810,7 +810,7 @@ class TestObjects(object):
         for i in range(len(slib.spectralProfileFields()), n_profile_columns):
             slib.addSpectralProfileField(f'{FIELD_VALUES}{i}')
 
-        from qps.speclib.core import profile_field_indices
+        from .speclib.core import profile_field_indices
 
         if isinstance(profile_field_names, list):
             profile_field_idx = profile_field_indices(slib)

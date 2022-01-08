@@ -12,31 +12,56 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
+import calendar
+import datetime
+import os
+import pathlib
+import re
 import unittest
+import warnings
 
 import numpy as np
 import xmlrunner
 import pickle
 import xml.etree.ElementTree as ET
 
+from PyQt5.QtCore import QDate, QDateTime, QByteArray, QUrl, QRect, QPoint, QVariant
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
+from PyQt5.QtXml import QDomDocument
+from numpy import datetime64
+
+from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.Qt import *
-from qgis.PyQt.QtCore import *
-from osgeo import gdal, ogr, osr
+
+
+
+from osgeo import gdal, ogr, osr, gdal_array
 from qps.testing import TestObjects
 
-from qps.utils import *
+
 from qps.testing import TestCase
+from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItemsToMenu, value2str, filenameFromString, \
+    SelectMapLayersDialog, defaultBands, relativePath, nextColor, convertMetricUnit, createQgsField, px2geo, geo2px, \
+    SpatialPoint, layerGeoTransform, displayBandNames, UnitLookup, qgsRasterLayer, gdalDataset, px2geocoordinates, \
+    rasterLayerArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
+    fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
+    qgsFieldAttributes2List, gdalFileSize, loadUi, dn
 
 
 class TestUtils(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.wmsUri = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
-        self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' typename=''fis:re_postleit'' url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' version=''auto'''
+        self.wmsUri = r'crs=EPSG:3857&format' \
+                      r'&type=xyz' \
+                      r'&url=https://mt1.google.com/vt/' \
+                      r'lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
+        self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
+                      'typename=''fis:re_postleit'' ' \
+                      'url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
+                      'version=''auto'''
 
     def tearDown(self):
 
@@ -113,7 +138,10 @@ class TestUtils(TestCase):
 
     def test_qgsFieldAttributes2List(self):
 
-        bstr = b'\x80\x04\x95^\x00\x00\x00\x00\x00\x00\x00}\x94(\x8c\x01x\x94]\x94(M,\x01M\x90\x01MX\x02M\xb0\x04M\xc4\te\x8c\x01y\x94]\x94(G?\xcdp\xa3\xd7\n=qG?\xd9\x99\x99\x99\x99\x99\x9aG?\xd3333333G?\xe9\x99\x99\x99\x99\x99\x9aG?\xe6ffffffe\x8c\x05xUnit\x94\x8c\x02nm\x94u.'
+        bstr = b'\x80\x04\x95^\x00\x00\x00\x00\x00\x00\x00}\x94(\x8c\x01x\x94]\x94(M,\x01M' \
+               b'\x90\x01MX\x02M\xb0\x04M\xc4\te\x8c\x01y\x94]\x94(G?\xcdp\xa3\xd7\n=qG?' \
+               b'\xd9\x99\x99\x99\x99\x99\x9aG?\xd3333333G?\xe9\x99\x99\x99\x99\x99\x9aG?' \
+               b'\xe6ffffffe\x8c\x05xUnit\x94\x8c\x02nm\x94u.'
         attributes = [None, NULL, QVariant(None), '', 'None',
                       QByteArray(bstr),
                       bstr, bytes(bstr)]
@@ -206,7 +234,12 @@ class TestUtils(TestCase):
 
     def test_spatialObjects(self):
 
-        wkt = 'PROJCS["BU MEaSUREs Lambert Azimuthal Equal Area - SA - V01",GEOGCS["GCS_WGS_1984",DATUM["WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",-15],PARAMETER["longitude_of_center",-60],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
+        wkt = 'PROJCS["BU MEaSUREs Lambert Azimuthal Equal Area - SA - V01",GEOGCS["GCS_WGS_1984",' \
+              'DATUM["WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],' \
+              'UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]]],' \
+              'PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",-15],' \
+              'PARAMETER["longitude_of_center",-60],PARAMETER["false_easting",0],' \
+              'PARAMETER["false_northing",0],UNIT["metre",1],AXIS["Easting",EAST],AXIS["Northing",NORTH]]'
         crs = QgsCoordinateReferenceSystem.fromWkt(wkt)
         self.assertTrue(crs.isValid())
         pt1 = SpatialPoint(wkt, 300, 300)
@@ -500,7 +533,7 @@ class TestUtils(TestCase):
     def test_convertTimeUnits(self):
 
         refDate = np.datetime64('2020-01-01')
-        self.assertEqual(datetime64(refDate), refDate)  ## datetime64 to datetime64
+        self.assertEqual(datetime64(refDate), refDate)  # datetime64 to datetime64
         self.assertEqual(datetime64('2020-01-01'), refDate)  # string to datetime64
         self.assertEqual(datetime64(QDate(2020, 1, 1, )), refDate)
         self.assertEqual(datetime64(QDateTime(2020, 1, 1, 0, 0)), refDate)

@@ -17,24 +17,37 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
+import copy
 import datetime
+import os
+import pickle
 import unittest
 import xmlrunner
+from PyQt5.QtCore import QMimeData, QTimer, QByteArray, QVariant
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QProgressDialog, QWidget
 
 import qgis.core
-from qps.speclib.core import is_profile_field
+from qgis._core import QgsProject, QgsField, QgsVectorLayer, QgsGeometry, QgsRasterLayer, QgsFeature, \
+    QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsApplication, QgsTaskManager, QgsFields
+
+from qgis._gui import QgsGui, QgsMapCanvas
+
+from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
+from qps.speclib.core import is_profile_field, is_spectral_library, profile_field_list, profile_fields
+from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibrary, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider, featuresToArrays, \
     registerDataProvider
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
+    SpectralProfileBlock, EMPTY_PROFILE_VALUES, encodeProfileValueDict, SpectralProfileLoadingTask
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
+from qps.speclib.io.csvdata import CSVSpectralLibraryIO
 from qps.testing import TestObjects, TestCase, WMS_GMAPS
+from qps.utils import toType, findTypeFromString, nextColor, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
+    createQgsField, qgsFields2str, str2QgsFields
 from qpstestdata import hymap
 from qpstestdata import speclib as speclibpath
 
-from qps.utils import *
-from qps.speclib.core.spectralprofile import *
-from qps.speclib.core.spectrallibrary import *
-from qps.speclib.io.csvdata import *
-from qps.speclib.io.asd import *
 from qps import initResources
 import numpy as np
 
@@ -141,7 +154,7 @@ class TestCore(TestCase):
 
         speclib = TestObjects.createSpectralLibrary(n=10, n_bands=[-1, 64])
         self.assertIsInstance(speclib, QgsVectorLayer)
-        self.assertTrue(speclib.featureCount() == 10)
+        self.assertTrue(speclib.featureCount() == 20)
         self.assertTrue(len(profile_field_list(speclib)) == 2)
 
         RESULTS = dict()
@@ -451,7 +464,7 @@ class TestCore(TestCase):
         self.assertEqual(len(sp.yValues()), lyr.bandCount())
 
         sp = SpectralProfile.fromRasterLayer(lyr, outOfImage)
-        self.assertTrue(sp == None)
+        self.assertTrue(sp is None)
 
     @unittest.SkipTest
     def test_spectralProfileSpeedUpacking(self):
@@ -471,7 +484,7 @@ class TestCore(TestCase):
         n_profiles = sl.featureCount()
         DIR = self.createTestOutputDirectory()
         path_local = DIR / 'speedtest.gpkg'
-        files = sl.write(path_local)
+        # files = sl.write(path_local)
         pfield = profile_field_list(sl)[0]
         sl = SpectralLibrary(path_local)
         self.assertIsInstance(sl, QgsVectorLayer)
@@ -660,7 +673,6 @@ class TestCore(TestCase):
                 self.assertIsInstance(array, np.ndarray)
                 self.assertEqual(array.shape[0], setting.n_bands())
                 self.assertEqual(array.shape[1], len(fids))
-
 
     def test_SpectralLibrary(self):
 

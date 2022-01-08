@@ -1,28 +1,28 @@
 # noinspection PyPep8Naming
-import random
-import unittest
 import datetime
+import random
+import typing
+import unittest
 
 import xmlrunner
-from qgis.PyQt.QtWidgets import QComboBox
+
+from qgis.PyQt.QtWidgets import QComboBox, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QGridLayout
+from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes
 from qgis.core import QgsRasterLayer, QgsProject
-
-from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
-
-from qgis.core import QgsProcessingProvider
-
-from qps import initResources, initAll
+from qgis.gui import QgsMapCanvas, QgsDualView
+from qps import initAll
 from qps.maptools import CursorLocationMapTool
-from qps.speclib.core import profile_field_lookup
-from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel
+from qps.speclib.core.spectrallibrary import SpectralLibrary
+from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
+from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, \
+    SpectralProfileBridgeTreeView, SpectralProfileBridgeViewDelegate, KernelProfileSamplingMode, \
+    SingleProfileSamplingMode, SpectralProfileSamplingModeModel, SpectralProfileSamplingMode, \
+    SamplingBlockDescription, \
+    SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode
+from qps.testing import TestCase
 from qps.testing import TestObjects, StartOptions
-from qps.speclib.gui.spectrallibrarywidget import *
-
-from qps.speclib.processingalgorithms import *
-from qps.testing import TestCase, TestAlgorithmProvider, start_app
-import numpy as np
-from qps.speclib.gui.spectralprofilesources import *
-from qps.externals.pyqtgraph import mkQApp
+from qps.utils import SpatialPoint, spatialPoint2px, parseWavelength, rasterLayerArray, SpatialExtent
 
 
 class SpectralProcessingTests(TestCase):

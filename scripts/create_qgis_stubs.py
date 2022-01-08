@@ -23,4 +23,4 @@ for module in qgis_modules:
 with open(path_dst, 'w', encoding='utf-8') as f:
     f.write('\n'.join(LINES))
 
-from qps.qgisclasses import *
+

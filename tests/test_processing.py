@@ -25,7 +25,7 @@ from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableCon
     QgsEditorWidgetSetup, QgsActionManager, QgsAction
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
 from qps import initResources
-from qps.plotstyling.plotstyling import *
+
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.testing import TestCase
 
