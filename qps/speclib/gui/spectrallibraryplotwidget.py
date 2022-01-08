@@ -389,7 +389,7 @@ class SpectralViewBox(pg.ViewBox):
         scene = self.scene()
         if scene is not None and scene is not item.scene():
             for item in pdis:
-                scene.addItem(item)  ## Necessary due to Qt bug: https://bugreports.qt-project.org/browse/QTBUG-18616
+                scene.addItem(item)  # Necessary due to Qt bug: https://bugreports.qt-project.org/browse/QTBUG-18616
                 item.setParentItem(self.childGroup)
         if not ignoreBounds:
             self.addedItems.extend(pdis)
@@ -1426,7 +1426,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         s = ""
 
     def onMouseMoved2D(self, evt):
-        pos = evt[0]  ## using signal proxy turns original arguments into a tuple
+        pos = evt[0]  # using signal proxy turns original arguments into a tuple
 
         plotItem = self.getPlotItem()
         assert isinstance(plotItem, SpectralLibraryPlotItem)
