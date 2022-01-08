@@ -110,7 +110,7 @@ def encodeProfileValueDict(d: dict) -> QByteArray:
     return QByteArray(pickle.dumps(d2))
 
 
-def decodeProfileValueDict(dump: QByteArray, numpy_arrays:bool=False) -> dict:
+def decodeProfileValueDict(dump: QByteArray, numpy_arrays: bool = False) -> dict:
     """
     Converts a json / pickle dump  into a SpectralProfile value dictionary
     :param numpy_arrays:
@@ -1149,9 +1149,9 @@ class SpectralProfileBlock(object):
         Returns True if profile in the block .data() array is described by a geocoordinate
         :return:
         """
-        return isinstance(self.mPositionsY, np.ndarray) and \
-               isinstance(self.mPositionsX, np.ndarray) and \
-               isinstance(self.mCrs, QgsCoordinateReferenceSystem)
+        return isinstance(self.mPositionsY, np.ndarray) \
+            and isinstance(self.mPositionsX, np.ndarray) \
+            and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
 
     def crs(self) -> QgsCoordinateReferenceSystem:
         """

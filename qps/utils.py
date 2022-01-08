@@ -2417,9 +2417,9 @@ class SpatialPoint(QgsPointXY):
     def __eq__(self, other):
         if not isinstance(other, SpatialPoint):
             return False
-        return self.x() == other.x() and \
-               self.y() == other.y() and \
-               self.crs() == other.crs()
+        return self.x() == other.x() \
+            and self.y() == other.y() \
+            and self.crs() == other.crs()
 
     def __copy__(self):
         return SpatialPoint(self.crs(), self.x(), self.y())

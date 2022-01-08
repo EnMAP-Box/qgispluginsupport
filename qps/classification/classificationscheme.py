@@ -229,9 +229,9 @@ class ClassInfo(QObject):
     def __eq__(self, other):
         if not isinstance(other, ClassInfo):
             return False
-        return other.mName == self.mName and \
-               other.mLabel == self.mLabel and \
-               other.mColor.getRgb() == self.mColor.getRgb()
+        return other.mName == self.mName \
+            and other.mLabel == self.mLabel \
+            and other.mColor.getRgb() == self.mColor.getRgb()
 
     def __repr__(self):
         return 'ClassInfo' + self.__str__()

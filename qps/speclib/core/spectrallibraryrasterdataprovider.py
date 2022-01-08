@@ -782,8 +782,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
     def isValid(self) -> bool:
         return True
-        return isinstance(self.mVectorLayerCache, QgsVectorLayerCache) and \
-               isinstance(self.mFieldConverter, FieldToRasterValueConverter)
+        # return isinstance(self.mVectorLayerCache, QgsVectorLayerCache) \
+        #            and isinstance(self.mFieldConverter, FieldToRasterValueConverter)
 
     def identify(self, point: QgsPointXY, format: QgsRaster.IdentifyFormat,
                  boundingBox: QgsRectangle = ..., width: int = ..., height: int = ...,
