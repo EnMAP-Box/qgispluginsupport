@@ -270,9 +270,6 @@ class OptionListModel(QAbstractListModel):
     def optionNames(self):
         return [o.mName for o in self.mOptions]
 
-    def optionValues(self):
-        return [o.mValue for o in self.mOptions]
-
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return None

@@ -77,8 +77,6 @@ class LayerFieldsTableModel(QgsFieldModel):
             return col
         return None
 
-    def columnCount(self, parent: QModelIndex):
-        return len(self.mColumnNames)
 
     def data(self, index: QModelIndex, role: int):
         if not index.isValid():

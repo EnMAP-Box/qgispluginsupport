@@ -83,38 +83,6 @@ class LayerConfigWidgetsTests(TestCase):
 
             self.showGui([c, w])
 
-    def test_symbology(self):
-        from qps.layerconfigwidgets.core import SymbologyConfigWidget, SymbologyConfigWidgetFactory
-        lyrR = TestObjects.createRasterLayer(nb=100)
-        lyrV = TestObjects.createVectorLayer()
-        c = QgsMapCanvas()
-
-        f = SymbologyConfigWidgetFactory()
-        style_file = (pathlib.Path(tempfile.gettempdir()) / 'stylefile.qml').as_posix()
-        for lyr in [lyrV]:
-            c.setLayers([lyr])
-            c.setDestinationCrs(lyr.crs())
-            c.setExtent(lyr.extent())
-            self.assertTrue(f.supportsLayer(lyr))
-            w = f.createWidget(lyr, c)
-            w.show()
-            self.assertIsInstance(w, SymbologyConfigWidget)
-            w.apply()
-
-            if isinstance(lyr, QgsRasterLayer):
-                l2 = TestObjects.createRasterLayer(nb=1)
-                r2 = l2.renderer().clone()
-                r2.setInput(lyr.dataProvider())
-                lyr.setRenderer(r2)
-            w.syncToLayer()
-            w.saveStyleAsDefault()
-            w.loadDefaultStyle()
-            w.saveStyle(style_file)
-            w.loadStyle(style_file)
-
-            self.showGui([c, w])
-        pass
-
     def test_labels(self):
 
         from qps.layerconfigwidgets.vectorlabeling import LabelingConfigWidgetFactory, LabelingConfigWidget

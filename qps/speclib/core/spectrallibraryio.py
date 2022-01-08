@@ -745,8 +745,7 @@ class SpectralLibraryImportDialog(QDialog):
     def initFieldMapping(self):
         pass
 
-    def fieldPropertyMap(self):
-        return self.fieldMappingWidget.fieldPropertyMap()
+
 
 
 class SpectralLibraryExportDialog(QDialog):
