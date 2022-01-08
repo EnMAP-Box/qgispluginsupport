@@ -1240,8 +1240,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
         mViewBox = SpectralViewBox()
         plotItem = SpectralLibraryPlotItem(
-            axisItems={'bottom': SpectralXAxis(orientation='bottom')}
-            , viewBox=mViewBox
+            axisItems={'bottom': SpectralXAxis(orientation='bottom')}, viewBox=mViewBox
         )
 
         super().__init__(parent, plotItem=plotItem)
