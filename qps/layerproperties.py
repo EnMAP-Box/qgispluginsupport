@@ -1921,9 +1921,6 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         dlg.setAttribute(Qt.WA_DeleteOnClose)
         dlg.exec_()
 
-    def mActionCutSelectedRows_triggered(self):
-        self.vectorLayerTools().cutSelectionToClipboard(self.mLayer)
-
     def mActionToggleEditing_toggled(self, b: bool):
         if not isinstance(self.mLayer, QgsVectorLayer):
             return
