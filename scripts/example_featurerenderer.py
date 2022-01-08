@@ -2,10 +2,10 @@ import typing
 
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QLineEdit, QHBoxLayout, QWidget, QCheckBox
-from qgis._core import QgsVectorLayer, QgsFeature, QgsCategorizedSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory, \
+from qgis.core import QgsVectorLayer, QgsFeature, QgsCategorizedSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory, \
     QgsRenderContext, QgsProperty, QgsPropertyTransformer,  QgsPropertyDefinition
 
-from qgis._gui import QgsPropertyOverrideButton, QgsPropertyAssistantWidget
+from qgis.gui import QgsPropertyOverrideButton, QgsPropertyAssistantWidget
 from qps.speclib.core.spectrallibrary import SpectralLibrary
 from qps.utils import nextColor
 from qps.testing import start_app, StartOptions

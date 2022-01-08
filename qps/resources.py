@@ -31,14 +31,13 @@ import re
 import sys
 import typing
 
-from PyQt5.QtCore import QFile, QModelIndex, QTextStream, QSortFilterProxyModel, QDirIterator, QAbstractTableModel, \
-    QRegExp
-from PyQt5.QtGui import QPixmap, QContextMenuEvent, QIcon
-from PyQt5.QtWidgets import QWidget, QGraphicsPixmapItem, QApplication, QTextBrowser, QGraphicsScene, QToolButton, \
+from qgis.PyQt.QtCore import QFile, QModelIndex, QTextStream, QSortFilterProxyModel, QDirIterator, QAbstractTableModel, \
+    QRegExp, Qt
+from qgis.PyQt.QtGui import QPixmap, QContextMenuEvent, QIcon
+from qgis.PyQt.QtWidgets import QWidget, QGraphicsPixmapItem, QApplication, QTextBrowser, QGraphicsScene, QToolButton, \
     QLabel, QMenu, QGraphicsView, QAction, QLineEdit, QTableView
-from PyQt5.QtXml import QDomElement, QDomDocument
+from qgis.PyQt.QtXml import QDomElement, QDomDocument
 
-from qgis.PyQt import Qt
 from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from .utils import file_search, findUpwardPath
 

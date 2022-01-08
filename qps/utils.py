@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -43,20 +43,22 @@ import sys
 import traceback
 import typing
 import warnings
+import weakref
 import zipfile
+from collections import defaultdict
 
 import numpy as np
-from PyQt5.QtCore import QPoint, QRect, QObject, QPointF, QDirIterator, QDateTime, QDate, QVariant, QByteArray, QUrl
-from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtWidgets import QComboBox, QWidget
-from PyQt5.QtXml import QDomNode, QDomElement
+from qgis.PyQt.QtCore import QPoint, QRect, QObject, QPointF, QDirIterator, QDateTime, QDate, QVariant, QByteArray, QUrl
+from qgis.PyQt.QtGui import QIcon, QColor
+from qgis.PyQt.QtWidgets import QComboBox, QWidget
+from qgis.PyQt.QtXml import QDomNode, QDomElement
 from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from qgis.PyQt.QtXml import QDomDocument
-from qgis._core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, QgsEditorWidgetSetup, \
+from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, QgsEditorWidgetSetup, \
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
@@ -163,7 +165,8 @@ def cleanDir(d):
     """
     assert os.path.isdir(d)
     for root, dirs, files in os.walk(d):
-        for p in dirs + files: rm(jp(root, p))
+        for p in dirs + files:
+            rm(jp(root, p))
         break
 
 
@@ -665,7 +668,7 @@ def createQgsField(name: str, exampleValue: typing.Any, comment: str = None) -> 
     elif isinstance(exampleValue, type):
         return createQgsField(name, exampleValue(1), comment=comment)
     else:
-        raise NotImplemented()
+        raise NotImplementedError()
 
 
 def filenameFromString(text: str):
@@ -1326,10 +1329,6 @@ def write_vsimem(fn: str, data: str):
     return gdal.VSIFCloseL(vsifile)
 
 
-from collections import defaultdict
-import weakref
-
-
 class KeepRefs(object):
     __refs__ = defaultdict(list)
 
@@ -1584,7 +1583,7 @@ def days_per_year(year):
 
     """
     """
-    Every year that is exactly divisible by four is a leap year, except for years that are exactly divisible by 100, 
+    Every year that is exactly divisible by four is a leap year, except for years that are exactly divisible by 100,
     but these centurial years are leap years, if they are exactly divisible by 400.
     """
     # is_leap = (year % 4 == 0 and not year % 100 == 0) or (year % 100 == 0 and year % 400 == 0)
@@ -1663,7 +1662,7 @@ def defaultBands(dataset) -> list:
         # check ENVI style metadata default band definition
         for k in ['default_bands', 'default bands']:
             db = dataset.GetMetadataItem(k, str('ENVI'))
-            if db != None:
+            if db is not None:
                 db = [int(n) for n in re.findall(r'\d+', db)]
                 return db
 
@@ -1967,7 +1966,8 @@ def numpyToQgisDataType(t) -> Qgis.DataType:
 def qgisAppQgisInterface() -> QgisInterface:
     """
     Returns the QgisInterface of the QgisApp in case everything was started from within the QGIS Main Application
-    :return: QgisInterface | None in case the qgis.utils.iface points to another QgisInterface (e.g. the EnMAP-Box itself)
+    :return: QgisInterface | None in case the qgis.utils.iface points to another
+             QgisInterface (e.g. the EnMAP-Box itself)
     """
     try:
         import qgis.utils
@@ -2038,7 +2038,8 @@ def geo2pxF(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPoin
 def geo2px(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPoint:
     """
     Returns the pixel position related to a Geo-Coordinate as integer number.
-    Floating-point coordinate are casted to integer coordinate, e.g. the pixel coordinate (0.815, 23.42) is returned as (0,23)
+    Floating-point coordinate are casted to integer coordinate, e.g. the pixel
+    coordinate (0.815, 23.42) is returned as (0,23)
     :param geo: Geo-Coordinate as QgsPointXY
     :param gt: GDAL Geo-Transformation tuple, as described in http://www.gdal.org/gdal_datamodel.html or
           gdal.Dataset or QgsRasterLayer
@@ -2504,10 +2505,10 @@ def rasterBlockArray(block: QgsRasterBlock) -> np.ndarray:
 def findParent(qObject, parentType, checkInstance=False):
     parent = qObject.parent()
     if checkInstance:
-        while parent != None and not isinstance(parent, parentType):
+        while parent is not None and not isinstance(parent, parentType):
             parent = parent.parent()
     else:
-        while parent != None and type(parent) != parentType:
+        while parent is not None and type(parent) != parentType:
             parent = parent.parent()
     return parent
 
@@ -2577,7 +2578,7 @@ def saveTransform(geom: typing.Union[QgsPointXY, QgsRectangle,
             return None
 
         try:
-            rect = transform.transformBoundingBox(geom);
+            rect = transform.transformBoundingBox(geom)
             result = SpatialExtent(crs2, rect)
         except Exception as ex:
             print(f'Can not transform from {crs1.description()} to {crs2.description()} '

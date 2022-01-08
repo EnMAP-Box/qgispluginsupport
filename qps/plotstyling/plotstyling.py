@@ -12,7 +12,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -28,17 +28,18 @@ import enum
 import json
 import pathlib
 import re
+import sys
 
-from PyQt5.QtCore import QVariant, QObject, pyqtSignal, QSize, QByteArray, QDataStream, QIODevice
-from PyQt5.QtGui import QPainter, QPixmap, QPainterPath, QIcon, QColor, QPen, QBrush
-from PyQt5.QtWidgets import QWidgetAction, QToolButton, QLabel, QWidget, QComboBox, QMenu, QDialog, QDialogButtonBox, \
+from qgis.PyQt.QtCore import QVariant, QObject, pyqtSignal, QSize, QByteArray, QDataStream, QIODevice, Qt
+from qgis.PyQt.QtGui import QPainter, QPixmap, QPainterPath, QIcon, QColor, QPen, QBrush
+from qgis.PyQt.QtWidgets import QWidgetAction, QToolButton, QLabel, QWidget, QComboBox, QMenu, QDialog, QDialogButtonBox, \
     QVBoxLayout
-from PyQt5.QtXml import QDomElement, QDomDocument
+from qgis.PyQt.QtXml import QDomElement, QDomDocument
 
-from qgis._core import QgsField, QgsVectorLayer, QgsSymbolLayerUtils, QgsAction
+from qgis.core import QgsField, QgsVectorLayer, QgsSymbolLayerUtils, QgsAction, QgsMessageLog
 
-from qgis.PyQt import Qt
-from qgis._gui import QgsDialog
+
+from qgis.gui import QgsDialog
 from qgis.gui import QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
     QgsSearchWidgetWrapper, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsGui
 from ..externals import pyqtgraph as pg
@@ -303,7 +304,7 @@ def createSetPlotStyleAction(field, mapLayerStore='QgsProject.instance()'):
 from {modulePath} import runPlotStyleActionRoutine
 layerId = '[% @layer_id %]'
 runPlotStyleActionRoutine(layerId, '{styleField}' , [% $id %])
-""".format(modulePath=MODULE_IMPORT_PATH, mapLayerStore=mapLayerStore, styleField=field.name())
+""".format(modulePath=MODULE_IMPORT_PATH, styleField=field.name())
 
     return QgsAction(QgsAction.GenericPython, 'Set PlotStyle', pythonCode, iconPath, True,
                      notificationMessage='msgSetPlotStyle',

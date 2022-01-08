@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -367,7 +367,8 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def write(cls, speclib: SpectralLibrary, path: str, feedback: QProgressDialog = None, delimiter: str = ';'):
         """
-        Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
+        Writes the SpectralLibrary to path and returns a list of written files
+        that can be used to open the spectral library with readFrom
         """
         assert is_spectral_library(speclib)
         basePath, ext = os.path.splitext(path)

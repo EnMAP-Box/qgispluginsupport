@@ -1,5 +1,5 @@
 from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
-from qgis._gui import QgsExpressionLineEdit, QgsPropertyOverrideButton
+from qgis.gui import QgsExpressionLineEdit, QgsPropertyOverrideButton
 from qgis.gui import QgsColorTextWidget
 
 from qps.testing import start_app

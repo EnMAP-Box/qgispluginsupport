@@ -12,7 +12,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -24,12 +24,12 @@
 """
 import sys
 
-from PyQt5.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal, QVariant, QAbstractItemModel
-from PyQt5.QtGui import QResizeEvent, QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QMessageBox, QDialog, QTableView, QStackedWidget, QMenu, QComboBox, QVBoxLayout, QLabel, \
+from qgis.PyQt.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal, QVariant, QAbstractItemModel
+from qgis.PyQt.QtGui import QResizeEvent, QStandardItemModel, QStandardItem
+from qgis.PyQt.QtWidgets import QMessageBox, QDialog, QTableView, QStackedWidget, QMenu, QComboBox, QVBoxLayout, QLabel, \
     QWidget
 
-from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import QgsMapLayer, QgsVectorLayer, QgsField, QgsFieldModel, QgsEditorWidgetSetup
 from qgis.gui import QgsEditorWidgetFactory, QgsCollapsibleGroupBox, QgsEditorConfigWidget, QgsGui, \

@@ -21,7 +21,7 @@ import datetime
 import unittest
 import xmlrunner
 
-import qgis._core
+import qgis.core
 from qps.speclib.core import is_profile_field
 from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider, featuresToArrays, \
     registerDataProvider

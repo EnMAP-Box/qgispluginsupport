@@ -17,7 +17,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -31,12 +31,12 @@ import pathlib
 import warnings
 
 import numpy as np
-from PyQt5.QtCore import pyqtSignal, QLineF, QPointF
-from PyQt5.QtGui import QFont, QColor
-from PyQt5.QtWidgets import QHBoxLayout, QPushButton, QDialogButtonBox, QDialog, QWidget
-from qgis._gui import QgsMapCanvas, QgsDialog, QgsMapCanvasItem
+from qgis.PyQt.QtCore import pyqtSignal, QLineF, QPointF, Qt, QRectF, QSizeF
+from qgis.PyQt.QtGui import QFont, QColor, QPen, QBrush, QPolygonF, QFontMetrics
+from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QDialogButtonBox, QDialog, QWidget
+from qgis.gui import QgsMapCanvas, QgsDialog, QgsMapCanvasItem
 
-from qgis._core import QgsRectangle, QgsCoordinateReferenceSystem, QgsPointXY, QgsDistanceArea, QgsVector, \
+from qgis.core import QgsRectangle, QgsCoordinateReferenceSystem, QgsPointXY, QgsDistanceArea, QgsVector, \
     QgsRasterLayer
 
 from qps.utils import loadUi
@@ -303,19 +303,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                     font = painter.font()
                     ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))
 
-                    if False:
-                        unitString = str(QgsUnitTypes.encodeUnit(crs.mapUnits()))
-                        if unitString == 'meters':
-                            if pred < 0.1:
-                                labelText = '{} m'.format(pred)
-                            else:
-                                labelText = scaledUnitString(pred,
-                                                             suffix='m',
-                                                             largest_si_prefix='k'  # let kilometers be the largest unit
-                                                             )
-                        else:
-                            labelText = '{} {}'.format(pred, unitString)
-
                     labelText = QgsDistanceArea.formatDistance(example_distance, 0, distanceArea.lengthUnits())
                     pen = QPen(Qt.SolidLine)
                     pen.setWidth(self.mCrosshairStyle.mThickness)
@@ -370,11 +357,11 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         y2 = ex.yMaximum() - (y * yres)
                         return QgsPointXY(x2, y2)
 
-                    lyrCoord2CanvasPx = lambda x, y: self.toCanvasCoordinates(
+                    func = lambda x, y: self.toCanvasCoordinates(
                         ms.layerToMapCoordinates(lyr,
                                                  px2LayerGeo(x, y)))
-
-                    if pxX >= 0 and pxY >= 0 and pxX < ns and pxY < nl:
+                    lyrCoord2CanvasPx = func
+                    if 0 <= pxX < ns and 0 <= pxY < nl:
                         # get pixel edges in map canvas coordinates
 
                         lyrGeo = px2LayerGeo(pxX, pxY)
@@ -393,14 +380,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         pixelBorder.append(ll)
                         pixelBorder.append(ul)
 
-                        pen = QPen(Qt.SolidLine)
-                        pen.setWidth(self.mCrosshairStyle.mSizePixelBorder)
-                        pen.setColor(self.mCrosshairStyle.mColor)
-                        pen.setBrush(self.mCrosshairStyle.mColor)
-                        brush = QBrush(Qt.NoBrush)
-                        brush.setColor(self.mCrosshairStyle.mColor)
-                        painter.setBrush(brush)
-                        painter.setPen(pen)
                         painter.drawPolygon(pixelBorder)
 
             pen = QPen(Qt.SolidLine)

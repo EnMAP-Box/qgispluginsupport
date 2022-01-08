@@ -1,8 +1,8 @@
 import typing
 import numpy as np
-from PyQt5.QtCore import QAbstractListModel, QModelIndex
+from qgis.PyQt.QtCore import QAbstractListModel, QModelIndex
 
-from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import NULL
 from .utils import UnitLookup, METRIC_EXPONENTS, datetime64
 

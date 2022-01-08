@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -24,8 +24,8 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QDialog
+from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtWidgets import QDialog
 
 from qgis.gui import QgsFileWidget
 from . import DIR_UI_FILES
@@ -48,7 +48,7 @@ class SearchFilesDialog(QDialog):
         self.btnReload.setDefaultAction(self.actionReload)
 
         self.fileWidget: QgsFileWidget
-        #self.fileWidget.setReadOnly(True)
+        # self.fileWidget.setReadOnly(True)
         self.fileWidget.setStorageMode(QgsFileWidget.GetDirectory)
         self.fileWidget.fileChanged.connect(self.reloadFiles)
 
@@ -59,4 +59,3 @@ class SearchFilesDialog(QDialog):
 
     def reloadFiles(self, *args):
         print('#RELOAD FILES')
-

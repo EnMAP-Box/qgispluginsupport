@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -62,7 +62,7 @@ class VectorSourceFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
                 if destinationFormat in ['ESRI Shapefile', 'CSV', 'KML', 'GeoJSONSeq', 'GeoJSON']:
                     self.mBLOB2TXT.extend([i, name])
                 else:
-                    s = ""
+                    pass
 
     def clone(self):
         return VectorSourceFieldValueConverter(self.mSpeclib, self.mDstFormat)
@@ -107,7 +107,7 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
             assert re.search('(string|varchar|char|json)', typeName, re.I)
 
             return True
-        except Exception as ex:
+        except Exception:
             return False
         return False
 
@@ -178,7 +178,8 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
               options: QgsVectorFileWriter.SaveVectorOptions = None,
               filterFormat: QgsVectorFileWriter.FilterFormatDetails = None):
         """
-        Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
+        Writes the SpectralLibrary to path and returns a list of written files
+        that can be used to open the spectral library with readFrom
         """
         assert is_spectral_library(speclib)
         path = pathlib.Path(path)
@@ -255,7 +256,9 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
         return filters
 
     @classmethod
-    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    def addImportActions(cls,
+                         spectralLibrary: SpectralLibrary,
+                         menu: QMenu) -> list:
 
         def read(speclib: SpectralLibrary):
 
@@ -267,18 +270,22 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
                 sl = VectorSourceSpectralLibraryIO.readFrom(path)
                 if is_spectral_library(sl):
                     speclib.startEditing()
-                    speclib.beginEditCommand('Add Spectral Library profiles from {}'.format(path))
+                    speclib.beginEditCommand(
+                        'Add Spectral Library profiles from {}'.format(path))
                     speclib.addSpeclib(sl, True)
                     speclib.endEditCommand()
                     speclib.commitChanges()
 
         m = menu.addAction('Vector Layer')
         m.setToolTip(
-            'Adds profiles from another vector source\'s "{}" attributes.'.format(FIELD_VALUES))
+            'Adds profiles from another '
+            'vector source\'s "{}" attributes.'.format(FIELD_VALUES))
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
     @classmethod
-    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    def addExportActions(cls,
+                         spectralLibrary: SpectralLibrary,
+                         menu: QMenu) -> list:
         """
         def write_new(speclib: SpectralLibrary):
             # this is not available in Python. Why?
@@ -301,8 +308,9 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
                          'Keyhole Markup Language (*.kml)': 'KML',
                          'Comma Separated Value (*.csv)': 'CSV'}
 
-            path, filter = QFileDialog.getSaveFileName(caption='Write to Vector Layer',
-                                                       filter=';;'.join(LUT_Files.keys()))
+            path, filter = QFileDialog.getSaveFileName(
+                caption='Write to Vector Layer',
+                filter=';;'.join(LUT_Files.keys()))
             if isinstance(path, str) and len(path) > 0:
                 options = QgsVectorFileWriter.SaveVectorOptions()
                 options.fileEncoding = 'UTF-8'
@@ -318,7 +326,8 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
                         pass
                     elif ogrType == 'CSV':
                         pass
-                sl = VectorSourceSpectralLibraryIO.write(spectralLibrary, path, options=options)
+                VectorSourceSpectralLibraryIO.write(
+                    spectralLibrary, path, options=options)
 
         m = menu.addAction('Vector Source')
         m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))

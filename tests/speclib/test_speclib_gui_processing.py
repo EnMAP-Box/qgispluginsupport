@@ -6,11 +6,11 @@ import datetime
 import xmlrunner
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QGridLayout
-from qgis._core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm, QgsProject, QgsProcessingModelOutput, \
+from qgis.core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm, QgsProject, QgsProcessingModelOutput, \
     QgsField, QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingParameterRasterLayer, \
     QgsProcessingOutputRasterLayer, QgsProcessingFeedback, QgsProcessingContext, QgsProcessingModelAlgorithm, \
     QgsProcessingRegistry, QgsApplication, QgsProcessingParameterMultipleLayers
-from qgis._gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator, \
+from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator, \
     QgsProcessingAlgorithmDialogBase
 
 from processing.gui.BatchPanel import BatchPanel

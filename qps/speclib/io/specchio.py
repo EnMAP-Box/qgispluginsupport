@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -88,7 +88,6 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         with open(path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             DATA = collections.OrderedDict()
-            readMetaData = True
             regNumber = re.compile(r'^\d+(\.\d+)?$')
             nProfiles = 0
             for i, line in enumerate(lines):
@@ -140,7 +139,6 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                 if k in sl.fields().names():
                     continue
 
-                k2 = k.replace(' ', '_')
                 qgsField = createQgsField(k, DATA[k][0])
                 assert sl.addAttribute(qgsField)
 
@@ -176,26 +174,23 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
     def write(cls, speclib: SpectralLibrary, path: str, feedback: QgsProcessingFeedback = None,
               delimiter: str = ',') -> list:
         """
-        Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom(...)
+        Writes the SpectralLibrary to path and returns a list of written files
+        that can be used to open the spectral library with readFrom(...)
         :param speclib: SpectralLibrary
         :param path: str, path to library source
         :return: [str-list-of-written-files]
         """
-        """
-                Writes the SpectralLibrary to path and returns a list of written files that can be used to open the spectral library with readFrom
-                """
         assert is_spectral_library(speclib)
         basePath, ext = os.path.splitext(path)
-        s = ""
 
         writtenFiles = []
-        fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES, FIELD_FID]]
+        # fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES, FIELD_FID]]
         groups = speclib.groupBySpectralProperties()
         for i, setting in enumerate(groups.keys()):
             # in-memory text buffer
             setting: SpectralSetting
             stream = io.StringIO()
-            xValues, xUnit, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
+            xValues, _, _ = setting.x(), setting.xUnit(), setting.yUnit()
             profiles = groups[setting]
             if i == 0:
                 path = basePath + ext

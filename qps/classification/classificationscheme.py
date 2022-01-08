@@ -36,15 +36,15 @@ import typing
 import warnings
 
 import numpy as np
-from PyQt5.QtCore import QModelIndex, QMimeData, pyqtSignal, QVariant, QAbstractListModel, QItemSelectionModel, \
+from qgis.PyQt.QtCore import QModelIndex, QMimeData, pyqtSignal, QVariant, QAbstractListModel, QItemSelectionModel, \
     QByteArray, QAbstractTableModel, QSize, QObject
-from PyQt5.QtGui import QColor, QIcon, QClipboard, QBrush, QPixmap
-from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QPushButton, QDialogButtonBox, QToolButton, QAction, QWidget, \
+from qgis.PyQt.QtGui import QColor, QIcon, QClipboard, QBrush, QPixmap
+from qgis.PyQt.QtWidgets import QVBoxLayout, QFileDialog, QPushButton, QDialogButtonBox, QToolButton, QAction, QWidget, \
     QMessageBox, QTableView, QColorDialog, QApplication, QInputDialog, QDialog, QMenu, QHBoxLayout, QComboBox
-from PyQt5.QtXml import QDomDocument, QDomImplementation
+from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
 from osgeo import gdal
 
-from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import NULL
 from qgis.core import Qgis, QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsReadWriteContext, \
     QgsRasterRenderer, QgsCategorizedSymbolRenderer, QgsPalettedRasterRenderer, \
@@ -543,7 +543,8 @@ class ClassificationScheme(QAbstractTableModel):
 
     def json(self) -> str:
         """
-        Returns a JSON string of this ClassificationScheme which can be deserialized with ClassificationScheme.fromJSON()
+        Returns a JSON string of this ClassificationScheme which can be deserialized
+        with ClassificationScheme.fromJSON()
         :return: str, JSON string
         """
         data = {'name': self.mName,
@@ -554,7 +555,8 @@ class ClassificationScheme(QAbstractTableModel):
 
     def pickle(self) -> bytes:
         """
-        Serializes this ClassificationScheme a byte object, which can be deserializes with ClassificationScheme.fromPickle()
+        Serializes this ClassificationScheme a byte object, which can be
+        deserialized with ClassificationScheme.fromPickle()
         :return: bytes
         """
         return pickle.dumps(self.json())
@@ -892,7 +894,8 @@ class ClassificationScheme(QAbstractTableModel):
         for c in classes:
             assert isinstance(c, ClassInfo)
             assert id(c) not in [id(c) for c in
-                                 self.mClasses], 'You cannot add the same ClassInfo instance to a ClassificationScheme twice. Create a copy first.'
+                                 self.mClasses], \
+                'You cannot add the same ClassInfo instance to a ClassificationScheme twice. Create a copy first.'
 
         if index is None:
             # default: add new classes to end of list
@@ -1022,7 +1025,7 @@ class ClassificationScheme(QAbstractTableModel):
         :param sep: separator (';' by default)
         :returns: the path of written file (if something was written)
         """
-        if mode == None:
+        if mode is None:
             lines = self.toString(sep=sep)
             with open(path, 'w') as f:
                 f.write(lines)
@@ -1037,7 +1040,7 @@ class ClassificationScheme(QAbstractTableModel):
         :param path: str, path of JSON file
         :return: path of written file
         """
-        if mode == None:
+        if mode is None:
             lines = self.json()
             with open(path, 'w') as f:
                 f.write(lines)
@@ -1192,7 +1195,7 @@ class ClassificationScheme(QAbstractTableModel):
                 band = ds.GetRasterBand(b + 1)
                 cat = band.GetCategoryNames()
 
-                if cat != None:
+                if cat is not None:
                     bandIndex = b
                     break
                 s = ""
@@ -1694,7 +1697,7 @@ class ClassificationSchemeWidget(QWidget):
                 a.triggered.connect(lambda _, lyr=layer, f=idx: self.onLoadClassesFromField(lyr, idx))
 
                 if isinstance(layer.renderer(), QgsCategorizedSymbolRenderer):
-                    a = m.addAction('Current Renderer'.format(layer.name()))
+                    a = m.addAction('Current Renderer {}'.format(layer.name()))
                     a.triggered.connect(lambda _, lyr=layer: self.onLoadClassesFromRenderer(lyr))
 
         self.btnLoadClasses.setMenu(m)

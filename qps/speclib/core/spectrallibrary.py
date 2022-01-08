@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -469,7 +469,8 @@ class SpectralLibraryUtils:
         Adds profiles from another SpectraLibrary
         :param speclib: SpectralLibrary
         :param addMissingFields: if True (default), missing fields / attributes will be added automatically
-        :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied for each added profile_field
+        :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied
+               for each added profile_field
         :param progressDialog: QProgressDialog or qps.speclib.core.ProgressHandler
 
         :returns: set of added feature ids
@@ -1107,7 +1108,8 @@ class SpectralLibrary(QgsVectorLayer):
                     fieldProperties = jsonData[fieldName]
                     assert isinstance(fieldProperties, dict)
 
-                    # see https://enmap-box.readthedocs.io/en/latest/usr_section/usr_manual/processing_datatypes.html#labelled-spectral-library
+                    # see https://enmap-box.readthedocs.io/en/latest/usr_section/
+                    # usr_manual/processing_datatypes.html#labelled-spectral-library
                     # for details
                     if 'categories' in fieldProperties.keys():
                         from ...classification.classificationscheme import ClassificationScheme, ClassInfo, \
@@ -1399,7 +1401,8 @@ class SpectralLibrary(QgsVectorLayer):
         return profile_field_list(self)
 
     def __repr__(self):
-        return str(self.__class__) + '"{}" {} feature(s)'.format(self.name(), self.dataProvider().featureCount())
+        return str(self.__class__) + '"{}" {} feature(s)'.format(
+            self.name(), self.dataProvider().featureCount())
 
     def plot(self) -> QWidget:
         """Create a plot widget and shows all SpectralProfile in this SpectralLibrary."""

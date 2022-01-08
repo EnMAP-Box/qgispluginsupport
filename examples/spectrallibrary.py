@@ -1,15 +1,15 @@
 from qps.testing import start_app, TestObjects, findQGISResourceFiles, StartOptions
 from qgis.core import QgsRasterLayer, QgsCoordinateReferenceSystem, QgsPointXY
 from qps import initAll
-
-app = start_app(resources=findQGISResourceFiles(), options=StartOptions.EditorWidgets)
-initAll()
-
 from qps.speclib.core.spectralprofile import SpectralProfile
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qgis.gui import QgsMapCanvas
 from qps.maptools import CursorLocationMapTool
 from qps.utils import SpatialPoint
+
+app = start_app(resources=findQGISResourceFiles(), options=StartOptions.EditorWidgets)
+initAll()
+
 
 slw = SpectralLibraryWidget()
 slw.show()

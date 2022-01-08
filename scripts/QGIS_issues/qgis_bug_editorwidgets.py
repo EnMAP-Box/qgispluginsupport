@@ -3,7 +3,7 @@ import pathlib
 import re
 import xml.etree.ElementTree as ElementTree
 
-from qgis._gui import QgsEditorWidgetWrapper, QgsAttributeTypeLoadDialog, QgsVectorLayerProperties, QgsMapCanvas, \
+from qgis.gui import QgsEditorWidgetWrapper, QgsAttributeTypeLoadDialog, QgsVectorLayerProperties, QgsMapCanvas, \
     QgsMessageBar
 from qgis.core import QgsVectorLayerExporter, QgsVectorLayer, QgsEditorWidgetSetup
 from qgis.gui import QgsEditorWidgetFactory, QgsEditorConfigWidget, QgsGui

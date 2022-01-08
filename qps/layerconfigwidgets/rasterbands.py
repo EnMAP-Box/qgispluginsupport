@@ -12,7 +12,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -55,9 +55,10 @@ class RasterBandComboBox(QgsRasterBandComboBox):
     def setLayer(self, layer):
         """
         Re-Implements void QgsRasterBandComboBox::setLayer( QgsMapLayer *layer ) with own band-name logic
-        :param layer: 
+
+        :param layer:
         :type layer: qgis.core.QgsRasterLayer
-        :return: 
+        :return:
         :rtype: None
         """
         super().setLayer(layer)
@@ -143,7 +144,6 @@ BAND_COMBINATIONS += [
     BandCombination(('NIR', 'SWIR', 'R'))
 ]
 
-
 RENDER_TYPE2NAME = {
     'multibandcolor': 'Multiband color',
     'paletted': 'Paletted/Unique values',
@@ -152,6 +152,7 @@ RENDER_TYPE2NAME = {
     'singlebandpseudocolor': 'Singleband pseudocolor',
     'singlebandgray': 'Singleband gray',
 }
+
 
 class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 

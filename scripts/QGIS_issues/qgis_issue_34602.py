@@ -12,8 +12,8 @@ site.addsitedir(DIR_QGIS_REPO / 'tests' / 'src' / 'python')
 import unittest
 import os
 from utilities import unitTestDataPath
-from qgis._core import QgsRasterLayer, QgsSingleBandGrayRenderer, QgsProject
-from qgis._gui import QgsMapCanvas, QgsRendererRasterPropertiesWidget
+from qgis.core import QgsRasterLayer, QgsSingleBandGrayRenderer, QgsProject
+from qgis.gui import QgsMapCanvas, QgsRendererRasterPropertiesWidget
 
 from qgis.testing.mocked import get_iface
 

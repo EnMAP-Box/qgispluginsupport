@@ -13,10 +13,10 @@ site.addsitedir(REPO)
 
 TESTS = REPO / 'tests' / 'speclib'
 site.addsitedir(TESTS)
-from qgis._core import QgsMapLayerModel, QgsApplication, QgsRasterDataProvider, Qgis, QgsProcessingParameterRasterLayer, \
+from qgis.core import QgsMapLayerModel, QgsApplication, QgsRasterDataProvider, Qgis, QgsProcessingParameterRasterLayer, \
     QgsProcessingParameterMultipleLayers, QgsProcessingContext, QgsVectorLayer, QgsProcessingRegistry, QgsFeature
 
-from qgis._gui import QgsMapToolIdentify, QgsProcessingContextGenerator, QgsProcessingParameterWidgetContext, \
+from qgis.gui import QgsMapToolIdentify, QgsProcessingContextGenerator, QgsProcessingParameterWidgetContext, \
     QgsProcessingGui
 from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas
 from qgis.core import QgsProject, QgsRasterLayer, QgsContrastEnhancement

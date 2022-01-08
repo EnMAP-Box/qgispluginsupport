@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -39,15 +39,15 @@ import warnings
 from unittest import mock
 
 import numpy as np
-from PyQt5.QtCore import QObject, QPoint, QSize, QVariant, pyqtSignal, QMimeData, QPointF, QDir
-from PyQt5.QtGui import QImage, QDropEvent, QIcon
-from PyQt5.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
+from qgis.PyQt.QtCore import QObject, QPoint, QSize, QVariant, pyqtSignal, QMimeData, QPointF, QDir, Qt
+from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
+from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
     QMenu
 from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
 import qgis.utils
-from qgis.PyQt import sip, Qt
+from qgis.PyQt import sip
 from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
@@ -61,7 +61,8 @@ from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
 from .resources import findQGISResourceFiles, initResourceFile
-from .speclib import createStandardFields
+from .speclib import createStandardFields, FIELD_VALUES
+from .speclib.core.spectrallibrary import SpectralLibrary
 from .utils import UnitLookup, px2geo, SpatialPoint, findUpwardPath
 
 WMS_GMAPS = r'crs=EPSG:3857&' \
@@ -228,7 +229,8 @@ def start_app(cleanup: bool = True,
 
 class QgisMockup(QgisInterface):
     """
-    A "fake" QGIS Desktop instance that should provide all the interfaces a plugin developer might need (and nothing more)
+    A "fake" QGIS Desktop instance that should provide all the interfaces a
+    plugin developer might need (and nothing more)
     """
 
     def __init__(self, *args):
@@ -684,7 +686,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-               TestObjects._coreDataGT, TestObjects._coreDataWkt
+            TestObjects._coreDataGT, TestObjects._coreDataWkt
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
@@ -775,9 +777,10 @@ class TestObjects(object):
                               n_empty: int = 0,
                               n_bands: typing.Union[int, typing.List[int], np.ndarray] = [-1],
                               profile_field_names: typing.List[str] = None,
-                              wlu: str = None) -> 'SpectralLibrary':
+                              wlu: str = None) -> QgsVectorLayer:
         """
         Creates a Spectral Library
+        :param profile_field_names:
         :param n_bands:
         :type n_bands:
         :param wlu:
@@ -791,8 +794,6 @@ class TestObjects(object):
         """
         assert n > 0
         assert 0 <= n_empty <= n
-        from .speclib.core.spectrallibrary import SpectralLibrary, FIELD_VALUES
-        from .speclib.core import profile_field_indices
 
         if isinstance(n_bands, int):
             n_bands = np.asarray([[n_bands, ]])
@@ -808,6 +809,8 @@ class TestObjects(object):
         n_profile_columns = n_bands.shape[0]
         for i in range(len(slib.spectralProfileFields()), n_profile_columns):
             slib.addSpectralProfileField(f'{FIELD_VALUES}{i}')
+
+        from qps.speclib.core import profile_field_indices
 
         if isinstance(profile_field_names, list):
             profile_field_idx = profile_field_indices(slib)
@@ -864,8 +867,8 @@ class TestObjects(object):
             nodata = global_nodata
             nodata_values.append(nodata)
             arr[b,
-            max(y - d, 0):min(y + d, nl - 1),
-            max(x - d, 0):min(x + d, ns - 1)] = nodata
+                max(y - d, 0):min(y + d, nl - 1),
+                max(x - d, 0):min(x + d, ns - 1)] = nodata
 
         ds2: gdal.Dataset = gdal_array.SaveArray(arr, path, prototype=ds)
 

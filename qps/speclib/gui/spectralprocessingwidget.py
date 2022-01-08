@@ -104,7 +104,8 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
         # self.mFieldComboBox.setFields(fields)
 
     def createLabel(self) -> QLabel:
-        # l = QLabel(f'<html><img width="20"px" height="20" src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
+        # l = QLabel(f'<html><img width="20"px" height="20"
+        # src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
         label = QLabel(f'{self.parameterDefinition().description()} (to field)')
         label.setToolTip('Select a target field or create a new one')
         self.mLabel = label
@@ -227,7 +228,8 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         return None
 
     def createLabel(self) -> QLabel:
-        # l = QLabel(f'<html><img width="20"px" height="20" src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
+        # l = QLabel(f'<html><img width="20"px" height="20"
+        # src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
         param = self.parameterDefinition()
         label = None
         if isinstance(param, QgsProcessingParameterRasterLayer):

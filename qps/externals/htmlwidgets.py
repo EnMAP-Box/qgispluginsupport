@@ -11,9 +11,9 @@
 #
 
 import sys
-from PyQt5 import QtWidgets, QtGui, QtCore
+from qgis.PyQt.import QtWidgets, QtGui, QtCore
 
-from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import Qt
 
 
 class HTMLStyle(QtWidgets.QProxyStyle):

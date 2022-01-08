@@ -1,9 +1,9 @@
 import numpy as np
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
-from qgis._core import QgsMapLayerModel, QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRectangle, \
+from qgis.core import QgsMapLayerModel, QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRectangle, \
     QgsField, QgsFields, QgsRasterDataProvider, QgsRasterInterface, QgsRasterRange, QgsMapLayerStore, QgsRasterPipe
 
-from qgis._gui import QgsMapLayerComboBox, QgsMapCanvas, QgsGui
+from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 
 from qps import initResources
 from qps.speclib.core import profile_fields

@@ -7,7 +7,7 @@ import textwrap
 import typing
 
 import numpy as np
-from PyQt5.QtXml import QDomElement, QDomDocument
+from qgis.PyQt.QtXml import QDomElement, QDomDocument
 
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import NULL

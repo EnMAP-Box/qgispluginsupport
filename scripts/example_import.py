@@ -1,6 +1,6 @@
 
 from qgis.core import QgsProviderMetadata as A
-from qgis._core import QgsProviderMetadata as B
+from qgis.core import QgsProviderMetadata as B
 
 def myFunc(*args, **kwds):
     return None

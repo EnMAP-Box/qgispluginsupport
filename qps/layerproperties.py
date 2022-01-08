@@ -23,25 +23,30 @@ import sys
 import typing
 import warnings
 
-from PyQt5.QtCore import QMimeData, QTimer, pyqtSignal, QObject, QVariant, QModelIndex
-from PyQt5.QtGui import QCloseEvent, QIcon
-from PyQt5.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindow, QPushButton, QDialogButtonBox, QAction, \
-    QButtonGroup, QToolButton, QListWidget, QStackedWidget, QListWidgetItem, QApplication, QLabel, QSpinBox, QComboBox, \
+from qgis.PyQt.QtCore import QMimeData, QTimer, pyqtSignal, QObject, QVariant, QModelIndex
+from qgis.PyQt.QtGui import QCloseEvent, QIcon
+from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindow, QPushButton, \
+    QDialogButtonBox, QAction, \
+    QButtonGroup, QToolButton, QListWidget, QStackedWidget, QListWidgetItem, \
+    QApplication, QLabel, QSpinBox, QComboBox, \
     QLineEdit, QGridLayout, QTableView, QVBoxLayout
-from PyQt5.QtXml import QDomDocument
+from qgis.PyQt.QtXml import QDomDocument
 from osgeo import gdal, osr
-from qgis._core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, QgsFeatureRequest, \
+from qgis.core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, QgsFeatureRequest, \
     QgsExpressionContext, QgsExpressionContextUtils, QgsField, QgsScopedProxyProgressTask, QgsExpressionContextScope, \
-    QgsRasterLayer, QgsSettings, QgsReadWriteContext, QgsRasterRenderer, QgsMapLayerStyle, QgsMapLayer, QgsDataProvider, \
-    QgsLayerTreeGroup, QgsLayerTreeLayer, QgsRasterBandStats, QgsContrastEnhancement, Qgis, QgsSingleBandGrayRenderer, \
+    QgsRasterLayer, QgsSettings, QgsReadWriteContext, QgsRasterRenderer, \
+    QgsMapLayerStyle, QgsMapLayer, QgsDataProvider, \
+    QgsLayerTreeGroup, QgsLayerTreeLayer, QgsRasterBandStats, \
+    QgsContrastEnhancement, Qgis, QgsSingleBandGrayRenderer, \
     QgsMultiBandColorRenderer, QgsVectorDataProvider, QgsAction, QgsEditFormConfig, QgsExpressionContextGenerator, \
-    QgsApplication, QgsFeatureRenderer, QgsWkbTypes, QgsFieldProxyModel, QgsFeature, QgsRectangle, QgsProviderRegistry, \
+    QgsApplication, QgsFeatureRenderer, QgsWkbTypes, QgsFieldProxyModel, \
+    QgsFeature, QgsRectangle, QgsProviderRegistry, \
     QgsRasterDataProvider, QgsFields, QgsFieldModel, QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer, \
     QgsHillshadeRenderer, QgsPalettedRasterRenderer, QgsSingleBandPseudoColorRenderer
 
-from qgis._gui import QgisInterface, QgsMapCanvas
+from qgis.gui import QgisInterface, QgsMapCanvas
 
-from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import Qt
 from qgis.gui import \
     QgsActionMenu, \
     QgsAttributeEditorContext, \
@@ -68,26 +73,6 @@ from .models import OptionListModel, Option
 from .speclib.core import create_profile_field
 from .utils import write_vsimem, loadUi, defaultBands, iconForFieldType, qgsFields
 from .vectorlayertools import VectorLayerTools
-
-"""
-class RasterLayerProperties(QgsOptionsDialogBase):
-    def __init__(self, lyr, canvas, parent, fl=Qt.Widget):
-        super(RasterLayerProperties, self).__init__("RasterLayerProperties", parent, fl)
-        # self.setupUi(self)
-        self.initOptionsBase(False)
-        title = "Layer Properties - {}".format(lyr.name())
-        self.restoreOptionsBaseUi(title)
-"""
-
-"""
-    RASTERRENDERER_CREATE_FUNCTIONS['multibandcolor'] = MultiBandColorRendererWidget.create
-    RASTERRENDERER_CREATE_FUNCTIONS['multibandcolor (QGIS)'] = QgsMultiBandColorRendererWidget.create
-    RASTERRENDERER_CREATE_FUNCTIONS['paletted'] = 
-    RASTERRENDERER_CREATE_FUNCTIONS['singlebandgray'] = 
-    RASTERRENDERER_CREATE_FUNCTIONS['singlebandgray (QGIS)'] = QgsSingleBandGrayRendererWidget.create
-    RASTERRENDERER_CREATE_FUNCTIONS['singlebandpseudocolor'] = SingleBandPseudoColorRendererWidget.create
-    RASTERRENDERER_CREATE_FUNCTIONS['singlebandpseudocolor (QGIS)'] = QgsSingleBandPseudoColorRendererWidget.create
-"""
 
 RENDER_CLASSES = {}
 RENDER_CLASSES['rasterrenderer'] = {
@@ -710,7 +695,8 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
         # create a dummy raster layer
         import uuid
         xml = """<VRTDataset rasterXSize="1" rasterYSize="1">
-                  <GeoTransform>  0.0000000000000000e+00,  1.0000000000000000e+00,  0.0000000000000000e+00,  0.0000000000000000e+00,  0.0000000000000000e+00, -1.0000000000000000e+00</GeoTransform>
+                  <GeoTransform>  0.0000000000000000e+00,  1.0000000000000000e+00,  0.0000000000000000e+00,
+                  0.0000000000000000e+00,  0.0000000000000000e+00, -1.0000000000000000e+00</GeoTransform>
                   <VRTRasterBand dataType="Float32" band="1">
                     <Metadata>
                       <MDI key="STATISTICS_MAXIMUM">0</MDI>
@@ -1805,7 +1791,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                     qAction: QAction = actionMenu.addAction(action.icon(), action.shortTitle())
                     qAction.setToolTip(action.name())
                     qAction.setData(QVariant.fromValue < QgsAction > (action))
-                    qAction.triggered.connect(selflayerActionTriggered)
+                    qAction.triggered.connect(self.layerActionTriggered)
 
             self.mActionFeatureActions.setMenu(actionMenu)
 

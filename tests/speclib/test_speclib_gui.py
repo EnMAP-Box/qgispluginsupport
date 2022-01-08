@@ -26,10 +26,10 @@ from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtGui import QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QHBoxLayout, QVBoxLayout, QPushButton, \
     QToolButton, QAction, QComboBox, QWidget, QDialog
-from PyQt5.QtXml import QDomDocument
+from qgis.PyQt.QtXml import QDomDocument
 from osgeo import ogr
 
-from qgis.PyQt import QtCore
+from qgis.PyQt.QtCore import QtCore
 from qps.plotstyling.plotstyling import PlotStyle
 from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, XMLNODE_PROFILE_RENDERER
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralXAxis, SpectralViewBox, SpectralProfilePlotDataItem, \

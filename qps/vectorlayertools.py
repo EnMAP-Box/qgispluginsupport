@@ -15,7 +15,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -25,10 +25,10 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-from PyQt5.QtWidgets import QMessageBox
+from qgis.PyQt.QtWidgets import QMessageBox
 
 from qgis.PyQt.QtCore import pyqtSignal
-from qgis._core import QgsPointXY, QgsCoordinateReferenceSystem, QgsRectangle
+from qgis.core import QgsPointXY, QgsCoordinateReferenceSystem, QgsRectangle
 
 from qgis.core import \
     QgsVectorLayerTools, QgsVectorLayer, Qgis, \
@@ -147,8 +147,8 @@ class VectorLayerTools(QgsVectorLayerTools):
             markSelectedOnly = bool(settings.value("qgis/digitizing/marker_only_for_selected", True))
 
             # // redraw only if markers will be drawn
-            if not markSelectedOnly or (vlayer.selectedFeatureCount() > 0 and
-                                        (markerType == "Cross" or markerType == "SemiTransparentCircle")):
+            if not markSelectedOnly or (vlayer.selectedFeatureCount() > 0
+                                        and (markerType == "Cross" or markerType == "SemiTransparentCircle")):
                 vlayer.triggerRepaint()
 
             return True

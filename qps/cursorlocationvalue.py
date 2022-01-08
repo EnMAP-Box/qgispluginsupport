@@ -14,7 +14,6 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -29,12 +28,12 @@ import collections
 import os
 import typing
 
-from PyQt5.QtCore import QModelIndex, QPoint, QAbstractListModel, pyqtSignal
-from PyQt5.QtGui import QIcon, QClipboard, QColor
-from PyQt5.QtWidgets import QMenu, QApplication, QDockWidget
+from qgis.PyQt.QtCore import QModelIndex, QPoint, QAbstractListModel, pyqtSignal
+from qgis.PyQt.QtGui import QIcon, QClipboard, QColor
+from qgis.PyQt.QtWidgets import QMenu, QApplication, QDockWidget
 
-from qgis.PyQt import Qt
-from qgis._core import QgsRasterDataProvider
+from qgis.PyQt.QtCore import Qt
+from qgis.core import QgsRasterDataProvider
 from qgis.core import QgsCoordinateReferenceSystem, QgsWkbTypes, QgsField, QgsFeature, \
     QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsPointXY, QgsRectangle, QgsTolerance, \
     QgsFeatureRequest, QgsRasterBlock, QgsPalettedRasterRenderer, QgsRaster

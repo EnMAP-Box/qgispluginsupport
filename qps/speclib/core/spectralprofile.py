@@ -329,7 +329,8 @@ class SpectralProfile(QgsFeature):
                         QPoint -> pixel index position
                         QgsPointXY -> pixel geolocation position in layer/raster CRS
                         SpatialPoint -> pixel geolocation position, will be transformed into layer/raster CRS
-        :param crs: QgsCoordinateReferenceSystem - coordinate reference system of raster source, defaults to the raster source CRS
+        :param crs: QgsCoordinateReferenceSystem - coordinate reference system
+        of raster source, defaults to the raster source CRS
         :param gt: geo-transformation 6-tuple, defaults to the GT of the raster source
         :return: SpectralProfile with QgsPoint-Geometry in EPSG:43
         """
@@ -398,7 +399,8 @@ class SpectralProfile(QgsFeature):
         """
         Converts a QgsFeature into a SpectralProfile
         :param feature: QgsFeature
-        :param profile_field: index, name or QgsField of QgsField that stores the Spectral Profile BLOB. Defaults to the first BLOB field
+        :param profile_field: index, name or QgsField of
+        QgsField that stores the Spectral Profile BLOB. Defaults to the first BLOB field
         :return:
         """
         assert isinstance(feature, QgsFeature)

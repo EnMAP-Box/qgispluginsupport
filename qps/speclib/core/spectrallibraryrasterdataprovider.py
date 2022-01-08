@@ -5,7 +5,7 @@ import warnings
 
 import numpy as np
 
-from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDateTime, QByteArray
 from qgis.PyQt.QtGui import QIcon, QColor
@@ -541,7 +541,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
             band_data = nn_resample(band_slice, (bufferHeightPix, bufferWidthPix))
 
-            # print(f'# Extents:\nF={fullExtent}\nR={reqExtent}\nI={intersectExtent}\n w={bufferWidthPix} h={bufferHeightPix}')
+            # print(f'# Extents:\nF={fullExtent}\nR={reqExtent}
+            # \nI={intersectExtent}\n w={bufferWidthPix} h={bufferHeightPix}')
 
             # print(f'# band_data: {band_data.shape} {band_data.min()} to {band_data.max()}')
             block.setData(band_data.tobytes())

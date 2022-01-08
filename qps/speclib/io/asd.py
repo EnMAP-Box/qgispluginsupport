@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -220,7 +220,8 @@ ASD_FIELDS.append(create_profile_field('Reference'))
 class ASDBinaryFile(object):
     """
     Wrapper class to access a ASD File Format binary file.
-    See ASD File Format, version 8, revision B, ASD Inc., a PANalytical company, 2555 55th Street, Suite 100 Boulder, CO 80301.
+    See ASD File Format, version 8, revision B, ASD Inc.,
+    a PANalytical company, 2555 55th Street, Suite 100 Boulder, CO 80301.
     """
 
     def __init__(self, path: str = None):
@@ -446,8 +447,6 @@ class ASDSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
         self.mSource: QgsVectorLayer = None
         self.mFields: QgsFields = ASD_FIELDS
-        # add fields for struct
-        file = ASDBinaryFile()
 
     def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
         return SpectralLibraryIO.spectralLibraryIOInstances(ASDSpectralLibraryIO)
@@ -567,8 +566,9 @@ class DEPR_ASDSpectralLibraryIO(SpectralLibraryIO):
 
         def read(speclib: SpectralLibrary):
 
-            pathes, filter = QFileDialog.getOpenFileNames(caption='ASD FilesCSV File',
-                                                          filter='All type (*.*);;Text files (*.txt);; CSV (*.csv);;ASD (*.asd)')
+            pathes, filter = QFileDialog.getOpenFileNames(
+                caption='ASD FilesCSV File',
+                filter='All type (*.*);;Text files (*.txt);; CSV (*.csv);;ASD (*.asd)')
 
             if len(pathes) > 0:
                 sl = ASDSpectralLibraryIO.readFrom(pathes)
@@ -674,7 +674,8 @@ class DEPR_ASDSpectralLibraryIO(SpectralLibraryIO):
                             v = asd.__dict__[n]
                             if isinstance(v, TM_STRUCT):
                                 sl.addAttribute(createQgsField(n,
-                                                               ''))  # TM struct will use a VARCHAR field to express the time stamp
+                                                               ''))
+                                # TM struct will use a VARCHAR field to express the time stamp
                             else:
                                 sl.addAttribute(createQgsField(n, v))
 

@@ -3,7 +3,7 @@ Example that addresses https://github.com/qgis/QGIS/issues/
 
 """
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout
-from qgis._core import QgsFeature
+from qgis.core import QgsFeature
 from qgis.core import QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
     QgsVectorLayer, QgsProject, QgsProcessingParameterVectorLayer
 

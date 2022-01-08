@@ -25,12 +25,12 @@ import enum
 import math
 import sys
 
-from PyQt5.QtCore import pyqtSignal, QTimer, QObject, QPoint, QRect, QSize, QEvent
-from PyQt5.QtGui import QColor, QKeyEvent, QIcon, QCursor
-from PyQt5.QtWidgets import QApplication, QAction, QLabel, QHBoxLayout, QWidget, QSizePolicy, QAbstractButton
+from qgis.PyQt.QtCore import pyqtSignal, QTimer, QObject, QPoint, QRect, QSize, QEvent
+from qgis.PyQt.QtGui import QColor, QKeyEvent, QIcon, QCursor
+from qgis.PyQt.QtWidgets import QApplication, QAction, QLabel, QHBoxLayout, QWidget, QSizePolicy, QAbstractButton
 
-from qgis.PyQt import Qt
-from qgis._core import QgsWkbTypes, QgsVectorLayerTools, QgsProject, QgsVectorLayer, QgsPoint, QgsGeometry, \
+from qgis.PyQt.QtCore import Qt
+from qgis.core import QgsWkbTypes, QgsVectorLayerTools, QgsProject, QgsVectorLayer, QgsPoint, QgsGeometry, \
     QgsCoordinateReferenceSystem, QgsPointXY, QgsFeature, QgsSettings, QgsEditFormConfig, QgsMultiPoint, \
     QgsFeatureRequest, QgsExpressionContextUtils, QgsRenderContext, QgsCsException, QgsDistanceArea, QgsLineString, \
     QgsRectangle, QgsVectorLayerUtils, QgsVectorDataProvider, Qgis, QgsRasterLayer, QgsAction, QgsMapLayer, \
@@ -71,7 +71,8 @@ def createCursor(resourcePath: str):
 
 def createQgsMapCanvasUserInputWidget(canvas: QgsMapCanvas) -> QgsUserInputWidget:
     """
-    Create a QgsUserInputWidget that is linked to the top-right QgsMapCanvas corner (as in the QGIS Desktop main canvas).
+    Create a QgsUserInputWidget that is linked to the top-right
+    QgsMapCanvas corner (as in the QGIS Desktop main canvas).
     :param canvas: QgsMapCanvas
     :return: QgsUserInputWidget
     """
@@ -785,13 +786,10 @@ class QgsFeatureAction(QAction):
             fields = self.mLayer.fields()
             for idx in range(fields.count()):
 
-                newValues = feature.attributes();
+                newValues = feature.attributes()
                 origValues = self.sLastUsedValues[self.mLayer.id()]
 
                 if origValues[idx] != newValues.at(idx):
-                    # QgsDebugMsg( QStringLiteral( "saving %1 for %2" ).arg( sLastUsedValues[mLayer][idx].toString() ).arg( idx ) );
-
-                    # QgsDebugMsg( QStringLiteral( "saving %1 for %2" ).arg( sLastUsedValues[mLayer][idx].toString() ).arg( idx ) );
                     self.sLastUsedValues[self.mLayer.id()][idx] = newValues.at(idx)
 
 
@@ -965,13 +963,15 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
         elif self.mode() == self.CaptureLine or self.mode() == self.CapturePolygon:
 
             # //check we only use the line tool for line/multiline layers
-            if self.mode() == self.CaptureLine and vlayer.geometryType() != QgsWkbTypes.LineGeometry and self.mCheckGeometryType:
+            if self.mode() == self.CaptureLine \
+                    and vlayer.geometryType() != QgsWkbTypes.LineGeometry and self.mCheckGeometryType:
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture line' tool on this vector layer"), Qgis.Warning)
                 return
 
             # //check we only use the polygon tool for polygon/multipolygon layers
-            if self.mode() == self.CapturePolygon and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry and self.mCheckGeometryType:
+            if self.mode() == self.CapturePolygon \
+                    and vlayer.geometryType() != QgsWkbTypes.PolygonGeometry and self.mCheckGeometryType:
                 self.messageEmitted.emit(
                     tr("Wrong editing tool, cannot apply the 'capture polygon' tool on this vector layer"),
                     Qgis.Warning)
@@ -992,7 +992,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                                              Qgis.Warning)
                     return
 
-                self.startCapturing();
+                self.startCapturing()
 
             elif e.button() == Qt.RightButton:
 
@@ -1007,7 +1007,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                 # //polygons: bail out if there are not at least two vertices
                 if self.mode() == self.CapturePolygon and self.size() < 3:
                     self.stopCapturing()
-                    return;
+                    return
 
                 if self.mode() == self.CapturePolygon:
                     self.closePolygon()
@@ -1018,7 +1018,8 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                 # //does compoundcurve contain circular strings?
                 # //does provider support circular strings?
                 hasCurvedSegments = self.captureCurve().hasCurvedSegments()
-                providerSupportsCurvedSegments = vlayer.dataProvider().capabilities() & QgsVectorDataProvider.CircularGeometries
+                providerSupportsCurvedSegments = \
+                    vlayer.dataProvider().capabilities() & QgsVectorDataProvider.CircularGeometries
 
                 snappingMatchesList = []
                 curveToAdd = None
@@ -1057,7 +1058,8 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
                     if f.geometry().isEmpty():  # //avoid intersection might have removed the whole geometry
 
                         self.messageEmitted.emit(tr(
-                            "The feature cannot be added because it's geometry collapsed due to intersection avoidance"),
+                            "The feature cannot be added because it's geometry "
+                            "collapsed due to intersection avoidance"),
                             Qgis.Critical)
                         self.stopCapturing()
                         return
@@ -1179,7 +1181,7 @@ class QgsDistanceWidget(QWidget):
 
             if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
                 self.distanceEditingFinished.emit(self.distance(), event.modifiers())
-                return True;
+                return True
 
         return False
 
@@ -1328,7 +1330,6 @@ class QgsMapToolSelectUtils(object):
             ct.setSourceCrs(canvas.mapSettings().destinationCrs())
             ct.setDestinationCrs(vlayer.crs())
             ct.setContext(QgsProject.instance().transformContext())
-            # QgsCoordinateTransform ct( canvas->mapSettings().destinationCrs(), vlayer->crs(), QgsProject::instance() );
 
             # todo: ...
 
@@ -1650,8 +1651,6 @@ class QgsMapToolSelectionHandler(QObject):
         self.mDistanceWidget.distanceChanged.connect(self.updateRadiusRubberband)
         self.mDistanceWidget.distanceEditingFinished.connect(self.radiusValueEntered)
         self.mDistanceWidget.distanceEditingCanceled.connect(self.cancel)
-        # connect( mDistanceWidget, &QgsDistanceWidget::distanceEditingFinished, this, &QgsMapToolSelectionHandler::radiusValueEntered );
-        # connect( mDistanceWidget, &QgsDistanceWidget::distanceEditingCanceled, this, &QgsMapToolSelectionHandler::cancel );
 
     def deleteDistanceWidget(self):
         if isinstance(self.mDistanceWidget, QWidget):
@@ -1665,9 +1664,9 @@ class QgsMapToolSelectionHandler(QObject):
         if not isinstance(self.mSelectionRubberBand, QgsRubberBand):
             return
 
-        self.updateRadiusRubberband(radius);
+        self.updateRadiusRubberband(radius)
         self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), modifiers)
-        self.cancel();
+        self.cancel()
 
     def cancel(self):
 

@@ -5,7 +5,7 @@ import sys
 import typing
 
 import numpy as np
-from PyQt5.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
+from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
     QTableView, QStyle, QStyleOptionViewItem
 
 from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
@@ -2031,7 +2031,8 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
         node = index.data(Qt.UserRole)
         if index.column() == 1:
-            # isinstance(node, (SpectralProfileGeneratorNode, FieldGeneratorNode, OptionTreeNode)) and index.column() == 1:
+            # isinstance(node, (SpectralProfileGeneratorNode, FieldGeneratorNode,
+            # OptionTreeNode)) and index.column() == 1:
             # taken from https://stackoverflow.com/questions/1956542/how-to-make-item-view-render-rich-html-text-in-qt
             self.initStyleOption(option, index)
             painter.save()

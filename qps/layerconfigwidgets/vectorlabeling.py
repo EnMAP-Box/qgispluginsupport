@@ -12,7 +12,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -24,13 +24,13 @@
 """
 import enum
 
-from PyQt5.QtWidgets import QWidget, QStackedWidget
+from qgis.PyQt.QtWidgets import QWidget, QStackedWidget
 
 from qgis.PyQt.QtGui import QIcon
-from qgis._core import QgsAbstractVectorLayerLabeling, QgsVectorLayer, QgsVectorLayerSimpleLabeling, \
+from qgis.core import QgsAbstractVectorLayerLabeling, QgsVectorLayer, QgsVectorLayerSimpleLabeling, \
     QgsRuleBasedLabeling, QgsPalLayerSettings, QgsTextFormat, QgsApplication, QgsMapLayer
 
-from qgis._gui import QgsTextFormatPanelWidget, QgsMapLayerConfigWidgetFactory
+from qgis.gui import QgsTextFormatPanelWidget, QgsMapLayerConfigWidgetFactory, QgsMapCanvas
 from .core import QpsMapLayerConfigWidget, configWidgetUi
 from ..utils import loadUi
 

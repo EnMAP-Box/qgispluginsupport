@@ -2,7 +2,8 @@ import pathlib
 
 # from qps
 enmap = (pathlib.Path(__file__).parents[1] / 'qps' / 'enmap.tif').as_posix()
-testvectordata = (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata.kml').as_posix()
+testvectordata = \
+    (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata.kml').as_posix()
 landcover = testvectordata + '|layername=landcover'
 enmap_pixel = testvectordata + '|layername=enmap_pixel'
 enmap_polygon = landcover
@@ -11,7 +12,8 @@ enmap_polygon = landcover
 hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()
 envi_bsq = (pathlib.Path(__file__).parent / 'envi').as_posix()
 speclib = (pathlib.Path(__file__).parent / 'speclib.sli').as_posix()
-speclib_labeled = (pathlib.Path(__file__).parent / 'library_berlin.sli').as_posix()
+speclib_labeled = \
+    (pathlib.Path(__file__).parent / 'library_berlin.sli').as_posix()
 ndvi_ts = (pathlib.Path(__file__).parent / 'ndvi_ts.tif').as_posix()
 
 DIR_ECOSIS = (pathlib.Path(__file__).parent / 'ecosis').as_posix()
