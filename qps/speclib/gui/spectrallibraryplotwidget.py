@@ -243,7 +243,7 @@ class SpectralLibraryPlotItem(pg.PlotItem):
             self.curves.extend(items)
 
         if isinstance(refItem, PlotDataItem):
-            ## configure curve for this plot
+            # configure curve for this plot
             (alpha, auto) = self.alphaState()
 
             for item in items:
@@ -253,10 +253,10 @@ class SpectralLibraryPlotItem(pg.PlotItem):
                 item.setClipToView(self.clipToViewMode())
                 item.setPointMode(self.pointMode())
 
-            ## Hide older plots if needed
+            # Hide older plots if needed
             self.updateDecimation()
 
-            ## Add to average if needed
+            # Add to average if needed
             self.updateParamList()
             if self.ctrl.averageGroup.isChecked() and 'skipAverage' not in kargs:
                 self.addAvgCurve(item)
@@ -623,9 +623,9 @@ class SpectralProfilePlotVisualization(QObject):
         speclib = self.speclib()
         field = self.field()
         return isinstance(speclib, QgsVectorLayer) \
-            and not sip.isdeleted(speclib) \
-            and isinstance(field, QgsField) \
-            and field.name() in speclib.fields().names()
+               and not sip.isdeleted(speclib) \
+               and isinstance(field, QgsField) \
+               and field.name() in speclib.fields().names()
 
     def setFilterExpression(self, expression):
         if isinstance(expression, QgsExpression):
