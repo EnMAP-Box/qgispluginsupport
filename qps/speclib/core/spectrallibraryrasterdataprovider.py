@@ -23,7 +23,7 @@ from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextC
 
 
 def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],
-                       fields = None) -> typing.List[QgsRasterLayer]:
+                       fields=None) -> typing.List[QgsRasterLayer]:
     """
     Converts a list of QgsFeatures into a set of QgsRasterLayers
     :param features:
