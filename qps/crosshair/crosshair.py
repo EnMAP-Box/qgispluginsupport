@@ -27,10 +27,19 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import pathlib
+import warnings
 
-from qgis.gui import *
+import numpy as np
+from PyQt5.QtCore import pyqtSignal, QLineF, QPointF
+from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtWidgets import QHBoxLayout, QPushButton, QDialogButtonBox, QDialog, QWidget
+from qgis._gui import QgsMapCanvas, QgsDialog, QgsMapCanvasItem
 
-from ..utils import *
+from qgis._core import QgsRectangle, QgsCoordinateReferenceSystem, QgsPointXY, QgsDistanceArea, QgsVector, \
+    QgsRasterLayer
+
+from qps.utils import loadUi
 
 
 class CrosshairStyle(object):
@@ -547,7 +556,7 @@ class CrosshairDialog(QgsDialog):
             return None
 
     def __init__(self, parent=None, crosshairStyle=None, mapCanvas=None, title='Specify Crosshair'):
-        super(CrosshairDialog, self).__init__(parent=parent, \
+        super(CrosshairDialog, self).__init__(parent=parent,
                                               buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.w = CrosshairWidget(parent=self)
         self.setWindowTitle(title)

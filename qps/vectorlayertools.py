@@ -25,10 +25,10 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-from qgis.gui import *
-from qgis.core import *
+from PyQt5.QtWidgets import QMessageBox
+
 from qgis.PyQt.QtCore import pyqtSignal
-from qgis.PyQt.QtWidgets import *
+from qgis._core import QgsPointXY, QgsCoordinateReferenceSystem, QgsRectangle
 
 from qgis.core import \
     QgsVectorLayerTools, QgsVectorLayer, Qgis, \
@@ -147,7 +147,7 @@ class VectorLayerTools(QgsVectorLayerTools):
             markSelectedOnly = bool(settings.value("qgis/digitizing/marker_only_for_selected", True))
 
             # // redraw only if markers will be drawn
-            if not markSelectedOnly or (vlayer.selectedFeatureCount() > 0 and \
+            if not markSelectedOnly or (vlayer.selectedFeatureCount() > 0 and
                                         (markerType == "Cross" or markerType == "SemiTransparentCircle")):
                 vlayer.triggerRepaint()
 

@@ -23,15 +23,28 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
-
+import copy
 import enum
+import json
+import pathlib
+import re
 
+from PyQt5.QtCore import QVariant, QObject, pyqtSignal, QSize, QByteArray, QDataStream, QIODevice
+from PyQt5.QtGui import QPainter, QPixmap, QPainterPath, QIcon, QColor, QPen, QBrush
+from PyQt5.QtWidgets import QWidgetAction, QToolButton, QLabel, QWidget, QComboBox, QMenu, QDialog, QDialogButtonBox, \
+    QVBoxLayout
+from PyQt5.QtXml import QDomElement, QDomDocument
+
+from qgis._core import QgsField, QgsVectorLayer, QgsSymbolLayerUtils, QgsAction
+
+from qgis.PyQt import Qt
+from qgis._gui import QgsDialog
 from qgis.gui import QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
     QgsSearchWidgetWrapper, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsGui
 from ..externals import pyqtgraph as pg
 from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
 from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
-from ..utils import *
+from ..utils import findMapLayer, loadUi
 
 DEBUG = False
 
@@ -997,7 +1010,7 @@ class PlotStyleDialog(QgsDialog):
             return None
 
     def __init__(self, parent=None, plotStyle=None, title='Specify Plot Style', **kwds):
-        super(PlotStyleDialog, self).__init__(parent=parent, \
+        super(PlotStyleDialog, self).__init__(parent=parent,
                                               buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
                                               **kwds)
         self.w: PlotStyleWidget = PlotStyleWidget(parent=self)

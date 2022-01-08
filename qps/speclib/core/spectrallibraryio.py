@@ -183,9 +183,7 @@ class SpectralLibraryIO(object):
     IMPSET_REQUIRED_FIELDS = 'required_fields'
 
     @staticmethod
-    def registerSpectralLibraryIO(speclibIO: typing.Union[
-        'SpectralLibraryIO',
-        typing.List['SpectralLibraryIO']]):
+    def registerSpectralLibraryIO(speclibIO: typing.Union['SpectralLibraryIO', typing.List['SpectralLibraryIO']]):
 
         if isinstance(speclibIO, list):
             for io in speclibIO:
@@ -744,8 +742,6 @@ class SpectralLibraryImportDialog(QDialog):
 
     def initFieldMapping(self):
         pass
-
-
 
 
 class SpectralLibraryExportDialog(QDialog):

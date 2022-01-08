@@ -243,7 +243,7 @@ LUT_IDL2GDAL = {1: gdal.GDT_Byte,
                 3: gdal.GDT_Int32,
                 4: gdal.GDT_Float32,
                 5: gdal.GDT_Float64,
-                #:gdal.GDT_CInt16,
+                # :gdal.GDT_CInt16,
                 # 8:gdal.GDT_CInt32,
                 6: gdal.GDT_CFloat32,
                 9: gdal.GDT_CFloat64}
@@ -490,8 +490,8 @@ class SpectralLibraryUtils:
     @staticmethod
     def addProfiles(speclibDst: QgsVectorLayer,
                     profiles: typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
-                    addMissingFields: bool = None, \
-                    copyEditorWidgetSetup: bool = True, \
+                    addMissingFields: bool = None,
+                    copyEditorWidgetSetup: bool = True,
                     feedback: QgsProcessingFeedback = None) -> typing.List[int]:
 
         # todo: allow to add profiles with distinct key

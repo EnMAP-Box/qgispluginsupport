@@ -508,14 +508,14 @@ class CursorLocationInfoDock(QDockWidget):
                 # searchRadius = QgsTolerance.defaultTolerance(lyr, self.mCanvas.mapSettings()) searchRadius =
                 # QgsTolerance.toleranceInProjectUnits(1, self.mCanvas.mapRenderer(), QgsTolerance.Pixels)
                 searchRect = QgsRectangle()
-                searchRect.setXMinimum(pointLyr.x() - searchRadius);
-                searchRect.setXMaximum(pointLyr.x() + searchRadius);
-                searchRect.setYMinimum(pointLyr.y() - searchRadius);
-                searchRect.setYMaximum(pointLyr.y() + searchRadius);
+                searchRect.setXMinimum(pointLyr.x() - searchRadius)
+                searchRect.setXMaximum(pointLyr.x() + searchRadius)
+                searchRect.setYMinimum(pointLyr.y() - searchRadius)
+                searchRect.setYMaximum(pointLyr.y() + searchRadius)
 
                 flags = QgsFeatureRequest.ExactIntersect
-                features = lyr.getFeatures(QgsFeatureRequest() \
-                                           .setFilterRect(searchRect) \
+                features = lyr.getFeatures(QgsFeatureRequest()
+                                           .setFilterRect(searchRect)
                                            .setFlags(flags))
                 feature = QgsFeature()
                 s = VectorValueSet(lyr.source(), pointLyr)

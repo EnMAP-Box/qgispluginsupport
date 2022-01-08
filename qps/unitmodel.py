@@ -1,8 +1,9 @@
 import typing
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
 import numpy as np
+from PyQt5.QtCore import QAbstractListModel, QModelIndex
 
+from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import NULL
 from .utils import UnitLookup, METRIC_EXPONENTS, datetime64
 
 BAND_INDEX = 'Band Index'

@@ -24,10 +24,13 @@
 """
 import enum
 
+from PyQt5.QtWidgets import QWidget, QStackedWidget
+
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import *
-from qgis.core import *
-from qgis.gui import *
+from qgis._core import QgsAbstractVectorLayerLabeling, QgsVectorLayer, QgsVectorLayerSimpleLabeling, \
+    QgsRuleBasedLabeling, QgsPalLayerSettings, QgsTextFormat, QgsApplication, QgsMapLayer
+
+from qgis._gui import QgsTextFormatPanelWidget, QgsMapLayerConfigWidgetFactory
 from .core import QpsMapLayerConfigWidget, configWidgetUi
 from ..utils import loadUi
 

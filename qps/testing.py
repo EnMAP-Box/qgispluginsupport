@@ -27,22 +27,27 @@
 import enum
 import inspect
 import itertools
+import os
+import pathlib
 import random
 import sqlite3
+import sys
 import traceback
+import typing
 import uuid
 import warnings
 from unittest import mock
 
 import numpy as np
 from PyQt5.QtCore import QObject, QPoint, QSize, QVariant, pyqtSignal, QMimeData, QPointF, QDir
-from PyQt5.QtGui import QImage, QDropEvent
-from PyQt5.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow
+from PyQt5.QtGui import QImage, QDropEvent, QIcon
+from PyQt5.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
+    QMenu
 from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
 import qgis.utils
-from qgis.PyQt import sip
+from qgis.PyQt import sip, Qt
 from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
@@ -55,9 +60,9 @@ from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
-from .resources import *
+from .resources import findQGISResourceFiles, initResourceFile
 from .speclib import createStandardFields
-from .utils import UnitLookup, px2geo, SpatialPoint
+from .utils import UnitLookup, px2geo, SpatialPoint, findUpwardPath
 
 WMS_GMAPS = r'crs=EPSG:3857&' \
             r'format&' \
@@ -219,7 +224,6 @@ def start_app(cleanup: bool = True,
         print('Providers: {}'.format(', '.join(providers)))
 
     return qgsApp
-
 
 
 class QgisMockup(QgisInterface):
@@ -680,7 +684,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-            TestObjects._coreDataGT, TestObjects._coreDataWkt
+               TestObjects._coreDataGT, TestObjects._coreDataWkt
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:

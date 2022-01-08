@@ -22,19 +22,15 @@
 ***************************************************************************
 """
 
-import os
 import pathlib
-import re
-import typing
+
+from PyQt5.QtWidgets import QVBoxLayout, QScrollArea, QLineEdit, QTextBrowser, QMenu
 
 from qgis.PyQt.QtGui import QIcon
-#
-from qgis.PyQt.QtWidgets import *
-from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsFileUtils, QgsSettings, \
-    QgsStyle, QgsMapLayerStyle, QgsApplication
+from qgis.core import QgsMapLayer, QgsRasterLayer, QgsApplication
 from qgis.gui import QgsRasterHistogramWidget, QgsMapCanvas, QgsMapLayerConfigWidget, \
-    QgsLayerTreeEmbeddedConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRendererRasterPropertiesWidget, \
-    QgsRendererPropertiesDialog, QgsRasterTransparencyWidget, QgsProjectionSelectionWidget
+    QgsLayerTreeEmbeddedConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterTransparencyWidget, \
+    QgsProjectionSelectionWidget
 from ..utils import loadUi
 
 

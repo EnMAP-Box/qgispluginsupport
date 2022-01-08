@@ -14,7 +14,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
-                                                                                                                                                 *
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -36,12 +36,16 @@ import typing
 import warnings
 
 import numpy as np
+from PyQt5.QtCore import QModelIndex, QMimeData, pyqtSignal, QVariant, QAbstractListModel, QItemSelectionModel, \
+    QByteArray, QAbstractTableModel, QSize, QObject
+from PyQt5.QtGui import QColor, QIcon, QClipboard, QBrush, QPixmap
+from PyQt5.QtWidgets import QVBoxLayout, QFileDialog, QPushButton, QDialogButtonBox, QToolButton, QAction, QWidget, \
+    QMessageBox, QTableView, QColorDialog, QApplication, QInputDialog, QDialog, QMenu, QHBoxLayout, QComboBox
+from PyQt5.QtXml import QDomDocument, QDomImplementation
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
-from qgis.PyQt.QtXml import *
+from qgis.PyQt import Qt
+from qgis.PyQt.QtCore import NULL
 from qgis.core import Qgis, QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsReadWriteContext, \
     QgsRasterRenderer, QgsCategorizedSymbolRenderer, QgsPalettedRasterRenderer, \
     QgsField, QgsRendererCategory, QgsProject, QgsProviderRegistry, \
@@ -260,16 +264,13 @@ class ClassificationScheme(QAbstractTableModel):
 
     sigIsEditableChanged = pyqtSignal(bool)
 
-    def __init__(self, name: str = None, zero_based: bool = False):
+    def __init__(self, name: str = 'Classification', zero_based: bool = False):
         super(ClassificationScheme, self).__init__()
         self.mClasses: typing.List[ClassInfo] = []
         self.mName = name
         self.mIsEditable = True
 
         self.mZeroBased: bool = zero_based
-
-        if name is None:
-            name = 'Classification'
 
         self.mColColor = 'Color'
         self.mColName = 'Name'
@@ -1441,6 +1442,7 @@ class ClassificationSchemeComboBox(QComboBox):
         self.view().setMinimumWidth(200)
         model = ClassificationSchemeComboBoxModel()
         model.setClassificationScheme(classification)
+        self.mModel = None
         self.setModel(model)
 
     def classIndexFromValue(self, value) -> int:
@@ -1735,7 +1737,7 @@ class ClassificationSchemeWidget(QWidget):
         assert isinstance(model, ClassificationScheme)
         classInfo = model.index2ClassInfo(idx)
         if idx.column() == model.columnNames().index(model.mColColor):
-            c = QColorDialog.getColor(classInfo.mColor, self.tableClassificationScheme, \
+            c = QColorDialog.getColor(classInfo.mColor, self.tableClassificationScheme,
                                       'Set color for "{}"'.format(classInfo.name()))
             model.setData(idx, c, role=Qt.EditRole)
 
@@ -1821,7 +1823,7 @@ class ClassificationSchemeDialog(QgsDialog):
             return None
 
     def __init__(self, parent=None, classificationScheme=None, title='Specify Classification Scheme'):
-        super(ClassificationSchemeDialog, self).__init__(parent=parent, \
+        super(ClassificationSchemeDialog, self).__init__(parent=parent,
                                                          buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.w = ClassificationSchemeWidget(parent=self, classificationScheme=classificationScheme)
         self.setWindowTitle(title)

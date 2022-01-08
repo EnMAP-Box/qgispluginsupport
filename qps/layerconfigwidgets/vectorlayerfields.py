@@ -24,10 +24,13 @@
 """
 import sys
 
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
+from PyQt5.QtCore import QSortFilterProxyModel, QModelIndex, pyqtSignal, QVariant, QAbstractItemModel
+from PyQt5.QtGui import QResizeEvent, QStandardItemModel, QStandardItem
+from PyQt5.QtWidgets import QMessageBox, QDialog, QTableView, QStackedWidget, QMenu, QComboBox, QVBoxLayout, QLabel, \
+    QWidget
+
+from qgis.PyQt import Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import *
 from qgis.core import QgsMapLayer, QgsVectorLayer, QgsField, QgsFieldModel, QgsEditorWidgetSetup
 from qgis.gui import QgsEditorWidgetFactory, QgsCollapsibleGroupBox, QgsEditorConfigWidget, QgsGui, \
     QgsMapLayerConfigWidgetFactory
@@ -76,7 +79,6 @@ class LayerFieldsTableModel(QgsFieldModel):
         elif orientation == Qt.Vertical and role == Qt.DisplayRole:
             return col
         return None
-
 
     def data(self, index: QModelIndex, role: int):
         if not index.isValid():

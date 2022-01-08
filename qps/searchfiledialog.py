@@ -24,9 +24,9 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QDialog
 
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtWidgets import *
 from qgis.gui import QgsFileWidget
 from . import DIR_UI_FILES
 from .utils import loadUi

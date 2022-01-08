@@ -16,7 +16,32 @@
 *                                                                         *
 ***************************************************************************
 """
+import os
+import pathlib
+import re
+import sys
+import typing
+import warnings
 
+from PyQt5.QtCore import QMimeData, QTimer, pyqtSignal, QObject, QVariant, QModelIndex
+from PyQt5.QtGui import QCloseEvent, QIcon
+from PyQt5.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindow, QPushButton, QDialogButtonBox, QAction, \
+    QButtonGroup, QToolButton, QListWidget, QStackedWidget, QListWidgetItem, QApplication, QLabel, QSpinBox, QComboBox, \
+    QLineEdit, QGridLayout, QTableView, QVBoxLayout
+from PyQt5.QtXml import QDomDocument
+from osgeo import gdal, osr
+from qgis._core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, QgsFeatureRequest, \
+    QgsExpressionContext, QgsExpressionContextUtils, QgsField, QgsScopedProxyProgressTask, QgsExpressionContextScope, \
+    QgsRasterLayer, QgsSettings, QgsReadWriteContext, QgsRasterRenderer, QgsMapLayerStyle, QgsMapLayer, QgsDataProvider, \
+    QgsLayerTreeGroup, QgsLayerTreeLayer, QgsRasterBandStats, QgsContrastEnhancement, Qgis, QgsSingleBandGrayRenderer, \
+    QgsMultiBandColorRenderer, QgsVectorDataProvider, QgsAction, QgsEditFormConfig, QgsExpressionContextGenerator, \
+    QgsApplication, QgsFeatureRenderer, QgsWkbTypes, QgsFieldProxyModel, QgsFeature, QgsRectangle, QgsProviderRegistry, \
+    QgsRasterDataProvider, QgsFields, QgsFieldModel, QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer, \
+    QgsHillshadeRenderer, QgsPalettedRasterRenderer, QgsSingleBandPseudoColorRenderer
+
+from qgis._gui import QgisInterface, QgsMapCanvas
+
+from qgis.PyQt import Qt
 from qgis.gui import \
     QgsActionMenu, \
     QgsAttributeEditorContext, \
@@ -41,7 +66,7 @@ from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .speclib.core import create_profile_field
-from .utils import *
+from .utils import write_vsimem, loadUi, defaultBands, iconForFieldType, qgsFields
 from .vectorlayertools import VectorLayerTools
 
 """
@@ -890,7 +915,6 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         from .layerconfigwidgets.core import \
             MetadataConfigWidgetFactory, \
             SourceConfigWidgetFactory, \
-            SymbologyConfigWidgetFactory, \
             TransparencyConfigWidgetFactory, \
             RenderingConfigWidgetFactory, LegendConfigWidgetFactory
         from .layerconfigwidgets.vectorlabeling import LabelingConfigWidgetFactory
@@ -902,7 +926,6 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         factories = [
             MetadataConfigWidgetFactory(),
             SourceConfigWidgetFactory(),
-            SymbologyConfigWidgetFactory(),
             RasterBandConfigWidgetFactory(),
             LabelingConfigWidgetFactory(),
             TransparencyConfigWidgetFactory(),
@@ -1037,7 +1060,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             i = pages.index(page)
             self.setPage(i)
         else:
-            assert isinstance(page, int) and page >= 0 and page < self.mOptionsListWidget.count()
+            assert isinstance(page, int) and 0 <= page < self.mOptionsListWidget.count()
             self.mOptionsListWidget.setCurrentRow(page)
 
     def pages(self) -> typing.List[QgsMapLayerConfigWidget]:
@@ -1270,7 +1293,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         # workaround for missing filter widget
         self.mMessageTimeOut = 5
-        # self.mFeatureFilterWidget.init(mLayer, self.mEditorContext, self.mMainView, None, QgisApp.instance().messageTimeout())
+        # self.mFeatureFilterWidget.init(mLayer, self.mEditorContext, self.mMainView, None,
+        # QgisApp.instance().messageTimeout())
         self.mApplyFilterButton.setDefaultAction(self.mActionApplyFilter)
         self.mSetFilterButton.setDefaultAction(self.mActionSetFilter)
         self.mActionApplyFilter.triggered.connect(self._filterQueryAccepted)
@@ -1614,8 +1638,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             context.appendScope(scope)
             action.run(context)
 
-    def formFilterSet(self, filter: str, filterType: QgsAttributeForm.FilterType):
-        self.setFilterExpression(filter, filterType, True)
+    def formFilterSet(self, filterText: str, filterType: QgsAttributeForm.FilterType):
+        self.setFilterExpression(filterText, filterType, True)
 
     def setFilterExpression(self,
                             filterString: str,

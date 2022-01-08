@@ -31,11 +31,11 @@ import re
 import sys
 import typing
 
+from PyQt5.QtCore import QModelIndex, QAbstractTableModel, pyqtSignal, QSortFilterProxyModel
+from PyQt5.QtWidgets import QDialogButtonBox, QDialog
 from osgeo import gdal
 
-from qgis.PyQt import sip
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtWidgets import *
+from qgis.PyQt import sip, Qt
 from qgis.core import QgsTaskManager, QgsApplication, QgsTask
 from . import DIR_UI_FILES
 from .utils import loadUi

@@ -1288,9 +1288,9 @@ class QgsMapToolSelectUtils(object):
         QApplication.restoreOverrideCursor()
 
     @staticmethod
-    def setSelectedFeatures(canvas: QgsMapCanvas, selectGeometry: QgsGeometry, \
-                            selectBehavior: QgsVectorLayer.SelectBehavior, \
-                            doContains: bool = True, \
+    def setSelectedFeatures(canvas: QgsMapCanvas, selectGeometry: QgsGeometry,
+                            selectBehavior: QgsVectorLayer.SelectBehavior,
+                            doContains: bool = True,
                             singleSelect: bool = False):
 
         vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(canvas)

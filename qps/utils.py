@@ -46,16 +46,18 @@ import warnings
 import zipfile
 
 import numpy as np
+from PyQt5.QtCore import QPoint, QRect, QObject, QPointF, QDirIterator, QDateTime, QDate, QVariant, QByteArray, QUrl
+from PyQt5.QtGui import QIcon, QColor
+from PyQt5.QtWidgets import QComboBox, QWidget
+from PyQt5.QtXml import QDomNode, QDomElement
 from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtGui import *
-from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
-from qgis.PyQt.QtXml import *
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import *
+from qgis._core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, QgsEditorWidgetSetup, \
+    QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
     QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
@@ -698,6 +700,7 @@ def value2str(value,
               empty_string: str = ''):
     """
     Converts a value into a string
+    :param empty_string:
     :param empty_values: Defines a list of values to be represented by the empty_string
     :param sep:
     :param value: any
@@ -1401,7 +1404,8 @@ def qgsFields2str(qgsFields: QgsFields) -> str:
     infos = []
     for field in qgsFields:
         assert isinstance(field, QgsField)
-        # info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(), field.comment(), field.subType()]
+        # info = [field.name(), field.type(), field.typeName(), field.length(), field.precision(),
+        # field.comment(), field.subType()]
         info = dict(name=field.name(),
                     type=field.type(),
                     typeName=field.typeName(),
@@ -1973,7 +1977,7 @@ def qgisAppQgisInterface() -> QgisInterface:
         if not isinstance(mainWindow, QMainWindow) or mainWindow.objectName() != 'QgisApp':
             return None
         return qgis.utils.iface
-    except Exception:
+    except ImportError:
         return None
 
 
@@ -2101,7 +2105,7 @@ def layerGeoTransform(rasterLayer: QgsRasterLayer) -> typing.Tuple[float, float,
     x0 = ext.xMinimum()
     y0 = ext.yMaximum()
 
-    gt = (x0, rasterLayer.rasterUnitsPerPixelX(), 0, y0, \
+    gt = (x0, rasterLayer.rasterUnitsPerPixelX(), 0, y0,
           0, -1 * rasterLayer.rasterUnitsPerPixelY())
     return gt
 
