@@ -623,9 +623,9 @@ class SpectralProfilePlotVisualization(QObject):
         speclib = self.speclib()
         field = self.field()
         return isinstance(speclib, QgsVectorLayer) \
-               and not sip.isdeleted(speclib) \
-               and isinstance(field, QgsField) \
-               and field.name() in speclib.fields().names()
+            and not sip.isdeleted(speclib) \
+            and isinstance(field, QgsField) \
+            and field.name() in speclib.fields().names()
 
     def setFilterExpression(self, expression):
         if isinstance(expression, QgsExpression):
