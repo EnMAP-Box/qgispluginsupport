@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDateTime, QByteArray
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
-    QgsRasterBandStats, QgsProject, QgsVectorLayerCache, QgsPointXY, QgsRaster, QgsRasterIdentifyResult, \
+    QgsRasterBandStats, QgsProject, QgsPointXY, QgsRaster, QgsRasterIdentifyResult, \
     QgsColorRampShader
 from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, QgsRasterDataProvider, QgsField, \
     QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
