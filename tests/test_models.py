@@ -97,7 +97,7 @@ class ModelTests(TestCase):
         self.assertIsInstance(n2, TreeNode)
         node.appendChildNodes(n2)
         self.assertEqual(n2.parentNode(), node)
-        QApplication.processEvents()
+
         self.assertTrue(len(argList) > 0)
 
         t = 'test'
