@@ -14,6 +14,7 @@ QPS is designed as python package that can be included as subpackage of other QG
 
 
 QPS is used in other projects, for example:
+QPS is used in other project like:
 
 EnMAP-Box https://bitbucket.org/hu-geomatics/enmap-box
 

@@ -13,6 +13,7 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 3 of the License, or
     (at your option) any later version.
+                                                                                                                                                 *
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -31,9 +32,8 @@ import warnings
 from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
 
-# os.environ['PYQTGRAPH_QT_LIB'] = 'qgis.PyQt'
 
-MIN_QGIS_VERSION = '3.16'
+MIN_QGIS_VERSION = '3.20'
 __version__ = '1.3'
 
 DIR_QPS = pathlib.Path(__file__).parent
