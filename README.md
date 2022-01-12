@@ -1,12 +1,9 @@
 # QGIS Plugin Support (QPS) 
-![build status](https://img.shields.io/bitbucket/pipelines/jakimowb/qgispluginsupport.svg)
 
 
+This is a small library that supports the creation of QGIS Plugins. 
 
-
-This is a small library to support the creation of QGIS Plugins. 
-
-OPS is used in other project like:
+QPS is used in other project like:
 
 EnMAP-Box https://bitbucket.org/hu-geomatics/enmap-box
 
@@ -53,7 +50,7 @@ QGIS_APP = initQgisApplication()
 
 
 from mymodule.qps import initAll 
-from mymodule.qps.speclib.core import SpectralLibraryWidget
+from mymodule.qps.speclib.gui import SpectralLibraryWidget
 initAll()
 
 widget = SpectralLibraryWidget()
