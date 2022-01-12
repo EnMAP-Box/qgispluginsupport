@@ -18,28 +18,26 @@
 """
 # noinspection PyPep8Naming
 import os
+import pathlib
 import re
 import unittest
 import xmlrunner
+from qgis._core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature
 
-from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils, SpectralLibrary
+from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
+    SpectralLibraryIO, SpectralLibraryImportWidget, SpectralLibraryExportWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
+from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
     GeoPackageSpectralLibraryExportWidget
 from qps.testing import TestObjects, TestCase
 
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
+from qps.utils import file_search
 
 from qpstestdata import enmap, landcover
 from qpstestdata import speclib as speclibpath
-
-
-
-
-
-
-
 
 
 class TestIO(TestCase):
@@ -115,7 +113,7 @@ class TestIO(TestCase):
 
         DIR = self.createTestOutputDirectory()
 
-        sl = TestObjects.createSpectralLibrary(n_bands=[[25, 45],[10,5]])
+        sl = TestObjects.createSpectralLibrary(n_bands=[[25, 45], [10, 5]])
 
         COUNTS = SpectralLibraryUtils.countProfiles(sl)
 
@@ -241,7 +239,6 @@ class TestIO(TestCase):
         path = self.createTestOutputDirectory() / 'SPECLIB_IO'
         os.makedirs(path, exist_ok=True)
         return path
-
 
 
 if __name__ == '__main__':
