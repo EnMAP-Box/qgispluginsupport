@@ -1,6 +1,0 @@
-git+https://github.com/pyqtgraph/pyqtgraph.git
-pyqt5
-jupyter_rfb
-numpy
-simplejpeg
-
