@@ -2,8 +2,14 @@
 import os
 import unittest
 import datetime
-
+import typing
 import xmlrunner
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QWidget
+from qgis._core import QgsVectorLayer
+from qgis._gui import QgsMapCanvas, QgsDualView
+
+from qgis.PyQt import Qt
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QGridLayout
 from qgis.core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm, QgsProject, QgsProcessingModelOutput, \
@@ -20,6 +26,9 @@ from qgis.core import QgsProcessingProvider
 
 from qps import initResources, initAll
 from qps.speclib.core import profile_field_lookup
+from qps.speclib.core.spectrallibrary import SpectralLibrary
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotControlModel
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.testing import TestObjects, StartOptions
 
 from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget, SpectralProcessingAlgorithmModel, \
@@ -321,10 +330,9 @@ class SpectralProcessingTests(TestCase):
         class D(QgsProcessingAlgorithmDialogBase):
             def __init__(self, *args, **kwds):
                 super().__init__(*args, **kwds)
+
         d = D()
         d.exec_()
-
-
 
     def test_SpectralProcessingWidget(self):
         self.initProcessingRegistry()

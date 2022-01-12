@@ -29,17 +29,13 @@ from PyQt5.QtCore import QDate, QDateTime, QByteArray, QUrl, QRect, QPoint, QVar
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
 from PyQt5.QtXml import QDomDocument
-from numpy import datetime64
 
 from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
 
-
-
 from osgeo import gdal, ogr, osr, gdal_array
 from qps.testing import TestObjects
-
 
 from qps.testing import TestCase
 from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItemsToMenu, value2str, filenameFromString, \
@@ -47,7 +43,7 @@ from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItems
     SpatialPoint, layerGeoTransform, displayBandNames, UnitLookup, qgsRasterLayer, gdalDataset, px2geocoordinates, \
     rasterLayerArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
-    qgsFieldAttributes2List, gdalFileSize, loadUi, dn
+    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, datetime64
 
 
 class TestUtils(TestCase):
@@ -535,7 +531,7 @@ class TestUtils(TestCase):
         refDate = np.datetime64('2020-01-01')
         self.assertEqual(datetime64(refDate), refDate)  # datetime64 to datetime64
         self.assertEqual(datetime64('2020-01-01'), refDate)  # string to datetime64
-        self.assertEqual(datetime64(QDate(2020, 1, 1, )), refDate)
+        self.assertEqual(datetime64(QDate(2020, 1, 1)), refDate)
         self.assertEqual(datetime64(QDateTime(2020, 1, 1, 0, 0)), refDate)
         self.assertEqual(datetime64(datetime.date(year=2020, month=1, day=1)), refDate)
         self.assertEqual(datetime64(datetime.datetime(year=2020, month=1, day=1)), refDate)

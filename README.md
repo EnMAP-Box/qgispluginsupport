@@ -1,8 +1,7 @@
 # QGIS Plugin Support (QPS) 
 ![build status](https://img.shields.io/bitbucket/pipelines/jakimowb/qgispluginsupport.svg)
 
-The QGIS Plugin Support (QPS) library aims at the development of remote sensing applications using the QGIS python API.
-
+The QGIS Plugin Support (QPS) library helps to develop QGIS plugins specifically for remote sensing applications.
 
 This includes, for example
 - Remote sensing specific metadata handling
@@ -46,9 +45,21 @@ This is preferably done in the ```__init__.py``` of
 your application, e.g. by calling:
 
     ```python
-    from mymodule.qps import initAll
+    from mymodule.qps import initAll 
     initAll()
     ```
+
+## Dependencies
+
+QPS depends on the following type of packages:
+1. those available in a standard QGIS installation, i.e. QGIS python API, numpy, gdal, etc.
+2. pyqtgraph. 
+   QPS uses the fork https://github.com/EnMAP-Box/pyqtgraph branch qps_modifications
+   These files are included as subtree
+   git subtree add --prefix qps/pyqtgraph git@github.com:EnMAP-Box/pyqtgraph.git qps_modifications --squash
+3. 
+
+
 
 ## Examples ###
 

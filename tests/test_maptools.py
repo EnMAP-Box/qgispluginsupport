@@ -22,11 +22,8 @@ from qps.testing import TestObjects, TestCase
 
 from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, QgsMapToolZoom, \
     QgsMapToolCapture, QgsMapMouseEvent
-from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle,   \
-    QgsRasterLayer, QgsVectorLayer,  QgsWkbTypes
-
-
-
+from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle, \
+    QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 
 from osgeo import gdal, ogr, osr
 
@@ -95,8 +92,6 @@ class TestMapTools(TestCase):
         me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, 0), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         me2 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
         me3 = QMouseEvent(QEvent.MouseButtonPress, QPointF(h, w), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
-
-
 
         canvas.mousePressEvent(me1)
         canvas.mousePressEvent(me2)
@@ -259,5 +254,4 @@ class TestMapTools(TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

@@ -21,7 +21,7 @@ from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2st
     qgsFieldAttributes2List, \
     spatialPoint2px, saveTransform
 from ...plotstyling.plotstyling import PlotStyle
-from ...externals import pyqtgraph as pg
+from ...pyqtgraph import pyqtgraph as pg
 
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
 

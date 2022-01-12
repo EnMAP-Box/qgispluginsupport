@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: qgis/qgis
+    runs-on: ubuntu-latest
     steps:
       - name: Setup Python
         uses: actions/setup-python@v2.3.1

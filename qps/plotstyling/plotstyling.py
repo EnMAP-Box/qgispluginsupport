@@ -42,9 +42,8 @@ from qgis.core import QgsField, QgsVectorLayer, QgsSymbolLayerUtils, QgsAction, 
 from qgis.gui import QgsDialog
 from qgis.gui import QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
     QgsSearchWidgetWrapper, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsGui
-from ..externals import pyqtgraph as pg
-from ..externals.pyqtgraph.graphicsItems.PlotDataItem import PlotDataItem
-from ..externals.pyqtgraph.graphicsItems.ScatterPlotItem import drawSymbol, renderSymbol
+from ..pyqtgraph import pyqtgraph as pg
+from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import renderSymbol, drawSymbol
 from ..utils import findMapLayer, loadUi
 
 DEBUG = False
@@ -318,7 +317,7 @@ class PlotStyle(QObject):
     sigUpdated = pyqtSignal()
 
     @staticmethod
-    def fromPlotDataItem(pdi: PlotDataItem):
+    def fromPlotDataItem(pdi: pg.PlotDataItem):
         """
         Reads a PlotDataItems' styling
         :param pdi: PlotDataItem
@@ -445,7 +444,7 @@ class PlotStyle(QObject):
         """
         self.linePen.setColor(QColor(*color))
 
-    def apply(self, pdi: PlotDataItem, updateItem: bool = True, visibility: bool = None):
+    def apply(self, pdi: pg.PlotDataItem, updateItem: bool = True, visibility: bool = None):
         """
         Applies this PlotStyle to a PlotDataItem by setting
         the line pen (line type, line color) and the marker/symbol (marker/symbol type,
@@ -459,7 +458,7 @@ class PlotStyle(QObject):
         :rtype:
         """
 
-        assert isinstance(pdi, PlotDataItem)
+        assert isinstance(pdi, pg.PlotDataItem)
 
         pdi.opts['pen'] = pg.mkPen(self.linePen)
         pdi.opts['symbol'] = self.markerSymbol

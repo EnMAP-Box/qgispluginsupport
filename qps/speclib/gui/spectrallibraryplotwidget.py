@@ -7,6 +7,7 @@ import textwrap
 import typing
 
 import numpy as np
+
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
 
 from qgis.PyQt import sip
@@ -31,12 +32,13 @@ from ..core import profile_field_list, profile_field_indices, is_spectral_librar
 from ..core.spectrallibrary import SpectralLibrary, defaultCurvePlotStyle
 from ..core.spectralprofile import decodeProfileValueDict
 from ... import debugLog
-from ...externals import pyqtgraph as pg
+
+from ...pyqtgraph import pyqtgraph as pg
+#from ...pyqtgraph.pyqtgraph import AxisItem
 from ...externals.htmlwidgets import HTMLComboBox
-from ...externals.pyqtgraph import AxisItem
-from ...externals.pyqtgraph import PlotDataItem, PlotWindow
-from ...externals.pyqtgraph.Point import Point as pgPoint
-from ...externals.pyqtgraph.graphicsItems.ScatterPlotItem import SpotItem
+#from ...pyqtgraph.pyqtgraph import PlotDataItem, PlotWindow
+#from ...pyqtgraph.pyqtgraph.Point import Point as pgPoint
+#from ...pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import SpotItem
 from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
@@ -242,7 +244,7 @@ class SpectralLibraryPlotItem(pg.PlotItem):
                 self.itemMeta[item] = kargs.get('params', {})
             self.curves.extend(items)
 
-        if isinstance(refItem, PlotDataItem):
+        if isinstance(refItem, pg.PlotDataItem):
             # configure curve for this plot
             (alpha, auto) = self.alphaState()
 
@@ -1099,7 +1101,7 @@ PROFILE_DATA_CACHE_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX]
 VISUALIZATION_KEY = typing.Tuple[SpectralProfilePlotVisualization, PLOT_DATA_KEY]
 
 
-class SpectralProfilePlotDataItem(PlotDataItem):
+class SpectralProfilePlotDataItem(pg.PlotDataItem):
     """
     A pyqtgraph.PlotDataItem to plot a SpectralProfile
     """
@@ -1156,7 +1158,7 @@ class SpectralProfilePlotDataItem(PlotDataItem):
         idx = np.nanargmin(dist)
         return idx, dataX[idx], dataY[idx], dist[idx]
 
-    def plot(self) -> PlotWindow:
+    def plot(self) -> pg.PlotWindow:
         """
         Opens a PlotWindow and plots this SpectralProfilePlotDataItem to
         :return:
@@ -1260,7 +1262,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mInfoScatterPoints.setZValue(9999999)
         self.mInfoScatterPoints.setBrush(self.mCrosshairLineH.pen.color())
 
-        self.mInfoScatterPointHtml: typing.Dict[pgPoint, str] = dict()
+        self.mInfoScatterPointHtml: typing.Dict[pg.Point, str] = dict()
 
         self.mCrosshairLineH.pen.setWidth(2)
         self.mCrosshairLineV.pen.setWidth(2)
@@ -1347,7 +1349,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     def xAxis(self) -> SpectralXAxis:
         return self.plotItem.getAxis('bottom')
 
-    def yAxis(self) -> AxisItem:
+    def yAxis(self) -> pg.AxisItem:
         return self.plotItem.getAxis('left')
 
     def viewBox(self) -> SpectralViewBox:
@@ -1363,7 +1365,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         # remove info point
         existing_points = self.existingInfoScatterPoints()
         for spotItem in spotItems:
-            if isinstance(spotItem, SpotItem):
+            if isinstance(spotItem, pg.SpotItem):
                 pt = HashablePointF(spotItem.pos())
                 if pt in existing_points:
                     existing_points.remove(pt)

@@ -20,6 +20,10 @@
 import unittest
 
 import xmlrunner
+from PyQt5.QtCore import QObject, Qt, QModelIndex
+from PyQt5.QtWidgets import QDialog
+from qgis._core import QgsProject, QgsProcessingRegistry, QgsProcessingAlgorithm, QgsProcessingOutputRasterLayer
+from qgis._gui import QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog
 
 from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableConfig, \
     QgsEditorWidgetSetup, QgsActionManager, QgsAction
@@ -80,7 +84,6 @@ class ProcessingToolsTest(TestCase):
         if result == QDialog.Accepted:
             alg = d.algorithm()
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
-
 
 
 if __name__ == '__main__':
