@@ -7,6 +7,6 @@ services:
       dockerfile: ./.docker/Dockerfile
       args:
         QGIS_TEST_VERSION: ${QGIS_TEST_VERSION}
-#    tty: true
+    tty: true
     volumes:
       - ${GITHUB_WORKSPACE}:/usr/src
