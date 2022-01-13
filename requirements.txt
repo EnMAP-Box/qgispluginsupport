@@ -4,9 +4,9 @@
 ###### Requirements ######
 
 gdal
-numpy>=1.15
-scipy>=1.1
-scikit-learn>=0.19.2
+numpy
+scipy
+# scikit-learn>=0.19.2
 
 # clean code
 flake8-qgis
@@ -15,4 +15,5 @@ flake8-qgis
 coverage
 xmlrunner
 unittest-xml-reporting
+pytest
 
