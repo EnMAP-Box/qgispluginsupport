@@ -14,7 +14,7 @@
 set -e
 
 pushd /usr/src
-DEFAULT_PARAMS='-v'
+DEFAULT_PARAMS='-v --maxfail=5'
 cd /usr/src
 export QT_QPA_PLATFORM=offscreen
 export CI=True
