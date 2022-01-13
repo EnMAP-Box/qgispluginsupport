@@ -21,10 +21,10 @@ import os
 import unittest
 
 import xmlrunner
-from PyQt5.QtCore import QVariant, QSize
-from PyQt5.QtGui import QPen, QColor
-from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QCheckBox, QComboBox
-from PyQt5.QtXml import QDomDocument
+from qgis.PyQt.QtCore import QVariant, QSize
+from qgis.PyQt.QtGui import QPen, QColor
+from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QCheckBox, QComboBox
+from qgis.PyQt.QtXml import QDomDocument
 
 from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableConfig, \
     QgsEditorWidgetSetup, QgsActionManager, QgsAction
@@ -49,6 +49,7 @@ class PlotStyleTests(TestCase):
         vl.addFeature(QgsFeature(vl.fields()))
         vl.commitChanges()
         return vl
+
 
     def test_PlotStyleButton(self):
 

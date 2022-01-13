@@ -29,7 +29,6 @@ class CrosshairTests(TestCase):
     def test_Crosshair(self):
         # add site-packages to sys.data_source as done by enmapboxplugin.py
 
-
         lyr = TestObjects.createVectorLayer()
         # lyr2 = TestObjects.createRasterLayer(ns=2000, nl=3000, nb=3)
         lyr2 = TestObjects.createRasterLayer()
@@ -67,7 +66,6 @@ class CrosshairTests(TestCase):
         self.showGui(refCanvas)
 
     def test_CRS(self):
-
         refCanvas = QgsMapCanvas()
         refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
         style = CrosshairStyle()
@@ -78,12 +76,6 @@ class CrosshairTests(TestCase):
         item.setPosition(refCanvas.center())
 
         self.showGui(refCanvas)
-
-    def test_dialog(self):
-        refCanvas = QgsMapCanvas()
-        refCanvas.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:32721'))
-        QTimer.singleShot(500, QApplication.closeAllWindows)
-        style = getCrosshairStyle(mapCanvas=refCanvas)
 
     def test_crosshair_maplayer(self):
         canvas = QgsMapCanvas()

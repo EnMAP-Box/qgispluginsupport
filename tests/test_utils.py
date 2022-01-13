@@ -58,6 +58,7 @@ class TestUtils(TestCase):
                       'typename=''fis:re_postleit'' ' \
                       'url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
                       'version=''auto'''
+        QgsProject.instance().removeAllMapLayers()
 
     def tearDown(self):
 

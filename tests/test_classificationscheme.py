@@ -29,7 +29,7 @@ from qps.classification.classificationscheme import ClassificationScheme, ClassI
     ClassificationSchemeEditorWidgetWrapper, findMapLayersWithClassInfo, ClassificationSchemeWidget, \
     ClassificationSchemeComboBoxModel, MIMEDATA_KEY_QGIS_STYLE
 
-from qps.testing import start_app, TestObjects, TestCase
+from qps.testing import TestObjects, TestCase
 from qps.utils import MAP_LAYER_STORES, registerMapLayerStore, file_search
 
 

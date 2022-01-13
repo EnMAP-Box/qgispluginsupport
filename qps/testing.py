@@ -48,6 +48,7 @@ from osgeo import gdal, ogr, osr, gdal_array
 import qgis.testing
 import qgis.utils
 from qgis.PyQt import sip
+from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
@@ -125,6 +126,10 @@ def stop_app():
         qgis.testing.stop_app()
 
 
+_QGIS_MOCKUP = None
+_PYTHON_RUNNER = None
+
+
 def start_app(cleanup: bool = True,
               options=StartOptions.Minimized,
               resources: typing.List[typing.Union[str, pathlib.Path]] = None) -> QgsApplication:
@@ -134,6 +139,10 @@ def start_app(cleanup: bool = True,
     :param resources: list of resource files (*_rc.py) to load on start-up into Qt resource system
     :return:
     """
+
+    global _PYTHON_RUNNER
+    global _QGIS_MOCKUP
+
     if resources is None:
         resources = []
 
@@ -170,8 +179,9 @@ def start_app(cleanup: bool = True,
 
     # initiate a PythonRunner instance if None exists
     if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
-        r = QgsPythonRunnerMockup()
-        QgsPythonRunner.setInstance(r)
+        if not isinstance(_PYTHON_RUNNER, QgsPythonRunnerMockup):
+            _PYTHON_RUNNER = QgsPythonRunnerMockup()
+        QgsPythonRunner.setInstance(_PYTHON_RUNNER)
 
     # init standard EditorWidgets
     if StartOptions.EditorWidgets in options and len(QgsGui.editorWidgetRegistry().factories()) == 0:
@@ -187,15 +197,15 @@ def start_app(cleanup: bool = True,
         cursor = con.execute(r"SELECT name FROM sqlite_master WHERE type='table'")
         tables = [v[0] for v in cursor.fetchall() if v[0] != 'sqlite_sequence']
         if 'tbl_srs' not in tables:
-            info = ['{} misses "tbl_srs"'.format(QgsApplication.qgisSettingsDirPath())]
-            info.append(
-                'Settings directory might be outdated: {}'.format(QgsApplication.instance().qgisSettingsDirPath()))
+            info = ['{} misses "tbl_srs"'.format(QgsApplication.qgisSettingsDirPath()),
+                    'Settings directory might be outdated: {}'.format(QgsApplication.instance().qgisSettingsDirPath())]
             print('\n'.join(info), file=sys.stderr)
 
     if not isinstance(qgis.utils.iface, QgisInterface):
-        iface = QgisMockup()
-        qgis.utils.initInterface(sip.unwrapinstance(iface))
-        assert iface == qgis.utils.iface
+        if not isinstance(_QGIS_MOCKUP, QgisMockup):
+            _QGIS_MOCKUP = QgisMockup()
+        qgis.utils.initInterface(sip.unwrapinstance(_QGIS_MOCKUP))
+        assert _QGIS_MOCKUP == qgis.utils.iface
 
     # set 'home_plugin_path', which is required from the QGIS Plugin manager
     qgis.utils.home_plugin_path = (pathlib.Path(QgsApplication.instance().qgisSettingsDirPath())
@@ -245,6 +255,8 @@ class QgisMockup(QgisInterface):
         self.mRootNode = QgsLayerTree()
         self.mLayerTreeRegistryBridge = QgsLayerTreeRegistryBridge(self.mRootNode, QgsProject.instance())
         self.mLayerTreeModel = QgsLayerTreeModel(self.mRootNode)
+        QgsProject.instance().layersWillBeRemoved.connect(self._onRemoveLayers)
+
         self.mLayerTreeView.setModel(self.mLayerTreeModel)
         self.mLayerTreeMapCanvasBridge = QgsLayerTreeMapCanvasBridge(self.mRootNode, self.mCanvas)
         self.mLayerTreeMapCanvasBridge.setAutoSetupOnFirstLayer(True)
@@ -285,6 +297,15 @@ class QgisMockup(QgisInterface):
                     inspect.getfullargspec(getattr(self, n))
                 except Exception:
                     setattr(self, n, getattr(self._mock, n))
+
+    def _onRemoveLayers(self, layerIDs):
+        to_remove: typing.List[QgsLayerTreeLayer] = []
+        for l in self.mRootNode.findLayers():
+            l: QgsLayerTreeLayer
+            if l.layerId() in layerIDs:
+                to_remove.append(l)
+        for l in reversed(to_remove):
+            l.parent().removedChildren(l)
 
     def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
         assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
@@ -424,13 +445,17 @@ class TestCase(qgis.testing.TestCase):
             if r not in resources:
                 resources.append(r)
 
-        cls.app = start_app(cleanup=cleanup, options=options, resources=resources)
+        start_app(cleanup=cleanup, options=options, resources=resources)
 
         from osgeo import gdal
         gdal.AllRegister()
 
+    def tearDown(self):
+        QgsProject.instance().removeAllMapLayers()
+
     @classmethod
     def tearDownClass(cls):
+
         if False:  # bug in qgis
             stop_app()
 
@@ -686,7 +711,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-            TestObjects._coreDataGT, TestObjects._coreDataWkt
+               TestObjects._coreDataGT, TestObjects._coreDataWkt
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
@@ -867,8 +892,8 @@ class TestObjects(object):
             nodata = global_nodata
             nodata_values.append(nodata)
             arr[b,
-                max(y - d, 0):min(y + d, nl - 1),
-                max(x - d, 0):min(x + d, ns - 1)] = nodata
+            max(y - d, 0):min(y + d, nl - 1),
+            max(x - d, 0):min(x + d, ns - 1)] = nodata
 
         ds2: gdal.Dataset = gdal_array.SaveArray(arr, path, prototype=ds)
 

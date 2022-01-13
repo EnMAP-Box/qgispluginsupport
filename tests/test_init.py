@@ -15,9 +15,9 @@ from qgis.core import QgsApplication
 from qgis.gui import QgsEditorWidgetFactory
 
 
-
 class testClassTesting(unittest.TestCase):
 
+    @unittest.skipIf(isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication already started')
     def test_init(self):
 
         from qps.testing import start_app
@@ -25,8 +25,6 @@ class testClassTesting(unittest.TestCase):
         import qps
         app = start_app()
         self.assertIsInstance(app, QgsApplication)
-
-        self.app = app
 
         qps.initResources()
 
@@ -40,7 +38,8 @@ class testClassTesting(unittest.TestCase):
         qps.registerEditorWidgets()
 
         import qps.speclib.core.spectrallibrary
-        self.assertIsInstance(qps.speclib.gui.spectralprofileeditor.SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY, QgsEditorWidgetFactory)
+        self.assertIsInstance(qps.speclib.gui.spectralprofileeditor.SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY,
+                              QgsEditorWidgetFactory)
 
         import qps.plotstyling.plotstyling
         self.assertIsInstance(qps.plotstyling.plotstyling.PLOTSTYLE_EDITOR_WIDGET_FACTORY,
@@ -68,8 +67,4 @@ class testClassTesting(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
-
-
-
