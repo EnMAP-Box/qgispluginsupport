@@ -26,6 +26,7 @@ exclude =
     docs/source/conf.py,
     tests,
     scripts,
+    qps/pyqtgraph,
     qps/externals,
     qps/qgisclasses.py,
     # This contains our built documentation

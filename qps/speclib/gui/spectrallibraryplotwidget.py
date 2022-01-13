@@ -34,11 +34,7 @@ from ..core.spectralprofile import decodeProfileValueDict
 from ... import debugLog
 
 from ...pyqtgraph import pyqtgraph as pg
-#from ...pyqtgraph.pyqtgraph import AxisItem
 from ...externals.htmlwidgets import HTMLComboBox
-#from ...pyqtgraph.pyqtgraph import PlotDataItem, PlotWindow
-#from ...pyqtgraph.pyqtgraph.Point import Point as pgPoint
-#from ...pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import SpotItem
 from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
