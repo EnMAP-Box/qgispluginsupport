@@ -3,7 +3,7 @@ FROM  qgis/qgis:${QGIS_TEST_VERSION}
 MAINTAINER Benjamin Jakimow <benjamin.jakimow@geo.hu-berlin.de>
 
 RUN apt-get update && \
-    apt-get -y install python3-pip \
+    apt-get -y install python3-pip wget unzip \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update
