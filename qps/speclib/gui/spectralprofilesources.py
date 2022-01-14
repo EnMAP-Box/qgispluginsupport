@@ -229,9 +229,6 @@ class SpectralProfileSourceModel(QAbstractListModel):
 
         to_insert = []
         for source in sources:
-            if source is None:
-                # already in model
-                continue
 
             if isinstance(source, str):
                 source = QgsRasterLayer(source)
@@ -239,7 +236,11 @@ class SpectralProfileSourceModel(QAbstractListModel):
             if isinstance(source, QgsRasterLayer):
                 source = StandardLayerProfileSource.fromRasterLayer(source)
 
-            assert isinstance(source, SpectralProfileSource)
+            if source is None:
+                # already in model
+                continue
+
+            assert isinstance(source, SpectralProfileSource), f'Got {source} instead SpectralProfileSource'
             if source not in self.mSources:
                 to_insert.append(source)
 
