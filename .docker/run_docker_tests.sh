@@ -21,5 +21,5 @@ export CI=True
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 # python3 -m coverage run -m unittest discover -s tests
 # xvfb-run pytest ${@:-`echo $DEFAULT_PARAMS`}
-runtests.sh
+./runtests.sh
 popd
