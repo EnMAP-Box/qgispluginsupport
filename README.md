@@ -10,8 +10,7 @@ This includes, for example
 - Interactive plotting
 - Tools to test python code that uses the QGIS API
 
-QPS is designed as python package that can be included as subpackage of other QGIS python plugins. This  
-
+QPS is designed as python package that can be included as subpackage of other QGIS python plugins. This
 
 QPS is used in other projects, for example:
 QPS is used in other project like:
