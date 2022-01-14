@@ -300,12 +300,12 @@ class QgisMockup(QgisInterface):
 
     def _onRemoveLayers(self, layerIDs):
         to_remove: typing.List[QgsLayerTreeLayer] = []
-        for l in self.mRootNode.findLayers():
-            l: QgsLayerTreeLayer
-            if l.layerId() in layerIDs:
-                to_remove.append(l)
-        for l in reversed(to_remove):
-            l.parent().removedChildren(l)
+        for lyr in self.mRootNode.findLayers():
+            lyr: QgsLayerTreeLayer
+            if lyr.layerId() in layerIDs:
+                to_remove.append(lyr)
+        for lyr in reversed(to_remove):
+            lyr.parent().removedChildren(lyr)
 
     def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
         assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
@@ -455,7 +455,6 @@ class TestCase(qgis.testing.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-
         if False:  # bug in qgis
             stop_app()
 
@@ -514,10 +513,6 @@ class TestCase(qgis.testing.TestCase):
     def setUp(self):
         print('\nSET UP {}'.format(self.id()))
 
-    def tearDown(self):
-
-        print('TEAR DOWN {}'.format(self.id()))
-
     def showGui(self, widgets: typing.Union[QWidget, typing.List[QWidget]] = None) -> bool:
         """
         Call this to show GUI(s) in case we do not run within a CI system
@@ -574,7 +569,7 @@ class TestAlgorithmProvider(QgsProcessingProvider):
     NAME = 'TestAlgorithmProvider'
 
     def __init__(self, *args, **kwds):
-        super().__init__( *args, **kwds)
+        super().__init__(*args, **kwds)
         self._algs = []
 
     def load(self):
@@ -711,7 +706,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-               TestObjects._coreDataGT, TestObjects._coreDataWkt
+            TestObjects._coreDataGT, TestObjects._coreDataWkt
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
