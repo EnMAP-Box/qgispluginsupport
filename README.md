@@ -28,6 +28,17 @@ Ideally, QPS becomes obsolete by providing every feature  every feature
 
 ## Installation ##
 
+### Include as subtree
+
+Add QPS as a substree:
+
+   git subtree add --prefix enmapbox/qgispluginsupport git@github.com:EnMAP-Box/qgispluginsupport.git master
+
+Push updates (replace with your fork):
+
+   git subtree add --prefix enmapbox/qgispluginsupport git@github.com:EnMAP-Box/qgispluginsupport.git myupdates
+
+### Copy and paste
 
 1. Copy the qgs folder into your source code, e.g. ``mymodule/qps``, and ensure that the Qt resource files are compiled:
 
