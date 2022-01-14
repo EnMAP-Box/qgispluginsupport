@@ -197,7 +197,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     os.chdir(last_cwd)
 
 
-def compileQGISResourceFiles(qgis_repo: str, target: str = None):
+def compileQGISResourceFiles(qgis_repo: typing.Union[str, pathlib.Path, None], target: str = None):
     """
     Searches for *.qrc files in the QGIS repository and compile them to <target>
 
@@ -211,7 +211,8 @@ def compileQGISResourceFiles(qgis_repo: str, target: str = None):
             if k in os.environ.keys():
                 qgis_repo = pathlib.Path(os.environ[k])
                 break
-
+    else:
+        qgis_repo = pathlib.Path(qgis_repo)
     if qgis_repo is None:
         print('QGIS_REPO location undefined', file=sys.stderr)
         return
