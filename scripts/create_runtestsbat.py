@@ -6,6 +6,7 @@ from qps.utils import file_search
 DIR_REPO = pathlib.Path(__file__).parents[1]
 DIR_TESTS = DIR_REPO / 'tests'
 
+RUN_PYTEST = True
 
 PATH_RUNTESTS_BAT = DIR_REPO / 'runtests.bat'
 PATH_RUNTESTS_SH = DIR_REPO / 'runtests.sh'
@@ -59,16 +60,20 @@ for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py', recursive=True)):
     #lineBat = 'call %PYTHON% -m nose2 -s {3} {0} & move {1} {2}/{0}.xml'.format(bn, jUnitXML, dirOut, bnDirTests)
     do_append = '' if i == 0 else '--append'
     pathTest = file.relative_to(DIR_TESTS.parent)
-    #lineBat = '%PYTHON% -m coverage run --source qps --omit qps/externals/*  {}  {}'.format(do_append, pathTest)
-    lineBat = '%PYTHON% -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
-    #lineSh = 'python3 -m coverage run --source qps  --omit qps/externals/* {} {}'.format(do_append, pathTest)
-    lineSh = 'python3 -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
+    if RUN_PYTEST:
+        lineBat = 'pytest -x {}'.format(pathTest.as_posix())
+        lineSh = 'pytest -x {}'.format(pathTest.as_posix())
+
+    else:
+        lineBat = '%PYTHON% -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
+        lineSh = 'python3 -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
 
     linesBat.append(lineBat)
     linesSh.append(lineSh)
 
-linesBat.append('%PYTHON% -m coverage report')
-linesSh.append('python3 -m coverage report')
+if not RUN_PYTEST:
+    linesBat.append('%PYTHON% -m coverage report')
+    linesSh.append('python3 -m coverage report')
 
 with open(PATH_RUNTESTS_BAT, 'w', encoding='utf-8') as f:
     f.write('\n'.join(linesBat))

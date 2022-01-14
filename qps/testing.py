@@ -573,8 +573,8 @@ class TestCase(qgis.testing.TestCase):
 class TestAlgorithmProvider(QgsProcessingProvider):
     NAME = 'TestAlgorithmProvider'
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwds):
+        super().__init__( *args, **kwds)
         self._algs = []
 
     def load(self):

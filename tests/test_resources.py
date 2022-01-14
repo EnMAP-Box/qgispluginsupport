@@ -47,7 +47,7 @@ class ResourceTests(unittest.TestCase):
         w = QWidget()
         w.setWindowIcon(QIcon(r))
         w.show()
-        app.quit()
+
 
     def test_resource_browser(self):
 
@@ -61,9 +61,7 @@ class ResourceTests(unittest.TestCase):
 
         self.assertIsInstance(B.resourceModel, ResourceTableModel)
 
-        if str(os.environ.get('CI')).lower() in ['', 'false', '0']:
-            app.exec_()
-        app.quit()
+
 
 
 if __name__ == '__main__':

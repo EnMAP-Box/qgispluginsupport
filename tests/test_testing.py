@@ -72,14 +72,13 @@ class testClassTesting(unittest.TestCase):
         for k in sorted(ENV.keys()):
             print('{}={}'.format(k, ENV[k]))
 
-        qgis_app.quit()
 
     def test_init_minimal(self):
         qgis_app = qps.testing.start_app(options=qps.testing.StartOptions.Minimized)
 
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
-        qgis_app.quit()
+
 
 
 

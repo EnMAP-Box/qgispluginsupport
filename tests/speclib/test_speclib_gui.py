@@ -38,6 +38,7 @@ from qgis.gui import QgsOptionsDialogBase, QgsSearchWidgetWrapper, QgsMapCanvas,
     QgsDualView, QgsGui
 from qps.layerproperties import AddAttributeDialog
 from qps.plotstyling.plotstyling import PlotStyle
+from qps.pyqtgraph import pyqtgraph as pg
 from qps.speclib import FIELD_VALUES
 from qps.speclib.core import profile_field_list, is_spectral_library
 from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibrary
@@ -101,7 +102,6 @@ class TestSpeclibWidgets(TestCase):
 
     def tearDown(self):
         super().tearDown()
-        QApplication.processEvents()
 
     @classmethod
     def tearDownClass(cls):
@@ -109,9 +109,6 @@ class TestSpeclibWidgets(TestCase):
 
     @unittest.skipIf(False, '')
     def test_PyQtGraphPlot(self):
-        import qps.externals.pyqtgraph as pg
-        # pg.systemInfo()
-
         plotWidget = pg.plot(title="Three plot curves")
 
         item1 = pg.PlotItem(x=[1, 2, 3], y=[2, 3, 4], color='white')
@@ -125,7 +122,7 @@ class TestSpeclibWidgets(TestCase):
 
         profile = SpectralProfile()
         self.assertIsInstance(profile, SpectralProfile)
-        import numpy as np
+
         yValues = np.asarray(
             [700., np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan, 800.])
         xValues = np.asarray([0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1])
