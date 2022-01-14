@@ -17,6 +17,9 @@ from qgis.gui import QgsEditorWidgetFactory
 
 class testClassTesting(unittest.TestCase):
 
+    def test_tofail(self):
+        self.assertTrue(False, msg='Test to fail')
+
     @unittest.skipIf(True or isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication already started')
     def test_init(self):
 
