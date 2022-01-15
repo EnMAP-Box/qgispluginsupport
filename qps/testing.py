@@ -886,9 +886,7 @@ class TestObjects(object):
             # nodata = b
             nodata = global_nodata
             nodata_values.append(nodata)
-            arr[b,
-            max(y - d, 0):min(y + d, nl - 1),
-            max(x - d, 0):min(x + d, ns - 1)] = nodata
+            arr[b, max(y - d, 0):min(y + d, nl - 1), max(x - d, 0):min(x + d, ns - 1)] = nodata
 
         ds2: gdal.Dataset = gdal_array.SaveArray(arr, path, prototype=ds)
 
