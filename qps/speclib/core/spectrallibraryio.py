@@ -413,8 +413,10 @@ class SpectralLibraryIO(object):
 
                 if needs_setting_groups:
                     for field in profile_fields:
-                        for setting, profiles in groupBySpectralProperties(all_profiles, profile_field=field):
-                            GROUPS[field.name()] = GROUPS.get(field.name(), []).append(list(profiles))
+                        for setting, profiles in groupBySpectralProperties(all_profiles, profile_field=field).items():
+                            grp_profiles = GROUPS.get(field.name(), [])
+                            grp_profiles.append(profiles)
+                            GROUPS[field.name()] = grp_profiles
                 else:
                     # needs_field_separation:
                     for field in profile_fields:

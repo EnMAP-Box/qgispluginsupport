@@ -565,7 +565,7 @@ class TestCase(qgis.testing.TestCase):
         return True
 
 
-class TestAlgorithmProvider(QgsProcessingProvider):
+class ExampleAlgorithmProvider(QgsProcessingProvider):
     NAME = 'TestAlgorithmProvider'
 
     def __init__(self, *args, **kwds):

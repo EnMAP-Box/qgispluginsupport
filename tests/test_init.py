@@ -17,9 +17,6 @@ from qgis.gui import QgsEditorWidgetFactory
 
 class testClassTesting(unittest.TestCase):
 
-    def test_tofail(self):
-        self.assertTrue(False, msg='Test to fail')
-
     @unittest.skipIf(True or isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication already started')
     def test_init(self):
 
@@ -51,7 +48,6 @@ class testClassTesting(unittest.TestCase):
         import qps.classification.classificationscheme
         self.assertIsInstance(qps.classification.classificationscheme.CLASS_SCHEME_EDITOR_WIDGET_FACTORY,
                               QgsEditorWidgetFactory)
-
 
     def test_relative_imports(self):
 

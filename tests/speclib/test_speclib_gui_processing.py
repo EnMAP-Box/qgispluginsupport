@@ -33,7 +33,7 @@ from qps.testing import TestObjects, StartOptions
 
 from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget, SpectralProcessingAlgorithmModel, \
     SpectralProcessingRasterLayerWidgetWrapper
-from qps.testing import TestCase, TestAlgorithmProvider
+from qps.testing import TestCase, ExampleAlgorithmProvider
 import numpy as np
 
 
@@ -58,8 +58,8 @@ class SpectralProcessingTests(TestCase):
 
         return procReg, procGuiReg
 
-    def algorithmProviderTesting(self) -> 'TestAlgorithmProvider':
-        return QgsApplication.instance().processingRegistry().providerById(TestAlgorithmProvider.NAME.lower())
+    def algorithmProviderTesting(self) -> 'ExampleAlgorithmProvider':
+        return QgsApplication.instance().processingRegistry().providerById(ExampleAlgorithmProvider.NAME.lower())
 
     def test_dualview(self):
 
@@ -84,45 +84,7 @@ class SpectralProcessingTests(TestCase):
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
 
-    def test_SpectralLibraryWidget(self):
-        self.initProcessingRegistry()
-        n_profiles_per_n_bands = 5
-        n_bands = [177, 6]
-        SpectralLibraryWidget._SHOW_MODEL = True
-
-        sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
-        RENAME = {'profiles': 'ASD', 'profiles1': 'Ref'}
-        sl.startEditing()
-        for oldName, newName in RENAME.items():
-            idx = sl.fields().lookupField(oldName)
-            sl.renameAttribute(idx, newName)
-            s = ""
-        # sl.addAttribute(QgsField(name='notes', type=QVariant.String)),
-        sl.addAttribute(QgsField(name='date', type=QVariant.Date)),
-        sl.commitChanges()
-        SLW = SpectralLibraryWidget(speclib=sl)
-
-        SLW2 = SpectralLibraryWidget(speclib=TestObjects.createSpectralLibrary(20))
-
-        # create a new model
-        spm = TestObjects.createSpectralProcessingModel()
-
-        procReg = QgsApplication.instance().processingRegistry()
-        provider = procReg.providerById('project')
-        from processing.modeler.ProjectProvider import ProjectProvider
-        self.assertIsInstance(provider, ProjectProvider)
-        provider.add_model(spm)
-
-        PC: SpectralProfilePlotControlModel = SLW.plotControl()
-
-        # set spectral model to 1st item
-        PC.setData(PC.index(0, PC.PIX_MODEL), spm, role=Qt.EditRole)
-        # from qps.resources import ResourceBrowser
-        # rb = ResourceBrowser()
-        self.showGui([SLW, SLW2])
-        s = ""
-        pass
-
+    @unittest.skipIf(True, 'Deprecated')
     def test_simple_processing_model(self):
 
         self.initProcessingRegistry()

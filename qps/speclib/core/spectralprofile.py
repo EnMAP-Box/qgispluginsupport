@@ -823,7 +823,8 @@ def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
 
     :return: {SpectralSetting:[list-of-profiles]}
     """
-
+    if isinstance(profiles, QgsFeature):
+        profiles = [profiles]
     results = dict()
 
     # will be initialized with 1st SpectralProfile

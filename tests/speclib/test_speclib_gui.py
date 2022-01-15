@@ -383,6 +383,7 @@ class TestSpeclibWidgets(TestCase):
         w.addSpeclib(sl)
         self.showGui(w)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Fuzz test (drag and drop)')
     def test_dropping_speclibs(self):
 
         files = []
@@ -451,17 +452,9 @@ class TestSpeclibWidgets(TestCase):
 
         w.setViewVisibility(SpectralLibraryWidget.ViewType.Empty)
         self.assertFalse(w.mSpeclibPlotWidget.isVisible())
-        self.assertFalse(w.pageProcessingWidget.isVisible())
         self.assertFalse(w.mMainView.isVisible())
-
-        w.setViewVisibility(SpectralLibraryWidget.ViewType.ProcessingView)
-        self.assertFalse(w.mSpeclibPlotWidget.isVisible())
-        self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
-        self.assertFalse(w.mMainView.isVisible())
-        self.assertTrue(w.pageProcessingWidget.isVisible())
 
         w.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
-        self.assertFalse(w.pageProcessingWidget.isVisible())
         self.assertTrue(w.mMainView.isVisible())
         self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
         self.assertTrue(w.mSpeclibPlotWidget.isVisible())
@@ -470,7 +463,6 @@ class TestSpeclibWidgets(TestCase):
         w.setViewVisibility(SpectralLibraryWidget.ViewType.ProfileView)
         self.assertTrue(w.mSpeclibPlotWidget.isVisible())
         self.assertFalse(w.mMainView.isVisible())
-        self.assertFalse(w.pageProcessingWidget.isVisible())
 
         self.showGui(w)
 
@@ -573,7 +565,7 @@ class TestSpeclibWidgets(TestCase):
         # self.assertTrue()
         self.showGui(slw)
 
-    @unittest.skipIf(False, '')
+    @unittest.skipIf(True, 'Deprecated')
     def test_speclibAttributeWidgets(self):
 
         speclib = TestObjects.createSpectralLibrary()
