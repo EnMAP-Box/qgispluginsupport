@@ -61,8 +61,8 @@ for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py', recursive=True)):
     do_append = '' if i == 0 else '--append'
     pathTest = file.relative_to(DIR_TESTS.parent)
     if RUN_PYTEST:
-        lineBat = 'pytest -x {}'.format(pathTest.as_posix())
-        lineSh = 'pytest -x {}'.format(pathTest.as_posix())
+        lineBat = 'pytest -p no:faulthandler -x {}'.format(pathTest.as_posix())
+        lineSh = 'pytest -p no:faulthandler -x {}'.format(pathTest.as_posix())
 
     else:
         lineBat = '%PYTHON% -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
