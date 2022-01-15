@@ -150,24 +150,6 @@ class LayerPropertyTests(TestCase):
         d = QgsRasterLayerProperties(lyr, c)
         self.showGui(d)
 
-        d = LayerPropertiesDialog(lyr)
-
-        d.sync()
-        self.assertIsInstance(d, LayerPropertiesDialog)
-        for p in d.pages():
-            self.assertIsInstance(p, QgsMapLayerConfigWidget)
-
-            p.apply()
-            d.setPage(p)
-
-        d.show()
-
-        w = QWidget()
-        w.setLayout(QHBoxLayout())
-        w.layout().addWidget(d.canvas())
-        w.layout().addWidget(d)
-        self.showGui(w)
-
     def test_LayerProperties(self):
 
         layers = [TestObjects.createRasterLayer(),
