@@ -1,14 +1,14 @@
 # noinspection PyPep8Naming
-import unittest
-import xmlrunner
 import os
+import unittest
+
 import numpy as np
-from qgis.PyQt.QtCore import QSettings
-from qgis.PyQt.QtGui import QColor
-from qgis.core import QgsSettings
+import xmlrunner
 
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, Qt
-from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QApplication, QGridLayout, QLabel, QWidget, \
+from qgis.PyQt.QtCore import QSettings
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QGridLayout, QLabel, QWidget, \
     QPushButton, QVBoxLayout, QHBoxLayout
 from qgis.gui import QgsMapCanvas
 from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option, PyObjectTreeNode, SettingsModel, \
@@ -64,7 +64,7 @@ class ModelTests(TestCase):
                     {'B1': root,
                      'B2': {'DDD': root},
                      'NP': np.arange(256),
-                     'Array2': np.random.randint(0,255, (255,100,200)),
+                     'Array2': np.random.randint(0, 255, (255, 100, 200)),
                      'Long String': longString,
                      'M': m},
                 'CA': QgsMapCanvas(),
@@ -171,19 +171,19 @@ class ModelTests(TestCase):
 
         btnReset.clicked.connect(onReset)
         btnClean.clicked.connect(onClean)
-        l = QVBoxLayout()
+        vbLayout = QVBoxLayout()
         lh = QHBoxLayout()
         lh.addWidget(btnReset)
         lh.addWidget(btnClean)
-        l.addLayout(lh)
+        vbLayout.addLayout(lh)
 
         lh = QHBoxLayout()
         lh.addWidget(TV)
         lh.addWidget(TV2)
-        l.addLayout(lh)
+        vbLayout.addLayout(lh)
 
         w = QWidget()
-        w.setLayout(l)
+        w.setLayout(vbLayout)
         self.showGui(w)
 
     def test_treeView(self):
@@ -306,19 +306,19 @@ class ModelTests(TestCase):
         tvN.setModel(tm)
         tvNPM.setModel(pm)
 
-        l = QGridLayout()
-        l.addWidget(QLabel('Model'), 0, 1)
-        l.addWidget(QLabel('Proxy Model'), 0, 2)
-        l.addWidget(QLabel('QTreeView'), 1, 0)
-        l.addWidget(QLabel('QPS Treeview'), 2, 0)
-        l.addWidget(tvR, 1, 1)
-        l.addWidget(tvRPM, 1, 2)
-        l.addWidget(tvN, 2, 1)
-        l.addWidget(tvNPM, 2, 2)
+        gridLayout = QGridLayout()
+        gridLayout.addWidget(QLabel('Model'), 0, 1)
+        gridLayout.addWidget(QLabel('Proxy Model'), 0, 2)
+        gridLayout.addWidget(QLabel('QTreeView'), 1, 0)
+        gridLayout.addWidget(QLabel('QPS Treeview'), 2, 0)
+        gridLayout.addWidget(tvR, 1, 1)
+        gridLayout.addWidget(tvRPM, 1, 2)
+        gridLayout.addWidget(tvN, 2, 1)
+        gridLayout.addWidget(tvNPM, 2, 2)
 
         w = QWidget()
         w.setWindowTitle('TreeModel test')
-        w.setLayout(l)
+        w.setLayout(gridLayout)
         self.showGui(w)
 
     def test_modelview(self):

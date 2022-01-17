@@ -1,40 +1,29 @@
 # noinspection PyPep8Naming
-import os
-import unittest
 import datetime
 import typing
-import xmlrunner
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget
-from qgis._core import QgsVectorLayer
-from qgis._gui import QgsMapCanvas, QgsDualView
+import unittest
 
-from qgis.PyQt import Qt
-from qgis.PyQt.QtCore import QVariant
+import xmlrunner
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QWidget
+from qgis.core import QgsVectorLayer
+from qgis.gui import QgsMapCanvas, QgsDualView
+
 from qgis.PyQt.QtWidgets import QGridLayout
 from qgis.core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm, QgsProject, QgsProcessingModelOutput, \
-    QgsField, QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingParameterRasterLayer, \
+    QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingParameterRasterLayer, \
     QgsProcessingOutputRasterLayer, QgsProcessingFeedback, QgsProcessingContext, QgsProcessingModelAlgorithm, \
-    QgsProcessingRegistry, QgsApplication, QgsProcessingParameterMultipleLayers
+    QgsProcessingRegistry, QgsApplication
 from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator, \
     QgsProcessingAlgorithmDialogBase
-
-from processing.gui.BatchPanel import BatchPanel
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
-
-from qgis.core import QgsProcessingProvider
-
-from qps import initResources, initAll
-from qps.speclib.core import profile_field_lookup
+from qps import initAll
 from qps.speclib.core.spectrallibrary import SpectralLibrary
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotControlModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.testing import TestObjects, StartOptions
-
-from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget, SpectralProcessingAlgorithmModel, \
+from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingWidget, \
     SpectralProcessingRasterLayerWidgetWrapper
 from qps.testing import TestCase, ExampleAlgorithmProvider
-import numpy as np
+from qps.testing import TestObjects, StartOptions
 
 
 class SpectralProcessingTests(TestCase):
@@ -158,41 +147,35 @@ class SpectralProcessingTests(TestCase):
             s = ""
         s = ""
 
-        if False:
-            dialog = ModelerParametersDialog(childAlg.algorithm(),
-                                             model,
-                                             algName=childId,
-                                             configuration=configuration)
-        else:
-            # new API
-            # context = createContext()
-            widget_context = QgsProcessingParameterWidgetContext()
-            widget_context.setProject(QgsProject.instance())
-            from qgis.utils import iface
-            if iface is not None:
-                widget_context.setMapCanvas(iface.mapCanvas())
-                widget_context.setActiveLayer(iface.activeLayer())
+        # new API
+        # context = createContext()
+        widget_context = QgsProcessingParameterWidgetContext()
+        widget_context.setProject(QgsProject.instance())
+        from qgis.utils import iface
+        if iface is not None:
+            widget_context.setMapCanvas(iface.mapCanvas())
+            widget_context.setActiveLayer(iface.activeLayer())
 
-            widget_context.setModel(model)
+        widget_context.setModel(model)
 
-            existing_param = model.parameterDefinitions()[0]
-            algorithm = model
+        existing_param = model.parameterDefinitions()[0]
+        algorithm = model
 
-            dlg = QgsProcessingParameterDefinitionDialog(type=existing_param.type(),
-                                                         context=context,
-                                                         widgetContext=widget_context,
-                                                         definition=existing_param,
-                                                         algorithm=algorithm)
-            dlg.setComments('My Comment')
-            dlg.setCommentColor(QColor('green'))
-            # if edit_comment:
-            #    dlg.switchToCommentTab()
+        dlg = QgsProcessingParameterDefinitionDialog(type=existing_param.type(),
+                                                     context=context,
+                                                     widgetContext=widget_context,
+                                                     definition=existing_param,
+                                                     algorithm=algorithm)
+        dlg.setComments('My Comment')
+        dlg.setCommentColor(QColor('green'))
+        # if edit_comment:
+        #    dlg.switchToCommentTab()
 
-            if False and dlg.exec_():
-                s = ""
-                new_param = dlg.createParameter(existing_param.name())
-                comment = dlg.comments()
-                comment_color = dlg.commentColor()
+        if False and dlg.exec_():
+            s = ""
+            new_param = dlg.createParameter(existing_param.name())
+            comment = dlg.comments()
+            comment_color = dlg.commentColor()
 
     def test_algwidget(self):
         self.initProcessingRegistry()
@@ -240,7 +223,7 @@ class SpectralProcessingTests(TestCase):
 
         ]
 
-        l = QGridLayout()
+        gridLayout = QGridLayout()
 
         layers = [TestObjects.createRasterLayer(),
                   TestObjects.createRasterLayer(),
@@ -280,11 +263,11 @@ class SpectralProcessingTests(TestCase):
             # self.addParameterLabel(param, label)
             widget = wrapper.createWrappedWidget(processing_context)
             widgets.append((label, widget))
-            l.addWidget(label, i, 0)
-            l.addWidget(widget, i, 1)
+            gridLayout.addWidget(label, i, 0)
+            gridLayout.addWidget(widget, i, 1)
 
         w = QWidget()
-        w.setLayout(l)
+        w.setLayout(gridLayout)
         self.showGui(w)
 
     @unittest.skipIf(TestCase.runsInCI(), 'Sandbox only')

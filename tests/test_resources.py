@@ -1,15 +1,13 @@
-import os
 import pathlib
 import unittest
-import xmlrunner
 import xml.etree.ElementTree as ET
 
-from qgis.PyQt.QtWidgets import QWidget
+import xmlrunner
 
+from qgis.PyQt.QtWidgets import QWidget
+from qps import QPS_RESOURCE_FILE
 from qps.resources import scanResources, ResourceBrowser, ResourceTableModel
 from qps.testing import start_app
-
-from qps import QPS_RESOURCE_FILE
 
 
 class ResourceTests(unittest.TestCase):
@@ -48,10 +46,8 @@ class ResourceTests(unittest.TestCase):
         w.setWindowIcon(QIcon(r))
         w.show()
 
-
     def test_resource_browser(self):
 
-        import qgis.testing
         import qps.testing
         app = qps.testing.start_app()
 
@@ -60,8 +56,6 @@ class ResourceTests(unittest.TestCase):
         B.show()
 
         self.assertIsInstance(B.resourceModel, ResourceTableModel)
-
-
 
 
 if __name__ == '__main__':

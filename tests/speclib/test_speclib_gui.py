@@ -25,7 +25,7 @@ import time
 import unittest
 import numpy as np
 import xmlrunner
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 from osgeo import ogr, gdal
 
 from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
@@ -255,8 +255,8 @@ class TestSpeclibWidgets(TestCase):
 
         m.setProfile(p3)
         self.assertTrue(m.rowCount() == len(p3.xValues()))
-        self.assertEqual('x'.format(yUnit), m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('y'.format(xUnit), m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
         # m.setColumnValueUnit(0, '')
 
@@ -438,10 +438,10 @@ class TestSpeclibWidgets(TestCase):
         btnAddTempProfiles.clicked.connect(onClicked)
 
         w2 = QWidget()
-        l = QVBoxLayout()
-        l.addWidget(btnAddTempProfiles)
-        l.addWidget(w)
-        w2.setLayout(l)
+        layout = QVBoxLayout()
+        layout.addWidget(btnAddTempProfiles)
+        layout.addWidget(w)
+        w2.setLayout(layout)
         self.showGui(w2)
         s = ""
 
@@ -508,8 +508,6 @@ class TestSpeclibWidgets(TestCase):
         fieldNames = slw.speclib().fieldNames()
         self.assertIsInstance(fieldNames, list)
 
-        cs = [sl1[0], sl1[3], sl1[-1]]
-        l = len(sl1)
         self.assertTrue(slw.speclib() == sl1)
 
         # from qps.resources import ResourceBrowser

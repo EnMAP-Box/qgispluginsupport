@@ -11,25 +11,18 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
-import time
+
 import xmlrunner
-import tempfile
+from osgeo import gdal
 
-from PyQt5.QtCore import QSortFilterProxyModel, Qt, QVariant
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QTableView, QGridLayout, QPushButton, QHBoxLayout
-
+from qgis.PyQt.QtCore import QSortFilterProxyModel, Qt, QVariant
+from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QTableView, QGridLayout, QPushButton, QHBoxLayout
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsField, QgsAbstractVectorLayerLabeling
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, \
     QgsMapLayerComboBox, QgsRasterBandComboBox, QgsRasterTransparencyWidget, QgsMapLayerConfigWidgetFactory
-
-
-from osgeo import gdal, ogr, osr
-
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
-from qps.testing import TestObjects, TestCase, StartOptions
 from qps.resources import initQtResources
-
-from qps import registerMapLayerConfigWidgetFactories
+from qps.testing import TestObjects, TestCase, StartOptions
 
 LAYER_WIDGET_REPS = 5
 
@@ -108,7 +101,7 @@ class LayerConfigWidgetsTests(TestCase):
         for i in range(w.comboBox.count()):
             w.comboBox.setCurrentIndex(i)
             if i == 0:
-                self.assertTrue(w.labeling() == None)
+                self.assertTrue(w.labeling() is None)
                 w.apply()
                 self.assertFalse(lyrV.labelsEnabled())
                 self.assertEqual(lyrV.labeling(), None)
@@ -155,13 +148,13 @@ class LayerConfigWidgetsTests(TestCase):
         btnSync.clicked.connect(onSync)
 
         w = QWidget()
-        l = QVBoxLayout()
+        vbLayout = QVBoxLayout()
         lh = QHBoxLayout()
         lh.addWidget(btnApply)
         lh.addWidget(btnSync)
-        l.addLayout(lh)
-        l.addWidget(w1)
-        w.setLayout(l)
+        vbLayout.addLayout(lh)
+        vbLayout.addWidget(w1)
+        w.setLayout(vbLayout)
         self.showGui(w)
 
     def test_histogram(self):
@@ -243,16 +236,16 @@ class LayerConfigWidgetsTests(TestCase):
         lyrE = QgsRasterLayer()
 
         QgsProject.instance().addMapLayers([lyrR, lyrV, lyrE])
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget
         cb = QgsMapLayerComboBox()
         c = QgsMapCanvas()
         md = GDALMetadataModelConfigWidget()
         cb.layerChanged.connect(md.setLayer)
-        l = QVBoxLayout()
-        l.addWidget(cb)
-        l.addWidget(md)
+        vbLayout = QVBoxLayout()
+        vbLayout.addWidget(cb)
+        vbLayout.addWidget(md)
         w = QWidget()
-        w.setLayout(l)
+        w.setLayout(vbLayout)
         self.showGui(w)
 
     def test_GDALBandNameModel(self):
@@ -293,7 +286,7 @@ class LayerConfigWidgetsTests(TestCase):
         self.showGui(tv)
 
     def test_GDALMetadataModel(self):
-        from qpstestdata import enmap, landcover
+        from qpstestdata import landcover
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
 
         c = QgsMapCanvas()
@@ -333,16 +326,13 @@ class LayerConfigWidgetsTests(TestCase):
         self.showGui(d)
 
     def test_GDALMetadataModelConfigWidget(self):
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
-        from qpstestdata import landcover, envi_bsq
+        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget
+        from qpstestdata import envi_bsq
 
         envi_bsq = self.createImageCopy(envi_bsq)
 
-        lyrB = QgsRasterLayer(envi_bsq)
         lyrR = QgsRasterLayer(envi_bsq)
 
-
-        lyrV = QgsVectorLayer(landcover)
         canvas = QgsMapCanvas()
         w = GDALMetadataModelConfigWidget(lyrR, canvas)
         w.metadataModel.setIsEditable(True)
@@ -362,15 +352,15 @@ class LayerConfigWidgetsTests(TestCase):
         cb = QgsRasterBandComboBox()
         cb.setLayer(w.mapLayer())
 
-        l = QGridLayout()
-        l.addWidget(btnApply, 0, 0)
-        l.addWidget(btnReload, 0, 1)
-        l.addWidget(btnZoom, 0, 2)
-        l.addWidget(cb, 0, 3, 1, 2)
-        l.addWidget(w, 1, 0, 2, 3)
-        l.addWidget(canvas, 1, 4, 3, 2)
+        gridLayout = QGridLayout()
+        gridLayout.addWidget(btnApply, 0, 0)
+        gridLayout.addWidget(btnReload, 0, 1)
+        gridLayout.addWidget(btnZoom, 0, 2)
+        gridLayout.addWidget(cb, 0, 3, 1, 2)
+        gridLayout.addWidget(w, 1, 0, 2, 3)
+        gridLayout.addWidget(canvas, 1, 4, 3, 2)
         m = QWidget()
-        m.setLayout(l)
+        m.setLayout(gridLayout)
 
         if isinstance(w.mapLayer(), QgsVectorLayer):
             from qps.layerconfigwidgets.gdalmetadata import GDALMetadataItem
@@ -408,8 +398,8 @@ class LayerConfigWidgetsTests(TestCase):
 
         # no layer
         c = QgsMapCanvas()
-        l = QgsRasterLayer()
-        w = GDALMetadataModelConfigWidget(l, c)
+        lyr = QgsRasterLayer()
+        w = GDALMetadataModelConfigWidget(lyr, c)
         self.assertIsInstance(w, GDALMetadataModelConfigWidget)
         w = GDALMetadataModelConfigWidget(lyrR, cR)
         w.setLayer(lyrR)

@@ -13,7 +13,7 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import xmlrunner
-from PyQt5.QtWidgets import QDialog, QHBoxLayout, QWidget
+from qgis.PyQt.QtWidgets import QDialog, QHBoxLayout, QWidget
 from osgeo import gdal
 
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \

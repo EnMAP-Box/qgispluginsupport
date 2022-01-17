@@ -1,17 +1,16 @@
-import os
 import unittest
+
 import xmlrunner
+from osgeo import gdal, ogr
+
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtGui import QMouseEvent, QColor
 from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
-from osgeo import gdal, ogr
-
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
 from qps.speclib.core import create_profile_field, profile_fields
-
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
     SpectralProfilePlotVisualization, SpectralProfileColorPropertyWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -224,8 +223,6 @@ class TestSpeclibWidgets(TestCase):
 
     def test_rendering(self):
 
-
-
         speclib = TestObjects.createSpectralLibrary()
         QgsProject.instance().addMapLayers([speclib], False)
         slw = SpectralLibraryWidget(speclib=speclib)
@@ -235,12 +232,12 @@ class TestSpeclibWidgets(TestCase):
         canvas.setLayers([speclib])
         canvas.zoomToFullExtent()
 
-        l = QHBoxLayout()
-        l.addWidget(canvas)
-        l.addWidget(slw)
+        layout = QHBoxLayout()
+        layout.addWidget(canvas)
+        layout.addWidget(slw)
 
         w = QWidget()
-        w.setLayout(l)
+        w.setLayout(layout)
         self.showGui(w)
 
 

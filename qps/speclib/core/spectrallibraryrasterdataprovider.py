@@ -314,6 +314,8 @@ class FieldToRasterValueConverter(QObject):
 
             if noData is None:
                 noData = min(fieldValues) - 1
+                while noData in fieldValues:
+                    noData -= 1
 
             numericValues = []
             for v in fieldValues:

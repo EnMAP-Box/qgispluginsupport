@@ -1,25 +1,17 @@
 # noinspection PyPep8Naming
-import os
 import pathlib
-import re
 import typing
 import unittest
+
 import xmlrunner
+from qgis.core import QgsProcessingFeedback
 
-from qgis._core import QgsProcessingFeedback
+from qgis.core import QgsVectorLayer
 from qps.speclib.core import is_spectral_feature
-from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
+from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
-from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDSpectralLibraryImportWidget, ASDBinaryFile
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
-    GeoPackageSpectralLibraryExportWidget
 from qps.testing import TestObjects, TestCase
-
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
-
-
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, GeoPackageSpectralLibraryExportWidget
 from qps.utils import file_search
 
 

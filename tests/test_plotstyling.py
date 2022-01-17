@@ -50,7 +50,6 @@ class PlotStyleTests(TestCase):
         vl.commitChanges()
         return vl
 
-
     def test_PlotStyleButton(self):
 
         bt1 = PlotStyleButton()
@@ -94,8 +93,8 @@ class PlotStyleTests(TestCase):
         self.assertIsInstance(plotStyle2, PlotStyle)
         self.assertTrue(plotStyle == plotStyle2)
 
-        self.assertTrue(PlotStyle.fromJSON(None) == None)
-        self.assertTrue(PlotStyle.fromJSON('') == None)
+        self.assertTrue(PlotStyle.fromJSON(None) is None)
+        self.assertTrue(PlotStyle.fromJSON('') is None)
 
     def test_XML_IO(self):
         testDir = self.createTestOutputDirectory() / 'plotStyle'

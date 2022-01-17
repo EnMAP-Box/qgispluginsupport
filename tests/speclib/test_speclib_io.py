@@ -21,23 +21,18 @@ import os
 import pathlib
 import re
 import unittest
-import xmlrunner
-from qgis._core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature
 
+import xmlrunner
+from qgis.core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature
+
+from qgis.core import QgsVectorLayer
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils, SpectralLibrary
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
     SpectralLibraryIO, SpectralLibraryImportWidget, SpectralLibraryExportWidget
-from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
-    GeoPackageSpectralLibraryExportWidget
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget
 from qps.testing import TestObjects, TestCase
-
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
 from qps.utils import file_search
-
-from qpstestdata import enmap, landcover
-from qpstestdata import speclib as speclibpath
 
 
 class TestIO(TestCase):
@@ -98,7 +93,7 @@ class TestIO(TestCase):
 
         feedback = QgsProcessingFeedback()
         rx = re.compile(r'\.(sli|asd|gpkg|csv)$')
-        for uri in file_search(self.testDir(), rx, recursive=True):
+        for uri in file_search(self.createTestDir(), rx, recursive=True):
             speclib1 = SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
             speclib2 = SpectralLibrary.readFrom(uri, feedback=feedback)
             if speclib1 is None:
@@ -152,7 +147,7 @@ class TestIO(TestCase):
             print(f'Test {w.__class__.__name__}')
             self.assertIsInstance(w, SpectralLibraryExportWidget)
 
-            testpath = (self.testDir() / 'testname').as_posix()
+            testpath = (self.createTestDir() / 'testname').as_posix()
 
             extensions = QgsFileUtils.extensionsFromFilter(w.filter())
             testpath = QgsFileUtils.ensureFileNameHasExtension(testpath, extensions)
@@ -232,10 +227,10 @@ class TestIO(TestCase):
 
         speclib = SpectralLibrary()
 
-        results = SpectralLibraryImportDialog.importProfiles(speclib, defaultRoot=self.testDir())
+        results = SpectralLibraryImportDialog.importProfiles(speclib, defaultRoot=self.createTestDir())
         s = ""
 
-    def testDir(self) -> pathlib.Path:
+    def createTestDir(self) -> pathlib.Path:
         path = self.createTestOutputDirectory() / 'SPECLIB_IO'
         os.makedirs(path, exist_ok=True)
         return path

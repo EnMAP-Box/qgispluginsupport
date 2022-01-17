@@ -11,10 +11,10 @@ import pathlib
 import unittest
 import tempfile
 import xmlrunner
-from PyQt5.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex, QFile
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
-from PyQt5.QtXml import QDomDocument
+from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex, QFile
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
+from qgis.PyQt.QtXml import QDomDocument
 
 from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsRasterRenderer, QgsRasterLayer, QgsVectorLayer, QgsProject, \
@@ -150,7 +150,7 @@ class TestsClassificationScheme(TestCase):
                   TestObjects.createRasterLayer(nc=10),
                   TestObjects.createRasterLayer(nb=4)]
 
-        n = len([l for l in layers if isinstance(ClassificationScheme.fromMapLayer(l), ClassificationScheme)])
+        n = len([lyr for lyr in layers if isinstance(ClassificationScheme.fromMapLayer(lyr), ClassificationScheme)])
         QgsProject.instance().addMapLayers(layers, True)
         cb = ClassificationMapLayerComboBox()
         self.assertIsInstance(cb, QgsMapLayerComboBox)
@@ -519,7 +519,6 @@ class TestsClassificationScheme(TestCase):
         md = cs.mimeData(None)
         self.assertIsInstance(md, QMimeData)
 
-        from qps.layerproperties import pasteStyleToClipboard
         r = cs.featureRenderer()
         self.assertIsInstance(r, QgsFeatureRenderer)
 

@@ -9,7 +9,7 @@ import unittest
 import pathlib
 import re
 import xmlrunner
-from PyQt5.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon
 
 from qgis.core import QgsApplication
 from qgis.gui import QgsEditorWidgetFactory
