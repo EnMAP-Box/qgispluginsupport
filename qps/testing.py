@@ -39,7 +39,8 @@ import warnings
 from unittest import mock
 
 import numpy as np
-from qgis.PyQt.QtCore import QObject, QPoint, QSize, QVariant, pyqtSignal, QMimeData, QPointF, QDir, Qt
+
+from qgis.PyQt.QtCore import QObject, QPoint, QSize, QVariant, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
     QMenu
@@ -122,8 +123,28 @@ def stop_app():
     """
     Stops the QGIS Application, if started via qgis.test.start_app()
     """
-    if isinstance(getattr(qgis.testing, 'QGISAPP', None), QgsApplication):
-        qgis.testing.stop_app()
+    global _QGIS_MOCKUP
+    global _PYTHON_RUNNER
+    _PYTHON_RUNNER = None
+    _QGIS_MOCKUP = None
+    QgsPythonRunner.setInstance(None)
+    import qgis.utils
+    if isinstance(qgis.utils.iface, QgisInterface):
+        from qgis.PyQt.sip import unwrapinstance
+        unwrapinstance(qgis.utils.iface)
+        qgis.utils.iface = None
+
+    import qgis.testing as qtest
+    if isinstance(getattr(qtest, 'QGISAPP', None), QgsApplication):
+        try:
+            qtest.stop_app()
+        except NameError as ex:
+            s = ""
+        except Exception as ex2:
+            s = ""
+            pass
+    import gc
+    gc.collect()
 
 
 _QGIS_MOCKUP = None
@@ -142,6 +163,7 @@ def start_app(cleanup: bool = True,
 
     global _PYTHON_RUNNER
     global _QGIS_MOCKUP
+    global _APP
 
     if resources is None:
         resources = []
@@ -155,40 +177,39 @@ def start_app(cleanup: bool = True,
             initResourceFile(path)
 
         qgsApp = qgis.testing.start_app(cleanup=cleanup)
+        # _APP = qgsApp
+        # initialize things not done by qgis.test.start_app()...
+        if not QgsProviderRegistry.instance().libraryDirectory().exists():
+            libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'
+            QgsProviderRegistry.instance().setLibraryDirectory(QDir(libDir.as_posix()))
 
-    # initialize things not done by qgis.test.start_app()...
-    if not QgsProviderRegistry.instance().libraryDirectory().exists():
-        libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'
-        QgsProviderRegistry.instance().setLibraryDirectory(QDir(libDir.as_posix()))
+        # check for potentially missing qt plugin folders
+        if not os.environ.get('QT_PLUGIN_PATH'):
+            existing = [pathlib.Path(p).resolve() for p in qgsApp.libraryPaths()]
 
-    # check for potentially missing qt plugin folders
-    if not os.environ.get('QT_PLUGIN_PATH'):
-        existing = [pathlib.Path(p).resolve() for p in qgsApp.libraryPaths()]
+            prefixDir = pathlib.Path(qgsApp.pkgDataPath()).resolve()
+            candidates = [prefixDir / 'qtplugins',
+                          prefixDir / 'plugins',
+                          prefixDir / 'bin']
+            for candidate in candidates:
+                if candidate.is_dir() and candidate not in existing:
+                    qgsApp.addLibraryPath(candidate.as_posix())
 
-        prefixDir = pathlib.Path(qgsApp.pkgDataPath()).resolve()
-        candidates = [prefixDir / 'qtplugins',
-                      prefixDir / 'plugins',
-                      prefixDir / 'bin']
-        for candidate in candidates:
-            if candidate.is_dir() and candidate not in existing:
-                qgsApp.addLibraryPath(candidate.as_posix())
+        assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
+            'Directory: {} does not exist. Please check if QGIS_PREFIX_PATH correct'.format(
+                QgsProviderRegistry.instance().libraryDirectory().path())
 
-    assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
-        'Directory: {} does not exist. Please check if QGIS_PREFIX_PATH correct'.format(
-            QgsProviderRegistry.instance().libraryDirectory().path())
+        # initiate a PythonRunner instance if None exists
+        if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
+            if not isinstance(_PYTHON_RUNNER, QgsPythonRunnerMockup):
+                _PYTHON_RUNNER = QgsPythonRunnerMockup()
+            QgsPythonRunner.setInstance(_PYTHON_RUNNER)
 
-    # initiate a PythonRunner instance if None exists
-    if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
-        if not isinstance(_PYTHON_RUNNER, QgsPythonRunnerMockup):
-            _PYTHON_RUNNER = QgsPythonRunnerMockup()
-        QgsPythonRunner.setInstance(_PYTHON_RUNNER)
+        # init standard EditorWidgets
+        if StartOptions.EditorWidgets in options and len(QgsGui.editorWidgetRegistry().factories()) == 0:
+            QgsGui.editorWidgetRegistry().initEditors()
 
-    # init standard EditorWidgets
-    if StartOptions.EditorWidgets in options and len(QgsGui.editorWidgetRegistry().factories()) == 0:
-        QgsGui.editorWidgetRegistry().initEditors()
-
-    # test SRS
-    if True:
+        # test SRS
         assert os.path.isfile(QgsApplication.qgisUserDatabaseFilePath()), \
             'QgsApplication.qgisUserDatabaseFilePath() does not exists: {}'.format(
                 QgsApplication.qgisUserDatabaseFilePath())
@@ -201,38 +222,38 @@ def start_app(cleanup: bool = True,
                     'Settings directory might be outdated: {}'.format(QgsApplication.instance().qgisSettingsDirPath())]
             print('\n'.join(info), file=sys.stderr)
 
-    if not isinstance(qgis.utils.iface, QgisInterface):
-        if not isinstance(_QGIS_MOCKUP, QgisMockup):
-            _QGIS_MOCKUP = QgisMockup()
-        qgis.utils.initInterface(sip.unwrapinstance(_QGIS_MOCKUP))
-        assert _QGIS_MOCKUP == qgis.utils.iface
+        if not isinstance(qgis.utils.iface, QgisInterface):
+            if not isinstance(_QGIS_MOCKUP, QgisMockup):
+                _QGIS_MOCKUP = QgisMockup()
+            qgis.utils.initInterface(sip.unwrapinstance(_QGIS_MOCKUP))
+            assert _QGIS_MOCKUP == qgis.utils.iface
 
-    # set 'home_plugin_path', which is required from the QGIS Plugin manager
-    qgis.utils.home_plugin_path = (pathlib.Path(QgsApplication.instance().qgisSettingsDirPath())
-                                   / 'python' / 'plugins').as_posix()
+        # set 'home_plugin_path', which is required from the QGIS Plugin manager
+        qgis.utils.home_plugin_path = (pathlib.Path(QgsApplication.instance().qgisSettingsDirPath())
+                                       / 'python' / 'plugins').as_posix()
 
-    # initialize the QGIS processing framework
-    if StartOptions.ProcessingFramework in options:
+        # initialize the QGIS processing framework
+        if StartOptions.ProcessingFramework in options:
 
-        pfProviderIds = [p.id() for p in QgsApplication.processingRegistry().providers()]
-        if 'native' not in pfProviderIds:
-            from qgis.analysis import QgsNativeAlgorithms
-            QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
+            pfProviderIds = [p.id() for p in QgsApplication.processingRegistry().providers()]
+            if 'native' not in pfProviderIds:
+                from qgis.analysis import QgsNativeAlgorithms
+                QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 
-        qgisCorePythonPluginDir = pathlib.Path(QgsApplication.pkgDataPath()) / 'python' / 'plugins'
-        assert os.path.isdir(qgisCorePythonPluginDir)
-        if qgisCorePythonPluginDir not in sys.path:
-            sys.path.append(qgisCorePythonPluginDir.as_posix())
+            qgisCorePythonPluginDir = pathlib.Path(QgsApplication.pkgDataPath()) / 'python' / 'plugins'
+            assert os.path.isdir(qgisCorePythonPluginDir)
+            if qgisCorePythonPluginDir not in sys.path:
+                sys.path.append(qgisCorePythonPluginDir.as_posix())
 
-        required = ['qgis', 'gdal']  # at least these should be available
-        missing = [p for p in required if p not in pfProviderIds]
-        if len(missing) > 0:
-            from processing.core.Processing import Processing
-            Processing.initialize()
+            required = ['qgis', 'gdal']  # at least these should be available
+            missing = [p for p in required if p not in pfProviderIds]
+            if len(missing) > 0:
+                from processing.core.Processing import Processing
+                Processing.initialize()
 
-    if StartOptions.PrintProviders in options:
-        providers = QgsProviderRegistry.instance().providerList()
-        print('Providers: {}'.format(', '.join(providers)))
+        if StartOptions.PrintProviders in options:
+            providers = QgsProviderRegistry.instance().providerList()
+            print('Providers: {}'.format(', '.join(providers)))
 
     return qgsApp
 
@@ -300,12 +321,12 @@ class QgisMockup(QgisInterface):
 
     def _onRemoveLayers(self, layerIDs):
         to_remove: typing.List[QgsLayerTreeLayer] = []
-        for l in self.mRootNode.findLayers():
-            l: QgsLayerTreeLayer
-            if l.layerId() in layerIDs:
-                to_remove.append(l)
-        for l in reversed(to_remove):
-            l.parent().removedChildren(l)
+        for lyr in self.mRootNode.findLayers():
+            lyr: QgsLayerTreeLayer
+            if lyr.layerId() in layerIDs:
+                to_remove.append(lyr)
+        for lyr in reversed(to_remove):
+            lyr.parent().removedChildren(lyr)
 
     def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
         assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
@@ -433,10 +454,19 @@ class TestCase(qgis.testing.TestCase):
 
     @staticmethod
     def runsInCI() -> True:
+        """
+        Returns True if this the environment is supposed to run in a CI environment
+        and should not open blocking dialogs
+        """
         return str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0']
 
     @classmethod
     def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
+        if not isinstance(QgsApplication.instance(), QgsApplication):
+            qgis.testing.start_app()
+            from processing.core.Processing import Processing
+            Processing.initialize()
+        return
 
         if resources is None:
             resources = []
@@ -451,13 +481,26 @@ class TestCase(qgis.testing.TestCase):
         gdal.AllRegister()
 
     def tearDown(self):
-        QgsProject.instance().removeAllMapLayers()
+        return
+        # let failures fail fast
+
+        # return
+        QApplication.processEvents()
+        QThreadPool.globalInstance().waitForDone()
+        # QgsProject.instance().removeAllMapLayers()
+
+        import gc
+        gc.collect()
+        super().tearDown()
 
     @classmethod
     def tearDownClass(cls):
-
         if False:  # bug in qgis
-            stop_app()
+            try:
+                stop_app()
+            except NameError as ex:
+                s = ""
+                pass
 
     def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
         """
@@ -511,13 +554,6 @@ class TestCase(qgis.testing.TestCase):
 
         return newpath.as_posix()
 
-    def setUp(self):
-        print('\nSET UP {}'.format(self.id()))
-
-    def tearDown(self):
-
-        print('TEAR DOWN {}'.format(self.id()))
-
     def showGui(self, widgets: typing.Union[QWidget, typing.List[QWidget]] = None) -> bool:
         """
         Call this to show GUI(s) in case we do not run within a CI system
@@ -570,11 +606,11 @@ class TestCase(qgis.testing.TestCase):
         return True
 
 
-class TestAlgorithmProvider(QgsProcessingProvider):
+class ExampleAlgorithmProvider(QgsProcessingProvider):
     NAME = 'TestAlgorithmProvider'
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
         self._algs = []
 
     def load(self):
@@ -711,7 +747,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-               TestObjects._coreDataGT, TestObjects._coreDataWkt
+            TestObjects._coreDataGT, TestObjects._coreDataWkt
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
@@ -891,9 +927,7 @@ class TestObjects(object):
             # nodata = b
             nodata = global_nodata
             nodata_values.append(nodata)
-            arr[b,
-            max(y - d, 0):min(y + d, nl - 1),
-            max(x - d, 0):min(x + d, ns - 1)] = nodata
+            arr[b, max(y - d, 0):min(y + d, nl - 1), max(x - d, 0):min(x + d, ns - 1)] = nodata
 
         ds2: gdal.Dataset = gdal_array.SaveArray(arr, path, prototype=ds)
 

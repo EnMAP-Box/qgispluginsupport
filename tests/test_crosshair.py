@@ -11,15 +11,12 @@
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
+
 import xmlrunner
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QApplication
 
-from qgis._gui import QgsMapCanvas
-
-from qgis._core import QgsCoordinateReferenceSystem, QgsRectangle, QgsProject
-
-from qps.crosshair.crosshair import CrosshairStyle, CrosshairMapCanvasItem, getCrosshairStyle
+from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle, QgsProject
+from qgis.gui import QgsMapCanvas
+from qps.crosshair.crosshair import CrosshairStyle, CrosshairMapCanvasItem
 from qps.testing import TestObjects, TestCase
 from qps.utils import SpatialPoint
 
@@ -91,7 +88,7 @@ class CrosshairTests(TestCase):
 
         lyr.willBeDeleted.emit()
         lyr2.willBeDeleted.emit()
-        self.assertTrue(mc.rasterGridLayer() == None)
+        self.assertTrue(mc.rasterGridLayer() is None)
 
 
 if __name__ == "__main__":

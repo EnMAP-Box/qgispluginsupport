@@ -22,34 +22,30 @@ import datetime
 import os
 import pickle
 import unittest
+
+import numpy as np
 import xmlrunner
-from PyQt5.QtCore import QMimeData, QTimer, QByteArray, QVariant
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QProgressDialog, QWidget
+from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QProgressDialog
 
-import qgis.core
-from qgis._core import QgsProject, QgsField, QgsVectorLayer, QgsGeometry, QgsRasterLayer, QgsFeature, \
+from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsGeometry, QgsRasterLayer, QgsFeature, \
     QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsApplication, QgsTaskManager, QgsFields
-
-from qgis._gui import QgsGui, QgsMapCanvas
-
+from qgis.gui import QgsGui, QgsMapCanvas
+from qps import initResources
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
-from qps.speclib.core import is_profile_field, is_spectral_library, profile_field_list, profile_fields
+from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibrary, SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider, featuresToArrays, \
-    registerDataProvider
+from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
     SpectralProfileBlock, EMPTY_PROFILE_VALUES, encodeProfileValueDict, SpectralProfileLoadingTask
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.speclib.io.csvdata import CSVSpectralLibraryIO
-from qps.testing import TestObjects, TestCase, WMS_GMAPS
+from qps.testing import TestObjects, TestCase
 from qps.utils import toType, findTypeFromString, nextColor, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
     createQgsField, qgsFields2str, str2QgsFields
 from qpstestdata import hymap
 from qpstestdata import speclib as speclibpath
-
-from qps import initResources
-import numpy as np
 
 
 class TestCore(TestCase):
@@ -183,7 +179,6 @@ class TestCore(TestCase):
         while tm.countActiveTasks() > 0:
             QgsApplication.processEvents()
             pass
-
 
     def test_SpectralProfile_BadBandList(self):
 
@@ -615,10 +610,10 @@ class TestCore(TestCase):
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)
 
-            l = len(profiles[0].xValues())
+            n = len(profiles[0].xValues())
 
             for p in profiles:
-                self.assertEqual(l, len(p.xValues()))
+                self.assertEqual(n, len(p.xValues()))
 
     def test_SpectralLibraryValueFields(self):
 
@@ -809,6 +804,7 @@ class TestCore(TestCase):
         from qpstestdata import speclib_labeled
         sl = SpectralLibrary.readFrom(speclib_labeled)
         self.assertIsInstance(sl, QgsVectorLayer)
+        s = ""
 
     def test_others(self):
 

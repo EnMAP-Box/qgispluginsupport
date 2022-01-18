@@ -12,21 +12,18 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 
 import unittest
-import xmlrunner
-from PyQt5.QtCore import QPointF, Qt, QEvent, QTimer, pyqtSlot
-from PyQt5.QtGui import QMouseEvent
 
+import xmlrunner
+from qgis.PyQt.QtCore import QPointF, Qt, QEvent, QTimer, pyqtSlot
+from qgis.PyQt.QtGui import QMouseEvent
+
+from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle, \
+    QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, QgsMapToolZoom, \
+    QgsMapToolCapture, QgsMapMouseEvent
 from qps.maptools import SpatialExtentMapTool, QgsMapToolSelectionHandler, QgsMapToolAddFeature, MapToolCenter, \
     QgsMapToolSelect, MapTools, PixelScaleExtentMapTool, FullExtentMapTool
 from qps.testing import TestObjects, TestCase
-
-from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, QgsMapToolZoom, \
-    QgsMapToolCapture, QgsMapMouseEvent
-from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle, \
-    QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
-
-from osgeo import gdal, ogr, osr
-
 from qps.utils import SpatialExtent
 
 
@@ -185,10 +182,10 @@ class TestMapTools(TestCase):
         canvas = self.createCanvas()
         canvas.show()
         cadDockWidget = QgsAdvancedDigitizingDockWidget(canvas)
-        for l in canvas.layers():
-            if isinstance(l, QgsVectorLayer):
-                canvas.setCurrentLayer(l)
-                l.startEditing()
+        for lyr in canvas.layers():
+            if isinstance(lyr, QgsVectorLayer):
+                canvas.setCurrentLayer(lyr)
+                lyr.startEditing()
                 break
         from qps.maptools import QgsMapToolDigitizeFeature
         mt = QgsMapToolAddFeature(canvas, QgsMapToolDigitizeFeature.CaptureNone, cadDockWidget)

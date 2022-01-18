@@ -1,23 +1,16 @@
 # noinspection PyPep8Naming
 import os
-import re
 import unittest
+
 import xmlrunner
 from osgeo import ogr
+from qgis.core import QgsProcessingFeedback
 
-from qgis._core import QgsProcessingFeedback
+from qgis.core import QgsVectorLayer
 from qps.speclib.core.spectrallibrary import SpectralLibrary
-from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
-    SpectralLibraryIO
-from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
-    GeoPackageSpectralLibraryExportWidget
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryExportWidget
 from qps.testing import TestObjects, TestCase
-
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsEditorWidgetSetup, QgsField
-
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget, \
-    GeoPackageSpectralLibraryExportWidget
 
 
 class TestSpeclibIO_GPKG(TestCase):

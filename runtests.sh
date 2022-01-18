@@ -8,35 +8,35 @@ python3 runfirst.py
 
 mkdir test-reports
 mkdir test-reports/today
-python3 -m coverage run --rcfile=.coveragec   tests/test_cursorlocationsvalues.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_qps.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_models.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_plotstyling.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_qgisissues.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_utils.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_layerconfigwidgets.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_crosshair.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_example.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_plotting.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_io.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_io_asd.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_processing.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_core.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_io_rastersources.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_io_envi.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_io_DEPR.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_io_geopackage.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_gui.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/speclib/test_speclib_profilesources.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_layerproperties.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_testing.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_classificationscheme.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_init.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_searchfiledialog.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_simplewidget.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_maptools.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_resources.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_subdatasets.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_vectorlayertools.py
-python3 -m coverage run --rcfile=.coveragec --append  tests/test_qgsfunctions.py
-python3 -m coverage report
+pytest -x tests/speclib/test_speclib_core.py
+pytest -x tests/speclib/test_speclib_gui.py
+pytest -x tests/speclib/test_speclib_gui_processing.py
+pytest -x tests/speclib/test_speclib_io.py
+pytest -x tests/speclib/test_speclib_io_asd.py
+pytest -x tests/speclib/test_speclib_io_ecosys.py
+pytest -x tests/speclib/test_speclib_io_envi.py
+pytest -x tests/speclib/test_speclib_io_geopackage.py
+pytest -x tests/speclib/test_speclib_io_rastersources.py
+pytest -x tests/speclib/test_speclib_plotting.py
+pytest -x tests/speclib/test_speclib_profilesources.py
+pytest -x tests/speclib/test_speclib_rasterdataprovider.py
+pytest -x tests/test_classificationscheme.py
+pytest -x tests/test_crosshair.py
+pytest -x tests/test_cursorlocationsvalues.py
+pytest -x tests/test_example.py
+pytest -x tests/test_init.py
+pytest -x tests/test_layerconfigwidgets.py
+pytest -x tests/test_layerproperties.py
+pytest -x tests/test_maptools.py
+pytest -x tests/test_models.py
+pytest -x tests/test_plotstyling.py
+pytest -x tests/test_processing.py
+pytest -x tests/test_qgsfunctions.py
+pytest -x tests/test_qps.py
+pytest -x tests/test_resources.py
+pytest -x tests/test_searchfiledialog.py
+pytest -x tests/test_simplewidget.py
+pytest -x tests/test_subdatasets.py
+pytest -x tests/test_testing.py
+pytest -x tests/test_utils.py
+pytest -x tests/test_vectorlayertools.py

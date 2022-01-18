@@ -16,28 +16,25 @@ import calendar
 import datetime
 import os
 import pathlib
+import pickle
 import re
 import unittest
 import warnings
+import xml.etree.ElementTree as ET
 
 import numpy as np
 import xmlrunner
-import pickle
-import xml.etree.ElementTree as ET
-
-from PyQt5.QtCore import QDate, QDateTime, QByteArray, QUrl, QRect, QPoint, QVariant
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
-from PyQt5.QtXml import QDomDocument
+from qgis.PyQt.QtCore import QDate, QDateTime, QByteArray, QUrl, QRect, QPoint, QVariant
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
+from qgis.PyQt.QtXml import QDomDocument
+from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
-
-from osgeo import gdal, ogr, osr, gdal_array
-from qps.testing import TestObjects
-
 from qps.testing import TestCase
+from qps.testing import TestObjects
 from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItemsToMenu, value2str, filenameFromString, \
     SelectMapLayersDialog, defaultBands, relativePath, nextColor, convertMetricUnit, createQgsField, px2geo, geo2px, \
     SpatialPoint, layerGeoTransform, displayBandNames, UnitLookup, qgsRasterLayer, gdalDataset, px2geocoordinates, \
@@ -68,8 +65,8 @@ class TestUtils(TestCase):
 
         import qps
         sources = list(file_search(dn(qps.__file__), '*.ui', recursive=True))
-        sources = [s for s in sources if not 'pyqtgraph' in s]
-        sources = [s for s in sources if not 'externals' in s]
+        sources = [s for s in sources if 'pyqtgraph' not in s]
+        sources = [s for s in sources if 'externals' not in s]
 
         for pathUi in sources:
             tree = ET.parse(pathUi)
@@ -159,7 +156,6 @@ class TestUtils(TestCase):
             self.assertTrue(s in found)
 
     def test_findwavelength(self):
-        from qpstestdata import enmap
 
         lyr = TestObjects.createRasterLayer()
         paths = [lyr.source()]
@@ -167,7 +163,7 @@ class TestUtils(TestCase):
             ds = None
             try:
                 ds = gdalDataset(p)
-            except:
+            except NotImplementedError:
                 pass
 
             if isinstance(ds, gdal.Dataset):
@@ -200,18 +196,18 @@ class TestUtils(TestCase):
 
     def test_qgsField(self):
 
-        l = TestObjects.createVectorLayer()
-        for i, field in enumerate(l.fields()):
+        lyr = TestObjects.createVectorLayer()
+        for i, field in enumerate(lyr.fields()):
             name = field.name()
-            self.assertEqual(field, qgsField(l, name))
-            self.assertEqual(field, qgsField(l, field))
-            self.assertEqual(field, qgsField(l, i))
+            self.assertEqual(field, qgsField(lyr, name))
+            self.assertEqual(field, qgsField(lyr, field))
+            self.assertEqual(field, qgsField(lyr, i))
 
     def test_qgsLayers(self):
 
         # raster
-        l = TestObjects.createRasterLayer()
-        sources = [l, l.source()]
+        lyr = TestObjects.createRasterLayer()
+        sources = [lyr, lyr.source()]
 
         for s in sources:
             layer = qgsRasterLayer(s)
@@ -225,9 +221,9 @@ class TestUtils(TestCase):
 
             with_sublayers = list(qgsRasterLayers(sources))
             self.assertTrue(len(with_sublayers) > len(sources))
-            for l in with_sublayers:
-                self.assertIsInstance(l, QgsRasterLayer)
-                self.assertTrue(l.isValid())
+            for lyr in with_sublayers:
+                self.assertIsInstance(lyr, QgsRasterLayer)
+                self.assertTrue(lyr.isValid())
 
     def test_spatialObjects(self):
 
@@ -272,7 +268,7 @@ class TestUtils(TestCase):
     def test_fid2pixelIndices(self):
 
         # create test datasets
-        from qpstestdata import enmap_pixel, landcover, enmap, enmap_polygon
+        from qpstestdata import enmap_pixel, enmap
         rl = QgsRasterLayer(enmap)
         vl = QgsVectorLayer(enmap_pixel)
 
@@ -409,8 +405,8 @@ class TestUtils(TestCase):
         inputs = [lyr, lyr.source(), gdal.Open(lyr.source()), url]
 
         for source in inputs:
-            l = qgsRasterLayer(source)
-            self.assertIsInstance(l, QgsRasterLayer)
+            lyr = qgsRasterLayer(source)
+            self.assertIsInstance(lyr, QgsRasterLayer)
 
     def test_UnitLookup(self):
 

@@ -1,8 +1,9 @@
 import unittest
+
 import xmlrunner
 
 from qps.searchfiledialog import SearchFilesDialog
-from qps.testing import TestCase, TestObjects
+from qps.testing import TestCase
 
 
 class SearchFileDialogTest(TestCase):

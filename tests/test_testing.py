@@ -5,19 +5,16 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import xmlrunner
-from qgis.core import QgsProcessingProvider, QgsProcessingModelAlgorithm, QgsProcessingFeedback, QgsProcessingContext, \
-    QgsProcessingAlgorithm
+import unittest
 
+import numpy as np
+import xmlrunner
+from osgeo import gdal
+
+import qps.testing
 from qgis.core import QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
     QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
-from qgis.gui import QgsLayerTreeView,  QgisInterface, QgsGui
-import unittest
-import qps.testing
-from osgeo import gdal
-import numpy as np
-
-from qps.speclib.core.spectralprofile import SpectralProfileBlock
+from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
 
 
 class testClassTesting(unittest.TestCase):
@@ -72,16 +69,11 @@ class testClassTesting(unittest.TestCase):
         for k in sorted(ENV.keys()):
             print('{}={}'.format(k, ENV[k]))
 
-        qgis_app.quit()
-
     def test_init_minimal(self):
         qgis_app = qps.testing.start_app(options=qps.testing.StartOptions.Minimized)
 
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
-        qgis_app.quit()
-
-
 
 
 class test_TestObject(qps.testing.TestCase):
@@ -173,5 +165,4 @@ class test_TestObject(qps.testing.TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

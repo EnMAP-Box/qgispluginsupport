@@ -1,9 +1,8 @@
-import unittest
-import xmlrunner
-import xml.etree.ElementTree as ET
 import pathlib
-import os
 import re
+import unittest
+
+import xmlrunner
 
 DIR_QPS = pathlib.Path(__file__).parents[1] / 'qps'
 

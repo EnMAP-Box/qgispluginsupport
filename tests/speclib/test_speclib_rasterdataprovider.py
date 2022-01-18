@@ -1,13 +1,11 @@
-import numpy as np
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
-from qgis.core import QgsMapLayerModel, QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRectangle, \
-    QgsField, QgsFields, QgsRasterDataProvider, QgsRasterInterface, QgsRasterRange, QgsMapLayerStore, QgsRasterPipe
+from qgis.core import QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRasterRange, QgsMapLayerStore, QgsRasterPipe
 
 from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 
 from qps import initResources
 from qps.speclib.core import profile_fields
-from qps.speclib.core.spectrallibraryrasterdataprovider import SpectralLibraryRasterDataProvider, registerDataProvider, \
+from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider, \
     VectorLayerFieldRasterDataProvider, createRasterLayers
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase
@@ -62,7 +60,7 @@ class RasterDataProviderTests(TestCase):
             self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
 
             nb = dp.bandCount()
-            for b in range(1, nb+1):
+            for b in range(1, nb + 1):
                 bandName = dp.generateBandName(b)
                 displayName = dp.displayBandName(b)
 
@@ -86,14 +84,13 @@ class RasterDataProviderTests(TestCase):
         lyr = layers[0]
         c = self.rasterProviderTestSuite(lyr)
         self.showGui(c)
-        #print('SHOW GUI')
-
+        # print('SHOW GUI')
 
     def rasterProviderTestSuite(self, layer: QgsRasterLayer) -> QgsMapCanvas:
         self.assertIsInstance(layer, QgsRasterLayer)
 
         QgsProject.instance().addMapLayer(layer, False)
-        
+
         pipe = layer.pipe()
         self.assertIsInstance(pipe, QgsRasterPipe)
         cb = QgsMapLayerComboBox()
@@ -103,14 +100,13 @@ class RasterDataProviderTests(TestCase):
         c.setLayers([layer])
         c.zoomToFullExtent()
 
-        l = QVBoxLayout()
-        l.addWidget(cb)
-        l.addWidget(c)
+        vbLayout = QVBoxLayout()
+        vbLayout.addWidget(cb)
+        vbLayout.addWidget(c)
         w = QWidget()
-        w.setLayout(l)
+        w.setLayout(vbLayout)
         w.show()
         return w
-
 
         return c
 

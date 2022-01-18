@@ -58,31 +58,27 @@ To apply QgsProcessingAlgorithms on SpectralLibraries / QgsVectorLayers
 2. the raster images are used as input parameter values of the QgsProcessingAlgorithms
 3. the output rasters are translated back into field values of the Spectral Library / QgsVectorLayer
 
-## Mapping SpectralLibrary fields to QgsProcessingAlgorithm input parameters:
+## Type Mapping
 
-This table shows how field of a QgsVectorLayer are translated into raster image inputs 
+This table shows how field values of a QgsVectorLayer are translated into raster image inputs.  
 
-| Field                                     | Type       | Type Name | Raster image size <br>bands x height x width, type | Raster No-Data  |
-|-------------------------------------------|------------|-----------|----------------------------------------------------|-----------------|
-| Binary                                    | QByteArray | binary    | N/A                                                | Nan / -9999 (1) |
-| SpectralProfile <br>nb bands float/double | QByteArray | binary    | nb x 1 x nf, float/double                          | NaN             |
-| Whole number                              | int        | integer   | 1 x 1 x nf, int                                    | -9999 (1)       |
-| Decimal number                            | double     | double    | 1 x 1 x nf, double                                 | NaN             |
-| Boolean                                   | bool       | boolean   | 1 x 1 x nf, int, NBITS=2                           | -1              |
-| Date                                      | QDate      | date      | <not specified>                                    |                 |
-| Time                                      | QTime      | time      | <not specified>                                    |                 |
-| DateTime                                  | QDateTime  | datetime  | <not specified>                                    |                 |
-| Text                                      | QString    | string    | 1 x 1 x nf, int classified                         | (2)             |
+| Field                                             | Type       | Type Name | Raster image size <br>bands x height x width, type | Raster No-data |
+|---------------------------------------------------|------------|-----------|----------------------------------------------------|----------------|
+| Binary                                            | QByteArray | binary    | N/A                                                |                |
+| Binary, SpectralProfile <br>nb bands float/double | QByteArray | binary    | nb x 1 x nf, float/double                          | NaN            |
+| Whole number                                      | int        | integer   | 1 x 1 x nf, int                                    | -1 (1)         |
+| Decimal number                                    | double     | double    | 1 x 1 x nf, double                                 | NaN            |
+| Boolean                                           | bool       | boolean   | 1 x 1 x nf, int, NBITS=2                           | -1             |
+| Date                                              | QDate      | date      | <not specified>                                    |                |
+| Time                                              | QTime      | time      | <not specified>                                    |                |
+| DateTime                                          | QDateTime  | datetime  | <not specified>                                    |                |
+| Text                                              | QString    | string    | 1 x 1 x nf, int classified                         | (2)            |
 
 
-(1) No-Data value is found as followed:
- -9999, -1, lowest field values -1
+(1) No-data value is found in order of:
+ -1, -9999, lowest field values - 1 
 
 (2) Unique Text values are assigned to numeric class labels by alphanumeric sorting
-
-Field default values?
-Not Null constraints?
-
 
 The number of spectral profiles x is the number of spectral library features with a
 similar SpectralSetting:

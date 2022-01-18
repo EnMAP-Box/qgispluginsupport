@@ -1,27 +1,27 @@
 import unittest
+
 import xmlrunner
-from qgis.PyQt.QtWidgets import QPushButton, QGroupBox
 
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QGridLayout
-from qps.testing import TestObjects, TestCase
+from qgis.PyQt.QtWidgets import QPushButton, QGroupBox
+from qgis.PyQt.QtWidgets import QWidget, QGridLayout
 from qgis.gui import QgsSpinBox
-
 from qps.simplewidgets import SliderSpinBox, DoubleSliderSpinBox, FlowLayout
+from qps.testing import TestCase
+
 
 class SimpleWidgetTests(TestCase):
 
     def test_FlowLayout(self):
 
-
         w = QGroupBox()
-        l = FlowLayout()
-        l.setSpacing(0)
-        l.setContentsMargins(0, 0, 0, 0)
+        flowLayout = FlowLayout()
+        flowLayout.setSpacing(0)
+        flowLayout.setContentsMargins(0, 0, 0, 0)
         for i in range(10):
-            btn = QPushButton(f'Button {i+1}')
-            l.addWidget(btn)
-        w.setLayout(l)
+            btn = QPushButton(f'Button {i + 1}')
+            flowLayout.addWidget(btn)
+        w.setLayout(flowLayout)
         self.assertIsInstance(w.layout(), FlowLayout)
         s = ""
         self.showGui(w)
@@ -31,7 +31,7 @@ class SimpleWidgetTests(TestCase):
         sb = SliderSpinBox()
         sbl = DoubleSliderSpinBox()
 
-        l = QGridLayout()
+        gridLayout = QGridLayout()
         for row, a in enumerate([Qt.AlignLeft, Qt.AlignRight, Qt.AlignTop, Qt.AlignBottom]):
             for col, sb in enumerate([SliderSpinBox(spinbox=QgsSpinBox(), spinbox_position=a),
                                       SliderSpinBox(spinbox_position=a),
@@ -39,15 +39,12 @@ class SimpleWidgetTests(TestCase):
                 sb.setValue(10)
                 sb.setMinimum(-10)
                 sb.setMaximum(100)
-                l.addWidget(sb, row, col)
-
-
+                gridLayout.addWidget(sb, row, col)
 
         w = QWidget()
-        w.setLayout(l)
+        w.setLayout(gridLayout)
         self.showGui(w)
 
 
 if __name__ == '__main__':
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

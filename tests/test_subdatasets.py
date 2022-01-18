@@ -1,13 +1,14 @@
-import unittest
 import os
-import typing
-import xmlrunner
 import pathlib
-from qps.testing import TestCase
+import typing
+import unittest
+
+import xmlrunner
 
 from qgis.core import QgsRasterLayer
 from qps.subdatasets import DatasetInfo, SubDatasetType, \
-    SubDatasetLoadingTask, SubDatasetSelectionDialog, SubDatasetDescriptionModel
+    SubDatasetLoadingTask, SubDatasetSelectionDialog
+from qps.testing import TestCase
 
 
 class TestSubDataSets(TestCase):
@@ -35,9 +36,9 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
 SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml:60m:EPSG_32631###Bands B1, B9 with 60m resolution, UTM 31N
 SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml:TCI:EPSG_32631###True color image, UTM 31N
         """
-        subs = [l.strip() for l in subs.splitlines()]
-        subs = [l.split('###') for l in subs if len(l) > 0]
-        subs = [(l[0], l[1]) for l in subs]
+        subs = [line.strip() for line in subs.splitlines()]
+        subs = [line.split('###') for line in subs if len(line) > 0]
+        subs = [(line[0], line[1]) for line in subs]
         results = []
         path = r'D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml'
         results.append(DatasetInfo(path, subs))

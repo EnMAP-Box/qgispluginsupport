@@ -14,18 +14,17 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import os
 import unittest
+
 import xmlrunner
 from osgeo import gdal
-from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, \
-    QgsProject, QgsCoordinateReferenceSystem
-from qgis.gui import QgsMapCanvas, QgsMapTool
 
 from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout, QTreeView
-
-from qps.testing import TestObjects, TestCase
-from qps.utils import SpatialPoint, SpatialExtent
-
+from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, \
+    QgsProject, QgsCoordinateReferenceSystem
+from qgis.gui import QgsMapCanvas
 from qps.cursorlocationvalue import CursorLocationInfoDock
+from qps.testing import TestObjects, TestCase
+from qps.utils import SpatialPoint
 
 
 class CursorLocationTest(TestCase):
@@ -42,9 +41,9 @@ class CursorLocationTest(TestCase):
         # l3 = QgsVectorLayer(self.wfsUri, 'Lee Water Pipes', 'WFS')
 
         layers = [l1, l2]
-        for l in layers:
-            self.assertIsInstance(l, QgsMapLayer)
-            self.assertTrue(l.isValid())
+        for lyr in layers:
+            self.assertIsInstance(lyr, QgsMapLayer)
+            self.assertTrue(lyr.isValid())
         return layers
 
     def test_maptool(self):
@@ -67,7 +66,7 @@ class CursorLocationTest(TestCase):
 
         from qps.maptools import CursorLocationMapTool
         mt = CursorLocationMapTool(c)
-        #mt.setFlags(QgsMapTool.ShowContextMenu)
+        # mt.setFlags(QgsMapTool.ShowContextMenu)
         c.setMapTool(mt)
 
         def onLocationRequest(crs: QgsCoordinateReferenceSystem, pt: QgsPointXY):
@@ -79,11 +78,11 @@ class CursorLocationTest(TestCase):
         tv2 = QTreeView()
         tv2.setModel(dock.mLocationInfoModel)
         w = QWidget()
-        l = QHBoxLayout()
-        l.addWidget(dock)
-        l.addWidget(c)
-        l.addWidget(tv2)
-        w.setLayout(l)
+        hboxLayout = QHBoxLayout()
+        hboxLayout.addWidget(dock)
+        hboxLayout.addWidget(c)
+        hboxLayout.addWidget(tv2)
+        w.setLayout(hboxLayout)
         self.showGui(w)
 
     def test_locallayers(self):

@@ -25,7 +25,7 @@ import time
 import unittest
 import numpy as np
 import xmlrunner
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 from osgeo import ogr, gdal
 
 from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
@@ -38,6 +38,7 @@ from qgis.gui import QgsOptionsDialogBase, QgsSearchWidgetWrapper, QgsMapCanvas,
     QgsDualView, QgsGui
 from qps.layerproperties import AddAttributeDialog
 from qps.plotstyling.plotstyling import PlotStyle
+from qps.pyqtgraph import pyqtgraph as pg
 from qps.speclib import FIELD_VALUES
 from qps.speclib.core import profile_field_list, is_spectral_library
 from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibrary
@@ -101,7 +102,6 @@ class TestSpeclibWidgets(TestCase):
 
     def tearDown(self):
         super().tearDown()
-        QApplication.processEvents()
 
     @classmethod
     def tearDownClass(cls):
@@ -109,9 +109,6 @@ class TestSpeclibWidgets(TestCase):
 
     @unittest.skipIf(False, '')
     def test_PyQtGraphPlot(self):
-        import qps.externals.pyqtgraph as pg
-        # pg.systemInfo()
-
         plotWidget = pg.plot(title="Three plot curves")
 
         item1 = pg.PlotItem(x=[1, 2, 3], y=[2, 3, 4], color='white')
@@ -125,7 +122,7 @@ class TestSpeclibWidgets(TestCase):
 
         profile = SpectralProfile()
         self.assertIsInstance(profile, SpectralProfile)
-        import numpy as np
+
         yValues = np.asarray(
             [700., np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan, 800.])
         xValues = np.asarray([0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1])
@@ -258,8 +255,8 @@ class TestSpeclibWidgets(TestCase):
 
         m.setProfile(p3)
         self.assertTrue(m.rowCount() == len(p3.xValues()))
-        self.assertEqual('x'.format(yUnit), m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('y'.format(xUnit), m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
         # m.setColumnValueUnit(0, '')
 
@@ -386,6 +383,7 @@ class TestSpeclibWidgets(TestCase):
         w.addSpeclib(sl)
         self.showGui(w)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Fuzz test (drag and drop)')
     def test_dropping_speclibs(self):
 
         files = []
@@ -440,10 +438,10 @@ class TestSpeclibWidgets(TestCase):
         btnAddTempProfiles.clicked.connect(onClicked)
 
         w2 = QWidget()
-        l = QVBoxLayout()
-        l.addWidget(btnAddTempProfiles)
-        l.addWidget(w)
-        w2.setLayout(l)
+        layout = QVBoxLayout()
+        layout.addWidget(btnAddTempProfiles)
+        layout.addWidget(w)
+        w2.setLayout(layout)
         self.showGui(w2)
         s = ""
 
@@ -454,17 +452,9 @@ class TestSpeclibWidgets(TestCase):
 
         w.setViewVisibility(SpectralLibraryWidget.ViewType.Empty)
         self.assertFalse(w.mSpeclibPlotWidget.isVisible())
-        self.assertFalse(w.pageProcessingWidget.isVisible())
         self.assertFalse(w.mMainView.isVisible())
-
-        w.setViewVisibility(SpectralLibraryWidget.ViewType.ProcessingView)
-        self.assertFalse(w.mSpeclibPlotWidget.isVisible())
-        self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
-        self.assertFalse(w.mMainView.isVisible())
-        self.assertTrue(w.pageProcessingWidget.isVisible())
 
         w.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
-        self.assertFalse(w.pageProcessingWidget.isVisible())
         self.assertTrue(w.mMainView.isVisible())
         self.assertEqual(w.mMainView.view(), QgsDualView.AttributeTable)
         self.assertTrue(w.mSpeclibPlotWidget.isVisible())
@@ -473,7 +463,6 @@ class TestSpeclibWidgets(TestCase):
         w.setViewVisibility(SpectralLibraryWidget.ViewType.ProfileView)
         self.assertTrue(w.mSpeclibPlotWidget.isVisible())
         self.assertFalse(w.mMainView.isVisible())
-        self.assertFalse(w.pageProcessingWidget.isVisible())
 
         self.showGui(w)
 
@@ -519,8 +508,6 @@ class TestSpeclibWidgets(TestCase):
         fieldNames = slw.speclib().fieldNames()
         self.assertIsInstance(fieldNames, list)
 
-        cs = [sl1[0], sl1[3], sl1[-1]]
-        l = len(sl1)
         self.assertTrue(slw.speclib() == sl1)
 
         # from qps.resources import ResourceBrowser
@@ -576,7 +563,7 @@ class TestSpeclibWidgets(TestCase):
         # self.assertTrue()
         self.showGui(slw)
 
-    @unittest.skipIf(False, '')
+    @unittest.skipIf(True, 'Deprecated')
     def test_speclibAttributeWidgets(self):
 
         speclib = TestObjects.createSpectralLibrary()
