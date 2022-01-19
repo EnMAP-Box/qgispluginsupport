@@ -964,13 +964,13 @@ class TestObjects(object):
                             path: typing.Union[str, pathlib.Path] = None,
                             drv: typing.Union[str, gdal.Driver] = None,
                             wlu: str = None,
+                            pixel_size: float = None,
                             no_data_rectangle: int = 0,
                             no_data_value: typing.Union[int, float] = -9999) -> gdal.Dataset:
         """
         Generates a gdal.Dataset of arbitrary size based on true data from a smaller EnMAP raster image
         """
         from .classification.classificationscheme import ClassificationScheme
-
         scheme = None
         if nc is None:
             nc = 0
@@ -1009,6 +1009,10 @@ class TestObjects(object):
                 band.SetNoDataValue(no_data_value)
 
         coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
+
+        if pixel_size:
+            core_gt = (core_gt[0], abs(pixel_size), core_gt[2],
+                       core_gt[3], core_gt[4], -abs(pixel_size))
 
         dt_out = gdal_array.flip_code(eType)
         if isinstance(crs, str) or gt is not None:
