@@ -20,7 +20,10 @@ class GraphicsObject(GraphicsItem, QtWidgets.QGraphicsObject):
         GraphicsItem.__init__(self)
         
     def itemChange(self, change, value):
-        ret = super().itemChange(change, value)
+        try:
+            ret = super().itemChange(change, value)
+        except TypeError:
+            return None
         if change in [self.GraphicsItemChange.ItemParentHasChanged, self.GraphicsItemChange.ItemSceneHasChanged]:
             import types
             if isinstance(self.parentChanged, types.MethodType):
