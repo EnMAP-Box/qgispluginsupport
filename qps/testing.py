@@ -47,6 +47,7 @@ from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMai
 from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
+import qgis.testing.mocked
 import qgis.utils
 from qgis.PyQt import sip
 from qgis.core import QgsLayerTreeLayer
@@ -151,6 +152,7 @@ _QGIS_MOCKUP = None
 _PYTHON_RUNNER = None
 
 
+
 def start_app(cleanup: bool = True,
               options=StartOptions.Minimized,
               resources: typing.List[typing.Union[str, pathlib.Path]] = None) -> QgsApplication:
@@ -222,11 +224,7 @@ def start_app(cleanup: bool = True,
                     'Settings directory might be outdated: {}'.format(QgsApplication.instance().qgisSettingsDirPath())]
             print('\n'.join(info), file=sys.stderr)
 
-        if not isinstance(qgis.utils.iface, QgisInterface):
-            if not isinstance(_QGIS_MOCKUP, QgisMockup):
-                _QGIS_MOCKUP = QgisMockup()
-            qgis.utils.initInterface(sip.unwrapinstance(_QGIS_MOCKUP))
-            assert _QGIS_MOCKUP == qgis.utils.iface
+        get_iface() # creates a QGIS Mockup
 
         # set 'home_plugin_path', which is required from the QGIS Plugin manager
         qgis.utils.home_plugin_path = (pathlib.Path(QgsApplication.instance().qgisSettingsDirPath())
@@ -449,8 +447,17 @@ class QgisMockup(QgisInterface):
     def zoomFull(self, *args, **kwargs):
         self.mCanvas.zoomToFullExtent()
 
+def get_iface() -> QgisInterface:
+
+    if not isinstance(qgis.utils.iface, QgisInterface):
+        iface = QgisMockup()
+        qgis.utils.initInterface(sip.unwrapinstance(iface))
+
+    return qgis.utils.iface
 
 class TestCase(qgis.testing.TestCase):
+
+    IFACE = None
 
     @staticmethod
     def runsInCI() -> True:
@@ -464,8 +471,15 @@ class TestCase(qgis.testing.TestCase):
     def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
         if not isinstance(QgsApplication.instance(), QgsApplication):
             qgis.testing.start_app()
+
+            if TestCase.IFACE is None:
+                TestCase.IFACE = get_iface()
+
             from processing.core.Processing import Processing
             Processing.initialize()
+
+
+
         return
 
         if resources is None:

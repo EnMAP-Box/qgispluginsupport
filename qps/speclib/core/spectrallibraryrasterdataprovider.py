@@ -60,6 +60,7 @@ def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFea
         else:
             name = f'{field.name()} ({field.typeName()})'
             layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+            assert layer.isValid(), 'Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider'
             dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
             dp.setActiveFeatures(features, field=field)
             layers.append(layer)

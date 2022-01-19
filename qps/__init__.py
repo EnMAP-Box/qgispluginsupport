@@ -172,6 +172,9 @@ def registerSpectralLibraryIOs():
     from .speclib.core.spectrallibraryio import initSpectralLibraryIOs
     initSpectralLibraryIOs()
 
+    from .speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
+    registerDataProvider()
+
 
 def unregisterExpressionFunctions():
     from .qgsfunctions import unregisterQgsExpressionFunctions as _unregisterQgsExpressionFunctions
@@ -203,6 +206,7 @@ def initAll():
     registerMapLayerConfigWidgetFactories()
     registerSpectralProfileSamplingModes()
     registerSpectralLibraryIOs()
+
 
 
 def unloadAll():
