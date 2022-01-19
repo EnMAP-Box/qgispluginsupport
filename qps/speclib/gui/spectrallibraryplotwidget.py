@@ -1849,6 +1849,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
                 vis: SpectralProfilePlotVisualization
                 id_plot_data = (fid, vis.fieldIdx(), xunit)
                 id_attribute = (fid, vis.fieldIdx())
+                id_attributeN = (fid, vis.field().name())
                 # context.appendScope(vis.createExpressionContextScope())
 
                 if not (fid in selected_fids or fid in temporal_fids) and VIS_HAS_FILTER[vis]:
@@ -1918,7 +1919,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
 
                 elif fid in temporal_fids:
                     # special color
-                    featureColor = self.mTemporaryProfileColors.get(id_attribute, self.mPlotWidgetStyle.temporaryColor)
+                    featureColor = self.mTemporaryProfileColors.get(id_attributeN, self.mPlotWidgetStyle.temporaryColor)
                     linePen.setColor(featureColor)
                     linePen.setWidth(style.lineWidth() + 2)
                     symbolPen.setColor(featureColor)

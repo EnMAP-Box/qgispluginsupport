@@ -487,6 +487,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         Sets temporary profiles for the spectral library.
         If not made permanent, they will be removes when adding the next set of temporary profiles
+        :param currentProfileColors:
         :param colors:
         :param make_permanent: bool, if not note, overwrite the value returned by optionAddCurrentProfilesAutomatically
         :type make_permanent:

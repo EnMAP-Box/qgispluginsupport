@@ -715,9 +715,6 @@ class ColorNode(TreeNode):
     def value(self) -> QColor:
         return QColor(super().value())
 
-    def toolTip(self) -> str:
-        return self.value().name()
-
 
 class KernelProfileSamplingMode(SpectralProfileSamplingMode):
     NO_AGGREGATION = 'no_aggregation'
@@ -1035,7 +1032,7 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
         self.mSamplingNode = SpectralProfileSamplingModeNode('Sampling')
         self.mScalingNode = SpectralProfileScalingNode('Scaling')
         self.mColorNode = ColorNode('Color',
-                                    toolTip='Color if profile becomes a temporal profile in a Spectral Library View')
+                                    toolTip='Color of profile candidate in Spectral Profile View')
 
         self.appendChildNodes([self.mColorNode, self.mSourceNode, self.mSamplingNode, self.mScalingNode])
 
@@ -1791,12 +1788,19 @@ class SpectralProfileBridge(TreeModel):
                         return tt
 
             if isinstance(node, ColorNode):
+                if c == 0:
+                    if role == Qt.ToolTipRole:
+                        return node.toolTip()
+
                 if c == 1:
                     if role == Qt.DisplayRole:
                         return node.color().name(QColor.HexArgb)
 
                     if role == Qt.DecorationRole:
                         return node.color()
+
+                    if role == Qt.ToolTipRole:
+                        return str(node.value())
 
             if isinstance(node, FieldGeneratorNode):
                 field: QgsField = node.field()
