@@ -121,6 +121,18 @@ class TestMapTools(TestCase):
 
         self.showGui(canvas)
 
+    def test_PixelScaleExtentMapTool(self):
+
+        canvas = QgsMapCanvas()
+        lyr = TestObjects.createRasterLayer()
+        mt = PixelScaleExtentMapTool(canvas)
+        canvas.setLayers([lyr])
+        canvas.setDestinationCrs(lyr.crs())
+        canvas.zoomToFullExtent()
+        canvas.setMapTool(mt)
+        mt.setRasterLayer(lyr)
+        self.assertAlmostEqual(canvas.mapUnitsPerPixel(), lyr.rasterUnitsPerPixelX(), 4)
+
     def test_CenterMapCanvasMapTool(self):
 
         canvas = self.createCanvas()

@@ -30,6 +30,7 @@ from qgis.PyQt.QtGui import QColor, QKeyEvent, QIcon, QCursor
 from qgis.PyQt.QtWidgets import QApplication, QAction, QLabel, QHBoxLayout, QWidget, QSizePolicy, QAbstractButton
 
 from qgis.PyQt.QtCore import Qt
+from qgis.core import QgsRasterDataProvider
 from qgis.core import QgsWkbTypes, QgsVectorLayerTools, QgsProject, QgsVectorLayer, QgsPoint, QgsGeometry, \
     QgsCoordinateReferenceSystem, QgsPointXY, QgsFeature, QgsSettings, QgsEditFormConfig, QgsMultiPoint, \
     QgsFeatureRequest, QgsExpressionContextUtils, QgsRenderContext, QgsCsException, QgsDistanceArea, QgsLineString, \
@@ -352,23 +353,41 @@ class PixelScaleExtentMapTool(QgsMapTool):
         """
         crs = self.canvas().mapSettings().destinationCrs()
         pt = SpatialPoint(crs, mouseEvent.mapPoint())
-        center = SpatialPoint.fromMapCanvasCenter(self.canvas())
-
-        unitsPxX = None
-        unitsPxY = None
 
         for lyr in self.canvas().layers():
             if isinstance(lyr, QgsRasterLayer) and lyr.extent().contains(pt.toCrs(lyr.crs())):
-                unitsPxX = lyr.rasterUnitsPerPixelX()
-                unitsPxY = lyr.rasterUnitsPerPixelY()
+                self.setRasterLayer(lyr)
                 break
 
-        if isinstance(unitsPxX, (int, float)) and unitsPxX > 0:
-            width = self.canvas().size().width() * unitsPxX  # width in map units
-            height = self.canvas().size().height() * unitsPxY  # height in map units
-            extent = SpatialExtent(crs, 0, 0, width, height)
-            extent.setCenter(center, crs=crs)
-            self.canvas().setExtent(extent)
+    def setRasterLayer(self, layer: QgsRasterLayer):
+        if not isinstance(layer, QgsRasterLayer):
+            return
+        # reimplementation of QGIS\src\app\qgisapp.cpp
+        canvas = self.canvas()
+        nativeResolutions = None
+        if isinstance(layer.dataProvider(), QgsRasterDataProvider):
+            nativeResolutions = layer.dataProvider().nativeResolutions()
+
+        # get length of central canvas pixel width in source raster crs
+        e = canvas.extent()
+        s = canvas.mapSettings().outputSize()
+        p1 = QgsPointXY(e.center().x(), e.center().y())
+        p2 = QgsPointXY(e.center().x() + e.width() / s.width(), e.center().y() + e.height() / s.height())
+        ct = QgsCoordinateTransform(canvas.mapSettings().destinationCrs(), layer.crs(), QgsProject.instance())
+        p1 = ct.transform(p1)
+        p2 = ct.transform(p2)
+        # width (actually the diagonal) of reprojected pixel
+        diagonalSize = math.sqrt(p1.sqrDist(p2))
+
+        if len(nativeResolutions) > 0:
+            # find the closest native resolution
+            diagonalNativeResolutionsDiff = [abs(diagonalSize - math.sqrt(2*d*d)) for d in nativeResolutions]
+            i = diagonalNativeResolutionsDiff.index(min(diagonalNativeResolutionsDiff))
+            res = nativeResolutions[i]
+            canvas.zoomByFactor(res / canvas.mapUnitsPerPixel())
+        else:
+            canvas.zoomByFactor(
+                math.sqrt(layer.rasterUnitsPerPixelX()**2 + layer.rasterUnitsPerPixelY()**2) / diagonalSize)
 
 
 class FullExtentMapTool(QgsMapTool):
@@ -1410,8 +1429,8 @@ class QgsMapToolSelectionHandler(QObject):
 
     geometryChanged = pyqtSignal(Qt.KeyboardModifiers)
 
-    def __init__(self, canvas: QgsMapCanvas, selectionMode):
-        super(QgsMapToolSelectionHandler, self).__init__()
+    def __init__(self, canvas: QgsMapCanvas, selectionMode, parent: QObject = None):
+        super(QgsMapToolSelectionHandler, self).__init__(parent=parent)
         self.mSelectionGeometry = None
         assert isinstance(selectionMode, QgsMapToolSelectionHandler.SelectionMode)
         self.mCanvas = canvas
@@ -1641,7 +1660,7 @@ class QgsMapToolSelectionHandler(QObject):
 
         self.deleteDistanceWidget()
 
-        self.mDistanceWidget = QgsDistanceWidget("Selection radius:")
+        self.mDistanceWidget = QgsDistanceWidget("Selection radius:", parent=self.mUserInputWidget)
         # emulate
         # QgisApp::instance() -> addUserInputWidget( mDistanceWidget );
         # by adding the distance widget to the MapTool's QgsMapCanvas directly
@@ -1655,6 +1674,7 @@ class QgsMapToolSelectionHandler(QObject):
     def deleteDistanceWidget(self):
         if isinstance(self.mDistanceWidget, QWidget):
             self.mDistanceWidget.releaseKeyboard()
+            self.mDistanceWidget.setParent(None)
             self.mDistanceWidget.deleteLater()
 
         self.mDistanceWidget = None
@@ -1722,7 +1742,9 @@ class QgsMapToolSelect(QgsMapTool):
         super(QgsMapToolSelect, self).__init__(canvas)
 
         self.mSelectionHandler = QgsMapToolSelectionHandler(canvas,
-                                                            QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
+                                                            QgsMapToolSelectionHandler.SelectionMode.SelectSimple,
+                                                            parent=self)
+        self.mSelectionHandler.setParent(self)
         self.mSelectionHandler.geometryChanged.connect(self.selectFeatures)
         self.setSelectionMode(QgsMapToolSelectionHandler.SelectionMode.SelectSimple)
 
