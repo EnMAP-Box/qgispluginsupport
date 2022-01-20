@@ -188,6 +188,9 @@ class TestSpeclibWidgets(TestCase):
         event = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.RightButton, Qt.RightButton,
                             Qt.NoModifier)
         pw.mouseReleaseEvent(event)
+
+
+
         self.showGui(pw)
 
     def test_LayerRendererVisualization(self):
@@ -277,6 +280,7 @@ class TestSpeclibWidgets(TestCase):
         dv = QgsDualView()
         dv.init(speclib, canvas)
 
+
         w = SpectralLibraryPlotWidget()
         w.setDualView(dv)
 
@@ -297,6 +301,16 @@ class TestSpeclibWidgets(TestCase):
 
         w.treeView.selectVisualizations(visModel[0])
         w.btnRemoveProfileVis.click()
+
+
+        rl1 = TestObjects.createRasterLayer(nb=255)
+        rl2 = TestObjects.createRasterLayer(nb=1)
+        rl1.setName('MultiBand')
+        rl2.setName('SingleBand')
+
+        proj = QgsProject()
+        proj.addMapLayers([rl1, rl2])
+        w.setProject(proj)
 
         speclib.startEditing()
         speclib.addSpectralProfileField('profiles3')
