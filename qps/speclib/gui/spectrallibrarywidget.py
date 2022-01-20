@@ -7,6 +7,7 @@ from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QLabel, QMessageBox
+from qgis.core import QgsProject
 from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
@@ -55,7 +56,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mStatusLabel.setTextFormat(Qt.RichText)
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
-
+        self.mProject = QgsProject.instance()
         self.mSpectralProcessingWidget: SpectralProcessingWidget = None
 
         self.mToolbar: QToolBar
@@ -217,6 +218,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setStretchFactor(2, 0)
         self.splitter.setSizes([200, 10, 0])
+
+    def setProject(self, project: QgsProject):
+        assert isinstance(project, QgsProject)
+        self.mProject = project
+        self.mSpeclibPlotWidget.setProject(project)
 
     def editingToggled(self):
         super().editingToggled()

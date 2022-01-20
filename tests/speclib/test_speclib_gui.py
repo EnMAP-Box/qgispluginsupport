@@ -608,6 +608,7 @@ class TestSpeclibWidgets(TestCase):
 
         import qpstestdata
 
+
         pathSL = os.path.join(os.path.dirname(qpstestdata.__file__), 'roberts2017_urban.sli')
 
         if True and os.path.exists(pathSL):
@@ -616,7 +617,7 @@ class TestSpeclibWidgets(TestCase):
             speclib = SpectralLibrary.readFrom(pathSL)
 
             dt = datetime.datetime.now() - t0
-            print('Reading required : {}'.format(dt))
+            # print('Reading required : {}'.format(dt))
         else:
             speclib = TestObjects.createSpectralLibrary(5000)
 
@@ -627,7 +628,7 @@ class TestSpeclibWidgets(TestCase):
         for field in profile_field_list(speclib):
             w.spectralLibraryPlotWidget().createProfileVis(field=field)
         dt = datetime.datetime.now() - t0
-        print('Adding speclib required : {}'.format(dt))
+        # print('Adding speclib required : {}'.format(dt))
 
         self.showGui(w)
 

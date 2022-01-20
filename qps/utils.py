@@ -48,6 +48,7 @@ import zipfile
 from collections import defaultdict
 
 import numpy as np
+from qgis.PyQt.QtWidgets import QHBoxLayout
 from qgis.PyQt.QtCore import QPoint, QRect, QObject, QPointF, QDirIterator, QDateTime, QDate, QVariant, QByteArray, QUrl
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget
@@ -2436,8 +2437,8 @@ class SpatialPoint(QgsPointXY):
         if not isinstance(other, SpatialPoint):
             return False
         return self.x() == other.x() \
-            and self.y() == other.y() \
-            and self.crs() == other.crs()
+               and self.y() == other.y() \
+               and self.crs() == other.crs()
 
     def __copy__(self):
         return SpatialPoint(self.crs(), self.x(), self.y())
@@ -3001,6 +3002,27 @@ def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: list):
 
     menu.triggered.connect(toolButton.setDefaultAction)
     toolButton.setMenu(menu)
+
+
+class SelectMapLayerDialog(QgsDialog):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, buttons=QDialogButtonBox.Cancel | QDialogButtonBox.Ok, **kwds)
+        self.mBox = QgsMapLayerComboBox(parent=self)
+        self.mLabel = QLabel('Layer', parent=self)
+        self.hl = QHBoxLayout()
+        self.hl.addWidget(self.mLabel)
+        self.hl.addWidget(self.mBox)
+        self.layout().insertLayout(0, self.hl)
+
+    def setProject(self, project: QgsProject):
+        self.mBox.setProject(project)
+
+    def mapLayerComboBox(self) -> QgsMapLayerComboBox:
+        return self.mBox
+
+    def layer(self) -> QgsMapLayer:
+        return self.mBox.currentLayer()
 
 
 class SelectMapLayersDialog(QgsDialog):

@@ -15,7 +15,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="../../qpsresources.qrc">
-    <normaloff>:/qps/ui/icons/speclib_plot.svg</normaloff>:/qps/ui/icons/speclib_plot.svg</iconset>
+    <normaloff>:/qps/ui/icons/profile.svg</normaloff>:/qps/ui/icons/profile.svg</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <property name="spacing">
@@ -116,6 +116,20 @@ QSplitter::handle:vertical {
            <property name="icon">
             <iconset resource="../../../../QGIS/images/images.qrc">
              <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnAddRasterLayerRenderer">
+           <property name="text">
+            <string>+VIS</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</iconset>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -357,6 +371,15 @@ QSplitter::handle:vertical {
    </property>
    <property name="toolTip">
     <string>Shows the visualization settings</string>
+   </property>
+  </action>
+  <action name="actionAddRasterLayerRenderer">
+   <property name="icon">
+    <iconset resource="../../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</iconset>
+   </property>
+   <property name="text">
+    <string>AddRasterLayerRenderer</string>
    </property>
   </action>
  </widget>
