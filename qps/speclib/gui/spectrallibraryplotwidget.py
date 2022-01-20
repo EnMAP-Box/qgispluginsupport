@@ -1282,6 +1282,9 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mShowCrosshair: bool = True
         self.mShowCursorInfo: bool = True
 
+        # activate option "Visible Data Only" for y-axis to ignore a y-value, when the x-value is nan
+        self.setAutoVisible(y=True)
+
     def dragEnterEvent(self, ev: QDragEnterEvent):
 
         s = ""

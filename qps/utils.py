@@ -1848,6 +1848,19 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
     :param dataset:
     :return: (wl, wl_u) or (None, None), if not existing
     """
+    # try to get wavelength from provider
+
+    if isinstance(dataset, QgsRasterLayer):
+
+        # temporary workaround, as it uses none-QGIS API
+        # will re replaces with future QEP specification of remote-sensing specific raster metadata
+        provider: QgsRasterDataProvider = dataset.dataProvider()
+
+        # note that wavelength() is only available for custom provider like EE
+        if hasattr(provider, 'wavelength'):
+            wl = np.array([provider.wavelength(bandNo) for bandNo in range(1, provider.bandCount() + 1)])
+            wlu = 'Nanometers'
+            return wl, wlu
 
     def sort_domains(domains) -> typing.List[str]:
         if not isinstance(domains, list):
