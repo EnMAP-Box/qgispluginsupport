@@ -1,3 +1,4 @@
+import gc
 import unittest
 
 import xmlrunner
@@ -7,16 +8,19 @@ from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtGui import QMouseEvent, QColor
 from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
+from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer, QgsApplication
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
+from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
-    SpectralProfilePlotVisualization, SpectralProfileColorPropertyWidget
+    SpectralProfilePlotVisualization, SpectralProfileColorPropertyWidget, LayerRendererVisualization, SpectralXAxis
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import StartOptions, TestCase, TestObjects
-from qps.utils import nextColor
+from qps.unitmodel import BAND_INDEX, BAND_NUMBER
+from qps.utils import nextColor, parseWavelength
 
 
 class TestSpeclibWidgets(TestCase):
@@ -185,6 +189,86 @@ class TestSpeclibWidgets(TestCase):
                             Qt.NoModifier)
         pw.mouseReleaseEvent(event)
         self.showGui(pw)
+
+    def test_LayerRendererVisualization(self):
+
+        vis = LayerRendererVisualization()
+
+        for p in vis.bandPlotItems():
+            self.assertIsInstance(p, InfiniteLine)
+            self.assertFalse(p.isVisible())
+
+        barR, barG, barB, barA = vis.bandPlotItems()
+
+        barR: InfiniteLine
+        barG: InfiniteLine
+        barB: InfiniteLine
+        barA: InfiniteLine
+
+        lyr = TestObjects.createRasterLayer(nb=20)
+        proj = QgsProject.instance()
+        proj.addMapLayer(lyr)
+
+        vis.setLayer(lyr)
+        self.assertEqual(vis.mXUnit, BAND_NUMBER)
+        renderer = lyr.renderer()
+        mb_renderer = renderer.clone()
+        self.assertIsInstance(renderer, QgsMultiBandColorRenderer)
+        self.assertEqual(barR.name(), f'{lyr.name()} red band {renderer.redBand()}')
+        self.assertEqual(barG.name(), f'{lyr.name()} green band {renderer.greenBand()}')
+        self.assertEqual(barB.name(), f'{lyr.name()} blue band {renderer.blueBand()}')
+
+        self.assertEqual(vis.bandToXValue(renderer.redBand()), renderer.redBand())
+        self.assertEqual(vis.bandToXValue(renderer.greenBand()), renderer.greenBand())
+        self.assertEqual(vis.bandToXValue(renderer.blueBand()), renderer.blueBand())
+
+        vis.setXUnit(BAND_INDEX)
+        self.assertEqual(vis.bandToXValue(renderer.redBand()), renderer.redBand() - 1)
+        self.assertEqual(vis.bandToXValue(renderer.greenBand()), renderer.greenBand() - 1)
+        self.assertEqual(vis.bandToXValue(renderer.blueBand()), renderer.blueBand() - 1)
+
+        wl, wlu = parseWavelength(lyr)
+        vis.setXUnit(wlu)
+        self.assertAlmostEqual(vis.bandToXValue(renderer.redBand()), wl[renderer.redBand() - 1], 4)
+        self.assertAlmostEqual(vis.bandToXValue(renderer.greenBand()), wl[renderer.greenBand() - 1], 4)
+        self.assertAlmostEqual(vis.bandToXValue(renderer.blueBand()), wl[renderer.blueBand() - 1], 4)
+
+        # test single-band grey renderer
+        # 1st band bar is used for grey band
+        render = QgsSingleBandGrayRenderer(lyr.dataProvider(), 1)
+        lyr.setRenderer(render)
+        self.assertTrue(barR.isVisible())
+        self.assertFalse(barG.isVisible())
+        self.assertFalse(barB.isVisible())
+
+        # test multi-band renderer
+        w = SpectralProfilePlotWidget()
+        xAxis = w.xAxis()
+        self.assertIsInstance(xAxis, SpectralXAxis)
+        xAxis.setUnit(vis.mXUnit)
+        for bar in vis.bandPlotItems():
+            w.plotItem.addItem(bar)
+
+        lyr.setRenderer(mb_renderer)
+        self.showGui(w)
+
+        is_removed = False
+
+        def onRemoval(*args):
+            is_removed = True
+
+        vis.requestRemoval.connect(onRemoval)
+
+        # delete layer and destroy its reference.
+        # this should trigger the requestRemoval signal
+
+        del lyr
+        proj.removeAllMapLayers()
+        QgsApplication.processEvents()
+        gc.collect()
+
+        self.assertFalse(is_removed)
+        self.assertTrue(vis.mLayer is None)
 
     def test_SpectralLibraryPlotWidget(self):
 

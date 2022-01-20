@@ -18,6 +18,9 @@ from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon
 from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QSlider, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem, \
     QSizePolicy
+from qgis.core import QgsRasterLayer, QgsRasterRenderer, QgsMultiBandColorRenderer, QgsSingleBandGrayRenderer, \
+    QgsRasterContourRenderer, QgsPalettedRasterRenderer, QgsSingleBandColorDataRenderer, \
+    QgsSingleBandPseudoColorRenderer, QgsHillshadeRenderer
 from qgis.core import QgsField, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsExpression, QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
@@ -37,9 +40,10 @@ from ...pyqtgraph import pyqtgraph as pg
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
+from ...pyqtgraph.pyqtgraph import InfiniteLine
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
 from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField, \
-    HashablePointF
+    HashablePointF, parseWavelength
 
 
 class SpectralProfilePlotXAxisUnitModel(UnitModel):
@@ -399,6 +403,234 @@ MAX_PDIS_DEFAULT: int = 256
 MouseClickData = collections.namedtuple('MouseClickData', ['idx', 'xValue', 'yValue', 'pxDistance', 'pdi'])
 
 
+class LayerRendererVisualization(QObject):
+    requestRemoval = pyqtSignal()
+
+    def __init__(self, *args, layer: QgsRasterLayer = None, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.mLayer: QgsRasterLayer = None
+        self.mUnitConverter: UnitConverterFunctionModel = UnitConverterFunctionModel()
+        self.mIsVisible: bool = True
+
+        self.mRedBandBar: InfiniteLine = InfiniteLine(pos=1, angle=90, movable=True)
+        self.mBlueBandBar: InfiniteLine = InfiniteLine(pos=2, angle=90, movable=True)
+        self.mGreenBandBar: InfiniteLine = InfiniteLine(pos=3, angle=90, movable=True)
+        self.mAlphaBandBar: InfiniteLine = InfiniteLine(pos=3, angle=90, movable=True)
+
+        self.mXUnit: str = BAND_NUMBER
+        self.mRedBandBar.sigPositionChangeFinished.connect(self.updateToRenderer)
+        self.mGreenBandBar.sigPositionChangeFinished.connect(self.updateToRenderer)
+        self.mBlueBandBar.sigPositionChangeFinished.connect(self.updateToRenderer)
+        self.mAlphaBandBar.sigPositionChangeFinished.connect(self.updateToRenderer)
+
+        for item in self.bandPlotItems():
+            item.setVisible(False)
+
+        if isinstance(layer, QgsRasterLayer):
+            self.setLayer(layer)
+
+    def setXUnit(self, xUnit: str):
+        self.mXUnit = xUnit
+        self.updateFromRenderer()
+
+    def layer(self) -> QgsRasterLayer:
+        return self.mLayer
+
+    def setLayer(self, layer: QgsRasterLayer):
+
+        if layer == self.mLayer:
+            return
+
+        if isinstance(self.mLayer, QgsRasterLayer) and layer is None:
+            self.onLayerRemoved()
+
+        if isinstance(self.mLayer, QgsRasterLayer):
+            self.disconnectLayer()
+
+        assert isinstance(layer, QgsRasterLayer)
+        self.mLayer = layer
+        layer.rendererChanged.connect(self.updateFromRenderer)
+        layer.willBeDeleted.connect(self.onLayerRemoved)
+        # layer.destroyed.connect(self.onLayerRemoved)
+
+        self.updateFromRenderer()
+
+    def onLayerRemoved(self):
+        if isinstance(self.mLayer, QgsRasterLayer):
+            self.disconnectLayer()
+            self.requestRemoval.emit()
+
+    def disconnectLayer(self):
+        # if isinstance(self.mLayer, QgsRasterLayer):
+        #    self.mLayer.rendererChanged.disconnect(self.updateFromRenderer)
+        #    self.mLayer.willBeDeleted.disconnect(self.onLayerRemoved)
+        #    # self.mLayer.destroyed.disconnect(self.onLayerRemoved)
+        self.mLayer = None
+
+    def updateToRenderer(self):
+
+        if not (isinstance(self.mLayer, QgsRasterLayer) and self.mLayer.renderer(), QgsRasterRenderer):
+            return
+        renderer: QgsRasterRenderer = self.mLayer.renderer().clone()
+        if self.mAlphaBandBar.isVisible():
+            bandA = self.xValueToBand(self.mAlphaBandBar.pos().x())
+            if bandA:
+                renderer.setAlphaBand(bandA)
+
+        bandR = self.xValueToBand(self.mRedBandBar.pos().x())
+        if isinstance(renderer, QgsMultiBandColorRenderer):
+            bandG = self.xValueToBand(self.mGreenBandBar.pos().x())
+            bandB = self.xValueToBand(self.mBlueBandBar.pos().x())
+            if bandR:
+                renderer.setRedBand(bandR)
+            if bandG:
+                renderer.setGreenBand(bandG)
+            if bandB:
+                renderer.setBlueBand(bandB)
+
+        elif isinstance(renderer, (QgsHillshadeRenderer, QgsSingleBandPseudoColorRenderer)):
+            if bandR:
+                renderer.setBand(bandR)
+        elif isinstance(renderer, QgsPalettedRasterRenderer):
+            pass
+        elif isinstance(renderer, QgsRasterContourRenderer):
+            if bandR:
+                renderer.setInputBand(bandR)
+        elif isinstance(renderer, QgsSingleBandColorDataRenderer):
+            pass
+        elif isinstance(renderer, QgsSingleBandGrayRenderer):
+            if bandR:
+                renderer.setGrayBand(bandR)
+
+        self.mLayer.setRenderer(renderer)
+        # convert to band unit
+
+    def xValueToBand(self, pos: float) -> int:
+        if not isinstance(self.mLayer, QgsRasterLayer):
+            return None
+
+        band = None
+        if self.mXUnit == BAND_NUMBER:
+            band = int(pos)
+        elif self.mXUnit == BAND_INDEX:
+            band = int(pos) + 1
+        else:
+            wl, wlu = parseWavelength(self.mLayer)
+            if wlu:
+                func = self.mUnitConverter.convertFunction(self.mXUnit, wlu)
+                new_wlu = func(pos)
+                if new_wlu is not None:
+                    band = np.argmin(np.abs(wl - new_wlu)) + 1
+        if isinstance(band, int):
+            band = max(band, 0)
+            band = min(band, self.mLayer.bandCount())
+        return band
+
+    def bandToXValue(self, band: int) -> float:
+
+        if not isinstance(self.mLayer, QgsRasterLayer):
+            return None
+
+        if self.mXUnit == BAND_NUMBER:
+            return band
+        elif self.mXUnit == BAND_INDEX:
+            return band - 1
+        else:
+            wl, wlu = parseWavelength(self.mLayer)
+            if wlu:
+                func = self.mUnitConverter.convertFunction(wlu, self.mXUnit)
+                return func(wl[band - 1])
+
+        return None
+
+    def setBandPosition(self, band: int, bandBar: InfiniteLine):
+        if band is None:
+            bandBar.setVisible(False)
+            return
+        xValue = self.bandToXValue(band)
+        print(f'Set {bandBar.name()} to {band} : {xValue}')
+        if xValue:
+            bandBar.setPos(xValue)
+            bandBar.setVisible(True)
+        else:
+            bandBar.setVisible(False)
+
+    def updateFromRenderer(self):
+
+        if not (self.mIsVisible
+                and isinstance(self.mLayer, QgsRasterLayer)
+                and isinstance(self.mLayer.renderer(), QgsRasterRenderer)):
+            self.mRedBandBar.setVisible(False)
+            self.mGreenBandBar.setVisible(False)
+            self.mBlueBandBar.setVisible(False)
+            self.mAlphaBandBar.setVisible(False)
+            return
+
+        layerName = self.mLayer.name()
+        renderer = self.mLayer.renderer()
+        renderer: QgsRasterRenderer
+        self.mAlphaBandBar.setName(f'{layerName} alpha band {renderer.alphaBand()}')
+        self.setBandPosition(renderer.alphaBand(), self.mAlphaBandBar)
+
+        if isinstance(renderer, QgsMultiBandColorRenderer):
+            self.mRedBandBar.setName(f'{layerName} red band {renderer.redBand()}')
+            self.mGreenBandBar.setName(f'{layerName} green band {renderer.greenBand()}')
+            self.mBlueBandBar.setName(f'{layerName} blue band {renderer.blueBand()}')
+
+            self.mRedBandBar.setPen(color='red')
+            self.mGreenBandBar.setPen(color='green')
+            self.mBlueBandBar.setPen(color='blue')
+
+            self.setBandPosition(renderer.redBand(), self.mRedBandBar)
+            self.setBandPosition(renderer.greenBand(), self.mGreenBandBar)
+            self.setBandPosition(renderer.blueBand(), self.mBlueBandBar)
+
+        elif isinstance(renderer, (QgsSingleBandGrayRenderer,
+                                   QgsPalettedRasterRenderer,
+                                   QgsHillshadeRenderer,
+                                   QgsRasterContourRenderer,
+                                   QgsSingleBandColorDataRenderer,
+                                   QgsSingleBandPseudoColorRenderer)
+                        ):
+
+            self.mGreenBandBar.setVisible(False)
+            self.mBlueBandBar.setVisible(False)
+            self.mRedBandBar.setPen(color='grey')
+            band = None
+            if isinstance(renderer, (QgsHillshadeRenderer,
+                                     QgsPalettedRasterRenderer)):
+                band = renderer.band()
+            elif isinstance(renderer, QgsPalettedRasterRenderer):
+                band = renderer.band()
+            elif isinstance(renderer, QgsRasterContourRenderer):
+                band = renderer.inputBand()
+            elif isinstance(renderer, QgsSingleBandColorDataRenderer):
+                band = None
+                # todo
+            elif isinstance(renderer, QgsSingleBandGrayRenderer):
+                band = renderer.grayBand()
+
+            self.mRedBandBar.setName(f'{layerName} band {band}')
+            self.setBandPosition(band, self.mRedBandBar)
+
+        else:
+            self.mBlueBandBar.setVisible(False)
+            self.mRedBandBar.setVisible(False)
+            self.mGreenBandBar.setVisible(False)
+
+        self.mRedBandBar.setToolTip(self.mRedBandBar.name())
+        self.mBlueBandBar.setToolTip(self.mBlueBandBar.name())
+        self.mGreenBandBar.setToolTip(self.mGreenBandBar.name())
+        self.mAlphaBandBar.setToolTip(self.mAlphaBandBar.name())
+
+    def bandPositions(self) -> dict:
+        pass
+
+    def bandPlotItems(self) -> typing.List[InfiniteLine]:
+        return [self.mRedBandBar, self.mGreenBandBar, self.mBlueBandBar, self.mAlphaBandBar]
+
+
 class SpectralProfilePlotVisualization(QObject):
     MIME_TYPE = 'application/SpectralProfilePlotVisualization'
 
@@ -620,8 +852,7 @@ class SpectralProfilePlotVisualization(QObject):
     def isComplete(self) -> bool:
         speclib = self.speclib()
         field = self.field()
-        return isinstance(speclib, QgsVectorLayer) \
-            and not sip.isdeleted(speclib) \
+        return isinstance(speclib, QgsVectorLayer) and not sip.isdeleted(speclib) \
             and isinstance(field, QgsField) \
             and field.name() in speclib.fields().names()
 
@@ -1519,6 +1750,7 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
     def __init__(self, *args, **kwds):
 
         super().__init__(*args, **kwds)
+        self.mLayerRendererVisualizations: typing.List[LayerRendererVisualization] = []
         self.mProfileVisualizations: typing.List[SpectralProfilePlotVisualization] = []
         self.mNodeHandles: typing.Dict[object, SpectralProfilePlotControlModel.PropertyHandle] = dict()
 
@@ -1683,6 +1915,8 @@ class SpectralProfilePlotControlModel(QAbstractItemModel):
             self.mPlotWidget.xAxis().setUnit(unit, labelName=labelName)
             self.mPlotWidget.clearInfoScatterPoints()
             # self.mPlotWidget.xAxis().setLabel(text='x values', unit=unit_)
+            for bv in self.mLayerRendererVisualizations:
+                bv.setXUnit(self.mXUnit)
             self.updatePlot()
             self.sigXUnitChanged.emit(self.mXUnit)
 

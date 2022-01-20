@@ -381,7 +381,7 @@ class PixelScaleExtentMapTool(QgsMapTool):
 
         if len(nativeResolutions) > 0:
             # find the closest native resolution
-            diagonalNativeResolutionsDiff = [abs(diagonalSize - math.sqrt(2*d*d)) for d in nativeResolutions]
+            diagonalNativeResolutionsDiff = [abs(diagonalSize - math.sqrt(2 * d * d)) for d in nativeResolutions]
             i = diagonalNativeResolutionsDiff.index(min(diagonalNativeResolutionsDiff))
             res = nativeResolutions[i]
             canvas.zoomByFactor(res / canvas.mapUnitsPerPixel())

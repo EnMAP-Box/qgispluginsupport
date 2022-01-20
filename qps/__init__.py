@@ -32,7 +32,6 @@ import warnings
 from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
 
-
 MIN_QGIS_VERSION = '3.20'
 __version__ = '1.3'
 
@@ -206,7 +205,6 @@ def initAll():
     registerMapLayerConfigWidgetFactories()
     registerSpectralProfileSamplingModes()
     registerSpectralLibraryIOs()
-
 
 
 def unloadAll():
