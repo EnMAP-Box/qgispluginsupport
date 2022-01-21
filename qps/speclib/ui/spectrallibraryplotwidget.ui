@@ -234,7 +234,7 @@ QSplitter::handle:vertical {
         </widget>
        </item>
        <item>
-        <widget class="SpectralProfilePlotControlView" name="treeView">
+        <widget class="SpectralProfilePlotView" name="treeView">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
@@ -395,7 +395,7 @@ QSplitter::handle:vertical {
    <header>qps.speclib.gui.spectrallibraryplotwidget</header>
   </customwidget>
   <customwidget>
-   <class>SpectralProfilePlotControlView</class>
+   <class>SpectralProfilePlotView</class>
    <extends>QTreeView</extends>
    <header>qps.speclib.gui.spectrallibraryplotwidget</header>
   </customwidget>
