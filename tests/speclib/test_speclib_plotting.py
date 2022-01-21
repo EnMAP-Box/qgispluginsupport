@@ -2,6 +2,8 @@ import gc
 import unittest
 
 import xmlrunner
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtWidgets import QTreeView
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
@@ -15,7 +17,8 @@ from qgis.gui import QgsMapCanvas, QgsDualView
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
-    SpectralProfilePlotVisualization, SpectralProfileColorPropertyWidget, LayerRendererVisualization, SpectralXAxis
+    ProfileVisualization, SpectralProfileColorPropertyWidget, LayerBandVisualization, SpectralXAxis, \
+    SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import StartOptions, TestCase, TestObjects
@@ -23,19 +26,19 @@ from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import nextColor, parseWavelength
 
 
-class TestSpeclibWidgets(TestCase):
+class TestSpeclibPlotting(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         options = StartOptions.All
 
-        super(TestSpeclibWidgets, cls).setUpClass(*args, options=options)
+        super(TestSpeclibPlotting, cls).setUpClass(*args, options=options)
 
         from qps import initAll
         initAll()
 
         gdal.UseExceptions()
-        gdal.PushErrorHandler(TestSpeclibWidgets.gdal_error_handler)
+        gdal.PushErrorHandler(TestSpeclibPlotting.gdal_error_handler)
         ogr.UseExceptions()
 
     @staticmethod
@@ -62,11 +65,11 @@ class TestSpeclibWidgets(TestCase):
         sl1 = TestObjects.createSpectralLibrary()
         sl2 = TestObjects.createSpectralLibrary()
 
-        vis0 = SpectralProfilePlotVisualization()
-        vis1 = SpectralProfilePlotVisualization()
+        vis0 = ProfileVisualization()
+        vis1 = ProfileVisualization()
         vis1.setSpeclib(sl1)
 
-        vis2 = SpectralProfilePlotVisualization()
+        vis2 = ProfileVisualization()
         vis2.setSpeclib(sl2)
 
         doc = QDomDocument()
@@ -77,14 +80,14 @@ class TestSpeclibWidgets(TestCase):
             v.writeXml(root, doc)
 
         available_speclibs = [sl1, sl2]
-        visList2 = SpectralProfilePlotVisualization.fromXml(root,
-                                                            available_speclibs=available_speclibs)
+        visList2 = ProfileVisualization.fromXml(root,
+                                                available_speclibs=available_speclibs)
 
         self.assertTrue(len(visList) == len(visList2))
 
         for v1, v2 in zip(visList, visList2):
-            self.assertIsInstance(v1, SpectralProfilePlotVisualization)
-            self.assertIsInstance(v2, SpectralProfilePlotVisualization)
+            self.assertIsInstance(v1, ProfileVisualization)
+            self.assertIsInstance(v2, ProfileVisualization)
 
             self.assertEqual(v1.name(), v2.name())
             self.assertEqual(v1.labelProperty(), v2.labelProperty())
@@ -195,7 +198,7 @@ class TestSpeclibWidgets(TestCase):
 
     def test_LayerRendererVisualization(self):
 
-        vis = LayerRendererVisualization()
+        vis = LayerBandVisualization()
 
         for p in vis.bandPlotItems():
             self.assertIsInstance(p, InfiniteLine)
@@ -273,13 +276,62 @@ class TestSpeclibWidgets(TestCase):
         self.assertFalse(is_removed)
         self.assertTrue(vis.mLayer is None)
 
+    def test_StandardItemMode(self):
+
+        tv = QTreeView()
+
+        model = QStandardItemModel()
+        tv.setModel(model)
+
+        item1 = LayerBandVisualization()
+        item1a = QStandardItem('Name')
+        item1b = QStandardItem('Value')
+        item1.appendRow([item1a, item1b])
+
+        model.setHorizontalHeaderLabels(['A','B'])
+        model.appendRow(item1)
+
+
+        self.showGui(tv)
+
+    def test_SpectralProfilePlotControlModel(self):
+        model = SpectralProfilePlotModel()
+        speclib = TestObjects.createSpectralLibrary()
+        canvas = QgsMapCanvas()
+        dv = QgsDualView()
+        dv.init(speclib, canvas)
+        pw = SpectralProfilePlotWidget()
+        model.setPlotWidget(pw)
+        model.setDualView(dv)
+
+        tv = QTreeView()
+
+        tv.setModel(model)
+
+        lyr1 = TestObjects.createRasterLayer(nb=1)
+        lyr2 = TestObjects.createRasterLayer(nb=10)
+        vis1 = LayerBandVisualization(layer=lyr1)
+        vis2 = LayerBandVisualization(layer=lyr2)
+
+        vis3 = ProfileVisualization()
+        model.insertVisualizations(0, vis1)
+        model.insertVisualizations(1, vis2)
+        model.insertVisualizations(3, vis3)
+
+        vis1.setLayer(lyr2)
+        vis2.setLayer(lyr1)
+
+        self.assertEqual(model.rowCount(), 3)
+
+        self.showGui(tv)
+
+
     def test_SpectralLibraryPlotWidget(self):
 
         speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
         canvas = QgsMapCanvas()
         dv = QgsDualView()
         dv.init(speclib, canvas)
-
 
         w = SpectralLibraryPlotWidget()
         w.setDualView(dv)
@@ -301,7 +353,6 @@ class TestSpeclibWidgets(TestCase):
 
         w.treeView.selectVisualizations(visModel[0])
         w.btnRemoveProfileVis.click()
-
 
         rl1 = TestObjects.createRasterLayer(nb=255)
         rl2 = TestObjects.createRasterLayer(nb=1)

@@ -10,10 +10,10 @@ from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, 
 from qgis.core import QgsProject
 from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry
 from qgis.core import QgsVectorLayer
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsAttributeTableFilterModel, QgsDockWidget, \
+from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
 from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibraryPlotWidget, \
-    SpectralLibraryPlotItem, SpectralLibraryPlotStats, SpectralProfilePlotControlModel
+    SpectralLibraryPlotItem, SpectralProfilePlotModel
 from .spectralprocessingwidget import SpectralProcessingWidget
 from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
@@ -363,7 +363,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def plotWidget(self) -> SpectralProfilePlotWidget:
         return self.mSpeclibPlotWidget.plotWidget
 
-    def plotControl(self) -> SpectralProfilePlotControlModel:
+    def plotControl(self) -> SpectralProfilePlotModel:
         return self.mSpeclibPlotWidget.mPlotControlModel
 
     def plotItem(self) -> SpectralLibraryPlotItem:
@@ -652,106 +652,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         Removes all SpectralProfiles and additional fields
         """
         warnings.warn('Deprectated and desimplemented', DeprecationWarning)
-
-
-class SpectralLibraryInfoLabel(QLabel):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-        self.mPW: SpectralProfilePlotWidget = None
-
-        self.mLastStats: SpectralLibraryPlotStats = None
-        self.setStyleSheet('QToolTip{width:300px}')
-
-    def setPlotWidget(self, pw: SpectralLibraryPlotWidget):
-        assert isinstance(pw, SpectralLibraryPlotWidget)
-        self.mPW = pw
-
-    def plotWidget(self) -> SpectralLibraryPlotWidget:
-        return self.mPW
-
-    def update(self):
-        if not isinstance(self.plotWidget(), SpectralProfilePlotWidget):
-            self.setText('')
-            self.setToolTip('')
-            return
-
-        stats = self.plotWidget().profileStats()
-        if self.mLastStats == stats:
-            return
-
-        msg = '<html><head/><body>'
-        ttp = '<html><head/><body><p>'
-
-        # total + filtering
-        if stats.filter_mode == QgsAttributeTableFilterModel.ShowFilteredList:
-            msg += f'{stats.profiles_filtered}f'
-            ttp += f'{stats.profiles_filtered} profiles filtered out of {stats.profiles_total}<br/>'
-        else:
-            # show all
-            msg += f'{stats.profiles_total}'
-            ttp += f'{stats.profiles_total} profiles in total<br/>'
-
-        # show selected
-        msg += f'/{stats.profiles_selected}'
-        ttp += f'{stats.profiles_selected} selected in plot<br/>'
-
-        if stats.profiles_empty > 0:
-            msg += f'/<span style="color:red">{stats.profiles_empty}N</span>'
-            ttp += f'<span style="color:red">At least {stats.profiles_empty} profile fields empty (NULL)<br/>'
-
-        if stats.profiles_error > 0:
-            msg += f'/<span style="color:red">{stats.profiles_error}E</span>'
-            ttp += f'<span style="color:red">At least {stats.profiles_error} profiles ' \
-                   f'can not be converted to X axis unit "{self.plotWidget().xUnit()}" (ERROR)</span><br/>'
-
-        if stats.profiles_plotted >= stats.profiles_plotted_max and stats.profiles_total > stats.profiles_plotted_max:
-            msg += f'/<span style="color:red">{stats.profiles_plotted}</span>'
-            ttp += f'<span style="color:red">{stats.profiles_plotted} profiles plotted. Increase plot ' \
-                   f'limit ({stats.profiles_plotted_max}) to show more at same time.</span><br/>'
-        else:
-            msg += f'/{stats.profiles_plotted}'
-            ttp += f'{stats.profiles_plotted} profiles plotted<br/>'
-
-        msg += '</body></html>'
-        ttp += '</p></body></html>'
-
-        self.setText(msg)
-        self.setToolTip(ttp)
-        self.setMinimumWidth(self.sizeHint().width())
-
-        self.mLastStats = stats
-
-    def contextMenuEvent(self, event: QContextMenuEvent):
-        m = QMenu()
-
-        stats = self.plotWidget().profileStats()
-
-        a = m.addAction('Select axis-unit incompatible profiles')
-        a.setToolTip(f'Selects all profiles that cannot be displayed in {self.plotWidget().xUnit()}')
-        a.triggered.connect(self.onSelectAxisUnitIncompatibleProfiles)
-
-        a = m.addAction('Reset to band number')
-        a.setToolTip('Resets the x-axis to show the band number.')
-        a.triggered.connect(lambda *args: self.plotWidget().setXUnit(BAND_NUMBER))
-
-        m.exec_(event.globalPos())
-
-    def onSelectAxisUnitIncompatibleProfiles(self):
-        incompatible = []
-        pw: SpectralProfilePlotWidget = self.plotWidget()
-        if not isinstance(pw, SpectralProfilePlotWidget) or \
-                not is_spectral_library(pw.speclib()):
-            return
-
-        targetUnit = pw.xUnit()
-        for p in pw.speclib():
-            if isinstance(p, SpectralProfile):
-                f = pw.unitConversionFunction(p.xUnit(), targetUnit)
-                if f == pw.mUnitConverter.func_return_none:
-                    incompatible.append(p.id())
-
-        pw.speclib().selectByIds(incompatible)
 
 
 class SpectralLibraryPanel(QgsDockWidget):
