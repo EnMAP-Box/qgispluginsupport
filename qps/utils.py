@@ -2437,8 +2437,8 @@ class SpatialPoint(QgsPointXY):
         if not isinstance(other, SpatialPoint):
             return False
         return self.x() == other.x() \
-               and self.y() == other.y() \
-               and self.crs() == other.crs()
+            and self.y() == other.y() \
+            and self.crs() == other.crs()
 
     def __copy__(self):
         return SpatialPoint(self.crs(), self.x(), self.y())
@@ -3013,6 +3013,7 @@ class SelectMapLayerDialog(QgsDialog):
         self.hl = QHBoxLayout()
         self.hl.addWidget(self.mLabel)
         self.hl.addWidget(self.mBox)
+        self.hl.setStretchFactor(self.mBox, 2)
         self.layout().insertLayout(0, self.hl)
 
     def setProject(self, project: QgsProject):

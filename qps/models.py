@@ -1414,14 +1414,8 @@ class TreeView(QTreeView):
                         spanned = False
                         break
 
-            # if spanned:
-            #     txt0 = model.index(r, 0, parent).data(Qt.DisplayRole)
-            #     data0 = model.index(r, 0, parent).data(Qt.UserRole)
-            #     print(f'spanned: {data0} {txt0}')
             self.setFirstColumnSpanned(r, parent, spanned)
 
-            # traverse sub-trees structure
-            # self.setColumnSpan(idx0, None, None)
         return
 
     def selectedNode(self) -> TreeNode:

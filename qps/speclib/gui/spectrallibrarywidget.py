@@ -4,24 +4,24 @@ import typing
 import warnings
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
-from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QContextMenuEvent, QDropEvent, QColor
+from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
-    QHBoxLayout, QFrame, QDialog, QLabel, QMessageBox
-from qgis.core import QgsProject
+    QHBoxLayout, QFrame, QDialog, QMessageBox
 from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry
+from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
-from .spectrallibraryplotwidget import SpectralProfilePlotWidget, SpectralLibraryPlotWidget, \
-    SpectralLibraryPlotItem, SpectralProfilePlotModel
-from .spectralprocessingwidget import SpectralProcessingWidget
+from .spectrallibraryplotitems import SpectralLibraryPlotItem, SpectralProfilePlotWidget
+from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
+    SpectralProfilePlotModel
+from .spectralprocessingdialog import SpectralProcessingDialog
 from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ..core.spectralprofile import SpectralProfile
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
-from ...unitmodel import BAND_NUMBER
 from ...utils import SpatialExtent, SpatialPoint, nextColor
 
 
@@ -57,7 +57,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
         self.mProject = QgsProject.instance()
-        self.mSpectralProcessingWidget: SpectralProcessingWidget = None
+        self.mSpectralProcessingWidget: SpectralProcessingDialog = None
 
         self.mToolbar: QToolBar
         self.mIODialogs: typing.List[QWidget] = list()
@@ -429,27 +429,21 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def showSpectralProcessingWidget(self):
         alg_key = 'qps/processing/last_alg_id'
-        if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingWidget):
-            self.mSpectralProcessingWidget = SpectralProcessingWidget(speclib=self.speclib())
-            self.mSpectralProcessingWidget.setMainMessageBar(self.mainMessageBar())
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingDialog):
+            dialog = SpectralProcessingDialog(speclib=self.speclib())
+            dialog.setMainMessageBar(self.mainMessageBar())
 
             alg_id = self.property(alg_key)
             if isinstance(alg_id, str):
-                reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
                 alg = reg.algorithmById(alg_id)
                 if isinstance(alg, QgsProcessingAlgorithm):
-                    self.mSpectralProcessingWidget.setAlgorithm(alg_id)
+                    dialog.setAlgorithm(alg_id)
 
-            def disconnect():
-                if isinstance(self.mSpectralProcessingWidget, SpectralProcessingWidget):
-                    alg = self.mSpectralProcessingWidget.processingAlgorithm()
-                    if isinstance(alg, QgsProcessingAlgorithm):
-                        self.setProperty(alg_key, alg.id())
-
-                    self.mSpectralProcessingWidget = None
-
-            self.mSpectralProcessingWidget.sigAboutToBeClosed.connect(disconnect)
-        self.mSpectralProcessingWidget.show()
+            dialog.exec_()
+            alg = dialog.algorithm()
+            if isinstance(alg, QgsProcessingAlgorithm):
+                self.setProperty(alg_key, alg.id())
 
     def addCurrentProfilesAutomatically(self, b: bool):
         self.optionAddCurrentProfilesAutomatically.setChecked(b)
@@ -556,7 +550,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
                                 affected_profile_fields[attribute] = color
                             self.plotControl().mTemporaryProfileColors[(fid, attribute)] = color
 
-            visualized_attributes = [v.field().name() for v in self.plotControl().visualizations()]
+            visualized_attributes = [v.field().name() for v in self.plotControl().visualizations() if v.isComplete()]
             missing_visualization = [a for a in affected_profile_fields.keys() if a not in visualized_attributes]
 
             for attribute in missing_visualization:
@@ -568,7 +562,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
                 else:
                     color = None
 
-                self.spectralLibraryPlotWidget().createProfileVis(field=attribute, color=color)
+                self.spectralLibraryPlotWidget().createProfileVisualization(field=attribute, color=color)
 
         self.plotControl().updatePlot()
         self.updateActions()
@@ -608,7 +602,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         # add a new visualization if no one exists
         if n_p == 0 and n_v == 0 and self.speclib().featureCount() > 0:
-            self.spectralLibraryPlotWidget().createProfileVis()
+            self.spectralLibraryPlotWidget().createProfileVisualization()
 
     def onImportFromRasterSource(self):
         from ..io.rastersources import SpectralProfileImportPointsDialog

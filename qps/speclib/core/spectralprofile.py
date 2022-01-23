@@ -112,7 +112,7 @@ def encodeProfileValueDict(d: dict) -> QByteArray:
 
 def decodeProfileValueDict(dump: QByteArray, numpy_arrays: bool = False) -> dict:
     """
-    Converts a json / pickle dump  into a SpectralProfile value dictionary
+    Converts a json / pickle dump into a SpectralProfile value dictionary
     :param numpy_arrays:
     :param dump: str
     :return: dict
@@ -709,7 +709,7 @@ class SpectralProfile(QgsFeature):
         Plots this profile to an new PyQtGraph window
         :return:
         """
-        from ..gui.spectrallibraryplotwidget import SpectralProfilePlotDataItem
+        from ..gui.spectrallibraryplotitems import SpectralProfilePlotDataItem
 
         pdi = SpectralProfilePlotDataItem()
         pdi.setClickable(True)
