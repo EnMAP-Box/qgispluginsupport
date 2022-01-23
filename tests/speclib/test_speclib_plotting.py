@@ -2,23 +2,24 @@ import gc
 import unittest
 
 import xmlrunner
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtWidgets import QTreeView
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
+from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtGui import QMouseEvent, QColor
+from qgis.PyQt.QtGui import QStandardItemModel, QStandardItem
 from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
-from qgis.PyQt.QtXml import QDomDocument
+from qgis.PyQt.QtWidgets import QTreeView
 from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer, QgsApplication
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotWidget, \
-    ProfileVisualization, SpectralProfileColorPropertyWidget, LayerBandVisualization, SpectralXAxis, \
-    SpectralProfilePlotModel
+from qps.speclib.gui.spectrallibraryplotitems import SpectralXAxis, SpectralProfilePlotWidget
+from qps.speclib.gui.spectrallibraryplotmodelitems import LayerBandVisualization, ProfileVisualization, \
+    SpectralProfileColorPropertyWidget, PropertyItemGroup
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import StartOptions, TestCase, TestObjects
@@ -71,29 +72,6 @@ class TestSpeclibPlotting(TestCase):
 
         vis2 = ProfileVisualization()
         vis2.setSpeclib(sl2)
-
-        doc = QDomDocument()
-        root = doc.createElement('root')
-
-        visList = [vis0, vis1, vis2]
-        for v in visList:
-            v.writeXml(root, doc)
-
-        available_speclibs = [sl1, sl2]
-        visList2 = ProfileVisualization.fromXml(root,
-                                                available_speclibs=available_speclibs)
-
-        self.assertTrue(len(visList) == len(visList2))
-
-        for v1, v2 in zip(visList, visList2):
-            self.assertIsInstance(v1, ProfileVisualization)
-            self.assertIsInstance(v2, ProfileVisualization)
-
-            self.assertEqual(v1.name(), v2.name())
-            self.assertEqual(v1.labelProperty(), v2.labelProperty())
-            self.assertEqual(v1.plotStyle(), v2.plotStyle())
-            self.assertEqual(v1.speclib(), v2.speclib())
-            # speclib and model instances need to be restored differently
 
     def test_SpectralLibraryWidget_deleteFeatures(self):
         speclib = TestObjects.createSpectralLibrary(10)
@@ -192,8 +170,6 @@ class TestSpeclibPlotting(TestCase):
                             Qt.NoModifier)
         pw.mouseReleaseEvent(event)
 
-
-
         self.showGui(pw)
 
     def test_LayerRendererVisualization(self):
@@ -211,18 +187,22 @@ class TestSpeclibPlotting(TestCase):
         barB: InfiniteLine
         barA: InfiniteLine
 
-        lyr = TestObjects.createRasterLayer(nb=20)
-        proj = QgsProject.instance()
-        proj.addMapLayer(lyr)
+        lyrA = TestObjects.createRasterLayer(nb=20)
+        lyrB = TestObjects.createRasterLayer(nb=1)
+        lyrB.setName('B')
+        lyrC = TestObjects.createRasterLayer(nb=255)
 
-        vis.setLayer(lyr)
+        proj = QgsProject.instance()
+        proj.addMapLayers([lyrA, lyrB, lyrC])
+
+        vis.setLayer(lyrA)
         self.assertEqual(vis.mXUnit, BAND_NUMBER)
-        renderer = lyr.renderer()
+        renderer = lyrA.renderer()
         mb_renderer = renderer.clone()
         self.assertIsInstance(renderer, QgsMultiBandColorRenderer)
-        self.assertEqual(barR.name(), f'{lyr.name()} red band {renderer.redBand()}')
-        self.assertEqual(barG.name(), f'{lyr.name()} green band {renderer.greenBand()}')
-        self.assertEqual(barB.name(), f'{lyr.name()} blue band {renderer.blueBand()}')
+        self.assertEqual(barR.name(), f'{lyrA.name()} red band {renderer.redBand()}')
+        self.assertEqual(barG.name(), f'{lyrA.name()} green band {renderer.greenBand()}')
+        self.assertEqual(barB.name(), f'{lyrA.name()} blue band {renderer.blueBand()}')
 
         self.assertEqual(vis.bandToXValue(renderer.redBand()), renderer.redBand())
         self.assertEqual(vis.bandToXValue(renderer.greenBand()), renderer.greenBand())
@@ -233,7 +213,7 @@ class TestSpeclibPlotting(TestCase):
         self.assertEqual(vis.bandToXValue(renderer.greenBand()), renderer.greenBand() - 1)
         self.assertEqual(vis.bandToXValue(renderer.blueBand()), renderer.blueBand() - 1)
 
-        wl, wlu = parseWavelength(lyr)
+        wl, wlu = parseWavelength(lyrA)
         vis.setXUnit(wlu)
         self.assertAlmostEqual(vis.bandToXValue(renderer.redBand()), wl[renderer.redBand() - 1], 4)
         self.assertAlmostEqual(vis.bandToXValue(renderer.greenBand()), wl[renderer.greenBand() - 1], 4)
@@ -241,8 +221,8 @@ class TestSpeclibPlotting(TestCase):
 
         # test single-band grey renderer
         # 1st band bar is used for grey band
-        render = QgsSingleBandGrayRenderer(lyr.dataProvider(), 1)
-        lyr.setRenderer(render)
+        render = QgsSingleBandGrayRenderer(lyrA.dataProvider(), 1)
+        lyrA.setRenderer(render)
         self.assertTrue(barR.isVisible())
         self.assertFalse(barG.isVisible())
         self.assertFalse(barB.isVisible())
@@ -255,7 +235,7 @@ class TestSpeclibPlotting(TestCase):
         for bar in vis.bandPlotItems():
             w.plotItem.addItem(bar)
 
-        lyr.setRenderer(mb_renderer)
+        lyrA.setRenderer(mb_renderer)
         self.showGui(w)
 
         is_removed = False
@@ -263,12 +243,12 @@ class TestSpeclibPlotting(TestCase):
         def onRemoval(*args):
             is_removed = True
 
-        vis.requestRemoval.connect(onRemoval)
+        vis.signals().requestRemoval.connect(onRemoval)
 
         # delete layer and destroy its reference.
         # this should trigger the requestRemoval signal
 
-        del lyr
+        del lyrA
         proj.removeAllMapLayers()
         QgsApplication.processEvents()
         gc.collect()
@@ -288,9 +268,8 @@ class TestSpeclibPlotting(TestCase):
         item1b = QStandardItem('Value')
         item1.appendRow([item1a, item1b])
 
-        model.setHorizontalHeaderLabels(['A','B'])
+        model.setHorizontalHeaderLabels(['A', 'B'])
         model.appendRow(item1)
-
 
         self.showGui(tv)
 
@@ -314,17 +293,23 @@ class TestSpeclibPlotting(TestCase):
         vis2 = LayerBandVisualization(layer=lyr2)
 
         vis3 = ProfileVisualization()
-        model.insertVisualizations(0, vis1)
-        model.insertVisualizations(1, vis2)
-        model.insertVisualizations(3, vis3)
+        model.insertPropertyGroup(0, vis1)
+        model.insertPropertyGroup(1, vis2)
+        model.insertPropertyGroup(3, vis3)
 
         vis1.setLayer(lyr2)
         vis2.setLayer(lyr1)
 
         self.assertEqual(model.rowCount(), 3)
 
+        indices = [model.createIndex(2, 0),
+                   model.createIndex(1, 0), model.createIndex(1, 1)]
+        mimeData = model.mimeData(indices)
+        grps = PropertyItemGroup.fromMimeData(mimeData)
+        self.assertEqual(len(grps), 2)
+        self.assertTrue(model.canDropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
+        self.assertTrue(model.dropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
         self.showGui(tv)
-
 
     def test_SpectralLibraryPlotWidget(self):
 

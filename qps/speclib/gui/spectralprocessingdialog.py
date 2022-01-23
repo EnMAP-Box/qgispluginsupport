@@ -956,7 +956,7 @@ class SpectralProcessingWidgetOLD(QWidget, QgsProcessingContextGenerator):
             self.mCurrentFunction = f
 
 
-class SpectralProcessingWidget(QgsProcessingAlgorithmDialogBase):
+class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
     sigSpectralProcessingModelChanged = pyqtSignal()
     sigAboutToBeClosed = pyqtSignal()
 

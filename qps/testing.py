@@ -477,6 +477,8 @@ class TestCase(qgis.testing.TestCase):
             from processing.core.Processing import Processing
             Processing.initialize()
 
+            QgsGui.editorWidgetRegistry().initEditors()
+
         return
 
         if resources is None:
