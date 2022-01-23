@@ -32,6 +32,8 @@ from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindo
     QLineEdit, QGridLayout, QTableView, QVBoxLayout
 from qgis.PyQt.QtXml import QDomDocument
 from osgeo import gdal, osr
+
+from qgis.gui import QgsFieldCalculator
 from qgis.core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, QgsFeatureRequest, \
     QgsExpressionContext, QgsExpressionContextUtils, QgsField, QgsScopedProxyProgressTask, QgsExpressionContextScope, \
     QgsRasterLayer, QgsSettings, QgsReadWriteContext, QgsRasterRenderer, \
@@ -1850,14 +1852,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             return
 
         masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
-        # todo: uncomment after QgsFieldCalculator has become public API
-        """
-        calc: QgsFieldCalculator =  QgsFieldCalculator(self.mLayer, self)
+
+        calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
         if calc.exec_() == QDialog.Accepted:
             col = masterModel.fieldCol(calc.changedAttributeId())
             if col >= 0:
-                masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount()-1, col))
-        """
+                masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
 
     def mActionOrganizeColumns_triggered(self):
         if not isinstance(self.mLayer, QgsVectorLayer):
@@ -1967,5 +1967,5 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.mFeatureFilterWidget.filterShowAll()
 
     def _hide_unconnected_widgets(self):
-        self.mActionOpenFieldCalculator.setVisible(False)
+        # self.mActionOpenFieldCalculator.setVisible(False)
         self.mActionDockUndock.setVisible(False)
