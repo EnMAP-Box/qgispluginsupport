@@ -18,6 +18,7 @@ from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, 
 from ..core import profile_fields, is_profile_field
 from ..core.spectralprofile import SpectralSetting, groupBySpectralProperties, SpectralProfile, \
     decodeProfileValueDict
+from ...unitmodel import BAND_INDEX
 from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextColor, numpyToQgisDataType, \
     HashableRectangle
 
@@ -211,6 +212,12 @@ class FieldToRasterValueConverter(QObject):
     def isValid(self) -> bool:
         return isinstance(self.mRasterData, np.ndarray)
 
+    def spectralSetting(self) -> SpectralSetting:
+        """
+        This method should return a SpectralSetting that describes the wavelength information for each band
+        """
+        return SpectralSetting(list(range(self.bandCount())), xUnit=BAND_INDEX)
+
     def updateRasterData(self, features: typing.List[QgsFeature]):
 
         self.mRasterData = None
@@ -363,7 +370,7 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
     def colorInterpretation(self, bandNo: int) -> int:
         return QgsRaster.MultiBandColor
 
-    def activeSpectralSetting(self) -> SpectralSetting:
+    def spectralSetting(self) -> SpectralSetting:
         return self.mSpectralSetting
 
     def bandCount(self) -> int:
@@ -555,6 +562,13 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def fieldValues(self) -> list:
         return [f.attribute(self.activeField().name()) for f in self.activeFeatures()]
 
+    def spectralSetting(self) -> SpectralSetting:
+        converter = self.fieldConverter()
+        if isinstance(converter, FieldToRasterValueConverter):
+            return converter.spectralSetting()
+        else:
+            return None
+
     def hasStatistics(self,
                       bandNo: int,
                       stats: int = ...,
@@ -562,8 +576,8 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
                       sampleSize: int = ...,
                       feedback: typing.Optional['QgsRasterBlockFeedback'] = ...) -> bool:
         return True
-        statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
-        return statsKey in self.mStatsCache.keys()
+        # statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
+        # return statsKey in self.mStatsCache.keys()
 
     def _statsKey(self, bandNo, stats, extent, sampleSize):
         return (bandNo, stats, HashableRectangle(extent))

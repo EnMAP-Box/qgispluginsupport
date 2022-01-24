@@ -209,7 +209,6 @@ class PropertyItemGroup(PropertyItemBase):
 
     def setVisible(self, visible: bool):
         self.setCheckState(visible in [Qt.Checked, visible is True])
-        self.updateFromRenderer()
 
     def isVisible(self) -> bool:
         """

@@ -20,7 +20,7 @@ from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionD
 from qps import initAll
 from qps.speclib.core.spectrallibrary import SpectralLibrary
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprocessingwidget import SpectralProcessingDialog, \
+from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
     SpectralProcessingRasterLayerWidgetWrapper
 from qps.testing import TestCase, ExampleAlgorithmProvider
 from qps.testing import TestObjects, StartOptions

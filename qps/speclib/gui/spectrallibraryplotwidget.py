@@ -889,7 +889,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for idx in indexes:
             r = idx.row()
             grp = self.data(self.index(r, 0), role=Qt.UserRole)
-            if isinstance(grp, PropertyItemGroup) and grp.isDragEnabled() and grp not in groups:
+            if isinstance(grp, PropertyItemGroup) and grp not in groups:
                 groups.append(grp)
 
         mimeData = PropertyItemGroup.toMimeData(groups)
