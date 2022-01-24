@@ -295,7 +295,7 @@ class TestSpeclibPlotting(TestCase):
         vis3 = ProfileVisualization()
         model.insertPropertyGroup(0, vis1)
         model.insertPropertyGroup(1, vis2)
-        model.insertPropertyGroup(3, vis3)
+        model.insertPropertyGroup(2, vis3)
 
         vis1.setLayer(lyr2)
         vis2.setLayer(lyr1)
@@ -322,6 +322,7 @@ class TestSpeclibPlotting(TestCase):
         w.setDualView(dv)
 
         visModel = w.treeView.model().sourceModel()
+        self.assertIsInstance(visModel, SpectralProfilePlotModel)
         self.assertEqual(visModel.rowCount(), 1)
 
         # add a VIS
@@ -336,7 +337,7 @@ class TestSpeclibPlotting(TestCase):
 
         # remove vis
 
-        w.treeView.selectVisualizations(visModel[0])
+        w.treeView.selectVisualizations(visModel.visualizations()[0])
         w.btnRemoveProfileVis.click()
 
         rl1 = TestObjects.createRasterLayer(nb=255)

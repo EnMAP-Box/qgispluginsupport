@@ -2,6 +2,8 @@ import os
 import pathlib
 import typing
 
+from qgis.core import QgsRasterDataProvider
+
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.modeler.ModelerAlgorithmProvider import ModelerAlgorithmProvider
@@ -30,7 +32,7 @@ from .. import speclibUiPath
 from ..core import create_profile_field, is_profile_field
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers
 from ..core.spectralprofile import prepareProfileValueDict, \
-    encodeProfileValueDict
+    encodeProfileValueDict, SpectralSetting
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...utils import loadUi, rasterLayerArray, iconForFieldType, numpyToQgisDataType
@@ -963,7 +965,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
     def __init__(self, *args, speclib: QgsVectorLayer = None, parent: QWidget = None, **kwds):
         super().__init__(parent=parent)
         # QgsProcessingContextGenerator.__init__(self)
-
+        self.mDialogName = 'Spectral Processing Dialog'
         self.setWindowIcon(QIcon(r':/qps/ui/icons/profile_processing.svg'))
         self.btnAlgorithm: QPushButton = QPushButton('Algorithm')
         self.btnAlgorithm.setIcon(QIcon(':/images/themes/default/processingAlgorithm.svg'))
@@ -1104,25 +1106,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
                     # file_name = QgsProcessingUtils.generateTempFilename(f'{k}.tif')
                     file_name = TEMP_FOLDER + f'{k}.tif'
-                    file_writer = QgsRasterFileWriter(file_name)
-
-                    pipe = QgsRasterPipe()
-
-                    if not pipe.set(dp):
-                        self.log(f'Cannot set pipe provider to write {file_name}', isError=True)
-                    else:
-                        self.log(f'Write {file_name}')
-
-                    error = file_writer.writeRaster(
-                        pipe,
-                        dp.xSize(),
-                        dp.ySize(),
-                        dp.extent(),
-                        dp.crs(),
-                        transformContext,
-                        rasterblockFeedback
-                    )
-                    assert error == QgsRasterFileWriter.WriterError.NoError
+                    self.writeTemporaryRaster(dp, file_name, rasterblockFeedback, transformContext)
                     parametersHard[k] = file_name
 
                 elif isinstance(param, QgsProcessingParameterRasterDestination):
@@ -1218,6 +1202,32 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.log('Done')
         self.processingFeedback().setProgress(int(100))
 
+    def writeTemporaryRaster(self, dp: QgsRasterDataProvider, file_name, rasterblockFeedback, transformContext):
+
+        file_writer = QgsRasterFileWriter(file_name)
+        pipe = QgsRasterPipe()
+        if not pipe.set(dp):
+            self.log(f'Cannot set pipe provider to write {file_name}', isError=True)
+        else:
+            self.log(f'Write {file_name}')
+        error = file_writer.writeRaster(
+            pipe,
+            dp.xSize(),
+            dp.ySize(),
+            dp.extent(),
+            dp.crs(),
+            transformContext,
+            rasterblockFeedback
+        )
+        assert error == QgsRasterFileWriter.WriterError.NoError
+
+        # write additional metadata
+        if isinstance(dp, VectorLayerFieldRasterDataProvider):
+            setting = dp.spectralSettings()
+            if isinstance(setting, SpectralSetting):
+                wlu = setting.xUnit()
+                wl = setting.x()
+
     def messageBar(self) -> QgsMessageBar:
         return self.mProcessingWidgetContext.messageBar()
 
@@ -1275,6 +1285,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         assert isinstance(alg, QgsProcessingAlgorithm)
 
         super().setAlgorithm(alg.create())
+        self.setWindowTitle(self.mDialogName)
         self.mAlg = alg
         w = self.getParametersPanel(alg, self)
         # mw = self.mainWidget()
@@ -1337,6 +1348,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.tbAlgorithmName.setStyleSheet(css)
         self.tbAlgorithmName.setText(info)
         self.tbAlgorithmName.setToolTip(tooltip)
+        self.setWindowTitle(self.mDialogName)
 
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
