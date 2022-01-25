@@ -3,53 +3,69 @@ import typing
 import unittest
 
 from PyQt5.QtCore import QVariant
+from PyQt5.QtWidgets import QVBoxLayout, QWidget
 from qgis._core import QgsRasterLayer, QgsFields, QgsField, QgsVectorLayer, QgsFieldConstraints, QgsFeature, \
-    QgsDefaultValue
+    QgsDefaultValue, QgsVectorLayerCache
+from qgis._gui import QgsAttributeTableView, QgsAttributeTableFilterModel, QgsMapCanvas, QgsAttributeTableModel
 
 from qgis.PyQt.QtCore import QAbstractListModel
 
 
-class QgsRasterLayerSpectralProperties(QAbstractListModel):
+class QgsRasterLayerSpectralProperties(QgsVectorLayer):
     """
     A container to expose spectral properties of QgsRasterLayers
     Conceptually similar to QgsRasterLayerTemporalProperties, just for spectral properties
     """
 
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
+    def __init__(self):
 
-        uri = '?'
-        self.mSpectralProperties = QgsVectorLayer('none?', 'spectralproperties', 'memory')
-        self.mSpectralProperties.startEditing()
-
-        band = QgsField('band', type=QVariant.Int, comment='Band Number')
+        super().__init__('none?', '', 'memory')
+        self.startEditing()
+        bandNo = QgsField('band', type=QVariant.Int, comment='Band Number')
         constraints = QgsFieldConstraints()
         constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
         constraints.setConstraint(QgsFieldConstraints.ConstraintNotNull)
-        band.setConstraints(constraints)
-
-        self.mSpectralProperties.startEditing()
-        self.mSpectralProperties.addAttribute(band)
-        assert self.mSpectralProperties.commitChanges()
+        bandNo.setConstraints(constraints)
+        bandNo.setReadOnly(True)
+        self.addAttribute(bandNo)
+        assert self.commitChanges()
 
     def initDefaultFields(self):
+        b = self.isEditable()
+        self.startEditing()
 
         BBL = QgsField('BBL', type=QVariant.Bool, comment='Band Band List')
-        BBL.setDefaultValueDefinition(QgsDefaultValue())
-        self.mFields.append()
-        self.mFields.append(QgsField('WL', type=QVariant.Float, comment='Band center wavelength'))
-        self.mFields.append(QgsField('WLU', type=QVariant.Float, comment='Wavelength Unit'))
-        self.mFields.append(QgsField('Min. WL', type=QVariant.Float, comment='Minimum Wavelength'))
-        self.mFields.append(QgsField('Max. WL', type=QVariant.Float, comment='Maximum Wavelength'))
-        self.mFields.append(QgsField('FWHM', type=QVariant.Float, comment='Full width at half maximum'))
+        BBL.setDefaultValueDefinition(QgsDefaultValue('True'))
+        self.addAttribute(BBL)
+
+        WL = QgsField('WL', type=QVariant.Double, comment='Wavelength at band center')
+        self.addAttribute(WL)
+
+        WLU = QgsField('WLU', type=QVariant.String, comment='Wavelength Unit')
+        wluConstraints = QgsFieldConstraints()
+        wluConstraints.setConstraintExpression('"WLU" in [\'nm\', \'m\']')
+        WLU.setConstraints(wluConstraints)
+        self.addAttribute(WLU)
+
+        WL_MIN = QgsField('WLmin', type=QVariant.Double, comment='Minimum Wavelength')
+        self.addAttribute(WL_MIN)
+        WL_MAX = QgsField('WLmax', type=QVariant.Double, comment='Maximum Wavelength')
+        self.addAttribute(WL_MAX)
+
+        FWHM = QgsField('FWHM', type=QVariant.Double, comment='Full width at half maximum')
+        fwhmConstraints = QgsFieldConstraints()
+        fwhmConstraints.setConstraintExpression('"FWHM" > 0')
+        FWHM.setConstraints(fwhmConstraints)
+        self.addAttribute(FWHM)
+        self.commitChanges(b)
 
     def fieldIndex(self, field: typing.Union[int, str, QgsField]) -> int:
         if isinstance(field, int):
             return field
         elif isinstance(field, str):
-            return self.mSpectralProperties.fields().lookupField(field)
+            return self.fields().lookupField(field)
         elif isinstance(field, QgsField):
-            return self.mSpectralProperties.fields().indexFromName(field.name())
+            return self.fields().indexFromName(field.name())
 
     def setValue(self, field: typing.Union[int, str, QgsField], bandNo: int, value: typing.Any) -> bool:
         return self.setValues(field, [bandNo], [value])
@@ -65,11 +81,12 @@ class QgsRasterLayerSpectralProperties(QAbstractListModel):
         if i < 0:
             print(f'Spectral Property Field {field} does not exists', file=sys.stderr)
             return False
-        self.mSpectralProperties: QgsVectorLayer
-        self.mSpectralProperties.startEditing()
+        self.startEditing()
+        if bands is None:
+            bands = list(range(1, self.featureCount() + 1))
         for bandNo, value in zip(bands, values):
-            self.mSpectralProperties.setAttribute
-        return self.mSpectralProperties.commitChanges()
+            self.setAttribute(bandNo, value)
+        return self.commitChanges()
 
     def values(self, field: typing.Union[int, str, QgsField], bands: typing.List[int] = None) -> typing.List[typing.Any]:
         i = self.fieldIndex(field)
@@ -77,46 +94,73 @@ class QgsRasterLayerSpectralProperties(QAbstractListModel):
             print(f'Spectral Property Field {field} does not exists', file=sys.stderr)
             return None
         if bands is None:
-            bands = list(range(self.mSpectralProperties.featureCount()))
+            bands = list(range(1, self.mSpectralProperties.featureCount()+1))
         self.mSpectralProperties: QgsVectorLayer
         values = []
         for band in bands:
             values.append(self.mSpectralProperties.getFeature(band)[i])
         return values
 
+    def names(self) -> typing.List[str]:
+        """
+        Returns the available property names
+        """
+        return self.fields().names()
+
+    # convenient accessors
     def wavelengths(self) -> list:
         return self.values('WL')
 
     def setWavelengths(self, wl: list):
-        pass
+        self.setValues('WL', list(range(1, len(wl))))
 
-    def wavelength(self, band: int):
-        pass
+    def wavelength(self, bandNo: int):
+        return self.value('WL', bandNo)
 
-    def setWavelength(self, band: int):
-        pass
+    def setWavelength(self, bandNo: int, value:float):
+        self.setValue('WL', bandNo, value)
 
-    def setBadBand(self, band: int, is_bad: bool):
-        pass
+    def _readBandProperty(self, layer: QgsRasterLayer, bandNo: int, propertyName: str):
+        if propertyName == 'BBL':
+            return True
+        if propertyName == 'band':
+            return bandNo
+        return None
 
-    def isBadBand(self, band: int) -> bool:
-        pass
+    def _readBandProperties(self, rasterLayer: QgsRasterLayer):
+        self.startEditing()
+        self.selectAll()
+        self.removeSelection()
+        assert self.commitChanges(False)
 
-    def bandBands(self) -> typing.List:
-        pass
+        for b in range(rasterLayer.bandCount()):
 
-    def _readFromLayer(self, layer: QgsRasterLayer):
-        self.mSpectralProperties.startEditing()
-        self.mSpectralProperties.selectAll()
-        self.mSpectralProperties.removeSelection()
-        assert self.mSpectralProperties.commitChanges(False)
-
-        for b in range(layer.bandCount()):
-
-            self.mSpectralProperties.addFeature(QgsFeature(self.mSpectralProperties.fields()))
-        assert self.mSpectralProperties.commitChanges()
-        assert self.mSpectralProperties.featureCount() == layer.bandCount()
+            bandFeature = QgsFeature(self.fields())
+            for bandProperty in self.names():
+                bandFeature.setAttribute(bandProperty, self._readBandProperty(rasterLayer, b, bandProperty))
+            bandFeature.setAttribute('band', b + 1)
+            self.addFeature(bandFeature)
+        assert self.commitChanges()
+        assert self.featureCount() == rasterLayer.bandCount()
+        s = ""
 
     def _writeToLayer(self, layer: QgsRasterLayer):
         pass
 
+
+class QgsRasterLayerSpectralPropertiesWidget(QWidget):
+
+    def __init__(self, spectralProperties: QgsRasterLayerSpectralProperties, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.setWindowTitle('QgsRasterLayerSpectralPropertiesWidget')
+        self.mSpectralProperties: QgsRasterLayerSpectralProperties = spectralProperties
+        self.mVectorLayerCache = QgsVectorLayerCache(self.mSpectralProperties, 256)
+        self.mAttributeTableModel = QgsAttributeTableModel(self.mVectorLayerCache)
+        self.mAttributeTableModel.loadLayer()
+        self.mCanvas = QgsMapCanvas()
+        self.mFilterModel = QgsAttributeTableFilterModel(self.mCanvas, self.mAttributeTableModel)
+        self.mTableView = QgsAttributeTableView()
+        self.mTableView.setModel(self.mFilterModel)
+        self.mLayout = QVBoxLayout()
+        self.mLayout.addWidget(self.mTableView)
+        self.setLayout(self.mLayout)
