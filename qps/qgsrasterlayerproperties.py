@@ -38,7 +38,7 @@ class QgsRasterLayerSpectralProperties(QgsVectorLayer):
         BBL.setDefaultValueDefinition(QgsDefaultValue('True'))
         self.addAttribute(BBL)
 
-        WL = QgsField('WL', type=QVariant.Double, comment='Wavelength at band center')
+        WL = QgsField('WL', type=QVariant.Double, comment='Wavelength of band center')
         self.addAttribute(WL)
 
         WLU = QgsField('WLU', type=QVariant.String, comment='Wavelength Unit')
