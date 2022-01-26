@@ -2,6 +2,7 @@ import gc
 import unittest
 
 import xmlrunner
+from PyQt5.QtWidgets import QVBoxLayout
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
@@ -256,23 +257,6 @@ class TestSpeclibPlotting(TestCase):
         self.assertFalse(is_removed)
         self.assertTrue(vis.mLayer is None)
 
-    def test_StandardItemMode(self):
-
-        tv = QTreeView()
-
-        model = QStandardItemModel()
-        tv.setModel(model)
-
-        item1 = LayerBandVisualization()
-        item1a = QStandardItem('Name')
-        item1b = QStandardItem('Value')
-        item1.appendRow([item1a, item1b])
-
-        model.setHorizontalHeaderLabels(['A', 'B'])
-        model.appendRow(item1)
-
-        self.showGui(tv)
-
     def test_SpectralProfilePlotControlModel(self):
         model = SpectralProfilePlotModel()
         speclib = TestObjects.createSpectralLibrary()
@@ -309,6 +293,7 @@ class TestSpeclibPlotting(TestCase):
         self.assertEqual(len(grps), 2)
         self.assertTrue(model.canDropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
         self.assertTrue(model.dropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
+
         self.showGui(tv)
 
     def test_SpectralLibraryPlotWidget(self):
@@ -354,7 +339,18 @@ class TestSpeclibPlotting(TestCase):
         speclib.commitChanges(stopEditing=False)
         speclib.deleteAttribute(speclib.fields().lookupField('profiles3'))
         speclib.commitChanges(stopEditing=False)
-        self.showGui([w])
+
+        canvas = QgsMapCanvas()
+        canvas.setLayers([rl1, rl2])
+        canvas.zoomToFullExtent()
+        l = QVBoxLayout()
+        l.addWidget(canvas)
+        l.addWidget(w)
+
+        major = QWidget()
+        major.setLayout(l)
+
+        self.showGui(major)
 
     def test_rendering(self):
 

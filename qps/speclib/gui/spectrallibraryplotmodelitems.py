@@ -728,6 +728,7 @@ class LayerBandVisualization(PropertyItemGroup):
                 renderer.setGrayBand(bandR)
 
         self.layer().setRenderer(renderer)
+        self.layer().triggerRepaint()
         # convert to band unit
 
     def xValueToBand(self, pos: float) -> int:

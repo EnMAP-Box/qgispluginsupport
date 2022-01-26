@@ -33,7 +33,6 @@ from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindo
 from qgis.PyQt.QtXml import QDomDocument
 from osgeo import gdal, osr
 
-from qgis.gui import QgsFieldCalculator
 from qgis.core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, QgsFeatureRequest, \
     QgsExpressionContext, QgsExpressionContextUtils, QgsField, QgsScopedProxyProgressTask, QgsExpressionContextScope, \
     QgsRasterLayer, QgsSettings, QgsReadWriteContext, QgsRasterRenderer, \
@@ -45,6 +44,12 @@ from qgis.core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject
     QgsFeature, QgsRectangle, QgsProviderRegistry, \
     QgsRasterDataProvider, QgsFields, QgsFieldModel, QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer, \
     QgsHillshadeRenderer, QgsPalettedRasterRenderer, QgsSingleBandPseudoColorRenderer
+
+try:
+    from qgis.gui import QgsFieldCalculator
+    FIELD_CALCULATOR = True
+except ModuleNotFoundError:
+    FIELD_CALCULATOR = False
 
 from qgis.gui import QgisInterface, QgsMapCanvas
 
@@ -1223,7 +1228,10 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mActionAddAttribute.triggered.connect(self.mActionAddAttribute_triggered)
         self.mActionRemoveAttribute.triggered.connect(self.mActionRemoveAttribute_triggered)
         self.mActionOrganizeColumns.triggered.connect(self.mActionOrganizeColumns_triggered)
+
+        self.mActionOpenFieldCalculator.setVisible(FIELD_CALCULATOR)
         self.mActionOpenFieldCalculator.triggered.connect(self.mActionOpenFieldCalculator_triggered)
+
         self.mActionDeleteSelected.triggered.connect(self.mActionDeleteSelected_triggered)
         self.mMainView.currentChanged.connect(self.mMainView_currentChanged)
         self.mActionAddFeature.triggered.connect(self.mActionAddFeature_triggered)
@@ -1852,12 +1860,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             return
 
         masterModel: QgsAttributeTableModel = self.mMainView.masterModel()
-
-        calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
-        if calc.exec_() == QDialog.Accepted:
-            col = masterModel.fieldCol(calc.changedAttributeId())
-            if col >= 0:
-                masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
+        if FIELD_CALCULATOR:
+            calc: QgsFieldCalculator = QgsFieldCalculator(self.mLayer, self)
+            if calc.exec_() == QDialog.Accepted:
+                col = masterModel.fieldCol(calc.changedAttributeId())
+                if col >= 0:
+                    masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
 
     def mActionOrganizeColumns_triggered(self):
         if not isinstance(self.mLayer, QgsVectorLayer):
