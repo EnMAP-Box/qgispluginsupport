@@ -1066,24 +1066,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         OLD2NEW = {o: n for o, n in zip(oldFIDs, newFIDs)}
         updates = dict()
 
-        # rename fid in cache1
-        # for o in [k for k in oldFIDs if k in self.mCache1FeatureData.keys()]:
-        #    self.mCache1FeatureData[OLD2NEW[o]] = self.mCache1FeatureData.pop(o)
-
-        # rename fid in cache2
-        # for modelDataKey in [mk for mk in self.mCache2ModelData.keys() if mk[0] in oldFIDs]:
-        #    self.mCache2ModelData[(OLD2NEW[modelDataKey[0]], modelDataKey[1], modelDataKey[2])] = \
-        #        self.mCache2ModelData.pop(modelDataKey)
-
-        # rename fid in cache3
-        # for plotDataKey in [pk for pk in self.mCache3PlotData.keys() if pk[0] in oldFIDs]:
-        #    self.mCache3PlotData[(OLD2NEW[plotDataKey[0]], plotDataKey[1], plotDataKey[2], plotDataKey[3])] = \
-        #        self.mCache3PlotData.pop(plotDataKey)
-
-        # rename fids in feature color cache
-        # for o in [k for k in self.mCache1FeatureColors if k in oldFIDs]:
-        #    self.mCache1FeatureColors[OLD2NEW[o]] = self.mCache1FeatureColors.pop(o)
-
         # rename fids in plot data items
         for pdi in self.mPlotWidget.spectralProfilePlotDataItems():
             visKey: VISUALIZATION_KEY = pdi.visualizationKey()

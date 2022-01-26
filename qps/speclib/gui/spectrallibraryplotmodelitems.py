@@ -578,6 +578,22 @@ class QgsPropertyItem(PropertyItem):
         self.signals().requestPlotUpdate.emit()
 
 
+class ProfileCandidates(PropertyItemGroup):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        self.setIcon(QIcon())
+        self.setData('Profile Candidates', Qt.DisplayRole)
+        self.setData('Defines the Style of profile candidates', Qt.ToolTipRole)
+
+        self.mCandidatePlotStyle = PlotStyleItem()
+        self.mCandidatePlotStyle.label().setText('Style')
+        self.mCandidatePlotStyle.label().setToolTip('Plot style of temporary profiles before they '
+                                                    'are added into the spectral library')
+
+        self.appendRow(self.mCandidatePlotStyle)
+
+
 class LayerBandVisualization(PropertyItemGroup):
 
     def __init__(self, *args, layer: QgsRasterLayer = None, **kwds):
@@ -1058,8 +1074,8 @@ class ProfileVisualization(PropertyItemGroup):
         speclib = self.speclib()
         field = self.field()
         return isinstance(speclib, QgsVectorLayer) and not sip.isdeleted(speclib) \
-            and isinstance(field, QgsField) \
-            and field.name() in speclib.fields().names()
+               and isinstance(field, QgsField) \
+               and field.name() in speclib.fields().names()
 
     def setFilterExpression(self, expression):
         if isinstance(expression, QgsExpression):
