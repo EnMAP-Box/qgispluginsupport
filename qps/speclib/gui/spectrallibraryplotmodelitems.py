@@ -578,13 +578,13 @@ class QgsPropertyItem(PropertyItem):
         self.signals().requestPlotUpdate.emit()
 
 
-class ProfileCandidates(PropertyItemGroup):
+class TemporaryProfiles(PropertyItemGroup):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.setIcon(QIcon())
-        self.setData('Profile Candidates', Qt.DisplayRole)
-        self.setData('Defines the Style of profile candidates', Qt.ToolTipRole)
+        self.setData('Temporary Profiles', Qt.DisplayRole)
+        self.setData('Defines the Style of temporary profiles', Qt.ToolTipRole)
 
         self.mCandidatePlotStyle = PlotStyleItem()
         self.mCandidatePlotStyle.label().setText('Style')
