@@ -48,7 +48,7 @@ from qgis.core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject
 try:
     from qgis.gui import QgsFieldCalculator
     FIELD_CALCULATOR = True
-except ModuleNotFoundError:
+except ImportError:
     FIELD_CALCULATOR = False
 
 from qgis.gui import QgisInterface, QgsMapCanvas
