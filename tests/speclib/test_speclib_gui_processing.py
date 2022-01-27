@@ -19,6 +19,7 @@ from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingG
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
 from qps import initAll
 from qps.speclib.core.spectrallibrary import SpectralLibrary
+from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
     SpectralProcessingRasterLayerWidgetWrapper
@@ -221,6 +222,11 @@ class SpectralProcessingTests(TestCase):
         cb2.setCurrentText('newfield')
 
         procw.runAlgorithm(fail_fast=True)
+        tempFiles = procw.temporaryRaster()
+        for file in tempFiles:
+            setting = SpectralSetting.fromRasterLayer(file)
+            assert setting.xUnit() not in [None, '']
+
         self.showGui(procw)
 
     def test_SpectralProcessingRasterLayerWidgetWrapper(self):

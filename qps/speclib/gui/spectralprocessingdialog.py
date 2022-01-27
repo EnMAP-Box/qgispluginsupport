@@ -500,6 +500,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.btnAlgorithm.setIcon(QIcon(':/images/themes/default/processingAlgorithm.svg'))
         self.btnAlgorithm.clicked.connect(self.onSetAlgorithm)
 
+        self.mTemporaryRaster: typing.List[str] = []
         self.tbAlgorithmName: QLineEdit = QLineEdit()
         self.tbAlgorithmName.setPlaceholderText('Select a raster processing algorithm / model')
         self.tbAlgorithmName.setReadOnly(True)
@@ -571,6 +572,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         """
         Runs the QgsProcessingAlgorithm with the specified settings
         """
+
+        self.mTemporaryRaster.clear()
 
         TEMP_FOLDER = QgsProcessingUtils.generateTempFilename('')
         self.mProcessingFeedback.setProgress(int(0))
@@ -740,6 +743,13 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.log('Done')
         self.processingFeedback().setProgress(int(100))
 
+    def temporaryRaster(self) -> typing.List[str]:
+        """
+        Returns a list of all files which have been written by writeTemporaryRaster
+        when calling runAlgorithm()
+        """
+        return self.mTemporaryRaster[:]
+
     def writeTemporaryRaster(self, dp: QgsRasterDataProvider, file_name, rasterblockFeedback, transformContext):
 
         file_writer = QgsRasterFileWriter(file_name)
@@ -764,6 +774,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             fieldConverter = dp.fieldConverter()
             if isinstance(fieldConverter, SpectralProfileValueConverter):
                 fieldConverter.spectralSetting().writeToLayer(file_name)
+
+        self.mTemporaryRaster.append(file_name)
 
     def messageBar(self) -> QgsMessageBar:
         return self.mProcessingWidgetContext.messageBar()
