@@ -14,12 +14,12 @@ from qgis.core import QgsField, QgsPropertyDefinition, QgsProperty, QgsExpressio
     QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsRenderContext, QgsFeatureRenderer, QgsFeature
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverrideButton
 
-from qps.externals.htmlwidgets import HTMLComboBox
-from qps.plotstyling.plotstyling import PlotStyle, PlotStyleButton
-from qps.pyqtgraph.pyqtgraph import InfiniteLine
-from qps.speclib.core import create_profile_field
-from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER, BAND_INDEX
-from qps.utils import parseWavelength
+from ...externals.htmlwidgets import HTMLComboBox
+from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
+from ...pyqtgraph.pyqtgraph import InfiniteLine
+from ...speclib.core import create_profile_field
+from ...unitmodel import UnitConverterFunctionModel, BAND_NUMBER, BAND_INDEX
+from ...utils import parseWavelength
 
 WARNING_ICON = QIcon(r':/images/themes/default/mIconWarning.svg')
 
@@ -319,7 +319,7 @@ class PropertyItem(PropertyItemBase):
 
     def speclib(self) -> QgsVectorLayer:
         model = self.model()
-        from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
+        from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
         if isinstance(model, SpectralProfilePlotModel):
             return model.speclib()
         else:
@@ -432,7 +432,7 @@ class FieldItem(PropertyItem):
         w = HTMLComboBox(parent=parent)
         model = self.model()
 
-        from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
+        from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
         if isinstance(model, SpectralProfilePlotModel):
             w.setModel(model.profileFieldsModel())
         w.setToolTip('Select a field with profile data')
@@ -621,7 +621,7 @@ class LayerBandVisualization(PropertyItemGroup):
 
     def updateBarVisiblity(self):
         model = self.model()
-        from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
+        from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
         if isinstance(model, SpectralProfilePlotModel):
             plotItem = model.mPlotWidget.plotItem
             for bar in self.bandPlotItems():
@@ -639,7 +639,7 @@ class LayerBandVisualization(PropertyItemGroup):
             s = ""
 
     def initWithProfilePlotModel(self, model):
-        from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
+        from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
         assert isinstance(model, SpectralProfilePlotModel)
         self.setXUnit(model.xUnit())
         # self.updateBarVisiblity()
@@ -976,7 +976,7 @@ class ProfileVisualization(PropertyItemGroup):
         if not speclibNode.isNull():
             # try to restore the speclib
             lyrId = speclibNode.attribute('id')
-            from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
+            from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
             if isinstance(model, SpectralProfilePlotModel):
                 sl = model.project().mapLayer(lyrId)
                 if isinstance(sl, QgsVectorLayer):
