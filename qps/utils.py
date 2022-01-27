@@ -1900,7 +1900,7 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
                 return domainWL, domainWLU
 
         # 2. check on band level. collect wl from each single band
-        # first domain that defines wl and wlu is prototyp domain for all other bands
+        # first domain that defines wl and wlu is prototype domain for all other bands
 
         wl = []  # list of wavelength values
         wlu: str = None  # wavelength unit string

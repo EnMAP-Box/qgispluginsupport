@@ -2,28 +2,26 @@ import datetime
 import os
 import pathlib
 import pickle
-import warnings
+import sys
 import typing
+import warnings
 
-from qgis.core import QgsTask, QgsFeatureRequest
+import numpy as np
+from osgeo import gdal
 
 from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
+from qgis.core import QgsTask, QgsFeatureRequest
 from qgis.gui import QgsMapCanvas
-from osgeo import gdal
-import numpy as np
-
 from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields
-
-from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
-    qgsFieldAttributes2List, \
-    spatialPoint2px, saveTransform
+from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph import pyqtgraph as pg
-
-from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
+from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
+    qgsFieldAttributes2List, \
+    spatialPoint2px, saveTransform, qgsRasterLayer, parseBadBandList
 
 # a single profile is identified by its QgsFeature id and profile_field index or profile_field name
 
@@ -140,6 +138,20 @@ class SpectralSetting(object):
     """
 
     @classmethod
+    def fromRasterLayer(cls, layer: QgsRasterLayer) -> 'SpectralSetting':
+        layer = qgsRasterLayer(layer)
+        if not (isinstance(layer, QgsRasterLayer) and layer.isValid()):
+            return None
+
+        wl, wlu = parseWavelength(layer)
+        bbl = parseBadBandList(layer)
+
+        if wl is None:
+            return None
+        else:
+            return SpectralSetting(wl, xUnit=wlu, bbl=bbl)
+
+    @classmethod
     def fromDictionary(cls, d: dict) -> 'SpectralSetting':
         if 'y' not in d.keys():
             # no spectral values no spectral setting
@@ -229,6 +241,59 @@ class SpectralSetting(object):
 
     def __hash__(self):
         return self.mHash
+
+    def writeToLayer(self, layer: QgsRasterLayer):
+        """
+        Writes the band and wavelength information to this layer
+        """
+        layer = qgsRasterLayer(layer)
+        assert self.n_bands() == layer.bandCount()
+
+        layer = qgsRasterLayer(layer)
+        assert isinstance(layer, QgsRasterLayer)
+        assert layer.isValid()
+
+        x = self.x()
+        bbl = self.bbl()
+        wlu = self.xUnit()
+
+        # write to layer metadata
+        # follows https://enmap-box.readthedocs.io/en/latest/dev_section/rfc_list/rfc0002.html
+        for b in range(self.n_bands()):
+            key = f'QGISPAM/band/{b + 1}//wavelength_units'
+            layer.setCustomProperty(key, wlu)
+            key = f'QGISPAM/band/{b + 1}//wavelength'
+            layer.setCustomProperty(key, x[b])
+
+            if bbl:
+                key = f'QGISPAM/band/{b + 1}//bad_band_multiplier'
+                layer.setCustomProperty(key, bbl[x])
+        err, success = layer.saveDefaultMetadata()
+        if not success:
+            print(err, file=sys.stderr)
+
+        # write to GDAL PAM
+        if layer.dataProvider().name() == 'gdal':
+            path = layer.source()
+            del layer
+
+            ds: gdal.Dataset = gdal.Open(path, gdal.GA_Update)
+            # set at dataset level
+            METADATA = ds.GetMetadata()
+            METADATA['wavelength_units'] = wlu
+            METADATA['wavelength'] = '{' + ','.join([str(v) for v in x]) + '}'
+            ds.SetMetadata(METADATA)
+            ds.SetMetadata(METADATA, 'ENVI')
+
+            # set at band level
+            for b in range(ds.RasterCount):
+                band: gdal.Band = ds.GetRasterBand(b + 1)
+                METADATA = band.GetMetadata()
+                METADATA['wavelength_unit'] = wlu
+                METADATA['wavelength'] = str(x[b])
+                band.SetMetadata(METADATA)
+            ds.FlushCache()
+            del ds
 
 
 class SpectralProfile(QgsFeature):
