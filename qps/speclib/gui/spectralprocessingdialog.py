@@ -23,11 +23,12 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingParametersWidget, \
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
+
 from ..core import create_profile_field, is_profile_field
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
     SpectralProfileValueConverter
 from ..core.spectralprofile import prepareProfileValueDict, \
-    encodeProfileValueDict, SpectralSetting
+    encodeProfileValueDict
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...utils import rasterLayerArray, iconForFieldType, numpyToQgisDataType
@@ -568,7 +569,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
     def processingFeedback(self) -> QgsProcessingFeedback:
         return self.mProcessingFeedback
 
-    def runAlgorithm(self, fail_fast:bool = False) -> None:
+    def runAlgorithm(self, fail_fast: bool = False) -> None:
         """
         Runs the QgsProcessingAlgorithm with the specified settings
         """
