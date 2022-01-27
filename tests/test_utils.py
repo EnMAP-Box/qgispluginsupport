@@ -40,7 +40,7 @@ from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItems
     SpatialPoint, layerGeoTransform, displayBandNames, UnitLookup, qgsRasterLayer, gdalDataset, px2geocoordinates, \
     rasterLayerArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
-    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, datetime64
+    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, datetime64, SelectMapLayerDialog
 
 
 class TestUtils(TestCase):
@@ -288,6 +288,17 @@ class TestUtils(TestCase):
         self.assertEqual(fidsA, fidsB)
         self.assertEqual(burned.shape[1], rl.width())
         self.assertEqual(burned.shape[0], rl.height())
+
+    def test_SelectMapLayerDialog(self):
+
+        p = QgsProject()
+        lyr1 = TestObjects.createRasterLayer()
+        lyr2 = TestObjects.createVectorLayer()
+        p.addMapLayers([lyr1, lyr2])
+        d = SelectMapLayerDialog()
+        d.setProject(p)
+
+        self.showGui()
 
     def test_block_size(self):
 
