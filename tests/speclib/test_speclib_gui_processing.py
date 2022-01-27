@@ -211,9 +211,16 @@ class SpectralProcessingTests(TestCase):
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         alg1 = reg.algorithmById('gdal:rearrange_bands')
         alg2 = reg.algorithmById('native:rescaleraster')
+        procw.setAlgorithm(alg2)
+        wrapper = procw.processingModelWrapper()
+        cbInputField = wrapper.parameterWidget('INPUT')
+        cbInputField.setCurrentIndex(1)
+        currentInputFieldName = cbInputField.currentText()
 
-        # procw.setAlgorithm(alg2)
+        cb2 = wrapper.outputWidget('OUTPUT')
+        cb2.setCurrentText('newfield')
 
+        procw.runAlgorithm(fail_fast=True)
         self.showGui(procw)
 
     def test_SpectralProcessingRasterLayerWidgetWrapper(self):
@@ -279,7 +286,7 @@ class SpectralProcessingTests(TestCase):
         d = D()
         d.exec_()
 
-    def test_SpectralProcessingWidget(self):
+    def test_SpectralLibraryWidget(self):
         self.initProcessingRegistry()
 
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider

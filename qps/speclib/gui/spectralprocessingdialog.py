@@ -24,7 +24,8 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
 from ..core import create_profile_field, is_profile_field
-from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers
+from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
+    SpectralProfileValueConverter
 from ..core.spectralprofile import prepareProfileValueDict, \
     encodeProfileValueDict, SpectralSetting
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
@@ -116,6 +117,7 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
 
         if not isinstance(self.mFieldComboBox, SpectralProfileFieldComboBox):
             self.mFieldComboBox = self.createWidget()
+            self.mFieldComboBox.setObjectName(self.parameterDefinition().name())
         return self.mFieldComboBox
 
     def createWidget(self):
@@ -565,7 +567,10 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
     def processingFeedback(self) -> QgsProcessingFeedback:
         return self.mProcessingFeedback
 
-    def runAlgorithm(self) -> None:
+    def runAlgorithm(self, fail_fast:bool = False) -> None:
+        """
+        Runs the QgsProcessingAlgorithm with the specified settings
+        """
 
         TEMP_FOLDER = QgsProcessingUtils.generateTempFilename('')
         self.mProcessingFeedback.setProgress(int(0))
@@ -713,14 +718,20 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
         except AlgorithmDialogBase.InvalidParameterValue as ex1:
             # todo: focus on widget with missing input
+            if fail_fast:
+                raise ex1
             msg = f'Invalid Parameter Value: {ex1.parameter.name()}'
             self.log(msg, isError=True)
             # self.tabWidget.setCurrentWidget(self.tabLog)
             self.highlightParameterWidget(ex1.parameter, ex1.widget)
         except AlgorithmDialogBase.InvalidOutputExtension as ex2:
+            if fail_fast:
+                raise ex2
             msg = 'Invalid Output Extension'
             self.log(msg, isError=True)
         except Exception as ex3:
+            if fail_fast:
+                raise ex3
             msg = f'{ex3}'
             self.log(msg, isError=True)
             mbar: QgsMessageBar = self.messageBar()
@@ -750,9 +761,9 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
         # write additional metadata
         if isinstance(dp, VectorLayerFieldRasterDataProvider):
-            setting = dp.spectralSettings()
-            if isinstance(setting, SpectralSetting):
-                setting.writeToLayer(file_name)
+            fieldConverter = dp.fieldConverter()
+            if isinstance(fieldConverter, SpectralProfileValueConverter):
+                fieldConverter.spectralSetting().writeToLayer(file_name)
 
     def messageBar(self) -> QgsMessageBar:
         return self.mProcessingWidgetContext.messageBar()
