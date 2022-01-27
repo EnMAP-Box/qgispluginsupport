@@ -1253,7 +1253,9 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             widget.setStyleSheet('background-color: rgba(255, 0, 0, 150);')
             QTimer.singleShot(1000, lambda *args, w=widget, c=css: w.setStyleSheet(c))
 
-    def createProcessingParameters(self, flags=QgsProcessingParametersGenerator.Flags()):
+    def createProcessingParameters(self, flags=None):
+        if flags is None and Qgis.versionInt() >= 32400:
+            flags = QgsProcessingParametersGenerator.Flags()
 
         if self.mainWidget() is None:
             return {}
