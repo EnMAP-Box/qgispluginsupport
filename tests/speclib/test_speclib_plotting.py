@@ -2,19 +2,18 @@ import gc
 import unittest
 
 import xmlrunner
-from PyQt5.QtWidgets import QVBoxLayout
+from qgis.PyQt.QtWidgets import QVBoxLayout
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtGui import QMouseEvent, QColor
-from qgis.PyQt.QtGui import QStandardItemModel, QStandardItem
 from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtWidgets import QTreeView
 from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer, QgsApplication
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
+
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
 from qps.speclib.gui.spectrallibraryplotitems import SpectralXAxis, SpectralProfilePlotWidget
@@ -343,12 +342,12 @@ class TestSpeclibPlotting(TestCase):
         canvas = QgsMapCanvas()
         canvas.setLayers([rl1, rl2])
         canvas.zoomToFullExtent()
-        l = QVBoxLayout()
-        l.addWidget(canvas)
-        l.addWidget(w)
+        layout = QVBoxLayout()
+        layout.addWidget(canvas)
+        layout.addWidget(w)
 
         major = QWidget()
-        major.setLayout(l)
+        major.setLayout(layout)
 
         self.showGui(major)
 

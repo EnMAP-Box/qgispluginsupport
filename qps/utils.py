@@ -1900,7 +1900,7 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
                 return domainWL, domainWLU
 
         # 2. check on band level. collect wl from each single band
-        # first domain that defines wl and wlu is prototyp domain for all other bands
+        # first domain that defines wl and wlu is prototype domain for all other bands
 
         wl = []  # list of wavelength values
         wlu: str = None  # wavelength unit string
@@ -3017,7 +3017,9 @@ class SelectMapLayerDialog(QgsDialog):
         self.layout().insertLayout(0, self.hl)
 
     def setProject(self, project: QgsProject):
-        self.mBox.setProject(project)
+        if hasattr(self.mBox, 'setProject') and callable(self.mBox.objectName):
+            # https://github.com/qgis/QGIS/pull/46706
+            self.mBox.setProject(project)
 
     def mapLayerComboBox(self) -> QgsMapLayerComboBox:
         return self.mBox

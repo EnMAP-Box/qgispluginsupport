@@ -12,11 +12,11 @@ from qgis.PyQt.QtWidgets import QMenu, QAction, QWidgetAction, QSlider, QApplica
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
 from qgis.core import QgsProject
 
-from qps.pyqtgraph import pyqtgraph as pg
-from qps.speclib import speclibSettings, SpectralLibrarySettingsKey
-from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle
-from qps.speclib.gui.spectrallibraryplotmodelitems import ProfileVisualization
-from qps.utils import datetime64, SignalObjectWrapper, HashablePointF
+from ...pyqtgraph import pyqtgraph as pg
+from ...speclib import speclibSettings, SpectralLibrarySettingsKey
+from ..core.spectrallibrary import defaultCurvePlotStyle
+from ..gui.spectrallibraryplotmodelitems import ProfileVisualization
+from ...utils import datetime64, SignalObjectWrapper, HashablePointF
 
 
 class SpectralXAxis(pg.AxisItem):
