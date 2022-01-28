@@ -329,6 +329,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     CIX_VALUE = 1
 
     sigProgressChanged = pyqtSignal(float)
+    sigPlotWidgetStyleChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
 
@@ -389,11 +390,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mPlotWidgetStyle: SpectralLibraryPlotWidgetStyle = SpectralLibraryPlotWidgetStyle.dark()
         self.mTemporaryProfileIDs: typing.Set[FEATURE_ID] = set()
         self.mTemporaryProfileColors: typing.Dict[ATTRIBUTE_ID, QColor] = dict()
-        # self.mSelectedDataColor: QColor = QColor('yellow')
-        # self.mTemporaryDataColor: QColor = QColor('green')
-        # self.mBackgroundColor
-        # self.mExampleContext: QgsExpressionContext = QgsExpressionContext()
-        # self.updateExampleContext()
+        self.mTemporaryProfileStyles: typing.Dict[ATTRIBUTE_ID, PlotStyle] = dict()
 
         self.mMaxProfilesWidget: QWidget = None
 
@@ -453,6 +450,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 self.index(0, 0),
                 self.index(self.rowCount() - 1, 0)
             )
+        if self.mPlotWidget:
+            self.mPlotWidget.setWidgetStyle(style)
+        self.sigPlotWidgetStyleChanged.emit()
 
     def plotWidgetStyle(self) -> SpectralLibraryPlotWidgetStyle:
         return self.mPlotWidgetStyle
@@ -1482,6 +1482,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
 class SpectralLibraryPlotWidget(QWidget):
     sigDragEnterEvent = pyqtSignal(QDragEnterEvent)
     sigDropEvent = pyqtSignal(QDropEvent)
+    sigPlotWidgetStyleChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -1498,7 +1499,7 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mPlotControlModel = SpectralProfilePlotModel()
         self.mPlotControlModel.setPlotWidget(self.plotWidget)
         self.mPlotControlModel.setMaxProfiles(self.sbMaxProfiles.value())
-
+        self.mPlotControlModel.sigPlotWidgetStyleChanged.connect(self.sigPlotWidgetStyleChanged.emit)
         self.mINITIALIZED_VISUALIZATIONS = set()
 
         # self.mPlotControlModel.sigProgressChanged.connect(self.onProgressChanged)
@@ -1604,12 +1605,11 @@ class SpectralLibraryPlotWidget(QWidget):
 
     def setPlotWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
         assert isinstance(style, SpectralLibraryPlotWidgetStyle)
-        self.plotWidget.setWidgetStyle(style)
+
         self.mPlotControlModel.setPlotWidgetStyle(style)
-        # self.mPlotControlModel.mSelectedDataColor = QColor(style.selectionColor)
-        # self.mPlotControlModel.mTemporaryDataColor = QColor(style.temporaryColor)
-        # self.mPlotControlModel.mBackgroundColor = QColor(style.backgroundColor)
-        s = ""
+
+    def plotWidgetStyle(self) -> SpectralLibraryPlotWidgetStyle:
+        return self.mPlotControlModel.plotWidgetStyle()
 
     def populateProfilePlotContextMenu(self, listWrapper: SignalObjectWrapper):
         itemList: list = listWrapper.wrapped_object

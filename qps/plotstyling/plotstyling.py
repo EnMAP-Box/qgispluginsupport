@@ -948,6 +948,9 @@ class PlotStyleButton(QToolButton):
     def setVisibilityCheckboxVisible(self, b: bool):
         self.mDialog.setVisibilityCheckboxVisible(b)
 
+    def setPreviewVisible(self, b:bool):
+        self.mDialog.setPreviewVisible(b)
+
     def onAccepted(self, *args):
         if isinstance(self.mDialog, PlotStyleDialog):
             ps = self.mDialog.plotStyle()
@@ -1036,6 +1039,8 @@ class PlotStyleDialog(QgsDialog):
         assert isinstance(plotStyle, PlotStyle)
         self.w.setPlotStyle(plotStyle)
 
+    def setPreviewVisible(self, b:bool):
+        self.w.setPreviewVisible(b)
 
 class PlotStyleEditorWidgetWrapper(QgsEditorWidgetWrapper):
 

@@ -7,6 +7,7 @@ from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QMessageBox
+from qgis._core import QgsFeature
 from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry
 from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer
@@ -19,7 +20,6 @@ from .spectralprocessingdialog import SpectralProcessingDialog
 from ..core import is_spectral_library
 from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
-from ..core.spectralprofile import SpectralProfile
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ...utils import SpatialExtent, SpatialPoint, nextColor
@@ -481,8 +481,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         return self.mSpeclibPlotWidget
 
     def setCurrentProfiles(self,
-                           currentProfiles: typing.List[SpectralProfile],
+                           currentProfiles: typing.List[QgsFeature],
                            make_permanent: bool = None,
+                           temporalProfileStyles: typing.List[typing.Tuple[int, PlotStyle]] = None,
                            currentProfileColors: typing.List[typing.Tuple[int, QColor]] = None):
         """
         Sets temporary profiles for the spectral library.
