@@ -3,6 +3,8 @@ import re
 import typing
 
 import numpy as np
+from PyQt5.QtGui import QPen
+
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
 
@@ -25,7 +27,7 @@ from qgis.gui import QgsFilterLineEdit
 from .spectrallibraryplotitems import SpectralLibraryPlotWidgetStyle, FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
     VISUALIZATION_KEY, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, LayerBandVisualization, \
-    ProfileVisualization, PlotStyleItem
+    ProfileVisualization, PlotStyleItem, ProfileCandidates
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
@@ -388,9 +390,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mShowSelectedFeaturesOnly: bool = False
 
         self.mPlotWidgetStyle: SpectralLibraryPlotWidgetStyle = SpectralLibraryPlotWidgetStyle.dark()
-        self.mTemporaryProfileIDs: typing.Set[FEATURE_ID] = set()
-        self.mTemporaryProfileColors: typing.Dict[ATTRIBUTE_ID, QColor] = dict()
-        self.mTemporaryProfileStyles: typing.Dict[ATTRIBUTE_ID, PlotStyle] = dict()
+
+        self.mProfileCandidates = ProfileCandidates()
+        self.insertPropertyGroup(0, self.mProfileCandidates)
+
+        # self.mTemporaryProfileIDs: typing.Set[FEATURE_ID] = set()
+        # self.mTemporaryProfileColors: typing.Dict[ATTRIBUTE_ID, QColor] = dict()
+        # self.mTemporaryProfileStyles: typing.Dict[ATTRIBUTE_ID, PlotStyle] = dict()
 
         self.mMaxProfilesWidget: QWidget = None
 
@@ -617,7 +623,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
         else:
             selected_fids = self.speclib().selectedFeatureIds()
 
-        temporal_fids = self.mTemporaryProfileIDs
+        # temporal_fids = self.mTemporaryProfileIDs
+        temporal_items = self.profileCandidates().candidates()
+        temporal_fids = set([item[0] for item in temporal_items])
+
         visualizations = [v for v in self.visualizations() if
                           v.isVisible() and v.isComplete() and v.speclib() == self.mSpeclib]
 
@@ -734,6 +743,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 label, success = vis.labelProperty().valueAsString(context, defaultString='')
 
                 style: PlotStyle = vis.plotStyle()
+
                 linePen = pg.mkPen(style.linePen)
                 symbolPen = pg.mkPen(style.markerPen)
                 symbolBrush = pg.mkBrush(style.markerBrush)
@@ -750,12 +760,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     symbolBrush.setColor(self.mPlotWidgetStyle.selectionColor)
 
                 elif fid in temporal_fids:
-                    # special color
-                    featureColor = self.mTemporaryProfileColors.get(id_attributeN, self.mPlotWidgetStyle.temporaryColor)
-                    linePen.setColor(featureColor)
-                    linePen.setWidth(style.lineWidth() + 2)
-                    symbolPen.setColor(featureColor)
-                    symbolBrush.setColor(featureColor)
+                    # special style
+                    style = self.mProfileCandidates.candidateStyle(*id_attributeN)
+                    linePen = pg.mkPen(style.linePen)
+                    symbolPen = pg.mkPen(style.markerPen)
+                    symbolBrush = pg.mkBrush(style.markerBrush)
+                    # linePen.setWidth(style.lineWidth() + 2)
 
                 else:
                     qgssymbol = None
@@ -771,7 +781,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                             context.appendScope(symbolScope)
 
                     prop = vis.colorProperty()
-                    featureColor, success = prop.valueAsColor(context, defaultColor=QColor('white'))
+                    featureColor, success = prop.valueAsColor(context, defaultColor=style.linePen.color())
 
                     if isinstance(renderer, QgsFeatureRenderer):
                         renderer.stopRender(renderContext)
@@ -862,6 +872,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def supportedDropActions(self) -> Qt.DropActions:
         return Qt.CopyAction | Qt.MoveAction
+
+    def profileCandidates(self) -> ProfileCandidates:
+        return self.mProfileCandidates
+
+
 
     def canDropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int,
                         parent: QModelIndex) -> bool:
@@ -1076,7 +1091,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         # rename fids for temporary profiles
         # self.mTemporaryProfileIDs = {t for t in self.mTemporaryProfileIDs if t not in oldFIDs}
-        self.mTemporaryProfileIDs = {OLD2NEW.get(fid, fid) for fid in self.mTemporaryProfileIDs}
+        to_remove = {k for k in OLD2NEW.keys() if k < 0}
+        self.profileCandidates().syncCandidates()
         self.updatePlot(fids_to_update=OLD2NEW.values())
 
     def onSpeclibAttributesUpdated(self, *args):
@@ -1680,7 +1696,8 @@ class SpectralLibraryPlotWidget(QWidget):
     def createProfileVisualization(self, *args,
                                    name: str = None,
                                    field: typing.Union[QgsField, int, str] = None,
-                                   color: typing.Union[str, QColor] = None):
+                                   color: typing.Union[str, QColor] = None,
+                                   style: PlotStyle = None):
         item = ProfileVisualization()
 
         # set defaults
@@ -1741,17 +1758,12 @@ class SpectralLibraryPlotWidget(QWidget):
             else:
                 item.setLabelExpression('$id')
 
-        item.setPlotStyle(self.defaultStyle())
+        if not isinstance(style, PlotStyle):
+            style = self.defaultStyle()
+        item.setPlotStyle(style)
 
-        if color is None:
-            color = QColor(self.plotControlModel().mPlotWidgetStyle.foregroundColor)
-            if False:
-                if len(self.mPlotControlModel) > 0:
-                    lastVis = self.mPlotControlModel[-1]
-                    lastColor = lastVis.color()
-                    color = nextColor(lastColor, mode='cat')
-
-        item.setColor(color)
+        if color is not None:
+            item.setColor(color)
 
         self.mPlotControlModel.insertPropertyGroup(-1, item)
 
@@ -1768,8 +1780,9 @@ class SpectralLibraryPlotWidget(QWidget):
 
         style = PlotStyle()
         style.linePen.setStyle(Qt.SolidLine)
-        style.setLineColor('white')
-        style.setMarkerColor('white')
+        fg = self.plotControlModel().mPlotWidgetStyle.foregroundColor
+        style.setLineColor(fg)
+        style.setMarkerColor(fg)
         style.setMarkerSymbol(None)
         # style.markerSymbol = MarkerSymbol.No_Symbol.value
         # style.markerPen.setColor(style.linePen.color())

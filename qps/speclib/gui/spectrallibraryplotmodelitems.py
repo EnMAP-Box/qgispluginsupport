@@ -160,7 +160,7 @@ class PropertyItemGroup(PropertyItemBase):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mMissingValues: bool = True
-
+        self.mZValue = 0
         self.mSignals = PropertyItemGroupSignals()
         self.mFirstColumnSpanned = True
 
@@ -208,7 +208,10 @@ class PropertyItemGroup(PropertyItemBase):
             self.child(r, 0).setForeground(c)
 
     def setVisible(self, visible: bool):
-        self.setCheckState(visible in [Qt.Checked, visible is True])
+        if visible in [Qt.Checked, visible is True]:
+            self.setCheckState(Qt.Checked)
+        else:
+            self.setCheckState(Qt.Unchecked)
 
     def isVisible(self) -> bool:
         """
@@ -578,26 +581,83 @@ class QgsPropertyItem(PropertyItem):
         self.signals().requestPlotUpdate.emit()
 
 
-class TemporaryProfiles(PropertyItemGroup):
+class ProfileCandidates(PropertyItemGroup):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        self.setIcon(QIcon())
-        self.setData('Temporary Profiles', Qt.DisplayRole)
-        self.setData('Defines the Style of temporary profiles', Qt.ToolTipRole)
-
-        self.mCandidatePlotStyle = PlotStyleItem()
-        self.mCandidatePlotStyle.label().setText('Style')
-        self.mCandidatePlotStyle.label().setToolTip('Plot style of temporary profiles before they '
+        self.mZValue = 1
+        self.setIcon(QIcon(':/qps/ui/icons/profile_candidate.svg'))
+        self.setData('Profile Candidates', Qt.DisplayRole)
+        self.setData('Defines the style of temporary profiles candidates', Qt.ToolTipRole)
+        self.mIsVisible: bool = True
+        self.mDefaultPlotStyle = PlotStyleItem('DEFAULT')
+        self.mDefaultPlotStyle.label().setText('Style')
+        self.mDefaultPlotStyle.label().setToolTip('Default plot style of temporary profiles before they '
                                                     'are added into the spectral library')
+        # self.appendRow(self.mDefaultPlotStyle.propertyRow())
+        self.mCandidateStyleItems: typing.Dict[typing.Tuple[int, str], PlotStyleItem] = dict()
 
-        self.appendRow(self.mCandidatePlotStyle)
+        self.initBasicSettings()
+        self.mMissingValues = False
+        # self.setEditable(False)
+
+    def syncCandidates(self):
+
+        temp_fids = [fid for fid in self.model().speclib().allFeatureIds() if fid < 0]
+        to_remove = [k for k in self.mCandidateStyleItems.keys() if k[0] not in temp_fids]
+        self.removeCandidates(to_remove)
+        s = ""
+
+    def setCandidates(self, candidateStyles: typing.Dict[typing.Tuple[int, str], PlotStyle]):
+        self.clearCandidates()
+        for (fid, field), style in candidateStyles.items():
+
+            item = PlotStyleItem(f'{fid}_{field}', labelName=f'{fid} {field}')
+            item.label().setToolTip(f'Feature ID: {fid} field: {field}')
+            item.setPlotStyle(style)
+            self.mCandidateStyleItems[(fid, field)] = item
+            self.appendRow(item.propertyRow())
+
+    def candidateStyle(self, fid:int, field:str) -> PlotStyle:
+        item = self.mCandidateStyleItems.get((fid, field), None)
+        if isinstance(item, PlotStyleItem):
+            return item.plotStyle()
+        return None
+
+    def candidates(self) -> typing.List[typing.Tuple[int, str]]:
+        return self.mCandidateStyleItems.keys()
+
+    def candidateFeatureIds(self) -> typing.List[int]:
+        return set([i[0] for i in self.candidates()])
+
+    def removeCandidates(self, candidateKeys: typing.List[typing.Tuple[int, str]]):
+
+        to_remove = []
+        for k in list(candidateKeys):
+            if k in self.mCandidateStyleItems.keys():
+                to_remove.append(self.mCandidateStyleItems.pop(k))
+
+        for r in reversed(range(0, self.rowCount())):
+            item = self.child(r, 1)
+            if item in to_remove:
+                self.takeRow(r)
+
+        self.signals().requestPlotUpdate.emit()
+
+    def clearCandidates(self):
+
+        self.removeCandidates(self.mCandidateStyleItems.keys())
+
+    def count(self) -> int:
+
+        return len(self.mCandidateStyleItems)
 
 
 class LayerBandVisualization(PropertyItemGroup):
 
     def __init__(self, *args, layer: QgsRasterLayer = None, **kwds):
         super().__init__(*args, **kwds)
+        self.mZValue = 0
         self.setIcon(QIcon(':/images/themes/default/rendererCategorizedSymbol.svg'))
         self.setData('Renderer', Qt.DisplayRole)
         self.setData('Raster Layer Renderer', Qt.ToolTipRole)
@@ -917,7 +977,7 @@ class ProfileVisualization(PropertyItemGroup):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-
+        self.mZValue = 2
         self.setName('Visualization')
         self.setIcon(QIcon(':/qps/ui/icons/profile.svg'))
         self.mFirstColumnSpanned = False

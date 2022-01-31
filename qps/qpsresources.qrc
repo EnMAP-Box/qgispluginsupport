@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="qps">
+    <file>ui/icons/profile_candidate.svg</file>
     <file>ui/icons/speclib_plot.svg</file>
     <file>ui/icons/profile_processing.svg</file>
     <file>ui/icons/profile_expression.svg</file>

@@ -1623,7 +1623,7 @@ class SpectralProfileBridge(TreeModel):
                 continue
 
             new_speclib_features: typing.List[QgsFeature] = []
-            new_temporal_colors: typing.List[typing.Tuple[int, QColor]] = []
+            # new_temporal_colors: typing.List[typing.Tuple[int, QColor]] = []
             new_temporal_styles: typing.List[typing.Tuple[int, PlotStyle]] = []
             # calculate final profile value dictionaries
             FINAL_PROFILE_VALUES: typing.Dict[SpectralProfileGeneratorNode,
@@ -1653,7 +1653,7 @@ class SpectralProfileBridge(TreeModel):
 
             for i in range(n_new_features):
                 new_feature: QgsFeature = QgsFeature(fgnode.speclib().fields())
-                new_feature_colors: typing.List[typing.Tuple[str, QColor]] = []
+                # new_feature_colors: typing.List[typing.Tuple[str, QColor]] = []
                 new_feature_styles: typing.List[typing.Tuple[str, PlotStyle]] = []
                 # set profile fields
                 # let's say the sampling methods for profile fields A, B and C return 1, 3 and 4 profiles, then
@@ -1673,11 +1673,11 @@ class SpectralProfileBridge(TreeModel):
                             new_feature.setGeometry(geometry)
                         field_name = pgnode.field().name()
                         new_feature[field_name] = byteArray
-                        new_feature_colors.append((field_name, pgnode.mColorNode.color()))
+                        # new_feature_colors.append((field_name, pgnode.mColorNode.color()))
                         new_feature_styles.append((field_name, pgnode.mProfileStyleNode.value()))
 
                 new_speclib_features.append(new_feature)
-                new_temporal_colors.append(new_feature_colors)
+                # new_temporal_colors.append(new_feature_colors)
                 new_temporal_styles.append(new_feature_styles)
 
             if isinstance(speclib, QgsVectorLayer) and len(new_speclib_features) > 0:
@@ -1700,17 +1700,29 @@ class SpectralProfileBridge(TreeModel):
             sid = fgnode.speclib().id()
 
             RESULTS[sid] = RESULTS.get(sid, []) + new_speclib_features
-            TEMPORAL_COLORS[sid] = TEMPORAL_COLORS.get(sid, []) + new_temporal_colors
+            # TEMPORAL_COLORS[sid] = TEMPORAL_COLORS.get(sid, []) + new_temporal_colors
             TEMPORAL_STYLES[sid] = TEMPORAL_STYLES.get(sid, []) + new_temporal_styles
             self.mLastDestinations.add(fgnode.speclib().id())
 
         for slw in self.destinations():
             speclib = slw.speclib()
             if isinstance(speclib, QgsVectorLayer) and speclib.id() in RESULTS.keys():
-                slw.setCurrentProfiles(RESULTS[speclib.id()],
+                features = RESULTS[speclib.id()]
+
+                candidate_styles = dict()
+                # ensure unique FIDs
+                for i, f in enumerate(features):
+                    fid = f.id() + i
+                    f.setId(f.id() + i)
+                    for (field, style) in TEMPORAL_STYLES[speclib.id()][i]:
+                        candidate_styles[(fid, field)] = style
+
+
+                slw.setCurrentProfiles(features,
                                        make_permanent=add_permanent,
-                                       temporalProfileStyles=TEMPORAL_STYLES[speclib.id()],
-                                       currentProfileColors=TEMPORAL_COLORS[speclib.id()])
+                                       currentProfileStyles=candidate_styles,
+                                       # currentProfileColors=TEMPORAL_COLORS[speclib.id()]
+                                       )
 
         return RESULTS
 

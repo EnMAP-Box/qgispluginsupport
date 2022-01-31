@@ -32,12 +32,12 @@ import sys
 
 from qgis.PyQt.QtCore import QVariant, QObject, pyqtSignal, QSize, QByteArray, QDataStream, QIODevice, Qt
 from qgis.PyQt.QtGui import QPainter, QPixmap, QPainterPath, QIcon, QColor, QPen, QBrush
-from qgis.PyQt.QtWidgets import QWidgetAction, QToolButton, QLabel, QWidget, QComboBox, QMenu, QDialog, QDialogButtonBox, \
+from qgis.PyQt.QtWidgets import QWidgetAction, QToolButton, QLabel, QWidget, QComboBox, QMenu, QDialog, \
+    QDialogButtonBox, \
     QVBoxLayout
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
 
 from qgis.core import QgsField, QgsVectorLayer, QgsSymbolLayerUtils, QgsAction, QgsMessageLog
-
 
 from qgis.gui import QgsDialog
 from qgis.gui import QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
@@ -733,6 +733,9 @@ class PlotStyle(QObject):
         state.pop('__pickleStateQByteArray__')
         self.__dict__.update(state)
 
+    def __str__(self):
+        return f'{self.markerSymbol}{self.markerPen.width()}{self.markerPen.color()};{self.linePen.style()}{self.lineWidth()}'
+
 
 class PlotStyleWidget(QWidget):
     sigPlotStyleChanged = pyqtSignal(PlotStyle)
@@ -948,7 +951,7 @@ class PlotStyleButton(QToolButton):
     def setVisibilityCheckboxVisible(self, b: bool):
         self.mDialog.setVisibilityCheckboxVisible(b)
 
-    def setPreviewVisible(self, b:bool):
+    def setPreviewVisible(self, b: bool):
         self.mDialog.setPreviewVisible(b)
 
     def onAccepted(self, *args):
@@ -1039,8 +1042,9 @@ class PlotStyleDialog(QgsDialog):
         assert isinstance(plotStyle, PlotStyle)
         self.w.setPlotStyle(plotStyle)
 
-    def setPreviewVisible(self, b:bool):
+    def setPreviewVisible(self, b: bool):
         self.w.setPreviewVisible(b)
+
 
 class PlotStyleEditorWidgetWrapper(QgsEditorWidgetWrapper):
 

@@ -17,7 +17,7 @@ from .spectrallibraryplotitems import SpectralLibraryPlotItem, SpectralProfilePl
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
 from .spectralprocessingdialog import SpectralProcessingDialog
-from ..core import is_spectral_library
+from ..core import is_spectral_library, profile_fields
 from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
@@ -378,7 +378,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :return:
         :rtype:
         """
-        self.actionAddCurrentProfiles.setEnabled(len(self.temporaryProfileIDs()) > 0)
+        self.actionAddCurrentProfiles.setEnabled(self.plotControl().profileCandidates().count() > 0)
         s = ""
 
     def updatePlot(self):
@@ -452,21 +452,24 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         Adds all current spectral profiles to the "persistent" SpectralLibrary
         """
+        plotModel: SpectralProfilePlotModel = self.plotControl()
+        plotModel.profileCandidates().clearCandidates()
 
-        fids = list(self.plotControl().mTemporaryProfileIDs)
-        self.plotControl().mTemporaryProfileIDs.clear()
-        self.plotControl().mTemporaryProfileColors.clear()
-        self.plotControl().updatePlot(fids)
-        self.updateActions()
+        # fids = list(self.plotControl().mTemporaryProfileIDs)
+        # self.plotControl().mTemporaryProfileIDs.clear()
+        # self.plotControl().mTemporaryProfileColors.clear()
+        # self.plotControl().updatePlot(fids)
+        # self.updateActions()
 
     def temporaryProfileIDs(self) -> typing.Set[int]:
-        return self.plotControl().mTemporaryProfileIDs
+        return self.plotControl().profileCandidates().count()
+        # return self.plotControl().mTemporaryProfileIDs
 
     def deleteCurrentProfilesFromSpeclib(self, *args):
         # delete previous current profiles
         speclib = self.speclib()
         if is_spectral_library(speclib):
-            oldCurrentIDs = list(self.plotControl().mTemporaryProfileIDs)
+            oldCurrentIDs = list(self.plotControl().profileCandidates().candidateFeatureIds())
             restart_editing: bool = not speclib.startEditing()
             speclib.beginEditCommand('Remove temporary')
             speclib.deleteFeatures(oldCurrentIDs)
@@ -483,8 +486,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def setCurrentProfiles(self,
                            currentProfiles: typing.List[QgsFeature],
                            make_permanent: bool = None,
-                           temporalProfileStyles: typing.List[typing.Tuple[int, PlotStyle]] = None,
-                           currentProfileColors: typing.List[typing.Tuple[int, QColor]] = None):
+                           currentProfileStyles: typing.Dict[typing.Tuple[int, str], PlotStyle] = None,
+                           # currentProfileColors: typing.List[typing.Tuple[int, QColor]] = None
+                           ):
         """
         Sets temporary profiles for the spectral library.
         If not made permanent, they will be removes when adding the next set of temporary profiles
@@ -501,8 +505,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         assert isinstance(currentProfiles, (list,))
 
         speclib: QgsVectorLayer = self.speclib()
-        plotWidget: SpectralProfilePlotWidget = self.plotWidget()
-
+        plotModel: SpectralProfilePlotModel = self.plotControl()
         #  stop plot updates
         # plotWidget.mUpdateTimer.stop()
         restart_editing: bool = not speclib.startEditing()
@@ -516,8 +519,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
             self.deleteCurrentProfilesFromSpeclib()
 
             # now there shouldn't be any PDI or style ref related to an old ID
-        self.plotControl().mTemporaryProfileIDs.clear()
-        self.plotControl().mTemporaryProfileColors.clear()
+        plotModel.profileCandidates().clearCandidates()
+        # self.plotControl().mTemporaryProfileIDs.clear()
+        # self.plotControl().mTemporaryProfileColors.clear()
 
         # if necessary, convert QgsFeatures to SpectralProfiles
         # for i in range(len(currentProfiles)):
@@ -531,39 +535,45 @@ class SpectralLibraryWidget(AttributeTableWidget):
         oldIDs = set(speclib.allFeatureIds())
 
         speclib.beginEditCommand('Add current profiles')
-        addedKeys = SpectralLibraryUtils.addProfiles(speclib, currentProfiles)
+        inputFIDs = [f.id() for f in currentProfiles]
+        addedFIDs = SpectralLibraryUtils.addProfiles(speclib, currentProfiles)
         speclib.endEditCommand()
+
+        affected_profile_fields = set()
+
+        p_fields = profile_fields(self.speclib())
+        for profile in currentProfiles:
+            for fieldname in p_fields.names():
+                if profile.fieldNameIndex(fieldname) >= 0 and profile.attribute(fieldname) is not None:
+                    affected_profile_fields.add(fieldname)
 
         if not addAuto:
             # give current spectra the current spectral style
-            self.plotControl().mTemporaryProfileIDs.update(addedKeys)
+            # self.plotControl().mTemporaryProfileIDs.update(addedFIDs)
 
-            affected_profile_fields: typing.Dict[str, QColor] = dict()
+            # affected_profile_fields: typing.Dict[str, QColor] = dict()
 
-            if isinstance(currentProfileColors, list):
-                if len(currentProfileColors) == len(addedKeys):
-                    for fid, profile_colors in zip(addedKeys, currentProfileColors):
-                        for t in profile_colors:
-                            attribute, color = t
-                            if isinstance(attribute, int):
-                                attribute = speclib.fields().at(attribute).name()
-                            if attribute not in affected_profile_fields.keys():
-                                affected_profile_fields[attribute] = color
-                            self.plotControl().mTemporaryProfileColors[(fid, attribute)] = color
+            # find a profile style for each profile candidate
 
-            visualized_attributes = [v.field().name() for v in self.plotControl().visualizations() if v.isComplete()]
-            missing_visualization = [a for a in affected_profile_fields.keys() if a not in visualized_attributes]
+            if isinstance(currentProfileStyles, dict):
+                currentProfilesStyles = {(addedFIDs[inputFIDs.index(fid)],field):style
+                                        for (fid, field), style in currentProfileStyles.items()}
 
-            for attribute in missing_visualization:
-                if False:
-                    # create new vis color similar to temporal profile overly
-                    color: QColor = affected_profile_fields[attribute]
-                    # make the default color a bit darker
-                    color = nextColor(color, 'darker')
-                else:
-                    color = None
+                plotModel.profileCandidates().setCandidates(currentProfilesStyles)
 
-                self.spectralLibraryPlotWidget().createProfileVisualization(field=attribute, color=color)
+        visualized_attributes = [v.field().name() for v in self.plotControl().visualizations() if v.isComplete()]
+        missing_visualization = [a for a in affected_profile_fields if a not in visualized_attributes]
+
+        for attribute in missing_visualization:
+            if False:
+                # create new vis color similar to temporal profile overly
+                color: QColor = affected_profile_fields[attribute]
+                # make the default color a bit darker
+                color = nextColor(color, 'darker')
+            else:
+                color = None
+
+            self.spectralLibraryPlotWidget().createProfileVisualization(field=attribute, color=color)
 
         self.plotControl().updatePlot()
         self.updateActions()
