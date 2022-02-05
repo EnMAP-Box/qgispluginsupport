@@ -2,6 +2,9 @@ import gc
 import unittest
 
 import xmlrunner
+from PyQt5.QtCore import QByteArray, QDataStream
+from PyQt5.QtXml import QDomDocument
+
 from qgis.PyQt.QtWidgets import QVBoxLayout
 from osgeo import gdal, ogr
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
@@ -9,6 +12,7 @@ from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtGui import QMouseEvent, QColor
 from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtWidgets import QTreeView
+from qgis._core import QgsPropertyDefinition, QgsXmlUtils
 from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer, QgsApplication
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
@@ -18,7 +22,8 @@ from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
 from qps.speclib.gui.spectrallibraryplotitems import SpectralXAxis, SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotmodelitems import LayerBandVisualization, ProfileVisualization, \
-    SpectralProfileColorPropertyWidget, PropertyItemGroup
+    SpectralProfileColorPropertyWidget, PropertyItemGroup, FieldItem, PlotStyleItem, ProfileCandidateItem, PropertyItem, \
+    QgsPropertyItem
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
@@ -241,6 +246,7 @@ class TestSpeclibPlotting(TestCase):
         is_removed = False
 
         def onRemoval(*args):
+            nonlocal is_removed
             is_removed = True
 
         vis.signals().requestRemoval.connect(onRemoval)
@@ -248,12 +254,10 @@ class TestSpeclibPlotting(TestCase):
         # delete layer and destroy its reference.
         # this should trigger the requestRemoval signal
 
-        del lyrA
+        # del lyrA
         proj.removeAllMapLayers()
-        QgsApplication.processEvents()
-        gc.collect()
 
-        self.assertFalse(is_removed)
+        self.assertTrue(is_removed)
         self.assertTrue(vis.mLayer is None)
 
     def test_SpectralProfilePlotControlModel(self):
@@ -295,6 +299,110 @@ class TestSpeclibPlotting(TestCase):
 
         self.showGui(tv)
 
+    def test_QgsPropertyItems(self):
+
+        itemLabel = QgsPropertyItem('Label')
+        itemLabel.setDefinition(QgsPropertyDefinition(
+            'Label',
+            'A label to describe the plotted profiles',
+            QgsPropertyDefinition.StandardPropertyTemplate.String))
+        itemLabel.setProperty(QgsProperty.fromExpression('$id'))
+
+        itemField = QgsPropertyItem('Field')
+        itemField.setIsProfileFieldProperty(True)
+        itemField.setDefinition(QgsPropertyDefinition(
+            'Field',
+            'A field to load the plotted profiles from',
+            QgsPropertyDefinition.StandardPropertyTemplate.String))
+        itemField.setProperty(QgsProperty.fromField('fieldname'))
+
+        itemFilter = QgsPropertyItem('Filter')
+        itemFilter.setDefinition(QgsPropertyDefinition(
+            'Filter',
+            'Filter for feature rows',
+            QgsPropertyDefinition.StandardPropertyTemplate.String))
+        itemFilter.setProperty(QgsProperty.fromExpression(''))
+
+        itemColor = QgsPropertyItem('Color')
+        itemColor.setDefinition(QgsPropertyDefinition(
+            'Color',
+            'Color of spectral profile',
+            QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
+        itemColor.setProperty(QgsProperty.fromValue(QColor('white')))
+
+        items = [itemFilter, itemField, itemLabel, itemColor]
+
+        doc = QDomDocument()
+        root = doc.createElement('TESTGROUP')
+
+        for item1 in items:
+            self.assertIsInstance(item1, PropertyItem)
+            node = doc.createElement('testnode')
+            item1.writeXml(node, doc)
+
+            item2 = QgsPropertyItem(item1.key())
+            item2.setDefinition(item1.definition())
+            item2.readXml(node)
+
+            self.assertEqual(item1, item2)
+
+    def test_plotitems_xml(self):
+
+        grp = PropertyItemGroup()
+
+        item1 = QgsPropertyItem('Field')
+        item1.setIsProfileFieldProperty(True)
+        item1.setDefinition(QgsPropertyDefinition(
+            'Field',
+            'A field to load the plotted profiles from',
+            QgsPropertyDefinition.StandardPropertyTemplate.String))
+        item1.setProperty(QgsProperty.fromField('fieldname'))
+
+        item2 = PlotStyleItem('KEY')
+        item2.plotStyle().setLineColor('red')
+
+        item3 = ProfileCandidateItem('KEY')
+        item3.setCellKey(1, 'testfield')
+        items = [item1, item2, item3]
+
+        doc = QDomDocument()
+        root = doc.createElement('TESTGROUP')
+        for item in items:
+
+            self.assertIsInstance(item, PropertyItem)
+            self.assertEqual(item, item.data(Qt.UserRole),
+                             msg='data(Qt.UserRole) should return self-reference to PropertyItem')
+
+            nodeA = doc.createElement('nodeA')
+            nodeB = doc.createElement('nodeB')
+            item.writeXml(nodeA, doc, attribute=False)
+            item.writeXml(nodeB, doc, attribute=True)
+
+            cls = item.__class__
+            itemA = cls(item.key())
+            itemB = cls(item.key())
+            self.assertIsInstance(itemA, PropertyItem)
+            if isinstance(item, QgsPropertyItem):
+                self.assertIsInstance(itemA, QgsPropertyItem)
+                itemA.setDefinition(item.definition())
+                itemB.setDefinition(item.definition())
+
+            itemA.readXml(nodeA, attribute=False)
+            itemB.readXml(nodeB, attribute=True)
+
+            for item2 in [itemA, itemB]:
+                self.assertEqual(item2.key(), item.key())
+                self.assertEqual(item2.firstColumnSpanned(), item.firstColumnSpanned())
+                self.assertEqual(item2.label().text(), item.label().text())
+                self.assertEqual(item2.columnCount(), item.columnCount())
+                for role in [Qt.DisplayRole, Qt.DecorationRole]:
+                    self.assertEqual(item2.data(role), item.data(role))
+
+        mimeData = PropertyItemGroup.toMimeData([grp])
+
+        grp1 = PropertyItemGroup.fromMimeData(mimeData)
+
+
     def test_SpectralLibraryPlotWidget(self):
 
         speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
@@ -306,12 +414,12 @@ class TestSpeclibPlotting(TestCase):
         w.setDualView(dv)
 
         visModel = w.treeView.model().sourceModel()
+        cnt = visModel.rowCount()
         self.assertIsInstance(visModel, SpectralProfilePlotModel)
-        self.assertEqual(visModel.rowCount(), 1)
 
         # add a VIS
         w.btnAddProfileVis.click()
-        self.assertEqual(visModel.rowCount(), 2)
+        self.assertEqual(visModel.rowCount(), cnt+1)
 
         # click into each cell
         for row in range(visModel.rowCount()):

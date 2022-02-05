@@ -27,7 +27,7 @@ from qgis.gui import QgsFilterLineEdit
 from .spectrallibraryplotitems import SpectralLibraryPlotWidgetStyle, FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
     VISUALIZATION_KEY, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, LayerBandVisualization, \
-    ProfileVisualization, PlotStyleItem, ProfileCandidates
+    ProfileVisualization, PlotStyleItem, ProfileCandidates, PropertyItemBase
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
@@ -554,39 +554,33 @@ class SpectralProfilePlotModel(QStandardItemModel):
             index = index.row()
         if index == -1:
             index = len(self)
+
         if isinstance(items, PropertyItemGroup):
             items = [items]
+
+        # map to model index within group of same zValues
+
+        _index = 0
 
         for i, item in enumerate(items):
             assert isinstance(item, PropertyItemGroup)
             item.signals().requestRemoval.connect(self.onRemovalRequest)
             item.signals().requestPlotUpdate.connect(self.updatePlot)
-            item.initWithProfilePlotModel(self)
+
+            new_set: typing.List[PropertyItemGroup] = self.propertyGroups()
+            new_set.insert(index + i, item)
+            new_set = sorted(new_set, key=lambda g: g.zValue())
+            _index = new_set.index(item)
 
             self.mModelItems.add(item)
-            self.insertRow(index + i, item)
+            self.insertRow(_index, item)
+            item.initWithProfilePlotModel(self)
 
         self.updatePlot()
 
-    """
-    def removeRows(self, row: int, count: int, parent: QModelIndex = QModelIndex()) -> bool:
-        if not parent.isValid():
-            v = self[row]
-            assert isinstance(v, ControlModelItem)
-            self.beginRemoveRows(QModelIndex(), row, row)
-            del self.mModelItems[row]
-            self.mNodeHandles.pop(v)
-            self.endRemoveRows()
-            if isinstance(v, LayerRendererVisualization):
-                for bar in v.bandPlotItems():
-                    self.mPlotWidget.plotItem.removeItem(bar)
-            return True
-        return False
-    """
-
     def onRemovalRequest(self):
-        sender = self.sender()
-        s = ""
+            sender = self.sender()
+            s = ""
 
     def removeVisualizations(self, vis: typing.Union[PropertyItemGroup,
                                                      typing.List[PropertyItemGroup]]):
@@ -624,7 +618,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             selected_fids = self.speclib().selectedFeatureIds()
 
         # temporal_fids = self.mTemporaryProfileIDs
-        temporal_items = self.profileCandidates().candidates()
+        temporal_items = self.profileCandidates().candidateKeys()
         temporal_fids = set([item[0] for item in temporal_items])
 
         visualizations = [v for v in self.visualizations() if
@@ -875,8 +869,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def profileCandidates(self) -> ProfileCandidates:
         return self.mProfileCandidates
-
-
 
     def canDropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int,
                         parent: QModelIndex) -> bool:
@@ -1264,13 +1256,19 @@ class SpectralProfilePlotView(QTreeView):
         if isinstance(model, QAbstractItemModel):
             model.rowsInserted.connect(self.onRowsInserted)
 
+            for r in range(0, model.rowCount()):
+                idx = model.index(r, 0)
+                item = idx.data(Qt.UserRole)
+                if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
+                    self.setFirstColumnSpanned(r, idx.parent(), True)
+
     def onRowsInserted(self, parent: QModelIndex, first: int, last: int):
 
         for r in range(first, last + 1):
             idx = self.model().index(r, 0, parent=parent)
             item = idx.data(Qt.UserRole)
-            if isinstance(item, PropertyItemGroup):
-                self.setFirstColumnSpanned(r, parent, 1)
+            if isinstance(item, PropertyItemBase) and item.firstColumnSpanned():
+                self.setFirstColumnSpanned(r, idx.parent(), True)
         s = ""
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:

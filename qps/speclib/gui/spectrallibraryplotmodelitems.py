@@ -2,12 +2,14 @@ import typing
 from xml.sax.saxutils import escape, unescape
 
 import numpy as np
+from PyQt5.QtCore import QVariant
 
 from qgis.PyQt.QtCore import Qt, QModelIndex, pyqtSignal, QMimeData, QObject
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QPen
 from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.PyQt import sip
+from qgis._core import QgsXmlUtils
 from qgis.core import QgsField, QgsPropertyDefinition, QgsProperty, QgsExpressionContext, QgsRasterLayer, \
     QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer, QgsSingleBandPseudoColorRenderer, \
     QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
@@ -16,7 +18,7 @@ from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverri
 
 from ...externals.htmlwidgets import HTMLComboBox
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
-from ...pyqtgraph.pyqtgraph import InfiniteLine
+from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
 from ...speclib.core import create_profile_field
 from ...unitmodel import UnitConverterFunctionModel, BAND_NUMBER, BAND_INDEX
 from ...utils import parseWavelength
@@ -130,8 +132,8 @@ class PropertyItemBase(QStandardItem):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-    def firstColumnSpanned(self) -> int:
-        return len(self.propertyRow()) - 1
+    def firstColumnSpanned(self) -> bool:
+        return len(self.propertyRow()) == 1
 
     def propertyRow(self) -> typing.List[QStandardItem]:
         return [self]
@@ -159,10 +161,19 @@ class PropertyItemGroup(PropertyItemBase):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        self.mMissingValues: bool = True
+        self.mMissingValues: bool = False
         self.mZValue = 0
         self.mSignals = PropertyItemGroupSignals()
         self.mFirstColumnSpanned = True
+
+    def zValue(self) -> int:
+        return self.mZValue
+
+    def plotDataItems(self) -> typing.List[PlotDataItem]:
+        """
+        Returns a list with all pyqtgraph plot data items
+        """
+        return []
 
     def initWithProfilePlotModel(self, model):
         """
@@ -234,7 +245,10 @@ class PropertyItemGroup(PropertyItemBase):
         super().setData(value, role)
 
         if role == Qt.CheckStateRole:
-            self.mSignals.requestPlotUpdate.emit()
+            # self.mSignals.requestPlotUpdate.emit()
+            is_visible = self.isVisible()
+            for item in self.plotDataItems():
+                item.setVisible(is_visible)
 
     def update(self):
         pass
@@ -307,7 +321,7 @@ class PropertyItem(PropertyItemBase):
 
     def __init__(self, key: str, *args, labelName: str = None, **kwds):
         super().__init__(*args, **kwds)
-        assert ' ' not in key
+        assert isinstance(key, str) and ' ' not in key
         self.mKey = key
         self.setEditable(False)
         self.setDragEnabled(False)
@@ -404,6 +418,19 @@ class PlotStyleItem(PropertyItem):
         if isinstance(w, PlotStyleButton):
             self.setPlotStyle(w.plotStyle())
 
+    def writeXml(self, parentNode: QDomElement, doc: QDomDocument, attribute: bool = False):
+        xml_tag = self.key()
+        node = doc.createElement(xml_tag)
+        self.mPlotStyle.writeXml(node, doc)
+        parentNode.appendChild(node)
+
+    def readXml(self, parentNode: QDomElement, attribute: bool = False):
+        node = parentNode.firstChildElement(self.key()).toElement()
+        if not node.isNull():
+            style = PlotStyle.readXml(node)
+            if isinstance(style, PlotStyle):
+                self.setPlotStyle(style)
+
 
 class FieldItem(PropertyItem):
     def __init__(self, *args, **kwds):
@@ -457,54 +484,98 @@ class FieldItem(PropertyItem):
                 field: QgsField = w.model().fields().at(i)
                 self.setField(field)
 
+    def writeXml(self, parentNode: QDomElement, doc: QDomDocument, attribute: bool = False):
+        field: QgsField = self.field()
+        if attribute:
+            fieldNode = parentNode
+        else:
+            fieldNode = doc.createElement('field')
+
+        fieldNode.setAttribute('name', field.name())
+        fieldNode.setAttribute('typeName', field.typeName())
+        fieldNode.setAttribute('type', field.type())
+        fieldNode.setAttribute('prec', field.precision())
+        fieldNode.setAttribute('subType', field.subType())
+        fieldNode.setAttribute('comment', field.comment())
+        if not attribute:
+            parentNode.appendChild(fieldNode)
+
+    def readXml(self, parentNode: QDomElement, attribute: bool = False):
+
+        if attribute:
+            fieldNode = parentNode
+        else:
+            fieldNode = parentNode.firstChildElement('field')
+
+        if not fieldNode.isNull():
+            fname = fieldNode.attribute('name')
+            ftype = int(fieldNode.attribute('type'))
+            ftypeName = fieldNode.attribute('typeName')
+            field = QgsField(name=fname,
+                             type=ftype,
+                             typeName=ftypeName,
+                             len=flen,
+                             prec=fprec,
+                             comment=fcomment,
+                             subType=fsubType)
+            self.setField(field)
+
 
 class QgsPropertyItem(PropertyItem):
 
-    def __init__(self, definition: QgsPropertyDefinition, prop: QgsProperty, *args, **kwds):
+    def __init__(self, *args, **kwds):
         self.mProperty = None
-        super().__init__(definition.name(), labelName=definition.name())
-        self.mProperty = prop
-        self.mDefinition = definition
-        self.label().setToolTip(definition.description())
+        super().__init__(*args, **kwds)
+        self.mProperty: QgsProperty = None
+        self.mDefinition: QgsPropertyDefinition = None
         self.setEditable(True)
+
+        self.mIsSpectralProfileField: bool = False
+
+
+    def __eq__(self, other):
+        return isinstance(other, QgsPropertyItem) \
+               and self.mDefinition == other.definition() \
+               and self.mProperty == other.property()
 
     def update(self):
         self.setText(self.mProperty.valueAsString(QgsExpressionContext()))
 
     def writeXml(self, parentNode: QDomElement, doc: QDomDocument, attribute: bool = False):
         xml_tag = self.key()
-        value = self.mProperty.expressionString()
-        value = escape(value)
-        if attribute:
-            parentNode.setAttribute(xml_tag, value)
-        else:
-            node = doc.createElement(xml_tag)
-            node.setNodeValue(value)
-            parentNode.appendChild(node)
+        node = QgsXmlUtils.writeVariant(self.property(), doc)
+        node.setTagName(xml_tag)
+        parentNode.appendChild(node)
 
     def readXml(self, parentNode: QDomElement, attribute: bool = False) -> bool:
-        found = False
-        value = None
+
         xml_tag = self.key()
-        if attribute:
-            if parentNode.hasAttribute(xml_tag):
-                value = parentNode.attribute(xml_tag)
-        else:
-            child = parentNode.firstChildElement(xml_tag).toElement()
-            if not child.isNull():
-                value = child.nodeValue()
-        if value is not None:
-            value = unescape(value)
-            self.mProperty.setExpressionString(value)
-        return value is not None
+        child = parentNode.firstChildElement(xml_tag).toElement()
+        if not child.isNull():
+            property = QgsXmlUtils.readVariant(child)
+            if isinstance(property, QgsProperty):
+                # workaround https://github.com/qgis/QGIS/issues/47127
+                property.setActive(True)
+                self.setProperty(property)
+                return True
+        return False
 
     def property(self) -> QgsProperty:
         return self.mProperty
 
     def setProperty(self, property: QgsProperty):
+        assert isinstance(property, QgsProperty)
+        assert isinstance(self.mDefinition, QgsPropertyDefinition), 'Call setDefinition(propertyDefinition) first'
         self.mProperty = property
         self.emitDataChanged()
         self.signals().requestPlotUpdate.emit()
+
+    def setDefinition(self, propertyDefinition: QgsPropertyDefinition):
+        assert isinstance(propertyDefinition, QgsPropertyDefinition)
+        assert self.mDefinition is None, 'property definition is immutable and already set'
+        self.mDefinition = propertyDefinition
+        self.label().setText(propertyDefinition.name())
+        self.label().setToolTip(propertyDefinition.comment())
 
     def definition(self) -> QgsPropertyDefinition:
         return self.mDefinition
@@ -538,6 +609,12 @@ class QgsPropertyItem(PropertyItem):
 
         return super().data(role)
 
+    def setIsProfileFieldProperty(self, b:bool):
+        self.mIsSpectralProfileField = b is True
+
+    def isProfileFieldProperty(self) -> bool:
+        return self.mIsSpectralProfileField
+
     def isColorProperty(self) -> bool:
         return self.definition().standardTemplate() in [QgsPropertyDefinition.ColorWithAlpha,
                                                         QgsPropertyDefinition.ColorNoAlpha]
@@ -546,6 +623,15 @@ class QgsPropertyItem(PropertyItem):
         speclib: QgsVectorLayer = self.speclib()
         if self.isColorProperty():
             w = SpectralProfileColorPropertyWidget(parent=parent)
+        elif self.isProfileFieldProperty():
+
+            w = HTMLComboBox(parent=parent)
+            model = self.model()
+            from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
+            if isinstance(model, SpectralProfilePlotModel):
+                w.setModel(model.profileFieldsModel())
+            w.setToolTip(self.definition().description())
+
         else:
             w = QgsFieldExpressionWidget(parent=parent)
             w.setAllowEmptyFieldName(True)
@@ -570,6 +656,13 @@ class QgsPropertyItem(PropertyItem):
             if isinstance(speclib, QgsVectorLayer):
                 editor.setLayer(speclib)
 
+        elif self.isProfileFieldProperty() and isinstance(editor, QComboBox):
+            fieldName = self.property().field()
+            idx = editor.model().indexFromName(fieldName).row()
+            if idx == -1:
+                idx = 0
+            editor.setCurrentIndex(idx)
+
     def setModelData(self, w, bridge, index):
         if isinstance(w, QgsFieldExpressionWidget):
             expr = w.asExpression()
@@ -578,7 +671,35 @@ class QgsPropertyItem(PropertyItem):
                 self.property().setExpressionString(expr)
         elif isinstance(w, SpectralProfileColorPropertyWidget):
             self.setProperty(w.toProperty())
+        elif self.isProfileFieldProperty() and isinstance(w, QComboBox):
+                i = w.currentIndex()
+                if i >= 0:
+                    field: QgsField = w.model().fields().at(i)
+                    self.property().setField(field.name())
         self.signals().requestPlotUpdate.emit()
+
+
+class ProfileCandidateItem(PlotStyleItem):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.label().setCheckable(True)
+        self.label().setCheckState(Qt.Checked)
+        self.mCellKey: typing.Tuple[int, str] = None
+
+        from .spectrallibraryplotitems import SpectralProfilePlotDataItem
+        self.mPlotItem = SpectralProfilePlotDataItem()
+
+    def setCellKey(self, fid: int, field: str):
+        self.mCellKey = (fid, field)
+        self.label().setText(f'{fid} {field}')
+
+    def cellKey(self) -> typing.Tuple[int, str]:
+        return self.mCellKey
+
+    def plotItem(self) -> PlotDataItem:
+        return self.mPlotItem
 
 
 class ProfileCandidates(PropertyItemGroup):
@@ -593,13 +714,16 @@ class ProfileCandidates(PropertyItemGroup):
         self.mDefaultPlotStyle = PlotStyleItem('DEFAULT')
         self.mDefaultPlotStyle.label().setText('Style')
         self.mDefaultPlotStyle.label().setToolTip('Default plot style of temporary profiles before they '
-                                                    'are added into the spectral library')
+                                                  'are added into the spectral library')
         # self.appendRow(self.mDefaultPlotStyle.propertyRow())
         self.mCandidateStyleItems: typing.Dict[typing.Tuple[int, str], PlotStyleItem] = dict()
 
         self.initBasicSettings()
         self.mMissingValues = False
         # self.setEditable(False)
+
+    def plotDataItems(self) -> typing.List[PlotDataItem]:
+        return [item.plotItem() for item in self.candidateItems()]
 
     def syncCandidates(self):
 
@@ -610,25 +734,33 @@ class ProfileCandidates(PropertyItemGroup):
 
     def setCandidates(self, candidateStyles: typing.Dict[typing.Tuple[int, str], PlotStyle]):
         self.clearCandidates()
+        i = 0
         for (fid, field), style in candidateStyles.items():
+            i += 1
+            item = ProfileCandidateItem(f'Candidate{i}')
+            item.setCellKey(fid, field)
+            item.label().setCheckable(True)
+            item.label().setCheckState(Qt.Checked)
 
-            item = PlotStyleItem(f'{fid}_{field}', labelName=f'{fid} {field}')
             item.label().setToolTip(f'Feature ID: {fid} field: {field}')
             item.setPlotStyle(style)
             self.mCandidateStyleItems[(fid, field)] = item
             self.appendRow(item.propertyRow())
 
-    def candidateStyle(self, fid:int, field:str) -> PlotStyle:
+    def candidateStyle(self, fid: int, field: str) -> PlotStyle:
         item = self.mCandidateStyleItems.get((fid, field), None)
         if isinstance(item, PlotStyleItem):
             return item.plotStyle()
         return None
 
-    def candidates(self) -> typing.List[typing.Tuple[int, str]]:
-        return self.mCandidateStyleItems.keys()
+    def candidateKeys(self) -> typing.List[typing.Tuple[int, str]]:
+        return list(self.mCandidateStyleItems.keys())
+
+    def candidateItems(self) -> typing.List[ProfileCandidateItem]:
+        return list(self.mCandidateStyleItems.values())
 
     def candidateFeatureIds(self) -> typing.List[int]:
-        return set([i[0] for i in self.candidates()])
+        return set([i[0] for i in self.candidateKeys()])
 
     def removeCandidates(self, candidateKeys: typing.List[typing.Tuple[int, str]]):
 
@@ -846,12 +978,26 @@ class LayerBandVisualization(PropertyItemGroup):
         return None
 
     def setData(self, value: typing.Any, role: int = ...) -> None:
+        super(LayerBandVisualization, self).setData(value, role)
 
-        if role == Qt.CheckStateRole:
-            super(LayerBandVisualization, self).setData(value, role)
-            self.updateFromRenderer()
-        else:
-            super(LayerBandVisualization, self).setData(value, role)
+    def plotDataItems(self) -> typing.List[PlotDataItem]:
+        """
+        Returns the activated plot data items
+        Note that bandPlotItems() returns all plot items, even those that are not used and should be hidden.
+        """
+        plotItems = []
+
+        activeItems = self.propertyItems()
+        if self.mItemBandR in activeItems:
+            plotItems.append(self.mBarR)
+        if self.mItemBandG in activeItems:
+            plotItems.append(self.mBarG)
+        if self.mItemBandB in activeItems:
+            plotItems.append(self.mBarR)
+        if self.mItemBandA in activeItems:
+            plotItems.append(self.mBarA)
+
+        return plotItems
 
     def setBandPosition(self, band: int, bandBar: InfiniteLine, bandItem: PropertyItem) -> bool:
         bandBar.setToolTip(bandBar.name())
@@ -983,20 +1129,28 @@ class ProfileVisualization(PropertyItemGroup):
         self.mFirstColumnSpanned = False
         self.mSpeclib: QgsVectorLayer = None
 
-        self.mPField = FieldItem('Field')
+        self.mPField = QgsPropertyItem('Field')
+        self.mPField.setDefinition(QgsPropertyDefinition(
+            'Field', 'Name of the field that contains the spectral profiles',
+            QgsPropertyDefinition.StandardPropertyTemplate.String))
+        self.mPField.setProperty(QgsProperty.fromField('profiles', True))
+
         self.mPStyle = PlotStyleItem('Style')
-        self.mPLabel = QgsPropertyItem(QgsPropertyDefinition(
+        self.mPLabel = QgsPropertyItem('Label')
+        self.mPLabel.setDefinition(QgsPropertyDefinition(
             'Label', 'A label to describe the plotted profiles',
-            QgsPropertyDefinition.StandardPropertyTemplate.String
-        ), QgsProperty.fromExpression('$id'))
+            QgsPropertyDefinition.StandardPropertyTemplate.String))
+        self.mPLabel.setProperty(QgsProperty.fromExpression('$id'))
 
-        self.mPFilter = QgsPropertyItem(QgsPropertyDefinition(
-            'Filter', 'Filter for feature rows', QgsPropertyDefinition.StandardPropertyTemplate.String
-        ), QgsProperty.fromExpression(''))
+        self.mPFilter = QgsPropertyItem('Filter')
+        self.mPFilter.setDefinition(QgsPropertyDefinition(
+            'Filter', 'Filter for feature rows', QgsPropertyDefinition.StandardPropertyTemplate.String))
+        self.mPFilter.setProperty(QgsProperty.fromExpression(''))
 
-        self.mPColor = QgsPropertyItem(QgsPropertyDefinition(
-            'Color', 'Color of spectral profile', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha),
-            QgsProperty.fromValue(QColor('white')))
+        self.mPColor = QgsPropertyItem('Color')
+        self.mPColor.setDefinition(QgsPropertyDefinition(
+            'Color', 'Color of spectral profile', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
+        self.mPColor.setProperty(QgsProperty.fromValue(QColor('white')))
 
         self.appendRow(self.mPField.propertyRow())
         self.appendRow(self.mPLabel.propertyRow())
@@ -1031,9 +1185,7 @@ class ProfileVisualization(PropertyItemGroup):
         self.mPLabel.writeXml(parentNode, doc)
         self.mPColor.writeXml(parentNode, doc)
         self.mPFilter.writeXml(parentNode, doc)
-
-        # add plot style node
-        self.plotStyle().writeXml(parentNode, doc)
+        self.mPStyle.writeXml(parentNode, doc)
 
     def createExpressionContextScope(self) -> QgsExpressionContextScope:
 
