@@ -1264,9 +1264,10 @@ class SpectralFeatureGeneratorNode(TreeNode):
                 new_nodes = []
 
                 # 1. create the geometry generator node
-                gnode = GeometryGeneratorNode()
-                gnode.setWkbType(speclib.wkbType())
-                new_nodes.append(gnode)
+                if False:
+                    gnode = GeometryGeneratorNode()
+                    gnode.setWkbType(speclib.wkbType())
+                    new_nodes.append(gnode)
 
                 # 2. create spectral profile field nodes
                 # new_nodes.append(self.createFieldNodes(profile_fields(speclib)))
