@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>274</width>
+    <width>255</width>
     <height>163</height>
    </rect>
   </property>
@@ -225,7 +225,7 @@
       <bool>true</bool>
      </property>
      <property name="text">
-      <string>Marker Symbol</string>
+      <string>Symbol</string>
      </property>
     </widget>
    </item>
@@ -235,7 +235,7 @@
       <bool>true</bool>
      </property>
      <property name="text">
-      <string>Maker Outline</string>
+      <string>Symbol Pen</string>
      </property>
     </widget>
    </item>

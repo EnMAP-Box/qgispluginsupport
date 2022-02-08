@@ -31,7 +31,7 @@ from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableCon
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
 from qps.plotstyling.plotstyling import PlotStyleButton, pen2tuple, PlotStyle, XMLTAG_PLOTSTYLENODE, \
     createSetPlotStyleAction, MarkerSymbol, tuple2pen, registerPlotStyleEditorWidget, PlotStyleEditorWidgetFactory, \
-    PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget
+    PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget, PlotWidgetStyle
 
 from qps.testing import TestCase
 
@@ -144,6 +144,28 @@ class PlotStyleTests(TestCase):
         s3.setLineColor('red')
 
         self.assertNotEqual(s1, s3)
+
+    def test_PlotWidgetStyle(self):
+
+        style1 = PlotWidgetStyle()
+
+        style2 = PlotWidgetStyle(name='myStyle', bg='black', fg='green')
+
+        testDir = self.createTestOutputDirectory()
+
+        pathJson = testDir /'styles.json'
+        stylesA = [style1, style2]
+        PlotWidgetStyle.writeJson(pathJson, stylesA)
+
+        stylesB = PlotWidgetStyle.fromJson(pathJson)
+        for styleA, styleB in zip(stylesA, stylesB):
+            self.assertEqual(styleA, styleB)
+
+        self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('default'), PlotWidgetStyle)
+        self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('dark'), PlotWidgetStyle)
+        self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('bright'), PlotWidgetStyle)
+        self.assertEqual(PlotWidgetStyle.plotWidgetStyle('foobar'), None)
+
 
     def test_PlotStyleWidget(self):
         from qps.plotstyling.plotstyling import PlotStyleWidget

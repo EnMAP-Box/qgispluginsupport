@@ -13,6 +13,7 @@ p = QgsProperty()
 s = ""
 start_app()
 
+
 class TestCase(TestCase):
     def test_QgsProperty_XML(self):
         p1 = QgsProperty()

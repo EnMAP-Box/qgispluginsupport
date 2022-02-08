@@ -29,6 +29,12 @@ import json
 import pathlib
 import re
 import sys
+import typing
+import warnings
+from json import JSONDecodeError
+
+from PyQt5.QtGui import QColor
+from PyQt5.QtXml import QDomElement, QDomDocument
 
 from qgis.PyQt.QtCore import QVariant, QObject, pyqtSignal, QSize, QByteArray, QDataStream, QIODevice, Qt
 from qgis.PyQt.QtGui import QPainter, QPixmap, QPainterPath, QIcon, QColor, QPen, QBrush
@@ -1214,3 +1220,237 @@ def registerPlotStyleEditorWidget():
         global PLOTSTYLE_EDITOR_WIDGET_FACTORY
         PLOTSTYLE_EDITOR_WIDGET_FACTORY = PlotStyleEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
         reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, PLOTSTYLE_EDITOR_WIDGET_FACTORY)
+
+
+class PlotWidgetStyle(object):
+    PLOT_WIDGET_STYLES: typing.Dict[str, 'PlotWidgetStyle'] = dict()
+
+    @staticmethod
+    def registerPlotWidgetStyle(style: 'PlotWidgetStyle', overwrite: bool = False):
+        assert isinstance(style, PlotWidgetStyle)
+        key = style.name.lower()
+        if overwrite or key not in PlotWidgetStyle.PLOT_WIDGET_STYLES.keys():
+            PlotWidgetStyle.PLOT_WIDGET_STYLES[key] = style
+
+    @staticmethod
+    def plotWidgetStyle(name: str) -> 'PlotWidgetStyle':
+        key = name.lower()
+        return PlotWidgetStyle.PLOT_WIDGET_STYLES.get(key, None)
+
+    @staticmethod
+    def plotWidgetStyles() -> typing.List['PlotWidgetStyle']:
+        return list(PlotWidgetStyle.PLOT_WIDGET_STYLES.values())
+
+    @staticmethod
+    def default() -> 'PlotWidgetStyle':
+        """
+        Returns the default plotStyle scheme.
+        :return:
+        :rtype: PlotWidgetStyle
+        """
+        return PlotWidgetStyle()
+
+    @staticmethod
+    def fromUserSettings() -> 'PlotWidgetStyle':
+        """
+        Returns the SpectralLibraryPlotWidgetStyle last saved in then library settings
+        :return:
+        :rtype:
+        """
+        raise NotImplementedError()
+        return style
+
+    @staticmethod
+    def dark() -> 'PlotWidgetStyle':
+        return PlotWidgetStyle.plotWidgetStyle('dark')
+
+    @staticmethod
+    def bright() -> 'PlotWidgetStyle':
+        return PlotWidgetStyle.plotWidgetStyle('bright')
+        return PlotWidgetStyle(
+            name='Bright',
+            icon=':/qps/ui/icons/profiletheme_bright.svg',
+            fg=QColor('black'),
+            bg=QColor('white'),
+            ic=QColor('black'),
+            sc=QColor('red'),
+            cc=QColor('red'),
+            tc=QColor('#aaff00')
+        )
+
+    def __init__(self,
+                 name: str = 'default_plot_colors',
+                 fg: QColor = QColor('white'),
+                 bg: QColor = QColor('black'),
+                 ic: QColor = QColor('white'),
+                 sc: QColor = QColor('yellow'),
+                 cc: QColor = QColor('yellow'),
+                 tc: QColor = QColor('#aaff00'),
+                 icon: str = ':/images/themes/default/propertyicons/stylepreset.svg',
+                 ):
+        assert isinstance(icon, str)
+        self.icon: str = icon
+        self.name: str = name
+        self.foregroundColor: QColor = fg
+        self.backgroundColor: QColor = bg
+        self.textColor: QColor = ic
+        self.selectionColor: QColor = sc
+        self.crosshairColor: QColor = cc
+        self.temporaryColor: QColor = tc
+
+    def toVariantMap(self) -> dict:
+
+        MAP = dict()
+        for k, v in self.__dict__.items():
+            if k.startswith('_'):
+                continue
+            if isinstance(v, QColor):
+                v = v.name()
+
+            if isinstance(v, str):
+                MAP[k] = v
+        return MAP
+
+    def fromVariantMap(self, map: dict) -> bool:
+        keys = [k for k in self.__dict__.keys() if not k.startswith('_') and k in map.keys()]
+        if len(keys) == 0:
+            return False
+        for k in keys:
+            v0 = self.__dict__[k]
+            v1 = map[k]
+            if isinstance(v0, QColor):
+                v1 = QColor(v1)
+            self.__dict__[k] = v1
+
+    @staticmethod
+    def readXml(node: QDomElement, *args):
+        """
+        Reads the SpectralLibraryPlotWidgetStyle from a QDomElement (XML node)
+        :param self:
+        :param node:
+        :param args:
+        :return:
+        """
+        """
+        from .spectrallibrary import XMLNODE_PROFILE_RENDERER
+        if node.tagName() != XMLNODE_PROFILE_RENDERER:
+            node = node.firstChildElement(XMLNODE_PROFILE_RENDERER)
+        if node.isNull():
+            return None
+
+        default: SpectralLibraryPlotWidgetStyle = SpectralLibraryPlotWidgetStyle.default()
+
+        renderer = SpectralLibraryPlotWidgetStyle()
+        renderer.backgroundColor = QColor(node.attribute('bg', renderer.backgroundColor.name()))
+        renderer.foregroundColor = QColor(node.attribute('fg', renderer.foregroundColor.name()))
+        renderer.selectionColor = QColor(node.attribute('sc', renderer.selectionColor.name()))
+        renderer.textColor = QColor(node.attribute('ic', renderer.textColor.name()))
+
+        nodeName = node.firstChildElement('name')
+        renderer.name = nodeName.firstChild().nodeValue()
+        """
+        return None
+
+    def writeXml(self, node: QDomElement, doc: QDomDocument) -> bool:
+        """
+        Writes the PlotStyle to a QDomNode
+        :param node:
+        :param doc:
+        :return:
+        """
+        """
+        from .spectrallibrary import XMLNODE_PROFILE_RENDERER
+        profileRendererNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
+        profileRendererNode.setAttribute('bg', self.backgroundColor.name())
+        profileRendererNode.setAttribute('fg', self.foregroundColor.name())
+        profileRendererNode.setAttribute('sc', self.selectionColor.name())
+        profileRendererNode.setAttribute('ic', self.textColor.name())
+
+        nodeName = doc.createElement('name')
+        nodeName.appendChild(doc.createTextNode(self.name))
+        profileRendererNode.appendChild(nodeName)
+
+        node.appendChild(profileRendererNode)
+        """
+        return True
+
+    def clone(self):
+        # todo: avoid refs
+        return copy.copy(self)
+
+    def saveToUserSettings(self):
+        """
+        Saves this plotStyle scheme to the user Qt user settings
+        :return:
+        :rtype:
+        """
+        raise NotImplementedError()
+
+    def printDifferences(self, renderer):
+        assert isinstance(renderer, PlotWidgetStyle)
+        keys = [k for k in self.__dict__.keys()
+                if not k.startswith('_')
+                and k not in ['name', 'mInputSource']]
+
+        differences = []
+        for k in keys:
+            if self.__dict__[k] != renderer.__dict__[k]:
+                differences.append(f'{k}: {self.__dict__[k]} != {renderer.__dict__[k]}')
+        if len(differences) == 0:
+            print('# no differences')
+        else:
+            print(f'# {len(differences)} differences:')
+            for d in differences:
+                print(d)
+        return True
+
+    def __eq__(self, other):
+        if not isinstance(other, PlotWidgetStyle):
+            return False
+        else:
+            keys = [k for k in self.__dict__.keys()
+                    if not k.startswith('_')
+                    and k not in ['name', 'mInputSource']]
+
+            for k in keys:
+                if self.__dict__[k] != other.__dict__[k]:
+                    return False
+            return True
+
+    @staticmethod
+    def writeJson(path, styles: typing.List['PlotWidgetStyle']):
+        path = pathlib.Path(path)
+
+        JSON = []
+        for s in styles:
+            assert isinstance(s, PlotWidgetStyle)
+            JSON.append(s.toVariantMap())
+        if len(JSON) > 0:
+            with open(path, 'w', encoding='utf-8') as fp:
+                json.dump(JSON, fp, indent=4)
+
+    @staticmethod
+    def fromJson(path) -> typing.List['PlotWidgetStyle']:
+        path = pathlib.Path(path)
+        styles = []
+        with open(path, 'r', encoding='utf8') as fp:
+            JSON = json.load(fp)
+            for MAP in JSON:
+                style = PlotStyleWidget()
+                style.fromVariantMap(MAP)
+                styles.append(MAP)
+        return styles
+
+
+# initialize standard styles
+pathStandardStyle = pathlib.Path(__file__).parent / 'standardstyles.json'
+PlotWidgetStyle.registerPlotWidgetStyle(PlotWidgetStyle.default())
+
+if not pathStandardStyle.is_file():
+    warnings.warn(f'Missing file: {pathStandardStyle}')
+else:
+    try:
+        for style in PlotWidgetStyle.fromJson(pathStandardStyle):
+            PlotWidgetStyle.registerPlotWidgetStyle(style, True)
+    except JSONDecodeError as ex:
+        warnings.warn(f'Unable to load standard plot widget styles: {ex}')
