@@ -1,23 +1,20 @@
-import gc
 import unittest
 
 import xmlrunner
-from PyQt5.QtCore import QByteArray, QDataStream
-from PyQt5.QtXml import QDomDocument
-
-from qgis.PyQt.QtWidgets import QVBoxLayout
 from osgeo import gdal, ogr
+
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtGui import QMouseEvent, QColor
 from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtWidgets import QTreeView
-from qgis._core import QgsPropertyDefinition, QgsXmlUtils
-from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer, QgsApplication
+from qgis.PyQt.QtWidgets import QVBoxLayout
+from qgis.PyQt.QtXml import QDomDocument
+from qgis.core import QgsPropertyDefinition
+from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
-
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
 from qps.speclib.gui.spectrallibraryplotitems import SpectralXAxis, SpectralProfilePlotWidget
@@ -402,7 +399,6 @@ class TestSpeclibPlotting(TestCase):
 
         grp1 = PropertyItemGroup.fromMimeData(mimeData)
 
-
     def test_SpectralLibraryPlotWidget(self):
 
         speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
@@ -419,7 +415,7 @@ class TestSpeclibPlotting(TestCase):
 
         # add a VIS
         w.btnAddProfileVis.click()
-        self.assertEqual(visModel.rowCount(), cnt+1)
+        self.assertEqual(visModel.rowCount(), cnt + 1)
 
         # click into each cell
         for row in range(visModel.rowCount()):

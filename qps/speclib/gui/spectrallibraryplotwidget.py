@@ -3,42 +3,39 @@ import re
 import typing
 
 import numpy as np
-from PyQt5.QtGui import QPen, QBrush, QPixmap
-
-from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QDialog
 
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
+from qgis.PyQt.QtGui import QPen, QBrush, QPixmap
+from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
-from qgis.core import QgsProject, QgsMapLayerProxyModel
-from qgis.core import QgsRasterLayer
 from qgis.core import QgsField, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
+from qgis.core import QgsProject, QgsMapLayerProxyModel
 from qgis.core import QgsProperty, QgsExpressionContextScope
+from qgis.core import QgsRasterLayer
 from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
-
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
-    VISUALIZATION_KEY, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
+    SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
-    ProfileVisualizationGroup, PlotStyleItem, ProfileCandidateGroup, PropertyItemBase, ProfileCandidateItem, GeneralSettingsGroup
+    ProfileVisualizationGroup, PlotStyleItem, ProfileCandidateGroup, PropertyItemBase, ProfileCandidateItem, \
+    GeneralSettingsGroup
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
 from ... import debugLog
 from ...externals.htmlwidgets import HTMLStyle
-
-from ...pyqtgraph import pyqtgraph as pg
 from ...models import SettingsModel, SettingsTreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
-from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField, \
+from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
     SelectMapLayerDialog
 
 
@@ -389,8 +386,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mXUnitInitialized: bool = False
         self.mMaxProfiles: int = 200
         self.mShowSelectedFeaturesOnly: bool = False
-
-
 
         self.mGeneralSettings = GeneralSettingsGroup()
 
@@ -977,7 +972,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         toVisualize = [fid for fid in toVisualize if fid in EXISTING_IDs]
         return toVisualize
 
-    def generalSettings(self)-> GeneralSettingsGroup:
+    def generalSettings(self) -> GeneralSettingsGroup:
         return self.mGeneralSettings
 
     def dualView(self) -> QgsDualView:
@@ -1616,7 +1611,6 @@ class SpectralLibraryPlotWidget(QWidget):
         self.btnAddRasterLayerRenderer.setDefaultAction(self.actionAddRasterLayerRenderer)
         self.btnRemoveProfileVis.setDefaultAction(self.actionRemoveProfileVis)
         self.btnSelectedFeaturesOnly.setDefaultAction(self.optionSelectedFeaturesOnly)
-
 
     def setProject(self, project: QgsProject):
         self.plotWidget.setProject(project)

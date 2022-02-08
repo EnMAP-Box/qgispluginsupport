@@ -153,7 +153,7 @@ class PlotStyleTests(TestCase):
 
         testDir = self.createTestOutputDirectory()
 
-        pathJson = testDir /'styles.json'
+        pathJson = testDir / 'styles.json'
         stylesA = [style1, style2]
         PlotWidgetStyle.writeJson(pathJson, stylesA)
 
@@ -165,7 +165,6 @@ class PlotStyleTests(TestCase):
         self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('dark'), PlotWidgetStyle)
         self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('bright'), PlotWidgetStyle)
         self.assertEqual(PlotWidgetStyle.plotWidgetStyle('foobar'), None)
-
 
     def test_PlotStyleWidget(self):
         from qps.plotstyling.plotstyling import PlotStyleWidget

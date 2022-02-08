@@ -33,18 +33,13 @@ import typing
 import warnings
 from json import JSONDecodeError
 
-from PyQt5.QtGui import QColor
-from PyQt5.QtXml import QDomElement, QDomDocument
-
 from qgis.PyQt.QtCore import QVariant, QObject, pyqtSignal, QSize, QByteArray, QDataStream, QIODevice, Qt
 from qgis.PyQt.QtGui import QPainter, QPixmap, QPainterPath, QIcon, QColor, QPen, QBrush
 from qgis.PyQt.QtWidgets import QWidgetAction, QToolButton, QLabel, QWidget, QComboBox, QMenu, QDialog, \
     QDialogButtonBox, \
     QVBoxLayout
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
-
 from qgis.core import QgsField, QgsVectorLayer, QgsSymbolLayerUtils, QgsAction, QgsMessageLog
-
 from qgis.gui import QgsDialog
 from qgis.gui import QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
     QgsSearchWidgetWrapper, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsGui

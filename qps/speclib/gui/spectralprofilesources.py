@@ -5,14 +5,14 @@ import sys
 import typing
 
 import numpy as np
-from PyQt5.QtWidgets import QTreeView
-from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
-    QTableView, QStyle, QStyleOptionViewItem
 
 from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
     QSortFilterProxyModel, QItemSelection
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
+from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
+    QTableView, QStyle, QStyleOptionViewItem
+from qgis.PyQt.QtWidgets import QTreeView
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRaster, QgsRectangle
@@ -20,14 +20,13 @@ from qgis.core import QgsLayerItem
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit
 from qgis.gui import QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
-
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
 from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
-from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
+from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...utils import SpatialPoint, loadUi, parseWavelength, rasterLayerArray, spatialPoint2px, \
     HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
 
@@ -701,6 +700,7 @@ class FloatValueNode(TreeNode):
     def value(self) -> float:
         return float(super().value())
 
+
 class PlotStyleNode(TreeNode):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -712,6 +712,7 @@ class PlotStyleNode(TreeNode):
 
     def value(self) -> PlotStyle:
         return super().value()
+
 
 class ColorNode(TreeNode):
     def __init__(self, *args, **kwds):
@@ -1251,7 +1252,8 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
         if isinstance(speclibWidget, SpectralLibraryWidget):
             self.mSpeclibWidget = speclibWidget
-            self.mSpeclibWidget.spectralLibraryPlotWidget().sigPlotWidgetStyleChanged.connect(self.onPlotWidgetStyleChanged)
+            self.mSpeclibWidget.spectralLibraryPlotWidget().sigPlotWidgetStyleChanged.connect(
+                self.onPlotWidgetStyleChanged)
             speclib = self.mSpeclibWidget.speclib()
             if isinstance(speclib, QgsVectorLayer):
                 speclib.nameChanged.connect(self.updateSpeclibName)
@@ -1716,7 +1718,6 @@ class SpectralProfileBridge(TreeModel):
                     f.setId(f.id() + i)
                     for (field, style) in TEMPORAL_STYLES[speclib.id()][i]:
                         candidate_styles[(fid, field)] = style
-
 
                 slw.setCurrentProfiles(features,
                                        make_permanent=add_permanent,
@@ -2270,6 +2271,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
         elif isinstance(node, PlotStyleNode) and index.column() == 1:
             if isinstance(w, PlotStyleButton):
                 bridge.setData(index, w.plotStyle(), Qt.EditRole)
+
 
 class SpectralProfileBridgeTreeView(TreeView):
 

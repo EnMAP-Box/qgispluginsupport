@@ -266,7 +266,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.scatter.sigClicked.connect(self.onScatterMouseClicked)
         self.mVisualizationKey: VISUALIZATION_KEY = None
 
-    def setProfileData(self, plot_data, plot_style: PlotStyle, zValue=None, label:str=None, tooltip:str=None):
+    def setProfileData(self, plot_data, plot_style: PlotStyle, zValue=None, label: str = None, tooltip: str = None):
         linePen = pg.mkPen(plot_style.linePen)
         symbolPen = pg.mkPen(plot_style.markerPen)
         symbolBrush = pg.mkBrush(plot_style.markerBrush)
@@ -284,19 +284,19 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         y = np.asarray(y, dtype=float)
         connect = np.isfinite(x) & np.isfinite(y)
         self.setData(x=x, y=y, z=zValue,
-                        name=label,
-                        connect=connect,
-                        pen=linePen,
-                        symbol=symbol,
-                        symbolPen=symbolPen,
-                        symbolBrush=symbolBrush,
-                        symbolSize=symbolSize)
+                     name=label,
+                     connect=connect,
+                     pen=linePen,
+                     symbol=symbol,
+                     symbolPen=symbolPen,
+                     symbolBrush=symbolBrush,
+                     symbolSize=symbolSize)
 
         self.setToolTip(tooltip)
         self.curve.setToolTip(tooltip)
         self.scatter.setToolTip(tooltip)
 
-    def setPlotStyle(self, plotStyle:PlotStyle):
+    def setPlotStyle(self, plotStyle: PlotStyle):
         assert isinstance(plotStyle, PlotStyle)
 
         self.opts['pen'] = pg.mkPen(plotStyle.linePen)

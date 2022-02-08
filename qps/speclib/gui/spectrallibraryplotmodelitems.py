@@ -1,27 +1,24 @@
 import sys
 import typing
-from xml.sax.saxutils import escape, unescape
 
 import numpy as np
-from PyQt5.QtCore import QVariant, QSize
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QCheckBox, QDoubleSpinBox, QSpinBox, QMenu
+from qgis.PyQt.QtCore import QSize
+from qgis.PyQt.QtGui import QPixmap
+from qgis.PyQt.QtWidgets import QCheckBox, QDoubleSpinBox, QSpinBox, QMenu
+from qgis.core import QgsXmlUtils, QgsTextFormat
+from qgis.gui import QgsSpinBox, QgsDoubleSpinBox
 
 from pyqtgraph import LegendItem
+from qgis.PyQt import sip
 from qgis.PyQt.QtCore import Qt, QModelIndex, pyqtSignal, QMimeData, QObject
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QPen
 from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.PyQt import sip
-from qgis._core import QgsXmlUtils, QgsSymbol, QgsTextFormat
-
-from qgis._gui import QgsPropertyAssistantWidget, QgsSpinBox, QgsDoubleSpinBox
 from qgis.core import QgsField, QgsPropertyDefinition, QgsProperty, QgsExpressionContext, QgsRasterLayer, \
     QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer, QgsSingleBandPseudoColorRenderer, \
     QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
     QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsRenderContext, QgsFeatureRenderer, QgsFeature
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverrideButton
-
 from ...externals.htmlwidgets import HTMLComboBox
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
@@ -402,7 +399,6 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
         from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
         from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
-        from qps.speclib.gui.spectrallibraryplotitems import SpectralLibraryPlotItem
         model: SpectralProfilePlotModel = self.model()
 
         if not isinstance(model, SpectralProfilePlotModel):
@@ -625,8 +621,8 @@ class LegendGroup(PropertyItemGroup):
         self.mVSpacing = QgsPropertyItem('VSpacing')
         self.mVSpacing.setDefinition(
             QgsPropertyDefinition('V. Spacing',
-                                  'Specifies the spacing between individual entries of the legend vertically. ' +
-                                  '(Can also be negative to have them really close)',
+                                  'Specifies the spacing between individual entries of the legend vertically. '
+                                  + '(Can also be negative to have them really close)',
                                   QgsPropertyDefinition.StandardPropertyTemplate.Integer)
         )
         self.mVSpacing.setProperty(QgsProperty.fromValue(0))
@@ -1396,7 +1392,7 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
         return f'{context.feature().id()} {context.variable("field_name")}'
 
     def generateTooltip(self, context: QgsExpressionContext) -> str:
-        tooltip = f'<html><body><table>'
+        tooltip = '<html><body><table>'
         label = self.generateLabel(context)
         fid = context.feature().id()
         fname = context.variable('field_name')
@@ -1406,7 +1402,7 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
             tooltip += f'\n<tr><td>FID</td><td>{fid}</td></tr>'
         if fname not in [None, '']:
             tooltip += f'<tr><td>Field</td><td>{fname}</td></tr>'
-        tooltip += f'\n</table></body></html>'
+        tooltip += '\n</table></body></html>'
         return tooltip
 
     def generatePlotStyle(self, context: QgsExpressionContext) -> PlotStyle:
@@ -1649,9 +1645,11 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
     def isComplete(self) -> bool:
         speclib = self.speclib()
         field = self.field()
-        return isinstance(speclib, QgsVectorLayer) and not sip.isdeleted(speclib) \
-               and isinstance(field, QgsField) \
-               and field.name() in speclib.fields().names()
+        b = isinstance(speclib, QgsVectorLayer) \
+            and not sip.isdeleted(speclib) \
+            and isinstance(field, QgsField) \
+            and field.name() in speclib.fields().names()
+        return b
 
     def setFilterExpression(self, expression):
         if isinstance(expression, QgsExpression):
@@ -1715,7 +1713,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.update()
 
     def generateTooltip(self, context: QgsExpressionContext) -> str:
-        tooltip = f'<html><body><table>'
+        tooltip = '<html><body><table>'
         label = ''
         fid = context.feature().id()
         fname = context.variable('field_name')
@@ -1725,7 +1723,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             tooltip += f'\n<tr><td>FID</td><td>{fid}</td></tr>'
         if fname not in [None, '']:
             tooltip += f'<tr><td>Field</td><td>{fname}</td></tr>'
-        tooltip += f'\n</table></body></html>'
+        tooltip += '\n</table></body></html>'
         return tooltip
 
     def generateLabel(self, context: QgsExpressionContext):

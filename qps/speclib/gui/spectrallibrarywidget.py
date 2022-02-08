@@ -7,7 +7,7 @@ from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog, QMessageBox
-from qgis._core import QgsFeature
+from qgis.core import QgsFeature
 from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry
 from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer
@@ -556,8 +556,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
             # find a profile style for each profile candidate
 
             if isinstance(currentProfileStyles, dict):
-                currentProfilesStyles = {(addedFIDs[inputFIDs.index(fid)],field):style
-                                        for (fid, field), style in currentProfileStyles.items()}
+                currentProfilesStyles = {(addedFIDs[inputFIDs.index(fid)], field): style
+                                         for (fid, field), style in currentProfileStyles.items()}
 
                 plotModel.profileCandidates().setCandidates(currentProfilesStyles)
 
