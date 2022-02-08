@@ -21,14 +21,13 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, Qgs
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit
 from qgis.gui import QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
 
-from .spectrallibraryplotitems import SpectralLibraryPlotWidgetStyle
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
 from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
-from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
+from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
 from ...utils import SpatialPoint, loadUi, parseWavelength, rasterLayerArray, spatialPoint2px, \
     HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
 
@@ -1280,10 +1279,10 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
     def onPlotWidgetStyleChanged(self):
         if isinstance(self.speclibWidget(), SpectralLibraryWidget):
-            plotStyle: SpectralLibraryPlotWidgetStyle = self.speclibWidget().spectralLibraryPlotWidget().plotWidgetStyle()
-            if isinstance(plotStyle, SpectralLibraryPlotWidgetStyle):
-                for n in self.spectralProfileGeneratorNodes():
-                    n.mProfileStyleNode.value().setBackgroundColor(QColor(plotStyle.backgroundColor))
+            backgroundColor = self.speclibWidget().plotControl().generalSettings().backgroundColor()
+            for n in self.spectralProfileGeneratorNodes():
+                n.mProfileStyleNode.value().setBackgroundColor(QColor(backgroundColor))
+                n.mProfileStyleNode.sigUpdated.emit(n.mProfileStyleNode)
 
     def fieldNodes(self) -> typing.List[FieldGeneratorNode]:
         return [n for n in self.childNodes() if isinstance(n, FieldGeneratorNode)]
@@ -1335,7 +1334,7 @@ class SpectralFeatureGeneratorNode(TreeNode):
                 new_node = SpectralProfileGeneratorNode(fname)
                 slw = self.speclibWidget()
                 if isinstance(slw, SpectralLibraryWidget):
-                    color = slw.plotControl().mPlotWidgetStyle.temporaryColor
+                    color = QColor('green')
                     for vis in slw.plotControl().visualizations():
                         if vis.field().name() == fname:
                             color = nextColor(vis.color(), 'brighter')

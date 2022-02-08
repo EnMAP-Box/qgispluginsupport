@@ -7,6 +7,9 @@ import unittest
 import xmlrunner
 
 from qgis.PyQt.QtWidgets import QComboBox, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QGridLayout
+from qgis._core import QgsPropertyDefinition, QgsProperty
+
+from qgis._gui import QgsPropertyAssistantWidget
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes
 from qgis.core import QgsRasterLayer, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
@@ -109,6 +112,7 @@ class SpectralProcessingTests(TestCase):
         canvas.setMapTool(mt)
 
         self.showGui([canvas, panel, slw])
+
 
     def test_SpectralProfileSourcePanel(self):
 

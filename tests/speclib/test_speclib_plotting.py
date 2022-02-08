@@ -21,8 +21,8 @@ from qgis.gui import QgsMapCanvas, QgsDualView
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
 from qps.speclib.gui.spectrallibraryplotitems import SpectralXAxis, SpectralProfilePlotWidget
-from qps.speclib.gui.spectrallibraryplotmodelitems import LayerBandVisualization, ProfileVisualization, \
-    SpectralProfileColorPropertyWidget, PropertyItemGroup, FieldItem, PlotStyleItem, ProfileCandidateItem, PropertyItem, \
+from qps.speclib.gui.spectrallibraryplotmodelitems import RasterRendererGroup, ProfileVisualizationGroup, \
+    SpectralProfileColorPropertyWidget, PropertyItemGroup, PlotStyleItem, ProfileCandidateItem, PropertyItem, \
     QgsPropertyItem
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -71,11 +71,11 @@ class TestSpeclibPlotting(TestCase):
         sl1 = TestObjects.createSpectralLibrary()
         sl2 = TestObjects.createSpectralLibrary()
 
-        vis0 = ProfileVisualization()
-        vis1 = ProfileVisualization()
+        vis0 = ProfileVisualizationGroup()
+        vis1 = ProfileVisualizationGroup()
         vis1.setSpeclib(sl1)
 
-        vis2 = ProfileVisualization()
+        vis2 = ProfileVisualizationGroup()
         vis2.setSpeclib(sl2)
 
     def test_SpectralLibraryWidget_deleteFeatures(self):
@@ -179,7 +179,7 @@ class TestSpeclibPlotting(TestCase):
 
     def test_LayerRendererVisualization(self):
 
-        vis = LayerBandVisualization()
+        vis = RasterRendererGroup()
 
         for p in vis.bandPlotItems():
             self.assertIsInstance(p, InfiniteLine)
@@ -276,10 +276,10 @@ class TestSpeclibPlotting(TestCase):
 
         lyr1 = TestObjects.createRasterLayer(nb=1)
         lyr2 = TestObjects.createRasterLayer(nb=10)
-        vis1 = LayerBandVisualization(layer=lyr1)
-        vis2 = LayerBandVisualization(layer=lyr2)
+        vis1 = RasterRendererGroup(layer=lyr1)
+        vis2 = RasterRendererGroup(layer=lyr2)
 
-        vis3 = ProfileVisualization()
+        vis3 = ProfileVisualizationGroup()
         model.insertPropertyGroup(0, vis1)
         model.insertPropertyGroup(1, vis2)
         model.insertPropertyGroup(2, vis3)
@@ -429,7 +429,7 @@ class TestSpeclibPlotting(TestCase):
 
         # remove vis
 
-        w.treeView.selectVisualizations(visModel.visualizations()[0])
+        w.treeView.selectPropertyGroups(visModel.visualizations()[0])
         w.btnRemoveProfileVis.click()
 
         rl1 = TestObjects.createRasterLayer(nb=255)

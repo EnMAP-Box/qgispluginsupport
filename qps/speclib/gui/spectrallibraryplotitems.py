@@ -1,21 +1,19 @@
 import collections
-import copy
 import datetime
 import sys
 import textwrap
 import typing
+import warnings
 
 import numpy as np
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, Qt, QPointF
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent
 from qgis.PyQt.QtWidgets import QMenu, QAction, QWidgetAction, QSlider, QApplication
-from qgis.PyQt.QtXml import QDomElement, QDomDocument
 from qgis.core import QgsProject
+from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 
 from ...pyqtgraph import pyqtgraph as pg
-from ...speclib import speclibSettings, SpectralLibrarySettingsKey
-from ..core.spectrallibrary import defaultCurvePlotStyle
-from ..gui.spectrallibraryplotmodelitems import ProfileVisualization
+from ..gui.spectrallibraryplotmodelitems import ProfileVisualizationGroup, PropertyItemGroup
 from ...utils import datetime64, SignalObjectWrapper, HashablePointF
 
 
@@ -99,6 +97,8 @@ class SpectralLibraryPlotItem(pg.PlotItem):
 
     def __init__(self, *args, **kwds):
         super(SpectralLibraryPlotItem, self).__init__(*args, **kwds)
+
+        self.addLegend()
         self.mTempList = []
 
     def getContextMenus(self, event):
@@ -242,203 +242,12 @@ class SpectralViewBox(pg.ViewBox):
 
 MouseClickData = collections.namedtuple('MouseClickData', ['idx', 'xValue', 'yValue', 'pxDistance', 'pdi'])
 
-
-class SpectralLibraryPlotWidgetStyle(object):
-
-    @staticmethod
-    def default() -> 'SpectralLibraryPlotWidgetStyle':
-        """
-        Returns the default plotStyle scheme.
-        :return:
-        :rtype: SpectralLibraryPlotWidgetStyle
-        """
-        return SpectralLibraryPlotWidgetStyle.dark()
-
-    @staticmethod
-    def fromUserSettings() -> 'SpectralLibraryPlotWidgetStyle':
-        """
-        Returns the SpectralLibraryPlotWidgetStyle last saved in then library settings
-        :return:
-        :rtype:
-        """
-        settings = speclibSettings()
-
-        style = SpectralLibraryPlotWidgetStyle.default()
-        style.backgroundColor = settings.value(SpectralLibrarySettingsKey.BACKGROUND_COLOR,
-                                               style.backgroundColor)
-        style.foregroundColor = settings.value(SpectralLibrarySettingsKey.FOREGROUND_COLOR,
-                                               style.foregroundColor)
-        style.textColor = settings.value(SpectralLibrarySettingsKey.INFO_COLOR, style.textColor)
-        style.selectionColor = settings.value(SpectralLibrarySettingsKey.SELECTION_COLOR, style.selectionColor)
-
-        return style
-
-    @staticmethod
-    def dark() -> 'SpectralLibraryPlotWidgetStyle':
-        ps = defaultCurvePlotStyle()
-        ps.setLineColor('white')
-
-        cs = defaultCurvePlotStyle()
-        cs.setLineColor('green')
-
-        return SpectralLibraryPlotWidgetStyle(
-            name='Dark',
-            fg=QColor('white'),
-            bg=QColor('black'),
-            ic=QColor('white'),
-            sc=QColor('yellow'),
-            cc=QColor('yellow'),
-            tc=QColor('#aaff00')
-        )
-
-    @staticmethod
-    def bright() -> 'SpectralLibraryPlotWidgetStyle':
-        ps = defaultCurvePlotStyle()
-        ps.setLineColor('black')
-
-        cs = defaultCurvePlotStyle()
-        cs.setLineColor('green')
-
-        return SpectralLibraryPlotWidgetStyle(
-            name='Bright',
-            fg=QColor('black'),
-            bg=QColor('white'),
-            ic=QColor('black'),
-            sc=QColor('red'),
-            cc=QColor('red'),
-            tc=QColor('#aaff00')
-        )
-
-    def __init__(self,
-                 name: str = 'default_plot_colors',
-                 fg: QColor = QColor('white'),
-                 bg: QColor = QColor('black'),
-                 ic: QColor = QColor('white'),
-                 sc: QColor = QColor('yellow'),
-                 cc: QColor = QColor('yellow'),
-                 tc: QColor = QColor('#aaff00')
-                 ):
-
-        self.name: str = name
-        self.foregroundColor: QColor = fg
-        self.backgroundColor: QColor = bg
-        self.textColor: QColor = ic
-        self.selectionColor: QColor = sc
-        self.crosshairColor: QColor = cc
-        self.temporaryColor: QColor = tc
-
-    @staticmethod
-    def readXml(node: QDomElement, *args):
-        """
-        Reads the SpectralLibraryPlotWidgetStyle from a QDomElement (XML node)
-        :param self:
-        :param node:
-        :param args:
-        :return:
-        """
-        """
-        from .spectrallibrary import XMLNODE_PROFILE_RENDERER
-        if node.tagName() != XMLNODE_PROFILE_RENDERER:
-            node = node.firstChildElement(XMLNODE_PROFILE_RENDERER)
-        if node.isNull():
-            return None
-
-        default: SpectralLibraryPlotWidgetStyle = SpectralLibraryPlotWidgetStyle.default()
-
-        renderer = SpectralLibraryPlotWidgetStyle()
-        renderer.backgroundColor = QColor(node.attribute('bg', renderer.backgroundColor.name()))
-        renderer.foregroundColor = QColor(node.attribute('fg', renderer.foregroundColor.name()))
-        renderer.selectionColor = QColor(node.attribute('sc', renderer.selectionColor.name()))
-        renderer.textColor = QColor(node.attribute('ic', renderer.textColor.name()))
-
-        nodeName = node.firstChildElement('name')
-        renderer.name = nodeName.firstChild().nodeValue()
-        """
-        return None
-
-    def writeXml(self, node: QDomElement, doc: QDomDocument) -> bool:
-        """
-        Writes the PlotStyle to a QDomNode
-        :param node:
-        :param doc:
-        :return:
-        """
-        """
-        from .spectrallibrary import XMLNODE_PROFILE_RENDERER
-        profileRendererNode = doc.createElement(XMLNODE_PROFILE_RENDERER)
-        profileRendererNode.setAttribute('bg', self.backgroundColor.name())
-        profileRendererNode.setAttribute('fg', self.foregroundColor.name())
-        profileRendererNode.setAttribute('sc', self.selectionColor.name())
-        profileRendererNode.setAttribute('ic', self.textColor.name())
-
-        nodeName = doc.createElement('name')
-        nodeName.appendChild(doc.createTextNode(self.name))
-        profileRendererNode.appendChild(nodeName)
-
-        node.appendChild(profileRendererNode)
-        """
-        return True
-
-    def clone(self):
-        # todo: avoid refs
-        return copy.copy(self)
-
-    def saveToUserSettings(self):
-        """
-        Saves this plotStyle scheme to the user Qt user settings
-        :return:
-        :rtype:
-        """
-        settings = speclibSettings()
-
-        settings.setValue(SpectralLibrarySettingsKey.DEFAULT_PROFILE_STYLE, self.profileStyle.json())
-        settings.setValue(SpectralLibrarySettingsKey.CURRENT_PROFILE_STYLE, self.temporaryProfileStyle.json())
-        settings.setValue(SpectralLibrarySettingsKey.BACKGROUND_COLOR, self.backgroundColor)
-        settings.setValue(SpectralLibrarySettingsKey.FOREGROUND_COLOR, self.foregroundColor)
-        settings.setValue(SpectralLibrarySettingsKey.INFO_COLOR, self.textColor)
-        settings.setValue(SpectralLibrarySettingsKey.CROSSHAIR_COLOR, self.crosshairColor)
-        settings.setValue(SpectralLibrarySettingsKey.TEMPORARY_COLOR, self.temporaryColor)
-        settings.setValue(SpectralLibrarySettingsKey.SELECTION_COLOR, self.selectionColor)
-        settings.setValue(SpectralLibrarySettingsKey.USE_VECTOR_RENDER_COLORS, self.useRendererColors)
-
-    def printDifferences(self, renderer):
-        assert isinstance(renderer, SpectralLibraryPlotWidgetStyle)
-        keys = [k for k in self.__dict__.keys()
-                if not k.startswith('_')
-                and k not in ['name', 'mInputSource']]
-
-        differences = []
-        for k in keys:
-            if self.__dict__[k] != renderer.__dict__[k]:
-                differences.append(f'{k}: {self.__dict__[k]} != {renderer.__dict__[k]}')
-        if len(differences) == 0:
-            print('# no differences')
-        else:
-            print(f'# {len(differences)} differences:')
-            for d in differences:
-                print(d)
-        return True
-
-    def __eq__(self, other):
-        if not isinstance(other, SpectralLibraryPlotWidgetStyle):
-            return False
-        else:
-            keys = [k for k in self.__dict__.keys()
-                    if not k.startswith('_')
-                    and k not in ['name', 'mInputSource']]
-
-            for k in keys:
-                if self.__dict__[k] != other.__dict__[k]:
-                    return False
-            return True
-
-
 FEATURE_ID = int
 FIELD_INDEX = int
 MODEL_NAME = str
 X_UNIT = str
-PLOT_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME, X_UNIT]
-VISUALIZATION_KEY = typing.Tuple[ProfileVisualization, PLOT_DATA_KEY]
+PLOT_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, X_UNIT]
+VISUALIZATION_KEY = typing.Tuple[PropertyItemGroup, PLOT_DATA_KEY]
 
 
 class SpectralProfilePlotDataItem(pg.PlotDataItem):
@@ -456,6 +265,46 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.curve.mouseClickEvent = self.onCurveMouseClickEvent
         self.scatter.sigClicked.connect(self.onScatterMouseClicked)
         self.mVisualizationKey: VISUALIZATION_KEY = None
+
+    def setProfileData(self, plot_data, plot_style: PlotStyle, zValue=None, label:str=None, tooltip:str=None):
+        linePen = pg.mkPen(plot_style.linePen)
+        symbolPen = pg.mkPen(plot_style.markerPen)
+        symbolBrush = pg.mkBrush(plot_style.markerBrush)
+
+        symbol = plot_style.markerSymbol
+        symbolSize = plot_style.markerSize
+
+        x = plot_data['x']
+        y = plot_data['y']
+        if isinstance(x[0], (datetime.date, datetime.datetime)):
+            x = np.asarray(x, dtype=np.datetime64)
+
+        # replace None by NaN
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        connect = np.isfinite(x) & np.isfinite(y)
+        self.setData(x=x, y=y, z=zValue,
+                        name=label,
+                        connect=connect,
+                        pen=linePen,
+                        symbol=symbol,
+                        symbolPen=symbolPen,
+                        symbolBrush=symbolBrush,
+                        symbolSize=symbolSize)
+
+        self.setToolTip(tooltip)
+        self.curve.setToolTip(tooltip)
+        self.scatter.setToolTip(tooltip)
+
+    def setPlotStyle(self, plotStyle:PlotStyle):
+        assert isinstance(plotStyle, PlotStyle)
+
+        self.opts['pen'] = pg.mkPen(plotStyle.linePen)
+        self.opts['symbol'] = plotStyle.markerSymbol
+        self.opts['symbolPen'] = pg.mkPen(plotStyle.markerPen)
+        self.opts['symbolBrush'] = pg.mkBrush(plotStyle.markerBrush)
+        self.opts['symbolSize'] = plotStyle.markerSize
+        self.updateItems(styleUpdate=True)
 
     def onCurveMouseClickEvent(self, ev):
         self.mCurveMouseClickNativeFunc(ev)
@@ -481,7 +330,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
     def visualizationKey(self) -> VISUALIZATION_KEY:
         return self.mVisualizationKey
 
-    def visualization(self) -> ProfileVisualization:
+    def visualization(self) -> ProfileVisualizationGroup:
         return self.mVisualizationKey[0]
 
     def closestDataPoint(self, pos) -> typing.Tuple[int, float, float, float]:
@@ -645,8 +494,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         modifiers = QApplication.keyboardModifiers()
 
         pdi: SpectralProfilePlotDataItem = data.pdi
-        vis, dataKey = pdi.visualizationKey()
-        fid, fieldIndex, model, xUnit = dataKey
+        vis, fid, fieldIndex, xUnit = pdi.visualizationKey()
         name = pdi.name()
         if not isinstance(name, str):
             name = ''
@@ -688,6 +536,29 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     def setShowCrosshair(self, b: bool):
         assert isinstance(b, bool)
         self.mShowCrosshair = b
+
+    def setForegroundColor(self, color: QColor):
+        c = QColor(color)
+
+        # set Foreground color
+        for axis in self.plotItem.axes.values():
+            ai: pg.AxisItem = axis['item']
+            if isinstance(ai, pg.AxisItem):
+                ai.setPen(c)
+                ai.setTextPen(c)
+                ai.label.setDefaultTextColor(c)
+
+    def setCrosshairColor(self, color: QColor):
+
+        self.mCrosshairLineH.pen.setColor(QColor(color))
+        self.mCrosshairLineV.pen.setColor(QColor(color))
+
+    def setSelectionColor(self, color: QColor):
+        self.mInfoScatterPoints.opts['pen'].setColor(QColor(color))
+        self.mInfoScatterPoints.opts['brush'].setColor(QColor(color))
+
+    def setInfoColor(self, color: QColor):
+        self.mInfoLabelCursor.setColor(QColor(color))
 
     def setShowCursorInfo(self, b: bool):
         assert isinstance(b, bool)
@@ -744,8 +615,8 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         return [item for item in self.plotItem.listDataItems()
                 if isinstance(item, SpectralProfilePlotDataItem)]
 
-    def setWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
-
+    def setWidgetStyle(self, style: PlotWidgetStyle):
+        warnings.warn(DeprecationWarning(), stacklevel=2)
         self.mInfoLabelCursor.setColor(style.textColor)
         self.mInfoScatterPoints.opts['pen'].setColor(QColor(style.selectionColor))
         self.mInfoScatterPoints.opts['brush'].setColor(QColor(style.selectionColor))

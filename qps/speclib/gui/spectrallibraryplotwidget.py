@@ -3,7 +3,7 @@ import re
 import typing
 
 import numpy as np
-from PyQt5.QtGui import QPen
+from PyQt5.QtGui import QPen, QBrush, QPixmap
 
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
@@ -24,10 +24,10 @@ from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
 
-from .spectrallibraryplotitems import SpectralLibraryPlotWidgetStyle, FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
+from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
     VISUALIZATION_KEY, SpectralProfilePlotDataItem, SpectralProfilePlotWidget
-from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, LayerBandVisualization, \
-    ProfileVisualization, PlotStyleItem, ProfileCandidates, PropertyItemBase
+from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
+    ProfileVisualizationGroup, PlotStyleItem, ProfileCandidateGroup, PropertyItemBase, ProfileCandidateItem, GeneralSettingsGroup
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
@@ -36,7 +36,7 @@ from ...externals.htmlwidgets import HTMLStyle
 
 from ...pyqtgraph import pyqtgraph as pg
 from ...models import SettingsModel, SettingsTreeView
-from ...plotstyling.plotstyling import PlotStyle
+from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
 from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, nextColor, qgsField, \
     SelectMapLayerDialog
@@ -177,7 +177,7 @@ MAX_PDIS_DEFAULT: int = 256
 
 
 class SpectralLibraryPlotWidgetStyleWidget(QWidget):
-    sigStyleChanged = pyqtSignal(SpectralLibraryPlotWidgetStyle)
+    sigStyleChanged = pyqtSignal(PlotWidgetStyle)
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -203,23 +203,23 @@ class SpectralLibraryPlotWidgetStyleWidget(QWidget):
         self.btnColorSchemeBright.setDefaultAction(self.actionActivateBrightTheme)
         self.btnColorSchemeDark.setDefaultAction(self.actionActivateDarkTheme)
         self.actionActivateBrightTheme.triggered.connect(
-            lambda: self.setProfileWidgetTheme(SpectralLibraryPlotWidgetStyle.bright()))
+            lambda: self.setProfileWidgetTheme(PlotWidgetStyle.bright()))
         self.actionActivateDarkTheme.triggered.connect(
-            lambda: self.setProfileWidgetTheme(SpectralLibraryPlotWidgetStyle.dark()))
-        self.mResetStyle: SpectralLibraryPlotWidgetStyle = None
-        self.mLastStyle: SpectralLibraryPlotWidgetStyle = None
+            lambda: self.setProfileWidgetTheme(PlotWidgetStyle.dark()))
+        self.mResetStyle: PlotWidgetStyle = None
+        self.mLastStyle: PlotWidgetStyle = None
 
-    def setResetStyle(self, style: SpectralLibraryPlotWidgetStyle):
+    def setResetStyle(self, style: PlotWidgetStyle):
         self.mResetStyle = style
 
-    def getResetStyle(self) -> SpectralLibraryPlotWidgetStyle:
+    def getResetStyle(self) -> PlotWidgetStyle:
         return self.mResetStyle
 
     def resetStyle(self, *args):
-        if isinstance(self.mResetStyle, SpectralLibraryPlotWidgetStyle):
+        if isinstance(self.mResetStyle, PlotWidgetStyle):
             self.setProfileWidgetStyle(self.mResetStyle)
 
-    def setProfileWidgetTheme(self, style: SpectralLibraryPlotWidgetStyle):
+    def setProfileWidgetTheme(self, style: PlotWidgetStyle):
 
         newstyle = self.spectralProfileWidgetStyle()
 
@@ -233,8 +233,8 @@ class SpectralLibraryPlotWidgetStyleWidget(QWidget):
 
         self.setProfileWidgetStyle(newstyle)
 
-    def setProfileWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
-        assert isinstance(style, SpectralLibraryPlotWidgetStyle)
+    def setProfileWidgetStyle(self, style: PlotWidgetStyle):
+        assert isinstance(style, PlotWidgetStyle)
 
         if self.mResetStyle is None:
             self.mResetStyle = style.clone()
@@ -259,17 +259,17 @@ class SpectralLibraryPlotWidgetStyleWidget(QWidget):
 
     def onStyleChanged(self, *args):
         if not self.mBlocked:
-            self.btnReset.setEnabled(isinstance(self.mResetStyle, SpectralLibraryPlotWidgetStyle)
+            self.btnReset.setEnabled(isinstance(self.mResetStyle, PlotWidgetStyle)
                                      and self.spectralProfileWidgetStyle() != self.mResetStyle)
             self.sigStyleChanged.emit(self.spectralProfileWidgetStyle())
 
-    def spectralProfileWidgetStyle(self) -> SpectralLibraryPlotWidgetStyle:
-        if isinstance(self.mLastStyle, SpectralLibraryPlotWidgetStyle):
+    def spectralProfileWidgetStyle(self) -> PlotWidgetStyle:
+        if isinstance(self.mLastStyle, PlotWidgetStyle):
             cs = self.mLastStyle.clone()
         else:
-            cs = SpectralLibraryPlotWidgetStyle()
-        cs: SpectralLibraryPlotWidgetStyle
-        assert isinstance(cs, SpectralLibraryPlotWidgetStyle)
+            cs = PlotWidgetStyle()
+        cs: PlotWidgetStyle
+        assert isinstance(cs, PlotWidgetStyle)
 
         cs.backgroundColor = self.btnColorBackground.color()
         cs.foregroundColor = self.btnColorForeground.color()
@@ -281,25 +281,25 @@ class SpectralLibraryPlotWidgetStyleWidget(QWidget):
 
 
 class SpectralProfileWidgetStyleAction(QWidgetAction):
-    sigProfileWidgetStyleChanged = pyqtSignal(SpectralLibraryPlotWidgetStyle)
-    sigResetStyleChanged = pyqtSignal(SpectralLibraryPlotWidgetStyle)
+    sigProfileWidgetStyleChanged = pyqtSignal(PlotWidgetStyle)
+    sigResetStyleChanged = pyqtSignal(PlotWidgetStyle)
 
     def __init__(self, parent, **kwds):
         super().__init__(parent)
-        self.mStyle: SpectralLibraryPlotWidgetStyle = SpectralLibraryPlotWidgetStyle.default()
-        self.mResetStyle: SpectralLibraryPlotWidgetStyle = self.mStyle
+        self.mStyle: PlotWidgetStyle = PlotWidgetStyle.default()
+        self.mResetStyle: PlotWidgetStyle = self.mStyle
 
-    def setResetStyle(self, style: SpectralLibraryPlotWidgetStyle):
+    def setResetStyle(self, style: PlotWidgetStyle):
         self.mResetStyle = style
         self.sigResetStyleChanged.emit(self.mResetStyle)
 
-    def setProfileWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
+    def setProfileWidgetStyle(self, style: PlotWidgetStyle):
         if self.mStyle != style:
             # print(self.mStyle.printDifferences(style))
             self.mStyle = style
             self.sigProfileWidgetStyleChanged.emit(style)
 
-    def profileWidgetStyle(self) -> SpectralLibraryPlotWidgetStyle:
+    def profileWidgetStyle(self) -> PlotWidgetStyle:
         return self.mStyle
 
     def createWidget(self, parent: QWidget) -> SpectralLibraryPlotWidgetStyleWidget:
@@ -332,6 +332,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     sigProgressChanged = pyqtSignal(float)
     sigPlotWidgetStyleChanged = pyqtSignal()
+    NOT_INITIALIZED = -1
 
     def __init__(self, *args, **kwds):
 
@@ -389,10 +390,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mMaxProfiles: int = 200
         self.mShowSelectedFeaturesOnly: bool = False
 
-        self.mPlotWidgetStyle: SpectralLibraryPlotWidgetStyle = SpectralLibraryPlotWidgetStyle.dark()
 
-        self.mProfileCandidates = ProfileCandidates()
-        self.insertPropertyGroup(0, self.mProfileCandidates)
+
+        self.mGeneralSettings = GeneralSettingsGroup()
+
+        self.mProfileCandidates = ProfileCandidateGroup()
+        self.insertPropertyGroup(0, self.mGeneralSettings)
+        self.insertPropertyGroup(1, self.mProfileCandidates)
 
         # self.mTemporaryProfileIDs: typing.Set[FEATURE_ID] = set()
         # self.mTemporaryProfileColors: typing.Dict[ATTRIBUTE_ID, QColor] = dict()
@@ -444,24 +448,63 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def project(self) -> QgsProject:
         return self.mProject
 
-    def setPlotWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
-        self.mPlotWidgetStyle = style
-        if self.rowCount() > 0:
-            # set background color to each single plotstyle
-            for vis in self.visualizations():
-                vis.plotStyle().setBackgroundColor(style.backgroundColor)
+    def rawData(self, feature: QgsFeature, fieldIndex: int) -> dict:
+        """
+        Returns the raw data struct of a deserialized spectral profile
+        """
+        # NA = not initialized
+        # None = not available
+        if not feature.isValid():
+            return None
+        NI = SpectralProfilePlotModel.NOT_INITIALIZED
 
-            # update plot backgrounds
-            self.dataChanged.emit(
-                self.index(0, 0),
-                self.index(self.rowCount() - 1, 0)
-            )
-        if self.mPlotWidget:
-            self.mPlotWidget.setWidgetStyle(style)
-        self.sigPlotWidgetStyleChanged.emit()
+        id_attribute = (feature.id(), fieldIndex)
+        rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, NI)
 
-    def plotWidgetStyle(self) -> SpectralLibraryPlotWidgetStyle:
-        return self.mPlotWidgetStyle
+        fieldIndex = id_attribute[1]
+        if rawData == NI:
+            # load profile data
+            byteArray: QByteArray = feature.attribute(fieldIndex)
+            rawData = None
+            if isinstance(byteArray, QByteArray):
+                rawData = decodeProfileValueDict(byteArray)
+                if rawData['y'] is None:
+                    # empty profile, nothing to plot
+                    # create empty entries (=None)
+                    rawData = None
+                elif rawData['x'] is None:
+                    rawData['x'] = list(range(len(rawData['y'])))
+                    rawData['xUnit'] = BAND_INDEX
+            self.mCACHE_PROFILE_DATA[id_attribute] = rawData
+        return self.mCACHE_PROFILE_DATA[id_attribute]
+
+    def plotData(self, feature: QgsFeature, fieldIndex: int, xUnit: str) -> typing.Tuple[dict, bool]:
+        """
+        Returns the data struct of a deserialized spectral profile, converted to xUnit
+        """
+        if not feature.isValid():
+            return None
+        NI = SpectralProfilePlotModel.NOT_INITIALIZED
+        # NA = not initialized
+        # None = not available
+        id_plot_data = (feature.id(), fieldIndex, xUnit)
+        id_raw_data = (feature.id(), fieldIndex)
+        plotData = self.mCACHE_PROFILE_DATA.get(id_plot_data, NI)
+        if plotData == NI:
+            rawData = self.rawData(feature, fieldIndex)
+
+            if rawData is None:
+                # cannot load raw data
+                self.mCACHE_PROFILE_DATA[id_plot_data] = None
+            else:
+                # convert profile data to xUnit
+                # if not possible, entry will be set to None
+                self.mCACHE_PROFILE_DATA[id_plot_data] = self.modelDataToXUnitPlotData(rawData, xUnit)
+
+        return self.mCACHE_PROFILE_DATA.get(id_plot_data, None)
+
+    def plotWidget(self) -> SpectralProfilePlotWidget:
+        return self.mPlotWidget
 
     sigShowSelectedFeaturesOnlyChanged = pyqtSignal(bool)
 
@@ -501,6 +544,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mPlotWidget.xAxis().setUnit(self.xUnit())  # required to set x unit in plot widget
         self.mXUnitInitialized = False
 
+        self.mGeneralSettings.initWithPlotModel(self)
+
+        self.mGeneralSettings.mPLegend.applySettings()
+
     sigMaxProfilesChanged = pyqtSignal(int)
 
     def setMaxProfiles(self, n: int):
@@ -524,7 +571,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def __len__(self) -> int:
         return len(self.visualizations())
 
-    def __iter__(self) -> typing.Iterator[ProfileVisualization]:
+    def __iter__(self) -> typing.Iterator[ProfileVisualizationGroup]:
         return iter(self.visualizations())
 
     def profileFieldsModel(self) -> QgsFieldModel:
@@ -538,12 +585,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 groups.append(grp)
         return groups
 
-    def layerRendererVisualizations(self) -> typing.List[LayerBandVisualization]:
-        return [v for v in self.propertyGroups() if isinstance(v, LayerBandVisualization)]
+    def layerRendererVisualizations(self) -> typing.List[RasterRendererGroup]:
+        return [v for v in self.propertyGroups() if isinstance(v, RasterRendererGroup)]
 
-    def visualizations(self) -> typing.List[ProfileVisualization]:
+    def visualizations(self) -> typing.List[ProfileVisualizationGroup]:
 
-        return [v for v in self.propertyGroups() if isinstance(v, ProfileVisualization)]
+        return [v for v in self.propertyGroups() if isinstance(v, ProfileVisualizationGroup)]
 
     def insertPropertyGroup(self,
                             index: typing.Union[int, QModelIndex],
@@ -574,25 +621,24 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             self.mModelItems.add(item)
             self.insertRow(_index, item)
-            item.initWithProfilePlotModel(self)
+            item.initWithPlotModel(self)
 
         self.updatePlot()
 
     def onRemovalRequest(self):
-            sender = self.sender()
-            s = ""
+        sender = self.sender()
+        s = ""
 
-    def removeVisualizations(self, vis: typing.Union[PropertyItemGroup,
-                                                     typing.List[PropertyItemGroup]]):
+    def removePropertyItemGroups(self, groups: typing.Union[PropertyItemGroup,
+                                                            typing.List[PropertyItemGroup]]):
 
-        if isinstance(vis, PropertyItemGroup):
-            vis = [vis]
+        if isinstance(groups, PropertyItemGroup):
+            groups = [groups]
 
-        if len(vis) > 0:
-            for v in vis:
-                if not isinstance(v, PropertyItemGroup):
-                    s = ""
-                assert isinstance(v, PropertyItemGroup)
+        if len(groups) > 0:
+            for v in groups:
+                if not (isinstance(v, PropertyItemGroup) and v.isRemovable()):
+                    continue
                 assert v in self.mModelItems
 
                 for r in range(self.rowCount()):
@@ -609,7 +655,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget) and isinstance(self.speclib(), QgsVectorLayer)):
             return
 
-        feature_priority = self.featurePriority()
+        xunit = self.xUnit()
+
+        # Recycle plot items
+        old_spdis: typing.List[SpectralProfilePlotDataItem] = self.mPlotWidget.spectralProfilePlotDataItems()
+
+        CANDIDATES = self.profileCandidates()
 
         if self.mShowSelectedFeaturesOnly:
             selected_fids = set()
@@ -617,41 +668,17 @@ class SpectralProfilePlotModel(QStandardItemModel):
         else:
             selected_fids = self.speclib().selectedFeatureIds()
 
-        # temporal_fids = self.mTemporaryProfileIDs
-        temporal_items = self.profileCandidates().candidateKeys()
-        temporal_fids = set([item[0] for item in temporal_items])
+        feature_priority = self.featurePriority()
 
-        visualizations = [v for v in self.visualizations() if
-                          v.isVisible() and v.isComplete() and v.speclib() == self.mSpeclib]
+        visualizations = []
+        for v in self.visualizations():
+            v.mPlotDataItems.clear()
+            if v.isVisible() and v.isComplete() and v.speclib() == self.speclib():
+                visualizations.append(v)
 
-        xunit = self.xUnit()
+        pdiGenerator = PDIGenerator([], onProfileClicked=self.mPlotWidget.onProfileClicked)
 
-        # Recycle plot items
-        old_spdis: typing.List[SpectralProfilePlotDataItem] = self.mPlotWidget.spectralProfilePlotDataItems()
-        new_spdis: typing.List[SpectralProfilePlotDataItem] = []
-
-        pdiGenerator = PDIGenerator(old_spdis, onProfileClicked=self.mPlotWidget.onProfileClicked)
-
-        # init renderers
-        VIS_RENDERERS: typing.Dict[ProfileVisualization,
-                                   typing.Tuple[QgsFeatureRenderer, QgsRenderContext]] = dict()
-
-        VIS_HAS_FILTER: typing.Dict[ProfileVisualization, bool] = dict()
-        for vis in visualizations:
-            vis: ProfileVisualization
-
-            renderer: QgsFeatureRenderer = self.speclib().renderer()
-            if isinstance(renderer, QgsFeatureRenderer):
-                renderer = renderer.clone()
-                renderContext = QgsRenderContext()
-                # renderer.startRender(renderContext, self.speclib().fields())
-                renderContext.setExpressionContext(self.speclib().createExpressionContext())
-
-                VIS_RENDERERS[vis] = (renderer, renderContext)
-            else:
-                VIS_RENDERERS[vis] = (None, None)
-
-            VIS_HAS_FILTER[vis] = vis.filterProperty().expressionString().strip() != ''
+        featureRenderer = self.speclib().renderer().clone()
 
         request = QgsFeatureRequest()
         request.setFilterFids(feature_priority)
@@ -659,194 +686,161 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # PROFILE_DATA: typing.Dict[tuple, dict] = dict()
 
         profile_limit_reached: bool = False
+        max_profiles = self.maxProfiles()
         context: QgsExpressionContext = self.speclib().createExpressionContext()
 
-        NOT_INITIALIZED = -1
+        PLOT_ITEMS = []
 
+        # handle profile candidates - show them first = first positions in PLOT_DATA
+        for item in CANDIDATES.candidateItems():
+            item: ProfileCandidateItem
+
+            fid = item.featureId()
+            fieldIndex = item.featureFieldIndex()
+            feature: QgsFeature = self.mVectorLayerCache.getFeature(fid)
+            context.setFeature(feature)
+            scope = item.createExpressionContextScope()
+            context.appendScope(scope)
+
+            if not isinstance(feature, QgsFeature):
+                continue
+            plot_item: SpectralProfilePlotDataItem = item.plotItem()
+            plot_data = self.plotData(feature, fieldIndex, xunit)
+            if plot_data:
+                if len(PLOT_ITEMS) >= max_profiles:
+                    break
+                plot_style = CANDIDATES.generatePlotStyle(context)
+                plot_name = CANDIDATES.generateLabel(context)
+                plot_tooltip = CANDIDATES.generateTooltip(context)
+
+                vis_key = (CANDIDATES, fid, fieldIndex, xunit)
+                plot_item.setVisualizationKey(vis_key)
+
+                plot_item.setProfileData(plot_data, plot_style,
+                                         label=plot_name,
+                                         tooltip=plot_tooltip,
+                                         zValue=-1 * len(PLOT_ITEMS))
+
+                if context.lastScope() == scope:
+                    context.popScope()
+                PLOT_ITEMS.append(plot_item)
+
+        temporaryFIDs = CANDIDATES.candidateFeatureIds()
+        feature_priority = [fid for fid in feature_priority if fid not in temporaryFIDs]
+        # handle other profile visualizations
         for fid in feature_priority:
+            if len(PLOT_ITEMS) >= max_profiles:
+                break
             # self.mVectorLayerCache.getFeatures(feature_priority):
             feature: QgsFeature = self.mVectorLayerCache.getFeature(fid)
             assert fid == feature.id()
             # fid = feature.id()
-            if profile_limit_reached:
-                break
 
             context.setFeature(feature)
 
+            renderContext = QgsRenderContext()
+            renderContext.setExpressionContext(context)
+            featureRenderer.startRender(renderContext, feature.fields())
+            qgssymbol = featureRenderer.symbolForFeature(feature, renderContext)
+            symbolScope = None
+            if isinstance(qgssymbol, QgsSymbol):
+                symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
+                context.appendScope(symbolScope)
+
             for vis in visualizations:
+                if len(PLOT_ITEMS) >= max_profiles:
+                    break
+                vis: ProfileVisualizationGroup
+                fieldIndex = vis.fieldIdx()
 
-                vis: ProfileVisualization
-                id_plot_data = (fid, vis.fieldIdx(), xunit)
-                id_attribute = (fid, vis.fieldIdx())
-                id_attributeN = (fid, vis.field().name())
                 # context.appendScope(vis.createExpressionContextScope())
+                context.lastScope().setVariable('field_name', vis.fieldName())
+                context.lastScope().setVariable('field_index', fieldIndex)
+                context.lastScope().setVariable('visualization_name', vis.name())
 
-                if not (fid in selected_fids or fid in temporal_fids) and VIS_HAS_FILTER[vis]:
+                if fid not in selected_fids and vis.filterProperty().expressionString() != '':
                     b, success = vis.filterProperty().valueAsBool(context, defaultValue=False)
-                    if not b:
-                        # feature does not match with visualization filter
+                    if b is False:
                         continue
+                plot_data: dict = self.plotData(feature, vis.fieldIdx(), xunit)
 
-                # mCACHE_PROFILE_DATA keys:
-                #   None -> no binary data / cannot be decoded
-                # (fid, field index) = dict -> raw value dict, decoded as is
-                # (fid, field index, '<x unit>') = dict -> converted to x unit
-
-                plotData = self.mCACHE_PROFILE_DATA.get(id_plot_data, NOT_INITIALIZED)
-                if plotData == NOT_INITIALIZED:
-
-                    rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, NOT_INITIALIZED)
-                    if rawData == NOT_INITIALIZED:
-                        # load profile data
-                        byteArray: QByteArray = feature.attribute(vis.fieldIdx())
-                        rawData = None
-                        if isinstance(byteArray, QByteArray):
-                            rawData = decodeProfileValueDict(byteArray)
-                            if rawData['y'] is None:
-                                # empty profile, nothing to plot
-                                # create empty entries (=None)
-                                rawData = None
-                            elif rawData['x'] is None:
-                                rawData['x'] = list(range(len(rawData['y'])))
-                                rawData['xUnit'] = BAND_INDEX
-                        self.mCACHE_PROFILE_DATA[id_attribute] = rawData
-
-                    if rawData is None:
-                        # cannot load raw data
-                        self.mCACHE_PROFILE_DATA[id_plot_data] = None
-                        continue
-
-                    if not isinstance(rawData, dict):
-                        s = ""
-                    assert isinstance(rawData, dict)
-                    if self.mXUnitInitialized is False and self.mXUnitModel.findUnit(rawData['xUnit']):
-                        self.mXUnitInitialized = True
-                        self.setXUnit(rawData['xUnit'])
-                        # this will call updatePlot again, so we can return afterwards
-                        return
-
-                    # convert profile data to xUnit
-                    # if not possible, entry will be set to None
-                    self.mCACHE_PROFILE_DATA[id_plot_data] = self.modelDataToXUnitPlotData(rawData, xunit)
-                    plotData = self.mCACHE_PROFILE_DATA[id_plot_data]
-
-                if not isinstance(plotData, dict):
+                if not isinstance(plot_data, dict):
                     # profile data can not be transformed to requested x-unit
                     continue
 
-                label, success = vis.labelProperty().valueAsString(context, defaultString='')
-
-                style: PlotStyle = vis.plotStyle()
-
-                linePen = pg.mkPen(style.linePen)
-                symbolPen = pg.mkPen(style.markerPen)
-                symbolBrush = pg.mkBrush(style.markerBrush)
-
-                # featureColor: QColor = vis.plotStyle().lineColor()
-
-                if fid in selected_fids:
-
-                    # show all profiles, special highlight of selected
-
-                    linePen.setColor(self.mPlotWidgetStyle.selectionColor)
-                    linePen.setWidth(style.lineWidth() + 2)
-                    symbolPen.setColor(self.mPlotWidgetStyle.selectionColor)
-                    symbolBrush.setColor(self.mPlotWidgetStyle.selectionColor)
-
-                elif fid in temporal_fids:
-                    # special style
-                    style = self.mProfileCandidates.candidateStyle(*id_attributeN)
-                    linePen = pg.mkPen(style.linePen)
-                    symbolPen = pg.mkPen(style.markerPen)
-                    symbolBrush = pg.mkBrush(style.markerBrush)
-                    # linePen.setWidth(style.lineWidth() + 2)
-
-                else:
-                    qgssymbol = None
-                    renderer, renderContext = VIS_RENDERERS[vis]
-
-                    if isinstance(renderer, QgsFeatureRenderer):
-                        renderContext.expressionContext().setFeature(feature)
-                        renderer.startRender(renderContext, feature.fields())
-                        qgssymbol = renderer.symbolForFeature(feature, renderContext)
-
-                        if isinstance(qgssymbol, QgsSymbol):
-                            symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
-                            context.appendScope(symbolScope)
-
-                    prop = vis.colorProperty()
-                    featureColor, success = prop.valueAsColor(context, defaultColor=style.linePen.color())
-
-                    if isinstance(renderer, QgsFeatureRenderer):
-                        renderer.stopRender(renderContext)
-
-                    if isinstance(qgssymbol, QgsSymbol):
-                        context.popScope()
-                        pass
-                    if not success:
-                        # no color, no profile, e.g. if profile
-                        continue
-                    linePen.setColor(featureColor)
-                    symbolPen.setColor(featureColor)
-                    symbolBrush.setColor(featureColor)
-
-                if len(new_spdis) == self.maxProfiles():
-                    profile_limit_reached = True
-                    break
-
-                symbol = style.markerSymbol
-                symbolSize = style.markerSize
-
-                x = plotData['x']
-                y = plotData['y']
-                if isinstance(x[0], (datetime.date, datetime.datetime)):
-                    x = np.asarray(x, dtype=np.datetime64)
-
+                plot_style: PlotStyle = vis.generatePlotStyle(context)
+                plot_label: str = vis.generateLabel(context)
+                plot_tooltip: str = vis.generateTooltip(context)
                 pdi = pdiGenerator.__next__()
                 pdi: SpectralProfilePlotDataItem
+                vis_key = (vis, fid, fieldIndex, xunit)
+                pdi.setVisualizationKey(vis_key)
+                pdi.setProfileData(plot_data, plot_style,
+                                   label=plot_label,
+                                   tooltip=plot_tooltip,
+                                   zValue=-1 * len(PLOT_ITEMS))
 
-                zValue = pdiGenerator.zValue()
+                vis.mPlotDataItems.append(pdi)
+                PLOT_ITEMS.append(pdi)
 
-                k = (vis, (fid, vis.fieldIdx(), '', xunit))
-                pdi.setVisualizationKey(k)
-                assert isinstance(pdi, SpectralProfilePlotDataItem)
+            featureRenderer.stopRender(renderContext)
 
-                # replace None by NaN
-                x = np.asarray(x, dtype=float)
-                y = np.asarray(y, dtype=float)
-                connect = np.isfinite(x) & np.isfinite(y)
-                pdi.setData(x=x, y=y, z=-1 * zValue,
-                            connect=connect,
-                            name=label, pen=linePen,
-                            symbol=symbol, symbolPen=symbolPen, symbolBrush=symbolBrush, symbolSize=symbolSize)
+            if context.lastScope() == symbolScope:
+                context.popScope()
 
-                tooltip = f'<html><body><table>' \
-                          f'<tr><td>Label</td><td>{label}</td></tr>' \
-                          f'<tr><td>FID</td><td>{fid}</td></tr>' \
-                          f'<tr><td>Field</td><td>{vis.field().name()}</td></tr>' \
-                          f'</table></body></html>'
+        # selectionColor = QColor(self.mPlotWidgetStyle.selectionColor)
+        selectionColor = self.mGeneralSettings.selectionColor()
+        for pdi in PLOT_ITEMS:
+            pdi: SpectralProfilePlotDataItem
+            fid = pdi.visualizationKey()[1]
+            if fid in selected_fids:
+                # show all profiles, special highlight of selected
+                """
+                pen=linePen,
+                symbol=symbol,
+                symbolPen=symbolPen,
+                symbolBrush=symbolBrush,
+                symbolSize=symbolSize)
+                """
+                pen: QPen = pdi.opts['pen']
+                symbolPen: QPen = pdi.opts['symbolPen']
+                symbolBrush: QBrush = pdi.opts['symbolBrush']
 
-                pdi.setToolTip(tooltip)
-                pdi.curve.setToolTip(tooltip)
-                pdi.scatter.setToolTip(tooltip)
-                pdi.setZValue(-1 * zValue)
+                pen.setColor(selectionColor)
+                symbolPen.setColor(selectionColor)
+                symbolBrush.setColor(selectionColor)
+                pdi.updateItems(styleUpdate=True)
+                # pdi.updateItems()
+                # pdi.setData(pen=pen, symbolPen=symbolPen, symbolBrush=symbolBrush)
+                s = ""
 
-                new_spdis.append(pdi)
+        # check if x unit was different to this one
+        if not self.mXUnitInitialized and len(PLOT_ITEMS) > 0:
+            vis_key = PLOT_ITEMS[0].visualizationKey()
+            id_attribute = (vis_key[1], vis_key[2])
+            rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, None)
+            if rawData:
+                xunit2 = self.mXUnitModel.findUnit(rawData['xUnit'])
+                if xunit2 != xunit:
+                    self.mXUnitInitialized = True
+                    self.setXUnit(rawData['xUnit'])
+                    # this will call updatePlot again, so we can return afterwards
+                    return
 
-        s = ""
-
-        to_remove = [p for p in old_spdis if p not in new_spdis]
+        to_remove = [p for p in old_spdis if p not in PLOT_ITEMS]
         for p in to_remove:
             self.mPlotWidget.removeItem(p)
 
         existing = self.mPlotWidget.items()
-        for p in new_spdis:
+        for p in PLOT_ITEMS:
             if p not in existing:
                 self.mPlotWidget.addItem(p)
+        n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
+        if n_total == 0 and len(CANDIDATES.candidateFeatureIds()) > 0:
+            s = ""
+        self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
-        self.updateProfileLabel(len(new_spdis), profile_limit_reached)
-
-        debugLog(f'updatePlot: {datetime.datetime.now() - t0} {len(new_spdis)} plot data items')
+        debugLog(f'updatePlot: {datetime.datetime.now() - t0} {len(PLOT_ITEMS)} new, {n_total} total')
 
     def updateProfileLabel(self, n: int, limit_reached: bool):
 
@@ -867,7 +861,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def supportedDropActions(self) -> Qt.DropActions:
         return Qt.CopyAction | Qt.MoveAction
 
-    def profileCandidates(self) -> ProfileCandidates:
+    def profileCandidates(self) -> ProfileCandidateGroup:
         return self.mProfileCandidates
 
     def canDropMimeData(self, data: QMimeData, action: Qt.DropAction, row: int, column: int,
@@ -983,6 +977,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
         toVisualize = [fid for fid in toVisualize if fid in EXISTING_IDs]
         return toVisualize
 
+    def generalSettings(self)-> GeneralSettingsGroup:
+        return self.mGeneralSettings
+
     def dualView(self) -> QgsDualView:
         return self.mDualView
 
@@ -1075,10 +1072,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         # rename fids in plot data items
         for pdi in self.mPlotWidget.spectralProfilePlotDataItems():
-            visKey: VISUALIZATION_KEY = pdi.visualizationKey()
-            old_fid = visKey[1][0]
+            grp, old_fid, fieldIndex, xunit = pdi.visualizationKey()
+
             if old_fid in oldFIDs:
-                new_vis_key = (visKey[0], (OLD2NEW[old_fid], visKey[1][1], visKey[1][2], visKey[1][3]))
+                new_vis_key = (grp, OLD2NEW[old_fid], fieldIndex, xunit)
                 pdi.setVisualizationKey(new_vis_key)
 
         # rename fids for temporary profiles
@@ -1159,9 +1156,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
         pdi: SpectralProfilePlotDataItem
         assert isinstance(pdi, SpectralProfilePlotDataItem)
         if isinstance(self.speclib(), QgsVectorLayer):
-            vis, dataKey = pdi.visualizationKey()
-            fid, field, modelName, xUnit = dataKey
-            vis: ProfileVisualization
+            vis, fid, field, xUnit = pdi.visualizationKey()
+
+            vis: ProfileVisualizationGroup
             speclib = vis.speclib()
 
             if isinstance(speclib, QgsVectorLayer):
@@ -1239,8 +1236,13 @@ class SpectralProfilePlotView(QTreeView):
     def controlTable(self) -> SpectralProfilePlotModel:
         return self.model()
 
-    def selectVisualizations(self, visualizations):
-        if isinstance(visualizations, ProfileVisualization):
+    def selectedPropertyGroups(self) -> typing.List[PropertyItemGroup]:
+        return [idx.data(Qt.UserRole)
+                for idx in self.selectionModel().selectedIndexes()
+                if isinstance(idx.data(Qt.UserRole), PropertyItemGroup)]
+
+    def selectPropertyGroups(self, visualizations):
+        if isinstance(visualizations, ProfileVisualizationGroup):
             visualizations = [visualizations]
 
         model = self.model()
@@ -1248,7 +1250,7 @@ class SpectralProfilePlotView(QTreeView):
         for r in range(model.rowCount()):
             idx = model.index(r, 0)
             vis = model.data(idx, Qt.UserRole)
-            if isinstance(vis, ProfileVisualization) and vis in visualizations:
+            if isinstance(vis, ProfileVisualizationGroup) and vis in visualizations:
                 self.selectionModel().select(idx, QItemSelectionModel.Rows)
 
     def setModel(self, model: typing.Optional[QAbstractItemModel]) -> None:
@@ -1279,44 +1281,52 @@ class SpectralProfilePlotView(QTreeView):
         """
 
         menu: QMenu = QMenu()
-        idx = self.currentIndex()
+        selected_indices = self.selectedIndexes()
+        if len(selected_indices) == 1:
+            item = self.selectedIndexes()[0].data(Qt.UserRole)
+            if isinstance(item, PropertyItemBase):
+                item.populateContextMenu(menu)
 
-        selected_items = []
-        for idx in self.selectedIndexes():
-            v = self.idx2vis(idx)
-            if isinstance(v, PropertyItemGroup) and v not in selected_items:
-                selected_items.append(v)
+        elif len(selected_indices) > 0:
+            selected_items = []
+            for idx in selected_indices:
+                item = idx.data(Qt.UserRole)
+                if isinstance(item, PropertyItemGroup) and item not in selected_items:
+                    selected_items.append(item)
 
-        selected_vis = [item for item in selected_items if isinstance(item, ProfileVisualization)]
+            removable = [item for item in selected_items if item.isRemovable()]
+            copyAble = [item for item in selected_items if item.isDragEnabled()]
 
-        a = menu.addAction('Remove Selected')
-        a.setIcon(QIcon(r':/images/themes/default/mActionDeleteSelected.svg'))
-        a.triggered.connect(lambda *args, v=selected_items: self.removeModelItems(v))
-        a.setEnabled(len(selected_items) > 0)
+            profileVis = [item for item in selected_items if isinstance(item, ProfileVisualizationGroup)]
 
-        b = len(selected_items) > 0
-        a = menu.addAction('Copy visualization')
-        a.setIcon(QIcon(r':/images/themes/default/mActionEditCopy.svg'))
-        a.triggered.connect(lambda *args, v=selected_items: self.copyVis(v))
-        a.setEnabled(b)
+            a = menu.addAction('Remove')
+            a.setIcon(QIcon(r':/images/themes/default/mActionDeleteSelected.svg'))
+            a.triggered.connect(lambda *args, v=removable: self.removeItems(v))
+            a.setEnabled(len(removable) > 0)
 
-        a = menu.addAction('Paste visualization')
-        a.setIcon(QIcon(r':/images/themes/default/mActionEditPaste.svg'))
-        a.setEnabled(QApplication.clipboard().mimeData().hasFormat(ProfileVisualization.MIME_TYPE))
-        a.triggered.connect(lambda *args: self.pasteVis())
-        a.setEnabled(
-            QApplication.clipboard().mimeData().hasFormat(ProfileVisualization.MIME_TYPE)
-        )
+            a = menu.addAction('Copy')
+            a.setIcon(QIcon(r':/images/themes/default/mActionEditCopy.svg'))
+            a.triggered.connect(lambda *args, v=copyAble: self.copyItems(v))
+            a.setEnabled(len(copyAble) > 0)
 
-        a = menu.addAction('Use vector symbol colors')
-        a.setToolTip('Use map vector symbol colors as profile color.')
-        a.setIcon(QIcon(r':/qps/ui/icons/speclib_usevectorrenderer.svg'))
-        a.triggered.connect(lambda *args, v=selected_items: self.userColorsFromSymbolRenderer(v))
+            a = menu.addAction('Paste')
+            a.setIcon(QIcon(r':/images/themes/default/mActionEditPaste.svg'))
+            a.setEnabled(QApplication.clipboard().mimeData().hasFormat(ProfileVisualizationGroup.MIME_TYPE))
+            a.triggered.connect(lambda *args: self.pasteItems())
+            a.setEnabled(
+                QApplication.clipboard().mimeData().hasFormat(ProfileVisualizationGroup.MIME_TYPE)
+            )
+
+            if len(profileVis) > 0:
+                a = menu.addAction('Use vector symbol colors')
+                a.setToolTip('Use map vector symbol colors as profile color.')
+                a.setIcon(QIcon(r':/qps/ui/icons/speclib_usevectorrenderer.svg'))
+                a.triggered.connect(lambda *args, v=profileVis: self.userColorsFromSymbolRenderer(v))
 
         if not menu.isEmpty():
             menu.exec_(self.viewport().mapToGlobal(event.pos()))
 
-    def removeModelItems(self, vis: typing.List[PropertyItemGroup]):
+    def removeItems(self, vis: typing.List[PropertyItemGroup]):
 
         model = self.model()
 
@@ -1324,9 +1334,9 @@ class SpectralProfilePlotView(QTreeView):
             model = model.sourceModel()
 
         if isinstance(model, SpectralProfilePlotModel):
-            model.removeVisualizations(vis)
+            model.removePropertyItemGroups(vis)
 
-    def copyVis(self, visualizations: typing.List[ProfileVisualization]):
+    def copyItems(self, visualizations: typing.List[ProfileVisualizationGroup]):
 
         indices = []
         for vis in visualizations:
@@ -1337,14 +1347,14 @@ class SpectralProfilePlotView(QTreeView):
             mimeData = self.model().mimeData(indices)
             QApplication.clipboard().setMimeData(mimeData)
 
-    def pasteVis(self):
+    def pasteItems(self):
 
         md: QMimeData = QApplication.clipboard().mimeData()
 
         idx = self.currentIndex()
         self.model().dropMimeData(md, Qt.CopyAction, idx.row(), idx.column(), idx.parent())
 
-    def vis2index(self, vis: ProfileVisualization) -> QModelIndex:
+    def vis2index(self, vis: ProfileVisualizationGroup) -> QModelIndex:
         for r in range(self.model().rowCount()):
             idx = self.model().index(r, 0)
             if self.model().data(idx, Qt.UserRole) == vis:
@@ -1362,27 +1372,15 @@ class SpectralProfilePlotView(QTreeView):
 
         return None
 
-    def userColorsFromSymbolRenderer(self, vis: typing.List[ProfileVisualization]):
-
+    def userColorsFromSymbolRenderer(self, vis: typing.List[ProfileVisualizationGroup]):
         for v in vis:
-            assert isinstance(v, ProfileVisualization)
-            parentIdx = self.vis2index(v)
-            if not parentIdx.isValid():
-                return
-
-            property = QgsProperty(v.colorProperty())
-            property.setExpressionString('@symbol_color')
-
-            model: QAbstractItemModel = self.model()
-            idx = model.index(SpectralProfilePlotModel.PIX_COLOR, SpectralProfilePlotModel.CIX_VALUE,
-                              parentIdx)
-            self.model().setData(idx, property, role=Qt.EditRole)
-        pass
+            if isinstance(v, ProfileVisualizationGroup):
+                v.mPColor.setToSymbolColor()
 
 
 class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
     """
-    A QStyleItemDelegate to create and manange input editors for the SpectralProfilePlotControlView
+    A QStyleItemDelegate to create and manage input editors for the SpectralProfilePlotControlView
     """
 
     def __init__(self, treeView: SpectralProfilePlotView, parent=None):
@@ -1392,49 +1390,60 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
         item: PropertyItem = index.data(Qt.UserRole)
-        bc = QColor(self.plotControl().plotWidgetStyle().backgroundColor)
-        if isinstance(item, ProfileVisualization):
-            super().paint(painter, option, index)
-            rect = option.rect
-            plot_style: PlotStyle = item.plotStyle()
-            html_style = HTMLStyle()
-            x0 = 25
-            total_h = self.mTreeView.rowHeight(index)
-            total_w = self.mTreeView.columnWidth(index.column())
-            w = self.mTreeView.columnWidth(index.column()) - 25
-            # self.initStyleOption(option, index)
+        bc = QColor(self.plotControl().generalSettings().backgroundColor())
+        total_h = self.mTreeView.rowHeight(index)
+        total_w = self.mTreeView.columnWidth(index.column())
 
-            # [25px warning icon] | 50 px style | html style text
-            # rect1, rect2, rect3
-            if total_h > 0 and total_w > 0:
-                dy = rect.height()
-                w1 = dy  # warning icon -> square
-                w2 = w1 * 2  # plot style -> rectangle
-                if not item.isComplete():
-                    rect1 = QRect(rect.x() + x0, rect.y(), w1, dy)
-                    icon = QIcon(r':/images/themes/default/mIconWarning.svg')
-                    # overpaint
-                    icon.paint(painter, rect1)
+        if isinstance(item, PropertyItemBase):
+            if item.hasPixmap():
+                super().paint(painter, option, index)
+                rect = option.rect
+                size = QSize(rect.width(), rect.height())
+                pixmap = item.previewPixmap(size)
+                if isinstance(pixmap, QPixmap):
+                    painter.drawPixmap(rect, pixmap)
+
+            elif isinstance(item, ProfileVisualizationGroup):
+                super().paint(painter, option, index)
+                rect = option.rect
+                plot_style: PlotStyle = item.mPStyle.plotStyle()
+                html_style = HTMLStyle()
+                x0 = 25
+
+                w = total_w - 25
+                # self.initStyleOption(option, index)
+
+                # [25px warning icon] | 50 px style | html style text
+                # rect1, rect2, rect3
+                if total_h > 0 and total_w > 0:
+                    dy = rect.height()
+                    w1 = dy  # warning icon -> square
+                    w2 = w1 * 2  # plot style -> rectangle
+                    if not item.isComplete():
+                        rect1 = QRect(rect.x() + x0, rect.y(), w1, dy)
+                        icon = QIcon(r':/images/themes/default/mIconWarning.svg')
+                        # overpaint
+                        icon.paint(painter, rect1)
+                    else:
+                        rect1 = QRect(rect.x() + x0, rect.y(), 0, dy)
+                        x0 += dy
+                    rect2 = QRect(rect1.x() + rect1.width(), rect.y(), w1, dy)
+                    rect3 = QRect(rect2.x() + rect2.width(), rect.y(), total_w - rect2.x() - rect2.width(), dy)
+                    # pixmap = style.createPixmap(size=QSize(w - x0, total_h), hline=True, bc=bc)
+                    pixmap = plot_style.createPixmap(size=rect2.size(), hline=True, bc=bc)
+                    painter.drawPixmap(rect2, pixmap)
+                    # rect2 = QRect(rect.x() + x0, rect.y(), rect.width() - 2*x0, rect.height())
+                    # html_style.drawItemText(painter, rect3, None, item.text(), )
+
+            elif isinstance(item, PlotStyleItem):
+                # self.initStyleOption(option, index)
+                plot_style: PlotStyle = item.plotStyle()
+
+                if total_h > 0 and total_w > 0:
+                    px = plot_style.createPixmap(size=QSize(total_w, total_h), bc=bc)
+                    painter.drawPixmap(option.rect, px)
                 else:
-                    rect1 = QRect(rect.x() + x0, rect.y(), 0, dy)
-                    x0 += dy
-                rect2 = QRect(rect1.x() + rect1.width(), rect.y(), w1, dy)
-                rect3 = QRect(rect2.x() + rect2.width(), rect.y(), total_w - rect2.x() - rect2.width(), dy)
-                # pixmap = style.createPixmap(size=QSize(w - x0, total_h), hline=True, bc=bc)
-                pixmap = plot_style.createPixmap(size=rect2.size(), hline=True, bc=bc)
-                painter.drawPixmap(rect2, pixmap)
-                # rect2 = QRect(rect.x() + x0, rect.y(), rect.width() - 2*x0, rect.height())
-                # html_style.drawItemText(painter, rect3, None, item.text(), )
-
-        elif isinstance(item, PlotStyleItem):
-            # self.initStyleOption(option, index)
-            plot_style: PlotStyle = item.plotStyle()
-
-            total_h = self.mTreeView.rowHeight(index)
-            w = self.mTreeView.columnWidth(index.column())
-            if total_h > 0 and w > 0:
-                px = plot_style.createPixmap(size=QSize(w, total_h), bc=bc)
-                painter.drawPixmap(option.rect, px)
+                    super().paint(painter, option, index)
             else:
                 super().paint(painter, option, index)
         else:
@@ -1464,7 +1473,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
             item = index.data(Qt.UserRole)
             if isinstance(item, PropertyItem):
                 editor = item.createEditor(parent)
-
+            if isinstance(item, ProfileCandidateGroup):
+                s = ""
         if isinstance(editor, QWidget):
             return editor
         else:
@@ -1579,9 +1589,6 @@ class SpectralLibraryPlotWidget(QWidget):
         self.optionXUnit.setDefaultWidget(self.optionXUnit.createUnitComboBox())
         self.optionXUnit.sigUnitChanged.connect(self.mPlotControlModel.setXUnit)
         self.mPlotControlModel.sigXUnitChanged.connect(self.optionXUnit.setUnit)
-        self.optionSpectralProfileWidgetStyle: SpectralProfileWidgetStyleAction = SpectralProfileWidgetStyleAction(None)
-        self.optionSpectralProfileWidgetStyle.setDefaultWidget(self.optionSpectralProfileWidgetStyle.createWidget(None))
-        self.optionSpectralProfileWidgetStyle.sigProfileWidgetStyleChanged.connect(self.setPlotWidgetStyle)
 
         self.visButtonLayout: QHBoxLayout
         self.visLayoutTop: QHBoxLayout
@@ -1610,31 +1617,17 @@ class SpectralLibraryPlotWidget(QWidget):
         self.btnRemoveProfileVis.setDefaultAction(self.actionRemoveProfileVis)
         self.btnSelectedFeaturesOnly.setDefaultAction(self.optionSelectedFeaturesOnly)
 
-        # set the default style
-        self.setPlotWidgetStyle(SpectralLibraryPlotWidgetStyle.dark())
 
     def setProject(self, project: QgsProject):
         self.plotWidget.setProject(project)
         self.plotControlModel().setProject(project)
 
-    def setPlotWidgetStyle(self, style: SpectralLibraryPlotWidgetStyle):
-        assert isinstance(style, SpectralLibraryPlotWidgetStyle)
-
-        self.mPlotControlModel.setPlotWidgetStyle(style)
-
-    def plotWidgetStyle(self) -> SpectralLibraryPlotWidgetStyle:
+    def plotWidgetStyle(self) -> PlotWidgetStyle:
         return self.mPlotControlModel.plotWidgetStyle()
 
     def populateProfilePlotContextMenu(self, listWrapper: SignalObjectWrapper):
         itemList: list = listWrapper.wrapped_object
         # update current renderer
-        self.optionSpectralProfileWidgetStyle.setResetStyle(self.optionSpectralProfileWidgetStyle.profileWidgetStyle())
-        m1 = QMenu('Colors')
-        m1.addAction(self.optionSpectralProfileWidgetStyle)
-
-        # m2 = QMenu('Others')
-
-        itemList.extend([m1])
 
     def plotControlModel(self) -> SpectralProfilePlotModel:
         return self.mPlotControlModel
@@ -1650,8 +1643,9 @@ class SpectralLibraryPlotWidget(QWidget):
 
     def onVisSelectionChanged(self):
 
-        rows = self.treeView.selectionModel().selectedRows()
-        self.actionRemoveProfileVis.setEnabled(len(rows) > 0)
+        # rows = self.treeView.selectionModel().selectedRows()
+        groups = [g for g in self.treeView.selectedPropertyGroups() if g.isRemovable()]
+        self.actionRemoveProfileVis.setEnabled(len(groups) > 0)
 
     def onSpeclibFieldsUpdated(self, *args):
 
@@ -1664,7 +1658,7 @@ class SpectralLibraryPlotWidget(QWidget):
             if not isinstance(vis.field(), QgsField) or vis.field().name() not in profilefields.names():
                 to_remove.append(vis)
 
-        self.mPlotControlModel.removeVisualizations(to_remove)
+        self.mPlotControlModel.removePropertyItemGroups(to_remove)
 
         for name in list(self.mINITIALIZED_VISUALIZATIONS):
             if name not in profilefields.names():
@@ -1686,9 +1680,9 @@ class SpectralLibraryPlotWidget(QWidget):
         if d.exec_() == QDialog.Accepted:
             layer = d.layer()
 
-        if isinstance(layer, QgsRasterLayer):
-            lvis = LayerBandVisualization(layer=layer)
-
+        existing_layers = [v.layer() for v in self.mPlotControlModel.layerRendererVisualizations()]
+        if isinstance(layer, QgsRasterLayer) and layer not in existing_layers:
+            lvis = RasterRendererGroup(layer=layer)
             self.mPlotControlModel.insertPropertyGroup(0, lvis)
 
     def createProfileVisualization(self, *args,
@@ -1696,7 +1690,7 @@ class SpectralLibraryPlotWidget(QWidget):
                                    field: typing.Union[QgsField, int, str] = None,
                                    color: typing.Union[str, QColor] = None,
                                    style: PlotStyle = None):
-        item = ProfileVisualization()
+        item = ProfileVisualizationGroup()
 
         # set defaults
         # set speclib
@@ -1757,7 +1751,7 @@ class SpectralLibraryPlotWidget(QWidget):
                 item.setLabelExpression('$id')
 
         if not isinstance(style, PlotStyle):
-            style = self.defaultStyle()
+            style = self.plotControlModel().generalSettings().defaultStyle()
         item.setPlotStyle(style)
 
         if color is not None:
@@ -1765,7 +1759,7 @@ class SpectralLibraryPlotWidget(QWidget):
 
         self.mPlotControlModel.insertPropertyGroup(-1, item)
 
-    def profileVisualizations(self) -> typing.List[ProfileVisualization]:
+    def profileVisualizations(self) -> typing.List[ProfileVisualizationGroup]:
         return self.mPlotControlModel.visualizations()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
@@ -1774,22 +1768,10 @@ class SpectralLibraryPlotWidget(QWidget):
     def dropEvent(self, event: QDropEvent) -> None:
         self.sigDropEvent.emit(event)
 
-    def defaultStyle(self) -> PlotStyle:
-
-        style = PlotStyle()
-        style.linePen.setStyle(Qt.SolidLine)
-        fg = self.plotControlModel().mPlotWidgetStyle.foregroundColor
-        style.setLineColor(fg)
-        style.setMarkerColor(fg)
-        style.setMarkerSymbol(None)
-        # style.markerSymbol = MarkerSymbol.No_Symbol.value
-        # style.markerPen.setColor(style.linePen.color())
-        return style
-
     def removeSelectedPropertyGroups(self, *args):
         rows = self.treeView.selectionModel().selectedRows()
         to_remove = [r.data(Qt.UserRole) for r in rows if isinstance(r.data(Qt.UserRole), PropertyItemGroup)]
-        self.mPlotControlModel.removeVisualizations(to_remove)
+        self.mPlotControlModel.removePropertyItemGroups(to_remove)
 
     def setDualView(self, dualView):
         sl = self.speclib()
