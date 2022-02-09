@@ -6,14 +6,17 @@ import typing
 import warnings
 
 import numpy as np
+from PyQt5.QtGui import QStandardItem
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, Qt, QPointF
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent
 from qgis.PyQt.QtWidgets import QMenu, QAction, QWidgetAction, QSlider, QApplication
 from qgis.core import QgsProject
+
+from pyqtgraph import GraphicsWidgetAnchor
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 
 from ...pyqtgraph import pyqtgraph as pg
-from ..gui.spectrallibraryplotmodelitems import ProfileVisualizationGroup, PropertyItemGroup
+# from ..gui.spectrallibraryplotmodelitems import ProfileVisualizationGroup, PropertyItemGroup
 from ...utils import datetime64, SignalObjectWrapper, HashablePointF
 
 
@@ -92,14 +95,48 @@ class SpectralXAxis(pg.AxisItem):
         return self.mUnit
 
 
-class SpectralLibraryPlotItem(pg.PlotItem):
+
+class SpectralProfilePlotLegend(pg.LegendItem):
+    anchorChanged = pyqtSignal(int, int)
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+    def anchor(self, *args, **kwds):
+        super().anchor(*args, **kwds)
+
+        pt = self.__dict__.get('_GraphicsWidgetAnchor__offset', None)
+        if pt:
+            self.anchorChanged.emit(int(pt[0]), int(pt[1]))
+
+
+class SpectralProfilePlotItem(pg.PlotItem):
     sigPopulateContextMenuItems = pyqtSignal(SignalObjectWrapper)
 
     def __init__(self, *args, **kwds):
-        super(SpectralLibraryPlotItem, self).__init__(*args, **kwds)
+        super(SpectralProfilePlotItem, self).__init__(*args, **kwds)
 
         self.addLegend()
         self.mTempList = []
+
+    def addLegend(self, *args, **kwargs) -> SpectralProfilePlotLegend:
+
+        if self.legend is None:
+            self.legend = SpectralProfilePlotLegend(*args, **kwargs)
+            self.legend.setParentItem(self.vb)
+
+            # add existing items
+            for item in self.items:
+                if isinstance(item, SpectralProfilePlotDataItem) and item.name() != '':
+                    self.legend.addItem(item, name=item.name())
+
+        return self.legend
+
+    def removeLegend(self):
+        if self.legend and self.legend.parentItem():
+            self.legend.opts['offset'] = None
+            self.legend.parentItem().removeItem(self.legend)
+            self.legend = None
 
     def getContextMenus(self, event):
         wrapper = SignalObjectWrapper([])
@@ -247,7 +284,7 @@ FIELD_INDEX = int
 MODEL_NAME = str
 X_UNIT = str
 PLOT_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, X_UNIT]
-VISUALIZATION_KEY = typing.Tuple[PropertyItemGroup, PLOT_DATA_KEY]
+VISUALIZATION_KEY = typing.Tuple[QStandardItem, FEATURE_ID, FIELD_INDEX, X_UNIT]
 
 
 class SpectralProfilePlotDataItem(pg.PlotDataItem):
@@ -329,9 +366,6 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
 
     def visualizationKey(self) -> VISUALIZATION_KEY:
         return self.mVisualizationKey
-
-    def visualization(self) -> ProfileVisualizationGroup:
-        return self.mVisualizationKey[0]
 
     def closestDataPoint(self, pos) -> typing.Tuple[int, float, float, float]:
         x = pos.x()
@@ -430,14 +464,14 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
     def __init__(self, parent=None):
 
         mViewBox = SpectralViewBox()
-        plotItem = SpectralLibraryPlotItem(
+        plotItem = SpectralProfilePlotItem(
             axisItems={'bottom': SpectralXAxis(orientation='bottom')}, viewBox=mViewBox
         )
 
         super().__init__(parent, plotItem=plotItem)
         self.mProject: QgsProject = QgsProject.instance()
-        pi: SpectralLibraryPlotItem = self.getPlotItem()
-        assert isinstance(pi, SpectralLibraryPlotItem) and pi == self.plotItem
+        pi: SpectralProfilePlotItem = self.getPlotItem()
+        assert isinstance(pi, SpectralProfilePlotItem) and pi == self.plotItem
 
         self.mCurrentMousePosition: QPointF = QPointF()
         self.setAntialiasing(True)
@@ -648,7 +682,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         pos = evt[0]  # using signal proxy turns original arguments into a tuple
 
         plotItem = self.getPlotItem()
-        assert isinstance(plotItem, SpectralLibraryPlotItem)
+        assert isinstance(plotItem, SpectralProfilePlotItem)
         vb = plotItem.vb
         assert isinstance(vb, SpectralViewBox)
         if plotItem.sceneBoundingRect().contains(pos) and self.underMouse():

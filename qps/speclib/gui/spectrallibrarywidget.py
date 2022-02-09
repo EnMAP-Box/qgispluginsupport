@@ -13,7 +13,7 @@ from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
-from .spectrallibraryplotitems import SpectralLibraryPlotItem, SpectralProfilePlotWidget
+from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
 from .spectralprocessingdialog import SpectralProcessingDialog
@@ -366,7 +366,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def plotControl(self) -> SpectralProfilePlotModel:
         return self.mSpeclibPlotWidget.mPlotControlModel
 
-    def plotItem(self) -> SpectralLibraryPlotItem:
+    def plotItem(self) -> SpectralProfilePlotItem:
         """
         :return: SpectralLibraryPlotItem
         """

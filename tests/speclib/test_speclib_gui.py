@@ -475,7 +475,15 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(slw, SpectralLibraryWidget)
         self.showGui(slw)
 
-    @unittest.skipIf(False, '')
+    def test_SpectralLibraryWidget0(self):
+
+        sl1 = TestObjects.createSpectralLibrary(5, wlu='Nanometers', n_bands=[177, 6])
+        sl1.setName(' My Speclib')
+
+        slw = SpectralLibraryWidget(speclib=sl1)
+        self.showGui(slw)
+
+
     def test_SpectralLibraryWidget(self):
 
         from qpstestdata import enmap, landcover, enmap_pixel

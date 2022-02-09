@@ -1,5 +1,5 @@
 from qgis.testing import start_app
-
+from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
     QgsExpressionContextGenerator, QgsExpressionContext, QgsExpressionContextUtils
 )

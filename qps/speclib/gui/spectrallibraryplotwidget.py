@@ -22,11 +22,12 @@ from qgis.core import QgsRasterLayer
 from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
+
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
     ProfileVisualizationGroup, PlotStyleItem, ProfileCandidateGroup, PropertyItemBase, ProfileCandidateItem, \
-    GeneralSettingsGroup
+    GeneralSettingsGroup, PropertyLabel
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
@@ -1276,11 +1277,24 @@ class SpectralProfilePlotView(QTreeView):
         """
 
         menu: QMenu = QMenu()
-        selected_indices = self.selectedIndexes()
+        selected_indices = self.selectionModel().selectedRows()
         if len(selected_indices) == 1:
-            item = self.selectedIndexes()[0].data(Qt.UserRole)
+            item = selected_indices[0].data(Qt.UserRole)
+            if isinstance(item, PropertyLabel):
+                item = item.propertyItem()
             if isinstance(item, PropertyItemBase):
                 item.populateContextMenu(menu)
+            if isinstance(item, PropertyItem):
+                # add menu of parent group
+                group = item.parent()
+                if isinstance(group, PropertyItemBase):
+                    if len(menu.actions()) > 0 and menu.actions()[-1].text() != '':
+                        menu.addSeparator()
+                    group.populateContextMenu(menu)
+                s = ""
+
+
+            s  =""
 
         elif len(selected_indices) > 0:
             selected_items = []
@@ -1745,7 +1759,7 @@ class SpectralLibraryPlotWidget(QWidget):
                 item.setLabelExpression('$id')
 
         if not isinstance(style, PlotStyle):
-            style = self.plotControlModel().generalSettings().defaultStyle()
+            style = self.plotControlModel().generalSettings().defaultProfileStyle()
         item.setPlotStyle(style)
 
         if color is not None:

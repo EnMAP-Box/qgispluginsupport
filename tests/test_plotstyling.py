@@ -24,15 +24,17 @@ import xmlrunner
 from qgis.PyQt.QtCore import QVariant, QSize
 from qgis.PyQt.QtGui import QPen, QColor
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QCheckBox, QComboBox
-from qgis.PyQt.QtXml import QDomDocument
 
 from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableConfig, \
     QgsEditorWidgetSetup, QgsActionManager, QgsAction
+
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
 from qps.plotstyling.plotstyling import PlotStyleButton, pen2tuple, PlotStyle, XMLTAG_PLOTSTYLENODE, \
     createSetPlotStyleAction, MarkerSymbol, tuple2pen, registerPlotStyleEditorWidget, PlotStyleEditorWidgetFactory, \
     PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget, PlotWidgetStyle
-
+from qgis.PyQt.QtXml import QDomDocument
+from qgis.testing import start_app
+start_app()
 from qps.testing import TestCase
 
 
@@ -148,16 +150,13 @@ class PlotStyleTests(TestCase):
     def test_PlotWidgetStyle(self):
 
         style1 = PlotWidgetStyle()
-
         style2 = PlotWidgetStyle(name='myStyle', bg='black', fg='green')
-
         testDir = self.createTestOutputDirectory()
-
         pathJson = testDir / 'styles.json'
         stylesA = [style1, style2]
         PlotWidgetStyle.writeJson(pathJson, stylesA)
-
         stylesB = PlotWidgetStyle.fromJson(pathJson)
+
         for styleA, styleB in zip(stylesA, stylesB):
             self.assertEqual(styleA, styleB)
 
