@@ -43,6 +43,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsSymbolLayerUtils, QgsAction, 
 from qgis.gui import QgsDialog
 from qgis.gui import QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
     QgsSearchWidgetWrapper, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsGui
+
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import renderSymbol, drawSymbol
 from ..utils import findMapLayer, loadUi
@@ -1229,11 +1230,15 @@ class PlotWidgetStyle(object):
 
     @staticmethod
     def plotWidgetStyle(name: str) -> 'PlotWidgetStyle':
+        if len(PlotWidgetStyle.PLOT_WIDGET_STYLES) == 0:
+            PlotWidgetStyle.initializeStandardStyles()
         key = name.lower()
         return PlotWidgetStyle.PLOT_WIDGET_STYLES.get(key, None)
 
     @staticmethod
     def plotWidgetStyles() -> typing.List['PlotWidgetStyle']:
+        if len(PlotWidgetStyle.PLOT_WIDGET_STYLES) == 0:
+            PlotWidgetStyle.initializeStandardStyles()
         return list(PlotWidgetStyle.PLOT_WIDGET_STYLES.values())
 
     @staticmethod
@@ -1262,19 +1267,9 @@ class PlotWidgetStyle(object):
     @staticmethod
     def bright() -> 'PlotWidgetStyle':
         return PlotWidgetStyle.plotWidgetStyle('bright')
-        return PlotWidgetStyle(
-            name='Bright',
-            icon=':/qps/ui/icons/profiletheme_bright.svg',
-            fg=QColor('black'),
-            bg=QColor('white'),
-            ic=QColor('black'),
-            sc=QColor('red'),
-            cc=QColor('red'),
-            tc=QColor('#aaff00')
-        )
 
     def __init__(self,
-                 name: str = 'default_plot_colors',
+                 name: str = 'default',
                  fg: QColor = QColor('white'),
                  bg: QColor = QColor('black'),
                  ic: QColor = QColor('white'),
@@ -1284,14 +1279,24 @@ class PlotWidgetStyle(object):
                  icon: str = ':/images/themes/default/propertyicons/stylepreset.svg',
                  ):
         assert isinstance(icon, str)
-        self.icon: str = icon
-        self.name: str = name
-        self.foregroundColor: QColor = fg
-        self.backgroundColor: QColor = bg
-        self.textColor: QColor = ic
-        self.selectionColor: QColor = sc
-        self.crosshairColor: QColor = cc
-        self.temporaryColor: QColor = tc
+        self.icon: str = str(icon)
+        self.name: str = str(name)
+        self.foregroundColor: QColor = QColor(fg)
+        self.backgroundColor: QColor = QColor(bg)
+        self.textColor: QColor = QColor(ic)
+        self.selectionColor: QColor = QColor(sc)
+        self.crosshairColor: QColor = QColor(cc)
+        self.temporaryColor: QColor = QColor(tc)
+
+    def __eq__(self, other):
+        if not isinstance(other, PlotWidgetStyle):
+            return False
+        for k, v in self.__dict__.items():
+            if k.startswith('_'):
+                continue
+            if v != other.__dict__[k]:
+                return False
+        return True
 
     def toVariantMap(self) -> dict:
 
@@ -1381,37 +1386,6 @@ class PlotWidgetStyle(object):
         """
         raise NotImplementedError()
 
-    def printDifferences(self, renderer):
-        assert isinstance(renderer, PlotWidgetStyle)
-        keys = [k for k in self.__dict__.keys()
-                if not k.startswith('_')
-                and k not in ['name', 'mInputSource']]
-
-        differences = []
-        for k in keys:
-            if self.__dict__[k] != renderer.__dict__[k]:
-                differences.append(f'{k}: {self.__dict__[k]} != {renderer.__dict__[k]}')
-        if len(differences) == 0:
-            print('# no differences')
-        else:
-            print(f'# {len(differences)} differences:')
-            for d in differences:
-                print(d)
-        return True
-
-    def __eq__(self, other):
-        if not isinstance(other, PlotWidgetStyle):
-            return False
-        else:
-            keys = [k for k in self.__dict__.keys()
-                    if not k.startswith('_')
-                    and k not in ['name', 'mInputSource']]
-
-            for k in keys:
-                if self.__dict__[k] != other.__dict__[k]:
-                    return False
-            return True
-
     @staticmethod
     def writeJson(path, styles: typing.List['PlotWidgetStyle']):
         path = pathlib.Path(path)
@@ -1431,21 +1405,22 @@ class PlotWidgetStyle(object):
         with open(path, 'r', encoding='utf8') as fp:
             JSON = json.load(fp)
             for MAP in JSON:
-                style = PlotStyleWidget()
+                style = PlotWidgetStyle()
                 style.fromVariantMap(MAP)
-                styles.append(MAP)
+                styles.append(style)
         return styles
 
+    @staticmethod
+    def initializeStandardStyles():
+        # initialize standard styles
+        pathStandardStyle = pathlib.Path(__file__).parent / 'standardstyles.json'
+        PlotWidgetStyle.registerPlotWidgetStyle(PlotWidgetStyle.default())
 
-# initialize standard styles
-pathStandardStyle = pathlib.Path(__file__).parent / 'standardstyles.json'
-PlotWidgetStyle.registerPlotWidgetStyle(PlotWidgetStyle.default())
-
-if not pathStandardStyle.is_file():
-    warnings.warn(f'Missing file: {pathStandardStyle}')
-else:
-    try:
-        for style in PlotWidgetStyle.fromJson(pathStandardStyle):
-            PlotWidgetStyle.registerPlotWidgetStyle(style, True)
-    except JSONDecodeError as ex:
-        warnings.warn(f'Unable to load standard plot widget styles: {ex}')
+        if not pathStandardStyle.is_file():
+            warnings.warn(f'Missing file: {pathStandardStyle}')
+        else:
+            try:
+                for style in PlotWidgetStyle.fromJson(pathStandardStyle):
+                    PlotWidgetStyle.registerPlotWidgetStyle(style, True)
+            except JSONDecodeError as ex:
+                warnings.warn(f'Unable to load standard plot widget styles: {ex}')

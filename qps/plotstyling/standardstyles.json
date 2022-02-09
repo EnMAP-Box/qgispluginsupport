@@ -17,6 +17,6 @@
         "textColor": "black",
         "selectionColor": "red",
         "crosshairColor": "red",
-        "temporaryColor": "green"
+        "temporaryColor": "#aaff00"
     }
 ]
