@@ -1258,7 +1258,6 @@ class PlotWidgetStyle(object):
         :rtype:
         """
         raise NotImplementedError()
-        return style
 
     @staticmethod
     def dark() -> 'PlotWidgetStyle':

@@ -2,24 +2,19 @@ import sys
 import typing
 
 import numpy as np
-from PyQt5.QtCore import QSignalBlocker
-from qgis.PyQt.QtCore import QSize
-from qgis.PyQt.QtGui import QPixmap
-from qgis.PyQt.QtWidgets import QCheckBox, QDoubleSpinBox, QSpinBox, QMenu
-from qgis.core import QgsXmlUtils, QgsTextFormat
-from qgis.gui import QgsSpinBox, QgsDoubleSpinBox
-
-from pyqtgraph import LegendItem
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import Qt, QModelIndex, pyqtSignal, QMimeData, QObject
-from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QPen
-from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout
+from qgis.PyQt.QtCore import Qt, QModelIndex, pyqtSignal, QMimeData, QObject, QSize, QSignalBlocker
+from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QPen, QPixmap
+from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout, QCheckBox, QDoubleSpinBox, \
+    QSpinBox, QMenu
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsField, QgsPropertyDefinition, QgsProperty, QgsExpressionContext, QgsRasterLayer, \
     QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer, QgsSingleBandPseudoColorRenderer, \
     QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
-    QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsRenderContext, QgsFeatureRenderer, QgsFeature
-from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverrideButton
+    QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsRenderContext, QgsFeatureRenderer, QgsFeature, \
+    QgsXmlUtils, QgsTextFormat
+from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverrideButton, \
+    QgsSpinBox, QgsDoubleSpinBox
 
 from .spectrallibraryplotitems import SpectralProfilePlotLegend, SpectralProfilePlotItem
 from ...externals.htmlwidgets import HTMLComboBox
@@ -27,7 +22,7 @@ from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetSty
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
 from ...speclib.core import create_profile_field
 from ...unitmodel import UnitConverterFunctionModel, BAND_NUMBER, BAND_INDEX
-from ...utils import parseWavelength
+from ...utils import parseWavelength, SignalBlocker
 
 WARNING_ICON = QIcon(r':/images/themes/default/mIconWarning.svg')
 
@@ -124,6 +119,10 @@ class PropertyItemBase(QStandardItem):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
+        # QObject.__init__(self)
+        # QStandardItem.__init__(self, *args, **kwds)
+
+        s = ""
 
     def firstColumnSpanned(self) -> bool:
         return len(self.propertyRow()) == 1
@@ -188,7 +187,7 @@ class PropertyLabel(QStandardItem):
         Should be in the column left to it
         """
         item = self.model().index(self.row(), self.column() + 1,
-                           parent=self.parent().index()).data(Qt.UserRole)
+                                  parent=self.parent().index()).data(Qt.UserRole)
 
         if isinstance(item, PropertyItem) and item.label() == self:
             return item
@@ -307,14 +306,12 @@ class PropertyItemGroup(PropertyItemBase):
         """
         Signals for PropertyItemGroup
         """
-        def __init__(self,*args, **kwds):
+
+        def __init__(self, *args, **kwds):
             super().__init__(*args, **kwds)
 
         requestRemoval = pyqtSignal()
         requestPlotUpdate = pyqtSignal()
-
-        def __init__(self, *args, **kwds):
-            super().__init__(*args, **kwds)
 
     @staticmethod
     def registerXmlFactory(grp: 'PropertyItemGroup', xml_tag: str = None):
@@ -541,11 +538,11 @@ class GeneralSettingsGroup(PropertyItemGroup):
         for style in PlotWidgetStyle.plotWidgetStyles():
             a = m.addAction(style.name)
             a.setIcon(QIcon(style.icon))
-            a.triggered.connect(lambda *args, s=style : self.setPlotWidgetStyle(s))
+            a.triggered.connect(lambda *args, s=style: self.setPlotWidgetStyle(s))
 
     def initWithPlotModel(self, model):
 
-        from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel, SpectralProfilePlotWidget
+        from .spectrallibraryplotwidget import SpectralProfilePlotModel, SpectralProfilePlotWidget
         if isinstance(model, SpectralProfilePlotModel) and isinstance(model.plotWidget(), SpectralProfilePlotWidget):
             plotWidget: SpectralProfilePlotWidget = model.plotWidget()
             bg = plotWidget.backgroundBrush().color()
@@ -557,8 +554,8 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
     def applyGeneralSettings(self, *args):
 
-        from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
-        from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
+        from .spectrallibraryplotwidget import SpectralProfilePlotModel
+        from .spectrallibraryplotitems import SpectralProfilePlotWidget
         model: SpectralProfilePlotModel = self.model()
 
         if not isinstance(model, SpectralProfilePlotModel):
@@ -593,13 +590,12 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
         return style
 
-    def setPlotWidgetStyle(self, style:PlotWidgetStyle):
+    def setPlotWidgetStyle(self, style: PlotWidgetStyle):
 
         self.mP_BG.setProperty(QgsProperty.fromValue(style.backgroundColor))
         self.mP_FG.setProperty(QgsProperty.fromValue(style.foregroundColor))
         self.mP_CH.setProperty(QgsProperty.fromValue(style.crosshairColor))
         self.mP_SC.setProperty(QgsProperty.fromValue(style.selectionColor))
-
 
     def defaultProfileStyle(self) -> PlotStyle:
         """
@@ -725,9 +721,9 @@ class LegendGroup(PropertyItemGroup):
 
     def applySettings(self, *args):
 
-        from qps.speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
-        from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
-        from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotItem
+        from .spectrallibraryplotwidget import SpectralProfilePlotModel
+        from .spectrallibraryplotitems import SpectralProfilePlotWidget
+        from .spectrallibraryplotitems import SpectralProfilePlotItem
         model: SpectralProfilePlotModel = self.model()
 
         if not isinstance(model, SpectralProfilePlotModel):
@@ -739,24 +735,20 @@ class LegendGroup(PropertyItemGroup):
         showLegend = self.isVisible()
 
         if showLegend:
+            group = self.parent()
+            fg = QColor('white')
+            if isinstance(group, GeneralSettingsGroup):
+                fg = group.foregroundColor()
 
-
-
-            legend: SpectralProfilePlotLegend = plotItem.addLegend()
+            legend: SpectralProfilePlotLegend = plotItem.addLegend(labelTextColor=fg)
             legend.setVisible(self.isVisible())
             # legend.setOffset((self.mOffsetX.value(defaultValue=0),
             #                   self.mOffsetY.value(defaultValue=0)))
             legend.layout.setHorizontalSpacing(self.mHSpacing.value(defaultValue=25))
             legend.layout.setVerticalSpacing(self.mVSpacing.value(defaultValue=0))
             legend.setColumnCount(self.mColCount.value(defaultValue=1))
+            legend.setLabelTextColor(fg)
 
-            group = self.parent()
-            if isinstance(group, GeneralSettingsGroup):
-                c = group.foregroundColor()
-                legend.setLabelTextColor(c)
-                legend.pen().setColor(c)
-                for sample, label in legend.items:
-                    label.update()
             legend.update()
             # legend.anchorChanged.connect(self.updateLegendAnchor)
         else:
@@ -768,13 +760,14 @@ class LegendGroup(PropertyItemGroup):
     def legend(self) -> SpectralProfilePlotLegend:
         return self.plotItem().legend
 
-    def updateLegendAnchor(self, x:int, y:int):
+    def updateLegendAnchor(self, x: int, y: int):
 
         offset = (self.mOffsetX.value(), self.mOffsetY.value())
         if offset != (x, y):
             with QSignalBlocker(self.signals()) as blocker:
                 self.mOffsetX.setValue(x)
                 self.mOffsetY.setValue(y)
+
 
 class PlotStyleItem(PropertyItem):
     """
@@ -910,6 +903,7 @@ class QgsPropertyItem(PropertyItem):
         b = self.mProperty != property
         self.mProperty = property
         if b:
+            # print(self.key())
             self.emitDataChanged()
 
     def setDefinition(self, propertyDefinition: QgsPropertyDefinition):
@@ -1075,31 +1069,33 @@ class QgsPropertyItem(PropertyItem):
                         break
 
     def setModelData(self, w, bridge, index):
+        property: QgsProperty = None
+
         if isinstance(w, QgsFieldExpressionWidget):
             expr = w.asExpression()
             if w.isValidExpression() or expr == '' and w.allowEmptyFieldName():
-                #  _p = w.property('')
-                self.property().setExpressionString(expr)
+                property = QgsProperty.fromExpression(expr)
+
         elif isinstance(w, SpectralProfileColorPropertyWidget):
-            self.setProperty(w.toProperty())
+            property = w.toProperty()
+
         elif isinstance(w, QCheckBox):
-            p = self.property()
-            p.setStaticValue(w.isChecked())
-            self.setProperty(p)
+            property = QgsProperty.fromValue(w.isChecked())
 
         elif self.isProfileFieldProperty() and isinstance(w, QComboBox):
             i = w.currentIndex()
             if i >= 0:
                 field: QgsField = w.model().fields().at(i)
-                self.property().setField(field.name())
+                property = QgsProperty.fromField(field)
+
         elif isinstance(w, QComboBox):
-            v = w.currentData(Qt.UserRole)
-            self.property().setStaticValue(v)
+            property = QgsProperty.fromValue(w.currentData(Qt.UserRole))
 
         elif isinstance(w, (QgsSpinBox, QgsDoubleSpinBox)):
-            self.property().setStaticValue(w.value())
+            property = QgsProperty.fromValue(w.value())
 
-        self.emitDataChanged()
+        if isinstance(property, QgsProperty):
+            self.setProperty(property)
 
 
 class ProfileCandidateItem(PlotStyleItem):
@@ -1632,10 +1628,22 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             'Color', 'Color of spectral profile', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
         self.mPColor.setProperty(QgsProperty.fromValue(QColor('white')))
 
+        # self.mPColor.signals().dataChanged.connect(lambda : self.setPlotStyle(self.generatePlotStyle()))
         for pItem in [self.mPField, self.mPLabel, self.mPFilter, self.mPColor, self.mPStyle]:
             self.appendRow(pItem.propertyRow())
 
-        self.initBasicSettings()
+        self.setUserTristate(False)
+        self.setCheckable(True)
+        self.setCheckState(Qt.Checked)
+        self.setDropEnabled(False)
+        self.setDragEnabled(False)
+
+        # connect requestPlotUpdate signal
+        for propertyItem in self.propertyItems():
+            propertyItem: PropertyItem
+            propertyItem.signals().dataChanged.connect(self.signals().dataChanged.emit)
+        self.signals().dataChanged.connect(self.update)
+        # self.initBasicSettings()
 
     def initWithPlotModel(self, model):
         self.setSpeclib(model.speclib())
@@ -1760,6 +1768,13 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
         self.mPField.label().setIcon(QIcon(WARNING_ICON) if valuesMissing else QIcon())
 
+        to_block = [self.signals()] + [item.signals() for item in self.propertyItems()]
+        with SignalBlocker(*to_block) as blocker:
+            # modify without signaling
+            self.setPlotStyle(self.generatePlotStyle())
+
+        self.signals().requestPlotUpdate.emit()
+
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
 
@@ -1794,7 +1809,6 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         p = self.mPLabel.property()
         p.setExpressionString(expression)
         self.mPLabel.setProperty(p)
-        self.update()
 
     def labelProperty(self) -> QgsProperty:
         """
@@ -1813,7 +1827,6 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         p = self.mPField.property()
         p.setField(field.name())
         self.mPField.setProperty(p)
-        self.update()
 
     def field(self) -> QgsField:
         fields = self.speclib().fields()
@@ -1831,7 +1844,6 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
     def setPlotStyle(self, style: PlotStyle):
         self.mPStyle.setPlotStyle(style)
-        self.update()
 
     def generateTooltip(self, context: QgsExpressionContext) -> str:
         tooltip = '<html><body><table>'
@@ -1857,7 +1869,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         else:
             return defaultLabel
 
-    def generatePlotStyle(self, context: QgsExpressionContext) -> PlotStyle:
+    def generatePlotStyle(self, context: QgsExpressionContext = QgsExpressionContext()) -> PlotStyle:
         style = self.mPStyle.plotStyle()
         prop = self.colorProperty()
         featureColor, success = prop.valueAsColor(context, defaultColor=style.linePen.color())

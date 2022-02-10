@@ -125,6 +125,21 @@ def rm(p):
         shutil.rmtree(p)
 
 
+class SignalBlocker(object):
+    """Signal blocker for arbitrary number of QObjects"""
+
+    def __init__(self, *objects: QObject):
+        self.mObjects = objects
+        self.mWasBlocked: typing.List[bool] = []
+
+    def __enter__(self):
+        self.mWasBlocked = [obj.blockSignals(True) for obj in self.mObjects]
+
+    def __exit__(self, exc_type, exc_value, tb):
+        for obj, wasBlocked in zip(self.mObjects, self.mWasBlocked):
+            obj.blockSignals(wasBlocked)
+
+
 def relativePath(absPath: pathlib.Path, parentDir: pathlib.Path) -> pathlib.Path:
     """
     Returns the path relative to a parent directory
@@ -2436,9 +2451,10 @@ class SpatialPoint(QgsPointXY):
     def __eq__(self, other):
         if not isinstance(other, SpatialPoint):
             return False
-        return self.x() == other.x() \
+        b = self.x() == other.x() \
             and self.y() == other.y() \
             and self.crs() == other.crs()
+        return b
 
     def __copy__(self):
         return SpatialPoint(self.crs(), self.x(), self.y())

@@ -1293,8 +1293,7 @@ class SpectralProfilePlotView(QTreeView):
                     group.populateContextMenu(menu)
                 s = ""
 
-
-            s  =""
+            s = ""
 
         elif len(selected_indices) > 0:
             selected_items = []

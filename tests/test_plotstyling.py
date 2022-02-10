@@ -33,8 +33,6 @@ from qps.plotstyling.plotstyling import PlotStyleButton, pen2tuple, PlotStyle, X
     createSetPlotStyleAction, MarkerSymbol, tuple2pen, registerPlotStyleEditorWidget, PlotStyleEditorWidgetFactory, \
     PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget, PlotWidgetStyle
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.testing import start_app
-start_app()
 from qps.testing import TestCase
 
 

@@ -483,7 +483,6 @@ class TestSpeclibWidgets(TestCase):
         slw = SpectralLibraryWidget(speclib=sl1)
         self.showGui(slw)
 
-
     def test_SpectralLibraryWidget(self):
 
         from qpstestdata import enmap, landcover, enmap_pixel

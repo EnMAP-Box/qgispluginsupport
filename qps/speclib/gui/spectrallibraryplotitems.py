@@ -6,17 +6,14 @@ import typing
 import warnings
 
 import numpy as np
-from PyQt5.QtGui import QStandardItem
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, Qt, QPointF
-from qgis.PyQt.QtGui import QColor, QDragEnterEvent
+from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QStandardItem
 from qgis.PyQt.QtWidgets import QMenu, QAction, QWidgetAction, QSlider, QApplication
 from qgis.core import QgsProject
 
-from pyqtgraph import GraphicsWidgetAnchor
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 
 from ...pyqtgraph import pyqtgraph as pg
-# from ..gui.spectrallibraryplotmodelitems import ProfileVisualizationGroup, PropertyItemGroup
 from ...utils import datetime64, SignalObjectWrapper, HashablePointF
 
 
@@ -93,7 +90,6 @@ class SpectralXAxis(pg.AxisItem):
         :return:
         """
         return self.mUnit
-
 
 
 class SpectralProfilePlotLegend(pg.LegendItem):
