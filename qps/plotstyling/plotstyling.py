@@ -1248,7 +1248,10 @@ class PlotWidgetStyle(object):
         :return:
         :rtype: PlotWidgetStyle
         """
-        return PlotWidgetStyle()
+        style = PlotWidgetStyle.plotWidgetStyle('dark')
+        if not isinstance(style, PlotWidgetStyle):
+            style = PlotWidgetStyle()
+        return style
 
     @staticmethod
     def fromUserSettings() -> 'PlotWidgetStyle':
@@ -1413,13 +1416,14 @@ class PlotWidgetStyle(object):
     def initializeStandardStyles():
         # initialize standard styles
         pathStandardStyle = pathlib.Path(__file__).parent / 'standardstyles.json'
-        PlotWidgetStyle.registerPlotWidgetStyle(PlotWidgetStyle.default())
 
         if not pathStandardStyle.is_file():
             warnings.warn(f'Missing file: {pathStandardStyle}')
+            PlotWidgetStyle.registerPlotWidgetStyle(PlotWidgetStyle.default())
         else:
             try:
                 for style in PlotWidgetStyle.fromJson(pathStandardStyle):
                     PlotWidgetStyle.registerPlotWidgetStyle(style, True)
             except JSONDecodeError as ex:
                 warnings.warn(f'Unable to load standard plot widget styles: {ex}')
+                PlotWidgetStyle.registerPlotWidgetStyle(PlotWidgetStyle.default())
