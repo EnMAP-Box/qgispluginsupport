@@ -126,7 +126,9 @@ def rm(p):
 
 
 class SignalBlocker(object):
-    """Signal blocker for arbitrary number of QObjects"""
+    """
+    Signal blocker for arbitrary number of QObjects
+    """
 
     def __init__(self, *objects: QObject):
         self.mObjects = objects
