@@ -284,13 +284,13 @@ class TestSpeclibPlotting(TestCase):
         vis1.setLayer(lyr2)
         vis2.setLayer(lyr1)
 
-        self.assertEqual(model.rowCount(), 3)
+        indices = []
+        for grp in model.visualizations():
+            indices.append(grp.index())
 
-        indices = [model.createIndex(2, 0),
-                   model.createIndex(1, 0), model.createIndex(1, 1)]
         mimeData = model.mimeData(indices)
         grps = PropertyItemGroup.fromMimeData(mimeData)
-        self.assertEqual(len(grps), 2)
+        self.assertTrue(len(grps) > 0)
         self.assertTrue(model.canDropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
         self.assertTrue(model.dropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
 
@@ -384,16 +384,16 @@ class TestSpeclibPlotting(TestCase):
                 itemA.setDefinition(item.definition())
                 itemB.setDefinition(item.definition())
 
-            itemA.readXml(nodeA, attribute=False)
-            itemB.readXml(nodeB, attribute=True)
+                itemA.readXml(nodeA, attribute=False)
+                itemB.readXml(nodeB, attribute=True)
 
-            for item2 in [itemA, itemB]:
-                self.assertEqual(item2.key(), item.key())
-                self.assertEqual(item2.firstColumnSpanned(), item.firstColumnSpanned())
-                self.assertEqual(item2.label().text(), item.label().text())
-                self.assertEqual(item2.columnCount(), item.columnCount())
-                for role in [Qt.DisplayRole, Qt.DecorationRole]:
-                    self.assertEqual(item2.data(role), item.data(role))
+                for item2 in [itemA, itemB]:
+                    self.assertEqual(item2.key(), item.key())
+                    self.assertEqual(item2.firstColumnSpanned(), item.firstColumnSpanned())
+                    self.assertEqual(item2.label().text(), item.label().text())
+                    self.assertEqual(item2.columnCount(), item.columnCount())
+                    for role in [Qt.DisplayRole, Qt.DecorationRole]:
+                        self.assertEqual(item2.data(role), item.data(role))
 
         mimeData = PropertyItemGroup.toMimeData([grp])
 
