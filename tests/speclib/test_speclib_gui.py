@@ -43,8 +43,7 @@ from qps.speclib import FIELD_VALUES
 from qps.speclib.core import profile_field_list, is_spectral_library
 from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibrary
 from qps.speclib.core.spectralprofile import SpectralProfile
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidgetStyleWidget, \
-    SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileTableModel, SpectralProfileEditorWidget, \
@@ -222,13 +221,6 @@ class TestSpeclibWidgets(TestCase):
         pw.setDualView(dualView)
 
         self.showGui(pw)
-
-    @unittest.skipIf(False, '')
-    def test_SpectralLibraryPlotColorSchemeWidget(self):
-
-        w = SpectralLibraryPlotWidgetStyleWidget()
-        self.assertIsInstance(w, SpectralLibraryPlotWidgetStyleWidget)
-        self.showGui(w)
 
     @unittest.skipIf(False, '')
     def test_SpectralProfileValueTableModel(self):

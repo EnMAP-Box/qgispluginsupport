@@ -3,7 +3,6 @@ import re
 import typing
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
@@ -33,7 +32,7 @@ from ..core import profile_field_list, profile_field_indices, is_spectral_librar
 from ..core.spectralprofile import decodeProfileValueDict
 from ... import debugLog
 from ...externals.htmlwidgets import HTMLStyle
-from ...models import SettingsModel, SettingsTreeView
+from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
 from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
@@ -124,191 +123,7 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
         return frame
 
 
-class SpeclibSettingsWidgetAction(QWidgetAction):
-    sigSettingsValueChanged = pyqtSignal(str)
-
-    def __init__(self, parent, **kwds):
-        super().__init__(parent)
-        self.mSettings = QgsSettings()
-        self.mModel = SettingsModel(self.mSettings)
-        self.mModel.sigSettingsValueChanged.connect(self.sigSettingsValueChanged.emit)
-
-    def createWidget(self, parent: QWidget):
-        view = SettingsTreeView(parent)
-        view.setModel(self.mModel)
-        return view
-
-
-class MaxNumberOfProfilesWidgetAction(QWidgetAction):
-    sigMaxNumberOfProfilesChanged = pyqtSignal(int)
-
-    def __init__(self, parent, **kwds):
-        super().__init__(parent)
-        self.mNProfiles = 256
-
-    def createWidget(self, parent: QWidget):
-        gridLayout = QGridLayout()
-        sbMaxProfiles = QSpinBox()
-        sbMaxProfiles.setToolTip('Maximum number of profiles to plot.')
-        sbMaxProfiles.setRange(0, np.iinfo(np.int16).max)
-        sbMaxProfiles.setValue(self.maxProfiles())
-        self.sigMaxNumberOfProfilesChanged.connect(lambda n, sb=sbMaxProfiles: sb.setValue(n))
-        sbMaxProfiles.valueChanged[int].connect(self.setMaxProfiles)
-
-        gridLayout.addWidget(QLabel('Max. Profiles'), 0, 0)
-        gridLayout.addWidget(sbMaxProfiles, 0, 1)
-        frame = QFrame(parent)
-        frame.setLayout(gridLayout)
-        return frame
-
-    def setMaxProfiles(self, n: int):
-        assert isinstance(n, int) and n >= 0
-        if n != self.mNProfiles:
-            self.mNProfiles = n
-            self.sigMaxNumberOfProfilesChanged.emit(n)
-
-    def maxProfiles(self) -> int:
-        return self.mNProfiles
-
-
 MAX_PDIS_DEFAULT: int = 256
-
-
-class SpectralLibraryPlotWidgetStyleWidget(QWidget):
-    sigStyleChanged = pyqtSignal(PlotWidgetStyle)
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-        path_ui = speclibUiPath('spectrallibraryplotwidgetstylewidget.ui')
-        loadUi(path_ui, self)
-
-        self.mBlocked: bool = False
-        self.btnColorBackground.colorChanged.connect(self.onStyleChanged)
-        self.btnColorForeground.colorChanged.connect(self.onStyleChanged)
-        self.btnColorCrosshair.colorChanged.connect(self.onStyleChanged)
-        self.btnColorText.colorChanged.connect(self.onStyleChanged)
-        self.btnColorSelection.colorChanged.connect(self.onStyleChanged)
-        self.btnColorTemporary.colorChanged.connect(self.onStyleChanged)
-        self.btnReset.setDisabled(True)
-        self.btnReset.clicked.connect(self.resetStyle)
-
-        self.actionActivateDarkTheme: QAction
-        self.actionActivateDarkTheme.setIcon(QIcon(r':/qps/ui/icons/profiletheme_dark.svg'))
-
-        self.actionActivateBrightTheme: QAction
-        self.actionActivateBrightTheme.setIcon(QIcon(r':/qps/ui/icons/profiletheme_bright.svg'))
-
-        self.btnColorSchemeBright.setDefaultAction(self.actionActivateBrightTheme)
-        self.btnColorSchemeDark.setDefaultAction(self.actionActivateDarkTheme)
-        self.actionActivateBrightTheme.triggered.connect(
-            lambda: self.setProfileWidgetTheme(PlotWidgetStyle.bright()))
-        self.actionActivateDarkTheme.triggered.connect(
-            lambda: self.setProfileWidgetTheme(PlotWidgetStyle.dark()))
-        self.mResetStyle: PlotWidgetStyle = None
-        self.mLastStyle: PlotWidgetStyle = None
-
-    def setResetStyle(self, style: PlotWidgetStyle):
-        self.mResetStyle = style
-
-    def getResetStyle(self) -> PlotWidgetStyle:
-        return self.mResetStyle
-
-    def resetStyle(self, *args):
-        if isinstance(self.mResetStyle, PlotWidgetStyle):
-            self.setProfileWidgetStyle(self.mResetStyle)
-
-    def setProfileWidgetTheme(self, style: PlotWidgetStyle):
-
-        newstyle = self.spectralProfileWidgetStyle()
-
-        # overwrite colors
-        newstyle.crosshairColor = style.crosshairColor
-        newstyle.textColor = style.textColor
-        newstyle.backgroundColor = style.backgroundColor
-        newstyle.foregroundColor = style.foregroundColor
-        newstyle.selectionColor = style.selectionColor
-        newstyle.temporaryColor = style.temporaryColor
-
-        self.setProfileWidgetStyle(newstyle)
-
-    def setProfileWidgetStyle(self, style: PlotWidgetStyle):
-        assert isinstance(style, PlotWidgetStyle)
-
-        if self.mResetStyle is None:
-            self.mResetStyle = style.clone()
-
-        self.mLastStyle = style
-        self.btnReset.setEnabled(True)
-
-        changed = style != self.spectralProfileWidgetStyle()
-
-        self.mBlocked = True
-
-        self.btnColorBackground.setColor(style.backgroundColor)
-        self.btnColorForeground.setColor(style.foregroundColor)
-        self.btnColorText.setColor(style.textColor)
-        self.btnColorCrosshair.setColor(style.crosshairColor)
-        self.btnColorSelection.setColor(style.selectionColor)
-        self.btnColorTemporary.setColor(style.temporaryColor)
-
-        self.mBlocked = False
-        if changed:
-            self.sigStyleChanged.emit(self.spectralProfileWidgetStyle())
-
-    def onStyleChanged(self, *args):
-        if not self.mBlocked:
-            self.btnReset.setEnabled(isinstance(self.mResetStyle, PlotWidgetStyle)
-                                     and self.spectralProfileWidgetStyle() != self.mResetStyle)
-            self.sigStyleChanged.emit(self.spectralProfileWidgetStyle())
-
-    def spectralProfileWidgetStyle(self) -> PlotWidgetStyle:
-        if isinstance(self.mLastStyle, PlotWidgetStyle):
-            cs = self.mLastStyle.clone()
-        else:
-            cs = PlotWidgetStyle()
-        cs: PlotWidgetStyle
-        assert isinstance(cs, PlotWidgetStyle)
-
-        cs.backgroundColor = self.btnColorBackground.color()
-        cs.foregroundColor = self.btnColorForeground.color()
-        cs.crosshairColor = self.btnColorCrosshair.color()
-        cs.textColor = self.btnColorText.color()
-        cs.selectionColor = self.btnColorSelection.color()
-        cs.temporaryColor = self.btnColorTemporary.color()
-        return cs
-
-
-class SpectralProfileWidgetStyleAction(QWidgetAction):
-    sigProfileWidgetStyleChanged = pyqtSignal(PlotWidgetStyle)
-    sigResetStyleChanged = pyqtSignal(PlotWidgetStyle)
-
-    def __init__(self, parent, **kwds):
-        super().__init__(parent)
-        self.mStyle: PlotWidgetStyle = PlotWidgetStyle.default()
-        self.mResetStyle: PlotWidgetStyle = self.mStyle
-
-    def setResetStyle(self, style: PlotWidgetStyle):
-        self.mResetStyle = style
-        self.sigResetStyleChanged.emit(self.mResetStyle)
-
-    def setProfileWidgetStyle(self, style: PlotWidgetStyle):
-        if self.mStyle != style:
-            # print(self.mStyle.printDifferences(style))
-            self.mStyle = style
-            self.sigProfileWidgetStyleChanged.emit(style)
-
-    def profileWidgetStyle(self) -> PlotWidgetStyle:
-        return self.mStyle
-
-    def createWidget(self, parent: QWidget) -> SpectralLibraryPlotWidgetStyleWidget:
-        w = SpectralLibraryPlotWidgetStyleWidget(parent)
-        w.setProfileWidgetStyle(self.profileWidgetStyle())
-        w.sigStyleChanged.connect(self.setProfileWidgetStyle)
-        self.sigProfileWidgetStyleChanged.connect(w.setProfileWidgetStyle)
-        self.sigResetStyleChanged.connect(w.setResetStyle)
-        return w
-
-
 FIELD_NAME = str
 
 ATTRIBUTE_ID = typing.Tuple[FEATURE_ID, FIELD_INDEX]
@@ -1606,12 +1421,6 @@ class SpectralLibraryPlotWidget(QWidget):
         self.sbMaxProfiles.valueChanged.connect(self.mPlotControlModel.setMaxProfiles)
         self.labelMaxProfiles: QLabel
         self.mPlotControlModel.setMaxProfilesWidget(self.sbMaxProfiles)
-
-        # self.optionMaxNumberOfProfiles: MaxNumberOfProfilesWidgetAction = MaxNumberOfProfilesWidgetAction(None)
-        # self.optionMaxNumberOfProfiles.sigMaxNumberOfProfilesChanged.connect(self.mPlotControlModel.setMaxProfiles)
-
-        self.optionSpeclibSettings: SpeclibSettingsWidgetAction = SpeclibSettingsWidgetAction(None)
-        self.optionSpeclibSettings.setDefaultWidget(self.optionSpeclibSettings.createWidget(None))
 
         self.optionCursorCrosshair: QAction
         self.optionCursorCrosshair.toggled.connect(self.plotWidget.setShowCrosshair)

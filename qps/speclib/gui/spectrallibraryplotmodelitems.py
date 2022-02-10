@@ -663,6 +663,8 @@ class LegendGroup(PropertyItemGroup):
         self.setCheckable(True)
         self.setCheckState(Qt.Unchecked)
 
+        self.mLegendOffset = (-1, 10)
+
         if False:
             self.mOffsetX = QgsPropertyItem('OffsetX')
             self.mOffsetX.setDefinition(
@@ -734,25 +736,50 @@ class LegendGroup(PropertyItemGroup):
         plotItem: SpectralProfilePlotItem = w.getPlotItem()
         showLegend = self.isVisible()
 
-        if showLegend:
-            group = self.parent()
-            fg = QColor('white')
-            if isinstance(group, GeneralSettingsGroup):
-                fg = group.foregroundColor()
+        group = self.parent()
+        fg = QColor('white')
+        if isinstance(group, GeneralSettingsGroup):
+            fg = group.foregroundColor()
 
-            legend: SpectralProfilePlotLegend = plotItem.addLegend(labelTextColor=fg)
+        if True:
+            legend: SpectralProfilePlotLegend = plotItem.addLegend(
+                labelTextColor=fg,
+                max_items=256,
+                offset=self.mLegendOffset)
+            assert isinstance(legend, SpectralProfilePlotLegend)
             legend.setVisible(self.isVisible())
-            # legend.setOffset((self.mOffsetX.value(defaultValue=0),
-            #                   self.mOffsetY.value(defaultValue=0)))
             legend.layout.setHorizontalSpacing(self.mHSpacing.value(defaultValue=25))
             legend.layout.setVerticalSpacing(self.mVSpacing.value(defaultValue=0))
             legend.setColumnCount(self.mColCount.value(defaultValue=1))
             legend.setLabelTextColor(fg)
 
-            legend.update()
-            # legend.anchorChanged.connect(self.updateLegendAnchor)
         else:
-            plotItem.removeLegend()
+            if showLegend:
+                group = self.parent()
+                fg = QColor('white')
+                if isinstance(group, GeneralSettingsGroup):
+                    fg = group.foregroundColor()
+
+                legend: SpectralProfilePlotLegend = plotItem.addLegend(labelTextColor=fg, offset=self.mLegendOffset)
+                legend.setVisible(self.isVisible())
+                # legend.setOffset((self.mOffsetX.value(defaultValue=0),
+                #                   self.mOffsetY.value(defaultValue=0)))
+                legend.layout.setHorizontalSpacing(self.mHSpacing.value(defaultValue=25))
+                legend.layout.setVerticalSpacing(self.mVSpacing.value(defaultValue=0))
+                legend.setColumnCount(self.mColCount.value(defaultValue=1))
+                legend.setLabelTextColor(fg)
+
+                legend.update()
+                # legend.anchorChanged.connect(self.updateLegendAnchor)
+            else:
+                legend = plotItem.legend
+                if isinstance(legend, SpectralProfilePlotLegend):
+                    R = legend.__dict__
+                    off1 = legend.opts['offset']
+                    off2 = legend.__dict__['_GraphicsWidgetAnchor__offset']
+
+                    self.mLegendOffset = legend.opts['offset']
+                plotItem.removeLegend()
 
     def plotItem(self) -> SpectralProfilePlotItem:
         return self.model().mPlotWidget.getPlotItem()
@@ -1535,7 +1562,6 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
         temp_fids = [fid for fid in self.model().speclib().allFeatureIds() if fid < 0]
         to_remove = [k for k in self.mCandidateStyleItems.keys() if k[0] not in temp_fids]
         self.removeCandidates(to_remove)
-        s = ""
 
     def setCandidates(self, candidateStyles: typing.Dict[typing.Tuple[int, str], PlotStyle]):
         self.clearCandidates()

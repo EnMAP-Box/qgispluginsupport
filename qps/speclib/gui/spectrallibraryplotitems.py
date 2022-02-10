@@ -95,8 +95,9 @@ class SpectralXAxis(pg.AxisItem):
 class SpectralProfilePlotLegend(pg.LegendItem):
     anchorChanged = pyqtSignal(int, int)
 
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
+    def __init__(self, *args, offset=(-1, 10), max_items=256, **kwds):
+        super().__init__(*args, offset=offset, **kwds)
+        self.mMaxItems = int(max_items)
 
     def anchor(self, *args, **kwds):
         super().anchor(*args, **kwds)
@@ -105,6 +106,10 @@ class SpectralProfilePlotLegend(pg.LegendItem):
         if pt:
             self.anchorChanged.emit(int(pt[0]), int(pt[1]))
 
+    def addItem(self, item, name):
+        if len(self.items) < self.mMaxItems:
+            super().addItem(item, name)
+
 
 class SpectralProfilePlotItem(pg.PlotItem):
     sigPopulateContextMenuItems = pyqtSignal(SignalObjectWrapper)
@@ -112,7 +117,7 @@ class SpectralProfilePlotItem(pg.PlotItem):
     def __init__(self, *args, **kwds):
         super(SpectralProfilePlotItem, self).__init__(*args, **kwds)
 
-        self.addLegend()
+        # self.addLegend()
         self.mTempList = []
 
     def addLegend(self, *args, **kwargs) -> SpectralProfilePlotLegend:
