@@ -10,7 +10,9 @@ DIR_QPS = pathlib.Path(__file__).parents[1] / 'qps'
 class ResourceTests(unittest.TestCase):
 
     def test_imports(self):
-
+        """
+        This test ensures that all imports from qps are relative.
+        """
         self.assertTrue(DIR_QPS.is_dir())
 
         from qps.utils import file_search
