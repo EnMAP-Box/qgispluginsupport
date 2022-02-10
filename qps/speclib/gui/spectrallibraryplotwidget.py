@@ -332,9 +332,24 @@ class SpectralProfilePlotModel(QStandardItemModel):
     sigPlotWidgetStyleChanged = pyqtSignal()
     NOT_INITIALIZED = -1
 
+    class UpdateBlocker(object):
+        """Blocks plot updates"""
+
+        def __init__(self, plotModel: 'SpectralProfilePlotModel'):
+            self.mPlotModel = plotModel
+            self.mWasBlocked: bool = False
+
+        def __enter__(self):
+            self.mWasBlocked = self.mPlotModel.blockUpdates(True)
+
+        def __exit__(self, exc_type, exc_value, tb):
+            self.mPlotModel.blockUpdates(self.mWasBlocked)
+
     def __init__(self, *args, **kwds):
 
         super().__init__(*args, **kwds)
+
+        self.mBlockUpdates: bool = False
 
         self.mProject: QgsProject = QgsProject.instance()
 
@@ -399,6 +414,14 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # self.mTemporaryProfileStyles: typing.Dict[ATTRIBUTE_ID, PlotStyle] = dict()
 
         self.mMaxProfilesWidget: QWidget = None
+
+    def blockUpdates(self, b: bool) -> bool:
+        state = self.mBlockUpdates
+        self.mBlockUpdates = b
+        return state
+
+    def updatesBlocked(self) -> bool:
+        return self.mBlockUpdates
 
     def setMaxProfilesWidget(self, w: QWidget):
         self.mMaxProfilesWidget = w
@@ -646,6 +669,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.updatePlot()
 
     def updatePlot(self, fids_to_update=[]):
+        if self.updatesBlocked():
+            return
 
         t0 = datetime.datetime.now()
         if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget) and isinstance(self.speclib(), QgsVectorLayer)):
@@ -1059,25 +1084,27 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if id != self.speclib().id():
             return
 
-        newFIDs = [f.id() for f in features]
-        # see qgsvectorlayereditbuffer.cpp
-        oldFIDs = list(reversed(list(self.speclib().editBuffer().addedFeatures().keys())))
+        with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
+            newFIDs = [f.id() for f in features]
+            # see qgsvectorlayereditbuffer.cpp
+            oldFIDs = list(reversed(list(self.speclib().editBuffer().addedFeatures().keys())))
 
-        OLD2NEW = {o: n for o, n in zip(oldFIDs, newFIDs)}
-        updates = dict()
+            OLD2NEW = {o: n for o, n in zip(oldFIDs, newFIDs)}
+            updates = dict()
 
-        # rename fids in plot data items
-        for pdi in self.mPlotWidget.spectralProfilePlotDataItems():
-            grp, old_fid, fieldIndex, xunit = pdi.visualizationKey()
+            # rename fids in plot data items
+            for pdi in self.mPlotWidget.spectralProfilePlotDataItems():
+                grp, old_fid, fieldIndex, xunit = pdi.visualizationKey()
 
-            if old_fid in oldFIDs:
-                new_vis_key = (grp, OLD2NEW[old_fid], fieldIndex, xunit)
-                pdi.setVisualizationKey(new_vis_key)
+                if old_fid in oldFIDs:
+                    new_vis_key = (grp, OLD2NEW[old_fid], fieldIndex, xunit)
+                    pdi.setVisualizationKey(new_vis_key)
 
-        # rename fids for temporary profiles
-        # self.mTemporaryProfileIDs = {t for t in self.mTemporaryProfileIDs if t not in oldFIDs}
-        to_remove = {k for k in OLD2NEW.keys() if k < 0}
-        self.profileCandidates().syncCandidates()
+            # rename fids for temporary profiles
+            # self.mTemporaryProfileIDs = {t for t in self.mTemporaryProfileIDs if t not in oldFIDs}
+            to_remove = {k for k in OLD2NEW.keys() if k < 0}
+            self.profileCandidates().syncCandidates()
+
         self.updatePlot(fids_to_update=OLD2NEW.values())
 
     def onSpeclibAttributesUpdated(self, *args):

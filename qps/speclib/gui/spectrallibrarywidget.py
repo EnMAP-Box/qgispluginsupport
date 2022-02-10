@@ -506,76 +506,77 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         speclib: QgsVectorLayer = self.speclib()
         plotModel: SpectralProfilePlotModel = self.plotControl()
-        #  stop plot updates
-        # plotWidget.mUpdateTimer.stop()
-        restart_editing: bool = not speclib.startEditing()
 
-        addAuto: bool = make_permanent if isinstance(make_permanent, bool) \
-            else self.optionAddCurrentProfilesAutomatically.isChecked()
+        with SpectralProfilePlotModel.UpdateBlocker(plotModel) as blocker:
+            restart_editing: bool = not speclib.startEditing()
 
-        if addAuto:
-            self.addCurrentProfilesToSpeclib()
-        else:
-            self.deleteCurrentProfilesFromSpeclib()
+            addAuto: bool = make_permanent \
+                if isinstance(make_permanent, bool) \
+                else self.optionAddCurrentProfilesAutomatically.isChecked()
 
-            # now there shouldn't be any PDI or style ref related to an old ID
-        plotModel.profileCandidates().clearCandidates()
-        # self.plotControl().mTemporaryProfileIDs.clear()
-        # self.plotControl().mTemporaryProfileColors.clear()
-
-        # if necessary, convert QgsFeatures to SpectralProfiles
-        # for i in range(len(currentProfiles)):
-        #    p = currentProfiles[i]
-        #    assert isinstance(p, QgsFeature)
-        #    if not isinstance(p, SpectralProfile):
-        #        p = SpectralProfile.fromQgsFeature(p)
-        #        currentProfiles[i] = p
-
-        # add current profiles to speclib
-        oldIDs = set(speclib.allFeatureIds())
-
-        speclib.beginEditCommand('Add current profiles')
-        inputFIDs = [f.id() for f in currentProfiles]
-        addedFIDs = SpectralLibraryUtils.addProfiles(speclib, currentProfiles)
-        speclib.endEditCommand()
-
-        affected_profile_fields = set()
-
-        p_fields = profile_fields(self.speclib())
-        for profile in currentProfiles:
-            for fieldname in p_fields.names():
-                if profile.fieldNameIndex(fieldname) >= 0 and profile.attribute(fieldname) is not None:
-                    affected_profile_fields.add(fieldname)
-
-        if not addAuto:
-            # give current spectra the current spectral style
-            # self.plotControl().mTemporaryProfileIDs.update(addedFIDs)
-
-            # affected_profile_fields: typing.Dict[str, QColor] = dict()
-
-            # find a profile style for each profile candidate
-
-            if isinstance(currentProfileStyles, dict):
-                currentProfilesStyles = {(addedFIDs[inputFIDs.index(fid)], field): style
-                                         for (fid, field), style in currentProfileStyles.items()}
-
-                plotModel.profileCandidates().setCandidates(currentProfilesStyles)
-
-        visualized_attributes = [v.field().name() for v in self.plotControl().visualizations() if v.isComplete()]
-        missing_visualization = [a for a in affected_profile_fields if a not in visualized_attributes]
-
-        for attribute in missing_visualization:
-            if False:
-                # create new vis color similar to temporal profile overly
-                color: QColor = affected_profile_fields[attribute]
-                # make the default color a bit darker
-                color = nextColor(color, 'darker')
+            if addAuto:
+                self.addCurrentProfilesToSpeclib()
             else:
-                color = None
+                self.deleteCurrentProfilesFromSpeclib()
 
-            self.spectralLibraryPlotWidget().createProfileVisualization(field=attribute, color=color)
+                # now there shouldn't be any PDI or style ref related to an old ID
+            plotModel.profileCandidates().clearCandidates()
+            # self.plotControl().mTemporaryProfileIDs.clear()
+            # self.plotControl().mTemporaryProfileColors.clear()
 
-        self.plotControl().updatePlot()
+            # if necessary, convert QgsFeatures to SpectralProfiles
+            # for i in range(len(currentProfiles)):
+            #    p = currentProfiles[i]
+            #    assert isinstance(p, QgsFeature)
+            #    if not isinstance(p, SpectralProfile):
+            #        p = SpectralProfile.fromQgsFeature(p)
+            #        currentProfiles[i] = p
+
+            # add current profiles to speclib
+            oldIDs = set(speclib.allFeatureIds())
+
+            speclib.beginEditCommand('Add current profiles')
+            inputFIDs = [f.id() for f in currentProfiles]
+            addedFIDs = SpectralLibraryUtils.addProfiles(speclib, currentProfiles)
+            speclib.endEditCommand()
+
+            affected_profile_fields = set()
+
+            p_fields = profile_fields(self.speclib())
+            for profile in currentProfiles:
+                for fieldname in p_fields.names():
+                    if profile.fieldNameIndex(fieldname) >= 0 and profile.attribute(fieldname) is not None:
+                        affected_profile_fields.add(fieldname)
+
+            if not addAuto:
+                # give current spectra the current spectral style
+                # self.plotControl().mTemporaryProfileIDs.update(addedFIDs)
+
+                # affected_profile_fields: typing.Dict[str, QColor] = dict()
+
+                # find a profile style for each profile candidate
+
+                if isinstance(currentProfileStyles, dict):
+                    currentProfilesStyles = {(addedFIDs[inputFIDs.index(fid)], field): style
+                                             for (fid, field), style in currentProfileStyles.items()}
+
+                    plotModel.profileCandidates().setCandidates(currentProfilesStyles)
+
+            visualized_attributes = [v.field().name() for v in self.plotControl().visualizations() if v.isComplete()]
+            missing_visualization = [a for a in affected_profile_fields if a not in visualized_attributes]
+
+            for attribute in missing_visualization:
+                if False:
+                    # create new vis color similar to temporal profile overly
+                    color: QColor = affected_profile_fields[attribute]
+                    # make the default color a bit darker
+                    color = nextColor(color, 'darker')
+                else:
+                    color = None
+
+                self.spectralLibraryPlotWidget().createProfileVisualization(field=attribute, color=color)
+
+        plotModel.updatePlot()
         self.updateActions()
         self.speclib().triggerRepaint()
 

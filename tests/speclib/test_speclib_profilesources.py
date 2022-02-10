@@ -393,7 +393,7 @@ class SpectralProcessingTests(TestCase):
         tv = SpectralProfileBridgeTreeView()
         tv.setModel(proxyModel)
 
-        delegate = SpectralProfileBridgeViewDelegate()
+        delegate = SpectralProfileBridgeViewDelegate(tv)
         delegate.setItemDelegates(tv)
         delegate.setBridge(model)
         self.showGui(tv)
