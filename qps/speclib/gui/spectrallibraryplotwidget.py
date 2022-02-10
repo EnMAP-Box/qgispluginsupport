@@ -10,7 +10,7 @@ from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon
 from qgis.PyQt.QtGui import QPen, QBrush, QPixmap
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QSpinBox, QLabel, QFrame, QAction, QApplication, \
+from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
 from qgis.core import QgsField, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
@@ -36,7 +36,7 @@ from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
 from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
-    SelectMapLayerDialog
+    SelectMapLayerDialog, SignalBlocker
 
 
 class SpectralProfilePlotXAxisUnitModel(UnitModel):
@@ -215,7 +215,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel()
         self.mXUnit: str = self.mXUnitModel[0]
         self.mXUnitInitialized: bool = False
-        self.mMaxProfiles: int = 200
         self.mShowSelectedFeaturesOnly: bool = False
 
         self.mGeneralSettings = GeneralSettingsGroup()
@@ -237,9 +236,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def updatesBlocked(self) -> bool:
         return self.mBlockUpdates
-
-    def setMaxProfilesWidget(self, w: QWidget):
-        self.mMaxProfilesWidget = w
 
     def createPropertyColor(self, property: QgsProperty, fid: int = None) -> QColor:
         assert isinstance(property, QgsProperty)
@@ -385,22 +381,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
     sigMaxProfilesChanged = pyqtSignal(int)
 
     def setMaxProfiles(self, n: int):
-        assert n >= 0
-        if n != self.mMaxProfiles:
-            if n < self.mMaxProfiles:
-                # remove spdis
-                spdis = sorted(self.mPlotWidget.spectralProfilePlotDataItems(), key=lambda k: k.zValue())
-                while len(spdis) > n:
-                    self.mPlotWidget.removeItem(spdis.pop())
-                self.mMaxProfiles = n
-            else:
-                self.mMaxProfiles = n
-                self.updatePlot()
-
-            self.sigMaxProfilesChanged.emit(self.mMaxProfiles)
+        self.generalSettings().setMaximumProfiles(n)
 
     def maxProfiles(self) -> int:
-        return self.mMaxProfiles
+        return self.generalSettings().maximumProfiles()
 
     def __len__(self) -> int:
         return len(self.visualizations())
@@ -522,7 +506,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # PROFILE_DATA: typing.Dict[tuple, dict] = dict()
 
         profile_limit_reached: bool = False
-        max_profiles = self.maxProfiles()
+        max_profiles = self.generalSettings().maximumProfiles()
         context: QgsExpressionContext = self.speclib().createExpressionContext()
 
         PLOT_ITEMS = []
@@ -544,6 +528,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             plot_data = self.plotData(feature, fieldIndex, xunit)
             if plot_data:
                 if len(PLOT_ITEMS) >= max_profiles:
+                    profile_limit_reached = True
                     break
                 plot_style = CANDIDATES.generatePlotStyle(context)
                 plot_name = CANDIDATES.generateLabel(context)
@@ -566,6 +551,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # handle other profile visualizations
         for fid in feature_priority:
             if len(PLOT_ITEMS) >= max_profiles:
+                profile_limit_reached = True
                 break
             # self.mVectorLayerCache.getFeatures(feature_priority):
             feature: QgsFeature = self.mVectorLayerCache.getFeature(fid)
@@ -585,6 +571,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             for vis in visualizations:
                 if len(PLOT_ITEMS) >= max_profiles:
+                    profile_limit_reached = True
                     break
                 vis: ProfileVisualizationGroup
                 fieldIndex = vis.fieldIdx()
@@ -672,24 +659,24 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if p not in existing:
                 self.mPlotWidget.addItem(p)
         n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
-        if n_total == 0 and len(CANDIDATES.candidateFeatureIds()) > 0:
-            s = ""
+
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
         debugLog(f'updatePlot: {datetime.datetime.now() - t0} {len(PLOT_ITEMS)} new, {n_total} total')
 
     def updateProfileLabel(self, n: int, limit_reached: bool):
+        propertyItem = self.generalSettings().mP_MaxProfiles
 
-        if isinstance(self.mMaxProfilesWidget, QWidget):
-
+        with SignalBlocker(propertyItem.signals()) as blocker:
             if limit_reached:
-                css = 'color: rgb(255, 0, 0);'
+                fg = QColor('red')
                 tt = 'Profile limit reached. Increase to show more profiles at the same time (decreases speed)'
             else:
-                css = ''
-                tt = ''
-            self.mMaxProfilesWidget.setStyleSheet(css)
-            self.mMaxProfilesWidget.setToolTip(tt)
+                fg = None
+                tt = propertyItem.definition().description()
+            propertyItem.setData(tt, Qt.ToolTipRole)
+            propertyItem.setData(fg, Qt.ForegroundRole)
+            propertyItem.emitDataChanged()
 
     def supportedDragActions(self) -> Qt.DropActions:
         return Qt.CopyAction | Qt.MoveAction
@@ -1372,7 +1359,6 @@ class SpectralLibraryPlotWidget(QWidget):
         # self.plotWidget.sigPopulateContextMenuItems.connect(self.onPopulatePlotContextMenu)
         self.mPlotControlModel = SpectralProfilePlotModel()
         self.mPlotControlModel.setPlotWidget(self.plotWidget)
-        self.mPlotControlModel.setMaxProfiles(self.sbMaxProfiles.value())
         self.mPlotControlModel.sigPlotWidgetStyleChanged.connect(self.sigPlotWidgetStyleChanged.emit)
         self.mINITIALIZED_VISUALIZATIONS = set()
 
@@ -1417,10 +1403,10 @@ class SpectralLibraryPlotWidget(QWidget):
         self.optionSelectedFeaturesOnly.setIcon(QgsApplication.getThemeIcon("/mActionShowSelectedLayers.svg"))
         self.mPlotControlModel.sigShowSelectedFeaturesOnlyChanged.connect(self.optionSelectedFeaturesOnly.setChecked)
 
-        self.sbMaxProfiles: QSpinBox
-        self.sbMaxProfiles.valueChanged.connect(self.mPlotControlModel.setMaxProfiles)
-        self.labelMaxProfiles: QLabel
-        self.mPlotControlModel.setMaxProfilesWidget(self.sbMaxProfiles)
+        # self.sbMaxProfiles: QSpinBox
+        # self.sbMaxProfiles.valueChanged.connect(self.mPlotControlModel.setMaxProfiles)
+        # self.labelMaxProfiles: QLabel
+        # self.mPlotControlModel.setMaxProfilesWidget(self.sbMaxProfiles)
 
         self.optionCursorCrosshair: QAction
         self.optionCursorCrosshair.toggled.connect(self.plotWidget.setShowCrosshair)

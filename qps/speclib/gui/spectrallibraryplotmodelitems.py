@@ -491,6 +491,12 @@ class GeneralSettingsGroup(PropertyItemGroup):
                 'Band Bands', 'Show band band values', QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
 
         )
+        self.mP_MaxProfiles = QgsPropertyItem('MaxProfiles')
+        self.mP_MaxProfiles.setDefinition(QgsPropertyDefinition(
+            'Max. Profiles', 'Maximum Number of Profiles',
+            QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive))
+        self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(512))
+
         self.mP_BadBands.setProperty(QgsProperty.fromValue(False))
 
         self.mPLegend = LegendGroup()
@@ -517,9 +523,12 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_CH.setItemCheckable(True)
         self.mP_CH.setItemChecked(True)
 
-        for pItem in [self.mPLegend, self.mP_BadBands, self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
+        for pItem in [self.mPLegend, self.mP_MaxProfiles,
+                      self.mP_BadBands,
+                      self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
             self.appendRow(pItem.propertyRow())
 
+        self.mP_MaxProfiles.signals().dataChanged.connect(self.signals().requestPlotUpdate)
         self.mP_BadBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
 
         for pItem in [self.mPLegend, self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
@@ -576,6 +585,13 @@ class GeneralSettingsGroup(PropertyItemGroup):
             legend.update()
 
         model.sigPlotWidgetStyleChanged.emit()
+
+    def maximumProfiles(self) -> int:
+        return self.mP_MaxProfiles.value()
+
+    def setMaximumProfiles(self, n: int):
+        assert n >= 0
+        self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(n))
 
     def expressionContext(self) -> QgsExpressionContext:
         return self.mContext
@@ -988,6 +1004,7 @@ class QgsPropertyItem(PropertyItem):
 
         if self.isColorProperty():
             w = SpectralProfileColorPropertyWidget(parent=parent)
+
         elif self.isProfileFieldProperty():
             w = HTMLComboBox(parent=parent)
             model = self.model()
@@ -1000,11 +1017,13 @@ class QgsPropertyItem(PropertyItem):
             w = QComboBox(parent=parent)
             w.addItem('True', True)
             w.addItem('False', False)
+
         elif template in [QgsPropertyDefinition.StandardPropertyTemplate.Integer,
                           QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive,
                           QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositiveGreaterZero]:
 
             w = QgsSpinBox(parent=parent)
+
         elif template in [QgsPropertyDefinition.StandardPropertyTemplate.Double,
                           QgsPropertyDefinition.StandardPropertyTemplate.DoublePositive,
                           QgsPropertyDefinition.StandardPropertyTemplate.Double0To1]:
@@ -1213,7 +1232,12 @@ class RasterRendererGroup(PropertyItemGroup):
         if isinstance(layer, QgsRasterLayer):
             self.setLayer(layer)
 
-        self.initBasicSettings()
+        self.setUserTristate(False)
+        self.setCheckable(True)
+        self.setCheckState(Qt.Checked)
+        self.setDropEnabled(False)
+        self.setDragEnabled(False)
+
         self.updateLayerName()
 
     def updateBarVisiblity(self):
@@ -1382,7 +1406,7 @@ class RasterRendererGroup(PropertyItemGroup):
         if self.mItemBandG in activeItems:
             plotItems.append(self.mBarG)
         if self.mItemBandB in activeItems:
-            plotItems.append(self.mBarR)
+            plotItems.append(self.mBarB)
         if self.mItemBandA in activeItems:
             plotItems.append(self.mBarA)
 
