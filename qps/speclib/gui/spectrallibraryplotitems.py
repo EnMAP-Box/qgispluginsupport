@@ -453,6 +453,37 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.menu.alphaSlider = alphaSlider
         return self.menu
 
+class PlotUpdateBlocker(object):
+    """
+    A blocker for plot updates
+    """
+
+    def __init__(self, plot: pg.PlotWidget):
+        isinstance(plot, pg.PlotWidget)
+        self.mPlotWidget: pg.PlotWidget = plot
+
+    def __enter__(self):
+        plotItem = self.mPlotWidget.getPlotItem()
+        legend: pg.LegendItem = plotItem.legend
+
+        if isinstance(legend, pg.LegendItem):
+            legend.size = 'dummy'
+        plotItem.getViewBox()._updatingRange = True
+
+
+    def __exit__(self, exc_type, exc_value, tb):
+
+        plotItem = self.mPlotWidget.getPlotItem()
+        legend: pg.LegendItem = plotItem.legend
+
+        vb = plotItem.getViewBox()
+        vb._updatingRange = False
+        vb.updateAutoRange()
+
+        if isinstance(legend, pg.LegendItem):
+            legend.size = None
+            legend.updateSize()
+
 
 class SpectralProfilePlotWidget(pg.PlotWidget):
     """
