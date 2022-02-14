@@ -284,7 +284,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                 example_distance = distanceArea.measureLine(x0, x1)
                 # print(example_distance)
                 pred = nicePredecessor(example_distance)
-                print((example_distance, pred))
+
                 x0 = QgsPointXY(centerGeo.x() - pred, centerGeo.y())
                 example_distance = distanceArea.measureLine(x0, x1)
                 # example_distance = centerGeo.x() - pred
