@@ -58,9 +58,14 @@ def getDOMAttributes(elem):
 def compileResourceFiles(dirRoot: str,
                          targetDir: str = None,
                          suffix: str = '_rc.py',
-                         skip_qgis_images: bool = True):
+                         skip_qgis_images: bool = True,
+                         compressLevel=19,
+                         compressThreshold=100
+                         ):
     """
     Searches for *.ui files and compiles the *.qrc files they use.
+    :param compressLevel:
+    :param compressThreshold:
     :param suffix:
     :param skip_qgis_images:
     :type skip_qgis_images: bool, if True (default), qrc paths to the qgis images.qrc will be skipped
@@ -135,7 +140,11 @@ def compileResourceFiles(dirRoot: str,
             s = '{}{}'.format(i, suffix)
             outName = '{}{}'.format(bn, s)
 
-        compileResourceFile(qrcFile, targetDir=targetDir, suffix=s)
+        compileResourceFile(qrcFile,
+                            targetDir=targetDir,
+                            suffix=s,
+                            compressLevel=compressLevel,
+                            compressThreshold=compressThreshold)
         targetDirOutputNames.append(outName)
 
     if len(qrc_files_skipped) > 0:
