@@ -327,6 +327,7 @@ class QgisMockup(QgisInterface):
 
     def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
         assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
+
         self.mMapLayerPanelFactories.append(factory)
 
     def unregisterMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):

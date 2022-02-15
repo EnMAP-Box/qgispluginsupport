@@ -29,10 +29,11 @@ import sys
 import os
 import typing
 import warnings
+
 from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
 
-MIN_QGIS_VERSION = '3.20'
+MIN_QGIS_VERSION = '3.22'
 __version__ = '1.3'
 
 DIR_QPS = pathlib.Path(__file__).parent
@@ -77,6 +78,7 @@ def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory)
         registered.append(name)
         os.environ[KEY_MAPLAYERCONFIGWIDGETFACTORIES] = '::'.join(registered)
         iface.registerMapLayerConfigWidgetFactory(factory)
+
         QgsApplication.instance().messageLog().logMessage(f'Registered {name}', level=Qgis.Info)
         return factory
     else:

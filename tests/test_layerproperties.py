@@ -13,16 +13,16 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import xmlrunner
-from qgis.PyQt.QtWidgets import QDialog, QHBoxLayout, QWidget
 from osgeo import gdal
 
+from qgis.PyQt.QtWidgets import QDialog, QHBoxLayout, QWidget, QGridLayout
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
     QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer, QgsProject
 from qgis.gui import QgsMapLayerConfigWidget, QgsRendererPropertiesDialog, QgsMapCanvas, \
     QgsMapLayerStyleManagerWidget, QgsRendererRasterPropertiesWidget, QgsRasterTransparencyWidget, \
     QgsTextFormatPanelWidget
-from qgis.gui import QgsRasterLayerProperties, QgsOptionsDialogBase
-from qps import registerMapLayerConfigWidgetFactories
+from qgis.gui import QgsRasterLayerProperties, QgsOptionsDialogBase, QgsMapLayerConfigWidgetFactory
+from qps import registerMapLayerConfigWidgetFactories, MAPLAYER_CONFIGWIDGET_FACTORIES
 from qps.layerproperties import RemoveAttributeDialog, AttributeTableWidget, CopyAttributesDialog, AddAttributeDialog, \
     showLayerPropertiesDialog, LayerPropertiesDialog, defaultRasterRenderer, equal_styles
 from qps.resources import findQGISResourceFiles, initQtResources
@@ -135,6 +135,35 @@ class LayerPropertyTests(TestCase):
         w.layout().addWidget(d)
 
         self.showGui([w])
+
+    def test_layerPropertiesDialog_RasterBandWidget(self):
+
+        registerMapLayerConfigWidgetFactories()
+        lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
+        QgsProject.instance().addMapLayer(lyr)
+        w = QWidget()
+
+        canvas = QgsMapCanvas(parent=w)
+        canvas.setLayers([lyr])
+        canvas.zoomToFullExtent()
+        dialog1 = QgsRasterLayerProperties(lyr, canvas)
+        dialog2 = QgsRasterLayerProperties(lyr, canvas)
+
+        added = []
+        for factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
+            factory: QgsMapLayerConfigWidgetFactory
+            added.append(factory.title())
+            dialog1.addPropertiesPageFactory(factory)
+            dialog2.addPropertiesPageFactory(factory)
+
+        grid = QGridLayout()
+        grid.addWidget(canvas, 0, 0, 1, -1)
+        grid.addWidget(dialog1, 1, 0)
+        grid.addWidget(dialog2, 1, 1)
+
+        w.setWindowTitle('Dialog Test')
+        w.setLayout(grid)
+        self.showGui(w)
 
     def test_LayerPropertiesDialog_Raster(self):
 

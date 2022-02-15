@@ -1661,6 +1661,26 @@ def displayBandNames(rasterSource, bands=None, leadingBandNumber=True):
     return None
 
 
+def rendererXML(renderer: QgsRasterRenderer, root: str = 'root') -> QDomDocument:
+    doc = QDomDocument()
+    root = doc.createElement(root)
+    renderer.writeXml(doc, root)
+    doc.appendChild(root)
+    return doc
+
+
+def equalRasterRenderer(renderer1: QgsRasterRenderer, renderer2: QgsRasterRenderer) -> bool:
+    if renderer1 == renderer2:
+        return True
+    if renderer1.type() != renderer2.type():
+        return False
+
+    # same type? go into the details
+    xml1 = rendererXML(renderer1)
+    xml2 = rendererXML(renderer2)
+    return xml1.toByteArray() == xml2.toByteArray()
+
+
 def defaultBands(dataset) -> list:
     """
     Returns a list of 3 default bands
@@ -3188,7 +3208,7 @@ class FeatureReferenceIterator(object):
             return self.mFeatureIterator.__next__()
 
 
-def printCaller(prefix=None, suffix=None):
+def printCaller(prefix: str = None, suffix: str = None):
     """
     prints out the current code location in calling method
     :param prefix: prefix text
