@@ -453,6 +453,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.menu.alphaSlider = alphaSlider
         return self.menu
 
+
 class PlotUpdateBlocker(object):
     """
     A blocker for plot updates
@@ -469,7 +470,6 @@ class PlotUpdateBlocker(object):
         if isinstance(legend, pg.LegendItem):
             legend.size = 'dummy'
         plotItem.getViewBox()._updatingRange = True
-
 
     def __exit__(self, exc_type, exc_value, tb):
 

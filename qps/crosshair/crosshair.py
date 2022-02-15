@@ -32,15 +32,13 @@ import pathlib
 import warnings
 
 import numpy as np
+
 from qgis.PyQt.QtCore import pyqtSignal, QLineF, QPointF, Qt, QRectF, QSizeF
 from qgis.PyQt.QtGui import QFont, QColor, QPen, QBrush, QPolygonF, QFontMetrics
 from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QDialogButtonBox, QDialog, QWidget
+from qgis.core import QgsRectangle, QgsCoordinateReferenceSystem, QgsPointXY, QgsDistanceArea, QgsRasterLayer
 from qgis.core import QgsUnitTypes, QgsCoordinateTransform, Qgis, QgsCsException
 from qgis.gui import QgsMapCanvas, QgsDialog, QgsMapCanvasItem
-
-from qgis.core import QgsRectangle, QgsCoordinateReferenceSystem, QgsPointXY, QgsDistanceArea, QgsVector, \
-    QgsRasterLayer
-
 from ..utils import loadUi
 
 
@@ -328,7 +326,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         # anchor point
                         pt = m2p.transform(x0)
 
-                        line = QLineF(pt.x(), pt.y()-ml, pt.x(), pt.y() + ml)
+                        line = QLineF(pt.x(), pt.y() - ml, pt.x(), pt.y() + ml)
                         lines.append(line)
 
                         if self.mCrosshairStyle.mShowDistanceLabel:
