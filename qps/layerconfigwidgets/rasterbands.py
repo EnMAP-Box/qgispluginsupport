@@ -180,8 +180,8 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.cbMultiBandBlue.bandChanged.connect(self.onBandWidgetChanged)
 
         self.mChangedBufferMS = 500
+        self.mChangedTimerBlocked: bool = False
         self.mChangedTimer = QTimer()
-        self.mChangedTimer.setInterval(self.mChangedTimer)
         self.mChangedTimer.timeout.connect(self.onWidgetChanged)
 
         assert isinstance(self.sliderSingleBand, QSlider)
@@ -250,10 +250,10 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.mChangedTimer.start(self.mChangedBufferMS)
 
     def onWidgetChanged(self, *args):
-        self.mChangedTimer.stop()
-
-        self.apply()
-        self.widgetChanged.emit()
+        if not self.mChangedTimerBlocked:
+            self.mChangedTimer.stop()
+            self.apply()
+            self.widgetChanged.emit()
 
     def icon(self) -> QIcon:
         return QIcon(':/qps/ui/icons/rasterband_select.svg')
@@ -313,6 +313,8 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         if not isinstance(renderer, QgsRasterRenderer):
             return
 
+        self.mChangedTimerBlocked = True
+
         w = self.renderBandWidget
         assert isinstance(self.labelRenderType, QLabel)
         assert isinstance(w, QStackedWidget)
@@ -346,8 +348,10 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         else:
             w.setCurrentWidget(self.pageUnknown)
 
+        self.mChangedTimerBlocked = False
+
     def shouldTriggerLayerRepaint(self) -> bool:
-        return True
+        return not self.mChangedTimerBlocked
 
     def apply(self):
         newRenderer = self.renderer()
