@@ -23,7 +23,7 @@ from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
 
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
-    SpectralProfilePlotDataItem, SpectralProfilePlotWidget
+    SpectralProfilePlotDataItem, SpectralProfilePlotWidget, PlotUpdateBlocker
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
     ProfileVisualizationGroup, PlotStyleItem, ProfileCandidateGroup, PropertyItemBase, ProfileCandidateItem, \
     GeneralSettingsGroup, PropertyLabel
@@ -651,13 +651,16 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     return
 
         to_remove = [p for p in old_spdis if p not in PLOT_ITEMS]
-        for p in to_remove:
-            self.mPlotWidget.removeItem(p)
 
-        existing = self.mPlotWidget.items()
-        for p in PLOT_ITEMS:
-            if p not in existing:
+        with PlotUpdateBlocker(self.mPlotWidget) as blocker:
+            for p in to_remove:
+                self.mPlotWidget.removeItem(p)
+
+            existing = self.mPlotWidget.items()
+            to_add = [p for p in PLOT_ITEMS if p not in existing]
+            for p in to_add:
                 self.mPlotWidget.addItem(p)
+
         n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
