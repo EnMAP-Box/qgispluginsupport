@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>208</width>
+    <width>466</width>
     <height>216</height>
    </rect>
   </property>
@@ -24,7 +24,7 @@
    <item>
     <widget class="QStackedWidget" name="renderBandWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="pageSingleBand">
       <layout class="QGridLayout" name="gridLayout_2">

@@ -165,7 +165,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.mCanvas = canvas
         self.mLayer = layer
         self.mRendererXMLString: str = None
-        # self.mLayer.rendererChanged.connect(self.syncToLayer)
+        self.mLayer.rendererChanged.connect(self.syncToLayer)
         assert isinstance(self.cbSingleBand, QgsRasterBandComboBox)
 
         self.cbSingleBand.setLayer(self.mLayer)
@@ -251,8 +251,12 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         printCaller(prefix=id(self))
         self.mChangedTimer.stop()
         # create a new renderer
-        self.apply()
-        # self.widgetChanged.emit()
+
+        if self.dockMode():
+            self.widgetChanged.emit()
+        else:
+            # QgsRasterLayerProperties dialog. will call apply() manually
+            pass
 
     def icon(self) -> QIcon:
         return QIcon(':/qps/ui/icons/rasterband_select.svg')
@@ -347,7 +351,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         return False
 
     def apply(self):
-
+        printCaller(suffix='apply called')
         newRenderer = self.renderer()
         if rendererXML(self.mLayer.renderer()).toString() == self.mRendererXMLString:
             # no need to replace the renderer
@@ -401,10 +405,6 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
                 self.sliderMultiBandBlue.setValue(bB)
 
         self.onBandWidgetChanged()
-        # self.widgetChanged.emit()
-
-    def setDockMode(self, dockMode: bool):
-        pass
 
 
 class RasterBandConfigWidgetBlocker(object):

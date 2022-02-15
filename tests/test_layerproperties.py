@@ -23,6 +23,7 @@ from qgis.gui import QgsMapLayerConfigWidget, QgsRendererPropertiesDialog, QgsMa
     QgsTextFormatPanelWidget
 from qgis.gui import QgsRasterLayerProperties, QgsOptionsDialogBase, QgsMapLayerConfigWidgetFactory
 from qps import registerMapLayerConfigWidgetFactories, MAPLAYER_CONFIGWIDGET_FACTORIES
+from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
 from qps.layerproperties import RemoveAttributeDialog, AttributeTableWidget, CopyAttributesDialog, AddAttributeDialog, \
     showLayerPropertiesDialog, LayerPropertiesDialog, defaultRasterRenderer, equal_styles
 from qps.resources import findQGISResourceFiles, initQtResources
@@ -149,6 +150,10 @@ class LayerPropertyTests(TestCase):
         dialog1 = QgsRasterLayerProperties(lyr, canvas)
         dialog2 = QgsRasterLayerProperties(lyr, canvas)
 
+        panelWidget = RasterBandConfigWidget(lyr, canvas)
+        panelWidget.setDockMode(True)
+        panelWidget.widgetChanged.connect(panelWidget.apply)
+
         added = []
         for factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
             factory: QgsMapLayerConfigWidgetFactory
@@ -157,7 +162,8 @@ class LayerPropertyTests(TestCase):
             dialog2.addPropertiesPageFactory(factory)
 
         grid = QGridLayout()
-        grid.addWidget(canvas, 0, 0, 1, -1)
+        grid.addWidget(canvas, 0, 0)
+        grid.addWidget(panelWidget, 0, 1)
         grid.addWidget(dialog1, 1, 0)
         grid.addWidget(dialog2, 1, 1)
 
