@@ -26,6 +26,7 @@ import pathlib
 import typing
 
 import numpy as np
+from PyQt5.QtCore import QTimer
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
@@ -173,10 +174,15 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.cbMultiBandGreen.setLayer(self.mLayer)
         self.cbMultiBandBlue.setLayer(self.mLayer)
 
-        self.cbSingleBand.bandChanged.connect(self.onWidgetChanged)
-        self.cbMultiBandRed.bandChanged.connect(self.onWidgetChanged)
-        self.cbMultiBandGreen.bandChanged.connect(self.onWidgetChanged)
-        self.cbMultiBandBlue.bandChanged.connect(self.onWidgetChanged)
+        self.cbSingleBand.bandChanged.connect(self.onBandWidgetChanged)
+        self.cbMultiBandRed.bandChanged.connect(self.onBandWidgetChanged)
+        self.cbMultiBandGreen.bandChanged.connect(self.onBandWidgetChanged)
+        self.cbMultiBandBlue.bandChanged.connect(self.onBandWidgetChanged)
+
+        self.mChangedBufferMS = 500
+        self.mChangedTimer = QTimer()
+        self.mChangedTimer.setInterval(self.mChangedTimer)
+        self.mChangedTimer.timeout.connect(self.onWidgetChanged)
 
         assert isinstance(self.sliderSingleBand, QSlider)
         self.sliderSingleBand.setRange(1, self.mLayer.bandCount())
@@ -240,9 +246,14 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
 
         self.setPanelTitle('Band Selection')
 
+    def onBandWidgetChanged(self, *args):
+        self.mChangedTimer.start(self.mChangedBufferMS)
+
     def onWidgetChanged(self, *args):
+        self.mChangedTimer.stop()
+
         self.apply()
-        # self.widgetChanged.emit()
+        self.widgetChanged.emit()
 
     def icon(self) -> QIcon:
         return QIcon(':/qps/ui/icons/rasterband_select.svg')
@@ -344,8 +355,9 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         if isinstance(newRenderer, QgsRasterRenderer) and isinstance(self.mLayer, QgsRasterLayer):
             newRenderer.setInput(self.mLayer.dataProvider())
             self.mLayer.setRenderer(newRenderer)
+            self.mLayer.styleManager().currentStyleChanged.emit('')
             # self.mLayer.emitStyleChanged()
-            self.widgetChanged.emit()
+            # self.widgetChanged.emit()
 
     def wlBand(self, wlKey: str) -> int:
         """
