@@ -27,6 +27,7 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import math
 import pathlib
 import warnings
 
@@ -34,6 +35,7 @@ import numpy as np
 from qgis.PyQt.QtCore import pyqtSignal, QLineF, QPointF, Qt, QRectF, QSizeF
 from qgis.PyQt.QtGui import QFont, QColor, QPen, QBrush, QPolygonF, QFontMetrics
 from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QDialogButtonBox, QDialog, QWidget
+from qgis.core import QgsUnitTypes, QgsCoordinateTransform, Qgis, QgsCsException
 from qgis.gui import QgsMapCanvas, QgsDialog, QgsMapCanvasItem
 
 from qgis.core import QgsRectangle, QgsCoordinateReferenceSystem, QgsPointXY, QgsDistanceArea, QgsVector, \
@@ -213,7 +215,7 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
     def setPixelBox(self, nPx: int):
         """
         Sets the box size of the center box
-        :param nPx: number of pixel arount, need to an odd integer number 1,3,..
+        :param nPx: number of pixel around, need to an odd integer number 1,3, ...
         """
         assert nPx >= 0
         assert nPx == 1 or nPx % 3 == 0, 'Size of pixel box must be an odd integer value (1,3,5...)'
@@ -240,8 +242,11 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
         :param QWidget_widget:
         :return:
         """
+
         if isinstance(self.mPosition, QgsPointXY) and self.mShow and self.mCrosshairStyle.mShow:
             # paint the crosshair
+            crs: QgsCoordinateReferenceSystem = self.mCanvas.mapSettings().destinationCrs()
+
             size = self.mCanvas.size()
             m2p = self.mCanvas.mapSettings().mapToPixel()
             centerGeo = self.mPosition
@@ -269,59 +274,90 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
             lines.append(QLineF(centerPx.x(), y0, centerPx.x(), centerPx.y() - gap))
             lines.append(QLineF(centerPx.x(), y1, centerPx.x(), centerPx.y() + gap))
 
-            if self.mCrosshairStyle.mShowDistanceMarker:
-                crs: QgsCoordinateReferenceSystem = self.mCanvas.mapSettings().destinationCrs()
-                distanceArea = QgsDistanceArea()
-                distanceArea.setSourceCrs(crs, self.mCanvas.mapSettings().transformContext())
+            if self.mCrosshairStyle.mShowDistanceMarker and crs.isValid():
+                if Qgis.version() > '3.24':
+                    crsLL = crs.toGeographicCrs()
+                else:
+                    crsLL = QgsCoordinateReferenceSystem('EPSG:4326')
 
-                extent = self.mCanvas.extent()
+                if crsLL.isValid():
+                    transformContext = self.mCanvas.mapSettings().transformContext()
+                    distanceArea = QgsDistanceArea()
+                    distanceArea.setSourceCrs(crs, transformContext)
+                    distanceArea.setEllipsoid(crs.ellipsoidAcronym())
 
-                maxD = 0.5 * min([extent.width(), extent.height()])
-                # pred = nicePredecessor(maxD)
+                    extent = self.mCanvas.extent()
 
-                x0 = QgsPointXY(centerGeo.x() - maxD, centerGeo.y())
-                x1 = QgsPointXY(centerGeo.x(), centerGeo.y())
-                example_distance = distanceArea.measureLine(x0, x1)
-                # print(example_distance)
-                pred = nicePredecessor(example_distance)
-                print((example_distance, pred))
-                x0 = QgsPointXY(centerGeo.x() - pred, centerGeo.y())
-                example_distance = distanceArea.measureLine(x0, x1)
-                # example_distance = centerGeo.x() - pred
+                    orientation = Qt.AlignLeft
+                    if centerGeo.x() - extent.xMinimum() > 0.2 * extent.width():
+                        orientation = Qt.AlignLeft
+                        x0_thickmark = QgsPointXY(centerGeo.x() - 0.5 * (centerGeo.x() - extent.xMinimum()),
+                                                  centerGeo.y())
+                    else:
+                        orientation = Qt.AlignRight
+                        x0_thickmark = QgsPointXY(centerGeo.x() + 0.5 * (extent.xMaximum() - centerGeo.x()),
+                                                  centerGeo.y())
 
-                # pt = m2p.transform(QgsPointXY(example_distance, centerGeo.y()))
-                pt = m2p.transform(x0)
-                line = QLineF((pt + QgsVector(0, ml)).toQPointF(),
-                              (pt - QgsVector(0, ml)).toQPointF())
-                lines.append(line)
+                    x1 = QgsPointXY(centerGeo.x(), centerGeo.y())
+                    example_distance = distanceArea.measureLine(x0_thickmark, x1)
+                    bearing = distanceArea.bearing(x1, x0_thickmark)
 
-                # todo: add more markers
+                    nice_distance = nicePredecessor(example_distance)
+                    # print((example_distance, pred))
+                    # rad = -90 * math.pi / 180
+                    # print(f'{rad}\n{bearing}')
+                    x0 = None
+                    if crs.isValid() \
+                            and distanceArea.lengthUnits() == QgsUnitTypes.DistanceMeters \
+                            and math.isfinite(bearing):
+                        transE = QgsCoordinateTransform(crs, crsLL, transformContext)
+                        try:
+                            e1 = transE.transform(x1)
+                            # need a point with x = lat, y = lon
+                            if not crsLL.hasAxisInverted():
+                                e0 = distanceArea.computeSpheroidProject(
+                                    QgsPointXY(e1.y(), e1.x()), nice_distance, bearing)
+                                e0 = QgsPointXY(e0.y(), e0.x())
+                            else:
+                                e0 = distanceArea.computeSpheroidProject(e1, nice_distance, bearing)
+                            x0 = transE.transform(e0, Qgis.TransformDirection.Reverse)
+                        except QgsCsException as ex:
+                            pass
 
-                if self.mCrosshairStyle.mShowDistanceLabel:
+                    if isinstance(x0, QgsPointXY):
+                        # anchor point
+                        pt = m2p.transform(x0)
 
-                    painter.setFont(QFont('Courier', pointSize=10))
-                    font = painter.font()
-                    ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))
+                        line = QLineF(pt.x(), pt.y()-ml, pt.x(), pt.y() + ml)
+                        lines.append(line)
 
-                    labelText = QgsDistanceArea.formatDistance(example_distance, 0, distanceArea.lengthUnits())
-                    pen = QPen(Qt.SolidLine)
-                    pen.setWidth(self.mCrosshairStyle.mThickness)
-                    pen.setColor(self.mCrosshairStyle.mColor)
+                        if self.mCrosshairStyle.mShowDistanceLabel:
 
-                    brush = self.mCanvas.backgroundBrush()
-                    c = brush.color()
-                    c.setAlpha(170)
-                    brush.setColor(c)
-                    painter.setBrush(brush)
-                    painter.setPen(Qt.NoPen)
-                    fm = QFontMetrics(font)
-                    backGroundSize = QSizeF(fm.size(Qt.TextSingleLine, labelText))
-                    backGroundSize = QSizeF(backGroundSize.width() + 3, -1 * (backGroundSize.height() + 3))
-                    backGroundPos = QPointF(ptLabel.x() - 3, ptLabel.y() + 3)
-                    background = QPolygonF(QRectF(backGroundPos, backGroundSize))
-                    painter.drawPolygon(background)
-                    painter.setPen(pen)
-                    painter.drawText(ptLabel, labelText)
+                            painter.setFont(QFont('Courier', pointSize=10))
+                            font = painter.font()
+                            ptLabel = QPointF(pt.x(), pt.y() + (ml + font.pointSize() + 3))
+
+                            labelText = QgsDistanceArea.formatDistance(nice_distance, 0, distanceArea.lengthUnits())
+                            pen = QPen(Qt.SolidLine)
+                            pen.setWidth(self.mCrosshairStyle.mThickness)
+                            pen.setColor(self.mCrosshairStyle.mColor)
+
+                            brush = self.mCanvas.backgroundBrush()
+                            c = brush.color()
+                            c.setAlpha(170)
+                            brush.setColor(c)
+                            painter.setBrush(brush)
+                            painter.setPen(Qt.NoPen)
+                            fm = QFontMetrics(font)
+                            backGroundSize = QSizeF(fm.size(Qt.TextSingleLine, labelText))
+                            backGroundSize = QSizeF(backGroundSize.width() + 3, -1 * (backGroundSize.height() + 3))
+                            backGroundPos = QPointF(ptLabel.x() + 1, ptLabel.y() + 3)
+                            ptText = QPointF(ptLabel.x() + 3, ptLabel.y())
+                            # backGroundPos = QPointF(ptLabel.x() - 3, ptLabel.y())
+                            background = QPolygonF(QRectF(backGroundPos, backGroundSize))
+                            painter.drawPolygon(background)
+                            painter.setPen(pen)
+                            painter.drawText(ptText, labelText)
 
             if self.mCrosshairStyle.mShowDot:
                 p = QRectF()
