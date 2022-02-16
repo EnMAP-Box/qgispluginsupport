@@ -26,6 +26,7 @@ import pathlib
 import typing
 
 import numpy as np
+
 from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QPushButton
@@ -38,7 +39,6 @@ from qgis.core import QgsRasterLayer, QgsMapLayer, \
     QgsMultiBandColorRenderer, \
     QgsPalettedRasterRenderer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
-from qgis.gui import QgsRasterLayerProperties
 from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
 from ..simplewidgets import FlowLayout
 from ..utils import loadUi, parseWavelength, UnitLookup, parseFWHM, LUT_WAVELENGTH, WAVELENGTH_DESCRIPTION, \
