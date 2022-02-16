@@ -26,6 +26,7 @@ import pathlib
 import typing
 
 import numpy as np
+from qgis.core import Qgis
 
 from qgis.PyQt.QtCore import Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
@@ -420,7 +421,6 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def __init__(self):
         super(RasterBandConfigWidgetFactory, self).__init__('Raster Band',
                                                             QIcon(':/qps/ui/icons/rasterband_select.svg'))
-        s = ""
 
     def supportsLayer(self, layer):
         if isinstance(layer, QgsRasterLayer):
@@ -432,7 +432,8 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         return 'mOptsPage_Transparency'
 
     def supportLayerPropertiesDialog(self):
-        return True
+        # requires QGIS 1e86672a
+        return Qgis.versionInt() >= 32300
 
     def supportsStyleDock(self):
         return True
