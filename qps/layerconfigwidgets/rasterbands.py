@@ -292,7 +292,6 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
             newRenderer.setGreenBand(self.cbMultiBandGreen.currentBand())
             newRenderer.setBlueBand(self.cbMultiBandBlue.currentBand())
 
-            newRenderer.blueContrastEnhancement()
         else:
             newRenderer = oldRenderer.clone()
 
