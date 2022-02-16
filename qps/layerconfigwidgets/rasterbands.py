@@ -445,8 +445,8 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
     def createWidget(self, layer: QgsMapLayer, canvas: QgsMapCanvas, dockWidget: bool = True,
                      parent=None) -> QgsMapLayerConfigWidget:
         w = RasterBandConfigWidget(layer, canvas, parent=parent)
-        if isinstance(parent, QgsRasterLayerProperties):
-            w.widgetChanged.connect(parent.syncToLayer)
+        # if isinstance(parent, QgsRasterLayerProperties):
+        #    w.widgetChanged.connect(parent.syncToLayer)
         w.setWindowTitle(self.title())
         w.setWindowIcon(self.icon())
         return w
