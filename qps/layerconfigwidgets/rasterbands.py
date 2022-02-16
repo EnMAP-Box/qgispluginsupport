@@ -291,6 +291,8 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
             newRenderer.setRedBand(self.cbMultiBandRed.currentBand())
             newRenderer.setGreenBand(self.cbMultiBandGreen.currentBand())
             newRenderer.setBlueBand(self.cbMultiBandBlue.currentBand())
+
+            newRenderer.blueContrastEnhancement()
         else:
             newRenderer = oldRenderer.clone()
 
@@ -348,7 +350,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
                     w.setCurrentWidget(self.pageUnknown)
 
     def shouldTriggerLayerRepaint(self) -> bool:
-        return False
+        return True
 
     def apply(self):
         printCaller(suffix='apply called')
