@@ -1,17 +1,185 @@
+import re
 import sys
 import typing
-import unittest
 
-from PyQt5.QtCore import QVariant
-from PyQt5.QtWidgets import QVBoxLayout, QWidget
-from qgis._core import QgsRasterLayer, QgsFields, QgsField, QgsVectorLayer, QgsFieldConstraints, QgsFeature, \
-    QgsDefaultValue, QgsVectorLayerCache
-from qgis._gui import QgsAttributeTableView, QgsAttributeTableFilterModel, QgsMapCanvas, QgsAttributeTableModel
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsRasterLayer, QgsField, QgsVectorLayer, QgsFieldConstraints, QgsFeature, \
+    QgsDefaultValue, QgsVectorLayerCache, QgsObjectCustomProperties, QgsRasterDataProvider
+from qgis.gui import QgsAttributeTableView, QgsAttributeTableFilterModel, QgsMapCanvas, QgsAttributeTableModel
 
-from qgis.PyQt.QtCore import QAbstractListModel
+rx_bands = re.compile(r'^Band[_ ](?P<band>\d+)$')
+rx_key_value_pair = re.compile('^(?P<key>[^ =]+)=(?P<value>.+)$')
 
 
-class QgsRasterLayerSpectralProperties(QgsVectorLayer):
+def stringToType(value: str):
+    t = str
+    for candidate in [int, float]:
+        try:
+            _ = candidate(value)
+            t = candidate
+        except ValueError:
+            continue
+    return t(value)
+
+
+class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
+    NORMALIZATION_PATTERNS = {
+        'fwhm': re.compile('(fwhm|fullwidthhalfmaximum)$', re.IGNORECASE),
+        'bbl': re.compile('(bbl|badBand|badbandmultiplier|badbandlist)$', re.IGNORECASE),
+        'wlu': re.compile('(wlu|wavelength[ _]?units?)$', re.IGNORECASE),
+        'wl': re.compile('(wl|wavelengths?)$', re.IGNORECASE),
+    }
+
+    @staticmethod
+    def fromRasterLayer(layer: QgsRasterLayer):
+        if isinstance(layer, str):
+            options = QgsRasterLayer.LayerOptions(loadDefaultStyle=True)
+            return QgsRasterLayerSpectralProperties.fromRasterLayer(QgsRasterLayer(layer, options=options))
+
+        if not isinstance(layer, QgsRasterLayer) and layer.isValid():
+            return None
+        obj = QgsRasterLayerSpectralProperties(layer.bandCount())
+        obj._readFromProvider(layer.dataProvider())
+        obj.readFromLayer(layer)
+        return obj
+
+    def __init__(self, bandCount: int):
+        assert bandCount > 0
+        super().__init__()
+        self.mBandCount = bandCount
+
+    def __eq__(self, other):
+        if not isinstance(other, QgsRasterLayerSpectralProperties):
+            return False
+        k1 = set(self.keys())
+        k2 = set(other.keys())
+        if k1 != k2:
+            return False
+        for k in k1:
+            if self.value(k) != other.value(k):
+                return False
+        return True
+
+    def bandCount(self) -> int:
+        return self.mBandCount
+
+    @staticmethod
+    def normalizeItemKey(itemKey: str) -> str:
+
+        for replacement, rx in QgsRasterLayerSpectralProperties.NORMALIZATION_PATTERNS.items():
+            match = rx.search(itemKey)
+            if match:
+                itemKey = itemKey.replace(match.group(), replacement)
+
+        return itemKey
+
+    @staticmethod
+    def bandKey(bandNo: int) -> str:
+        return f'band_{bandNo}'
+
+    def bandItemKey(self, bandNo: int, itemKey: str):
+        return f'{self.bandKey(bandNo)}/{self.normalizeItemKey(itemKey)}'
+
+    def bandValue(self, bandNo: int, itemKey: str) -> typing.Any:
+        return self.bandValues([bandNo], itemKey)
+
+    def setBandValue(self, bandNo: typing.Union[int, str], itemKey: str, value):
+        self.setBandValues([bandNo], itemKey, [value])
+
+    def setBandValues(self, bands: typing.List[int], itemKey, values):
+        if bands in [None, 'all']:
+            bands = list(range(1, self.bandCount() + 1))
+        for b in bands:
+            assert isinstance(b, int) and 0 < b <= self.bandCount()
+        if isinstance(values, (str, int, float)):
+            values = [values for _ in bands]
+
+        assert len(values) == len(bands)
+        assert 0 < len(bands) <= self.bandCount()
+        for value, band in zip(values, bands):
+            self.setValue(self.bandItemKey(band, itemKey), value)
+
+    def bandValues(self, bands: typing.List[int], itemKey) -> typing.List[typing.Any]:
+        if bands in [None, 'all']:
+            bands = list(range(1, self.bandCount() + 1))
+        itemKey = self.normalizeItemKey(itemKey)
+        return [self.value(f'{self.bandKey(b)}/{itemKey}') for b in bands]
+
+    def wavelengths(self) -> typing.List[float]:
+        return self.bandValues(None, 'wavelength')
+
+    def wavelengthUnits(self) -> typing.List[str]:
+        return self.bandValues(None, 'wavelength_units')
+
+    def fullWidthHalfMaximum(self) -> typing.List[float]:
+        return self.bandValues(None, 'fwhm')
+
+    def writeXml(self, parentNode: QDomElement, doc: QDomDocument):
+
+        root = doc.createElement('spectralproperties')
+        super().writeXml(root, doc)
+        parentNode.appendChild(root)
+
+    def readXml(self, parentNode, keyStartsWith=''):
+
+        root = parentNode.namedItem('spectralproperties')
+        if root.isNull():
+            return None
+        else:
+            super(QgsRasterLayerSpectralProperties, self).readXml(root, keyStartsWith=keyStartsWith)
+
+    def readFromLayer(self, layer: QgsRasterLayer):
+        assert isinstance(layer, QgsRasterLayer)
+
+        customProperties = layer.customProperties()
+        nb = layer.bandCount()
+        for b in range(1, nb + 1):
+            bandKey = f'band_{b}'
+            keys = [k for k in customProperties.keys() if k.startswith(bandKey)]
+            for k in keys:
+                self.setValue(self.bandItemKey(b, k.removeprefix(bandKey)[1:]),
+                              stringToType(customProperties.value(k)))
+
+    def _readFromProvider(self, provider: QgsRasterDataProvider):
+        assert isinstance(provider, QgsRasterDataProvider)
+
+        html = provider.htmlMetadata()
+        doc = QDomDocument()
+        success, err, errLine, errColumn = doc.setContent(f'<root>{html}</root>')
+
+        if success:
+            root = doc.documentElement()
+            trNode = root.firstChildElement('tr')
+            while not trNode.isNull():
+                td1 = trNode.firstChildElement('td')
+                td2 = td1.nextSibling().toElement()
+                if not (td1.isNull() or td2.isNull()):
+                    value = td2.text()
+                    match = rx_bands.match(td1.text().replace(' ', '_'))
+                    if match:
+                        bandNo = int(match.group('band'))
+                        li = td2.firstChildElement('ul').firstChildElement('li').toElement()
+                        if li.isNull():
+                            self.setValue(self.bandKey(bandNo), stringToType(value))
+                        else:
+                            while not li.isNull():
+                                value = li.text()
+                                match2 = rx_key_value_pair.match(value)
+                                if match2:
+                                    itemKey = match2.group('key')
+                                    itemValue = match2.group('value')
+
+                                    self.setValue(self.bandItemKey(bandNo, itemKey), stringToType(itemValue))
+                                else:
+                                    pass
+                                li = li.nextSibling().toElement()
+
+                trNode = trNode.nextSibling()
+
+
+class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
     """
     A container to expose spectral properties of QgsRasterLayers
     Conceptually similar to QgsRasterLayerTemporalProperties, just for spectral properties
@@ -70,9 +238,6 @@ class QgsRasterLayerSpectralProperties(QgsVectorLayer):
     def setValue(self, field: typing.Union[int, str, QgsField], bandNo: int, value: typing.Any) -> bool:
         return self.setValues(field, [bandNo], [value])
 
-    def value(self, field: typing.Union[int, str, QgsField], bandNo: int) -> typing.Any:
-        return self.values(field, [bandNo])
-
     def setValues(self,
                   field: typing.Union[int, str, QgsField],
                   bands: typing.List[int],
@@ -88,13 +253,18 @@ class QgsRasterLayerSpectralProperties(QgsVectorLayer):
             self.setAttribute(bandNo, value)
         return self.commitChanges()
 
-    def values(self, field: typing.Union[int, str, QgsField], bands: typing.List[int] = None) -> typing.List[typing.Any]:
+    def value(self, field: typing.Union[int, str, QgsField], bandNo: int) -> typing.Any:
+        return self.values(field, [bandNo])
+
+    def values(self,
+               field: typing.Union[int, str, QgsField],
+               bands: typing.List[int] = None) -> typing.List[typing.Any]:
         i = self.fieldIndex(field)
         if i < 0:
             print(f'Spectral Property Field {field} does not exists', file=sys.stderr)
             return None
         if bands is None:
-            bands = list(range(1, self.mSpectralProperties.featureCount()+1))
+            bands = list(range(1, self.mSpectralProperties.featureCount() + 1))
         self.mSpectralProperties: QgsVectorLayer
         values = []
         for band in bands:
@@ -117,7 +287,7 @@ class QgsRasterLayerSpectralProperties(QgsVectorLayer):
     def wavelength(self, bandNo: int):
         return self.value('WL', bandNo)
 
-    def setWavelength(self, bandNo: int, value:float):
+    def setWavelength(self, bandNo: int, value: float):
         self.setValue('WL', bandNo, value)
 
     def _readBandProperty(self, layer: QgsRasterLayer, bandNo: int, propertyName: str):
@@ -148,12 +318,12 @@ class QgsRasterLayerSpectralProperties(QgsVectorLayer):
         pass
 
 
-class QgsRasterLayerSpectralPropertiesWidget(QWidget):
+class QgsRasterLayerSpectralPropertiesTableWidget(QWidget):
 
-    def __init__(self, spectralProperties: QgsRasterLayerSpectralProperties, *args, **kwds):
+    def __init__(self, spectralProperties: QgsRasterLayerSpectralPropertiesTable, *args, **kwds):
         super().__init__(*args, **kwds)
         self.setWindowTitle('QgsRasterLayerSpectralPropertiesWidget')
-        self.mSpectralProperties: QgsRasterLayerSpectralProperties = spectralProperties
+        self.mSpectralProperties: QgsRasterLayerSpectralPropertiesTable = spectralProperties
         self.mVectorLayerCache = QgsVectorLayerCache(self.mSpectralProperties, 256)
         self.mAttributeTableModel = QgsAttributeTableModel(self.mVectorLayerCache)
         self.mAttributeTableModel.loadLayer()

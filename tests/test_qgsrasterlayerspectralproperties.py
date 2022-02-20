@@ -1,10 +1,11 @@
-from qgis._core import QgsApplication
-from qgis._gui import QgsGui
-
-from qgis.testing import start_app, stop_app, TestCase
 import unittest
 
-from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesWidget
+from qgis.core import QgsApplication, QgsRasterLayer
+from qgis.gui import QgsGui
+
+from qgis.testing import start_app, TestCase
+from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralPropertiesTable, \
+    QgsRasterLayerSpectralPropertiesTableWidget, QgsRasterLayerSpectralProperties, stringToType
 from qps.testing import TestObjects
 
 
@@ -15,9 +16,50 @@ class TestQgsRasterLayerProperties(TestCase):
         start_app()
         QgsGui.editorWidgetRegistry().initEditors()
 
+    def test_stringToType(self):
+        self.assertEqual(stringToType(3.24), 3.24)
+        self.assertEqual(stringToType('3.24'), 3.24)
+
+        self.assertEqual(stringToType(3), 3)
+        self.assertEqual(stringToType('3'), 3)
+
+        self.assertEqual(stringToType('3foobar'), '3foobar')
+
     def test_QgsRasterLayerSpectralProperties(self):
+        from qpstestdata import envi_bsq
+
+        lyr = QgsRasterLayer(envi_bsq)
+        properties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        p2 = QgsRasterLayerSpectralProperties.fromRasterLayer(envi_bsq)
+        self.assertEqual(properties, p2)
+
+        self.assertEqual(properties.normalizeItemKey('wl'), 'wl')
+        self.assertEqual(properties.normalizeItemKey('WL'), 'wl')
+        self.assertEqual(properties.normalizeItemKey('Wavelength'), 'wl')
+        self.assertEqual(properties.normalizeItemKey('Wavelengths'), 'wl')
+
+        self.assertEqual(properties.normalizeItemKey('WLU'), 'wlu')
+        self.assertEqual(properties.normalizeItemKey('WavelengthUnits'), 'wlu')
+        self.assertEqual(properties.normalizeItemKey('Wavelength unit'), 'wlu')
+        self.assertEqual(properties.normalizeItemKey('Wavelength Units'), 'wlu')
+
+        lyr.setCustomProperty('band_3/wavelength', 350)
+        properties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        wl = properties.wavelengths()
+        self.assertEqual(wl[2], 350)
+
+        wlu = properties.wavelengthUnits()
+        for v in wlu:
+            self.assertEqual(v, 'nm')
+        properties.setBandValues('all', 'wavelength_unit', 'm')
+        wlu2 = properties.wavelengthUnits()
+        self.assertEqual(len(wlu), len(wlu2))
+        for v in wlu2:
+            self.assertEqual(v, 'm')
+
+    def test_QgsRasterLayerSpectralPropertiesTable(self):
         rasterLayer = TestObjects.createRasterLayer()
-        properties = QgsRasterLayerSpectralProperties()
+        properties = QgsRasterLayerSpectralPropertiesTable()
         properties._readBandProperties(rasterLayer)
 
         properties.setValues('BBL', [1, 2], [False, False])
@@ -28,13 +70,13 @@ class TestQgsRasterLayerProperties(TestCase):
         badBands2 = properties.bandBands()[0 - 2]
         self.assertListEqual(badBands1, badBands2)
 
-    def test_QgsRasterLayerSpectralPropertiesWidget(self):
+    def test_QgsRasterLayerSpectralPropertiesTableWidget(self):
         rasterLayer = TestObjects.createRasterLayer(nb=24)
-        properties = QgsRasterLayerSpectralProperties()
+        properties = QgsRasterLayerSpectralPropertiesTable()
         properties._readBandProperties(rasterLayer)
         properties.initDefaultFields()
         properties.startEditing()
-        w = QgsRasterLayerSpectralPropertiesWidget(properties)
+        w = QgsRasterLayerSpectralPropertiesTableWidget(properties)
         w.show()
         QgsApplication.instance().exec_()
         pass

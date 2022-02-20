@@ -1081,7 +1081,7 @@ def findTypeFromString(value: str):
             continue
         return t
 
-    # every values can be converted into a string
+    # every value can be converted into a string
     return str
 
 
