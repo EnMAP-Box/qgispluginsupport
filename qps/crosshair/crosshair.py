@@ -313,13 +313,15 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                             e1 = transE.transform(x1)
                             # need a point with x = lat, y = lon
                             if not crsLL.hasAxisInverted():
-                                e0 = distanceArea.computeSpheroidProject(
-                                    QgsPointXY(e1.y(), e1.x()), nice_distance, bearing)
-                                e0 = QgsPointXY(e0.y(), e0.x())
+                                # e0 = distanceArea.computeSpheroidProject(
+                                #    QgsPointXY(e1.y(), e1.x()), nice_distance, bearing)
+                                # e0 = QgsPointXY(e0.y(), e0.x())
+                                e0 = distanceArea.computeSpheroidProject(e1, nice_distance, bearing)
                             else:
                                 e0 = distanceArea.computeSpheroidProject(e1, nice_distance, bearing)
                             x0 = transE.transform(e0, Qgis.TransformDirection.Reverse)
                         except QgsCsException as ex:
+                            s = ""
                             pass
 
                     if isinstance(x0, QgsPointXY):
