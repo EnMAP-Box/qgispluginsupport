@@ -33,15 +33,18 @@ class TestQgsRasterLayerProperties(TestCase):
         p2 = QgsRasterLayerSpectralProperties.fromRasterLayer(envi_bsq)
         self.assertEqual(properties, p2)
 
-        self.assertEqual(properties.normalizeItemKey('wl'), 'wl')
-        self.assertEqual(properties.normalizeItemKey('WL'), 'wl')
-        self.assertEqual(properties.normalizeItemKey('Wavelength'), 'wl')
-        self.assertEqual(properties.normalizeItemKey('Wavelengths'), 'wl')
+        self.assertEqual(properties.itemKey('wl'), 'wl')
+        self.assertEqual(properties.itemKey('WL'), 'wl')
+        self.assertEqual(properties.itemKey('Wavelength'), 'wl')
+        self.assertEqual(properties.itemKey('Wavelengths'), 'wl')
 
-        self.assertEqual(properties.normalizeItemKey('WLU'), 'wlu')
-        self.assertEqual(properties.normalizeItemKey('WavelengthUnits'), 'wlu')
-        self.assertEqual(properties.normalizeItemKey('Wavelength unit'), 'wlu')
-        self.assertEqual(properties.normalizeItemKey('Wavelength Units'), 'wlu')
+        self.assertEqual(properties.itemKey('WLU'), 'wlu')
+        self.assertEqual(properties.itemKey('WavelengthUnits'), 'wlu')
+        self.assertEqual(properties.itemKey('Wavelength unit'), 'wlu')
+        self.assertEqual(properties.itemKey('Wavelength Units'), 'wlu')
+
+        self.assertEqual(properties.itemKey('FWHM'), 'fwhm')
+        self.assertEqual(properties.itemKey('FWHM/BBL'), 'FWHM/bbl')
 
         lyr.setCustomProperty('band_3/wavelength', 350)
         properties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)

@@ -3,7 +3,7 @@
 # see https://www.python.org/dev/peps/pep-0440/#version-specifiers
 ###### Requirements ######
 
-gdal
+osgeo
 numpy
 scipy
 # scikit-learn>=0.19.2

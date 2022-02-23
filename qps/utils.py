@@ -48,24 +48,25 @@ import zipfile
 from collections import defaultdict
 
 import numpy as np
-from qgis.PyQt.QtWidgets import QHBoxLayout
-from qgis.PyQt.QtCore import QPoint, QRect, QObject, QPointF, QDirIterator, QDateTime, QDate, QVariant, QByteArray, QUrl
-from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QComboBox, QWidget
-from qgis.PyQt.QtXml import QDomNode, QDomElement
 from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL
+from qgis.PyQt.QtCore import QPoint, QRect, QObject, QPointF, QDirIterator, QDateTime, QDate, QVariant, QByteArray, QUrl
+from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
+from qgis.PyQt.QtWidgets import QComboBox, QWidget
+from qgis.PyQt.QtWidgets import QHBoxLayout
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, QgsEditorWidgetSetup, \
-    QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm
+from qgis.PyQt.QtXml import QDomNode, QDomElement
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
     QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
     QgsFields
+from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, QgsEditorWidgetSetup, \
+    QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
+from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -1767,6 +1768,10 @@ def parseBadBandList(dataset) -> typing.List[int]:
     """
     bbl = None
 
+    sp = QgsRasterLayerSpectralProperties.fromRasterLayer(dataset)
+    bbl = sp.badBands()
+    return bbl
+
     try:
         dataset = gdalDataset(dataset)
     except Exception:
@@ -1795,6 +1800,9 @@ def parseFWHM(dataset) -> np.ndarray:
     :param dataset:
     :return:
     """
+    sp = QgsRasterLayerSpectralProperties(dataset)
+    return sp.fullWidthHalfMaximum()
+
     try:
         dataset = gdalDataset(dataset)
     except Exception:
@@ -1886,6 +1894,15 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
     :param dataset:
     :return: (wl, wl_u) or (None, None), if not existing
     """
+
+    sp = QgsRasterLayerSpectralProperties.fromRasterLayer(dataset)
+    wl = np.asarray(sp.wavelengths())
+    wlu = sp.wavelengthUnits()
+    if len(wl) > 0 and len(wlu) > 0:
+        return wl, wlu[0]
+    else:
+        return None, None
+
     # try to get wavelength from provider
 
     if isinstance(dataset, QgsRasterLayer):
