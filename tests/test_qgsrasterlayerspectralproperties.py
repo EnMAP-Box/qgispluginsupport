@@ -69,10 +69,6 @@ class TestQgsRasterLayerProperties(TestCase):
         badBands1 = properties.values('BBL')
         print(badBands1)
 
-        # test convenience functions
-        badBands2 = properties.bandBands()[0 - 2]
-        self.assertListEqual(badBands1, badBands2)
-
     def test_QgsRasterLayerSpectralPropertiesTableWidget(self):
         rasterLayer = TestObjects.createRasterLayer(nb=24)
         properties = QgsRasterLayerSpectralPropertiesTable()
