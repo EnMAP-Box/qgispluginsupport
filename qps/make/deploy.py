@@ -53,7 +53,7 @@ def userProfileManager() -> QgsUserProfileManager:
         if os.path.isfile(default_globalsettingsfile):
             globalsettingsfile = default_globalsettingsfile
 
-    if configLocalStorageLocation is not None:
+    if configLocalStorageLocation is None:
         if globalsettingsfile is not None:
             globalSettings = QSettings(globalsettingsfile, QSettings.IniFormat)
             if globalSettings.contains("core/profilesPath"):
