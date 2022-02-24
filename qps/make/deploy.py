@@ -24,8 +24,54 @@
 ***************************************************************************
 """
 # noinspection PyPep8Naming
+import os.path
+import pathlib
 import re
 import typing
+from os import getenv
+import platform
+from qgis.PyQt.QtCore import QStandardPaths, QSettings
+from qgis.core import QgsApplication
+
+from qgis.core import QgsUserProfileManager
+
+
+def userProfileManager() -> QgsUserProfileManager:
+    globalsettingsfile = None
+    configLocalStorageLocation = None
+
+    if globalsettingsfile is None:
+        globalsettingsfile: str = getenv("QGIS_GLOBAL_SETTINGS_FILE")
+
+    if globalsettingsfile is None:
+        startupPaths = QStandardPaths.locateAll(QStandardPaths.AppDataLocation, "qgis_global_settings.ini")
+        if startupPaths:
+            globalsettingsfile = startupPaths[0]
+
+    if globalsettingsfile is None:
+        default_globalsettingsfile = QgsApplication.resolvePkgPath() + "/resources/qgis_global_settings.ini"
+        if os.path.isfile(default_globalsettingsfile):
+            globalsettingsfile = default_globalsettingsfile
+
+    if configLocalStorageLocation is not None:
+        if globalsettingsfile is not None:
+            globalSettings = QSettings(globalsettingsfile, QSettings.IniFormat)
+            if globalSettings.contains("core/profilesPath"):
+                configLocalStorageLocation = globalSettings.value("core/profilesPath", "")
+
+        if configLocalStorageLocation is None:
+            home = pathlib.Path('~').expanduser()
+            basePath = None
+            if platform.system() == 'Windows':
+                basePath = home / 'AppData/Roaming/QGIS/QGIS3'
+
+            if basePath is None:
+                raise NotImplementedError(f'No QGIS basePath for {platform.system()}')
+
+            configLocalStorageLocation = basePath.as_posix()
+
+    rootProfileFolder = QgsUserProfileManager.resolveProfilesFolder(configLocalStorageLocation)
+    return QgsUserProfileManager(rootProfileFolder)
 
 
 class QGISMetadataFileWriter(object):
