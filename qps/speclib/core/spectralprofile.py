@@ -9,6 +9,7 @@ import warnings
 from json import JSONDecodeError
 
 import numpy as np
+from qgis.PyQt.QtCore import QDateTime, Qt
 from osgeo import gdal
 
 from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
@@ -108,6 +109,12 @@ def encodeProfileValueDict(d: dict, field: QgsField = None) -> QByteArray:
             if isinstance(v, np.ndarray):
                 v = v.tolist()
             d2[k] = v
+    xValues = d2.get('x')
+    if xValues and len(xValues) > 0:
+        if isinstance(xValues[0], datetime.datetime):
+            d2['x'] = [x.isoformat() for x in xValues]
+        elif isinstance(xValues[0], QDateTime):
+            d2['x'] = [x.toString(Qt.ISODate) for x in xValues]
     dJson = json.dumps(d2)
     if field is None:
         return QByteArray(pickle.dumps(dJson))
