@@ -25,10 +25,10 @@ import unittest
 
 import numpy as np
 import xmlrunner
+
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QProgressDialog
-
 from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsGeometry, QgsRasterLayer, QgsFeature, \
     QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsApplication, QgsTaskManager, QgsFields
 from qgis.gui import QgsGui, QgsMapCanvas
@@ -38,7 +38,7 @@ from qps.speclib.core import is_spectral_library, profile_field_list, profile_fi
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibrary, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
-    SpectralProfileBlock, EMPTY_PROFILE_VALUES, encodeProfileValueDict, SpectralProfileLoadingTask
+    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.speclib.io.csvdata import CSVSpectralLibraryIO
 from qps.testing import TestObjects, TestCase
@@ -218,6 +218,21 @@ class TestCore(TestCase):
         sl.addProfiles([sp])
         self.assertTrue(sl.commitChanges())
 
+        # serialize to text formats
+        field = QgsField('text', QVariant.String)
+        dump = encodeProfileValueDict(vd1, field)
+        self.assertIsInstance(dump, str)
+
+        vd2 = decodeProfileValueDict(dump)
+        self.assertIsInstance(vd2, dict)
+        self.assertEqual(vd1, vd2)
+
+        # decode from invalid string
+        vd2 = decodeProfileValueDict('{invalid')
+        self.assertIsInstance(vd2, dict)
+        self.assertTrue(len(vd2) == 0)
+        s = ""
+
     def test_SpectralProfileMath(self):
 
         sp = SpectralProfile()
@@ -284,11 +299,7 @@ class TestCore(TestCase):
         # empty profile
         sp = SpectralProfile()
         d = sp.values()
-        self.assertIsInstance(d, dict)
-        for k in ['x', 'y', 'xUnit', 'yUnit']:
-            self.assertTrue(k in d.keys())
-            v = d[k]
-            self.assertTrue(v == EMPTY_PROFILE_VALUES[k])
+        self.assertEqual(d, {})
         self.assertEqual(sp.xValues(), [])
         self.assertEqual(sp.yValues(), [])
 
@@ -299,9 +310,7 @@ class TestCore(TestCase):
             sp.setValues(x=x)
 
         d = sp.values()
-        self.assertIsInstance(d, dict)
-        for k in ['x', 'y', 'yUnit', 'xUnit', 'bbl']:
-            self.assertEqual(d[k], EMPTY_PROFILE_VALUES[k])
+        self.assertEqual(d, {})
 
         sp.setValues(y=y)
         self.assertListEqual(sp.xValues(), list(range(len(y))))

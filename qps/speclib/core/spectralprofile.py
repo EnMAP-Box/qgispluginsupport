@@ -1,15 +1,17 @@
 import datetime
+import json
 import os
 import pathlib
 import pickle
 import sys
 import typing
 import warnings
+from json import JSONDecodeError
 
 import numpy as np
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray
+from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
@@ -40,7 +42,7 @@ def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = No
     :param d:
     :return:
     """
-    if isinstance(prototype, dict):
+    if isinstance(prototype, dict) and len(prototype) > 0:
         d = prototype.copy()
     else:
         d = EMPTY_PROFILE_VALUES.copy()
@@ -88,12 +90,13 @@ def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = No
     return d
 
 
-def encodeProfileValueDict(d: dict) -> QByteArray:
+def encodeProfileValueDict(d: dict, field: QgsField = None) -> QByteArray:
     """
     Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
     :param d: dict
-    :return: str
+    :param field: QgsField Field definition. Default to a QByteArray field
+    :return: QByteArray or str, respecting the datatype that can be stored in field
     """
     if not isinstance(d, dict):
         return None
@@ -105,21 +108,36 @@ def encodeProfileValueDict(d: dict) -> QByteArray:
             if isinstance(v, np.ndarray):
                 v = v.tolist()
             d2[k] = v
-    return QByteArray(pickle.dumps(d2))
+    dJson = json.dumps(d2)
+    if field is None:
+        return QByteArray(pickle.dumps(dJson))
+    elif isinstance(field, QgsField):
+        if field.type() == QVariant.ByteArray:
+            return QByteArray(pickle.dumps(dJson))
+        elif field.type() == QVariant.String:
+            return dJson
 
 
-def decodeProfileValueDict(dump: QByteArray, numpy_arrays: bool = False) -> dict:
+def decodeProfileValueDict(dump: typing.Union[QByteArray, str], numpy_arrays: bool = False) -> dict:
     """
-    Converts a json / pickle dump into a SpectralProfile value dictionary
+    Converts a json / pickle dump into a SpectralProfile value dictionary.
+
+    In case the input "dump" cannot be converted, the returned dictionary is empty ({})
     :param numpy_arrays:
     :param dump: str
     :return: dict
     """
     d = EMPTY_PROFILE_VALUES.copy()
 
-    if dump not in EMPTY_VALUES:
-        d2 = pickle.loads(dump)
-        d.update(d2)
+    if isinstance(dump, QByteArray):
+        dump = pickle.loads(dump)
+
+    if dump in EMPTY_VALUES or not isinstance(dump, str):
+        return {}
+    try:
+        d.update(json.loads(dump))
+    except JSONDecodeError:
+        return {}
 
     if numpy_arrays:
         for k in ['x', 'y', 'bbl']:
@@ -153,7 +171,7 @@ class SpectralSetting(object):
 
     @classmethod
     def fromDictionary(cls, d: dict) -> 'SpectralSetting':
-        if 'y' not in d.keys():
+        if not isinstance(d, dict) or 'y' not in d.keys():
             # no spectral values no spectral setting
             return None
         x = d.get('x', None)
@@ -663,11 +681,11 @@ class SpectralProfile(QgsFeature):
 
     def isEmpty(self, profile_field=None) -> bool:
         """
-        Returns True if there is not ByteArray stored in the BLOB value profile_field
+        Returns True if there is no value stored in the BLOB / Text value profile_field
         :return: bool
         """
         fidx = self._profile_field_index(profile_field)
-        return self.attribute(fidx) in [None, QVariant()]
+        return self.attribute(fidx) in [None, QVariant(), NULL, '']
 
     def values(self, profile_field_index: typing.List[typing.Union[int, str, QgsField]] = None) -> dict:
         """
@@ -676,8 +694,8 @@ class SpectralProfile(QgsFeature):
         """
         profile_field_index = self._profile_field_index(profile_field_index)
         if profile_field_index not in self.mValueCache.keys():
-            byteArray = self.attribute(profile_field_index)
-            d = decodeProfileValueDict(byteArray)
+            data = self.attribute(profile_field_index)
+            d = decodeProfileValueDict(data)
 
             # save a reference to the decoded dictionary
             self.mValueCache[profile_field_index] = d
@@ -703,7 +721,7 @@ class SpectralProfile(QgsFeature):
         If wavelength information is not undefined it will return a list of band indices [0, ..., n-1]
         :return: [list-of-numbers]
         """
-        x = self.values(profile_field_index=profile_field)['x']
+        x = self.values(profile_field_index=profile_field).get('x', None)
 
         if not isinstance(x, list):
             return list(range(len(self.yValues())))
@@ -716,7 +734,7 @@ class SpectralProfile(QgsFeature):
         List is empty if not numbers are stored
         :return: [list-of-numbers]
         """
-        y = self.values(profile_field_index=profile_field)['y']
+        y = self.values(profile_field_index=profile_field).get('y', None)
         if not isinstance(y, list):
             return []
         else:
@@ -728,7 +746,7 @@ class SpectralProfile(QgsFeature):
         :return:
         :rtype:
         """
-        bbl = self.values(profile_field_index=profile_field).get('bbl')
+        bbl = self.values(profile_field_index=profile_field).get('bbl', None)
         if not isinstance(bbl, list):
             bbl = np.ones(self.nb(profile_field=profile_field), dtype=np.byte).tolist()
         return bbl
@@ -743,7 +761,7 @@ class SpectralProfile(QgsFeature):
         Returns the semantic unit of x values, e.g. a wavelength unit like 'nm' or 'um'
         :return: str
         """
-        return self.values(profile_field_index=profile_field)['xUnit']
+        return self.values(profile_field_index=profile_field).get('xUnit', None)
 
     def setYUnit(self, unit: str = None, profile_field=None):
         """
@@ -760,7 +778,7 @@ class SpectralProfile(QgsFeature):
         :return: str
         """
 
-        return self.values(profile_field_index=profile_field)['yUnit']
+        return self.values(profile_field_index=profile_field).get('yUnit', None)
 
     def clone(self):
         """
@@ -1217,9 +1235,10 @@ class SpectralProfileBlock(object):
         Returns True if profile in the block .data() array is described by a geocoordinate
         :return:
         """
-        return isinstance(self.mPositionsY, np.ndarray) \
+        result = isinstance(self.mPositionsY, np.ndarray) \
             and isinstance(self.mPositionsX, np.ndarray) \
             and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
+        return result
 
     def crs(self) -> QgsCoordinateReferenceSystem:
         """
