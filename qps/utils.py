@@ -66,8 +66,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataPro
 from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, QgsEditorWidgetSetup, \
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
-from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-
+from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
