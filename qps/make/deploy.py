@@ -59,16 +59,16 @@ def userProfileManager() -> QgsUserProfileManager:
             if globalSettings.contains("core/profilesPath"):
                 configLocalStorageLocation = globalSettings.value("core/profilesPath", "")
 
-        if configLocalStorageLocation is None:
-            home = pathlib.Path('~').expanduser()
-            basePath = None
-            if platform.system() == 'Windows':
-                basePath = home / 'AppData/Roaming/QGIS/QGIS3'
+    if configLocalStorageLocation is None:
+        home = pathlib.Path('~').expanduser()
+        basePath = None
+        if platform.system() == 'Windows':
+            basePath = home / 'AppData/Roaming/QGIS/QGIS3'
 
-            if basePath is None:
-                raise NotImplementedError(f'No QGIS basePath for {platform.system()}')
+        if basePath is None:
+            raise NotImplementedError(f'No QGIS basePath for {platform.system()}')
 
-            configLocalStorageLocation = basePath.as_posix()
+        configLocalStorageLocation = basePath.as_posix()
 
     rootProfileFolder = QgsUserProfileManager.resolveProfilesFolder(configLocalStorageLocation)
     return QgsUserProfileManager(rootProfileFolder)
