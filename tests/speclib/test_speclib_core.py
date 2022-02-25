@@ -25,6 +25,7 @@ import unittest
 
 import numpy as np
 import xmlrunner
+from osgeo import ogr
 
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
 from qgis.PyQt.QtGui import QColor
@@ -34,7 +35,7 @@ from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsGeometry, QgsRast
 from qgis.gui import QgsGui, QgsMapCanvas
 from qps import initResources
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
-from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields
+from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibrary, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
@@ -231,6 +232,77 @@ class TestCore(TestCase):
         vd2 = decodeProfileValueDict('{invalid')
         self.assertIsInstance(vd2, dict)
         self.assertTrue(len(vd2) == 0)
+
+    def test_profile_fields(self):
+
+        path = '/vsimem/test.gpkg'
+        options = ['OVERWRITE=YES',
+                   'DESCRIPTION=TestLayer']
+
+        drv: ogr.Driver = ogr.GetDriverByName('GPKG')
+        ds: ogr.DataSource = drv.CreateDataSource(path)
+        self.assertIsInstance(ds, ogr.DataSource)
+
+        lyr: ogr.Layer = ds.CreateLayer('TestLayer', geom_type=ogr.wkbPoint, options=options)
+        self.assertIsInstance(lyr, ogr.Layer)
+
+        def createField(name: str, ogrType: str, ogrSubType: str = None, width: int = None) -> ogr.FieldDefn:
+            field = ogr.FieldDefn(name, field_type=ogrType)
+            if ogrSubType:
+                field.SetSubType(ogrSubType)
+            if width:
+                field.SetWidth(width)
+            return field
+
+        lyr.CreateField(createField('json', ogr.OFTString, ogrSubType=ogr.OFSTJSON))
+        lyr.CreateField(createField('text', ogr.OFTString))
+        lyr.CreateField(createField('blob', ogr.OFTBinary))
+
+        # not supported
+        lyr.CreateField(createField('text10', ogr.OFTString, width=10))
+        lyr.CreateField(createField('int', ogr.OFTInteger))
+        lyr.CreateField(createField('float', ogr.OFTReal))
+        lyr.CreateField(createField('date', ogr.OFTDate))
+        lyr.CreateField(createField('datetime', ogr.OFTDateTime))
+        ds.FlushCache()
+        del ds
+        lyr = QgsVectorLayer(path)
+        self.assertIsInstance(lyr, QgsVectorLayer)
+        self.assertTrue(lyr.isValid())
+        fields: QgsFields = lyr.fields()
+        for name in ['json', 'text', 'blob']:
+            field = fields.field(name)
+            self.assertIsInstance(field, QgsField)
+            self.assertTrue(supports_field(field))
+
+        for name in ['text10', 'int', 'float', 'date', 'datetime']:
+            field = fields.field(name)
+            self.assertIsInstance(field, QgsField)
+            self.assertFalse(supports_field(field))
+        lyr.startEditing()
+        lyr.addFeature(QgsFeature(fields))
+        lyr.commitChanges(False)
+        fid = lyr.allFeatureIds()[0]
+
+        profiles = [
+            dict(y=[1, 2, 3]),
+            dict(y=[1, 2.0, 3], x=[350, 400, 523.4]),
+            dict(y=[1, 2, 3], x=[350, 400, 523.4], xUnit='nm', bbl=[0, 1, 1])
+                    ]
+
+        for profile1 in profiles:
+            for field in fields:
+                if supports_field(field):
+                    idx = fields.lookupField(field.name())
+                    value1 = encodeProfileValueDict(profile1, field=field)
+                    self.assertTrue(value1 is not None)
+                    self.assertTrue(lyr.changeAttributeValue(fid, idx, value1))
+                    lyr.commitChanges(False)
+                    value2 = lyr.getFeature(fid)[field.name()]
+                    self.assertEqual(value1, value2)
+                    profile2 = decodeProfileValueDict(value2)
+                    self.assertEqual(profile1, profile2)
+                s = ""
         s = ""
 
     def test_SpectralProfileMath(self):

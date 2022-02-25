@@ -187,7 +187,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         return self.bandValues(None, 'bbl', default=default)
 
-    def fullWidthHalfMaximum(self, default: float = -1) -> typing.List[float]:
+    def fullWidthHalfMaximum(self, default: float = float('nan')) -> typing.List[float]:
         """
         Returns the FWHM values for each band
         """
@@ -261,6 +261,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                     # print(value)
                     match_band = rx_bands.match(td1_text)
                     match_more = rx_more_information.match(td1_text)
+                    bandNo = None
                     if match_band:
                         bandNo = int(match_band.group('band'))
                         while not li.isNull():
@@ -276,13 +277,13 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                                     matchENVI = rx_envi_array.match(value)
                                     if matchENVI:
                                         value = matchENVI.group('value')
-                                        values = re.split(r'[\s,;]+', value)
-                                        if len(values) == self.bandCount():
-                                            values = [stringToType(v) for v in values]
-                                            self.setBandValues(None, self.itemKey(key), values)
-                                    else:
-                                        self.setBandValues(None, self.itemKey(key), stringToType(value))
-                                    s = ""
+                                    values = re.split(r'[\s,;]+', value)
+
+                                    if len(values) == self.bandCount():
+                                        values = [stringToType(v) for v in values]
+                                        self.setBandValues(None, self.itemKey(key), values)
+                                    elif len(values) == 1:
+                                        self.setBandValues(None, self.itemKey(key), stringToType(values[0]))
 
                             li = li.nextSibling().toElement()
 

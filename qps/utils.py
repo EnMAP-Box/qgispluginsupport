@@ -1799,8 +1799,12 @@ def parseFWHM(dataset) -> np.ndarray:
     :param dataset:
     :return:
     """
-    sp = QgsRasterLayerSpectralProperties(dataset)
-    return sp.fullWidthHalfMaximum()
+    sp = QgsRasterLayerSpectralProperties.fromRasterLayer(dataset)
+    fwhm = sp.fullWidthHalfMaximum()
+    if any([math.isfinite(v) for v in fwhm]):
+        return np.asarray(fwhm)
+    else:
+        return None
 
     try:
         dataset = gdalDataset(dataset)

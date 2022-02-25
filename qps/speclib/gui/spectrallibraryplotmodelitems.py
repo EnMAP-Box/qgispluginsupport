@@ -1274,6 +1274,8 @@ class RasterRendererGroup(PropertyItemGroup):
         return item
 
     def setXUnit(self, xUnit: str):
+        if xUnit is None:
+            xUnit = BAND_NUMBER
         self.mXUnit = xUnit
         self.updateFromRenderer()
 

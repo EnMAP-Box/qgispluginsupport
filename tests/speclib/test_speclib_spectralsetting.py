@@ -20,17 +20,20 @@ class TestCore(TestCase):
         lyr2: QgsRasterLayer = QgsRasterLayer(enmap, 'EnMAP Tiff', 'gdal')
 
         test_dir = self.createTestOutputDirectory()
-        rasterblockFeedback = QgsRasterBlockFeedback()
-        processingContext = QgsProcessingContext()
-        processingFeedback = processingContext.feedback()
+
         for i, lyr in enumerate([lyr1, lyr2]):
+            rasterblockFeedback = QgsRasterBlockFeedback()
+            processingContext = QgsProcessingContext()
+            processingFeedback = processingContext.feedback()
+
             settingA = SpectralSetting.fromRasterLayer(lyr)
             self.assertIsInstance(settingA, SpectralSetting)
 
             file_name = test_dir / f'layer_{i}.tiff'
             file_name = file_name.as_posix()
             file_writer = QgsRasterFileWriter(file_name)
-            dp = lyr.dataProvider()
+
+            dp = lyr.dataProvider().clone()
             pipe = QgsRasterPipe()
             self.assertTrue(pipe.set(dp), msg=f'Cannot set pipe provider to write {file_name}')
             error = file_writer.writeRaster(
@@ -42,8 +45,10 @@ class TestCore(TestCase):
                 processingContext.transformContext(),
                 rasterblockFeedback
             )
+
+            del file_writer
             self.assertTrue(error == QgsRasterFileWriter.WriterError.NoError, msg='Error')
-            settingA._writeToLayer(file_name)
+            settingA.writeToLayer(file_name)
 
             self.assertEqual(settingA.n_bands(), lyr.bandCount())
             settingB = SpectralSetting.fromRasterLayer(file_name)
@@ -52,8 +57,8 @@ class TestCore(TestCase):
             ds: gdal.Dataset = gdal.Open(file_name)
 
             wl, wlu = parseWavelength(ds)
+            del ds
             self.assertListEqual(settingB.x(), wl.tolist())
             self.assertEqual(settingB.xUnit(), wlu)
             self.assertEqual(settingA, settingB)
-
-            s = ""
+        print('done')

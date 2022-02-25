@@ -10,6 +10,7 @@ from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, \
     QgsEditorWidgetFactory
 from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
+from ..core import supports_field
 from ..core.spectralprofile import SpectralProfile, encodeProfileValueDict, decodeProfileValueDict
 from ...unitmodel import BAND_INDEX
 from ...utils import loadUi
@@ -468,7 +469,7 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         :return:
         """
         field: QgsField = vl.fields().at(fieldIdx)
-        return field.type() == QVariant.ByteArray
+        return supports_field(field)
 
     def fieldScore(self, vl: QgsVectorLayer, fieldIdx: int) -> int:
         """

@@ -40,7 +40,7 @@ from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItems
     SpatialPoint, layerGeoTransform, displayBandNames, UnitLookup, qgsRasterLayer, gdalDataset, px2geocoordinates, \
     rasterLayerArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
-    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, datetime64, SelectMapLayerDialog
+    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, datetime64, SelectMapLayerDialog, parseFWHM
 
 
 class TestUtils(TestCase):
@@ -158,6 +158,11 @@ class TestUtils(TestCase):
     def test_findwavelength(self):
 
         lyr = TestObjects.createRasterLayer()
+        wl, wlu = parseWavelength(lyr)
+
+        self.assertIsInstance(wl, np.ndarray)
+        self.assertIsInstance(wlu, str)
+
         paths = [lyr.source()]
         for p in paths:
             ds = None
@@ -168,6 +173,7 @@ class TestUtils(TestCase):
 
             if isinstance(ds, gdal.Dataset):
                 wl, wlu = parseWavelength(ds)
+                fwhm = parseFWHM(ds)
                 self.assertIsInstance(wl, np.ndarray)
                 self.assertTrue(len(wl), ds.RasterCount)
                 self.assertIsInstance(wlu, str)
