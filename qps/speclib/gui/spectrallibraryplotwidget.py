@@ -297,12 +297,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
             byteArray: QByteArray = feature.attribute(fieldIndex)
             rawData = None
             if isinstance(byteArray, QByteArray):
-                rawData = decodeProfileValueDict(byteArray)
-                if rawData['y'] is None:
+                rawData: dict = decodeProfileValueDict(byteArray)
+                if rawData.get('y', None) is None:
                     # empty profile, nothing to plot
                     # create empty entries (=None)
                     rawData = None
-                elif rawData['x'] is None:
+                elif rawData.get('x', None) is None:
                     rawData['x'] = list(range(len(rawData['y'])))
                     rawData['xUnit'] = BAND_INDEX
             self.mCACHE_PROFILE_DATA[id_attribute] = rawData

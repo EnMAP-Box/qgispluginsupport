@@ -25,20 +25,21 @@ import unittest
 
 import numpy as np
 import xmlrunner
+from osgeo import ogr
+
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QProgressDialog
-
 from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsGeometry, QgsRasterLayer, QgsFeature, \
     QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsApplication, QgsTaskManager, QgsFields
 from qgis.gui import QgsGui, QgsMapCanvas
 from qps import initResources
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
-from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields
+from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibrary, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
-    SpectralProfileBlock, EMPTY_PROFILE_VALUES, encodeProfileValueDict, SpectralProfileLoadingTask
+    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.speclib.io.csvdata import CSVSpectralLibraryIO
 from qps.testing import TestObjects, TestCase
@@ -218,6 +219,92 @@ class TestCore(TestCase):
         sl.addProfiles([sp])
         self.assertTrue(sl.commitChanges())
 
+        # serialize to text formats
+        field = QgsField('text', QVariant.String)
+        dump = encodeProfileValueDict(vd1, field)
+        self.assertIsInstance(dump, str)
+
+        vd2 = decodeProfileValueDict(dump)
+        self.assertIsInstance(vd2, dict)
+        self.assertEqual(vd1, vd2)
+
+        # decode from invalid string
+        vd2 = decodeProfileValueDict('{invalid')
+        self.assertIsInstance(vd2, dict)
+        self.assertTrue(len(vd2) == 0)
+
+    def test_profile_fields(self):
+
+        path = '/vsimem/test.gpkg'
+        options = ['OVERWRITE=YES',
+                   'DESCRIPTION=TestLayer']
+
+        drv: ogr.Driver = ogr.GetDriverByName('GPKG')
+        ds: ogr.DataSource = drv.CreateDataSource(path)
+        self.assertIsInstance(ds, ogr.DataSource)
+
+        lyr: ogr.Layer = ds.CreateLayer('TestLayer', geom_type=ogr.wkbPoint, options=options)
+        self.assertIsInstance(lyr, ogr.Layer)
+
+        def createField(name: str, ogrType: str, ogrSubType: str = None, width: int = None) -> ogr.FieldDefn:
+            field = ogr.FieldDefn(name, field_type=ogrType)
+            if ogrSubType:
+                field.SetSubType(ogrSubType)
+            if width:
+                field.SetWidth(width)
+            return field
+
+        lyr.CreateField(createField('json', ogr.OFTString, ogrSubType=ogr.OFSTJSON))
+        lyr.CreateField(createField('text', ogr.OFTString))
+        lyr.CreateField(createField('blob', ogr.OFTBinary))
+
+        # not supported
+        lyr.CreateField(createField('text10', ogr.OFTString, width=10))
+        lyr.CreateField(createField('int', ogr.OFTInteger))
+        lyr.CreateField(createField('float', ogr.OFTReal))
+        lyr.CreateField(createField('date', ogr.OFTDate))
+        lyr.CreateField(createField('datetime', ogr.OFTDateTime))
+        ds.FlushCache()
+        del ds
+        lyr = QgsVectorLayer(path)
+        self.assertIsInstance(lyr, QgsVectorLayer)
+        self.assertTrue(lyr.isValid())
+        fields: QgsFields = lyr.fields()
+        for name in ['json', 'text', 'blob']:
+            field = fields.field(name)
+            self.assertIsInstance(field, QgsField)
+            self.assertTrue(supports_field(field))
+
+        for name in ['text10', 'int', 'float', 'date', 'datetime']:
+            field = fields.field(name)
+            self.assertIsInstance(field, QgsField)
+            self.assertFalse(supports_field(field))
+        lyr.startEditing()
+        lyr.addFeature(QgsFeature(fields))
+        lyr.commitChanges(False)
+        fid = lyr.allFeatureIds()[0]
+
+        profiles = [
+            dict(y=[1, 2, 3]),
+            dict(y=[1, 2.0, 3], x=[350, 400, 523.4]),
+            dict(y=[1, 2, 3], x=[350, 400, 523.4], xUnit='nm', bbl=[0, 1, 1])
+                    ]
+
+        for profile1 in profiles:
+            for field in fields:
+                if supports_field(field):
+                    idx = fields.lookupField(field.name())
+                    value1 = encodeProfileValueDict(profile1, field=field)
+                    self.assertTrue(value1 is not None)
+                    self.assertTrue(lyr.changeAttributeValue(fid, idx, value1))
+                    lyr.commitChanges(False)
+                    value2 = lyr.getFeature(fid)[field.name()]
+                    self.assertEqual(value1, value2)
+                    profile2 = decodeProfileValueDict(value2)
+                    self.assertEqual(profile1, profile2)
+                s = ""
+        s = ""
+
     def test_SpectralProfileMath(self):
 
         sp = SpectralProfile()
@@ -284,11 +371,7 @@ class TestCore(TestCase):
         # empty profile
         sp = SpectralProfile()
         d = sp.values()
-        self.assertIsInstance(d, dict)
-        for k in ['x', 'y', 'xUnit', 'yUnit']:
-            self.assertTrue(k in d.keys())
-            v = d[k]
-            self.assertTrue(v == EMPTY_PROFILE_VALUES[k])
+        self.assertEqual(d, {})
         self.assertEqual(sp.xValues(), [])
         self.assertEqual(sp.yValues(), [])
 
@@ -299,9 +382,7 @@ class TestCore(TestCase):
             sp.setValues(x=x)
 
         d = sp.values()
-        self.assertIsInstance(d, dict)
-        for k in ['x', 'y', 'yUnit', 'xUnit', 'bbl']:
-            self.assertEqual(d[k], EMPTY_PROFILE_VALUES[k])
+        self.assertEqual(d, {})
 
         sp.setValues(y=y)
         self.assertListEqual(sp.xValues(), list(range(len(y))))

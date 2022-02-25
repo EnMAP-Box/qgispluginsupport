@@ -2,9 +2,7 @@ import typing
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsEditorWidgetSetup
-
 from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
-
 from ...speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 
@@ -23,6 +21,27 @@ def create_profile_field(name: str, comment: str = None) -> QgsField:
     return field
 
 
+def supports_field(field: QgsField) -> bool:
+    """
+    Returns True if the QgsField can be used to store spectral profiles
+    """
+    """
+    json JSON=8 subType=10 len=0   = JSON type, as by OGR
+    blob Binary=12 subType=0 len=0 = BLOB
+    text String=10 subType=0 len=0 = unlimited string / varchar
+    text10 String=10 subType=0 len=10 length-limited string, not supported!
+    """
+
+    if not (isinstance(field, QgsField) and field.length() in [0, -1]):
+        return False
+    b = field.type() in [QVariant.ByteArray,
+                         QVariant.String,
+                         8  # JSON
+                         ]
+
+    return b
+
+
 def is_profile_field(field: QgsField) -> bool:
     """
     Checks if a field is a valid spectra profile field, i.e.
@@ -30,7 +49,7 @@ def is_profile_field(field: QgsField) -> bool:
     :param field: QgsField
     :return: bool
     """
-    return isinstance(field, QgsField) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
+    return supports_field(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
 
 
 def contains_profile_field(object: typing.Union[QgsVectorLayer, QgsFeature, QgsFields]) -> bool:

@@ -1,15 +1,18 @@
 import datetime
+import json
 import os
 import pathlib
 import pickle
 import sys
 import typing
 import warnings
+from json import JSONDecodeError
 
 import numpy as np
+from qgis.PyQt.QtCore import QDateTime, Qt
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray
+from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
@@ -19,6 +22,7 @@ from . import profile_field_list, profile_field_indices, first_profile_field_ind
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph import pyqtgraph as pg
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
     qgsFieldAttributes2List, \
     spatialPoint2px, saveTransform, qgsRasterLayer, parseBadBandList
@@ -40,19 +44,19 @@ def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = No
     :param d:
     :return:
     """
-    if isinstance(prototype, dict):
+    if isinstance(prototype, dict) and len(prototype) > 0:
         d = prototype.copy()
     else:
-        d = EMPTY_PROFILE_VALUES.copy()
-
-    if isinstance(x, np.ndarray):
-        x = x.tolist()
+        d = dict()
 
     if isinstance(y, np.ndarray):
         y = y.tolist()
 
+    if isinstance(x, np.ndarray):
+        x = x.tolist()
+
     if isinstance(bbl, np.ndarray):
-        bbl = bbl.astype(bool).tolist()
+        bbl = bbl.astype(int).tolist()
 
     if isinstance(x, list):
         d['x'] = x
@@ -63,37 +67,34 @@ def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = No
     if isinstance(bbl, list):
         d['bbl'] = bbl
 
-    # ensure x/y/bbl are list or None
-    assert d['x'] is None or isinstance(d['x'], list)
-    assert d['y'] is None or isinstance(d['y'], list)
-    assert d['bbl'] is None or isinstance(d['bbl'], list)
-
-    # ensure same length
-    if isinstance(d['x'], list):
-        assert isinstance(d['y'], list), 'y values need to be specified'
-
-        assert len(d['x']) == len(d['y']), \
-            'x and y need to have the same number of values ({} != {})'.format(len(d['x']), len(d['y']))
-
-    if isinstance(d['bbl'], list):
-        assert isinstance(d['y'], list), 'y values need to be specified'
-        assert len(d['bbl']) == len(d['y']), \
-            'y and bbl need to have the same number of values ({} != {})'.format(len(d['y']), len(d['bbl']))
-
-    if isinstance(xUnit, str):
+    if isinstance(xUnit, str) and xUnit != '':
         d['xUnit'] = xUnit
-    if isinstance(yUnit, str):
+    if isinstance(yUnit, str) and yUnit != '':
         d['yUnit'] = yUnit
+
+    # consistency checks
+    # Minimum requirement: a dictionary with a key 'y' and a list of values with length > 0
+    y = d.get('y', None)
+    if not isinstance(y, list) and len(y) > 0:
+        return {}
+
+    x = d.get('x', None)
+    if x:
+        assert isinstance(x, list) and len(x) == len(y), f'profile axis values "x" = {x}'
+    bbl = d.get('bbl', None)
+    if bbl:
+        assert isinstance(bbl, list) and len(bbl) == len(y), f'band band list "bbl" = {bbl}'
 
     return d
 
 
-def encodeProfileValueDict(d: dict) -> QByteArray:
+def encodeProfileValueDict(d: dict, field: QgsField = None) -> QByteArray:
     """
     Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
     :param d: dict
-    :return: str
+    :param field: QgsField Field definition. Default to a QByteArray field
+    :return: QByteArray or str, respecting the datatype that can be stored in field
     """
     if not isinstance(d, dict):
         return None
@@ -105,27 +106,63 @@ def encodeProfileValueDict(d: dict) -> QByteArray:
             if isinstance(v, np.ndarray):
                 v = v.tolist()
             d2[k] = v
-    return QByteArray(pickle.dumps(d2))
+
+    # convert date/time X values to strings
+    xValues = d2.get('x')
+    if xValues and len(xValues) > 0:
+        if isinstance(xValues[0], datetime.datetime):
+            d2['x'] = [x.isoformat() for x in xValues]
+        elif isinstance(xValues[0], QDateTime):
+            d2['x'] = [x.toString(Qt.ISODate) for x in xValues]
+
+    # save as QByteArray
+    if field is None or field.type() == QVariant.ByteArray:
+        return QByteArray(pickle.dumps(d2))
+
+    if isinstance(field, QgsField):
+        # JSON field, as dictionary directly
+        if field.type() == 8:
+            return d2
+
+        # Save JSON string
+        if field.type() == QVariant.String:
+            return json.dumps(d2)
+
+    return None
 
 
-def decodeProfileValueDict(dump: QByteArray, numpy_arrays: bool = False) -> dict:
+def decodeProfileValueDict(dump: typing.Union[QByteArray, str], numpy_arrays: bool = False) -> dict:
     """
-    Converts a json / pickle dump into a SpectralProfile value dictionary
+    Converts a json / pickle dump into a SpectralProfile value dictionary.
+
+    In case the input "dump" cannot be converted, the returned dictionary is empty ({})
     :param numpy_arrays:
     :param dump: str
     :return: dict
     """
-    d = EMPTY_PROFILE_VALUES.copy()
+    if dump in EMPTY_VALUES:
+        return {}
 
-    if dump not in EMPTY_VALUES:
-        d2 = pickle.loads(dump)
-        d.update(d2)
+    if isinstance(dump, QByteArray):
+        try:
+            dump = pickle.loads(dump)
+        except EOFError as ex:
+            return {}
+
+    if isinstance(dump, str):
+        try:
+            dump = json.loads(dump)
+        except JSONDecodeError:
+            return {}
+
+    if not (isinstance(dump, dict) and 'y' in dump.keys()):
+        return {}
 
     if numpy_arrays:
         for k in ['x', 'y', 'bbl']:
-            if k in d.keys():
-                d[k] = np.asarray(d[k])
-    return d
+            if k in dump.keys():
+                dump[k] = np.asarray(dump[k])
+    return dump
 
 
 class SpectralSetting(object):
@@ -146,6 +183,8 @@ class SpectralSetting(object):
         wl, wlu = parseWavelength(layer)
         bbl = parseBadBandList(layer)
 
+        del layer
+
         if wl is None:
             return None
         else:
@@ -153,7 +192,7 @@ class SpectralSetting(object):
 
     @classmethod
     def fromDictionary(cls, d: dict) -> 'SpectralSetting':
-        if 'y' not in d.keys():
+        if not isinstance(d, dict) or 'y' not in d.keys():
             # no spectral values no spectral setting
             return None
         x = d.get('x', None)
@@ -249,51 +288,61 @@ class SpectralSetting(object):
         layer = qgsRasterLayer(layer)
         assert self.n_bands() == layer.bandCount()
 
-        layer = qgsRasterLayer(layer)
         assert isinstance(layer, QgsRasterLayer)
         assert layer.isValid()
-
+        properties = QgsRasterLayerSpectralProperties(layer.bandCount())
         x = self.x()
         bbl = self.bbl()
         wlu = self.xUnit()
+        if x:
+            properties.setBandValues(None, 'wl', x)
+        if bbl:
+            properties.setBandValues(None, 'bbl', bbl)
+        if wlu:
+            properties.setBandValues(None, 'wlu', wlu)
 
-        # write to layer metadata
-        # follows https://enmap-box.readthedocs.io/en/latest/dev_section/rfc_list/rfc0002.html
-        for b in range(self.n_bands()):
-            key = f'QGISPAM/band/{b + 1}//wavelength_units'
-            layer.setCustomProperty(key, wlu)
-            key = f'QGISPAM/band/{b + 1}//wavelength'
-            layer.setCustomProperty(key, x[b])
+        for k in properties.keys():
+            layer.setCustomProperty(k, properties.value(k))
 
-            if bbl:
-                key = f'QGISPAM/band/{b + 1}//bad_band_multiplier'
-                layer.setCustomProperty(key, bbl[x])
-        err, success = layer.saveDefaultMetadata()
+        if True:
+            # write to QGISPAM layer metadata
+            # follows https://enmap-box.readthedocs.io/en/latest/dev_section/rfc_list/rfc0002.html
+            for b in range(self.n_bands()):
+                key = f'QGISPAM/band/{b + 1}//wavelength_units'
+                layer.setCustomProperty(key, wlu)
+                key = f'QGISPAM/band/{b + 1}//wavelength'
+                layer.setCustomProperty(key, x[b])
+
+                if bbl:
+                    key = f'QGISPAM/band/{b + 1}//bad_band_multiplier'
+                    layer.setCustomProperty(key, bbl[b])
+        err, success = layer.saveDefaultStyle()
         if not success:
             print(err, file=sys.stderr)
 
-        # write to GDAL PAM
-        if layer.dataProvider().name() == 'gdal':
-            path = layer.source()
-            del layer
+        if False:
+            # write to GDAL PAM
+            if layer.dataProvider().name() == 'gdal':
+                path = layer.source()
+                del layer
 
-            ds: gdal.Dataset = gdal.Open(path, gdal.GA_Update)
-            # set at dataset level
-            METADATA = ds.GetMetadata()
-            METADATA['wavelength_units'] = wlu
-            METADATA['wavelength'] = '{' + ','.join([str(v) for v in x]) + '}'
-            ds.SetMetadata(METADATA)
-            ds.SetMetadata(METADATA, 'ENVI')
+                ds: gdal.Dataset = gdal.Open(path, gdal.GA_Update)
+                # set at dataset level
+                METADATA = ds.GetMetadata()
+                METADATA['wavelength_units'] = wlu
+                METADATA['wavelength'] = '{' + ','.join([str(v) for v in x]) + '}'
+                ds.SetMetadata(METADATA)
+                ds.SetMetadata(METADATA, 'ENVI')
 
-            # set at band level
-            for b in range(ds.RasterCount):
-                band: gdal.Band = ds.GetRasterBand(b + 1)
-                METADATA = band.GetMetadata()
-                METADATA['wavelength_unit'] = wlu
-                METADATA['wavelength'] = str(x[b])
-                band.SetMetadata(METADATA)
-            ds.FlushCache()
-            del ds
+                # set at band level
+                for b in range(ds.RasterCount):
+                    band: gdal.Band = ds.GetRasterBand(b + 1)
+                    METADATA = band.GetMetadata()
+                    METADATA['wavelength_unit'] = wlu
+                    METADATA['wavelength'] = str(x[b])
+                    band.SetMetadata(METADATA)
+                ds.FlushCache()
+                del ds
 
 
 class SpectralProfile(QgsFeature):
@@ -663,11 +712,11 @@ class SpectralProfile(QgsFeature):
 
     def isEmpty(self, profile_field=None) -> bool:
         """
-        Returns True if there is not ByteArray stored in the BLOB value profile_field
+        Returns True if there is no value stored in the BLOB / Text value profile_field
         :return: bool
         """
         fidx = self._profile_field_index(profile_field)
-        return self.attribute(fidx) in [None, QVariant()]
+        return self.attribute(fidx) in [None, QVariant(), NULL, '']
 
     def values(self, profile_field_index: typing.List[typing.Union[int, str, QgsField]] = None) -> dict:
         """
@@ -676,8 +725,8 @@ class SpectralProfile(QgsFeature):
         """
         profile_field_index = self._profile_field_index(profile_field_index)
         if profile_field_index not in self.mValueCache.keys():
-            byteArray = self.attribute(profile_field_index)
-            d = decodeProfileValueDict(byteArray)
+            data = self.attribute(profile_field_index)
+            d = decodeProfileValueDict(data)
 
             # save a reference to the decoded dictionary
             self.mValueCache[profile_field_index] = d
@@ -703,7 +752,7 @@ class SpectralProfile(QgsFeature):
         If wavelength information is not undefined it will return a list of band indices [0, ..., n-1]
         :return: [list-of-numbers]
         """
-        x = self.values(profile_field_index=profile_field)['x']
+        x = self.values(profile_field_index=profile_field).get('x', None)
 
         if not isinstance(x, list):
             return list(range(len(self.yValues())))
@@ -716,7 +765,7 @@ class SpectralProfile(QgsFeature):
         List is empty if not numbers are stored
         :return: [list-of-numbers]
         """
-        y = self.values(profile_field_index=profile_field)['y']
+        y = self.values(profile_field_index=profile_field).get('y', None)
         if not isinstance(y, list):
             return []
         else:
@@ -728,7 +777,7 @@ class SpectralProfile(QgsFeature):
         :return:
         :rtype:
         """
-        bbl = self.values(profile_field_index=profile_field).get('bbl')
+        bbl = self.values(profile_field_index=profile_field).get('bbl', None)
         if not isinstance(bbl, list):
             bbl = np.ones(self.nb(profile_field=profile_field), dtype=np.byte).tolist()
         return bbl
@@ -743,7 +792,7 @@ class SpectralProfile(QgsFeature):
         Returns the semantic unit of x values, e.g. a wavelength unit like 'nm' or 'um'
         :return: str
         """
-        return self.values(profile_field_index=profile_field)['xUnit']
+        return self.values(profile_field_index=profile_field).get('xUnit', None)
 
     def setYUnit(self, unit: str = None, profile_field=None):
         """
@@ -760,7 +809,7 @@ class SpectralProfile(QgsFeature):
         :return: str
         """
 
-        return self.values(profile_field_index=profile_field)['yUnit']
+        return self.values(profile_field_index=profile_field).get('yUnit', None)
 
     def clone(self):
         """
@@ -924,18 +973,16 @@ def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
         d = p.values(profile_field_index=p_field_idx)
 
         if excludeEmptyProfiles:
-            if not isinstance(d['y'], list):
-                continue
-            if not len(d['y']) > 0:
+            y = d.get('y')
+            if not (isinstance(y, list) and len(y) > 0):
                 continue
 
         x = p.xValues(profile_field=p_field_idx)
         if len(x) == 0:
             x = None
-        # y = None if d['y'] in [None, []] else tuple(d['y'])
 
-        xUnit = None if d['xUnit'] in [None, ''] else d['xUnit']
-        yUnit = None if d['yUnit'] in [None, ''] else d['yUnit']
+        xUnit = d.get('xUnit', None)
+        yUnit = d.get('yUnit', None)
 
         key = SpectralSetting(x=x, xUnit=xUnit, yUnit=yUnit, field_name=p_field.name())
 
@@ -1217,9 +1264,10 @@ class SpectralProfileBlock(object):
         Returns True if profile in the block .data() array is described by a geocoordinate
         :return:
         """
-        return isinstance(self.mPositionsY, np.ndarray) \
+        result = isinstance(self.mPositionsY, np.ndarray) \
             and isinstance(self.mPositionsX, np.ndarray) \
             and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
+        return result
 
     def crs(self) -> QgsCoordinateReferenceSystem:
         """
