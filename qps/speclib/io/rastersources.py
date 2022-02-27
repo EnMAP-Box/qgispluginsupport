@@ -512,7 +512,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
             if i_RF_PROFILE >= 0:
                 spectrum_dict = prepareProfileValueDict(x=xvalues, y=yvalues, xUnit=wlu)
-                p.setAttribute(i_RF_PROFILE, encodeProfileValueDict(spectrum_dict))
+                p.setAttribute(i_RF_PROFILE, encodeProfileValueDict(spectrum_dict, fields.at(i_RF_PROFILE)))
 
             yield p
 
@@ -608,7 +608,8 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
                             if i_RF_PROFILE >= 0:
                                 spectrum_dict = prepareProfileValueDict(x=wl, y=fid_profiles[:, i], xUnit=wlu, bbl=bbl)
-                                p.setAttribute(i_RF_PROFILE, encodeProfileValueDict(spectrum_dict))
+                                p.setAttribute(i_RF_PROFILE,
+                                               encodeProfileValueDict(spectrum_dict, fields.at(i_RF_PROFILE)))
 
                             if i_RF_PX_X >= 0:
                                 p[i_RF_PX_X] = int(profile_px_x[i])

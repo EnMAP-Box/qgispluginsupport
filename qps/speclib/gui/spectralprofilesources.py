@@ -23,7 +23,7 @@ from qgis.gui import QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting
+from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
@@ -1242,6 +1242,7 @@ class SpectralFeatureGeneratorNode(TreeNode):
             oldSpeclib.nameChanged.disconnect(self.updateSpeclibName)
             oldSpeclib.attributeAdded.disconnect(self.updateFieldNodes)
             oldSpeclib.attributeDeleted.disconnect(self.updateFieldNodes)
+            oldSpeclib.configChanged.disconnect(self.updateFieldNodes)
 
         OLD_NODES = dict()
         for n in self.childNodes():
@@ -1259,7 +1260,7 @@ class SpectralFeatureGeneratorNode(TreeNode):
                 speclib.nameChanged.connect(self.updateSpeclibName)
                 speclib.attributeAdded.connect(self.updateFieldNodes)
                 speclib.attributeDeleted.connect(self.updateFieldNodes)
-
+                speclib.configChanged.connect(self.updateFieldNodes)
                 self.updateSpeclibName()
 
                 new_nodes = []
@@ -1646,7 +1647,7 @@ class SpectralProfileBridge(TreeModel):
                     outputProfileBlock.mData = pgnode.offset() + outputProfileBlock.mData * pgnode.scale()
 
                     FINAL_PROFILE_VALUES[pgnode] = []
-                    for _, ba, g in outputProfileBlock.profileValueByteArrays():
+                    for _, ba, g in outputProfileBlock.profileValueDictionaries():
                         FINAL_PROFILE_VALUES[pgnode].append((ba, g))
 
             n_new_features = 0
@@ -1668,13 +1669,13 @@ class SpectralProfileBridge(TreeModel):
 
                     if len(profileInputs) > 0:
                         # pop 1st profile
-                        byteArray, geometry = profileInputs.pop(0)
-                        assert isinstance(byteArray, QByteArray)
+                        profileDict, geometry = profileInputs.pop(0)
+                        assert isinstance(profileDict, dict)
                         assert isinstance(geometry, QgsGeometry)
                         if new_feature.geometry().type() in [QgsWkbTypes.UnknownGeometry, QgsWkbTypes.NullGeometry]:
                             new_feature.setGeometry(geometry)
                         field_name = pgnode.field().name()
-                        new_feature[field_name] = byteArray
+                        new_feature[field_name] = encodeProfileValueDict(profileDict, field=pgnode.field())
                         # new_feature_colors.append((field_name, pgnode.mColorNode.color()))
                         new_feature_styles.append((field_name, pgnode.mProfileStyleNode.value()))
 

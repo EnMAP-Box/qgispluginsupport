@@ -57,7 +57,7 @@ from . import field_index
 from . import profile_field_list, first_profile_field_index, create_profile_field, \
     is_spectral_library
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
-    SpectralSetting, groupBySpectralProperties
+    SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, encodeProfileValueDict
 from .. import FIELD_FID, FIELD_VALUES
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
@@ -584,6 +584,17 @@ class SpectralLibraryUtils:
         return fids_inserted
 
     @staticmethod
+    def setProfileValues(feature: QgsFeature, *args, field: typing.Union[int, str, QgsField] = None, **kwds):
+        if field is None:
+            # use the first profile field by default
+            field = profile_field_list(feature)[0]
+        else:
+            field: QgsField = qgsField(feature, field)
+        profileDict = prepareProfileValueDict(*args, **kwds)
+        value = encodeProfileValueDict(profileDict, field)
+        feature.setAttribute(field.name(), value)
+
+    @staticmethod
     def speclibFromFeatureIDs(layer: QgsVectorLayer, fids):
         if isinstance(fids, int):
             fids = [fids]
@@ -637,6 +648,7 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def profile(speclib: QgsVectorLayer, fid: int, value_field=None) -> SpectralProfile:
+        warnings.warn(DeprecationWarning())
         assert is_spectral_library(speclib)
         if value_field is None:
             value_field = profile_field_list(speclib)[0]
@@ -662,6 +674,7 @@ class SpectralLibraryUtils:
         :param fids: optional, [int-list-of-feature-ids] to return
         :return: generator of [List-of-SpectralProfiles]
         """
+        warnings.warn(DeprecationWarning())
         if profile_field is None:
             profile_field = first_profile_field_index(vectorlayer)
         else:
@@ -1188,7 +1201,8 @@ class SpectralLibrary(QgsVectorLayer):
         :param create_name_field: bool, if True (default) a string field will be added to contain profile names (1).
         (1) Only used of fields is None
         """
-
+        warnings.warn(DeprecationWarning('Will be removed. Use SpectralLibraryUtils to access'
+                                         'any other QgsVectorLayer'))
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
 

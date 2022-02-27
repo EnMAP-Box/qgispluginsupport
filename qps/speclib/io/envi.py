@@ -422,7 +422,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
                             if g.wkbType() == QgsWkbTypes.Point:
                                 f.setGeometry(g)
             """
-            f.setAttribute(PROFILE_FIELD, encodeProfileValueDict(valueDict))
+            f.setAttribute(PROFILE_FIELD, encodeProfileValueDict(valueDict, fields.field(PROFILE_FIELD)))
             if PROFILE_NAME_FIELD:
                 f.setAttribute(PROFILE_NAME_FIELD, spectraNames[i])
 

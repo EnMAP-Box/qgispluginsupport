@@ -18,14 +18,15 @@ from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsF
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
 from qgis.core import QgsTask, QgsFeatureRequest
 from qgis.gui import QgsMapCanvas
-from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields
+from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields, \
+    is_profile_field
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph import pyqtgraph as pg
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
     qgsFieldAttributes2List, \
-    spatialPoint2px, saveTransform, qgsRasterLayer, parseBadBandList
+    spatialPoint2px, saveTransform, qgsRasterLayer, parseBadBandList, qgsField
 
 # a single profile is identified by its QgsFeature id and profile_field index or profile_field name
 
@@ -88,12 +89,12 @@ def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = No
     return d
 
 
-def encodeProfileValueDict(d: dict, field: QgsField = None) -> QByteArray:
+def encodeProfileValueDict(d: dict, field: QgsField) -> QByteArray:
     """
     Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
     :param d: dict
-    :param field: QgsField Field definition. Default to a QByteArray field
+    :param field: QgsField Field definition
     :return: QByteArray or str, respecting the datatype that can be stored in field
     """
     if not isinstance(d, dict):
@@ -211,13 +212,13 @@ class SpectralSetting(object):
         return SpectralSetting.fromDictionary(decodeProfileValueDict(ba))
 
     def __init__(self,
-                 x: typing.Union[tuple, list, np.ndarray],
+                 x: typing.Union[None, tuple, list, np.ndarray],
                  xUnit: str = None,
                  yUnit: str = None,
                  bbl: typing.Union[tuple, list, np.ndarray] = None,
                  field_name: str = None):
 
-        assert isinstance(x, (tuple, list, np.ndarray)), f'{x}'
+        assert x is None or isinstance(x, (tuple, list, np.ndarray)), f'{x}'
 
         if isinstance(x, np.ndarray):
             x = x.tolist()
@@ -248,7 +249,9 @@ class SpectralSetting(object):
         return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
 
     def x(self) -> typing.List:
-        return list(self.mX)
+        if self.mX:
+            return list(self.mX)
+        return None
 
     def n_bands(self) -> int:
         return len(self.mX)
@@ -540,6 +543,7 @@ class SpectralProfile(QgsFeature):
         :param profile_field: name or index of profile_field that contains the spectral values information.
                             Needs to be a BLOB profile_field.
         """
+        warnings.warn(DeprecationWarning('SpectraProfile class will be removed'), stacklevel=2)
         if fields is None:
             fields = createStandardFields()
         assert isinstance(fields, QgsFields)
@@ -733,18 +737,31 @@ class SpectralProfile(QgsFeature):
 
         return self.mValueCache[profile_field_index]
 
-    def setValues(self, x=None, y=None, xUnit: str = None, yUnit: str = None, bbl=None, profile_field=None,
+    def setValues(self,
+                  x=None,
+                  y=None,
+                  xUnit: str = None,
+                  yUnit: str = None,
+                  bbl=None,
+                  profile_field=None,
                   profile_value_dict: dict = None, **kwds):
 
-        # d = self.values().copy()
-        if not isinstance(profile_value_dict, dict):
-            profile_value_dict = prepareProfileValueDict(x=x, y=y, xUnit=xUnit, yUnit=yUnit, bbl=bbl,
-                                                         prototype=self.values(
-                                                             profile_field_index=profile_field))
+        if profile_field is None:
+            pIdx = self.currentProfileField()
+            pField = self.fields().at(pIdx)
+        else:
+            pField = qgsField(self.fields(), profile_field)
+            pIdx = self.fields().indexOf(pField.name())
 
-        field_index = self._profile_field_index(profile_field)
-        self.setAttribute(field_index, encodeProfileValueDict(profile_value_dict))
-        self.mValueCache[field_index] = profile_value_dict
+        if not isinstance(profile_value_dict, dict):
+            profile_value_dict = prepareProfileValueDict(x=x, y=y,
+                                                         xUnit=xUnit, yUnit=yUnit,
+                                                         bbl=bbl,
+                                                         prototype=self.values(
+                                                             profile_field_index=pField))
+
+        self.setAttribute(pIdx, encodeProfileValueDict(profile_value_dict, pField))
+        self.mValueCache[pIdx] = profile_value_dict
 
     def xValues(self, profile_field=None) -> list:
         """
@@ -924,10 +941,10 @@ class SpectralProfile(QgsFeature):
         return len(self.yValues())
 
 
-def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
+def groupBySpectralProperties(profiles: typing.List[QgsFeature],
                               excludeEmptyProfiles: bool = True,
                               profile_field: typing.Union[int, str, QgsField] = None
-                              ) -> typing.Dict[SpectralSetting, typing.List[SpectralProfile]]:
+                              ) -> typing.Dict[SpectralSetting, typing.List[QgsFeature]]:
     """
     Returns SpectralProfiles grouped by key = (xValues, xUnit and yUnit):
 
@@ -942,49 +959,43 @@ def groupBySpectralProperties(profiles: typing.List[SpectralProfile],
     results = dict()
 
     # will be initialized with 1st SpectralProfile
-    p_field = profile_field
-    p_field_idx = None
+
+    pField: QgsField = None
+    pFieldIdx: int = None
 
     for p in profiles:
         assert isinstance(p, QgsFeature)
-        if p_field_idx is None:
+        if pField is None:
             # initialize the profile field to group profiles on
-            p_fields = profile_field_list(p)
-            p_field_indices = profile_field_indices(p)
-            p_field_names = [f.name() for f in p_fields]
+            pFields = profile_fields(p.fields())
+            if pFields.count() == 0:
+                # no profile fields = nothing to group
+                return {}
 
             if profile_field is None:
-                p_field = p_fields[0]
-                p_field_idx = p_field_indices[0]
-            elif isinstance(profile_field, int):
-                assert profile_field in p_field_indices
-                p_field_idx = profile_field
-                p_field = p_fields[p_field_indices.index(p_field_idx)]
-            elif isinstance(profile_field, str):
-                p_field_idx = p_field_indices[p_field_names.index(profile_field)]
-                p_field = p_fields[p_field_names.index(profile_field)]
-            elif isinstance(profile_field, QgsField):
-                p_field_idx = p_field_indices[p_field_names.index(profile_field.name())]
-                p_field = p_fields[p_field_names.index(profile_field.name())]
+                pField = pFields.at(0)
+            else:
+                pField = qgsField(p.fields(), profile_field)
+                pField = pFields[pField.name()]
 
-        if not isinstance(p, SpectralProfile):
-            p = SpectralProfile.fromQgsFeature(p, profile_field=p_field_idx)
+            assert is_profile_field(pField)
+            pFieldIdx = pFields.lookupField(pField.name())
 
-        d = p.values(profile_field_index=p_field_idx)
+        d: dict = decodeProfileValueDict(p.attribute(pFieldIdx))
 
         if excludeEmptyProfiles:
             y = d.get('y')
             if not (isinstance(y, list) and len(y) > 0):
                 continue
 
-        x = p.xValues(profile_field=p_field_idx)
+        x = d.get('x', [])
         if len(x) == 0:
             x = None
 
         xUnit = d.get('xUnit', None)
         yUnit = d.get('yUnit', None)
 
-        key = SpectralSetting(x=x, xUnit=xUnit, yUnit=yUnit, field_name=p_field.name())
+        key = SpectralSetting(x=x, xUnit=xUnit, yUnit=yUnit, field_name=pField.name())
 
         if key not in results.keys():
             results[key] = []
@@ -1026,7 +1037,7 @@ class SpectralProfileBlock(object):
             feedback=feedback)
 
     @staticmethod
-    def fromSpectralProfiles(profiles: typing.List[SpectralProfile],
+    def fromSpectralProfiles(profiles: typing.List[QgsFeature],
                              profile_field: typing.Union[int, str, QgsField] = None,
                              crs: QgsCoordinateReferenceSystem = None,
                              feedback: QgsProcessingFeedback = None):
@@ -1040,7 +1051,8 @@ class SpectralProfileBlock(object):
             ns: int = len(profiles)
             fids = [p.id() for p in profiles]
             nb = spectral_setting.n_bands()
-            ref_profile = np.asarray(profiles[0].yValues())
+            ref_d: dict = decodeProfileValueDict(profiles[0].attribute(spectral_setting.fieldName()), numpy_arrays=True)
+            ref_profile: np.ndarray = ref_d['y']
             dtype = ref_profile.dtype
             blockArray = np.empty((nb, 1, ns), dtype=dtype)
             blockArray[:, 0, 0] = ref_profile
@@ -1052,8 +1064,8 @@ class SpectralProfileBlock(object):
             del ref_profile
 
             for i, profile in enumerate(profiles):
-
-                blockArray[:, 0, i] = np.asarray(profile.yValues(), dtype=dtype)
+                d = decodeProfileValueDict(profile.attribute(spectral_setting.fieldName()))
+                blockArray[:, 0, i] = np.asarray(d['y'], dtype=dtype)
                 if profile.hasGeometry():
                     pt: QgsPointXY = profile.geometry().asPoint()
                     pos_x_array[0, i] = pt.x()
@@ -1328,10 +1340,11 @@ class SpectralProfileBlock(object):
         Returns the profile block data as SpectralProfiles
         :return: iterator
         """
-        for fid, byteArray, geometry in self.profileValueByteArrays():
+
+        for fid, byteArray, geometry in self.profileValueDictionaries():
             profile = SpectralProfile(id=fid)
             profile.setGeometry(geometry)
-            profile.setAttribute(profile.currentProfileField(), byteArray)
+            profile.setAttribute(profile.currentProfileField(), profile.fields().at(profile.currentProfileField()))
             yield profile
 
     def __iter__(self):
@@ -1381,8 +1394,9 @@ class SpectralProfileBlock(object):
             geometry = profile geometry, might be None
         :return:
         """
+        exampleField = QgsField('tmp', QVariant.ByteArray)
         for fid, d, g in self.profileValueDictionaries():
-            yield fid, encodeProfileValueDict(d), g
+            yield fid, encodeProfileValueDict(d, exampleField), g
 
     def data(self) -> np.ndarray:
         """

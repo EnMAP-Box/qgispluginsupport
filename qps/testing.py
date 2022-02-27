@@ -39,19 +39,18 @@ import warnings
 from unittest import mock
 
 import numpy as np
-
-from qgis.PyQt.QtCore import QObject, QPoint, QSize, QVariant, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
-from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
-from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
-    QMenu
 from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
 from qgis.PyQt import sip
-from qgis.core import QgsLayerTreeLayer
+from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
+from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
+from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
+    QMenu
 from qgis.core import QgsField, QgsGeometry
+from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
@@ -65,7 +64,9 @@ from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, Qgs
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
 from .resources import findQGISResourceFiles, initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
+from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field
 from .speclib.core.spectrallibrary import SpectralLibrary
+from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from .utils import UnitLookup, px2geo, SpatialPoint, findUpwardPath
 
 WMS_GMAPS = r'crs=EPSG:3857&' \
@@ -807,32 +808,47 @@ class TestObjects(object):
                          fields: QgsFields = None,
                          n_bands: typing.List[int] = None,
                          wlu: str = None,
-                         profile_fields: typing.List[typing.Union[int, str, QgsField]] = None):
+                         profile_fields: typing.List[typing.Union[str, QgsField]] = None):
 
         if fields is None:
             fields = createStandardFields()
-        from .speclib.core.spectrallibrary import SpectralProfile
 
         if profile_fields is None:
-            profile_fields = [f for f in fields if f.type() == QVariant.ByteArray]
+            # use
+            profile_fields = pFields(fields)
+        else:
+            for i, f in enumerate(profile_fields):
+                if isinstance(f, str):
+                    fields.append(create_profile_field(f'profile{i}'))
+                elif isinstance(f, QgsField):
+                    fields.append(f)
+            profile_fields = pFields(fields)
+
+        for f in profile_fields:
+            assert is_profile_field(f)
+
         if n_bands is None:
             n_bands = [-1 for f in profile_fields]
         elif isinstance(n_bands, int):
             n_bands = [n_bands]
 
-        # assert len(n_bands) == len(profile_fields)
+        assert len(n_bands) == len(profile_fields)
 
-        profileGenerator = SpectralProfileDataIterator(n_bands)
+        profileGenerator: SpectralProfileDataIterator = SpectralProfileDataIterator(n_bands)
+
         for i in range(n):
+            profile = QgsFeature(fields)
+
             field_data, pt = profileGenerator.__next__()
             g = QgsGeometry.fromQPointF(pt.toQPointF())
-            profile = SpectralProfile(fields=fields)
-            profile.setId(i + 1)
             profile.setGeometry(g)
-            for j, field_index in enumerate(profile_fields):
+
+            profile.setId(i + 1)
+            for j, profile_field in enumerate(profile_fields):
+
                 (data, wl, data_wlu) = field_data[j]
                 if data is None:
-                    profile.setAttribute(field_index, None)
+                    profile.setAttribute(profile_field.name(), None)
                 else:
                     if wlu is None:
                         wlu = data_wlu
@@ -840,7 +856,10 @@ class TestObjects(object):
                         wl = wlu = None
                     elif wlu != data_wlu:
                         wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
-                    profile.setValues(profile_field=field_index, y=data, x=wl, xUnit=wlu)
+                    profileDict = prepareProfileValueDict(y=data, x=wl, xUnit=wlu)
+                    value = encodeProfileValueDict(profileDict, profile_field)
+                    profile.setAttribute(profile_field.name(), value)
+
             yield profile
 
     """

@@ -205,12 +205,14 @@ class TestCore(TestCase):
         yUnit = None
 
         sl = SpectralLibrary()
-        self.assertTrue(sl.startEditing())
-        sp = SpectralProfile()
-        sp.setValues(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
 
-        vd1 = sp.values()
-        dump = encodeProfileValueDict(vd1)
+        self.assertTrue(sl.startEditing())
+        pField = profile_fields(sl).at(0)
+        sp = QgsFeature(sl.fields())
+        SpectralLibraryUtils.setProfileValues(sp, field=pField, x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
+
+        vd1 = decodeProfileValueDict(sp.attribute(pField.name()))
+        dump = encodeProfileValueDict(vd1, QgsField('test', QVariant.ByteArray))
         self.assertIsInstance(dump, QByteArray)
 
         vd2 = decodeProfileValueDict(dump)
@@ -585,7 +587,7 @@ class TestCore(TestCase):
         t0 = now()
 
         for f in sl.getFeatures():
-            ba = encodeProfileValueDict(DATA[f.id()])
+            ba = encodeProfileValueDict(DATA[f.id()], pfield)
             f.setAttribute(pfield.name(), ba)
 
         print(f'{pinfo}: encode & write: {now() - t0}')

@@ -242,7 +242,7 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
                 valueDict = {'y': [float(row[n]) for n in xValueNames],
                              'x': xValues}
 
-                feature.setAttribute('profiles', encodeProfileValueDict(valueDict))
+                feature.setAttribute('profiles', encodeProfileValueDict(valueDict, fields.field('profiles')))
 
                 for fieldName, fieldType in LUT_FIELD_TYPES.items():
                     fieldValue = fieldType(row[fieldName])

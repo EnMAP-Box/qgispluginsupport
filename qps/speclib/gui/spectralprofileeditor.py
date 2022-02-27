@@ -346,7 +346,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             p = w.profile()
-            value = encodeProfileValueDict(p.values())
+            value = encodeProfileValueDict(p.values(), self.field())
 
         return value
 
@@ -485,8 +485,11 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         # log(' fieldScore()')
         field = vl.fields().at(fieldIdx)
         assert isinstance(field, QgsField)
-        if field.type() == QVariant.ByteArray:
-            return 20
+        if supports_field(field):
+            if field.type() in [QVariant.ByteArray, 8]:
+                return 20
+            else:
+                return 1
         else:
             return 0
 

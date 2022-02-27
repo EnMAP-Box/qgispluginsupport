@@ -320,12 +320,12 @@ class ASDBinaryFile(object):
         ySpectrum = self.yValuesSpectrum()
         if ySpectrum is not None:
             spectrum_dict = prepareProfileValueDict(x=x, y=self.yValuesSpectrum(), xUnit='nm')
-            f.setAttribute('spectrum', encodeProfileValueDict(spectrum_dict))
+            f.setAttribute('spectrum', encodeProfileValueDict(spectrum_dict, fields.field('spectrum')))
 
         yReference = self.yValuesReference()
         if yReference is not None:
             reference_dict = prepareProfileValueDict(x=x, y=self.yValuesReference(), xUnit='nm')
-            f.setAttribute('reference', encodeProfileValueDict(reference_dict))
+            f.setAttribute('reference', encodeProfileValueDict(reference_dict, fields.field('reference')))
 
         return f
 
@@ -526,7 +526,8 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
 
                         profile = QgsFeature(ASD_FIELDS)
                         spectrum_dict = prepareProfileValueDict(x=xValues, y=yValues, xUnit=xUnit)
-                        profile.setAttribute('Spectrum', encodeProfileValueDict(spectrum_dict))
+                        profile.setAttribute('Spectrum',
+                                             encodeProfileValueDict(spectrum_dict, ASD_FIELDS.field('Spectrum')))
 
                         profiles.append(profile)
 
