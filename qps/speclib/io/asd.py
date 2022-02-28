@@ -320,12 +320,12 @@ class ASDBinaryFile(object):
         ySpectrum = self.yValuesSpectrum()
         if ySpectrum is not None:
             spectrum_dict = prepareProfileValueDict(x=x, y=self.yValuesSpectrum(), xUnit='nm')
-            f.setAttribute('spectrum', encodeProfileValueDict(spectrum_dict, fields.field('spectrum')))
+            f.setAttribute('Spectrum', encodeProfileValueDict(spectrum_dict, fields.field('Spectrum')))
 
         yReference = self.yValuesReference()
         if yReference is not None:
             reference_dict = prepareProfileValueDict(x=x, y=self.yValuesReference(), xUnit='nm')
-            f.setAttribute('reference', encodeProfileValueDict(reference_dict, fields.field('reference')))
+            f.setAttribute('Reference', encodeProfileValueDict(reference_dict, fields.field('Reference')))
 
         return f
 

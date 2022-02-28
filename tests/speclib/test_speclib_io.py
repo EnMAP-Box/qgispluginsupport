@@ -117,7 +117,8 @@ class TestIO(TestCase):
 
             path = DIR / f'test.speclib.{ext}'
             print(f'Test export to {path.name}')
-            files = sl.write(path)
+            # SpectralLibrary.write()
+            files = SpectralLibraryUtils.writeToSource(sl, path)
             self.assertIsInstance(files, list)
             self.assertTrue(len(files) > 0)
             COUNTS2 = dict()
