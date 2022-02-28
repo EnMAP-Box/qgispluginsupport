@@ -5,13 +5,15 @@ import numpy as np
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant
 from qgis.PyQt.QtWidgets import QGroupBox, QWidget, QLabel
+
 from qgis.core import QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication
-from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, \
+from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsJsonEditWidget, \
     QgsEditorWidgetFactory
 from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core import supports_field
-from ..core.spectralprofile import SpectralProfile, encodeProfileValueDict, decodeProfileValueDict
+from ..core.spectralprofile import SpectralProfile, encodeProfileValueDict, decodeProfileValueDict, \
+    prepareProfileValueDict
 from ...unitmodel import BAND_INDEX
 from ...utils import loadUi
 
@@ -41,7 +43,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         self.mValuesY: typing.Dict[int, typing.Any] = {}
         self.mValuesBBL: typing.Dict[int, typing.Any] = {}
 
-        self.mLastProfile: SpectralProfile = SpectralProfile()
+        self.mLastProfileDict: dict = {}
 
         self.mRows: int = 0
 
@@ -63,27 +65,27 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def bands(self) -> int:
         return self.rowCount()
 
-    def setProfile(self, profile: SpectralProfile):
+    def setProfile(self, profile: dict):
         """
         :param values:
         :return:
         """
-        assert isinstance(profile, SpectralProfile)
+        assert isinstance(profile, dict)
 
         self.beginResetModel()
         self.mValuesX.clear()
         self.mValuesY.clear()
         self.mValuesBBL.clear()
-        self.mLastProfile = profile
-        self.mValuesX.update({i: v for i, v in enumerate(profile.xValues())})
-        self.mValuesY.update({i: v for i, v in enumerate(profile.yValues())})
-        self.mValuesBBL.update({i: v for i, v in enumerate(profile.bbl())})
+        self.mLastProfileDict = profile
+        self.mValuesX.update({i: v for i, v in enumerate(profile.get('x', []))})
+        self.mValuesY.update({i: v for i, v in enumerate(profile.get('y', []))})
+        self.mValuesBBL.update({i: v for i, v in enumerate(profile.get('bbl', []))})
 
         self.setBands(len(self.mValuesY))
 
         self.endResetModel()
-        self.setXUnit(profile.xUnit())
-        self.setYUnit(profile.yUnit())
+        self.setXUnit(profile.get('xUnit', None))
+        self.setYUnit(profile.get('yUnit', None))
 
     def setXUnit(self, unit: str):
         if self.xUnit() != unit:
@@ -106,13 +108,12 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def yUnit(self) -> str:
         return self.mColumnUnits[1]
 
-    def profile(self) -> SpectralProfile:
+    def profile(self) -> dict:
         """
         Return the data as new SpectralProfile
         :return:
         :rtype:
         """
-        p = SpectralProfile(fields=self.mLastProfile.fields())
         nb = self.bands()
 
         y = [self.mValuesY.get(b, None) for b in range(nb)]
@@ -125,12 +126,11 @@ class SpectralProfileTableModel(QAbstractTableModel):
         bbl = np.asarray(bbl, dtype=bool)
         if not np.any(np.equal(bbl, False)):
             bbl = None
-        p.setValues(x, y, xUnit=self.xUnit(), yUnit=self.yUnit(), bbl=bbl)
 
-        return p
+        return prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=self.xUnit(), yUnit=self.yUnit())
 
     def resetProfile(self):
-        self.setProfile(self.mLastProfile)
+        self.setProfile(self.mLastProfileDict)
 
     def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
 
@@ -257,8 +257,6 @@ class SpectralProfileEditorWidget(QGroupBox):
         # self.onDataTypeChanged(0, float)
         # self.onDataTypeChanged(1, float)
 
-        self.setProfile(SpectralProfile())
-
     def onProfileChanged(self):
         if self.profile() != self.mDefault:
             self.sigProfileChanged.emit()
@@ -281,13 +279,13 @@ class SpectralProfileEditorWidget(QGroupBox):
 
         pass
 
-    def setProfile(self, profile: SpectralProfile):
+    def setProfile(self, profile: dict):
         """
         Sets the profile values to be shown
         :param values: dict() or SpectralProfile
         :return:
         """
-        assert isinstance(profile, SpectralProfile)
+        assert isinstance(profile, dict)
         self.mDefault = profile
 
         self.mModel.setProfile(profile)
@@ -356,15 +354,11 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
             w.setEnabled(enabled)
 
     def setValue(self, value):
-        self.mLastValue = value
-        p = SpectralProfile(fields=self.layer().fields(), profile_field=self.field())
-        p.setValues(profile_value_dict=decodeProfileValueDict(value))
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
-            w.setProfile(p)
-
-        # if isinstance(self.mLabel, QLabel):
-        #    self.mLabel.setText(value2str(value))
+            w.setProfile(decodeProfileValueDict(value))
+        if isinstance(w, QgsJsonEditWidget):
+            pass
 
 
 class SpectralProfileEditorConfigWidget(QgsEditorConfigWidget):

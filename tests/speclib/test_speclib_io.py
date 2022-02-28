@@ -112,7 +112,7 @@ class TestIO(TestCase):
 
         COUNTS = SpectralLibraryUtils.countProfiles(sl)
 
-        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertIsInstance(sl, QgsVectorLayer)
         for ext in ['sli', 'gpkg']:
 
             path = DIR / f'test.speclib.{ext}'
@@ -166,6 +166,8 @@ class TestIO(TestCase):
             self.assertIsInstance(io, SpectralLibraryIO)
             files = io.exportProfiles(testpath, settings, features, feedback)
             self.assertIsInstance(files, list)
+            if len(files) == 0:
+                s = ""
             self.assertTrue(len(files) > 0)
             wImport = io.createImportWidget()
             speclibImport = None

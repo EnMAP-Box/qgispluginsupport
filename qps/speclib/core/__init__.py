@@ -31,7 +31,6 @@ def supports_field(field: QgsField) -> bool:
     text String=10 subType=0 len=0 = unlimited string / varchar
     text10 String=10 subType=0 len=10 length-limited string, not supported!
     """
-
     if not (isinstance(field, QgsField) and field.length() in [0, -1]):
         return False
     b = field.type() in [QVariant.ByteArray,

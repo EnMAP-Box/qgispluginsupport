@@ -33,7 +33,9 @@ from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2st
 EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None, 'bbl': None}
 
 
-def prepareProfileValueDict(x: None, y: None, xUnit: str = None, yUnit: str = None, bbl=None, prototype: dict = None):
+def prepareProfileValueDict(x: None, y: None,
+                            xUnit: str = None, yUnit: str = None,
+                            bbl=None, prototype: dict = None) -> dict:
     """
     Creates a profile value dictionary from inputs
     :param y:

@@ -67,6 +67,7 @@ from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, Qg
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+
 QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
@@ -2590,27 +2591,19 @@ def iconForFieldType(field: typing.Union[QgsField, QgsVectorDataProvider.NativeT
     Returns an icon for field types, including own defined
     :return:
     """
-    from .speclib.core import is_profile_field, create_profile_field
 
     if isinstance(field, QgsVectorDataProvider.NativeType):
-        if field.mTypeName.replace(' ', '').lower() == 'spectralprofile':
-            field = create_profile_field('dummy')
-        else:
-            field = QgsField(
+        field = QgsField(
                 name='dummy',
                 type=field.mType,
                 typeName=field.mTypeName,
                 len=field.mMaxLen,
                 prec=field.mMaxPrec,
-                # comment=field.comment,
                 subType=field.mSubType
             )
 
     assert isinstance(field, QgsField)
-    if is_profile_field(field):
-        return QIcon(r':/qps/ui/icons/profile.svg')
-    else:
-        return QgsFields.iconForFieldType(field.type())
+    return QgsFields.iconForFieldType(field.type())
 
 
 def createCRSTransform(src: QgsCoordinateReferenceSystem, dst: QgsCoordinateReferenceSystem):

@@ -339,6 +339,30 @@ class SpectralLibraryUtils:
         return None
 
     @staticmethod
+    def createSpectralLibrary(profile_fields: typing.List[str] = ['profiles']) -> QgsVectorLayer:
+        """
+        Creates an empty in-memory spectral library with a "name" and a "profiles" field
+        """
+        provider = 'memory'
+        path = f"point?crs=epsg:{SPECLIB_EPSG_CODE}"
+        options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
+
+        lyr = QgsVectorLayer(path, DEFAULT_NAME, provider, options=options)
+        lyr.setCustomProperty('skipMemoryLayerCheck', 1)
+        lyr.startEditing()
+        lyr.beginEditCommand('Add fields')
+
+        assert lyr.addAttribute(QgsField(name='name', type=QVariant.String))
+        for fieldname in profile_fields:
+            SpectralLibraryUtils.addAttribute(lyr, create_profile_field(fieldname))
+        lyr.endEditCommand()
+        assert lyr.commitChanges(stopEditing=True)
+
+        SpectralLibraryUtils.initTableConfig(lyr)
+
+        return lyr
+
+    @staticmethod
     def addAttribute(speclib: QgsVectorLayer, field: QgsField) -> bool:
         # workaround for https://github.com/qgis/QGIS/issues/43261
         if isinstance(speclib, SpectralLibrary):
@@ -1201,8 +1225,8 @@ class SpectralLibrary(QgsVectorLayer):
         :param create_name_field: bool, if True (default) a string field will be added to contain profile names (1).
         (1) Only used of fields is None
         """
-        warnings.warn(DeprecationWarning('Will be removed. Use SpectralLibraryUtils to access'
-                                         'any other QgsVectorLayer'))
+        warnings.warn(DeprecationWarning('Will be removed. Use SpectralLibraryUtils to access spectral profiles '
+                                         'within QgsVectorLayers'), stacklevel=2)
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
 
@@ -1234,7 +1258,8 @@ class SpectralLibrary(QgsVectorLayer):
                     self.addAttribute(QgsField(name='name', type=QVariant.String))
 
                 for fieldname in profile_fields:
-                    assert self.addSpectralProfileField(fieldname), f'Unable to add profile field "{fieldname}"'
+                    self.addAttribute(create_profile_field(fieldname))
+                    # assert self.addSpectralProfileField(fieldname), f'Unable to add profile field "{fieldname}"'
 
                 profile_indices = [self.fields().lookupField(f) for f in profile_fields]
                 self.endEditCommand()
