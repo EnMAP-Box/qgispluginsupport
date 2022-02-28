@@ -36,7 +36,7 @@ from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
 from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
-    SelectMapLayerDialog, SignalBlocker
+    SelectMapLayerDialog, SignalBlocker, printCaller
 
 
 class SpectralProfilePlotXAxisUnitModel(UnitModel):
@@ -439,9 +439,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             self.mModelItems.add(item)
             self.insertRow(_index, item)
+            # if necessary, this should update the plot
             item.initWithPlotModel(self)
 
-        self.updatePlot()
+        # self.updatePlot()
 
     def onRemovalRequest(self):
         sender = self.sender()
@@ -652,20 +653,27 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         to_remove = [p for p in old_spdis if p not in PLOT_ITEMS]
 
+        # printCaller(suffix=f'Prepare', dt=datetime.datetime.now() - t0)
+
         with PlotUpdateBlocker(self.mPlotWidget) as blocker:
+            t1 = datetime.datetime.now()
             for p in to_remove:
                 self.mPlotWidget.removeItem(p)
-
+           # printCaller(suffix=f'Remove {len(to_remove)} items', dt=t1)
             existing = self.mPlotWidget.items()
+
             to_add = [p for p in PLOT_ITEMS if p not in existing]
+
+            t2 = datetime.datetime.now()
             for p in to_add:
                 self.mPlotWidget.addItem(p)
+           # t3 = printCaller(suffix=f'Add    {len(to_add)} items', dt=t2)
 
         n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
-        debugLog(f'updatePlot: {datetime.datetime.now() - t0} {len(PLOT_ITEMS)} new, {n_total} total')
+        printCaller(suffix=f'Total', dt=t1)
 
     def updateProfileLabel(self, n: int, limit_reached: bool):
         propertyItem = self.generalSettings().mP_MaxProfiles

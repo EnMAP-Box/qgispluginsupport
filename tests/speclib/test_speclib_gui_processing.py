@@ -302,11 +302,11 @@ class SpectralProcessingTests(TestCase):
         registerDataProvider()
         n_bands = [[256, 2500],
                    [123, 42]]
-        n_features = 500
+        n_features = 10
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
-        speclib.selectByIds([1, 2, 3, 4])
-        speclib.startEditing()
+        # speclib.selectByIds([1, 2, 3, 4])
+        # speclib.startEditing()
         slw = SpectralLibraryWidget(speclib=speclib)
         self.showGui(slw)
 

@@ -29,6 +29,17 @@ class TestSpeclibIO_ASD(TestCase):
         ios = [ASDSpectralLibraryIO()]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
+    def test_read_with_gps(self):
+        import qpstestdata
+        ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd' / 'gps'
+        files = list(file_search(ASD_DIR, '*.asd', recursive=True))
+
+        for file in files:
+            asd = ASDBinaryFile(file)
+
+            GPS = asd.gps_data
+            s = ""
+
     def test_read_asdFile(self):
 
         for file in self.asdBinFiles():

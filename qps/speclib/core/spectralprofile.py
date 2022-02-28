@@ -969,7 +969,7 @@ def groupBySpectralProperties(profiles: typing.List[QgsFeature],
         assert isinstance(p, QgsFeature)
         if pField is None:
             # initialize the profile field to group profiles on
-            pFields = profile_fields(p.fields())
+            pFields: QgsFields = profile_fields(p.fields())
             if pFields.count() == 0:
                 # no profile fields = nothing to group
                 return {}

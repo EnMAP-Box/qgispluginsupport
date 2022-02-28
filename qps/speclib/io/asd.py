@@ -347,11 +347,12 @@ class ASDBinaryFile(object):
                 # 2 + length
                 # empty string = 2 byte = 0
                 # h = short, H = unsigned short
-                n = struct.unpack('<H', sub(start, 2))[0]
+                len_string = struct.unpack('<H', sub(start, 2))[0]
                 result = ''
-                if n > 0:
-                    result = struct.unpack('<c', sub(start + 2, n))[0]
-                return result, start + n + 2
+                if len_string > 0:
+                    # result = struct.unpack('<c',sub(start + 2, len_string) )[0]
+                    result = sub(start + 2, len_string).decode('ascii')
+                return result, 2 + len_string
 
             self.co = DATA[0:3].decode('utf-8')
             self.comments = DATA[3:(3 + 157)].decode('utf-8')
@@ -430,6 +431,7 @@ class ASDBinaryFile(object):
                 #                struct.unpack('<l', DATA[o + 11:o + 11 + 8])[0], 's')
 
                 reftime = struct.unpack('<8B', sub(o + 3, 8))
+                spectime = struct.unpack('<8B', sub(o + 11, 8))
                 self.SpectrumDescription, o = n_string(o + 19)
 
                 # reference data
