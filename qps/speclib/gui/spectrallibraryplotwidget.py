@@ -644,10 +644,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
             id_attribute = (vis_key[1], vis_key[2])
             rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, None)
             if rawData:
-                xunit2 = self.mXUnitModel.findUnit(rawData['xUnit'])
-                if xunit2 != xunit:
+                xunit2 = self.mXUnitModel.findUnit(rawData.get('xUnit', None))
+                if isinstance(xunit2, str) and xunit2 != xunit:
                     self.mXUnitInitialized = True
-                    self.setXUnit(rawData['xUnit'])
+                    self.setXUnit(xunit2)
                     # this will call updatePlot again, so we can return afterwards
                     return
 
