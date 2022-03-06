@@ -38,6 +38,7 @@ import numpy as np
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
+from qgis._core import QgsPointXY, QgsGeometry
 from qgis.core import QgsProcessingFeedback
 from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
     QgsField
@@ -135,13 +136,28 @@ class InstrumentType(enum.Enum):
 
 class GPS_DATA(object):
 
+    # time_t = == long
     def __init__(self, DATA):
-        ASD_GPS_DATA = struct.Struct("< 5d 2b cl 2b 5B 2c").unpack(DATA)
+        ASD_GPS_DATA = struct.Struct("< 5d H c l H 5c 2c").unpack(DATA)
+        # ASD_GPS_DATA2 = struct.Struct("= 5d 2b cl 2b 5B 2c").unpack(DATA)
+        self.true_heading, self.speed, latDM, lonDM, self.altitude = ASD_GPS_DATA[0:5]
+        latD = int(latDM / 100)
+        lonD = int(lonDM / 100)
+        latM = abs(latDM - (latD * 100))
+        lonM = abs(lonDM - (lonD * 100))
+        # convert Degree + Minute to DecimalDegrees
+        self.latitude = latD + latM / 60
+        self.longitude = lonD + lonM / 60
+        self.longitude *= -1 #
+        self.flags = ASD_GPS_DATA[5]  # unpack this into bits
+        self.hardware_mode = ASD_GPS_DATA[6]
+        self.timestamp = ASD_GPS_DATA[7]
+        self.timestamp = np.datetime64('1970-01-01') + np.timedelta64(ASD_GPS_DATA[7], 's')
+        self.flags2 = ASD_GPS_DATA[8]  # unpack this into bits
+        self.satellites = ASD_GPS_DATA[9:15]
+        self.filler = ASD_GPS_DATA[10]
 
-        self.true_heading = self.speed = self.latitude = self.longitude = self.altitude = ASD_GPS_DATA[0:5]
-        self.flags = ASD_GPS_DATA[5:7]
-        self.hardware_mode = ASD_GPS_DATA[7]
-        self.timestamp = np.datetime64('1970-01-01') + np.timedelta64(ASD_GPS_DATA[8], 's')
+        s = ""
 
 
 class SmartDetectorType(object):
@@ -310,6 +326,11 @@ class ASDBinaryFile(object):
 
         f = QgsFeature(fields)
         field_names = fields.names()
+        GPS = self.gps_data
+
+        x, y = GPS.longitude, GPS.latitude
+        g = QgsGeometry.fromPointXY(QgsPointXY(x, y))
+        f.setGeometry(g)
 
         f.setAttribute('co', self.co)
         f.setAttribute('instrument', self.instrument)

@@ -35,10 +35,13 @@ class TestSpeclibIO_ASD(TestCase):
         files = list(file_search(ASD_DIR, '*.asd', recursive=True))
 
         for file in files:
+            print(file)
             asd = ASDBinaryFile(file)
 
             GPS = asd.gps_data
+            feature = asd.asFeature()
             s = ""
+
 
     def test_read_asdFile(self):
 
