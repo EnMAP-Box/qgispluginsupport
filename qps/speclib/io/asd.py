@@ -38,10 +38,8 @@ import numpy as np
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
-from qgis._core import QgsPointXY, QgsGeometry
-from qgis.core import QgsProcessingFeedback
 from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
-    QgsField
+    QgsField, QgsPointXY, QgsGeometry, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
 from ..core import create_profile_field, is_spectral_library
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
@@ -148,7 +146,7 @@ class GPS_DATA(object):
         # convert Degree + Minute to DecimalDegrees
         self.latitude = latD + latM / 60
         self.longitude = lonD + lonM / 60
-        self.longitude *= -1 #
+        self.longitude *= -1  #
         self.flags = ASD_GPS_DATA[5]  # unpack this into bits
         self.hardware_mode = ASD_GPS_DATA[6]
         self.timestamp = ASD_GPS_DATA[7]

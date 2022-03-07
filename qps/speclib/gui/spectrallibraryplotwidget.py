@@ -3,6 +3,7 @@ import re
 import typing
 
 import numpy as np
+
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
@@ -21,7 +22,6 @@ from qgis.core import QgsRasterLayer
 from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
-
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget, PlotUpdateBlocker
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
@@ -30,7 +30,6 @@ from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, Rast
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
-from ... import debugLog
 from ...externals.htmlwidgets import HTMLStyle
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
@@ -659,7 +658,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             t1 = datetime.datetime.now()
             for p in to_remove:
                 self.mPlotWidget.removeItem(p)
-           # printCaller(suffix=f'Remove {len(to_remove)} items', dt=t1)
+            #  printCaller(suffix=f'Remove {len(to_remove)} items', dt=t1)
             existing = self.mPlotWidget.items()
 
             to_add = [p for p in PLOT_ITEMS if p not in existing]
@@ -667,13 +666,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
             t2 = datetime.datetime.now()
             for p in to_add:
                 self.mPlotWidget.addItem(p)
-           # t3 = printCaller(suffix=f'Add    {len(to_add)} items', dt=t2)
+            #  t3 = printCaller(suffix=f'Add    {len(to_add)} items', dt=t2)
 
         n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
-        printCaller(suffix=f'Total', dt=t1)
+        printCaller(suffix='Total', dt=t1)
 
     def updateProfileLabel(self, n: int, limit_reached: bool):
         propertyItem = self.generalSettings().mP_MaxProfiles

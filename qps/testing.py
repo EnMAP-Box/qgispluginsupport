@@ -65,7 +65,7 @@ from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, Qgs
 from .resources import findQGISResourceFiles, initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
 from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
-from .speclib.core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
+from .speclib.core.spectrallibrary import SpectralLibraryUtils
 from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from .utils import UnitLookup, px2geo, SpatialPoint, findUpwardPath
 

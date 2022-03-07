@@ -2,15 +2,11 @@
 import pathlib
 import typing
 import unittest
-
 import xmlrunner
 
-from qgis._core import QgsFeature, QgsVectorLayerExporter, QgsCoordinateReferenceSystem, Qgis
-from qgis.core import QgsProcessingFeedback
-
+from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorLayerExporter, QgsCoordinateReferenceSystem, Qgis
 from qgis.core import QgsVectorLayer
 from qps.speclib.core import is_spectral_feature
-from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDSpectralLibraryImportWidget, ASDBinaryFile
@@ -75,7 +71,6 @@ class TestSpeclibIO_ASD(TestCase):
 
         exporter.flushBuffer()
         s = ""
-
 
     def test_read_asdFile(self):
 
