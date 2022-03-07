@@ -276,6 +276,10 @@ class SpectralLibraryUtils:
         return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
 
     @staticmethod
+    def groupBySpectralProperties(*args, **kwds) -> typing.Dict[SpectralSetting, typing.List[QgsFeature]]:
+        return groupBySpectralProperties(*args, **kwds)
+
+    @staticmethod
     def readFromVectorLayer(source: typing.Union[str, QgsVectorLayer]) -> QgsVectorLayer:
         """
         Returns a vector layer as Spectral Library vector layer.

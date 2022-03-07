@@ -222,7 +222,7 @@ class FieldToRasterValueConverter(QObject):
         """
         This method should return a SpectralSetting that describes the wavelength information for each band
         """
-        return SpectralSetting(list(range(self.bandCount())), xUnit=BAND_INDEX)
+        return SpectralSetting(list(range(self.bandCount())), xUnit=BAND_INDEX, field_name=self.field().name())
 
     def updateRasterData(self, features: typing.List[QgsFeature]):
 
@@ -408,7 +408,7 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
             if isinstance(v, QByteArray):
                 d = decodeProfileValueDict(v)
                 try:
-                    s = SpectralSetting.fromDictionary(d)
+                    s = SpectralSetting.fromDictionary(d, field_name=self.field().name())
                 except Exception as ex:
                     s = ""
                 if isinstance(s, SpectralSetting):

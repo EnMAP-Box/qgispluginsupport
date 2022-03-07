@@ -194,7 +194,7 @@ class SpectralSetting(object):
             return SpectralSetting(wl, xUnit=wlu, bbl=bbl)
 
     @classmethod
-    def fromDictionary(cls, d: dict) -> 'SpectralSetting':
+    def fromDictionary(cls, d: dict, field_name: str = None) -> 'SpectralSetting':
         if not isinstance(d, dict) or 'y' not in d.keys():
             # no spectral values no spectral setting
             return None
@@ -204,7 +204,8 @@ class SpectralSetting(object):
         return SpectralSetting(x,
                                xUnit=d.get('xUnit', None),
                                yUnit=d.get('yUnit', None),
-                               bbl=d.get('bbl', None)
+                               bbl=d.get('bbl', None),
+                               field_name=field_name
                                )
 
     @classmethod
@@ -943,7 +944,7 @@ class SpectralProfile(QgsFeature):
         return len(self.yValues())
 
 
-def groupBySpectralProperties(profiles: typing.List[QgsFeature],
+def groupBySpectralProperties(profiles: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],
                               excludeEmptyProfiles: bool = True,
                               profile_field: typing.Union[int, str, QgsField] = None
                               ) -> typing.Dict[SpectralSetting, typing.List[QgsFeature]]:
@@ -956,6 +957,8 @@ def groupBySpectralProperties(profiles: typing.List[QgsFeature],
 
     :return: {SpectralSetting:[list-of-profiles]}
     """
+    if isinstance(profiles, QgsVectorLayer):
+        profiles = profiles.getFeatures()
     if isinstance(profiles, QgsFeature):
         profiles = [profiles]
     results = dict()
@@ -981,7 +984,7 @@ def groupBySpectralProperties(profiles: typing.List[QgsFeature],
                 pField = pFields[pField.name()]
 
             assert is_profile_field(pField)
-            pFieldIdx = pFields.lookupField(pField.name())
+            pFieldIdx = p.fields().lookupField(pField.name())
 
         d: dict = decodeProfileValueDict(p.attribute(pFieldIdx))
 

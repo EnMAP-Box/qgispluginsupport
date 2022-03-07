@@ -438,7 +438,7 @@ class TestSpeclibPlotting(TestCase):
         w.setProject(proj)
 
         speclib.startEditing()
-        speclib.addSpectralProfileField('profiles3')
+        speclib.addAttribute(create_profile_field('profiles3'))
         speclib.commitChanges(stopEditing=False)
         speclib.deleteAttribute(speclib.fields().lookupField('profiles3'))
         speclib.commitChanges(stopEditing=False)

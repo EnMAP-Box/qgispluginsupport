@@ -2598,8 +2598,7 @@ def iconForFieldType(field: typing.Union[QgsField, QgsVectorDataProvider.NativeT
                          typeName=field.mTypeName,
                          len=field.mMaxLen,
                          prec=field.mMaxPrec,
-                         subType=field.mSubType
-                        )
+                         subType=field.mSubType)
 
     assert isinstance(field, QgsField)
     return QgsFields.iconForFieldType(field.type())

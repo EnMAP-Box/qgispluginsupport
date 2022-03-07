@@ -923,10 +923,12 @@ class TestObjects(object):
 
             SpectralLibraryUtils.addProfiles(slib, profiles, addMissingFields=False)
 
-        for i in range(n_empty):
-            p = slib[i]
-            p.setValues([], [])
-            assert slib.updateFeature(p)
+        for i, feature in enumerate(slib.getFeatures()):
+            if i >= n_empty:
+                break
+            for field in profile_field_names:
+                feature.setAttribute(field, None)
+            slib.updateFeature(feature)
 
         assert slib.commitChanges()
         return slib

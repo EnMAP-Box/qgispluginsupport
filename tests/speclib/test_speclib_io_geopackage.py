@@ -7,7 +7,7 @@ from osgeo import ogr
 from qgis.core import QgsProcessingFeedback
 
 from qgis.core import QgsVectorLayer
-from qps.speclib.core.spectrallibrary import SpectralLibrary
+from qps.speclib.core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryExportWidget
 from qps.testing import TestObjects, TestCase
@@ -38,12 +38,11 @@ class TestSpeclibIO_GPKG(TestCase):
         os.makedirs(testdir, exist_ok=True)
 
         path = testdir / 'exported_profiles.gpkg'
-
-        files = sl.write(path)
+        files = SpectralLibraryUtils.writeToSource(sl, path)
         self.assertTrue(len(files) == 1)
 
         # overwrite
-        files = sl.write(path)
+        files = SpectralLibraryUtils.writeToSource(sl, path)
         self.assertTrue(len(files) == 1)
 
         exportSettings = dict()
