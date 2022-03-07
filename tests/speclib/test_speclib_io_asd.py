@@ -4,10 +4,13 @@ import typing
 import unittest
 
 import xmlrunner
+
+from qgis._core import QgsFeature, QgsVectorLayerExporter, QgsCoordinateReferenceSystem, Qgis
 from qgis.core import QgsProcessingFeedback
 
 from qgis.core import QgsVectorLayer
 from qps.speclib.core import is_spectral_feature
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDSpectralLibraryImportWidget, ASDBinaryFile
@@ -34,13 +37,44 @@ class TestSpeclibIO_ASD(TestCase):
         ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd' / 'gps'
         files = list(file_search(ASD_DIR, '*.asd', recursive=True))
 
+        features = []
         for file in files:
             print(file)
             asd = ASDBinaryFile(file)
 
             GPS = asd.gps_data
             feature = asd.asFeature()
-            s = ""
+            self.assertIsInstance(feature, QgsFeature)
+            features.append(feature)
+
+        io = ASDSpectralLibraryIO()
+        conf = dict()
+        feedback = QgsProcessingFeedback()
+        paths = '"' + '" "'.join(files) + '"'
+        features2 = io.importProfiles(paths, conf, feedback)
+        self.assertEqual(len(features), len(features2))
+
+        refFeature: QgsFeature = features2[0]
+        crs = QgsCoordinateReferenceSystem('EPSG:4326')
+        path = self.createTestOutputDirectory() / 'asd_profiles.gpkg'
+        options = dict()
+        exporter = QgsVectorLayerExporter(path.as_posix(),
+                                          'ogr',
+                                          refFeature.fields(),
+                                          refFeature.geometry().wkbType(),
+                                          crs=crs,
+                                          overwrite=True,
+                                          options=options)
+        if exporter.errorCode() != Qgis.VectorExportResult.Success:
+            raise Exception(f'Error when creating {path}: {exporter.errorMessage()}')
+
+        for f in features2:
+            if not exporter.addFeature(f):
+                if exporter.errorCode() != Qgis.VectorExportResult.Success:
+                    raise Exception(f'Error when creating feature: {exporter.errorMessage()}')
+
+        exporter.flushBuffer()
+        s = ""
 
 
     def test_read_asdFile(self):

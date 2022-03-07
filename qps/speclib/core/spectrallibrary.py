@@ -354,6 +354,8 @@ class SpectralLibraryUtils:
 
         assert lyr.addAttribute(QgsField(name='name', type=QVariant.String))
         for fieldname in profile_fields:
+            if isinstance(fieldname, QgsField):
+                fieldname = fieldname.name()
             SpectralLibraryUtils.addAttribute(lyr, create_profile_field(fieldname))
         lyr.endEditCommand()
         assert lyr.commitChanges(stopEditing=True)

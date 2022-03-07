@@ -143,8 +143,8 @@ class GPS_DATA(object):
         self.true_heading, self.speed, latDM, lonDM, self.altitude = ASD_GPS_DATA[0:5]
         latD = int(latDM / 100)
         lonD = int(lonDM / 100)
-        latM = abs(latDM - (latD * 100))
-        lonM = abs(lonDM - (lonD * 100))
+        latM = latDM - (latD * 100)
+        lonM = lonDM - (lonD * 100)
         # convert Degree + Minute to DecimalDegrees
         self.latitude = latD + latM / 60
         self.longitude = lonD + lonM / 60
@@ -563,6 +563,7 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
                        feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
         s = ""
         profiles = []
+        assert isinstance(path, str)
         sources = QgsFileWidget.splitFilePaths(path)
 
         # expected_fields = importSettings.get()
