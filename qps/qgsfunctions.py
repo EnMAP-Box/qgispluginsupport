@@ -283,7 +283,7 @@ class SpectralMath(QgsExpressionFunction):
             values = decodeProfileValueDict(ba, numpy_arrays=True)
             exec(expression, values)
 
-            new_ba = encodeProfileValueDict(values)
+            new_ba = encodeProfileValueDict(values, context)
             return new_ba
         except Exception as ex:
             parent.setEvalErrorString(str(ex))

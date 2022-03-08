@@ -36,7 +36,7 @@ from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog
 
 from .. import FIELD_NAME
-from ..core import is_spectral_library
+from ..core import is_spectral_library, is_profile_field
 
 from qgis.core import QgsField, QgsVectorLayer, QgsVectorFileWriter, QgsProviderRegistry, \
     QgsProject, QgsProviderMetadata, QgsFileUtils, QgsProcessingFeedback
@@ -139,23 +139,18 @@ class VectorSourceSpectralLibraryIO(SpectralLibraryIO):
 
         profiles = []
 
-        TXT2BLOB = False
-        for i, n in enumerate(lyr.fields().names()):
-            f: QgsField = lyr.fields().at(i)
-            if n == FIELD_VALUES:
-                if f.type() == QVariant.String:
-                    TXT2BLOB = True
-
         for feature in lyr.getFeatures():
             profile = SpectralProfile(fields=speclib.fields())
-            for i, name in enumerate(speclib.fields().names()):
-                if TXT2BLOB and name == FIELD_VALUES:
-                    jsonStr = feature.attribute(name)
-                    d = json.loads(jsonStr)
-                    blob = encodeProfileValueDict(d)
-                    profile.setAttribute(name, blob)
-                else:
-                    profile.setAttribute(name, feature.attribute(name))
+            for field in speclib.fields():
+                value = feature.attribute(field.name())
+                if value is not None:
+                    if is_profile_field(field):
+                        profileDict = decodeProfileValueDict(value)
+                        if len(profileDict) > 0:
+                            profile.setAttribute(field.name(),
+                                                 encodeProfileValueDict(profileDict, field))
+                    else:
+                        profile.setAttribute(field.name(), feature.attribute(field))
 
             profiles.append(profile)
 

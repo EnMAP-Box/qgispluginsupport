@@ -67,6 +67,7 @@ from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, Qg
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+
 QGIS_RESOURCE_WARNINGS = set()
 
 REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInContextMenu')
@@ -2596,27 +2597,17 @@ def iconForFieldType(field: typing.Union[QgsField, QgsVectorDataProvider.NativeT
     Returns an icon for field types, including own defined
     :return:
     """
-    from .speclib.core import is_profile_field, create_profile_field
 
     if isinstance(field, QgsVectorDataProvider.NativeType):
-        if field.mTypeName.replace(' ', '').lower() == 'spectralprofile':
-            field = create_profile_field('dummy')
-        else:
-            field = QgsField(
-                name='dummy',
-                type=field.mType,
-                typeName=field.mTypeName,
-                len=field.mMaxLen,
-                prec=field.mMaxPrec,
-                # comment=field.comment,
-                subType=field.mSubType
-            )
+        field = QgsField(name='dummy',
+                         type=field.mType,
+                         typeName=field.mTypeName,
+                         len=field.mMaxLen,
+                         prec=field.mMaxPrec,
+                         subType=field.mSubType)
 
     assert isinstance(field, QgsField)
-    if is_profile_field(field):
-        return QIcon(r':/qps/ui/icons/profile.svg')
-    else:
-        return QgsFields.iconForFieldType(field.type())
+    return QgsFields.iconForFieldType(field.type())
 
 
 def createCRSTransform(src: QgsCoordinateReferenceSystem, dst: QgsCoordinateReferenceSystem):
@@ -3234,14 +3225,18 @@ class FeatureReferenceIterator(object):
             return self.mFeatureIterator.__next__()
 
 
-def printCaller(prefix: str = None, suffix: str = None):
+def printCaller(prefix: str = None,
+                suffix: str = None,
+                dt: typing.Union[datetime.datetime, datetime.timedelta] = None) -> datetime.datetime:
     """
     prints out the current code location in calling method
     :param prefix: prefix text
     :param suffix: suffix text
     """
+    now = datetime.datetime.now()
     if not os.environ.get('DEBUG', '').lower() in ['1', 'true']:
-        return
+        return now
+
     curFrame = inspect.currentframe()
     outerFrames = inspect.getouterframes(curFrame)
     FOI = outerFrames[1]
@@ -3253,4 +3248,11 @@ def printCaller(prefix: str = None, suffix: str = None):
     prefix = f'{prefix}:' if prefix else ''
     suffix = f':{suffix}' if suffix else ''
 
+    if isinstance(dt, datetime.datetime):
+        dt = now - dt
+
+    if isinstance(dt, datetime.timedelta):
+        suffix += ' {:0.2f} s'.format(dt.total_seconds())
     print(f'#{prefix}{info}{suffix}', flush=True)
+
+    return now

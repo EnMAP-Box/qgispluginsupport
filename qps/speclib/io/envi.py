@@ -49,7 +49,8 @@ from ..core import create_profile_field, profile_fields
 from ..core.spectrallibrary import VSI_DIR, LUT_IDL2GDAL
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
     SpectralLibraryImportWidget
-from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile, groupBySpectralProperties
+from ..core.spectralprofile import encodeProfileValueDict, groupBySpectralProperties, SpectralSetting, \
+    decodeProfileValueDict
 from ...utils import toType
 
 # lookup GDAL Data Type and its size in bytes
@@ -212,7 +213,7 @@ def writeCSVMetadata(pathCSV: str, profiles: typing.List[QgsFeature], profile_na
         writer = csv.DictWriter(f, fieldnames=allFieldNames)
         writer.writeheader()
         for p, spectrumName in zip(profiles, profile_names):
-            assert isinstance(p, SpectralProfile)
+            assert isinstance(p, QgsFeature)
             d = {}
 
             if spectrumName in [None, NULL, QVariant()]:
@@ -422,7 +423,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
                             if g.wkbType() == QgsWkbTypes.Point:
                                 f.setGeometry(g)
             """
-            f.setAttribute(PROFILE_FIELD, encodeProfileValueDict(valueDict))
+            f.setAttribute(PROFILE_FIELD, encodeProfileValueDict(valueDict, fields.field(PROFILE_FIELD)))
             if PROFILE_NAME_FIELD:
                 f.setAttribute(PROFILE_NAME_FIELD, spectraNames[i])
 
@@ -465,11 +466,9 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
                 continue
 
             iGrp += 1
+            setting: SpectralSetting
 
-            xValues, wlu, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
-
-            # Ann Crabbé: bad bands list
-            bbl = profiles[0].bbl()
+            xValues, wlu, yUnit, bbl = setting.x(), setting.xUnit(), setting.yUnit(), setting.bbl()
 
             # get profile names
             profileNames = []
@@ -478,13 +477,16 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
             scope = QgsExpressionContextScope()
             context.appendScope(scope)
 
+            pData = []
             for p in profiles:
                 context.setFeature(p)
                 name = expr.evaluate(context)
                 profileNames.append(name)
 
+                d = decodeProfileValueDict(p.attribute(setting.fieldName()), )
+                pData.append(np.asarray(d['y']))
+
             # stack profiles
-            pData = [np.asarray(p.yValues()) for p in profiles]
             pData = np.vstack(pData)
 
             # convert array to data type GDAL is able to write

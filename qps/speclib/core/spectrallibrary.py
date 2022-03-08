@@ -57,7 +57,7 @@ from . import field_index
 from . import profile_field_list, first_profile_field_index, create_profile_field, \
     is_spectral_library
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
-    SpectralSetting, groupBySpectralProperties
+    SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, encodeProfileValueDict
 from .. import FIELD_FID, FIELD_VALUES
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
@@ -276,6 +276,10 @@ class SpectralLibraryUtils:
         return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
 
     @staticmethod
+    def groupBySpectralProperties(*args, **kwds) -> typing.Dict[SpectralSetting, typing.List[QgsFeature]]:
+        return groupBySpectralProperties(*args, **kwds)
+
+    @staticmethod
     def readFromVectorLayer(source: typing.Union[str, QgsVectorLayer]) -> QgsVectorLayer:
         """
         Returns a vector layer as Spectral Library vector layer.
@@ -337,6 +341,32 @@ class SpectralLibraryUtils:
         #        return sl
 
         return None
+
+    @staticmethod
+    def createSpectralLibrary(profile_fields: typing.List[str] = ['profiles']) -> QgsVectorLayer:
+        """
+        Creates an empty in-memory spectral library with a "name" and a "profiles" field
+        """
+        provider = 'memory'
+        path = f"point?crs=epsg:{SPECLIB_EPSG_CODE}"
+        options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
+
+        lyr = QgsVectorLayer(path, DEFAULT_NAME, provider, options=options)
+        lyr.setCustomProperty('skipMemoryLayerCheck', 1)
+        lyr.startEditing()
+        lyr.beginEditCommand('Add fields')
+
+        assert lyr.addAttribute(QgsField(name='name', type=QVariant.String))
+        for fieldname in profile_fields:
+            if isinstance(fieldname, QgsField):
+                fieldname = fieldname.name()
+            SpectralLibraryUtils.addAttribute(lyr, create_profile_field(fieldname))
+        lyr.endEditCommand()
+        assert lyr.commitChanges(stopEditing=True)
+
+        SpectralLibraryUtils.initTableConfig(lyr)
+
+        return lyr
 
     @staticmethod
     def addAttribute(speclib: QgsVectorLayer, field: QgsField) -> bool:
@@ -584,6 +614,17 @@ class SpectralLibraryUtils:
         return fids_inserted
 
     @staticmethod
+    def setProfileValues(feature: QgsFeature, *args, field: typing.Union[int, str, QgsField] = None, **kwds):
+        if field is None:
+            # use the first profile field by default
+            field = profile_field_list(feature)[0]
+        else:
+            field: QgsField = qgsField(feature, field)
+        profileDict = prepareProfileValueDict(*args, **kwds)
+        value = encodeProfileValueDict(profileDict, field)
+        feature.setAttribute(field.name(), value)
+
+    @staticmethod
     def speclibFromFeatureIDs(layer: QgsVectorLayer, fids):
         if isinstance(fids, int):
             fids = [fids]
@@ -637,6 +678,7 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def profile(speclib: QgsVectorLayer, fid: int, value_field=None) -> SpectralProfile:
+        warnings.warn(DeprecationWarning())
         assert is_spectral_library(speclib)
         if value_field is None:
             value_field = profile_field_list(speclib)[0]
@@ -662,6 +704,7 @@ class SpectralLibraryUtils:
         :param fids: optional, [int-list-of-feature-ids] to return
         :return: generator of [List-of-SpectralProfiles]
         """
+        warnings.warn(DeprecationWarning())
         if profile_field is None:
             profile_field = first_profile_field_index(vectorlayer)
         else:
@@ -1188,7 +1231,8 @@ class SpectralLibrary(QgsVectorLayer):
         :param create_name_field: bool, if True (default) a string field will be added to contain profile names (1).
         (1) Only used of fields is None
         """
-
+        warnings.warn(DeprecationWarning('Will be removed. Use SpectralLibraryUtils to access spectral profiles '
+                                         'within QgsVectorLayers'), stacklevel=2)
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
 
@@ -1220,7 +1264,8 @@ class SpectralLibrary(QgsVectorLayer):
                     self.addAttribute(QgsField(name='name', type=QVariant.String))
 
                 for fieldname in profile_fields:
-                    assert self.addSpectralProfileField(fieldname), f'Unable to add profile field "{fieldname}"'
+                    self.addAttribute(create_profile_field(fieldname))
+                    # assert self.addSpectralProfileField(fieldname), f'Unable to add profile field "{fieldname}"'
 
                 profile_indices = [self.fields().lookupField(f) for f in profile_fields]
                 self.endEditCommand()

@@ -38,9 +38,8 @@ import numpy as np
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
-from qgis.core import QgsProcessingFeedback
 from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
-    QgsField
+    QgsField, QgsPointXY, QgsGeometry, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
 from ..core import create_profile_field, is_spectral_library
 from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
@@ -135,13 +134,28 @@ class InstrumentType(enum.Enum):
 
 class GPS_DATA(object):
 
+    # time_t = == long
     def __init__(self, DATA):
-        ASD_GPS_DATA = struct.Struct("< 5d 2b cl 2b 5B 2c").unpack(DATA)
+        ASD_GPS_DATA = struct.Struct("< 5d H c l H 5c 2c").unpack(DATA)
+        # ASD_GPS_DATA2 = struct.Struct("= 5d 2b cl 2b 5B 2c").unpack(DATA)
+        self.true_heading, self.speed, latDM, lonDM, self.altitude = ASD_GPS_DATA[0:5]
+        latD = int(latDM / 100)
+        lonD = int(lonDM / 100)
+        latM = latDM - (latD * 100)
+        lonM = lonDM - (lonD * 100)
+        # convert Degree + Minute to DecimalDegrees
+        self.latitude = latD + latM / 60
+        self.longitude = lonD + lonM / 60
+        self.longitude *= -1  #
+        self.flags = ASD_GPS_DATA[5]  # unpack this into bits
+        self.hardware_mode = ASD_GPS_DATA[6]
+        self.timestamp = ASD_GPS_DATA[7]
+        self.timestamp = np.datetime64('1970-01-01') + np.timedelta64(ASD_GPS_DATA[7], 's')
+        self.flags2 = ASD_GPS_DATA[8]  # unpack this into bits
+        self.satellites = ASD_GPS_DATA[9:15]
+        self.filler = ASD_GPS_DATA[10]
 
-        self.true_heading = self.speed = self.latitude = self.longitude = self.altitude = ASD_GPS_DATA[0:5]
-        self.flags = ASD_GPS_DATA[5:7]
-        self.hardware_mode = ASD_GPS_DATA[7]
-        self.timestamp = np.datetime64('1970-01-01') + np.timedelta64(ASD_GPS_DATA[8], 's')
+        s = ""
 
 
 class SmartDetectorType(object):
@@ -310,6 +324,11 @@ class ASDBinaryFile(object):
 
         f = QgsFeature(fields)
         field_names = fields.names()
+        GPS = self.gps_data
+
+        x, y = GPS.longitude, GPS.latitude
+        g = QgsGeometry.fromPointXY(QgsPointXY(x, y))
+        f.setGeometry(g)
 
         f.setAttribute('co', self.co)
         f.setAttribute('instrument', self.instrument)
@@ -320,12 +339,12 @@ class ASDBinaryFile(object):
         ySpectrum = self.yValuesSpectrum()
         if ySpectrum is not None:
             spectrum_dict = prepareProfileValueDict(x=x, y=self.yValuesSpectrum(), xUnit='nm')
-            f.setAttribute('spectrum', encodeProfileValueDict(spectrum_dict))
+            f.setAttribute('Spectrum', encodeProfileValueDict(spectrum_dict, fields.field('Spectrum')))
 
         yReference = self.yValuesReference()
         if yReference is not None:
             reference_dict = prepareProfileValueDict(x=x, y=self.yValuesReference(), xUnit='nm')
-            f.setAttribute('reference', encodeProfileValueDict(reference_dict))
+            f.setAttribute('Reference', encodeProfileValueDict(reference_dict, fields.field('Reference')))
 
         return f
 
@@ -347,11 +366,12 @@ class ASDBinaryFile(object):
                 # 2 + length
                 # empty string = 2 byte = 0
                 # h = short, H = unsigned short
-                n = struct.unpack('<H', sub(start, 2))[0]
+                len_string = struct.unpack('<H', sub(start, 2))[0]
                 result = ''
-                if n > 0:
-                    result = struct.unpack('<c', sub(start + 2, n))[0]
-                return result, start + n + 2
+                if len_string > 0:
+                    # result = struct.unpack('<c',sub(start + 2, len_string) )[0]
+                    result = sub(start + 2, len_string).decode('ascii')
+                return result, 2 + len_string
 
             self.co = DATA[0:3].decode('utf-8')
             self.comments = DATA[3:(3 + 157)].decode('utf-8')
@@ -430,6 +450,7 @@ class ASDBinaryFile(object):
                 #                struct.unpack('<l', DATA[o + 11:o + 11 + 8])[0], 's')
 
                 reftime = struct.unpack('<8B', sub(o + 3, 8))
+                spectime = struct.unpack('<8B', sub(o + 11, 8))
                 self.SpectrumDescription, o = n_string(o + 19)
 
                 # reference data
@@ -526,7 +547,8 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
 
                         profile = QgsFeature(ASD_FIELDS)
                         spectrum_dict = prepareProfileValueDict(x=xValues, y=yValues, xUnit=xUnit)
-                        profile.setAttribute('Spectrum', encodeProfileValueDict(spectrum_dict))
+                        profile.setAttribute('Spectrum',
+                                             encodeProfileValueDict(spectrum_dict, ASD_FIELDS.field('Spectrum')))
 
                         profiles.append(profile)
 
@@ -539,6 +561,7 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
                        feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
         s = ""
         profiles = []
+        assert isinstance(path, str)
         sources = QgsFileWidget.splitFilePaths(path)
 
         # expected_fields = importSettings.get()

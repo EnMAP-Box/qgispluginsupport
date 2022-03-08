@@ -39,19 +39,18 @@ import warnings
 from unittest import mock
 
 import numpy as np
-
-from qgis.PyQt.QtCore import QObject, QPoint, QSize, QVariant, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
-from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
-from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
-    QMenu
 from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
 from qgis.PyQt import sip
-from qgis.core import QgsLayerTreeLayer
+from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
+from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
+from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
+    QMenu
 from qgis.core import QgsField, QgsGeometry
+from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
@@ -65,7 +64,9 @@ from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, Qgs
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
 from .resources import findQGISResourceFiles, initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
-from .speclib.core.spectrallibrary import SpectralLibrary
+from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
+from .speclib.core.spectrallibrary import SpectralLibraryUtils
+from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from .utils import UnitLookup, px2geo, SpatialPoint, findUpwardPath
 
 WMS_GMAPS = r'crs=EPSG:3857&' \
@@ -807,32 +808,50 @@ class TestObjects(object):
                          fields: QgsFields = None,
                          n_bands: typing.List[int] = None,
                          wlu: str = None,
-                         profile_fields: typing.List[typing.Union[int, str, QgsField]] = None):
+                         profile_fields: typing.List[typing.Union[str, QgsField]] = None):
 
         if fields is None:
             fields = createStandardFields()
-        from .speclib.core.spectrallibrary import SpectralProfile
 
         if profile_fields is None:
-            profile_fields = [f for f in fields if f.type() == QVariant.ByteArray]
+            # use
+            profile_fields = pFields(fields)
+        else:
+            for i, f in enumerate(profile_fields):
+                if isinstance(f, str):
+                    fields.append(create_profile_field(f'profile{i}'))
+                elif isinstance(f, QgsField):
+                    fields.append(f)
+            profile_fields = pFields(fields)
+
+        assert isinstance(profile_fields, QgsFields)
+
+        for f in profile_fields:
+            assert is_profile_field(f)
+
         if n_bands is None:
             n_bands = [-1 for f in profile_fields]
         elif isinstance(n_bands, int):
             n_bands = [n_bands]
 
-        # assert len(n_bands) == len(profile_fields)
+        assert len(n_bands) == profile_fields.count(), \
+            f'Number of bands list ({n_bands}) has different lenghts that number of profile fields'
 
-        profileGenerator = SpectralProfileDataIterator(n_bands)
+        profileGenerator: SpectralProfileDataIterator = SpectralProfileDataIterator(n_bands)
+
         for i in range(n):
+            profile = QgsFeature(fields)
+
             field_data, pt = profileGenerator.__next__()
             g = QgsGeometry.fromQPointF(pt.toQPointF())
-            profile = SpectralProfile(fields=fields)
-            profile.setId(i + 1)
             profile.setGeometry(g)
-            for j, field_index in enumerate(profile_fields):
+
+            profile.setId(i + 1)
+            for j, profile_field in enumerate(profile_fields):
+
                 (data, wl, data_wlu) = field_data[j]
                 if data is None:
-                    profile.setAttribute(field_index, None)
+                    profile.setAttribute(profile_field.name(), None)
                 else:
                     if wlu is None:
                         wlu = data_wlu
@@ -840,7 +859,10 @@ class TestObjects(object):
                         wl = wlu = None
                     elif wlu != data_wlu:
                         wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
-                    profile.setValues(profile_field=field_index, y=data, x=wl, xUnit=wlu)
+                    profileDict = prepareProfileValueDict(y=data, x=wl, xUnit=wlu)
+                    value = encodeProfileValueDict(profileDict, profile_field)
+                    profile.setAttribute(profile_field.name(), value)
+
             yield profile
 
     """
@@ -879,37 +901,34 @@ class TestObjects(object):
 
         assert isinstance(n_bands, np.ndarray)
         assert n_bands.ndim == 2
-        slib: SpectralLibrary = SpectralLibrary()
+
+        n_profile_columns = n_bands.shape[-1]
+        if not isinstance(profile_field_names, list):
+            profile_field_names = [f'{FIELD_VALUES}{i}' for i in range(n_profile_columns)]
+
+        slib: QgsVectorLayer = SpectralLibraryUtils.createSpectralLibrary(profile_fields=profile_field_names)
         assert slib.startEditing()
-        n_profile_columns = n_bands.shape[0]
-        for i in range(len(slib.spectralProfileFields()), n_profile_columns):
-            slib.addSpectralProfileField(f'{FIELD_VALUES}{i}')
 
-        from .speclib.core import profile_field_indices
+        pfield_indices = profile_field_indices(slib)
 
-        if isinstance(profile_field_names, list):
-            profile_field_idx = profile_field_indices(slib)
-            for i in range(min(len(profile_field_idx), n_profile_columns)):
-                slib.renameAttribute(profile_field_idx[i], profile_field_names[i])
+        assert len(pfield_indices) == len(profile_field_names)
 
-        slib.commitChanges(stopEditing=False)
-
-        profile_field_indices = profile_field_indices(slib)
-
-        for groupIndex in range(n_bands.shape[-1]):
-            bandsPerField = n_bands[:, groupIndex].tolist()
+        for groupIndex in range(n_bands.shape[0]):
+            bandsPerField = n_bands[groupIndex, ].tolist()
             profiles = list(TestObjects.spectralProfiles(n,
                                                          fields=slib.fields(),
                                                          n_bands=bandsPerField,
                                                          wlu=wlu,
-                                                         profile_fields=profile_field_indices))
+                                                         profile_fields=pfield_indices))
 
-            slib.addProfiles(profiles, addMissingFields=False)
+            SpectralLibraryUtils.addProfiles(slib, profiles, addMissingFields=False)
 
-        for i in range(n_empty):
-            p = slib[i]
-            p.setValues([], [])
-            assert slib.updateFeature(p)
+        for i, feature in enumerate(slib.getFeatures()):
+            if i >= n_empty:
+                break
+            for field in profile_field_names:
+                feature.setAttribute(field, None)
+            slib.updateFeature(feature)
 
         assert slib.commitChanges()
         return slib

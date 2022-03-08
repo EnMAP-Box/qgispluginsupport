@@ -708,7 +708,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 pixel_profile = tmp[:, 0, i]
                                 # todo: consider spectral setting
                                 pdict = prepareProfileValueDict(x=None, y=pixel_profile)
-                                value = encodeProfileValueDict(pdict)
+                                value = encodeProfileValueDict(pdict, target_field)
                             else:
                                 value = float(tmp[0, 0, i])
                                 if target_field.type() == QVariant.String:

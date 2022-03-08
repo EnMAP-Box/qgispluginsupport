@@ -485,7 +485,7 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.setEnabled(True)
         self.setEditable(False)
         self.setIcon(QIcon(':/images/themes/default/console/iconSettingsConsole.svg'))
-        self.mP_BadBands = QgsPropertyItem('BandBands')
+        self.mP_BadBands = QgsPropertyItem('BadBands')
         self.mP_BadBands.setDefinition(
             QgsPropertyDefinition(
                 'Band Bands', 'Show band band values', QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
@@ -738,6 +738,7 @@ class LegendGroup(PropertyItemGroup):
         self.applySettings()
 
     def applySettings(self, *args):
+        return
 
         from .spectrallibraryplotwidget import SpectralProfilePlotModel
         from .spectrallibraryplotitems import SpectralProfilePlotWidget

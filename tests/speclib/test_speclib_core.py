@@ -28,8 +28,6 @@ import xmlrunner
 from osgeo import ogr
 
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
-from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QProgressDialog
 from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsGeometry, QgsRasterLayer, QgsFeature, \
     QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsApplication, QgsTaskManager, QgsFields
 from qgis.gui import QgsGui, QgsMapCanvas
@@ -43,10 +41,8 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralPro
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.speclib.io.csvdata import CSVSpectralLibraryIO
 from qps.testing import TestObjects, TestCase
-from qps.utils import toType, findTypeFromString, nextColor, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
+from qps.utils import toType, findTypeFromString, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
     createQgsField, qgsFields2str, str2QgsFields
-from qpstestdata import hymap
-from qpstestdata import speclib as speclibpath
 
 
 class TestCore(TestCase):
@@ -205,12 +201,14 @@ class TestCore(TestCase):
         yUnit = None
 
         sl = SpectralLibrary()
-        self.assertTrue(sl.startEditing())
-        sp = SpectralProfile()
-        sp.setValues(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
 
-        vd1 = sp.values()
-        dump = encodeProfileValueDict(vd1)
+        self.assertTrue(sl.startEditing())
+        pField = profile_fields(sl).at(0)
+        sp = QgsFeature(sl.fields())
+        SpectralLibraryUtils.setProfileValues(sp, field=pField, x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
+
+        vd1 = decodeProfileValueDict(sp.attribute(pField.name()))
+        dump = encodeProfileValueDict(vd1, QgsField('test', QVariant.ByteArray))
         self.assertIsInstance(dump, QByteArray)
 
         vd2 = decodeProfileValueDict(dump)
@@ -288,7 +286,7 @@ class TestCore(TestCase):
             dict(y=[1, 2, 3]),
             dict(y=[1, 2.0, 3], x=[350, 400, 523.4]),
             dict(y=[1, 2, 3], x=[350, 400, 523.4], xUnit='nm', bbl=[0, 1, 1])
-                    ]
+        ]
 
         for profile1 in profiles:
             for field in fields:
@@ -585,7 +583,7 @@ class TestCore(TestCase):
         t0 = now()
 
         for f in sl.getFeatures():
-            ba = encodeProfileValueDict(DATA[f.id()])
+            ba = encodeProfileValueDict(DATA[f.id()], pfield)
             f.setAttribute(pfield.name(), ba)
 
         print(f'{pinfo}: encode & write: {now() - t0}')
@@ -676,10 +674,11 @@ class TestCore(TestCase):
     def test_groupBySpectralProperties(self):
 
         sl1 = TestObjects.createSpectralLibrary()
-        groups = sl1.groupBySpectralProperties(excludeEmptyProfiles=False)
+        groups = SpectralLibraryUtils.groupBySpectralProperties(sl1, excludeEmptyProfiles=False)
         self.assertTrue(len(groups) > 0)
         for key, profiles in groups.items():
             self.assertIsInstance(key, SpectralSetting)
+
             xvalues = key.x()
             xunit = key.xUnit()
             yunit = key.yUnit()
@@ -691,10 +690,12 @@ class TestCore(TestCase):
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)
 
-            n = len(profiles[0].xValues())
+            d = decodeProfileValueDict(profiles[0].attribute(key.fieldName()))
+            x = d['x']
 
             for p in profiles:
-                self.assertEqual(n, len(p.xValues()))
+                d2 = decodeProfileValueDict(profiles[0].attribute(key.fieldName()))
+                self.assertEqual(d2['x'], x)
 
     def test_SpectralLibraryValueFields(self):
 
@@ -751,136 +752,6 @@ class TestCore(TestCase):
                 self.assertEqual(array.shape[0], setting.n_bands())
                 self.assertEqual(array.shape[1], len(fids))
 
-    def test_SpectralLibrary(self):
-
-        SLIB = SpectralLibrary()
-
-        self.assertIsInstance(SpectralLibrary(), QgsVectorLayer)
-        self.assertIsInstance(SpectralLibrary(baseName='myLib'), QgsVectorLayer)
-        # SLIB2 = SpectralLibrary(SLIB.dataProvider().dataSourceUri(), provider=SLIB.dataProvider().name())
-        # self.assertIsInstance(SLIB2, QgsVectorLayer)
-        # self.assertTrue(SLIB != SLIB2)
-        # self.assertEqual(SLIB.source(), SLIB2.source())
-
-        sp1 = SpectralProfile()
-        # sp1.setName('Name 1')
-        sp1.setValues(y=[1, 1, 1, 1, 1], x=[450, 500, 750, 1000, 1500])
-
-        sp2 = SpectralProfile()
-        # sp2.setName('Name 2')
-        sp2.setValues(y=[2, 2, 2, 2, 2], x=[450, 500, 750, 1000, 1500])
-
-        self.assertEqual(SLIB.name(), 'SpectralLibrary')
-        SLIB.setName('MySpecLib')
-        self.assertEqual(SLIB.name(), 'MySpecLib')
-
-        SLIB.startEditing()
-        profiles = [sp1, sp2]
-        addedFIDs = SLIB.addProfiles(profiles)
-        self.assertTrue(len(addedFIDs) == len(profiles))
-        for i, fid in enumerate(addedFIDs):
-            f = SLIB.getFeature(fid)
-            # self.assertEqual(f.attribute('name'), profiles[i].name())
-
-        SLIB.rollBack()
-        self.assertEqual(len(SLIB), 0)
-
-        SLIB.startEditing()
-        SLIB.addProfiles([sp1, sp2])
-        SLIB.commitChanges()
-        self.assertEqual(len(SLIB), 2)
-
-        # test subsetting
-        p = SLIB[0]
-        self.assertIsInstance(p, SpectralProfile)
-        self.assertIsInstance(p.values(), dict)
-
-        if p.values() != sp1.values():
-            s = ""
-
-        self.assertEqual(p.values(), sp1.values(),
-                         msg='Unequal values:\n\t{}\n\t{}'.format(str(p.values()), str(sp1.values())))
-        self.assertEqual(SLIB[0].values(), sp1.values())
-
-        # self.assertNotEqual(speclib[0], sp1) #because sl1 has an FID
-
-        subset = SLIB[0:1]
-        self.assertIsInstance(subset, list)
-        self.assertEqual(len(subset), 1)
-
-        self.assertEqual(set(SLIB.allFeatureIds()), set([1, 2]))
-        slSubset = SLIB.speclibFromFeatureIDs(fids=2)
-        self.assertEqual(set(SLIB.allFeatureIds()), set([1, 2]))
-        self.assertIsInstance(slSubset, SpectralLibrary)
-
-        self.assertEqual(len(slSubset), 1)
-        self.assertEqual(slSubset[0].values(), SLIB[1].values())
-
-        dump = pickle.dumps(SLIB)
-        restoredSpeclib = pickle.loads(dump)
-        self.assertIsInstance(restoredSpeclib, SpectralLibrary)
-        self.assertEqual(len(SLIB), len(restoredSpeclib))
-
-        for i in range(len(SLIB)):
-            p1 = SLIB[i]
-            r1 = restoredSpeclib[i]
-
-            if p1.values() != r1.values():
-                s = ""
-
-            self.assertEqual(p1.values(), r1.values(), msg='dumped and restored values are not the same')
-
-        restoredSpeclib.startEditing()
-        restoredSpeclib.addProfiles([sp2])
-        self.assertTrue(restoredSpeclib.commitChanges())
-        self.assertNotEqual(SLIB, restoredSpeclib)
-        self.assertEqual(restoredSpeclib[-1].values(), sp2.values())
-
-        # read from image
-
-        lyr1 = QgsRasterLayer(hymap)
-
-        center1 = lyr1.extent().center()
-        center2 = SpatialPoint.fromSpatialExtent(SpatialExtent.fromLayer(lyr1))
-
-        SLIB = SpectralLibrary.readFromRasterPositions(hymap, center1)
-        slSubset = SpectralLibrary.readFromRasterPositions(hymap, center2)
-        restoredSpeclib = SpectralLibrary.readFromRasterPositions(hymap, [center1, center2])
-
-        for sl in [SLIB, slSubset]:
-            self.assertIsInstance(sl, SpectralLibrary)
-            self.assertTrue(len(sl) == 1)
-            self.assertIsInstance(sl[0], SpectralProfile)
-            self.assertTrue(sl[0].hasGeometry())
-
-        self.assertTrue(len(restoredSpeclib) == 2)
-
-        n1 = len(SLIB)
-        n2 = len(slSubset)
-
-        SLIB.startEditing()
-        SLIB.addProfiles(slSubset[:])
-        self.assertTrue(len(SLIB) == n1 + n2)
-        SLIB.addProfiles(slSubset[:])
-        self.assertTrue(len(SLIB) == n1 + n2 + n2)
-        self.assertTrue(SLIB.commitChanges())
-
-        # save and restore
-        path = self.createTestOutputDirectory() / 'speclib' / 'testsli.gpkg'
-        os.makedirs(path.parent, exist_ok=True)
-        SLIB.write(path)
-
-        pathQml = path.parent / 'testsli.qml'
-        self.assertTrue(pathQml.is_file())
-
-        SLIB2 = SpectralLibrary(path)
-        self.assertIsInstance(SLIB2, SpectralLibrary)
-        SLIB2.loadNamedStyle(pathQml.as_posix())
-
-        for p1, p2 in zip(SLIB, SLIB2):
-            for field in p1.fields():
-                self.assertEqual(p1.attribute(field.name()), p2.attribute(field.name()))
-
     def test_SpectralLibrary_readFrom(self):
         from qpstestdata import speclib_labeled
         sl = SpectralLibrary.readFrom(speclib_labeled)
@@ -914,66 +785,17 @@ class TestCore(TestCase):
         self.assertEqual(match.group('xvalue'), '23.34')
         self.assertEqual(match.group('xunit'), 'nm')
 
-    def test_mergeSpeclibs(self):
-        sp1 = TestObjects.createSpectralLibrary()
-        pd = QProgressDialog()
-        sp2 = SpectralLibrary.readFrom(speclibpath, feedback=pd)
-
-        self.assertIsInstance(sp1, SpectralLibrary)
-        self.assertIsInstance(sp2, SpectralLibrary)
-
-        n = len(sp1)
-        with self.assertRaises(Exception):
-            sp1.addSpeclib(sp2)
-            s = ""
-        self.assertTrue(len(sp1), n)
-
-        sp1.startEditing()
-        self.assertTrue(sp1.isEditable())
-        sp1.addSpeclib(sp2)
-        self.assertTrue(len(sp1), n + len(sp2))
-
-    def test_merge(self):
-
-        sl1: SpectralLibrary = TestObjects.createSpectralLibrary(10)
-        self.assertIsInstance(sl1, SpectralLibrary)
-
-        profiles = []
-
-        NAME2NAME = dict()
-        color = QColor('green')
-        for i in range(20):
-            p = SpectralProfile()
-            name = f'N{i + 1}'
-            color = nextColor(color, mode='cat')
-            NAME2NAME[name] = color.name()
-            profiles.append(p)
-
-        import random
-        profiles = random.choices(profiles, k=len(profiles))
-
-        sl1.startEditing()
-        added_fids = sl1.addProfiles(profiles)
-
-        for fid in added_fids:
-            p = sl1.profile(fid)
-            self.assertIsInstance(p, SpectralProfile)
-
-        # assign styles
-        for p in sl1:
-            self.assertIsInstance(p, SpectralProfile)
-
     def test_writeAsRaster(self):
 
-        speclib = SpectralLibrary()
+        speclib = SpectralLibraryUtils.createSpectralLibrary()
         speclib.startEditing()
-        speclib.addSpeclib(TestObjects.createSpectralLibrary(n=5, n_empty=2, n_bands=5, wlu='Nanometers'))
-        speclib.addSpeclib(TestObjects.createSpectralLibrary(n=4, n_bands=[10, 25], wlu='Micrometers', n_empty=2))
+        speclib.addFeatures(
+            TestObjects.createSpectralLibrary(n=5, n_empty=2, n_bands=5, wlu='Nanometers').getFeatures())
+        speclib.addFeatures(
+            TestObjects.createSpectralLibrary(n=4, n_bands=[10, 25], wlu='Micrometers', n_empty=2).getFeatures())
         speclib.commitChanges()
 
-        self.assertIsInstance(speclib, SpectralLibrary)
-
-        groups = speclib.groupBySpectralProperties()
+        self.assertIsInstance(speclib, QgsVectorLayer)
 
     def test_multiinstances(self):
 

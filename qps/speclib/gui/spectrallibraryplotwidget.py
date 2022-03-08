@@ -3,6 +3,7 @@ import re
 import typing
 
 import numpy as np
+
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
@@ -21,7 +22,6 @@ from qgis.core import QgsRasterLayer
 from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
-
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget, PlotUpdateBlocker
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
@@ -30,13 +30,12 @@ from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, Rast
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
-from ... import debugLog
 from ...externals.htmlwidgets import HTMLStyle
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
 from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
-    SelectMapLayerDialog, SignalBlocker
+    SelectMapLayerDialog, SignalBlocker, printCaller
 
 
 class SpectralProfilePlotXAxisUnitModel(UnitModel):
@@ -439,9 +438,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             self.mModelItems.add(item)
             self.insertRow(_index, item)
+            # if necessary, this should update the plot
             item.initWithPlotModel(self)
 
-        self.updatePlot()
+        # self.updatePlot()
 
     def onRemovalRequest(self):
         sender = self.sender()
@@ -643,29 +643,36 @@ class SpectralProfilePlotModel(QStandardItemModel):
             id_attribute = (vis_key[1], vis_key[2])
             rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, None)
             if rawData:
-                xunit2 = self.mXUnitModel.findUnit(rawData['xUnit'])
-                if xunit2 != xunit:
+                xunit2 = self.mXUnitModel.findUnit(rawData.get('xUnit', None))
+                if isinstance(xunit2, str) and xunit2 != xunit:
                     self.mXUnitInitialized = True
-                    self.setXUnit(rawData['xUnit'])
+                    self.setXUnit(xunit2)
                     # this will call updatePlot again, so we can return afterwards
                     return
 
         to_remove = [p for p in old_spdis if p not in PLOT_ITEMS]
 
+        # printCaller(suffix=f'Prepare', dt=datetime.datetime.now() - t0)
+
         with PlotUpdateBlocker(self.mPlotWidget) as blocker:
+            t1 = datetime.datetime.now()
             for p in to_remove:
                 self.mPlotWidget.removeItem(p)
-
+            #  printCaller(suffix=f'Remove {len(to_remove)} items', dt=t1)
             existing = self.mPlotWidget.items()
+
             to_add = [p for p in PLOT_ITEMS if p not in existing]
+
+            t2 = datetime.datetime.now()
             for p in to_add:
                 self.mPlotWidget.addItem(p)
+            #  t3 = printCaller(suffix=f'Add    {len(to_add)} items', dt=t2)
 
         n_total = len([i for i in self.mPlotWidget.getPlotItem().items if isinstance(i, SpectralProfilePlotDataItem)])
 
         self.updateProfileLabel(len(PLOT_ITEMS), profile_limit_reached)
 
-        debugLog(f'updatePlot: {datetime.datetime.now() - t0} {len(PLOT_ITEMS)} new, {n_total} total')
+        printCaller(suffix='Total', dt=t1)
 
     def updateProfileLabel(self, n: int, limit_reached: bool):
         propertyItem = self.generalSettings().mP_MaxProfiles

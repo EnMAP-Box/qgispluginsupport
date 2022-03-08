@@ -18,6 +18,7 @@ from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingG
     QgsProcessingAlgorithmDialogBase
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
 from qps import initAll
+from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectrallibrary import SpectralLibrary
 from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -201,10 +202,12 @@ class SpectralProcessingTests(TestCase):
         self.initProcessingRegistry()
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
         registerDataProvider()
-        n_bands = [256]
+        n_bands = [256, 13]
         n_features = 20
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
+
+        pFields = profile_field_list(speclib)
 
         speclib.startEditing()
         procw = SpectralProcessingDialog()
@@ -299,11 +302,11 @@ class SpectralProcessingTests(TestCase):
         registerDataProvider()
         n_bands = [[256, 2500],
                    [123, 42]]
-        n_features = 500
+        n_features = 10
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
-        speclib.selectByIds([1, 2, 3, 4])
-        speclib.startEditing()
+        # speclib.selectByIds([1, 2, 3, 4])
+        # speclib.startEditing()
         slw = SpectralLibraryWidget(speclib=speclib)
         self.showGui(slw)
 

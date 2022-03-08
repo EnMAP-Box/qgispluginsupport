@@ -40,10 +40,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         FormView = enum.auto()
         Standard = ProfileView | AttributeTable
 
-    def __init__(self, *args, speclib: SpectralLibrary = None, mapCanvas: QgsMapCanvas = None, **kwds):
+    def __init__(self, *args, speclib: QgsVectorLayer = None, mapCanvas: QgsMapCanvas = None, **kwds):
 
         if not isinstance(speclib, QgsVectorLayer):
-            speclib = SpectralLibrary()
+            speclib = SpectralLibraryUtils.createSpectralLibrary()
 
         self.actionShowSpectralProcessingDialog = QAction('Spectral Processing')
         super().__init__(speclib)

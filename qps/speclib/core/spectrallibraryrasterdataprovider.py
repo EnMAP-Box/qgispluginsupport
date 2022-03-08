@@ -5,9 +5,9 @@ import warnings
 
 import numpy as np
 
-from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDateTime, QByteArray
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
     QgsRasterBandStats, QgsProject, QgsPointXY, QgsRaster, QgsRasterIdentifyResult, \
@@ -16,8 +16,7 @@ from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, 
     QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
     QgsProviderRegistry, QgsMessageLog
 from ..core import profile_fields, is_profile_field
-from ..core.spectralprofile import SpectralSetting, groupBySpectralProperties, SpectralProfile, \
-    decodeProfileValueDict
+from ..core.spectralprofile import SpectralSetting, groupBySpectralProperties, decodeProfileValueDict
 from ...unitmodel import BAND_INDEX
 from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextColor, numpyToQgisDataType, \
     HashableRectangle
@@ -90,13 +89,11 @@ def featuresToArrays(speclib: QgsVectorLayer,
     if spectral_profile_fields is None:
         spectral_profile_fields = profile_fields(speclib)
 
-    assert len(spectral_profile_fields) > 0
-    pfields = profile_fields(speclib)
-    assert len(pfields) > 0
-    pfield_indices: typing.List[int] = list()
-    for field in spectral_profile_fields:
-        assert field in pfields
-        pfield_indices.append(speclib.fields().lookupField(field.name()))
+    spectral_profile_field_indices = []
+    for f in spectral_profile_fields:
+        i = speclib.fields().lookupField(f.name())
+        assert i >= 0
+        spectral_profile_field_indices.append(i)
 
     request = QgsFeatureRequest()
     if fids:
@@ -112,23 +109,28 @@ def featuresToArrays(speclib: QgsVectorLayer,
 
     request.setFilterExpression(expression)
 
-    PROFILES = dict()
+    PROFILE_DICTS = dict()
 
     for feature in speclib.getFeatures(request):
-        profile = SpectralProfile.fromQgsFeature(feature, profile_field=pfield_indices[0])
+        feature: QgsFeature
         settings: typing.List[SpectralSetting] = list()
-        for f in pfield_indices:
-            settings.append(profile.spectralSettings(f))
+        profile_dicts: typing.List[dict] = list()
+        for i, f in zip(spectral_profile_field_indices, spectral_profile_fields):
+            d = decodeProfileValueDict(feature.attribute(i))
+            d['fid'] = feature.id()
+            settings.append(SpectralSetting.fromDictionary(d))
+            profile_dicts.append(d)
+
         settings = tuple(settings)
-        PROFILE_LIST = PROFILES.get(settings, [])
-        PROFILE_LIST.append(profile)
-        PROFILES[settings] = PROFILE_LIST
+        PROFILE_DATA = PROFILE_DICTS.get(settings, [])
+        PROFILE_DATA.append(profile_dicts)
+        PROFILE_DICTS[settings] = PROFILE_DATA
 
     ARRAYS: typing.Dict[typing.Tuple[SpectralSetting, ...],
                         typing.Tuple[np.ndarray, typing.List[np.ndarray]]] = dict()
-    for settings, profiles in PROFILES.items():
+    for settings, profile_dicts in PROFILE_DICTS.items():
 
-        ns = len(profiles)
+        ns = len(profile_dicts)
         fids = np.empty((ns,), dtype=int)
         arrays: typing.List[np.ndarray] = list()
 
@@ -140,13 +142,17 @@ def featuresToArrays(speclib: QgsVectorLayer,
                 array = None
             arrays.append(array)
 
-        for p, profile in enumerate(profiles):
-            profile: SpectralProfile
-            fids[p] = profile.id()
+        for p, profile_dict in enumerate(profile_dicts):
+
             for i, setting in enumerate(settings):
                 array = arrays[i]
+                d = profile_dict[i]
+                if i == 0:
+                    fids[p] = d['fid']
+
                 if isinstance(array, np.ndarray):
-                    array[:, p] = profile.yValues(pfield_indices[i])
+                    array[:, p] = d['y']
+
         ARRAYS[settings] = (fids, arrays)
     return ARRAYS
 
@@ -216,7 +222,7 @@ class FieldToRasterValueConverter(QObject):
         """
         This method should return a SpectralSetting that describes the wavelength information for each band
         """
-        return SpectralSetting(list(range(self.bandCount())), xUnit=BAND_INDEX)
+        return SpectralSetting(list(range(self.bandCount())), xUnit=BAND_INDEX, field_name=self.field().name())
 
     def updateRasterData(self, features: typing.List[QgsFeature]):
 
@@ -402,7 +408,7 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
             if isinstance(v, QByteArray):
                 d = decodeProfileValueDict(v)
                 try:
-                    s = SpectralSetting.fromDictionary(d)
+                    s = SpectralSetting.fromDictionary(d, field_name=self.field().name())
                 except Exception as ex:
                     s = ""
                 if isinstance(s, SpectralSetting):

@@ -23,17 +23,18 @@ import sys
 import typing
 import warnings
 
+from osgeo import gdal, osr
+
 from qgis.PyQt.QtCore import QMimeData, QTimer, pyqtSignal, QObject, QVariant, QModelIndex
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
 from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindow, QPushButton, \
-    QDialogButtonBox, QAction, \
+    QDialogButtonBox, QAction, QCheckBox, \
     QButtonGroup, QToolButton, QListWidget, QStackedWidget, QListWidgetItem, \
     QApplication, QLabel, QSpinBox, QComboBox, \
     QLineEdit, QGridLayout, QTableView, QVBoxLayout
 from qgis.PyQt.QtXml import QDomDocument
-from osgeo import gdal, osr
-
-from qgis.core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, QgsFeatureRequest, \
+from qgis.core import QgsEditorWidgetSetup, QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, \
+    QgsFeatureRequest, \
     QgsExpressionContext, QgsExpressionContextUtils, QgsField, QgsScopedProxyProgressTask, QgsExpressionContextScope, \
     QgsRasterLayer, QgsSettings, QgsReadWriteContext, QgsRasterRenderer, \
     QgsMapLayerStyle, QgsMapLayer, QgsDataProvider, \
@@ -44,9 +45,11 @@ from qgis.core import QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject
     QgsFeature, QgsRectangle, QgsProviderRegistry, \
     QgsRasterDataProvider, QgsFields, QgsFieldModel, QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer, \
     QgsHillshadeRenderer, QgsPalettedRasterRenderer, QgsSingleBandPseudoColorRenderer
+from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 try:
     from qgis.gui import QgsFieldCalculator
+
     FIELD_CALCULATOR = True
 except ImportError:
     FIELD_CALCULATOR = False
@@ -77,7 +80,7 @@ from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties
 from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
-from .speclib.core import create_profile_field
+from .speclib.core import supports_field
 from .utils import write_vsimem, loadUi, defaultBands, iconForFieldType, qgsFields
 from .vectorlayertools import VectorLayerTools
 
@@ -274,24 +277,6 @@ class AddAttributeDialog(QDialog):
         self.typeModel = OptionListModel()
 
         nativeTypes: typing.List[QgsVectorDataProvider.NativeType] = self.mLayer.dataProvider().nativeTypes()
-
-        self.mRefByteArray = None
-        for nType in nativeTypes:
-            if nType.mType == QVariant.ByteArray:
-                self.mRefByteArray = nType
-                break
-        if self.mRefByteArray:
-            nTypeProfile = QgsVectorDataProvider.NativeType('Spectral Profile Field',
-                                                            'Spectral Profile',
-                                                            self.mRefByteArray.mType,
-                                                            minLen=self.mRefByteArray.mMinLen,
-                                                            maxLen=self.mRefByteArray.mMaxLen,
-                                                            minPrec=self.mRefByteArray.mMinPrec,
-                                                            maxPrec=self.mRefByteArray.mMaxPrec,
-                                                            subType=self.mRefByteArray.mSubType)
-
-            nativeTypes.insert(nativeTypes.index(self.mRefByteArray), nTypeProfile)
-
         for ntype in nativeTypes:
             assert isinstance(ntype, QgsVectorDataProvider.NativeType)
 
@@ -310,6 +295,8 @@ class AddAttributeDialog(QDialog):
         self.sbLength = QSpinBox()
         self.sbLength.setRange(0, 99)
         self.sbLength.valueChanged.connect(lambda: self.setPrecisionMinMax())
+        self.sbLength.valueChanged.connect(self.onTypeChanged)
+
         self.lengthLabel = QLabel('Length')
         layout.addWidget(self.lengthLabel, 3, 0)
         layout.addWidget(self.sbLength, 3, 1)
@@ -320,14 +307,20 @@ class AddAttributeDialog(QDialog):
         layout.addWidget(self.precisionLabel, 4, 0)
         layout.addWidget(self.sbPrecision, 4, 1)
 
+        self.cbSpectralProfile = QCheckBox('Use to store Spectral Profiles')
+        self.cbSpectralProfile.setToolTip('Activate to store Spectral Profiles in new field.<br>'
+                                          'Requires that the field is either of type String/Text, ByteArray or JSON<br>'
+                                          'and has not length limitation (length = 0 or -1)')
+        layout.addWidget(self.cbSpectralProfile, 5, 0, 1, 2)
+
         self.tbValidationInfo = QLabel()
         self.tbValidationInfo.setStyleSheet("QLabel { color : red}")
-        layout.addWidget(self.tbValidationInfo, 5, 0, 1, 2)
+        layout.addWidget(self.tbValidationInfo, 6, 0, 1, 2)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttons.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
         self.buttons.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
-        layout.addWidget(self.buttons, 6, 1)
+        layout.addWidget(self.buttons, 7, 1)
         self.setLayout(layout)
         self.mLayer = layer
         self.onTypeChanged()
@@ -359,33 +352,38 @@ class AddAttributeDialog(QDialog):
         else:
             QMessageBox.warning(self, "Add Field", msg)
 
-    def field(self):
-        """
-        Returns the new QgsField
-        :return:
-        """
+    def privateField(self) -> QgsField:
         ntype = self.currentNativeType()
 
         fname = self.tbName.text()
         fcomment = self.tbComment.text()
         ftype = QVariant(ntype.mType).type()
-        if ntype.mTypeName == 'Spectral Profile':
-            field = create_profile_field(name=fname, comment=fcomment)
-            field.setTypeName(self.mRefByteArray.mTypeName)
-            return field
-        else:
-            return QgsField(name=fname,
-                            type=ftype,
-                            typeName=ntype.mTypeName,
-                            len=self.sbLength.value(),
-                            prec=self.sbPrecision.value(),
-                            comment=fcomment)
+
+        return QgsField(name=fname,
+                        type=ftype,
+                        typeName=ntype.mTypeName,
+                        len=self.sbLength.value(),
+                        prec=self.sbPrecision.value(),
+                        comment=fcomment)
+
+    def field(self):
+        """
+        Returns the new QgsField
+        :return:
+        """
+        field = self.privateField()
+        if supports_field(field) and self.cbSpectralProfile.isEnabled() and self.cbSpectralProfile.isChecked():
+            # field.setComment('Spectral Profile Field')
+            setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+            field.setEditorWidgetSetup(setup)
+        return field
 
     def currentNativeType(self) -> QgsVectorDataProvider.NativeType:
         return self.cbType.currentData().value()
 
     def onTypeChanged(self, *args):
         ntype = self.currentNativeType()
+
         vMin, vMax = ntype.mMinLen, ntype.mMaxLen
         assert isinstance(ntype, QgsVectorDataProvider.NativeType)
 
@@ -394,6 +392,9 @@ class AddAttributeDialog(QDialog):
         self.lengthLabel.setVisible(isVisible)
         self.setSpinBoxMinMax(self.sbLength, vMin, vMax)
         self.setPrecisionMinMax()
+
+        prototype = self.privateField()
+        self.cbSpectralProfile.setEnabled(supports_field(prototype))
 
     def setPrecisionMinMax(self):
         ntype = self.currentNativeType()

@@ -23,16 +23,18 @@ import os
 import pathlib
 import time
 import unittest
+
 import numpy as np
 import xmlrunner
-from qgis.PyQt.QtCore import QVariant
 from osgeo import ogr, gdal
 
 from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
 from qgis.PyQt.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QVBoxLayout, QPushButton, \
     QToolButton, QAction, QComboBox, QWidget, QDialog
-from qgis.core import QgsApplication, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes, \
+from qgis.core import QgsFeature
+from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes, \
     QgsActionManager
 from qgis.gui import QgsOptionsDialogBase, QgsSearchWidgetWrapper, QgsMapCanvas, \
     QgsDualView, QgsGui
@@ -41,10 +43,10 @@ from qps.plotstyling.plotstyling import PlotStyle
 from qps.pyqtgraph import pyqtgraph as pg
 from qps.speclib import FIELD_VALUES
 from qps.speclib.core import profile_field_list, is_spectral_library
-from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibrary
-from qps.speclib.core.spectralprofile import SpectralProfile
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
+from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibrary, SpectralLibraryUtils
+from qps.speclib.core.spectralprofile import SpectralProfile, decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem, SpectralProfilePlotWidget
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileTableModel, SpectralProfileEditorWidget, \
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorConfigWidget, SpectralProfileEditorWidgetFactory, \
@@ -157,6 +159,7 @@ class TestSpeclibWidgets(TestCase):
         w2 = pdi.plot()
         self.showGui([w1])
 
+    @unittest.skipIf(True, 'todo')
     def test_SpectralLibraryPlotTemporalProfiles(self):
 
         speclib = SpectralLibrary()
@@ -225,17 +228,10 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_SpectralProfileValueTableModel(self):
 
-        speclib = TestObjects.createSpectralLibrary()
-        p3 = speclib[2]
-        self.assertIsInstance(p3, SpectralProfile)
-
-        xUnit = p3.xUnit()
-        yUnit = p3.yUnit()
-
-        if yUnit is None:
-            yUnit = '-'
-        if xUnit is None:
-            xUnit = '-'
+        p = list(TestObjects.spectralProfiles(1, n_bands=[255]))[0]
+        pField = profile_field_list(p)[0]
+        d = decodeProfileValueDict(p.attribute(pField.name()))
+        self.assertIsInstance(d, dict)
 
         m = SpectralProfileTableModel()
 
@@ -245,8 +241,8 @@ class TestSpeclibWidgets(TestCase):
         self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
         self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
-        m.setProfile(p3)
-        self.assertTrue(m.rowCount() == len(p3.xValues()))
+        m.setProfile(d)
+        self.assertTrue(m.rowCount() == len(d.get('x', [])))
         self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
         self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
@@ -255,14 +251,16 @@ class TestSpeclibWidgets(TestCase):
     @unittest.skipIf(False, '')
     def test_SpectralProfileEditorWidget(self):
 
-        self.assertIsInstance(QgsApplication.instance(), QgsApplication)
-        SLIB = TestObjects.createSpectralLibrary()
-        self.assertIsInstance(SLIB, SpectralLibrary)
+        p = list(TestObjects.spectralProfiles(1, n_bands=[255]))[0]
+        self.assertIsInstance(p, QgsFeature)
+
+        pField = profile_field_list(p)[0]
+        d = decodeProfileValueDict(p.attribute(pField.name()))
+
         w = SpectralProfileEditorWidget()
         self.assertIsInstance(w, QWidget)
 
-        p = SLIB[-1]
-        w.setProfile(p)
+        w.setProfile(d)
 
         self.showGui(w)
         self.assertTrue(True)
@@ -493,7 +491,7 @@ class TestSpeclibWidgets(TestCase):
         slw = SpectralLibraryWidget(speclib=sl1)
 
         sl1.startEditing()
-        sl1.addSpeclib(sl2)
+        SpectralLibraryUtils.addSpeclib(sl1, sl2)
 
         profiles = TestObjects.spectralProfiles(4, fields=sl1.fields(), n_bands=[7, 12])
         slw.setCurrentProfiles(profiles)
@@ -504,8 +502,8 @@ class TestSpeclibWidgets(TestCase):
         QgsProject.instance().addMapLayer(slw.speclib())
 
         self.assertEqual(slw.speclib(), sl1)
-        self.assertIsInstance(slw.speclib(), SpectralLibrary)
-        fieldNames = slw.speclib().fieldNames()
+        self.assertIsInstance(slw.speclib(), QgsVectorLayer)
+        fieldNames = slw.speclib().fields().names()
         self.assertIsInstance(fieldNames, list)
 
         self.assertTrue(slw.speclib() == sl1)
@@ -764,7 +762,7 @@ class TestSpeclibWidgets(TestCase):
     def test_SpectralLibraryWidgetProgressDialog(self):
 
         slib = TestObjects.createSpectralLibrary(3000)
-        self.assertIsInstance(slib, SpectralLibrary)
+        self.assertIsInstance(slib, QgsVectorLayer)
         self.assertTrue(slib.isValid())
 
     def test_SpectralLibraryWidgetCurrentProfilOverlayerXUnit(self):
@@ -776,10 +774,13 @@ class TestSpeclibWidgets(TestCase):
         self.assertEqual(pw.xAxis().unit(), BAND_NUMBER)
         slib = TestObjects.createSpectralLibrary(10)
 
+        pField = profile_field_list(slib)[0]
         xunits = []
-        for p in slib:
-            self.assertIsInstance(p, SpectralProfile)
-            u = p.xUnit()
+        features = list(slib.getFeatures())
+        for p in features:
+            self.assertIsInstance(p, QgsFeature)
+            d = decodeProfileValueDict(p.attribute(pField.name()))
+            u = d.get('xUnit', None)
             if u not in xunits:
                 xunits.append(u)
 
@@ -789,8 +790,8 @@ class TestSpeclibWidgets(TestCase):
 
         sw = SpectralLibraryWidget()
         sw.updatePlot()
-        sp = slib[0]
-        sw.setCurrentProfiles([sp])
+        currentProfiles = features[0:2]
+        sw.setCurrentProfiles(currentProfiles)
         sw.updatePlot()
 
 
