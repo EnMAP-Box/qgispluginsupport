@@ -906,8 +906,9 @@ def optimize_block_size(ds: gdal.Dataset,
 
 def fid2pixelindices(raster: gdal.Dataset,
                      vector: ogr.DataSource,
-                     layer: typing.Union[int, str] = None,
-                     all_touched: bool = True) -> typing.Tuple[np.ndarray, int]:
+                     layer: typing.Union[int, str] = 0,
+                     all_touched: bool = True,
+                     raster_fids:typing.Union[str, pathlib.Path] = None) -> typing.Tuple[np.ndarray, int]:
     """
     Returns vector feature pixel positions.
 
@@ -915,7 +916,6 @@ def fid2pixelindices(raster: gdal.Dataset,
     :param vector: ogr.DataSource | QgsVectorLayer or path to
     :param layer: optional, layer name (str) or index (0), defaults to first layer (index = 0)
     :param all_touched: optional, set FALSE to return pixels entirely covered only
-    :param fids_of_interest: options, set a list of FIDs of interest.
     :return: np.ndarray, int no data value
     """
     raster: gdal.Dataset = gdalDataset(raster)
@@ -932,20 +932,21 @@ def fid2pixelindices(raster: gdal.Dataset,
     assert layer >= 0
     assert layer < vector.GetLayerCount()
     layer: ogr.Layer = vector.GetLayerByIndex(layer)
-    nf = layer.GetFeatureCount()
-    if nf < np.iinfo(np.uint8).max:
-        no_data = int(np.iinfo(np.uint8).max)
-        eType = gdal_array.flip_code(np.uint8)
-    elif nf < np.iinfo(np.uint16).max:
-        no_data = int(np.iinfo(np.uint16).max)
-        eType = gdal_array.flip_code(np.uint16)
-    elif nf < np.iinfo(np.uint32).max:
-        no_data = int(np.iinfo(np.uint32).max)
-        eType = gdal_array.flip_code(np.uint32)
+    all_fids = [f.GetFID() for f in layer]
+    if len(all_fids) == 0:
+        eType = gdal.GDT_Byte
+        no_data = 0
     else:
-        # worst case: burn fid into float
-        no_data = -1
-        eType = gdal_array.flip_code(np.float64)
+        fid_min = min(all_fids)
+        fid_max = max(all_fids)
+        fid_array = np.asarray([fid_min, fid_max])
+        eType = gdal_array.flip_code(fid_array.dtype)
+        if fid_min > 0:
+            no_data = 0
+        elif fid_min == 0:
+            no_data = fid_max + 1
+        else:
+            no_data = fid_min - 1
 
     dsMEM: gdal.Dataset = gdal.GetDriverByName('MEM') \
         .Create('', raster.RasterXSize, raster.RasterYSize, 1, eType=eType)
@@ -985,6 +986,11 @@ def fid2pixelindices(raster: gdal.Dataset,
     assert result == ogr.OGRERR_NONE, f'Failed to rasterize vector layer {vector.GetDescription()}'
 
     fidArray: np.ndarray = dsMEM.ReadAsArray()
+
+    if raster_fids is not None:
+        raster_fids = pathlib.Path(raster_fids)
+        drvTIFF: gdal.Driver = gdal.GetDriverByName('GTiff')
+        drvTIFF.CreateCopy(raster_fids.as_posix(), dsMEM)
 
     return fidArray, int(no_data)
 
