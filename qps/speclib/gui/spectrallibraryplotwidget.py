@@ -328,7 +328,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             else:
                 # convert profile data to xUnit
                 # if not possible, entry will be set to None
-                self.mCACHE_PROFILE_DATA[id_plot_data] = self.modelDataToXUnitPlotData(rawData, xUnit)
+                self.mCACHE_PROFILE_DATA[id_plot_data] = self.profileDataToXUnit(rawData, xUnit)
 
         return self.mCACHE_PROFILE_DATA.get(id_plot_data, None)
 
@@ -729,12 +729,19 @@ class SpectralProfilePlotModel(QStandardItemModel):
         mimeData = PropertyItemGroup.toMimeData(groups)
         return mimeData
 
-    def modelDataToXUnitPlotData(self, modelData: dict, xUnit: str) -> dict:
-        modelData = modelData.copy()
+    def profileDataToXUnit(self, profileData: dict, xUnit: str) -> dict:
+        """
+        Converts the x values from plotData.get('xUnit') to xUnit.
+        Returns None of a conversion is not possible (e.g. from meters to time)
+        :param profileData: profile dictionary
+        :param xUnit: str
+        :return: dict | None
+        """
+        profileData = profileData.copy()
 
-        func = self.mUnitConverterFunctionModel.convertFunction(modelData['xUnit'], xUnit)
-        x = func(modelData['x'])
-        y = modelData['y']
+        func = self.mUnitConverterFunctionModel.convertFunction(profileData.get('xUnit', None), xUnit)
+        x = func(profileData['x'])
+        y = profileData['y']
         if x is None or len(x) == 0:
             return None
         else:
@@ -745,10 +752,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if isinstance(y[0], (datetime.datetime, datetime.date, datetime.time, np.datetime64)):
                 y = convertDateUnit(datetime64(y), 'DecimalYear')
 
-            modelData['x'] = x
-            modelData['y'] = y
-            modelData['xUnit'] = xUnit
-            return modelData
+            profileData['x'] = x
+            profileData['y'] = y
+            profileData['xUnit'] = xUnit
+            return profileData
 
     def featurePriority(self) -> typing.List[int]:
         """
