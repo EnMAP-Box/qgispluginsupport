@@ -591,7 +591,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         if not isinstance(self.speclib(), QgsVectorLayer):
             return
-        sl: QgsVectorLayer = self.speclib()
 
         slNew = SpectralLibraryUtils.readFromMimeData(event.mimeData())
 

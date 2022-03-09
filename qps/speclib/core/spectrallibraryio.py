@@ -483,8 +483,7 @@ class SpectralLibraryIO(QObject):
         assert isinstance(uri, str)
         # 1. Try to open directly as vector layer
         try:
-            from .spectrallibrary import SpectralLibrary
-            speclib = SpectralLibrary(uri)
+            speclib = QgsVectorLayer(uri, os.path.basename(uri))
             if not speclib.isValid():
                 speclib = None
         except Exception:
