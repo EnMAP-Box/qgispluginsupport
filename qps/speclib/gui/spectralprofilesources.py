@@ -1795,6 +1795,7 @@ class SpectralProfileBridge(TreeModel):
 
         if col == 1:
             if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileSourceNode,
+                                 SpectralProfileGeneratorNode,
                                  SpectralProfileSamplingModeNode, StandardFieldGeneratorNode,
                                  FloatValueNode, ColorNode, OptionTreeNode, PlotStyleNode)):
                 if isinstance(node, StandardFieldGeneratorNode):
@@ -1889,6 +1890,7 @@ class SpectralProfileBridge(TreeModel):
                                 if role == Qt.DisplayRole:
                                     return '<span style="color:grey;font-style:italic">undefined</span>'
 
+                                s = ""
         return value
 
     def setData(self, index: QModelIndex, value: typing.Any, role: int = Qt.DisplayRole):
