@@ -18,7 +18,7 @@ from qgis.core import QgsVectorLayer, QgsFeature, QgsFields, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsCoordinateReferenceSystem, QgsExpressionContextScope
 from qgis.gui import QgsFileWidget, QgsFieldMappingWidget
-from . import is_profile_field, profile_field_list
+from . import is_profile_field, profile_field_list, profile_field_names
 from .spectralprofile import groupBySpectralProperties
 from .. import speclibUiPath
 from ...layerproperties import CopyAttributesDialog
@@ -30,7 +30,7 @@ IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS = 'required_source_fields'
 class SpectralLibraryIOWidget(QWidget):
 
     def __init__(self, *args, **kwds):
-        super(SpectralLibraryIOWidget, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
         self.mSpeclib: QgsVectorLayer = None
         fl = QFormLayout()
         fl.setContentsMargins(0, 0, 0, 0)
@@ -68,7 +68,7 @@ class SpectralLibraryExportWidget(SpectralLibraryIOWidget):
     """
 
     def __init__(self, *args, **kwds):
-        super(SpectralLibraryExportWidget, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
         self.setLayout(QFormLayout())
 
     def supportsMultipleProfileFields(self) -> bool:
@@ -344,7 +344,7 @@ class SpectralLibraryIO(QObject):
 
         profile_fields = profile_field_list(referenceProfile)
         if len(profile_fields) == 0:
-            print('No profile fieds to write')
+            print('No profile fields to write')
             return []
 
         if not isinstance(settings, dict):
@@ -394,7 +394,9 @@ class SpectralLibraryIO(QObject):
                         matched_formats.append(format)
                         break
 
+        print(matched_formats)
         if len(matched_formats) == 0:
+
             warnings.warn(f'No SpectralLibraryIO export format found for file type "*{uri_ext}"')
             return []
 
@@ -508,6 +510,41 @@ class SpectralLibraryIO(QObject):
         return speclib
 
 
+class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
+
+    def __init__(self, sinkDefinition, speclib: QgsVectorLayer):
+        super().__init__(sinkDefinition, speclib)
+        self.mSpeclib = speclib
+        self.mProfileFieldNames = profile_field_names(self.mSpeclib)
+        self.mContext: QgsExpressionContext = None
+
+    def setExpressionContext(self, context: QgsExpressionContext) -> None:
+        super().setExpressionContext(context)
+        self.mContext = context
+
+    def remapFeature(self, feature: QgsFeature) -> typing.List[QgsFeature]:
+
+        features = super().remapFeature(feature)
+
+
+        return features
+
+class ProfileProperty(QgsProperty, QObject):
+
+    def __init__(self, targetField: QgsField, *args, **kwds):
+        QObject.__init__(self)
+        self.mField = targetField
+
+    def value(self, *args, **kwds) -> typing.Tuple[typing.Any, bool]:
+
+        v = super().value(*args, **kwds)
+
+        s = ""
+        return v
+
+    def __repr__(self):
+        return f'ProfileProperty {id(self)}'
+
 class SpectralLibraryImportDialog(QDialog):
 
     @staticmethod
@@ -521,14 +558,17 @@ class SpectralLibraryImportDialog(QDialog):
         if dialog.exec_() == QDialog.Accepted:
 
             source = dialog.source()
-            propertyMap = dialog.fieldPropertyMap()
+
 
             format = dialog.currentImportWidget()
+
             if not isinstance(format, SpectralLibraryImportWidget):
                 return False
 
             expressionContext = format.createExpressionContext()
             requiredSourceFields = set()
+            propertyMap = dialog.fieldPropertyMap()
+
             for k, prop in propertyMap.items():
                 prop: QgsProperty
                 ref_fields = prop.referencedFields(expressionContext)
@@ -554,16 +594,14 @@ class SpectralLibraryImportDialog(QDialog):
 
             context = QgsExpressionContext()
             context.setFields(profiles[0].fields())
-
-            if hasattr(context, 'setFeedback'):
-                # available since QGIS 3.20
-                context.setFeedback(feedback)
+            context.setFeedback(feedback)
 
             scope = QgsExpressionContextScope()
             scope.setFields(profiles[0].fields())
             context.appendScope(scope)
 
-            sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
+            # sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
+            sink = SpectralLibraryImportFeatureSink(sinkDefinition, speclib)
             sink.setExpressionContext(context)
             sink.setTransformContext(QgsProject.instance().transformContext())
 
@@ -602,7 +640,13 @@ class SpectralLibraryImportDialog(QDialog):
         self.fileWidget.fileChanged.connect(self.onFileChanged)
 
         if defaultRoot:
-            self.fileWidget.setDefaultRoot(pathlib.Path(defaultRoot).as_posix())
+            r = pathlib.Path(defaultRoot)
+            if r.is_dir():
+                self.fileWidget.setDefaultRoot(r.as_posix())
+            if r.is_file():
+                self.fileWidget.setDefaultRoot(r.parent.as_posix())
+                self.fileWidget.setFilePath(r.as_posix())
+
 
         self.mSpeclib: QgsVectorLayer = None
 
@@ -897,12 +941,14 @@ class SpectralLibraryExportDialog(QDialog):
 
 def initSpectralLibraryIOs():
     from ..io.geopackage import GeoPackageSpectralLibraryIO
+    from ..io.geojson import GeoJsonSpectralLibraryIO
     from ..io.envi import EnviSpectralLibraryIO
     from ..io.asd import ASDSpectralLibraryIO
     from ..io.rastersources import RasterLayerSpectralLibraryIO
 
     speclibIOs = [
         GeoPackageSpectralLibraryIO(),
+        GeoJsonSpectralLibraryIO(),
         EnviSpectralLibraryIO(),
         ASDSpectralLibraryIO(),
         RasterLayerSpectralLibraryIO()

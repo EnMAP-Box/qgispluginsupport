@@ -9,6 +9,8 @@ import warnings
 from json import JSONDecodeError
 
 import numpy as np
+from qgis.PyQt.QtCore import QJsonDocument
+
 from qgis.PyQt.QtCore import QDateTime, Qt
 from osgeo import gdal
 
@@ -31,6 +33,7 @@ from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2st
 # a single profile is identified by its QgsFeature id and profile_field index or profile_field name
 
 EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None, 'bbl': None}
+JSON_SEPARATORS = (',', ':')
 
 
 def prepareProfileValueDict(x: None, y: None,
@@ -91,7 +94,7 @@ def prepareProfileValueDict(x: None, y: None,
     return d
 
 
-def encodeProfileValueDict(d: dict, field: QgsField) -> QByteArray:
+def encodeProfileValueDict(d: dict, field: QgsField) -> typing.Any:
     """
     Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
@@ -129,7 +132,7 @@ def encodeProfileValueDict(d: dict, field: QgsField) -> QByteArray:
 
         # Save JSON string
         if field.type() == QVariant.String:
-            return json.dumps(d2)
+            return json.dumps(d2, separators=JSON_SEPARATORS)
 
     return None
 
@@ -145,11 +148,12 @@ def decodeProfileValueDict(dump: typing.Union[QByteArray, str], numpy_arrays: bo
     """
     if dump in EMPTY_VALUES:
         return {}
-
+    QJsonDocument
     if isinstance(dump, QByteArray):
         try:
             dump = pickle.loads(dump)
         except EOFError as ex:
+
             return {}
 
     if isinstance(dump, str):

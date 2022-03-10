@@ -122,6 +122,8 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
             newLayerName = os.path.basename(newLayerName)
 
         options = exportSettings.get('options', dict())
+        options['driverName'] = 'GPKG'
+
         assert isinstance(options, dict)
         wkbType = exportSettings.get('wkbType', QgsWkbTypes.NoGeometry)
         crs = QgsCoordinateReferenceSystem(exportSettings.get('crs', QgsCoordinateReferenceSystem()))
