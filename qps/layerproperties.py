@@ -31,7 +31,7 @@ from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindo
     QDialogButtonBox, QAction, QCheckBox, \
     QButtonGroup, QToolButton, QListWidget, QStackedWidget, QListWidgetItem, \
     QApplication, QLabel, QSpinBox, QComboBox, \
-    QLineEdit, QGridLayout, QTableView, QVBoxLayout
+    QLineEdit, QGridLayout, QTableView, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsEditorWidgetSetup, QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, \
     QgsFeatureRequest, \
@@ -121,6 +121,16 @@ class CheckableQgsFieldModel(QgsFieldModel):
         for r in range(self.rowCount()):
             field = self.fields().at(r)
             self.mDisabled[r] = field.name() in disabled or r in disabled
+
+    def checkAll(self):
+        for r in range(self.rowCount()):
+            idx = self.createIndex(r, 0)
+            self.setData(idx, Qt.Checked, Qt.CheckStateRole)
+
+    def uncheckAll(self):
+        for r in range(self.rowCount()):
+            idx = self.createIndex(r, 0)
+            self.setData(idx, Qt.Unchecked, Qt.CheckStateRole)
 
     def checkedFields(self) -> QgsFields:
 
@@ -221,13 +231,30 @@ class CopyAttributesDialog(QDialog):
         self.mFieldModel.dataChanged.connect(self.onFieldSelectionChanged)
         self.mTableView.setModel(self.mFieldModel)
         self.mTableView.horizontalHeader()
+
+        self.btnCheckAll = QToolButton()
+        self.btnCheckAll.setToolTip('Check All')
+        self.btnCheckAll.setIcon(QIcon(':/images/themes/default/mActionSelectAllTree.svg'))
+        self.btnCheckAll.clicked.connect(self.mFieldModel.checkAll)
+
+        self.btnUncheckAll = QToolButton()
+        self.btnUncheckAll.setToolTip('Uncheck All')
+        self.btnUncheckAll.setIcon(QIcon(':/images/themes/default/mActionDeselectAllTree.svg'))
+        self.btnUncheckAll.clicked.connect(self.mFieldModel.uncheckAll)
+
         layout = QVBoxLayout()
-        layout.addWidget(self.mLabel)
+        hl = QHBoxLayout()
+        hl.addWidget(self.mLabel)
+        hl.addWidget(self.btnCheckAll)
+        hl.addWidget(self.btnUncheckAll)
+        hl.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
+        layout.addLayout(hl)
         layout.addWidget(self.mTableView)
 
         self.mButtonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.mButtonBox.button(QDialogButtonBox.Ok).clicked.connect(self.accept)
         self.mButtonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.reject)
+
         layout.addWidget(self.mButtonBox)
 
         self.setLayout(layout)
@@ -239,7 +266,9 @@ class CopyAttributesDialog(QDialog):
 
     def onFieldSelectionChanged(self):
         fields = self.mFieldModel.checkedFields()
-        self.mButtonBox.button(QDialogButtonBox.Ok).setEnabled(fields.count() > 0)
+        b = fields.count() > 0
+        self.btnUncheckAll.setEnabled(b)
+        self.mButtonBox.button(QDialogButtonBox.Ok).setEnabled(b)
 
 
 class AddAttributeDialog(QDialog):
@@ -906,11 +935,6 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         """
         Returns a list of default QgsMapLayerConfigWidgetFactory
         """
-        from .layerconfigwidgets.core import \
-            MetadataConfigWidgetFactory, \
-            SourceConfigWidgetFactory, \
-            TransparencyConfigWidgetFactory, \
-            RenderingConfigWidgetFactory, LegendConfigWidgetFactory
         from .layerconfigwidgets.vectorlabeling import LabelingConfigWidgetFactory
         from .layerconfigwidgets.rasterbands import RasterBandConfigWidgetFactory
         from .layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
@@ -918,16 +942,11 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             LayerAttributeFormConfigWidgetFactory, \
             LayerFieldsConfigWidgetFactory
         factories = [
-            MetadataConfigWidgetFactory(),
-            SourceConfigWidgetFactory(),
             RasterBandConfigWidgetFactory(),
             LabelingConfigWidgetFactory(),
-            TransparencyConfigWidgetFactory(),
-            RenderingConfigWidgetFactory(),
             GDALMetadataConfigWidgetFactory(),
             LayerFieldsConfigWidgetFactory(),
             LayerAttributeFormConfigWidgetFactory(),
-            LegendConfigWidgetFactory()
         ]
         return factories
 
@@ -1590,7 +1609,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             convertError = None
             try:
                 value = fld.convertCompatible(value)
-            except SystemError as ex:
+            except (SystemError, ValueError) as ex:
                 error = 'Unable to convert "{}" to type {}'.format(value, fld.typeName())
             # Bail if we have a update error
             if exp.hasEvalError():

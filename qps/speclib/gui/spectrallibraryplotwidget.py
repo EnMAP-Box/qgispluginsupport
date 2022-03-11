@@ -6,14 +6,14 @@ import numpy as np
 
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
-    QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
+    QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
 from qgis.PyQt.QtGui import QPen, QBrush, QPixmap
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
-from qgis.core import QgsField, \
+from qgis.core import QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
 from qgis.core import QgsProject, QgsMapLayerProxyModel
@@ -177,6 +177,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mProfileFieldModel: QgsFieldModel = QgsFieldModel()
 
         self.mPlotWidget: SpectralProfilePlotWidget = None
+        symbol = QgsMarkerSymbol.createSimple({'name': 'square', 'color': 'white'})
+        self.mDefaultSymbolRenderer = QgsSingleSymbolRenderer(symbol)
 
         hdr0 = QStandardItem('Name')
         hdr0.setToolTip('Visualization property names')
@@ -293,15 +295,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         fieldIndex = id_attribute[1]
         if rawData == NI:
             # load profile data
-            byteArray: QByteArray = feature.attribute(fieldIndex)
-            rawData = None
-            if isinstance(byteArray, QByteArray):
-                rawData: dict = decodeProfileValueDict(byteArray)
-                if rawData.get('y', None) is None:
-                    # empty profile, nothing to plot
-                    # create empty entries (=None)
-                    rawData = None
-                elif rawData.get('x', None) is None:
+            d: dict = decodeProfileValueDict(feature.attribute(fieldIndex))
+            if d is None or len(d) == 0:
+                # no profile
+                rawData = None
+            else:
+                rawData = d
+                if rawData.get('x', None) is None:
                     rawData['x'] = list(range(len(rawData['y'])))
                     rawData['xUnit'] = BAND_INDEX
             self.mCACHE_PROFILE_DATA[id_attribute] = rawData
@@ -498,7 +498,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         pdiGenerator = PDIGenerator([], onProfileClicked=self.mPlotWidget.onProfileClicked)
 
-        featureRenderer = self.speclib().renderer().clone()
+        featureRenderer = self.speclib().renderer()
+        if isinstance(featureRenderer, QgsFeatureRenderer):
+            featureRenderer = featureRenderer.clone()
+        else:
+            featureRenderer = self.mDefaultSymbolRenderer.clone()
 
         request = QgsFeatureRequest()
         request.setFilterFids(feature_priority)
@@ -1274,6 +1278,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     w1 = dy  # warning icon -> square
                     w2 = w1 * 2  # plot style -> rectangle
                     if not item.isComplete():
+                        item.isComplete()
                         rect1 = QRect(rect.x() + x0, rect.y(), w1, dy)
                         icon = QIcon(r':/images/themes/default/mIconWarning.svg')
                         # overpaint
@@ -1284,8 +1289,9 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     rect2 = QRect(rect1.x() + rect1.width(), rect.y(), w1, dy)
                     rect3 = QRect(rect2.x() + rect2.width(), rect.y(), total_w - rect2.x() - rect2.width(), dy)
                     # pixmap = style.createPixmap(size=QSize(w - x0, total_h), hline=True, bc=bc)
-                    pixmap = plot_style.createPixmap(size=rect2.size(), hline=True, bc=bc)
-                    painter.drawPixmap(rect2, pixmap)
+                    if item.isComplete():
+                        pixmap = plot_style.createPixmap(size=rect2.size(), hline=True, bc=bc)
+                        painter.drawPixmap(rect2, pixmap)
                     # rect2 = QRect(rect.x() + x0, rect.y(), rect.width() - 2*x0, rect.height())
                     # html_style.drawItemText(painter, rect3, None, item.text(), )
 
@@ -1555,14 +1561,14 @@ class SpectralLibraryPlotWidget(QWidget):
                     item.setField(fld)
                     break
 
-            if item.fieldName() is None and len(existing_fields) > 0:
+            if not isinstance(item.field(), QgsField) and len(existing_fields) > 0:
                 item.setField(existing_fields[-1])
 
         if name is None:
             if isinstance(item.field(), QgsField):
-                _name = f'Profiles "{item.field().name()}"'
+                _name = f'Group "{item.field().name()}"'
             else:
-                _name = 'Profiles'
+                _name = 'Group'
 
             existing_names = [v.name() for v in self.mPlotControlModel]
             n = 1

@@ -4,10 +4,9 @@ import unittest
 
 import xmlrunner
 from osgeo import ogr
-from qgis.core import QgsProcessingFeedback
+from qgis.core import QgsVectorLayer, QgsFeature, QgsProcessingFeedback
 
-from qgis.core import QgsVectorLayer
-from qps.speclib.core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryExportWidget
 from qps.testing import TestObjects, TestCase
@@ -32,7 +31,14 @@ class TestSpeclibIO_GPKG(TestCase):
 
         exportWidget = IO.createExportWidget()
         self.assertIsInstance(exportWidget, GeoPackageSpectralLibraryExportWidget)
-        sl: SpectralLibrary = TestObjects.createSpectralLibrary()
+        sl: QgsVectorLayer = TestObjects.createSpectralLibrary()
+        sl.startEditing()
+        for f in sl.getFeatures():
+            f: QgsFeature
+            f.setAttribute('name', f'Name {f.id()}')
+            sl.updateFeature(f)
+        self.assertTrue(sl.commitChanges())
+
         exportWidget.setSpeclib(sl)
         testdir = self.createTestOutputDirectory() / 'Geopackage'
         os.makedirs(testdir, exist_ok=True)
@@ -47,7 +53,7 @@ class TestSpeclibIO_GPKG(TestCase):
 
         exportSettings = dict()
         feedback = QgsProcessingFeedback()
-        files = IO.exportProfiles(path.as_posix(), exportSettings, sl.getFeatures(), feedback)
+        files = IO.exportProfiles(path.as_posix(), sl.getFeatures(), exportSettings, feedback)
 
         self.assertIsInstance(files, list)
         for file in files:

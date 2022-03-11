@@ -40,17 +40,18 @@ import weakref
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
-
-from qgis.PyQt.QtCore import Qt, QVariant, QPoint, QUrl, QMimeData, \
+from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData, \
     QFileInfo
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QDialog
-from qgis.core import QgsApplication, \
+from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsFeature, QgsVectorLayer, QgsRasterLayer, \
-    QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsCoordinateTransform, \
-    QgsActionManager, QgsFeatureIterator, QgsFeatureRequest, \
-    QgsGeometry, QgsPointXY, QgsPoint, QgsDefaultValue, QgsMapLayerProxyModel, \
-    QgsEditorWidgetSetup, QgsAction, QgsMessageLog, QgsProcessingFeedback
+    QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsActionManager, QgsFeatureRequest, \
+    QgsGeometry, QgsPoint, QgsDefaultValue, QgsMapLayerProxyModel, \
+    QgsEditorWidgetSetup, QgsAction, QgsMessageLog, QgsProcessingFeedback, \
+    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
+    QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
+
 from qgis.gui import \
     QgsGui
 from . import field_index
@@ -58,10 +59,10 @@ from . import profile_field_list, first_profile_field_index, create_profile_fiel
     is_spectral_library
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
     SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, encodeProfileValueDict
-from .. import FIELD_FID, FIELD_VALUES
+from .. import FIELD_VALUES
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
-from ...utils import SelectMapLayersDialog, geo2px, gdalDataset, \
+from ...utils import SelectMapLayersDialog, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
     fid2pixelindices, parseWavelength, parseBadBandList, optimize_block_size, \
     qgsField, qgsFieldAttributes2List, qgsFields2str, str2QgsFields
@@ -263,12 +264,9 @@ class SpectralLibraryUtils:
     """
 
     @staticmethod
-    def writeToSource(speclib: QgsVectorLayer,
-                      uri: str,
-                      settings: dict = None,
-                      feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+    def writeToSource(*args, **kwds) -> typing.List[str]:
         from .spectrallibraryio import SpectralLibraryIO
-        return SpectralLibraryIO.writeSpeclibToUri(speclib, uri, settings=settings, feedback=feedback)
+        return SpectralLibraryIO.writeToSource(*args, **kwds)
 
     @staticmethod
     def readFromSource(uri: str, feedback: QgsProcessingFeedback = None):
@@ -343,7 +341,9 @@ class SpectralLibraryUtils:
         return None
 
     @staticmethod
-    def createSpectralLibrary(profile_fields: typing.List[str] = ['profiles']) -> QgsVectorLayer:
+    def createSpectralLibrary(
+            profile_fields: typing.List[str] = ['profiles'],
+            name: str = DEFAULT_NAME) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """
@@ -351,7 +351,7 @@ class SpectralLibraryUtils:
         path = f"point?crs=epsg:{SPECLIB_EPSG_CODE}"
         options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
 
-        lyr = QgsVectorLayer(path, DEFAULT_NAME, provider, options=options)
+        lyr = QgsVectorLayer(path, name, provider, options=options)
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
         lyr.startEditing()
         lyr.beginEditCommand('Add fields')
@@ -479,8 +479,8 @@ class SpectralLibraryUtils:
         missingFields = []
         for field in fields:
             assert isinstance(field, QgsField)
-            i = speclib.fields().lookupField(field.name())
-            if i == -1:
+            iField = speclib.fields().lookupField(field.name())
+            if iField == -1:
                 missingFields.append(field)
 
         if len(missingFields) > 0:
@@ -494,7 +494,7 @@ class SpectralLibraryUtils:
     def addSpeclib(speclibDst, speclibSrc,
                    addMissingFields: bool = True,
                    copyEditorWidgetSetup: bool = True,
-                   feedback: QgsProcessingFeedback = None) -> typing.List[int]:
+                   feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[int]:
         """
         Adds profiles from another SpectraLibrary
         :param speclib: SpectralLibrary
@@ -519,97 +519,85 @@ class SpectralLibraryUtils:
         return fids_new
 
     @staticmethod
-    def addProfiles(speclibDst: QgsVectorLayer,
-                    profiles: typing.Union[typing.List[SpectralProfile], QgsVectorLayer],
-                    addMissingFields: bool = None,
+    def addProfiles(speclib: QgsVectorLayer,
+                    profiles: typing.Union[QgsFeature, typing.List[QgsFeature], QgsVectorLayer],
+                    crs: QgsCoordinateReferenceSystem = None,
+                    addMissingFields: bool = False,
                     copyEditorWidgetSetup: bool = True,
-                    feedback: QgsProcessingFeedback = None) -> typing.List[int]:
+                    feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[int]:
 
-        # todo: allow to add profiles with distinct key
-        if isinstance(profiles, SpectralProfile):
+        assert isinstance(speclib, QgsVectorLayer)
+        assert speclib.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(
+            speclib.name())
+
+        if isinstance(profiles, QgsFeature):
             profiles = [profiles]
-        if addMissingFields is None:
-            addMissingFields = is_spectral_library(profiles)
+        elif isinstance(profiles, QgsVectorLayer):
+            crs = profiles.crs()
+            profiles = list(profiles.getFeatures())
+        elif isinstance(profiles, QgsFeatureIterator):
+            profiles = list(profiles)
 
-        if isinstance(profiles, (QgsFeatureIterator, typing.Generator)):
-            nTotal = -1
-        else:
-            nTotal = len(profiles)
-        assert isinstance(speclibDst, QgsVectorLayer)
-        assert speclibDst.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(
-            speclibDst.name())
+        if len(profiles) == 0:
+            return []
 
-        keysBefore = set(speclibDst.editBuffer().addedFeatures().keys())
+        if crs is None:
+            crs = speclib.crs()
+
+        refProfile = profiles[0]
+
+        new_edit_command: bool = not speclib.isEditCommandActive()
+        if new_edit_command:
+            speclib.beginEditCommand('Add profiles')
+
+        if addMissingFields:
+            SpectralLibraryUtils.addMissingFields(speclib, refProfile.fields(),
+                                                  copyEditorWidgetSetup=copyEditorWidgetSetup)
+            assert speclib.commitChanges(False)
+
+        keysBefore = set(speclib.editBuffer().addedFeatures().keys())
 
         lastTime = datetime.datetime.now()
         dt = datetime.timedelta(seconds=2)
+        nTotal = len(profiles)
+        feedback.setProgressText(f'Add {nTotal} profiles')
+        feedback.setProgress(0)
 
-        if isinstance(feedback, QgsProcessingFeedback):
-            feedback.setProgressText('Add {} profiles'.format(len(profiles)))
-            feedback.setProgress(0)
+        speclib.commitChanges(False)
 
-        iSrcList = []
-        iDstList = []
+        sinkDefinition = QgsRemappingSinkDefinition()
+        sinkDefinition.setSourceCrs(crs)
+        sinkDefinition.setDestinationCrs(speclib.crs())
+        sinkDefinition.setDestinationFields(speclib.fields())
+        sinkDefinition.setDestinationWkbType(speclib.wkbType())
+        for field in refProfile.fields():
+            name = field.name()
+            if name in speclib.fields().names():
+                sinkDefinition.addMappedField(name, QgsProperty.fromField(name))
 
-        bufferLength = 1000
-        profileBuffer = []
+        expressionContext = QgsExpressionContext()
+        expressionContext.setFields(refProfile.fields())
+        expressionContext.setFeedback(feedback)
 
-        nAdded = 0
+        scope = QgsExpressionContextScope()
+        scope.setFields(refProfile.fields())
+        expressionContext.appendScope(scope)
+        transformationContext = QgsCoordinateTransformContext()
 
-        def flushBuffer(triggerProgressBar: bool = False):
-            nonlocal speclibDst, nAdded, profileBuffer, feedback, lastTime, dt
-            if not speclibDst.addFeatures(profileBuffer):
-                speclibDst.raiseError()
-            nAdded += len(profileBuffer)
-            profileBuffer.clear()
+        featureSink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
+        featureSink.setExpressionContext(expressionContext)
+        featureSink.setTransformContext(transformationContext)
 
-            if isinstance(feedback, QgsProcessingFeedback):
-                # update progressbar in intervals of dt
-                if triggerProgressBar or (lastTime + dt) < datetime.datetime.now():
-                    feedback.setProgress(nAdded)
-                    lastTime = datetime.datetime.now()
-
-        new_edit_command: bool = not speclibDst.isEditCommandActive()
+        if not featureSink.addFeatures(profiles):
+            print(featureSink.lastError(), file=sys.stderr)
+            return []
+        else:
+            featureSink.flushBuffer()
         if new_edit_command:
-            speclibDst.beginEditCommand('Add profiles')
-
-        for i, pSrc in enumerate(profiles):
-            if i == 0:
-                if addMissingFields:
-                    SpectralLibrary.addMissingFields(speclibDst, pSrc.fields(),
-                                                     copyEditorWidgetSetup=copyEditorWidgetSetup)
-
-                for iSrc, srcName in enumerate(pSrc.fields().names()):
-                    if srcName == FIELD_FID:
-                        continue
-                    iDst = speclibDst.fields().lookupField(srcName)
-                    if iDst >= 0:
-                        iSrcList.append(iSrc)
-                        iDstList.append(iDst)
-                    elif addMissingFields:
-                        raise Exception('Missing profile_field: "{}"'.format(srcName))
-
-            # create new feature + copy geometry
-            pDst = QgsFeature(speclibDst.fields())
-            pDst.setGeometry(pSrc.geometry())
-
-            # copy attributes
-            for iSrc, iDst in zip(iSrcList, iDstList):
-                pDst.setAttribute(iDst, pSrc.attribute(iSrc))
-
-            profileBuffer.append(pDst)
-
-            if len(profileBuffer) >= bufferLength:
-                flushBuffer()
-
-        # final buffer call
-        flushBuffer(triggerProgressBar=True)
-
-        if new_edit_command:
-            speclibDst.endEditCommand()
+            speclib.endEditCommand()
 
         # return the edited features
-        MAP = speclibDst.editBuffer().addedFeatures()
+        MAP = speclib.editBuffer().addedFeatures()
         fids_inserted = [MAP[k].id() for k in reversed(list(MAP.keys())) if k not in keysBefore]
         return fids_inserted
 
@@ -1013,61 +1001,6 @@ class SpectralLibrary(QgsVectorLayer):
                 spectral_library.raiseError()
 
             return spectral_library
-
-    def reloadSpectralValues(self, raster, selectedOnly: bool = True,
-                             destination: typing.Union[QgsField, int, str] = None):
-        """
-        Reloads the spectral values for each point based on the spectral values found in raster image "raster"
-        :param raster: str | QgsRasterLayer | gdal.Dataset
-        :param selectedOnly: bool, if True (default) spectral values will be retireved for selected features only.
-        """
-        raise NotImplementedError()
-        assert self.isEditable()
-        if destination is None:
-            destination = self.spectralProfileFields()[0]
-        else:
-            destination = qgsField(self, destination)
-
-        assert isinstance(destination, QgsField)
-        assert destination in self.spectralProfileFields()
-
-        source = gdalDataset(raster)
-        assert isinstance(source, gdal.Dataset)
-        gt = source.GetGeoTransform()
-        crs = QgsCoordinateReferenceSystem(source.GetProjection())
-
-        geoPositions = []
-        fids = []
-
-        features = self.selectedFeatures() if selectedOnly else self.getFeatures()
-        for f in features:
-            assert isinstance(f, QgsFeature)
-            if f.hasGeometry():
-                fids.append(f.id())
-                geoPositions.append(QgsPointXY(f.geometry().get()))
-        if len(fids) == 0:
-            return
-
-        # transform feature coordinates into the raster data set's CRS
-        if crs != self.crs():
-            trans = QgsCoordinateTransform()
-            trans.setSourceCrs(self.crs())
-            trans.setDestinationCrs(crs)
-            geoPositions = [trans.transform(p) for p in geoPositions]
-
-        # transform coordinates into pixel positions
-        pxPositions = [geo2px(p, gt) for p in geoPositions]
-
-        idxSPECLIB = self.fields().indexOf(destination.name())
-        idxPROFILE = None
-
-        for fid, pxPosition in zip(fids, pxPositions):
-            assert isinstance(pxPosition, QPoint)
-            profile = SpectralProfile.fromRasterSource(source, pxPosition, crs=crs, gt=gt)
-            if isinstance(profile, SpectralProfile):
-                if idxPROFILE is None:
-                    idxPROFILE = profile.fields().indexOf(FIELD_VALUES)
-                assert self.changeAttributeValue(fid, idxSPECLIB, profile.attribute(idxPROFILE))
 
     @staticmethod
     def readFromRasterPositions(pathRaster, positions,

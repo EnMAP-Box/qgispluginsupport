@@ -19,12 +19,14 @@
 # noinspection PyPep8Naming
 import copy
 import datetime
+import json
 import os
 import pickle
 import unittest
 
 import numpy as np
 import xmlrunner
+from qgis.PyQt.QtCore import QJsonDocument
 from osgeo import ogr
 
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
@@ -37,7 +39,7 @@ from qps.speclib.core import is_spectral_library, profile_field_list, profile_fi
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibrary, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
-    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask
+    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask, prepareProfileValueDict
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.speclib.io.csvdata import CSVSpectralLibraryIO
 from qps.testing import TestObjects, TestCase
@@ -197,9 +199,10 @@ class TestCore(TestCase):
         x = [1, 2, 3, 4, 5]
         y = [2, 3, 4, 5, 6]
         bbl = [1, 0, 1, 1, 0]
-        xUnit = 'nm'
-        yUnit = None
+        xUnit = 'μm'
+        yUnit = 'reflectnce ä$32{}'  # special characters to test UTF-8 compatibility
 
+        d = prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
         sl = SpectralLibrary()
 
         self.assertTrue(sl.startEditing())
@@ -226,10 +229,30 @@ class TestCore(TestCase):
         self.assertIsInstance(vd2, dict)
         self.assertEqual(vd1, vd2)
 
-        # decode from invalid string
-        vd2 = decodeProfileValueDict('{invalid')
-        self.assertIsInstance(vd2, dict)
-        self.assertTrue(len(vd2) == 0)
+        # decode valid inputs
+        valid_inputs = {  # 'str(d)': str(d),  #  missed double quotes
+            'dictionary': d,
+            'json dump': json.dumps(d),
+            'pickle dump': pickle.dumps(d),
+            'QByteArray from pickle dump': QByteArray(pickle.dumps(d)),
+            'QJsonDocument': QJsonDocument.fromVariant(d),
+            'QJsonDocument->toJson': QJsonDocument.fromVariant(d).toJson(),
+            'QJsonDocument->toBinaryData': QJsonDocument.fromVariant(d).toBinaryData(),
+            "bytes(json.dumps(d), 'utf-8')": bytes(json.dumps(d), 'utf-8'),
+        }
+        for info, v in valid_inputs.items():
+            d2 = decodeProfileValueDict(v)
+            self.assertIsInstance(d, dict)
+            self.assertEqual(d2, d, msg=f'Failed to decode {info}. Got: {d2}')
+
+        # decode invalid inputs
+        invalid_inputs = ['{invalid',
+                          bytes('{x:}', 'utf-8')
+                          ]
+        for v in invalid_inputs:
+            vd2 = decodeProfileValueDict(invalid_inputs)
+            self.assertIsInstance(vd2, dict)
+            self.assertTrue(len(vd2) == 0)
 
     def test_profile_fields(self):
 
@@ -805,31 +828,6 @@ class TestCore(TestCase):
         self.assertIsInstance(sl1, SpectralLibrary)
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertNotEqual(id(sl1), id(sl2))
-
-    def test_mergeSpeclibSpeed(self):
-
-        from qpstestdata import speclib
-
-        sl1 = SpectralLibrary.readFrom(speclib)
-        self.assertTrue(len(sl1) > 0)
-        sl2 = SpectralLibrary()
-
-        n = 4000
-        p = sl1[0]
-        profiles = []
-
-        for i in range(n):
-            profiles.append(p.clone())
-        sl2.startEditing()
-        sl2.addProfiles(profiles, addMissingFields=True)
-        sl2.commitChanges()
-
-        sl2.startEditing()
-        sl2.addSpeclib(sl2)
-        sl2.commitChanges()
-
-        self.assertEqual(len(sl2), n * 2)
-        s = ""
 
 
 if __name__ == '__main__':

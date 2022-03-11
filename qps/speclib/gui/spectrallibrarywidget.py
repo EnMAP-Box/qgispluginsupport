@@ -487,19 +487,15 @@ class SpectralLibraryWidget(AttributeTableWidget):
                            currentProfiles: typing.List[QgsFeature],
                            make_permanent: bool = None,
                            currentProfileStyles: typing.Dict[typing.Tuple[int, str], PlotStyle] = None,
-                           # currentProfileColors: typing.List[typing.Tuple[int, QColor]] = None
                            ):
         """
         Sets temporary profiles for the spectral library.
         If not made permanent, they will be removes when adding the next set of temporary profiles
-        :param currentProfileColors:
-        :param colors:
         :param make_permanent: bool, if not note, overwrite the value returned by optionAddCurrentProfilesAutomatically
         :type make_permanent:
         :param currentProfiles:
         :return:
         """
-        # print(f'set {currentProfiles}')
         if isinstance(currentProfiles, typing.Generator):
             currentProfiles = list(currentProfiles)
         assert isinstance(currentProfiles, (list,))

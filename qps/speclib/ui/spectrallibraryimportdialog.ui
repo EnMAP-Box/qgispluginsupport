@@ -98,7 +98,7 @@
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
-           <verstretch>1</verstretch>
+           <verstretch>2</verstretch>
           </sizepolicy>
          </property>
          <property name="minimumSize">

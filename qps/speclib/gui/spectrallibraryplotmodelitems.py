@@ -2,7 +2,6 @@ import sys
 import typing
 
 import numpy as np
-from qgis.PyQt import sip
 from qgis.PyQt.QtCore import Qt, QModelIndex, pyqtSignal, QMimeData, QObject, QSize, QSignalBlocker
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QPen, QPixmap
 from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout, QCheckBox, QDoubleSpinBox, \
@@ -17,6 +16,7 @@ from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverri
     QgsSpinBox, QgsDoubleSpinBox
 
 from .spectrallibraryplotitems import SpectralProfilePlotLegend, SpectralProfilePlotItem
+from ..core import is_profile_field
 from ...externals.htmlwidgets import HTMLComboBox
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
@@ -613,6 +613,17 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_CH.setProperty(QgsProperty.fromValue(style.crosshairColor))
         self.mP_SC.setProperty(QgsProperty.fromValue(style.selectionColor))
 
+        from .spectrallibraryplotwidget import SpectralProfilePlotModel
+        model: SpectralProfilePlotModel = self.model()
+        if isinstance(model, SpectralProfilePlotModel):
+            model.mDefaultSymbolRenderer.symbol().setColor(style.foregroundColor)
+
+            b = False
+            for vis in model.visualizations():
+                if vis.color() == style.backgroundColor:
+                    vis.setColor(style.foregroundColor)
+                    vis.update()
+
     def defaultProfileStyle(self) -> PlotStyle:
         """
         Returns the default PlotStyle for spectral profiles
@@ -1133,7 +1144,7 @@ class QgsPropertyItem(PropertyItem):
             i = w.currentIndex()
             if i >= 0:
                 field: QgsField = w.model().fields().at(i)
-                property = QgsProperty.fromField(field)
+                property = QgsProperty.fromField(field.name())
 
         elif isinstance(w, QComboBox):
             property = QgsProperty.fromValue(w.currentData(Qt.UserRole))
@@ -1662,6 +1673,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             'Field', 'Name of the field that contains the spectral profiles',
             QgsPropertyDefinition.StandardPropertyTemplate.String))
         self.mPField.setProperty(QgsProperty.fromField('profiles', True))
+        self.mPField.setIsProfileFieldProperty(True)
 
         self.mPStyle = PlotStyleItem('Style')
         self.mPStyle.setEditColors(False)
@@ -1835,8 +1847,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         speclib = self.speclib()
         field = self.field()
         b = isinstance(speclib, QgsVectorLayer) \
-            and not sip.isdeleted(speclib) \
-            and isinstance(field, QgsField) \
+            and is_profile_field(field) \
             and field.name() in speclib.fields().names()
         return b
 

@@ -95,7 +95,7 @@ class TestSpeclibIO_ENVI(TestCase):
         feedback = QgsProcessingFeedback()
         profiles = list(speclib.getFeatures())
         path = self.testDir() / 'exampleENVI.sli'
-        files = ENVI_IO.exportProfiles(path.as_posix(), settings, profiles, feedback)
+        files = ENVI_IO.exportProfiles(path.as_posix(), profiles, settings, feedback)
         self.assertIsInstance(files, list)
         self.assertTrue(len(files) == n_bands.shape[0])
 

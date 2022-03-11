@@ -30,7 +30,7 @@ import pathlib
 import sys
 import typing
 
-from qgis.core import QgsExpressionNodeFunction
+from qgis.core import QgsExpressionNodeFunction, QgsField
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
@@ -210,6 +210,60 @@ class Format_Py(QgsExpressionFunction):
         return True
 
 
+class SpectralEncoding(QgsExpressionFunction):
+
+    def __init__(self):
+        group = SPECLIB_FUNCTION_GROUP
+        name = 'encodeProfile'
+
+        args = [
+            QgsExpressionFunction.Parameter('profile_field', optional=False),
+            QgsExpressionFunction.Parameter('encoding', optional=False),
+
+        ]
+        helptext = HM.helpText(name, args)
+        super().__init__(name, args, group, helptext)
+
+    def func(self, values, context: QgsExpressionContext, parent, node):
+
+        ba, encoding = values
+        if context:
+            feature = context.feature()
+        if not isinstance(context, QgsExpressionContext):
+            return None
+
+        if ba is None:
+            return None
+
+        try:
+            assert isinstance(encoding, str)
+            encoding = encoding.lower()
+            assert encoding in ('map', 'bytes', 'json', 'text')
+
+            assert context.fields()
+            values = decodeProfileValueDict(ba)
+            if encoding == 'map':
+                return values
+            elif encoding == 'json':
+                return encodeProfileValueDict(values, QgsField('dummy', 8))
+            elif encoding == 'bytes':
+                return encodeProfileValueDict(values, QgsField('dummy', QVariant.ByteArray))
+            elif encoding == 'text':
+                return encodeProfileValueDict(values, QgsField('dummy', QVariant.String))
+        except Exception as ex:
+            parent.setEvalErrorString(str(ex))
+            return None
+
+    def usesGeometry(self, node) -> bool:
+        return True
+
+    def referencedColumns(self, node) -> typing.List[str]:
+        return [QgsFeatureRequest.ALL_ATTRIBUTES]
+
+    def handlesNull(self) -> bool:
+        return True
+
+
 class SpectralData(QgsExpressionFunction):
     def __init__(self):
         group = SPECLIB_FUNCTION_GROUP
@@ -236,9 +290,7 @@ class SpectralData(QgsExpressionFunction):
             assert context.fields()
             assert isinstance(ba, QByteArray)
             return decodeProfileValueDict(ba)
-            # profile = SpectralProfile.fromQgsFeature(feature, profile_field=profile_field)
-            # assert isinstance(profile, SpectralProfile)
-            # return profile.values()
+
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
             return None
@@ -266,7 +318,7 @@ class SpectralMath(QgsExpressionFunction):
         helptext = HM.helpText(name, args)
         super().__init__(name, args, group, helptext)
 
-    def func(self, values, context: QgsExpressionContext, parent, node):
+    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
         expression, ba = values
         if context:
@@ -279,12 +331,19 @@ class SpectralMath(QgsExpressionFunction):
 
         try:
             assert context.fields()
-            assert isinstance(ba, QByteArray)
             values = decodeProfileValueDict(ba, numpy_arrays=True)
             exec(expression, values)
+            # use same input type as output type
+            if isinstance(ba, QByteArray):
+                field = QgsField('dummy', QVariant.ByteArray)
+            elif isinstance(ba, dict):
+                # JSON
+                field = QgsField('dummy', 8)
+            else:
+                field = QgsField('dummy', QVariant.String)
+            dump = encodeProfileValueDict(values, field)
+            return dump
 
-            new_ba = encodeProfileValueDict(values, context)
-            return new_ba
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
             return None
@@ -304,7 +363,7 @@ def registerQgsExpressionFunctions():
     Registers functions to support SpectraLibrary handling with QgsExpressions
     """
     global QGIS_FUNCTION_INSTANCES
-    for func in [Format_Py(), SpectralMath(), SpectralData()]:
+    for func in [Format_Py(), SpectralMath(), SpectralData(), SpectralEncoding()]:
 
         if QgsExpression.isFunctionName(func.name()):
             msg = QCoreApplication.translate("UserExpressions",

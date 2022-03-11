@@ -909,7 +909,7 @@ def fid2pixelindices(raster: gdal.Dataset,
                      vector: ogr.DataSource,
                      layer: typing.Union[int, str] = 0,
                      all_touched: bool = True,
-                     raster_fids:typing.Union[str, pathlib.Path] = None) -> typing.Tuple[np.ndarray, int]:
+                     raster_fids: typing.Union[str, pathlib.Path] = None) -> typing.Tuple[np.ndarray, int]:
     """
     Returns vector feature pixel positions.
 
