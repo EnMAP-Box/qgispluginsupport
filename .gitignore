@@ -35,6 +35,7 @@ test-outputs/
 *.gpkg-shm
 *.gpkg-wal
 
+user-history.db
 # Untrack compiled files
 *.pyc 
 *.pyd
