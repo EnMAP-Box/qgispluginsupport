@@ -11,6 +11,7 @@ from qps.speclib.core import is_profile_field, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO, GeoJsonSpectralLibraryExportWidget, \
     GeoJsonFieldValueConverter
 from qps.testing import TestObjects, TestCase
@@ -55,6 +56,22 @@ class TestSpeclibIOGeoJSON(TestCase):
                 self.assertEqual(value2, value3)
                 if not is_profile_field(field):
                     self.assertEqual(value1, value2)
+
+    def test_import(self):
+        IO = GeoJsonSpectralLibraryIO()
+        from qpstestdata import geojson
+
+
+        profiles = IO.importProfiles(geojson)
+        self.assertTrue(len(profiles) > 0)
+        for p in profiles:
+            self.assertTrue(len(profile_field_names(p)) > 0)
+
+        lyr = QgsVectorLayer(geojson, 'GeoJSON')
+        self.assertTrue(lyr.isValid())
+
+        w = SpectralLibraryWidget(speclib=lyr)
+        self.showGui(w)
 
     def test_import_merge(self):
         IO = GeoJsonSpectralLibraryIO()

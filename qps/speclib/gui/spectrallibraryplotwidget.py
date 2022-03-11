@@ -13,6 +13,7 @@ from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
+from qgis._core import QgsSingleSymbolRenderer, QgsMarkerSymbol
 from qgis.core import QgsField, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
@@ -177,6 +178,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mProfileFieldModel: QgsFieldModel = QgsFieldModel()
 
         self.mPlotWidget: SpectralProfilePlotWidget = None
+        symbol = QgsMarkerSymbol.createSimple({'name': 'square', 'color': 'white'})
+        self.mDefaultSymbolRenderer = QgsSingleSymbolRenderer(symbol)
 
         hdr0 = QStandardItem('Name')
         hdr0.setToolTip('Visualization property names')
@@ -232,6 +235,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         state = self.mBlockUpdates
         self.mBlockUpdates = b
         return state
+
 
     def updatesBlocked(self) -> bool:
         return self.mBlockUpdates
@@ -293,15 +297,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
         fieldIndex = id_attribute[1]
         if rawData == NI:
             # load profile data
-            byteArray: QByteArray = feature.attribute(fieldIndex)
-            rawData = None
-            if isinstance(byteArray, QByteArray):
-                rawData: dict = decodeProfileValueDict(byteArray)
-                if rawData.get('y', None) is None:
-                    # empty profile, nothing to plot
-                    # create empty entries (=None)
-                    rawData = None
-                elif rawData.get('x', None) is None:
+            d: dict = decodeProfileValueDict(feature.attribute(fieldIndex))
+            if d is None or len(d) == 0:
+                # no profile
+                rawData = None
+            else:
+                rawData = d
+                if rawData.get('x', None) is None:
                     rawData['x'] = list(range(len(rawData['y'])))
                     rawData['xUnit'] = BAND_INDEX
             self.mCACHE_PROFILE_DATA[id_attribute] = rawData
@@ -498,7 +500,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         pdiGenerator = PDIGenerator([], onProfileClicked=self.mPlotWidget.onProfileClicked)
 
-        featureRenderer = self.speclib().renderer().clone()
+        featureRenderer = self.speclib().renderer()
+        if isinstance(featureRenderer, QgsFeatureRenderer):
+            featureRenderer = featureRenderer.clone()
+        else:
+            featureRenderer = self.mDefaultSymbolRenderer.clone()
 
         request = QgsFeatureRequest()
         request.setFilterFids(feature_priority)

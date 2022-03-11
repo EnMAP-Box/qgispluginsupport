@@ -15,6 +15,7 @@ speclib = (pathlib.Path(__file__).parent / 'speclib.sli').as_posix()
 speclib_labeled = \
     (pathlib.Path(__file__).parent / 'library_berlin.sli').as_posix()
 ndvi_ts = (pathlib.Path(__file__).parent / 'ndvi_ts.tif').as_posix()
+geojson = (pathlib.Path(__file__).parent / 'geojson' / 'profiles.geojson').as_posix()
 
 DIR_ECOSIS = (pathlib.Path(__file__).parent / 'ecosis').as_posix()
 DIR_SPECCHIO = (pathlib.Path(__file__).parent / 'specchio').as_posix()
