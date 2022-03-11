@@ -1,0 +1,11 @@
+{
+  "name": "encodeProfile",
+  "type": "function",
+  "description": "Encodes spectral profile data",
+  "arguments": [ {"arg":"profile_field","description":"field or expression to load the spectral profile from"},
+                 {"arg":"encoding","description":"output format of spectral profile: 'text', 'json', 'map' or 'bytes'"}],
+  "examples": [{
+    "expression":"encodeProfiles(\"profiles\", 'text')",
+    "returns":"The spectral profiles as text sting"}
+  ]
+}

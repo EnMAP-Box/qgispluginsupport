@@ -6,6 +6,7 @@ import xmlrunner
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorFileWriter, QgsField, QgsVectorLayer
+from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import is_profile_field, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
@@ -38,7 +39,6 @@ class TestSpeclibIOGeoJSON(TestCase):
         self.assertIsInstance(cloned, QgsVectorFileWriter.FieldValueConverter)
 
         for field in sl.fields():
-
             field2 = converter.fieldDefinition(field)
             self.assertIsInstance(field2, QgsField)
             self.assertTrue(field2.type() not in [QVariant.ByteArray, 8])
@@ -58,6 +58,7 @@ class TestSpeclibIOGeoJSON(TestCase):
 
     def test_import_merge(self):
         IO = GeoJsonSpectralLibraryIO()
+        registerQgsExpressionFunctions()
 
         sl: QgsVectorLayer = TestObjects.createSpectralLibrary()
         testdir = self.createTestOutputDirectory() / 'GeoJSON'
@@ -67,8 +68,16 @@ class TestSpeclibIOGeoJSON(TestCase):
         feedback = QgsProcessingFeedback()
         files = GeoJsonSpectralLibraryIO.exportProfiles(path, {}, sl.getFeatures(), feedback)
         self.assertEqual(len(files), 1)
-
+        sl.startEditing()
+        sl.deleteFeatures(sl.allFeatureIds())
+        sl.commitChanges(False)
         SpectralLibraryImportDialog.importProfiles(sl, files[0])
+
+        for f in sl.getFeatures():
+            v = f.attribute('profiles0')
+            d = decodeProfileValueDict(v)
+            self.assertTrue(len(d.get('x', [])) > 0)
+            print(d)
 
         s = ""
 
@@ -118,6 +127,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         w = GeoJsonSpectralLibraryIO.createImportWidget()
         w.setSource(path.as_posix())
         s = ""
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

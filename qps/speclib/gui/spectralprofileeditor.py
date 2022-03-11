@@ -6,7 +6,7 @@ from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant
 from qgis.PyQt.QtWidgets import QGroupBox, QWidget, QLabel
 
-from qgis.core import QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication
+from qgis.core import QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication, QgsFeature
 from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsJsonEditWidget, \
     QgsEditorWidgetFactory
 from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
@@ -308,7 +308,8 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         super(SpectralProfileEditorWidgetWrapper, self).__init__(vl, fieldIdx, editor, parent)
         self.mWidget: QWidget = None
 
-        self.mLastValue = QVariant()
+        self.mLastValue: QVariant = QVariant()
+        s = ""
 
     def createWidget(self, parent: QWidget):
         # log('createWidget')
@@ -316,7 +317,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         if not self.isInTable(parent):
             self.mWidget = SpectralProfileEditorWidget(parent=parent)
         else:
-            self.mWidget = QLabel(' Profile', parent=parent)
+            self.mWidget = QLabel('Profile', parent=parent)
         return self.mWidget
 
     def initWidget(self, editor: QWidget):
@@ -329,7 +330,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
             editor.initConfig(conf)
 
         elif isinstance(editor, QLabel):
-            editor.setText(SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE)
+            editor.setText(f'{SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE} ({self.field().typeName()})')
             editor.setToolTip('Use Form View to edit values')
 
     def onValueChanged(self, *args):
@@ -344,16 +345,21 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             p = w.profile()
-            value = encodeProfileValueDict(p.values(), self.field())
+            if len(p.get('x', [])) > 0:
+                value = encodeProfileValueDict(p.values(), self.field())
 
-        return value
+        return QVariant(value)
+
+    def setFeature(self, feature: QgsFeature) -> None:
+        super(SpectralProfileEditorWidgetWrapper, self).setFeature(feature)
 
     def setEnabled(self, enabled: bool):
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             w.setEnabled(enabled)
 
-    def setValue(self, value):
+    def setValue(self, value: typing.Any) -> None:
+        self.mLastValue = value
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             w.setProfile(decodeProfileValueDict(value))
@@ -388,6 +394,7 @@ class SpectralProfileFieldFormatter(QgsFieldFormatter):
 
         if value not in [None, NULL]:
             return SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE
+            # return f'{SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE} ({layer.fields().at(fieldIndex).typeName()})'
         else:
             return 'NULL'
         s = ""

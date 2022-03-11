@@ -1590,7 +1590,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             convertError = None
             try:
                 value = fld.convertCompatible(value)
-            except SystemError as ex:
+            except (SystemError, ValueError) as ex:
                 error = 'Unable to convert "{}" to type {}'.format(value, fld.typeName())
             # Bail if we have a update error
             if exp.hasEvalError():

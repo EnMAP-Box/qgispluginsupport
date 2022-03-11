@@ -79,7 +79,12 @@ class GeoJsonSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
     def createExpressionContext(self) -> QgsExpressionContext:
         context = QgsExpressionContext()
-
+        context.setFields(self.sourceFields())
+        if isinstance(self.mSource, QgsVectorLayer) and self.mSource.featureCount() > 0:
+            for f in self.mSource.getFeatures():
+                if isinstance(f, QgsFeature):
+                    context.setFeature(f)
+                    break
         return context
 
 
@@ -165,7 +170,7 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         datasourceOptions = exportSettings.get('options', dict())
         assert isinstance(datasourceOptions, dict)
 
-        ogrDataSourceOptions = ['ATTRIBUTES_SKIP=NO', 'DATE_AS_STRING=YES', 'ARRAY_AS_STRING=YES']
+        ogrDataSourceOptions = []  # 'ATTRIBUTES_SKIP=NO', 'DATE_AS_STRING=YES', 'ARRAY_AS_STRING=YES']
         ogrLayerOptions = ['NATIVE_DATA=True']
 
         options = QgsVectorFileWriter.SaveVectorOptions()

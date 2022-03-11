@@ -9,17 +9,16 @@ import warnings
 from json import JSONDecodeError
 
 import numpy as np
-from qgis.PyQt.QtCore import QJsonDocument
-
-from qgis.PyQt.QtCore import QDateTime, Qt
 from osgeo import gdal
-
+from qgis.PyQt.QtCore import QDateTime, Qt
+from qgis.PyQt.QtCore import QJsonDocument
 from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
 from qgis.core import QgsTask, QgsFeatureRequest
 from qgis.gui import QgsMapCanvas
+
 from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields, \
     is_profile_field
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
@@ -122,24 +121,22 @@ def encodeProfileValueDict(d: dict, field: QgsField) -> typing.Any:
             d2['x'] = [x.toString(Qt.ISODate) for x in xValues]
 
     # save as QByteArray
+    if isinstance(field, QgsField) and field.type() == 8:
+        # JSON field, return dictionary
+        return d2
+
+    jsonDoc = QJsonDocument.fromVariant(d2)
+
     if field is None or field.type() == QVariant.ByteArray:
-        return QByteArray(pickle.dumps(d2))
-
-    if isinstance(field, QgsField):
-        # JSON field, as dictionary directly
-        if field.type() == 8:
-            return d2
-
-        # Save JSON string
-        if field.type() == QVariant.String:
-            return json.dumps(d2, separators=JSON_SEPARATORS)
-
-    return None
+        return jsonDoc.toBinaryData()
+    else:
+        # return JSON string
+        return bytes(jsonDoc.toJson(QJsonDocument.Compact)).decode('UTF-8')
 
 
 def decodeProfileValueDict(dump: typing.Union[QByteArray, str], numpy_arrays: bool = False) -> dict:
     """
-    Converts a json / pickle dump into a SpectralProfile value dictionary.
+    Converts a text / json / pickle / bytes representation of a SpectralProfile into a dictionary.
 
     In case the input "dump" cannot be converted, the returned dictionary is empty ({})
     :param numpy_arrays:
@@ -148,28 +145,48 @@ def decodeProfileValueDict(dump: typing.Union[QByteArray, str], numpy_arrays: bo
     """
     if dump in EMPTY_VALUES:
         return {}
-    QJsonDocument
+
+    d: dict = None
+    jsonDoc = None
+
+    if isinstance(dump, bytes):
+        dump = QByteArray(dump)
     if isinstance(dump, QByteArray):
-        try:
-            dump = pickle.loads(dump)
-        except EOFError as ex:
+        if dump.count() > 0 and dump.at(0) == b'{':
+            jsonDoc = QJsonDocument.fromJson(dump)
+        else:
+            jsonDoc = QJsonDocument.fromBinaryData(dump)
+        if jsonDoc.isNull():
+            try:
+                dump = pickle.loads(dump)
 
-            return {}
-
+            except EOFError as ex:
+                pass
+            except pickle.UnpicklingError as ex:
+                pass
     if isinstance(dump, str):
         try:
             dump = json.loads(dump)
+            if isinstance(dump, dict):
+                d = dump
         except JSONDecodeError:
-            return {}
+            pass
+    elif isinstance(dump, dict):
+        d = dump
+    elif isinstance(dump, QJsonDocument):
+        d = dump.toVariant()
 
-    if not (isinstance(dump, dict) and 'y' in dump.keys()):
+    if d is None and isinstance(jsonDoc, QJsonDocument) and not jsonDoc.isNull():
+        d = jsonDoc.toVariant()
+
+    if not (isinstance(d, dict) and 'y' in d.keys()):
         return {}
 
     if numpy_arrays:
         for k in ['x', 'y', 'bbl']:
-            if k in dump.keys():
-                dump[k] = np.asarray(dump[k])
-    return dump
+            if k in d.keys():
+                d[k] = np.asarray(d[k])
+    return d
 
 
 class SpectralSetting(object):

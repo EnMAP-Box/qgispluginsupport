@@ -4,7 +4,6 @@ import typing
 import warnings
 
 from qgis.PyQt.QtCore import QObject
-
 from qgis.PyQt.QtCore import pyqtSignal, QRegExp, QUrl
 from qgis.PyQt.QtGui import QIcon, QRegExpValidator
 from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, \
@@ -18,6 +17,7 @@ from qgis.core import QgsVectorLayer, QgsFeature, QgsFields, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsCoordinateReferenceSystem, QgsExpressionContextScope
 from qgis.gui import QgsFileWidget, QgsFieldMappingWidget
+
 from . import is_profile_field, profile_field_list, profile_field_names
 from .spectralprofile import groupBySpectralProperties
 from .. import speclibUiPath
@@ -396,7 +396,6 @@ class SpectralLibraryIO(QObject):
 
         print(matched_formats)
         if len(matched_formats) == 0:
-
             warnings.warn(f'No SpectralLibraryIO export format found for file type "*{uri_ext}"')
             return []
 
@@ -523,11 +522,10 @@ class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
         self.mContext = context
 
     def remapFeature(self, feature: QgsFeature) -> typing.List[QgsFeature]:
-
         features = super().remapFeature(feature)
 
-
         return features
+
 
 class ProfileProperty(QgsProperty, QObject):
 
@@ -536,7 +534,6 @@ class ProfileProperty(QgsProperty, QObject):
         self.mField = targetField
 
     def value(self, *args, **kwds) -> typing.Tuple[typing.Any, bool]:
-
         v = super().value(*args, **kwds)
 
         s = ""
@@ -545,7 +542,22 @@ class ProfileProperty(QgsProperty, QObject):
     def __repr__(self):
         return f'ProfileProperty {id(self)}'
 
-class SpectralLibraryImportDialog(QDialog):
+
+class ContextGenerator(QgsExpressionContextGenerator):
+
+    def __init__(self, dialog):
+        super().__init__()
+
+        self.mDialog: SpectralLibraryImportDialog = dialog
+
+    def createExpressionContext(self) -> QgsExpressionContext:
+        context = self.mDialog.formatExpressionContext()
+        if not isinstance(context, QgsExpressionContext):
+            context = QgsExpressionContext()
+        return context
+
+
+class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
 
     @staticmethod
     def importProfiles(speclib: QgsVectorLayer,
@@ -558,7 +570,6 @@ class SpectralLibraryImportDialog(QDialog):
         if dialog.exec_() == QDialog.Accepted:
 
             source = dialog.source()
-
 
             format = dialog.currentImportWidget()
 
@@ -638,6 +649,8 @@ class SpectralLibraryImportDialog(QDialog):
         self.cbFormat.currentIndexChanged.connect(self.setImportWidget)
 
         self.fileWidget.fileChanged.connect(self.onFileChanged)
+        self.mContextGenerator = ContextGenerator(self)
+        self.fieldMappingWidget.registerExpressionContextGenerator(self.mContextGenerator)
 
         if defaultRoot:
             r = pathlib.Path(defaultRoot)
@@ -646,7 +659,6 @@ class SpectralLibraryImportDialog(QDialog):
             if r.is_file():
                 self.fileWidget.setDefaultRoot(r.parent.as_posix())
                 self.fileWidget.setFilePath(r.as_posix())
-
 
         self.mSpeclib: QgsVectorLayer = None
 
@@ -671,6 +683,13 @@ class SpectralLibraryImportDialog(QDialog):
 
         if first_format:
             self.setImportWidget(first_format)
+
+    def formatExpressionContext(self) -> QgsExpressionContext:
+        format = self.currentImportWidget()
+        if isinstance(format, SpectralLibraryImportWidget):
+            return format.createExpressionContext()
+        else:
+            return None
 
     def onFileChanged(self, *args):
 
