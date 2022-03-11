@@ -829,31 +829,6 @@ class TestCore(TestCase):
         self.assertIsInstance(sl2, SpectralLibrary)
         self.assertNotEqual(id(sl1), id(sl2))
 
-    def test_mergeSpeclibSpeed(self):
-
-        from qpstestdata import speclib
-
-        sl1 = SpectralLibrary.readFrom(speclib)
-        self.assertTrue(len(sl1) > 0)
-        sl2 = SpectralLibrary()
-
-        n = 4000
-        p = sl1[0]
-        profiles = []
-
-        for i in range(n):
-            profiles.append(p.clone())
-        sl2.startEditing()
-        sl2.addProfiles(profiles, addMissingFields=True)
-        sl2.commitChanges()
-
-        sl2.startEditing()
-        sl2.addSpeclib(sl2)
-        sl2.commitChanges()
-
-        self.assertEqual(len(sl2), n * 2)
-        s = ""
-
 
 if __name__ == '__main__':
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)

@@ -8,7 +8,7 @@ from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsVectorFileWriter, QgsField, QgsProject, QgsVectorLayer, \
     QgsRemappingSinkDefinition, QgsExpressionContextScope, QgsCoordinateTransformContext, \
-    QgsRemappingProxyFeatureSink, \
+    QgsRemappingProxyFeatureSink, QgsProperty, \
     QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsCoordinateReferenceSystem
 from ..core import is_profile_field
@@ -115,7 +115,7 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
     def convertProfileField(self, value, field: QgsField) -> str:
         d = decodeProfileValueDict(value, numpy_arrays=True)
-        d['y'] = d['y'].astype(np.float16)
+        d['y'] = d['y'].astype(np.float32)
         text = encodeProfileValueDict(d, field)
         return text
 
@@ -210,12 +210,15 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
                                                                  transformContext,
                                                                  options)
         # we might need to transform the coordinates to JSON EPSG:4326
-        sinkDefinition = QgsRemappingSinkDefinition()
-        sinkDefinition.setSourceCrs(crs)
-        sinkDefinition.setDestinationCrs(crsJson)
-        sinkDefinition.setDestinationFields(fields)
-        sinkDefinition.setDestinationWkbType(wkbType)
-        # do we need to map fields?
+        mappingDefinition = QgsRemappingSinkDefinition()
+        mappingDefinition.setSourceCrs(crs)
+        mappingDefinition.setDestinationCrs(crsJson)
+        mappingDefinition.setDestinationFields(fields)
+        mappingDefinition.setDestinationWkbType(wkbType)
+
+        for field in fields:
+            field: QgsField
+            mappingDefinition.addMappedField(field.name(), QgsProperty.fromField(field.name()))
 
         expressionContext = QgsExpressionContext()
         expressionContext.setFields(fields)
@@ -226,7 +229,7 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         expressionContext.appendScope(scope)
         transformationContext = QgsCoordinateTransformContext()
 
-        featureSink = QgsRemappingProxyFeatureSink(sinkDefinition, writer)
+        featureSink = QgsRemappingProxyFeatureSink(mappingDefinition, writer)
         featureSink.setExpressionContext(expressionContext)
         featureSink.setTransformContext(transformationContext)
 

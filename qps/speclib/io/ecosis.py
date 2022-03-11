@@ -42,7 +42,7 @@ from qgis.core import QgsProcessingFeedback
 from .envi import readCSVMetadata
 from .. import createStandardFields, FIELD_NAME
 from ..core import create_profile_field, is_spectral_library
-from ..core.spectrallibrary import FIELD_FID, FIELD_VALUES, createQgsField
+from ..core.spectrallibrary import FIELD_VALUES, createQgsField
 from ..core.spectrallibrary import SpectralLibrary
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
 from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile
@@ -161,7 +161,7 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: str,
+                       path: typing.Union[str, pathlib.Path],
                        importSettings: dict = dict(),
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
 
@@ -375,7 +375,7 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
         s = ""
 
         writtenFiles = []
-        fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES, FIELD_FID]]
+        fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES]]
         groups = speclib.groupBySpectralProperties()
         for i, setting in enumerate(groups.keys()):
             # in-memory text buffer

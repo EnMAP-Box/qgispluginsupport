@@ -33,7 +33,7 @@ class TestSpeclibIO_GPKG(TestCase):
         self.assertIsInstance(exportWidget, GeoPackageSpectralLibraryExportWidget)
         sl: QgsVectorLayer = TestObjects.createSpectralLibrary()
         sl.startEditing()
-        for f in sl:
+        for f in sl.getFeatures():
             f: QgsFeature
             f.setAttribute('name', f'Name {f.id()}')
             sl.updateFeature(f)

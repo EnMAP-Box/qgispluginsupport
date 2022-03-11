@@ -44,7 +44,7 @@ from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData, \
     QFileInfo
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QFileDialog, QDialog
-from qgis.core import QgsApplication, \
+from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsFeature, QgsVectorLayer, QgsRasterLayer, \
     QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsActionManager, QgsFeatureRequest, \
     QgsGeometry, QgsPoint, QgsDefaultValue, QgsMapLayerProxyModel, \
@@ -264,12 +264,9 @@ class SpectralLibraryUtils:
     """
 
     @staticmethod
-    def writeToSource(speclib: QgsVectorLayer,
-                      uri: str,
-                      settings: dict = None,
-                      feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+    def writeToSource(*args, **kwds) -> typing.List[str]:
         from .spectrallibraryio import SpectralLibraryIO
-        return SpectralLibraryIO.writeSpeclibToUri(speclib, uri, settings=settings, feedback=feedback)
+        return SpectralLibraryIO.writeToSource(*args, **kwds)
 
     @staticmethod
     def readFromSource(uri: str, feedback: QgsProcessingFeedback = None):
@@ -497,7 +494,7 @@ class SpectralLibraryUtils:
     def addSpeclib(speclibDst, speclibSrc,
                    addMissingFields: bool = True,
                    copyEditorWidgetSetup: bool = True,
-                   feedback: QgsProcessingFeedback = None) -> typing.List[int]:
+                   feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[int]:
         """
         Adds profiles from another SpectraLibrary
         :param speclib: SpectralLibrary
@@ -538,6 +535,8 @@ class SpectralLibraryUtils:
         elif isinstance(profiles, QgsVectorLayer):
             crs = profiles.crs()
             profiles = list(profiles.getFeatures())
+        elif isinstance(profiles, QgsFeatureIterator):
+            profiles = list(profiles)
 
         if len(profiles) == 0:
             return []

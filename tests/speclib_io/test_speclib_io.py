@@ -30,6 +30,7 @@ from qps.speclib.core.spectrallibrary import SpectralLibraryUtils, SpectralLibra
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
     SpectralLibraryIO, SpectralLibraryImportWidget, SpectralLibraryExportWidget
 from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
+from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget
 from qps.testing import TestObjects, TestCase
 from qps.utils import file_search
@@ -47,9 +48,11 @@ class TestIO(TestCase):
 
     def registerIO(self):
 
-        ios = [GeoPackageSpectralLibraryIO(),
+        ios = [GeoJsonSpectralLibraryIO(),
+               GeoPackageSpectralLibraryIO(),
                EnviSpectralLibraryIO(),
                ]
+
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
     def test_importWidgets(self):
@@ -105,7 +108,7 @@ class TestIO(TestCase):
             self.assertTrue(len(speclib2) == len(speclib1))
 
     def test_writeTo(self):
-
+        self.registerIO()
         DIR = self.createTestOutputDirectory()
 
         sl = TestObjects.createSpectralLibrary(n_bands=[[25, 45], [10, 5]])
@@ -113,7 +116,7 @@ class TestIO(TestCase):
         COUNTS = SpectralLibraryUtils.countProfiles(sl)
 
         self.assertIsInstance(sl, QgsVectorLayer)
-        for ext in ['sli', 'gpkg']:
+        for ext in ['geojson', 'sli', 'gpkg']:
 
             path = DIR / f'test.speclib.{ext}'
             print(f'Test export to {path.name}')
