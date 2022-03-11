@@ -6,15 +6,14 @@ import numpy as np
 
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
-    QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData, QByteArray
+    QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
 from qgis.PyQt.QtGui import QPen, QBrush, QPixmap
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
-from qgis._core import QgsSingleSymbolRenderer, QgsMarkerSymbol
-from qgis.core import QgsField, \
+from qgis.core import QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
 from qgis.core import QgsProject, QgsMapLayerProxyModel
@@ -235,7 +234,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         state = self.mBlockUpdates
         self.mBlockUpdates = b
         return state
-
 
     def updatesBlocked(self) -> bool:
         return self.mBlockUpdates

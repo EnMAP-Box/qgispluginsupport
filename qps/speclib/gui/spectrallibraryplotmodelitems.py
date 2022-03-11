@@ -613,6 +613,17 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_CH.setProperty(QgsProperty.fromValue(style.crosshairColor))
         self.mP_SC.setProperty(QgsProperty.fromValue(style.selectionColor))
 
+        from .spectrallibraryplotwidget import SpectralProfilePlotModel
+        model: SpectralProfilePlotModel = self.model()
+        if isinstance(model, SpectralProfilePlotModel):
+            model.mDefaultSymbolRenderer.symbol().setColor(style.foregroundColor)
+
+            b = False
+            for vis in model.visualizations():
+                if vis.color() == style.backgroundColor:
+                    vis.setColor(style.foregroundColor)
+                    vis.update()
+
     def defaultProfileStyle(self) -> PlotStyle:
         """
         Returns the default PlotStyle for spectral profiles
