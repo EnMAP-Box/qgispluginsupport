@@ -53,7 +53,7 @@ class TestSpeclibIO_GPKG(TestCase):
 
         exportSettings = dict()
         feedback = QgsProcessingFeedback()
-        files = IO.exportProfiles(path.as_posix(), exportSettings, sl.getFeatures(), feedback)
+        files = IO.exportProfiles(path.as_posix(), sl.getFeatures(), exportSettings, feedback)
 
         self.assertIsInstance(files, list)
         for file in files:

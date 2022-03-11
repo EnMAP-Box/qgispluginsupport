@@ -44,8 +44,8 @@ from qgis.core import QgsExpression
 from qgis.core import QgsField, QgsFields, QgsFeature, QgsProcessingFeedback
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope
 from qgis.gui import QgsFieldExpressionWidget, QgsFieldComboBox
-from .. import EMPTY_VALUES, FIELD_VALUES, FIELD_FID
-from ..core import create_profile_field, profile_fields
+from .. import EMPTY_VALUES, FIELD_FID
+from ..core import create_profile_field, profile_fields, profile_field_names
 from ..core.spectrallibrary import VSI_DIR, LUT_IDL2GDAL
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
     SpectralLibraryImportWidget
@@ -204,9 +204,11 @@ def writeCSVMetadata(pathCSV: str, profiles: typing.List[QgsFeature], profile_na
     if len(profiles) == 0:
         return
     assert len(profiles) == len(profile_names)
-
-    excludedNames = CSV_PROFILE_NAME_COLUMN_NAMES + [CSV_GEOMETRY_COLUMN, FIELD_FID, FIELD_VALUES]
-    fieldNames = [n for n in profiles[0].fields().names() if n not in excludedNames]
+    refProfile = profiles[0]
+    excludedNames = CSV_PROFILE_NAME_COLUMN_NAMES + [CSV_GEOMETRY_COLUMN, FIELD_FID]
+    for n in profile_field_names(refProfile):
+        excludedNames.append(n)
+    fieldNames = [n for n in refProfile.fields().names() if n not in excludedNames]
     allFieldNames = ['spectra names'] + fieldNames + [CSV_GEOMETRY_COLUMN]
 
     with open(pathCSV, 'w', newline='') as f:
@@ -354,8 +356,8 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def importProfiles(cls,
                        path: str,
-                       importSettings: dict,
-                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
+                       importSettings: dict = dict(),
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
 
         assert isinstance(path, str)
 
@@ -437,13 +439,27 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def exportProfiles(cls,
                        path: str,
-                       exportSettings: dict,
-                       profiles: typing.List[QgsFeature],
-                       feedback: QgsProcessingFeedback) -> typing.List[str]:
+                       profiles: typing.Union[typing.List[QgsFeature], QgsVectorLayer],
+                       exportSettings: dict = dict(),
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[str]:
 
-        profile_field = exportSettings[EnviSpectralLibraryExportWidget.PROFILE_FIELD]
-        assert profile_field != ''
-        expr = QgsExpression(exportSettings[EnviSpectralLibraryExportWidget.PROFILE_NAMES])
+        profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
+        if len(profiles) == 0:
+            return []
+
+        if EnviSpectralLibraryExportWidget.PROFILE_FIELD not in exportSettings.keys():
+
+            pfields = profile_field_names(fields)
+            assert len(pfields) > 0, 'missing profile fields'
+            profile_field = pfields[0]
+        else:
+            profile_field = exportSettings[EnviSpectralLibraryExportWidget.PROFILE_FIELD]
+
+        assert profile_field in fields.names()
+
+        expr = QgsExpression(exportSettings.get(
+            EnviSpectralLibraryExportWidget.PROFILE_NAMES,
+            "format('Profile %1', $id)"))
 
         path = pathlib.Path(path)
         dn = path.parent
@@ -492,7 +508,8 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
             # convert array to data type GDAL is able to write
             if pData.dtype == np.int64:
                 pData = pData.astype(np.int32)
-
+            elif pData.dtype == object:
+                pData = pData.astype(float)
             # todo: other cases?
 
             if iGrp == 0:

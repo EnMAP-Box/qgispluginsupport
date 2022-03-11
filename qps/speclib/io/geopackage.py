@@ -1,11 +1,10 @@
 import os
+import pathlib
 import typing
 
-from qgis.core import Qgis
-from qgis.core import QgsProject, QgsWkbTypes
+
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
-    QgsCoordinateReferenceSystem
-from qgis.core import QgsVectorLayerExporter
+    QgsCoordinateReferenceSystem, QgsVectorFileWriter, QgsCoordinateTransformContext
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
     SpectralLibraryExportWidget
 
@@ -97,10 +96,10 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def exportProfiles(cls,
-                       path: str,
-                       exportSettings: dict,
-                       profiles: typing.Iterable[QgsFeature],
-                       feedback: QgsProcessingFeedback) -> typing.List[str]:
+                       path: typing.Union[str, pathlib.Path],
+                       profiles: typing.Any,
+                       exportSettings: dict = dict(),
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[str]:
 
         """
         :param fileName: file name to write to
@@ -117,62 +116,57 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         # saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
         # saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
         # saveVectorOptions.layerOptions = ['OVERWRITE=YES', 'TRUNCATE_FIELDS=YES']
+        if isinstance(path, pathlib.Path):
+            path = path.as_posix()
+
+        profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
+        if len(profiles) == 0:
+            return []
+
         newLayerName = exportSettings.get('layer_name', '')
         if newLayerName == '':
             newLayerName = os.path.basename(newLayerName)
 
-        options = exportSettings.get('options', dict())
-        options['driverName'] = 'GPKG'
+        ogrDataSourceOptions = []
+        ogrLayerOptions = [
+            f'IDENTIFIER={newLayerName}',
+            f'DESCRIPTION={newLayerName}']
 
-        assert isinstance(options, dict)
-        wkbType = exportSettings.get('wkbType', QgsWkbTypes.NoGeometry)
-        crs = QgsCoordinateReferenceSystem(exportSettings.get('crs', QgsCoordinateReferenceSystem()))
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
+        options.feedback = feedback
+        options.datasourceOptions = ogrDataSourceOptions
+        options.layerOptions = ogrLayerOptions
+        options.fileEncoding = 'UTF-8'
+        options.skipAttributeCreation = False
+        options.driverName = 'GPKG'
 
-        # writer: QgsVectorFileWriter = None
-        writer: QgsVectorLayerExporter = None
-        transformContext = QgsProject.instance().transformContext()
+        transformationContext = QgsCoordinateTransformContext()
 
-        fields: QgsFields = None
+        writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path,
+                                                                 fields,
+                                                                 wkbType,
+                                                                 crs,
+                                                                 transformationContext,
+                                                                 options)
+        if writer.hasError() != QgsVectorFileWriter.NoError:
+            raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
 
-        if Qgis.versionInt() < 32000:
-            successCode = QgsVectorLayerExporter.NoError
-        else:
-            successCode = Qgis.VectorExportResult.Success
+        if not writer.addFeatures(profiles):
+            if writer.errorCode() != QgsVectorFileWriter.NoError:
+                raise Exception(f'Error when creating feature: {writer.errorMessage()}')
 
-        for i, profile in enumerate(profiles):
-            if i == 0:
-                # init file writer based on 1st feature fields
-                fields = profile.fields()
-                writer = QgsVectorLayerExporter(path, 'ogr', profile.fields(), wkbType, crs,
-                                                options=options,
-                                                overwrite=True)
+        del writer
 
-                if writer.errorCode() != successCode:
-                    raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
-
-            if not writer.addFeature(profile):
-                if writer.errorCode() != successCode:
-                    raise Exception(f'Error when creating feature: {writer.errorMessage()}')
-
-        if True:
-            # set profile columns
-            lyr = QgsVectorLayer(path)
-
-            if lyr.isValid():
-                for name in fields.names():
-                    i = lyr.fields().lookupField(name)
-                    if i >= 0:
-                        lyr.setEditorWidgetSetup(i, fields.field(name).editorWidgetSetup())
-                msg, success = lyr.saveDefaultStyle()
-                print(msg)
+        cls.copyEditorWidgetSetup(path, fields)
 
         return [path]
 
     @classmethod
     def importProfiles(cls,
                        path: str,
-                       importSettings: dict,
-                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
+                       importSettings: dict = dict(),
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
         lyr = QgsVectorLayer(path)
         # todo: add filters
         return lyr.getFeatures()

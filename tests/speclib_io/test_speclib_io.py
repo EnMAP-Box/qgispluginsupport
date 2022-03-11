@@ -98,10 +98,10 @@ class TestIO(TestCase):
             speclib2 = SpectralLibrary.readFrom(uri, feedback=feedback)
             if speclib1 is None:
                 continue
-            self.assertIsInstance(speclib1, SpectralLibrary)
+            self.assertIsInstance(speclib1, QgsVectorLayer)
             self.assertTrue(len(speclib1) > 0)
 
-            self.assertIsInstance(speclib2, SpectralLibrary)
+            self.assertIsInstance(speclib2, QgsVectorLayer)
             self.assertTrue(len(speclib2) == len(speclib1))
 
     def test_writeTo(self):
@@ -127,7 +127,7 @@ class TestIO(TestCase):
                 CNT = SpectralLibraryUtils.countProfiles(sl2)
                 for k, cnt in CNT.items():
                     COUNTS2[k] = COUNTS2.get(k, 0) + cnt
-                self.assertIsInstance(sl2, SpectralLibrary)
+                self.assertIsInstance(sl2, QgsVectorLayer)
                 self.assertTrue(len(sl2) > 0)
             self.assertEqual(sum(COUNTS.values()), sum(COUNTS2.values()),
                              msg=f'Not all profiles written automatically: {path}')
@@ -165,7 +165,7 @@ class TestIO(TestCase):
 
             io: SpectralLibraryIO = w.spectralLibraryIO()
             self.assertIsInstance(io, SpectralLibraryIO)
-            files = io.exportProfiles(testpath, settings, features, feedback)
+            files = io.exportProfiles(testpath, features, settings, feedback)
             self.assertIsInstance(files, list)
             if len(files) == 0:
                 s = ""
@@ -218,7 +218,7 @@ class TestIO(TestCase):
             else:
                 profiles = speclib.getFeatures()
 
-            io.exportProfiles(path, settings, profiles, feedback)
+            io.exportProfiles(path, profiles, settings, feedback)
 
         dialog.accepted.connect(onAccepted)
 

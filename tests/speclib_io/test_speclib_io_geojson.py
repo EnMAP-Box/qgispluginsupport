@@ -66,7 +66,7 @@ class TestSpeclibIOGeoJSON(TestCase):
 
         path = testdir / 'exported_profiles2.geojson'
         feedback = QgsProcessingFeedback()
-        files = GeoJsonSpectralLibraryIO.exportProfiles(path, {}, sl.getFeatures(), feedback)
+        files = GeoJsonSpectralLibraryIO.exportProfiles(path, sl.getFeatures(), {}, feedback)
         self.assertEqual(len(files), 1)
         sl.startEditing()
         sl.deleteFeatures(sl.allFeatureIds())
@@ -104,9 +104,9 @@ class TestSpeclibIOGeoJSON(TestCase):
 
         path = testdir / 'exported_profiles.geojson'
         features = sl.getFeatures()
-        files = GeoJsonSpectralLibraryIO.exportProfiles(path, {}, features, feedback)
+        files = GeoJsonSpectralLibraryIO.exportProfiles(path, features, {}, feedback)
         self.assertEqual(len(files), 1)
-        files = GeoJsonSpectralLibraryIO.exportProfiles(path, {}, features, feedback)
+        files = GeoJsonSpectralLibraryIO.exportProfiles(path, features, {}, feedback)
         self.assertEqual(len(files), 1)
 
         files = SpectralLibraryUtils.writeToSource(sl, path)

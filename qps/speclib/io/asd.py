@@ -101,6 +101,8 @@ Offset Size Type Description Comment
 
 ASD_VERSIONS = ['ASD', 'asd', 'as6', 'as7', 'as8']
 
+RX_ASDFILE = re.compile(r'.*\.(asd|\d+)$')
+
 
 class SpectrumDataType(enum.IntEnum):
     RAW_TYPE = 0
@@ -223,12 +225,13 @@ class TM_STRUCT(object):
 
 
 ASD_FIELDS = QgsFields()
+ASD_FIELDS.append(QgsField('name', QVariant.String))
+ASD_FIELDS.append(create_profile_field('Reference'))
+ASD_FIELDS.append(create_profile_field('Spectrum'))
 ASD_FIELDS.append(QgsField('co', QVariant.String))
 ASD_FIELDS.append(QgsField('instrument', QVariant.String))
 ASD_FIELDS.append(QgsField('instrument_num', QVariant.Int))
 ASD_FIELDS.append(QgsField('sample_count', QVariant.Int))
-ASD_FIELDS.append(create_profile_field('Spectrum'))
-ASD_FIELDS.append(create_profile_field('Reference'))
 
 
 class ASDBinaryFile(object):
@@ -240,7 +243,7 @@ class ASDBinaryFile(object):
 
     def __init__(self, path: str = None):
         super(ASDBinaryFile, self).__init__()
-
+        self.name: str = ''
         # initialize all variables in the ASD Binary file header
         self.co: str = None
         self.comments: str = None
@@ -305,7 +308,6 @@ class ASDBinaryFile(object):
     def yValues(self) -> np.ndarray:
         warnings.warn('Use yValuesSpectrum', DeprecationWarning)
         return self.yValuesSpectrum()
-        return self.Spectrum
 
     def yValuesSpectrum(self) -> np.ndarray:
         return self.Spectrum
@@ -329,9 +331,9 @@ class ASDBinaryFile(object):
         x, y = GPS.longitude, GPS.latitude
         g = QgsGeometry.fromPointXY(QgsPointXY(x, y))
         f.setGeometry(g)
-
+        f.setAttribute('name', self.name)
         f.setAttribute('co', self.co)
-        f.setAttribute('instrument', self.instrument)
+        f.setAttribute('instrument', self.instrument.name)
         f.setAttribute('instrument_num', self.instrument_num)
         f.setAttribute('sample_count', self.sample_count)
 
@@ -357,9 +359,10 @@ class ASDBinaryFile(object):
         path = pathlib.Path(path)
         with open(path, 'rb') as f:
             DATA = f.read()
+            self.name = path.name
 
-            def sub(start, len):
-                return DATA[start:start + len]
+            def sub(start, length):
+                return DATA[start:start + length]
 
             def n_string(start: int) -> typing.Tuple[str, int]:
                 # 2 byte int for length
@@ -556,18 +559,28 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: str,
-                       importSettings: dict,
-                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
-        s = ""
+                       path: typing.Union[str, pathlib.Path],
+                       importSettings: dict = dict(),
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
         profiles = []
-        assert isinstance(path, str)
-        sources = QgsFileWidget.splitFilePaths(path)
+
+        if isinstance(path, str):
+            sources = QgsFileWidget.splitFilePaths(path)
+        elif isinstance(path, pathlib.Path):
+            sources = []
+            if path.is_dir():
+                for entry in os.scandir(path):
+                    if entry.is_file() and RX_ASDFILE.match(entry.name):
+                        sources.append(entry.path)
+            elif path.is_file():
+                sources.append(path.as_posix())
 
         # expected_fields = importSettings.get()
 
         rxCSV = re.compile(r'.*\.(csv|txt)$')
-        for file in sources:
+        feedback.setProgress(0)
+        n_total = len(sources)
+        for i, file in enumerate(sources):
             file = pathlib.Path(file)
 
             if rxCSV.search(file.name):
@@ -575,7 +588,7 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
             else:
                 asd: ASDBinaryFile = ASDBinaryFile(file)
                 profiles.append(asd.asFeature())
-
+            feedback.setProgress((i + 1) / n_total)
         return profiles
 
 

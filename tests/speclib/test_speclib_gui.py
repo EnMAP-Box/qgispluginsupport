@@ -554,7 +554,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertTrue(len(slib) > 0)
         slw = SpectralLibraryWidget()
         slw.speclib().startEditing()
-        slw.speclib().addSpeclib(slib)
+        slw.addSpeclib(slib)
 
         slw.mActionToggleEditing.setChecked(True)
 
@@ -578,7 +578,7 @@ class TestSpeclibWidgets(TestCase):
         slw = SpectralLibraryWidget()
         self.assertIsInstance(slw, SpectralLibraryWidget)
         sl = slw.speclib()
-        self.assertIsInstance(sl, SpectralLibrary)
+        self.assertIsInstance(sl, QgsVectorLayer)
         sl.startEditing()
 
         attr = QgsField(name='test',

@@ -404,8 +404,8 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def importProfiles(cls,
                        path: str,
-                       importSettings: dict,
-                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
+                       importSettings: dict = dict(),
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
 
         required_fields = QgsFields()
         if 'fields' in importSettings.keys():

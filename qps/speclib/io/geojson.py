@@ -1,11 +1,14 @@
 import os
 import pathlib
-import sys
 import typing
+
+import numpy as np
 
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsVectorFileWriter, QgsField, QgsProject, QgsWkbTypes, QgsVectorLayer, \
+from qgis.core import QgsVectorFileWriter, QgsField, QgsProject, QgsVectorLayer, \
+    QgsRemappingSinkDefinition, QgsExpressionContextScope, QgsCoordinateTransformContext, \
+    QgsRemappingProxyFeatureSink, \
     QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsCoordinateReferenceSystem
 from ..core import is_profile_field
@@ -102,16 +105,19 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
             name = field.name()
             idx = self.mFields.lookupField(name)
             if field.type() != QVariant.String and is_profile_field(field):
-                convertedField = QgsField(name=name, type=QVariant.String)
+                convertedField = QgsField(name=name, type=QVariant.String, typeName='string', len=-1)
                 self.mFieldDefinitions[name] = convertedField
-                if False:
-                    self.mFieldConverters[idx] = lambda v: 'dummy'
-                else:
-                    self.mFieldConverters[idx] = lambda v, f=convertedField: \
-                        encodeProfileValueDict(decodeProfileValueDict(v), convertedField)
+                self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
+
             else:
                 self.mFieldDefinitions[name] = QgsField(super().fieldDefinition(field))
                 self.mFieldConverters[idx] = lambda v: v
+
+    def convertProfileField(self, value, field: QgsField) -> str:
+        d = decodeProfileValueDict(value, numpy_arrays=True)
+        d['y'] = d['y'].astype(np.float16)
+        text = encodeProfileValueDict(d, field)
+        return text
 
     def clone(self) -> QgsVectorFileWriter.FieldValueConverter:
         return GeoJsonFieldValueConverter(self.mFields)
@@ -121,6 +127,12 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
     def fieldDefinition(self, field: QgsField) -> QgsField:
         return QgsField(self.mFieldDefinitions[field.name()])
+
+    def convertedFields(self) -> QgsFields:
+        fields = QgsFields()
+        for f in self.mFields:
+            fields.append(self.fieldDefinition(f))
+        return fields
 
 
 class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
@@ -143,9 +155,9 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def exportProfiles(cls,
                        path: str,
-                       exportSettings: dict,
-                       profiles: typing.Iterable[QgsFeature],
-                       feedback: QgsProcessingFeedback) -> typing.List[str]:
+                       profiles,
+                       exportSettings: dict = dict(),
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[str]:
 
         """
         :param fileName: file name to write to
@@ -155,13 +167,14 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         :param transformContext: coordinate transform context
         :param options: save options
         """
-        # writer: QgsVectorFileWriter = None
-        # saveVectorOptions = QgsVectorFileWriter.SaveVectorOptions()
-        # saveVectorOptions.feedback = feedback
-        # saveVectorOptions.driverName = 'GPKG'
-        # saveVectorOptions.symbologyExport = QgsVectorFileWriter.SymbolLayerSymbology
-        # saveVectorOptions.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteFile
-        # saveVectorOptions.layerOptions = ['OVERWRITE=YES', 'TRUNCATE_FIELDS=YES']
+
+        profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
+        if len(profiles) == 0:
+            return []
+
+        transformContext = QgsProject.instance().transformContext()
+        crsJson = QgsCoordinateReferenceSystem('EPSG:4326')
+
         newLayerName = exportSettings.get('layer_name', '')
         if newLayerName == '':
             newLayerName = os.path.basename(newLayerName)
@@ -171,7 +184,11 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         assert isinstance(datasourceOptions, dict)
 
         ogrDataSourceOptions = []  # 'ATTRIBUTES_SKIP=NO', 'DATE_AS_STRING=YES', 'ARRAY_AS_STRING=YES']
-        ogrLayerOptions = ['NATIVE_DATA=True']
+        ogrLayerOptions = [  # 'NATIVE_DATA=True',
+            'SIGNIFICANT_FIGURES=15',
+            'RFC7946=YES',
+            f'DESCRIPTION={newLayerName}'
+        ]
 
         options = QgsVectorFileWriter.SaveVectorOptions()
         options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
@@ -182,51 +199,59 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         options.skipAttributeCreation = False
         options.driverName = 'GeoJSON'
 
-        wkbType = exportSettings.get('wkbType', QgsWkbTypes.NoGeometry)
-        crs = QgsCoordinateReferenceSystem(exportSettings.get('crs', QgsCoordinateReferenceSystem()))
+        converter = GeoJsonFieldValueConverter(fields)
+        options.fieldValueConverter = converter
+        convertedFields = converter.convertedFields()
 
-        # writer: QgsVectorFileWriter = None
-        transformContext = QgsProject.instance().transformContext()
+        writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path,
+                                                                 convertedFields,
+                                                                 wkbType,
+                                                                 crsJson,
+                                                                 transformContext,
+                                                                 options)
+        # we might need to transform the coordinates to JSON EPSG:4326
+        sinkDefinition = QgsRemappingSinkDefinition()
+        sinkDefinition.setSourceCrs(crs)
+        sinkDefinition.setDestinationCrs(crsJson)
+        sinkDefinition.setDestinationFields(fields)
+        sinkDefinition.setDestinationWkbType(wkbType)
+        # do we need to map fields?
 
-        converter: GeoJsonFieldValueConverter = None
-        writer: QgsVectorFileWriter = None
-        fields: QgsFields = None
-        for i, profile in enumerate(profiles):
-            if writer is None:
+        expressionContext = QgsExpressionContext()
+        expressionContext.setFields(fields)
+        expressionContext.setFeedback(feedback)
 
-                fields = profile.fields()
-                converter = GeoJsonFieldValueConverter(fields)
-                options.fieldValueConverter = converter
-                writer = QgsVectorFileWriter.create(path, fields, wkbType, crs, transformContext, options)
+        scope = QgsExpressionContextScope()
+        scope.setFields(fields)
+        expressionContext.appendScope(scope)
+        transformationContext = QgsCoordinateTransformContext()
 
-                if writer.hasError() != QgsVectorFileWriter.NoError:
-                    raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
+        featureSink = QgsRemappingProxyFeatureSink(sinkDefinition, writer)
+        featureSink.setExpressionContext(expressionContext)
+        featureSink.setTransformContext(transformationContext)
 
-            if not writer.addFeature(profile):
-                if writer.errorCode() != QgsVectorFileWriter.NoError:
-                    raise Exception(f'Error when creating feature: {writer.errorMessage()}')
+        if writer.hasError() != QgsVectorFileWriter.NoError:
+            raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
+
+        featureSink.flushBuffer()
+
+        if not featureSink.addFeatures(profiles):
+            errSink = featureSink.lastError()
+            if writer.errorCode() != QgsVectorFileWriter.NoError:
+                raise Exception(f'Error when creating feature: {writer.errorMessage()}')
 
         del writer
 
         # set profile column styles etc.
-        lyr = QgsVectorLayer(path)
+        cls.copyEditorWidgetSetup(path, fields)
 
-        if lyr.isValid() and isinstance(fields, QgsFields):
-            for name in fields.names():
-                i = lyr.fields().lookupField(name)
-                if i >= 0:
-                    lyr.setEditorWidgetSetup(i, fields.field(name).editorWidgetSetup())
-            msg, success = lyr.saveDefaultStyle()
-            if success is False:
-                print(msg, file=sys.stderr)
-        del lyr
         return [path]
 
     @classmethod
     def importProfiles(cls,
                        path: str,
-                       importSettings: dict,
-                       feedback: QgsProcessingFeedback) -> typing.List[QgsFeature]:
+                       importSettings: dict = dict(),
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
         lyr = QgsVectorLayer(path)
         # todo: add filters
         features = list(lyr.getFeatures())

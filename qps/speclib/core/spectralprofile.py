@@ -185,7 +185,10 @@ def decodeProfileValueDict(dump: typing.Union[QByteArray, str], numpy_arrays: bo
     if numpy_arrays:
         for k in ['x', 'y', 'bbl']:
             if k in d.keys():
-                d[k] = np.asarray(d[k])
+                arr = np.asarray(d[k])
+                if arr.dtype == object:
+                    arr = arr.astype(float)
+                d[k] = arr
     return d
 
 
@@ -1002,7 +1005,7 @@ def groupBySpectralProperties(profiles: typing.Union[QgsVectorLayer, typing.List
                 pField = pFields.at(0)
             else:
                 pField = qgsField(p.fields(), profile_field)
-                pField = pFields[pField.name()]
+                pField = pFields.field(pField.name())
 
             assert is_profile_field(pField)
             pFieldIdx = p.fields().lookupField(pField.name())
