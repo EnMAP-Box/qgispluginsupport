@@ -31,7 +31,7 @@ from ..core.spectralprofile import prepareProfileValueDict, \
     encodeProfileValueDict
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
-from ...utils import rasterLayerArray, iconForFieldType, numpyToQgisDataType
+from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType
 
 
 def has_raster_io(alg: QgsProcessingAlgorithm) -> bool:
@@ -665,7 +665,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             info = f'Unable to open {lyr.source()}'
                             self.log(info, isError=True)
                         else:
-                            tmp = rasterLayerArray(lyr)
+                            tmp = rasterArray(lyr)
                             nb, nl, ns = tmp.shape
 
                             path1 = parameters[parameter.name()]

@@ -21,7 +21,7 @@ from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsF
 from qgis.core import QgsTask, QgsFeatureRequest
 from qgis.gui import QgsMapCanvas
 from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields, \
-    is_profile_field
+    is_profile_field, create_profile_field
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph import pyqtgraph as pg
@@ -126,18 +126,18 @@ class ProfileEncoding(enum.Enum):
         raise NotImplementedError(f'Unable to return ProfileEncoding for "{input}"')
 
 
-def encodeProfileValueDict(d: dict, field: typing.Union[str, QgsField, ProfileEncoding]) -> typing.Any:
+def encodeProfileValueDict(d: dict, encoding: typing.Union[str, QgsField, ProfileEncoding]) -> typing.Any:
     """
     Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
     :param d: dict
-    :param field: QgsField Field definition
+    :param encoding: QgsField Field definition
     :return: QByteArray or str, respecting the datatype that can be stored in field
     """
     if not isinstance(d, dict) or len(d) == 0:
         return None
 
-    encoding = ProfileEncoding.fromInput(field)
+    encoding = ProfileEncoding.fromInput(encoding)
 
     d2 = {}
     for k in EMPTY_PROFILE_VALUES.keys():
@@ -167,7 +167,7 @@ def encodeProfileValueDict(d: dict, field: typing.Union[str, QgsField, ProfileEn
         return bytes(jsonDoc.toJson(QJsonDocument.Compact)).decode('UTF-8')
 
 
-def decodeProfileValueDict(dump: typing.Union[QByteArray, str], numpy_arrays: bool = False) -> dict:
+def decodeProfileValueDict(dump: typing.Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
     """
     Converts a text / json / pickle / bytes representation of a SpectralProfile into a dictionary.
 
@@ -266,17 +266,21 @@ class SpectralSetting(object):
                                )
 
     @classmethod
-    def fromByteArray(cls, ba: QByteArray) -> 'SpectralSetting':
-        if not isinstance(ba, QByteArray):
+    def fromValue(cls, value) -> 'SpectralSetting':
+        d: dict = decodeProfileValueDict(value)
+        if len(d) > 0:
+            return SpectralSetting.fromDictionary(d)
+        else:
             return None
-        return SpectralSetting.fromDictionary(decodeProfileValueDict(ba))
 
     def __init__(self,
                  x: typing.Union[None, tuple, list, np.ndarray],
                  xUnit: str = None,
                  yUnit: str = None,
                  bbl: typing.Union[tuple, list, np.ndarray] = None,
-                 field_name: str = None):
+                 field: QgsField = None,
+                 field_name: str = None,
+                 field_encoding: ProfileEncoding = None):
 
         assert x is None or isinstance(x, (tuple, list, np.ndarray)), f'{x}'
 
@@ -296,7 +300,17 @@ class SpectralSetting(object):
         self.mHash = hash((self.mX, self.mXUnit, self.mYUnit, self.mBadBandList))
 
         # other properties, which will not be used to distinct SpectralSettings from each other
-        self.mFieldName: str = field_name
+        self.mFieldEncoding = ProfileEncoding.Text
+        if isinstance(field, QgsField):
+            self.mFieldName = field.name()
+            self.mFieldEncoding = ProfileEncoding.fromInput(field)
+        else:
+            self.mFieldName: str = field_name
+            if field_encoding:
+                self.mFieldEncoding = ProfileEncoding.fromInput(field_encoding)
+
+    def fieldEncoding(self) -> ProfileEncoding:
+        return self.mFieldEncoding
 
     def fieldName(self) -> str:
         """
@@ -1397,16 +1411,21 @@ class SpectralProfileBlock(object):
         self.mPositionsY = pos_y
         self.mCrs = crs
 
-    def profiles(self) -> typing.Iterable[SpectralProfile]:
+    def profiles(self) -> typing.Iterable[QgsFeature]:
         """
         Returns the profile block data as SpectralProfiles
         :return: iterator
         """
+        fields = QgsFields()
+        fieldName = self.spectralSetting().fieldName()
+        fieldEncoding: ProfileEncoding = self.spectralSetting().fieldEncoding()
+        fields.append(create_profile_field(name=fieldName, encoding=fieldEncoding))
 
-        for fid, byteArray, geometry in self.profileValueDictionaries():
-            profile = SpectralProfile(id=fid)
+        for fid, d, geometry in self.profileValueDictionaries():
+            profile = QgsFeature(fields)
+            profile.setId(fid)
             profile.setGeometry(geometry)
-            profile.setAttribute(profile.currentProfileField(), profile.fields().at(profile.currentProfileField()))
+            profile.setAttribute(fieldName, encodeProfileValueDict(d, fieldEncoding))
             yield profile
 
     def __iter__(self):

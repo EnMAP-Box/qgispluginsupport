@@ -26,7 +26,6 @@
 """
 
 import datetime
-import enum
 # see http://python-future.org/str_literals.html for str issue discussion
 import json
 import os
@@ -34,9 +33,9 @@ import pathlib
 import pickle
 import re
 import sys
-import typing
 import warnings
 import weakref
+from typing import List, Union, Tuple, Dict, Optional, Generator
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
@@ -49,7 +48,7 @@ from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsFeature, QgsVectorLayer, QgsRasterLayer, \
     QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, QgsActionManager, QgsFeatureRequest, \
     QgsGeometry, QgsPoint, QgsDefaultValue, QgsMapLayerProxyModel, \
-    QgsEditorWidgetSetup, QgsAction, QgsMessageLog, QgsProcessingFeedback, \
+    QgsEditorWidgetSetup, QgsAction, QgsProcessingFeedback, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
 from qgis.gui import \
@@ -58,7 +57,7 @@ from . import field_index
 from . import profile_field_list, first_profile_field_index, create_profile_field, \
     is_spectral_library
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
-    SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, encodeProfileValueDict
+    SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, encodeProfileValueDict, ProfileEncoding
 from .. import FIELD_VALUES
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
@@ -124,11 +123,6 @@ for i in range(ogr.GetDriverCount()):
 OGR_EXTENSION2DRIVER[None] = OGR_EXTENSION2DRIVER['']
 
 DEBUG = os.environ.get('DEBUG', 'false').lower() in ['true', '1']
-
-
-class SerializationMode(enum.Enum):
-    JSON = 1
-    PICKLE = 2
 
 
 def read_profiles(*args, **kwds):
@@ -261,21 +255,44 @@ class SpectralLibraryUtils:
     """
 
     @staticmethod
-    def writeToSource(*args, **kwds) -> typing.List[str]:
+    def createProfileField(
+            name: str,
+            comment: str = 'SpectralProfile Field',
+            encoding: ProfileEncoding = ProfileEncoding.Bytes) -> QgsField:
+        """
+        Creates a QgsField that can store spectral profiles
+        :param name: field name
+        :param comment: field comment, optional
+        :return: QgsField
+        """
+        encoding = ProfileEncoding.fromInput(encoding)
+        if encoding == ProfileEncoding.Bytes:
+            field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
+        elif encoding == ProfileEncoding.Text:
+            field = QgsField(name=name, type=QVariant.String, len=0, comment=comment)
+        elif encoding == ProfileEncoding.Json:
+            field = QgsField(name=name, type=8, comment=comment)
+
+        setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+        field.setEditorWidgetSetup(setup)
+        return field
+
+    @staticmethod
+    def writeToSource(*args, **kwds) -> List[str]:
         from .spectrallibraryio import SpectralLibraryIO
         return SpectralLibraryIO.writeToSource(*args, **kwds)
 
     @staticmethod
-    def readFromSource(uri: str, feedback: QgsProcessingFeedback = None):
+    def readFromSource(uri: str, feedback: QgsProcessingFeedback = QgsProcessingFeedback()):
         from .spectrallibraryio import SpectralLibraryIO
         return SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
 
     @staticmethod
-    def groupBySpectralProperties(*args, **kwds) -> typing.Dict[SpectralSetting, typing.List[QgsFeature]]:
+    def groupBySpectralProperties(*args, **kwds) -> Dict[SpectralSetting, List[QgsFeature]]:
         return groupBySpectralProperties(*args, **kwds)
 
     @staticmethod
-    def readFromVectorLayer(source: typing.Union[str, QgsVectorLayer]) -> QgsVectorLayer:
+    def readFromVectorLayer(source: Union[str, QgsVectorLayer]) -> Optional[QgsVectorLayer]:
         """
         Returns a vector layer as Spectral Library vector layer.
         It is assumed that binary fields without special editor widget setup are Spectral Profile fields.
@@ -291,10 +308,10 @@ class SpectralLibraryUtils:
             return None
 
         # assume that binary fields without other editor widgets are Spectral Profile Widgets
-        for i in range(source.fields().count()):
-            field: QgsField = source.fields().at(i)
+        for idx in range(source.fields().count()):
+            field: QgsField = source.fields().at(idx)
             if field.type() == QVariant.ByteArray and field.editorWidgetSetup().type() == '':
-                source.setEditorWidgetSetup(i, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
+                source.setEditorWidgetSetup(idx, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
         if not is_spectral_library(source):
             return None
@@ -302,7 +319,7 @@ class SpectralLibraryUtils:
         return source
 
     @staticmethod
-    def readFromMimeData(mimeData: QMimeData) -> QgsVectorLayer:
+    def readFromMimeData(mimeData: QMimeData) -> Optional[QgsVectorLayer]:
         """
         Reads a SpectraLibrary from mime data.
         :param mimeData: QMimeData
@@ -339,7 +356,7 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def createSpectralLibrary(
-            profile_fields: typing.List[str] = ['profiles'],
+            profile_fields: List[str] = ['profiles'],
             name: str = DEFAULT_NAME) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
@@ -367,12 +384,7 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def addAttribute(speclib: QgsVectorLayer, field: QgsField) -> bool:
-        # workaround for https://github.com/qgis/QGIS/issues/43261
-        if isinstance(speclib, SpectralLibrary):
-            success = super(SpectralLibrary, speclib).addAttribute(field)
-        else:
-            success = speclib.addAttribute(field)
-
+        success = speclib.addAttribute(field)
         if success:
             i = speclib.fields().lookupField(field.name())
             if i > -1:
@@ -496,10 +508,10 @@ class SpectralLibraryUtils:
     def addSpeclib(speclibDst, speclibSrc,
                    addMissingFields: bool = True,
                    copyEditorWidgetSetup: bool = True,
-                   feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[int]:
+                   feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[int]:
         """
         Adds profiles from another SpectraLibrary
-        :param speclib: SpectralLibrary
+        :param speclibDst: QgsVectorLayer
         :param addMissingFields: if True (default), missing fields / attributes will be added automatically
         :param copyEditorWidgetSetup: if True (default), the editor widget setup will be copied
                for each added profile_field
@@ -522,11 +534,11 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def addProfiles(speclib: QgsVectorLayer,
-                    profiles: typing.Union[QgsFeature, typing.List[QgsFeature], QgsVectorLayer],
+                    profiles: Union[QgsFeature, List[QgsFeature], QgsVectorLayer],
                     crs: QgsCoordinateReferenceSystem = None,
                     addMissingFields: bool = False,
                     copyEditorWidgetSetup: bool = True,
-                    feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[int]:
+                    feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[int]:
 
         assert isinstance(speclib, QgsVectorLayer)
         assert speclib.isEditable(), 'SpectralLibrary "{}" is not editable. call startEditing() first'.format(
@@ -604,7 +616,7 @@ class SpectralLibraryUtils:
         return fids_inserted
 
     @staticmethod
-    def setProfileValues(feature: QgsFeature, *args, field: typing.Union[int, str, QgsField] = None, **kwds):
+    def setProfileValues(feature: QgsFeature, *args, field: Union[int, str, QgsField] = None, **kwds):
         if field is None:
             # use the first profile field by default
             field = profile_field_list(feature)[0]
@@ -622,7 +634,7 @@ class SpectralLibraryUtils:
 
         features = list(layer.getFeatures(fids))
 
-        sl = SpectralLibrary()
+        sl = SpectralLibraryUtils.createSpectralLibrary(profile_fields=[])
         sl.startEditing()
         SpectralLibraryUtils.addMissingFields(sl, layer.fields())
         sl.addFeatures(features)
@@ -632,20 +644,16 @@ class SpectralLibraryUtils:
     @staticmethod
     def renameAttribute(speclib: QgsVectorLayer, index, newName):
         setup = speclib.editorWidgetSetup(index)
-        if isinstance(speclib, SpectralLibrary):
-            super(SpectralLibrary, speclib).renameAttribute(index, newName)
-        else:
-            speclib.renameAttribute(index, newName)
+        speclib.renameAttribute(index, newName)
         speclib.setEditorWidgetSetup(index, setup)
 
     @staticmethod
     def profileBlocks(speclib: QgsVectorLayer,
                       fids=None,
-                      profile_field: typing.Union[int, str, QgsField] = None,
-                      ) -> typing.List[SpectralProfileBlock]:
+                      profile_field: Union[int, str, QgsField] = None,
+                      ) -> List[SpectralProfileBlock]:
         """
         Reads SpectralProfiles into profile blocks with different spectral settings
-        :param blob:
         :return:
         """
         if profile_field is None:
@@ -656,7 +664,7 @@ class SpectralLibraryUtils:
         )
 
     @staticmethod
-    def countProfiles(speclib: QgsVectorLayer) -> typing.Dict[str, int]:
+    def countProfiles(speclib: QgsVectorLayer) -> Dict[str, int]:
         COUNTS = dict()
         for field in profile_field_list(speclib):
             requests = QgsFeatureRequest()
@@ -676,10 +684,10 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def profiles(vectorlayer: QgsVectorLayer,
-                 fids: typing.List[int] = None,
-                 profile_field: typing.Union[int, str, QgsField] = None,
+                 fids: List[int] = None,
+                 profile_field: Union[int, str, QgsField] = None,
                  ) -> \
-            typing.Generator[SpectralProfile, None, None]:
+            Generator[SpectralProfile, None, None]:
         """
         Reads SpectralProfiles from a vector layers BLOB 'profile_field'.
 
@@ -689,8 +697,6 @@ class SpectralLibraryUtils:
         :param vectorlayer:
         :param profile_field:
         :type profile_field:
-        :param profile_keys:
-        :type profile_keys:
         :param fids: optional, [int-list-of-feature-ids] to return
         :return: generator of [List-of-SpectralProfiles]
         """
@@ -725,7 +731,7 @@ class SpectralLibraryUtils:
         return w
 
     @staticmethod
-    def copyEditorWidgetSetup(speclib: QgsVectorLayer, fields: typing.Union[QgsVectorLayer, typing.List[QgsField]]):
+    def copyEditorWidgetSetup(speclib: QgsVectorLayer, fields: Union[QgsVectorLayer, List[QgsField]]):
         """
 
         :param fields:
@@ -814,7 +820,7 @@ class SpectralLibrary(QgsVectorLayer):
                        all_touched: bool = False,
                        cache: int = 5 * 2 ** 20,
                        copy_attributes: bool = False,
-                       block_size: typing.Tuple[int, int] = None,
+                       block_size: Tuple[int, int] = None,
                        return_profile_list: bool = False):
         """
         Reads SpectraProfiles from a raster source, based on the locations specified in a vector data set.
@@ -928,7 +934,7 @@ class SpectralLibrary(QgsVectorLayer):
 
         PROFILE_COUNTS = dict()
 
-        FEATURES: typing.Dict[int, QgsFeature] = dict()
+        FEATURES: Dict[int, QgsFeature] = dict()
 
         block_profiles = []
 
@@ -1153,7 +1159,7 @@ class SpectralLibrary(QgsVectorLayer):
                  provider: str = 'ogr',
                  options: QgsVectorLayer.LayerOptions = None,
                  fields: QgsFields = None,
-                 profile_fields: typing.List[str] = [FIELD_VALUES],
+                 profile_fields: List[str] = [FIELD_VALUES],
                  create_name_field: bool = True):
         """
         Create a SpectralLibrary, i.e. a QgsVectorLayer with one or multiple binary fields that use the
@@ -1183,7 +1189,7 @@ class SpectralLibrary(QgsVectorLayer):
             path = f"point?crs=epsg:{SPECLIB_EPSG_CODE}"
             # scratchLayer = QgsVectorLayer(uri, "Scratch point layer", "memory")
         assert isinstance(path, str)
-        super(SpectralLibrary, self).__init__(path, baseName, provider, options)
+        super().__init__(path, baseName, provider, options)
 
         self.setCustomProperty('skipMemoryLayerCheck', 1)
 
@@ -1298,7 +1304,7 @@ class SpectralLibrary(QgsVectorLayer):
                                   fids=None,
                                   profile_field=None,
                                   excludeEmptyProfiles: bool = True
-                                  ) -> typing.Dict[SpectralSetting, typing.List[SpectralProfile]]:
+                                  ) -> Dict[SpectralSetting, List[SpectralProfile]]:
         """
         Returns SpectralProfiles grouped by key = (xValues, xUnit and yUnit):
 
@@ -1319,8 +1325,8 @@ class SpectralLibrary(QgsVectorLayer):
         warnings.warn('Use SpectralLibrary.write() instead', DeprecationWarning)
         return self.write(*args, **kwds)
 
-    def writeRasterImages(self, pathOne: typing.Union[str, pathlib.Path], drv: str = 'GTiff') -> \
-            typing.List[pathlib.Path]:
+    def writeRasterImages(self, pathOne: Union[str, pathlib.Path], drv: str = 'GTiff') -> \
+            List[pathlib.Path]:
         warnings.warn('will be removed', DeprecationWarning)
         """
         Writes the SpectralLibrary into images of same spectral properties
@@ -1374,10 +1380,10 @@ class SpectralLibrary(QgsVectorLayer):
 
     def write(self, uri,
               settings: dict = None,
-              feedback: QgsProcessingFeedback = None) -> typing.List[str]:
+              feedback: QgsProcessingFeedback = None) -> List[str]:
         return SpectralLibraryUtils.writeToSource(self, uri, settings=settings, feedback=feedback)
 
-    def spectralProfileFields(self) -> typing.List[QgsField]:
+    def spectralProfileFields(self) -> List[QgsField]:
         return profile_field_list(self)
 
     def __repr__(self):
@@ -1464,7 +1470,7 @@ class SpectralLibrary(QgsVectorLayer):
     def __iter__(self):
         return self.profiles()
 
-    def __getitem__(self, slice) -> typing.Union[SpectralProfile, typing.List[SpectralProfile]]:
+    def __getitem__(self, slice) -> Union[SpectralProfile, List[SpectralProfile]]:
         fids = sorted(self.allFeatureIds())[slice]
         fields = self.spectralProfileFields()
         if len(fields) > 0:

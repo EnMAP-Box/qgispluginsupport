@@ -46,25 +46,23 @@ import warnings
 import weakref
 import zipfile
 from collections import defaultdict
+from typing import Union
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
-
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL
-from qgis.PyQt.QtCore import QPoint, QRect, QObject, QPointF, QDirIterator, QDateTime, QDate, QVariant, QByteArray, QUrl
+from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
+    QDateTime, QDate, QVariant, QByteArray, QUrl
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QAction, QMenu, QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
-from qgis.PyQt.QtWidgets import QComboBox, QWidget
-from qgis.PyQt.QtWidgets import QHBoxLayout
-from qgis.PyQt.QtXml import QDomDocument
-from qgis.PyQt.QtXml import QDomNode, QDomElement
+from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
+    QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
+from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
     QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
     QgsFields
-from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsDataProvider, QgsEditorWidgetSetup, \
-    QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm
+from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
+    QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 
@@ -2515,18 +2513,23 @@ class SpatialPoint(QgsPointXY):
         return '{} {} {}'.format(self.x(), self.y(), self.crs().authid())
 
 
-def px2spatialPoint(layer: QgsRasterLayer,
+def px2spatialPoint(rasterInterface: Union[QgsRasterInterface, QgsRasterLayer],
                     px: QPoint,
                     subpixel_pos: float = 0.5,
                     subpixel_pos_x: float = None,
                     subpixel_pos_y: float = None) -> SpatialPoint:
     """
     Returns the pixel center as coordinate in a raster layer's CRS
-    :param layer: QgsRasterLayer
+    :param rasterInterface: QgsRasterLayer
     :param px: QPoint pixel position (0,0) = 1st pixel
     :return: SpatialPoint
     """
-    assert isinstance(layer, QgsRasterLayer) and layer.isValid()
+    if isinstance(rasterInterface, QgsRasterLayer):
+        assert rasterInterface.isValid()
+        rasterInterface = rasterInterface.dataProvider()
+
+    assert isinstance(rasterInterface, QgsRasterInterface)
+
     # assert 0 <= px.x() < layer.width()
     # assert 0 <= px.y() < layer.height()
     assert 0 <= subpixel_pos <= 1.0
@@ -2540,12 +2543,12 @@ def px2spatialPoint(layer: QgsRasterLayer,
     assert 0 <= subpixel_pos_x <= 1.0
     assert 0 <= subpixel_pos_y <= 1.0
 
-    ext: QgsRectangle = layer.extent()
+    ext: QgsRectangle = rasterInterface.extent()
 
-    resX = layer.extent().width() / layer.width()
-    resY = layer.extent().height() / layer.height()
+    resX = rasterInterface.extent().width() / rasterInterface.xSize()
+    resY = rasterInterface.extent().height() / rasterInterface.ySize()
 
-    return SpatialPoint(layer.crs(),
+    return SpatialPoint(rasterInterface.crs(),
                         ext.xMinimum() + (px.x() + subpixel_pos_x) * resX,
                         ext.yMaximum() - (px.y() + subpixel_pos_y) * resY)
 
@@ -2943,14 +2946,20 @@ class SpatialExtent(QgsRectangle):
         return '{} {} {}'.format(self.upperLeft(), self.lowerRight(), self.crs().authid())
 
 
-def rasterLayerArray(layer: QgsRasterLayer,
-                     rect: typing.Union[QRect, QgsRasterLayer, SpatialExtent] = None,
-                     ul: typing.Union[SpatialPoint, QPoint] = None,
-                     lr: typing.Union[SpatialPoint, QPoint] = None,
-                     bands: typing.Union[str, int, typing.List[int]] = None) -> np.ndarray:
+def rasterLayerArray(*args, **kwds):
+    warnings.warn(
+        DeprecationWarning('Use rasterArray() instead, which supports QgsRasterLayers and QgsRasterInterfaces'))
+    return rasterArray(*args, **kwds)
+
+
+def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
+                rect: typing.Union[QRect, QgsRasterInterface, SpatialExtent] = None,
+                ul: typing.Union[SpatialPoint, QPoint] = None,
+                lr: typing.Union[SpatialPoint, QPoint] = None,
+                bands: typing.Union[str, int, typing.List[int]] = None) -> np.ndarray:
     """
-    Returns the raster values of a QgsRasterLayer as 3D numpy array of shape (bands, height, width)
-    :param layer: QgsRasterLayer
+    Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of shape (bands, height, width)
+    :param rasterInterface: QgsRasterLayer
     :param ul: upper-left corner,
                can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
                defaults to raster layers upper-left corner
@@ -2960,19 +2969,23 @@ def rasterLayerArray(layer: QgsRasterLayer,
     :param bands: list of bands to return. defaults to "all". 1st band = [1]
     :return: numpy.ndarray
     """
-    layer = qgsRasterLayer(layer)
+    if not isinstance(rasterInterface, QgsRasterInterface):
+        rasterInterface = qgsRasterLayer(rasterInterface)
+        assert isinstance(rasterInterface, QgsRasterLayer)
+        rasterInterface = rasterInterface.dataProvider()
+    assert isinstance(rasterInterface, QgsRasterInterface)
 
-    ext = layer.extent()
-    resX = ext.width() / layer.width()
-    resY = ext.height() / layer.height()
+    ext = rasterInterface.extent()
+    resX = ext.width() / rasterInterface.xSize()
+    resY = ext.height() / rasterInterface.ySize()
 
     if rect:
         if isinstance(rect, SpatialExtent):
-            rect = rect.toCrs(layer.crs())
+            rect = rect.toCrs(rasterInterface.crs())
 
         if isinstance(rect, QgsRectangle):
-            ul = SpatialPoint(layer.crs(), rect.xMinimum(), rect.yMaximum())
-            lr = SpatialPoint(layer.crs(), rect.xMaximum(), rect.yMinimum())
+            ul = SpatialPoint(rasterInterface.crs(), rect.xMinimum(), rect.yMaximum())
+            lr = SpatialPoint(rasterInterface.crs(), rect.xMaximum(), rect.yMinimum())
         elif isinstance(rect, QRect):
             ul = QPoint(rect.x(), rect.y())
             lr = QPoint(rect.x() + rect.width() - 1,
@@ -2982,30 +2995,30 @@ def rasterLayerArray(layer: QgsRasterLayer,
 
     if not isinstance(ul, SpatialPoint):
         if isinstance(ul, QPoint):
-            ul = px2spatialPoint(layer, ul, subpixel_pos=0.0)
+            ul = px2spatialPoint(rasterInterface, ul, subpixel_pos=0.0)
         elif isinstance(ul, QgsPointXY):
-            ul = SpatialPoint(layer.crs(), ul.x(), ul.y())
+            ul = SpatialPoint(rasterInterface.crs(), ul.x(), ul.y())
         elif ul is None:
-            ul = SpatialPoint(layer.crs(), ext.xMinimum(), ext.yMaximum())
+            ul = SpatialPoint(rasterInterface.crs(), ext.xMinimum(), ext.yMaximum())
 
     assert isinstance(ul, SpatialPoint)
-    ul = ul.toCrs(layer.crs())
+    ul = ul.toCrs(rasterInterface.crs())
 
     if not isinstance(lr, SpatialPoint):
         if isinstance(lr, QPoint):
-            lr = px2spatialPoint(layer, lr, subpixel_pos=1.0)
+            lr = px2spatialPoint(rasterInterface, lr, subpixel_pos=1.0)
         elif isinstance(lr, QgsPointXY):
-            lr = SpatialPoint(layer.crs(), lr.x(), lr.y())
+            lr = SpatialPoint(rasterInterface.crs(), lr.x(), lr.y())
         elif lr is None:
-            lr = SpatialPoint(layer.crs(), ext.xMaximum(), ext.yMinimum())
+            lr = SpatialPoint(rasterInterface.crs(), ext.xMaximum(), ext.yMinimum())
 
     assert isinstance(lr, SpatialPoint)
-    lr = lr.toCrs(layer.crs())
+    lr = lr.toCrs(rasterInterface.crs())
 
     assert isinstance(lr, SpatialPoint)
 
     if bands in [None, 'all', '*']:
-        bands = list(range(1, layer.bandCount() + 1))
+        bands = list(range(1, rasterInterface.bandCount() + 1))
 
     boundingBox: QgsRectangle = QgsRectangle(ul, lr)
 
@@ -3017,7 +3030,8 @@ def rasterLayerArray(layer: QgsRasterLayer,
         height_px = int(round(boundingBox.height() / resY))
 
     # npx = width_px * height_px
-    dp: QgsDataProvider = layer.dataProvider()
+
+    dp = rasterInterface
     result_array: np.ndarray = None
     bands = sorted(set(bands))
     nb = len(bands)

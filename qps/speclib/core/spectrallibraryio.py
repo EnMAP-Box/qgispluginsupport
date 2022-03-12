@@ -512,7 +512,7 @@ class SpectralLibraryIO(QObject):
             profiles = SpectralLibraryIO.readProfilesFromUri(uri)
             if len(profiles) > 0:
                 referenceProfile = profiles[0]
-                from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+                from .spectrallibrary import SpectralLibraryUtils
                 speclib = SpectralLibraryUtils.createSpectralLibrary(referenceProfile.fields())
                 speclib.startEditing()
                 speclib.beginEditCommand('Add profiles')

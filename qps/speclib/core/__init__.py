@@ -1,24 +1,13 @@
 import typing
 
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsEditorWidgetSetup
 from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
 from ...speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 
-def create_profile_field(name: str, comment: str = None) -> QgsField:
-    """
-    Creates a QgsField to store spectral profiles
-    :param name: field name
-    :param comment: field comment, optional
-    :return: QgsField
-    """
-    if not isinstance(comment, str):
-        comment = 'Spectral Profile Field'
-    field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
-    setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
-    field.setEditorWidgetSetup(setup)
-    return field
+def create_profile_field(*args, **kwds) -> QgsField:
+    from .spectrallibrary import SpectralLibraryUtils
+    return SpectralLibraryUtils.createProfileField(*args, **kwds)
 
 
 def supports_field(field: QgsField) -> bool:

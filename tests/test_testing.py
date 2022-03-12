@@ -158,9 +158,8 @@ class test_TestObject(qps.testing.TestCase):
 
     def test_Speclibs(self):
         from qps.testing import TestObjects
-        from qps.speclib.core.spectrallibrary import SpectralLibrary
         slib = TestObjects.createSpectralLibrary(7)
-        self.assertIsInstance(slib, SpectralLibrary)
+        self.assertIsInstance(slib, QgsVectorLayer)
         self.assertTrue(len(slib) == 7)
 
 

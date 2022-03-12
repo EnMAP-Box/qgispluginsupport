@@ -30,12 +30,11 @@ import typing
 import warnings
 
 import numpy as np
-
-from qgis.PyQt.QtCore import QVariant, Qt, QUrl
-from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
 from osgeo import gdal
 
 from qgis.PyQt import sip
+from qgis.PyQt.QtCore import QVariant, Qt, QUrl
+from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
 from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY, QgsPoint
 from qgis.core import QgsProviderRegistry
@@ -44,12 +43,12 @@ from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
 from qgis.gui import QgsMapLayerComboBox
 from .. import speclibUiPath
 from ..core import create_profile_field
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
+from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget, \
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
-    rasterLayerArray, qgsRasterLayer, px2geocoordinatesV2, optimize_block_size, px2geocoordinates, fid2pixelindices
+    rasterArray, qgsRasterLayer, px2geocoordinatesV2, optimize_block_size, px2geocoordinates, fid2pixelindices
 
 PIXEL_LIMIT = 100 * 100
 
@@ -170,16 +169,13 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer)
                                    and QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
 
-    def profiles(self) -> typing.List[SpectralProfile]:
+    def profiles(self) -> typing.List[QgsFeature]:
         return self.mProfiles[:]
 
     def speclib(self) -> SpectralLibrary:
-        slib = SpectralLibrary()
+        slib = SpectralLibraryUtils.createSpectralLibrary(profile_fields=[])
         slib.startEditing()
-        if len(self.mProfiles) > 0:
-            slib.addMissingFields(self.mProfiles[0].fields())
-
-        slib.addProfiles(self.mProfiles, addMissingFields=False)
+        SpectralLibraryUtils.addProfiles(slib, self.mProfiles, addMissingFields=True)
         slib.commitChanges()
         return slib
 
@@ -470,7 +466,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
             wl = wlu = fwhm = bbl = None
 
         # each none-masked pixel is a profile
-        array = rasterLayerArray(raster)
+        array = rasterArray(raster)
 
         # todo: add multi-band masking options
         valid = np.isfinite(array[0, :])

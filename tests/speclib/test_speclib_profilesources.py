@@ -12,7 +12,6 @@ from qgis.core import QgsRasterLayer, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
 from qps import initAll
 from qps.maptools import CursorLocationMapTool
-from qps.speclib.core.spectrallibrary import SpectralLibrary
 from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, \
@@ -22,7 +21,7 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode
 from qps.testing import TestCase
 from qps.testing import TestObjects, StartOptions
-from qps.utils import SpatialPoint, spatialPoint2px, parseWavelength, rasterLayerArray, SpatialExtent
+from qps.utils import SpatialPoint, spatialPoint2px, parseWavelength, rasterArray, SpatialExtent
 
 
 class SpectralProcessingTests(TestCase):
@@ -40,7 +39,7 @@ class SpectralProcessingTests(TestCase):
 
         n_features = 5000
         # sl = TestObjects.createVectorLayer(n_features=n_features)
-        sl: SpectralLibrary = TestObjects.createSpectralLibrary(n_features, n_bands=[177])
+        sl: QgsVectorLayer = TestObjects.createSpectralLibrary(n_features, n_bands=[177])
         self.assertEqual(sl.featureCount(), n_features)
         c = QgsMapCanvas()
         if True:
@@ -305,7 +304,7 @@ class SpectralProcessingTests(TestCase):
 
         # simulate reading of requested inputBlock
         self.assertEqual(lyr, description.layer())
-        array = rasterLayerArray(lyr, description.rect())
+        array = rasterArray(lyr, description.rect())
         self.assertEqual(array.shape, (lyr.bandCount(), description.rect().height(), description.rect().width()))
         wl, wlu = parseWavelength(lyr)
         spectral_setting = SpectralSetting(wl, xUnit=wlu)

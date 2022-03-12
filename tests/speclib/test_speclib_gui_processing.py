@@ -4,22 +4,21 @@ import typing
 import unittest
 
 import xmlrunner
-from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import QgsVectorLayer
-from qgis.gui import QgsMapCanvas, QgsDualView
 
+from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QGridLayout
+from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm, QgsProject, QgsProcessingModelOutput, \
     QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingParameterRasterLayer, \
     QgsProcessingOutputRasterLayer, QgsProcessingFeedback, QgsProcessingContext, QgsProcessingModelAlgorithm, \
     QgsProcessingRegistry, QgsApplication
+from qgis.core import QgsVectorLayer
 from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator, \
     QgsProcessingAlgorithmDialogBase
+from qgis.gui import QgsMapCanvas, QgsDualView
 from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
 from qps import initAll
 from qps.speclib.core import profile_field_list
-from qps.speclib.core.spectrallibrary import SpectralLibrary
 from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
@@ -56,7 +55,7 @@ class SpectralProcessingTests(TestCase):
 
         n_features = 5000
         # sl = TestObjects.createVectorLayer(n_features=n_features)
-        sl: SpectralLibrary = TestObjects.createSpectralLibrary(n_features, n_bands=[177])
+        sl: QgsVectorLayer = TestObjects.createSpectralLibrary(n_features, n_bands=[177])
         self.assertEqual(sl.featureCount(), n_features)
         c = QgsMapCanvas()
         if True:

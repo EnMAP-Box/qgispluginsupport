@@ -1,5 +1,6 @@
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
-from qgis.core import QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRasterRange, QgsMapLayerStore, QgsRasterPipe
+from qgis.core import QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRasterRange, QgsMapLayerStore, \
+    QgsRasterPipe
 
 from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 
@@ -7,9 +8,10 @@ from qps import initResources
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider, \
     VectorLayerFieldRasterDataProvider, createRasterLayers
-from qps.speclib.core.spectralprofile import SpectralSetting
+from qps.speclib.core.spectralprofile import SpectralSetting, decodeProfileValueDict
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase
+from qps.utils import rasterArray
 
 
 class RasterDataProviderTests(TestCase):
@@ -124,12 +126,22 @@ class RasterDataProviderTests(TestCase):
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
             setting = dp.spectralSetting()
             self.assertIsInstance(setting, SpectralSetting)
-            self.assertTrue(len(dp.activeFeatureIds()) == (n_total - n_empty))
+            self.assertEqual(dp.bandCount(), setting.n_bands())
+
+            # read entire raster image
+            array = rasterArray(dp)
+            self.assertEqual(array.shape, (setting.n_bands(), 1, n_total))
+
+            # check for each profile its raster band values
+            for iPx, fid in enumerate(dp.activeFeatureIds()):
+                value = vl.getFeature(fid).attribute(setting.fieldName())
+                data = decodeProfileValueDict(value)
+                yValues = data['y']
+                for y1, y2 in zip(array[:, 0, iPx], yValues):
+                    self.assertEqual(y1, y2)
 
         layers = createRasterLayers(vl)
         for lyr in layers:
             self.assertIsInstance(lyr, QgsRasterLayer)
             dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
-
-        s = ""

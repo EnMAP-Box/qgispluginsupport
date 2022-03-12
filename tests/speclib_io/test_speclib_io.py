@@ -23,10 +23,10 @@ import re
 import unittest
 
 import xmlrunner
-from qgis.core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature
 
+from qgis.core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature
 from qgis.core import QgsVectorLayer
-from qps.speclib.core.spectrallibrary import SpectralLibraryUtils, SpectralLibrary
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
     SpectralLibraryIO, SpectralLibraryImportWidget, SpectralLibraryExportWidget
 from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
@@ -98,14 +98,10 @@ class TestIO(TestCase):
         rx = re.compile(r'\.(sli|asd|gpkg|csv)$')
         for uri in file_search(self.createTestDir(), rx, recursive=True):
             speclib1 = SpectralLibraryIO.readSpeclibFromUri(uri, feedback=feedback)
-            speclib2 = SpectralLibrary.readFrom(uri, feedback=feedback)
             if speclib1 is None:
                 continue
             self.assertIsInstance(speclib1, QgsVectorLayer)
             self.assertTrue(len(speclib1) > 0)
-
-            self.assertIsInstance(speclib2, QgsVectorLayer)
-            self.assertTrue(len(speclib2) == len(speclib1))
 
     def test_writeTo(self):
         self.registerIO()
@@ -126,7 +122,7 @@ class TestIO(TestCase):
             self.assertTrue(len(files) > 0)
             COUNTS2 = dict()
             for file in files:
-                sl2 = SpectralLibrary.readFrom(file)
+                sl2 = SpectralLibraryUtils.readFromSource(file)
                 CNT = SpectralLibraryUtils.countProfiles(sl2)
                 for k, cnt in CNT.items():
                     COUNTS2[k] = COUNTS2.get(k, 0) + cnt
@@ -231,7 +227,7 @@ class TestIO(TestCase):
     def test_ImportDialog2(self):
         self.registerIO()
 
-        speclib = SpectralLibrary()
+        speclib = TestObjects.createSpectralLibrary()
 
         results = SpectralLibraryImportDialog.importProfiles(speclib, defaultRoot=self.createTestDir())
         s = ""

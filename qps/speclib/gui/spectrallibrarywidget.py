@@ -18,7 +18,7 @@ from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
 from .spectralprocessingdialog import SpectralProcessingDialog
 from ..core import is_spectral_library, profile_fields
-from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
+from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
@@ -652,7 +652,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 class SpectralLibraryPanel(QgsDockWidget):
     sigLoadFromMapRequest = None
 
-    def __init__(self, *args, speclib: SpectralLibrary = None, **kwds):
+    def __init__(self, *args, speclib: QgsVectorLayer = None, **kwds):
         super(SpectralLibraryPanel, self).__init__(*args, **kwds)
         self.setObjectName('spectralLibraryPanel')
 
@@ -668,7 +668,7 @@ class SpectralLibraryPanel(QgsDockWidget):
         """
         return self.SLW
 
-    def speclib(self) -> SpectralLibrary:
+    def speclib(self) -> QgsVectorLayer:
         """
         Returns the SpectralLibrary
         :return: SpectralLibrary

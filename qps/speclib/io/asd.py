@@ -30,22 +30,18 @@ import os
 import pathlib
 import re
 import struct
-import sys
 import typing
 import warnings
 
 import numpy as np
 
 from qgis.PyQt.QtCore import QVariant
-from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
     QgsField, QgsPointXY, QgsGeometry, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
-from ..core import create_profile_field, is_spectral_library
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary
+from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
-from ...utils import createQgsField
 
 """
 
@@ -590,187 +586,3 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
                 profiles.append(asd.asFeature())
             feedback.setProgress((i + 1) / n_total)
         return profiles
-
-
-class DEPR_ASDSpectralLibraryIO(SpectralLibraryIO):
-    """
-    DEPRECATED, will be removed soon
-    """
-
-    @classmethod
-    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
-
-        def read(speclib: SpectralLibrary):
-
-            pathes, filter = QFileDialog.getOpenFileNames(
-                caption='ASD FilesCSV File',
-                filter='All type (*.*);;Text files (*.txt);; CSV (*.csv);;ASD (*.asd)')
-
-            if len(pathes) > 0:
-                sl = ASDSpectralLibraryIO.readFrom(pathes)
-                if is_spectral_library(sl):
-                    speclib.startEditing()
-                    speclib.beginEditCommand('Add ASD profiles')
-                    speclib.addSpeclib(sl, True)
-                    speclib.endEditCommand()
-                    speclib.commitChanges()
-
-        a = menu.addAction('ASD')
-        a.setToolTip('Loads ASD FieldSpec files (binary or text)')
-        a.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
-
-    @classmethod
-    def canRead(cls, path, binary: bool = None) -> bool:
-        """
-        Returns true if it can read the source defined by path
-        :param path:
-        :type path:
-        :param binary: if True, will test if the file can be read as ASD binary.
-        :type binary:
-        :return:
-        :rtype:
-        """
-        if not os.path.isfile(path):
-            return False
-        if isinstance(binary, bool):
-            try:
-                if binary:
-                    st = os.stat(path)
-
-                    if st.st_size < 484 + 1 or st.st_size > 2 ** 20:
-                        return False
-
-                    with open(path, 'rb') as f:
-                        DATA = f.read(3)
-                        co = DATA[0:3].decode('utf-8')
-                        if co not in ASD_VERSIONS:
-                            return False
-                        else:
-                            return True
-
-                    return False
-                else:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        lines = []
-                        for line in f:
-                            if len(lines) >= 2:
-                                break
-                            line = line.strip()
-                            if len(line) > 0:
-                                lines.append(line)
-
-                        if len(lines) == 2:
-                            return re.search(r'^wavelength[;]', lines[0], re.I) is not None \
-                                   and re.search(r'^\d+(\.\d+)?[;]', lines[1]) is not None
-
-                        return False
-                    return False
-            except Exception as ex:
-                return False
-
-        else:
-            if ASDSpectralLibraryIO.canRead(path, binary=True):
-                return True
-            else:
-                return ASDSpectralLibraryIO.canRead(path, binary=False)
-
-    @classmethod
-    def readFrom(cls, paths: typing.Union[str, list],
-                 asdFields: typing.Iterable[str] = None,
-                 feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
-        """
-        :param paths: list of source paths
-        :param asdFields: list of header information to be extracted from ASD binary files
-        :return: SpectralLibrary
-        """
-        if asdFields is None:
-            # default fields to add as meta data
-            asdFields = ['when', 'ref_time', 'dc_time', 'dc_corr', 'it', 'sample_count', 'instrument_num', 'spec_type']
-
-        if not isinstance(paths, list):
-            paths = [paths]
-
-        sl = SpectralLibrary()
-
-        profiles = []
-        asdFieldsInitialized = False
-
-        for filePath in paths:
-            bn = os.path.basename(filePath)
-
-            if ASDSpectralLibraryIO.canRead(filePath, binary=True):
-                asd = ASDBinaryFile().readFromBinaryFile(filePath)
-                if isinstance(asd, ASDBinaryFile):
-
-                    if not asdFieldsInitialized:
-                        sl.startEditing()
-
-                        asdFields = [n for n in asdFields if n not in sl.fields().names() and n in asd.__dict__.keys()]
-                        for n in asdFields:
-                            v = asd.__dict__[n]
-                            if isinstance(v, TM_STRUCT):
-                                sl.addAttribute(createQgsField(n,
-                                                               ''))
-                                # TM struct will use a VARCHAR field to express the time stamp
-                            else:
-                                sl.addAttribute(createQgsField(n, v))
-
-                        asdFieldsInitialized = True
-                        sl.commitChanges()
-                        sl.startEditing()
-
-                    p = SpectralProfile(fields=sl.fields())
-                    p.setName(bn)
-
-                    for n in asdFields:
-                        value = asd.__dict__[n]
-                        if isinstance(value, np.datetime64):
-                            value = str(value)
-                        elif isinstance(value, TM_STRUCT):
-                            value = str(value.datetime64())
-                        p.setAttribute(n, value)
-
-                    p.setValues(asd.xValues(), asd.yValues(), xUnit='nm')
-                    profiles.append(p)
-            elif ASDSpectralLibraryIO.canRead(filePath, binary=False):
-
-                with open(filePath, 'r', encoding='utf-8') as f:
-                    profiles = []
-                    lines = f.readlines()
-                    delimiter = ';'
-                    if len(lines) >= 2:
-
-                        hdrLine = lines[0].strip().split(delimiter)
-                        if len(hdrLine) >= 2:
-                            profileNames = hdrLine[1:]
-
-                            xValues = []
-                            DATA = dict()
-                            for line in lines[1:]:
-                                line = line.split(delimiter)
-                                wl = float(line[0])
-                                xValues.append(wl)
-                                DATA[wl] = [float(v) for v in line[1:]]
-
-                            for i, name in enumerate(profileNames):
-                                yValues = [DATA[wl][i] for wl in xValues]
-                                xUnit = 'nm'
-                                profile = SpectralProfile(fields=sl.fields())
-                                profile.setName(name)
-                                profile.setValues(x=xValues, y=yValues, xUnit=xUnit)
-
-                                profiles.append(profile)
-                    if len(profiles) > 0:
-                        sl.startEditing()
-                        sl.addProfiles(profiles)
-                        profiles.clear()
-                        sl.commitChanges()
-                        sl.startEditing()
-
-            else:
-                print('Unable to read {}'.format(filePath), file=sys.stderr)
-
-        sl.startEditing()
-        sl.addProfiles(profiles, addMissingFields=False)
-        sl.commitChanges()
-        return sl

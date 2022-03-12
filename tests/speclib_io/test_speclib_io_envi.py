@@ -8,7 +8,6 @@ import xmlrunner
 
 from qgis.core import QgsProcessingFeedback, QgsFeature, QgsFields
 from qps.speclib.core import profile_field_list
-from qps.speclib.core.spectrallibrary import SpectralLibrary
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
     SpectralLibraryImportWidget
 from qps.speclib.io.envi import EnviSpectralLibraryIO, findENVIHeader, EnviSpectralLibraryExportWidget, \
@@ -99,7 +98,7 @@ class TestSpeclibIO_ENVI(TestCase):
         self.assertIsInstance(files, list)
         self.assertTrue(len(files) == n_bands.shape[0])
 
-        speclib2 = SpectralLibrary()
+        speclib2 = TestObjects.createSpectralLibrary(n=0)
         wImport = ENVI_IO.createImportWidget()
         self.assertIsInstance(wImport, SpectralLibraryImportWidget)
         self.assertIsInstance(wImport, EnviSpectralLibraryImportWidget)

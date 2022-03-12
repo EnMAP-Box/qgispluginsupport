@@ -38,7 +38,7 @@ from qps.testing import TestObjects
 from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItemsToMenu, value2str, filenameFromString, \
     SelectMapLayersDialog, defaultBands, relativePath, nextColor, convertMetricUnit, createQgsField, px2geo, geo2px, \
     SpatialPoint, layerGeoTransform, displayBandNames, UnitLookup, qgsRasterLayer, gdalDataset, px2geocoordinates, \
-    rasterLayerArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
+    rasterArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
     qgsFieldAttributes2List, gdalFileSize, loadUi, dn, datetime64, SelectMapLayerDialog, parseFWHM
 
@@ -359,9 +359,9 @@ class TestUtils(TestCase):
         ul = SpatialPoint(lyrR.crs(), ext.xMinimum(), ext.yMaximum())
         lr = SpatialPoint(lyrR.crs(), ext.xMaximum(), ext.yMinimum())
 
-        blockB = rasterLayerArray(lyrR, ul=ul, lr=lr)
-        blockA = rasterLayerArray(lyrR, ul=QPoint(0, 0), lr=QPoint(lyrR.width() - 1, lyrR.height() - 1))
-        blockC = rasterLayerArray(lyrR, rect=QRect(0, 0, lyrR.width(), lyrR.height()))
+        blockB = rasterArray(lyrR, ul=ul, lr=lr)
+        blockA = rasterArray(lyrR, ul=QPoint(0, 0), lr=QPoint(lyrR.width() - 1, lyrR.height() - 1))
+        blockC = rasterArray(lyrR, rect=QRect(0, 0, lyrR.width(), lyrR.height()))
 
         ds: gdal.Dataset = gdal.Open(lyrR.source())
         nb = ds.RasterCount
@@ -392,7 +392,7 @@ class TestUtils(TestCase):
         for lyr in [lyr1, lyr2]:
             ds: gdal.Dataset = gdal.Open(lyr.source())
             blockGDAL = ds.ReadAsArray()
-            blockAll = rasterLayerArray(lyr)
+            blockAll = rasterArray(lyr)
             self.assertTrue(np.all(blockGDAL == blockAll))
             self.assertEqual(blockGDAL.dtype, blockAll.dtype)
 

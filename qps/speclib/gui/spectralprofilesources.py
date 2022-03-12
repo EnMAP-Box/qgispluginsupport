@@ -27,7 +27,7 @@ from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encode
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
-from ...utils import SpatialPoint, loadUi, parseWavelength, rasterLayerArray, spatialPoint2px, \
+from ...utils import SpatialPoint, loadUi, parseWavelength, rasterArray, spatialPoint2px, \
     HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
@@ -1580,7 +1580,7 @@ class SpectralProfileBridge(TreeModel):
                 wl = list(range(layer.bandCount()))
 
             for rect in list(BLOCKS.keys()):
-                array = rasterLayerArray(layer, rect)
+                array = rasterArray(layer, rect)
 
                 if not isinstance(array, np.ndarray):
                     continue
@@ -1675,7 +1675,7 @@ class SpectralProfileBridge(TreeModel):
                         if new_feature.geometry().type() in [QgsWkbTypes.UnknownGeometry, QgsWkbTypes.NullGeometry]:
                             new_feature.setGeometry(geometry)
                         field_name = pgnode.field().name()
-                        new_feature[field_name] = encodeProfileValueDict(profileDict, field=pgnode.field())
+                        new_feature[field_name] = encodeProfileValueDict(profileDict, encoding=pgnode.field())
                         # new_feature_colors.append((field_name, pgnode.mColorNode.color()))
                         new_feature_styles.append((field_name, pgnode.mProfileStyleNode.value()))
 

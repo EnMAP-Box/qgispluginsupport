@@ -16,12 +16,10 @@
 *                                                                         *
 ***************************************************************************
 """
-import datetime
 import math
 # noinspection PyPep8Naming
 import os
 import pathlib
-import time
 import unittest
 
 import numpy as np
@@ -31,7 +29,7 @@ from osgeo import ogr, gdal
 from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
-from qgis.PyQt.QtWidgets import QCheckBox, QProgressDialog, QApplication, QToolBar, QVBoxLayout, QPushButton, \
+from qgis.PyQt.QtWidgets import QCheckBox, QApplication, QToolBar, QVBoxLayout, QPushButton, \
     QToolButton, QAction, QComboBox, QWidget, QDialog
 from qgis.core import QgsFeature
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes, \
@@ -43,7 +41,7 @@ from qps.plotstyling.plotstyling import PlotStyle
 from qps.pyqtgraph import pyqtgraph as pg
 from qps.speclib import FIELD_VALUES
 from qps.speclib.core import profile_field_list, is_spectral_library
-from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibrary, SpectralLibraryUtils
+from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import SpectralProfile, decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
@@ -159,31 +157,8 @@ class TestSpeclibWidgets(TestCase):
         w2 = pdi.plot()
         self.showGui([w1])
 
-    @unittest.skipIf(True, 'todo')
-    def test_SpectralLibraryPlotTemporalProfiles(self):
-
-        speclib = SpectralLibrary()
-
-        sp1 = SpectralProfile()
-        xvalues = np.datetime64('2012-08-15T15') + np.arange(255)
-        yvalues = np.arange(len(xvalues))
-        sp1.setValues(x=xvalues, y=yvalues, xUnit='DateTime')
-
-        sp2 = SpectralProfile()
-        sp2.setValues(x=[230, 240], y=[3, 2], xUnit='DOY')
-
-        sp3 = SpectralProfile()
-        sp3.setValues(x=[340, 380], y=[4, 4], xUnit='nm')
-
-        self.assertTrue(speclib.startEditing())
-        speclib.addProfiles([sp1, sp2, sp3])
-        self.assertTrue(speclib.commitChanges())
-        w = SpectralLibraryWidget(speclib=speclib)
-        self.showGui(w)
-
     def test_SpectralLibraryPlotWidget(self):
-        speclib = TestObjects.createSpectralLibrary()
-        from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
+
         from qps.resources import ResourceBrowser
         w = SpectralLibraryPlotWidget()
         rb = ResourceBrowser()
@@ -203,27 +178,6 @@ class TestSpeclibWidgets(TestCase):
 
         r = m.convertFunction('nm', 'nm')(v, 'X')
         self.assertListEqual(list(r), [100, 200, 300])
-
-    def test_SpectralLibraryPlotWidget_units(self):
-
-        slib = SpectralLibrary()
-
-        p1 = SpectralProfile()
-        p2 = SpectralProfile()
-
-        p1.setValues(x=[.1, .2, .3, .4], y=[20, 30, 40, 30], xUnit='um')
-        p2.setValues(x=[100, 200, 300, 400], y=[21, 31, 41, 31], xUnit='nm')
-        slib.startEditing()
-        slib.addProfiles([p1, p2])
-        slib.commitChanges()
-        dualView = QgsDualView()
-        canvas = QgsMapCanvas()
-        dualView.init(slib, canvas)
-
-        pw = SpectralLibraryPlotWidget()
-        pw.setDualView(dualView)
-
-        self.showGui(pw)
 
     @unittest.skipIf(False, '')
     def test_SpectralProfileValueTableModel(self):
@@ -362,17 +316,6 @@ class TestSpeclibWidgets(TestCase):
         self.showGui([w, configWidget])
         vl.commitChanges()
 
-    @unittest.skipIf(TestCase.runsInCI(), 'unknown error. runs in single mode')
-    def test_SpectralLibraryWidget_ClassFields(self):
-
-        w = SpectralLibraryWidget()
-        from qpstestdata import speclib_labeled
-        sl = SpectralLibrary.readFrom(speclib_labeled)
-        self.assertIsInstance(sl, QgsVectorLayer)
-        self.assertTrue(len(sl) > 0)
-        w.addSpeclib(sl)
-        self.showGui(w)
-
     @unittest.skipIf(TestCase.runsInCI(), 'Fuzz test (drag and drop)')
     def test_dropping_speclibs(self):
 
@@ -386,9 +329,11 @@ class TestSpeclibWidgets(TestCase):
         # drop a valid speclib
         md = QMimeData()
         from qpstestdata import speclib
-        sl = SpectralLibrary.readFrom(speclib)
-        self.assertIsInstance(sl, SpectralLibrary) and len(sl) > 0
+
+        sl = QgsVectorLayer(speclib, 'Speclib')
+
         md.setUrls([QUrl.fromLocalFile(speclib)])
+
         event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
         print('Drop {}'.format(speclib), flush=True)
         slw.dropEvent(event)
@@ -526,14 +471,14 @@ class TestSpeclibWidgets(TestCase):
 
         lyr = QgsRasterLayer(hymap)
         h, w = lyr.height(), lyr.width()
-        speclib = SpectralLibrary.readFromRasterPositions(enmap, [QPoint(0, 0), QPoint(w - 1, h - 1), QPoint(2, 2)])
+        speclib = TestObjects.createSpectralLibrary()
         slw = SpectralLibraryWidget(speclib=speclib)
 
         QgsProject.instance().addMapLayers([lyr, slw.speclib()])
 
         canvas = QgsMapCanvas()
 
-        canvas.setLayers([lyr, slw.speclib()])
+        canvas.setLayers([slw.speclib(), lyr])
         canvas.setDestinationCrs(slw.speclib().crs())
         canvas.setExtent(slw.speclib().extent())
 
@@ -601,34 +546,6 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(slw)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Runs in single mode but not batch more. Reason unknown')
-    def test_SpectralLibraryWidgetThousands(self):
-
-        import qpstestdata
-
-        pathSL = os.path.join(os.path.dirname(qpstestdata.__file__), 'roberts2017_urban.sli')
-
-        if True and os.path.exists(pathSL):
-            t0 = datetime.datetime.now()
-
-            speclib = SpectralLibrary.readFrom(pathSL)
-
-            dt = datetime.datetime.now() - t0
-            # print('Reading required : {}'.format(dt))
-        else:
-            speclib = TestObjects.createSpectralLibrary(5000)
-
-        t0 = datetime.datetime.now()
-
-        w = SpectralLibraryWidget()
-        w.addSpeclib(speclib)
-        for field in profile_field_list(speclib):
-            w.spectralLibraryPlotWidget().createProfileVisualization(field=field)
-        dt = datetime.datetime.now() - t0
-        # print('Adding speclib required : {}'.format(dt))
-
-        self.showGui(w)
-
     def test_delete_speclib(self):
 
         speclib = TestObjects.createSpectralLibrary(10)
@@ -640,65 +557,6 @@ class TestSpeclibWidgets(TestCase):
 
         assert w.speclib() is None
 
-    def test_speclibImportSpeed(self):
-
-        pathRaster = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\enmap_berlin.bsq'
-        # pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_polygon.shp'
-        pathPoly = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\enmap-box\enmapboxtestdata\landcover_berlin_point.shp'
-
-        for p in [pathRaster, pathPoly]:
-            if not os.path.isfile(p):
-                return
-
-        progressDialog = QProgressDialog()
-        # progress_handler.show()
-        vl = QgsVectorLayer(pathPoly)
-        vl.setName('Polygons')
-        rl = QgsRasterLayer(pathRaster)
-        rl.setName('Raster Data')
-        if not vl.isValid() and rl.isValid():
-            return
-
-        max_spp = 1  # seconds per profile
-
-        def timestats(t0, sl, info='time'):
-            dt = time.time() - t0
-            spp = dt / len(sl)
-            pps = len(sl) / dt
-            print('{}: dt={}sec spp={} pps={}'.format(info, dt, spp, pps))
-            return dt, spp, pps
-
-        t0 = time.time()
-        sl = SpectralLibrary.readFromVector(vl, rl, progress_handler=progressDialog)
-        dt, spp, pps = timestats(t0, sl, info='read profiles')
-        self.assertTrue(spp <= max_spp, msg='{} seconds per profile are too much!')
-
-        self.assertTrue(progressDialog.value() == -1)
-        t0 = time.time()
-        sl.startEditing()
-        sl.addSpeclib(sl)
-        sl.commitChanges()
-        dt, spp, pps = timestats(t0, sl, info='merge speclibs')
-        self.assertTrue(spp <= max_spp, msg='too slow!')
-
-        sl0 = SpectralLibrary()
-        t0 = time.time()
-        sl0.startEditing()
-        sl0.addSpeclib(sl)
-        dt, spp, pps = timestats(t0, sl, info='merge speclibs2')
-        self.assertTrue(spp <= max_spp, msg='too slow!')
-
-        w = SpectralLibraryWidget()
-
-        t0 = time.time()
-        w.addSpeclib(sl)
-
-        dt = time.time() - t0
-
-        QgsProject.instance().addMapLayers([vl, rl])
-        w = SpectralLibraryWidget()
-        self.showGui(w)
-
     def test_SpectralProfileImportPointsDialog(self):
 
         lyrRaster = QgsRasterLayer(enmap)
@@ -706,11 +564,6 @@ class TestSpeclibWidgets(TestCase):
         h, w = lyrRaster.height(), lyrRaster.width()
 
         pxPositions = [QPoint(0, 0), QPoint(w - 1, h - 1)]
-
-        speclib1 = SpectralLibrary.readFromRasterPositions(enmap, pxPositions)
-        speclib1.setName('Extracted Spectra')
-        self.assertIsInstance(speclib1, SpectralLibrary)
-        self.assertTrue(len(speclib1) > 0)
 
         vl1 = TestObjects.createVectorLayer(QgsWkbTypes.Polygon)
         vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
@@ -728,7 +581,7 @@ class TestSpeclibWidgets(TestCase):
             if code == QDialog.Accepted:
                 slib = d.speclib()
                 self.assertTrue(d.isFinished())
-                self.assertIsInstance(slib, SpectralLibrary)
+                self.assertIsInstance(slib, QgsVectorLayer)
                 self.assertIsInstance(d.profiles(), list)
                 self.assertTrue(len(d.profiles()) == len(slib))
                 print('Returned {} profiles from {} and {}'.format(len(slib), d.vectorSource().source(),

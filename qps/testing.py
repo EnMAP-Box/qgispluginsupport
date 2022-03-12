@@ -889,7 +889,7 @@ class TestObjects(object):
         :return: SpectralLibrary
         :rtype: SpectralLibrary
         """
-        assert n > 0
+        assert n >= 0
         assert 0 <= n_empty <= n
 
         if isinstance(n_bands, int):
@@ -913,6 +913,11 @@ class TestObjects(object):
 
         assert len(pfield_indices) == len(profile_field_names)
 
+        if n == 0:
+            slib.commitChanges()
+            return slib
+
+        # and random profiles
         for groupIndex in range(n_bands.shape[0]):
             bandsPerField = n_bands[groupIndex, ].tolist()
             profiles = list(TestObjects.spectralProfiles(n,
@@ -923,6 +928,7 @@ class TestObjects(object):
 
             SpectralLibraryUtils.addProfiles(slib, profiles, addMissingFields=False)
 
+        # delete empty profiles
         for i, feature in enumerate(slib.getFeatures()):
             if i >= n_empty:
                 break
