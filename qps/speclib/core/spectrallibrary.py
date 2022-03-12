@@ -1240,9 +1240,6 @@ class SpectralLibrary(QgsVectorLayer):
 
         self.initTableConfig()
 
-    def addAttribute(self, field):
-        return SpectralLibraryUtils.addAttribute(self, field)
-
     def initTableConfig(self):
 
         """

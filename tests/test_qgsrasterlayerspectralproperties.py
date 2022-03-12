@@ -1,12 +1,11 @@
 import unittest
 
-from qgis.core import QgsApplication, QgsRasterLayer
+from qgis.core import QgsRasterLayer
 from qgis.gui import QgsGui
-
-from qgis.testing import start_app, TestCase
+from qgis.testing import start_app
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, QgsRasterLayerSpectralProperties, stringToType
-from qps.testing import TestObjects
+from qps.testing import TestObjects, TestCase
 
 
 class TestQgsRasterLayerProperties(TestCase):
@@ -76,9 +75,7 @@ class TestQgsRasterLayerProperties(TestCase):
         properties.initDefaultFields()
         properties.startEditing()
         w = QgsRasterLayerSpectralPropertiesTableWidget(properties)
-        w.show()
-        QgsApplication.instance().exec_()
-        pass
+        self.showGui(w)
 
 
 if __name__ == '__main__':

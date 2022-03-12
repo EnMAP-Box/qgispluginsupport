@@ -41,46 +41,6 @@ class LayerConfigWidgetsTests(TestCase):
         c.setExtent(lyr.extent())
         return c
 
-    def test_metadata(self):
-        from qps.layerconfigwidgets.core import MetadataConfigWidgetFactory, MetadataConfigWidget
-        lyrR = TestObjects.createRasterLayer(nb=100)
-        lyrV = TestObjects.createVectorLayer()
-        c = QgsMapCanvas()
-
-        f = MetadataConfigWidgetFactory()
-
-        for lyr in [lyrR, lyrV]:
-            c.setLayers([lyr])
-            c.setDestinationCrs(lyr.crs())
-            c.setExtent(lyr.extent())
-            self.assertTrue(f.supportsLayer(lyr))
-            w = f.createWidget(lyr, c)
-            self.assertIsInstance(w, MetadataConfigWidget)
-            w.syncToLayer()
-            w.apply()
-
-            self.showGui([c, w])
-
-    def test_source(self):
-        from qps.layerconfigwidgets.core import SourceConfigWidget, SourceConfigWidgetFactory
-        lyrR = TestObjects.createRasterLayer(nb=100)
-        lyrV = TestObjects.createVectorLayer()
-        c = QgsMapCanvas()
-
-        f = SourceConfigWidgetFactory()
-
-        for lyr in [lyrR, lyrV]:
-            c.setLayers([lyr])
-            c.setDestinationCrs(lyr.crs())
-            c.setExtent(lyr.extent())
-            self.assertTrue(f.supportsLayer(lyr))
-            w = f.createWidget(lyr, c)
-            self.assertIsInstance(w, SourceConfigWidget)
-            w.syncToLayer()
-            w.apply()
-
-            self.showGui([c, w])
-
     def test_labels(self):
 
         from qps.layerconfigwidgets.vectorlabeling import LabelingConfigWidgetFactory, LabelingConfigWidget

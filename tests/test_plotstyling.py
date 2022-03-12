@@ -21,18 +21,17 @@ import os
 import unittest
 
 import xmlrunner
+
 from qgis.PyQt.QtCore import QVariant, QSize
 from qgis.PyQt.QtGui import QPen, QColor
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QCheckBox, QComboBox
-
+from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableConfig, \
     QgsEditorWidgetSetup, QgsActionManager, QgsAction
-
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
 from qps.plotstyling.plotstyling import PlotStyleButton, pen2tuple, PlotStyle, XMLTAG_PLOTSTYLENODE, \
     createSetPlotStyleAction, MarkerSymbol, tuple2pen, registerPlotStyleEditorWidget, PlotStyleEditorWidgetFactory, \
     PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget, PlotWidgetStyle
-from qgis.PyQt.QtXml import QDomDocument
 from qps.testing import TestCase
 
 
@@ -158,7 +157,7 @@ class PlotStyleTests(TestCase):
         for styleA, styleB in zip(stylesA, stylesB):
             self.assertEqual(styleA, styleB)
 
-        self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('default'), PlotWidgetStyle)
+        #  self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('default'), PlotWidgetStyle)
         self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('dark'), PlotWidgetStyle)
         self.assertIsInstance(PlotWidgetStyle.plotWidgetStyle('bright'), PlotWidgetStyle)
         self.assertEqual(PlotWidgetStyle.plotWidgetStyle('foobar'), None)
