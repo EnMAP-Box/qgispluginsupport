@@ -51,8 +51,6 @@ from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsEditorWidgetSetup, QgsAction, QgsProcessingFeedback, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
-from qgis.gui import \
-    QgsGui
 from . import field_index
 from . import profile_field_list, first_profile_field_index, create_profile_field, \
     is_spectral_library
@@ -64,7 +62,7 @@ from ...plotstyling.plotstyling import PlotStyle
 from ...utils import SelectMapLayersDialog, gdalDataset, \
     createQgsField, px2geocoordinates, qgsVectorLayer, qgsRasterLayer, findMapLayer, \
     fid2pixelindices, parseWavelength, parseBadBandList, optimize_block_size, \
-    qgsField, qgsFieldAttributes2List, qgsFields2str, str2QgsFields
+    qgsField, qgsFieldAttributes2List, qgsFields2str, str2QgsFields, copyEditorWidgetSetup
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -263,13 +261,14 @@ class SpectralLibraryUtils:
         Creates a QgsField that can store spectral profiles
         :param name: field name
         :param comment: field comment, optional
+        :param encoding: ProfileEncoding, e.g. 'text', 'bytes' or 'JSON'
         :return: QgsField
         """
         encoding = ProfileEncoding.fromInput(encoding)
         if encoding == ProfileEncoding.Bytes:
             field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
         elif encoding == ProfileEncoding.Text:
-            field = QgsField(name=name, type=QVariant.String, len=0, comment=comment)
+            field = QgsField(name=name, type=QVariant.String, len=-1, comment=comment)
         elif encoding == ProfileEncoding.Json:
             field = QgsField(name=name, type=8, comment=comment)
 
@@ -731,32 +730,13 @@ class SpectralLibraryUtils:
         return w
 
     @staticmethod
-    def copyEditorWidgetSetup(speclib: QgsVectorLayer, fields: Union[QgsVectorLayer, List[QgsField]]):
+    def copyEditorWidgetSetup(speclib: QgsVectorLayer, fields):
         """
-
-        :param fields:
-        :type fields:
-        :return:
-        :rtype:
+        Copies the editor widget setup from another vector layer or list of QgsField
+        :param speclib: QgsVectorLayer
+        :param fields: QgsFields, QgsVectorLayer, QgsFeature or list of QgsField
         """
-        """Copies the editor widget setup from another vector layer or list of QgsField"""
-        if isinstance(fields, QgsVectorLayer):
-            fields = fields.fields()
-
-        for fSrc in fields:
-            assert isinstance(fSrc, QgsField)
-            idx = speclib.fields().indexOf(fSrc.name())
-
-            if idx == -1:
-                # profile_field name does not exist
-                continue
-            fDst = speclib.fields().at(idx)
-            assert isinstance(fDst, QgsField)
-
-            setup = fSrc.editorWidgetSetup()
-            if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(speclib, idx):
-                speclib.setEditorWidgetSetup(idx, setup)
-    # assign
+        copyEditorWidgetSetup(speclib, fields)
 
 
 class SpectralLibrary(QgsVectorLayer):

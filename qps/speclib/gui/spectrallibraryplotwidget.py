@@ -849,7 +849,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if isinstance(self.mSpeclib, QgsVectorLayer):
                 # unregister signals
                 self.mSpeclib.updatedFields.disconnect(self.onSpeclibAttributesUpdated)
-                # self.mSpeclib.attributeAdded.disconnect(self.onSpeclibAttributeDeleted)
+                self.mSpeclib.attributeAdded.disconnect(self.onSpeclibAttributesUpdated)
+                self.mSpeclib.attributeDeleted.disconnect(self.onSpeclibAttributesUpdated)
+
                 self.mSpeclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
                 # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.beforeCommitChanges.disconnect(self.onSpeclibBeforeCommitChanges)
@@ -866,7 +868,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             # register signals
             if isinstance(self.mSpeclib, QgsVectorLayer):
                 self.mSpeclib.updatedFields.connect(self.onSpeclibAttributesUpdated)
-                # self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributeDeleted)
+                self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributesUpdated)
+                self.mSpeclib.attributeDeleted.connect(self.onSpeclibAttributesUpdated)
                 self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
                 self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.committedAttributeValuesChanges.connect(self.onSpeclibCommittedAttributeValuesChanges)

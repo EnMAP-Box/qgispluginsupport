@@ -410,12 +410,9 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(slw, SpectralLibraryWidget)
         self.showGui(slw)
 
-    def test_SpectralLibraryWidget0(self):
+    def test_SpectralLibraryWidget_Empty(self):
 
-        sl1 = TestObjects.createSpectralLibrary(5, wlu='Nanometers', n_bands=[177, 6])
-        sl1.setName(' My Speclib')
-
-        slw = SpectralLibraryWidget(speclib=sl1)
+        slw = SpectralLibraryWidget()
         self.showGui(slw)
 
     def test_SpectralLibraryWidget(self):

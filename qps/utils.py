@@ -46,10 +46,11 @@ import warnings
 import weakref
 import zipfile
 from collections import defaultdict
-from typing import Union
+from typing import Union, List
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
+
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
     QDateTime, QDate, QVariant, QByteArray, QUrl
@@ -63,7 +64,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataPro
     QgsFields
 from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
-from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas
+from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 
 QGIS_RESOURCE_WARNINGS = set()
@@ -1036,11 +1037,18 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
 
-def qgsFields(source: typing.Union[QgsFeature, QgsFields, QgsVectorLayer]) -> QgsFields:
+def qgsFields(source: typing.Union[List[QgsField], QgsFeature, QgsFields, QgsVectorLayer]) -> QgsFields:
     """
     Returns the QgsFields of its inputs
     :return: QgsFields
     """
+    if isinstance(source, list):
+        fields = QgsFields()
+        for f in source:
+            assert isinstance(f, QgsField)
+            fields.append(f)
+        return fields
+
     if isinstance(source, QgsFields):
         return source
     elif isinstance(source, (QgsFeature, QgsVectorLayer)):
@@ -1403,6 +1411,30 @@ def allSubclasses(cls):
     """
     return cls.__subclasses__() + [g for s in cls.__subclasses__()
                                    for g in allSubclasses(s)]
+
+
+def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, QgsVectorLayer, List[QgsField]]):
+    """
+    :param fields:
+    :type fields:
+    :return:
+    :rtype:
+    """
+    """Copies the editor widget setup from another vector layer or list of QgsField"""
+    fields = qgsFields(fields)
+
+    for fSrc in fields:
+        idx = vectorLayer.fields().indexOf(fSrc.name())
+
+        if idx == -1:
+            # profile_field name does not exist
+            continue
+        fDst = vectorLayer.fields().at(idx)
+        assert isinstance(fDst, QgsField)
+
+        setup = fSrc.editorWidgetSetup()
+        if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(vectorLayer, idx):
+            vectorLayer.setEditorWidgetSetup(idx, setup)
 
 
 def check_package(name, package=None, stop_on_error=False):

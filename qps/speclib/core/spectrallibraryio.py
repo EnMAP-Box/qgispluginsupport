@@ -18,7 +18,7 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsFields, \
 from qgis.gui import QgsFileWidget, QgsFieldMappingWidget
 from . import profile_field_list, profile_field_names
 from .spectralprofile import groupBySpectralProperties
-from .. import speclibUiPath
+from .. import speclibUiPath, speclibSettings
 from ...layerproperties import CopyAttributesDialog
 from ...utils import loadUi
 
@@ -609,6 +609,8 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             feedback = QgsProcessingFeedback()
             profiles = io.importProfiles(source, settings, feedback)
             profiles = list(profiles)
+            if len(profiles) == 0:
+                return False
 
             sinkDefinition = QgsRemappingSinkDefinition()
             sinkDefinition.setDestinationFields(speclib.fields())
@@ -695,8 +697,36 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
         if isinstance(speclib, QgsVectorLayer):
             self.setSpeclib(speclib)
 
+        settings = speclibSettings()
+        default_root = settings.value('SpectralLibraryImportDialog/defaultRoot', None)
+        if default_root:
+            self.fileWidget.setDefaultRoot(default_root)
+        first_format = settings.value('SpectralLibraryImportDialog/format', first_format)
+
         if first_format:
             self.setImportWidget(first_format)
+
+    def exec_(self) -> int:
+        r = super().exec_()
+        if r == QDialog.Accepted:
+            settings = speclibSettings()
+
+            # save file path directory for next dialog start
+            fw: QgsFileWidget = self.fileWidget
+            filePath = fw.filePath()
+            if fw.isMultiFiles(filePath):
+                filePath = fw.splitFilePaths(filePath)[0]
+            filePath = pathlib.Path(filePath)
+            if filePath.is_file():
+                filePath = filePath.parent
+            settings.setValue('SpectralLibraryImportDialog/defaultRoot', filePath.as_posix())
+
+            # save selected import format for next dialog start
+            format = self.currentImportWidget()
+            if isinstance(format, SpectralLibraryImportWidget):
+                settings.setValue('SpectralLibraryImportDialog/format', format.formatName())
+
+        return r
 
     def formatExpressionContext(self) -> QgsExpressionContext:
         format = self.currentImportWidget()

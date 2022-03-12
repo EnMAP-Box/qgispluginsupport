@@ -81,7 +81,7 @@ from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
 from .speclib.core import supports_field
-from .utils import write_vsimem, loadUi, defaultBands, iconForFieldType, qgsFields
+from .utils import write_vsimem, loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup
 from .vectorlayertools import VectorLayerTools
 
 RENDER_CLASSES = {}
@@ -205,6 +205,7 @@ class CopyAttributesDialog(QDialog):
             layer.beginEditCommand('Add attributes')
             for f in d.selectedFields():
                 layer.addAttribute(f)
+            copyEditorWidgetSetup(layer, d.selectedFields())
             layer.endEditCommand()
             layer.commitChanges(stopEditing=not was_editable)
             return True
