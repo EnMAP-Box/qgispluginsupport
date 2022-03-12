@@ -5,6 +5,7 @@ Tests to ensure repository structure
 import pathlib
 import re
 import unittest
+
 import xmlrunner
 
 DIR_QPS = pathlib.Path(__file__).parents[1] / 'qps'
@@ -14,7 +15,7 @@ class ResourceTests(unittest.TestCase):
 
     def test_imports(self):
         """
-        This test ensures that all imports from qps are relative.
+        This test ensures that all imports of qps modules are relative.
         """
         self.assertTrue(DIR_QPS.is_dir())
 
