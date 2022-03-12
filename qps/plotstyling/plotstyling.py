@@ -439,7 +439,7 @@ class PlotStyle(QObject):
     def setBackgroundColor(self, *color):
         self.backgroundColor = QColor(*color)
 
-    def setLineColor(self, *color: QColor):
+    def setLineColor(self, *color: typing.Union[QColor, str]):
         """
         Sets the line color
         :param color: QColor

@@ -1,10 +1,22 @@
 {
   "name": "spectralMath",
   "type": "function",
-  "description": "Create or modifies data of a SpectralProfile with python",
-  "arguments": [ {"arg":"expression","description":"a python expression to set the profile data"},
-                 {"arg":"field","description":"field to load existing spectral profile data from"}],
+  "description": "Modifies SpectralProfiles with python code",
+  "arguments": [
+    {"arg":"p1", "description":"field to load existing spectral profile data from"},
+    {"arg":"p2", "description":"field to load existing spectral profile data from"},
+    {"arg":"pN", "description":"field to load existing spectral profile data from"},
+    {"arg":"expression","description":"python expression to modify profile data"},
+    {"arg":"format","description":"output format: <code>bytes</code>, <code>text</code> or <code>map</code>"}
+  ],
   "examples": [
-  { "expression":"spectralMath(\n'\ny*=2\n',\"profiles\")",
-    "returns":"the profiles in field \"profiles\" scaled by 2" }]
+  { "expression":"spectralMath('x,y=[1,2,3],[20,30,25]')",
+    "returns":"Create a new profile with x and y values" },
+
+  { "expression":"spectralMath(\"profile\",'y*=2',)",
+    "returns":"Multiply the profile values by 2" },
+
+  { "expression":"spectralMath(\"wref\",\"radiance\",'y=y2/y1',)",
+    "returns":"Calculate the reflectance profile by dividing the measured radiance with its white reference profile" }
+  ]
 }

@@ -136,11 +136,6 @@ def read_profiles(*args, **kwds):
     return SpectralLibraryUtils.readProfiles(*args, **kwds)
 
 
-def log(msg: str):
-    if DEBUG:
-        QgsMessageLog.logMessage(msg, 'spectrallibraries.py')
-
-
 def containsSpeclib(mimeData: QMimeData) -> bool:
     """
     Short, fast test if a QMimeData object might contain a SpectralLibrary.
@@ -184,7 +179,6 @@ def runRemoveFeatureActionRoutine(layerID, id: int):
     """
     Is applied to a set of layer features to change the plotStyle JSON string stored in styleField
     :param layerID: QgsVectorLayer or vector id str
-    :param styleField: str, name of string profile_field in layer.fields() to store the PlotStyle
     :param id: feature id of feature for which the QgsAction was called
     """
 
@@ -866,8 +860,8 @@ class SpectralLibrary(QgsVectorLayer):
             assert name_field in vector.fields().names(), \
                 f'invalid profile_field name "{name_field}". Allowed values are {", ".join(vector.fields().names())}'
         else:
-            for i in range(vector.fields().count()):
-                field: QgsField = vector.fields().at(i)
+            for idx in range(vector.fields().count()):
+                field: QgsField = vector.fields().at(idx)
                 if field.type() == QVariant.String and re.search('name', field.name(), re.I):
                     name_field = field.name()
                     break
@@ -967,26 +961,26 @@ class SpectralLibrary(QgsVectorLayer):
                         profile_px_x = fid_xx + xoff
                         profile_px_y = fid_yy + yoff
 
-                        for i in range(n_p):
+                        for idx in range(n_p):
                             # create profile feature
                             sp = SpectralProfile(fields=spectral_library.fields())
 
                             # create geometry
-                            sp.setGeometry(QgsPoint(profile_geo_x[i],
-                                                    profile_geo_y[i]))
+                            sp.setGeometry(QgsPoint(profile_geo_x[idx],
+                                                    profile_geo_y[idx]))
 
                             PROFILE_COUNTS[fid] = PROFILE_COUNTS.get(fid, 0) + 1
                             # sp.setName(f'{fid_basename}_{PROFILE_COUNTS[fid]}')
                             sp.setValues(x=wl,
-                                         y=fid_profiles[:, i],
+                                         y=fid_profiles[:, idx],
                                          xUnit=wlu,
                                          bbl=bbl)
                             if vectorFeature.isValid():
                                 for field_name in fields_to_copy:
                                     sp[field_name] = vectorFeature[field_name]
                             if copy_pixel_positions:
-                                sp['px_x'] = int(profile_px_x[i])
-                                sp['px_y'] = int(profile_px_y[i])
+                                sp['px_x'] = int(profile_px_x[idx])
+                                sp['px_y'] = int(profile_px_y[idx])
                             if progress_handler and progress_handler.wasCanceled():
                                 return None
 
