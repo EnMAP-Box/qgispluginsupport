@@ -6,13 +6,12 @@ import typing
 import warnings
 
 import numpy as np
+
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, Qt, QPointF
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QStandardItem
 from qgis.PyQt.QtWidgets import QMenu, QAction, QWidgetAction, QSlider, QApplication
 from qgis.core import QgsProject
-
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-
 from ...pyqtgraph import pyqtgraph as pg
 from ...utils import datetime64, SignalObjectWrapper, HashablePointF
 
@@ -304,7 +303,14 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         self.scatter.sigClicked.connect(self.onScatterMouseClicked)
         self.mVisualizationKey: VISUALIZATION_KEY = None
 
-    def setProfileData(self, plot_data, plot_style: PlotStyle, zValue=None, label: str = None, tooltip: str = None):
+    def setProfileData(self,
+                       plot_data,
+                       plot_style: PlotStyle,
+                       showBadBands: bool = True,
+                       zValue: int = None,
+                       label: str = None,
+                       tooltip: str = None):
+
         linePen = pg.mkPen(plot_style.linePen)
         symbolPen = pg.mkPen(plot_style.markerPen)
         symbolBrush = pg.mkBrush(plot_style.markerBrush)
@@ -320,7 +326,14 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         # replace None by NaN
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
+
+        if not showBadBands and 'bbl' in plot_data.keys():
+            valid = np.array(plot_data['bbl'], dtype=float) > 0
+            valid = valid & np.isfinite(valid)
+            y = np.where(valid, y, np.NAN)
+
         connect = np.isfinite(x) & np.isfinite(y)
+
         self.setData(x=x, y=y, z=zValue,
                      name=label,
                      connect=connect,

@@ -8,6 +8,7 @@ import sys
 import typing
 import warnings
 from json import JSONDecodeError
+from typing import Any, List, Union
 
 import numpy as np
 from osgeo import gdal
@@ -36,9 +37,12 @@ EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None, 'bbl
 JSON_SEPARATORS = (',', ':')
 
 
-def prepareProfileValueDict(x: None, y: None,
-                            xUnit: str = None, yUnit: str = None,
-                            bbl=None, prototype: dict = None) -> dict:
+def prepareProfileValueDict(x: Union[np.ndarray, List[Any]] = None,
+                            y: Union[np.ndarray, List[Any]] = None,
+                            xUnit: str = None,
+                            yUnit: str = None,
+                            bbl=None,
+                            prototype: dict = None) -> dict:
     """
     Creates a profile value dictionary from inputs
     :param y:

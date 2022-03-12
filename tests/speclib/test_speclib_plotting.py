@@ -17,6 +17,7 @@ from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
+from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralXAxis, SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotmodelitems import RasterRendererGroup, ProfileVisualizationGroup, \
     SpectralProfileColorPropertyWidget, PropertyItemGroup, PlotStyleItem, ProfileCandidateItem, PropertyItem, \
@@ -398,6 +399,24 @@ class TestSpeclibPlotting(TestCase):
         mimeData = PropertyItemGroup.toMimeData([grp])
 
         grp1 = PropertyItemGroup.fromMimeData(mimeData)
+
+    def test_badBands(self):
+
+        d = prepareProfileValueDict(y=[1, 2, 3, 4, 4, 3, 2, 3, 3, 4],
+                                    bbl=[1, 1, 0, 1, 0, 1, 0, 1, 1, 1])
+
+        slw = SpectralLibraryWidget()
+
+        speclib = slw.speclib()
+
+        feature = QgsFeature(speclib.fields())
+        for field in profile_fields(feature):
+            idx = feature.fields().lookupField(field.name())
+            feature.setAttribute(idx, encodeProfileValueDict(d, field))
+        self.assertTrue(speclib.startEditing())
+        speclib.addFeature(feature)
+        self.assertTrue(speclib.commitChanges())
+        self.showGui(slw)
 
     def test_SpectralLibraryPlotWidget(self):
 
