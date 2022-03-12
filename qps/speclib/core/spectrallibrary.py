@@ -40,6 +40,7 @@ import weakref
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
+
 from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData, \
     QFileInfo
 from qgis.PyQt.QtGui import QColor
@@ -51,7 +52,6 @@ from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsEditorWidgetSetup, QgsAction, QgsMessageLog, QgsProcessingFeedback, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
-
 from qgis.gui import \
     QgsGui
 from . import field_index
@@ -217,6 +217,9 @@ def runRemoveFeatureActionRoutine(layerID, id: int):
         raise Exception('unable to find layer "{}"'.format(layerID))
 
 
+RX_SUPPORTED_DROP_FORMATS = re.compile(r'.*\.(gpkg|geojson|asd|\d+)$', re.I)
+
+
 def createRemoveFeatureAction():
     """
     Creates a QgsAction to remove selected QgsFeatures from a QgsVectorLayer
@@ -319,25 +322,25 @@ class SpectralLibraryUtils:
             if is_spectral_library(sl) and id(sl) == sid:
                 return sl
 
-        # if MIMEDATA_SPECLIB in mimeData.formats():
-        #    sl = SpectralLibrary.readFromPickleDump(mimeData.data(MIMEDATA_SPECLIB))
-        #    if is_spectral_library(sl) and len(sl) > 0:
-        #        return sl
-
         if mimeData.hasUrls():
-            urls = mimeData.urls()
-            if isinstance(urls, list) and len(urls) > 0:
-                sl = SpectralLibrary.readFrom(urls[0])
-                if is_spectral_library(sl) and len(sl) > 0:
-                    return sl
-
-        # if MIMEDATA_TEXT in mimeData.formats():
-        #    txt = mimeData.text()
-        #    from ..io.csvdata import CSVSpectralLibraryIO
-        #    sl = CSVSpectralLibraryIO.fromString(txt)
-        #    if is_spectral_library(sl) and len(sl) > 0:
-        #        return sl
-
+            speclibs = []
+            for url in mimeData.urls():
+                path = url.toString(QUrl.PreferLocalFile)
+                if RX_SUPPORTED_DROP_FORMATS.search(path):
+                    sl = SpectralLibraryUtils.readFromSource(path)
+                    if isinstance(sl, QgsVectorLayer) and sl.isValid() and sl.featureCount() > 0:
+                        speclibs.append(sl)
+            if len(speclibs) == 0:
+                return None
+            elif len(speclibs) == 1:
+                return speclibs[0]
+            elif len(speclibs) > 1:
+                sl = speclibs[0]
+                sl.startEditing()
+                for sl2 in speclibs[1:]:
+                    SpectralLibraryUtils.addSpeclib(sl, sl2)
+                sl.commitChanges()
+                return sl
         return None
 
     @staticmethod
@@ -424,10 +427,15 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def canReadFromMimeData(mimeData: QMimeData) -> bool:
-        formats = [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_TEXT, MIMEDATA_URL]
+        formats = [MIMEDATA_SPECLIB_LINK, MIMEDATA_SPECLIB, MIMEDATA_URL]
         for format in formats:
             if format in mimeData.formats():
-                return True
+                if format == MIMEDATA_URL:
+                    for url in mimeData.urls():
+                        if RX_SUPPORTED_DROP_FORMATS.search(url.toString(QUrl.PreferLocalFile)):
+                            return True
+                else:
+                    return True
         return False
 
     @staticmethod

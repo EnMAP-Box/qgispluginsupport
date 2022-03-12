@@ -445,6 +445,7 @@ class ASDBinaryFile(object):
 
             #
             o = 484 + size - 1
+            # o = 484 + size
             self.ReferenceFlag = struct.unpack('<?', sub(o + 1, 1))[0]
             if self.ReferenceFlag:
                 #           self.ReferenceTime = np.datetime64('1970-01-01') + np.timedelta64(
@@ -454,11 +455,10 @@ class ASDBinaryFile(object):
 
                 reftime = struct.unpack('<8B', sub(o + 3, 8))
                 spectime = struct.unpack('<8B', sub(o + 11, 8))
-                self.SpectrumDescription, o = n_string(o + 19)
+                self.SpectrumDescription, slen = n_string(o + 19)
 
                 # reference data
-                self.Reference = np.array(struct.unpack(fmt, sub(o, size)))
-
+                self.Reference = np.array(struct.unpack(fmt, sub(o + 19 + slen, size)))
             s = ""
 
         return self

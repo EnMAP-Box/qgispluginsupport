@@ -1,4 +1,5 @@
 import datetime
+import enum
 import json
 import os
 import pathlib
@@ -10,6 +11,7 @@ from json import JSONDecodeError
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.PyQt.QtCore import QJsonDocument
 from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
@@ -18,7 +20,6 @@ from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsF
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
 from qgis.core import QgsTask, QgsFeatureRequest
 from qgis.gui import QgsMapCanvas
-
 from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields, \
     is_profile_field
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
@@ -85,15 +86,47 @@ def prepareProfileValueDict(x: None, y: None,
 
     x = d.get('x', None)
     if x:
-        assert isinstance(x, list) and len(x) == len(y), f'profile axis values "x" = {x}'
+        assert isinstance(x, list)
+        assert len(x) == len(y), f'x has length {len(x)} instead of {len(y)}'
     bbl = d.get('bbl', None)
     if bbl:
-        assert isinstance(bbl, list) and len(bbl) == len(y), f'band band list "bbl" = {bbl}'
+        assert isinstance(bbl, list)
+        assert len(bbl) == len(y), f'bbl has length {len(y)} instead of {len(y)}'
 
     return d
 
 
-def encodeProfileValueDict(d: dict, field: QgsField) -> typing.Any:
+class ProfileEncoding(enum.Enum):
+    Text = 0
+    Json = 0
+    Map = 1
+    Dict = 1
+    Bytes = 2
+    Binary = 3
+
+    @staticmethod
+    def fromInput(input) -> 'ProfileEncoding':
+        if input is None:
+            return ProfileEncoding.Text
+        elif isinstance(input, ProfileEncoding):
+            return input
+        elif isinstance(input, str):
+            input = input.lower()
+            for name, member in ProfileEncoding.__members__.items():
+                if name.lower() == input:
+                    return member
+        elif isinstance(input, QgsField):
+            if input.type() == 8:
+                return ProfileEncoding.Json
+            elif input.type() == QVariant.ByteArray:
+                return ProfileEncoding.Bytes
+            else:
+                return ProfileEncoding.Text
+
+        raise NotImplementedError(f'Unable to return ProfileEncoding for "{input}"')
+
+
+def encodeProfileValueDict(d: dict, field: typing.Union[str, QgsField, ProfileEncoding]) -> typing.Any:
     """
     Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
@@ -101,8 +134,11 @@ def encodeProfileValueDict(d: dict, field: QgsField) -> typing.Any:
     :param field: QgsField Field definition
     :return: QByteArray or str, respecting the datatype that can be stored in field
     """
-    if not isinstance(d, dict):
+    if not isinstance(d, dict) or len(d) == 0:
         return None
+
+    encoding = ProfileEncoding.fromInput(field)
+
     d2 = {}
     for k in EMPTY_PROFILE_VALUES.keys():
         v = d.get(k)
@@ -121,16 +157,13 @@ def encodeProfileValueDict(d: dict, field: QgsField) -> typing.Any:
             d2['x'] = [x.toString(Qt.ISODate) for x in xValues]
 
     # save as QByteArray
-    if isinstance(field, QgsField) and field.type() == 8:
-        # JSON field, return dictionary
+    if encoding == ProfileEncoding.Dict:
         return d2
 
     jsonDoc = QJsonDocument.fromVariant(d2)
-
-    if field is None or field.type() == QVariant.ByteArray:
+    if encoding == ProfileEncoding.Bytes:
         return jsonDoc.toBinaryData()
     else:
-        # return JSON string
         return bytes(jsonDoc.toJson(QJsonDocument.Compact)).decode('UTF-8')
 
 

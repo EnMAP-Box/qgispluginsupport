@@ -6,7 +6,7 @@ import warnings
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
-    QHBoxLayout, QFrame, QDialog, QMessageBox
+    QHBoxLayout, QFrame, QDialog
 from qgis.core import QgsFeature
 from qgis.core import QgsProcessingAlgorithm, QgsApplication, QgsProcessingRegistry
 from qgis.core import QgsProject
@@ -404,13 +404,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             dst_fields = speclib_dst.fields().names()
             missing = [f for f in speclib.fields() if f.name() not in dst_fields]
             if len(missing) > 0:
-                result = QMessageBox.question(self, 'Create additional field(s)?',
-                                              f'Data has {len(missing)} other field(s).\n'
-                                              f'Do you like to copy them?')
-
-                if result == QMessageBox.Yes:
-                    if not CopyAttributesDialog.copyLayerFields(speclib_dst, speclib, parent=self):
-                        return
+                CopyAttributesDialog.copyLayerFields(speclib_dst, speclib, parent=self)
 
         try:
             speclib_dst.startEditing()

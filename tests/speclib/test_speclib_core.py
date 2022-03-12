@@ -39,7 +39,7 @@ from qps.speclib.core import is_spectral_library, profile_field_list, profile_fi
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibrary, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
-    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask, prepareProfileValueDict
+    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask, prepareProfileValueDict, ProfileEncoding
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.speclib.io.csvdata import CSVSpectralLibraryIO
 from qps.testing import TestObjects, TestCase
@@ -253,6 +253,26 @@ class TestCore(TestCase):
             vd2 = decodeProfileValueDict(invalid_inputs)
             self.assertIsInstance(vd2, dict)
             self.assertTrue(len(vd2) == 0)
+
+        # test encoding
+
+        for e in ['ByTeS', ProfileEncoding.Bytes,
+                  QgsField('dummy', type=QVariant.ByteArray)]:
+            dump = encodeProfileValueDict(d, e)
+            self.assertIsInstance(dump, QByteArray)
+
+        for e in [None, 'TeXt', 'JsOn',
+                  ProfileEncoding.Text,
+                  ProfileEncoding.Json,
+                  QgsField('dummy', type=QVariant.String),
+                  QgsField('dummy', type=8)
+                  ]:
+            dump = encodeProfileValueDict(d, e)
+            self.assertIsInstance(dump, str)
+
+        for e in ['dIcT', 'mAp', ProfileEncoding.Dict, ProfileEncoding.Map]:
+            dump = encodeProfileValueDict(d, e)
+            self.assertIsInstance(dump, dict)
 
     def test_profile_fields(self):
 

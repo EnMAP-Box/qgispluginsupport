@@ -27,18 +27,19 @@
 import json
 import os
 import pathlib
+import re
 import sys
 import typing
-
-from qgis.core import QgsExpressionNodeFunction, QgsField
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, NULL
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext
+from qgis.core import QgsExpressionNodeFunction, QgsField
 from .speclib.core.spectrallibrary import FIELD_VALUES
-from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
+    ProfileEncoding
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
@@ -307,46 +308,87 @@ class SpectralData(QgsExpressionFunction):
 
 class SpectralMath(QgsExpressionFunction):
 
+    RX_ENCODINGS = re.compile('^({})$'.format('|'.join(ProfileEncoding.__members__.keys())), re.I)
+
     def __init__(self):
         group = SPECLIB_FUNCTION_GROUP
         name = 'spectralMath'
 
         args = [
+            QgsExpressionFunction.Parameter('p1', optional=True),
+            QgsExpressionFunction.Parameter('p2', optional=True),
+            QgsExpressionFunction.Parameter('pN', optional=True),
             QgsExpressionFunction.Parameter('expression', optional=False, isSubExpression=True),
-            QgsExpressionFunction.Parameter('profile_field', optional=False)
+            QgsExpressionFunction.Parameter('format', optional=True),
         ]
         helptext = HM.helpText(name, args)
-        super().__init__(name, args, group, helptext)
+        # super().__init__(name, args, group, helptext)
+        super().__init__(name, -1, group, helptext)
 
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
-        expression, ba = values
-        if context:
-            feature = context.feature()
-        if not isinstance(context, QgsExpressionContext):
-            return None
+        if len(values) < 1:
+            parent.setEvalErrorString(f'{self.name()}: requires at least 1 argument')
+            return QVariant()
+        if not isinstance(values[-1], str):
+            parent.setEvalErrorString(f'{self.name()}: last argument needs to be a string')
+            return QVariant()
 
-        if ba is None:
-            return None
+        encoding = None
+
+        if SpectralMath.RX_ENCODINGS.search(values[-1]) and len(values) >= 2:
+            encoding = ProfileEncoding.fromInput(values[-1])
+            iPy = -2
+        else:
+            iPy = -1
+
+        pyExpression: str = values[iPy]
+        if not isinstance(pyExpression, str):
+            parent.setEvalErrorString(
+                f'{self.name()}: Argument {iPy+1} needs to be a string with python code')
+            return QVariant()
 
         try:
-            assert context.fields()
-            values = decodeProfileValueDict(ba, numpy_arrays=True)
-            exec(expression, values)
-            # use same input type as output type
-            if isinstance(ba, QByteArray):
-                field = QgsField('dummy', QVariant.ByteArray)
-            elif isinstance(ba, dict):
-                # JSON
-                field = QgsField('dummy', 8)
-            else:
-                field = QgsField('dummy', QVariant.String)
-            dump = encodeProfileValueDict(values, field)
-            return dump
+            profilesData = values[0:-1]
+            DATA = dict()
+            fieldType: QgsField = None
+            for i, dump in enumerate(profilesData):
+                d = decodeProfileValueDict(dump, numpy_arrays=True)
+                if len(d) == 0:
+                    continue
+                if i == 0:
+                    DATA.update(d)
+                    if encoding is None:
+                        #       # use same input type as output type
+                        if isinstance(dump, (QByteArray, bytes)):
+                            encoding = ProfileEncoding.Bytes
+                        elif isinstance(dump, dict):
+                            encoding = ProfileEncoding.Map
+                        else:
+                            encoding = ProfileEncoding.Text
 
+                n = i + 1
+                # append position number
+                # y of 1st profile = y1, y of 2nd profile = y2 ...
+                for k, v in d.items():
+                    if isinstance(k, str):
+                        k2 = f'{k}{n}'
+                        DATA[k2] = v
+
+            assert context.fields()
+            exec(pyExpression, DATA)
+
+            # collect output profile values
+            d = prepareProfileValueDict(x=DATA.get('x', None),
+                                        y=DATA['y'],
+                                        xUnit=DATA.get('xUnit', None),
+                                        yUnit=DATA.get('yUnit', None),
+                                        bbl=DATA.get('bbl', None),
+                                        )
+            return encodeProfileValueDict(d, encoding)
         except Exception as ex:
-            parent.setEvalErrorString(str(ex))
-            return None
+            parent.setEvalErrorString(f'{ex}')
+            return QVariant()
 
     def usesGeometry(self, node) -> bool:
         return True

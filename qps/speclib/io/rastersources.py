@@ -30,7 +30,8 @@ import typing
 import warnings
 
 import numpy as np
-from qgis.PyQt.QtCore import QVariant, Qt
+
+from qgis.PyQt.QtCore import QVariant, Qt, QUrl
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
 from osgeo import gdal
 
@@ -403,10 +404,11 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: str,
+                       path: typing.Union[str, pathlib.Path, QUrl],
                        importSettings: dict = dict(),
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
 
+        path = cls.extractFilePath(path)
         required_fields = QgsFields()
         if 'fields' in importSettings.keys():
             available_fields: QgsFields = QgsFields(importSettings['fields'])
@@ -423,18 +425,25 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         rl = importSettings.get('raster_layer', path)
         vl = importSettings.get('vector_layer', None)
         all_touched = importSettings.get('all_touched', False)
-        if not isinstance(rl, QgsRasterLayer):
-            rl = QgsRasterLayer(rl)
+        if isinstance(rl, (str, pathlib.Path)):
+            rl = QgsRasterLayer(pathlib.Path(rl).as_posix(), 'raster')
 
         assert isinstance(rl, QgsRasterLayer) and rl.isValid()
 
+        generator = None
         if vl is None:
-            return RasterLayerSpectralLibraryIO.readRaster(rl, required_fields)
+            generator = RasterLayerSpectralLibraryIO.readRaster(rl, required_fields)
         else:
             if not isinstance(vl, QgsVectorLayer):
                 vl = QgsVectorLayer(vl)
             assert isinstance(vl, QgsVectorLayer) and vl.isValid()
-            return RasterLayerSpectralLibraryIO.readRasterVector(rl, vl, required_fields, all_touched)
+            generator = RasterLayerSpectralLibraryIO.readRasterVector(rl, vl, required_fields, all_touched)
+
+        profiles = []
+        if generator:
+            for p in generator:
+                profiles.append(p)
+        return profiles
 
     @staticmethod
     def readRaster(raster, fields: QgsFields) -> typing.Generator[QgsFeature, None, None]:

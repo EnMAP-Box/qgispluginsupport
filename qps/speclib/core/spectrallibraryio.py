@@ -17,7 +17,6 @@ from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsFields, \
     QgsExpressionContext, QgsFeatureIterator, QgsWkbTypes
 from qgis.gui import QgsFileWidget, QgsFieldMappingWidget
 from . import profile_field_list, profile_field_names
-from .spectrallibrary import SpectralLibraryUtils
 from .spectralprofile import groupBySpectralProperties
 from .. import speclibUiPath
 from ...layerproperties import CopyAttributesDialog
@@ -341,7 +340,7 @@ class SpectralLibraryIO(QObject):
     @staticmethod
     def readProfilesFromUri(
             uri: typing.Union[QUrl, str, pathlib.Path],
-            feedback: QgsProcessingFeedback = None) -> typing.List[QgsFeature]:
+            feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
@@ -513,7 +512,7 @@ class SpectralLibraryIO(QObject):
             profiles = SpectralLibraryIO.readProfilesFromUri(uri)
             if len(profiles) > 0:
                 referenceProfile = profiles[0]
-
+                from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
                 speclib = SpectralLibraryUtils.createSpectralLibrary(referenceProfile.fields())
                 speclib.startEditing()
                 speclib.beginEditCommand('Add profiles')
