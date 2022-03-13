@@ -21,28 +21,33 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import copy
 import pathlib
 import re
 import sys
 import typing
+from typing import List, Pattern, Tuple
 
-import numpy as np
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, QRegExp, pyqtSignal, QAbstractTableModel, QMimeData, \
-    QTimer, Qt
+from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, QRegExp, pyqtSignal, QAbstractTableModel, \
+    QTimer, Qt, NULL, QVariant
 from qgis.PyQt.QtGui import QColor, QFont, QIcon, QContextMenuEvent
-from qgis.PyQt.QtWidgets import QLineEdit, QTableView, QDialogButtonBox, QStyledItemDelegate, QComboBox, QWidget, \
-    QApplication, QMenu, QDoubleSpinBox, QDialog
+from qgis.PyQt.QtWidgets import QLineEdit, QTableView, QDialogButtonBox, QComboBox, QWidget, \
+    QApplication, QMenu, QDialog
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
-    QgsVectorDataProvider, QgsRasterDataProvider, Qgis
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsDoubleSpinBox, QgsMessageBar
+    QgsVectorDataProvider, QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, QgsAttributeTableModel
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
-from ..speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
-from ..unitmodel import BAND_INDEX
-from ..utils import loadUi, gdalDataset, parseWavelength, parseFWHM
+from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+from ..utils import loadUi, gdalDataset
+
+try:
+    from qgis.gui import QgsFieldCalculator
+
+    FIELD_CALCULATOR = True
+except ImportError:
+    FIELD_CALCULATOR = False
 
 TYPE_LOOKUP = {
     ':STATISTICS_MAXIMUM': float,
@@ -129,317 +134,145 @@ class GDALErrorHandler(object):
             raise RuntimeError(err_level, err_no, err_msg)
 
 
-class GDALBandMetadataItem(object):
+class GDALBandMetadataModel(QgsVectorLayer):
 
     def __init__(self):
-        self.name: str = None
-        self.wavelength: str = None
-        self.fwhm: str = None
-        self.wavelength_unit: str = None
-        self.items: typing.List[GDALMetadataItem]
+        super().__init__('none?', '', 'memory')
 
+        self.mMapLayer: QgsRasterLayer = None
+        self.mDomain: str = ''
+        self.mDataLookup: List[Tuple[QgsField, Pattern]] = []
 
-class GDALBandMetadataModel(QAbstractTableModel):
-    sigWavelengthUnitsChanged = pyqtSignal(str)
-    sigMessage = pyqtSignal(str, Qgis.MessageLevel)
+        # define default fields
+        b = self.isEditable()
+        self.startEditing()
 
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.cnName = 'Name'
-        self.cnWavelength = 'Wavelength'
-        self.cnFWHM = 'FWHM'
+        bandNo = QgsField('Band', type=QVariant.Int, comment='Band Number')
+        constraints = QgsFieldConstraints()
+        # todo: constraint unique combination of (domain, band number, key)
+        # constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
+        constraints.setConstraint(QgsFieldConstraints.ConstraintNotNull)
+        constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
+        constraints.setConstraintStrength(QgsFieldConstraints.ConstraintNotNull,
+                                          QgsFieldConstraints.ConstraintStrengthHard)
+        constraints.setConstraintStrength(QgsFieldConstraints.ConstraintUnique,
+                                          QgsFieldConstraints.ConstraintStrengthHard)
 
-        self.mErrorHandler: GDALErrorHandler = GDALErrorHandler()
+        bandNo.setConstraints(constraints)
+        bandNo.setReadOnly(True)
+        self.addAttribute(bandNo)
 
-        self.mWavelengthUnitModel = SpectralProfilePlotXAxisUnitModel()
-        self.mWavelengthUnitModel.mDescription[BAND_INDEX] = 'None'
-        self.mWavelengthUnitModel.mToolTips[BAND_INDEX] = 'No wavelength defined'
+        bandName = QgsField('Name', type=QVariant.String, len=-1, comment='Band Name')
 
-        self.mColumnNames = [
-            self.cnName,
-            self.cnWavelength,
-            self.cnFWHM
-        ]
-        self.mColumnTooltips = {
-            self.cnName: 'Band name',
-            self.cnWavelength: 'Band wavelengths',
-            self.cnFWHM: 'Full width half maximum'
-        }
-        for i, c in enumerate(self.mColumnNames):
-            self.mColumnTooltips[i] = self.mColumnTooltips[c]
+        self.addAttribute(bandName)
 
-        self.mWavelengthUnit: str = BAND_INDEX
-        self.mMapLayer: QgsMapLayer = None
-        self.mBandMetadata: typing.List[GDALBandMetadataItem] = []
-        self.mBandMetadata0: typing.List[GDALBandMetadataItem] = []
+        BBL = QgsField('BBL', type=QVariant.Bool, comment='Bad Band List')
+        BBL.setDefaultValueDefinition(QgsDefaultValue('True'))
+        self.addAttribute(BBL)
 
-    def registerWavelengthUnitComboBox(self, combobox: QComboBox):
+        WL = QgsField('WL', type=QVariant.Double, comment='Wavelength of band center')
+        self.addAttribute(WL)
 
-        combobox.setModel(self.mWavelengthUnitModel)
-        i = self.mWavelengthUnitModel.unitIndex(self.wavelenghtUnit()).row()
-        combobox.setCurrentIndex(i)
-        combobox.currentIndexChanged.connect(
-            lambda *args, cb=combobox: self.setWavelengthUnit(cb.currentData(Qt.UserRole)))
-        self.sigWavelengthUnitsChanged.connect(lambda *args, cb=combobox:
-                                               cb.setCurrentIndex(
-                                                   self.mWavelengthUnitModel.unitIndex(self.wavelenghtUnit()).row()
-                                               ))
+        WLU = QgsField('WLU', type=QVariant.String, comment='Wavelength Unit')
+        wluConstraints = QgsFieldConstraints()
+        wluConstraints.setConstraintExpression('"WLU" in [\'nm\', \'m\']')
+        WLU.setConstraints(wluConstraints)
+        self.addAttribute(WLU)
 
-    def setWavelengthUnit(self, wlu: str):
-        if wlu in ['', None]:
-            # BAND_INDEX is a proxy for undefined values
-            wlu = BAND_INDEX
+        WL_MIN = QgsField('WLmin', type=QVariant.Double, comment='Minimum Wavelength')
+        self.addAttribute(WL_MIN)
+        WL_MAX = QgsField('WLmax', type=QVariant.Double, comment='Maximum Wavelength')
+        self.addAttribute(WL_MAX)
 
-        if wlu != self.mWavelengthUnit:
-            self.mWavelengthUnit = wlu
+        FWHM = QgsField('FWHM', type=QVariant.Double, comment='Full width at half maximum')
+        fwhmConstraints = QgsFieldConstraints()
+        fwhmConstraints.setConstraintExpression('"FWHM" > 0')
+        FWHM.setConstraints(fwhmConstraints)
+        self.addAttribute(FWHM)
 
-            ul = self.createIndex(0, 0)
-            lr = self.createIndex(self.rowCount() - 1, self.columnCount() - 1)
-            self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount() - 1)
-            self.dataChanged.emit(ul, lr)
-            self.sigWavelengthUnitsChanged.emit(self.mWavelengthUnit)
+        self.commitChanges(b)
 
-    def wavelenghtUnit(self) -> str:
-        return self.mWavelengthUnit
-
-    def rowCount(self, parent: QModelIndex = ...) -> int:
-        return len(self.mBandMetadata)
-
-    def columnCount(self, parent: QModelIndex = ...) -> int:
-        return len(self.mColumnNames)
-
-    def headerData(self, col, orientation, role=None):
-        if orientation == Qt.Horizontal:
-            cname = self.mColumnNames[col]
-            if role == Qt.DisplayRole:
-                return self.mColumnNames[col]
-            if role == Qt.ToolTipRole:
-                return self.mColumnTooltips[col]
-            if role == Qt.TextColorRole:
-                if cname == self.cnWavelength and self.mWavelengthUnit == BAND_INDEX:
-                    return QColor('grey')
-                if cname == self.cnFWHM and not self.isMetricUnit():
-                    return QColor('grey')
-
-        elif orientation == Qt.Vertical:
-            if role == Qt.DisplayRole:
-                return col + 1
-        return None
+    """
+    def setDomain(self, domain:str):
+        if self.mDomain != domain:
+            self.mDomain = domain
+            self.syncToLayer()
+    """
 
     def setLayer(self, mapLayer: QgsMapLayer):
 
         if isinstance(mapLayer, QgsRasterLayer):
-
             self.mMapLayer = mapLayer
         else:
             self.mMapLayer = None
-
         self.syncToLayer()
 
-    def columnIsEnabled(self, index: QModelIndex) -> bool:
-        if isinstance(index, QModelIndex):
-            index = index.column()
+    def syncToLayer(self, *args):
+        self.startEditing()
+        self.deleteFeatures(self.allFeatureIds())
+        self.commitChanges(False)
+        lyr = self.mMapLayer
 
-        if index == 0:
-            return True
+        if isinstance(lyr, QgsRasterLayer) \
+                and lyr.isValid() \
+                and isinstance(lyr.dataProvider(), QgsRasterDataProvider) \
+                and lyr.dataProvider().name() == 'gdal':
+            self.beginEditCommand('Sync to layer')
+            spectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
 
-        cname = self.mColumnNames[index]
-        if cname == self.cnWavelength:
-            return self.mWavelengthUnit != BAND_INDEX
-        if cname == self.cnFWHM:
-            return cname != BAND_INDEX and not self.isDateUnit()
-        return False
+            spectralProperties.fullWidthHalfMaximum()
+            dp: QgsRasterDataProvider = lyr.dataProvider()
+            for b in range(1, lyr.bandCount() + 1):
+                f = QgsFeature(self.fields())
 
-    def castWLType(self, value):
-        if value in ['', None, 'None']:
-            return None
-        if self.isMetricUnit():
-            return float(value)
-        if self.isDateUnit():
-            return str(value)
-        return str(value)
-
-    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        if not index.isValid():
-            return Qt.NoItemFlags
-
-        flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
-        if self.columnIsEnabled(index):
-            flags = flags | Qt.ItemIsEditable
-        return flags
-
-    def data(self, index: QModelIndex, role=None):
-        if not index.isValid():
-            return None
-
-        cname = self.mColumnNames[index.column()]
-        item: GDALBandMetadataItem = self.mBandMetadata[index.row()]
-
-        if role in [Qt.DisplayRole, Qt.EditRole]:
-            if cname == self.cnName:
-                return item.name
-            if cname == self.cnWavelength:
-                return item.wavelength
-            if cname == self.cnFWHM:
-                return item.fwhm
-
-        if role == Qt.ToolTipRole:
-            if cname == self.cnName:
-                return f'Band name band {index.row() + 1}="{item.name}"'
-            if cname == self.cnWavelength:
-                if item.wavelength in [None, '']:
-                    return f'Wavelength band {index.row() + 1} undefined'
-                else:
-                    return f'Wavelength band {index.row() + 1}: {item.wavelength}'
-
-        if role == Qt.UserRole:
-            return item
-
-    def setData(self, index: QModelIndex, value: typing.Any, role: int = ...) -> bool:
-
-        if not index.isValid():
-            return None
-
-        cname = self.mColumnNames[index.column()]
-        item: GDALBandMetadataItem = self.mBandMetadata[index.row()]
-        changed: bool = False
-
-        if role == Qt.EditRole:
-            if cname == self.cnName:
-                item.name = value
-                changed = True
-            elif cname == self.cnWavelength:
-                item.wavelength = value
-                changed = True
-            elif cname == self.cnFWHM:
-                item.fwhm = value
-                changed = True
-
-        if changed:
-            idx0 = self.createIndex(index.row(), 0)
-            idx1 = self.createIndex(index.row(), self.columnCount() - 1)
-            self.dataChanged.emit(idx0, idx1, [role, Qt.TextColorRole])
-
-        return changed
-
-    def isMetricUnit(self) -> bool:
-        return re.search(r'^(m|.m|.*meters?)$', self.mWavelengthUnit) is not None
-
-    def isDateUnit(self) -> bool:
-        return re.search(r'Date|DOY|Week', self.mWavelengthUnit, re.IGNORECASE) is not None
-
-    def isValidTypeList(self, typeList: list, t):
-        for i in typeList:
-            try:
-                v = t(i)
-            except Exception:
-                return False
-        return True
+                for field in self.fields():
+                    field: QgsField
+                    n = field.name()
+                    if n == 'Band':
+                        f.setAttribute(n, b)
+                    elif n == 'Name':
+                        f.setAttribute(n, dp.generateBandName(b))
+                    else:
+                        itemKey = spectralProperties.bandItemKey(b, field.name())
+                        value = spectralProperties.value(itemKey)
+                        f.setAttribute(n, value)
+                assert self.addFeature(f)
+            self.endEditCommand()
+        assert self.commitChanges(False)
 
     def applyToLayer(self, *args):
-        if isinstance(self.mMapLayer, QgsRasterLayer) and self.mMapLayer.isValid():
 
-            if self.mMapLayer.dataProvider().name() == 'gdal':
-                gdal.PushErrorHandler(self.mErrorHandler.handler)
-                try:
-                    ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_Update)
-                    assert isinstance(ds, gdal.Dataset)
-                except RuntimeError as ex:
-                    msg = f'{ex}\nMetadata might not get saved for {self.mMapLayer.source()}'
-                    self.sigMessage.emit(msg, Qgis.Warning)
+        if not isinstance(self.mMapLayer, QgsRasterLayer):
+            return
 
-                    ds: gdal.Dataset = gdal.Open(self.mMapLayer.source(), gdal.GA_ReadOnly)
+            # properties = QgsRasterLayerSpectralProperties.fromRasterLayer(self.mMapLayer)
+        ds: gdal.Dataset = None
+        try:
+            ds = gdalDataset(self.mMapLayer)
+        except Exception as ex:
+            pass
 
-                try:
+        if isinstance(ds, gdal.Dataset):
 
-                    # if ENVI driver, save to 'ENVI' domain
-                    # if other driver, save  to default domain
+            value_fields = [f for f in self.fields() if f.name() not in ['Band', 'Name']]
 
-                    is_envi = ds.GetDriver().ShortName == 'ENVI'
-                    if is_envi:
-                        domain = 'ENVI'
+            for f in self.getFeatures():
+                f: QgsFeature
+                bandNo = f.attribute('Band')
+                band: gdal.Band = ds.GetRasterBand(bandNo)
+                name = f.attribute('Name')
+                band.SetDescription(name)
+
+                for field in value_fields:
+                    n = field.name()
+                    n_gdal = n.lower()
+                    value = f.attribute(n)
+                    if value in [None, NULL]:
+                        band.SetMetadataItem(n_gdal, '', 'ENVI')
                     else:
-                        domain = None
-
-                    if self.mWavelengthUnit not in [None, '', BAND_INDEX]:
-
-                        # remove potential concurrent definitions of wavelength unit and fwhm
-                        for k in ['wavelength_units', 'wavelength units', 'fwhm', 'wavelength', 'wavelengths']:
-                            for d in ['ENVI', None]:
-                                ds.SetMetadataItem(k, None, d)
-                                for b in range(ds.RasterCount):
-                                    band: gdal.Band = ds.GetRasterBand(b + 1)
-                                    band.SetMetadataItem(k, None, d)
-
-                        ds.SetMetadataItem('wavelength units', self.mWavelengthUnit, domain)
-
-                        wl = [item.wavelength for item in self.mBandMetadata]
-                        ds.SetMetadataItem('wavelength', list_or_empty(wl, domain=domain), domain)
-
-                        fwhm = [item.fwhm for item in self.mBandMetadata]
-                        ds.SetMetadataItem('fwhm', list_or_empty(fwhm, domain=domain), domain)
-
-                    for b, item in enumerate(self.mBandMetadata):
-                        assert isinstance(item, GDALBandMetadataItem)
-                        band: gdal.Band = ds.GetRasterBand(b + 1)
-                        band.SetDescription(item.name)
-
-                        band.FlushCache()
-
-                    ds.FlushCache()
-                    del ds
-
-                except Exception as ex:
-                    msg = f'{ex}'
-                    self.sigMessage.emit(msg, Qgis.Critical)
-                    print(msg, file=sys.stderr)
-                finally:
-                    gdal.PopErrorHandler()
-
-    def validate(self) -> typing.List[str]:
-        # todo: implement some internal validation and return descriptive error messages
-        errors = []
-
-        return errors
-
-    def reset(self):
-        self.beginResetModel()
-        self.mBandMetadata.clear()
-        self.mBandMetadata.extend([copy.copy(item) for item in self.mBandMetadata0])
-        self.endResetModel()
-
-    def syncToLayer(self, *args):
-
-        self.beginResetModel()
-        self.mBandMetadata.clear()
-        self.mBandMetadata0.clear()
-
-        if isinstance(self.mMapLayer, QgsRasterLayer) and self.mMapLayer.isValid():
-            dp = self.mMapLayer.dataProvider()
-            if isinstance(dp, QgsRasterDataProvider) and dp.name() == 'gdal':
-                ds: gdal.Dataset = gdal.Open(self.mMapLayer.source())
-                wl, wlu = parseWavelength(ds)
-
-                if wlu in [None, '']:
-                    self.setWavelengthUnit(BAND_INDEX)
-                else:
-                    self.setWavelengthUnit(wlu)
-
-                fwhm = parseFWHM(ds)
-
-                for b in range(ds.RasterCount):
-                    band: gdal.Band = ds.GetRasterBand(b + 1)
-                    item = GDALBandMetadataItem()
-                    item.name = band.GetDescription()
-                    if isinstance(wl, np.ndarray) and len(wl) > b:
-                        item.wavelength = self.castWLType(wl[b])
-                    if isinstance(fwhm, np.ndarray) and len(fwhm) > b:
-                        item.fwhm = self.castWLType(fwhm[b])
-
-                    self.mBandMetadata.append(item)
-
-        self.mBandMetadata0.extend([copy.copy(item) for item in self.mBandMetadata])
-        self.endResetModel()
+                        band.SetMetadataItem(n_gdal, str(value), 'ENVI')
+            ds.FlushCache()
+            del ds
 
 
 def list_or_empty(values, domain: str = None) -> str:
@@ -457,146 +290,6 @@ def list_or_empty(values, domain: str = None) -> str:
     if domain == 'ENVI':
         result = f'{{{result}}}'
     return result
-
-
-class GDALBandMetadataModelTableViewDelegate(QStyledItemDelegate):
-    """
-
-    """
-
-    def __init__(self, tableView: QTableView, parent=None):
-        assert isinstance(tableView, GDALBandMetadataModelTableView)
-        super().__init__(parent=parent)
-        self.mTableView = tableView
-        # self.mTreeView.model().rowsInserted.connect(self.onRowsInserted)
-
-    def sortFilterProxyModel(self) -> QSortFilterProxyModel:
-        return self.mTableView.model()
-
-    def bandModel(self) -> GDALBandMetadataModel:
-        return self.sortFilterProxyModel().sourceModel()
-
-    def setItemDelegates(self, tableView: QTableView):
-
-        m: GDALBandMetadataModel = self.bandModel()
-        for c in [m.cnWavelength, m.cnFWHM]:
-            for i in range(self.sortFilterProxyModel().columnCount()):
-                cname = self.sortFilterProxyModel().headerData(i, Qt.Horizontal, role=Qt.DisplayRole)
-                if cname == c:
-                    tableView.setItemDelegateForColumn(i, self)
-
-    def createEditor(self, parent, option, index):
-        w = None
-        m = self.bandModel()
-        if index.isValid() and isinstance(m, GDALBandMetadataModel):
-            cname = self.sortFilterProxyModel().headerData(index.column(), Qt.Horizontal)
-            wlu = self.bandModel().wavelenghtUnit()
-
-            if cname in [m.cnWavelength, m.cnFWHM]:
-                if self.bandModel().isMetricUnit():
-                    w = QgsDoubleSpinBox(parent=parent)
-                    w.setClearValue(0)
-                    w.setMaximum(16000)
-                    w.setMinimum(0)
-                    w.setDecimals(4)
-                elif self.bandModel().isDateUnit():
-                    w = QLineEdit(parent=parent)
-
-        if w is None:
-            w = super().createEditor(parent, option, index)
-        return w
-
-    def setEditorData(self, w: QWidget, index):
-        m = self.bandModel()
-        if index.isValid() and isinstance(m, GDALBandMetadataModel):
-            cname = self.sortFilterProxyModel().headerData(index.column(), Qt.Horizontal)
-            value = index.data(Qt.DisplayRole)
-
-            if isinstance(w, QDoubleSpinBox):
-                if value in [None, 'None', '']:
-                    value = w.clearValue()
-                value = float(value)
-                w.setValue(value)
-            elif isinstance(w, QLineEdit):
-                w.setText(str(value))
-            else:
-                raise NotImplementedError()
-
-    def setModelData(self, w, bridge, proxyIndex):
-        value = None
-        if isinstance(w, QDoubleSpinBox):
-            value = w.value()
-            if isinstance(w, QgsDoubleSpinBox) and value == w.clearValue():
-                value = None
-        elif isinstance(w, QLineEdit):
-            value = w.text()
-        self.sortFilterProxyModel().setData(proxyIndex, value, role=Qt.EditRole)
-
-
-class GDALBandMetadataModelTableView(QTableView):
-    """
-    A QTreeView for the GDALBandMetadataModelTableView
-    """
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
-        """
-        Opens a context menu
-        """
-        index = self.indexAt(event.pos())
-        if index.isValid():
-
-            item = index.data(Qt.UserRole)
-            if not isinstance(item, GDALBandMetadataItem):
-                return
-
-            selectedIndexes = self.selectionModel().selectedIndexes()
-            selectedColumnIndexes = [i for i in selectedIndexes if i.column() == index.column()]
-
-            cname = self.model().headerData(index.column(), Qt.Horizontal)
-            m = QMenu()
-            a = m.addAction('Copy value(s)')
-            a.triggered.connect(lambda *args, idx=selectedIndexes: self.copyValues(idx, sep='\n'))
-
-            a = m.addAction(f'Copy "{cname}" (newline)')
-            a.triggered.connect(lambda *args, idx=selectedColumnIndexes: self.copyValues(idx, sep='\n'))
-
-            a = m.addAction(f'Copy "{cname}" (,)')
-            a.triggered.connect(lambda *args, idx=selectedColumnIndexes: self.copyValues(idx, sep=','))
-
-            a = m.addAction(f'Paste "{cname}" value(s)')
-            a.triggered.connect(lambda *args, idx=index: self.pasteValues(idx))
-
-            m.addSeparator()
-            a = m.addAction('Clear selected')
-            a.setEnabled(len(selectedIndexes) > 0)
-            a.triggered.connect(lambda *args, idx=selectedIndexes: self.clearValues(idx))
-
-            m.exec_(event.globalPos())
-
-    def clearValues(self, indices: typing.List[QModelIndex]):
-        for idx in indices:
-            self.model().setData(idx, '', role=Qt.EditRole)
-
-    def copyValues(self, indices: typing.List[QModelIndex], sep='\n'):
-        values = [str(idx.data(Qt.DisplayRole)) for idx in indices]
-        values = sep.join(values)
-        QApplication.clipboard().setText(values)
-
-    def pasteValues(self, idx: QModelIndex):
-        md: QMimeData = QApplication.clipboard().mimeData()
-        values = md.text()
-        values = re.split(r'[,\n]', values)
-
-        r0 = idx.row()
-        for i, v in enumerate(values):
-            row = r0 + i
-            if row >= self.model().rowCount():
-                break
-            index = self.model().index(row, idx.column())
-            self.model().setData(index, v, role=Qt.EditRole)
 
 
 class GDALMetadataModel(QAbstractTableModel):
@@ -1057,17 +750,22 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self._cs = None
 
         self.bandMetadataModel = GDALBandMetadataModel()
-        self.bandMetadataModel.sigMessage.connect(self.showMessage)
-        self.bandMetadataProxyModel = QSortFilterProxyModel()
-        self.bandMetadataProxyModel.setSourceModel(self.bandMetadataModel)
-        self.bandMetadataProxyModel.setFilterKeyColumn(-1)
+        self.bandDualView: QgsDualView
+        self.bandDualView.init(self.bandMetadataModel, self.canvas())
+        self.bandDualView.currentChanged.connect(self.onBandFormModeChanged)
 
-        self.tvBandNames.setModel(self.bandMetadataProxyModel)
-        self.bandMetadataModelViewDelegate = GDALBandMetadataModelTableViewDelegate(self.tvBandNames)
-        self.bandMetadataModelViewDelegate.setItemDelegates(self.tvBandNames)
+        self.btnBandTableView.setDefaultAction(self.actionBandTableView)
+        self.btnBandFormView.setDefaultAction(self.actionBandFormView)
+        self.actionBandTableView.triggered.connect(lambda: self.bandDualView.setView(QgsDualView.AttributeTable))
+        self.actionBandFormView.triggered.connect(lambda: self.bandDualView.setView(QgsDualView.AttributeEditor))
+
+        if not FIELD_CALCULATOR:
+            self.btnBandCalculator.setVisible(False)
+        else:
+            self.btnBandCalculator.setDefaultAction(self.actionBandCalculator)
+            self.actionBandCalculator.triggered.connect(self.showBandCalculator)
 
         self.cbWavelengthUnits: QComboBox
-        self.bandMetadataModel.registerWavelengthUnitComboBox(self.cbWavelengthUnits)
 
         self.metadataModel = GDALMetadataModel()
         self.metadataModel.sigMessage.connect(self.showMessage)
@@ -1099,6 +797,20 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.actionAddItem.triggered.connect(self.onAddItem)
         self.actionRemoveItem.triggered.connect(self.onRemoveSelectedItems)
         self.onEditableChanged(self.metadataModel.isEditable())
+
+    def showBandCalculator(self, *args):
+
+        masterModel: QgsAttributeTableModel = self.bandDualView.masterModel()
+        if FIELD_CALCULATOR:
+            calc: QgsFieldCalculator = QgsFieldCalculator(self.bandMetadataModel, self)
+            if calc.exec_() == QDialog.Accepted:
+                col = masterModel.fieldCol(calc.changedAttributeId())
+                if col >= 0:
+                    masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
+
+    def onBandFormModeChanged(self, index: int):
+        self.actionBandTableView.setChecked(self.bandDualView.view() == QgsDualView.AttributeTable)
+        self.actionBandFormView.setChecked(self.bandDualView.view() == QgsDualView.AttributeEditor)
 
     def showMessage(self, msg: str, level: Qgis.MessageLevel):
 
@@ -1207,6 +919,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         super().syncToLayer(*args)
         lyr = self.mapLayer()
         self.bandMetadataModel.setLayer(lyr)
+        self.bandDualView.tableView().resizeColumnsToContents()
+
         self.metadataModel.setLayer(lyr)
         if self.supportsGDALClassification:
             self._cs = ClassificationScheme.fromMapLayer(lyr)

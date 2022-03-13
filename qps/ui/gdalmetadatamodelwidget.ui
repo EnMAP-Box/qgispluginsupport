@@ -78,18 +78,59 @@
       </property>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="spacing">
+         <number>2</number>
+        </property>
         <property name="topMargin">
          <number>0</number>
         </property>
         <item>
-         <widget class="QLabel" name="label">
+         <widget class="QToolButton" name="btnBandTableView">
           <property name="text">
-           <string>Wavelength Units</string>
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>
+            :/images/themes/default/mActionOpenTable.svg
+           </iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="cbWavelengthUnits"/>
+         <widget class="QToolButton" name="btnBandFormView">
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>
+            :/images/themes/default/mActionFormView.svg
+           </iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnBandCalculator">
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
+            :/images/themes/default/mActionCalculateField.svg
+           </iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
         <item>
          <spacer name="horizontalSpacer">
@@ -107,7 +148,10 @@
        </layout>
       </item>
       <item>
-       <widget class="GDALBandMetadataModelTableView" name="tvBandNames"/>
+       <widget class="QgsDualView" name="bandDualView">
+        <widget class="QWidget" name="page"/>
+        <widget class="QWidget" name="page_2"/>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -241,8 +285,9 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset>
-            <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg
+           </iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -255,8 +300,10 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset>
-            <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>
+            :/images/themes/default/symbologyRemove.svg
+           </iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -335,8 +382,9 @@
   </action>
   <action name="actionAddItem">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg
+    </iconset>
    </property>
    <property name="text">
     <string>Add Item</string>
@@ -347,8 +395,9 @@
   </action>
   <action name="actionRemoveItem">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg
+    </iconset>
    </property>
    <property name="text">
     <string>Remove Items</string>
@@ -359,11 +408,55 @@
   </action>
   <action name="actionReset">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mIconClearText.svg</normaloff>:/images/themes/default/mIconClearText.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mIconClearText.svg</normaloff>:/images/themes/default/mIconClearText.svg
+    </iconset>
    </property>
    <property name="text">
     <string>Reset</string>
+   </property>
+  </action>
+  <action name="actionBandTableView">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>BandTableView</string>
+   </property>
+   <property name="toolTip">
+    <string>Show band properties in table view</string>
+   </property>
+  </action>
+  <action name="actionBandFormView">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>BandFormView</string>
+   </property>
+   <property name="toolTip">
+    <string>Show band properties in form view</string>
+   </property>
+  </action>
+  <action name="actionBandCalculator">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
+     :/images/themes/default/mActionCalculateField.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>BandCalculator</string>
+   </property>
+   <property name="toolTip">
+    <string>Opens a calculator to calculate band values</string>
    </property>
   </action>
  </widget>
@@ -391,13 +484,14 @@
    <header>qps.layerconfigwidgets.gdalmetadata</header>
   </customwidget>
   <customwidget>
-   <class>GDALBandMetadataModelTableView</class>
-   <extends>QTableView</extends>
-   <header>qps.layerconfigwidgets.gdalmetadata</header>
-  </customwidget>
-  <customwidget>
    <class>QgsMessageBar</class>
    <extends>QFrame</extends>
+   <header>qgis.gui</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsDualView</class>
+   <extends>QStackedWidget</extends>
    <header>qgis.gui</header>
    <container>1</container>
   </customwidget>

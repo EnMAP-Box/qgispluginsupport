@@ -49,7 +49,6 @@ from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 try:
     from qgis.gui import QgsFieldCalculator
-
     FIELD_CALCULATOR = True
 except ImportError:
     FIELD_CALCULATOR = False

@@ -15,11 +15,12 @@ import unittest
 import xmlrunner
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import QSortFilterProxyModel, Qt, QVariant
-from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QTableView, QGridLayout, QPushButton, QHBoxLayout
+from qgis.PyQt.QtCore import QSortFilterProxyModel, QVariant
+from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QTableView, QPushButton, QHBoxLayout
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsField, QgsAbstractVectorLayerLabeling
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, \
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsDualView, \
     QgsMapLayerComboBox, QgsRasterBandComboBox, QgsRasterTransparencyWidget, QgsMapLayerConfigWidgetFactory
+from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
 from qps.resources import initQtResources
 from qps.testing import TestObjects, TestCase, StartOptions
@@ -208,43 +209,6 @@ class LayerConfigWidgetsTests(TestCase):
         w.setLayout(vbLayout)
         self.showGui(w)
 
-    def test_GDALBandNameModel(self):
-
-        from qpstestdata import enmap
-        enmap2 = self.createImageCopy(enmap)
-
-        ds: gdal.Dataset = gdal.Open(enmap2)
-        old_name = ds.GetRasterBand(1).GetDescription()
-        del ds
-
-        lyrR = QgsRasterLayer(enmap2)
-        from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel
-        bandModel = GDALBandMetadataModel()
-        bandModel.setLayer(lyrR)
-
-        self.assertEqual(bandModel.rowCount(), lyrR.bandCount())
-
-        fm = QSortFilterProxyModel()
-        fm.setSourceModel(bandModel)
-
-        tv = QTableView()
-        tv.setSortingEnabled(True)
-        tv.setModel(fm)
-
-        new_name = old_name + 'XYZ'
-        changed = bandModel.setData(bandModel.index(0, 0), new_name, role=Qt.EditRole)
-        self.assertTrue(changed)
-        bandModel.applyToLayer()
-        bandModel.syncToLayer()
-        self.assertEqual(bandModel.data(bandModel.index(0, 0), role=Qt.DisplayRole), new_name)
-
-        ds: gdal.Dataset = gdal.Open(enmap2)
-        new_name2 = ds.GetRasterBand(1).GetDescription()
-        del ds
-        self.assertEqual(new_name, new_name2)
-
-        self.showGui(tv)
-
     def test_GDALMetadataModel(self):
         from qpstestdata import landcover
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
@@ -285,13 +249,28 @@ class LayerConfigWidgetsTests(TestCase):
 
         self.showGui(d)
 
+    def test_GDALBandMetadataModel2(self):
+        from qpstestdata import enmap
+        img_path = self.createImageCopy(enmap)
+        lyr = QgsRasterLayer(img_path)
+        model2 = GDALBandMetadataModel()
+        c = QgsMapCanvas()
+        view = QgsDualView()
+        view.init(model2, c)
+        model2.setLayer(lyr)
+        model2.syncToLayer()
+        model2.startEditing()
+        model2.applyToLayer()
+        self.showGui(view)
+
     def test_GDALMetadataModelConfigWidget(self):
         from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget
-        from qpstestdata import envi_bsq
+        from qpstestdata import envi_bsq, enmap_polygon
 
         envi_bsq = self.createImageCopy(envi_bsq)
 
-        lyrR = QgsRasterLayer(envi_bsq)
+        lyrR = QgsRasterLayer(envi_bsq, 'ENVI')
+        lyrV = QgsVectorLayer(enmap_polygon, 'Vector')
 
         canvas = QgsMapCanvas()
         w = GDALMetadataModelConfigWidget(lyrR, canvas)
@@ -309,18 +288,33 @@ class LayerConfigWidgetsTests(TestCase):
         btnZoom.clicked.connect(canvas.zoomToFullExtent)
         btnReload = QPushButton('Reload')
         btnReload.clicked.connect(w.syncToLayer)
+
+        QgsProject.instance().addMapLayers([lyrR, lyrV])
+
         cb = QgsRasterBandComboBox()
         cb.setLayer(w.mapLayer())
 
-        gridLayout = QGridLayout()
-        gridLayout.addWidget(btnApply, 0, 0)
-        gridLayout.addWidget(btnReload, 0, 1)
-        gridLayout.addWidget(btnZoom, 0, 2)
-        gridLayout.addWidget(cb, 0, 3, 1, 2)
-        gridLayout.addWidget(w, 1, 0, 2, 3)
-        gridLayout.addWidget(canvas, 1, 4, 3, 2)
+        def onLayerChanged(layer):
+            if isinstance(layer, QgsRasterLayer):
+                cb.setLayer(layer)
+            else:
+                cb.setLayer(None)
+            w.setLayer(layer)
+
+        cbChangeLayer = QgsMapLayerComboBox()
+        cbChangeLayer.layerChanged.connect(onLayerChanged)
+
+        hl1 = QHBoxLayout()
+        for widget in [btnApply, btnReload, btnZoom, cbChangeLayer, cb]:
+            hl1.addWidget(widget)
+        hl2 = QHBoxLayout()
+        hl2.addWidget(w)
+        hl2.addWidget(canvas)
+        vl = QVBoxLayout()
+        vl.addLayout(hl1)
+        vl.addLayout(hl2)
         m = QWidget()
-        m.setLayout(gridLayout)
+        m.setLayout(vl)
 
         if isinstance(w.mapLayer(), QgsVectorLayer):
             from qps.layerconfigwidgets.gdalmetadata import GDALMetadataItem
@@ -398,5 +392,4 @@ class LayerConfigWidgetsTests(TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
