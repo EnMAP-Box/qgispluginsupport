@@ -488,16 +488,16 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_BadBands = QgsPropertyItem('BadBands')
         self.mP_BadBands.setDefinition(
             QgsPropertyDefinition(
-                'Band Bands', 'Show band band values', QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
+                'Bad Bands', 'Show bad band values', QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
 
         )
+        self.mP_BadBands.setProperty(QgsProperty.fromValue(True))
+
         self.mP_MaxProfiles = QgsPropertyItem('MaxProfiles')
         self.mP_MaxProfiles.setDefinition(QgsPropertyDefinition(
             'Max. Profiles', 'Maximum Number of Profiles',
             QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive))
         self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(512))
-
-        self.mP_BadBands.setProperty(QgsProperty.fromValue(False))
 
         self.mPLegend = LegendGroup()
 
