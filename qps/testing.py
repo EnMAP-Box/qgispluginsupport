@@ -39,11 +39,10 @@ import warnings
 from unittest import mock
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
-
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
+from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
@@ -62,6 +61,7 @@ from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
+
 from .resources import findQGISResourceFiles, initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
 from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
@@ -460,10 +460,10 @@ def get_iface() -> QgisInterface:
     return qgis.utils.iface
 
 
-def _set_iface(iface):
+def _set_iface(ifaceMock):
     """
     Replaces the iface variable in other plugins, i.e. the  QGIS processing plugin
-    :param iface: QgisInterface
+    :param ifaceMock: QgisInterface
     """
     import processing.ProcessingPlugin
 
@@ -471,7 +471,7 @@ def _set_iface(iface):
     modules = [processing.ProcessingPlugin]
 
     for m in modules:
-        m.iface = iface
+        m.iface = ifaceMock
 
 
 class TestCase(qgis.testing.TestCase):

@@ -25,16 +25,16 @@ import unittest
 import numpy as np
 import xmlrunner
 from osgeo import ogr
-
 from qgis.PyQt.QtCore import QJsonDocument
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
 from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
     QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsApplication, QgsTaskManager, QgsFields
 from qgis.gui import QgsGui
+
 from qps import initResources
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field, \
-    create_profile_field
+    create_profile_field, is_profile_field
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
@@ -605,7 +605,7 @@ class TestCore(TestCase):
                 d2 = decodeProfileValueDict(profiles[0].attribute(key.fieldName()))
                 self.assertEqual(d2['x'], x)
 
-    def test_SpectralLibraryValueFields(self):
+    def test_SpectralProfileFields(self):
 
         sl = SpectralLibraryUtils.createSpectralLibrary(profile_fields=['profiles', 'derived1'])
 
@@ -620,6 +620,27 @@ class TestCore(TestCase):
         self.assertTrue(SpectralLibraryUtils.addAttribute(sl, create_profile_field('derived2')))
         self.assertTrue(sl.commitChanges())
         self.assertEqual(profile_fields(sl).count(), 3)
+
+    def test_example_profile_fields(self):
+        fieldNP = QgsField('no profile', type=QVariant.ByteArray)
+        self.assertFalse(is_profile_field(fieldNP))
+
+        fieldP = create_profile_field('profiles')
+        self.assertTrue(is_profile_field(fieldP))
+
+        self.assertTrue(is_profile_field(QgsField(fieldP)))
+
+        lyr = QgsVectorLayer('point?crs=epsg:4326', 'Test', 'memory')
+        self.assertTrue(lyr.startEditing())
+        lyr.addAttribute(fieldP)
+
+        self.assertTrue(lyr.commitChanges())
+
+        i = lyr.fields().lookupField('profiles')
+
+        print(f'Is SpectralProfile field? {is_profile_field(lyr.fields().at(i))}')
+        lyr.setEditorWidgetSetup(i, fieldP.editorWidgetSetup())
+        print(f'Is SpectralProfile field? {is_profile_field(lyr.fields().at(i))}')
 
     def test_SpectralLibraryUtils(self):
 
