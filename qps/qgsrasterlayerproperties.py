@@ -2,8 +2,8 @@ import re
 import sys
 import typing
 
-from osgeo import gdal
 import numpy as np
+from osgeo import gdal
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
@@ -31,9 +31,9 @@ def stringToType(value: str):
 class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     # lookup patterns to match alternative names with item keys used here.
     LOOKUP_PATTERNS = {
-        'fwhm': re.compile('(fwhm|fullwidthhalfmaximum)$', re.IGNORECASE),
-        'bbl': re.compile('(bbl|badBand|badbandmultiplier|badbandlist)$', re.IGNORECASE),
-        'wlu': re.compile('(wlu|wavelength[ _]?units?)$', re.IGNORECASE),
+        'fwhm': re.compile('(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.IGNORECASE),
+        'bbl': re.compile('(bbl|bad[ -_]?Band|bad[ -_]?band[ -_]?multiplier|bad[ -_]band[ -_]list)$', re.IGNORECASE),
+        'wlu': re.compile('(wlu|wavelength[ -_]?units?)$', re.IGNORECASE),
         'wl': re.compile('(wl|wavelengths?)$', re.IGNORECASE),
     }
 
