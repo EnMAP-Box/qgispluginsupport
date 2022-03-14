@@ -453,8 +453,25 @@ def get_iface() -> QgisInterface:
     if not isinstance(qgis.utils.iface, QgisInterface):
         iface = QgisMockup()
         qgis.utils.initInterface(sip.unwrapinstance(iface))
+        # we use our own QgisInterface, so replace it where it might have been imported
+        # like `iface = qgis.utils.iface`
+        _set_iface(iface)
 
     return qgis.utils.iface
+
+
+def _set_iface(iface):
+    """
+    Replaces the iface variable in other plugins, i.e. the  QGIS processing plugin
+    :param iface: QgisInterface
+    """
+    import processing.ProcessingPlugin
+
+    # enhance this list with further positions where iface needs to be replaces or remains None otherwise
+    modules = [processing.ProcessingPlugin]
+
+    for m in modules:
+        m.iface = iface
 
 
 class TestCase(qgis.testing.TestCase):
@@ -762,7 +779,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-            TestObjects._coreDataGT, TestObjects._coreDataWkt
+               TestObjects._coreDataGT, TestObjects._coreDataWkt
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
@@ -919,7 +936,7 @@ class TestObjects(object):
 
         # and random profiles
         for groupIndex in range(n_bands.shape[0]):
-            bandsPerField = n_bands[groupIndex, ].tolist()
+            bandsPerField = n_bands[groupIndex,].tolist()
             profiles = list(TestObjects.spectralProfiles(n,
                                                          fields=slib.fields(),
                                                          n_bands=bandsPerField,
