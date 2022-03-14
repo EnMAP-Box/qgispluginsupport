@@ -1,7 +1,7 @@
 from processing.gui.ProcessingToolbox import ProcessingToolbox
 
 
-def executeWithGui(str, QWidget, bool, bool):
+def executeWithGui(str, QWidget, a: bool, b: bool):
     s = ""
 
 
