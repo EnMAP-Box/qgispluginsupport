@@ -27,6 +27,7 @@ from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encode
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SpatialPoint, loadUi, parseWavelength, rasterArray, spatialPoint2px, \
     HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
 
@@ -1575,9 +1576,7 @@ class SpectralProfileBridge(TreeModel):
         # read blocks
         for uri, BLOCKS in SOURCE_BLOCKS.items():
             layer: QgsRasterLayer = URI2LAYER[uri]
-            wl, wlu = parseWavelength(layer)
-            if wl is None:
-                wl = list(range(layer.bandCount()))
+            spectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
 
             for rect in list(BLOCKS.keys()):
                 array = rasterArray(layer, rect)
@@ -1586,6 +1585,7 @@ class SpectralProfileBridge(TreeModel):
                     continue
                 is_nodata = np.zeros(array.shape, dtype=bool)
                 dp: QgsRasterDataProvider = layer.dataProvider()
+
                 for b in range(dp.bandCount()):
                     band = b + 1
                     band_mask = is_nodata[b, :, :]
@@ -1598,7 +1598,15 @@ class SpectralProfileBridge(TreeModel):
                 if is_nodata.all():
                     continue
                 array = np.ma.array(array, mask=is_nodata)
-                settings = SpectralSetting(wl, xUnit=wlu)
+                wl = spectralProperties.wavelengths()
+                bbl = spectralProperties.badBands()
+                wlu = spectralProperties.wavelengthUnits()
+                nb = spectralProperties.bandCount()
+                if len(wl) > 0:
+                    settings = SpectralSetting(wl, xUnit=wlu[0], bbl=bbl)
+                else:
+                    settings = SpectralSetting(nb, bbl=bbl)
+
                 profileBlock = SpectralProfileBlock(array, settings)
 
                 px_x, px_y = np.meshgrid(np.arange(rect.width()), np.arange(rect.height()))

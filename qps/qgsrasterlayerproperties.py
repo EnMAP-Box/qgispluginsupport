@@ -185,7 +185,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         Potentially other values can be used as well, for example to add different mask.
         Assumes 1 = True by default.
         """
-        return self.bandValues(None, 'bbl', default=default)
+        return [int(v) for v in self.bandValues(None, 'bbl', default=default)]
 
     def fullWidthHalfMaximum(self, default: float = float('nan')) -> typing.List[float]:
         """

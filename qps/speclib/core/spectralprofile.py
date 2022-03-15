@@ -8,7 +8,7 @@ import sys
 import typing
 import warnings
 from json import JSONDecodeError
-from typing import Any, List, Union
+from typing import Any, List, Union, Tuple
 
 import numpy as np
 from osgeo import gdal
@@ -38,11 +38,11 @@ EMPTY_PROFILE_VALUES = {'y': None, 'x': None, 'xUnit': None, 'yUnit': None, 'bbl
 JSON_SEPARATORS = (',', ':')
 
 
-def prepareProfileValueDict(x: Union[np.ndarray, List[Any]] = None,
-                            y: Union[np.ndarray, List[Any]] = None,
+def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
+                            y: Union[np.ndarray, List[Any], Tuple] = None,
                             xUnit: str = None,
                             yUnit: str = None,
-                            bbl=None,
+                            bbl: Union[np.ndarray, List[Any], Tuple]=None,
                             prototype: dict = None) -> dict:
     """
     Creates a profile value dictionary from inputs
@@ -55,6 +55,7 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any]] = None,
     :param d:
     :return:
     """
+
     if isinstance(prototype, dict) and len(prototype) > 0:
         d = prototype.copy()
     else:
@@ -62,12 +63,18 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any]] = None,
 
     if isinstance(y, np.ndarray):
         y = y.tolist()
+    elif isinstance(y, tuple):
+        y = list(y)
 
     if isinstance(x, np.ndarray):
         x = x.tolist()
+    elif isinstance(x, tuple):
+        x = list(x)
 
     if isinstance(bbl, np.ndarray):
         bbl = bbl.astype(int).tolist()
+    elif isinstance(bbl, tuple):
+        bbl = list(bbl)
 
     if isinstance(x, list):
         d['x'] = x
@@ -1456,7 +1463,7 @@ class SpectralProfileBlock(object):
         xUnit = spectral_settings.xUnit()
         yUnit = spectral_settings.yUnit()
         xValues = spectral_settings.x()
-
+        bbl = spectral_settings.bbl()
         hasGeoPositions = self.hasGeoPositions()
 
         fids = self.fids()
@@ -1473,6 +1480,7 @@ class SpectralProfileBlock(object):
                 g = QgsGeometry()
             d = prepareProfileValueDict(x=xValues,
                                         y=yValues,
+                                        bbl=bbl,
                                         xUnit=xUnit,
                                         yUnit=yUnit)
             if fids:
