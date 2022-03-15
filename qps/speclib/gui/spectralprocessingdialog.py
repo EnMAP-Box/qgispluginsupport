@@ -585,7 +585,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
         speclib: QgsVectorLayer = self.speclib()
         if not speclib.isEditable():
-            self.log(f'{speclib.name()} is not editable', isError=True)
+            self.log(f'Spectral Library "{speclib.name()}" is not editable', isError=True)
+            self.showLog()
             return None
 
         alg: QgsProcessingAlgorithm = wrapper.algorithm()
@@ -655,7 +656,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             ok, results = executeAlg(alg, parametersHard,
                                      context=processingContext,
                                      feedback=processingFeedback, catch_exceptions=True)
-            self.log(processingFeedback.htmlLog())
+            self.log(processingFeedback.htmlLog(), isError=not ok)
 
             if ok:
                 OUT_RASTERS = dict()
@@ -784,16 +785,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
     def log(self, text, showLogPanel: bool = False, isError: bool = False, escapeHtml: bool = False):
         self.setInfo(text, isError=isError, escapeHtml=escapeHtml)
-
-        return
-        self.tbLog: QTextEdit
-        if isError:
-            showLogPanel = True
-            text = f'<span style="color:red">{text}</span>'
-
-        self.tbLog.append(text)
-        if showLogPanel:
-            self.tabWidget.setCurrentWidget(self.tabLog)
+        if isError or showLogPanel:
+            self.showLog()
 
     def highlightParameterWidget(self, parameter, widget):
         self.showParameters()
