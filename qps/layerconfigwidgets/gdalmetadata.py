@@ -21,22 +21,22 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import enum
 import pathlib
 import re
 import sys
 import typing
 from typing import List, Pattern, Tuple
-
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, QRegExp, pyqtSignal, QAbstractTableModel, \
     QTimer, Qt, NULL, QVariant
 from qgis.PyQt.QtGui import QColor, QFont, QIcon, QContextMenuEvent
 from qgis.PyQt.QtWidgets import QLineEdit, QTableView, QDialogButtonBox, QComboBox, QWidget, \
     QApplication, QMenu, QDialog
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, QgsEditorWidgetSetup, \
     QgsVectorDataProvider, QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, QgsAttributeTableModel
+from qgis.gui import QgsGui, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, \
+    QgsAttributeTableModel
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -134,6 +134,17 @@ class GDALErrorHandler(object):
             raise RuntimeError(err_level, err_no, err_msg)
 
 
+class BandFieldNames(enum.Enum):
+    BandNumber = 'Band'
+    BandName = 'Name'
+    BadBand = 'BBL'
+    BandWidth = 'bandwidth'
+    NoData = 'No Data'
+    FWHM = 'FWHM'
+    Wavelength = 'Wavelength'
+    WavelengthUnit = 'Wavelength Unit'
+
+
 class GDALBandMetadataModel(QgsVectorLayer):
 
     def __init__(self):
@@ -147,7 +158,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         b = self.isEditable()
         self.startEditing()
 
-        bandNo = QgsField('Band', type=QVariant.Int, comment='Band Number')
+        bandNo = QgsField(BandFieldNames.BandNumber.value,
+                          type=QVariant.Int, comment='Band Number')
         constraints = QgsFieldConstraints()
         # todo: constraint unique combination of (domain, band number, key)
         # constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
@@ -162,42 +174,50 @@ class GDALBandMetadataModel(QgsVectorLayer):
         bandNo.setReadOnly(True)
         self.addAttribute(bandNo)
 
-        bandName = QgsField('Name', type=QVariant.String, len=-1, comment='Band Name')
+        bandName = QgsField(BandFieldNames.BandName.value,
+                            type=QVariant.String, len=-1, comment='Band Name')
 
         self.addAttribute(bandName)
 
-        BBL = QgsField('BBL', type=QVariant.Bool, comment='Bad Band List')
-        BBL.setDefaultValueDefinition(QgsDefaultValue('True'))
+        noData = QgsField(BandFieldNames.NoData.value,
+                          type=QVariant.Double, comment='No Data Value of data source')
+        self.addAttribute(noData)
+
+        BBL = QgsField(BandFieldNames.BadBand.value,
+                       type=QVariant.Int, comment='Bad Band List')
+        BBL.setDefaultValueDefinition(QgsDefaultValue('1'))
+        BBL.setEditorWidgetSetup(QgsEditorWidgetSetup())
         self.addAttribute(BBL)
 
-        WL = QgsField('WL', type=QVariant.Double, comment='Wavelength of band center')
+        WL = QgsField(BandFieldNames.Wavelength.value,
+                      type=QVariant.Double, comment='Wavelength of band center')
         self.addAttribute(WL)
 
-        WLU = QgsField('WLU', type=QVariant.String, comment='Wavelength Unit')
-        wluConstraints = QgsFieldConstraints()
-        wluConstraints.setConstraintExpression('"WLU" in [\'nm\', \'m\']')
-        WLU.setConstraints(wluConstraints)
+        WLU = QgsField(BandFieldNames.WavelengthUnit.value,
+                       type=QVariant.String, comment='Wavelength Unit')
+        # wluConstraints = QgsFieldConstraints()
+        # wluConstraints.setConstraintExpression('"{BandPropertyKeys.WavelengthUnit}" in [\'nm\', \'m\']')
+        # WLU.setConstraints(wluConstraints)
         self.addAttribute(WLU)
 
-        WL_MIN = QgsField('WLmin', type=QVariant.Double, comment='Minimum Wavelength')
-        self.addAttribute(WL_MIN)
-        WL_MAX = QgsField('WLmax', type=QVariant.Double, comment='Maximum Wavelength')
-        self.addAttribute(WL_MAX)
-
-        FWHM = QgsField('FWHM', type=QVariant.Double, comment='Full width at half maximum')
+        FWHM = QgsField(BandFieldNames.FWHM.value,
+                        type=QVariant.Double, comment='Full width at half maximum')
         fwhmConstraints = QgsFieldConstraints()
-        fwhmConstraints.setConstraintExpression('"FWHM" > 0')
+        fwhmConstraints.setConstraintExpression(f'"{BandFieldNames.FWHM}" > 0')
         FWHM.setConstraints(fwhmConstraints)
         self.addAttribute(FWHM)
 
+        BANDWIDTH = QgsField(BandFieldNames.BandWidth.value,
+                             type=QVariant.Double, comment='Bandwith')
+        bwConstraints = QgsFieldConstraints()
+        bwConstraints.setConstraintExpression(f'"{BandFieldNames.BandWidth}" > 0')
+        self.addAttribute(BANDWIDTH)
+
         self.commitChanges(b)
 
-    """
-    def setDomain(self, domain:str):
-        if self.mDomain != domain:
-            self.mDomain = domain
-            self.syncToLayer()
-    """
+        for field in self.fields():
+            i = self.fields().lookupField(field.name())
+            self.setEditorWidgetSetup(i, QgsGui.editorWidgetRegistry().findBest(self, field.name()))
 
     def setLayer(self, mapLayer: QgsMapLayer):
 
@@ -218,20 +238,39 @@ class GDALBandMetadataModel(QgsVectorLayer):
                 and isinstance(lyr.dataProvider(), QgsRasterDataProvider) \
                 and lyr.dataProvider().name() == 'gdal':
             self.beginEditCommand('Sync to layer')
+
             spectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
 
-            spectralProperties.fullWidthHalfMaximum()
             dp: QgsRasterDataProvider = lyr.dataProvider()
-            for b in range(1, lyr.bandCount() + 1):
+
+            wl = spectralProperties.wavelengths()
+            wlu = spectralProperties.wavelengthUnits()
+            bbl = spectralProperties.badBands()
+            bw = spectralProperties.bandWidth()
+            fwhm = spectralProperties.fullWidthHalfMaximum()
+
+            KEY2VALUE = {
+                BandFieldNames.BandNumber.value: lambda i: i + 1,
+                BandFieldNames.Wavelength.value: lambda i: wl[i],
+                BandFieldNames.WavelengthUnit.value: lambda i: wlu[i],
+                BandFieldNames.BadBand.value: lambda i: bbl[i],
+                BandFieldNames.BandWidth: lambda i: bw[i],
+                BandFieldNames.FWHM: lambda i: fwhm[i]
+            }
+
+            for i in range(lyr.bandCount()):
+                b = i + 1
                 f = QgsFeature(self.fields())
 
                 for field in self.fields():
                     field: QgsField
                     n = field.name()
-                    if n == 'Band':
-                        f.setAttribute(n, b)
-                    elif n == 'Name':
+                    if n in KEY2VALUE.keys():
+                        f.setAttribute(n, KEY2VALUE[n](i))
+                    elif n == BandFieldNames.BandName.value:
                         f.setAttribute(n, dp.generateBandName(b))
+                    elif n == BandFieldNames.NoData.value:
+                        f.setAttribute(n, dp.sourceNoDataValue(b))
                     else:
                         itemKey = spectralProperties.bandItemKey(b, field.name())
                         value = spectralProperties.value(itemKey)
@@ -743,6 +782,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelwidget.ui'
         loadUi(pathUi, self)
 
+        self.mIsEditable: bool = False
+
         self.mMessageBar: QgsMessageBar
         self.tbFilter: QLineEdit
         self.btnMatchCase.setDefaultAction(self.optionMatchCase)
@@ -768,6 +809,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.cbWavelengthUnits: QComboBox
 
         self.metadataModel = GDALMetadataModel()
+        self.metadataModel.setIsEditable(self.mIsEditable)
         self.metadataModel.sigMessage.connect(self.showMessage)
         self.metadataModel.sigEditable.connect(self.onEditableChanged)
         self.metadataProxyModel = QSortFilterProxyModel()
@@ -797,6 +839,11 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.actionAddItem.triggered.connect(self.onAddItem)
         self.actionRemoveItem.triggered.connect(self.onRemoveSelectedItems)
         self.onEditableChanged(self.metadataModel.isEditable())
+
+        self.setEditable(False)
+
+    def setEditable(self, isEditable: bool):
+        self.metadataModel.setIsEditable(isEditable)
 
     def showBandCalculator(self, *args):
 
@@ -865,6 +912,15 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.btnReset.setVisible(isEditable)
         self.actionReset.setEnabled(isEditable)
         self.actionAddItem.setEnabled(isEditable)
+
+        self.btnBandCalculator.setVisible(isEditable)
+        self.actionBandCalculator.setEnabled(isEditable)
+
+        if isEditable:
+            self.bandMetadataModel.startEditing()
+        else:
+            self.bandMetadataModel.commitChanges()
+
         self.onSelectionChanged()  # this sets the actionRemoveItem
 
     def setLayer(self, layer: QgsMapLayer):
@@ -919,7 +975,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         super().syncToLayer(*args)
         lyr = self.mapLayer()
         self.bandMetadataModel.setLayer(lyr)
-        self.bandDualView.tableView().resizeColumnsToContents()
+        self.bandDualView.autosizeAllColumns()
+        QTimer.singleShot(500, self.bandDualView.autosizeAllColumns)
 
         self.metadataModel.setLayer(lyr)
         if self.supportsGDALClassification:
@@ -935,6 +992,10 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             self.gbClassificationScheme.setVisible(False)
 
         self.gbBandNames.setVisible(self.is_gdal)
+
+    def autosizeAllColumns(self):
+        self.bandDualView.autosizeAllColumns()
+        self.tvGDALMetadata.resizeColumnsToContents()
 
     def updateFilter(self, *args):
 

@@ -28,7 +28,7 @@ from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import SpatialPoint, loadUi, parseWavelength, rasterArray, spatialPoint2px, \
+from ...utils import SpatialPoint, loadUi, rasterArray, spatialPoint2px, \
     HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'

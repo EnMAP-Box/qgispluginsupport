@@ -42,7 +42,7 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
                             y: Union[np.ndarray, List[Any], Tuple] = None,
                             xUnit: str = None,
                             yUnit: str = None,
-                            bbl: Union[np.ndarray, List[Any], Tuple]=None,
+                            bbl: Union[np.ndarray, List[Any], Tuple] = None,
                             prototype: dict = None) -> dict:
     """
     Creates a profile value dictionary from inputs

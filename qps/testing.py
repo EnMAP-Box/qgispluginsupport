@@ -779,7 +779,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         results = TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-                  TestObjects._coreDataGT, TestObjects._coreDataWkt
+            TestObjects._coreDataGT, TestObjects._coreDataWkt
         return results
 
     @staticmethod

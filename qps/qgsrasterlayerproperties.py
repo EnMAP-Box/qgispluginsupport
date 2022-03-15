@@ -4,6 +4,7 @@ import typing
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
@@ -19,22 +20,37 @@ rx_envi_array = re.compile(r'^{\s*(?P<value>([^}]+))\s*}$')
 
 def stringToType(value: str):
     t = str
-    for candidate in [int, float]:
+    for candidate in [float, int]:
         try:
             _ = candidate(value)
             t = candidate
         except ValueError:
-            continue
+            break
     return t(value)
+
+
+class SpectralPropertyKeys(object):
+    BadBand = 'bbl'
+    Wavelength = 'wavelength'
+    WavelengthUnit = 'wavelength_unit'
+    BandWidth = 'bandwidth'
+    FWHM = 'fwhm'
 
 
 class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     # lookup patterns to match alternative names with item keys used here.
+
     LOOKUP_PATTERNS = {
-        'fwhm': re.compile('(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.IGNORECASE),
-        'bbl': re.compile('(bbl|bad[ -_]?Band|bad[ -_]?band[ -_]?multiplier|bad[ -_]band[ -_]list)$', re.IGNORECASE),
-        'wlu': re.compile('(wlu|wavelength[ -_]?units?)$', re.IGNORECASE),
-        'wl': re.compile('(wl|wavelengths?)$', re.IGNORECASE),
+        SpectralPropertyKeys.FWHM: re.compile(
+            r'(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.IGNORECASE),
+        SpectralPropertyKeys.BadBand: re.compile(
+            r'(bbl|bad[ -_]?Band|bad[ -_]?band[ -_]?multiplier|bad[ -_]band[ -_]list)$', re.IGNORECASE),
+        SpectralPropertyKeys.WavelengthUnit: re.compile(
+            r'(wlu|wavelength[ -_]?units?)$', re.IGNORECASE),
+        SpectralPropertyKeys.Wavelength: re.compile(
+            r'(wl|wavelengths?)$', re.IGNORECASE),
+        SpectralPropertyKeys.BandWidth: re.compile(
+            r'(bw|bandwiths?)$', re.IGNORECASE)
     }
 
     @staticmethod
@@ -128,7 +144,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         Returns the band values for band bandNo and a specific item key.
         """
-        return self.bandValues([bandNo], itemKey)
+        return self.bandValues([bandNo], itemKey)[0]
 
     def setBandValue(self, bandNo: typing.Union[int, str], itemKey: str, value):
         self.setBandValues([bandNo], itemKey, [value])
@@ -168,30 +184,37 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         Returns n = .bandCount() wavelengths.
         """
-        return self.bandValues(None, 'wavelength')
+        return self.bandValues(None, SpectralPropertyKeys.Wavelength)
 
     def wavelengthUnits(self) -> typing.List[str]:
         """
         Returns n= .bandCount() wavelength units.
         """
-        return self.bandValues(None, 'wavelength_units')
+        return self.bandValues(None, SpectralPropertyKeys.WavelengthUnit)
 
     def badBands(self, default: int = 1) -> typing.List[int]:
         """
-        Convenience function to Returns the bad band (multiplier) values as list
+        Convenience function to returns the bad band (multiplier) values as list
         0 = False = do not use
         1 = True = do use (default)
+        values > 1 might be used for other special meanings
 
         Potentially other values can be used as well, for example to add different mask.
         Assumes 1 = True by default.
         """
-        return [int(v) for v in self.bandValues(None, 'bbl', default=default)]
+        return [int(v) for v in self.bandValues(None, SpectralPropertyKeys.BadBand, default=default)]
+
+    def bandWidth(self, default: float = float('nan')) -> typing.List[float]:
+        """
+        Returns the FWHM values for each band
+        """
+        return self.bandValues(None, SpectralPropertyKeys.BandWidth, default=default)
 
     def fullWidthHalfMaximum(self, default: float = float('nan')) -> typing.List[float]:
         """
         Returns the FWHM values for each band
         """
-        return self.bandValues(None, 'fwhm', default=default)
+        return self.bandValues(None, SpectralPropertyKeys.FWHM, default=default)
 
     def writeXml(self, parentNode: QDomElement, doc: QDomDocument):
         """

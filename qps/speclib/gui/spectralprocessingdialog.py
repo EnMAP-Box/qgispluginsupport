@@ -1,18 +1,17 @@
+import json
 import os
 import pathlib
 import typing
-import json
 
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, Qt, QTimer, \
     QVariant
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QTextEdit, QDialog, \
+from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QDialog, \
     QPushButton, QSizePolicy
-from qgis._core import QgsMapLayer
 from qgis.core import QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
-    QgsProcessingRegistry, \
+    QgsProcessingRegistry, QgsMapLayer, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
     QgsProcessingParameterRasterLayer, QgsProcessingOutputRasterLayer, QgsProject, QgsProcessingParameterDefinition, \
     QgsRasterLayer, \
@@ -25,7 +24,6 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingParametersWidget, \
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
-
 from .. import speclibSettings
 from ..core import create_profile_field, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
