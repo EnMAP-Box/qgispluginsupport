@@ -1,6 +1,7 @@
 import os
 import pathlib
 import typing
+import json
 
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
@@ -9,6 +10,7 @@ from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, Qt, QTimer, \
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QTextEdit, QDialog, \
     QPushButton, QSizePolicy
+from qgis._core import QgsMapLayer
 from qgis.core import QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
     QgsProcessingRegistry, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
@@ -24,6 +26,7 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
 
+from .. import speclibSettings
 from ..core import create_profile_field, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
@@ -144,9 +147,16 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
             self.widgetValueHasChanged.emit(self)
 
     def setWidgetValue(self, value, context: QgsProcessingContext):
-        if isinstance(self.mFieldComboBox, QComboBox):
-            if value:
-                s = ""
+        if isinstance(self.mFieldComboBox, QComboBox) and isinstance(self.mFields, QgsFields):
+            if isinstance(value, str):
+                value2 = self.pathToFieldName(value)
+                for i in range(self.mFieldComboBox.count()):
+                    field: QgsField = self.mFieldComboBox.itemData(i, Qt.UserRole)
+                    if field.name() == value or field.name() == value2:
+                        self.mFieldComboBox.setCurrentIndex(i)
+                        return
+                # not found. set text for new field
+                self.mFieldComboBox.setCurrentText(value2)
 
     @classmethod
     def pathToFieldName(cls, path: str) -> str:
@@ -215,8 +225,14 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
 
     def setWidgetValue(self, value, context: QgsProcessingContext):
         if isinstance(self.mMapLayerWidget, QComboBox):
-            if value:
-                s = ""
+            if isinstance(value, str):
+
+                for i in range(self.mMapLayerWidget.count()):
+                    role1 = self.mMapLayerWidget.itemData(i, Qt.DisplayRole)
+                    role2 = self.mMapLayerWidget.itemData(i, Qt.UserRole)
+                    if value == role1 or value == role2:
+                        self.mMapLayerWidget.setCurrentIndex(i)
+                        return
 
     def widgetValue(self):
         if isinstance(self.mMapLayerWidget, QWidget):
@@ -541,7 +557,45 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         if isinstance(speclib, QgsVectorLayer):
             self.setSpeclib(speclib)
 
+            # load default values from last start
+            settings = speclibSettings()
+            K = self.__class__.__name__
+            algId = settings.value(f'{K}/algorithmId', None)
+            if algId:
+                s = ""
+                alg: QgsProcessingAlgorithm = QgsApplication.processingRegistry().algorithmById(algId)
+                if isinstance(alg, QgsProcessingAlgorithm):
+                    self.setAlgorithm(alg)
+                    context = self.processingContext()
+                    parJson = settings.value(f'{K}/algorithmParameters', None)
+                    if isinstance(parJson, str):
+                        parameters = json.loads(parJson)
+
+                        wrapper = self.processingModelWrapper()
+                        for k, value in parameters.items():
+                            w = wrapper.mWrappers.get(k)
+                            if isinstance(w, QgsAbstractProcessingParameterWidgetWrapper):
+                                w.setWidgetValue(value, context)
+
     def close(self):
+
+        # save settings
+
+        settings = speclibSettings()
+        K = self.__class__.__name__
+        alg = self.algorithm()
+        if isinstance(alg, QgsProcessingAlgorithm):
+            settings.setValue(f'{K}/algorithmId', self.algorithm().id())
+
+            parameters = self.processingModelWrapper().createProcessingParameters()
+            parameters2 = dict()
+            for k, v in parameters.items():
+                if isinstance(v, QgsMapLayer):
+                    v = v.name()
+                if isinstance(v, (str, int, float)):
+                    parameters2[k] = v
+            settings.setValue(f'{K}/algorithmParameters', json.dumps(parameters2))
+
         self.sigAboutToBeClosed.emit()
         super().close()
 

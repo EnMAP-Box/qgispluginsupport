@@ -57,7 +57,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mQgsStatusBar.addPermanentWidget(self.mStatusLabel, 1, QgsStatusBar.AnchorLeft)
         # self.mQgsStatusBar.setVisible(False)
         self.mProject = QgsProject.instance()
-        self.mSpectralProcessingWidget: SpectralProcessingDialog = None
+        # self.mSpectralProcessingWidget: SpectralProcessingDialog = None
 
         self.mToolbar: QToolBar
         self.mIODialogs: typing.List[QWidget] = list()
@@ -422,22 +422,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
             pass
 
     def showSpectralProcessingWidget(self):
-        alg_key = 'qps/processing/last_alg_id'
-        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingDialog):
-            dialog = SpectralProcessingDialog(speclib=self.speclib())
-            dialog.setMainMessageBar(self.mainMessageBar())
-
-            alg_id = self.property(alg_key)
-            if isinstance(alg_id, str):
-                alg = reg.algorithmById(alg_id)
-                if isinstance(alg, QgsProcessingAlgorithm):
-                    dialog.setAlgorithm(alg_id)
-
-            dialog.exec_()
-            alg = dialog.algorithm()
-            if isinstance(alg, QgsProcessingAlgorithm):
-                self.setProperty(alg_key, alg.id())
+        # alg_key = 'qps/processing/last_alg_id'
+        # reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        # if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingDialog):
+        dialog = SpectralProcessingDialog(speclib=self.speclib())
+        dialog.setMainMessageBar(self.mainMessageBar())
+        dialog.exec_()
+        dialog.close()
 
     def addCurrentProfilesAutomatically(self, b: bool):
         self.optionAddCurrentProfilesAutomatically.setChecked(b)
