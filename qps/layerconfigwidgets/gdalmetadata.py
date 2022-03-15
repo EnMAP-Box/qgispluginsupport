@@ -281,7 +281,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
 
     def applyToLayer(self, *args):
 
-        if not isinstance(self.mMapLayer, QgsRasterLayer):
+        if not isinstance(self.mMapLayer, QgsRasterLayer) and self.isEditable():
             return
 
             # properties = QgsRasterLayerSpectralProperties.fromRasterLayer(self.mMapLayer)
@@ -293,23 +293,30 @@ class GDALBandMetadataModel(QgsVectorLayer):
 
         if isinstance(ds, gdal.Dataset):
 
-            value_fields = [f for f in self.fields() if f.name() not in ['Band', 'Name']]
+            LUT_FIELD = {
+                BandFieldNames.BadBand.value: 'bbl',
+                BandFieldNames.BandWidth.value: 'band width',
+                BandFieldNames.Wavelength.value: 'wavelength',
+                BandFieldNames.WavelengthUnit.value: 'wavelength units',
+                BandFieldNames.FWHM.value: 'fwhm',
+            }
 
             for f in self.getFeatures():
                 f: QgsFeature
-                bandNo = f.attribute('Band')
+                bandNo = f.attribute(BandFieldNames.BandNumber.value)
                 band: gdal.Band = ds.GetRasterBand(bandNo)
-                name = f.attribute('Name')
+                name = f.attribute(BandFieldNames.BandName.value)
                 band.SetDescription(name)
 
-                for field in value_fields:
+                for field in f.fields():
                     n = field.name()
-                    n_gdal = n.lower()
                     value = f.attribute(n)
-                    if value in [None, NULL]:
-                        band.SetMetadataItem(n_gdal, '', 'ENVI')
-                    else:
-                        band.SetMetadataItem(n_gdal, str(value), 'ENVI')
+                    enviName = LUT_FIELD.get(field.name(), None)
+                    if enviName:
+                        if value in [None, NULL]:
+                            band.SetMetadataItem(enviName, '')
+                        else:
+                            band.SetMetadataItem(enviName, str(value))
             ds.FlushCache()
             del ds
 
