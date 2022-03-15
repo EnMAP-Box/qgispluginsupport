@@ -726,19 +726,19 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             if fail_fast:
                 raise ex1
             msg = f'Invalid Parameter Value: {ex1.parameter.name()}'
-            self.log(msg, isError=True)
+            self.log(msg, isError=True, escapeHtml=False)
             # self.tabWidget.setCurrentWidget(self.tabLog)
             self.highlightParameterWidget(ex1.parameter, ex1.widget)
         except AlgorithmDialogBase.InvalidOutputExtension as ex2:
             if fail_fast:
                 raise ex2
             msg = 'Invalid Output Extension'
-            self.log(msg, isError=True)
+            self.log(msg, isError=True, escapeHtml=False)
         except Exception as ex3:
             if fail_fast:
                 raise ex3
             msg = f'{ex3}'
-            self.log(msg, isError=True)
+            self.log(msg, isError=True, escapeHtml=False)
             mbar: QgsMessageBar = self.messageBar()
             if isinstance(mbar, QgsMessageBar):
                 mbar.pushMessage(msg, level=Qgis.MessageLevel.Critical)
@@ -782,8 +782,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
     def messageBar(self) -> QgsMessageBar:
         return self.mProcessingWidgetContext.messageBar()
 
-    def log(self, text, showLogPanel: bool = False, isError: bool = False):
-        self.setInfo(text, isError=isError)
+    def log(self, text, showLogPanel: bool = False, isError: bool = False, escapeHtml: bool = False):
+        self.setInfo(text, isError=isError, escapeHtml=escapeHtml)
 
         return
         self.tbLog: QTextEdit

@@ -778,8 +778,9 @@ class TestObjects(object):
             from .utils import parseWavelength
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
-        return TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-               TestObjects._coreDataGT, TestObjects._coreDataWkt
+        results = TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
+                  TestObjects._coreDataGT, TestObjects._coreDataWkt
+        return results
 
     @staticmethod
     def createDropEvent(mimeData: QMimeData) -> QDropEvent:
@@ -936,7 +937,7 @@ class TestObjects(object):
 
         # and random profiles
         for groupIndex in range(n_bands.shape[0]):
-            bandsPerField = n_bands[groupIndex,].tolist()
+            bandsPerField = n_bands[groupIndex].tolist()
             profiles = list(TestObjects.spectralProfiles(n,
                                                          fields=slib.fields(),
                                                          n_bands=bandsPerField,
