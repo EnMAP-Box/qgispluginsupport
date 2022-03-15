@@ -12,7 +12,6 @@ from typing import Any, List, Union
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.PyQt.QtCore import QJsonDocument
 from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
@@ -21,13 +20,14 @@ from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsF
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
 from qgis.core import QgsTask, QgsFeatureRequest
 from qgis.gui import QgsMapCanvas
+
 from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields, \
     is_profile_field, create_profile_field
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph import pyqtgraph as pg
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...unitmodel import BAND_INDEX
+from ...unitmodel import BAND_INDEX, BAND_NUMBER
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
     qgsFieldAttributes2List, \
     spatialPoint2px, saveTransform, qgsRasterLayer, parseBadBandList, qgsField
@@ -261,10 +261,15 @@ class SpectralSetting(object):
             # no spectral values no spectral setting
             return None
         x = d.get('x', None)
+        xUnit = d.get('xUnit', None)
         if x is None:
-            x = list(range(len(d['y'])))
+            if xUnit in [BAND_INDEX, None]:
+                x = list(range(len(d['y'])))
+            elif xUnit == BAND_NUMBER:
+                x = list(range(1, len(d['y']) + 1))
+
         return SpectralSetting(x,
-                               xUnit=d.get('xUnit', None),
+                               xUnit=xUnit,
                                yUnit=d.get('yUnit', None),
                                bbl=d.get('bbl', None),
                                field_name=field_name
@@ -287,7 +292,7 @@ class SpectralSetting(object):
                  field_name: str = None,
                  field_encoding: ProfileEncoding = None):
 
-        assert isinstance(x, (tuple, list, np.ndarray)), f'{x}'
+        assert isinstance(x, (tuple, list, np.ndarray, int)), f'{x}'
 
         if isinstance(x, int):
             x = tuple(list(range(x)))
@@ -298,6 +303,7 @@ class SpectralSetting(object):
             x = tuple(x)
 
         if bbl is not None:
+            assert len(bbl) == len(x)
             bbl = tuple(bbl)
 
         self.mX: typing.Tuple = x
@@ -1069,8 +1075,8 @@ def groupBySpectralProperties(profiles: typing.Union[QgsVectorLayer, typing.List
 
         d: dict = decodeProfileValueDict(p.attribute(pFieldIdx))
 
+        y = d.get('y', [])
         if excludeEmptyProfiles:
-            y = d.get('y')
             if not (isinstance(y, list) and len(y) > 0):
                 continue
 

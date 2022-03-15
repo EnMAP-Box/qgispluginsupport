@@ -581,7 +581,7 @@ class TestCore(TestCase):
 
     def test_groupBySpectralProperties(self):
 
-        sl1 = TestObjects.createSpectralLibrary()
+        sl1 = TestObjects.createSpectralLibrary(n_empty=1)
         groups = SpectralLibraryUtils.groupBySpectralProperties(sl1, excludeEmptyProfiles=False)
         self.assertTrue(len(groups) > 0)
         for key, profiles in groups.items():
@@ -599,6 +599,8 @@ class TestCore(TestCase):
             self.assertTrue(len(profiles) > 0)
 
             d = decodeProfileValueDict(profiles[0].attribute(key.fieldName()))
+            if len(d) == 0:
+                continue
             x = d['x']
 
             for p in profiles:
