@@ -136,7 +136,7 @@ class GDALErrorHandler(object):
 
 class BandFieldNames(enum.Enum):
     BandNumber = 'Band'
-    BandName = 'Name'
+    BandName = 'Band Name'
     BadBand = 'BBL'
     BandWidth = 'bandwidth'
     NoData = 'No Data'
