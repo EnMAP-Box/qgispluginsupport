@@ -27,13 +27,14 @@ from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandar
 from ...plotstyling.plotstyling import PlotStyle
 from ...pyqtgraph import pyqtgraph as pg
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+from ...unitmodel import BAND_INDEX
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
     qgsFieldAttributes2List, \
     spatialPoint2px, saveTransform, qgsRasterLayer, parseBadBandList, qgsField
 
-# a single profile is identified by its QgsFeature id and profile_field index or profile_field name
-
-EMPTY_PROFILE_VALUES = {'x': None, 'y': None, 'xUnit': None, 'yUnit': None, 'bbl': None}
+# The values that describe a spectral profiles
+# y in 1st position ot show profile values in string representations first
+EMPTY_PROFILE_VALUES = {'y': None, 'x': None, 'xUnit': None, 'yUnit': None, 'bbl': None}
 JSON_SEPARATORS = (',', ':')
 
 
@@ -278,25 +279,27 @@ class SpectralSetting(object):
             return None
 
     def __init__(self,
-                 x: typing.Union[None, tuple, list, np.ndarray],
-                 xUnit: str = None,
+                 x: typing.Union[int, tuple, list, np.ndarray],
+                 xUnit: str = BAND_INDEX,
                  yUnit: str = None,
                  bbl: typing.Union[tuple, list, np.ndarray] = None,
                  field: QgsField = None,
                  field_name: str = None,
                  field_encoding: ProfileEncoding = None):
 
-        assert x is None or isinstance(x, (tuple, list, np.ndarray)), f'{x}'
+        assert isinstance(x, (tuple, list, np.ndarray)), f'{x}'
 
-        if isinstance(x, np.ndarray):
-            x = x.tolist()
-        if isinstance(x, list):
+        if isinstance(x, int):
+            x = tuple(list(range(x)))
+            xUnit = BAND_INDEX
+        elif isinstance(x, np.ndarray):
+            x = tuple(x.tolist())
+        elif isinstance(x, list):
             x = tuple(x)
 
         if bbl is not None:
             bbl = tuple(bbl)
 
-        #
         self.mX: typing.Tuple = x
         self.mXUnit: str = xUnit
         self.mYUnit: str = yUnit
@@ -332,7 +335,10 @@ class SpectralSetting(object):
         return None
 
     def n_bands(self) -> int:
-        return len(self.mX)
+        if self.mX:
+            return len(self.mX)
+        else:
+            return 0
 
     def yUnit(self) -> str:
         return self.mYUnit
@@ -1068,9 +1074,7 @@ def groupBySpectralProperties(profiles: typing.Union[QgsVectorLayer, typing.List
             if not (isinstance(y, list) and len(y) > 0):
                 continue
 
-        x = d.get('x', [])
-        if len(x) == 0:
-            x = None
+        x = d.get('x', len(y))
 
         xUnit = d.get('xUnit', None)
         yUnit = d.get('yUnit', None)

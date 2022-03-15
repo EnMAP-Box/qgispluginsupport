@@ -25,6 +25,7 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsProcessingHiddenWidgetWrapper
 
 from ..core import create_profile_field, is_profile_field
+from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
     SpectralProfileValueConverter
 from ..core.spectralprofile import prepareProfileValueDict, \
@@ -682,7 +683,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                         field = QgsField(name=target_field_name, type=Qgis.DataType.Float32)
 
                                 speclib.beginEditCommand(f'Add field {field.name()}')
-                                assert speclib.addAttribute(field)
+                                assert SpectralLibraryUtils.addAttribute(speclib, field)
                                 speclib.endEditCommand()
                                 speclib.commitChanges(False)
 
@@ -775,7 +776,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             fieldConverter = dp.fieldConverter()
             if isinstance(fieldConverter, SpectralProfileValueConverter):
                 fieldConverter.spectralSetting().writeToLayer(file_name)
-
+        del file_writer
         self.mTemporaryRaster.append(file_name)
 
     def messageBar(self) -> QgsMessageBar:
