@@ -10,17 +10,18 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
+import typing
 import unittest
 
 import xmlrunner
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import QSortFilterProxyModel, QVariant
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QTableView, QPushButton, QHBoxLayout
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsField, QgsAbstractVectorLayerLabeling
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsDualView, \
-    QgsMapLayerComboBox, QgsRasterBandComboBox, QgsRasterTransparencyWidget, QgsMapLayerConfigWidgetFactory
-from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerComboBox, QgsRasterTransparencyWidget, \
+    QgsMapLayerConfigWidgetFactory
+from qps.layerconfigwidgets.gdalmetadata import RX_OGR_URI
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
 from qps.resources import initQtResources
 from qps.testing import TestObjects, TestCase, StartOptions
@@ -209,171 +210,14 @@ class LayerConfigWidgetsTests(TestCase):
         w.setLayout(vbLayout)
         self.showGui(w)
 
-    def test_GDALMetadataModel(self):
-        from qpstestdata import landcover
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModel
+    def test_rx_ogr_uri(self):
 
-        c = QgsMapCanvas()
-        # lyr = QgsRasterLayer(enmap)
-        lyr = QgsVectorLayer(landcover)
-        model = GDALMetadataModel()
-        model.setIsEditable(True)
-        fm = QSortFilterProxyModel()
-        fm.setSourceModel(model)
-
-        tv = QTableView()
-        tv.setSortingEnabled(True)
-        tv.setModel(fm)
-        model.setLayer(lyr)
-
-        self.showGui(tv)
-
-    def test_GDALMetadataModelItemWidget(self):
-
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataItemDialog, GDALMetadataItem
-
-        items = ['dataset', 'band1', 'band2']
-        domains = ['Domains 1', 'domains2', 'MyDomain']
-        d = GDALMetadataItemDialog(major_objects=items, domains=domains)
-        d.setKey('MyKey')
-        d.setValue('MyValue')
-        d.setDomain('MyDomain')
-        d.setMajorObject('band1')
-
-        item = d.metadataItem()
-        self.assertIsInstance(item, GDALMetadataItem)
-        self.assertEqual(item.major_object, 'band1')
-        self.assertEqual(item.domain, 'MyDomain')
-        self.assertEqual(item.key, 'MyKey')
-        self.assertEqual(item.value, 'MyValue')
-
-        self.showGui(d)
-
-    def test_GDALBandMetadataModel2(self):
-        from qpstestdata import enmap
-        img_path = self.createImageCopy(enmap)
-        lyr = QgsRasterLayer(img_path)
-        model2 = GDALBandMetadataModel()
-        c = QgsMapCanvas()
-        view = QgsDualView()
-        view.init(model2, c)
-        model2.setLayer(lyr)
-        model2.syncToLayer()
-        model2.startEditing()
-        model2.applyToLayer()
-        self.showGui(view)
-
-    def test_GDALMetadataModelConfigWidget(self):
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget
-        from qpstestdata import envi_bsq, enmap_polygon
-
-        envi_bsq = self.createImageCopy(envi_bsq)
-
-        lyrR = QgsRasterLayer(envi_bsq, 'ENVI')
-        lyrV = QgsVectorLayer(enmap_polygon, 'Vector')
-
-        canvas = QgsMapCanvas()
-        w = GDALMetadataModelConfigWidget(lyrR, canvas)
-        w.metadataModel.setIsEditable(True)
-        w.widgetChanged.connect(lambda: print('Changed'))
-        self.assertIsInstance(w, QWidget)
-
-        QgsProject.instance().addMapLayer(w.mapLayer())
-        canvas.setLayers([w.mapLayer()])
-        canvas.mapSettings().setDestinationCrs(w.mapLayer().crs())
-        canvas.zoomToFullExtent()
-        btnApply = QPushButton('Apply')
-        btnApply.clicked.connect(w.apply)
-        btnZoom = QPushButton('Center')
-        btnZoom.clicked.connect(canvas.zoomToFullExtent)
-        btnReload = QPushButton('Reload')
-        btnReload.clicked.connect(w.syncToLayer)
-
-        QgsProject.instance().addMapLayers([lyrR, lyrV])
-
-        cb = QgsRasterBandComboBox()
-        cb.setLayer(w.mapLayer())
-
-        def onLayerChanged(layer):
-            if isinstance(layer, QgsRasterLayer):
-                cb.setLayer(layer)
-            else:
-                cb.setLayer(None)
-            w.setLayer(layer)
-
-        cbChangeLayer = QgsMapLayerComboBox()
-        cbChangeLayer.layerChanged.connect(onLayerChanged)
-
-        hl1 = QHBoxLayout()
-        for widget in [btnApply, btnReload, btnZoom, cbChangeLayer, cb]:
-            hl1.addWidget(widget)
-        hl2 = QHBoxLayout()
-        hl2.addWidget(w)
-        hl2.addWidget(canvas)
-        vl = QVBoxLayout()
-        vl.addLayout(hl1)
-        vl.addLayout(hl2)
-        m = QWidget()
-        m.setLayout(vl)
-
-        if isinstance(w.mapLayer(), QgsVectorLayer):
-            from qps.layerconfigwidgets.gdalmetadata import GDALMetadataItem
-            item = GDALMetadataItem('DataSource', '', 'MyKey', 'MyValue')
-            item.initialValue = ''
-            w.metadataModel.addItem(item)
-
-            item = GDALMetadataItem('DataSource', 'MyDomain', 'MyKey1', 'MyValue1')
-            item.initialValue = ''
-            w.metadataModel.addItem(item)
-
-            item = GDALMetadataItem('Layer1', '', 'MyKey1', 'MyValue1')
-            item.initialValue = ''
-            w.metadataModel.addItem(item)
-
-            item = GDALMetadataItem('Layer1', 'MyDomain', 'MyKey1', 'MyValue1')
-            item.initialValue = ''
-            w.metadataModel.addItem(item)
-
-            w.apply()
-        self.showGui(m)
-
-    def test_gdalmetadata(self):
-
-        from qps.layerconfigwidgets.gdalmetadata import GDALMetadataModelConfigWidget, GDALMetadataConfigWidgetFactory
-
-        lyrR = TestObjects.createRasterLayer(nb=100, eType=gdal.GDT_Byte)
-        from qpstestdata import enmap
-        lyrR = QgsRasterLayer(enmap)
-        self.assertTrue(lyrR.isValid())
-        lyrV = TestObjects.createVectorLayer()
-
-        cR = self.canvasWithLayer(lyrR)
-        cV = self.canvasWithLayer(lyrV)
-
-        # no layer
-        c = QgsMapCanvas()
-        lyr = QgsRasterLayer()
-        w = GDALMetadataModelConfigWidget(lyr, c)
-        self.assertIsInstance(w, GDALMetadataModelConfigWidget)
-        w = GDALMetadataModelConfigWidget(lyrR, cR)
-        w.setLayer(lyrR)
-
-        f = GDALMetadataConfigWidgetFactory()
-        self.assertIsInstance(f, GDALMetadataConfigWidgetFactory)
-        self.assertTrue(f.supportsLayer(lyrR))
-        self.assertTrue(f.supportsLayer(lyrV))
-        wR = f.createWidget(lyrR, cR, dockWidget=False)
-        self.assertIsInstance(wR, GDALMetadataModelConfigWidget)
-        self.assertTrue(wR.metadataModel.rowCount(None) > 0)
-        wV = f.createWidget(lyrV, cV, dockWidget=False)
-        self.assertTrue(wR.metadataModel.rowCount(None) > 0)
-        self.assertIsInstance(wR, GDALMetadataModelConfigWidget)
-
-        lyrC = TestObjects.createRasterLayer(nc=5)
-        canvas = self.canvasWithLayer(lyrC)
-        wC = f.createWidget(lyrC, canvas)
-
-        self.showGui([w, wC])
+        match = RX_OGR_URI.search('qps/testvectordata.kml|layername=landcover|layerid=3')
+        self.assertIsInstance(match, typing.Match)
+        D = match.groupdict()
+        self.assertEqual(D.get('path'), 'qps/testvectordata.kml')
+        self.assertEqual(D.get('layername'), 'landcover')
+        self.assertEqual(D.get('layerid'), '3')
 
     def test_vectorfieldmodels(self):
 

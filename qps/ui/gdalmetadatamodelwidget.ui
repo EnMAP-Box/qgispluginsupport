@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>621</width>
-    <height>717</height>
+    <width>460</width>
+    <height>518</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -133,6 +133,48 @@
          </widget>
         </item>
         <item>
+         <widget class="QgsFilterLineEdit" name="tbBandFilter">
+          <property name="minimumSize">
+           <size>
+            <width>200</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="placeholderText">
+           <string>Filter metadata keys/values</string>
+          </property>
+          <property name="showSearchIcon">
+           <bool>true</bool>
+          </property>
+          <property name="showSpinner">
+           <bool>false</bool>
+          </property>
+          <property name="qgisRelation" stdset="0">
+           <string notr="true"/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnBandMatchCase">
+          <property name="text">
+           <string>Aa</string>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnBandRegex">
+          <property name="text">
+           <string>.*$</string>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
          <spacer name="horizontalSpacer">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -240,11 +282,68 @@
       </property>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="spacing">
+         <number>2</number>
+        </property>
         <property name="topMargin">
          <number>0</number>
         </property>
         <item>
+         <widget class="QToolButton" name="btnTableView">
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>
+            :/images/themes/default/mActionOpenTable.svg
+           </iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnFormView">
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>
+            :/images/themes/default/mActionFormView.svg
+           </iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="btnCalculator">
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../../../QGIS/images/images.qrc">
+            <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
+            :/images/themes/default/mActionCalculateField.svg
+           </iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QgsFilterLineEdit" name="tbFilter">
+          <property name="minimumSize">
+           <size>
+            <width>200</width>
+            <height>0</height>
+           </size>
+          </property>
           <property name="placeholderText">
            <string>Filter metadata keys/values</string>
           </property>
@@ -320,25 +419,25 @@
           </property>
          </widget>
         </item>
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
        </layout>
       </item>
       <item>
-       <widget class="GDALMetadataModelTableView" name="tvGDALMetadata">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>0</horstretch>
-          <verstretch>1</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="showDropIndicator" stdset="0">
-         <bool>false</bool>
-        </property>
-        <property name="sortingEnabled">
-         <bool>true</bool>
-        </property>
-        <attribute name="horizontalHeaderStretchLastSection">
-         <bool>true</bool>
-        </attribute>
+       <widget class="QgsDualView" name="dualView">
+        <widget class="QWidget" name="page_3"/>
+        <widget class="QWidget" name="page_4"/>
        </widget>
       </item>
      </layout>
@@ -459,6 +558,71 @@
     <string>Opens a calculator to calculate band values</string>
    </property>
   </action>
+  <action name="optionBandRegex">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>.*</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to interprete the filter expression as regular expression</string>
+   </property>
+  </action>
+  <action name="optionBandMatchCase">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Aa</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate for case-sensitive filtering</string>
+   </property>
+  </action>
+  <action name="actionTableView">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>BandTableView</string>
+   </property>
+   <property name="toolTip">
+    <string>Show metadata items in table view</string>
+   </property>
+  </action>
+  <action name="actionFormView">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>FormView</string>
+   </property>
+   <property name="toolTip">
+    <string>Show metadata items in form view</string>
+   </property>
+  </action>
+  <action name="actionCalculator">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
+     :/images/themes/default/mActionCalculateField.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>BandCalculator</string>
+   </property>
+   <property name="toolTip">
+    <string>Opens a calculator to calculate metadata values</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -477,11 +641,6 @@
    <extends>QWidget</extends>
    <header>qps.classification.classificationscheme</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>GDALMetadataModelTableView</class>
-   <extends>QTableView</extends>
-   <header>qps.layerconfigwidgets.gdalmetadata</header>
   </customwidget>
   <customwidget>
    <class>QgsMessageBar</class>
