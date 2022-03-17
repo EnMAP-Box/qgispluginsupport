@@ -91,10 +91,12 @@ def filterFeatures(layer: QgsVectorLayer, regex: QRegExp) -> List[int]:
 
 class BandFieldNames(object):
     Domain = 'Domain'
-    BandNumber = 'Band'
-    BandName = 'Band Name'
+    Number = 'Band'
+    Name = 'Band Name'
     BadBand = 'BBL'
-    BandRange = 'Range'
+    Range = 'Range'
+    Offset = 'Data Offset'
+    Gain = 'Data Gain'
     NoData = 'No Data'
     FWHM = 'FWHM'
     Wavelength = 'Wavelength'
@@ -188,24 +190,28 @@ def isOGRVectorLayer(lyr) -> bool:
 class GDALBandMetadataModel(GDALMetadataModelBase):
     FIELD2GDALKey = {
         BandFieldNames.BadBand: 'bbl',
-        BandFieldNames.BandRange: 'band width',
+        BandFieldNames.Range: 'band width',
         BandFieldNames.Wavelength: 'wavelength',
         BandFieldNames.WavelengthUnit: 'wavelength units',
         BandFieldNames.FWHM: 'fwhm',
+        BandFieldNames.Offset: 'data offset values',
+        BandFieldNames.Gain: 'data gain values'
     }
 
     FIELD_TOOLTIP = {
-        BandFieldNames.BandNumber: 'Band Number',
-        BandFieldNames.BandName: 'Band Name',
-        BandFieldNames.BandRange: 'Band range from (min, max) with<br>'
-                                  + 'min = wavelength - 0.5 FWHM<br>'
-                                  + 'max = wavelength + 0.5 FWHM',
+        BandFieldNames.Number: 'Band Number',
+        BandFieldNames.Name: 'Band Name',
+        BandFieldNames.Range: 'Band range from (min, max) with<br>'
+                              + 'min = wavelength - 0.5 FWHM<br>'
+                              + 'max = wavelength + 0.5 FWHM',
         BandFieldNames.Wavelength: 'Wavelength',
         BandFieldNames.WavelengthUnit: "Wavelength Unit, e.g. 'nm', 'μm'",
         BandFieldNames.NoData: 'Band NoData value to mask pixel',
         BandFieldNames.Domain: "Metadata domain.<br>'' = default domain<br>'ENVI' = ENVI domain",
         BandFieldNames.BadBand: 'bad band multiplier value. <br>0 = exclude, <br>1 = use band',
         BandFieldNames.FWHM: 'Full width at half maximum or band width, respectively',
+        BandFieldNames.Offset: 'Offset of data values',
+        BandFieldNames.Gain: 'Gain of data values',
     }
 
     def __init__(self):
@@ -220,7 +226,7 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         self.startEditing()
 
         DOMAIN = self.createDomainField()
-        BANDNO = QgsField(BandFieldNames.BandNumber, type=QVariant.Int)
+        BANDNO = QgsField(BandFieldNames.Number, type=QVariant.Int)
         constraints = QgsFieldConstraints()
         # todo: constraint unique combination of (domain, band number, key)
         # constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
@@ -234,7 +240,7 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         BANDNO.setConstraints(constraints)
         BANDNO.setReadOnly(True)
 
-        bandName = QgsField(BandFieldNames.BandName, type=QVariant.String, len=-1, )
+        bandName = QgsField(BandFieldNames.Name, type=QVariant.String, len=-1, )
 
         NODATA = QgsField(BandFieldNames.NoData, type=QVariant.Double)
 
@@ -254,12 +260,14 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         FWHMConstraints.setConstraintExpression(f'"{BandFieldNames.FWHM}" is NULL or "{BandFieldNames.FWHM}" > 0')
         FWHM.setConstraints(FWHMConstraints)
 
-        RANGE = QgsField(BandFieldNames.BandRange, type=QVariant.String)
+        RANGE = QgsField(BandFieldNames.Range, type=QVariant.String)
         # RANGEConstraints = QgsFieldConstraints()
         # RANGEConstraints.setConstraintExpression(f'"{BandFieldNames.BandRange}" > 0')
 
+        OFFSET = QgsField(BandFieldNames.Name, type=QVariant.Double)
+        GAIN = QgsField(BandFieldNames.Gain, type=QVariant.Double)
         # add fields
-        for field in [BANDNO, DOMAIN, bandName, NODATA, BBL, WLU, FWHM, RANGE]:
+        for field in [BANDNO, DOMAIN, bandName, NODATA, BBL, WLU, FWHM, RANGE, OFFSET, OFFSET, GAIN]:
             field: QgsField
             field.setComment(self.FIELD_TOOLTIP.get(field.name(), ''))
             self.addAttribute(field)
@@ -282,9 +290,9 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             ds: gdal.Dataset = gdalDataset(self.mMapLayer)
 
             major_object = f.attribute('')
-            bandNo = f.attribute(BandFieldNames.BandNumber)
+            bandNo = f.attribute(BandFieldNames.Number)
             bandKey = self.bandKey(bandNo)
-            bandName = f.attribute(BandFieldNames.BandName)
+            bandName = f.attribute(BandFieldNames.Name)
             bandDomain = f.attribute(BandFieldNames.Domain)
             for field in f.fields():
                 n = field.name()
@@ -325,14 +333,14 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                 bandRanges.append(bandRange)
 
             KEY2VALUE = {
-                BandFieldNames.BandNumber: lambda i: i + 1,
+                BandFieldNames.Number: lambda i: i + 1,
                 BandFieldNames.Wavelength: lambda i: wl[i],
                 BandFieldNames.WavelengthUnit: lambda i: wlu[i],
                 BandFieldNames.BadBand: lambda i: bbl[i],
-                BandFieldNames.BandRange: lambda i: bandRanges[i],
+                BandFieldNames.Range: lambda i: bandRanges[i],
                 BandFieldNames.FWHM: lambda i: fwhm[i],
                 BandFieldNames.NoData: lambda i: dp.sourceNoDataValue(i + 1),
-                BandFieldNames.BandName: lambda i: dp.generateBandName(i + 1),
+                BandFieldNames.Name: lambda i: dp.generateBandName(i + 1),
                 BandFieldNames.Domain: lambda i: domain,
             }
 
@@ -373,9 +381,9 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         if isinstance(ds, gdal.Dataset):
             for f in self.getFeatures():
                 f: QgsFeature
-                bandNo = f.attribute(BandFieldNames.BandNumber)
+                bandNo = f.attribute(BandFieldNames.Number)
                 band: gdal.Band = ds.GetRasterBand(bandNo)
-                name = f.attribute(BandFieldNames.BandName)
+                name = f.attribute(BandFieldNames.Name)
                 band.SetDescription(name)
 
                 for field in f.fields():
@@ -451,6 +459,7 @@ class GDALMetadataModel(GDALMetadataModelBase):
                 return
         self.deleteFeatures(self.allFeatureIds())
         self.commitChanges(False)
+        self.beginEditCommand('Sync to layer')
         lyr = self.mMapLayer
         objField: QgsField = self.fields().field(self.FN_MajorObject)
         c = objField.constraints()
@@ -488,7 +497,9 @@ class GDALMetadataModel(GDALMetadataModelBase):
                         ogrLayer: ogr.Layer = ds.GetLayerByIndex(layerid)
                         self.addMajorObjectFeatures(ogrLayer, sub_object=layerid)
                 del ds
+
         objField.setConstraints(c)
+        self.endEditCommand()
         assert self.commitChanges(not editable)
 
     def applyToLayer(self):
