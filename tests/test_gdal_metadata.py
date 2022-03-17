@@ -1,9 +1,8 @@
-from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout
-from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout
-from osgeo import gdal
-from qgis._core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
-from qgis._gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
+from osgeo import gdal, ogr
 
+from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
+from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
 from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel
 from qps.testing import TestCase, TestObjects
 from qpstestdata import enmap
@@ -34,7 +33,8 @@ class TestsGdalMetadata(TestCase):
         lyrR = QgsRasterLayer(envi_bsq, 'ENVI')
         lyrV = QgsVectorLayer(enmap_polygon, 'Vector')
 
-        layers = [lyrR,
+        layers = [QgsRasterLayer(enmap, 'EnMAP'),
+                  lyrR,
                   lyrV,
                   TestObjects.createRasterLayer(),
                   TestObjects.createSpectralLibrary(),
@@ -50,6 +50,9 @@ class TestsGdalMetadata(TestCase):
         canvas.setLayers([w.mapLayer()])
         canvas.mapSettings().setDestinationCrs(w.mapLayer().crs())
         canvas.zoomToFullExtent()
+        btnEdit = QPushButton('Edit')
+        btnEdit.setCheckable(True)
+        btnEdit.toggled.connect(w.setEditable)
         btnApply = QPushButton('Apply')
         btnApply.clicked.connect(w.apply)
         btnZoom = QPushButton('Center')
@@ -73,7 +76,7 @@ class TestsGdalMetadata(TestCase):
         cbChangeLayer.layerChanged.connect(onLayerChanged)
 
         hl1 = QHBoxLayout()
-        for widget in [btnApply, btnReload, btnZoom, cbChangeLayer, cb]:
+        for widget in [btnEdit, btnApply, btnReload, btnZoom, cbChangeLayer, cb]:
             hl1.addWidget(widget)
         hl2 = QHBoxLayout()
         hl2.addWidget(w)
@@ -103,12 +106,19 @@ class TestsGdalMetadata(TestCase):
 
     def test_GDALMetadataModelItemWidget(self):
 
-        items = [gdal.Dataset.__name__, gdal.Band.__name__]
+        majorObjects = [gdal.Dataset.__name__,
+                        f'{gdal.Band.__name__}_1',
+                        ogr.DataSource.__name__,
+                        f'{ogr.Layer.__name__}_1',
+                        f'{ogr.Layer.__name__}_layername',
+                        ]
         domains = ['Domains 1', 'domains2']
-        d = GDALMetadataItemDialog(major_objects=items, domains=domains)
+        d = GDALMetadataItemDialog(major_objects=majorObjects,
+                                   domains=domains)
         d.setKey('MyKey')
         d.setValue('MyValue')
         d.setDomain('MyDomain')
-        d.setMajorObject('band1')
+        for mo in majorObjects:
+            self.assertTrue(d.setMajorObject(mo))
 
         self.showGui(d)

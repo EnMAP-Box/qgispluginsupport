@@ -34,6 +34,8 @@ class SpectralPropertyKeys(object):
     Wavelength = 'wavelength'
     WavelengthUnit = 'wavelength_unit'
     BandWidth = 'bandwidth'
+    DataOffset = 'dataoffset'
+    DataGain = 'datagain'
     FWHM = 'fwhm'
 
 
@@ -42,15 +44,19 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
     LOOKUP_PATTERNS = {
         SpectralPropertyKeys.FWHM: re.compile(
-            r'(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.IGNORECASE),
+            r'(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.I),
         SpectralPropertyKeys.BadBand: re.compile(
-            r'(bbl|bad[ -_]?Band|bad[ -_]?band[ -_]?multiplier|bad[ -_]band[ -_]list)$', re.IGNORECASE),
+            r'(bbl|bad[ -_]?Band|bad[ -_]?band[ -_]?multiplier|bad[ -_]band[ -_]list)$', re.I),
         SpectralPropertyKeys.WavelengthUnit: re.compile(
-            r'(wlu|wavelength[ -_]?units?)$', re.IGNORECASE),
+            r'(wlu|wavelength[ -_]?units?)$', re.I),
         SpectralPropertyKeys.Wavelength: re.compile(
-            r'(wl|wavelengths?)$', re.IGNORECASE),
+            r'(wl|wavelengths?)$', re.I),
         SpectralPropertyKeys.BandWidth: re.compile(
-            r'(bw|bandwiths?)$', re.IGNORECASE)
+            r'(bw|bandwiths?)$', re.I),
+        SpectralPropertyKeys.DataGain: re.compile(
+            r'(data[ -_]gain([ -_]values?)?)', re.I),
+        SpectralPropertyKeys.DataOffset: re.compile(
+            r'(data[ -_]offset([ -_]values?)?)', re.I)
     }
 
     @staticmethod
@@ -180,6 +186,12 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
             values = [v if v is not None else default for v in values]
         return values
 
+    def dataOffsets(self, default: float = float('nan')) -> typing.List[float]:
+        return self.bandValues(None, SpectralPropertyKeys.DataOffset, default=default)
+
+    def dataGains(self, default: float = float('nan')):
+        return self.bandValues(None, SpectralPropertyKeys.DataGain, default=default)
+
     def wavelengths(self) -> typing.List[float]:
         """
         Returns n = .bandCount() wavelengths.
@@ -204,7 +216,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         return [int(v) for v in self.bandValues(None, SpectralPropertyKeys.BadBand, default=default)]
 
-    def bandWidth(self, default: float = float('nan')) -> typing.List[float]:
+    def fwhm(self, default: float = float('nan')) -> typing.List[float]:
         """
         Returns the FWHM values for each band
         """
