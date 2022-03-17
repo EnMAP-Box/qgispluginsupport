@@ -28,7 +28,6 @@ import typing
 from typing import List, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget, \
@@ -37,6 +36,7 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, QgsEditorWidg
     QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
 from qgis.gui import QgsGui, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, \
     QgsAttributeTableModel, QgsAttributeEditorContext
+
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -652,14 +652,10 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.actionTableView.triggered.connect(lambda: self.dualView.setView(QgsDualView.AttributeTable))
         self.actionFormView.triggered.connect(lambda: self.dualView.setView(QgsDualView.AttributeEditor))
 
-        if not FIELD_CALCULATOR:
-            self.btnBandCalculator.setVisible(False)
-            self.btnCalculator.setVisible(False)
-        else:
-            self.btnBandCalculator.setDefaultAction(self.actionBandCalculator)
-            self.btnCalculator.setDefaultAction(self.actionCalculator)
-            self.actionBandCalculator.triggered.connect(lambda: self.showCalculator(self.bandDualView))
-            self.actionCalculator.triggered.connect(lambda: self.showCalculator(self.dualView))
+        self.btnBandCalculator.setDefaultAction(self.actionBandCalculator)
+        self.btnCalculator.setDefaultAction(self.actionCalculator)
+        self.actionBandCalculator.triggered.connect(lambda: self.showCalculator(self.bandDualView))
+        self.actionCalculator.triggered.connect(lambda: self.showCalculator(self.dualView))
 
         updateBandFilter = lambda: self.updateFilter(self.bandDualView, self.tbBandFilter.text())
         updateFilter = lambda: self.updateFilter(self.dualView, self.tbFilter.text())
@@ -683,7 +679,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.btnRemoveItem.setDefaultAction(self.actionRemoveItem)
         self.btnReset.setDefaultAction(self.actionReset)
 
-        self.actionReset.triggered.connect(self.onReset)
+        self.actionReset.triggered.connect(self.metadataModel.rollBack)
         self.actionRemoveItem.setEnabled(False)
         self.actionAddItem.triggered.connect(self.onAddItem)
         self.actionRemoveItem.triggered.connect(self.onRemoveSelectedItems)
@@ -692,6 +688,14 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.setEditable(False)
 
     def setEditable(self, isEditable: bool):
+
+        self.btnBandCalculator.setVisible(isEditable)
+        self.btnCalculator.setVisible(isEditable)
+
+        self.btnAddItem.setVisible(isEditable)
+        self.btnRemoveItem.setVisible(isEditable)
+        self.btnReset.setVisible(isEditable)
+
         if isEditable:
             self.metadataModel.startEditing()
             self.bandMetadataModel.startEditing()
@@ -738,9 +742,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         wlu = self.cbWavelengthUnits.currentData(role=Qt.UserRole)
         self.bandMetadataModel.setWavelengthUnit(wlu)
 
-    def onReset(self):
-
-        self.metadataModel.resetChanges()
 
     def onAddItem(self):
         protectedDomains = [p.split(':')[0] for p in PROTECTED if not p.startswith(':')]
