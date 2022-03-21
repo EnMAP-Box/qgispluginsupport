@@ -856,8 +856,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 self.mSpeclib.attributeAdded.disconnect(self.onSpeclibAttributesUpdated)
                 self.mSpeclib.attributeDeleted.disconnect(self.onSpeclibAttributesUpdated)
 
+                self.mSpeclib.editCommandStarted.disconnect(self.onSpeclibEditCommandStarted)
                 self.mSpeclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
-                # self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
+                self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.beforeCommitChanges.disconnect(self.onSpeclibBeforeCommitChanges)
                 # self.mSpeclib.afterCommitChanges.disconnect(self.onSpeclibAfterCommitChanges)
                 self.mSpeclib.committedFeaturesAdded.disconnect(self.onSpeclibCommittedFeaturesAdded)
@@ -874,8 +875,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 self.mSpeclib.updatedFields.connect(self.onSpeclibAttributesUpdated)
                 self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributesUpdated)
                 self.mSpeclib.attributeDeleted.connect(self.onSpeclibAttributesUpdated)
-                self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
                 self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
+                self.mSpeclib.editCommandStarted.connect(self.onSpeclibEditCommandStarted)
+                self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
                 self.mSpeclib.committedAttributeValuesChanges.connect(self.onSpeclibCommittedAttributeValuesChanges)
                 self.mSpeclib.beforeCommitChanges.connect(self.onSpeclibBeforeCommitChanges)
                 self.mSpeclib.afterCommitChanges.connect(self.onSpeclibAfterCommitChanges)
@@ -905,7 +907,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def onSpeclibAttributeValueChanged(self, fid, idx, value):
         # warnings.warn('To expansive. Will be called for each single feature!')
-        self.mChangedAttributes.add((fid, idx))
+        if self.speclib().isEditCommandActive():
+            self.mChangedAttributes.add((fid, idx))
         # self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if (k[0], k[1]) != fid_idx}
         # self.updatePlot([fid])
 
@@ -986,14 +989,23 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.updatePlot()
         s = ""
 
+    def onSpeclibEditCommandStarted(self, cmd:str):
+        self.mChangedAttributes.clear()
+        s = ""
+
     def onSpeclibEditCommandEnded(self, *args):
         # changedFIDs1 = list(self.speclib().editBuffer().changedAttributeValues().keys())
         changedFIDs2 = self.mChangedFIDs
-
+        changedAttribute = self.mChangedAttributes
+        n0 = len(self.mCACHE_PROFILE_DATA)
+        updated = [k for k in self.mCACHE_PROFILE_DATA.keys() if (k[0], k[1]) in self.mChangedAttributes]
         self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if
                                     (k[0], k[1]) not in self.mChangedAttributes}
 
+        n1 = len(self.mCACHE_PROFILE_DATA)
         # self.mCACHE_PROFILE_DATA.clear()
+        if n1 < n0:
+            s = ""
         self.mChangedAttributes.clear()
         self.updatePlot()
         # self.onSpeclibFeaturesDeleted(sorted(changedFIDs2))

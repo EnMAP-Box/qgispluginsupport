@@ -767,11 +767,12 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 value = float(tmp[0, 0, i])
                                 if target_field.type() == QVariant.String:
                                     value = str(value)
-                            assert feature.setAttribute(target_field_index, value)
+                            assert speclib.changeAttributeValue(feature.id(), target_field_index, value)
+                            # assert feature.setAttribute(target_field_index, value)
 
                     self.log(f'Update {len(activeFeatures)} features')
-                    for feature in activeFeatures:
-                        assert speclib.updateFeature(feature)
+                    #for feature in activeFeatures:
+                    #    assert speclib.updateFeature(feature)
                     speclib.endEditCommand()
 
         except AlgorithmDialogBase.InvalidParameterValue as ex1:
