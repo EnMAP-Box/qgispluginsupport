@@ -206,6 +206,7 @@ class SpectralProcessingTests(TestCase):
         speclib = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
         speclib: QgsVectorLayer
 
+        slw = SpectralLibraryWidget(speclib=speclib)
         pFields = profile_field_list(speclib)
 
         speclib.startEditing()
@@ -229,7 +230,7 @@ class SpectralProcessingTests(TestCase):
             setting = SpectralSetting.fromRasterLayer(file)
             assert setting.xUnit() not in [None, '']
 
-        self.showGui(procw)
+        self.showGui([slw, procw])
 
     def test_SpectralProcessingRasterLayerWidgetWrapper(self):
 

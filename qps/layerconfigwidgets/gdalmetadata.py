@@ -753,7 +753,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         wlu = self.cbWavelengthUnits.currentData(role=Qt.UserRole)
         self.bandMetadataModel.setWavelengthUnit(wlu)
 
-
     def onAddItem(self):
         protectedDomains = [p.split(':')[0] for p in PROTECTED if not p.startswith(':')]
         domains = [d for d in self.metadataModel.domains() if d not in protectedDomains]

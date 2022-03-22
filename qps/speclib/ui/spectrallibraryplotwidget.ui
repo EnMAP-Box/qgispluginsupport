@@ -114,7 +114,7 @@ QSplitter::handle:vertical {
             <string>+VIS</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -128,7 +128,7 @@ QSplitter::handle:vertical {
             <string>+VIS</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -142,7 +142,7 @@ QSplitter::handle:vertical {
             <string>-VIS</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -156,7 +156,7 @@ QSplitter::handle:vertical {
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset resource="../../../../QGIS/images/images.qrc">
+            <iconset>
              <normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</iconset>
            </property>
            <property name="autoRaise">
@@ -224,7 +224,7 @@ QSplitter::handle:vertical {
   </layout>
   <action name="actionAddProfileVis">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionAdd.svg</normaloff>:/images/themes/default/mActionAdd.svg</iconset>
    </property>
    <property name="text">
@@ -236,7 +236,7 @@ QSplitter::handle:vertical {
   </action>
   <action name="actionRemoveProfileVis">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionRemove.svg</normaloff>:/images/themes/default/mActionRemove.svg</iconset>
    </property>
    <property name="text">
@@ -251,7 +251,7 @@ QSplitter::handle:vertical {
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</normaloff>:/images/themes/default/mActionShowSelectedLayers.svg</iconset>
    </property>
    <property name="text">
@@ -281,7 +281,7 @@ QSplitter::handle:vertical {
   </action>
   <action name="optionCursorCrosshair">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/cursors/mCrossHair.svg</normaloff>:/images/themes/default/cursors/mCrossHair.svg</iconset>
    </property>
    <property name="text">
@@ -319,7 +319,7 @@ QSplitter::handle:vertical {
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/legend.svg</normaloff>:/images/themes/default/legend.svg</iconset>
    </property>
    <property name="text">
@@ -331,7 +331,7 @@ QSplitter::handle:vertical {
   </action>
   <action name="actionAddRasterLayerRenderer">
    <property name="icon">
-    <iconset resource="../../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</normaloff>:/images/themes/default/rendererCategorizedSymbol.svg</iconset>
    </property>
    <property name="text">
@@ -357,7 +357,6 @@ QSplitter::handle:vertical {
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../../../../QGIS/images/images.qrc"/>
   <include location="../../qpsresources.qrc"/>
  </resources>
  <connections/>

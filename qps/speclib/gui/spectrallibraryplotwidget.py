@@ -201,6 +201,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mChangedFIDs: typing.Set[int] = set()
         self.mChangedAttributes: typing.Set[typing.Tuple[int, int]] = set()
+        self.mLastEditCommand: str = None
         # self.mPlotDataItems: typing.List[SpectralProfilePlotDataItem] = list()
 
         # Update plot data and colors
@@ -468,7 +469,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.updatePlot()
 
     def updatePlot(self, fids_to_update=[]):
-        if self.updatesBlocked():
+        if self.updatesBlocked() or self.speclib().isEditCommandActive():
             return
 
         t0 = datetime.datetime.now()
@@ -989,14 +990,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.updatePlot()
         s = ""
 
-    def onSpeclibEditCommandStarted(self, cmd:str):
+    def onSpeclibEditCommandStarted(self, cmd: str):
         self.mChangedAttributes.clear()
+        self.mLastEditCommand = cmd
         s = ""
 
     def onSpeclibEditCommandEnded(self, *args):
         # changedFIDs1 = list(self.speclib().editBuffer().changedAttributeValues().keys())
         changedFIDs2 = self.mChangedFIDs
         changedAttribute = self.mChangedAttributes
+        lastCmd = self.mLastEditCommand
+        if len(self.mChangedAttributes) == 0:
+            return
         n0 = len(self.mCACHE_PROFILE_DATA)
         updated = [k for k in self.mCACHE_PROFILE_DATA.keys() if (k[0], k[1]) in self.mChangedAttributes]
         self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if
@@ -1285,9 +1290,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                 rect = option.rect
                 plot_style: PlotStyle = item.mPStyle.plotStyle()
                 html_style = HTMLStyle()
-                x0 = 25
+                x0 = rect.height()
 
-                w = total_w - 25
                 # self.initStyleOption(option, index)
 
                 # [25px warning icon] | 50 px style | html style text

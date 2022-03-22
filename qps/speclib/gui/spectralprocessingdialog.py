@@ -25,12 +25,12 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
 from .. import speclibSettings
-from ..core import create_profile_field, is_profile_field
+from ..core import is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
     SpectralProfileValueConverter
 from ..core.spectralprofile import prepareProfileValueDict, \
-    encodeProfileValueDict
+    encodeProfileValueDict, ProfileEncoding
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType
@@ -106,8 +106,10 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
     def createLabel(self) -> QLabel:
         # l = QLabel(f'<html><img width="20"px" height="20"
         # src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
-        label = QLabel(f'{self.parameterDefinition().description()} (to field)')
-        label.setToolTip('Select a target field or create a new one')
+        # label = QLabel(f'{self.parameterDefinition().description()} (to field)')
+        label = QLabel(f'<html> <img src=":/qps/ui/icons/raster_to_field.svg"/>   '
+                       f'{self.parameterDefinition().description()}</html>')
+        label.setToolTip('An existing or new field to write raster values to')
         self.mLabel = label
         return label
 
@@ -246,12 +248,15 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         # src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
         param = self.parameterDefinition()
         label = None
+
         if isinstance(param, QgsProcessingParameterRasterLayer):
-            label = QLabel(f'{self.parameterDefinition().description()} (from profile field)')
-            label.setToolTip('Select the profile source column')
+            label = QLabel(f'<html><img src=":/qps/ui/icons/field_to_raster.svg">   '
+                           f'{self.parameterDefinition().description()}</html>')
+            label.setToolTip('A field whose values will be converted into a temporary raster image')
         elif isinstance(param, QgsProcessingParameterMultipleLayers):
-            label = QLabel(f'{self.parameterDefinition().description()} (from profile fields)')
-            label.setToolTip('Select the source columns')
+            label = QLabel(f'<html><img src=":/qps/ui/icons/field_to_raster.svg">   '
+                           f'{self.parameterDefinition().description()}')
+            label.setToolTip('A set of fiels whose values will be converted into temporary raster images')
         else:
             raise NotImplementedError()
         self.mLabel = label
@@ -590,7 +595,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             for k, v in parameters.items():
                 if isinstance(v, QgsMapLayer):
                     v = v.name()
-                if isinstance(v, (str, int, float)):
+                if isinstance(v, (str, int, float, list)):
                     parameters2[k] = v
             settings.setValue(f'{K}/algorithmParameters', json.dumps(parameters2))
 
@@ -728,7 +733,10 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             if target_field_index == -1:
                                 # create a new field
                                 if nb > 1:
-                                    field: QgsField = create_profile_field(target_field_name)
+                                    field: QgsField = SpectralLibraryUtils.createProfileField(target_field_name)
+                                    if not speclib.dataProvider().supportedType(field):
+                                        field = SpectralLibraryUtils.createProfileField(target_field_name,
+                                                                                        encoding=ProfileEncoding.Text)
                                 else:
                                     field: QgsField = QgsField(name=target_field_name,
                                                                type=numpyToQgisDataType(tmp.dtype))
@@ -771,9 +779,10 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             # assert feature.setAttribute(target_field_index, value)
 
                     self.log(f'Update {len(activeFeatures)} features')
-                    #for feature in activeFeatures:
+                    # for feature in activeFeatures:
                     #    assert speclib.updateFeature(feature)
                     speclib.endEditCommand()
+                    speclib.commitChanges(False)
 
         except AlgorithmDialogBase.InvalidParameterValue as ex1:
             # todo: focus on widget with missing input
