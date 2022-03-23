@@ -1,10 +1,9 @@
 import math
 import re
 import typing
-import warnings
+from typing import List, Optional, Union
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDateTime, QByteArray
 from qgis.PyQt.QtCore import Qt
@@ -15,6 +14,7 @@ from qgis.core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLa
 from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, QgsRasterDataProvider, QgsField, \
     QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
     QgsProviderRegistry, QgsMessageLog
+
 from ..core import profile_fields, is_profile_field
 from ..core.spectralprofile import SpectralSetting, groupBySpectralProperties, decodeProfileValueDict
 from ...unitmodel import BAND_INDEX
@@ -25,7 +25,7 @@ from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextC
 def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],
                        fields=None) -> typing.List[QgsRasterLayer]:
     """
-    Converts a list of QgsFeatures into a set of QgsRasterLayers
+    Converts a list of QgsFeatures into a set of QgsRasterLayers.
     :param features:
     :param fields:
     :return:
@@ -56,14 +56,18 @@ def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFea
                 lyr = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
                 dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
                 dp.setActiveFeatures(profiles, field=field)
+                lyr.setTitle(f'Field "{field.name()}" as raster')
                 layers.append(lyr)
         else:
-            name = f'{field.name()} ({field.typeName()})'
-            layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
-            assert layer.isValid(), 'Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider'
-            dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
-            dp.setActiveFeatures(features, field=field)
-            layers.append(layer)
+            converter = VectorLayerFieldRasterDataProvider.findFieldConverter(field)
+            if isinstance(converter, FieldToRasterValueConverter):
+                name = f'{field.name()} ({field.typeName()})'
+                layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+                assert layer.isValid(), 'Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider'
+                dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
+                dp.setActiveFeatures(features, field=converter)
+                layer.setTitle(f'Field "{field.name()}" as raster')
+                layers.append(layer)
 
     return layers
 
@@ -449,7 +453,15 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     """
     PARENT = QObject()
 
-    FIELD_CONVERTER = [FieldToRasterValueConverter, SpectralProfileValueConverter]
+    FIELD_CONVERTER: List[FieldToRasterValueConverter] = [FieldToRasterValueConverter, SpectralProfileValueConverter]
+
+    @staticmethod
+    def findFieldConverter(field: QgsField) -> Optional[FieldToRasterValueConverter]:
+
+        for c in VectorLayerFieldRasterDataProvider.FIELD_CONVERTER:
+            if c.supportsField(field):
+                return c(field)
+        return None
 
     def __init__(self,
                  uri: str,
@@ -637,26 +649,24 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         else:
             return 0
 
-    def setActiveField(self, field: typing.Union[str, int, QgsField]):
+    def setActiveField(self, field: typing.Union[str, int, QgsField, FieldToRasterValueConverter]):
         lastField: QgsField = self.activeField()
+
+        if isinstance(field, FieldToRasterValueConverter):
+            self.mFieldConverter = field
+            field = self.mFieldConverter.field()
 
         activeField = qgsField(self.fields(), field)
 
         assert isinstance(activeField, QgsField), f'Field not found/supported: {field}'
+        self.mField = activeField
 
-        if activeField != self.mField or not \
-                (isinstance(self.fieldConverter(), FieldToRasterValueConverter)
-                 and self.fieldConverter().supportsField(activeField)):
-            self.mFieldConverter = None
-            for c in VectorLayerFieldRasterDataProvider.FIELD_CONVERTER:
-                if c.supportsField(activeField):
-                    self.mField = activeField
-                    self.setFieldConverter(c(activeField))
-                    break
+        if not (isinstance(self.fieldConverter(), FieldToRasterValueConverter)
+            and self.fieldConverter().supportsField(activeField)):
+            self.mFieldConverter = VectorLayerFieldRasterDataProvider.findFieldConverter(activeField)
 
         if not isinstance(self.fieldConverter(), FieldToRasterValueConverter):
-            warnings.warn(f'Did not found converter for field "{field}"')
-            self.mField = activeField
+            # warnings.warn(f'Did not found converter for field "{field}"')
             self.mFieldConverter = FieldToRasterValueConverter(self.mField)
 
         if lastField != self.mField:
@@ -678,14 +688,18 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def activeField(self) -> QgsField:
         return self.mField
 
-    def setActiveFeatures(self, features: typing.List[QgsFeature], field: QgsField = None):
+    def setActiveFeatures(self,
+                          features: typing.List[QgsFeature],
+                          field: Union[QgsField, FieldToRasterValueConverter] = None
+                          ):
+
         if not isinstance(features, list):
             features = list(features)
         assert isinstance(features, list)
         self.mFeatures.clear()
         self.mFeatures.extend(features)
 
-        if isinstance(field, QgsField):
+        if isinstance(field, (QgsField, FieldToRasterValueConverter)):
             self.setActiveField(field)
 
         if self.fieldConverter():
