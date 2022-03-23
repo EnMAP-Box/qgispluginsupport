@@ -3,7 +3,6 @@ import re
 import typing
 
 import numpy as np
-
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
@@ -22,6 +21,7 @@ from qgis.core import QgsRasterLayer
 from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
+
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget, PlotUpdateBlocker
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
@@ -853,9 +853,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if self.mSpeclib != speclib:
             if isinstance(self.mSpeclib, QgsVectorLayer):
                 # unregister signals
-                self.mSpeclib.updatedFields.disconnect(self.onSpeclibAttributesUpdated)
-                self.mSpeclib.attributeAdded.disconnect(self.onSpeclibAttributesUpdated)
-                self.mSpeclib.attributeDeleted.disconnect(self.onSpeclibAttributesUpdated)
+                self.mSpeclib.updatedFields.disconnect(self.updateProfileFieldModel)
+                self.mSpeclib.attributeAdded.disconnect(self.updateProfileFieldModel)
+                self.mSpeclib.attributeDeleted.disconnect(self.updateProfileFieldModel)
 
                 self.mSpeclib.editCommandStarted.disconnect(self.onSpeclibEditCommandStarted)
                 self.mSpeclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
@@ -873,9 +873,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             # register signals
             if isinstance(self.mSpeclib, QgsVectorLayer):
-                self.mSpeclib.updatedFields.connect(self.onSpeclibAttributesUpdated)
-                self.mSpeclib.attributeAdded.connect(self.onSpeclibAttributesUpdated)
-                self.mSpeclib.attributeDeleted.connect(self.onSpeclibAttributesUpdated)
+                self.mSpeclib.updatedFields.connect(self.updateProfileFieldModel)
+                self.mSpeclib.attributeAdded.connect(self.updateProfileFieldModel)
+                self.mSpeclib.attributeDeleted.connect(self.updateProfileFieldModel)
                 self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
                 self.mSpeclib.editCommandStarted.connect(self.onSpeclibEditCommandStarted)
                 self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
@@ -887,7 +887,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 self.mSpeclib.featuresDeleted.connect(self.onSpeclibFeaturesDeleted)
                 self.mSpeclib.selectionChanged.connect(self.onSpeclibSelectionChanged)
                 self.mSpeclib.styleChanged.connect(self.onSpeclibStyleChanged)
-                self.onSpeclibAttributesUpdated()
+                self.updateProfileFieldModel()
 
     def onSpeclibBeforeCommitChanges(self):
         """
@@ -941,7 +941,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.updatePlot(fids_to_update=OLD2NEW.values())
 
-    def onSpeclibAttributesUpdated(self, *args):
+    def updateProfileFieldModel(self, *args):
         fields = QgsFields()
         for f in profile_field_list(self.mSpeclib):
             fields.append(f)
