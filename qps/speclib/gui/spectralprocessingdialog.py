@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, Qt, QTimer, \
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QDialog, \
     QPushButton, QSizePolicy
-from qgis.core import QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
+from qgis.core import QgsEditorWidgetSetup, QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
     QgsProcessingRegistry, QgsMapLayer, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
     QgsProcessingParameterRasterLayer, QgsProcessingOutputRasterLayer, QgsProject, QgsProcessingParameterDefinition, \
@@ -24,7 +24,7 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingParametersWidget, \
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
-from .. import speclibSettings
+from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core import is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
@@ -710,9 +710,11 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     s = ""
             from processing.gui.AlgorithmExecutor import execute as executeAlg
 
-            ok, results = executeAlg(alg, parametersHard,
+            ok, results = executeAlg(alg,
+                                     parametersHard,
                                      context=processingContext,
-                                     feedback=processingFeedback, catch_exceptions=True)
+                                     feedback=processingFeedback,
+                                     catch_exceptions=True)
             self.log(processingFeedback.htmlLog(), isError=not ok)
 
             if ok:
@@ -749,8 +751,16 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 speclib.commitChanges(False)
 
                                 target_field_index = speclib.fields().lookupField(target_field_name)
+
+                            # set editor widget type to SpectralProfile, if necessary
                             if target_field_index >= 0:
-                                OUT_RASTERS[parameter.name()] = (lyr, tmp, speclib.fields().at(target_field_index))
+                                target_field: QgsField = speclib.fields().at(target_field_index)
+                                if nb > 0 and not target_field.editorWidgetSetup().type() \
+                                    in (EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME):
+                                    setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+                                    speclib.setEditorWidgetSetup(target_field_index, setup)
+
+                                OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
 
                 if len(OUT_RASTERS) > 0:
                     speclib.beginEditCommand('Add raster processing results')
