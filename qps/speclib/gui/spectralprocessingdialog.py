@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, Qt, QTimer, \
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QDialog, \
     QPushButton, QSizePolicy
-from qgis.core import QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
+from qgis.core import QgsEditorWidgetSetup, QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
     QgsProcessingRegistry, QgsMapLayer, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
     QgsProcessingParameterRasterLayer, QgsProcessingOutputRasterLayer, QgsProject, QgsProcessingParameterDefinition, \
@@ -24,8 +24,9 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingParametersWidget, \
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
-from .. import speclibSettings
-from ..core import is_profile_field
+
+from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
+from ..core import is_profile_field, supports_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
     SpectralProfileValueConverter
@@ -33,6 +34,7 @@ from ..core.spectralprofile import prepareProfileValueDict, \
     encodeProfileValueDict, ProfileEncoding
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType
 
 
@@ -710,9 +712,11 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     s = ""
             from processing.gui.AlgorithmExecutor import execute as executeAlg
 
-            ok, results = executeAlg(alg, parametersHard,
+            ok, results = executeAlg(alg,
+                                     parametersHard,
                                      context=processingContext,
-                                     feedback=processingFeedback, catch_exceptions=True)
+                                     feedback=processingFeedback,
+                                     catch_exceptions=True)
             self.log(processingFeedback.htmlLog(), isError=not ok)
 
             if ok:
@@ -749,8 +753,16 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 speclib.commitChanges(False)
 
                                 target_field_index = speclib.fields().lookupField(target_field_name)
-                            if target_field_index >= 0:
-                                OUT_RASTERS[parameter.name()] = (lyr, tmp, speclib.fields().at(target_field_index))
+
+                            else:
+                                # if necessary, change editor widget type to SpectralProfile
+                                target_field: QgsField = speclib.fields().at(target_field_index)
+                                if nb > 0 and supports_field(target_field) \
+                                        and not is_profile_field(target_field):
+                                    setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+                                    speclib.setEditorWidgetSetup(target_field_index, setup)
+                                    target_field = speclib.fields().at(target_field_index)
+                                OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
 
                 if len(OUT_RASTERS) > 0:
                     speclib.beginEditCommand('Add raster processing results')
@@ -759,6 +771,25 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     # write raster values to features
                     for parameterName, (lyr, tmp, target_field) in OUT_RASTERS.items():
                         self.log(f'Write values to field {target_field.name()}...')
+
+                        spectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+                        wl = spectralProperties.wavelengths()
+                        wlu = spectralProperties.wavelengthUnits()
+                        bbl = spectralProperties.badBands()
+
+                        # wavelength need to be defined for all bands
+                        if any([w is None for w in wl]):
+                            wl = None
+
+                        # choose 1st wavelength unit for entire profile
+                        for w in wlu:
+                            if w not in [None, '']:
+                                wlu = w
+
+                        # no need to save bbl if it is True = 1 for all bands (default)
+                        if all([b == 1 for b in bbl]):
+                            bbl = None
+
                         target_field: QgsField
                         target_field_index: int = speclib.fields().lookupField(target_field.name())
 
@@ -768,8 +799,10 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             value = None
                             if is_profile:
                                 pixel_profile = tmp[:, 0, i]
-                                # todo: consider spectral setting
-                                pdict = prepareProfileValueDict(x=None, y=pixel_profile)
+                                pdict = prepareProfileValueDict(x=wl,
+                                                                xUnit=wlu,
+                                                                y=pixel_profile,
+                                                                bbl=bbl)
                                 value = encodeProfileValueDict(pdict, target_field)
                             else:
                                 value = float(tmp[0, 0, i])

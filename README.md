@@ -4,6 +4,7 @@
 
 The QGIS Plugin Support (QPS) library helps to develop QGIS plugins specifically for remote sensing applications.
 
+
 This includes, for example
 - Remote sensing specific metadata handling
 - Spectral Libraries

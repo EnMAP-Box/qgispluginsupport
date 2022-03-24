@@ -12,6 +12,7 @@ from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
+
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
@@ -427,6 +428,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         dialog = SpectralProcessingDialog(speclib=self.speclib())
         dialog.setMainMessageBar(self.mainMessageBar())
         dialog.exec_()
+        self.spectralLibraryPlotWidget().plotControlModel().updateProfileFieldModel()
         dialog.close()
 
     def addCurrentProfilesAutomatically(self, b: bool):
