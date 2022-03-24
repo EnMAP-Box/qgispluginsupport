@@ -662,7 +662,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mField = activeField
 
         if not (isinstance(self.fieldConverter(), FieldToRasterValueConverter)
-            and self.fieldConverter().supportsField(activeField)):
+                and self.fieldConverter().supportsField(activeField)):
             self.mFieldConverter = VectorLayerFieldRasterDataProvider.findFieldConverter(activeField)
 
         if not isinstance(self.fieldConverter(), FieldToRasterValueConverter):

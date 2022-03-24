@@ -24,8 +24,9 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingParametersWidget, \
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
-from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
-from ..core import is_profile_field
+
+from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
+from ..core import is_profile_field, supports_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
     SpectralProfileValueConverter
@@ -756,8 +757,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             else:
                                 # if necessary, change editor widget type to SpectralProfile
                                 target_field: QgsField = speclib.fields().at(target_field_index)
-                                if nb > 0 and not target_field.editorWidgetSetup().type() \
-                                    in (EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME):
+                                if nb > 0 and supports_field(target_field) \
+                                        and not is_profile_field(target_field):
                                     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                                     speclib.setEditorWidgetSetup(target_field_index, setup)
                                     target_field = speclib.fields().at(target_field_index)
