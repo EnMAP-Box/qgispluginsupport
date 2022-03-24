@@ -8,6 +8,9 @@ from qps.testing import TestObjects
 
 
 class QgsFunctionTests(unittest.TestCase):
+    """
+    Tests for functions in the Field Calculator
+    """
 
     def test_SpectralMath(self):
 
