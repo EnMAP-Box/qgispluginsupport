@@ -173,7 +173,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mStartedCommitEditWrapper: bool = False
 
         self.mCACHE_PROFILE_DATA = dict()
-
+        self.mEnableCaching: bool = False
         self.mProfileFieldModel: QgsFieldModel = QgsFieldModel()
 
         self.mPlotWidget: SpectralProfilePlotWidget = None
@@ -294,7 +294,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         rawData = self.mCACHE_PROFILE_DATA.get(id_attribute, NI)
 
         fieldIndex = id_attribute[1]
-        if rawData == NI:
+        if rawData == NI or not self.mEnableCaching:
             # load profile data
             d: dict = decodeProfileValueDict(feature.attribute(fieldIndex))
             if d is None or len(d) == 0:
@@ -320,7 +320,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         id_plot_data = (feature.id(), fieldIndex, xUnit)
         id_raw_data = (feature.id(), fieldIndex)
         plotData = self.mCACHE_PROFILE_DATA.get(id_plot_data, NI)
-        if plotData == NI:
+        if plotData == NI or not self.mEnableCaching:
             rawData = self.rawData(feature, fieldIndex)
 
             if rawData is None:

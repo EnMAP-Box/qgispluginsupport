@@ -33,6 +33,7 @@ from ..core.spectralprofile import prepareProfileValueDict, \
     encodeProfileValueDict, ProfileEncoding
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType
 
 
@@ -752,14 +753,14 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
                                 target_field_index = speclib.fields().lookupField(target_field_name)
 
-                            # set editor widget type to SpectralProfile, if necessary
-                            if target_field_index >= 0:
+                            else:
+                                # if necessary, change editor widget type to SpectralProfile
                                 target_field: QgsField = speclib.fields().at(target_field_index)
                                 if nb > 0 and not target_field.editorWidgetSetup().type() \
                                     in (EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME):
                                     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                                     speclib.setEditorWidgetSetup(target_field_index, setup)
-
+                                    target_field = speclib.fields().at(target_field_index)
                                 OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
 
                 if len(OUT_RASTERS) > 0:
@@ -769,6 +770,25 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     # write raster values to features
                     for parameterName, (lyr, tmp, target_field) in OUT_RASTERS.items():
                         self.log(f'Write values to field {target_field.name()}...')
+
+                        spectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+                        wl = spectralProperties.wavelengths()
+                        wlu = spectralProperties.wavelengthUnits()
+                        bbl = spectralProperties.badBands()
+
+                        # wavelength need to be defined for all bands
+                        if any([w is None for w in wl]):
+                            wl = None
+
+                        # choose 1st wavelength unit for entire profile
+                        for w in wlu:
+                            if w not in [None, '']:
+                                wlu = w
+
+                        # no need to save bbl if it is True = 1 for all bands (default)
+                        if all([b == 1 for b in bbl]):
+                            bbl = None
+
                         target_field: QgsField
                         target_field_index: int = speclib.fields().lookupField(target_field.name())
 
@@ -778,8 +798,10 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             value = None
                             if is_profile:
                                 pixel_profile = tmp[:, 0, i]
-                                # todo: consider spectral setting
-                                pdict = prepareProfileValueDict(x=None, y=pixel_profile)
+                                pdict = prepareProfileValueDict(x=wl,
+                                                                xUnit=wlu,
+                                                                y=pixel_profile,
+                                                                bbl=bbl)
                                 value = encodeProfileValueDict(pdict, target_field)
                             else:
                                 value = float(tmp[0, 0, i])
