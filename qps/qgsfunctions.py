@@ -37,6 +37,7 @@ from qgis.PyQt.QtCore import QVariant, NULL
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext
 from qgis.core import QgsExpressionNodeFunction, QgsField
+
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding
@@ -254,6 +255,99 @@ class SpectralEncoding(QgsExpressionFunction):
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
             return None
+
+    def usesGeometry(self, node) -> bool:
+        return True
+
+    def referencedColumns(self, node) -> typing.List[str]:
+        return [QgsFeatureRequest.ALL_ATTRIBUTES]
+
+    def handlesNull(self) -> bool:
+        return True
+
+
+class SpectralAggregation(QgsExpressionFunction):
+
+    def __init__(self):
+        group = SPECLIB_FUNCTION_GROUP
+        name = 'spectralAggregate'
+
+        args = [
+            QgsExpressionFunction.Parameter('layer', optional=False),
+            QgsExpressionFunction.Parameter('aggregate', optional=False),
+            QgsExpressionFunction.Parameter('expression', optional=False),
+            QgsExpressionFunction.Parameter('filter', optional=True),
+            QgsExpressionFunction.Parameter('concatenator', defaultValue='', optional=True),
+            QgsExpressionFunction.Parameter('order_by', optional=True),
+        ]
+        helptext = HM.helpText(name, args)
+        # super().__init__(name, args, group, helptext)
+        super().__init__(name, -1, group, helptext)
+
+    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
+
+        if len(values) < 1:
+            parent.setEvalErrorString(f'{self.name()}: requires at least 1 argument')
+            return QVariant()
+        if not isinstance(values[-1], str):
+            parent.setEvalErrorString(f'{self.name()}: last argument needs to be a string')
+            return QVariant()
+
+        encoding = None
+
+        if SpectralMath.RX_ENCODINGS.search(values[-1]) and len(values) >= 2:
+            encoding = ProfileEncoding.fromInput(values[-1])
+            iPy = -2
+        else:
+            iPy = -1
+
+        pyExpression: str = values[iPy]
+        if not isinstance(pyExpression, str):
+            parent.setEvalErrorString(
+                f'{self.name()}: Argument {iPy + 1} needs to be a string with python code')
+            return QVariant()
+
+        try:
+            profilesData = values[0:-1]
+            DATA = dict()
+            fieldType: QgsField = None
+            for i, dump in enumerate(profilesData):
+                d = decodeProfileValueDict(dump, numpy_arrays=True)
+                if len(d) == 0:
+                    continue
+                if i == 0:
+                    DATA.update(d)
+                    if encoding is None:
+                        #       # use same input type as output type
+                        if isinstance(dump, (QByteArray, bytes)):
+                            encoding = ProfileEncoding.Bytes
+                        elif isinstance(dump, dict):
+                            encoding = ProfileEncoding.Map
+                        else:
+                            encoding = ProfileEncoding.Text
+
+                n = i + 1
+                # append position number
+                # y of 1st profile = y1, y of 2nd profile = y2 ...
+                for k, v in d.items():
+                    if isinstance(k, str):
+                        k2 = f'{k}{n}'
+                        DATA[k2] = v
+
+            assert context.fields()
+            exec(pyExpression, DATA)
+
+            # collect output profile values
+            d = prepareProfileValueDict(x=DATA.get('x', None),
+                                        y=DATA['y'],
+                                        xUnit=DATA.get('xUnit', None),
+                                        yUnit=DATA.get('yUnit', None),
+                                        bbl=DATA.get('bbl', None),
+                                        )
+            return encodeProfileValueDict(d, encoding)
+        except Exception as ex:
+            parent.setEvalErrorString(f'{ex}')
+            return QVariant()
 
     def usesGeometry(self, node) -> bool:
         return True
