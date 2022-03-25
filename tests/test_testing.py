@@ -10,11 +10,12 @@ import unittest
 import numpy as np
 import xmlrunner
 from osgeo import gdal
-
-import qps.testing
+from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
     QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
+
+import qps.testing
 
 
 class testClassTesting(unittest.TestCase):
@@ -106,11 +107,21 @@ class test_TestObject(qps.testing.TestCase):
         self.assertTrue(lyr.GetFeatureCount() > 0)
         self.assertEqual(lyr.GetGeomType(), ogr.wkbLineString)
 
-        lyr = TestObjects.createVectorLayer()
-        self.assertIsInstance(lyr, QgsVectorLayer)
-        self.assertTrue(lyr.isValid())
-        self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
-        self.assertTrue(lyr.crs().isValid())
+        wkbTypes = [QgsWkbTypes.PointGeometry, QgsWkbTypes.Point,
+                    QgsWkbTypes.LineGeometry, QgsWkbTypes.LineString,
+                    QgsWkbTypes.PolygonGeometry, QgsWkbTypes.Polygon]
+        for wkbType in wkbTypes:
+            lyr = TestObjects.createVectorLayer(wkbType)
+            self.assertIsInstance(lyr, QgsVectorLayer)
+            self.assertTrue(lyr.isValid())
+            self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
+            self.assertTrue(lyr.crs().isValid())
+            for f in lyr.getFeatures():
+                f: QgsFeature
+                g: QgsGeometry = f.geometry()
+                self.assertFalse(g.isNull())
+                self.assertFalse(g.isEmpty())
+                self.assertTrue(g.isGeosValid(), msg=f'{f.id()} {f.attributeMap()}')
 
     def test_coredata(self):
         from qps.testing import TestObjects

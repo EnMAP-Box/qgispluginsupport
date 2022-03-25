@@ -85,7 +85,7 @@ WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
              'url=''https://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
              'version=''auto'''
 
-TEST_VECTOR_KML = pathlib.Path(__file__).parent / 'testvectordata.kml'
+TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.geojson'
 
 
 def initQgisApplication(*args, qgisResourceDir: str = None,
@@ -1181,12 +1181,12 @@ class TestObjects(object):
         assert os.path.isdir(pkgPath)
 
         # pathSrc = pathlib.Path(__file__).parent / 'landcover_polygons.geojson'
-        pathSrc = TEST_VECTOR_KML
+        pathSrc = TEST_VECTOR_GEOJSON
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
 
         dsSrc = ogr.Open(pathSrc.as_posix())
         assert isinstance(dsSrc, ogr.DataSource)
-        lyrSrc = dsSrc.GetLayerByName('landcover')
+        lyrSrc = dsSrc.GetLayerByIndex(0)
         assert isinstance(lyrSrc, ogr.Layer)
 
         ldef = lyrSrc.GetLayerDefn()
