@@ -1,19 +1,20 @@
-import site
-import pathlib
-import os
 import importlib
+import os
+import pathlib
+import site
+
 if not '__file__' in locals():
     __file__ = r'C:\Users\geo_beja\Repositories\qgispluginsupport\scripts\snippetRunUnitTest.py'
 
 REPO = pathlib.Path(__file__).parents[1]
 print(REPO)
 site.addsitedir(REPO)
-site.addsitedir(REPO / 'tests' / 'speclib')
-
+site.addsitedir(REPO / 'tests')
 os.environ['CI'] = 'True'
-import test_speclib_io_geojson
-from qps.speclib.core import spectrallibraryio
-importlib.reload(test_speclib_io_geojson)
-importlib.reload(spectrallibraryio)
-TestCases = test_speclib_io_geojson.TestSpeclibIOGeoJSON()
-TestCases.test_write_profiles()
+
+import test_processing
+
+importlib.reload(test_processing)
+TestCases = test_processing.ProcessingToolsTest()
+
+TestCases.test_aggregate_profiles()

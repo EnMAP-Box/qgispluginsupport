@@ -1,10 +1,12 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple
 
-from qgis._core import QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessing, \
+from qgis.PyQt.QtCore import QUrl, QVariant
+from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessing, \
     QgsProcessingParameterExpression, QgsProcessingParameterAggregate, QgsProcessingParameterFeatureSink, \
     QgsProcessingFeedback, QgsProcessingContext, QgsProcessingException, QgsDistanceArea, QgsExpression, QgsFields, \
     QgsProcessingFeatureSource, QgsExpressionContext, QgsFeature, QgsFeatureSink, QgsMapLayer, QgsProcessingUtils, \
-    QgsWkbTypes, QgsExpressionContextUtils, QgsGeometry, QgsField
+    QgsWkbTypes, QgsExpressionContextUtils, QgsGeometry, QgsField, QgsVectorLayer, QgsAggregateCalculator, \
+    QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsFeedback
 
 
 class Group(object):
@@ -14,6 +16,73 @@ class Group(object):
         layer: QgsMapLayer = None
         firstFeature: QgsFeature = None
         lastFeature: QgsFeature = None
+
+
+class AggregateCalculator(QgsAggregateCalculator):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+
+class AggregateMemoryLayer(QgsVectorLayer):
+    memoryLayerFieldType = {QVariant.Int: 'integer',
+                            QVariant.LongLong: 'long',
+                            QVariant.Double: 'double',
+                            QVariant.String: 'string',
+                            QVariant.Date: 'date',
+                            QVariant.Time: 'time',
+                            QVariant.DateTime: 'datetime',
+                            QVariant.ByteArray: 'binary',
+                            QVariant.Bool: 'boolean'}
+    uri = 'memory:'
+
+    def __init__(self,
+                 name: str,
+                 fields: QgsFields,
+                 geometryType: QgsWkbTypes.Type,
+                 crs: QgsCoordinateReferenceSystem):
+
+        # see QgsMemoryProviderUtils.createMemoryLayer
+
+        geomType = QgsWkbTypes.displayString(geometryType)
+        if geomType in ['', None]:
+            geomType = "none"
+
+        parts = []
+        if crs.isValid():
+            if crs.authid() != '':
+                parts.append(f'crs={crs.authid()}')
+            else:
+                parts.append(f'crs=wkt:{crs.toWkt(QgsCoordinateReferenceSystem.WKT_PREFERRED)}')
+        for field in fields:
+            field: QgsField
+            lengthPrecission = f'({field.length()},{field.precision()})'
+            if field.type() in [QVariant.List, QVariant.StringList]:
+                ftype = field.subType()
+                ltype = '[]'
+            else:
+                ftype = field.type()
+                ltype = ''
+
+            parts.append(f'field={QUrl.toPercentEncoding(field.name())}:'
+                         f'{self.memoryLayerFieldType.get(ftype, "string")}'
+                         f'{lengthPrecission}{ltype}')
+
+        uri = f'{geomType}?{"&".join(parts)}'
+        options = QgsVectorLayer.LayerOptions(QgsCoordinateTransformContext())
+        options.skipCrsValidation = True
+        super().__init__(uri, name, 'memory', options=options)
+
+    def aggregate(self,
+                  aggregate: QgsAggregateCalculator.Aggregate,
+                  fieldOrExpression: str,
+                  parameters: QgsAggregateCalculator.AggregateParameters = None,
+                  context: Optional[QgsExpressionContext] = None,
+                  fids: Optional[Any] = None,
+                  feedback: Optional[QgsFeedback] = None) -> Tuple[Any, str]:
+
+        print('# aggregate')
+        s = ""
 
 
 class AggregateProfiles(QgsProcessingAlgorithm):
@@ -33,6 +102,8 @@ class AggregateProfiles(QgsProcessingAlgorithm):
         self.mDa: QgsDistanceArea = QgsDistanceArea()
         self.mExpressions: List[QgsExpression] = []
         self.mAttributesRequireLastFeature: List[int] = []
+
+        self._TempLayers: List[AggregateMemoryLayer] = []
 
     def name(self) -> str:
         return 'aggregateprofiles'
@@ -144,14 +215,18 @@ class AggregateProfiles(QgsProcessingAlgorithm):
             key = tuple(key)
             group = groups.get(key, None)
             if group is None:
-                sid = 'memory:'
-                sink, path = QgsProcessingUtils.createFeatureSink(sid, context,
-                                                                            self.mSource.fields(),
-                                                                            self.mSource.wkbType(),
-                                                                            self.mSource.sourceCrs())
+                # sink, path = QgsProcessingUtils.createFeatureSink('memory:', context,
+                #                                                            self.mSource.fields(),
+                #                                                            self.mSource.wkbType(),
+                #                                                            self.mSource.sourceCrs())
 
-                layer = QgsProcessingUtils.mapLayerFromString(sid, context)
+                sink, path = self._createFeatureSink(context,
+                                                     self.mSource.fields(),
+                                                     self.mSource.wkbType(),
+                                                     self.mSource.sourceCrs())
 
+                layer = QgsProcessingUtils.mapLayerFromString(path, context)
+                assert isinstance(layer, QgsMapLayer)
                 group = Group()
                 group.sink = sink
                 group.layer = layer
@@ -225,6 +300,22 @@ class AggregateProfiles(QgsProcessingAlgorithm):
 
         results = {self.P_OUTPUT: destId}
         return results
+
+    def _createFeatureSink(self,
+                           context: QgsExpressionContext,
+                           fields: QgsFields,
+                           wkbType: QgsWkbTypes.GeometryType,
+                           crs: QgsCoordinateReferenceSystem) -> Tuple[QgsFeatureSink, str]:
+
+        createOptions = dict(encoding='utf-8')
+        name = f'AggregationMemoryLayer{len(self._TempLayers)}'
+        layer = AggregateMemoryLayer(name, fields, wkbType, crs)
+        destination = layer.id()
+        self._TempLayers.append(layer)
+        sink = layer.dataProvider()
+        context.temporaryLayerStore().addMapLayer(layer)
+
+        return sink, destination
 
     def supportInPlaceEdit(self, layer: QgsMapLayer) -> bool:
         return False
