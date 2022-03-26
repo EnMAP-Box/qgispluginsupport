@@ -22,7 +22,6 @@ import unittest
 import qgis.utils
 from processing import AlgorithmDialog
 from processing.ProcessingPlugin import ProcessingPlugin
-from processing.algs import qgis
 from qgis.PyQt.QtCore import QObject, Qt, QModelIndex
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QDialog
@@ -33,6 +32,7 @@ from qgis.gui import QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorith
 
 from qps import initResources
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.testing import TestCase, TestObjects, ExampleAlgorithmProvider
 
@@ -89,6 +89,8 @@ class ProcessingToolsTest(TestCase):
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
 
     def test_aggregate_profiles(self):
+        registerQgsExpressionFunctions()
+
         provider = ExampleAlgorithmProvider()
         processingPlugin = qgis.utils.plugins.get('processing', ProcessingPlugin(TestCase.IFACE))
         vl = TestObjects.createVectorLayer()

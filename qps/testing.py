@@ -828,8 +828,11 @@ class TestObjects(object):
                          wlu: str = None,
                          profile_fields: typing.List[typing.Union[str, QgsField]] = None):
 
+
         if fields is None:
             fields = createStandardFields()
+
+        add_names: bool = 'name' in fields.names()
 
         if profile_fields is None:
             # use
@@ -864,6 +867,8 @@ class TestObjects(object):
             g = QgsGeometry.fromQPointF(pt.toQPointF())
             profile.setGeometry(g)
 
+            if add_names:
+                profile.setAttribute('name', f'Profile {i}')
             profile.setId(i + 1)
             for j, profile_field in enumerate(profile_fields):
 
