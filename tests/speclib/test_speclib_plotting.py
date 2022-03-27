@@ -2,7 +2,6 @@ import unittest
 
 import xmlrunner
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtGui import QMouseEvent, QColor
@@ -15,6 +14,7 @@ from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
+
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
 from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
@@ -399,6 +399,25 @@ class TestSpeclibPlotting(TestCase):
         mimeData = PropertyItemGroup.toMimeData([grp])
 
         grp1 = PropertyItemGroup.fromMimeData(mimeData)
+
+    def test_sortBands(self):
+
+        d = prepareProfileValueDict(y=[1, 2, 3, 4, 4, 3, 2, 3, 3, 4],
+                                    x=[0, 1, 2, 6, 5, 4, 3, 7, 8, 9],
+                                    xUnit='Band Number')
+
+        slw = SpectralLibraryWidget()
+
+        speclib = slw.speclib()
+
+        feature = QgsFeature(speclib.fields())
+        for field in profile_fields(feature):
+            idx = feature.fields().lookupField(field.name())
+            feature.setAttribute(idx, encodeProfileValueDict(d, field))
+        self.assertTrue(speclib.startEditing())
+        speclib.addFeature(feature)
+        self.assertTrue(speclib.commitChanges())
+        self.showGui(slw)
 
     def test_badBands(self):
 

@@ -513,7 +513,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         profile_limit_reached: bool = False
         max_profiles = self.generalSettings().maximumProfiles()
         show_bad_bands = self.generalSettings().showBadBands()
-
+        sort_bands = self.generalSettings().sortBands()
         context: QgsExpressionContext = self.speclib().createExpressionContext()
 
         PLOT_ITEMS = []
@@ -546,6 +546,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
                 plot_item.setProfileData(plot_data, plot_style,
                                          showBadBands=show_bad_bands,
+                                         sortBands=sort_bands,
                                          label=plot_name,
                                          tooltip=plot_tooltip,
                                          zValue=-1 * len(PLOT_ITEMS))
@@ -608,6 +609,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 pdi.setVisualizationKey(vis_key)
                 pdi.setProfileData(plot_data, plot_style,
                                    showBadBands=show_bad_bands,
+                                   sortBands=sort_bands,
                                    label=plot_label,
                                    tooltip=plot_tooltip,
                                    zValue=-1 * len(PLOT_ITEMS))
@@ -746,7 +748,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
         :param xUnit: str
         :return: dict | None
         """
+
         profileData = profileData.copy()
+        if profileData.get('xUnit', None) == xUnit:
+            return profileData
 
         func = self.mUnitConverterFunctionModel.convertFunction(profileData.get('xUnit', None), xUnit)
         x = func(profileData['x'])

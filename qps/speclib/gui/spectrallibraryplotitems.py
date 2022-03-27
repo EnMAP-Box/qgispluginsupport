@@ -6,11 +6,11 @@ import typing
 import warnings
 
 import numpy as np
-
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, Qt, QPointF
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QStandardItem
 from qgis.PyQt.QtWidgets import QMenu, QAction, QWidgetAction, QSlider, QApplication
 from qgis.core import QgsProject
+
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
 from ...utils import datetime64, SignalObjectWrapper, HashablePointF
@@ -307,6 +307,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
                        plot_data,
                        plot_style: PlotStyle,
                        showBadBands: bool = True,
+                       sortBands: bool = False,
                        zValue: int = None,
                        label: str = None,
                        tooltip: str = None):
@@ -326,6 +327,11 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         # replace None by NaN
         x = np.asarray(x, dtype=float)
         y = np.asarray(y, dtype=float)
+
+        if sortBands:
+            idx = np.argsort(x)
+            x = x[idx]
+            y = y[idx]
 
         if not showBadBands and 'bbl' in plot_data.keys():
             valid = np.array(plot_data['bbl'], dtype=float) > 0

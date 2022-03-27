@@ -485,6 +485,14 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.setEnabled(True)
         self.setEditable(False)
         self.setIcon(QIcon(':/images/themes/default/console/iconSettingsConsole.svg'))
+
+        self.mP_SortBands = QgsPropertyItem('SortBands')
+        self.mP_SortBands.setDefinition(
+            QgsPropertyDefinition(
+                'Sort Bands', 'Sort by increasing band values', QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
+        )
+        self.mP_SortBands.setValue(QgsProperty.fromValue(True))
+
         self.mP_BadBands = QgsPropertyItem('BadBands')
         self.mP_BadBands.setDefinition(
             QgsPropertyDefinition(
@@ -524,11 +532,12 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_CH.setItemChecked(True)
 
         for pItem in [self.mPLegend, self.mP_MaxProfiles,
-                      self.mP_BadBands,
+                      self.mP_SortBands, self.mP_BadBands,
                       self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
             self.appendRow(pItem.propertyRow())
 
         self.mP_MaxProfiles.signals().dataChanged.connect(self.signals().requestPlotUpdate)
+        self.mP_SortBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
         self.mP_BadBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
 
         for pItem in [self.mPLegend, self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
@@ -653,6 +662,9 @@ class GeneralSettingsGroup(PropertyItemGroup):
 
     def showBadBands(self) -> bool:
         return self.mP_BadBands.value(self.expressionContext(), False)
+
+    def sortBands(self) -> bool:
+        return self.mP_SortBands.value(self.expressionContext(), True)
 
     def isRemovable(self) -> bool:
         return False
