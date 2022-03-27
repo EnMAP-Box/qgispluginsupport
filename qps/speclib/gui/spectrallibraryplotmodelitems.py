@@ -489,7 +489,8 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_SortBands = QgsPropertyItem('SortBands')
         self.mP_SortBands.setDefinition(
             QgsPropertyDefinition(
-                'Sort Bands', 'Sort by increasing band values', QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
+                'Sort Bands', 'Sort bands by increasing X values',
+                QgsPropertyDefinition.StandardPropertyTemplate.Boolean)
         )
         self.mP_SortBands.setValue(QgsProperty.fromValue(True))
 
