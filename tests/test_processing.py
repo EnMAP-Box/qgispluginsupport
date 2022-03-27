@@ -120,7 +120,7 @@ class ProcessingToolsTest(TestCase):
         feedback = QgsProcessingFeedback()
         context.setFeedback(feedback)
 
-        if False:
+        if True:
             alg = reg.algorithmById(alg_id)
             d = AlgorithmDialog(alg, False, None)
             d.context = context

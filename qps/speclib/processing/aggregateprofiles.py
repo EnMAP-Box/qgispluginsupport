@@ -45,6 +45,7 @@ class AggregateMemoryLayer(QgsVectorLayer):
                             QVariant.Bool: 'boolean'}
     uri = 'memory:'
 
+
     def __init__(self,
                  name: str,
                  fields: QgsFields,
@@ -53,10 +54,16 @@ class AggregateMemoryLayer(QgsVectorLayer):
 
         # see QgsMemoryProviderUtils.createMemoryLayer
 
+        uri = AggregateMemoryLayer.createInitArguments(crs, fields, geometryType)
+        options = QgsVectorLayer.LayerOptions(QgsCoordinateTransformContext())
+        options.skipCrsValidation = True
+        super().__init__(uri, name, 'memory', options=options)
+
+    @staticmethod
+    def createInitArguments(crs, fields, geometryType):
         geomType = QgsWkbTypes.displayString(geometryType)
         if geomType in ['', None]:
             geomType = "none"
-
         parts = []
         if crs.isValid():
             if crs.authid() != '':
@@ -74,13 +81,10 @@ class AggregateMemoryLayer(QgsVectorLayer):
                 ltype = ''
 
             parts.append(f'field={QUrl.toPercentEncoding(field.name())}:'
-                         f'{self.memoryLayerFieldType.get(ftype, "string")}'
+                         f'{AggregateMemoryLayer.memoryLayerFieldType.get(ftype, "string")}'
                          f'{lengthPrecission}{ltype}')
-
         uri = f'{geomType}?{"&".join(parts)}'
-        options = QgsVectorLayer.LayerOptions(QgsCoordinateTransformContext())
-        options.skipCrsValidation = True
-        super().__init__(uri, name, 'memory', options=options)
+        return uri
 
     def aggregate(self,
                   aggregate: QgsAggregateCalculator.Aggregate,
@@ -327,7 +331,9 @@ class AggregateProfiles(QgsProcessingAlgorithm):
 
         createOptions = dict(encoding='utf-8')
         name = f'AggregationMemoryLayer{len(self._TempLayers)}'
-        layer = AggregateMemoryLayer(name, fields, wkbType, crs)
+        uri = AggregateMemoryLayer.createInitArguments(crs, fields, wkbType)
+        # layer = AggregateMemoryLayer(name, fields, wkbType, crs)
+        layer = QgsVectorLayer(uri, name, 'memory')
         destination = layer.id()
         self._TempLayers.append(layer)
         sink = layer.dataProvider()
