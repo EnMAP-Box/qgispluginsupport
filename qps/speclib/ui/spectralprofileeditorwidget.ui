@@ -195,7 +195,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../qpsresources.qrc"/>
+  <include location="../../qpsresources.qrc"/>
  </resources>
  <connections/>
 </ui>
