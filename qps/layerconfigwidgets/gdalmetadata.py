@@ -327,7 +327,7 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             fwhm = spectralProperties.fullWidthHalfMaximum()
             bandRanges = []
             for a, b in zip(wl, fwhm):
-                if not (a is None or b is None()) and math.isfinite(a) and math.isfinite(b):
+                if not (a is None or b is None) and math.isfinite(a) and math.isfinite(b):
                     bandRange = f'{a - 0.5 * b} - {a + 0.5 * b}'
                 else:
                     bandRange = None
