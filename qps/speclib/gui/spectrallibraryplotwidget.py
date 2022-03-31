@@ -1,6 +1,7 @@
 import datetime
 import re
 import typing
+from typing import List
 
 import numpy as np
 from qgis.PyQt.QtCore import NULL
@@ -276,9 +277,16 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
         self.mProject = project
+        self.mProject.layersWillBeRemoved.connect(self.onLayersWillBeRemoved)
 
     def project(self) -> QgsProject:
         return self.mProject
+
+    def onLayersWillBeRemoved(self, layerIds: List[str]):
+
+        to_remove = [r for r in self.layerRendererVisualizations() if r.layerId() in layerIds]
+        for r in to_remove:
+            r.onLayerRemoved()
 
     def rawData(self, feature: QgsFeature, fieldIndex: int) -> dict:
         """
@@ -429,7 +437,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         for i, item in enumerate(items):
             assert isinstance(item, PropertyItemGroup)
-            item.signals().requestRemoval.connect(self.onRemovalRequest)
+
+            # remove items if requestRemoval signal is triggered
+            item.signals().requestRemoval.connect(lambda *arg, itm=item: self.removePropertyItemGroups(itm))
             item.signals().requestPlotUpdate.connect(self.updatePlot)
 
             new_set: typing.List[PropertyItemGroup] = self.propertyGroups()
@@ -442,12 +452,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
             # if necessary, this should update the plot
             item.initWithPlotModel(self)
 
-        # self.updatePlot()
-
-    def onRemovalRequest(self):
-        sender = self.sender()
-        s = ""
-
     def removePropertyItemGroups(self, groups: typing.Union[PropertyItemGroup,
                                                             typing.List[PropertyItemGroup]]):
 
@@ -459,6 +463,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 if not (isinstance(v, PropertyItemGroup) and v.isRemovable()):
                     continue
                 assert v in self.mModelItems
+
+                v.disconnectGroup()
 
                 for r in range(self.rowCount()):
                     if self.invisibleRootItem().child(r, 0) == v:

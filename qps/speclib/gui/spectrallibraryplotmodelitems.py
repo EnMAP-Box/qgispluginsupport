@@ -328,6 +328,12 @@ class PropertyItemGroup(PropertyItemBase):
         self.mSignals = PropertyItemGroup.Signals()
         self.mFirstColumnSpanned = True
 
+    def disconnectGroup(self):
+        """
+        Should implement all actions required to remove this property item from the plot
+        """
+        pass
+
     def isRemovable(self) -> bool:
         return True
 
@@ -1304,6 +1310,9 @@ class RasterRendererGroup(PropertyItemGroup):
         self.mXUnit = xUnit
         self.updateFromRenderer()
 
+    def layerId(self) -> str:
+        return self.mLayer.id()
+
     def layer(self) -> QgsRasterLayer:
         return self.mLayer
 
@@ -1316,7 +1325,7 @@ class RasterRendererGroup(PropertyItemGroup):
             self.onLayerRemoved()
 
         if isinstance(self.mLayer, QgsRasterLayer):
-            self.disconnectLayer()
+            self.disconnectGroup()
 
         assert isinstance(layer, QgsRasterLayer)
         self.mLayer = layer
@@ -1330,14 +1339,15 @@ class RasterRendererGroup(PropertyItemGroup):
 
     def onLayerRemoved(self):
         if isinstance(self.mLayer, QgsRasterLayer):
-            self.disconnectLayer()
+            self.disconnectGroup()
             self.signals().requestRemoval.emit()
 
-    def disconnectLayer(self):
-        # if isinstance(self.mLayer, QgsRasterLayer):
-        #    self.mLayer.rendererChanged.disconnect(self.updateFromRenderer)
-        #    self.mLayer.willBeDeleted.disconnect(self.onLayerRemoved)
-        #    # self.mLayer.destroyed.disconnect(self.onLayerRemoved)
+    def disconnectGroup(self):
+        pw = self.model().plotWidget()
+        for bar in self.bandPlotItems():
+            if bar in pw.items():
+                pw.removeItem(bar)
+
         self.mLayer = None
 
     def updateToRenderer(self):
@@ -1467,7 +1477,6 @@ class RasterRendererGroup(PropertyItemGroup):
                 b.setVisible(False)
 
             self.setValuesMissing(True)
-            # self.updateBarVisiblity()
             return
         else:
             self.setValuesMissing(False)
