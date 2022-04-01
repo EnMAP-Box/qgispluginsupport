@@ -390,8 +390,6 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         except Exception as ex:
             pass
 
-        data = self.asMap()
-
         if isinstance(ds, gdal.Dataset):
             for f in self.getFeatures():
                 f: QgsFeature
