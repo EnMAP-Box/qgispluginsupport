@@ -503,8 +503,8 @@ def registerQgsExpressionFunctions():
 
         if QgsExpression.isFunctionName(func.name()):
             msg = QCoreApplication.translate("UserExpressions",
-                                             "User expression {0} already exists").format(func.name)
-            QgsMessageLog.logMessage(msg + "\n", level=Qgis.Warning)
+                                             "User expression {0} already exists").format(func.name())
+            QgsMessageLog.logMessage(msg + "\n", level=Qgis.Info)
         else:
             if func.name() in QGIS_FUNCTION_INSTANCES.keys():
                 QgsMessageLog.logMessage(f'{func.name()} not registered, but python instance exists', level=Qgis.Info)
