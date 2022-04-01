@@ -39,10 +39,11 @@ import warnings
 from unittest import mock
 
 import numpy as np
+from osgeo import gdal, ogr, osr, gdal_array
+
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
-from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
@@ -61,7 +62,6 @@ from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
-
 from .resources import findQGISResourceFiles, initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
 from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
@@ -534,7 +534,7 @@ class TestCase(qgis.testing.TestCase):
                 s = ""
                 pass
 
-    def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
+    def createTestOutputDirectory(self, name: str = 'test-outputs', subdir: str = None) -> pathlib.Path:
         """
         Returns the path to a test output directory
         :return:
@@ -543,6 +543,11 @@ class TestCase(qgis.testing.TestCase):
 
         testDir = repo / name
         os.makedirs(testDir, exist_ok=True)
+
+        if subdir:
+            testDir = testDir / subdir
+            os.makedirs(testDir, exist_ok=True)
+
         return testDir
 
     def createProcessingFeedback(self) -> QgsProcessingFeedback:

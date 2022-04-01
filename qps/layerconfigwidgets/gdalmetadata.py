@@ -28,15 +28,15 @@ import typing
 from typing import List, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
+
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget, \
     QDialog
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsMapLayer, QgsEditorWidgetSetup, \
+from qgis.core import QgsAttributeTableConfig, QgsRasterLayer, QgsVectorLayer, QgsMapLayer, QgsEditorWidgetSetup, \
     QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
 from qgis.gui import QgsGui, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, \
     QgsAttributeTableModel, QgsAttributeEditorContext
-
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -261,13 +261,16 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         FWHM.setConstraints(FWHMConstraints)
 
         RANGE = QgsField(BandFieldNames.Range, type=QVariant.String)
+        RANGE.setReadOnly(True)
         # RANGEConstraints = QgsFieldConstraints()
         # RANGEConstraints.setConstraintExpression(f'"{BandFieldNames.BandRange}" > 0')
 
-        OFFSET = QgsField(BandFieldNames.Name, type=QVariant.Double)
+        OFFSET = QgsField(BandFieldNames.Offset, type=QVariant.Double)
         GAIN = QgsField(BandFieldNames.Gain, type=QVariant.Double)
         # add fields
-        for field in [BANDNO, DOMAIN, bandName, NODATA, BBL, WLU, FWHM, RANGE, OFFSET, OFFSET, GAIN]:
+        for field in [BANDNO,
+                      DOMAIN,
+                      bandName, NODATA, BBL, WL, WLU, FWHM, RANGE, OFFSET, GAIN]:
             field: QgsField
             field.setComment(self.FIELD_TOOLTIP.get(field.name(), ''))
             self.addAttribute(field)
@@ -277,6 +280,14 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         for field in self.fields():
             i = self.fields().lookupField(field.name())
             self.setEditorWidgetSetup(i, QgsGui.editorWidgetRegistry().findBest(self, field.name()))
+
+        config = self.attributeTableConfig()
+        columns: List[QgsAttributeTableConfig.ColumnConfig] = config.columns()
+        for column in columns:
+            if column.name == BandFieldNames.Domain:
+                column.hidden = True
+        config.setColumns(columns)
+        self.setAttributeTableConfig(config)
 
     def asMap(self) -> dict:
 
@@ -328,7 +339,9 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             bandRanges = []
             for a, b in zip(wl, fwhm):
                 if not (a is None or b is None) and math.isfinite(a) and math.isfinite(b):
-                    bandRange = f'{a - 0.5 * b} - {a + 0.5 * b}'
+                    v_min = a - 0.5 * b
+                    v_max = a + 0.5 * b
+                    bandRange = '{:0.3f} - {:0.3f}'.format(v_min, v_max)
                 else:
                     bandRange = None
                 bandRanges.append(bandRange)
@@ -384,18 +397,28 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                 f: QgsFeature
                 bandNo = f.attribute(BandFieldNames.Number)
                 band: gdal.Band = ds.GetRasterBand(bandNo)
-                name = f.attribute(BandFieldNames.Name)
-                band.SetDescription(name)
+                domain = f.attribute(BandFieldNames.Domain)
+                if domain in ['', NULL]:
+                    domain = None
 
                 for field in f.fields():
+                    if field.isReadOnly():
+                        continue
+
                     n = field.name()
+
+                    if n == BandFieldNames.Name:
+                        name = f.attribute(BandFieldNames.Name)
+                        band.SetDescription(name)
+                        continue
+
                     value = f.attribute(n)
                     enviName = self.FIELD2GDALKey.get(field.name(), None)
                     if enviName:
                         if value in [None, NULL]:
-                            band.SetMetadataItem(enviName, '')
+                            band.SetMetadataItem(enviName, '', domain)
                         else:
-                            band.SetMetadataItem(enviName, str(value))
+                            band.SetMetadataItem(enviName, str(value), domain)
             ds.FlushCache()
             del ds
 

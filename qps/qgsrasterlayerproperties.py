@@ -1,6 +1,7 @@
 import re
 import sys
 import typing
+from typing import List
 
 import numpy as np
 from osgeo import gdal
@@ -17,8 +18,13 @@ rx_more_information = re.compile(r'^more[_\n]*information$', re.IGNORECASE)
 rx_key_value_pair = re.compile(r'^(?P<key>[^=]+)=(?P<value>.+)$')
 rx_envi_array = re.compile(r'^{\s*(?P<value>([^}]+))\s*}$')
 
+EXCLUDED_GDAL_DOMAINS = ['IMAGE_STRUCTURE', 'DERIVED_SUBDATASETS']
+
 
 def stringToType(value: str):
+    """
+    Converts a string into a matching int, float or string
+    """
     t = str
     for candidate in [float, int]:
         try:
@@ -29,7 +35,21 @@ def stringToType(value: str):
     return t(value)
 
 
+def stringToTypeList(value: str) -> List:
+    """
+    extracts a list of types from the string in 'value'
+    """
+    matchENVI = rx_envi_array.match(value)
+    if matchENVI:
+        # removes leading & trailing { and spaces }
+        value = matchENVI.group('value')
+    return [stringToType(v) for v in re.split(r'[\s,;]+', value)]
+
+
 class SpectralPropertyKeys(object):
+    """
+    Enumeration of Spectral Property Keys
+    """
     BadBand = 'bbl'
     Wavelength = 'wavelength'
     WavelengthUnit = 'wavelength_unit'
@@ -40,8 +60,9 @@ class SpectralPropertyKeys(object):
 
 
 class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
-    # lookup patterns to match alternative names with item keys used here.
-
+    """
+    Stores spectral properties of a raster layer source
+    """
     LOOKUP_PATTERNS = {
         SpectralPropertyKeys.FWHM: re.compile(
             r'(fwhm|full[ -_]width[ -_]half[ -_]maximum)$', re.I),
@@ -138,6 +159,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         Generates a band key like "band_3"
         """
+        assert bandNo > 0
         return f'band_{bandNo}'
 
     def bandItemKey(self, bandNo: int, itemKey: str):
@@ -262,12 +284,63 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                 self.setValue(self.bandItemKey(b, k.removeprefix(bandKey)[1:]),
                               stringToType(customProperties.value(k)))
 
+    def _readFromGDALDataset(self, ds: gdal.Dataset):
+        assert isinstance(ds, gdal.Dataset)
+
+        # reads metadata from GDAL data sets
+        # priority:
+        # 1. band level first, data set level second
+        # 2. default domain first, ENVI domain, other domains
+
+        def domainList(mo: gdal.MajorObject) -> List[str]:
+            domains = mo.GetMetadataDomainList()
+            if domains is None:
+                domains = []
+            return [d for d in domains if d not in EXCLUDED_GDAL_DOMAINS]
+
+        rx_spectral_property = QgsRasterLayerSpectralProperties.combinedLookupPattern()
+
+        # collect a set of gdal keys we can describe
+        # 1. look at band level
+        for b in range(ds.RasterCount):
+            band: gdal.Band = ds.GetRasterBand(b + 1)
+            for domain in domainList(band):
+                for gdalKey, gdalValue in band.GetMetadata_Dict(domain).items():
+                    if rx_spectral_property.match(gdalKey):
+                        itemKey = self.bandItemKey(b + 1, gdalKey)
+                        if not (self.contains(itemKey) or gdalValue in ['', None]):
+                            self.setValue(itemKey, stringToType(gdalValue))
+
+        # 2. look at dataset level
+        for domain in domainList(ds):
+            for gdalKey, gdalValue in ds.GetMetadata_Dict(domain).items():
+                # can we split it into n = number of bands values?
+                if rx_spectral_property.match(gdalKey):
+                    itemKey = self.itemKey(gdalKey)
+                    band_defined_values = self.bandValues(None, itemKey)
+                    if not any(band_defined_values):
+                        values = stringToTypeList(gdalValue)
+                        if len(values) == 1:
+                            # map a single values to all bands
+                            self.setBandValues(None, itemKey, values[0])
+                        elif len(values) == self.bandCount():
+                            self.setBandValues(None, itemKey, values)
+
     def _readFromProvider(self, provider: QgsRasterDataProvider):
         """
         Reads the spectral properties from a QgsRasterDataProvider.
         (To be implemented within a QgsRasterDataProvider)
         """
         assert isinstance(provider, QgsRasterDataProvider)
+
+        if provider.name() == 'gdal':
+            uri = provider.dataSourceUri()
+
+            ds: gdal.Dataset = gdal.Open(uri)
+            if isinstance(ds, gdal.Dataset):
+                self._readFromGDALDataset(ds)
+                del ds
+                return
 
         html = provider.htmlMetadata()
         doc = QDomDocument()
