@@ -1130,7 +1130,7 @@ def registerDataProvider():
     )
     registry = QgsProviderRegistry.instance()
     registry.registerProvider(metadata)
-    QgsMessageLog.logMessage('SpectralLibraryRasterDataProvider registered')
+    QgsMessageLog.logMessage('SpectralLibraryRasterDataProvider registered', level=Qgis.MessageLevel.Info)
 
     metadata = QgsProviderMetadata(
         VectorLayerFieldRasterDataProvider.providerKey(),
@@ -1138,4 +1138,4 @@ def registerDataProvider():
         VectorLayerFieldRasterDataProvider.createProvider
     )
     registry.registerProvider(metadata)
-    QgsMessageLog.logMessage('VectorLayerRasterDataProvider registered')
+    QgsMessageLog.logMessage('VectorLayerRasterDataProvider registered', level=Qgis.MessageLevel.Info)
