@@ -86,14 +86,14 @@ def compileResourceFiles(dirRoot: str,
     doc = QDomDocument()
 
     for ui_file in ui_files:
-        qrc_dir = pathlib.Path(ui_file).parent
+        ui_dir = pathlib.Path(ui_file).parent
         doc.setContent(QFile(ui_file))
         includeNodes = doc.elementsByTagName('include')
         for i in range(includeNodes.count()):
             attr = getDOMAttributes(includeNodes.item(i).toElement())
             if 'location' in attr.keys():
                 location = attr['location']
-                qrc_path = (qrc_dir / pathlib.Path(location)).resolve()
+                qrc_path = (ui_dir / pathlib.Path(location)).resolve()
                 if not qrc_path.exists():
                     if REGEX_QGIS_IMAGES_QRC.match(qrc_path.as_posix()) and skip_qgis_images:
                         continue
