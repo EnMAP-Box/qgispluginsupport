@@ -81,6 +81,23 @@ class TestsGdalMetadata(TestCase):
         model2.applyToLayer()
         self.showGui(view)
 
+    def test_GDAL_PAM(self):
+        test_dir = self.createTestOutputDirectory(subdir='gdalmetadata_PAM')
+        path = test_dir / 'example.tif'
+        ds: gdal.Dataset = gdal.Translate(path.as_posix(), enmap)
+        del ds
+
+        lyr = QgsRasterLayer(path.as_posix())
+        lyr2 = lyr.clone()
+        self.assertTrue(lyr.isValid())
+        ds: gdal.Dataset = gdal.Open(path.as_posix(), gdal.GA_Update)
+        self.assertIsInstance(ds, gdal.Dataset)
+        ds.SetMetadataItem('Example', 'foobar', 'MyDomain')
+        band = ds.GetRasterBand(1)
+        band.SetDescription('BAND_EXAMPLE')
+        ds.FlushCache()
+        del ds
+
     def test_GDALMetadataModelConfigWidget(self):
         from qpstestdata import envi_bsq, enmap_polygon
 
