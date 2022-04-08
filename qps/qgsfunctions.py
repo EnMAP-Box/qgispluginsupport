@@ -35,11 +35,9 @@ from typing import Union, List, Set, Callable, Iterable, Any
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, NULL
-from qgis._core import QgsExpressionNode
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
-    QgsMessageLog, Qgis, QgsExpressionContext
+    QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
 from qgis.core import QgsExpressionNodeFunction, QgsField
-
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding
@@ -357,6 +355,7 @@ class StaticExpressionFunction(QgsExpressionFunction):
         else:
             return QVariant()
 
+
 class SpectralData(QgsExpressionFunction):
     def __init__(self):
         group = SPECLIB_FUNCTION_GROUP
@@ -399,7 +398,6 @@ class SpectralData(QgsExpressionFunction):
 
 
 class SpectralMath(QgsExpressionFunction):
-
     RX_ENCODINGS = re.compile('^({})$'.format('|'.join(ProfileEncoding.__members__.keys())), re.I)
 
     def __init__(self):
@@ -437,7 +435,7 @@ class SpectralMath(QgsExpressionFunction):
         pyExpression: str = values[iPy]
         if not isinstance(pyExpression, str):
             parent.setEvalErrorString(
-                f'{self.name()}: Argument {iPy+1} needs to be a string with python code')
+                f'{self.name()}: Argument {iPy + 1} needs to be a string with python code')
             return QVariant()
 
         try:
@@ -498,8 +496,9 @@ def registerQgsExpressionFunctions():
     """
     global QGIS_FUNCTION_INSTANCES
     functions = [Format_Py(), SpectralMath(), SpectralData(), SpectralEncoding()]
-    from .speclib.processing.aggregateprofiles import createSpectralProfileFunctions
-    functions.extend(createSpectralProfileFunctions())
+    if Qgis.versionInt() > 32400:
+        from .speclib.processing.aggregateprofiles import createSpectralProfileFunctions
+        functions.extend(createSpectralProfileFunctions())
     for func in functions:
 
         if QgsExpression.isFunctionName(func.name()):

@@ -39,10 +39,11 @@ import warnings
 from unittest import mock
 
 import numpy as np
+from osgeo import gdal, ogr, osr, gdal_array
+
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
-from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
@@ -61,7 +62,6 @@ from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
-
 from .resources import findQGISResourceFiles, initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
 from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
@@ -779,7 +779,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         results = TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-            TestObjects._coreDataGT, TestObjects._coreDataWkt
+                  TestObjects._coreDataGT, TestObjects._coreDataWkt
         return results
 
     @staticmethod
@@ -827,7 +827,6 @@ class TestObjects(object):
                          n_bands: typing.List[int] = None,
                          wlu: str = None,
                          profile_fields: typing.List[typing.Union[str, QgsField]] = None):
-
 
         if fields is None:
             fields = createStandardFields()

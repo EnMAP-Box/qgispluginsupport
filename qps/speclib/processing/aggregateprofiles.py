@@ -2,22 +2,21 @@ import typing
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
-from PyQt5.QtCore import QVariant, QByteArray
-from qgis.PyQt.QtCore import QUrl, QVariant
-from qgis._core import QgsExpressionFunction, QgsExpressionContext, QgsExpression, QgsExpressionNodeFunction, QgsField, \
-    QgsFeatureRequest, QgsExpressionNode, QgsExpressionNodeLiteral, QgsExpressionContextScope, QgsEditorWidgetSetup
+
+from qgis.PyQt.QtCore import QVariant, QByteArray
 from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessing, \
     QgsProcessingParameterExpression, QgsProcessingParameterAggregate, QgsProcessingParameterFeatureSink, \
-    QgsProcessingFeedback, QgsProcessingContext, QgsProcessingException, QgsDistanceArea, QgsExpression, QgsFields, \
-    QgsProcessingFeatureSource, QgsExpressionContext, QgsFeature, QgsFeatureSink, QgsMapLayer, QgsProcessingUtils, \
-    QgsWkbTypes, QgsExpressionContextUtils, QgsGeometry, QgsField, QgsVectorLayer, QgsAggregateCalculator, \
-    QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsFeedback
-
-from qps.qgsfunctions import SPECLIB_FUNCTION_GROUP, HM, SpectralMath, StaticExpressionFunction
-from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
-from qps.speclib.core import is_profile_field
-from qps.speclib.core.spectralprofile import ProfileEncoding, decodeProfileValueDict, prepareProfileValueDict, \
+    QgsProcessingFeedback, QgsProcessingContext, QgsProcessingException, QgsDistanceArea, QgsFields, \
+    QgsProcessingFeatureSource, QgsFeature, QgsFeatureSink, QgsMapLayer, QgsProcessingUtils, \
+    QgsWkbTypes, QgsExpressionContextUtils, QgsGeometry, QgsVectorLayer, QgsAggregateCalculator, \
+    QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsFeedback, \
+    QgsExpressionFunction, QgsExpressionContext, QgsExpression, QgsExpressionNodeFunction, QgsField, \
+    QgsFeatureRequest, QgsExpressionNode, QgsExpressionNodeLiteral, QgsExpressionContextScope, QgsEditorWidgetSetup
+from .. import EDITOR_WIDGET_REGISTRY_KEY
+from ..core import is_profile_field
+from ..core.spectralprofile import ProfileEncoding, decodeProfileValueDict, prepareProfileValueDict, \
     encodeProfileValueDict
+from ...qgsfunctions import SPECLIB_FUNCTION_GROUP, HM, SpectralMath, StaticExpressionFunction
 
 
 class Group(object):
@@ -266,6 +265,7 @@ class AggregateProfiles(QgsProcessingAlgorithm):
                          feedback: QgsProcessingFeedback) -> bool:
 
         self.mSource = self.parameterAsSource(parameters, self.P_INPUT, context)
+        vl = self.parameterAsVectorLayer(parameters, self.P_INPUT, context)
         if self.mSource is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.P_INPUT))
 
@@ -284,8 +284,6 @@ class AggregateProfiles(QgsProcessingAlgorithm):
             if fname in [None, '']:
                 raise QgsProcessingException('Field name cannot be empty')
 
-            is_profile = is_profile_field(self.mSource.fields().field(fname))
-
             ftype = int(aggregateDef['type'])
             ftypeName = aggregateDef['type_name']
             fsubType = int(aggregateDef['sub_type'])
@@ -299,6 +297,8 @@ class AggregateProfiles(QgsProcessingAlgorithm):
             source = str(aggregateDef['input'])
             delimiter = str(aggregateDef['delimiter'])
 
+            source_idx = QgsExpression.expressionToLayerFieldIndex(source, vl)
+            is_profile = source_idx > -1 and is_profile_field(self.mSource.fields().at(source_idx))
             expression: str = None
             if aggregateType == 'first_value':
                 expression = source
@@ -690,14 +690,15 @@ def spfcnAggregateGeneric(
         context.setCachedValue(cacheKey, result)
     return result
 
+
 def spfcnAggregateMinium(values: list, context: QgsExpressionContext, parent: QgsExpression,
-                       node: QgsExpressionNodeFunction):
+                         node: QgsExpressionNodeFunction):
     return spfcnAggregateGeneric(QgsAggregateCalculator.Aggregate.Min, values,
                                  QgsAggregateCalculator.AggregateParameters(), context, parent)
 
 
 def spfcnAggregateMaximum(values: list, context: QgsExpressionContext, parent: QgsExpression,
-                       node: QgsExpressionNodeFunction):
+                          node: QgsExpressionNodeFunction):
     return spfcnAggregateGeneric(QgsAggregateCalculator.Aggregate.Max, values,
                                  QgsAggregateCalculator.AggregateParameters(), context, parent)
 
@@ -734,10 +735,14 @@ def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
                                  spfcnAggregate, 'Aggregates', '',
                                  usesGeometry=usesGeometryCallback,
                                  referencedColumns=referencedColumnsCallback),
-        StaticExpressionFunction('meanProfile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [], True),
-        StaticExpressionFunction('medianProfile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [], True),
-        StaticExpressionFunction('minProfile', aggParams, spfcnAggregateMinium, SPECLIB_FUNCTION_GROUP, '', False, [], True),
-        StaticExpressionFunction('maxProfile', aggParams, spfcnAggregateMinium, SPECLIB_FUNCTION_GROUP, '', False, [], True),
+        StaticExpressionFunction('meanProfile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
+                                 True),
+        StaticExpressionFunction('medianProfile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
+                                 True),
+        StaticExpressionFunction('minProfile', aggParams, spfcnAggregateMinium, SPECLIB_FUNCTION_GROUP, '', False, [],
+                                 True),
+        StaticExpressionFunction('maxProfile', aggParams, spfcnAggregateMinium, SPECLIB_FUNCTION_GROUP, '', False, [],
+                                 True),
     ]
 
     return functions
