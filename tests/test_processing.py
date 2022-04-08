@@ -22,7 +22,6 @@ import unittest
 import qgis.utils
 from processing import AlgorithmDialog
 from processing.ProcessingPlugin import ProcessingPlugin
-from processing.algs import qgis
 from qgis.PyQt.QtCore import QObject, Qt, QModelIndex
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QDialog
@@ -30,9 +29,11 @@ from qgis.core import QgsApplication, QgsVectorLayer, QgsField
 from qgis.core import QgsProcessingFeedback, QgsProcessingContext
 from qgis.core import QgsProject, QgsProcessingRegistry, QgsProcessingAlgorithm, QgsProcessingOutputRasterLayer
 from qgis.gui import QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog
-
 from qps import initResources
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from qps.qgsfunctions import registerQgsExpressionFunctions
+from qps.speclib.core import is_profile_field
+from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.testing import TestCase, TestObjects, ExampleAlgorithmProvider
 
@@ -89,6 +90,8 @@ class ProcessingToolsTest(TestCase):
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
 
     def test_aggregate_profiles(self):
+        registerQgsExpressionFunctions()
+
         provider = ExampleAlgorithmProvider()
         processingPlugin = qgis.utils.plugins.get('processing', ProcessingPlugin(TestCase.IFACE))
         vl = TestObjects.createVectorLayer()
@@ -145,18 +148,29 @@ class ProcessingToolsTest(TestCase):
             parameters = {AggregateProfiles.P_AGGREGATES: [
                 {'aggregate': 'concatenate', 'delimiter': ',', 'input': '"name"', 'length': 0, 'name': 'name',
                  'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'},
-                {'aggregate': 'mean', 'delimiter': ',', 'input': '"profiles0"', 'length': 0, 'name': 'profiles0',
+                {'aggregate': 'mean', 'delimiter': ',', 'input': '"profiles0"', 'length': 0, 'name': 'pMean',
                  'precision': 0, 'sub_type': 0, 'type': 12, 'type_name': 'binary'},
-                {'aggregate': 'concatenate', 'delimiter': ',', 'input': '"group"', 'length': 0, 'name': 'group',
-                 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'}],
+                {'aggregate': 'min', 'delimiter': ',', 'input': '"profiles0"', 'length': 0, 'name': 'pMin',
+                 'precision': 0, 'sub_type': 0, 'type': 12, 'type_name': 'binary'}],
                 AggregateProfiles.P_GROUP_BY: 'group',
                 AggregateProfiles.P_INPUT: sl,
-                AggregateProfiles.P_OUTPUT: './temputput.gpkg'}
+                AggregateProfiles.P_OUTPUT: './tempoutput3.gpkg'}
         self.assertTrue(alg.prepare(parameters, context, feedback), msg=feedback.textLog())
         result2 = alg.processAlgorithm(parameters, context, feedback)
         result3, success = alg.run(parameters, context, feedback)
         self.assertTrue(success, msg=feedback.textLog())
-        s = ""
+
+        vl = QgsVectorLayer(result3[AggregateProfiles.P_OUTPUT])
+        self.assertTrue(vl.isValid())
+        self.assertTrue(is_profile_field(vl.fields().field('pMean')))
+        self.assertTrue(is_profile_field(vl.fields().field('pMin')))
+
+        self.assertTrue(vl.featureCount() > 0)
+        for feature in vl.getFeatures():
+            dMean = decodeProfileValueDict(feature.attribute('pMean'))
+            dMin = decodeProfileValueDict(feature.attribute('pMin'))
+            self.assertTrue(len(dMean) > 0)
+            self.assertTrue(len(dMin) > 0)
 
 
 if __name__ == '__main__':

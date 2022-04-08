@@ -30,14 +30,14 @@ import pathlib
 import re
 import sys
 import typing
+from typing import Union, List, Set, Callable, Iterable, Any
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, NULL
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
-    QgsMessageLog, Qgis, QgsExpressionContext
+    QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
 from qgis.core import QgsExpressionNodeFunction, QgsField
-
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding
@@ -266,19 +266,150 @@ class SpectralEncoding(QgsExpressionFunction):
         return True
 
 
-class SpectralAggregation(QgsExpressionFunction):
+class StaticExpressionFunction(QgsExpressionFunction):
+    """
+    A Re-Implementation of QgsStaticExpressionFunction (not available in python API
+    """
+
+    def __init__(self,
+                 fnname: str,
+                 params,
+                 fcn,
+                 group: str,
+                 helpText: str = '',
+                 usesGeometry: Union[bool, QgsExpressionNodeFunction] = None,
+                 referencedColumns: Set[str] = None,
+                 lazyEval: bool = False,
+                 aliases: List[str] = [],
+                 handlesNull: bool = False):
+        super().__init__(fnname, params, group, helpText, lazyEval, handlesNull, False)
+
+        self.mFnc = fcn
+        self.mAliases = aliases
+        self.mUsesGeometry = False
+        self.mUsesGeometryFunc = usesGeometry
+        self.mReferencedColumnsFunc = referencedColumns
+        self.mIsStatic = False
+        self.mIsStaticFunc = None
+        self.mPrepareFunc = None
+
+    def aliases(self) -> List[str]:
+        return self.mAliases
+
+    def usesGeometry(self, node: QgsExpressionNodeFunction) -> bool:
+        if self.mUsesGeometryFunc:
+            return self.mUsesGeometryFunc(node)
+        else:
+            return self.mUsesGeometry
+
+    def referencedColumns(self, node: QgsExpressionNodeFunction) -> Set[str]:
+        if self.mReferencedColumnsFunc:
+            return self.mReferencedColumnsFunc(node)
+        else:
+            return super().referencedColumns(node)
+
+    def isStatic(self,
+                 node: QgsExpressionNodeFunction,
+                 parent: QgsExpression,
+                 context: QgsExpressionContext) -> bool:
+        if self.mIsStaticFunc:
+            return self.mIsStaticFunc(node, parent, context)
+        else:
+            return super().isStatic(node, parent, context)
+
+    def prepare(self, node: QgsExpressionNodeFunction, parent: QgsExpression, context: QgsExpressionContext) -> bool:
+        if self.mPrepareFunc:
+            return self.mPrepareFunc(node, parent, context)
+        else:
+            return True
+
+    def setIsStaticFunction(self,
+                            isStatic: Callable[[QgsExpressionFunction, QgsExpression, QgsExpressionContext], bool]):
+
+        self.mIsStaticFunc = isStatic
+
+    def setIsStatic(self, isStatic: bool):
+        self.mIsStaticFunc = None
+        self.mIsStatic = isStatic
+
+    def setPrepareFunction(self,
+                           prepareFunc: Callable[[QgsExpressionFunction, QgsExpression, QgsExpressionContext], bool]):
+        self.mPrepareFunc = prepareFunc
+
+    @staticmethod
+    def allParamsStatic(node: QgsExpressionNodeFunction, parent: QgsExpression, context: QgsExpressionContext) -> bool:
+        if node:
+            for argNode in node.args():
+                argNode: QgsExpressionNode
+                if not argNode.isStatic(parent, context):
+                    return False
+        return True
+
+    def func(self,
+             values: Iterable[Any],
+             context: QgsExpressionContext,
+             parent: QgsExpression,
+             node: QgsExpressionNodeFunction) -> Any:
+        if self.mFnc:
+            return self.mFnc(values, context, parent, node)
+        else:
+            return QVariant()
+
+
+class SpectralData(QgsExpressionFunction):
+    def __init__(self):
+        group = SPECLIB_FUNCTION_GROUP
+        name = 'spectralData'
+
+        args = [
+            QgsExpressionFunction.Parameter('profile_field', optional=False)
+        ]
+
+        helptext = HM.helpText(name, args)
+        super().__init__(name, args, group, helptext)
+
+    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
+
+        ba = values[0]
+
+        if not isinstance(context, QgsExpressionContext):
+            return None
+
+        if ba is None:
+            return None
+
+        try:
+            assert context.fields()
+            assert isinstance(ba, QByteArray)
+            return decodeProfileValueDict(ba)
+
+        except Exception as ex:
+            parent.setEvalErrorString(str(ex))
+            return None
+
+    def usesGeometry(self, node) -> bool:
+        return False
+
+    def referencedColumns(self, node) -> typing.List[str]:
+        return [QgsFeatureRequest.ALL_ATTRIBUTES]
+
+    def handlesNull(self) -> bool:
+        return True
+
+
+class SpectralMath(QgsExpressionFunction):
+    RX_ENCODINGS = re.compile('^({})$'.format('|'.join(ProfileEncoding.__members__.keys())), re.I)
 
     def __init__(self):
         group = SPECLIB_FUNCTION_GROUP
-        name = 'spectralAggregate'
+        name = 'spectralMath'
 
         args = [
-            QgsExpressionFunction.Parameter('layer', optional=False),
-            QgsExpressionFunction.Parameter('aggregate', optional=False),
-            QgsExpressionFunction.Parameter('expression', optional=False),
-            QgsExpressionFunction.Parameter('filter', optional=True),
-            QgsExpressionFunction.Parameter('concatenator', defaultValue='', optional=True),
-            QgsExpressionFunction.Parameter('order_by', optional=True),
+            QgsExpressionFunction.Parameter('p1', optional=True),
+            QgsExpressionFunction.Parameter('p2', optional=True),
+            QgsExpressionFunction.Parameter('pN', optional=True),
+            QgsExpressionFunction.Parameter('expression', optional=False, isSubExpression=True),
+            QgsExpressionFunction.Parameter('format', optional=True),
         ]
         helptext = HM.helpText(name, args)
         # super().__init__(name, args, group, helptext)
@@ -359,147 +490,16 @@ class SpectralAggregation(QgsExpressionFunction):
         return True
 
 
-class SpectralData(QgsExpressionFunction):
-    def __init__(self):
-        group = SPECLIB_FUNCTION_GROUP
-        name = 'spectralData'
-
-        args = [
-            QgsExpressionFunction.Parameter('profile_field', optional=False)
-        ]
-
-        helptext = HM.helpText(name, args)
-        super().__init__(name, args, group, helptext)
-
-    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
-
-        ba = values[0]
-
-        if not isinstance(context, QgsExpressionContext):
-            return None
-
-        if ba is None:
-            return None
-
-        try:
-            assert context.fields()
-            assert isinstance(ba, QByteArray)
-            return decodeProfileValueDict(ba)
-
-        except Exception as ex:
-            parent.setEvalErrorString(str(ex))
-            return None
-
-    def usesGeometry(self, node) -> bool:
-        return False
-
-    def referencedColumns(self, node) -> typing.List[str]:
-        return [QgsFeatureRequest.ALL_ATTRIBUTES]
-
-    def handlesNull(self) -> bool:
-        return True
-
-
-class SpectralMath(QgsExpressionFunction):
-
-    RX_ENCODINGS = re.compile('^({})$'.format('|'.join(ProfileEncoding.__members__.keys())), re.I)
-
-    def __init__(self):
-        group = SPECLIB_FUNCTION_GROUP
-        name = 'spectralMath'
-
-        args = [
-            QgsExpressionFunction.Parameter('p1', optional=True),
-            QgsExpressionFunction.Parameter('p2', optional=True),
-            QgsExpressionFunction.Parameter('pN', optional=True),
-            QgsExpressionFunction.Parameter('expression', optional=False, isSubExpression=True),
-            QgsExpressionFunction.Parameter('format', optional=True),
-        ]
-        helptext = HM.helpText(name, args)
-        # super().__init__(name, args, group, helptext)
-        super().__init__(name, -1, group, helptext)
-
-    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
-
-        if len(values) < 1:
-            parent.setEvalErrorString(f'{self.name()}: requires at least 1 argument')
-            return QVariant()
-        if not isinstance(values[-1], str):
-            parent.setEvalErrorString(f'{self.name()}: last argument needs to be a string')
-            return QVariant()
-
-        encoding = None
-
-        if SpectralMath.RX_ENCODINGS.search(values[-1]) and len(values) >= 2:
-            encoding = ProfileEncoding.fromInput(values[-1])
-            iPy = -2
-        else:
-            iPy = -1
-
-        pyExpression: str = values[iPy]
-        if not isinstance(pyExpression, str):
-            parent.setEvalErrorString(
-                f'{self.name()}: Argument {iPy+1} needs to be a string with python code')
-            return QVariant()
-
-        try:
-            profilesData = values[0:-1]
-            DATA = dict()
-            fieldType: QgsField = None
-            for i, dump in enumerate(profilesData):
-                d = decodeProfileValueDict(dump, numpy_arrays=True)
-                if len(d) == 0:
-                    continue
-                if i == 0:
-                    DATA.update(d)
-                    if encoding is None:
-                        #       # use same input type as output type
-                        if isinstance(dump, (QByteArray, bytes)):
-                            encoding = ProfileEncoding.Bytes
-                        elif isinstance(dump, dict):
-                            encoding = ProfileEncoding.Map
-                        else:
-                            encoding = ProfileEncoding.Text
-
-                n = i + 1
-                # append position number
-                # y of 1st profile = y1, y of 2nd profile = y2 ...
-                for k, v in d.items():
-                    if isinstance(k, str):
-                        k2 = f'{k}{n}'
-                        DATA[k2] = v
-
-            assert context.fields()
-            exec(pyExpression, DATA)
-
-            # collect output profile values
-            d = prepareProfileValueDict(x=DATA.get('x', None),
-                                        y=DATA['y'],
-                                        xUnit=DATA.get('xUnit', None),
-                                        yUnit=DATA.get('yUnit', None),
-                                        bbl=DATA.get('bbl', None),
-                                        )
-            return encodeProfileValueDict(d, encoding)
-        except Exception as ex:
-            parent.setEvalErrorString(f'{ex}')
-            return QVariant()
-
-    def usesGeometry(self, node) -> bool:
-        return True
-
-    def referencedColumns(self, node) -> typing.List[str]:
-        return [QgsFeatureRequest.ALL_ATTRIBUTES]
-
-    def handlesNull(self) -> bool:
-        return True
-
-
 def registerQgsExpressionFunctions():
     """
     Registers functions to support SpectraLibrary handling with QgsExpressions
     """
     global QGIS_FUNCTION_INSTANCES
-    for func in [Format_Py(), SpectralMath(), SpectralData(), SpectralEncoding()]:
+    functions = [Format_Py(), SpectralMath(), SpectralData(), SpectralEncoding()]
+    if Qgis.versionInt() > 32400:
+        from .speclib.processing.aggregateprofiles import createSpectralProfileFunctions
+        functions.extend(createSpectralProfileFunctions())
+    for func in functions:
 
         if QgsExpression.isFunctionName(func.name()):
             msg = QCoreApplication.translate("UserExpressions",

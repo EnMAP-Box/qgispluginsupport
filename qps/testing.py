@@ -784,7 +784,7 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         results = TestObjects._coreData, TestObjects._coreDataWL, TestObjects._coreDataWLU, \
-            TestObjects._coreDataGT, TestObjects._coreDataWkt
+                  TestObjects._coreDataGT, TestObjects._coreDataWkt
         return results
 
     @staticmethod
@@ -836,6 +836,8 @@ class TestObjects(object):
         if fields is None:
             fields = createStandardFields()
 
+        add_names: bool = 'name' in fields.names()
+
         if profile_fields is None:
             # use
             profile_fields = pFields(fields)
@@ -869,6 +871,8 @@ class TestObjects(object):
             g = QgsGeometry.fromQPointF(pt.toQPointF())
             profile.setGeometry(g)
 
+            if add_names:
+                profile.setAttribute('name', f'Profile {i}')
             profile.setId(i + 1)
             for j, profile_field in enumerate(profile_fields):
 
