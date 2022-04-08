@@ -24,7 +24,6 @@ from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidget
     QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingParametersWidget, \
     QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
     QgsProcessingHiddenWidgetWrapper
-
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field, supports_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -38,22 +37,27 @@ from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType
 
 
-def has_raster_io(alg: QgsProcessingAlgorithm) -> bool:
+def has_raster_input(alg: QgsProcessingAlgorithm) -> bool:
     if not isinstance(alg, QgsProcessingAlgorithm):
         return False
-    has_raster_input = False
-    has_raster_output = False
     for input in alg.parameterDefinitions():
         if isinstance(input, QgsProcessingParameterRasterLayer):
-            has_raster_input = True
-            break
+            return True
+    return False
+
+
+def has_raster_output(alg: QgsProcessingAlgorithm) -> bool:
+    if not isinstance(alg, QgsProcessingAlgorithm):
+        return False
 
     for output in alg.outputDefinitions():
         if isinstance(output, QgsProcessingOutputRasterLayer):
-            has_raster_output = True
-            break
+            return True
+    return False
 
-    return has_raster_input and has_raster_output
+
+def has_raster_io(alg: QgsProcessingAlgorithm) -> bool:
+    return has_raster_input(alg) and has_raster_output(alg)
 
 
 class SpectralProcessingAppliers(QObject):
@@ -80,11 +84,8 @@ class SpectralProcessingAlgorithmModel(QgsProcessingToolboxProxyModel):
 
         sourceIdx = self.toolboxModel().index(sourceRow, 0, sourceParent)
         if self.toolboxModel().isAlgorithm(sourceIdx):
-            # algId = self.sourceModel().data(sourceIdx, QgsProcessingToolboxModel.RoleAlgorithmId)
-            # procReg = QgsApplication.instance().processingRegistry()
-            # alg = procReg.algorithmById(algId)
             alg = self.toolboxModel().algorithmForIndex(sourceIdx)
-            return super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_io(alg)
+            return super().filterAcceptsRow(sourceRow, sourceParent) and has_raster_input(alg)
         else:
             return super().filterAcceptsRow(sourceRow, sourceParent)
 
