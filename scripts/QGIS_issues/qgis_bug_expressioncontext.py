@@ -8,3 +8,4 @@ print(f'name={context.variable("layer_name")}')
 
 # this raises: TypeError: unable to convert a C++ 'QPointer<QgsMapLayer>' instance to a Python object
 lyr2 = context.variable('layer')
+assert lyr == lyr2

@@ -120,7 +120,7 @@ class ProcessingToolsTest(TestCase):
         feedback = QgsProcessingFeedback()
         context.setFeedback(feedback)
 
-        if True:
+        if False:
             alg = reg.algorithmById(alg_id)
             d = AlgorithmDialog(alg, False, None)
             d.context = context
@@ -149,11 +149,11 @@ class ProcessingToolsTest(TestCase):
                  'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'},
                 {'aggregate': 'mean', 'delimiter': ',', 'input': '"profiles0"', 'length': 0, 'name': 'profiles0',
                  'precision': 0, 'sub_type': 0, 'type': 12, 'type_name': 'binary'},
-                {'aggregate': 'concatenate', 'delimiter': ',', 'input': '"group"', 'length': 0, 'name': 'group',
-                 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'}],
+                {'aggregate': 'min', 'delimiter': ',', 'input': '"profiles0"', 'length': 0, 'name': 'profiles0',
+                 'precision': 0, 'sub_type': 0, 'type': 12, 'type_name': 'binary'}],
                 AggregateProfiles.P_GROUP_BY: 'group',
                 AggregateProfiles.P_INPUT: sl,
-                AggregateProfiles.P_OUTPUT: './temputput.gpkg'}
+                AggregateProfiles.P_OUTPUT: './tempoutput3.gpkg'}
         self.assertTrue(alg.prepare(parameters, context, feedback), msg=feedback.textLog())
         result2 = alg.processAlgorithm(parameters, context, feedback)
         result3, success = alg.run(parameters, context, feedback)
