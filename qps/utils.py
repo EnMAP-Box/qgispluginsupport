@@ -46,14 +46,14 @@ import warnings
 import weakref
 import zipfile
 from collections import defaultdict
-from typing import Union, List
+from typing import Union, List, Optional
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
-    QDateTime, QDate, QVariant, QByteArray, QUrl
+    QDateTime, QDate, QVariant, QByteArray, QUrl, Qt
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
     QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
@@ -2515,7 +2515,7 @@ class SpatialPoint(QgsPointXY):
         node.appendChild(node_geom)
         node.appendChild(node_crs)
 
-    def toCrs(self, crs):
+    def toCrs(self, crs) -> Optional['SpatialPoint']:
         assert isinstance(crs, QgsCoordinateReferenceSystem)
         pt = QgsPointXY(self)
 
@@ -3109,6 +3109,8 @@ class SelectMapLayerDialog(QgsDialog):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, buttons=QDialogButtonBox.Cancel | QDialogButtonBox.Ok, **kwds)
+        self.setWindowTitle('Select Layer')
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
         self.mBox = QgsMapLayerComboBox(parent=self)
         self.mLabel = QLabel('Layer', parent=self)
         self.hl = QHBoxLayout()

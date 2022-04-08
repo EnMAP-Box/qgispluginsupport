@@ -1561,6 +1561,7 @@ class SpectralLibraryPlotWidget(QWidget):
 
         layer = None
         d = SelectMapLayerDialog()
+        d.setWindowTitle('Select Raster Layer')
         d.setProject(self.plotControlModel().project())
         d.mapLayerComboBox().setFilters(QgsMapLayerProxyModel.RasterLayer)
         if d.exec_() == QDialog.Accepted:
