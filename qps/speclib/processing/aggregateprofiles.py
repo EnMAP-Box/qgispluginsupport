@@ -235,8 +235,18 @@ class AggregateProfiles(QgsProcessingAlgorithm):
         return 'Aggregate Spectral Profiles'
 
     def shortHelpString(self) -> str:
-        info = """
-        Aggregate the profiles in a spectral library
+        info = """This algorithm takes a vector or table layer and aggregates features based on a group by expression. 
+In addition to the native QGIS Aggregate algorithm (native:aggregate), it allows to aggregate spectral profiles.
+
+Features for which group by expression return the same value are grouped together.
+
+It is possible to group all source features together using constant value in group by parameter, example: NULL.
+
+It is also possible to group features using multiple fields using Array function, example: Array("Field1", "Field2").
+Geometries (if present) are combined into one multipart geometry for each group.
+Output attributes are computed depending on each given aggregate definition.
+
+Please not that not each aggregate function might be available for each field type.
         """
         return info
 
