@@ -168,5 +168,6 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
                        importSettings: dict = dict(),
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
         lyr = QgsVectorLayer(path)
-        # todo: add filters
+        # load editor widget information on spectral profile fields
+        lyr.loadDefaultStyle()
         return lyr.getFeatures()
