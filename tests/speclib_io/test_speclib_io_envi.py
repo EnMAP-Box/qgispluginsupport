@@ -38,7 +38,6 @@ class TestSpeclibIO_ENVI(TestCase):
         ]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
-
     def test_findEnviHeader(self):
 
         binarypath = speclibpath

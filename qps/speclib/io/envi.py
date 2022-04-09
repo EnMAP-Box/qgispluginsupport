@@ -37,12 +37,11 @@ from typing import Tuple, Union
 
 import numpy as np
 from osgeo import gdal, gdal_array
-from qgis._core import QgsFeatureRequest, QgsFeatureIterator
 
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QFormLayout
-from qgis.core import QgsExpression
+from qgis.core import QgsExpression, QgsFeatureRequest, QgsFeatureIterator
 from qgis.core import QgsField, QgsFields, QgsFeature, QgsProcessingFeedback
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope
 from qgis.gui import QgsFieldExpressionWidget, QgsFieldComboBox
@@ -275,11 +274,11 @@ class EnviSpectralLibraryExportWidget(SpectralLibraryExportWidget):
 
 class EnviSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
-
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mSourceFields: QgsFields = QgsFields()
         self.mSourceMetadata: dict = dict()
+
     @classmethod
     def spectralLibraryIO(cls) -> 'EnviSpectralLibraryIO':
         return SpectralLibraryIO.spectralLibraryIOInstances(EnviSpectralLibraryIO)
@@ -311,7 +310,6 @@ class EnviSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         return "Envi Spectral Library (*.sli *.esl)"
 
     def setSpeclib(self, speclib: QgsVectorLayer):
-
         super().setSpeclib(speclib)
 
     def importSettings(self, settings: dict) -> dict:
