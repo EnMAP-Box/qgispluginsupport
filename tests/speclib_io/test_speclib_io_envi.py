@@ -38,6 +38,7 @@ class TestSpeclibIO_ENVI(TestCase):
         ]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
+
     def test_findEnviHeader(self):
 
         binarypath = speclibpath
@@ -66,6 +67,19 @@ class TestSpeclibIO_ENVI(TestCase):
         pathWrong = enmap
         hdr, bin = findENVIHeader(pathWrong)
         self.assertTrue((hdr, bin) == (None, None))
+
+    def test_ENVI_Import(self):
+
+        w = EnviSpectralLibraryIO.createImportWidget()
+        w.setSource(speclibpath)
+
+        fields = w.sourceFields()
+        self.assertIsInstance(fields, QgsFields)
+        for n in ['profile', 'spectra names', 'source', 'wkt']:
+            self.assertTrue(n in fields.names())
+        settings = w.importSettings({})
+        profiles = EnviSpectralLibraryIO.importProfiles(speclibpath, settings)
+        s = ""
 
     def test_ENVI_IO(self):
 
