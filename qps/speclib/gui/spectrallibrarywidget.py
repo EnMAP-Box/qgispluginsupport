@@ -12,7 +12,6 @@ from qgis.core import QgsProject
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
-
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
@@ -291,6 +290,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def updateToolbarVisibility(self, *args):
 
         self.mToolbar.setVisible(self.pageAttributeTable.isVisibleTo(self))
+        self.updateActions()
 
     def tableView(self) -> QgsAttributeTableView:
         return self.mMainView.tableView()
@@ -379,7 +379,10 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :rtype:
         """
         self.actionAddCurrentProfiles.setEnabled(self.plotControl().profileCandidates().count() > 0)
-        s = ""
+        is_editor = self.mMainView.view() == QgsDualView.AttributeEditor
+        is_table = self.mMainView.view() == QgsDualView.AttributeTable
+        self.actionShowFormView.setChecked(is_editor)
+        self.actionShowAttributeTable.setChecked(is_table)
 
     def updatePlot(self):
         self.plotControl().updatePlot()
