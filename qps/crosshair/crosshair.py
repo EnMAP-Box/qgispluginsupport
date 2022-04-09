@@ -297,10 +297,13 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                                                   centerGeo.y())
 
                     x1 = QgsPointXY(centerGeo.x(), centerGeo.y())
-                    example_distance = distanceArea.measureLine(x0_thickmark, x1)
-                    bearing = distanceArea.bearing(x1, x0_thickmark)
+                    try:
+                        example_distance = distanceArea.measureLine(x0_thickmark, x1)
+                        bearing = distanceArea.bearing(x1, x0_thickmark)
+                        nice_distance = nicePredecessor(example_distance)
+                    except QgsCsException:
+                        bearing = float('Inf')
 
-                    nice_distance = nicePredecessor(example_distance)
                     # print((example_distance, pred))
                     # rad = -90 * math.pi / 180
                     # print(f'{rad}\n{bearing}')
