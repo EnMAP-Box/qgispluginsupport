@@ -4,7 +4,6 @@ import typing
 
 import numpy as np
 
-from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsVectorFileWriter, QgsField, QgsProject, QgsVectorLayer, \
     QgsRemappingSinkDefinition, QgsExpressionContextScope, QgsCoordinateTransformContext, \
@@ -256,9 +255,5 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
                        importSettings: dict = dict(),
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
         lyr = QgsVectorLayer(path)
-        # todo: add filters
-        features = list(lyr.getFeatures())
-
-        sip.delete(lyr)
-        del lyr
-        return features
+        lyr.loadDefaultStyle()
+        return list(lyr.getFeatures())

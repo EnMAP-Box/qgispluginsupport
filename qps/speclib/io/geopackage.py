@@ -2,7 +2,6 @@ import os
 import pathlib
 import typing
 
-
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsCoordinateReferenceSystem, QgsVectorFileWriter, QgsCoordinateTransformContext
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
@@ -170,4 +169,4 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
         lyr = QgsVectorLayer(path)
         # load editor widget information on spectral profile fields
         lyr.loadDefaultStyle()
-        return lyr.getFeatures()
+        return list(lyr.getFeatures())
