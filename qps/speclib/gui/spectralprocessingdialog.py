@@ -413,7 +413,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
             if isinstance(output, QgsProcessingParameterRasterDestination):
                 # raster outputs will be written to new or existing spectral profile columns
-                wrapper = SpectralProcessingRasterDestination(param, QgsProcessingGui.Standard)
+                wrapper = SpectralProcessingRasterDestination(output, QgsProcessingGui.Standard)
                 wrapper.setFields(self.mSpeclib.fields())
 
             else:
@@ -592,15 +592,17 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         alg = self.algorithm()
         if isinstance(alg, QgsProcessingAlgorithm):
             settings.setValue(f'{K}/algorithmId', self.algorithm().id())
-
-            parameters = self.processingModelWrapper().createProcessingParameters()
-            parameters2 = dict()
-            for k, v in parameters.items():
-                if isinstance(v, QgsMapLayer):
-                    v = v.name()
-                if isinstance(v, (str, int, float, list)):
-                    parameters2[k] = v
-            settings.setValue(f'{K}/algorithmParameters', json.dumps(parameters2))
+            try:
+                parameters = self.processingModelWrapper().createProcessingParameters()
+                parameters2 = dict()
+                for k, v in parameters.items():
+                    if isinstance(v, QgsMapLayer):
+                        v = v.name()
+                    if isinstance(v, (str, int, float, list)):
+                        parameters2[k] = v
+                settings.setValue(f'{K}/algorithmParameters', json.dumps(parameters2))
+            except:
+                pass
 
         self.sigAboutToBeClosed.emit()
         super().close()
