@@ -1722,19 +1722,29 @@ class SpectralProfileBridge(TreeModel):
                 # new_temporal_colors.append(new_feature_colors)
                 new_temporal_styles.append(new_feature_styles)
 
-            max_fid = 0
+            sample_id = 1
             if isinstance(speclib, QgsVectorLayer) and len(new_speclib_features) > 0:
                 # increase click count
                 self.mClickCount[speclib.id()] = self.mClickCount.get(speclib.id(), 0) + 1
                 if speclib.featureCount() > 0:
-                    max_fid = max(speclib.allFeatureIds() + [0])
+                    fids = sorted(speclib.allFeatureIds())
+                    sample_id = fids[-1]
+                    if sample_id < 0:
+                        sample_id = 0
+
+                    # account for already existing temporary features with fid < 0
+                    sample_id += len([f for f in fids if f < 0])
+
+                    # ensure a none-existing sample id
+                    while sample_id in fids:
+                        sample_id += 1
 
             for i, new_feature in enumerate(new_speclib_features):
                 # create context for other values
                 scope = fgnode.speclib().createExpressionContextScope()
                 scope.setVariable(SCOPE_VAR_SAMPLE_CLICK, self.mClickCount[speclib.id()])
                 scope.setVariable(SCOPE_VAR_SAMPLE_FEATURE, i + 1)
-                scope.setVariable(SCOPE_VAR_SAMPLE_ID, max_fid + i)
+                scope.setVariable(SCOPE_VAR_SAMPLE_ID, sample_id + i)
 
                 context = fgnode.expressionContextGenerator().createExpressionContext()
                 context.setFeature(new_feature)

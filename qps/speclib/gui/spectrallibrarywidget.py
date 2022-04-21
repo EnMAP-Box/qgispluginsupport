@@ -379,8 +379,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :rtype:
         """
         self.actionAddCurrentProfiles.setEnabled(self.plotControl().profileCandidates().count() > 0)
-        is_editor = self.mMainView.view() == QgsDualView.AttributeEditor
-        is_table = self.mMainView.view() == QgsDualView.AttributeTable
+        is_editor = self.mMainView.isVisible() and self.mMainView.view() == QgsDualView.AttributeEditor
+        is_table = self.mMainView.isVisible() and self.mMainView.view() == QgsDualView.AttributeTable
         self.actionShowFormView.setChecked(is_editor)
         self.actionShowAttributeTable.setChecked(is_table)
 
