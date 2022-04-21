@@ -23,7 +23,6 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-# noinspection PyPep8Naming
 import os.path
 import pathlib
 import re
@@ -102,45 +101,56 @@ class QGISMetadataFileWriter(object):
         self.mPlugin_dependencies: typing.List[str] = []
 
     def validate(self) -> bool:
-
         return True
+
+    def formatTag(self, tag: str, value, sep: str = ', '):
+        s = f'{tag}='
+        if isinstance(value, list):
+            s += f'{sep}'.join(value)
+        else:
+            s += f'{value}'
+        return s
 
     def metadataString(self) -> str:
         assert self.validate()
 
         lines = ['[general]']
-        lines.append('name={}'.format(self.mName))
-        lines.append('author={}'.format(self.mAuthor))
+        lines.append(self.formatTag('name', self.mName))
+        lines.append(self.formatTag('author', self.mAuthor))
         if self.mEmail:
-            lines.append('email={}'.format(self.mEmail))
+            lines.append(self.formatTag('email', self.mEmail))
 
-        lines.append('description={}'.format(self.mDescription))
-        lines.append('version={}'.format(self.mVersion))
-        lines.append('qgisMinimumVersion={}'.format(self.mQgisMinimumVersion))
-        lines.append('qgisMaximumVersion={}'.format(self.mQgisMaximumVersion))
-        lines.append('about={}'.format(re.sub('\n', '', self.mAbout)))
+        lines.append(self.formatTag('description', self.mDescription))
+        lines.append(self.formatTag('version', self.mVersion))
 
-        lines.append('icon={}'.format(self.mIcon))
+        lines.append(self.formatTag('qgisMinimumVersion', self.mQgisMinimumVersion))
+        lines.append(self.formatTag('qgisMaximumVersion', self.mQgisMaximumVersion))
+        lines.append(self.formatTag('about', re.sub('\n', '', self.mAbout)))
 
-        lines.append('tags={}'.format(', '.join(self.mTags)))
-        lines.append('category={}'.format(self.mRepository))
+        lines.append(self.formatTag('icon', self.mIcon))
+        lines.append(self.formatTag('tags', self.mTags))
+        lines.append(self.formatTag('category', self.mRepository))
+
         if self.mHasProcessingProvider:
             lines.append('hasProcessingProvider=yes')
         else:
             lines.append('hasProcessingProvider=no')
-        lines.append('homepage={}'.format(self.mHomepage))
+        lines.append(self.formatTag('homepage', self.mHomepage))
+
         if self.mTracker:
-            lines.append('tracker={}'.format(self.mTracker))
+            lines.append(self.formatTag('tracker', self.mTracker))
+
         if self.mRepository:
-            lines.append('repository={}'.format(self.mRepository))
+            lines.append(self.formatTag('repository', self.mRepository))
+
         if isinstance(self.mIsExperimental, bool):
-            lines.append('experimental={}'.format(self.mIsExperimental))
+            lines.append(self.formatTag('experimental', self.mIsExperimental))
 
         if len(self.mPlugin_dependencies) > 0:
-            lines.append(f'plugin_dependencies={",".join(self.mPlugin_dependencies)}')
+            lines.append(self.formatTag('plugin_dependencies', self.mPlugin_dependencies))
         # lines.append('deprecated={}'.format(self.mIsDeprecated))
         lines.append('')
-        lines.append('changelog={}'.format(self.mChangelog))
+        lines.append(self.formatTag('changelog', self.mChangelog))
 
         return '\n'.join(lines)
 
