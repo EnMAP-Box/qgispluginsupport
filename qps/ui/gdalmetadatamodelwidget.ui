@@ -90,10 +90,8 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="../../../QGIS/images/images.qrc">
-            <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>
-            :/images/themes/default/mActionOpenTable.svg
-           </iconset>
+           <iconset>
+            <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -106,10 +104,8 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="../../../QGIS/images/images.qrc">
-            <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>
-            :/images/themes/default/mActionFormView.svg
-           </iconset>
+           <iconset>
+            <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -164,10 +160,8 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="../../../QGIS/images/images.qrc">
-            <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
-            :/images/themes/default/mActionCalculateField.svg
-           </iconset>
+           <iconset>
+            <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>:/images/themes/default/mActionCalculateField.svg</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -294,10 +288,8 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="../../../QGIS/images/images.qrc">
-            <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>
-            :/images/themes/default/mActionOpenTable.svg
-           </iconset>
+           <iconset>
+            <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -310,10 +302,8 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="../../../QGIS/images/images.qrc">
-            <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>
-            :/images/themes/default/mActionFormView.svg
-           </iconset>
+           <iconset>
+            <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -368,10 +358,8 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="../../../QGIS/images/images.qrc">
-            <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
-            :/images/themes/default/mActionCalculateField.svg
-           </iconset>
+           <iconset>
+            <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>:/images/themes/default/mActionCalculateField.svg</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -384,9 +372,8 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="../../../QGIS/images/images.qrc">
-            <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg
-           </iconset>
+           <iconset>
+            <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -399,10 +386,8 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="../../../QGIS/images/images.qrc">
-            <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>
-            :/images/themes/default/symbologyRemove.svg
-           </iconset>
+           <iconset>
+            <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -462,7 +447,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>.*</string>
+    <string>.*$</string>
    </property>
    <property name="toolTip">
     <string>Activate to interprete the filter expression as regular expression</string>
@@ -481,9 +466,8 @@
   </action>
   <action name="actionAddItem">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
    </property>
    <property name="text">
     <string>Add Item</string>
@@ -494,9 +478,8 @@
   </action>
   <action name="actionRemoveItem">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
    </property>
    <property name="text">
     <string>Remove Items</string>
@@ -507,9 +490,8 @@
   </action>
   <action name="actionReset">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/mIconClearText.svg</normaloff>:/images/themes/default/mIconClearText.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/mIconClearText.svg</normaloff>:/images/themes/default/mIconClearText.svg</iconset>
    </property>
    <property name="text">
     <string>Reset</string>
@@ -520,9 +502,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
    </property>
    <property name="text">
     <string>BandTableView</string>
@@ -533,9 +514,8 @@
   </action>
   <action name="actionBandFormView">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
    </property>
    <property name="text">
     <string>BandFormView</string>
@@ -546,10 +526,8 @@
   </action>
   <action name="actionBandCalculator">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
-     :/images/themes/default/mActionCalculateField.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>:/images/themes/default/mActionCalculateField.svg</iconset>
    </property>
    <property name="text">
     <string>BandCalculator</string>
@@ -563,7 +541,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>.*</string>
+    <string>.*$</string>
    </property>
    <property name="toolTip">
     <string>Activate to interprete the filter expression as regular expression</string>
@@ -585,9 +563,8 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
    </property>
    <property name="text">
     <string>BandTableView</string>
@@ -598,9 +575,8 @@
   </action>
   <action name="actionFormView">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
    </property>
    <property name="text">
     <string>FormView</string>
@@ -611,10 +587,8 @@
   </action>
   <action name="actionCalculator">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
-     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
-     :/images/themes/default/mActionCalculateField.svg
-    </iconset>
+    <iconset>
+     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>:/images/themes/default/mActionCalculateField.svg</iconset>
    </property>
    <property name="text">
     <string>BandCalculator</string>

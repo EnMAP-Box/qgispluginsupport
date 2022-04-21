@@ -32,7 +32,7 @@ from osgeo import gdal, ogr
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget, \
-    QDialog
+    QDialog, QAction
 from qgis.core import QgsAttributeTableConfig, QgsRasterLayer, QgsVectorLayer, QgsMapLayer, QgsEditorWidgetSetup, \
     QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
 from qgis.gui import QgsGui, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, \
@@ -654,7 +654,9 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.mMessageBar: QgsMessageBar
         self.tbFilter: QLineEdit
         self.btnMatchCase.setDefaultAction(self.optionMatchCase)
+        self.btnBandMatchCase.setDefaultAction(self.optionBandMatchCase)
         self.btnRegex.setDefaultAction(self.optionRegex)
+        self.btnBandRegex.setDefaultAction(self.optionBandRegex)
         self._cs = None
 
         self.mAttributeEditorContext = QgsAttributeEditorContext()
@@ -690,8 +692,10 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.actionBandCalculator.triggered.connect(lambda: self.showCalculator(self.bandDualView))
         self.actionCalculator.triggered.connect(lambda: self.showCalculator(self.dualView))
 
-        updateBandFilter = lambda: self.updateFilter(self.bandDualView, self.tbBandFilter.text())
-        updateFilter = lambda: self.updateFilter(self.dualView, self.tbFilter.text())
+        updateBandFilter = lambda: self.updateFilter(
+            self.bandDualView, self.tbBandFilter.text(), self.optionBandMatchCase, self.optionBandRegex)
+        updateFilter = lambda: self.updateFilter(
+            self.dualView, self.tbFilter.text(), self.optionMatchCase, self.optionRegex)
 
         self.tbBandFilter.textChanged.connect(updateBandFilter)
         self.optionBandMatchCase.changed.connect(updateBandFilter)
@@ -898,14 +902,14 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.bandDualView.autosizeAllColumns()
         self.dualView.autosizeAllColumns()
 
-    def updateFilter(self, dualView: QgsDualView, text: str):
+    def updateFilter(self, dualView: QgsDualView, text: str, optionMatchCase: QAction, optionRegex:QAction):
 
-        if self.optionMatchCase.isChecked():
+        if optionMatchCase.isChecked():
             matchCase = Qt.CaseSensitive
         else:
             matchCase = Qt.CaseInsensitive
 
-        if self.optionRegex.isChecked():
+        if optionRegex.isChecked():
             syntax = QRegExp.RegExp
         else:
             syntax = QRegExp.Wildcard
