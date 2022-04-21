@@ -3,23 +3,27 @@ import math
 import re
 import sys
 import typing
+from typing import List
 
 import numpy as np
 
 from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
-    QSortFilterProxyModel, QItemSelection
+    QSortFilterProxyModel, QItemSelection, NULL
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
 from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
     QTableView, QStyle, QStyleOptionViewItem
 from qgis.PyQt.QtWidgets import QTreeView
-from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, QgsExpression, \
+
+from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, \
+    QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRaster, QgsRectangle
 from qgis.core import QgsLayerItem
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
-from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit
-from qgis.gui import QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
+from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
+    QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
+
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
@@ -33,6 +37,7 @@ from ...utils import SpatialPoint, loadUi, rasterArray, spatialPoint2px, \
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
+SCOPE_VAR_SAMPLE_ID = 'sample_id'
 
 
 class SpectralProfileSource(object):
@@ -988,6 +993,15 @@ class FieldGeneratorNode(TreeNode):
         self.setCheckable(True)
         self.setCheckState(Qt.Unchecked)
 
+        self.mErrors: List[str] = []
+
+    def errors(self) -> List[str]:
+        """
+        Returns a list of validation errors
+        :return:
+        """
+        return self.mErrors[:]
+
     def setField(self, field: QgsField):
         """
         Defines the QgsField the node is linked to
@@ -1015,9 +1029,12 @@ class FieldGeneratorNode(TreeNode):
         :return:
         :rtype:
         """
+        self.mErrors.clear()
         if not isinstance(self.field(), QgsField):
-            return False, 'Field is not set'
-        return True, []
+            self.mErrors.append('Field is not set')
+        if self.checked() and self.value() in [None, NULL, '']:
+            self.mErrors.append('Undefined')
+        return len(self.errors()) == 0, self.errors()
 
 
 class GeometryGeneratorNode(TreeNode):
@@ -1076,11 +1093,11 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
         if is_valid:
             if not isinstance(self.profileSource(), SpectralProfileSource):
-                errors.append('No source')
+                self.mErrors.append('No source')
             if not isinstance(self.sampling(), SpectralProfileSamplingMode):
-                errors.append('No sampling')
+                self.mErrors.append('No sampling')
 
-        return len(errors) == 0, errors
+        return len(self.errors()) == 0, self.errors()
 
     def profileSource(self) -> SpectralProfileSource:
         return self.mSourceNode.profileSource()
@@ -1165,18 +1182,17 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
         if is_valid:
             expr = self.expression()
 
-            # todo: set context
+            genNode: SpectralFeatureGeneratorNode = self.parentNode()
+            if isinstance(genNode, SpectralFeatureGeneratorNode):
+                context = genNode.expressionContextGenerator().createExpressionContext()
+                expr.prepare(context)
 
-            if expr.expression().strip() == '':
-                errors.append('undefined')
-            else:
-                if not expr.isValid():
-                    if expr.hasParserError():
-                        errors.append(expr.parserErrorString().strip())
-                    if expr.hasEvalError():
-                        errors.append(expr.evalErrorString().strip())
+            if expr.hasParserError():
+                self.mErrors.append(expr.parserErrorString().strip())
+            if expr.hasEvalError():
+                self.mErrors.append(expr.evalErrorString().strip())
 
-        return len(errors) == 0, errors
+        return len(self.errors()) == 0, self.errors()
 
 
 class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGenerator):
@@ -1187,13 +1203,28 @@ class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGen
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mNode: SpectralFeatureGeneratorNode = None
+        self.mFeature: QgsFeature = None
 
     def createExpressionContext(self) -> QgsExpressionContext:
         context = QgsExpressionContext()
+
+        if isinstance(self.mNode, SpectralFeatureGeneratorNode):
+            speclib = self.mNode.speclib()
+            if isinstance(speclib, QgsVectorLayer) and speclib.isValid():
+                context.appendScope(QgsExpressionContextUtils.layerScope(speclib))
+                context.appendScope(QgsExpressionContextUtils.globalScope())
+                context.setFields(speclib.fields())
+                self.mFeature = QgsFeature(speclib.fields())
+                context.setFeature(self.mFeature)
+
         scope = QgsExpressionContextScope()
         scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_CLICK, 1))
         scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_FEATURE, 1))
+        scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_ID, 1))
         context.appendScope(scope)
+
+        self.mLastContext = context
+
         return context
 
 
@@ -1691,23 +1722,29 @@ class SpectralProfileBridge(TreeModel):
                 # new_temporal_colors.append(new_feature_colors)
                 new_temporal_styles.append(new_feature_styles)
 
+            max_fid = 0
             if isinstance(speclib, QgsVectorLayer) and len(new_speclib_features) > 0:
                 # increase click count
                 self.mClickCount[speclib.id()] = self.mClickCount.get(speclib.id(), 0) + 1
+                if speclib.featureCount() > 0:
+                    max_fid = max(speclib.allFeatureIds() + [0])
 
             for i, new_feature in enumerate(new_speclib_features):
                 # create context for other values
                 scope = fgnode.speclib().createExpressionContextScope()
                 scope.setVariable(SCOPE_VAR_SAMPLE_CLICK, self.mClickCount[speclib.id()])
                 scope.setVariable(SCOPE_VAR_SAMPLE_FEATURE, i + 1)
+                scope.setVariable(SCOPE_VAR_SAMPLE_ID, max_fid + i)
+
                 context = fgnode.expressionContextGenerator().createExpressionContext()
                 context.setFeature(new_feature)
                 context.appendScope(scope)
                 for node in fgnode.childNodes():
                     if isinstance(node, StandardFieldGeneratorNode) and node.checked():
                         expr = node.expression()
-                        if expr.isValid():
+                        if expr.isValid() and expr.prepare(context):
                             new_feature[node.field().name()] = expr.evaluate(context)
+
             sid = fgnode.speclib().id()
 
             RESULTS[sid] = RESULTS.get(sid, []) + new_speclib_features
@@ -1731,7 +1768,6 @@ class SpectralProfileBridge(TreeModel):
                 slw.setCurrentProfiles(features,
                                        make_permanent=add_permanent,
                                        currentProfileStyles=candidate_styles,
-                                       # currentProfileColors=TEMPORAL_COLORS[speclib.id()]
                                        )
 
         return RESULTS
@@ -1872,13 +1908,13 @@ class SpectralProfileBridge(TreeModel):
                     if role == Qt.ToolTipRole:
                         if isinstance(field, QgsField):
                             return f'"{field.displayName()}" ' \
-                                   f'{field.displayType(True)} {editor}'
+                                   f'{field.displayType(False)} {editor}'
 
                 if c == 1:
                     is_checked = node.checked()
                     is_required = not node.isCheckable()
-                    is_valid, errors = node.validate()
-                    if not is_valid:
+                    errors = node.errors()
+                    if len(errors) > 0:
                         if role == Qt.DisplayRole:
                             if is_checked or is_required:
                                 return '<span style="color:red;font-style:italic">{}</span>'.format(''.join(errors))
@@ -1967,6 +2003,9 @@ class SpectralProfileBridge(TreeModel):
 
         elif isinstance(node, TreeNode):
             node.setValue(value)
+
+        if isinstance(node, FieldGeneratorNode):
+            node.validate()
 
         if changed:
             self.dataChanged.emit(self.index(r0, c0, parent=index.parent()),
@@ -2186,13 +2225,9 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
                 genNode: SpectralFeatureGeneratorNode = node.parentNode()
                 w.registerExpressionContextGenerator(genNode.expressionContextGenerator())
-                # w.setField(field)
                 w.setExpressionDialogTitle(f'{field.name()}')
                 w.setToolTip(f'Set an expression to specify the field "{field.name()}"')
-                # w.setExpression(node.expression().expression())
-                # w.setLayer(vis.speclib())
-                # w.setFilters(QgsFieldProxyModel.String | QgsFieldProxyModel.Numeric)
-                s = ""
+
             elif isinstance(node, FloatValueNode):
                 w = QgsDoubleSpinBox(parent=parent)
                 w.setSingleStep(1)
@@ -2240,7 +2275,14 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
         elif isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
             assert isinstance(editor, QgsFieldExpressionWidget)
+            # editor.setField(node.field())
+            genNode: SpectralFeatureGeneratorNode = node.parentNode()
+            if isinstance(genNode, SpectralFeatureGeneratorNode) and isinstance(genNode.speclib(), QgsVectorLayer):
+                contextGen: SpectralFeatureGeneratorExpressionContextGenerator = genNode.expressionContextGenerator()
+                editor.setLayer(genNode.speclib())
+
             editor.setExpression(node.expression().expression())
+
         elif isinstance(node, FloatValueNode) and index.column() == 1:
             if isinstance(editor, QDoubleSpinBox):
                 editor.setValue(node.value())
