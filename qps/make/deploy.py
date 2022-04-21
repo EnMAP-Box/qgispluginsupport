@@ -175,5 +175,5 @@ class QGISMetadataFileWriter(object):
     """
 
     def writeMetadataTxt(self, path: str):
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, 'w', encoding='utf-8', newline='\n') as f:
             f.write(self.metadataString())
