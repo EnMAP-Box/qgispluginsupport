@@ -4,6 +4,8 @@ import typing
 from typing import List
 
 import numpy as np
+from PyQt5.QtWidgets import QMessageBox, QAbstractItemView
+
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
@@ -123,7 +125,7 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
         return frame
 
 
-MAX_PDIS_DEFAULT: int = 256
+MAX_PROFILES_DEFAULT: int = 516
 FIELD_NAME = str
 
 ATTRIBUTE_ID = typing.Tuple[FEATURE_ID, FIELD_INDEX]
@@ -145,6 +147,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     sigProgressChanged = pyqtSignal(float)
     sigPlotWidgetStyleChanged = pyqtSignal()
+    sigMaxProfilesExceeded = pyqtSignal()
     NOT_INITIALIZED = -1
 
     class UpdateBlocker(object):
@@ -226,11 +229,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.insertPropertyGroup(0, self.mGeneralSettings)
         self.insertPropertyGroup(1, self.mProfileCandidates)
 
-        # self.mTemporaryProfileIDs: typing.Set[FEATURE_ID] = set()
-        # self.mTemporaryProfileColors: typing.Dict[ATTRIBUTE_ID, QColor] = dict()
-        # self.mTemporaryProfileStyles: typing.Dict[ATTRIBUTE_ID, PlotStyle] = dict()
-
-        self.mMaxProfilesWidget: QWidget = None
+        self.setMaxProfiles(MAX_PROFILES_DEFAULT)
 
     def blockUpdates(self, b: bool) -> bool:
         state = self.mBlockUpdates
@@ -704,6 +703,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
             propertyItem.setData(tt, Qt.ToolTipRole)
             propertyItem.setData(fg, Qt.ForegroundRole)
             propertyItem.emitDataChanged()
+
+        if limit_reached:
+            self.sigMaxProfilesExceeded.emit()
 
     def supportedDragActions(self) -> Qt.DropActions:
         return Qt.CopyAction | Qt.MoveAction
@@ -1402,6 +1404,8 @@ class SpectralLibraryPlotWidget(QWidget):
     sigDropEvent = pyqtSignal(QDropEvent)
     sigPlotWidgetStyleChanged = pyqtSignal()
 
+    SHOW_MAX_PROFILES_HINT = True
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         loadUi(speclibUiPath('spectrallibraryplotwidget.ui'), self)
@@ -1417,6 +1421,7 @@ class SpectralLibraryPlotWidget(QWidget):
         self.mPlotControlModel = SpectralProfilePlotModel()
         self.mPlotControlModel.setPlotWidget(self.plotWidget)
         self.mPlotControlModel.sigPlotWidgetStyleChanged.connect(self.sigPlotWidgetStyleChanged.emit)
+        self.mPlotControlModel.sigMaxProfilesExceeded.connect(self.onMaxProfilesReached)
         self.mINITIALIZED_VISUALIZATIONS = set()
 
         # self.mPlotControlModel.sigProgressChanged.connect(self.onProgressChanged)
@@ -1532,6 +1537,27 @@ class SpectralLibraryPlotWidget(QWidget):
         # rows = self.treeView.selectionModel().selectedRows()
         groups = [g for g in self.treeView.selectedPropertyGroups() if g.isRemovable()]
         self.actionRemoveProfileVis.setEnabled(len(groups) > 0)
+
+    def onMaxProfilesReached(self):
+
+        if self.SHOW_MAX_PROFILES_HINT:
+            n = self.mPlotControlModel.maxProfiles()
+
+            result = QMessageBox.information(self,
+                                             'Maximum number of profiles',
+                                             f'Reached maximum number of profiles to display ({n}).' +
+                                             'Increase this value to display more profiles at same time.\n' +
+                                             'Note that this might reduce the visualization speed')
+
+            self.panelVisualization.setVisible(True)
+
+            item = self.plotControlModel().mGeneralSettings.mP_MaxProfiles
+            idx = self.plotControlModel().indexFromItem(item)
+            idx2 = self.treeView.model().mapFromSource(idx)
+            self.treeView.setExpanded(idx2, True)
+            self.treeView.scrollTo(idx2, QAbstractItemView.PositionAtCenter)
+
+            self.SHOW_MAX_PROFILES_HINT = False
 
     def onSpeclibFieldsUpdated(self, *args):
 

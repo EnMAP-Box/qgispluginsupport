@@ -512,9 +512,10 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_MaxProfiles.setDefinition(QgsPropertyDefinition(
             'Max. Profiles', 'Maximum Number of Profiles',
             QgsPropertyDefinition.StandardPropertyTemplate.IntegerPositive))
-        self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(512))
+        self.mP_MaxProfiles.setProperty(QgsProperty.fromValue(516))
 
         self.mPLegend = LegendGroup()
+        self.mPLegend.setVisible(False)
 
         self.mP_BG = QgsPropertyItem('BG')
         self.mP_BG.setDefinition(QgsPropertyDefinition(
@@ -538,7 +539,8 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_CH.setItemCheckable(True)
         self.mP_CH.setItemChecked(True)
 
-        for pItem in [self.mPLegend, self.mP_MaxProfiles,
+        for pItem in [# self.mPLegend,
+                      self.mP_MaxProfiles,
                       self.mP_SortBands, self.mP_BadBands,
                       self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
             self.appendRow(pItem.propertyRow())
@@ -547,7 +549,8 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_SortBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
         self.mP_BadBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
 
-        for pItem in [self.mPLegend, self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
+        for pItem in [# self.mPLegend,
+                      self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
             pItem.signals().dataChanged.connect(self.applyGeneralSettings)
 
         self.mP_CH.signals().checkedChanged.connect(self.applyGeneralSettings)
@@ -923,18 +926,6 @@ class QgsPropertyItem(PropertyItem):
     def update(self):
         self.setText(self.mProperty.valueAsString(QgsExpressionContext()))
 
-    def populateContextMenu(self, menu: QMenu):
-
-        if self.isColorProperty():
-            a = menu.addAction('Use vector symbol color')
-            a.setToolTip('Use map vector symbol colors as profile color.')
-            a.setIcon(QIcon(r':/qps/ui/icons/speclib_usevectorrenderer.svg'))
-            a.triggered.connect(self.setToSymbolColor)
-
-    def setToSymbolColor(self, *args):
-        if self.isColorProperty():
-            self.setProperty(QgsProperty.fromExpression('@symbol_color'))
-
     def writeXml(self, parentNode: QDomElement, doc: QDomDocument, attribute: bool = False):
         xml_tag = self.key()
         node = QgsXmlUtils.writeVariant(self.property(), doc)
@@ -1173,6 +1164,25 @@ class QgsPropertyItem(PropertyItem):
 
         if isinstance(property, QgsProperty):
             self.setProperty(property)
+
+
+class ProfileColorPropertyItem(QgsPropertyItem):
+
+    def __init__(self, *args, **kwds):
+
+        super().__init__(*args, **kwds)
+
+    def populateContextMenu(self, menu: QMenu):
+
+        if self.isColorProperty():
+            a = menu.addAction('Use vector symbol color')
+            a.setToolTip('Use map vector symbol colors as profile color.')
+            a.setIcon(QIcon(r':/qps/ui/icons/speclib_usevectorrenderer.svg'))
+            a.triggered.connect(self.setToSymbolColor)
+
+    def setToSymbolColor(self, *args):
+        if self.isColorProperty():
+            self.setProperty(QgsProperty.fromExpression('@symbol_color'))
 
 
 class ProfileCandidateItem(PlotStyleItem):
@@ -1710,7 +1720,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             'Filter', 'Filter for feature rows', QgsPropertyDefinition.StandardPropertyTemplate.String))
         self.mPFilter.setProperty(QgsProperty.fromExpression(''))
 
-        self.mPColor = QgsPropertyItem('Color')
+        self.mPColor = ProfileColorPropertyItem('Color')
         self.mPColor.setDefinition(QgsPropertyDefinition(
             'Color', 'Color of spectral profile', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha))
         self.mPColor.setProperty(QgsProperty.fromValue(QColor('white')))
