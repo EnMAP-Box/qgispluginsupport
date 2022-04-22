@@ -601,7 +601,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     if isinstance(v, (str, int, float, list)):
                         parameters2[k] = v
                 settings.setValue(f'{K}/algorithmParameters', json.dumps(parameters2))
-            except:
+            except Exception as ex:
                 pass
 
         self.sigAboutToBeClosed.emit()

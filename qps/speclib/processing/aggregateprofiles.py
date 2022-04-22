@@ -235,7 +235,7 @@ class AggregateProfiles(QgsProcessingAlgorithm):
         return 'Aggregate Spectral Profiles'
 
     def shortHelpString(self) -> str:
-        info = """This algorithm takes a vector or table layer and aggregates features based on a group by expression. 
+        info = """This algorithm takes a vector or table layer and aggregates features based on a group by expression.
 In addition to the native QGIS Aggregate algorithm (native:aggregate), it allows to aggregate spectral profiles.
 
 Features for which group by expression return the same value are grouped together.

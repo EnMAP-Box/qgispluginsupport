@@ -13,6 +13,8 @@ ignore =
     F841,
     # allow lambda functions
     E731
+    # allow continuation line over-indented for visual indent
+    E127
 
 max-line-length=120
 max-complexity = 10

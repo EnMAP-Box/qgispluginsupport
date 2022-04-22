@@ -902,7 +902,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.bandDualView.autosizeAllColumns()
         self.dualView.autosizeAllColumns()
 
-    def updateFilter(self, dualView: QgsDualView, text: str, optionMatchCase: QAction, optionRegex:QAction):
+    def updateFilter(self, dualView: QgsDualView, text: str, optionMatchCase: QAction, optionRegex: QAction):
 
         if optionMatchCase.isChecked():
             matchCase = Qt.CaseSensitive
