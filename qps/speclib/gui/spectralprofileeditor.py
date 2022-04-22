@@ -433,7 +433,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             p = w.profile()
-            if len(p.get('x', [])) > 0:
+            if isinstance(p, dict) and len(p.get('x', [])) > 0:
                 value = encodeProfileValueDict(p.values(), self.field())
 
         return QVariant(value)
