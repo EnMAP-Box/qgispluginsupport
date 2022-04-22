@@ -1543,12 +1543,6 @@ class SpectralLibraryPlotWidget(QWidget):
         if self.SHOW_MAX_PROFILES_HINT:
             n = self.mPlotControlModel.maxProfiles()
 
-            result = QMessageBox.information(self,
-                                             'Maximum number of profiles',
-                                             f'Reached maximum number of profiles to display ({n}).' +
-                                             'Increase this value to display more profiles at same time.\n' +
-                                             'Note that this might reduce the visualization speed')
-
             self.panelVisualization.setVisible(True)
 
             item = self.plotControlModel().mGeneralSettings.mP_MaxProfiles
@@ -1556,6 +1550,13 @@ class SpectralLibraryPlotWidget(QWidget):
             idx2 = self.treeView.model().mapFromSource(idx)
             self.treeView.setExpanded(idx2, True)
             self.treeView.scrollTo(idx2, QAbstractItemView.PositionAtCenter)
+
+            result = QMessageBox.information(self,
+                                             'Maximum number of profiles',
+                                             f'Reached maximum number of profiles to display ({n}).\n' +
+                                             'Increase this value to display more profiles at same time.\n' +
+                                             'Showing large numbers of profiles at same time can reduce ' +
+                                             'the visualization speed')
 
             self.SHOW_MAX_PROFILES_HINT = False
 
