@@ -841,10 +841,10 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         elif format in [QgsRaster.IdentifyFormatHtml, QgsRaster.IdentifyFormatText]:
             results[0] = 'Dummy HTML / Text'
 
-        info = f'# identify results ({len(results)}):'
-        for k, v in results.items():
-            info += f'\n\t {k}:{v}'
-        print(info)
+        # info = f'# identify results ({len(results)}):'
+        # for k, v in results.items():
+        #    info += f'\n\t {k}:{v}'
+        # print(info)
         r = QgsRasterIdentifyResult(format, results)
         return r
 

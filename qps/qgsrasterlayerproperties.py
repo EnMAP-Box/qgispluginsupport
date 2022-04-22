@@ -399,7 +399,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
         # wavelength() can be available for custom providers like EE
         if hasattr(provider, 'wavelength'):
-            wl = np.array([provider.wavelength(bandNo) for bandNo in range(1, provider.bandCount() + 1)])
+            wl = np.array([provider.wavelength(bandNo) for bandNo in range(1, provider.bandCount() + 1)]).tolist()
             wlu = 'Nanometers'
             self.setBandValues(None, 'wl', wl)
             self.setBandValues(None, 'wlu', wlu)

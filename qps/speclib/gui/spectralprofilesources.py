@@ -27,7 +27,7 @@ from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict
+from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, decodeProfileValueDict
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
@@ -1715,6 +1715,7 @@ class SpectralProfileBridge(TreeModel):
                             new_feature.setGeometry(geometry)
                         field_name = pgnode.field().name()
                         new_feature[field_name] = encodeProfileValueDict(profileDict, encoding=pgnode.field())
+                        d2 = decodeProfileValueDict(new_feature[field_name])
                         # new_feature_colors.append((field_name, pgnode.mColorNode.color()))
                         new_feature_styles.append((field_name, pgnode.mProfileStyleNode.value()))
 
