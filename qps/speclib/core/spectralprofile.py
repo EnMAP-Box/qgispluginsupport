@@ -138,7 +138,9 @@ class ProfileEncoding(enum.Enum):
         raise NotImplementedError(f'Unable to return ProfileEncoding for "{input}"')
 
 
-def encodeProfileValueDict(d: dict, encoding: typing.Union[str, QgsField, ProfileEncoding]) -> typing.Any:
+def encodeProfileValueDict(d: dict,
+                           encoding: typing.Union[str, QgsField, ProfileEncoding],
+                           jsonFormat: QJsonDocument.JsonFormat = QJsonDocument.Compact) -> typing.Any:
     """
     Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
@@ -176,8 +178,7 @@ def encodeProfileValueDict(d: dict, encoding: typing.Union[str, QgsField, Profil
     if encoding == ProfileEncoding.Bytes:
         return jsonDoc.toBinaryData()
     else:
-        return bytes(jsonDoc.toJson(QJsonDocument.Compact)).decode('UTF-8')
-
+        return bytes(jsonDoc.toJson(jsonFormat)).decode('UTF-8')
 
 def decodeProfileValueDict(dump: typing.Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
     """

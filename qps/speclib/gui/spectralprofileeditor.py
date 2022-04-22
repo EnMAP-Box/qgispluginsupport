@@ -1,10 +1,14 @@
 import typing
 
 import numpy as np
+from PyQt5.QtCore import QJsonDocument
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy
 
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant
 from qgis.PyQt.QtWidgets import QGroupBox, QWidget, QLabel
+from qgis._gui import QgsCodeEditorJson
 
 from qgis.core import QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication, QgsFeature
 from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsJsonEditWidget, \
@@ -13,7 +17,7 @@ from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core import supports_field
 from ..core.spectralprofile import SpectralProfile, encodeProfileValueDict, decodeProfileValueDict, \
-    prepareProfileValueDict
+    prepareProfileValueDict, ProfileEncoding
 from ...unitmodel import BAND_INDEX
 from ...utils import loadUi
 
@@ -230,6 +234,90 @@ class SpectralProfileEditorWidget(QGroupBox):
 
     def __init__(self, *args, **kwds):
         super(SpectralProfileEditorWidget, self).__init__(*args, **kwds)
+        self.setWindowIcon(QIcon(':/qps/ui/icons/profile.svg'))
+        self.mDefault: dict = False
+        self.jsonEditor = QgsCodeEditorJson()
+        self.jsonEditor.textChanged.connect(self.onProfileChanged)
+        self.jsonEditor.setFoldingVisible(True)
+        self.jsonEditor.setLineNumbersVisible(True)
+
+        # self.jsonEditor.setFormatJsonMode(QgsJsonEditWidget.FormatJson.Indented)
+        # self.jsonEditor.setControlsVisible(True)
+
+        self.controlBar = QHBoxLayout()
+        self.btnReset = QToolButton()
+        self.btnReset.setText('Reset')
+        self.btnReset.setIcon(QIcon(':/images/themes/default/mActionUndo.svg'))
+        self.btnReset.clicked.connect(self.resetProfile)
+
+        for w in [self.btnReset]:
+            self.controlBar.addWidget(w)
+        self.controlBar.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
+
+        vbox = QVBoxLayout()
+        vbox.addLayout(self.controlBar)
+        vbox.addWidget(self.jsonEditor)
+        self.setLayout(vbox)
+
+    def onProfileChanged(self):
+        d = self.profile()
+        self.jsonEditor.clearWarnings()
+
+        self.jsonEditor.initializeLexer()
+        self.jsonEditor.runPostLexerConfigurationTasks()
+
+        if d != self.mDefault:
+            if isinstance(d, dict):
+                self.sigProfileChanged.emit()
+
+    def initConfig(self, conf: dict):
+        """
+        Initializes widget elements like QComboBoxes etc.
+        :param conf: dict
+        """
+
+        pass
+
+    def setProfile(self, profile: dict):
+        """
+        Sets the profile values to be shown
+        :param values: dict() or SpectralProfile
+        :return:
+        """
+        assert isinstance(profile, dict)
+        self.mDefault = profile
+
+        jsonText = encodeProfileValueDict(profile, ProfileEncoding.Json, jsonFormat=QJsonDocument.Indented)
+
+        self.jsonEditor.setText(jsonText)
+
+    def resetProfile(self):
+        if isinstance(self.mDefault, dict):
+            jsonText = encodeProfileValueDict(self.mDefault, ProfileEncoding.Json, jsonFormat=QJsonDocument.Indented)
+        else:
+            jsonText = ''
+        self.jsonEditor.setText(jsonText)
+
+    def profile(self) -> dict:
+        """
+        Returns modified SpectralProfile
+        :return: dict
+        """
+
+        jsonText = self.jsonEditor.text()
+        d = decodeProfileValueDict(jsonText)
+        if len(d) > 0:
+            return d
+        else:
+            return None
+
+
+
+class SpectralProfileEditorWidget_OLD(QGroupBox):
+    sigProfileChanged = pyqtSignal()
+
+    def __init__(self, *args, **kwds):
+        super(SpectralProfileEditorWidget_OLD, self).__init__(*args, **kwds)
         loadUi(speclibUiPath('spectralprofileeditorwidget.ui'), self)
         self.mDefault: SpectralProfile = None
         self.mModel: SpectralProfileTableModel = SpectralProfileTableModel()
