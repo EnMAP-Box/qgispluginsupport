@@ -25,30 +25,26 @@ import unittest
 import numpy as np
 import xmlrunner
 from osgeo import ogr, gdal
-
-from qgis.PyQt.QtCore import QSize, QMimeData, QUrl, QPoint, Qt
+from qgis.PyQt.QtCore import QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
-from qgis.PyQt.QtWidgets import QCheckBox, QApplication, QToolBar, QVBoxLayout, QPushButton, \
+from qgis.PyQt.QtWidgets import QApplication, QToolBar, QVBoxLayout, QPushButton, \
     QToolButton, QAction, QComboBox, QWidget, QDialog
 from qgis.core import QgsFeature
-from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes, \
-    QgsActionManager
-from qgis.gui import QgsOptionsDialogBase, QgsSearchWidgetWrapper, QgsMapCanvas, \
+from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes
+from qgis.gui import QgsOptionsDialogBase, QgsMapCanvas, \
     QgsDualView, QgsGui
+
 from qps.layerproperties import AddAttributeDialog
 from qps.plotstyling.plotstyling import PlotStyle
 from qps.pyqtgraph import pyqtgraph as pg
-from qps.speclib import FIELD_VALUES
 from qps.speclib.core import profile_field_list, is_spectral_library
 from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import SpectralProfile, decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
-from qps.speclib.gui.spectralprofileeditor import SpectralProfileTableModel, SpectralProfileEditorWidget, \
-    SpectralProfileEditorWidgetWrapper, SpectralProfileEditorConfigWidget, SpectralProfileEditorWidgetFactory, \
-    registerSpectralProfileEditorWidget
+from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCase, StartOptions
 from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER
 from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
@@ -180,46 +176,6 @@ class TestSpeclibWidgets(TestCase):
         self.assertListEqual(list(r), [100, 200, 300])
 
     @unittest.skipIf(False, '')
-    def test_SpectralProfileValueTableModel(self):
-
-        p = list(TestObjects.spectralProfiles(1, n_bands=[255]))[0]
-        pField = profile_field_list(p)[0]
-        d = decodeProfileValueDict(p.attribute(pField.name()))
-        self.assertIsInstance(d, dict)
-
-        m = SpectralProfileTableModel()
-
-        self.assertIsInstance(m, SpectralProfileTableModel)
-        self.assertTrue(m.rowCount() == 0)
-        # self.assertTrue(m.columnCount() == 2)
-        self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-
-        m.setProfile(d)
-        self.assertTrue(m.rowCount() == len(d.get('x', [])))
-        self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-
-        # m.setColumnValueUnit(0, '')
-
-    @unittest.skipIf(False, '')
-    def test_SpectralProfileEditorWidget(self):
-
-        p = list(TestObjects.spectralProfiles(1, n_bands=[255]))[0]
-        self.assertIsInstance(p, QgsFeature)
-
-        pField = profile_field_list(p)[0]
-        d = decodeProfileValueDict(p.attribute(pField.name()))
-
-        w = SpectralProfileEditorWidget()
-        self.assertIsInstance(w, QWidget)
-
-        w.setProfile(d)
-
-        self.showGui(w)
-        self.assertTrue(True)
-
-    @unittest.skipIf(False, '')
     def test_toolbarStackedActions(self):
 
         tb = QToolBar()
@@ -247,74 +203,6 @@ class TestSpeclibWidgets(TestCase):
         cb.setModel(model)
 
         self.showGui(cb)
-
-    @unittest.skipIf(False, '')
-    def test_SpectralProfileEditorWidgetFactory(self):
-
-        reg = QgsGui.editorWidgetRegistry()
-        if len(reg.factories()) == 0:
-            reg.initEditors()
-
-        from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
-        self.assertTrue(EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys())
-        factory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
-        self.assertIsInstance(factory, SpectralProfileEditorWidgetFactory)
-
-        vl = TestObjects.createSpectralLibrary()
-
-        am = vl.actions()
-        self.assertIsInstance(am, QgsActionManager)
-
-        c = QgsMapCanvas()
-        w = QWidget()
-        w.setLayout(QVBoxLayout())
-
-        print('STOP 1', flush=True)
-        dv = QgsDualView()
-        print('STOP 2', flush=True)
-        dv.init(vl, c)
-        print('STOP 3', flush=True)
-        dv.setView(QgsDualView.AttributeTable)
-        print('STOP 4', flush=True)
-        dv.setAttributeTableConfig(vl.attributeTableConfig())
-        print('STOP 5', flush=True)
-        cb = QCheckBox()
-        cb.setText('Show Editor')
-
-        def onClicked(b: bool):
-            if b:
-                dv.setView(QgsDualView.AttributeEditor)
-            else:
-                dv.setView(QgsDualView.AttributeTable)
-
-        cb.clicked.connect(onClicked)
-        w.layout().addWidget(dv)
-        w.layout().addWidget(cb)
-
-        w.resize(QSize(300, 250))
-        print(vl.fields().names())
-        look = vl.fields().lookupField
-        print('STOP 4', flush=True)
-        parent = QWidget()
-        configWidget = factory.configWidget(vl, look(FIELD_VALUES), None)
-        self.assertIsInstance(configWidget, SpectralProfileEditorConfigWidget)
-
-        self.assertIsInstance(factory.createSearchWidget(vl, 0, dv), QgsSearchWidgetWrapper)
-
-        eww = factory.create(vl, 0, None, dv)
-        self.assertIsInstance(eww, SpectralProfileEditorWidgetWrapper)
-        self.assertIsInstance(eww.widget(), SpectralProfileEditorWidget)
-
-        eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
-
-        fields = vl.fields()
-        vl.startEditing()
-        value = eww.value()
-        f = vl.getFeature(1)
-        self.assertTrue(vl.updateFeature(f))
-
-        self.showGui([w, configWidget])
-        vl.commitChanges()
 
     @unittest.skipIf(TestCase.runsInCI(), 'Fuzz test (drag and drop)')
     def test_dropping_speclibs(self):

@@ -539,18 +539,19 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_CH.setItemCheckable(True)
         self.mP_CH.setItemChecked(True)
 
-        for pItem in [# self.mPLegend,
-                      self.mP_MaxProfiles,
-                      self.mP_SortBands, self.mP_BadBands,
-                      self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
+        for pItem in [  # self.mPLegend,
+            self.mP_MaxProfiles,
+            self.mP_SortBands, self.mP_BadBands,
+            self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH
+        ]:
             self.appendRow(pItem.propertyRow())
 
         self.mP_MaxProfiles.signals().dataChanged.connect(self.signals().requestPlotUpdate)
         self.mP_SortBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
         self.mP_BadBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
 
-        for pItem in [# self.mPLegend,
-                      self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
+        for pItem in [  # self.mPLegend,
+            self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
             pItem.signals().dataChanged.connect(self.applyGeneralSettings)
 
         self.mP_CH.signals().checkedChanged.connect(self.applyGeneralSettings)

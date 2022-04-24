@@ -1,18 +1,21 @@
+import json
 import typing
+from copy import copy
+from typing import List, Tuple
 
 import numpy as np
-from PyQt5.QtCore import QJsonDocument
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy
-
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant
+from qgis.PyQt.QtCore import QJsonDocument, QSortFilterProxyModel
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QGroupBox, QWidget, QLabel
-from qgis._gui import QgsCodeEditorJson
-
-from qgis.core import QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication, QgsFeature
+from qgis.PyQt.QtWidgets import QHBoxLayout, QVBoxLayout, QToolButton, QSpacerItem, QSizePolicy, QTableView, \
+    QStackedWidget, \
+    QFrame, QComboBox, QLineEdit
+from qgis.core import Qgis, QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication, QgsFeature
 from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsJsonEditWidget, \
-    QgsEditorWidgetFactory
+    QgsEditorWidgetFactory, QgsCodeEditorJson, QgsMessageBar
+
 from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import speclibUiPath, EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core import supports_field
@@ -32,39 +35,20 @@ class SpectralProfileTableModel(QAbstractTableModel):
     A TableModel to show and edit spectral values of a SpectralProfile
     """
 
-    sigXUnitChanged = pyqtSignal(str)
-    sigYUnitChanged = pyqtSignal(str)
-
     def __init__(self, *args, **kwds):
         super(SpectralProfileTableModel, self).__init__(*args, **kwds)
 
-        self.mColumnNames = {0: 'x',
-                             1: 'y'}
-        self.mColumnUnits = {0: None,
-                             1: None}
+        self.mColumnNames = {0: '#',
+                             1: 'x',
+                             2: 'y',
+                             3: 'bbl'}
+        self.mXUnit = None
+        self.mYUnit = None
 
-        self.mValuesX: typing.Dict[int, typing.Any] = {}
-        self.mValuesY: typing.Dict[int, typing.Any] = {}
-        self.mValuesBBL: typing.Dict[int, typing.Any] = {}
+        self.mValues: List[dict] = list()
 
-        self.mLastProfileDict: dict = {}
-
-        self.mRows: int = 0
-
-    def setBands(self, bands: int):
-        bands = int(bands)
-
-        assert bands >= 0
-
-        if bands > self.bands():
-            self.beginInsertRows(QModelIndex(), self.bands(), bands - 1)
-            self.mRows = bands
-            self.endInsertRows()
-
-        elif bands < self.bands():
-            self.beginRemoveRows(QModelIndex(), bands, self.bands() - 1)
-            self.mRows = bands
-            self.endRemoveRows()
+        self.mLastProfile: dict = dict()
+        self.mCurrentProfile: dict = dict()
 
     def bands(self) -> int:
         return self.rowCount()
@@ -77,68 +61,42 @@ class SpectralProfileTableModel(QAbstractTableModel):
         assert isinstance(profile, dict)
 
         self.beginResetModel()
-        self.mValuesX.clear()
-        self.mValuesY.clear()
-        self.mValuesBBL.clear()
-        self.mLastProfileDict = profile
-        self.mValuesX.update({i: v for i, v in enumerate(profile.get('x', []))})
-        self.mValuesY.update({i: v for i, v in enumerate(profile.get('y', []))})
-        self.mValuesBBL.update({i: v for i, v in enumerate(profile.get('bbl', []))})
+        self.mValues.clear()
+        self.mLastProfile = profile
+        xValues = profile.get('x', None)
+        yValues = profile.get('y', [])
+        bblValues = profile.get('bbl', None)
+        for i, y in enumerate(yValues):
+            x = xValues[i] if xValues else None
+            bbl = int(bblValues[i]) if bblValues else 1
 
-        self.setBands(len(self.mValuesY))
+            item = {0: i + 1,
+                    1: x,
+                    2: y,
+                    3: bbl}
+            self.mValues.append(item)
 
         self.endResetModel()
-        self.setXUnit(profile.get('xUnit', None))
-        self.setYUnit(profile.get('yUnit', None))
 
-    def setXUnit(self, unit: str):
-        if self.xUnit() != unit:
-            self.mColumnUnits[0] = unit
-            idx0 = self.index(0, 0)
-            idx1 = self.index(self.rowCount(QModelIndex()) - 1, 0)
-            self.dataChanged.emit(idx0, idx1)
-            # self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount(QModelIndex())-1)
-            self.sigXUnitChanged.emit(unit)
-
-    def setYUnit(self, unit: str):
-        if self.yUnit() != unit:
-            self.mColumnUnits[1] = unit
-            # self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount(QModelIndex())-1)
-            self.sigYUnitChanged.emit(unit)
-
-    def xUnit(self) -> str:
-        return self.mColumnUnits[0]
-
-    def yUnit(self) -> str:
-        return self.mColumnUnits[1]
-
-    def profile(self) -> dict:
-        """
-        Return the data as new SpectralProfile
-        :return:
-        :rtype:
-        """
-        nb = self.bands()
-
-        y = [self.mValuesY.get(b, None) for b in range(nb)]
-        if self.xUnit() == BAND_INDEX:
-            x = None
-        else:
-            x = [self.mValuesX.get(b, None) for b in range(nb)]
-
-        bbl = [self.mValuesBBL.get(b, None) for b in range(nb)]
-        bbl = np.asarray(bbl, dtype=bool)
-        if not np.any(np.equal(bbl, False)):
+    def profileDict(self) -> dict:
+        x = [v[1] for v in self.mValues]
+        y = [v[2] for v in self.mValues]
+        bbl = [v[3] for v in self.mValues]
+        if np.all(np.asarray(bbl, dtype=bool)):
             bbl = None
-
-        return prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=self.xUnit(), yUnit=self.yUnit())
+        profile = prepareProfileValueDict(
+            x=x,
+            y=y,
+            bbl=bbl
+        )
+        return profile
 
     def resetProfile(self):
-        self.setProfile(self.mLastProfileDict)
+        self.setProfile(self.mLastProfile)
 
     def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
 
-        return self.mRows
+        return len(self.mValues)
 
     def columnCount(self, parent=QModelIndex()) -> int:
         return len(self.mColumnNames)
@@ -146,36 +104,43 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def data(self, index, role=Qt.DisplayRole):
         if role is None or not index.isValid():
             return None
+        if index.row() >= len(self.mValues):
+            return False
 
         c = index.column()
         i = index.row()
 
+        item = self.mValues[i]
+
         if role in [Qt.DisplayRole, Qt.EditRole]:
-            value = None
             if c == 0:
-                if self.xUnit() != BAND_INDEX:
-                    value = self.mValuesX.get(i, None)
-                    if value:
-                        return str(value)
-                    else:
-                        return None
-                else:
-                    return i + 1
+                return i + 1
 
-            elif c == 1:
-                value = self.mValuesY.get(i, None)
-                if value:
-                    return str(value)
-                else:
-                    return None
+            if c in [1, 2]:
+                return str(item[c])
 
-        elif role == Qt.CheckStateRole:
-            if c == 0:
-                if bool(self.mValuesBBL.get(i, True)):
-                    return Qt.Checked
+            elif c == 3:
+                bbl = item[c]
+                if bbl is None:
+                    return True
                 else:
-                    return Qt.Unchecked
+                    return bool(bbl)
+
         return None
+
+    def stringToType(self, value: str):
+        """
+        Converts a string input into a matching int, float or datetime
+        """
+
+        t = str
+        for candidate in [float, int]:
+            try:
+                _ = candidate(value)
+                t = candidate
+            except ValueError:
+                break
+        return t(value)
 
     def setData(self, index, value, role=None):
         if role is None or not index.isValid():
@@ -184,26 +149,24 @@ class SpectralProfileTableModel(QAbstractTableModel):
         c = index.column()
         i = index.row()
 
+        item = self.mValues[i]
+        itemOld = copy(item)
         modified = False
-        if role == Qt.CheckStateRole:
-            if c == 0:
-                self.mValuesBBL[i] = value == Qt.Checked
-                modified = True
 
         if role == Qt.EditRole:
-            if c == 0:
-                try:
-                    self.mValuesX[i] = float(value)
-                    modified = True
-                except (TypeError, ValueError):
-                    pass
-            elif c == 1:
-                try:
-                    self.mValuesY[i] = float(value)
-                    modified = True
-                except (TypeError, ValueError):
-                    pass
+            if c in [1, 2]:
+                # x / y values
+                item[c] = self.stringToType(value)
 
+            elif c == 3:
+                # bbl values
+                bbl = bool(value)
+                if bbl:
+                    item[c] = 1
+                else:
+                    item[c] = 0
+
+        modified = item[c] != itemOld[c]
         if modified:
             self.dataChanged.emit(index, index, [role])
         return modified
@@ -212,12 +175,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         if index.isValid():
             c = index.column()
             flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-
-            if c == 0:
-                flags = flags | Qt.ItemIsUserCheckable
-                if self.xUnit() != BAND_INDEX:
-                    flags = flags | Qt.ItemIsEditable
-            elif c == 1:
+            if c in [1, 2, 3]:
                 flags = flags | Qt.ItemIsEditable
             return flags
         return None
@@ -226,23 +184,120 @@ class SpectralProfileTableModel(QAbstractTableModel):
 
         if orientation == Qt.Horizontal and role in [Qt.DisplayRole, Qt.ToolTipRole]:
             return self.mColumnNames.get(col, f'{col + 1}')
+        if orientation == Qt.Vertical:
+            if role == Qt.ToolTipRole:
+                return f'Band {col + 1}'
         return None
 
 
+class SpectralProfileJsonEditor(QgsCodeEditorJson):
+    profileChanged = pyqtSignal()
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.setFoldingVisible(True)
+        self.setLineNumbersVisible(True)
+
+        self.textChanged.connect(self.profileChanged)
+
+    def setProfile(self, d: dict):
+        jsonText = encodeProfileValueDict(d, ProfileEncoding.Json, jsonFormat=QJsonDocument.Indented)
+        self.setText(jsonText)
+
+    def profileDict(self) -> dict:
+        return json.loads(self.text())
+
+
+class SpectralProfileTableEditor(QFrame):
+    profileChanged = pyqtSignal()
+
+    def __init__(self, *args, **kwds):
+
+        super().__init__(*args, **kwds)
+
+        self.tableView = QTableView()
+        self.tableModel = SpectralProfileTableModel()
+        self.tableModel.dataChanged.connect(self.profileChanged)
+        self.proxyModel = QSortFilterProxyModel()
+        self.tableFrame = QFrame()
+
+        self.proxyModel.setSourceModel(self.tableModel)
+        self.tableView.setModel(self.proxyModel)
+        self.tableView.setSortingEnabled(True)
+
+        self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel()
+        self.cbXUnit = QComboBox()
+        self.cbXUnit.currentTextChanged.connect(self.profileChanged)
+        self.cbXUnit.setModel(self.mXUnitModel)
+
+        self.tbYUnit = QLineEdit()
+        self.tbYUnit.textChanged.connect(self.profileChanged)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(QLabel('X unit'))
+        hbox.addWidget(self.cbXUnit)
+        hbox.addWidget(QLabel('Y unit'))
+        hbox.addWidget(self.tbYUnit)
+
+        vbox = QVBoxLayout()
+        vbox.addLayout(hbox)
+        vbox.addWidget(self.tableView)
+        self.setLayout(vbox)
+
+    def setXUnit(self, unit: str):
+        if self.xUnit() != unit:
+            self.cbXUnit.setCurrentText(unit)
+
+    def setYUnit(self, unit: str):
+        if self.yUnit() != unit:
+            self.tbYUnit.setText(unit)
+
+    def xUnit(self) -> str:
+        return self.cbXUnit.currentData(Qt.UserRole)
+
+    def yUnit(self) -> str:
+        return self.tbYUnit.text()
+
+    def setProfile(self, d: dict):
+
+        self.tableModel.setProfile(d)
+
+        self.setXUnit(d.get('xUnit', None))
+        self.setYUnit(d.get('yUnit', None))
+
+    def profileDict(self) -> dict:
+        d = self.tableModel.profileDict()
+        xUnit = self.xUnit()
+        yUnit = self.yUnit()
+
+        if xUnit:
+            d['xUnit'] = xUnit
+
+        if yUnit:
+            d['yUnit'] = yUnit
+
+        return d
+
+
 class SpectralProfileEditorWidget(QGroupBox):
-    sigProfileChanged = pyqtSignal()
+    VIEW_TABLE = 1
+    VIEW_JSON_EDITOR = 2
+
+    profileChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
         super(SpectralProfileEditorWidget, self).__init__(*args, **kwds)
         self.setWindowIcon(QIcon(':/qps/ui/icons/profile.svg'))
         self.mDefault: dict = False
-        self.jsonEditor = QgsCodeEditorJson()
-        self.jsonEditor.textChanged.connect(self.onProfileChanged)
-        self.jsonEditor.setFoldingVisible(True)
-        self.jsonEditor.setLineNumbersVisible(True)
 
-        # self.jsonEditor.setFormatJsonMode(QgsJsonEditWidget.FormatJson.Indented)
-        # self.jsonEditor.setControlsVisible(True)
+        self.messageBar = QgsMessageBar()
+
+        self.jsonEditor = SpectralProfileJsonEditor()
+        self.jsonEditor.profileChanged.connect(self.onProfileChanged)
+
+        self.tableEditor = SpectralProfileTableEditor()
+        self.tableEditor.profileChanged.connect(self.onProfileChanged)
 
         self.controlBar = QHBoxLayout()
         self.btnReset = QToolButton()
@@ -250,25 +305,74 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.btnReset.setIcon(QIcon(':/images/themes/default/mActionUndo.svg'))
         self.btnReset.clicked.connect(self.resetProfile)
 
-        for w in [self.btnReset]:
-            self.controlBar.addWidget(w)
+        self.btnJson = QToolButton()
+        self.btnJson.setText('JSON')
+        self.btnJson.setToolTip('Edit profile values in JSON editor.')
+        self.btnJson.setCheckable(True)
+        self.btnJson.setIcon(QIcon(':/images/themes/default/mIconFieldJson.svg'))
+        self.btnJson.clicked.connect(lambda: self.setViewMode(self.VIEW_JSON_EDITOR))
+
+        self.btnTable = QToolButton()
+        self.btnTable.setCheckable(True)
+        self.btnTable.setText('Table')
+        self.btnTable.setToolTip('Edit profile values in table editor.')
+        self.btnTable.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
+        self.btnTable.clicked.connect(lambda: self.setViewMode(self.VIEW_TABLE))
+
+        self.controlBar.addWidget(self.btnJson)
+        self.controlBar.addWidget(self.btnTable)
+        self.controlBar.addWidget(self.messageBar)
         self.controlBar.addSpacerItem(QSpacerItem(0, 0, hPolicy=QSizePolicy.Expanding))
+        self.controlBar.addWidget(self.btnReset)
+
+        self.stackedWidget = QStackedWidget()
+        self.stackedWidget.addWidget(self.jsonEditor)
+        self.stackedWidget.addWidget(self.tableEditor)
 
         vbox = QVBoxLayout()
         vbox.addLayout(self.controlBar)
-        vbox.addWidget(self.jsonEditor)
+        vbox.addWidget(self.stackedWidget)
         self.setLayout(vbox)
 
-    def onProfileChanged(self):
-        d = self.profile()
-        self.jsonEditor.clearWarnings()
+    def setViewMode(self, mode: int):
 
+        if mode == self.VIEW_JSON_EDITOR:
+            self.stackedWidget.setCurrentWidget(self.jsonEditor)
+        elif mode == self.VIEW_TABLE:
+            self.stackedWidget.setCurrentWidget(self.tableEditor)
+
+        self.btnJson.setChecked(self.stackedWidget.currentWidget() == self.jsonEditor)
+        self.btnTable.setChecked(self.stackedWidget.currentWidget() == self.tableEditor)
+
+    def viewMode(self) -> int:
+        w = self.stackedWidget.currentWidget()
+        if w == self.jsonEditor:
+            return self.VIEW_JSON_EDITOR
+        if w == self.tableView:
+            return self.VIEW_TABLE
+        raise NotImplementedError()
+
+    def onProfileChanged(self):
+        self.messageBar.clearWidgets()
+        w = self.stackedWidget.currentWidget()
+
+        if self.sender() != w:
+            return
+
+        self.jsonEditor.clearWarnings()
         self.jsonEditor.initializeLexer()
         self.jsonEditor.runPostLexerConfigurationTasks()
 
-        if d != self.mDefault:
-            if isinstance(d, dict):
-                self.sigProfileChanged.emit()
+        success, error = self.validate()
+
+        if not success:
+            self.messageBar.pushMessage('Error', error.splitlines()[0], error, Qgis.Warning)
+        else:
+            d = self.profile()
+            for editor in [self.jsonEditor, self.tableEditor]:
+                if editor != w:
+                    editor.setProfile(d)
+            self.profileChanged.emit()
 
     def initConfig(self, conf: dict):
         """
@@ -286,31 +390,51 @@ class SpectralProfileEditorWidget(QGroupBox):
         """
         assert isinstance(profile, dict)
         self.mDefault = profile
-
-        jsonText = encodeProfileValueDict(profile, ProfileEncoding.Json, jsonFormat=QJsonDocument.Indented)
-
-        self.jsonEditor.setText(jsonText)
+        w = self.stackedWidget.currentWidget()
+        self.jsonEditor.setProfile(profile)
+        self.tableEditor.setProfile(profile)
 
     def resetProfile(self):
         if isinstance(self.mDefault, dict):
-            jsonText = encodeProfileValueDict(self.mDefault, ProfileEncoding.Json, jsonFormat=QJsonDocument.Indented)
+            self.setProfile(self.mDefault)
+
+    def validate(self) -> Tuple[bool, str]:
+
+        try:
+            d = self.profile()
+
+            # enhanced consistency checks
+            y = d.get('y', None)
+            assert isinstance(y, list), 'Missing y values'
+            assert len(y) > 0, 'Missing y values'
+            arr = np.asarray(y)
+            assert np.issubdtype(arr.dtype, np.number), 'all y values need to be numeric (float/int)'
+
+            x = d.get('x', None)
+            if isinstance(x, list):
+                assert len(x) == len(y), f'Requires {len(y)} x values instead of {len(x)}'
+                if not isinstance(x[0], str):
+                    arr = np.asarray(x).dtype
+                    assert np.issubdtype(arr, np.number), 'all x values need to be numeric (float/int)'
+
+        except Exception as ex:
+            return False, str(ex)
         else:
-            jsonText = ''
-        self.jsonEditor.setText(jsonText)
+            return True, ''
 
     def profile(self) -> dict:
         """
-        Returns modified SpectralProfile
-        :return: dict
+        Return the data as new SpectralProfile
+        :return:
+        :rtype:
         """
-
-        jsonText = self.jsonEditor.text()
-        d = decodeProfileValueDict(jsonText)
-        if len(d) > 0:
-            return d
+        w = self.stackedWidget.currentWidget()
+        if w == self.jsonEditor:
+            return w.profileDict()
+        elif w == self.tableEditor:
+            return w.profileDict()
         else:
-            return None
-
+            raise NotImplementedError()
 
 
 class SpectralProfileEditorWidget_OLD(QGroupBox):
@@ -414,7 +538,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
 
         if isinstance(editor, SpectralProfileEditorWidget):
 
-            editor.sigProfileChanged.connect(self.onValueChanged)
+            editor.profileChanged.connect(self.onValueChanged)
             editor.initConfig(conf)
 
         elif isinstance(editor, QLabel):
@@ -423,7 +547,6 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
 
     def onValueChanged(self, *args):
         self.valuesChanged.emit(self.value())
-        s = ""
 
     def valid(self, *args, **kwargs) -> bool:
         return isinstance(self.mWidget, (SpectralProfileEditorWidget, QLabel))

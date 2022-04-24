@@ -180,6 +180,7 @@ def encodeProfileValueDict(d: dict,
     else:
         return bytes(jsonDoc.toJson(jsonFormat)).decode('UTF-8')
 
+
 def decodeProfileValueDict(dump: typing.Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
     """
     Converts a text / json / pickle / bytes representation of a SpectralProfile into a dictionary.
@@ -1375,8 +1376,8 @@ class SpectralProfileBlock(object):
         :return:
         """
         result = isinstance(self.mPositionsY, np.ndarray) \
-            and isinstance(self.mPositionsX, np.ndarray) \
-            and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
+                 and isinstance(self.mPositionsX, np.ndarray) \
+                 and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
         return result
 
     def crs(self) -> QgsCoordinateReferenceSystem:

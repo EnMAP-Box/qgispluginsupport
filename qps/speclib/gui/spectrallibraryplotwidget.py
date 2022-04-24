@@ -4,8 +4,6 @@ import typing
 from typing import List
 
 import numpy as np
-from PyQt5.QtWidgets import QMessageBox, QAbstractItemView
-
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
@@ -13,6 +11,7 @@ from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon
 from qgis.PyQt.QtGui import QPen, QBrush, QPixmap
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
+from qgis.PyQt.QtWidgets import QMessageBox, QAbstractItemView
 from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QLabel, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
 from qgis.core import QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol, \
@@ -1553,9 +1552,9 @@ class SpectralLibraryPlotWidget(QWidget):
 
             result = QMessageBox.information(self,
                                              'Maximum number of profiles',
-                                             f'Reached maximum number of profiles to display ({n}).\n' +
-                                             'Increase this value to display more profiles at same time.\n' +
-                                             'Showing large numbers of profiles at same time can reduce ' +
+                                             f'Reached maximum number of profiles to display ({n}).\n'
+                                             'Increase this value to display more profiles at same time.\n'
+                                             'Showing large numbers of profiles at same time can reduce '
                                              'the visualization speed')
 
             self.SHOW_MAX_PROFILES_HINT = False

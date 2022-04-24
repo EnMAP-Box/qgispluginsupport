@@ -50,7 +50,6 @@ from typing import Union, List, Optional
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
-
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
     QDateTime, QDate, QVariant, QByteArray, QUrl, Qt
@@ -65,6 +64,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataPro
 from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
+
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 
 QGIS_RESOURCE_WARNINGS = set()
@@ -627,6 +627,20 @@ def qgisLayerTreeLayers() -> list:
                 if isinstance(ln.layer(), QgsMapLayer)]
     else:
         return []
+
+
+def stringToType(value: str):
+    """
+    Converts a string into a matching int, float or string
+    """
+    t = str
+    for candidate in [float, int]:
+        try:
+            _ = candidate(value)
+            t = candidate
+        except ValueError:
+            break
+    return t(value)
 
 
 def toType(t, arg, empty2None=True, empty_values=[None, NULL]):
