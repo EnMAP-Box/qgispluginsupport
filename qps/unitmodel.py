@@ -1,9 +1,9 @@
-import typing
-import numpy as np
-from qgis.PyQt.QtCore import QAbstractListModel, QModelIndex
+from typing import Dict
 
-from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtCore import NULL
+import numpy as np
+
+from qgis.PyQt.QtCore import Qt, NULL, QAbstractListModel, QModelIndex
+from qgis.PyQt.QtGui import QIcon
 from .utils import UnitLookup, METRIC_EXPONENTS, datetime64
 
 BAND_INDEX = 'Band Index'
@@ -15,18 +15,36 @@ class UnitModel(QAbstractListModel):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self.mUnits = []
-        self.mDescription = dict()
-        self.mToolTips = dict()
+        self.mUnits: Dict[str, tuple] = dict()
+
+    def setAllowEmptyUnit(self,
+                          allowEmpty: bool,
+                          text: str = '',
+                          tooltip: str = 'None',
+                          icon: QIcon = QIcon()):
+
+        self.beginResetModel()
+        if allowEmpty:
+            self.mUnits[None] = (None, text, tooltip, icon)
+        else:
+            if None in self.mUnits.keys():
+                self.mUnits.pop(None)
+
+        items = sorted(self.mUnits.values(), key=lambda v: v[0] is not None)
+        self.mUnits.clear()
+        for item in items:
+            self.mUnits[item[0]] = item
+
+        self.endResetModel()
 
     def __contains__(self, item):
         return item in self.mUnits
 
     def __iter__(self):
-        return iter(self.mUnits)
+        return iter(self.mUnits.keys())
 
     def __getitem__(self, slice):
-        return self.mUnits[slice]
+        return list(self.mUnits.keys())[slice]
 
     def rowCount(self, parent=None, *args, **kwargs) -> int:
         return len(self.mUnits)
@@ -37,24 +55,18 @@ class UnitModel(QAbstractListModel):
         :param value:
         :return:
         """
-        if not isinstance(value, str):
-            return None
 
-        if value in self.mUnits:
+        if value in self.mUnits.keys():
             return value
 
         baseUnit = UnitLookup.baseUnit(value)
-        if baseUnit in self.mUnits:
+        if baseUnit in self.mUnits.keys():
             return baseUnit
 
-        value = value.lower()
-        for u, v in self.mDescription.items():
-            if v.lower() == value:
-                return u
-
-        for u, v in self.mToolTips.items():
-            if v.lower() == value:
-                return u
+        for unit, description in self.mUnits.items():
+            for p in description:
+                if p == value or str(p).lower() == str(value).lower():
+                    return unit
 
         return None
 
@@ -64,22 +76,18 @@ class UnitModel(QAbstractListModel):
         :param unit: str
         """
         unit = self.findUnit(unit)
-        if isinstance(unit, str) and unit in self.mUnits:
-            row = self.mUnits.index(unit)
+        units = list(self.mUnits.keys())
+        if unit in units:
+            row = units.index(unit)
             self.beginRemoveRows(QModelIndex(), row, row)
-
-            if unit in self.mToolTips.keys():
-                self.mToolTips.pop(unit)
-            if unit in self.mDescription.keys():
-                self.mDescription.pop(unit)
-            self.mUnits.remove(unit)
+            self.mUnits.pop(unit)
             self.endRemoveRows()
 
     def addUnit(self,
                 unit: str,
                 description: str = None,
                 tooltip: str = None,
-                aliases: typing.List[str] = []):
+                icon: str = None):
         """
         Adds a unit to the unit model
         :param unit:
@@ -91,15 +99,14 @@ class UnitModel(QAbstractListModel):
         :return:
         :rtype:
         """
-        if unit not in self.mUnits:
+        if description is None:
+            description = unit
 
+        if unit not in self.mUnits.keys():
+            t = (unit, description, tooltip, icon)
             r = len(self.mUnits)
             self.beginInsertRows(QModelIndex(), r, r)
-            self.mUnits.append(unit)
-            if isinstance(description, str):
-                self.mDescription[unit] = description
-            if isinstance(tooltip, str):
-                self.mToolTips[unit] = tooltip
+            self.mUnits[unit] = t
             self.endInsertRows()
 
     def unitIndex(self, unit: str) -> QModelIndex:
@@ -130,12 +137,14 @@ class UnitModel(QAbstractListModel):
         if not index.isValid():
             return None
 
-        unit = self.mUnits[index.row()]
+        unit, description, tooltip, icon = list(self.mUnits.values())[index.row()]
 
         if role == Qt.DisplayRole:
-            return self.mDescription.get(unit, unit)
+            return description
         if role == Qt.ToolTipRole:
-            return self.mToolTips.get(unit, unit)
+            return tooltip
+        if role == Qt.DecorationRole:
+            return icon
         if role == Qt.UserRole:
             return unit
 

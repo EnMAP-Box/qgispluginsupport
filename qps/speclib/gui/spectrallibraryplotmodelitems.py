@@ -550,8 +550,8 @@ class GeneralSettingsGroup(PropertyItemGroup):
         self.mP_SortBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
         self.mP_BadBands.signals().dataChanged.connect(self.signals().requestPlotUpdate)
 
-        for pItem in [  # self.mPLegend,
-            self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
+        # self.mPLegend,
+        for pItem in [self.mP_BG, self.mP_FG, self.mP_SC, self.mP_CH]:
             pItem.signals().dataChanged.connect(self.applyGeneralSettings)
 
         self.mP_CH.signals().checkedChanged.connect(self.applyGeneralSettings)

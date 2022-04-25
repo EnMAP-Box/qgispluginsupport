@@ -108,6 +108,36 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
     return d
 
 
+def validateProfileValueDict(d: dict) -> Tuple[bool, str, dict]:
+    """
+    Validates a profile dictionary
+    :param d: dictionary that describes a spectral profile
+    :return: tuple (bool, str, dict),
+        with (bool = is_valid,
+              str = error message in case of invalid dictionary
+              dict = profile dictionary in case of valid dictionary)
+    """
+    try:
+        # enhanced consistency checks
+        y = d.get('y', None)
+        assert isinstance(y, list), 'Missing y values'
+        assert len(y) > 0, 'Missing y values'
+        arr = np.asarray(y)
+        assert np.issubdtype(arr.dtype, np.number), 'all y values need to be numeric (float/int)'
+
+        x = d.get('x', None)
+        if isinstance(x, list):
+            assert len(x) == len(y), f'Requires {len(y)} x values instead of {len(x)}'
+            if not isinstance(x[0], str):
+                arr = np.asarray(x).dtype
+                assert np.issubdtype(arr, np.number), 'all x values need to be numeric (float/int)'
+
+    except Exception as ex:
+        return False, str(ex), dict()
+    else:
+        return True, '', d
+
+
 class ProfileEncoding(enum.Enum):
     Text = 0
     Json = 0
