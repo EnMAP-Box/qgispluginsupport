@@ -364,6 +364,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.tableEditor.profileChanged.connect(self.editorProfileChanged)
 
         self.controlBar = QHBoxLayout()
+        self.controlBar.setSpacing(1)
         self.btnReset = QToolButton()
         self.btnReset.setText('Reset')
         self.btnReset.setToolTip('Resets the profile')
@@ -406,6 +407,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.stackedWidget.addWidget(self.tableEditor)
 
         vbox = QVBoxLayout()
+        vbox.setSpacing(1)
         vbox.addLayout(self.controlBar)
         vbox.addWidget(self.stackedWidget)
         self.setLayout(vbox)
