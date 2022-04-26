@@ -31,7 +31,7 @@ class TestSpeclibWidgets(TestCase):
 
         model = SpectralProfileTableModel()
         for p in self.valid_profile_dicts():
-            model.setProfile(p)
+            model.setProfileDict(p)
             d = model.profileDict()
             self.assertEqual(p, d)
 
@@ -85,7 +85,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
         self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
-        m.setProfile(d)
+        m.setProfileDict(d)
         self.assertTrue(m.rowCount() == len(d.get('x', [])))
         self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
         self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
@@ -103,7 +103,7 @@ class TestSpeclibWidgets(TestCase):
         factory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
         self.assertIsInstance(factory, SpectralProfileEditorWidgetFactory)
 
-        speclib = TestObjects.createSpectralLibrary(n_bands=5)
+        speclib = TestObjects.createSpectralLibrary(n=5, n_bands=5, n_empty=2)
 
         am = speclib.actions()
         self.assertIsInstance(am, QgsActionManager)
@@ -112,15 +112,10 @@ class TestSpeclibWidgets(TestCase):
         w = QWidget()
         w.setLayout(QVBoxLayout())
 
-        print('STOP 1', flush=True)
         dv = QgsDualView()
-        print('STOP 2', flush=True)
         dv.init(speclib, c)
-        print('STOP 3', flush=True)
         dv.setView(QgsDualView.AttributeEditor)
-        print('STOP 4', flush=True)
         dv.setAttributeTableConfig(speclib.attributeTableConfig())
-        print('STOP 5', flush=True)
         cb = QCheckBox()
         cb.setText('Show Editor')
 
@@ -137,7 +132,6 @@ class TestSpeclibWidgets(TestCase):
         w.resize(QSize(300, 250))
         print(speclib.fields().names())
         look = speclib.fields().lookupField
-        print('STOP 4', flush=True)
 
         parent = QWidget()
         configWidget = factory.configWidget(speclib, look(FIELD_VALUES), parent)
@@ -150,7 +144,7 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(eww, SpectralProfileEditorWidgetWrapper)
         self.assertIsInstance(eww.widget(), SpectralProfileEditorWidget)
 
-        eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
+        eww.valueChanged.connect(lambda v: print(f'value changed: {v}'))
 
         fields = speclib.fields()
         speclib.startEditing()

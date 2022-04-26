@@ -21,8 +21,8 @@ class ResourceTests(unittest.TestCase):
 
         from qps.utils import file_search
 
-        rxTest1 = re.compile(r'^[ ]*from qps(\..*)? import.*')
-        rxTest2 = re.compile(r'^[ ]*import qps(\..*)?')
+        rxTest1 = re.compile(r'^ *from qps(\..*)? import.*')
+        rxTest2 = re.compile(r'^ *import qps(\..*)?')
 
         self.assertTrue(rxTest1.search('from qps import xyz'))
         self.assertTrue(rxTest1.search('from qps.xyz import xyz'))

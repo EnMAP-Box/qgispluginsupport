@@ -64,11 +64,15 @@ class UnitModel(QAbstractListModel):
             return baseUnit
 
         for unit, description in self.mUnits.items():
-            for p in description:
-                if p == value or str(p).lower() == str(value).lower():
-                    return unit
-
+            if self.unitMatch(value, description):
+                return unit
         return None
+
+    def unitMatch(self, unit: str, description: tuple) -> bool:
+        for p in description:
+            if p == unit or str(p).lower() == str(unit).lower():
+                return True
+        return False
 
     def removeUnit(self, unit: str):
         """
@@ -117,9 +121,10 @@ class UnitModel(QAbstractListModel):
         :return:
         :rtype:
         """
-        unit = self.findUnit(unit)
-        row = self.mUnits.index(unit)
-        return self.createIndex(row, 0, unit)
+        for i, description in enumerate(self.mUnits.values()):
+            if self.unitMatch(unit, description):
+                return self.index(i, 0)
+        return QModelIndex()
 
     def unitData(self, unit: str, role=Qt.DisplayRole):
         """

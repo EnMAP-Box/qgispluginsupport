@@ -5,6 +5,7 @@ from copy import copy
 from typing import List, Tuple
 
 import numpy as np
+
 from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant, QJsonDocument, \
     QSortFilterProxyModel, NULL
 from qgis.PyQt.QtGui import QIcon
@@ -13,13 +14,14 @@ from qgis.PyQt.QtWidgets import QHeaderView, QGroupBox, QWidget, QLabel, QHBoxLa
     QStackedWidget, \
     QFrame, QComboBox, QLineEdit
 from qgis.core import Qgis, QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication, QgsFeature
-from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsJsonEditWidget, \
-    QgsEditorWidgetFactory, QgsCodeEditorJson, QgsMessageBar
+from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsEditorWidgetFactory, QgsCodeEditorJson, \
+    QgsMessageBar
 from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core import supports_field
 from ..core.spectralprofile import encodeProfileValueDict, decodeProfileValueDict, \
     prepareProfileValueDict, ProfileEncoding, validateProfileValueDict
+from ...utils import SignalBlocker
 
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'
 
@@ -62,7 +64,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
     def bands(self) -> int:
         return self.rowCount()
 
-    def setProfile(self, profile: dict):
+    def setProfileDict(self, profile: dict):
         """
         :param values:
         :return:
@@ -100,12 +102,13 @@ class SpectralProfileTableModel(QAbstractTableModel):
         y = [v[2] for v in self.mValues]
         bbl = [v[3] for v in self.mValues]
 
-        if np.asarray(x).dtype == type(None):
+        if np.asarray(x).dtype.subdtype is None:
             x = None
 
         bbl = np.asarray(bbl, dtype=bool)
         if np.all(bbl):
             bbl = None
+
         profile = prepareProfileValueDict(
             x=x,
             y=y,
@@ -114,7 +117,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         return profile
 
     def resetProfile(self):
-        self.setProfile(self.mLastProfile)
+        self.setProfileDict(self.mLastProfile)
 
     def rowCount(self, parent: QModelIndex = None, *args, **kwargs) -> int:
 
@@ -286,15 +289,13 @@ class SpectralProfileTableEditor(QFrame):
 
     def setXUnit(self, unit: str):
         if self.xUnit() != unit:
-            found_unit = False
-            for i in range(self.cbXUnit.count()):
-                if unit == self.cbXUnit.itemData(i, Qt.UserRole):
-                    self.cbXUnit.setCurrentIndex(i)
-                    found_unit = True
-                    break
-            if not found_unit:
+            idx = self.mXUnitModel.unitIndex(unit)
+            if not idx.isValid():
+                # missing unit. add to unit model
                 self.mXUnitModel.addUnit(unit, description=str(unit))
-                self.cbXUnit.setCurrentIndex(len(self.cbXUnit.count()))
+                idx = self.mXUnitModel.unitIndex(unit)
+            if idx.isValid():
+                self.cbXUnit.setCurrentIndex(idx.row())
 
     def setYUnit(self, unit: str):
         if self.yUnit() != unit:
@@ -306,9 +307,9 @@ class SpectralProfileTableEditor(QFrame):
     def yUnit(self) -> str:
         return self.tbYUnit.text()
 
-    def setProfile(self, d: dict):
-
-        self.tableModel.setProfile(d)
+    def setProfileDict(self, d: dict):
+        assert isinstance(d, dict)
+        self.tableModel.setProfileDict(d)
 
         self.setXUnit(d.get('xUnit', None))
         self.setYUnit(d.get('yUnit', None))
@@ -448,7 +449,6 @@ class SpectralProfileEditorWidget(QGroupBox):
             for editor in [self.jsonEditor, self.tableEditor]:
                 if editor != w:
                     editor.setProfileDict(d)
-            print('emit')
             self.profileChanged.emit()
 
     def initConfig(self, conf: dict):
@@ -470,8 +470,9 @@ class SpectralProfileEditorWidget(QGroupBox):
         assert isinstance(profile, dict)
         self.mDefault = profile
         w = self.stackedWidget.currentWidget()
-        self.jsonEditor.setProfileDict(profile)
-        self.tableEditor.setProfile(profile)
+        with SignalBlocker(self.jsonEditor, self.tableEditor) as blocker:
+            self.jsonEditor.setProfileDict(profile)
+            self.tableEditor.setProfileDict(profile)
 
     def resetProfile(self):
         if isinstance(self.mDefault, dict):
@@ -481,13 +482,17 @@ class SpectralProfileEditorWidget(QGroupBox):
         """
         Validates the editor widget input.
         :return: tuple (bool, str, dict) with
-           (bool = is valid,
+           bool = is valid,
            str = error message if invalid or '',
-           dict = profile dictionary if valid, or {})
-
+           dict = profile dictionary if valid or empty ({})
         """
         try:
-            return validateProfileValueDict(self.profileDict())
+            d = self.profileDict()
+            if d == dict():
+                # allow to return empty profiles -> will be set to NULL in vector layer
+                return True, '', d
+            else:
+                return validateProfileValueDict(self.profileDict())
         except Exception as ex:
             return False, str(ex), dict()
 
@@ -564,11 +569,12 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             p = w.profile()
-            if isinstance(p, dict) and len(p.get('x', [])) > 0:
-                print(p.get('x', None))
+            if len(p) == 0:
+                value = NULL
+            else:
                 value = encodeProfileValueDict(p, self.field())
 
-        return QVariant(value)
+        return value
 
     def setFeature(self, feature: QgsFeature) -> None:
         super(SpectralProfileEditorWidgetWrapper, self).setFeature(feature)
@@ -583,15 +589,12 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             w.setProfile(decodeProfileValueDict(value))
-        if isinstance(w, QgsJsonEditWidget):
-            pass
 
 
 class SpectralProfileEditorConfigWidget(QgsEditorConfigWidget):
 
     def __init__(self, vl: QgsVectorLayer, fieldIdx: int, parent: QWidget):
         super(SpectralProfileEditorConfigWidget, self).__init__(vl, fieldIdx, parent)
-        # loadUi(speclibUiPath('spectralprofileeditorconfigwidget.ui'), self)
         self.label = QLabel('A field to store spectral profiles')
         hbox = QHBoxLayout()
         hbox.addWidget(self.label)
