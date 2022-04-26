@@ -726,12 +726,13 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
     def setEditable(self, isEditable: bool):
 
-        self.btnBandCalculator.setVisible(isEditable)
-        self.btnCalculator.setVisible(isEditable)
-
-        self.btnAddItem.setVisible(isEditable)
-        self.btnRemoveItem.setVisible(isEditable)
-        self.btnReset.setVisible(isEditable)
+        for btn in [self.btnCalculator,
+                    self.btnBandCalculator,
+                    self.btnAddItem,
+                    self.btnRemoveItem,
+                    self.btnReset]:
+            btn: QWidget
+            btn.setVisible(isEditable)
 
         if isEditable:
             self.metadataModel.startEditing()
