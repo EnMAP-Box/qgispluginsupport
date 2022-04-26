@@ -657,7 +657,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.btnBandMatchCase.setDefaultAction(self.optionBandMatchCase)
         self.btnRegex.setDefaultAction(self.optionRegex)
         self.btnBandRegex.setDefaultAction(self.optionBandRegex)
-        self._cs = None
+        self.mClassificationScheme: ClassificationScheme = None
 
         self.mAttributeEditorContext = QgsAttributeEditorContext()
         self.mAttributeEditorContext.setMainMessageBar(self.messageBar())
@@ -833,6 +833,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         if not (isinstance(layer, QgsMapLayer) and layer.isValid()):
             self.is_gdal = self.is_ogr = self.supportsGDALClassification = False
+            self.updateGroupVisibilities()
         else:
             self.supportsGDALClassification = False
             self.is_gdal = isGDALRasterLayer(layer)
@@ -886,18 +887,26 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         QTimer.singleShot(500, self.autosizeAllColumns)
 
         if self.supportsGDALClassification:
-            self._cs = ClassificationScheme.fromMapLayer(lyr)
+            self.mClassificationScheme = ClassificationScheme.fromMapLayer(lyr)
         else:
-            self._cs = None
+            self.mClassificationScheme = None
 
-        if isinstance(self._cs, ClassificationScheme) and len(self._cs) > 0:
+        self.updateGroupVisibilities()
+
+    def updateGroupVisibilities(self):
+
+        if self.supportsGDALClassification \
+                and isinstance(self.mClassificationScheme, ClassificationScheme) \
+                and len(self.mClassificationScheme) > 0:
             self.gbClassificationScheme.setVisible(True)
-            self.classificationSchemeWidget.setClassificationScheme(self._cs)
+            self.classificationSchemeWidget.setClassificationScheme(self.mClassificationScheme)
         else:
             self.classificationSchemeWidget.classificationScheme().clear()
             self.gbClassificationScheme.setVisible(False)
 
         self.gbBandNames.setVisible(self.is_gdal)
+        self.gbGDALMetadata.setVisible(self.is_gdal or self.is_ogr)
+
 
     def autosizeAllColumns(self):
         self.bandDualView.autosizeAllColumns()
@@ -914,6 +923,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             syntax = QRegExp.RegExp
         else:
             syntax = QRegExp.Wildcard
+
         rx = QRegExp(text, cs=matchCase, syntax=syntax)
         metadataModel = dualView.masterModel().layer()
         if rx.isValid():
