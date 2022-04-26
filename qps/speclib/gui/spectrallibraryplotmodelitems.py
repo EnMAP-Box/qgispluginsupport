@@ -1554,10 +1554,12 @@ class RasterRendererGroup(PropertyItemGroup):
 
         self.mBarA.setName(f'{layerName} alpha band {bandA}')
 
-        self.mBarR.setVisible(is_checked and self.setBandPosition(bandR, self.mBarR, self.mItemBandR))
-        self.mBarG.setVisible(is_checked and self.setBandPosition(bandG, self.mBarG, self.mItemBandG))
-        self.mBarB.setVisible(is_checked and self.setBandPosition(bandB, self.mBarB, self.mItemBandB))
-        self.mBarA.setVisible(is_checked and self.setBandPosition(bandA, self.mBarA, self.mItemBandA))
+        # note the order!
+        # in any case we want to evaluate setBandPosition first, although items may be hidden
+        self.mBarR.setVisible(self.setBandPosition(bandR, self.mBarR, self.mItemBandR) and is_checked)
+        self.mBarG.setVisible(self.setBandPosition(bandG, self.mBarG, self.mItemBandG) and is_checked)
+        self.mBarB.setVisible(self.setBandPosition(bandB, self.mBarB, self.mItemBandB) and is_checked)
+        self.mBarA.setVisible(self.setBandPosition(bandA, self.mBarA, self.mItemBandA) and is_checked)
 
         self.appendRow(self.mItemRenderer.propertyRow())
         if bandR:
