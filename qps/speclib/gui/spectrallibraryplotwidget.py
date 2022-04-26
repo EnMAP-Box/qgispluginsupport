@@ -773,6 +773,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if isinstance(y[0], (datetime.datetime, datetime.date, datetime.time, np.datetime64)):
                 y = convertDateUnit(datetime64(y), 'DecimalYear')
 
+            x = np.asarray(x)
+            y = np.asarray(y)
+            if not (np.issubdtype(x.dtype, np.number) and np.issubdtype(y.dtype, np.number)):
+                return None
+
             profileData['x'] = x
             profileData['y'] = y
             profileData['xUnit'] = xUnit

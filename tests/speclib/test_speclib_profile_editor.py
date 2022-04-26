@@ -1,5 +1,3 @@
-from typing import List
-
 from qgis.PyQt.QtCore import QSize, Qt, NULL, QVariant
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox
 from qgis.core import QgsActionManager, QgsFeature
@@ -12,28 +10,22 @@ from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFac
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorWidget, registerSpectralProfileEditorWidget, \
     SpectralProfileTableModel, SpectralProfileJsonEditor, SpectralProfileTableEditor
 from qps.testing import TestCase, TestObjects
-from qps.unitmodel import BAND_NUMBER
+from test_speclib_core import SpeclibCoreTests
 
 
 class TestSpeclibWidgets(TestCase):
 
-    def valid_profile_dicts(self) -> List[dict]:
-        examples = [
-            dict(),
-            dict(y=[1, 2, 3]),
-            dict(y=[1, 2, 3], x=[2, 3, 4]),
-            dict(y=[1, 2, 3], x=[2, 3, 4], xUnit=BAND_NUMBER),
-            dict(y=[1, 2, 3], bbl=[1, 1, 0])
-        ]
-        return examples
+    def valid_profile_dicts(self):
+        return SpeclibCoreTests.valid_profile_dicts()
 
     def test_SpectralProfileTableModel(self):
 
         model = SpectralProfileTableModel()
         for p in self.valid_profile_dicts():
             model.setProfileDict(p)
-            d = model.profileDict()
-            self.assertEqual(p, d)
+            d1 = {k: v for k, v in p.items() if k in ['x', 'y', 'bbl']}
+            d2 = model.profileDict()
+            self.assertEqual(d1, d2)
 
     def test_SpectralProfileEditors(self):
 
@@ -82,15 +74,15 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(m, SpectralProfileTableModel)
         self.assertTrue(m.rowCount() == 0)
         # self.assertTrue(m.columnCount() == 2)
-        self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
+        hdr = ['#', 'x', 'y', 'bbl']
+        for i, n in enumerate(hdr):
+            self.assertEqual(n, m.headerData(i, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
         m.setProfileDict(d)
         self.assertTrue(m.rowCount() == len(d.get('x', [])))
-        self.assertEqual('x', m.headerData(0, orientation=Qt.Horizontal, role=Qt.DisplayRole))
-        self.assertEqual('y', m.headerData(1, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
-        # m.setColumnValueUnit(0, '')
+        for i, n in enumerate(hdr):
+            self.assertEqual(n, m.headerData(i, orientation=Qt.Horizontal, role=Qt.DisplayRole))
 
     def test_SpectralProfileEditorWidgetFactory(self):
 

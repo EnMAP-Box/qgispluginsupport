@@ -2,7 +2,7 @@ import json
 import re
 import typing
 from copy import copy
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 
@@ -51,6 +51,11 @@ class SpectralProfileTableModel(QAbstractTableModel):
         self.mLastProfile: dict = dict()
         self.mCurrentProfile: dict = dict()
 
+        self.mBooleanBBL: bool = True
+
+    def setBooleanBBL(self, b: bool):
+        assert isinstance(b, bool)
+        self.mBooleanBBL = b
 
     def clear(self):
         m = copy(self.mValues)
@@ -78,10 +83,12 @@ class SpectralProfileTableModel(QAbstractTableModel):
         xValues = profile.get('x', None)
         yValues = profile.get('y', [])
         bblValues = profile.get('bbl', None)
+        self.mBooleanBBL = True
         for i, y in enumerate(yValues):
             x = xValues[i] if xValues else None
             bbl = int(bblValues[i]) if bblValues else 1
-
+            if bbl not in [0, 1]:
+                self.mBooleanBBL = False
             item = {0: i + 1,
                     1: x,
                     2: y,
@@ -103,10 +110,14 @@ class SpectralProfileTableModel(QAbstractTableModel):
 
         if x.dtype.name == 'object':
             x = None
-
-        bbl = np.asarray(bbl, dtype=bool)
-        if np.all(bbl):
-            bbl = None
+        if self.mBooleanBBL:
+            bbl = np.asarray(bbl, dtype=bool)
+            if np.all(bbl is True):
+                bbl = None
+        else:
+            bbl = np.asarray(bbl, dtype=int)
+            if np.all(bbl == 1):
+                bbl = None
 
         profile = prepareProfileValueDict(
             x=x,
@@ -145,10 +156,10 @@ class SpectralProfileTableModel(QAbstractTableModel):
 
             elif c == 3:
                 bbl = item[c]
-                if bbl is None:
-                    return True
+                if self.mBooleanBBL:
+                    return True if bbl is None else bool(bbl)
                 else:
-                    return bool(bbl)
+                    return 1 if bbl is None else int(bbl)
 
         return None
 
@@ -183,12 +194,12 @@ class SpectralProfileTableModel(QAbstractTableModel):
                 item[c] = self.stringToType(value)
 
             elif c == 3:
-                # bbl values
-                bbl = bool(value)
-                if bbl:
-                    item[c] = 1
+                # bbl values, always stored as number
+                if self.mBooleanBBL:
+                    bbl = int(bool(value))
                 else:
-                    item[c] = 0
+                    bbl = int(value)
+                item[c] = bbl
 
         modified = item[c] != itemOld[c]
         if modified:
@@ -488,12 +499,7 @@ class SpectralProfileEditorWidget(QGroupBox):
            dict = profile dictionary if valid or empty ({})
         """
         try:
-            d = self.profileDict()
-            if d == dict():
-                # allow to return empty profiles -> will be set to NULL in vector layer
-                return True, '', d
-            else:
-                return validateProfileValueDict(self.profileDict())
+            return validateProfileValueDict(self.profileDict(), allowEmpty=True)
         except Exception as ex:
             return False, str(ex), dict()
 
@@ -502,16 +508,17 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.jsonEditor.clear()
         self.tableEditor.clear()
 
-    def profile(self) -> dict:
+    def profile(self) -> Optional[dict]:
         """
-        Returns the spectral profile dictionary collected by profileDict. In case of inconsistencies
+        Returns a value spectral profile dictionary collected by profileDict or None, if internal state does not
+        return a valid profile dictionary
         the returned value is None (see `validate`).
         """
         success, err, d = self.validate()
-        if success:
-            return d
-        else:
+        if d == dict() or not success:
             return None
+        else:
+            return d
 
     def profileDict(self) -> dict:
         """
@@ -570,7 +577,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
             p = w.profile()
-            if len(p) == 0:
+            if p is None:
                 value = NULL
             else:
                 value = encodeProfileValueDict(p, self.field())

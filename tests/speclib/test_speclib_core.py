@@ -21,39 +21,41 @@ import datetime
 import json
 import pickle
 import unittest
+from typing import List
 
 import numpy as np
 import xmlrunner
 from osgeo import ogr
-from qgis.PyQt.QtCore import QJsonDocument
+
+from qgis.PyQt.QtCore import QJsonDocument, NULL
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
 from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
     QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsApplication, QgsTaskManager, QgsFields
 from qgis.gui import QgsGui
-
-from qps import initResources
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field, \
     create_profile_field, is_profile_field
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
-    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask, prepareProfileValueDict, ProfileEncoding
+    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask, prepareProfileValueDict, ProfileEncoding, \
+    validateProfileValueDict
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.speclib.io.csvdata import CSVSpectralLibraryIO
 from qps.testing import TestObjects, TestCase
+from qps.unitmodel import BAND_NUMBER
 from qps.utils import toType, findTypeFromString, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
     createQgsField, qgsFields2str, str2QgsFields
 
 
-class TestCore(TestCase):
+class SpeclibCoreTests(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
-        super(TestCore, cls).setUpClass(*args, **kwds)
-        initResources()
-        from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
-        initSpectralLibraryIOs()
+        super(SpeclibCoreTests, cls).setUpClass(*args, **kwds)
+        # initResources()
+        # from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
+        # initSpectralLibraryIOs()
 
     def setUp(self):
         super().setUp()
@@ -103,6 +105,56 @@ class TestCore(TestCase):
             self.assertEqual(f1.type(), f2.type())
             self.assertEqual(f1.name(), f2.name())
             self.assertEqual(f1.typeName(), f2.typeName())
+
+    @staticmethod
+    def valid_profile_dicts() -> List[dict]:
+        examples = [
+            dict(y=[1, 2, 3], bbl=[1, 2, 3]),
+            dict(y=[1, 2, 3]),
+            dict(y=[1, 2, 3], x=[2, 3, 4]),
+            dict(y=[1, 2, 3], x=['2005-02-25', '2005-03-25', '2005-04-25']),
+            dict(y=[1, 2, 3], x=[2, 3, 4], xUnit=BAND_NUMBER),
+            dict(y=[1, 2, 3], x=[2, 3, 4], xUnit='foobar'),
+            dict(y=[1, 2, 3], bbl=[1, 1, 0]),
+
+        ]
+        return examples
+
+    @staticmethod
+    def invalid_profile_dicts() -> List[dict]:
+        examples = [
+            None,
+            NULL,
+            QVariant(None),
+            dict(),
+            dict(foobar=[1, 2, 3]),
+            dict(x=[1, 2, 3]),
+            dict(y=[1, 2, 3], x=['2005-02-25', '2005-03-25', '2005-34-25']),
+            dict(y='dsd'),
+            dict(y=[1, 2, 3], x=[2, 3]),
+            dict(y=[1, 2, 3], xUnit=BAND_NUMBER),
+            dict(y=[1, 2, 3], bbl=[1, 0])
+        ]
+        return examples
+
+    def test_validate_profile_dict(self):
+
+        for p in self.valid_profile_dicts():
+            success, msg, d = validateProfileValueDict(p)
+            self.assertTrue(success)
+            self.assertEqual(msg, '')
+            self.assertTrue(len(d) > 0)
+
+        for p in [None, dict(), NULL, QVariant(None)]:
+            self.assertFalse(validateProfileValueDict(p)[0])
+            self.assertTrue(validateProfileValueDict(p, allowEmpty=True)[0])
+
+        for p in self.invalid_profile_dicts():
+            success, msg, d = validateProfileValueDict(p)
+            self.assertFalse(success)
+            self.assertIsInstance(msg, str)
+            self.assertTrue(len(msg) > 0)
+            self.assertEqual(d, dict())
 
     def test_SpectralProfile_Math(self):
         sp = SpectralProfile()
@@ -272,6 +324,11 @@ class TestCore(TestCase):
         for e in ['dIcT', 'mAp', ProfileEncoding.Dict, ProfileEncoding.Map]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, dict)
+
+        for d in self.valid_profile_dicts():
+            dump = encodeProfileValueDict(d, ProfileEncoding.Text)
+            decode = decodeProfileValueDict(dump)
+            self.assertEqual(d, decode)
 
     def test_profile_fields(self):
 
@@ -647,6 +704,8 @@ class TestCore(TestCase):
     def test_SpectralLibraryUtils(self):
 
         from qpstestdata import speclib
+        from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
+        initSpectralLibraryIOs()
 
         vl = SpectralLibraryUtils.readFromSource(speclib)
         self.assertIsInstance(vl, QgsVectorLayer)
@@ -662,7 +721,7 @@ class TestCore(TestCase):
         # lyr = TestObjects.createRasterProcessingModel()
         n_bands = [[256, 2500],
                    [123, 42]]
-        n_features = 500
+        n_features = 10
 
         SLIB = TestObjects.createSpectralLibrary(n=n_features, n_bands=n_bands)
 

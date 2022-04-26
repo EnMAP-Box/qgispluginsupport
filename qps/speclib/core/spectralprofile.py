@@ -108,32 +108,54 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
     return d
 
 
-def validateProfileValueDict(d: dict) -> Tuple[bool, str, dict]:
+def validateProfileValueDict(d: dict, allowEmpty: bool = False) -> Tuple[bool, str, dict]:
     """
     Validates a profile dictionary
+    :param allowEmpty:
+    :type allowEmpty:
     :param d: dictionary that describes a spectral profile
     :return: tuple (bool, str, dict),
         with (bool = is_valid,
               str = error message in case of invalid dictionary
               dict = profile dictionary in case of valid dictionary)
     """
+    if allowEmpty and d in [dict(), None]:
+        return True, '', d
     try:
+        assert isinstance(d, dict), 'Input is not a profile dictionary'
+
         # enhanced consistency checks
         y = d.get('y', None)
-        assert isinstance(y, list), 'Missing y values'
+        assert isinstance(y, (list, np.ndarray)), f'Unsupported type to store y values: {y}'
         assert len(y) > 0, 'Missing y values'
         arr = np.asarray(y)
-        assert np.issubdtype(arr.dtype, np.number), 'all y values need to be numeric (float/int)'
+        assert np.issubdtype(arr.dtype, np.number), f'data type of y values in not numeric: {arr.dtype.name}'
 
         x = d.get('x', None)
-        if isinstance(x, list):
-            assert len(x) == len(y), f'Requires {len(y)} x values instead of {len(x)}'
+        if x is not None:
+            assert isinstance(x, (list, np.ndarray)), f'Unsupported type to store x values: {x}'
+            assert len(x) == len(y), f'Unequal number of y ({len(y)}) and x ({len(x)}) values.'
             arr = np.asarray(x)
-            if not isinstance(x[0], str):
-                assert np.issubdtype(arr.dtype, np.number), 'all x values need to be numeric (float/int)'
+            if np.issubdtype(arr.dtype, str):
+                # allow date-time strings
+                arr = np.asarray(arr, dtype=np.datetime64)
             else:
-                # todo: evaluate date/time strings
-                pass
+                assert np.issubdtype(arr.dtype, np.number), f'None-numeric data type of y values: {arr.dtype.name}'
+
+        xUnit = d.get('xUnit', None)
+        if xUnit:
+            assert x is not None, 'xUnit defined but missing x values'
+            assert isinstance(xUnit, str), f'Unsupported type to store xUnit: {xUnit} ({type(xUnit)})'
+        yUnit = d.get('yUnit', None)
+        if yUnit:
+            assert isinstance(yUnit, str), f'Unsupported type to store yUnit: {yUnit} ({type(yUnit)})'
+
+        bbl = d.get('bbl', None)
+        if bbl is not None:
+            assert isinstance(bbl, (list, np.ndarray)), f'Unsupported type to bbl values: {bbl}'
+            assert len(y) == len(bbl), f'Unequal number of y ({len(y)}) and bbl ({len(bbl)}) values.'
+            arr = np.asarray(bbl)
+            assert np.issubdtype(arr.dtype, np.number), f'None-numeric bbl value data type: {arr.dtype.name}'
 
     except Exception as ex:
         return False, str(ex), dict()
