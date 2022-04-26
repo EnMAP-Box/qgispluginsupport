@@ -51,7 +51,6 @@ class SpectralProfileTableModel(QAbstractTableModel):
         self.mLastProfile: dict = dict()
         self.mCurrentProfile: dict = dict()
 
-        self.dataChanged.connect(lambda: self.profileChanged())
 
     def clear(self):
         m = copy(self.mValues)
@@ -98,11 +97,11 @@ class SpectralProfileTableModel(QAbstractTableModel):
         if len(self.mValues) == 0:
             return dict()
 
-        x = [v[1] for v in self.mValues]
-        y = [v[2] for v in self.mValues]
+        x = np.asarray([v[1] for v in self.mValues])
+        y = np.asarray([v[2] for v in self.mValues])
         bbl = [v[3] for v in self.mValues]
 
-        if np.asarray(x).dtype.subdtype is None:
+        if x.dtype.name == 'object':
             x = None
 
         bbl = np.asarray(bbl, dtype=bool)
@@ -194,6 +193,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
         modified = item[c] != itemOld[c]
         if modified:
             self.dataChanged.emit(index, index, [role])
+            self.profileChanged.emit()
         return modified
 
     def flags(self, index):
@@ -358,6 +358,7 @@ class SpectralProfileEditorWidget(QGroupBox):
         self.btnReset.setToolTip('Resets the profile')
         self.btnReset.setIcon(QIcon(':/images/themes/default/mActionUndo.svg'))
         self.btnReset.clicked.connect(self.resetProfile)
+        self.btnReset.setVisible(False)
 
         self.btnJson = QToolButton()
         self.btnJson.setText('JSON')

@@ -128,9 +128,12 @@ def validateProfileValueDict(d: dict) -> Tuple[bool, str, dict]:
         x = d.get('x', None)
         if isinstance(x, list):
             assert len(x) == len(y), f'Requires {len(y)} x values instead of {len(x)}'
+            arr = np.asarray(x)
             if not isinstance(x[0], str):
-                arr = np.asarray(x).dtype
-                assert np.issubdtype(arr, np.number), 'all x values need to be numeric (float/int)'
+                assert np.issubdtype(arr.dtype, np.number), 'all x values need to be numeric (float/int)'
+            else:
+                # todo: evaluate date/time strings
+                pass
 
     except Exception as ex:
         return False, str(ex), dict()
