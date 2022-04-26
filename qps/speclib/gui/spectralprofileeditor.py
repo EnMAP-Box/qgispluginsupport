@@ -5,7 +5,6 @@ from copy import copy
 from typing import List, Tuple, Optional
 
 import numpy as np
-
 from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant, QJsonDocument, \
     QSortFilterProxyModel, NULL
 from qgis.PyQt.QtGui import QIcon
@@ -16,6 +15,7 @@ from qgis.PyQt.QtWidgets import QHeaderView, QGroupBox, QWidget, QLabel, QHBoxLa
 from qgis.core import Qgis, QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication, QgsFeature
 from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsEditorWidgetFactory, QgsCodeEditorJson, \
     QgsMessageBar
+
 from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
 from .. import EDITOR_WIDGET_REGISTRY_KEY, EDITOR_WIDGET_REGISTRY_NAME
 from ..core import supports_field
@@ -111,13 +111,11 @@ class SpectralProfileTableModel(QAbstractTableModel):
         if x.dtype.name == 'object':
             x = None
         if self.mBooleanBBL:
-            bbl = np.asarray(bbl, dtype=bool)
-            if np.all(bbl is True):
-                bbl = None
+            bbl = np.asarray(bbl, dtype=bool).astype(np.uint8)
         else:
             bbl = np.asarray(bbl, dtype=int)
-            if np.all(bbl == 1):
-                bbl = None
+        if np.all(bbl == 1):
+            bbl = None
 
         profile = prepareProfileValueDict(
             x=x,
