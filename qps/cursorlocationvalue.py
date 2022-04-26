@@ -546,9 +546,20 @@ class CursorLocationInfoDock(QDockWidget):
         # transform this point to targeted CRS
         pt = self.cursorLocation()
         if isinstance(pt, SpatialPoint):
-            pt = pt.toCrs(self.mCrs)
-            self.tbX.setText('{}'.format(pt.x()))
-            self.tbY.setText('{}'.format(pt.y()))
+            pt2 = pt.toCrs(self.mCrs)
+            if isinstance(pt2, SpatialPoint):
+                self.tbX.setText('{}'.format(pt2.x()))
+                self.tbY.setText('{}'.format(pt2.y()))
+                self.tbX.setToolTip(pt2.asWkt())
+                self.tbY.setToolTip(pt2.asWkt())
+            else:
+                self.tbX.setText('None')
+                self.tbY.setText('None')
+                tt = f'Unable to convert {pt.asWkt()} from ' \
+                     f'<br>CRS 1: {pt.crs().description()} to' \
+                     f'<br>CRS 2: {self.mCrs.description()}'
+                self.tbX.setToolTip(tt)
+                self.tbY.setToolTip(tt)
 
     def setCanvas(self, mapCanvas):
         self.setCanvases([mapCanvas])
