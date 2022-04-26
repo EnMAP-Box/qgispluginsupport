@@ -39,7 +39,6 @@ from typing import List, Union, Tuple, Dict, Optional, Generator
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
-
 from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData, \
     QFileInfo
 from qgis.PyQt.QtGui import QColor
@@ -51,12 +50,13 @@ from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsEditorWidgetSetup, QgsAction, QgsProcessingFeedback, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
+
 from . import field_index
 from . import profile_field_list, first_profile_field_index, create_profile_field, \
     is_spectral_library
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
     SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, encodeProfileValueDict, ProfileEncoding
-from .. import FIELD_VALUES
+from .. import FIELD_VALUES, FIELD_NAME
 from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
 from ...utils import SelectMapLayersDialog, gdalDataset, \
@@ -369,7 +369,7 @@ class SpectralLibraryUtils:
         lyr.startEditing()
         lyr.beginEditCommand('Add fields')
 
-        assert lyr.addAttribute(QgsField(name='name', type=QVariant.String))
+        assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QVariant.String))
         for fieldname in profile_fields:
             if isinstance(fieldname, QgsField):
                 fieldname = fieldname.name()
@@ -379,6 +379,7 @@ class SpectralLibraryUtils:
 
         SpectralLibraryUtils.initTableConfig(lyr)
 
+        lyr.setDisplayExpression(f'format(\'%1 %2\', $id, "{FIELD_NAME}")')
         return lyr
 
     @staticmethod
