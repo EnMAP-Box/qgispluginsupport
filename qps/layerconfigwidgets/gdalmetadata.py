@@ -930,7 +930,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             filteredFids = filterFeatures(metadataModel, rx)
             dualView.setFilteredFeatures(filteredFids)
         else:
-            dualView.setFilteredFeatures()
+            dualView.setFilteredFeatures([])
 
         dualView.autosizeAllColumns()
 
