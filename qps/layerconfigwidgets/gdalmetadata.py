@@ -907,7 +907,6 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.gbBandNames.setVisible(self.is_gdal)
         self.gbGDALMetadata.setVisible(self.is_gdal or self.is_ogr)
 
-
     def autosizeAllColumns(self):
         self.bandDualView.autosizeAllColumns()
         self.dualView.autosizeAllColumns()
