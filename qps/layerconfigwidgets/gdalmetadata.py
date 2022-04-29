@@ -943,6 +943,9 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.bandDualView.init(self.bandMetadataModel, self.canvas())
         self.bandDualView.currentChanged.connect(self.onBandFormModeChanged)
 
+        self.actionBandTableView.setCheckable(True)
+        self.actionBandFormView.setCheckable(True)
+
         self.btnBandTableView.setDefaultAction(self.actionBandTableView)
         self.btnBandFormView.setDefaultAction(self.actionBandFormView)
         self.actionBandTableView.triggered.connect(lambda: self.setBandModelView(QgsDualView.AttributeTable))
