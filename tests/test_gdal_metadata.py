@@ -115,7 +115,8 @@ class TestsGdalMetadata(TestCase):
                   lyrV,
                   TestObjects.createRasterLayer(),
                   TestObjects.createSpectralLibrary(),
-                  TestObjects.createSpectralLibrary()]
+                  TestObjects.createSpectralLibrary(),
+                  TestObjects.createRasterLayer(nc=3)]
 
         QgsProject.instance().addMapLayers(layers)
 

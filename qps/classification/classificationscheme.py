@@ -1739,7 +1739,7 @@ class ClassificationSchemeWidget(QWidget):
         model = self.tableClassificationScheme.model()
         assert isinstance(model, ClassificationScheme)
         classInfo = model.index2ClassInfo(idx)
-        if idx.column() == model.columnNames().index(model.mColColor):
+        if idx.column() == model.columnNames().index(model.mColColor) and model.isEditable():
             c = QColorDialog.getColor(classInfo.mColor, self.tableClassificationScheme,
                                       'Set color for "{}"'.format(classInfo.name()))
             model.setData(idx, c, role=Qt.EditRole)

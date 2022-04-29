@@ -927,6 +927,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.btnRegex.setDefaultAction(self.optionRegex)
         self.btnBandRegex.setDefaultAction(self.optionBandRegex)
         self.mClassificationScheme: ClassificationScheme = None
+        self.classificationSchemeWidget: ClassificationSchemeWidget
 
         self.mAttributeEditorContext = QgsAttributeEditorContext()
         self.mAttributeEditorContext.setMainMessageBar(self.messageBar())
@@ -1013,6 +1014,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                   self.actionReset,
                   self.actionBandCalculator]:
             a.setEnabled(isEditable)
+
+        self.classificationSchemeWidget.setIsEditable(isEditable)
 
         if isEditable:
             # self.metadataModel.startEditing()
