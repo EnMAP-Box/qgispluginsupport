@@ -1,13 +1,17 @@
+import datetime
 import itertools
 import os.path
+import unittest
 
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
+from qgis.gui import QgsMessageBar, QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
+from qps import registerMapLayerConfigWidgetFactories
 from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
     GDALMetadataModelConfigWidget
+from qps.layerproperties import showLayerPropertiesDialog
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.testing import TestCase, TestObjects
 from qpstestdata import enmap
@@ -20,7 +24,7 @@ class ControlWidget(QWidget):
         super().__init__(*args, **kwds)
         self.canvas = QgsMapCanvas()
         self.w = GDALMetadataModelConfigWidget(None, self.canvas)
-        self.w.setEditable(True)
+        self.w.setEditable(False)
         self.w.widgetChanged.connect(lambda: print('Changed'))
 
         self.canvas.setLayers([self.w.mapLayer()])
@@ -213,6 +217,25 @@ class TestsGdalMetadata(TestCase):
             model.syncToLayer()
             model.applyToLayer()
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    def test_speed(self):
+
+        registerMapLayerConfigWidgetFactories()
+        from enmapbox.exampledata import enmap as em
+        layer = QgsRasterLayer(em, 'EnMAP')
+        p = QgsProject()
+        p.addMapLayer(layer)
+        canvas = QgsMapCanvas()
+        canvas.setLayers([layer])
+        canvas.zoomToFullExtent()
+        messageBar = QgsMessageBar()
+
+        t0 = datetime.datetime.now()
+        showLayerPropertiesDialog(layer, canvas=canvas, messageBar=messageBar, modal=True, useQGISDialog=False)
+        dt = datetime.datetime.now() - t0
+        print(dt)
+
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_GDALMetadataModelItemWidget(self):
 
         majorObjects = [gdal.Dataset.__name__,

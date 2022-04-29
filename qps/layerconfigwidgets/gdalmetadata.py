@@ -21,19 +21,21 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import datetime
 import math
 import pathlib
 import re
 import typing
 from typing import List, Pattern, Tuple, Union
-
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant
+from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
+    QSortFilterProxyModel
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget, \
-    QDialog, QAction
-from qgis.core import QgsAttributeTableConfig, QgsRasterLayer, QgsVectorLayer, QgsMapLayer, QgsEditorWidgetSetup, \
+    QDialog, QAction, QTableView
+from qgis.core import QgsFeatureSink, QgsAttributeTableConfig, QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
+    QgsEditorWidgetSetup, \
     QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
 from qgis.gui import QgsGui, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, \
     QgsAttributeTableModel, QgsAttributeEditorContext
@@ -111,6 +113,9 @@ class GDALMetadataModelBase(QgsVectorLayer):
         self.mMapLayer: QgsMapLayer = None
         self.initFields()
 
+    def layer(self) -> QgsMapLayer:
+        return self.mMapLayer
+
     def createDomainField(self) -> QgsField:
         DOMAIN = QgsField(BandFieldNames.Domain, type=QVariant.String)
         constraint = QgsFieldConstraints()
@@ -137,9 +142,9 @@ class GDALMetadataModelBase(QgsVectorLayer):
     def mapKey(self, major_object: str, domain: str, key: str) -> str:
         return f'{major_object}/{domain}/{key}'
 
-    def setLayer(self, mapLayer: QgsMapLayer):
+    def setLayer(self, mapLayer: QgsMapLayer, spectralProperties: QgsRasterLayerSpectralProperties = None):
         if self.mMapLayer == mapLayer:
-            self.syncToLayer()
+            self.syncToLayer(spectralProperties=spectralProperties)
             return
         editable = self.isEditable()
 
@@ -148,7 +153,7 @@ class GDALMetadataModelBase(QgsVectorLayer):
         else:
             self.mMapLayer = None
 
-        self.syncToLayer()
+        self.syncToLayer(spectralProperties=spectralProperties)
 
         self.commitChanges(not editable)
 
@@ -166,7 +171,7 @@ class GDALMetadataModelBase(QgsVectorLayer):
     def initFields(self):
         raise NotImplementedError()
 
-    def syncToLayer(self):
+    def syncToLayer(self, spectralProperties: QgsRasterLayerSpectralProperties = None):
         raise NotImplementedError()
 
     def applyToLayer(self):
@@ -421,7 +426,237 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             del ds
 
 
-class GDALMetadataModel(GDALMetadataModelBase):
+class GDALMetadataItem(object):
+
+    def __init__(self,
+                 obj: str = None,
+                 domain: str = None,
+                 key: str = None,
+                 value: str = None
+                 ):
+        self.obj: str = obj
+        self.domain: str = domain
+        self.key: str = key
+        self.value: str = value
+
+    def __setitem__(self, key, value):
+        if key == 0:
+            self.obj = str(value)
+        elif key == 1:
+            self.domain = str(value)
+        elif key == 2:
+            self.key = str(value)
+        elif key == 3:
+            self.value = str(value)
+        else:
+            raise NotImplementedError()
+
+    def __getitem__(self, item):
+        return list(self.__dict__.values())[item]
+
+    def __copy__(self):
+        return GDALMetadataItem(obj=self.obj,
+                                domain=self.domain,
+                                key=self.key,
+                                value=self.value)
+
+
+class GDALMetadataModel(QAbstractTableModel):
+    CI_MajorObject = 0
+    CI_Domain = 1
+    CI_Key = 2
+    CI_Value = 3
+
+    def __init__(self, *args, **kwds):
+
+        super().__init__(*args, **kwds)
+
+        self.mIsEditable: bool = False
+        self.mColumnNames = {self.CI_MajorObject: 'Object',
+                             self.CI_Domain: 'Domain',
+                             self.CI_Key: 'Key',
+                             self.CI_Value: 'Value'}
+
+        self.mColumnToolTips = {self.CI_MajorObject: 'Object the metadata item is attached to',
+                                self.CI_Domain: 'Metadata domain',
+                                self.CI_Key: 'Metadata key',
+                                self.CI_Value: 'Metadata value (String)'}
+
+        self.mFeatures: List[GDALMetadataItem] = []
+        self.mFeaturesBackup: List[GDALMetadataItem] = []
+
+        self.mMapLayer: QgsMapLayer = None
+
+    def startEditing(self):
+        self.setEditable(True)
+
+    def domains(self) -> List[str]:
+        return list(set([f.domain for f in self.mFeatures]))
+
+    def major_objects(self) -> List[str]:
+        return list(set([f.obj for f in self.mFeatures]))
+
+    def setEditable(self, isEditable: bool):
+        self.mIsEditable = bool(isEditable)
+
+    def isEditable(self) -> bool:
+        return self.mIsEditable
+
+    def setLayer(self, mapLayer: QgsMapLayer, spectralProperties: QgsRasterLayerSpectralProperties = None):
+        if self.mMapLayer == mapLayer:
+            self.syncToLayer(spectralProperties=spectralProperties)
+            return
+
+        if isinstance(mapLayer, QgsMapLayer):
+            self.mMapLayer = mapLayer
+        else:
+            self.mMapLayer = None
+
+        self.syncToLayer(spectralProperties=spectralProperties)
+
+    def layer(self) -> QgsMapLayer:
+        return self.mMapLayer
+
+    def rollBack(self):
+        self.beginResetModel()
+        self.mFeatures.clear()
+        self.mFeaturesBackup.extend(self.mFeaturesBackup.copy())
+        self.endResetModel()
+
+    def createMajorObjectFeatures(self,
+                                  obj: gdal.MajorObject,
+                                  sub_object: str = None) -> List[GDALMetadataItem]:
+
+        domains = obj.GetMetadataDomainList()
+        if not domains:
+            return []
+        features = []
+        for domain in domains:
+            MD = obj.GetMetadata(domain)
+            if isinstance(MD, dict):
+                for key, value in MD.items():
+
+                    name = obj.__class__.__name__
+                    if sub_object:
+                        name += f'_{sub_object}'
+                    item = GDALMetadataItem(obj=name,
+                                            domain=domain,
+                                            key=key,
+                                            value=value)
+                    features.append(item)
+        return features
+
+    def syncToLayer(self, spectralProperties: QgsRasterLayerSpectralProperties = None):
+
+        self.beginResetModel()
+        self.mFeatures.clear()
+        self.mFeaturesBackup.clear()
+
+        lyr = self.mMapLayer
+        features = []
+        t0 = datetime.datetime.now()
+        if isGDALRasterLayer(lyr):
+            ds: gdal.Dataset = gdal.Open(lyr.source())
+            if isinstance(ds, gdal.Dataset):
+                features.extend(self.createMajorObjectFeatures(ds))
+                for b in range(1, ds.RasterCount + 1):
+                    band: gdal.Band = ds.GetRasterBand(b)
+                    features.extend(self.createMajorObjectFeatures(band, f'{b}'))
+            del ds
+
+        elif isOGRVectorLayer(lyr):
+            match = RX_OGR_URI.search(lyr.source())
+            if isinstance(match, typing.Match):
+                D = match.groupdict()
+                ds: ogr.DataSource = ogr.Open(D['path'])
+                if isinstance(ds, ogr.DataSource):
+                    features.extend(self.createMajorObjectFeatures(ds))
+
+                    layername = D.get('layername', None)
+                    layerid = D.get('layerid', None)
+
+                    if layername:
+                        ogrLayer: ogr.Layer = ds.GetLayerByName(layername)
+                        features.extend(self.createMajorObjectFeatures(ogrLayer, sub_object=layername))
+                    else:
+                        if not layerid:
+                            layerid = 0
+                        ogrLayer: ogr.Layer = ds.GetLayerByIndex(layerid)
+                        features.extend(self.createMajorObjectFeatures(ogrLayer, sub_object=layerid))
+                del ds
+
+        self.mFeatures.extend(features)
+        self.mFeaturesBackup.extend(features.copy())
+        self.endResetModel()
+        print(f'DEBUG: add & commit features {datetime.datetime.now() - t0}')
+
+    def applyToLayer(self):
+        pass
+
+    def rowCount(self, parent: QModelIndex = ...) -> int:
+        return len(self.mFeatures)
+
+    def columnCount(self, parent: QModelIndex = ...) -> int:
+        return len(self.mColumnNames)
+
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> typing.Any:
+        if orientation == Qt.Horizontal:
+            if role == Qt.DisplayRole:
+                return self.mColumnNames[section]
+            if role == Qt.ToolTipRole:
+                return self.mColumnToolTips[section]
+
+        elif orientation == Qt.Vertical:
+            if role == Qt.DisplayRole:
+                return section + 1
+
+        return None
+
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
+        if index.column() == self.CI_Value and self.isEditable():
+            flags = flags | Qt.ItemIsEditable
+
+        return flags
+
+    def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
+
+        if not index.isValid():
+            return None
+
+        col = index.column()
+
+        item = self.mFeatures[index.row()]
+
+        if role in [Qt.DisplayRole, Qt.EditRole]:
+            return item[col]
+        return None
+
+    def setData(self, index: QModelIndex, value: typing.Any, role: int = ...) -> bool:
+
+        if not index.isValid():
+            return False
+
+        if not self.isEditable():
+            return False
+
+        edited = False
+        col = index.column()
+        row = index.row()
+        item = self.mFeatures[row]
+        value = str(value)
+        if role == Qt.EditRole:
+            if item[col] != value:
+                edited = True
+                self.mFeatures[row][col] = value
+
+        if edited:
+            self.dataChanged.emit(index, index, [role])
+        return edited
+
+
+class GDALMetadataModel_OLD(GDALMetadataModelBase):
     FN_MajorObject = 'Object'
     FN_Domain = 'Domain'
     FN_Key = 'Key'
@@ -454,12 +689,14 @@ class GDALMetadataModel(GDALMetadataModelBase):
             assert self.addAttribute(a)
         assert self.commitChanges()
 
-    def addMajorObjectFeatures(self, obj: gdal.MajorObject, sub_object: str = None):
+    def createMajorObjectFeatures(self, obj: gdal.MajorObject, sub_object: str = None) -> List[QgsFeature]:
+
         domains = obj.GetMetadataDomainList()
         if not domains:
-            return
+            return []
+        features = []
         for domain in domains:
-            MD = obj.GetMetadata_Dict(domain)
+            MD = obj.GetMetadata(domain)
             if isinstance(MD, dict):
                 for key, value in MD.items():
                     f = QgsFeature(self.fields())
@@ -470,32 +707,38 @@ class GDALMetadataModel(GDALMetadataModelBase):
                     f.setAttribute(self.FN_Domain, domain)
                     f.setAttribute(self.FN_Key, key)
                     f.setAttribute(self.FN_Value, value)
-                    assert self.addFeature(f)
+                    features.append(f)
+        return features
 
-    def syncToLayer(self):
+    def syncToLayer(self, spectralProperties: QgsRasterLayerSpectralProperties = None):
         editable = self.isEditable()
         if not editable:
             if not self.startEditing():
                 err = self.error()
                 s = ""
                 return
+
         self.deleteFeatures(self.allFeatureIds())
         self.commitChanges(False)
         self.beginEditCommand('Sync to layer')
         lyr = self.mMapLayer
         objField: QgsField = self.fields().field(self.FN_MajorObject)
         c = objField.constraints()
+
+        features = []
+        t0 = datetime.datetime.now()
         if isGDALRasterLayer(lyr):
             c.setConstraintExpression(
                 f'"{self.FN_Domain}" in [\'{gdal.Band.__name__}\', \'{gdal.Dataset.__name__}\']')
 
             ds: gdal.Dataset = gdal.Open(lyr.source())
             if isinstance(ds, gdal.Dataset):
-                self.addMajorObjectFeatures(ds)
+                features.extend(self.createMajorObjectFeatures(ds))
                 for b in range(1, ds.RasterCount + 1):
                     band: gdal.Band = ds.GetRasterBand(b)
-                    self.addMajorObjectFeatures(band, f'{b}')
+                    features.extend(self.createMajorObjectFeatures(band, f'{b}'))
             del ds
+
         elif isOGRVectorLayer(lyr):
             c.setConstraintExpression(
                 f'"{self.FN_Domain}" in [\'{ogr.DataSource.__name__}\', \'{ogr.Layer.__name__}\']')
@@ -505,24 +748,35 @@ class GDALMetadataModel(GDALMetadataModelBase):
                 D = match.groupdict()
                 ds: ogr.DataSource = ogr.Open(D['path'])
                 if isinstance(ds, ogr.DataSource):
-                    self.addMajorObjectFeatures(ds)
+                    features.extend(self.createMajorObjectFeatures(ds))
 
                     layername = D.get('layername', None)
                     layerid = D.get('layerid', None)
 
                     if layername:
                         ogrLayer: ogr.Layer = ds.GetLayerByName(layername)
-                        self.addMajorObjectFeatures(ogrLayer, sub_object=layername)
+                        features.extend(self.createMajorObjectFeatures(ogrLayer, sub_object=layername))
                     else:
                         if not layerid:
                             layerid = 0
                         ogrLayer: ogr.Layer = ds.GetLayerByIndex(layerid)
-                        self.addMajorObjectFeatures(ogrLayer, sub_object=layerid)
+                        features.extend(self.createMajorObjectFeatures(ogrLayer, sub_object=layerid))
                 del ds
 
+        print(f'DEBUG: create features {datetime.datetime.now() - t0}')
+        t0 = datetime.datetime.now()
         objField.setConstraints(c)
+        print(f'DEBUG: A set contraints {datetime.datetime.now() - t0}')
+        t0 = datetime.datetime.now()
+        assert self.addFeatures(features, QgsFeatureSink.FastInsert)
+        print(f'DEBUG: B Add features {datetime.datetime.now() - t0}')
+        t0 = datetime.datetime.now()
         self.endEditCommand()
+        print(f'DEBUG: C end edit command {datetime.datetime.now() - t0}')
+        t0 = datetime.datetime.now()
         assert self.commitChanges(not editable)
+        print(f'DEBUG: E commit {datetime.datetime.now() - t0}')
+        print(f'DEBUG: add & commit features {datetime.datetime.now() - t0}')
 
     def applyToLayer(self):
         pass
@@ -576,9 +830,9 @@ class GDALMetadataItemDialog(QDialog):
         errors = []
 
         item = self.metadataItem()
-        if item['key'] == '':
+        if item.key == '':
             errors.append('missing key')
-        if item['value'] in [None, NULL, '']:
+        if item.value in [None, NULL, '']:
             errors.append('missing value')
 
         self.infoLabel.setText('\n'.join(errors))
@@ -605,12 +859,12 @@ class GDALMetadataItemDialog(QDialog):
             return True
         return False
 
-    def metadataItem(self) -> dict:
-        d = dict(key=self.tbKey.text(),
-                 value=self.tbValue.text(),
-                 domain=self.cbDomain.currentText(),
-                 major_object=self.cbMajorObject.currentText())
-        return d
+    def metadataItem(self) -> GDALMetadataItem:
+        return GDALMetadataItem(
+            key=self.tbKey.text(),
+            value=self.tbValue.text(),
+            domain=self.cbDomain.currentText(),
+            obj=self.cbMajorObject.currentText())
 
 
 RX_MAJOR_OBJECT_ID = re.compile('^('
@@ -679,23 +933,28 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.actionBandFormView.triggered.connect(lambda: self.bandDualView.setView(QgsDualView.AttributeEditor))
 
         self.metadataModel = GDALMetadataModel()
-        self.dualView: QgsDualView
-        self.dualView.init(self.metadataModel, self.canvas())
-        self.dualView.currentChanged.connect(self.onFormModeChanged)
-        self.btnTableView.setDefaultAction(self.actionTableView)
-        self.btnFormView.setDefaultAction(self.actionFormView)
-        self.actionTableView.triggered.connect(lambda: self.dualView.setView(QgsDualView.AttributeTable))
-        self.actionFormView.triggered.connect(lambda: self.dualView.setView(QgsDualView.AttributeEditor))
+        self.metadataProxyModel = QSortFilterProxyModel()
+        self.metadataProxyModel.setSourceModel(self.metadataModel)
+        self.metadataProxyModel.setFilterKeyColumn(-1)  # filter on all columns
+        self.metadataView: QTableView
+        self.metadataView.setModel(self.metadataProxyModel)
+        # self.dualView: QgsDualView
+        # self.dualView.init(self.metadataModel, self.canvas())
+        # self.dualView.currentChanged.connect(self.onFormModeChanged)
+        # self.btnTableView.setDefaultAction(self.actionTableView)
+        # self.btnFormView.setDefaultAction(self.actionFormView)
+        # self.actionTableView.triggered.connect(lambda: self.dualView.setView(QgsDualView.AttributeTable))
+        # self.actionFormView.triggered.connect(lambda: self.dualView.setView(QgsDualView.AttributeEditor))
 
         self.btnBandCalculator.setDefaultAction(self.actionBandCalculator)
-        self.btnCalculator.setDefaultAction(self.actionCalculator)
         self.actionBandCalculator.triggered.connect(lambda: self.showCalculator(self.bandDualView))
-        self.actionCalculator.triggered.connect(lambda: self.showCalculator(self.dualView))
+        # self.btnCalculator.setDefaultAction(self.actionCalculator)
+        # self.actionCalculator.triggered.connect(lambda: self.showCalculator(self.dualView))
 
         updateBandFilter = lambda: self.updateFilter(
             self.bandDualView, self.tbBandFilter.text(), self.optionBandMatchCase, self.optionBandRegex)
         updateFilter = lambda: self.updateFilter(
-            self.dualView, self.tbFilter.text(), self.optionMatchCase, self.optionRegex)
+            self.metadataView, self.tbFilter.text(), self.optionMatchCase, self.optionRegex)
 
         self.tbBandFilter.textChanged.connect(updateBandFilter)
         self.optionBandMatchCase.changed.connect(updateBandFilter)
@@ -722,23 +981,31 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.actionRemoveItem.triggered.connect(self.onRemoveSelectedItems)
         self.onEditableChanged(self.metadataModel.isEditable())
 
+        self.onBandFormModeChanged()
         self.setEditable(False)
 
     def setEditable(self, isEditable: bool):
 
-        for btn in [self.btnCalculator,
-                    self.btnBandCalculator,
+        for btn in [self.btnBandCalculator,
                     self.btnAddItem,
                     self.btnRemoveItem,
                     self.btnReset]:
             btn: QWidget
             btn.setVisible(isEditable)
 
+        for a in [self.actionAddItem,
+                  self.actionRemoveItem,
+                  self.actionReset,
+                  self.actionBandCalculator]:
+            a.setEnabled(isEditable)
+
         if isEditable:
-            self.metadataModel.startEditing()
+            # self.metadataModel.startEditing()
+            self.metadataModel.setEditable(True)
             self.bandMetadataModel.startEditing()
         else:
-            self.metadataModel.commitChanges()
+            # self.metadataModel.commitChanges()
+            self.metadataModel.setEditable(False)
             self.bandMetadataModel.commitChanges()
 
         assert self.metadataModel.isEditable() == isEditable
@@ -754,7 +1021,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                 if col >= 0:
                     masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
 
-    def onBandFormModeChanged(self, index: int):
+    def onBandFormModeChanged(self, *args):
         self.actionBandTableView.setChecked(self.bandDualView.view() == QgsDualView.AttributeTable)
         self.actionBandFormView.setChecked(self.bandDualView.view() == QgsDualView.AttributeEditor)
 
@@ -801,8 +1068,11 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
     def onSelectionChanged(self, *args):
 
-        n = self.dualView.masterModel().layer().selectedFeatureCount()
-        self.actionRemoveItem.setEnabled(n > 0)
+        # n = self.dualView.masterModel().layer().selectedFeatureCount()
+        self.metadataView: QTableView
+        idx = self.metadataView.selectedIndexes()
+
+        self.actionRemoveItem.setEnabled(self.metadataModel.isEditable() and len(idx) > 0)
 
     def onEditableChanged(self, *args):
         isEditable = self.metadataModel.isEditable()
@@ -833,6 +1103,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         if not (isinstance(layer, QgsMapLayer) and layer.isValid()):
             self.is_gdal = self.is_ogr = self.supportsGDALClassification = False
+            # self.bandMetadataModel.setLayer(None)
+            # self.metadataModel.setLayer(None)
             self.updateGroupVisibilities()
         else:
             self.supportsGDALClassification = False
@@ -852,7 +1124,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                 self.setToolTip('Layer metadata according to the OGR Metadata model')
                 self.setWindowIcon(QIcon(':/qps/ui/icons/edit_ogr_metadata.svg'))
 
-            self.syncToLayer(layer)
+        self.syncToLayer(layer)
 
     def apply(self):
         if self.is_gdal:
@@ -873,16 +1145,20 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
     def syncToLayer(self, *args):
 
+        t0 = datetime.datetime.now()
         super().syncToLayer(*args)
         lyr = self.mapLayer()
-        if lyr != self.bandMetadataModel.mMapLayer:
-            self.bandMetadataModel.setLayer(lyr)
-            self.metadataModel.setLayer(lyr)
-            self.optionRegex.changed.emit()
-            self.optionBandRegex.changed.emit()
+        prop = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        if lyr != self.bandMetadataModel.layer():
+            self.bandMetadataModel.setLayer(lyr, spectralProperties=prop)
+            self.metadataModel.setLayer(lyr, spectralProperties=prop)
         else:
-            self.bandMetadataModel.syncToLayer()
-            self.metadataModel.syncToLayer()
+            self.bandMetadataModel.syncToLayer(spectralProperties=prop)
+            self.metadataModel.syncToLayer(spectralProperties=prop)
+
+        # update filters
+        self.optionRegex.changed.emit()
+        self.optionBandRegex.changed.emit()
 
         QTimer.singleShot(500, self.autosizeAllColumns)
 
@@ -892,6 +1168,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             self.mClassificationScheme = None
 
         self.updateGroupVisibilities()
+
+        print(f'DEBUG: Total Sync time: {datetime.datetime.now() - t0}')
 
     def updateGroupVisibilities(self):
 
@@ -909,9 +1187,14 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
     def autosizeAllColumns(self):
         self.bandDualView.autosizeAllColumns()
-        self.dualView.autosizeAllColumns()
+        # self.dualView.autosizeAllColumns()
+        self.metadataView.resizeColumnsToContents()
 
-    def updateFilter(self, dualView: QgsDualView, text: str, optionMatchCase: QAction, optionRegex: QAction):
+    def updateFilter(self,
+                     view: Union[QgsDualView, QTableView],
+                     text: str,
+                     optionMatchCase: QAction,
+                     optionRegex: QAction):
 
         if optionMatchCase.isChecked():
             matchCase = Qt.CaseSensitive
@@ -924,14 +1207,18 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
             syntax = QRegExp.Wildcard
 
         rx = QRegExp(text, cs=matchCase, syntax=syntax)
-        metadataModel = dualView.masterModel().layer()
-        if rx.isValid():
-            filteredFids = filterFeatures(metadataModel, rx)
-            dualView.setFilteredFeatures(filteredFids)
-        else:
-            dualView.setFilteredFeatures([])
+        if isinstance(view, QgsDualView):
+            metadataModel = view.masterModel().layer()
+            if rx.isValid():
+                filteredFids = filterFeatures(metadataModel, rx)
+                view.setFilteredFeatures(filteredFids)
+            else:
+                view.setFilteredFeatures([])
 
-        dualView.autosizeAllColumns()
+            view.autosizeAllColumns()
+        elif isinstance(view, QTableView):
+            proxyModel: QSortFilterProxyModel = view.model()
+            proxyModel.setFilterRegExp(rx)
 
 
 class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
