@@ -600,6 +600,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         if n_p == 0 and n_v == 0 and self.speclib().featureCount() > 0:
             self.spectralLibraryPlotWidget().createProfileVisualization()
 
+        # update plot
+        self.plotControl().updatePlot()
+
     def onImportFromRasterSource(self):
         from ..io.rastersources import SpectralProfileImportPointsDialog
         d = SpectralProfileImportPointsDialog(parent=self)
