@@ -104,7 +104,8 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
             options = QgsRasterLayer.LayerOptions(loadDefaultStyle=True)
             return QgsRasterLayerSpectralProperties.fromRasterLayer(QgsRasterLayer(layer, options=options))
 
-        if not isinstance(layer, QgsRasterLayer) and layer.isValid():
+        if not (isinstance(layer, QgsRasterLayer)
+                and layer.isValid() and layer.bandCount() > 0):
             return None
         obj = QgsRasterLayerSpectralProperties(layer.bandCount())
         obj._readFromProvider(layer.dataProvider())
