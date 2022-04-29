@@ -54,8 +54,10 @@ class SpectralPropertyKeys(object):
     Wavelength = 'wavelength'
     WavelengthUnit = 'wavelength_unit'
     BandWidth = 'bandwidth'
-    DataOffset = 'dataoffset'
-    DataGain = 'datagain'
+    DataOffset = 'data_offset'
+    DataGain = 'data_gain'
+    DataReflectanceOffset = 'data_reflectance_offset'
+    DataReflectanceGain = 'data_reflectance_gain'
     FWHM = 'fwhm'
 
 
@@ -75,9 +77,13 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         SpectralPropertyKeys.BandWidth: re.compile(
             r'(bw|bandwiths?)$', re.I),
         SpectralPropertyKeys.DataGain: re.compile(
-            r'(data[ -_]gain([ -_]values?)?)', re.I),
+            r'(data[ -_]gain([ -_]values?)?)$', re.I),
         SpectralPropertyKeys.DataOffset: re.compile(
-            r'(data[ -_]offset([ -_]values?)?)', re.I)
+            r'(data[ -_]offset([ -_]values?)?)$', re.I),
+        SpectralPropertyKeys.DataReflectanceGain: re.compile(
+            r'(data[ -_]reflectance[ -_]gain([ -_]values?)?)$', re.I),
+        SpectralPropertyKeys.DataReflectanceOffset: re.compile(
+            r'(data[ -_]reflectance[ -_]offset([ -_]values?)?)$', re.I)
     }
 
     @staticmethod
@@ -305,6 +311,10 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         # 1. look at band level
         for b in range(ds.RasterCount):
             band: gdal.Band = ds.GetRasterBand(b + 1)
+            self.setValue(self.bandItemKey(b + 1, 'offset'), band.GetOffset())
+            self.setValue(self.bandItemKey(b + 1, 'scale'), band.GetOffset())
+
+            # domain specific values
             for domain in domainList(band):
                 for gdalKey, gdalValue in band.GetMetadata_Dict(domain).items():
                     if rx_spectral_property.match(gdalKey):

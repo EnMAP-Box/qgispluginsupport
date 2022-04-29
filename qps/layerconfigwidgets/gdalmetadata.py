@@ -351,6 +351,20 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                     bandRange = None
                 bandRanges.append(bandRange)
 
+            ds: gdal.Dataset = gdal.Open(lyr.source())
+            gdalBandNames = []
+            gdalNoData = []
+            gdalScale = []
+            gdalOffset = []
+
+            for b in range(ds.RasterCount):
+                band: gdal.Band = ds.GetRasterBand(b+1)
+                gdalBandNames.append(band.GetDescription())
+                gdalNoData.append(band.GetNoDataValue())
+                gdalScale.append(band.GetScale())
+                gdalOffset.append(band.GetOffset())
+            del ds
+
             KEY2VALUE = {
                 BandFieldNames.Number: lambda i: i + 1,
                 BandFieldNames.Wavelength: lambda i: wl[i],
@@ -359,7 +373,7 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                 BandFieldNames.Range: lambda i: bandRanges[i],
                 BandFieldNames.FWHM: lambda i: fwhm[i],
                 BandFieldNames.NoData: lambda i: dp.sourceNoDataValue(i + 1),
-                BandFieldNames.Name: lambda i: dp.generateBandName(i + 1),
+                BandFieldNames.Name: lambda i: gdalBandNames[i],
                 BandFieldNames.Domain: lambda i: domain,
             }
 
@@ -882,6 +896,7 @@ RX_OGR_URI = re.compile(r'(?P<path>[^|]+)(\|('
                         + r'|subset=(?P<subset>(?:.*[\r\n]*)*)\\Z'
                         + r'))*', re.I)
 
+RX_LEADING_BAND_NUMBER = re.compile(r'^Band \d+:')
 
 class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
