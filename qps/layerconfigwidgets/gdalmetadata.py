@@ -945,8 +945,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         self.btnBandTableView.setDefaultAction(self.actionBandTableView)
         self.btnBandFormView.setDefaultAction(self.actionBandFormView)
-        self.actionBandTableView.triggered.connect(lambda: self.bandDualView.setView(QgsDualView.AttributeTable))
-        self.actionBandFormView.triggered.connect(lambda: self.bandDualView.setView(QgsDualView.AttributeEditor))
+        self.actionBandTableView.triggered.connect(lambda: self.setBandModelView(QgsDualView.AttributeTable))
+        self.actionBandFormView.triggered.connect(lambda: self.setBandModelView(QgsDualView.AttributeEditor))
 
         self.metadataModel = GDALMetadataModel()
         self.metadataProxyModel = QSortFilterProxyModel()
@@ -1000,6 +1000,10 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.onBandFormModeChanged()
         self.setEditable(False)
 
+    def setBandModelView(self, viewMode: QgsDualView.ViewMode):
+        self.bandDualView.setView(viewMode)
+        self.onBandFormModeChanged()
+
     def setEditable(self, isEditable: bool):
 
         for btn in [self.btnBandCalculator,
@@ -1042,6 +1046,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
     def onBandFormModeChanged(self, *args):
         self.actionBandTableView.setChecked(self.bandDualView.view() == QgsDualView.AttributeTable)
         self.actionBandFormView.setChecked(self.bandDualView.view() == QgsDualView.AttributeEditor)
+        s = ""
 
     def onFormModeChanged(self, index: int):
         self.actionTableView.setChecked(self.dualView.view() == QgsDualView.AttributeTable)
