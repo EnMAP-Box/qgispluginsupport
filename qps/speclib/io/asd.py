@@ -39,6 +39,7 @@ from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
     QgsField, QgsPointXY, QgsGeometry, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
+from .. import FIELD_NAME
 from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
@@ -221,7 +222,7 @@ class TM_STRUCT(object):
 
 
 ASD_FIELDS = QgsFields()
-ASD_FIELDS.append(QgsField('name', QVariant.String))
+ASD_FIELDS.append(QgsField(FIELD_NAME, QVariant.String))
 ASD_FIELDS.append(create_profile_field('Reference'))
 ASD_FIELDS.append(create_profile_field('Spectrum'))
 ASD_FIELDS.append(QgsField('co', QVariant.String))
@@ -321,13 +322,13 @@ class ASDBinaryFile(object):
             fields = ASD_FIELDS
 
         f = QgsFeature(fields)
-        field_names = fields.names()
+
         GPS = self.gps_data
 
         x, y = GPS.longitude, GPS.latitude
         g = QgsGeometry.fromPointXY(QgsPointXY(x, y))
         f.setGeometry(g)
-        f.setAttribute('name', self.name)
+        f.setAttribute(FIELD_NAME, self.name)
         f.setAttribute('co', self.co)
         f.setAttribute('instrument', self.instrument.name)
         f.setAttribute('instrument_num', self.instrument_num)

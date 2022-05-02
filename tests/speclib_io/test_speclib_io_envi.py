@@ -7,6 +7,7 @@ import numpy as np
 import xmlrunner
 
 from qgis.core import QgsProcessingFeedback, QgsFeature, QgsFields
+from qps.speclib import FIELD_NAME, FIELD_VALUES
 from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
     SpectralLibraryImportWidget
@@ -74,7 +75,7 @@ class TestSpeclibIO_ENVI(TestCase):
 
         fields = w.sourceFields()
         self.assertIsInstance(fields, QgsFields)
-        for n in ['profile', 'spectra names', 'source', 'wkt']:
+        for n in [FIELD_VALUES, FIELD_NAME, 'source', 'wkt']:
             self.assertTrue(n in fields.names())
         settings = w.importSettings({})
         profiles = EnviSpectralLibraryIO.importProfiles(speclibpath, settings)

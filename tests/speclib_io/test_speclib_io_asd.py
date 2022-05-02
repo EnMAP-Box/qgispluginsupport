@@ -1,5 +1,6 @@
 # noinspection PyPep8Naming
 import pathlib
+import re
 import typing
 import unittest
 import xmlrunner
@@ -92,12 +93,12 @@ class TestSpeclibIO_ASD(TestCase):
     def asdBinFiles(self) -> typing.List[str]:
         import qpstestdata
         ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd'
-        return list(file_search(ASD_DIR, '*.asd', recursive=True))
+        return list(file_search(ASD_DIR, re.compile(r'\w+\d+\.(asd)$'), recursive=True))
 
     def asdCSVFiles(self):
         import qpstestdata
         ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd'
-        return list(file_search(ASD_DIR, '*.txt', recursive=True))
+        return list(file_search(ASD_DIR, re.compile(r'\w+\d+\.(csv|txt)$'), recursive=True))
 
     def test_read_profiles(self):
         self.registerIO()

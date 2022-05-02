@@ -45,7 +45,7 @@ from qgis.core import QgsExpression, QgsFeatureRequest, QgsFeatureIterator
 from qgis.core import QgsField, QgsFields, QgsFeature, QgsProcessingFeedback
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope
 from qgis.gui import QgsFieldExpressionWidget, QgsFieldComboBox
-from .. import EMPTY_VALUES, FIELD_FID
+from .. import EMPTY_VALUES, FIELD_FID, FIELD_VALUES, FIELD_NAME
 from ..core import create_profile_field, profile_fields, profile_field_names
 from ..core.spectrallibrary import VSI_DIR, LUT_IDL2GDAL
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
@@ -80,9 +80,6 @@ LUT_GDT_NAME = {gdal.GDT_Byte: 'Byte',
                 gdal.GDT_CFloat64: 'Float64'}
 
 FILTER_SLI = 'ENVI Spectral Library (*.sli)'
-
-FIELDNAME_PROFILE = 'profile'
-
 CSV_PROFILE_NAME_COLUMN_NAMES = ['spectra names', 'name']
 CSV_GEOMETRY_COLUMN = 'wkt'
 
@@ -344,8 +341,8 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
         n_profiles = md.get('lines')
 
-        fields.append(create_profile_field(FIELDNAME_PROFILE))
-
+        fields.append(create_profile_field(FIELD_VALUES))
+        fields.append(QgsField(FIELD_NAME, QVariant.String))
         # add ENVI Header fields
         to_exclude = SINGLE_VALUE_TAGS
         for k, v in md.items():
@@ -438,11 +435,10 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
                                         xUnit=xUnit,
                                         yUnit=yUnit,
                                         bbl=bbl)
-            dump = encodeProfileValueDict(d, f.attribute(FIELDNAME_PROFILE))
-            f.setAttribute(FIELDNAME_PROFILE, dump)
-
-            if 'spectra names' in fields.names():
-                f.setAttribute('spectra names', spectraNames[i])
+            dump = encodeProfileValueDict(d, f.attribute(FIELD_VALUES))
+            f.setAttribute(FIELD_VALUES, dump)
+            if FIELD_NAME in fields.names():
+                f.setAttribute(FIELD_NAME, spectraNames[i])
 
             if isinstance(featureIterator, QgsFeatureIterator):
                 csvFeature = featureIterator.__next__()

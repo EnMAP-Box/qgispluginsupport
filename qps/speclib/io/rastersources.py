@@ -41,7 +41,7 @@ from qgis.core import QgsProviderRegistry
 from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
     QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsProcessingFeedback
 from qgis.gui import QgsMapLayerComboBox
-from .. import speclibUiPath
+from .. import speclibUiPath, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget, \
@@ -264,11 +264,11 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         return self.mapLayers()[1]
 
 
-RF_PROFILE = 'raster_profile'
-RF_SOURCE = 'raster_source'
-RF_NAME = 'raster_name'
-RF_PX_X = 'raster_px_x'
-RF_PX_Y = 'raster_px_y'
+RF_PROFILE = FIELD_VALUES
+RF_SOURCE = 'source'
+RF_NAME = FIELD_NAME
+RF_PX_X = 'px_x'
+RF_PX_Y = 'px_y'
 
 RASTER_FIELDS = QgsFields()
 RASTER_FIELDS.append(create_profile_field(RF_PROFILE))
