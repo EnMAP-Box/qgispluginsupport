@@ -355,7 +355,7 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def createSpectralLibrary(
-            profile_fields: List[str] = ['profiles'],
+            profile_fields: List[str] = [FIELD_VALUES],
             name: str = DEFAULT_NAME) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field

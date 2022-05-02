@@ -511,13 +511,11 @@ class SpectralLibraryIO(QObject):
 
             profiles = SpectralLibraryIO.readProfilesFromUri(uri)
             if len(profiles) > 0:
-                referenceProfile = profiles[0]
                 from .spectrallibrary import SpectralLibraryUtils
-                speclib = SpectralLibraryUtils.createSpectralLibrary(referenceProfile.fields())
+
+                speclib = SpectralLibraryUtils.createSpectralLibrary(profile_fields=[])
                 speclib.startEditing()
-                speclib.beginEditCommand('Add profiles')
-                speclib.addFeatures(profiles)
-                speclib.endEditCommand()
+                SpectralLibraryUtils.addProfiles(speclib, profiles, addMissingFields=True)
                 speclib.commitChanges()
 
         return speclib
@@ -796,8 +794,9 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
                 if w.formatName() == import_format:
                     self.cbFormat.setCurrentIndex(i)
                     return
+            return
 
-        assert isinstance(import_format, int)
+        assert isinstance(import_format, int), f'import_format={import_format} (type {import_format})'
         if import_format != self.cbFormat.currentIndex():
             self.cbFormat.setCurrentIndex(import_format)
             return
