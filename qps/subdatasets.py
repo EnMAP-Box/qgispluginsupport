@@ -263,6 +263,13 @@ class SubDatasetDescriptionModel(QAbstractTableModel):
         return b
 
     def subDatasetDescriptions(self, checked: bool = None) -> typing.List[SubDatasetType]:
+        """
+        Returns the sub-dataset descriptions
+        :param checked: if True, returns only the checked sub-dataset descriptions
+        :type checked:
+        :return:
+        :rtype:
+        """
         subs = self.mSubDatasetDescriptions[:]
         if isinstance(checked, bool):
             subs = [s for s in subs if s.checked == checked]
@@ -464,7 +471,7 @@ class SubDatasetSelectionDialog(QDialog):
 
     def validate(self):
 
-        selected = len(self.subDatasetModel.subDatasetDescriptions()) > 0
+        selected = len(self.subDatasetModel.subDatasetDescriptions(checked=True)) > 0
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(selected)
 
     def selectedSubDatasets(self) -> typing.List[str]:
