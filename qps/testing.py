@@ -30,6 +30,7 @@ import itertools
 import os
 import pathlib
 import random
+import site
 import sqlite3
 import sys
 import traceback
@@ -238,10 +239,16 @@ def start_app(cleanup: bool = True,
                 from qgis.analysis import QgsNativeAlgorithms
                 QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 
-            qgisCorePythonPluginDir = pathlib.Path(QgsApplication.pkgDataPath()) / 'python' / 'plugins'
-            assert os.path.isdir(qgisCorePythonPluginDir)
-            if qgisCorePythonPluginDir not in sys.path:
-                sys.path.append(qgisCorePythonPluginDir.as_posix())
+            corePythonPluginCandidates = [
+                pathlib.Path(QgsApplication.pkgDataPath()) / 'python',
+                (pathlib.Path(QgsApplication.pkgDataPath()) / '..' / 'python').resolve()
+            ]
+            for d in corePythonPluginCandidates:
+                d: pathlib.Path
+                if d.is_dir() and (d/'plugins').is_dir():
+                    site.addsitedir(d)
+                    site.addsitedir(d / 'plugins')
+                    break
 
             required = ['qgis', 'gdal']  # at least these should be available
             missing = [p for p in required if p not in pfProviderIds]
