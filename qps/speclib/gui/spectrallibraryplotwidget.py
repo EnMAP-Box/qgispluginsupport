@@ -895,7 +895,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         speclib.featuresDeleted.connect(self.onSpeclibFeaturesDeleted)
         speclib.selectionChanged.connect(self.onSpeclibSelectionChanged)
         speclib.styleChanged.connect(self.onSpeclibStyleChanged)
-        speclib.willBeDeleted.connect(lambda *args, sl=speclib: self.disconnectSpeclibSignals(sl))
+        # speclib.willBeDeleted.connect(lambda *args, sl=speclib: self.disconnectSpeclibSignals(sl))
 
     def disconnectSpeclibSignals(self, speclib: QgsVectorLayer):
         speclib.updatedFields.disconnect(self.updateProfileFieldModel)
