@@ -284,13 +284,13 @@ class SpectralProfileSourceModel(QAbstractListModel):
 
         return None
 
-    def removeSources(self, sources: StandardLayerProfileSource) -> typing.List[StandardLayerProfileSource]:
+    def removeSources(self, sources: SpectralProfileSource) -> typing.List[SpectralProfileSource]:
         if not isinstance(sources, typing.Iterable):
             sources = [sources]
         removed = []
         for s in sources:
             source = self.findSource(s)
-            if isinstance(source, StandardLayerProfileSource):
+            if isinstance(source, SpectralProfileSource):
                 i = self.mSources.index(source)
                 self.beginRemoveRows(QModelIndex(), i, i)
                 self.mSources.remove(source)
@@ -2038,6 +2038,9 @@ class SpectralProfileBridge(TreeModel):
         if n == 0 and isinstance(src, SpectralProfileSource):
             for r in self.bridgeItems():
                 r.setSource(src)
+
+    def removeAllSources(self):
+        self.removeSources(self.sources()[:])
 
     def removeSources(self, sources: typing.List[typing.Any]):
 
