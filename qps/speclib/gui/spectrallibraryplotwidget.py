@@ -1017,18 +1017,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
         changedFIDs2 = self.mChangedFIDs
         changedAttribute = self.mChangedAttributes
         lastCmd = self.mLastEditCommand
-        if len(self.mChangedAttributes) == 0:
-            return
-        n0 = len(self.mCACHE_PROFILE_DATA)
-        updated = [k for k in self.mCACHE_PROFILE_DATA.keys() if (k[0], k[1]) in self.mChangedAttributes]
-        self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if
-                                    (k[0], k[1]) not in self.mChangedAttributes}
+        with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
+            if len(self.mChangedAttributes) > 0:
+                n0 = len(self.mCACHE_PROFILE_DATA)
+                updated = [k for k in self.mCACHE_PROFILE_DATA.keys() if (k[0], k[1]) in self.mChangedAttributes]
+                self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if
+                                            (k[0], k[1]) not in self.mChangedAttributes}
 
-        n1 = len(self.mCACHE_PROFILE_DATA)
-        # self.mCACHE_PROFILE_DATA.clear()
-        if n1 < n0:
-            s = ""
-        self.mChangedAttributes.clear()
+                n1 = len(self.mCACHE_PROFILE_DATA)
+                # self.mCACHE_PROFILE_DATA.clear()
+                if n1 < n0:
+                    s = ""
+                self.mChangedAttributes.clear()
         self.updatePlot()
         # self.onSpeclibFeaturesDeleted(sorted(changedFIDs2))
         # self.mChangedFIDs.clear()

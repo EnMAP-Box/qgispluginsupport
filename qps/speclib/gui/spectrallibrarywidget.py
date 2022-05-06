@@ -419,6 +419,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
             if not wasEditable:
                 speclib_dst.commitChanges()
                 s = ""
+            # self.plotControl().updatePlot()
 
         except Exception as ex:
             print(ex, file=sys.stderr)
