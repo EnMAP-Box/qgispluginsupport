@@ -870,41 +870,49 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if self.mSpeclib != speclib:
             if isinstance(self.mSpeclib, QgsVectorLayer):
                 # unregister signals
-                self.mSpeclib.updatedFields.disconnect(self.updateProfileFieldModel)
-                self.mSpeclib.attributeAdded.disconnect(self.updateProfileFieldModel)
-                self.mSpeclib.attributeDeleted.disconnect(self.updateProfileFieldModel)
-
-                self.mSpeclib.editCommandStarted.disconnect(self.onSpeclibEditCommandStarted)
-                self.mSpeclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
-                self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
-                self.mSpeclib.beforeCommitChanges.disconnect(self.onSpeclibBeforeCommitChanges)
-                # self.mSpeclib.afterCommitChanges.disconnect(self.onSpeclibAfterCommitChanges)
-                self.mSpeclib.committedFeaturesAdded.disconnect(self.onSpeclibCommittedFeaturesAdded)
-
-                self.mSpeclib.featuresDeleted.disconnect(self.onSpeclibFeaturesDeleted)
-                self.mSpeclib.selectionChanged.disconnect(self.onSpeclibSelectionChanged)
-                self.mSpeclib.styleChanged.disconnect(self.onSpeclibStyleChanged)
+                self.disconnectSpeclibSignals()
 
             self.mSpeclib = speclib
-            self.mVectorLayerCache = QgsVectorLayerCache(speclib, 1000)
 
-            # register signals
+            # connect signals
             if isinstance(self.mSpeclib, QgsVectorLayer):
-                self.mSpeclib.updatedFields.connect(self.updateProfileFieldModel)
-                self.mSpeclib.attributeAdded.connect(self.updateProfileFieldModel)
-                self.mSpeclib.attributeDeleted.connect(self.updateProfileFieldModel)
-                self.mSpeclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
-                self.mSpeclib.editCommandStarted.connect(self.onSpeclibEditCommandStarted)
-                self.mSpeclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
-                self.mSpeclib.committedAttributeValuesChanges.connect(self.onSpeclibCommittedAttributeValuesChanges)
-                self.mSpeclib.beforeCommitChanges.connect(self.onSpeclibBeforeCommitChanges)
-                self.mSpeclib.afterCommitChanges.connect(self.onSpeclibAfterCommitChanges)
-                self.mSpeclib.committedFeaturesAdded.connect(self.onSpeclibCommittedFeaturesAdded)
-
-                self.mSpeclib.featuresDeleted.connect(self.onSpeclibFeaturesDeleted)
-                self.mSpeclib.selectionChanged.connect(self.onSpeclibSelectionChanged)
-                self.mSpeclib.styleChanged.connect(self.onSpeclibStyleChanged)
+                self.mVectorLayerCache = QgsVectorLayerCache(speclib, 1000)
+                self.connectSpeclibSignals(self.mSpeclib)
                 self.updateProfileFieldModel()
+
+    def connectSpeclibSignals(self, speclib: QgsVectorLayer):
+
+        speclib.updatedFields.connect(self.updateProfileFieldModel)
+        speclib.attributeAdded.connect(self.updateProfileFieldModel)
+        speclib.attributeDeleted.connect(self.updateProfileFieldModel)
+        speclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
+        speclib.editCommandStarted.connect(self.onSpeclibEditCommandStarted)
+        speclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
+        speclib.committedAttributeValuesChanges.connect(self.onSpeclibCommittedAttributeValuesChanges)
+        speclib.beforeCommitChanges.connect(self.onSpeclibBeforeCommitChanges)
+        speclib.afterCommitChanges.connect(self.onSpeclibAfterCommitChanges)
+        speclib.committedFeaturesAdded.connect(self.onSpeclibCommittedFeaturesAdded)
+        speclib.featuresDeleted.connect(self.onSpeclibFeaturesDeleted)
+        speclib.selectionChanged.connect(self.onSpeclibSelectionChanged)
+        speclib.styleChanged.connect(self.onSpeclibStyleChanged)
+        # speclib.willBeDeleted.connect(lambda *args, sl=speclib: self.disconnectSpeclibSignals(sl))
+
+    def disconnectSpeclibSignals(self, speclib: QgsVectorLayer):
+        speclib.updatedFields.disconnect(self.updateProfileFieldModel)
+        speclib.attributeAdded.disconnect(self.updateProfileFieldModel)
+        speclib.attributeDeleted.disconnect(self.updateProfileFieldModel)
+
+        speclib.editCommandStarted.disconnect(self.onSpeclibEditCommandStarted)
+        speclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
+        speclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
+        speclib.beforeCommitChanges.disconnect(self.onSpeclibBeforeCommitChanges)
+        # self.mSpeclib.afterCommitChanges.disconnect(self.onSpeclibAfterCommitChanges)
+        speclib.committedFeaturesAdded.disconnect(self.onSpeclibCommittedFeaturesAdded)
+
+        speclib.featuresDeleted.disconnect(self.onSpeclibFeaturesDeleted)
+        speclib.selectionChanged.disconnect(self.onSpeclibSelectionChanged)
+        speclib.styleChanged.disconnect(self.onSpeclibStyleChanged)
+        speclib.willBeDeleted.disconnect(self.onSpeclibWillBeDeleted)
 
     def onSpeclibBeforeCommitChanges(self):
         """
@@ -1017,18 +1025,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
         changedFIDs2 = self.mChangedFIDs
         changedAttribute = self.mChangedAttributes
         lastCmd = self.mLastEditCommand
-        if len(self.mChangedAttributes) == 0:
-            return
-        n0 = len(self.mCACHE_PROFILE_DATA)
-        updated = [k for k in self.mCACHE_PROFILE_DATA.keys() if (k[0], k[1]) in self.mChangedAttributes]
-        self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if
-                                    (k[0], k[1]) not in self.mChangedAttributes}
+        with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
+            if len(self.mChangedAttributes) > 0:
+                n0 = len(self.mCACHE_PROFILE_DATA)
+                updated = [k for k in self.mCACHE_PROFILE_DATA.keys() if (k[0], k[1]) in self.mChangedAttributes]
+                self.mCACHE_PROFILE_DATA = {k: v for k, v in self.mCACHE_PROFILE_DATA.items() if
+                                            (k[0], k[1]) not in self.mChangedAttributes}
 
-        n1 = len(self.mCACHE_PROFILE_DATA)
-        # self.mCACHE_PROFILE_DATA.clear()
-        if n1 < n0:
-            s = ""
-        self.mChangedAttributes.clear()
+                n1 = len(self.mCACHE_PROFILE_DATA)
+                # self.mCACHE_PROFILE_DATA.clear()
+                if n1 < n0:
+                    s = ""
+                self.mChangedAttributes.clear()
         self.updatePlot()
         # self.onSpeclibFeaturesDeleted(sorted(changedFIDs2))
         # self.mChangedFIDs.clear()
