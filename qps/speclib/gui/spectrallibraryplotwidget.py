@@ -912,7 +912,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         speclib.featuresDeleted.disconnect(self.onSpeclibFeaturesDeleted)
         speclib.selectionChanged.disconnect(self.onSpeclibSelectionChanged)
         speclib.styleChanged.disconnect(self.onSpeclibStyleChanged)
-        speclib.willBeDeleted.disconnect(self.onSpeclibWillBeDeleted)
+        # speclib.willBeDeleted.disconnect(self.onSpeclibWillBeDeleted)
 
     def onSpeclibBeforeCommitChanges(self):
         """
