@@ -318,8 +318,8 @@ class PropertyItemGroup(PropertyItemBase):
         assert isinstance(grp, PropertyItemGroup)
         if xml_tag is None:
             xml_tag = grp.__class__.__name__
-        assert xml_tag not in PropertyItemGroup.XML_FACTORIES.keys()
-        PropertyItemGroup.XML_FACTORIES[xml_tag] = grp.__class__
+        if xml_tag not in PropertyItemGroup.XML_FACTORIES.keys():
+            PropertyItemGroup.XML_FACTORIES[xml_tag] = grp.__class__
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -1985,7 +1985,3 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         Returns a list with all pyqtgraph plot data items
         """
         return self.mPlotDataItems[:]
-
-
-PropertyItemGroup.registerXmlFactory(RasterRendererGroup())
-PropertyItemGroup.registerXmlFactory(ProfileVisualizationGroup())
