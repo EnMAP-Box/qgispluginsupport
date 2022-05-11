@@ -962,6 +962,9 @@ def fid2pixelindices(raster: gdal.Dataset,
         else:
             no_data = fid_min - 1
 
+    if eType is None:
+        eType = gdal.GDT_Float64
+
     dsMEM: gdal.Dataset = gdal.GetDriverByName('MEM') \
         .Create('', raster.RasterXSize, raster.RasterYSize, 1, eType=eType)
     dsMEM.SetGeoTransform(raster.GetGeoTransform())
@@ -1000,7 +1003,8 @@ def fid2pixelindices(raster: gdal.Dataset,
     assert result == ogr.OGRERR_NONE, f'Failed to rasterize vector layer {vector.GetDescription()}'
 
     fidArray: np.ndarray = dsMEM.ReadAsArray()
-
+    if eType == gdal.GDT_Float64:
+        fidArray = fidArray.astype(np.int64)
     if raster_fids is not None:
         raster_fids = pathlib.Path(raster_fids)
         drvTIFF: gdal.Driver = gdal.GetDriverByName('GTiff')
