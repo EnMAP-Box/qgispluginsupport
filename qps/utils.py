@@ -3029,8 +3029,7 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
     assert isinstance(rasterInterface, QgsRasterInterface)
 
     ext = rasterInterface.extent()
-    resX = ext.width() / rasterInterface.xSize()
-    resY = ext.height() / rasterInterface.ySize()
+
 
     if rect:
         if isinstance(rect, SpatialExtent):
@@ -3075,6 +3074,20 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
 
     boundingBox: QgsRectangle = QgsRectangle(ul, lr)
 
+    if rasterInterface.xSize() == 0 or rasterInterface.ySize() == 0:
+        nativeResolutions = []
+        if isinstance(rasterInterface, QgsRasterDataProvider):
+            nativeResolutions = rasterInterface.nativeResolutions()
+
+        if len(nativeResolutions) > 0:
+            s = ""
+
+        s = ""
+    dp = rasterInterface
+
+    resX = ext.width() / rasterInterface.xSize()
+    resY = ext.height() / rasterInterface.ySize()
+
     if isinstance(rect, QRect):
         width_px = rect.width()
         height_px = rect.height()
@@ -3084,7 +3097,7 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
 
     # npx = width_px * height_px
 
-    dp = rasterInterface
+
     result_array: np.ndarray = None
     bands = sorted(set(bands))
     nb = len(bands)

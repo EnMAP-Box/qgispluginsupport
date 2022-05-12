@@ -3,7 +3,7 @@ import math
 import re
 import sys
 import typing
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
@@ -33,7 +33,7 @@ from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListM
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SpatialPoint, loadUi, rasterArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
+    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor, HashableRectangle
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
@@ -496,7 +496,7 @@ class SamplingBlockDescription(object):
     def __init__(self,
                  point: SpatialPoint,
                  layer: QgsRasterLayer,
-                 rect: QRect,
+                 rect: Union[QRect, QgsRectangle],
                  meta: dict = None):
         """
         :param point: The point for which to read pixel values from layer
@@ -513,9 +513,16 @@ class SamplingBlockDescription(object):
 
         self.mPoint: SpatialPoint = point.toCrs(layer.crs())
         self.mLayer: QgsRasterLayer = layer
-        assert rect.width() > 0
-        assert rect.height() > 0
-        self.mRect: HashableRect = HashableRect(rect)
+        assert isinstance(rect, (QRect, QgsRectangle))
+
+        if isinstance(rect, QRect):
+            rect = HashableRect(rect)
+        elif isinstance(rect, QgsRectangle):
+            rect = HashableRectangle(rect)
+        assert isinstance(rect, (HashableRect, HashableRectangle))
+
+        self.mRect: Union[HashableRect, HashableRectangle] = rect
+
         if not isinstance(meta, dict):
             meta = dict()
         self.mMeta = meta
@@ -541,7 +548,7 @@ class SamplingBlockDescription(object):
         """
         return self.mLayer
 
-    def rect(self) -> HashableRect:
+    def rect(self) -> Union[HashableRect, HashableRectangle]:
         """
         The QRect rectangle to load the pixel profiles from (HashableRect just makes it hashable)
         :return:
@@ -687,7 +694,7 @@ class SingleProfileSamplingMode(SpectralProfileSamplingMode):
                 return SamplingBlockDescription(point, lyr, QRect(px, px))
         else:
             s = ""
-            return SamplingBlockDescription(point, lyr, QgsRectangle())
+            return SamplingBlockDescription(point, lyr, QgsRectangle(point.x(), point.y(), point.x(), point.y()))
 
         return None
 

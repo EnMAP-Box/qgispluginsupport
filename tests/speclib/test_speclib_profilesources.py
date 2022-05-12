@@ -4,7 +4,7 @@ import random
 import typing
 import unittest
 
-import xmlrunner
+from qgis._core import QgsRectangle
 
 from qgis.PyQt.QtWidgets import QComboBox, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QGridLayout
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes
@@ -19,7 +19,7 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SingleProfileSamplingMode, SpectralProfileSamplingModeModel, SpectralProfileSamplingMode, \
     SamplingBlockDescription, \
     SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode
-from qps.testing import TestCase
+from qps.testing import TestCase, WMS_GMAPS
 from qps.testing import TestObjects, StartOptions
 from qps.utils import SpatialPoint, spatialPoint2px, parseWavelength, rasterArray, SpatialExtent
 
@@ -261,6 +261,23 @@ class SpectralProcessingTests(TestCase):
         w2.setLayout(grid)
         self.showGui(w2)
 
+    def test_maplayers(self):
+
+        lyr = QgsRasterLayer(WMS_GMAPS, 'wms', 'wms')
+
+        lyrE = TestObjects.createRasterLayer()
+        pt = SpatialPoint.fromMapLayerCenter(lyrE)
+
+        if lyr.isValid():
+
+            mode = SingleProfileSamplingMode()
+
+            block = mode.samplingBlockDescription(lyr, pt)
+            self.assertIsInstance(block, SamplingBlockDescription)
+
+            array = rasterArray(lyr, block.rect())
+            s = ""
+
     def test_kernelSampling(self):
 
         mode = KernelProfileSamplingMode()
@@ -399,4 +416,4 @@ class SpectralProcessingTests(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)
