@@ -364,7 +364,7 @@ class PixelScaleExtentMapTool(QgsMapTool):
             return
         # reimplementation of QGIS\src\app\qgisapp.cpp
         canvas = self.canvas()
-        nativeResolutions = None
+        nativeResolutions = []
         if isinstance(layer.dataProvider(), QgsRasterDataProvider):
             nativeResolutions = layer.dataProvider().nativeResolutions()
 
