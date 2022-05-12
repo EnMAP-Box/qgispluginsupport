@@ -353,9 +353,14 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
 
             ds: gdal.Dataset = gdal.Open(lyr.source())
             gdalBandNames = []
+
             gdalNoData = []
             gdalScale = []
             gdalOffset = []
+
+            lyrScale = []
+            lyrOffset = []
+            lyrNoData = []
 
             for b in range(ds.RasterCount):
                 band: gdal.Band = ds.GetRasterBand(b+1)
@@ -363,6 +368,11 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                 gdalNoData.append(band.GetNoDataValue())
                 gdalScale.append(band.GetScale())
                 gdalOffset.append(band.GetOffset())
+
+                lyrScale.append(dp.bandScale(b+1))
+                lyrOffset.append(dp.bandOffset(b+1))
+                lyrNoData.append(dp.sourceNoDataValue(b+1))
+
             del ds
 
             KEY2VALUE = {
