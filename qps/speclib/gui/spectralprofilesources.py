@@ -682,10 +682,14 @@ class SingleProfileSamplingMode(SpectralProfileSamplingMode):
 
         px = spatialPoint2px(lyr, point)
 
-        if 0 <= px.x() < lyr.width() and 0 <= px.y() < lyr.height():
-            return SamplingBlockDescription(point, lyr, QRect(px, px))
+        if isinstance(px, QPoint):
+            if 0 <= px.x() < lyr.width() and 0 <= px.y() < lyr.height():
+                return SamplingBlockDescription(point, lyr, QRect(px, px))
         else:
-            return None
+            s = ""
+            return SamplingBlockDescription(point, lyr, QgsRectangle())
+
+        return None
 
     def profiles(self,
                  profileBlock: SpectralProfileBlock,
