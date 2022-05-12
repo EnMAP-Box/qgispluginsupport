@@ -89,7 +89,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     @staticmethod
     def combinedLookupPattern() -> typing.Pattern:
         patters = '|'.join([rx.pattern for rx in QgsRasterLayerSpectralProperties.LOOKUP_PATTERNS.values()])
-        return re.compile(f'({patters})')
+        return re.compile(f'({patters})', re.IGNORECASE)
 
     @staticmethod
     def fromRasterLayer(layer: typing.Union[QgsRasterLayer, gdal.Dataset, str]) \
