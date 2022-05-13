@@ -1221,8 +1221,12 @@ class TreeModel(QAbstractItemModel):
                 if role == Qt.EditRole:
                     return node.values()[i]
                 if role == Qt.ToolTipRole:
-                    tt = [f'{i + 1}: {v}' for i, v in enumerate(node.values())]
-                    return '\n'.join(tt)
+                    tt = [f'{v}' for i, v in enumerate(node.values())]
+                    tt = re.split('\n', '\n'.join(tt))
+                    if len(tt) > 24:
+                        tt = tt[0:23] + ['...'] + tt[23:24]
+                    tt = '<br>'.join(tt)
+                    return tt
         return None
 
     def flags(self, index):
