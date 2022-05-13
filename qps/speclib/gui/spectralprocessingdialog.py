@@ -2,6 +2,7 @@ import json
 import os
 import pathlib
 import typing
+from json import JSONDecodeError
 
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
@@ -11,7 +12,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QDialog, \
     QPushButton, QSizePolicy
 from qgis.core import QgsEditorWidgetSetup, QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
-    QgsProcessingRegistry, QgsMapLayer, \
+    QgsProcessingRegistry, QgsMapLayer, QgsPalettedRasterRenderer, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
     QgsProcessingParameterRasterLayer, QgsProcessingOutputRasterLayer, QgsProject, QgsProcessingParameterDefinition, \
     QgsRasterLayer, \
@@ -28,13 +29,13 @@ from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field, supports_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
-    SpectralProfileValueConverter
+    SpectralProfileValueConverter, FieldToRasterValueConverter
 from ..core.spectralprofile import prepareProfileValueDict, \
     encodeProfileValueDict, ProfileEncoding
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType
+from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType, qgsRasterLayer
 
 
 def has_raster_input(alg: QgsProcessingAlgorithm) -> bool:
@@ -573,16 +574,25 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                 if isinstance(alg, QgsProcessingAlgorithm):
                     self.setAlgorithm(alg)
                     context = self.processingContext()
-                    parJson = settings.value(f'{K}/algorithmParameters', None)
-                    if isinstance(parJson, str):
+
+                    try:
+                        parJson = settings.value(f'{K}/algorithmParameters', '')
                         parameters = json.loads(parJson)
+                    except (JSONDecodeError, Exception) as ex:
+                        parameters = None
+                    if isinstance(parameters, dict):
 
                         wrapper = self.processingModelWrapper()
                         for k, value in parameters.items():
                             w = wrapper.mWrappers.get(k)
                             if isinstance(w, QgsAbstractProcessingParameterWidgetWrapper):
                                 w.setWidgetValue(value, context)
-
+                    else:
+                        wrapper = self.processingModelWrapper()
+                        for k, w in wrapper.mWrappers.items():
+                            if isinstance(w, SpectralProcessingRasterLayerWidgetWrapper):
+                                s = ""
+                        s = ""
     def close(self):
 
         # save settings
@@ -872,9 +882,21 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
         # write additional metadata
         if isinstance(dp, VectorLayerFieldRasterDataProvider):
-            fieldConverter = dp.fieldConverter()
+            fieldConverter: FieldToRasterValueConverter = dp.fieldConverter()
+            field: QgsField = fieldConverter.field()
             if isinstance(fieldConverter, SpectralProfileValueConverter):
+                # write spectral properties like wavelength per band
                 fieldConverter.spectralSetting().writeToLayer(file_name)
+            elif fieldConverter.isClassification():
+                # set a categorical raster renderer with class names and colors
+                layer: QgsRasterLayer = qgsRasterLayer(file_name)
+                colorTable = fieldConverter.colorTable(1)
+                classData = QgsPalettedRasterRenderer.colorTableToClassData(colorTable)
+                renderer = QgsPalettedRasterRenderer(layer.dataProvider(), 1, classData)
+                layer.setRenderer(renderer)
+                layer.saveDefaultStyle()
+                del layer, renderer
+
         del file_writer
         self.mTemporaryRaster.append(file_name)
 
