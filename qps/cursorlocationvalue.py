@@ -348,7 +348,7 @@ class CursorLocationInfoDock(QDockWidget):
         self.mMaxPoints = 1
         self.mLocationHistory = []
 
-        self.mCrs = None
+        self.mCrs: QgsCoordinateReferenceSystem = QgsCoordinateReferenceSystem('EPSG:4326')
         self.mCanvases = []
 
         self.btnCrs.crsChanged.connect(self.setCrs)
@@ -377,6 +377,8 @@ class CursorLocationInfoDock(QDockWidget):
             lambda: self.btnRasterBands.setDefaultAction(self.actionAllRasterBands))
         self.actionVisibleRasterBands.triggered.connect(
             lambda: self.btnRasterBands.setDefaultAction(self.actionVisibleRasterBands))
+
+        self.updateCursorLocationInfo()
 
     def options(self):
 
@@ -543,15 +545,19 @@ class CursorLocationInfoDock(QDockWidget):
         self.updateCursorLocationInfo()
 
     def updateCursorLocationInfo(self):
+
+        self.btnCrs.setToolTip(f'Set CRS<br>Selected CRS: {self.mCrs.description()}')
+
         # transform this point to targeted CRS
         pt = self.cursorLocation()
         if isinstance(pt, SpatialPoint):
             pt2 = pt.toCrs(self.mCrs)
             if isinstance(pt2, SpatialPoint):
+                tt = f'{pt2.asWkt()} <br>CRS: {self.mCrs.description()}'
                 self.tbX.setText('{}'.format(pt2.x()))
                 self.tbY.setText('{}'.format(pt2.y()))
-                self.tbX.setToolTip(pt2.asWkt())
-                self.tbY.setToolTip(pt2.asWkt())
+                self.tbX.setToolTip(tt)
+                self.tbY.setToolTip(tt)
             else:
                 self.tbX.setText('None')
                 self.tbY.setText('None')
