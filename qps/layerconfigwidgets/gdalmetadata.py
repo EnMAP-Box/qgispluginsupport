@@ -325,6 +325,7 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         return data
 
     def syncToLayer(self, *args, spectralProperties: QgsRasterLayerSpectralProperties = None):
+        was_editable = self.isEditable()
         self.startEditing()
         self.deleteFeatures(self.allFeatureIds())
         self.commitChanges(False)
@@ -396,11 +397,11 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                     f.setAttribute(n, value)
                 assert self.addFeature(f)
             self.endEditCommand()
-        assert self.commitChanges(False)
+        assert self.commitChanges(not was_editable)
 
     def applyToLayer(self, *args):
 
-        if not (isGDALRasterLayer(self.mMapLayer)) and self.isEditable():
+        if not (isGDALRasterLayer(self.mMapLayer) and self.isEditable()):
             return
 
         ds: gdal.Dataset = None
@@ -414,6 +415,9 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                 f: QgsFeature
                 bandNo = f.attribute(BandFieldNames.Number)
                 band: gdal.Band = ds.GetRasterBand(bandNo)
+                if not isinstance(band, gdal.Band):
+                    continue
+
                 domain = f.attribute(BandFieldNames.Domain)
                 if domain in ['', NULL]:
                     domain = None
