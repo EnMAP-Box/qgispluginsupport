@@ -962,6 +962,9 @@ def fid2pixelindices(raster: gdal.Dataset,
         else:
             no_data = fid_min - 1
 
+    if eType is None:
+        eType = gdal.GDT_Float64
+
     dsMEM: gdal.Dataset = gdal.GetDriverByName('MEM') \
         .Create('', raster.RasterXSize, raster.RasterYSize, 1, eType=eType)
     dsMEM.SetGeoTransform(raster.GetGeoTransform())
@@ -1000,7 +1003,8 @@ def fid2pixelindices(raster: gdal.Dataset,
     assert result == ogr.OGRERR_NONE, f'Failed to rasterize vector layer {vector.GetDescription()}'
 
     fidArray: np.ndarray = dsMEM.ReadAsArray()
-
+    if eType == gdal.GDT_Float64:
+        fidArray = fidArray.astype(np.int64)
     if raster_fids is not None:
         raster_fids = pathlib.Path(raster_fids)
         drvTIFF: gdal.Driver = gdal.GetDriverByName('GTiff')
@@ -2599,18 +2603,21 @@ def px2spatialPoint(rasterInterface: Union[QgsRasterInterface, QgsRasterLayer],
                         ext.yMaximum() - (px.y() + subpixel_pos_y) * resY)
 
 
-def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: typing.Union[QgsPointXY, SpatialPoint]) -> QPoint:
+def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: typing.Union[QgsPointXY, SpatialPoint]) -> Optional[QPoint]:
     """
     Converts a spatial point into a raster pixel coordinate
     :param layer:
     :param spatialPoint:
     :return:
+
     """
     if isinstance(spatialPoint, SpatialPoint):
         spatialPoint = spatialPoint.toCrs(layer.crs())
     assert isinstance(spatialPoint, QgsPointXY)
     assert isinstance(layer, QgsRasterLayer)
     ext = layer.extent()
+    if layer.width() == 0 or layer.height() == 0:
+        return None
     resX = layer.extent().width() / layer.width()
     resY = layer.extent().height() / layer.height()
 
@@ -2999,7 +3006,7 @@ def rasterLayerArray(*args, **kwds):
 
 
 def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
-                rect: typing.Union[QRect, QgsRasterInterface, SpatialExtent] = None,
+                rect: typing.Union[QRect, QgsRasterInterface, QgsRectangle, SpatialExtent] = None,
                 ul: typing.Union[SpatialPoint, QPoint] = None,
                 lr: typing.Union[SpatialPoint, QPoint] = None,
                 bands: typing.Union[str, int, typing.List[int]] = None) -> np.ndarray:

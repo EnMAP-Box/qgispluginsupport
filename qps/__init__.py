@@ -120,12 +120,20 @@ def mapLayerConfigWidgetFactories() -> typing.List[QgsMapLayerConfigWidgetFactor
     return MAPLAYER_CONFIGWIDGET_FACTORIES[:]
 
 
+def registerSpectralLibraryPlotFactories():
+    from .speclib.gui.spectrallibraryplotwidget import PropertyItemGroup, RasterRendererGroup, ProfileVisualizationGroup
+    PropertyItemGroup.registerXmlFactory(RasterRendererGroup())
+    PropertyItemGroup.registerXmlFactory(ProfileVisualizationGroup())
+
+
 def registerEditorWidgets():
     """
     Call this function to register QgsEditorwidgetFactories to the QgsEditorWidgetRegistry
     It is required that a QgsApplication has been instantiated.
     """
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
+
+
 
     try:
         from .speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
@@ -202,6 +210,7 @@ def initResources():
 
 def initAll():
     initResources()
+    registerSpectralLibraryPlotFactories()
     registerEditorWidgets()
     registerExpressionFunctions()
     registerMapLayerConfigWidgetFactories()

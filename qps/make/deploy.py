@@ -63,7 +63,8 @@ def userProfileManager() -> QgsUserProfileManager:
         basePath = None
         if platform.system() == 'Windows':
             basePath = home / 'AppData/Roaming/QGIS/QGIS3'
-
+        elif platform.system() == 'Linux':
+            basePath = home / '.local/share/QGIS/QGIS3'
         if basePath is None:
             raise NotImplementedError(f'No QGIS basePath for {platform.system()}')
 

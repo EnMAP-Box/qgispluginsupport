@@ -364,7 +364,6 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
 
             if self.mCrosshairStyle.mShowDot:
                 p = QRectF()
-
                 p.setTopLeft(QPointF(centerPx.x() - md,
                                      centerPx.y() + md))
                 p.setBottomRight(QPointF(centerPx.x() + md,
@@ -418,15 +417,15 @@ class CrosshairMapCanvasItem(QgsMapCanvasItem):
                         pixelBorder.append(lr)
                         pixelBorder.append(ll)
                         pixelBorder.append(ul)
-
-                        painter.drawPolygon(pixelBorder)
+                        polygons.append(pixelBorder)
 
             pen = QPen(Qt.SolidLine)
             pen.setWidth(self.mCrosshairStyle.mThickness)
             pen.setColor(self.mCrosshairStyle.mColor)
             pen.setBrush(self.mCrosshairStyle.mColor)
             brush = QBrush(Qt.NoBrush)
-            brush.setColor(self.mCrosshairStyle.mColor)
+            brush.setColor(QColor(self.mCrosshairStyle.mColor))
+            brush.color().setAlpha(0)
             painter.setBrush(brush)
             painter.setPen(pen)
             for p in polygons:

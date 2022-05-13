@@ -524,7 +524,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
     @staticmethod
     def readRasterVector(raster, vector,
                          fields: QgsFields,
-                         all_touched: bool,
+                         all_touched: bool = True,
                          cache: int = 5 * 2 ** 20) -> typing.Generator[QgsFeature, None, None]:
 
         ds: gdal.Dataset = gdalDataset(raster)
