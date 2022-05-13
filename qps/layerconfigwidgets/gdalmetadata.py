@@ -97,12 +97,17 @@ class BandFieldNames(object):
     Name = 'Band Name'
     BadBand = 'BBL'
     Range = 'Range'
-    Offset = 'Data Offset'
-    Gain = 'Data Gain'
+    Offset = 'Offset'
+    Scale = 'Scale'
     NoData = 'No Data'
     FWHM = 'FWHM'
     Wavelength = 'Wavelength'
     WavelengthUnit = 'Wavelength Unit'
+    # ENVI Header
+    ENVIDataGain = 'Data Gain'
+    ENVIDataOffset = 'Data Offset'
+    ENVIDataReflectanceGain = 'Data Refl. Gain'
+    ENVIDataReflectanceOffset = 'Data Refl. Offset'
 
 
 class GDALMetadataModelBase(QgsVectorLayer):
@@ -200,7 +205,7 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         BandFieldNames.WavelengthUnit: 'wavelength units',
         BandFieldNames.FWHM: 'fwhm',
         BandFieldNames.Offset: 'data offset values',
-        BandFieldNames.Gain: 'data gain values'
+        BandFieldNames.Scale: 'data gain values'
     }
 
     FIELD_TOOLTIP = {
@@ -213,10 +218,13 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         BandFieldNames.WavelengthUnit: "Wavelength Unit, e.g. 'nm', 'μm'",
         BandFieldNames.NoData: 'Band NoData value to mask pixel',
         BandFieldNames.Domain: "Metadata domain.<br>'' = default domain<br>'ENVI' = ENVI domain",
-        BandFieldNames.BadBand: 'bad band multiplier value. <br>0 = exclude, <br>1 = use band',
+        BandFieldNames.BadBand: 'Bad band multiplier value. <br>0 = exclude, <br>1 = use band',
         BandFieldNames.FWHM: 'Full width at half maximum or band width, respectively',
-        BandFieldNames.Offset: 'Offset of data values',
-        BandFieldNames.Gain: 'Gain of data values',
+        BandFieldNames.Offset: 'Data offset (GDAL)',
+        BandFieldNames.Scale: 'Data scale (GDAL)',
+
+        BandFieldNames.ENVIDataOffset: 'ENVI Header Data Offset<br>Values can differ from normal (GDAL) data offset',
+        BandFieldNames.ENVIDataGain: 'ENVI Header Data Gain<br>Values can differ from normal (GDAL) data scale',
     }
 
     def __init__(self):
@@ -271,11 +279,16 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         # RANGEConstraints.setConstraintExpression(f'"{BandFieldNames.BandRange}" > 0')
 
         OFFSET = QgsField(BandFieldNames.Offset, type=QVariant.Double)
-        GAIN = QgsField(BandFieldNames.Gain, type=QVariant.Double)
+        SCALE = QgsField(BandFieldNames.Scale, type=QVariant.Double)
+
+        ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QVariant.Double)
+        ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QVariant.Double)
+
         # add fields
         for field in [BANDNO,
                       DOMAIN,
-                      bandName, NODATA, BBL, WL, WLU, FWHM, RANGE, OFFSET, GAIN]:
+                      bandName, NODATA, BBL, WL, WLU, FWHM, RANGE, OFFSET, SCALE,
+                      ENVI_OFFSET, ENVI_GAIN]:
             field: QgsField
             field.setComment(self.FIELD_TOOLTIP.get(field.name(), ''))
             self.addAttribute(field)
@@ -363,16 +376,32 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             lyrOffset = []
             lyrNoData = []
 
+            ENVIDataOffset = spectralProperties.bandValues(None, 'data_gain')
+            ENVIDataGain = spectralProperties.bandValues(None, 'data_offset')
+
+            # hide ENVI specific columns if they do not provide meaningfull information
+            show_envi = any(ENVIDataOffset) or any(ENVIDataGain)
+
+            tableConfig = self.attributeTableConfig()
+            columnConfigs = tableConfig.columns()
+
+            for c in columnConfigs:
+                c: QgsAttributeTableConfig.ColumnConfig
+                if c.name in [BandFieldNames.ENVIDataOffset, BandFieldNames.ENVIDataGain]:
+                    c.hidden = not show_envi
+            tableConfig.setColumns(columnConfigs)
+            self.setAttributeTableConfig(tableConfig)
+
             for b in range(ds.RasterCount):
-                band: gdal.Band = ds.GetRasterBand(b+1)
+                band: gdal.Band = ds.GetRasterBand(b + 1)
                 gdalBandNames.append(band.GetDescription())
                 gdalNoData.append(band.GetNoDataValue())
                 gdalScale.append(band.GetScale())
                 gdalOffset.append(band.GetOffset())
 
-                lyrScale.append(dp.bandScale(b+1))
-                lyrOffset.append(dp.bandOffset(b+1))
-                lyrNoData.append(dp.sourceNoDataValue(b+1))
+                lyrScale.append(dp.bandScale(b + 1))
+                lyrOffset.append(dp.bandOffset(b + 1))
+                lyrNoData.append(dp.sourceNoDataValue(b + 1))
 
             del ds
 
@@ -386,6 +415,11 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                 BandFieldNames.NoData: lambda i: dp.sourceNoDataValue(i + 1),
                 BandFieldNames.Name: lambda i: gdalBandNames[i],
                 BandFieldNames.Domain: lambda i: domain,
+                BandFieldNames.Offset: lambda i: lyrOffset[i],
+                BandFieldNames.Scale: lambda i: lyrScale[i],
+
+                BandFieldNames.ENVIDataOffset: lambda i: ENVIDataOffset[i],
+                BandFieldNames.ENVIDataGain: lambda i: ENVIDataGain[i],
             }
 
             domain = ''
@@ -911,6 +945,7 @@ RX_OGR_URI = re.compile(r'(?P<path>[^|]+)(\|('
                         + r'))*', re.I)
 
 RX_LEADING_BAND_NUMBER = re.compile(r'^Band \d+:')
+
 
 class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
