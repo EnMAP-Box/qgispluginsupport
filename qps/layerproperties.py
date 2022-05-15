@@ -49,6 +49,7 @@ from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 try:
     from qgis.gui import QgsFieldCalculator
+
     FIELD_CALCULATOR = True
 except ImportError:
     FIELD_CALCULATOR = False
@@ -1454,7 +1455,47 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
             self.editingToggled()
 
+            self.mMainView.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
+
         self._hide_unconnected_widgets()
+
+    def onWillShowContextMenuAttributeTable(self, menu: QMenu, atIndex: QModelIndex):
+        """
+        Create the QMenu for the AttributeTable
+        :param menu:
+        :param atIndex:
+        :return:
+        """
+
+        fid = atIndex.data(QgsAttributeTableModel.FeatureIdRole)
+
+        def findAction(name: str) -> QAction:
+            name = self.tr(name)
+
+            for a in menu.actions():
+                if a.text() == name:
+                    return a
+            return None
+
+        layer = self.mLayer
+        vlTool = self.vectorLayerTools()
+
+        if isinstance(vlTool, VectorLayerTools) and isinstance(layer, QgsVectorLayer):
+            actionZoomToFeature = findAction('Zoom to Feature')
+            actionPanToFeature = findAction('Pan to Feature')
+            actionFlashFeature = findAction('Flash Feature')
+
+            if isinstance(actionZoomToFeature, QAction):
+                actionZoomToFeature.triggered.connect(
+                    lambda *args, lyr=layer, fids=[fid]: vlTool.zoomToFeatures(lyr, fids))
+            if isinstance(actionPanToFeature, QAction):
+                actionPanToFeature.triggered.connect(
+                    lambda *args, lyr=layer, fids=[fid]: vlTool.panToFeatures(lyr, fids))
+            if isinstance(actionFlashFeature, QAction):
+                # remove next line when vlTool.flashFeatures is implemented
+                menu.removeAction(actionFlashFeature)
+                actionFlashFeature.triggered.connect(
+                    lambda *args, lyr=layer, fids=[fid]: vlTool.flashFeatures(lyr, fids))
 
     def closeEvent(self, event: QCloseEvent):
         super().closeEvent(event)

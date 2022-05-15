@@ -25,6 +25,10 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+from typing import List
+
+from qgis.core import QgsFeatureRequest
+
 from qgis.PyQt.QtWidgets import QMessageBox
 
 from qgis.PyQt.QtCore import pyqtSignal
@@ -38,7 +42,7 @@ from qgis.core import \
 
 from qgis.gui import QgisInterface
 
-from .utils import SpatialExtent, SpatialPoint
+from .utils import SpatialExtent, SpatialPoint, featureBoundingBox
 
 
 class VectorLayerTools(QgsVectorLayerTools):
@@ -51,6 +55,7 @@ class VectorLayerTools(QgsVectorLayerTools):
     sigFreezeCanvases = pyqtSignal(bool)
     sigZoomRequest = pyqtSignal(QgsCoordinateReferenceSystem, QgsRectangle)
     sigPanRequest = pyqtSignal(QgsCoordinateReferenceSystem, QgsPointXY)
+    sigFlashRequest = pyqtSignal(QgsGeometry)
 
     def __init__(self, *args, **kwds):
         super(VectorLayerTools, self).__init__(*args, **kwds)
@@ -158,6 +163,26 @@ class VectorLayerTools(QgsVectorLayerTools):
             bbox = layer.boundingBoxOfSelected()
             ext = SpatialExtent(layer.crs(), bbox)
             self.sigZoomRequest[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), ext)
+
+    def featureBoundingBox(self, layer: QgsVectorLayer, featureIds: List[int]):
+        request = QgsFeatureRequest()
+        request.setFilterFids(featureIds)
+        request.setNoAttributes()
+        return featureBoundingBox(layer.getFeatures(request))
+
+    def zoomToFeatures(self, layer: QgsVectorLayer, featureIds: List[int]):
+        bbox = self.featureBoundingBox(layer, featureIds)
+        ext = SpatialExtent(layer.crs(), bbox)
+        self.sigZoomRequest[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), ext)
+
+    def panToFeatures(self, layer: QgsVectorLayer, featureIds: List[int]):
+        bbox = self.featureBoundingBox(layer, featureIds)
+        pt = SpatialPoint(layer.crs(), bbox.center())
+        self.sigPanRequest[QgsCoordinateReferenceSystem, QgsPointXY].emit(pt.crs(), pt)
+
+    def flashFeatures(self, layer: QgsVectorLayer, featureIds: List[int]):
+        # todo
+        pass
 
     def panToSelected(self, layer: QgsVectorLayer):
         if isinstance(layer, QgsVectorLayer) and layer.selectedFeatureCount() > 0:

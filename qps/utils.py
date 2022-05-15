@@ -50,6 +50,8 @@ from typing import Union, List, Optional
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
+from qgis.core import QgsFeatureRequest
+
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
     QDateTime, QDate, QVariant, QByteArray, QUrl, Qt
@@ -2635,6 +2637,23 @@ def rasterBlockArray(block: QgsRasterBlock) -> np.ndarray:
     """
     dtype = QGIS2NUMPY_DATA_TYPES[block.dataType()]
     return np.frombuffer(block.data(), dtype=dtype).reshape(block.height(), block.width())
+
+
+def featureBoundingBox(features) -> QgsRectangle:
+    retval = QgsRectangle()
+    retval.setMinimal()
+
+    for feature in features:
+        feature: QgsFeature
+        if not feature.hasGeometry():
+            continue
+        r = feature.geometry().boundingBox()
+        retval.combineExtentWith(r)
+    if retval.width() == 0.0 or retval.height() == 0.0:
+        if retval.xMinimum() == 0 and retval.yMinimum() == 0 and \
+            retval.xMaximum() == 0 and retval.yMaximum() == 0:
+            retval.set(-1.0, -1.0, 1.0, 1.0)
+    return retval
 
 
 def findParent(qObject, parentType, checkInstance=False):

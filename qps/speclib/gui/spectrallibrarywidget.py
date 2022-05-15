@@ -3,6 +3,8 @@ import sys
 import typing
 import warnings
 
+from qgis._gui import QgsAttributeTableModel
+
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
@@ -22,6 +24,7 @@ from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibrar
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ...utils import SpatialExtent, SpatialPoint, nextColor
+from ...vectorlayertools import VectorLayerTools
 
 
 class SpectralLibraryWidget(AttributeTableWidget):
@@ -306,6 +309,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :param atIndex:
         :return:
         """
+        super().onWillShowContextMenuAttributeTable(menu, atIndex)
         menu.addSeparator()
         self.addProfileStyleMenu(menu)
 
