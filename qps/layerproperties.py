@@ -1492,8 +1492,6 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
                 actionPanToFeature.triggered.connect(
                     lambda *args, lyr=layer, fids=[fid]: vlTool.panToFeatures(lyr, fids))
             if isinstance(actionFlashFeature, QAction):
-                # remove next line when vlTool.flashFeatures is implemented
-                menu.removeAction(actionFlashFeature)
                 actionFlashFeature.triggered.connect(
                     lambda *args, lyr=layer, fids=[fid]: vlTool.flashFeatures(lyr, fids))
 

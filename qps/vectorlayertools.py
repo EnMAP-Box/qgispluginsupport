@@ -55,7 +55,8 @@ class VectorLayerTools(QgsVectorLayerTools):
     sigFreezeCanvases = pyqtSignal(bool)
     sigZoomRequest = pyqtSignal(QgsCoordinateReferenceSystem, QgsRectangle)
     sigPanRequest = pyqtSignal(QgsCoordinateReferenceSystem, QgsPointXY)
-    sigFlashRequest = pyqtSignal(QgsGeometry)
+    sigFlashFeatureRequest = pyqtSignal(QgsVectorLayer, list)
+
 
     def __init__(self, *args, **kwds):
         super(VectorLayerTools, self).__init__(*args, **kwds)
@@ -181,8 +182,7 @@ class VectorLayerTools(QgsVectorLayerTools):
         self.sigPanRequest[QgsCoordinateReferenceSystem, QgsPointXY].emit(pt.crs(), pt)
 
     def flashFeatures(self, layer: QgsVectorLayer, featureIds: List[int]):
-        # todo
-        pass
+        self.sigFlashFeatureRequest.emit(layer, featureIds)
 
     def panToSelected(self, layer: QgsVectorLayer):
         if isinstance(layer, QgsVectorLayer) and layer.selectedFeatureCount() > 0:
