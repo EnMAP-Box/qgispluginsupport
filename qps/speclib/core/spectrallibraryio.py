@@ -1007,13 +1007,15 @@ def initSpectralLibraryIOs():
     from ..io.envi import EnviSpectralLibraryIO
     from ..io.asd import ASDSpectralLibraryIO
     from ..io.rastersources import RasterLayerSpectralLibraryIO
+    from ..io.spectralevolution import SEDSpectralLibraryIO
 
     speclibIOs = [
         GeoPackageSpectralLibraryIO(),
         GeoJsonSpectralLibraryIO(),
         EnviSpectralLibraryIO(),
         ASDSpectralLibraryIO(),
-        RasterLayerSpectralLibraryIO()
+        SEDSpectralLibraryIO(),
+        RasterLayerSpectralLibraryIO(),
     ]
 
     for speclibIO in speclibIOs:
