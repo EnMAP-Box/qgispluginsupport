@@ -13,7 +13,6 @@ __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 
 import unittest
 
-import xmlrunner
 from qgis.PyQt.QtCore import QPointF, Qt, QEvent, QTimer, pyqtSlot
 from qgis.PyQt.QtGui import QMouseEvent
 
@@ -267,4 +266,4 @@ class TestMapTools(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

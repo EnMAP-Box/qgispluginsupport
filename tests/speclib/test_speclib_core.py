@@ -24,7 +24,6 @@ import unittest
 from typing import List
 
 import numpy as np
-import xmlrunner
 from osgeo import ogr
 
 from qgis.PyQt.QtCore import QJsonDocument, NULL
@@ -783,4 +782,4 @@ class SpeclibCoreTests(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

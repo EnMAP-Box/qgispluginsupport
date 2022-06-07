@@ -1,5 +1,4 @@
 import unittest
-import xmlrunner
 
 from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsProperty, QgsExpressionContextUtils
 from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py
@@ -68,4 +67,4 @@ class QgsFunctionTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

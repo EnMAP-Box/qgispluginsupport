@@ -26,7 +26,7 @@ class TestCore(TestCase):
             processingContext = QgsProcessingContext()
             processingFeedback = processingContext.feedback()
 
-            settingA = SpectralSetting.fromRasterLayer(lyr)
+            settingA: SpectralSetting = SpectralSetting.fromRasterLayer(lyr)
             self.assertIsInstance(settingA, SpectralSetting)
 
             file_name = test_dir / f'layer_{i}.tiff'

@@ -57,7 +57,6 @@ class VectorLayerTools(QgsVectorLayerTools):
     sigPanRequest = pyqtSignal(QgsCoordinateReferenceSystem, QgsPointXY)
     sigFlashFeatureRequest = pyqtSignal(QgsVectorLayer, list)
 
-
     def __init__(self, *args, **kwds):
         super(VectorLayerTools, self).__init__(*args, **kwds)
         pass

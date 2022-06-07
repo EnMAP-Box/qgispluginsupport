@@ -1354,10 +1354,12 @@ class RasterRendererGroup(PropertyItemGroup):
             self.signals().requestRemoval.emit()
 
     def disconnectGroup(self):
-        pw = self.model().plotWidget()
-        for bar in self.bandPlotItems():
-            if bar in pw.items():
-                pw.removeItem(bar)
+        model = self.model()
+        if model:
+            pw = model.plotWidget()
+            for bar in self.bandPlotItems():
+                if bar in pw.items():
+                    pw.removeItem(bar)
 
         self.mLayer = None
 

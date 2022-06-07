@@ -12,6 +12,7 @@ from typing import Any, List, Union, Tuple
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.PyQt.QtCore import QJsonDocument
 from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
@@ -20,7 +21,6 @@ from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsF
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
 from qgis.core import QgsTask, QgsFeatureRequest
 from qgis.gui import QgsMapCanvas
-
 from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields, \
     is_profile_field, create_profile_field
 from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
@@ -30,7 +30,7 @@ from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...unitmodel import BAND_INDEX, BAND_NUMBER
 from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
     qgsFieldAttributes2List, \
-    spatialPoint2px, saveTransform, qgsRasterLayer, parseBadBandList, qgsField
+    spatialPoint2px, saveTransform, qgsRasterLayer, qgsField
 
 # The values that describe a spectral profiles
 # y in 1st position ot show profile values in string representations first
@@ -309,9 +309,11 @@ class SpectralSetting(object):
         if not (isinstance(layer, QgsRasterLayer) and layer.isValid()):
             return None
 
-        wl, wlu = parseWavelength(layer)
-        bbl = parseBadBandList(layer)
+        props = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
 
+        wl = props.wavelengths()
+        wlu = props.wavelengthUnits()[0]
+        bbl = props.badBands()
         del layer
 
         if wl is None:

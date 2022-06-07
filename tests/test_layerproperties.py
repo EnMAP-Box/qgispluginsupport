@@ -12,7 +12,6 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 
-import xmlrunner
 from osgeo import gdal
 
 from qgis.PyQt.QtWidgets import QDialog, QHBoxLayout, QWidget, QGridLayout
@@ -69,7 +68,7 @@ class LayerPropertyTests(TestCase):
         vl = QgsVectorLayer(testvectordata)
         sLayers = subLayers(vl)
         self.assertIsInstance(sLayers, list)
-        self.assertTrue(len(sLayers) == 2)
+        self.assertTrue(len(sLayers) == 1)
 
     def test_defaultRenderer(self):
 
@@ -271,4 +270,4 @@ class LayerPropertyTests(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

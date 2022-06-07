@@ -9,6 +9,7 @@ doc/build/
 deploy/*
 temp/
 */temp/
+symbology-style.db
 .coverage
 examples/*
 !examples/*.py

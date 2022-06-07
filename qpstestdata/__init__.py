@@ -3,10 +3,10 @@ import pathlib
 # from qps
 enmap = (pathlib.Path(__file__).parents[1] / 'qps' / 'enmap.tif').as_posix()
 testvectordata = \
-    (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata.kml').as_posix()
-landcover = testvectordata + '|layername=landcover'
-enmap_pixel = testvectordata + '|layername=enmap_pixel'
-enmap_polygon = landcover
+    (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata.geojson').as_posix()
+landcover = testvectordata
+enmap_pixel = (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectorpixelcenter.geojson').as_posix()
+enmap_polygon = testvectordata
 
 # from qpstestdata
 hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()

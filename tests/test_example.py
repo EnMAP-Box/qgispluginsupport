@@ -1,6 +1,5 @@
 import pathlib
 import unittest
-import xmlrunner
 
 from qgis.PyQt.QtCore import QSize, QFile
 from qgis.PyQt.QtGui import QIcon
@@ -72,4 +71,4 @@ class ExampleCase(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

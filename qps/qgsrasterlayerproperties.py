@@ -18,6 +18,8 @@ rx_more_information = re.compile(r'^more[_\n]*information$', re.IGNORECASE)
 rx_key_value_pair = re.compile(r'^(?P<key>[^=]+)=(?P<value>.+)$')
 rx_envi_array = re.compile(r'^{\s*(?P<value>([^}]+))\s*}$')
 
+rx_is_int = re.compile(r'^\s*\d+\s*$')
+
 EXCLUDED_GDAL_DOMAINS = ['IMAGE_STRUCTURE', 'DERIVED_SUBDATASETS']
 
 
@@ -25,14 +27,17 @@ def stringToType(value: str):
     """
     Converts a string into a matching int, float or string
     """
-    t = str
-    for candidate in [float, int]:
+    if not isinstance(value, str):
+        return value
+
+    if rx_is_int.match(value):
+        return int(value.strip())
+    else:
         try:
-            _ = candidate(value)
-            t = candidate
+            return float(value.strip())
         except ValueError:
-            break
-    return t(value)
+            pass
+    return value
 
 
 def stringToTypeList(value: str) -> List:

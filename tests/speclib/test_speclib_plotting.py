@@ -1,6 +1,5 @@
 import unittest
 
-import xmlrunner
 from osgeo import gdal, ogr
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtCore import QModelIndex
@@ -514,4 +513,4 @@ class TestSpeclibPlotting(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

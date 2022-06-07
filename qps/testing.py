@@ -245,7 +245,7 @@ def start_app(cleanup: bool = True,
             ]
             for d in corePythonPluginCandidates:
                 d: pathlib.Path
-                if d.is_dir() and (d/'plugins').is_dir():
+                if d.is_dir() and (d / 'plugins').is_dir():
                     site.addsitedir(d)
                     site.addsitedir(d / 'plugins')
                     break

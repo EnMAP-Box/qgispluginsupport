@@ -133,8 +133,6 @@ def registerEditorWidgets():
     """
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
 
-
-
     try:
         from .speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
         registerSpectralProfileEditorWidget()

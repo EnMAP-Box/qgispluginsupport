@@ -29,12 +29,9 @@ import pathlib
 import re
 import typing
 
-from PyQt5.QtCore import QDate, QTime
-from qgis._core import QgsPointXY, QgsGeometry
-
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant, QDate, QTime
 from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
-    QgsField, QgsProcessingFeedback
+    QgsField, QgsProcessingFeedback, QgsPointXY, QgsGeometry
 from qgis.gui import QgsFileWidget
 from .. import FIELD_NAME
 from ..core import create_profile_field

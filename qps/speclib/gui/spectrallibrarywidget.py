@@ -3,15 +3,11 @@ import sys
 import typing
 import warnings
 
-from qgis._gui import QgsAttributeTableModel
-
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog
-from qgis.core import QgsFeature
-from qgis.core import QgsProject
-from qgis.core import QgsVectorLayer
+from qgis.core import QgsFeature, QgsProject, QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
@@ -24,7 +20,6 @@ from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibrar
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
 from ...utils import SpatialExtent, SpatialPoint, nextColor
-from ...vectorlayertools import VectorLayerTools
 
 
 class SpectralLibraryWidget(AttributeTableWidget):

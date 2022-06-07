@@ -593,6 +593,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             if isinstance(w, SpectralProcessingRasterLayerWidgetWrapper):
                                 s = ""
                         s = ""
+
     def close(self):
 
         # save settings

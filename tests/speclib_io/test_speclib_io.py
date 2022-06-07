@@ -22,7 +22,6 @@ import pathlib
 import re
 import unittest
 
-import xmlrunner
 
 from qgis.core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature
 from qgis.core import QgsVectorLayer
@@ -239,4 +238,4 @@ class TestIO(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

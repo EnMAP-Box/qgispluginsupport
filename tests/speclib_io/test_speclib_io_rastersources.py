@@ -2,7 +2,6 @@
 import pathlib
 import unittest
 
-import xmlrunner
 from qgis.core import QgsWkbTypes
 
 from qgis.core import QgsProject
@@ -61,4 +60,4 @@ class TestSpeclibIO_Raster(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

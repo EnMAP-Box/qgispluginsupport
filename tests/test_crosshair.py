@@ -12,7 +12,6 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 
-import xmlrunner
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle, QgsProject
 from qgis.gui import QgsMapCanvas
@@ -92,4 +91,4 @@ class CrosshairTests(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

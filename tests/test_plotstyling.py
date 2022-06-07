@@ -20,7 +20,6 @@
 import os
 import unittest
 
-import xmlrunner
 
 from qgis.PyQt.QtCore import QVariant, QSize
 from qgis.PyQt.QtGui import QPen, QColor
@@ -330,4 +329,4 @@ class PlotStyleTests(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

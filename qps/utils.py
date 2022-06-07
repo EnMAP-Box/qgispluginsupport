@@ -50,7 +50,6 @@ from typing import Union, List, Optional
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
-from qgis.core import QgsFeatureRequest
 
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
@@ -66,7 +65,6 @@ from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataPro
 from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
-
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 
 QGIS_RESOURCE_WARNINGS = set()
@@ -631,18 +629,24 @@ def qgisLayerTreeLayers() -> list:
         return []
 
 
+rx_is_int = re.compile(r'^\s*\d+\s*$')
+
+
 def stringToType(value: str):
     """
     Converts a string into a matching int, float or string
     """
-    t = str
-    for candidate in [float, int]:
+    if not isinstance(value, str):
+        return value
+
+    if rx_is_int.match(value):
+        return int(value.strip())
+    else:
         try:
-            _ = candidate(value)
-            t = candidate
+            return float(value.strip())
         except ValueError:
-            break
-    return t(value)
+            pass
+    return value
 
 
 def toType(t, arg, empty2None=True, empty_values=[None, NULL]):
@@ -2650,8 +2654,7 @@ def featureBoundingBox(features) -> QgsRectangle:
         r = feature.geometry().boundingBox()
         retval.combineExtentWith(r)
     if retval.width() == 0.0 or retval.height() == 0.0:
-        if retval.xMinimum() == 0 and retval.yMinimum() == 0 and \
-            retval.xMaximum() == 0 and retval.yMaximum() == 0:
+        if retval.xMinimum() == 0 and retval.yMinimum() == 0 and retval.xMaximum() == 0 and retval.yMaximum() == 0:
             retval.set(-1.0, -1.0, 1.0, 1.0)
     return retval
 

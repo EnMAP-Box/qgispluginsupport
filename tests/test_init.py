@@ -8,7 +8,6 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 import pathlib
 import re
-import xmlrunner
 from qgis.PyQt.QtGui import QIcon
 
 from qgis.core import QgsApplication
@@ -65,4 +64,4 @@ class testClassTesting(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

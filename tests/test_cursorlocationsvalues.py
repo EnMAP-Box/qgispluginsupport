@@ -15,7 +15,6 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 import os
 import unittest
 
-import xmlrunner
 from osgeo import gdal
 
 from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout, QTreeView
@@ -148,4 +147,4 @@ class CursorLocationTest(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

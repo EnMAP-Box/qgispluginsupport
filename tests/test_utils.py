@@ -23,7 +23,6 @@ import warnings
 import xml.etree.ElementTree as ET
 
 import numpy as np
-import xmlrunner
 from qgis.PyQt.QtCore import QDate, QDateTime, QByteArray, QUrl, QRect, QPoint, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
@@ -41,6 +40,7 @@ from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItems
     rasterArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
     qgsFieldAttributes2List, gdalFileSize, loadUi, dn, datetime64, SelectMapLayerDialog, parseFWHM
+from qpstestdata import testvectordata
 
 
 class TestUtils(TestCase):
@@ -278,9 +278,10 @@ class TestUtils(TestCase):
         rl = QgsRasterLayer(enmap)
         vl = QgsVectorLayer(enmap_pixel)
 
+        self.assertTrue(rl.isValid())
+        self.assertTrue(vl.isValid())
         DIR_TEST = self.createTestOutputDirectory()
         burned, no_data = fid2pixelindices(rl, vl,
-                                           layer=vl.dataProvider().subLayers()[0].split('!!::!!')[1],
                                            all_touched=True)
 
         self.assertIsInstance(no_data, int)
@@ -732,4 +733,4 @@ class TestUtils(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

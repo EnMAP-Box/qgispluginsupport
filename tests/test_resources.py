@@ -2,7 +2,6 @@ import pathlib
 import unittest
 import xml.etree.ElementTree as ET
 
-import xmlrunner
 
 from qgis.PyQt.QtWidgets import QWidget
 from qps import QPS_RESOURCE_FILE
@@ -59,4 +58,4 @@ class ResourceTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

@@ -474,7 +474,10 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
 
                     if n == BandFieldNames.Name:
                         name = f.attribute(BandFieldNames.Name)
-                        band.SetDescription(name)
+                        if name in [None, NULL]:
+                            band.SetDescription('')
+                        else:
+                            band.SetDescription(str(name))
                         continue
 
                     value = f.attribute(n)

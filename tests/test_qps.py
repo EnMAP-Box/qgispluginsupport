@@ -6,7 +6,6 @@ import pathlib
 import re
 import unittest
 
-import xmlrunner
 
 DIR_QPS = pathlib.Path(__file__).parents[1] / 'qps'
 
@@ -49,4 +48,4 @@ class ResourceTests(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

@@ -10,7 +10,6 @@ import os
 import pathlib
 import unittest
 import tempfile
-import xmlrunner
 from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex, QFile
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
@@ -556,4 +555,4 @@ class TestsClassificationScheme(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

@@ -13,7 +13,6 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import typing
 import unittest
 
-import xmlrunner
 from osgeo import gdal
 
 from qgis.PyQt.QtCore import QVariant
@@ -236,4 +235,4 @@ class LayerConfigWidgetsTests(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

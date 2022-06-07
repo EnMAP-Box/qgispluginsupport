@@ -3,7 +3,6 @@ import pathlib
 import re
 import typing
 import unittest
-import xmlrunner
 
 from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorLayerExporter, QgsCoordinateReferenceSystem, Qgis
 from qgis.core import QgsVectorLayer
@@ -132,4 +131,4 @@ class TestSpeclibIO_ASD(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

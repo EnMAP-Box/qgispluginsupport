@@ -2,7 +2,6 @@
 import os
 import unittest
 
-import xmlrunner
 from osgeo import ogr
 from qgis.core import QgsVectorLayer, QgsFeature, QgsProcessingFeedback
 
@@ -68,4 +67,4 @@ class TestSpeclibIO_GPKG(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

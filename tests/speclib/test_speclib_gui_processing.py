@@ -3,7 +3,6 @@ import datetime
 import typing
 import unittest
 
-import xmlrunner
 
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QGridLayout
@@ -312,4 +311,4 @@ class SpectralProcessingTests(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

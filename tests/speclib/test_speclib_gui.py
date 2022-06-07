@@ -23,7 +23,6 @@ import pathlib
 import unittest
 
 import numpy as np
-import xmlrunner
 from osgeo import ogr, gdal
 from qgis.PyQt.QtCore import QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtCore import QVariant
@@ -534,4 +533,4 @@ class TestSpeclibWidgets(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

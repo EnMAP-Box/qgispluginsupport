@@ -4,7 +4,6 @@ import pathlib
 import unittest
 
 import numpy as np
-import xmlrunner
 
 from qgis.core import QgsProcessingFeedback, QgsFeature, QgsFields
 from qps.speclib import FIELD_NAME, FIELD_VALUES
@@ -139,4 +138,4 @@ class TestSpeclibIO_ENVI(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)

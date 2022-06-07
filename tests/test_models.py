@@ -3,7 +3,6 @@ import os
 import unittest
 
 import numpy as np
-import xmlrunner
 
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtCore import QSettings
@@ -398,4 +397,4 @@ class ModelTests(TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=xmlrunner.XMLTestRunner(output='test-reports'), buffer=False)
+    unittest.main(buffer=False)
