@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import pathlib
@@ -172,8 +173,10 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
     def widgetValue(self):
         if isinstance(self.mFieldComboBox, QComboBox):
             path = self.mFieldComboBox.currentText()
-            if not path.endswith('.tif'):
-                path += '.tif'
+            bn, ext = os.path.splitext(path)
+            if ext == '':
+                ext = self.parameterDefinition().defaultFileExtension()
+                path = f'{bn}.{ext}'
             return f'{QgsProcessing.TEMPORARY_OUTPUT}_{path}'
         return None
 
@@ -707,7 +710,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             activeFeatureIDs = [f.id() for f in activeFeatures]
 
             parametersHard = parameters.copy()
-            self.log('Make virtual raster permanent')
+            self.log('Make virtual raster(s) permanent')
 
             for k, v in parametersHard.items():
                 param = alg.parameterDefinition(k)
@@ -726,11 +729,16 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     s = ""
             from processing.gui.AlgorithmExecutor import execute as executeAlg
 
+            self.log(f'Execute algorithm: {alg.id()}')
+            t0 = datetime.datetime.now()
             ok, results = executeAlg(alg,
                                      parametersHard,
                                      context=processingContext,
                                      feedback=processingFeedback,
                                      catch_exceptions=True)
+
+            self.log(f'Algorithm execution time: {t0 - datetime.datetime.now()}')
+
             self.log(processingFeedback.htmlLog(), isError=not ok)
 
             if ok:
@@ -768,14 +776,14 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
 
                                 target_field_index = speclib.fields().lookupField(target_field_name)
 
-                            else:
+                            if target_field_index >= 0:
                                 # if necessary, change editor widget type to SpectralProfile
                                 target_field: QgsField = speclib.fields().at(target_field_index)
-                                if nb > 0 and supports_field(target_field) \
-                                        and not is_profile_field(target_field):
+                                if nb > 0 and supports_field(target_field) and not is_profile_field(target_field):
                                     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                                     speclib.setEditorWidgetSetup(target_field_index, setup)
                                     target_field = speclib.fields().at(target_field_index)
+
                                 OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
 
                 if len(OUT_RASTERS) > 0:
@@ -842,7 +850,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         except AlgorithmDialogBase.InvalidOutputExtension as ex2:
             if fail_fast:
                 raise ex2
-            msg = 'Invalid Output Extension'
+            msg = f'Invalid Output Extension: {ex2.message}'
             self.log(msg, isError=True, escapeHtml=False)
         except Exception as ex3:
             if fail_fast:

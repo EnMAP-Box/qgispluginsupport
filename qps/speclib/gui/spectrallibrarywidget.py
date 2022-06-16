@@ -354,10 +354,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         menuProfileStyle.addAction(wa)
 
     def showProperties(self, *args):
-
-        showLayerPropertiesDialog(self.speclib(), None, parent=self, useQGISDialog=True)
-
-        s = ""
+        showLayerPropertiesDialog(self.speclib(), None, parent=self)
 
     def plotWidget(self) -> SpectralProfilePlotWidget:
         return self.mSpeclibPlotWidget.plotWidget
