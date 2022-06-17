@@ -729,7 +729,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     s = ""
             from processing.gui.AlgorithmExecutor import execute as executeAlg
 
-            self.log(f'Execute algorithm: {alg.id()}')
+            self.log(f'Execute algorithm: {alg.id()} ...')
             t0 = datetime.datetime.now()
             ok, results = executeAlg(alg,
                                      parametersHard,
@@ -737,9 +737,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                      feedback=processingFeedback,
                                      catch_exceptions=True)
 
-            self.log(f'Algorithm execution time: {t0 - datetime.datetime.now()}')
-
             self.log(processingFeedback.htmlLog(), isError=not ok)
+            self.log(f'Execution time: {datetime.datetime.now() - t0}')
 
             if ok:
                 OUT_RASTERS = dict()
