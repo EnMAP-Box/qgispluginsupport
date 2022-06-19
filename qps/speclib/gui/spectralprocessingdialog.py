@@ -38,6 +38,16 @@ from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType, qgsRasterLayer
 
+LUT_RASTERFILEWRITER_ERRORS:dict[int, str] = {
+    QgsRasterFileWriter.WriterError.SourceProviderError: 'SourceProviderError',
+    QgsRasterFileWriter.WriterError.DestProviderError: 'DestProviderError',
+    QgsRasterFileWriter.WriterError.CreateDatasourceError : 'CreateDatasourceError',
+    QgsRasterFileWriter.WriterError.WriteError : 'WriteError',
+    QgsRasterFileWriter.WriterError.NoDataConflict : 'Internal error if a value used '
+                                                     'for "no data" was found in input',
+    QgsRasterFileWriter.WriterError.WriteCanceled: 'Writing was manually canceled.',
+
+}
 
 def has_raster_input(alg: QgsProcessingAlgorithm) -> bool:
     if not isinstance(alg, QgsProcessingAlgorithm):
@@ -704,10 +714,15 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             if len(affected_features) == 0:
                 self.log('Feature ID of selected spectral profile images do not overlap', isError=True)
                 return None
-            else:
-                self.log(f'Process {len(affected_features)} features')
+
             activeFeatures = list(self.speclib().getFeatures(sorted(affected_features)))
             activeFeatureIDs = [f.id() for f in activeFeatures]
+
+            if len(activeFeatureIDs) == 0:
+                self.log('No active features process', isError=True)
+                return None
+            else:
+                self.log(f'Process {len(affected_features)} features')
 
             parametersHard = parameters.copy()
             self.log('Make virtual raster(s) permanent')
@@ -757,12 +772,15 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             target_field_index = speclib.fields().lookupField(target_field_name)
                             if target_field_index == -1:
                                 # create a new field
+
                                 if nb > 1:
+                                    # create spectral profile fields
                                     field: QgsField = SpectralLibraryUtils.createProfileField(target_field_name)
                                     if not speclib.dataProvider().supportedType(field):
                                         field = SpectralLibraryUtils.createProfileField(target_field_name,
                                                                                         encoding=ProfileEncoding.Text)
                                 else:
+                                    # create standard field
                                     field: QgsField = QgsField(name=target_field_name,
                                                                type=numpyToQgisDataType(tmp.dtype))
                                     if not speclib.dataProvider().supportedType(field):
@@ -771,7 +789,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 speclib.beginEditCommand(f'Add field {field.name()}')
                                 assert SpectralLibraryUtils.addAttribute(speclib, field)
                                 speclib.endEditCommand()
-                                speclib.commitChanges(False)
+
+                                # speclib.commitChanges(False)
 
                                 target_field_index = speclib.fields().lookupField(target_field_name)
 
@@ -786,6 +805,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 OUT_RASTERS[parameter.name()] = (lyr, tmp, target_field)
 
                 if len(OUT_RASTERS) > 0:
+                    available_fids = speclib.allFeatureIds()
                     speclib.beginEditCommand('Add raster processing results')
                     # reload active features to include new fields
                     activeFeatures = list(speclib.getFeatures(activeFeatureIDs))
@@ -807,7 +827,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             if w not in [None, '']:
                                 wlu = w
 
-                        # no need to save bbl if it is True = 1 for all bands (default)
+                        # no need to save a bad-band-list (bbl) if it is True for all bands (default)
                         if all([b == 1 for b in bbl]):
                             bbl = None
 
@@ -836,7 +856,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     # for feature in activeFeatures:
                     #    assert speclib.updateFeature(feature)
                     speclib.endEditCommand()
-                    speclib.commitChanges(False)
+
+                    # speclib.commitChanges(False)
 
         except AlgorithmDialogBase.InvalidParameterValue as ex1:
             # todo: focus on widget with missing input
@@ -872,6 +893,11 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
     def writeTemporaryRaster(self, dp: QgsRasterDataProvider, file_name, rasterblockFeedback, transformContext):
 
         file_writer = QgsRasterFileWriter(file_name)
+
+        assert dp.xSize() > 0
+        assert dp.ySize() > 0
+        assert dp.bandCount() > 0
+
         pipe = QgsRasterPipe()
         if not pipe.set(dp):
             self.log(f'Cannot set pipe provider to write {file_name}', isError=True)
@@ -886,7 +912,12 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             transformContext,
             rasterblockFeedback
         )
-        assert error == QgsRasterFileWriter.WriterError.NoError
+
+        del file_writer
+        if error != QgsRasterFileWriter.WriterError.NoError:
+            errMsg = LUT_RASTERFILEWRITER_ERRORS.get(error, 'unknown')
+            raise Exception(f'Unable to write {file_name}\n'
+                            f'QgsRasterFileWriterError: {errMsg}')
 
         # write additional metadata
         if isinstance(dp, VectorLayerFieldRasterDataProvider):
@@ -905,7 +936,6 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                 layer.saveDefaultStyle()
                 del layer, renderer
 
-        del file_writer
         self.mTemporaryRaster.append(file_name)
 
     def messageBar(self) -> QgsMessageBar:

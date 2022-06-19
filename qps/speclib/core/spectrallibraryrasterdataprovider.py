@@ -54,8 +54,9 @@ def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFea
             for setting, profiles in GROUPS.items():
                 name = f'{field.name()} ({setting.n_bands()} bands, {setting.xUnit()})'
                 lyr = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+                assert layer.isValid()
                 dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
-                dp.setActiveFeatures(profiles, field=field)
+                dp.setActiveFeatures(profiles, field=SpectralProfileValueConverter(field))
                 lyr.setTitle(f'Field "{field.name()}" as raster')
                 layers.append(lyr)
         else:
@@ -391,8 +392,10 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
 
     def dataType(self, band: int) -> Qgis.DataType:
         if isinstance(self.mRasterData, np.ndarray):
-            return numpyToQgisDataType(self.mRasterData.dtype)
-
+            dt = numpyToQgisDataType(self.mRasterData.dtype)
+            # if dt == Qgis.DataType.Float64:
+            #    dt = Qgis.DataType.Float32
+            return dt
         else:
             return Qgis.DataType.UnknownDataType
 
@@ -409,12 +412,13 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         profileIndices: typing.List[int] = []
 
         for i, v in enumerate(fieldValues):
-            if isinstance(v, QByteArray):
-                d = decodeProfileValueDict(v)
+            if isinstance(v, (QByteArray, str, dict)):
+                d = s = None
                 try:
+                    d = decodeProfileValueDict(v)
                     s = SpectralSetting.fromDictionary(d, field_name=self.field().name())
                 except Exception as ex:
-                    s = ""
+                    _test = ""
                 if isinstance(s, SpectralSetting):
                     if self.mSpectralSetting is None:
                         self.mSpectralSetting = s
@@ -424,8 +428,7 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
                         profileIndices.append(i)
 
         profileIndices = np.asarray(profileIndices)
-        profileData2 = np.asarray(profileData)
-        # p1 = profileData[0]
+
         profileData = np.asarray(profileData).transpose().reshape(nb, 1, len(profileIndices))
 
         uniqueValues = np.unique(profileData)
@@ -444,8 +447,6 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
             rasterData[:, :, profileIndices] = profileData
         return rasterData, [], noData
 
-        s = ""
-
 
 class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     """
@@ -453,7 +454,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     """
     PARENT = QObject()
 
-    FIELD_CONVERTER: List[FieldToRasterValueConverter] = [FieldToRasterValueConverter, SpectralProfileValueConverter]
+    FIELD_CONVERTER: List[FieldToRasterValueConverter] = [SpectralProfileValueConverter, FieldToRasterValueConverter]
 
     @staticmethod
     def findFieldConverter(field: QgsField) -> Optional[FieldToRasterValueConverter]:
