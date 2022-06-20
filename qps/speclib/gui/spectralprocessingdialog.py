@@ -4,6 +4,7 @@ import os
 import pathlib
 import typing
 from json import JSONDecodeError
+from typing import Dict
 
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
@@ -38,7 +39,7 @@ from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType, qgsRasterLayer
 
-LUT_RASTERFILEWRITER_ERRORS:dict[int, str] = {
+LUT_RASTERFILEWRITER_ERRORS: Dict[int, str] = {
     QgsRasterFileWriter.WriterError.SourceProviderError: 'SourceProviderError',
     QgsRasterFileWriter.WriterError.DestProviderError: 'DestProviderError',
     QgsRasterFileWriter.WriterError.CreateDatasourceError : 'CreateDatasourceError',
