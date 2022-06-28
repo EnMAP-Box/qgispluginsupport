@@ -7,7 +7,7 @@ import warnings
 from qgis.PyQt.QtCore import QObject
 from qgis.PyQt.QtCore import pyqtSignal, QRegExp, QUrl
 from qgis.PyQt.QtGui import QIcon, QRegExpValidator
-from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, \
+from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, QProgressDialog, \
     QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox, QToolButton, QAction
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsFields, \
@@ -604,8 +604,15 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             io: SpectralLibraryIO = format.spectralLibraryIO()
             speclib: QgsVectorLayer = dialog.speclib()
 
-            feedback = QgsProcessingFeedback()
+            feedback: QgsProcessingFeedback = QgsProcessingFeedback()
+            progressDialog = QProgressDialog(parent=parent)
+            progressDialog.setWindowTitle('Import profiles')
+            feedback.progressChanged.connect(feedback.setProgress)
+            progressDialog.canceled.connect(feedback.cancel)
+            progressDialog.show()
+
             profiles = io.importProfiles(source, settings, feedback)
+            progressDialog.close()
             profiles = list(profiles)
             if len(profiles) == 0:
                 return False

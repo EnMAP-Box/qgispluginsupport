@@ -24,6 +24,7 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import datetime
 import os
 import pathlib
 import re
@@ -178,6 +179,7 @@ class SEDFile(object):
             LINES = list(f.readlines())
 
             iFirstDataLine = None
+
             for i, line in enumerate(LINES):
                 match_meta = rx_metadata.match(line)
                 if match_meta:
@@ -360,12 +362,15 @@ class SEDSpectralLibraryIO(SpectralLibraryIO):
         # expected_fields = importSettings.get()
 
         feedback.setProgress(0)
+        t0 = datetime.datetime.now()
+        dt = datetime.timedelta(seconds=3)
         n_total = len(sources)
         for i, file in enumerate(sources):
             file = pathlib.Path(file)
 
             sed: SEDFile = SEDFile(file)
             profiles.append(sed.feature())
-
-            feedback.setProgress((i + 1) / n_total)
+            if datetime.datetime.now() - t0 > dt:
+                feedback.setProgress((i + 1) / n_total)
+                t0 = datetime.datetime.now()
         return profiles
