@@ -94,7 +94,6 @@ from qpstestdata import speclib as speclibpath
 import unittest
 import random
 import math
-import xmlrunner
 from qps.testing import TestObjects, TestCase, StartOptions
 import numpy as np
 
