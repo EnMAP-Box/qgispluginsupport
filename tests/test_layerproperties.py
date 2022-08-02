@@ -182,6 +182,12 @@ class LayerPropertyTests(TestCase):
         c.setLayers([lyr])
 
         d = QgsRasterLayerProperties(lyr, c)
+
+        if True:
+            for factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
+                factory: QgsMapLayerConfigWidgetFactory
+                d.addPropertiesPageFactory(factory)
+
         self.showGui(d)
 
     def test_LayerProperties(self):

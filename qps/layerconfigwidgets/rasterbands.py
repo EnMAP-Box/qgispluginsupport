@@ -432,6 +432,8 @@ class RasterBandConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         return 'mOptsPage_Transparency'
 
     def supportLayerPropertiesDialog(self):
+        # see https://bitbucket.org/hu-geomatics/enmap-box/issues/1392/singleband-pseudoclor-min-max-reset
+        return False
         # requires QGIS 1e86672a
         return Qgis.versionInt() >= 32300
 
