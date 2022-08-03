@@ -42,13 +42,14 @@ from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType, qgsRast
 LUT_RASTERFILEWRITER_ERRORS: Dict[int, str] = {
     QgsRasterFileWriter.WriterError.SourceProviderError: 'SourceProviderError',
     QgsRasterFileWriter.WriterError.DestProviderError: 'DestProviderError',
-    QgsRasterFileWriter.WriterError.CreateDatasourceError : 'CreateDatasourceError',
-    QgsRasterFileWriter.WriterError.WriteError : 'WriteError',
-    QgsRasterFileWriter.WriterError.NoDataConflict : 'Internal error if a value used '
-                                                     'for "no data" was found in input',
+    QgsRasterFileWriter.WriterError.CreateDatasourceError: 'CreateDatasourceError',
+    QgsRasterFileWriter.WriterError.WriteError: 'WriteError',
+    QgsRasterFileWriter.WriterError.NoDataConflict: 'Internal error if a value used '
+                                                    'for "no data" was found in input',
     QgsRasterFileWriter.WriterError.WriteCanceled: 'Writing was manually canceled.',
 
 }
+
 
 def has_raster_input(alg: QgsProcessingAlgorithm) -> bool:
     if not isinstance(alg, QgsProcessingAlgorithm):
