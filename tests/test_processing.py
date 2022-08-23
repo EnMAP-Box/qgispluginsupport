@@ -89,6 +89,7 @@ class ProcessingToolsTest(TestCase):
             alg = d.algorithm()
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_aggregate_profiles(self):
         registerQgsExpressionFunctions()
 

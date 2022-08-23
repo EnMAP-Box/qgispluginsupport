@@ -53,12 +53,12 @@ def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFea
 
             for setting, profiles in GROUPS.items():
                 name = f'{field.name()} ({setting.n_bands()} bands, {setting.xUnit()})'
-                lyr = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
+                layer = QgsRasterLayer('?', name, VectorLayerFieldRasterDataProvider.providerKey())
                 assert layer.isValid()
-                dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
+                dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(profiles, field=SpectralProfileValueConverter(field))
-                lyr.setTitle(f'Field "{field.name()}" as raster')
-                layers.append(lyr)
+                layer.setTitle(f'Field "{field.name()}" as raster')
+                layers.append(layer)
         else:
             converter = VectorLayerFieldRasterDataProvider.findFieldConverter(field)
             if isinstance(converter, FieldToRasterValueConverter):
