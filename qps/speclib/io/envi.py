@@ -610,6 +610,9 @@ def canRead(pathESL) -> bool:
     return True
 
 
+RX_SUPPORTED_ENVI_FILETYPES = re.compile(r'.*Spectral Library', re.I)
+
+
 def esl2vrt(pathESL, pathVrt=None):
     """
     Creates a GDAL Virtual Raster (VRT) that allows to read an ENVI Spectral Library file
@@ -619,7 +622,7 @@ def esl2vrt(pathESL, pathVrt=None):
     """
 
     hdr = readENVIHeader(pathESL, typeConversion=False)
-    assert hdr is not None and hdr['file type'] == 'ENVI Spectral Library'
+    assert hdr is not None and RX_SUPPORTED_ENVI_FILETYPES.match(hdr['file type'])
 
     if hdr.get('file compression') == '1':
         raise Exception('Can not read compressed spectral libraries')
