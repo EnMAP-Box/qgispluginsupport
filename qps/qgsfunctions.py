@@ -268,7 +268,7 @@ class SpectralEncoding(QgsExpressionFunction):
 
 class StaticExpressionFunction(QgsExpressionFunction):
     """
-    A Re-Implementation of QgsStaticExpressionFunction (not available in python API
+    A Re-Implementation of QgsStaticExpressionFunction (not available in python API)
     """
 
     def __init__(self,
@@ -287,7 +287,14 @@ class StaticExpressionFunction(QgsExpressionFunction):
         self.mFnc = fcn
         self.mAliases = aliases
         self.mUsesGeometry = False
-        self.mUsesGeometryFunc = usesGeometry
+        self.mUsesGeometryFunc = None
+
+        if usesGeometry is not None:
+            if isinstance(usesGeometry, (bool, int)):
+                self.mUsesGeometry = bool(usesGeometry)
+            else:
+                self.mUsesGeometryFunc = usesGeometry
+
         self.mReferencedColumnsFunc = referencedColumns
         self.mIsStatic = False
         self.mIsStaticFunc = None

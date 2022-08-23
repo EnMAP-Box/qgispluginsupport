@@ -590,15 +590,6 @@ class SpectralAggregation(QgsExpressionFunction):
     def handlesNull(self) -> bool:
         return True
 
-
-def usesGeometryCallback():
-    pass
-
-
-def referencedColumnsCallback():
-    pass
-
-
 def spfcnAggregate(values: list, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
     # first node is layer id or name
     node: QgsExpressionNode = values[0]
@@ -701,8 +692,8 @@ def spfcnAggregateGeneric(
     return result
 
 
-def spfcnAggregateMinium(values: list, context: QgsExpressionContext, parent: QgsExpression,
-                         node: QgsExpressionNodeFunction):
+def spfcnAggregateMinimum(values: list, context: QgsExpressionContext, parent: QgsExpression,
+                          node: QgsExpressionNodeFunction):
     return spfcnAggregateGeneric(QgsAggregateCalculator.Aggregate.Min, values,
                                  QgsAggregateCalculator.AggregateParameters(), context, parent)
 
@@ -741,17 +732,17 @@ def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
         QgsExpressionFunction.Parameter('order_by', optional=True, defaultValue=None, isSubExpression=True)
     ]
     functions = [
-        StaticExpressionFunction('aggregateProfiles', aggParams2,
-                                 spfcnAggregate, 'Aggregates', '',
-                                 usesGeometry=usesGeometryCallback,
-                                 referencedColumns=referencedColumnsCallback),
+        #StaticExpressionFunction('aggregateProfiles', aggParams2,
+        #                         spfcnAggregate, 'Aggregates', '',
+        #                         usesGeometry=usesGeometryCallback,
+        #                         referencedColumns=referencedColumnsCallback),
         StaticExpressionFunction('meanProfile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
         StaticExpressionFunction('medianProfile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
-        StaticExpressionFunction('minProfile', aggParams, spfcnAggregateMinium, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('minProfile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
-        StaticExpressionFunction('maxProfile', aggParams, spfcnAggregateMinium, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('maxProfile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
     ]
 
