@@ -777,27 +777,34 @@ class PlotStyleWidget(QWidget):
         assert isinstance(self.cbMarkerPenStyle, QgsPenStyleComboBox)
         assert isinstance(self.cbMarkerSymbol, MarkerSymbolComboBox)
         # connect signals
-        self.btnMarkerBrushColor.colorChanged.connect(self.refreshPreview)
-        self.btnMarkerPenColor.colorChanged.connect(self.refreshPreview)
-        self.btnLinePenColor.colorChanged.connect(self.refreshPreview)
+        self.btnMarkerBrushColor.colorChanged.connect(self.onStyleChanged)
+        self.btnMarkerPenColor.colorChanged.connect(self.onStyleChanged)
+        self.btnLinePenColor.colorChanged.connect(self.onStyleChanged)
 
-        self.cbMarkerSymbol.currentIndexChanged.connect(self.refreshPreview)
+        self.cbMarkerSymbol.currentIndexChanged.connect(self.onStyleChanged)
         self.cbMarkerSymbol.currentIndexChanged.connect(
             lambda: self.toggleWidgetEnabled(self.cbMarkerSymbol, [self.btnMarkerBrushColor, self.sbMarkerSize]))
-        self.cbMarkerPenStyle.currentIndexChanged.connect(self.refreshPreview)
+        self.cbMarkerPenStyle.currentIndexChanged.connect(self.onStyleChanged)
         self.cbMarkerPenStyle.currentIndexChanged.connect(
             lambda: self.toggleWidgetEnabled(self.cbMarkerPenStyle, [self.btnMarkerPenColor, self.sbMarkerPenWidth]))
-        self.cbLinePenStyle.currentIndexChanged.connect(self.refreshPreview)
+        self.cbLinePenStyle.currentIndexChanged.connect(self.onStyleChanged)
         self.cbLinePenStyle.currentIndexChanged.connect(
             lambda: self.toggleWidgetEnabled(self.cbLinePenStyle, [self.btnLinePenColor, self.sbLinePenWidth]))
 
-        self.sbMarkerSize.valueChanged.connect(self.refreshPreview)
-        self.sbMarkerPenWidth.valueChanged.connect(self.refreshPreview)
-        self.sbLinePenWidth.valueChanged.connect(self.refreshPreview)
-        self.mLastPlotStyle = None
-        self.cbIsVisible.toggled.connect(self.refreshPreview)
+        self.sbMarkerSize.valueChanged.connect(self.onStyleChanged)
+        self.sbMarkerPenWidth.valueChanged.connect(self.onStyleChanged)
+        self.sbLinePenWidth.valueChanged.connect(self.onStyleChanged)
+
+        self.mLastPlotStyle = plotStyle
+        self.cbIsVisible.toggled.connect(self.onStyleChanged)
         self.setPlotStyle(plotStyle)
         self.refreshPreview()
+
+    def onStyleChanged(self, color: QColor):
+        ps = self.plotStyle()
+        self.refreshPreview()
+        if self.mLastPlotStyle != ps:
+            self.sigPlotStyleChanged.emit(ps)
 
     def setColorWidgetVisibility(self, b: bool):
         assert isinstance(b, bool)
@@ -852,7 +859,6 @@ class PlotStyleWidget(QWidget):
             pi.update()
             self.plotWidget.update()
 
-            self.sigPlotStyleChanged.emit(style)
 
     def setPlotStyle(self, style):
         assert isinstance(style, PlotStyle)
@@ -910,7 +916,6 @@ class PlotStyleButton(QToolButton):
 
     def __init__(self, *args, **kwds):
         super(PlotStyleButton, self).__init__(*args, **kwds)
-        self.mPlotStyle: PlotStyle = PlotStyle()
 
         self.mInitialButtonSize = None
 
@@ -921,10 +926,15 @@ class PlotStyleButton(QToolButton):
         self.mMenu.triggered.connect(self.onAboutToShowMenu)
 
         self.mDialog: PlotStyleDialog = PlotStyleDialog()
+
         self.mDialog.setModal(False)
-        self.mDialog.setPlotStyle(self.mPlotStyle)
+        # self.mDialog.setPlotStyle(self.mPlotStyle)
         self.mDialog.accepted.connect(self.onAccepted)
         self.mDialog.rejected.connect(self.onCanceled)
+        self.mDialog.sigPlotStyleChanged.connect(self.onPlotStyleChanged)
+        self.mDialog.plotStyleWidget().setPreviewVisible(False)
+        self.mDialog.setVisibilityCheckboxVisible(self.isCheckable())
+        # self.mDialog.plotStyleWidget().setVisibilityCheckboxVisible(False)
         self.mWA = QWidgetAction(self.mMenu)
         self.mWA.setDefaultWidget(self.mDialog)
         self.mMenu.addAction(self.mWA)
@@ -936,15 +946,22 @@ class PlotStyleButton(QToolButton):
         self.toggled.connect(self.onToggled)
         self.updateIcon()
 
+    def onPlotStyleChanged(self, style: PlotStyle):
+        if self.isCheckable():
+            self.setChecked(style.isVisible())
+        self.updateIcon()
+
     def onToggled(self, b: bool):
-        self.mPlotStyle.setVisibility(b)
+        # self.mPlotStyle.setVisibility(b)
         self.sigPlotStyleChanged.emit(self.plotStyle())
         self.updateIcon()
 
     def onAboutToShowMenu(self, *args):
         self.mWA.setVisible(True)
         self.mDialog.setVisible(True)
-        self.mDialog.setPlotStyle(self.mPlotStyle.clone())
+        ps = self.plotStyle()
+        self.mDialog.setPlotStyle(ps)
+        # self.mDialog.setPlotStyle(self.mPlotStyle.clone())
         self.mDialog.activateWindow()
 
     def setColorWidgetVisibility(self, b: bool):
@@ -957,45 +974,49 @@ class PlotStyleButton(QToolButton):
         self.mDialog.setPreviewVisible(b)
 
     def onAccepted(self, *args):
-        if isinstance(self.mDialog, PlotStyleDialog):
-            ps = self.mDialog.plotStyle()
-            if ps != self.mPlotStyle:
-                self.mPlotStyle = ps
-                self.updateIcon()
+        ps = self.plotStyle()
+        self.updateIcon()
 
-                if self.isCheckable():
-                    self.setChecked(self.mPlotStyle.isVisible())
+        if self.isCheckable():
+            self.setChecked(ps.isVisible())
 
-                self.sigPlotStyleChanged.emit(ps)
         self.mWA.setVisible(False)
 
     def onCanceled(self, *args):
         self.mWA.setVisible(False)
 
     def plotStyle(self):
-        return PlotStyle(plotStyle=self.mPlotStyle)
+        ps = self.mDialog.plotStyle()
+        if self.isCheckable():
+            ps.setVisibility(self.isChecked())
+        else:
+            ps.setVisibility(True)
+        return ps
 
     def setCheckable(self, b: bool) -> None:
         super().setCheckable(b)
+        self.mDialog.setVisibilityCheckboxVisible(b)
         self.onToggled(b)
 
     def setPlotStyle(self, plotStyle):
+        oldStyle = self.plotStyle()
+
         if isinstance(plotStyle, PlotStyle):
-            log('setPlotStyle...')
-            self.mPlotStyle.copyFrom(plotStyle)
             self.mDialog.setPlotStyle(plotStyle)
             self.updateIcon()
-            self.sigPlotStyleChanged.emit(self.mPlotStyle)
-        else:
 
-            s = ""
+            if oldStyle != plotStyle:
+                self.sigPlotStyleChanged.emit(self.plotStyle())
 
     def resizeEvent(self, arg):
         self.updateIcon()
 
     def updateIcon(self):
         self.setIconSize(self.size())
-        icon = self.mPlotStyle.createIcon(self.iconSize())
+        ps = self.plotStyle()
+        if self.isCheckable():
+            ps.setVisibility(self.isChecked())
+        icon = ps.createIcon(self.iconSize())
         self.setIcon(icon)
         self.update()
 
@@ -1017,16 +1038,33 @@ class PlotStyleDialog(QgsDialog):
         else:
             return None
 
-    def __init__(self, parent=None, plotStyle=None, title='Specify Plot Style', **kwds):
+    sigPlotStyleChanged = pyqtSignal(PlotStyle)
+
+    def __init__(self,
+                 parent=None,
+                 plotStyle: PlotStyle = PlotStyle(),
+                 title: str = 'Specify Plot Style',
+                 **kwds):
         super(PlotStyleDialog, self).__init__(parent=parent,
                                               buttons=QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
                                               **kwds)
-        self.w: PlotStyleWidget = PlotStyleWidget(parent=self)
+        self.w: PlotStyleWidget = PlotStyleWidget(parent=self, plotStyle=plotStyle)
+        self.w.sigPlotStyleChanged.connect(self.onPlotStyleChanged)
         self.setWindowTitle(title)
         layout = self.layout()
         layout.addWidget(self.w)
         if isinstance(plotStyle, PlotStyle):
             self.setPlotStyle(plotStyle)
+
+    def onPlotStyleChanged(self, plotStyle: PlotStyle):
+
+        if not self.isActiveWindow():
+            pMenu = self.parent()
+            if isinstance(pMenu, QMenu) and not pMenu.pos().isNull():
+                pMenu.setVisible(True)
+
+            self.setVisible(True)
+            self.activateWindow()
 
     def setColorWidgetVisibility(self, b: bool):
         self.w.setColorWidgetVisibility(b)
@@ -1037,12 +1075,29 @@ class PlotStyleDialog(QgsDialog):
     def plotStyleWidget(self) -> PlotStyleWidget:
         return self.w
 
+    def accept(self):
+        ps = self.plotStyle()
+
+        if ps != self.w.mLastPlotStyle:
+            self.sigPlotStyleChanged.emit(ps)
+
+        super().accept()
+
+    def reject(self):
+        if self.w.mLastPlotStyle:
+            self.w.setPlotStyle(self.w.mLastPlotStyle)
+        super().reject()
+
     def plotStyle(self) -> PlotStyle:
         return self.w.plotStyle()
 
     def setPlotStyle(self, plotStyle: PlotStyle):
         assert isinstance(plotStyle, PlotStyle)
+        last = self.w.mLastPlotStyle
         self.w.setPlotStyle(plotStyle)
+        ps = self.plotStyle()
+        if ps != last:
+            self.sigPlotStyleChanged.emit(ps)
 
     def setPreviewVisible(self, b: bool):
         self.w.setPreviewVisible(b)
