@@ -3,10 +3,10 @@ import pathlib
 import re
 import xml.etree.ElementTree as ElementTree
 
-from qgis.gui import QgsEditorWidgetWrapper, QgsAttributeTypeLoadDialog, QgsVectorLayerProperties, QgsMapCanvas, \
-    QgsMessageBar
-from qgis.core import QgsVectorLayerExporter, QgsVectorLayer, QgsEditorWidgetSetup
+from qgis.core import QgsMapLayer, QgsVectorLayerExporter, QgsVectorLayer, QgsEditorWidgetSetup
 from qgis.gui import QgsEditorWidgetFactory, QgsEditorConfigWidget, QgsGui
+from qgis.gui import QgsEditorWidgetWrapper, QgsVectorLayerProperties, QgsMapCanvas, \
+    QgsMessageBar
 from qgis.testing import start_app, TestCase
 
 qgis_app = start_app()
@@ -54,7 +54,7 @@ class TestQgsRangeWidgetSetup(TestCase):
         setup = QgsEditorWidgetSetup('range', config)
         # lyr.fields().field('number').setEditorWidgetSetup(setup)
         lyr.setEditorWidgetSetup(lyr.fields().lookupField('number'), setup)
-        lyr.saveDefaultStyle()
+        lyr.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
 
         # check QML
         self.assertTrue(path_qml.is_file(), msg=f'{path_qml} has not been written')

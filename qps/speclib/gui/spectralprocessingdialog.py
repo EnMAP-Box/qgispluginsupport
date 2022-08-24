@@ -935,7 +935,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                 classData = QgsPalettedRasterRenderer.colorTableToClassData(colorTable)
                 renderer = QgsPalettedRasterRenderer(layer.dataProvider(), 1, classData)
                 layer.setRenderer(renderer)
-                layer.saveDefaultStyle()
+                layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
                 del layer, renderer
 
         self.mTemporaryRaster.append(file_name)

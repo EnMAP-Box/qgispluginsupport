@@ -457,7 +457,7 @@ Please not that not each aggregate function might be available for each field ty
                 if idx > -1:
                     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                     vl.setEditorWidgetSetup(idx, setup)
-            vl.saveDefaultStyle()
+            vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
         results = {self.P_OUTPUT: destId}
         return results
 

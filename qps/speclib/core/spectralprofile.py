@@ -17,7 +17,7 @@ from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.PyQt.QtCore import QJsonDocument
 from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
 from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import QgsFeature, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
+from qgis.core import QgsFeature, QgsMapLayer, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
 from qgis.core import QgsTask, QgsFeatureRequest
 from qgis.gui import QgsMapCanvas
@@ -475,7 +475,7 @@ class SpectralSetting(object):
                 if bbl:
                     key = f'QGISPAM/band/{b + 1}//bad_band_multiplier'
                     layer.setCustomProperty(key, bbl[b])
-        err, success = layer.saveDefaultStyle()
+        err, success = layer.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
         if not success:
             print(err, file=sys.stderr)
 

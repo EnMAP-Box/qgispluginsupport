@@ -10,7 +10,7 @@ from qgis.PyQt.QtGui import QIcon, QRegExpValidator
 from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, QProgressDialog, \
     QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox, QToolButton, QAction
-from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsFields, \
+from qgis.core import QgsProject, QgsMapLayer, QgsVectorLayer, QgsFeature, QgsFields, \
     QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsCoordinateReferenceSystem, QgsExpressionContextScope, QgsProcessingFeedback, QgsField, \
@@ -198,7 +198,7 @@ class SpectralLibraryIO(QObject):
                 i = lyr.fields().lookupField(name)
                 if i >= 0:
                     lyr.setEditorWidgetSetup(i, fields.field(name).editorWidgetSetup())
-            msg, success = lyr.saveDefaultStyle()
+            msg, success = lyr.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
             if not success:
                 print(msg, file=sys.stderr)
 
