@@ -497,12 +497,14 @@ class TestCase(qgis.testing.TestCase):
         if not isinstance(QgsApplication.instance(), QgsApplication):
             qgis.testing.start_app()
 
-            if TestCase.IFACE is None:
-                TestCase.IFACE = get_iface()
+        if TestCase.IFACE is None:
+            TestCase.IFACE = get_iface()
 
+        if not QgsApplication.processingRegistry().providers():
             from processing.core.Processing import Processing
             Processing.initialize()
 
+        if QgsGui.editorWidgetRegistry().name('TextEdit') in ['', None]:
             QgsGui.editorWidgetRegistry().initEditors()
 
         return
