@@ -731,48 +731,52 @@ def rendererToXml(layerOrRenderer, geomType: QgsWkbTypes = None):
         return rendererToXml(layerOrRenderer.renderer(), geomType=geomType)
     elif isinstance(layerOrRenderer, QgsRasterRenderer):
         # create a dummy raster layer
-        import uuid
-        xml = """<VRTDataset rasterXSize="1" rasterYSize="1">
-                  <GeoTransform>  0.0000000000000000e+00,  1.0000000000000000e+00,  0.0000000000000000e+00,
-                  0.0000000000000000e+00,  0.0000000000000000e+00, -1.0000000000000000e+00</GeoTransform>
-                  <VRTRasterBand dataType="Float32" band="1">
-                    <Metadata>
-                      <MDI key="STATISTICS_MAXIMUM">0</MDI>
-                      <MDI key="STATISTICS_MEAN">0</MDI>
-                      <MDI key="STATISTICS_MINIMUM">0</MDI>
-                      <MDI key="STATISTICS_STDDEV">0</MDI>
-                    </Metadata>
-                    <Description>Band 1</Description>
-                    <Histograms>
-                      <HistItem>
-                        <HistMin>0</HistMin>
-                        <HistMax>0</HistMax>
-                        <BucketCount>1</BucketCount>
-                        <IncludeOutOfRange>0</IncludeOutOfRange>
-                        <Approximate>0</Approximate>
-                        <HistCounts>0</HistCounts>
-                      </HistItem>
-                    </Histograms>
-                  </VRTRasterBand>
-                </VRTDataset>
-                """
-        path = '/vsimem/{}.vrt'.format(uuid.uuid4())
-        drv = gdal.GetDriverByName('VRT')
-        assert isinstance(drv, gdal.Driver)
-        write_vsimem(path, xml)
-        ds = gdal.Open(path)
-        assert isinstance(ds, gdal.Dataset)
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(4326)
-        ds.SetProjection(srs.ExportToWkt())
-        ds.FlushCache()
-        lyr = QgsRasterLayer(path)
-        assert lyr.isValid()
-        lyr.setRenderer(layerOrRenderer.clone())
-        err = lyr.exportNamedStyle(doc)
-        # remove dummy raster layer
-        lyr = None
-        drv.Delete(path)
+        root = doc.createElement('renderer')
+        layerOrRenderer.writeXml(doc, root)
+        doc.appendChild(root)
+        if False:
+            import uuid
+            xml = """<VRTDataset rasterXSize="1" rasterYSize="1">
+                      <GeoTransform>  0.0000000000000000e+00,  1.0000000000000000e+00,  0.0000000000000000e+00,
+                      0.0000000000000000e+00,  0.0000000000000000e+00, -1.0000000000000000e+00</GeoTransform>
+                      <VRTRasterBand dataType="Float32" band="1">
+                        <Metadata>
+                          <MDI key="STATISTICS_MAXIMUM">0</MDI>
+                          <MDI key="STATISTICS_MEAN">0</MDI>
+                          <MDI key="STATISTICS_MINIMUM">0</MDI>
+                          <MDI key="STATISTICS_STDDEV">0</MDI>
+                        </Metadata>
+                        <Description>Band 1</Description>
+                        <Histograms>
+                          <HistItem>
+                            <HistMin>0</HistMin>
+                            <HistMax>0</HistMax>
+                            <BucketCount>1</BucketCount>
+                            <IncludeOutOfRange>0</IncludeOutOfRange>
+                            <Approximate>0</Approximate>
+                            <HistCounts>0</HistCounts>
+                          </HistItem>
+                        </Histograms>
+                      </VRTRasterBand>
+                    </VRTDataset>
+                    """
+            path = '/vsimem/{}.vrt'.format(uuid.uuid4())
+            drv = gdal.GetDriverByName('VRT')
+            assert isinstance(drv, gdal.Driver)
+            write_vsimem(path, xml)
+            ds = gdal.Open(path)
+            assert isinstance(ds, gdal.Dataset)
+            srs = osr.SpatialReference()
+            srs.ImportFromEPSG(4326)
+            ds.SetProjection(srs.ExportToWkt())
+            ds.FlushCache()
+            lyr = QgsRasterLayer(path)
+            assert lyr.isValid()
+            lyr.setRenderer(layerOrRenderer.clone())
+            err = lyr.exportNamedStyle(doc)
+            # remove dummy raster layer
+            lyr = None
+            drv.Delete(path)
 
     elif isinstance(layerOrRenderer, QgsFeatureRenderer) and geomType is not None:
         # todo: distinguish vector type from requested renderer
