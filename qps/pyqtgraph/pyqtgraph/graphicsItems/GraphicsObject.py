@@ -17,7 +17,10 @@ class GraphicsObject(GraphicsItem, QtWidgets.QGraphicsObject):
         GraphicsItem.__init__(self)
         
     def itemChange(self, change, value):
-        ret = super().itemChange(change, value)
+        try:
+            ret = super().itemChange(change, value)
+        except TypeError:
+            return None
         if change in [self.GraphicsItemChange.ItemParentHasChanged, self.GraphicsItemChange.ItemSceneHasChanged]:
             if QT_LIB == 'PySide6' and QtCore.__version_info__ == (6, 2, 2):
                 # workaround PySide6 6.2.2 issue https://bugreports.qt.io/browse/PYSIDE-1730
