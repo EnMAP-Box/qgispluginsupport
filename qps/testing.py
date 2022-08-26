@@ -494,8 +494,9 @@ class TestCase(qgis.testing.TestCase):
 
     @classmethod
     def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
+
         if not isinstance(QgsApplication.instance(), QgsApplication):
-            qgis.testing.start_app()
+            qgis.testing.start_app(cleanup=False)
 
         if TestCase.IFACE is None:
             TestCase.IFACE = get_iface()
@@ -522,6 +523,13 @@ class TestCase(qgis.testing.TestCase):
         gdal.AllRegister()
 
     def tearDown(self):
+        if isinstance(TestCase.IFACE, QgisInterface):
+            # clean layers
+            TestCase.IFACE.layerTreeView().layerTreeModel().rootGroup().removeAllChildren()
+
+        if QgsProject.instance():
+            QgsProject.instance().removeAllMapLayers()
+
         return
         # let failures fail fast
 
