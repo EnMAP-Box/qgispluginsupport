@@ -24,15 +24,15 @@ Virtual Raster Builder https://bitbucket.org/jakimowb/virtual-raster-builder
 
 ## Code Design
 
-Ideally, QPS becomes obsolete by providing every feature  every feature  
+Ideally, QPS becomes obsolete by providing every feature as part of the PyQGIS
 
 ## Installation ##
 
 ### Include as subtree
 
-Add QPS as a substree:
+Add QPS as a subtree:
 
-   git subtree add --prefix enmapbox/qgispluginsupport git@github.com:EnMAP-Box/qgispluginsupport.git master
+git subtree add --prefix enmapbox/qgispluginsupport git@github.com:EnMAP-Box/qgispluginsupport.git master
 
 Push updates (replace with your fork):
 
@@ -205,10 +205,10 @@ if __name__ == '__main__':
 
 ## Update pyqtgraph
 
-Run the the following command to the qps internal [pyqtgraph](http://pyqtgraph.org) version
-```
-git read-tree --prefix=qps/externals/pyqtgraph/ -u pyqtgraph-0.11.0rc0:pyqtgraph
-```
+Run `scripts/update_pyqtgraph` to update the QPS / EnMAP-Box internal version of
+[PyQtGraph](http://pyqtgraph.org).
+To take care that our version of PyQtGraph runs with QGIS, we use a fork
+that is hosted at https://github.com/EnMAP-Box/pyqtgraph
 
 
 
