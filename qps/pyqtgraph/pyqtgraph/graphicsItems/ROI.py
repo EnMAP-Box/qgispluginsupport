@@ -17,13 +17,14 @@ from math import atan2, cos, degrees, hypot, sin
 
 import numpy as np
 
-from .GraphicsObject import GraphicsObject
-from .UIGraphicsItem import UIGraphicsItem
 from .. import functions as fn
-# from numpy.linalg import norm
+
+#from numpy.linalg import norm
 from ..Point import Point
 from ..Qt import QtCore, QtGui, QtWidgets
 from ..SRTTransform import SRTTransform
+from .GraphicsObject import GraphicsObject
+from .UIGraphicsItem import UIGraphicsItem
 
 translate = QtCore.QCoreApplication.translate
 
@@ -1410,28 +1411,28 @@ class Handle(UIGraphicsItem):
         menu.setTitle(translate("ROI", "Handle"))
         self.removeAction = menu.addAction(translate("ROI", "Remove handle"), self.removeClicked) 
         return menu
-
+        
     def getMenu(self):
         return self.menu
 
     def raiseContextMenu(self, ev):
         menu = self.scene().addParentContextMenus(self, self.getMenu(), ev)
-
+        
         ## Make sure it is still ok to remove this handle
         removeAllowed = all(r.checkRemoveHandle(self) for r in self.rois)
         self.removeAction.setEnabled(removeAllowed)
         pos = ev.screenPos()
-        menu.popup(QtCore.QPoint(int(pos.x()), int(pos.y())))
+        menu.popup(QtCore.QPoint(int(pos.x()), int(pos.y())))    
 
     def mouseDragEvent(self, ev):
         if ev.button() != QtCore.Qt.MouseButton.LeftButton:
             return
         ev.accept()
-
+        
         ## Inform ROIs that a drag is happening 
         ##  note: the ROI is informed that the handle has moved using ROI.movePoint
         ##  this is for other (more nefarious) purposes.
-        # for r in self.roi:
+        #for r in self.roi:
             #r[0].pointDragEvent(r[1], ev)
             
         if ev.isFinish():

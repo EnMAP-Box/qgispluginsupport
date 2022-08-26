@@ -20,16 +20,14 @@ YEAR_SPACING = 365 * DAY_SPACING
 
 if sys.platform == 'win32':
     _epoch = datetime.utcfromtimestamp(0)
-
-
     def utcfromtimestamp(timestamp):
         return _epoch + timedelta(seconds=timestamp)
 else:
     utcfromtimestamp = datetime.utcfromtimestamp
 
-MIN_REGULAR_TIMESTAMP = (datetime(1, 1, 1) - datetime(1970, 1, 1)).total_seconds()
-MAX_REGULAR_TIMESTAMP = (datetime(9999, 1, 1) - datetime(1970, 1, 1)).total_seconds()
-SEC_PER_YEAR = 365.25 * 24 * 3600
+MIN_REGULAR_TIMESTAMP = (datetime(1, 1, 1) - datetime(1970,1,1)).total_seconds()
+MAX_REGULAR_TIMESTAMP = (datetime(9999, 1, 1) - datetime(1970,1,1)).total_seconds()
+SEC_PER_YEAR = 365.25*24*3600
 
 
 # The stepper functions provide

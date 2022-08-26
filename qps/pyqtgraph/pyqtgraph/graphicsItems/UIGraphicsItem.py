@@ -1,5 +1,5 @@
-from .GraphicsObject import GraphicsObject
 from ..Qt import QtCore, QtGui
+from .GraphicsObject import GraphicsObject
 
 __all__ = ['UIGraphicsItem']
 class UIGraphicsItem(GraphicsObject):

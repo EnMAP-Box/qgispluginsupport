@@ -2,10 +2,10 @@ import importlib.util
 
 import numpy
 
-from .Exporter import Exporter
 from .. import PlotItem
-from ..Qt import QtCore
 from ..parametertree import Parameter
+from ..Qt import QtCore
+from .Exporter import Exporter
 
 HAVE_HDF5 = importlib.util.find_spec("h5py") is not None
 

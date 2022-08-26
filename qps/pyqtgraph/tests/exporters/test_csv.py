@@ -7,6 +7,7 @@ import csv
 import tempfile
 
 import numpy as np
+
 import pyqtgraph as pg
 
 app = pg.mkQApp()
@@ -21,12 +22,12 @@ def test_CSVExporter():
     y1 = [1,3,2,3,1,6,9,8,4,2]
     plt.plot(y=y1, name='myPlot')
 
-    y2 = [3, 4, 6, 1, 2, 4, 2, 3, 5, 3, 5, 1, 3]
+    y2 = [3,4,6,1,2,4,2,3,5,3,5,1,3]
     x2 = np.linspace(0, 1.0, len(y2))
     plt.plot(x=x2, y=y2)
 
-    y3 = [1, 5, 2, 3, 4, 6, 1, 2, 4, 2, 3, 5, 3]
-    x3 = np.linspace(0, 1.0, len(y3) + 1)
+    y3 = [1,5,2,3,4,6,1,2,4,2,3,5,3]
+    x3 = np.linspace(0, 1.0, len(y3)+1)
     plt.plot(x=x3, y=y3, stepMode="center")
 
     for log_mapping in (False, True):

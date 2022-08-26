@@ -3,13 +3,14 @@ import warnings
 
 import numpy as np
 
-from .GradientEditorItem import Gradients  # List of colormaps
-from .GraphicsObject import GraphicsObject
 from .. import Qt, colormap
 from .. import functions as fn
 from ..Qt import QtCore, QtGui
+from .GradientEditorItem import Gradients  # List of colormaps
+from .GraphicsObject import GraphicsObject
 
 __all__ = ['PColorMeshItem']
+
 
 if Qt.QT_LIB.startswith('PyQt'):
     wrapinstance = Qt.sip.wrapinstance
@@ -208,15 +209,16 @@ class PColorMeshItem(GraphicsObject):
         shapeChanged = False
         if self.qpicture is None:
             shapeChanged = True
-        elif len(args) == 1:
-            if args[0].shape[0] != self.x[:, 1][-1] or args[0].shape[1] != self.y[0][-1]:
+        elif len(args)==1:
+            if args[0].shape[0] != self.x[:,1][-1] or args[0].shape[1] != self.y[0][-1]:
                 shapeChanged = True
-        elif len(args) == 3:
+        elif len(args)==3:
             if np.any(self.x != args[0]) or np.any(self.y != args[1]):
                 shapeChanged = True
 
         # Prepare data
         self._prepareData(args)
+
 
         self.qpicture = QtGui.QPicture()
         painter = QtGui.QPainter(self.qpicture)

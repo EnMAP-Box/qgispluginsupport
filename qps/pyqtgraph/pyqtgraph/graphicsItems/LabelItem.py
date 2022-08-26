@@ -1,11 +1,10 @@
-from .GraphicsWidget import GraphicsWidget
-from .GraphicsWidgetAnchor import GraphicsWidgetAnchor
 from .. import functions as fn
 from .. import getConfigOption
 from ..Qt import QtCore, QtWidgets, QtGui
+from .GraphicsWidget import GraphicsWidget
+from .GraphicsWidgetAnchor import GraphicsWidgetAnchor
 
 __all__ = ['LabelItem']
-
 
 class LabelItem(GraphicsWidget, GraphicsWidgetAnchor):
     """

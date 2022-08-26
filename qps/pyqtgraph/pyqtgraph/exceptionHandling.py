@@ -92,7 +92,7 @@ class ExceptionHandler(object):
         ## If the error we are catching is due to recursion, we don't want to generate another one here.
         recursionLimit = sys.getrecursionlimit()
         try:
-            sys.setrecursionlimit(recursionLimit + 100)
+            sys.setrecursionlimit(recursionLimit+100)
 
             ## call original exception handler first (prints exception)
             global callbacks, clear_tracebacks

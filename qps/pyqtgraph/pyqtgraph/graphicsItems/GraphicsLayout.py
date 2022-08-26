@@ -1,14 +1,13 @@
+from .. import functions as fn
+from ..Qt import QtWidgets
 from .GraphicsWidget import GraphicsWidget
 from .LabelItem import LabelItem
 from .PlotItem import PlotItem
+
 ## Must be imported at the end to avoid cyclic-dependency hell:
 from .ViewBox import ViewBox
-from .. import functions as fn
-from ..Qt import QtWidgets
 
 __all__ = ['GraphicsLayout']
-
-
 class GraphicsLayout(GraphicsWidget):
     """
     Used for laying out GraphicsWidgets in a grid.
@@ -160,7 +159,7 @@ class GraphicsLayout(GraphicsWidget):
         ind = self.itemIndex(item)
         self.layout.removeAt(ind)
         self.scene().removeItem(item)
-
+        
         for r, c in self.items[item]:
             del self.rows[r][c]
         del self.items[item]

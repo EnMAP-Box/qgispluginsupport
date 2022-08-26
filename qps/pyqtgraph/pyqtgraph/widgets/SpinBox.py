@@ -67,34 +67,35 @@ class SpinBox(QtWidgets.QAbstractSpinBox):
         self.opts = {
             'bounds': [None, None],
             'wrapping': False,
-
+           
             ## normal arithmetic step
             'step': decimal.Decimal('0.01'),  ## if 'dec' is false, the spinBox steps by 'step' every time
-            ## if 'dec' is True, the step size is relative to the value
-            ## 'step' needs to be an integral divisor of ten, ie 'step'*n=10 for some integer value of n (but only if dec is True)
-            'dec': False,
-            ## if true, does decimal stepping. ie from 1-10 it steps by 'step', from 10 to 100 it steps by 10*'step', etc.
-            ## if true, minStep must be set in order to cross zero.
-
-            'int': False,  ## Set True to force value to be integer
+                                ## if 'dec' is True, the step size is relative to the value
+                                ## 'step' needs to be an integral divisor of ten, ie 'step'*n=10 for some integer value of n (but only if dec is True)
+            'dec': False,   ## if true, does decimal stepping. ie from 1-10 it steps by 'step', from 10 to 100 it steps by 10*'step', etc. 
+                            ## if true, minStep must be set in order to cross zero.
+            
+            'int': False, ## Set True to force value to be integer. If True, 'step' is rounded to the nearest integer or defaults to 1.
             'finite': True,
-
-            'prefix': '',  ## string to be prepended to spin box value
+            
+            'prefix': '', ## string to be prepended to spin box value
             'suffix': '',
-            'siPrefix': False,  ## Set to True to display numbers with SI prefix (ie, 100pA instead of 1e-10A)
-
-            'delay': 0.3,  ## delay sending wheel update signals for 300ms
-
-            'delayUntilEditFinished': True,  ## do not send signals until text editing has finished
-
+            'siPrefix': False,   ## Set to True to display numbers with SI prefix (ie, 100pA instead of 1e-10A)
+            
+            'delay': 0.3, ## delay sending wheel update signals for 300ms
+            
+            'delayUntilEditFinished': True,   ## do not send signals until text editing has finished
+            
             'decimals': 6,
-
+            
             'format': "{prefix}{prefixGap}{scaledValue:.{decimals}g}{suffixGap}{siPrefix}{suffix}",
             'regex': fn.FLOAT_REGEX,
             'evalFunc': decimal.Decimal,
-
+            
             'compactHeight': True,  # manually remove extra margin outside of text
         }
+        if kwargs.get('int', False):
+            self.opts['step'] = 1
         
         self.decOpts = ['step', 'minStep']
         
@@ -131,7 +132,8 @@ class SpinBox(QtWidgets.QAbstractSpinBox):
                        down arrows, when rolling the mouse wheel, or when pressing 
                        keyboard arrows while the widget has keyboard focus. Note that
                        the interpretation of this value is different when specifying
-                       the 'dec' argument. Default is 0.01.
+                       the 'dec' argument. If 'int' is True, 'step' is rounded to the nearest integer.
+                       Default is 0.01 if 'int' is False and 1 otherwise.
         dec            (bool) If True, then the step value will be adjusted to match 
                        the current size of the variable (for example, a value of 15
                        might step in increments of 1 whereas a value of 1500 would
@@ -140,7 +142,9 @@ class SpinBox(QtWidgets.QAbstractSpinBox):
                        'step' values when dec=True are 0.1, 0.2, 0.5, and 1.0. Default is
                        False.
         minStep        (float) When dec=True, this specifies the minimum allowable step size.
-        int            (bool) If True, the value is forced to integer type. Default is False
+        int            (bool) If True, the value is forced to integer type.
+                       If True, 'step' is rounded to the nearest integer or defaults to 1.
+                       Default is False
         finite         (bool) When False and int=False, infinite values (nan, inf, -inf) are
                        permitted. Default is True.
         wrapping       (bool) If True and both bounds are not None, spin box has circular behavior.
@@ -204,13 +208,7 @@ class SpinBox(QtWidgets.QAbstractSpinBox):
             
         ## sanity checks:
         if self.opts['int']:
-            if 'step' in opts:
-                step = opts['step']
-                ## not necessary..
-                #if int(step) != step:
-                    #raise Exception('Integer SpinBox must have integer step size.')
-            else:
-                self.opts['step'] = int(self.opts['step'])
+            self.opts['step'] = round(self.opts.get('step', 1))
             
             if 'minStep' in opts:
                 step = opts['minStep']
@@ -468,13 +466,11 @@ class SpinBox(QtWidgets.QAbstractSpinBox):
                 (s, p) = fn.siScale(prev)
             else:
                 (s, p) = fn.siScale(val)
-            parts = {'value': val, 'suffix': suffix, 'decimals': decimals, 'siPrefix': p, 'scaledValue': s * val,
-                     'prefix': prefix}
+            parts = {'value': val, 'suffix': suffix, 'decimals': decimals, 'siPrefix': p, 'scaledValue': s*val, 'prefix':prefix}
 
         else:
             # no SI prefix /suffix requested; scale is 1
-            parts = {'value': val, 'suffix': suffix, 'decimals': decimals, 'siPrefix': '', 'scaledValue': val,
-                     'prefix': prefix}
+            parts = {'value': val, 'suffix': suffix, 'decimals': decimals, 'siPrefix': '', 'scaledValue': val, 'prefix':prefix}
 
         parts['prefixGap'] = '' if parts['prefix'] == '' else ' '
         parts['suffixGap'] = '' if (parts['suffix'] == '' and parts['siPrefix'] == '') else ' '
@@ -512,7 +508,7 @@ class SpinBox(QtWidgets.QAbstractSpinBox):
         self.update()
         
         self.errorBox.setVisible(not self.textValid)
-
+        
         return (ret, strn, pos)
         
     def fixup(self, strn):
@@ -528,13 +524,13 @@ class SpinBox(QtWidgets.QAbstractSpinBox):
             strn = strn.removeprefix(self.opts['prefix'])
         except AttributeError:
             strn = strn[len(self.opts['prefix']):]
-
+        
         # tokenize into numerical value, si prefix, and suffix
         try:
             val, siprefix, suffix = fn.siParse(strn, self.opts['regex'], suffix=self.opts['suffix'])
         except Exception:
             return False
-
+            
         # check suffix
         if suffix != self.opts['suffix']:
             return False

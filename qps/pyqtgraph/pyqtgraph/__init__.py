@@ -3,25 +3,28 @@ PyQtGraph - Scientific Graphics and GUI Library for Python
 www.pyqtgraph.org
 """
 
-__version__ = '0.12.4.dev0'
+__version__ = '0.12.4.dev0.qps'
 
 ### import all the goodies and add some helper functions for easy CLI use
 
 import os
 import sys
+import importlib
 
-from .Qt import QtCore, QtGui, QtWidgets
-from .Qt import exec_ as exec
-from .Qt import mkQApp
+import numpy  # # pyqtgraph requires numpy
+
 ## 'Qt' is a local module; it is intended mainly to cover up the differences
 ## between PyQt and PySide.
 from .colors import palette
+from .Qt import QtCore, QtGui, QtWidgets
+from .Qt import exec_ as exec
+from .Qt import mkQApp
 
 ## not really safe--If we accidentally create another QApplication, the process hangs (and it is very difficult to trace the cause)
-# if QtWidgets.QApplication.instance() is None:
-# app = QtWidgets.QApplication([])
+#if QtWidgets.QApplication.instance() is None:
+    #app = QtWidgets.QApplication([])
 
-## (import here to avoid massive error dump later on if numpy is not available)
+              ## (import here to avoid massive error dump later on if numpy is not available)
 
 
 ## in general openGL is poorly supported with Qt+GraphicsView.
@@ -42,21 +45,20 @@ CONFIG_OPTIONS = {
     'background': 'k',        ## default background for GraphicsWidget
     'antialias': False,
     'editorCommand': None,  ## command used to invoke code editor from ConsoleWidgets
-    'exitCleanup': True,  ## Attempt to work around some exit crash bugs in PyQt and PySide
-    'enableExperimental': False,  ## Enable experimental features (the curious can search for this key in the code)
+    'exitCleanup': True,    ## Attempt to work around some exit crash bugs in PyQt and PySide
+    'enableExperimental': False, ## Enable experimental features (the curious can search for this key in the code)
     'crashWarning': False,  # If True, print warnings about situations that may result in a crash
-    'mouseRateLimit': 100,
-    # For ignoring frequent mouse events, max number of mouse move events per second, if <= 0, then it is switched off
+    'mouseRateLimit': 100,  # For ignoring frequent mouse events, max number of mouse move events per second, if <= 0, then it is switched off
     'imageAxisOrder': 'col-major',  # For 'row-major', image data is expected in the standard (row, col) order.
-    # For 'col-major', image data is expected in reversed (col, row) order.
-    # The default is 'col-major' for backward compatibility, but this may
-    # change in the future.
+                                 # For 'col-major', image data is expected in reversed (col, row) order.
+                                 # The default is 'col-major' for backward compatibility, but this may
+                                 # change in the future.
     'useCupy': False,  # When True, attempt to use cupy ( currently only with ImageItem and related functions )
-    'useNumba': False,  # When True, use numba
+    'useNumba': False, # When True, use numba
     'segmentedLineMode': 'auto',  # segmented line mode, controls if lines are plotted in segments or continuous
-    # 'auto': whether lines are plotted in segments is automatically decided using pen properties and whether anti-aliasing is enabled
-    # 'on' or True: lines are always plotted in segments
-    # 'off' or False: lines are never plotted in segments
+                                  # 'auto': whether lines are plotted in segments is automatically decided using pen properties and whether anti-aliasing is enabled
+                                  # 'on' or True: lines are always plotted in segments
+                                  # 'off' or False: lines are never plotted in segments
 }
 
 
@@ -286,6 +288,7 @@ from .widgets.TableWidget import *
 from .widgets.TreeWidget import *
 from .widgets.ValueLabel import *
 from .widgets.VerticalLabel import *
+
 
 ##############################################################
 ## PyQt and PySide both are prone to crashing on exit. 

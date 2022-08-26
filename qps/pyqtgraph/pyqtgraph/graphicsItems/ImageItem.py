@@ -3,14 +3,14 @@ from collections.abc import Callable
 
 import numpy
 
-from .GraphicsObject import GraphicsObject
-from .. import colormap
 from .. import debug as debug
 from .. import functions as fn
 from .. import getConfigOption
 from ..Point import Point
 from ..Qt import QtCore, QtGui, QtWidgets
 from ..util.cupy_helper import getCupy
+from .GraphicsObject import GraphicsObject
+from .. import colormap
 
 translate = QtCore.QCoreApplication.translate
 

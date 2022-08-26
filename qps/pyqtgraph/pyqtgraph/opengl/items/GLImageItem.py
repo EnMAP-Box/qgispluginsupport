@@ -1,6 +1,5 @@
-import numpy as np
 from OpenGL.GL import *  # noqa
-
+import numpy as np
 from ..GLGraphicsItem import GLGraphicsItem
 
 __all__ = ['GLImageItem']
@@ -52,26 +51,26 @@ class GLImageItem(GLGraphicsItem):
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
-        # glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER)
+        #glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER)
         shape = self.data.shape
-
+        
         ## Test texture dimensions first
         glTexImage2D(GL_PROXY_TEXTURE_2D, 0, GL_RGBA, shape[0], shape[1], 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
         if glGetTexLevelParameteriv(GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_WIDTH) == 0:
             raise Exception("OpenGL failed to create 2D texture (%dx%d); too large for this hardware." % shape[:2])
-
-        data = np.ascontiguousarray(self.data.transpose((1, 0, 2)))
+        
+        data = np.ascontiguousarray(self.data.transpose((1,0,2)))
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, shape[0], shape[1], 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
         glDisable(GL_TEXTURE_2D)
-
-        # self.lists = {}
-        # for ax in [0,1,2]:
-        # for d in [-1, 1]:
-        # l = glGenLists(1)
-        # self.lists[(ax,d)] = l
-        # glNewList(l, GL_COMPILE)
-        # self.drawVolume(ax, d)
-        # glEndList()
+        
+        #self.lists = {}
+        #for ax in [0,1,2]:
+            #for d in [-1, 1]:
+                #l = glGenLists(1)
+                #self.lists[(ax,d)] = l
+                #glNewList(l, GL_COMPILE)
+                #self.drawVolume(ax, d)
+                #glEndList()
 
                 
     def paint(self):
@@ -80,24 +79,25 @@ class GLImageItem(GLGraphicsItem):
             self._needUpdate = False
         glEnable(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, self.texture)
-
+        
         self.setupGLState()
-
-        # glEnable(GL_DEPTH_TEST)
+        
+        #glEnable(GL_DEPTH_TEST)
         ##glDisable(GL_CULL_FACE)
-        # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        # glEnable( GL_BLEND )
-        # glEnable( GL_ALPHA_TEST )
-        glColor4f(1, 1, 1, 1)
+        #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        #glEnable( GL_BLEND )
+        #glEnable( GL_ALPHA_TEST )
+        glColor4f(1,1,1,1)
 
         glBegin(GL_QUADS)
-        glTexCoord2f(0, 0)
-        glVertex3f(0, 0, 0)
-        glTexCoord2f(1, 0)
+        glTexCoord2f(0,0)
+        glVertex3f(0,0,0)
+        glTexCoord2f(1,0)
         glVertex3f(self.data.shape[0], 0, 0)
-        glTexCoord2f(1, 1)
+        glTexCoord2f(1,1)
         glVertex3f(self.data.shape[0], self.data.shape[1], 0)
-        glTexCoord2f(0, 1)
+        glTexCoord2f(0,1)
         glVertex3f(0, self.data.shape[1], 0)
         glEnd()
         glDisable(GL_TEXTURE_2D)
+                

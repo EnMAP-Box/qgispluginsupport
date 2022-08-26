@@ -1,6 +1,7 @@
 import numpy as np
-import pyqtgraph as pg
 import pytest
+
+import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
 
 

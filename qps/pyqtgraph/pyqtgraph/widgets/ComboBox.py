@@ -96,9 +96,8 @@ class ComboBox(QtWidgets.QComboBox):
                 self.currentIndexChanged.emit(self.currentIndex())
                 
             return ret
-
         return fn
-
+    
     @ignoreIndexChange
     @blockIfUnchanged
     def setItems(self, items):
@@ -112,7 +111,7 @@ class ComboBox(QtWidgets.QComboBox):
 
     def items(self):
         return self.items.copy()
-
+        
     def updateList(self, items):
         # for backward compatibility
         return self.setItems(items)

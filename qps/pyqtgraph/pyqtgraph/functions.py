@@ -18,8 +18,8 @@ import numpy as np
 
 from . import Qt, debug, reload
 from . import getConfigOption
-from .Qt import QT_LIB, QtCore, QtGui
 from .metaarray import MetaArray
+from .Qt import QT_LIB, QtCore, QtGui
 from .util.cupy_helper import getCupy
 from .util.numba_helper import getNumbaFunctions
 
@@ -2136,7 +2136,7 @@ def arrayToQPath(x, y, connect='all', finiteCheck=True):
         return _arrayToQPath_all(x, y, finiteCheck)
 
     path = QtGui.QPainterPath()
-    if hasattr(path, 'reserve'):  # Qt 5.13
+    if hasattr(path, 'reserve'):    # Qt 5.13
         path.reserve(n)
 
     if hasattr(path, 'reserve') and getConfigOption('enableExperimental'):
@@ -2144,12 +2144,12 @@ def arrayToQPath(x, y, connect='all', finiteCheck=True):
         arr = Qt.internals.get_qpainterpath_element_array(path, n)
     else:
         backstore = QtCore.QByteArray()
-        backstore.resize(4 + n * 20 + 8)  # contents uninitialized
+        backstore.resize(4 + n*20 + 8)      # contents uninitialized
         backstore.replace(0, 4, struct.pack('>i', n))
         # cStart, fillRule (Qt.FillRule.OddEvenFill)
-        backstore.replace(4 + n * 20, 8, struct.pack('>ii', 0, 0))
+        backstore.replace(4+n*20, 8, struct.pack('>ii', 0, 0))
         arr = np.frombuffer(backstore, dtype=[('c', '>i4'), ('x', '>f8'), ('y', '>f8')],
-                            count=n, offset=4)
+            count=n, offset=4)
 
     backfill_idx = None
     if finiteCheck:

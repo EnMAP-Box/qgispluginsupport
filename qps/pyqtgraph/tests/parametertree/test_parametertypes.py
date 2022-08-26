@@ -1,8 +1,11 @@
+import sys
+
 import numpy as np
+
 import pyqtgraph as pg
 import pyqtgraph.parametertree as pt
-from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.functions import eq
+from pyqtgraph.Qt import QtCore, QtGui
 
 app = pg.mkQApp()
 
@@ -159,7 +162,6 @@ def test_data_race():
     p.sigValueChanged.connect(override)
     pi.widget.setValue(2)
     assert p.value() == pi.widget.value() == 1
-
 
 def test_pen_settings():
     # Option from constructor

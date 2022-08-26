@@ -1,14 +1,14 @@
-Detail the reasoning behind the code change. If there is an associated issue that this PR will resolve add
+Detail the reasoning behind the code change.  If there is an associated issue that this PR will resolve add
 
 Fixes #<IssueNumber>
 
-### Other Tasks
+### Other Tasks 
 
 <details>
   <summary>Bump Dependency Versions</summary>
 
 ### Files that need updates
-
+    
 Confirm the following files have been either updated or there has been a determination that no update is needed.
 
 - [ ] `README.md`

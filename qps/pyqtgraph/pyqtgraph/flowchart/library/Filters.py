@@ -1,10 +1,10 @@
 import numpy as np
 
-from . import functions
-from .common import CtrlNode, PlottingCtrlNode, metaArrayWrapper
 from ... import Point, PolyLineROI
 from ... import functions as pgfn
 from ... import metaarray as metaarray
+from . import functions
+from .common import CtrlNode, PlottingCtrlNode, metaArrayWrapper
 
 
 class Downsample(CtrlNode):

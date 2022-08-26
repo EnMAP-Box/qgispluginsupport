@@ -1,12 +1,9 @@
 import ctypes
-
 import numpy as np
-
 from . import QT_LIB
 from . import compat
 
 __all__ = ["get_qpainterpath_element_array"]
-
 
 class QArrayDataQt5(ctypes.Structure):
     _fields_ = [
@@ -16,13 +13,11 @@ class QArrayDataQt5(ctypes.Structure):
         ("offset", ctypes.c_ssize_t),
     ]
 
-
 class QPainterPathPrivateQt5(ctypes.Structure):
     _fields_ = [
         ("ref", ctypes.c_int),
         ("adata", ctypes.POINTER(QArrayDataQt5)),
     ]
-
 
 class QArrayDataQt6(ctypes.Structure):
     _fields_ = [
@@ -30,7 +25,6 @@ class QArrayDataQt6(ctypes.Structure):
         ("flags", ctypes.c_uint),
         ("alloc", ctypes.c_ssize_t),
     ]
-
 
 class QPainterPathPrivateQt6(ctypes.Structure):
     _fields_ = [
@@ -40,14 +34,13 @@ class QPainterPathPrivateQt6(ctypes.Structure):
         ("size", ctypes.c_ssize_t),
     ]
 
-
 def get_qpainterpath_element_array(qpath, nelems=None):
     writable = nelems is not None
     if writable:
         qpath.reserve(nelems)
 
     itemsize = 24
-    dtype = dict(names=['x', 'y', 'c'], formats=['f8', 'f8', 'i4'], itemsize=itemsize)
+    dtype = dict(names=['x','y','c'], formats=['f8', 'f8', 'i4'], itemsize=itemsize)
 
     ptr0 = compat.unwrapinstance(qpath)
     pte_cp = ctypes.c_void_p.from_address(ptr0)
@@ -74,5 +67,5 @@ def get_qpainterpath_element_array(qpath, nelems=None):
     else:
         nelems = size_ci.size
 
-    vp = compat.voidptr(eptr, itemsize * nelems, writable)
+    vp = compat.voidptr(eptr, itemsize*nelems, writable)
     return np.frombuffer(vp, dtype=dtype)

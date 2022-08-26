@@ -6,6 +6,7 @@ from functools import reduce
 from math import hypot
 
 from .. import functions as fn
+from ..GraphicsScene import GraphicsScene
 from ..Point import Point
 from ..Qt import QtCore, QtWidgets, isQObjectAlive
 
@@ -436,7 +437,7 @@ class GraphicsItem(object):
             relativeItem = self.parentItem()
 
         tr = self.itemTransform(relativeItem)[0]
-        vec = tr.map(QtCore.QLineF(0, 0, 1, 0))
+        vec = tr.map(QtCore.QLineF(0,0,1,0))
         return vec.angleTo(QtCore.QLineF(vec.p1(), vec.p1()+QtCore.QPointF(1,0)))
         
     #def itemChange(self, change, value):

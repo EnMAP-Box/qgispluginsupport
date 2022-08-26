@@ -1,16 +1,16 @@
 import warnings
 
-from .DockDrop import DockDrop
 from ..Qt import QT_LIB, QtCore, QtGui, QtWidgets
 from ..widgets.VerticalLabel import VerticalLabel
+from .DockDrop import DockDrop
 
 
 class Dock(QtWidgets.QWidget, DockDrop):
+
     sigStretchChanged = QtCore.Signal()
     sigClosed = QtCore.Signal(object)
 
-    def __init__(self, name, area=None, size=(10, 10), widget=None, hideTitle=False, autoOrientation=True, label=None,
-                 **kargs):
+    def __init__(self, name, area=None, size=(10, 10), widget=None, hideTitle=False, autoOrientation=True, label=None, **kargs):
         allowedAreas = None
         if QT_LIB.startswith('PyQt'):
             QtWidgets.QWidget.__init__(self, allowedAreas=allowedAreas)
@@ -30,7 +30,7 @@ class Dock(QtWidgets.QWidget, DockDrop):
         self.moveLabel = True  ## If false, the dock is no longer allowed to move the label.
         self.autoOrient = autoOrientation
         self.orientation = 'horizontal'
-        # self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+        #self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         self.topLayout = QtWidgets.QGridLayout()
         self.topLayout.setContentsMargins(0, 0, 0, 0)
         self.topLayout.setSpacing(0)
@@ -274,7 +274,7 @@ class DockLabel(VerticalLabel):
         self.fixedWidth = False
         self.fontSize = fontSize
         VerticalLabel.__init__(self, text, orientation='horizontal', forceWidth=False)
-        self.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter)
+        self.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop|QtCore.Qt.AlignmentFlag.AlignHCenter)
         self.dock = None
         self.updateStyle()
         self.setAutoFillBackground(False)
@@ -284,8 +284,7 @@ class DockLabel(VerticalLabel):
         if closable:
             self.closeButton = QtWidgets.QToolButton(self)
             self.closeButton.clicked.connect(self.sigCloseClicked)
-            self.closeButton.setIcon(
-                QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_TitleBarCloseButton))
+            self.closeButton.setIcon(QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_TitleBarCloseButton))
 
     def updateStyle(self):
         r = '3px'

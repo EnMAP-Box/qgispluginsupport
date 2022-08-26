@@ -2,17 +2,16 @@ import string
 import warnings
 from math import atan2
 
+from .. import functions as fn
+from ..Point import Point
+from ..Qt import QtCore, QtGui
 from .GraphicsObject import GraphicsObject
 from .ScatterPlotItem import Symbols, makeCrosshair
 from .TextItem import TextItem
 from .UIGraphicsItem import UIGraphicsItem
 from .ViewBox import ViewBox
-from .. import functions as fn
-from ..Point import Point
-from ..Qt import QtCore, QtGui
 
 __all__ = ['TargetItem', 'TargetLabel']
-
 
 class TargetItem(UIGraphicsItem):
     """Draws a draggable target symbol (circle plus crosshair).

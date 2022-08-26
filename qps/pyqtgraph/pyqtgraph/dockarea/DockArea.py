@@ -1,22 +1,22 @@
 import weakref
 
+from ..Qt import QT_LIB, QtWidgets
 from .Container import Container, HContainer, TContainer, VContainer
 from .Dock import Dock
 from .DockDrop import DockDrop
-from ..Qt import QT_LIB, QtWidgets
 
 
 class DockArea(Container, QtWidgets.QWidget, DockDrop):
     def __init__(self, parent=None, temporary=False, home=None):
         Container.__init__(self, self)
-        allowedAreas = ['left', 'right', 'top', 'bottom']
+        allowedAreas=['left', 'right', 'top', 'bottom']
         if QT_LIB.startswith('PyQt'):
             QtWidgets.QWidget.__init__(self, parent=parent, allowedAreas=allowedAreas)
         else:
             QtWidgets.QWidget.__init__(self, parent=parent)
             DockDrop.__init__(self, allowedAreas=allowedAreas)
         self.layout = QtWidgets.QVBoxLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(0,0,0,0)
         self.layout.setSpacing(0)
         self.setLayout(self.layout)
         self.docks = weakref.WeakValueDictionary()

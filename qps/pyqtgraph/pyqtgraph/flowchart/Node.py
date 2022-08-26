@@ -4,11 +4,11 @@ import sys
 import warnings
 from collections import OrderedDict
 
-from .Terminal import Terminal
 from .. import functions as fn
-from ..Qt import QtCore, QtGui, QtWidgets
 from ..debug import printExc
 from ..graphicsItems.GraphicsObject import GraphicsObject
+from ..Qt import QtCore, QtGui, QtWidgets
+from .Terminal import Terminal
 
 translate = QtCore.QCoreApplication.translate
 
@@ -462,7 +462,7 @@ class TextItem(QtWidgets.QGraphicsTextItem):
                 self.on_update()
                 return
         super().keyPressEvent(ev)
-
+        
     def mousePressEvent(self, ev):
         if ev.button() == QtCore.Qt.MouseButton.LeftButton:
             self.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextEditorInteraction)

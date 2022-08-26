@@ -7,8 +7,8 @@ Distributed under MIT/X11 license. See license.txt for more information.
 
 from __future__ import print_function
 
-import cProfile
 import contextlib
+import cProfile
 import gc
 import inspect
 import os
@@ -29,9 +29,8 @@ from .util import cprint
 
 if sys.version.startswith("3.8") and QT_LIB == "PySide2":
     from .Qt import PySide2
-
     if tuple(map(int, PySide2.__version__.split("."))) < (5, 14) \
-            and PySide2.__version__.startswith(QtCore.__version__):
+        and PySide2.__version__.startswith(QtCore.__version__):
         warnings.warn(
             "Due to PYSIDE-1140, ThreadChase and ThreadColor will not work" +
             " on pip-installed PySide2 bindings < 5.14"

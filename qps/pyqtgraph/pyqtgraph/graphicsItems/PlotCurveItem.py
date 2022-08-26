@@ -35,19 +35,18 @@ def have_native_drawlines_array():
 
     return success
 
-
 _have_native_drawlines_array = Qt.QT_LIB.startswith('PySide') and have_native_drawlines_array()
 
 
 class LineSegments:
     def __init__(self):
         self.use_sip_array = (
-                Qt.QT_LIB.startswith('PyQt') and
-                hasattr(Qt.sip, 'array') and
-                (
-                        (0x60301 <= QtCore.PYQT_VERSION) or
-                        (0x50f07 <= QtCore.PYQT_VERSION < 0x60000)
-                )
+            Qt.QT_LIB.startswith('PyQt') and
+            hasattr(Qt.sip, 'array') and
+            (
+                (0x60301 <= QtCore.PYQT_VERSION) or
+                (0x50f07 <= QtCore.PYQT_VERSION < 0x60000)
+            )
         )
         self.use_native_drawlines = Qt.QT_LIB.startswith('PySide') and _have_native_drawlines_array
         self.alloc(0)
@@ -55,7 +54,7 @@ class LineSegments:
     def alloc(self, size):
         if self.use_sip_array:
             self.objs = Qt.sip.array(QtCore.QLineF, size)
-            vp = Qt.sip.voidptr(self.objs, len(self.objs) * 4 * 8)
+            vp = Qt.sip.voidptr(self.objs, len(self.objs)*4*8)
             self.arr = np.frombuffer(vp, dtype=np.float64).reshape((-1, 4))
         elif self.use_native_drawlines:
             self.arr = np.empty((size, 4), dtype=np.float64)
@@ -63,8 +62,8 @@ class LineSegments:
         else:
             self.arr = np.empty((size, 4), dtype=np.float64)
             self.objs = list(map(Qt.compat.wrapinstance,
-                                 itertools.count(self.arr.ctypes.data, self.arr.strides[0]),
-                                 itertools.repeat(QtCore.QLineF, self.arr.shape[0])))
+                itertools.count(self.arr.ctypes.data, self.arr.strides[0]),
+                itertools.repeat(QtCore.QLineF, self.arr.shape[0])))
 
     def get(self, size):
         if size != self.arr.shape[0]:
@@ -195,7 +194,7 @@ class PlotCurveItem(GraphicsObject):
             'name': None,
             'antialias': getConfigOption('antialias'),
             'connect': 'all',
-            'mouseWidth': 8,  # width of shape responding to mouse click
+            'mouseWidth': 8, # width of shape responding to mouse click
             'compositionMode': None,
             'skipFiniteCheck': False,
             'segmentedLineMode': getConfigOption('segmentedLineMode'),
@@ -322,9 +321,9 @@ class PlotCurveItem(GraphicsObject):
         pen = self.opts['pen']
         spen = self.opts['shadowPen']
         if pen is not None and not pen.isCosmetic() and pen.style() != QtCore.Qt.PenStyle.NoPen:
-            b = (b[0] - pen.widthF() * 0.7072, b[1] + pen.widthF() * 0.7072)
+            b = (b[0] - pen.widthF()*0.7072, b[1] + pen.widthF()*0.7072)
         if spen is not None and not spen.isCosmetic() and spen.style() != QtCore.Qt.PenStyle.NoPen:
-            b = (b[0] - spen.widthF() * 0.7072, b[1] + spen.widthF() * 0.7072)
+            b = (b[0] - spen.widthF()*0.7072, b[1] + spen.widthF()*0.7072)
 
         self._boundsCache[ax] = [(frac, orthoRange), b]
         return b
@@ -333,10 +332,10 @@ class PlotCurveItem(GraphicsObject):
         pen = self.opts['pen']
         spen = self.opts['shadowPen']
         w = 0
-        if pen is not None and pen.isCosmetic() and pen.style() != QtCore.Qt.PenStyle.NoPen:
-            w += pen.widthF() * 0.7072
+        if  pen is not None and pen.isCosmetic() and pen.style() != QtCore.Qt.PenStyle.NoPen:
+            w += pen.widthF()*0.7072
         if spen is not None and spen.isCosmetic() and spen.style() != QtCore.Qt.PenStyle.NoPen:
-            w = max(w, spen.widthF() * 0.7072)
+            w = max(w, spen.widthF()*0.7072)
         if self.clickable:
             w = max(w, self.opts['mouseWidth']//2 + 1)
         return w
@@ -701,17 +700,17 @@ class PlotCurveItem(GraphicsObject):
         if mode in ('off',):
             return False
         return (
-                pen.widthF() > 1.0
-                # non-solid pen styles need single polyline to be effective
-                and pen.style() == QtCore.Qt.PenStyle.SolidLine
-                # segmenting the curve slows gradient brushes, and is expected
-                # to do the same for other patterns
-                and pen.isSolid()  # pen.brush().style() == Qt.BrushStyle.SolidPattern
-                # ends of adjacent line segments overlapping is visible when not opaque
-                and pen.color().alphaF() == 1.0
-                # anti-aliasing introduces transparent pixels and therefore also causes visible overlaps
-                # for adjacent line segments
-                and not self.opts['antialias']
+            pen.widthF() > 1.0
+            # non-solid pen styles need single polyline to be effective
+            and pen.style() == QtCore.Qt.PenStyle.SolidLine
+            # segmenting the curve slows gradient brushes, and is expected
+            # to do the same for other patterns
+            and pen.isSolid()   # pen.brush().style() == Qt.BrushStyle.SolidPattern
+            # ends of adjacent line segments overlapping is visible when not opaque
+            and pen.color().alphaF() == 1.0
+            # anti-aliasing introduces transparent pixels and therefore also causes visible overlaps
+            # for adjacent line segments
+            and not self.opts['antialias']
         )
 
     def _getLineSegments(self):
@@ -823,7 +822,7 @@ class PlotCurveItem(GraphicsObject):
 
         paths = self._fillPathList = []
         offset = 0
-        xybuf = np.empty((chunksize + 3, 2))
+        xybuf = np.empty((chunksize+3, 2))
         baseline = self.opts['fillLevel']
 
         while offset < len(x) - 1:

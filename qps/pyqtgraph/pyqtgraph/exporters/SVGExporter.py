@@ -3,11 +3,11 @@ import xml.dom.minidom as xml
 
 import numpy as np
 
-from .Exporter import Exporter
 from .. import debug
 from .. import functions as fn
-from ..Qt import QtCore, QtGui, QtSvg, QtWidgets
 from ..parametertree import Parameter
+from ..Qt import QtCore, QtGui, QtSvg, QtWidgets
+from .Exporter import Exporter
 
 translate = QtCore.QCoreApplication.translate
 

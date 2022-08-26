@@ -7,9 +7,9 @@ import sys
 if __name__ == '__main__':
     if hasattr(os, 'setpgrp'):
         os.setpgrp()  ## prevents signals (notably keyboard interrupt) being forwarded from parent to this process
-    # name, port, authkey, ppid, targetStr, path, pyside = pickle.load(sys.stdin.buffer)
+    #name, port, authkey, ppid, targetStr, path, pyside = pickle.load(sys.stdin.buffer)
     opts = pickle.load(sys.stdin.buffer)
-    # print "key:",  ' '.join([str(ord(x)) for x in authkey])
+    #print "key:",  ' '.join([str(ord(x)) for x in authkey])
     path = opts.pop('path', None)
     if path is not None:
         if isinstance(path, str):

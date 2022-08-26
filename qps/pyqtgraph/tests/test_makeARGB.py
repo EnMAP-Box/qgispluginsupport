@@ -3,6 +3,7 @@ from typing import Any, Dict, Type, Union
 
 import numpy as np
 import pytest
+
 from pyqtgraph import getConfigOption, getCupy, setConfigOption
 from pyqtgraph.functions import makeARGB as real_makeARGB
 

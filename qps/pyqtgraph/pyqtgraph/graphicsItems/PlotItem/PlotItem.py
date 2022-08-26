@@ -1,11 +1,15 @@
 import collections.abc
-import importlib
 import os
 import warnings
 import weakref
 
 import numpy as np
 
+from ... import functions as fn
+from ... import icons
+from ...Qt import QtCore, QtWidgets
+from ...WidgetGroup import WidgetGroup
+from ...widgets.FileDialog import FileDialog
 from ..AxisItem import AxisItem
 from ..ButtonItem import ButtonItem
 from ..GraphicsWidget import GraphicsWidget
@@ -16,16 +20,11 @@ from ..PlotCurveItem import PlotCurveItem
 from ..PlotDataItem import PlotDataItem
 from ..ScatterPlotItem import ScatterPlotItem
 from ..ViewBox import ViewBox
-from ... import functions as fn
-from ... import icons
-from ...Qt import QT_LIB, QtCore, QtWidgets
-from ...WidgetGroup import WidgetGroup
-from ...widgets.FileDialog import FileDialog
+
 
 translate = QtCore.QCoreApplication.translate
 
-ui_template = importlib.import_module(
-    f'.plotConfigTemplate_{QT_LIB.lower()}', package=__package__)
+from . import plotConfigTemplate_generic as ui_template
 
 __all__ = ['PlotItem']
 

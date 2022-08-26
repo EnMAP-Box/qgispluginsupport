@@ -6,12 +6,12 @@ from collections import OrderedDict
 
 import numpy as np
 
-from .GraphicsObject import GraphicsObject
 from .. import Qt, debug
 from .. import functions as fn
 from .. import getConfigOption
 from ..Point import Point
 from ..Qt import QT_LIB, QtCore, QtGui
+from .GraphicsObject import GraphicsObject
 
 __all__ = ['ScatterPlotItem', 'SpotItem']
 
@@ -97,8 +97,8 @@ def renderSymbol(symbol, size, pen, brush, device=None):
     ## Render a spot with the given parameters to a pixmap
     penPxWidth = max(math.ceil(pen.widthF()), 1)
     if device is None:
-        device = QtGui.QImage(int(size + penPxWidth), int(size + penPxWidth),
-                              QtGui.QImage.Format.Format_ARGB32_Premultiplied)
+        device = QtGui.QImage(int(size+penPxWidth), int(size+penPxWidth),
+            QtGui.QImage.Format.Format_ARGB32_Premultiplied)
         device.fill(QtCore.Qt.GlobalColor.transparent)
     p = QtGui.QPainter(device)
     try:
@@ -146,12 +146,12 @@ def _mkBrush(*args, **kwargs):
 class PixmapFragments:
     def __init__(self):
         self.use_sip_array = (
-                Qt.QT_LIB.startswith('PyQt') and
-                hasattr(Qt.sip, 'array') and
-                (
-                        (0x60301 <= QtCore.PYQT_VERSION) or
-                        (0x50f07 <= QtCore.PYQT_VERSION < 0x60000)
-                )
+            Qt.QT_LIB.startswith('PyQt') and
+            hasattr(Qt.sip, 'array') and
+            (
+                (0x60301 <= QtCore.PYQT_VERSION) or
+                (0x50f07 <= QtCore.PYQT_VERSION < 0x60000)
+            )
         )
         self.alloc(0)
 
@@ -169,14 +169,14 @@ class PixmapFragments:
         #    instances into a contiguous array, in order to call the underlying C++ native API.
         if self.use_sip_array:
             self.objs = Qt.sip.array(QtGui.QPainter.PixmapFragment, size)
-            vp = Qt.sip.voidptr(self.objs, len(self.objs) * 10 * 8)
+            vp = Qt.sip.voidptr(self.objs, len(self.objs)*10*8)
             self.arr = np.frombuffer(vp, dtype=np.float64).reshape((-1, 10))
         else:
             self.arr = np.empty((size, 10), dtype=np.float64)
             if QT_LIB.startswith('PyQt'):
                 self.objs = list(map(Qt.sip.wrapinstance,
-                                     itertools.count(self.arr.ctypes.data, self.arr.strides[0]),
-                                     itertools.repeat(QtGui.QPainter.PixmapFragment, self.arr.shape[0])))
+                    itertools.count(self.arr.ctypes.data, self.arr.strides[0]),
+                    itertools.repeat(QtGui.QPainter.PixmapFragment, self.arr.shape[0])))
             else:
                 self.objs = Qt.shiboken.wrapInstance(self.arr.ctypes.data, QtGui.QPainter.PixmapFragment)
 
@@ -374,7 +374,7 @@ class SymbolAtlas(object):
             pm = QtGui.QPixmap(0, 0)
         else:
             img = fn.ndarray_to_qimage(self._data,
-                                       QtGui.QImage.Format.Format_ARGB32_Premultiplied)
+                QtGui.QImage.Format.Format_ARGB32_Premultiplied)
             pm = QtGui.QPixmap(img)
         return pm
 
@@ -458,7 +458,7 @@ class ScatterPlotItem(GraphicsObject):
         self.setData(*args, **kargs)
         profiler('setData')
 
-        # self.setCacheMode(self.DeviceCoordinateCache)
+        #self.setCacheMode(self.DeviceCoordinateCache)
 
         # track when the tooltip is cleared so we only clear it once
         # this allows another item in the VB to set the tooltip

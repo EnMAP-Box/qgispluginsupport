@@ -2,12 +2,14 @@ import atexit
 import inspect
 import multiprocessing.connection
 import os
-import pickle
 import signal
 import subprocess
 import sys
 import time
+import pickle
 
+from ..Qt import QT_LIB, mkQApp
+from ..util import cprint  # color printing for debugging
 from .remoteproxy import (
     ClosedError,
     LocalObjectProxy,
@@ -15,11 +17,8 @@ from .remoteproxy import (
     ObjectProxy,
     RemoteEventHandler,
 )
-from ..Qt import QT_LIB, mkQApp
-from ..util import cprint  # color printing for debugging
 
 __all__ = ['Process', 'QtProcess', 'ForkedProcess', 'ClosedError', 'NoResultError']
-
 
 class Process(RemoteEventHandler):
     """

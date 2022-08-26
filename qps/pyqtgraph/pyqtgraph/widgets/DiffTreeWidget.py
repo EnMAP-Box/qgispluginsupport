@@ -1,8 +1,8 @@
 import numpy as np
 
-from .DataTreeWidget import DataTreeWidget
 from .. import functions as fn
 from ..Qt import QtWidgets
+from .DataTreeWidget import DataTreeWidget
 
 __all__ = ['DiffTreeWidget']
 

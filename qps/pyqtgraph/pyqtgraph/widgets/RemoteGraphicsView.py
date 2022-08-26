@@ -1,3 +1,5 @@
+from ..Qt import QT_LIB, QtCore, QtGui, QtWidgets
+
 import atexit
 import enum
 import mmap
@@ -6,11 +8,10 @@ import random
 import sys
 import tempfile
 
-from .GraphicsView import GraphicsView
-from .. import CONFIG_OPTIONS
 from .. import Qt
+from .. import CONFIG_OPTIONS
 from .. import multiprocess as mp
-from ..Qt import QT_LIB, QtCore, QtGui, QtWidgets
+from .GraphicsView import GraphicsView
 
 __all__ = ['RemoteGraphicsView']
 

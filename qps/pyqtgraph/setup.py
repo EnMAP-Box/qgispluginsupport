@@ -12,7 +12,7 @@ setupOpts = dict(
     name='pyqtgraph',
     description='Scientific Graphics and GUI Library for Python',
     long_description=DESCRIPTION,
-    license='MIT',
+    license =  'MIT',
     url='http://www.pyqtgraph.org',
     project_urls={
         'Documentation': 'https://pyqtgraph.readthedocs.io',
@@ -20,7 +20,7 @@ setupOpts = dict(
     },
     author='Luke Campagnola',
     author_email='luke.campagnola@gmail.com',
-    classifiers=[
+    classifiers = [
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Development Status :: 4 - Beta",
@@ -33,6 +33,7 @@ setupOpts = dict(
         "Topic :: Software Development :: User Interfaces",
     ],
 )
+
 
 import distutils.dir_util
 import os
@@ -111,9 +112,9 @@ class Install(install.install):
 setup(
     version=version,
     cmdclass={
-        'build': Build,
+        'build': Build, 
         'install': Install,
-        'deb': helpers.DebCommand,
+        'deb': helpers.DebCommand, 
         'test': helpers.TestCommand,
         'debug': helpers.DebugCommand,
         'mergetest': helpers.MergeTestCommand,
@@ -132,7 +133,7 @@ setup(
             "colors/maps/*.hex",
         ],
     },
-    install_requires =[
+    install_requires = [
         'numpy>=1.20.0',
     ],
     **setupOpts

@@ -34,16 +34,11 @@ except ImportError:
             except ImportError as e:
                 raise ImportError("No suitable qt binding found") from e
 
+
 App: QtWidgets.QApplication
 VERSION_INFO: str
 QT_LIB: str
 QtVersion: str
-
-
 def exec_() -> QtWidgets.QApplication: ...
-
-
 def mkQApp(name: Union[str, None] = None) -> QtWidgets.QApplication: ...
-
-
 def isQObjectAlive(obj: QtCore.QObject) -> bool: ...

@@ -1,7 +1,6 @@
 from enum import Enum
-
-from .list import ListParameter
 from ...Qt import QT_LIB, QtCore
+from .list import ListParameter
 
 
 class QtEnumParameter(ListParameter):

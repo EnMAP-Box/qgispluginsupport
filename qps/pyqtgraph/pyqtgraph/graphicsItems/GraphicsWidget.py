@@ -1,10 +1,11 @@
-from .GraphicsItem import GraphicsItem
 from ..Qt import QtGui, QtWidgets
+from .GraphicsItem import GraphicsItem
 
 __all__ = ['GraphicsWidget']
 
 
 class GraphicsWidget(GraphicsItem, QtWidgets.QGraphicsWidget):
+    
     _qtBaseClass = QtWidgets.QGraphicsWidget
 
     def __init__(self, *args, **kwargs):

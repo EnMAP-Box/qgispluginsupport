@@ -9,7 +9,6 @@ from ...Qt import QtCore
 from ...SignalProxy import SignalProxy
 from ...widgets.PenPreviewLabel import PenPreviewLabel
 
-
 class PenParameterItem(GroupParameterItem):
     def __init__(self, param, depth):
         super().__init__(param, depth)

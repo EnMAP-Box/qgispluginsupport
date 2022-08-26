@@ -2,11 +2,11 @@ import warnings
 import weakref
 from time import perf_counter, perf_counter_ns
 
-from .mouseEvents import HoverEvent, MouseClickEvent, MouseDragEvent
 from .. import debug as debug
 from .. import getConfigOption
 from ..Point import Point
 from ..Qt import QtCore, QtGui, QtWidgets, isQObjectAlive
+from .mouseEvents import HoverEvent, MouseClickEvent, MouseDragEvent
 
 getMillis = lambda: perf_counter_ns() // 10 ** 6
 
@@ -425,35 +425,35 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
                 continue
             if shape.contains(item.mapFromScene(point)):
                 items2.append(item)
-
+        
         ## Sort by descending Z-order (don't trust scene.itms() to do this either)
         ## use 'absolute' z value, which is the sum of all item/parent ZValues
         def absZValue(item):
             if item is None:
                 return 0
             return item.zValue() + absZValue(item.parentItem())
-
+        
         items2.sort(key=absZValue, reverse=True)
-
+        
         return items2
 
-        # seen = set()
-        # r = self._clickRadius
-        # rect = view.mapToScene(QtCore.QRect(0, 0, 2*r, 2*r)).boundingRect()
-        # w = rect.width()
-        # h = rect.height()
-        # rgn = QtCore.QRectF(point.x()-w, point.y()-h, 2*w, 2*h)
-        # self.searchRect.setRect(rgn)
+        #seen = set()
+        #r = self._clickRadius
+        #rect = view.mapToScene(QtCore.QRect(0, 0, 2*r, 2*r)).boundingRect()
+        #w = rect.width()
+        #h = rect.height()
+        #rgn = QtCore.QRectF(point.x()-w, point.y()-h, 2*w, 2*h)
+        #self.searchRect.setRect(rgn)
+        
+        #for item in items:
+            ##seen.add(item)
 
-        # for item in items:
-        ##seen.add(item)
-
-        # shape = item.mapToScene(item.shape())
-        # if not shape.contains(point):
-        # continue
-        # yield item
-        # for item in self.items(rgn, selMode, sortOrder, tr):
-        ##if item not in seen:
+            #shape = item.mapToScene(item.shape())
+            #if not shape.contains(point):
+                #continue
+            #yield item
+        #for item in self.items(rgn, selMode, sortOrder, tr):
+            ##if item not in seen:
             #yield item
         
     def getViewWidget(self):
@@ -497,7 +497,7 @@ class GraphicsScene(QtWidgets.QGraphicsScene):
             if not hasattr(item, "getContextMenus"):
                 continue
             subMenus = item.getContextMenus(event) or []
-            if isinstance(subMenus, list):  ## so that some items (like FlowchartViewBox) can return multiple menus
+            if isinstance(subMenus, list): ## so that some items (like FlowchartViewBox) can return multiple menus
                 menusToAdd.extend(subMenus)
             else:
                 menusToAdd.append(subMenus)

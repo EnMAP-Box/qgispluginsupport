@@ -2,10 +2,10 @@ __all__ = ["Canvas"]
 
 import importlib
 
-from ..Qt import QT_LIB, QtCore, QtGui, QtWidgets
 from ..graphicsItems.GridItem import GridItem
 from ..graphicsItems.ROI import ROI
 from ..graphicsItems.ViewBox import ViewBox
+from ..Qt import QT_LIB, QtCore, QtGui, QtWidgets
 
 ui_template = importlib.import_module(
     f'.CanvasTemplate_{QT_LIB.lower()}', package=__package__)

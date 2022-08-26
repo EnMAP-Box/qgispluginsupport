@@ -28,8 +28,7 @@ PyQtGraph has adopted [NEP 29](https://numpy.org/neps/nep-0029-deprecation_polic
 This project supports:
 
 * All minor versions of Python released 42 months prior to the project, and at minimum the two latest minor versions.
-* All minor versions of numpy released in the 24 months prior to the project, and at minimum the last three minor
-  versions.
+* All minor versions of numpy released in the 24 months prior to the project, and at minimum the last three minor versions.
 * All Qt5 versions from 5.12-5.15, and Qt6 6.1+
 
 Currently this means:
@@ -91,20 +90,20 @@ Support
 -------
 
 * Report issues on the [GitHub issue tracker](https://github.com/pyqtgraph/pyqtgraph/issues)
-* Post questions to
-    * [mailing list / forum](https://groups.google.com/forum/?fromgroups#!forum/pyqtgraph)
-    * [StackOverflow](https://stackoverflow.com/questions/tagged/pyqtgraph)
-    * [GitHub Discussions](https://github.com/pyqtgraph/pyqtgraph/discussions)
-    * [Python Discord](https://discord.com/channels/267624335836053506/898139460821192724)
+* Post questions to 
+  * [mailing list / forum](https://groups.google.com/forum/?fromgroups#!forum/pyqtgraph)
+  * [StackOverflow](https://stackoverflow.com/questions/tagged/pyqtgraph)
+  * [GitHub Discussions](https://github.com/pyqtgraph/pyqtgraph/discussions)
+  * [Python Discord](https://discord.com/channels/267624335836053506/898139460821192724)
 
 Installation Methods
 --------------------
 
 * From PyPI
-    * Last released version: `pip install pyqtgraph`
-    * Latest development version: `pip install git+https://github.com/pyqtgraph/pyqtgraph@master`
+  * Last released version: `pip install pyqtgraph`
+  * Latest development version: `pip install git+https://github.com/pyqtgraph/pyqtgraph@master`
 * From conda
-    * Last released version: `conda install -c conda-forge pyqtgraph`
+  * Last released version: `conda install -c conda-forge pyqtgraph`
 * To install system-wide from source distribution: `python setup.py install`
 * Many linux package repositories have release versions.
 * To use with a specific project, simply copy the PyQtGraph subdirectory
@@ -137,5 +136,6 @@ Here is a partial listing of some of the applications that make use of PyQtGraph
 * [EnMAP-Box](https://enmap-box.readthedocs.io)
 * [EO Time Series Viewer](https://eo-time-series-viewer.readthedocs.io)
 * [Atomize](https://github.com/Anatoly1010/Atomize)
+* [GraPhysio](https://github.com/jaj42/GraPhysio)
 
 Do you use PyQtGraph in your own project, and want to add it to the list?  Submit a pull request to update this listing!

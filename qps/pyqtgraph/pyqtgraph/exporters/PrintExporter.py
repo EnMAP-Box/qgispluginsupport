@@ -1,17 +1,14 @@
-from .Exporter import Exporter
-from ..Qt import QtCore, QtGui, QtWidgets
 from ..parametertree import Parameter
+from ..Qt import QtCore, QtGui, QtWidgets
+from .Exporter import Exporter
 
 translate = QtCore.QCoreApplication.translate
 
-__all__ = ['PrintExporter']
-
-
-# __all__ = []   ## Printer is disabled for now--does not work very well.
+__all__ = ['PrintExporter']  
+#__all__ = []   ## Printer is disabled for now--does not work very well.
 
 class PrintExporter(Exporter):
     Name = "Printer"
-
     def __init__(self, item):
         Exporter.__init__(self, item)
         tr = self.getTargetRect()

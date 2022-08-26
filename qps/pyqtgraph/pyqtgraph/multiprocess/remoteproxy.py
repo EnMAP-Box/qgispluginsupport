@@ -1,12 +1,12 @@
-import builtins
 import os
-import pickle
 import sys
 import threading
 import time
 import traceback
 import warnings
 import weakref
+import builtins
+import pickle
 
 import numpy as np
 
@@ -68,11 +68,11 @@ class RemoteEventHandler(object):
         ## attributes that affect the behavior of the proxy. 
         ## See ObjectProxy._setProxyOptions for description
         self.proxyOptions = {
-            'callSync': 'sync',  ## 'sync', 'async', 'off'
-            'timeout': 10,  ## float
-            'returnType': 'auto',  ## 'proxy', 'value', 'auto'
-            'autoProxy': False,  ## bool
-            'deferGetattr': False,  ## True, False
+            'callSync': 'sync',      ## 'sync', 'async', 'off'
+            'timeout': 10,           ## float
+            'returnType': 'auto',    ## 'proxy', 'value', 'auto'
+            'autoProxy': False,      ## bool
+            'deferGetattr': False,   ## True, False
             'noProxyTypes': [
                 type(None), str, bytes, int, float, tuple, list, dict,
                 LocalObjectProxy, ObjectProxy,

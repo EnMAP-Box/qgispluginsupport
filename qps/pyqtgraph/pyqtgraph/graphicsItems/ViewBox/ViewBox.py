@@ -5,13 +5,13 @@ from copy import deepcopy
 
 import numpy as np
 
-from ..GraphicsWidget import GraphicsWidget
-from ..ItemGroup import ItemGroup
 from ... import debug as debug
 from ... import functions as fn
 from ... import getConfigOption
 from ...Point import Point
 from ...Qt import QtCore, QtGui, QtWidgets, isQObjectAlive
+from ..GraphicsWidget import GraphicsWidget
+from ..ItemGroup import ItemGroup
 
 __all__ = ['ViewBox']
 
@@ -229,7 +229,7 @@ class ViewBox(GraphicsWidget):
         if name is None:
             self.updateViewLists()
 
-        self._viewPixelSizeCache = None
+        self._viewPixelSizeCache  = None
 
     @property
     def rbScaleBox(self):
@@ -263,8 +263,8 @@ class ViewBox(GraphicsWidget):
         if rect.height() == 0 or vr.width() == 0 or vr.height() == 0:
             currentRatio = 1.0
         else:
-            currentRatio = (rect.width() / float(rect.height())) / (
-                    vr.width() / vr.height())
+            currentRatio = (rect.width()/float(rect.height())) / (
+                                                vr.width()/vr.height())
         return currentRatio
 
     def register(self, name):
@@ -458,7 +458,7 @@ class ViewBox(GraphicsWidget):
 
     def resizeEvent(self, ev):
         if ev.oldSize() != ev.newSize():
-            self._viewPixelSizeCache = None
+            self._viewPixelSizeCache  = None
             self._matrixNeedsUpdate = True
 
             self.linkedXChanged()
@@ -553,9 +553,9 @@ class ViewBox(GraphicsWidget):
         ================== =====================================================================
 
         """
-        self._viewPixelSizeCache = None
+        self._viewPixelSizeCache  = None
 
-        changes = {}  # axes
+        changes = {}   # axes
         setRequested = [False, False]
 
         if rect is not None:
@@ -925,13 +925,13 @@ class ViewBox(GraphicsWidget):
             targetRect = self.viewRange()
 
             fractionVisible = self.state['autoRange'][:]
-            for i in [0, 1]:
+            for i in [0,1]:
                 if type(fractionVisible[i]) is bool:
                     fractionVisible[i] = 1.0
 
             childRange = None
 
-            order = [0, 1]
+            order = [0,1]
             if self.state['autoVisibleOnly'][0] is True:
                 order = [1,0]
 
@@ -1261,12 +1261,13 @@ class ViewBox(GraphicsWidget):
 
     def viewPixelSize(self):
         """Return the (width, height) of a screen pixel in view coordinates."""
-        if self._viewPixelSizeCache is None:
+        if self._viewPixelSizeCache  is None:
+
             o = self.mapToView(Point(0, 0))
             px, py = [Point(self.mapToView(v) - o) for v in self.pixelVectors()]
-            self._viewPixelSizeCache = (px.length(), py.length())
+            self._viewPixelSizeCache  = (px.length(), py.length())
 
-        return self._viewPixelSizeCache
+        return self._viewPixelSizeCache 
 
     def itemBoundingRect(self, item):
         """Return the bounding rect of the item in view coordinates"""
@@ -1317,13 +1318,13 @@ class ViewBox(GraphicsWidget):
         mouseEnabled = np.array(self.state['mouseEnabled'], dtype=np.float64)
         mask = mouseEnabled.copy()
         if axis is not None:
-            mask[1 - axis] = 0.0
+            mask[1-axis] = 0.0
 
         ## Scale or translate based on mouse button
         if ev.button() in [QtCore.Qt.MouseButton.LeftButton, QtCore.Qt.MouseButton.MiddleButton]:
             if self.state['mouseMode'] == ViewBox.RectMode and axis is None:
                 if ev.isFinish():  ## This is the final move in the drag; change the view scale now
-                    # print "finish"
+                    #print "finish"
                     self.rbScaleBox.hide()
                     ax = QtCore.QRectF(Point(ev.buttonDownPos(ev.button())), Point(pos))
                     ax = self.childGroup.mapRectFromParent(ax)
@@ -1621,8 +1622,15 @@ class ViewBox(GraphicsWidget):
                     changed[0] = True
                 viewRange[0] = rangeX
 
-
-        changed = [(viewRange[i][0] != self.state['viewRange'][i][0]) or (viewRange[i][1] != self.state['viewRange'][i][1]) for i in (0,1)]
+        # Consider only as 'changed' if the differences are larger than floating point inaccuracies,
+        # which regularly appear in magnitude of around 1e-15. Therefore, 1e-9 as factor was chosen
+        # more or less arbitrarily.
+        thresholds = [(viewRange[axis][1] - viewRange[axis][0]) * 1.0e-9 for axis in (0,1)]
+        changed = [
+            (abs(viewRange[axis][0] - self.state["viewRange"][axis][0]) > thresholds[axis])
+            or (abs(viewRange[axis][1] - self.state["viewRange"][axis][1]) > thresholds[axis])
+            for axis in (0, 1)
+        ]
         self.state['viewRange'] = viewRange
 
         if any(changed):

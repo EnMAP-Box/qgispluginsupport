@@ -366,12 +366,10 @@ if QT_LIB in [PYSIDE2, PYSIDE6]:
                 QtWidgets.QApplication.processEvents()
                 while time.time() < start + msec * 0.001:
                     QtWidgets.QApplication.processEvents()
-
-
             QtTest.QTest.qWait = qWait
 
     compat.wrapinstance = shiboken.wrapInstance
-    compat.unwrapinstance = lambda x: shiboken.getCppPointer(x)[0]
+    compat.unwrapinstance = lambda x : shiboken.getCppPointer(x)[0]
     compat.voidptr = shiboken.VoidPtr
 
 # Common to PyQt5 and PyQt6
@@ -385,15 +383,11 @@ if QT_LIB in [PYQT5, PYQT6]:
         sys_excepthook = sys.excepthook
         def pyqt_qabort_override(*args, **kwds):
             return sys_excepthook(*args, **kwds)
-
-
         sys.excepthook = pyqt_qabort_override
-
-
+    
     def isQObjectAlive(obj):
         return not sip.isdeleted(obj)
-
-
+    
     loadUiType = uic.loadUiType
 
     QtCore.Signal = QtCore.pyqtSignal
