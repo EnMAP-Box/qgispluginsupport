@@ -1,7 +1,7 @@
-from .. import PlotItem
-from ..parametertree import Parameter
-from ..Qt import QtCore
 from .Exporter import Exporter
+from .. import PlotItem
+from ..Qt import QtCore
+from ..parametertree import Parameter
 
 translate = QtCore.QCoreApplication.translate
 
@@ -9,7 +9,7 @@ __all__ = ['CSVExporter']
     
     
 class CSVExporter(Exporter):
-    Name = "CSV from plot data"
+    Name = "CSV of original plot data"
     windows = []
     def __init__(self, item):
         Exporter.__init__(self, item)
@@ -37,13 +37,16 @@ class CSVExporter(Exporter):
         appendAllX = self.params['columnMode'] == '(x,y) per plot'
 
         for i, c in enumerate(self.item.curves):
-            cd = c.getData()
+            if hasattr(c, 'getOriginalDataset'):  # try to access unmapped, unprocessed data
+                cd = c.getOriginalDataset()
+            else:
+                cd = c.getData()  # fall back to earlier access method
             if cd[0] is None:
                 continue
             data.append(cd)
             if hasattr(c, 'implements') and c.implements('plotData') and c.name() is not None:
                 name = c.name().replace('"', '""') + '_'
-                xName, yName = '"'+name+'x"', '"'+name+'y"'
+                xName, yName = '"' + name + 'x"', '"' + name + 'y"'
             else:
                 xName = 'x%04d' % i
                 yName = 'y%04d' % i

@@ -8,7 +8,6 @@ from collections import deque
 from time import perf_counter
 
 import numpy as np
-
 import pyqtgraph as pg
 import pyqtgraph.functions as fn
 import pyqtgraph.parametertree as ptree
@@ -73,14 +72,15 @@ children = [
         dict(name='amplitude', type='float', value=args.amplitude),
     ]),
     dict(name='useOpenGL', type='bool', value=pg.getConfigOption('useOpenGL'),
-        readonly=not args.allow_opengl_toggle),
+         readonly=not args.allow_opengl_toggle),
     dict(name='enableExperimental', type='bool', value=pg.getConfigOption('enableExperimental')),
     dict(name='pen', type='pen', value=default_pen),
     dict(name='antialias', type='bool', value=pg.getConfigOption('antialias')),
     dict(name='connect', type='list', limits=['all', 'pairs', 'finite', 'array'], value='all'),
     dict(name='fill', type='bool', value=False),
     dict(name='skipFiniteCheck', type='bool', value=False),
-    dict(name='plotMethod', title='Plot Method', type='list', limits=['pyqtgraph', 'drawPolyline'])
+    dict(name='plotMethod', title='Plot Method', type='list', limits=['pyqtgraph', 'drawPolyline']),
+    dict(name='segmentedLineMode', title='Segmented lines', type='list', limits=['auto', 'on', 'off'], value='auto'),
 ]
 
 params = ptree.Parameter.create(name='Parameters', type='group', children=children)
@@ -122,14 +122,22 @@ def makeData(*args):
 def onUseOpenGLChanged(param, enable):
     pw.useOpenGL(enable)
 
+
 def onEnableExperimentalChanged(param, enable):
     pg.setConfigOption('enableExperimental', enable)
+
 
 def onPenChanged(param, pen):
     curve.setPen(pen)
 
+
 def onFillChanged(param, enable):
     curve.setFillLevel(0.0 if enable else None)
+
+
+def onSegmentedLineModeChanged(param, mode):
+    curve.setSegmentedLineMode(mode)
+
 
 params.child('sigopts').sigTreeStateChanged.connect(makeData)
 params.child('useOpenGL').sigValueChanged.connect(onUseOpenGLChanged)
@@ -137,6 +145,7 @@ params.child('enableExperimental').sigValueChanged.connect(onEnableExperimentalC
 params.child('pen').sigValueChanged.connect(onPenChanged)
 params.child('fill').sigValueChanged.connect(onFillChanged)
 params.child('plotMethod').sigValueChanged.connect(curve.setMethod)
+params.child('segmentedLineMode').sigValueChanged.connect(onSegmentedLineModeChanged)
 params.sigTreeStateChanged.connect(resetTimings)
 
 makeData()

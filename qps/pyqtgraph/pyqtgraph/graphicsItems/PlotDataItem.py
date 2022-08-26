@@ -2,15 +2,16 @@ import warnings
 
 import numpy as np
 
+from .GraphicsObject import GraphicsObject
+from .PlotCurveItem import PlotCurveItem
+from .ScatterPlotItem import ScatterPlotItem
 from .. import debug as debug
 from .. import functions as fn
 from .. import getConfigOption
 from ..Qt import QtCore
-from .GraphicsObject import GraphicsObject
-from .PlotCurveItem import PlotCurveItem
-from .ScatterPlotItem import ScatterPlotItem
 
 __all__ = ['PlotDataItem']
+
 
 class PlotDataset(object):
     """
@@ -237,6 +238,9 @@ class PlotDataItem(GraphicsObject):
         **Optimization keyword arguments:**
 
             ================= =======================================================================
+            useCache          (bool) By default, generated point graphics items are cached to
+                              improve performance. Setting this to False can improve image quality
+                              in certain situations.
             antialias         (bool) By default, antialiasing is disabled to improve performance.
                               Note that in some cases (in particular, when ``pxMode=True``), points
                               will be rendered antialiased even if this is set to `False`.
@@ -298,9 +302,9 @@ class PlotDataItem(GraphicsObject):
         self.setFlag(self.GraphicsItemFlag.ItemHasNoContents)
         # Original data, mapped data, and data processed for display is now all held in PlotDataset objects.
         # The convention throughout PlotDataItem is that a PlotDataset is only instantiated if valid data is available.
-        self._dataset        = None # will hold a PlotDataset for the original data
-        self._datasetMapped  = None # will hold a PlotDataset for data after mapping transforms (e.g. log scale)
-        self._datasetDisplay = None # will hold a PlotDataset for data downsampled and limited for display
+        self._dataset = None  # will hold a PlotDataset for the original data, accessed by getOriginalData()
+        self._datasetMapped = None  # will hold a PlotDataset for data after mapping transforms (e.g. log scale)
+        self._datasetDisplay = None  # will hold a PlotDataset for data downsampled and limited for display, accessed by getData()
         self.curve = PlotCurveItem()
         self.scatter = ScatterPlotItem()
         self.curve.setParentItem(self)
@@ -341,13 +345,14 @@ class PlotDataItem(GraphicsObject):
 
             'symbol': None,
             'symbolSize': 10,
-            'symbolPen': (200,200,200),
+            'symbolPen': (200, 200, 200),
             'symbolBrush': (50, 50, 150),
             'pxMode': True,
 
             'antialias': getConfigOption('antialias'),
             'pointMode': None,
 
+            'useCache': True,
             'downsample': 1,
             'autoDownsample': False,
             'downsampleMethod': 'peak',
@@ -856,13 +861,14 @@ class PlotDataItem(GraphicsObject):
                     curveArgs[v] = self.opts[k]
 
             for k, v in [
-                ('symbolPen','pen'),
-                ('symbolBrush','brush'),
-                ('symbol','symbol'),
+                ('symbolPen', 'pen'),
+                ('symbolBrush', 'brush'),
+                ('symbol', 'symbol'),
                 ('symbolSize', 'size'),
                 ('data', 'data'),
                 ('pxMode', 'pxMode'),
-                ('antialias', 'antialias')
+                ('antialias', 'antialias'),
+                ('useCache', 'useCache')
             ]:
                 if k in self.opts:
                     scatterArgs[v] = self.opts[k]
@@ -895,15 +901,23 @@ class PlotDataItem(GraphicsObject):
         else: # ...hide if not.
             self.curve.hide()
 
-        if self.opts['symbol'] is not None: # draw if visible...
+        if self.opts['symbol'] is not None:  # draw if visible...
             ## check against `True` too for backwards compatibility
             if self.opts.get('stepMode', False) in ("center", True):
-                x = 0.5 * (x[:-1] + x[1:])                
+                x = 0.5 * (x[:-1] + x[1:])
             self.scatter.setData(x=x, y=y, **scatterArgs)
             self.scatter.show()
-        else: # ...hide if not.
+        else:  # ...hide if not.
             self.scatter.hide()
 
+    def getOriginalDataset(self):
+        """
+        Returns the original, unmapped data as the tuple (`xData`, `yData`).
+        """
+        dataset = self._dataset
+        if dataset is None:
+            return (None, None)
+        return dataset.x, dataset.y
 
     def getDisplayDataset(self):
         """
@@ -1065,7 +1079,7 @@ class PlotDataItem(GraphicsObject):
 
     def getData(self):
         """
-        Returns the displayed data as the tuple (`xData`, `yData`) after mapping and data reduction.         
+        Returns the displayed data as the tuple (`xData`, `yData`) after mapping and data reduction.
         """
         dataset = self.getDisplayDataset()
         if dataset is None:

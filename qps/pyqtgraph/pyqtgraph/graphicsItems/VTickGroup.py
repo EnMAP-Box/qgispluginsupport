@@ -4,9 +4,9 @@ if __name__ == '__main__':
     path = os.path.abspath(os.path.dirname(__file__))
     sys.path.insert(0, os.path.join(path, '..', '..'))
 
+from .UIGraphicsItem import UIGraphicsItem
 from .. import functions as fn
 from ..Qt import QtGui, QtWidgets
-from .UIGraphicsItem import UIGraphicsItem
 
 __all__ = ['VTickGroup']
 class VTickGroup(UIGraphicsItem):
@@ -79,7 +79,6 @@ class VTickGroup(UIGraphicsItem):
             
     def rebuildTicks(self):
         self.path = QtGui.QPainterPath()
-        yrange = self.yRange()
         for x in self.xvals:
             self.path.moveTo(x, 0.)
             self.path.lineTo(x, 1.)

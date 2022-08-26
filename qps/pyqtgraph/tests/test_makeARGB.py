@@ -3,7 +3,6 @@ from typing import Any, Dict, Type, Union
 
 import numpy as np
 import pytest
-
 from pyqtgraph import getConfigOption, getCupy, setConfigOption
 from pyqtgraph.functions import makeARGB as real_makeARGB
 
@@ -4487,6 +4486,10 @@ def test_makeARGB_with_human_readable_code():
     assert alpha
     assert im2[3, 5, 3] == 0  # nan pixel is transparent
     assert im2[0, 0, 3] == 255  # doesn't affect other pixels
+
+    # With masking nans disabled, the nan pixel shouldn't be transparent
+    im2, alpha = _makeARGB(im1, levels=(0, 1), maskNans=False)
+    assert im2[3, 5, 3] == 255
 
     # 3d RGB input image, any color channel of a pixel is nan
     im1 = np.ones((10, 12, 3))

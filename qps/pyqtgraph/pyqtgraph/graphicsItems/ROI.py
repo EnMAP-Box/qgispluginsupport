@@ -17,14 +17,13 @@ from math import atan2, cos, degrees, hypot, sin
 
 import numpy as np
 
+from .GraphicsObject import GraphicsObject
+from .UIGraphicsItem import UIGraphicsItem
 from .. import functions as fn
-
-#from numpy.linalg import norm
+# from numpy.linalg import norm
 from ..Point import Point
 from ..Qt import QtCore, QtGui, QtWidgets
 from ..SRTTransform import SRTTransform
-from .GraphicsObject import GraphicsObject
-from .UIGraphicsItem import UIGraphicsItem
 
 translate = QtCore.QCoreApplication.translate
 
@@ -771,7 +770,7 @@ class ROI(GraphicsObject):
         menu = self.getMenu()
         menu = self.scene().addParentContextMenus(self, menu, ev)
         pos = ev.screenPos()
-        menu.popup(QtCore.QPoint(pos.x(), pos.y()))
+        menu.popup(QtCore.QPoint(int(pos.x()), int(pos.y())))
 
     def getMenu(self):
         if self.menu is None:
@@ -797,28 +796,17 @@ class ROI(GraphicsObject):
         self.mouseDragHandler.mouseDragEvent(ev)
 
     def mouseClickEvent(self, ev):
-        with warnings.catch_warnings():
-            # warning present on pyqt5 5.12 + python 3.8
-            warnings.filterwarnings(
-                "ignore",
-                message=(
-                    ".*Implicit conversion to integers using __int__ is "
-                    "deprecated, and may be removed in a future version of "
-                    "Python."
-                ),
-                category=DeprecationWarning
-            )
-            if ev.button() == QtCore.Qt.MouseButton.RightButton and self.isMoving:
-                ev.accept()
-                self.cancelMove()
-            if ev.button() == QtCore.Qt.MouseButton.RightButton and self.contextMenuEnabled():
-                self.raiseContextMenu(ev)
-                ev.accept()
-            elif ev.button() & self.acceptedMouseButtons():
-                ev.accept()
-                self.sigClicked.emit(self, ev)
-            else:
-                ev.ignore()
+        if ev.button() == QtCore.Qt.MouseButton.RightButton and self.isMoving:
+            ev.accept()
+            self.cancelMove()
+        if ev.button() == QtCore.Qt.MouseButton.RightButton and self.contextMenuEnabled():
+            self.raiseContextMenu(ev)
+            ev.accept()
+        elif self.acceptedMouseButtons() & ev.button():
+            ev.accept()
+            self.sigClicked.emit(self, ev)
+        else:
+            ev.ignore()
 
     def _moveStarted(self):
         self.isMoving = True
@@ -1036,7 +1024,6 @@ class ROI(GraphicsObject):
             ## Move all handles to match the current configuration of the ROI
             for h in self.handles:
                 if h['item'] in self.childItems():
-                    p = h['pos']
                     h['item'].setPos(h['pos'] * self.state['size'])
                     
             self.update()
@@ -1208,9 +1195,6 @@ class ROI(GraphicsObject):
         See :meth:`~pyqtgraph.ROI.getArrayRegion` for a description of the
         arguments.
         """
-        br = self.boundingRect()
-        if br.width() > 1000:
-            raise Exception()
         if returnMappedCoords:
             sliced, mappedCoords = ROI.getArrayRegion(
                 self, data, img, axes, returnMappedCoords, fromBoundingRect=True, **kwds)
@@ -1408,57 +1392,46 @@ class Handle(UIGraphicsItem):
         self.update()
 
     def mouseClickEvent(self, ev):
-        with warnings.catch_warnings():
-            # warning present on pyqt5 5.12 + python 3.8
-            warnings.filterwarnings(
-                "ignore",
-                message=(
-                    ".*Implicit conversion to integers using __int__ is "
-                    "deprecated, and may be removed in a future version of "
-                    "Python."
-                ),
-                category=DeprecationWarning
-            )
-            ## right-click cancels drag
-            if ev.button() == QtCore.Qt.MouseButton.RightButton and self.isMoving:
-                self.isMoving = False  ## prevents any further motion
-                self.movePoint(self.startPos, finish=True)
-                ev.accept()
-            elif ev.button() & self.acceptedMouseButtons():
-                ev.accept()
-                if ev.button() == QtCore.Qt.MouseButton.RightButton and self.deletable:
-                    self.raiseContextMenu(ev)
-                self.sigClicked.emit(self, ev)
-            else:
-                ev.ignore()        
+        ## right-click cancels drag
+        if ev.button() == QtCore.Qt.MouseButton.RightButton and self.isMoving:
+            self.isMoving = False  ## prevents any further motion
+            self.movePoint(self.startPos, finish=True)
+            ev.accept()
+        elif self.acceptedMouseButtons() & ev.button():
+            ev.accept()
+            if ev.button() == QtCore.Qt.MouseButton.RightButton and self.deletable:
+                self.raiseContextMenu(ev)
+            self.sigClicked.emit(self, ev)
+        else:
+            ev.ignore()
                 
     def buildMenu(self):
         menu = QtWidgets.QMenu()
         menu.setTitle(translate("ROI", "Handle"))
         self.removeAction = menu.addAction(translate("ROI", "Remove handle"), self.removeClicked) 
         return menu
-        
+
     def getMenu(self):
         return self.menu
 
     def raiseContextMenu(self, ev):
         menu = self.scene().addParentContextMenus(self, self.getMenu(), ev)
-        
+
         ## Make sure it is still ok to remove this handle
         removeAllowed = all(r.checkRemoveHandle(self) for r in self.rois)
         self.removeAction.setEnabled(removeAllowed)
         pos = ev.screenPos()
-        menu.popup(QtCore.QPoint(pos.x(), pos.y()))    
+        menu.popup(QtCore.QPoint(int(pos.x()), int(pos.y())))
 
     def mouseDragEvent(self, ev):
         if ev.button() != QtCore.Qt.MouseButton.LeftButton:
             return
         ev.accept()
-        
+
         ## Inform ROIs that a drag is happening 
         ##  note: the ROI is informed that the handle has moved using ROI.movePoint
         ##  this is for other (more nefarious) purposes.
-        #for r in self.roi:
+        # for r in self.roi:
             #r[0].pointDragEvent(r[1], ev)
             
         if ev.isFinish():
@@ -1522,7 +1495,7 @@ class Handle(UIGraphicsItem):
         return self._shape
     
     def boundingRect(self):
-        s1 = self.shape()
+        s1 = self.shape()  # noqa: avoid problems with shape invalidation
         return self.shape().boundingRect()
             
     def generateShape(self):
@@ -2118,7 +2091,6 @@ class PolyLineROI(ROI):
             pos = segment.mapToParent(ev.pos())
         elif pos is None:
             raise Exception("Either an event or a position must be given.")
-        h1 = segment.handles[0]['item']
         h2 = segment.handles[1]['item']
         
         i = self.segments.index(segment)
@@ -2278,8 +2250,6 @@ class LineSegmentROI(ROI):
         arguments.
         """
         imgPts = [self.mapToItem(img, h.pos()) for h in self.endpoints]
-        rgns = []
-        coords = []
 
         d = Point(imgPts[1] - imgPts[0])
         o = Point(imgPts[0])

@@ -1,10 +1,11 @@
-from .. import functions as fn
-from .. import getConfigOption
-from ..Qt import QtCore, QtWidgets
 from .GraphicsWidget import GraphicsWidget
 from .GraphicsWidgetAnchor import GraphicsWidgetAnchor
+from .. import functions as fn
+from .. import getConfigOption
+from ..Qt import QtCore, QtWidgets, QtGui
 
 __all__ = ['LabelItem']
+
 
 class LabelItem(GraphicsWidget, GraphicsWidgetAnchor):
     """
@@ -55,7 +56,7 @@ class LabelItem(GraphicsWidget, GraphicsWidgetAnchor):
         if color is None:
             color = getConfigOption('foreground')
         color = fn.mkColor(color)
-        optlist.append('color: ' + color.name())
+        optlist.append('color: ' + color.name(QtGui.QColor.NameFormat.HexArgb))
         if 'size' in opts:
             optlist.append('font-size: ' + opts['size'])
         if 'bold' in opts and opts['bold'] in [True, False]:

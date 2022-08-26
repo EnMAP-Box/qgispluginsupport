@@ -1,4 +1,6 @@
+import builtins
 import os
+import pickle
 import sys
 import threading
 import time
@@ -7,13 +9,6 @@ import warnings
 import weakref
 
 import numpy as np
-
-try:
-    import __builtin__ as builtins
-    import cPickle as pickle
-except ImportError:
-    import builtins
-    import pickle
 
 # color printing for debugging
 from ..util import cprint
@@ -73,17 +68,16 @@ class RemoteEventHandler(object):
         ## attributes that affect the behavior of the proxy. 
         ## See ObjectProxy._setProxyOptions for description
         self.proxyOptions = {
-            'callSync': 'sync',      ## 'sync', 'async', 'off'
-            'timeout': 10,           ## float
-            'returnType': 'auto',    ## 'proxy', 'value', 'auto'
-            'autoProxy': False,      ## bool
-            'deferGetattr': False,   ## True, False
-            'noProxyTypes': [ type(None), str, int, float, tuple, list, dict, LocalObjectProxy, ObjectProxy ],
+            'callSync': 'sync',  ## 'sync', 'async', 'off'
+            'timeout': 10,  ## float
+            'returnType': 'auto',  ## 'proxy', 'value', 'auto'
+            'autoProxy': False,  ## bool
+            'deferGetattr': False,  ## True, False
+            'noProxyTypes': [
+                type(None), str, bytes, int, float, tuple, list, dict,
+                LocalObjectProxy, ObjectProxy,
+            ],
         }
-        if int(sys.version[0]) < 3:
-            self.proxyOptions['noProxyTypes'].append(unicode)
-        else:
-            self.proxyOptions['noProxyTypes'].append(bytes)
         
         self.optsLock = threading.RLock()
         
@@ -246,12 +240,12 @@ class RemoteEventHandler(object):
                         if isinstance(arg, tuple) and len(arg) > 0 and arg[0] == '__byte_message__':
                             ind = arg[1]
                             dtype, shape = arg[2]
-                            fnargs[i] = np.fromstring(byteData[ind], dtype=dtype).reshape(shape)
+                            fnargs[i] = np.frombuffer(byteData[ind], dtype=dtype).reshape(shape)
                     for k,arg in fnkwds.items():
                         if isinstance(arg, tuple) and len(arg) > 0 and arg[0] == '__byte_message__':
                             ind = arg[1]
                             dtype, shape = arg[2]
-                            fnkwds[k] = np.fromstring(byteData[ind], dtype=dtype).reshape(shape)
+                            fnkwds[k] = np.frombuffer(byteData[ind], dtype=dtype).reshape(shape)
                 
                 if len(fnkwds) == 0:  ## need to do this because some functions do not allow keyword arguments.
                     try:
@@ -270,7 +264,7 @@ class RemoteEventHandler(object):
                 returnType = 'proxy'
             elif cmd == 'transferArray':
                 ## read array data from next message:
-                result = np.fromstring(byteData[0], dtype=opts['dtype']).reshape(opts['shape'])
+                result = np.frombuffer(byteData[0], dtype=opts['dtype']).reshape(opts['shape'])
                 returnType = 'proxy'
             elif cmd == 'import':
                 name = opts['module']

@@ -1,8 +1,8 @@
 import numpy as np
 
+from .DataTreeWidget import DataTreeWidget
 from .. import functions as fn
 from ..Qt import QtWidgets
-from .DataTreeWidget import DataTreeWidget
 
 __all__ = ['DiffTreeWidget']
 
@@ -50,7 +50,6 @@ class DiffTreeWidget(QtWidgets.QWidget):
                 
         """
         bad = (255, 200, 200)
-        diff = []
         # generate typestr, desc, childs for each object
         typeA, descA, childsA, _ = self.trees[0].parse(a)
         typeB, descB, childsB, _ = self.trees[1].parse(b)

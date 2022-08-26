@@ -1,8 +1,8 @@
-from OpenGL.GL import *  # noqa
 import numpy as np
+from OpenGL.GL import *  # noqa
 
-from ...Qt import QtGui
 from ..GLGraphicsItem import GLGraphicsItem
+from ...Qt import QtGui
 
 __all__ = ['GLVolumeItem']
 
@@ -104,8 +104,6 @@ class GLVolumeItem(GLGraphicsItem):
         glDisable(GL_TEXTURE_3D)
                 
     def drawVolume(self, ax, d):
-        N = 5
-        
         imax = [0,1,2]
         imax.remove(ax)
         

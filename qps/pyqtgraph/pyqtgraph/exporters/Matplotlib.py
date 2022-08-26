@@ -1,7 +1,7 @@
+from .Exporter import Exporter
 from .. import PlotItem
 from .. import functions as fn
 from ..Qt import QtCore, QtWidgets
-from .Exporter import Exporter
 
 __all__ = ['MatplotlibExporter']
 
@@ -108,8 +108,8 @@ class MatplotlibExporter(Exporter):
                 fillBrush = fn.mkBrush(opts['fillBrush'])
                 fillcolor = fillBrush.color().getRgbF()
                 ax.fill_between(x=x, y1=y, y2=opts['fillLevel'], facecolor=fillcolor)
-            
-            pl = ax.plot(x, y, marker=symbol, color=color, linewidth=pen.width(), 
+
+            ax.plot(x, y, marker=symbol, color=color, linewidth=pen.width(),
                     linestyle=linestyle, markeredgecolor=markeredgecolor, markerfacecolor=markerfacecolor,
                     markersize=markersize)
 

@@ -1,6 +1,6 @@
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+- repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.2.0
     hooks:
     -   id: check-added-large-files
         args: ['--maxkb=100']
@@ -14,7 +14,7 @@ repos:
     -   id: check-toml
     -   id: debug-statements
     -   id: check-ast
--   repo: https://github.com/pycqa/isort
-    rev: 5.9.3
+- repo: https://github.com/pycqa/isort
+  rev: 5.10.1
     hooks:
     -   id: isort

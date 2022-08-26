@@ -8,7 +8,7 @@ from .. import functions as fn
 from .. import getConfigOption
 from ..GraphicsScene import GraphicsScene
 from ..Point import Point
-from ..Qt import QT_LIB, QtCore, QtGui, QtWidgets
+from ..Qt import QtCore, QtGui, QtWidgets
 
 __all__ = ['GraphicsView']
 
@@ -100,11 +100,6 @@ class GraphicsView(QtWidgets.QGraphicsView):
         # GraphicsScene must have parent or expect crashes!
         self.sceneObj = GraphicsScene(parent=self)
         self.setScene(self.sceneObj)
-        
-        ## Workaround for PySide crash
-        ## This ensures that the scene will outlive the view.
-        if QT_LIB == 'PySide':
-            self.sceneObj._view_ref_workaround = self
         
         ## by default we set up a central widget with a grid layout.
         ## this can be replaced if needed.

@@ -8,7 +8,7 @@ PyQtGraph
 [![Documentation Status](https://readthedocs.org/projects/pyqtgraph/badge/?version=latest)](https://pyqtgraph.readthedocs.io/en/latest/?badge=latest)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/pyqtgraph/pyqtgraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/pyqtgraph/pyqtgraph/alerts/)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/pyqtgraph/pyqtgraph.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/pyqtgraph/pyqtgraph/context:python)
-
+[![Discord](https://img.shields.io/discord/946624673200893953.svg?label=PyQtGraph&logo=discord)](https://discord.gg/3Qxjz5BF)
 A pure-Python graphics library for PyQt5/PyQt6/PySide2/PySide6
 
 Copyright 2020 Luke Campagnola, University of North Carolina at Chapel Hill
@@ -28,18 +28,19 @@ PyQtGraph has adopted [NEP 29](https://numpy.org/neps/nep-0029-deprecation_polic
 This project supports:
 
 * All minor versions of Python released 42 months prior to the project, and at minimum the two latest minor versions.
-* All minor versions of numpy released in the 24 months prior to the project, and at minimum the last three minor versions.
-* All Qt5 versions from 5.12-5.15, and Qt6 6.1
+* All minor versions of numpy released in the 24 months prior to the project, and at minimum the last three minor
+  versions.
+* All Qt5 versions from 5.12-5.15, and Qt6 6.1+
 
 Currently this means:
 
-* Python 3.7+
-* Qt 5.12-5.15, 6.1
+* Python 3.8+
+* Qt 5.12-5.15, 6.1+
 * [PyQt5](https://www.riverbankcomputing.com/software/pyqt/),
   [PyQt6](https://www.riverbankcomputing.com/software/pyqt/),
   [PySide2](https://wiki.qt.io/Qt_for_Python), or
   [PySide6](https://wiki.qt.io/Qt_for_Python)
-* [`numpy`](https://github.com/numpy/numpy) 1.18+
+* [`numpy`](https://github.com/numpy/numpy) 1.20+
 
 ### Optional added functionalities
 
@@ -72,32 +73,38 @@ Qt Bindings Test Matrix
 
 The following table represents the python environments we test in our CI system.  Our CI system uses Ubuntu 20.04, Windows Server 2019, and macOS 10.15 base images.
 
-| Qt-Bindings    | Python 3.7         | Python 3.8         | Python 3.9         |
-| :------------- | :----------------: | :----------------: | :----------------: |
-| PySide2-5.12   | :white_check_mark: | :x:                | :x:                |
-| PyQt5-5.12     | :white_check_mark: |                    | :x:                |
-| PySide2-5.15   |                    | :white_check_mark: |                    |
-| PyQt5-5.15     |                    | :white_check_mark: |                    |
-| PySide6-6.1    |                    |                    | :white_check_mark: |
-| PyQt6-6.1      |                    |                    | :white_check_mark: |
+| Qt-Bindings    |Python 3.8              | Python 3.9              | Python 3.10             |
+| :------------- |:---------------------: | :---------------------: | :---------------------: |
+| PySide2-5.12   |:eight_spoked_asterisk: | :eight_spoked_asterisk: | :eight_spoked_asterisk: |
+| PyQt5-5.12     |:white_check_mark:      | :x:                     | :x:                     |
+| PySide2-5.15   |:white_check_mark:      | :white_check_mark:      |                         |
+| PyQt5-5.15     |:white_check_mark:      | :white_check_mark:      |                         |
+| PySide6-6.3    |                        |                         | :white_check_mark:      |
+| PyQt6-6.3      |                        |                         | :white_check_mark:      |
 
 * :x: - Not compatible
 * :white_check_mark: - Tested
+* :eight_spoked_asterisk: - only available with `conda-forge` package
+* No icon means supported configuration but we do not explicitely test it
 
 Support
 -------
 
 * Report issues on the [GitHub issue tracker](https://github.com/pyqtgraph/pyqtgraph/issues)
-* Post questions to the [mailing list / forum](https://groups.google.com/forum/?fromgroups#!forum/pyqtgraph) or [StackOverflow](https://stackoverflow.com/questions/tagged/pyqtgraph)
+* Post questions to
+    * [mailing list / forum](https://groups.google.com/forum/?fromgroups#!forum/pyqtgraph)
+    * [StackOverflow](https://stackoverflow.com/questions/tagged/pyqtgraph)
+    * [GitHub Discussions](https://github.com/pyqtgraph/pyqtgraph/discussions)
+    * [Python Discord](https://discord.com/channels/267624335836053506/898139460821192724)
 
 Installation Methods
 --------------------
 
-* From PyPI:
-  * Last released version: `pip install pyqtgraph`
-  * Latest development version: `pip install git+https://github.com/pyqtgraph/pyqtgraph@master`
+* From PyPI
+    * Last released version: `pip install pyqtgraph`
+    * Latest development version: `pip install git+https://github.com/pyqtgraph/pyqtgraph@master`
 * From conda
-  * Last released version: `conda install -c conda-forge pyqtgraph`
+    * Last released version: `conda install -c conda-forge pyqtgraph`
 * To install system-wide from source distribution: `python setup.py install`
 * Many linux package repositories have release versions.
 * To use with a specific project, simply copy the PyQtGraph subdirectory
@@ -129,5 +136,6 @@ Here is a partial listing of some of the applications that make use of PyQtGraph
 * [HussariX](https://github.com/sem-geologist/HussariX)
 * [EnMAP-Box](https://enmap-box.readthedocs.io)
 * [EO Time Series Viewer](https://eo-time-series-viewer.readthedocs.io)
+* [Atomize](https://github.com/Anatoly1010/Atomize)
 
 Do you use PyQtGraph in your own project, and want to add it to the list?  Submit a pull request to update this listing!

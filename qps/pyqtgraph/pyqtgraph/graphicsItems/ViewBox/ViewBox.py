@@ -5,13 +5,13 @@ from copy import deepcopy
 
 import numpy as np
 
+from ..GraphicsWidget import GraphicsWidget
+from ..ItemGroup import ItemGroup
 from ... import debug as debug
 from ... import functions as fn
 from ... import getConfigOption
 from ...Point import Point
 from ...Qt import QtCore, QtGui, QtWidgets, isQObjectAlive
-from ..GraphicsWidget import GraphicsWidget
-from ..ItemGroup import ItemGroup
 
 __all__ = ['ViewBox']
 
@@ -204,13 +204,7 @@ class ViewBox(GraphicsWidget):
         self.borderRect.setZValue(1e3)
         self.borderRect.setPen(self.border)
 
-        ## Make scale box that is shown when dragging on the view
-        self.rbScaleBox = QtWidgets.QGraphicsRectItem(0, 0, 1, 1)
-        self.rbScaleBox.setPen(fn.mkPen((255,255,100), width=1))
-        self.rbScaleBox.setBrush(fn.mkBrush(255,255,0,100))
-        self.rbScaleBox.setZValue(1e9)
-        self.rbScaleBox.hide()
-        self.addItem(self.rbScaleBox, ignoreBounds=True)
+        self._rbScaleBox = None
 
         ## show target rect for debugging
         self.target = QtWidgets.QGraphicsRectItem(0, 0, 1, 1)
@@ -235,15 +229,42 @@ class ViewBox(GraphicsWidget):
         if name is None:
             self.updateViewLists()
 
+        self._viewPixelSizeCache = None
+
+    @property
+    def rbScaleBox(self):
+        if self._rbScaleBox is None:
+            # call the setter with the default value
+            scaleBox = QtWidgets.QGraphicsRectItem(0, 0, 1, 1)
+            scaleBox.setPen(fn.mkPen((255, 255, 100), width=1))
+            scaleBox.setBrush(fn.mkBrush(255, 255, 0, 100))
+            scaleBox.setZValue(1e9)
+            scaleBox.hide()
+            self._rbScaleBox = scaleBox
+            self.addItem(scaleBox, ignoreBounds=True)
+        return self._rbScaleBox
+
+    @rbScaleBox.setter
+    def rbScaleBox(self, scaleBox):
+        if self._rbScaleBox is not None:
+            self.removeItem(self._rbScaleBox)
+        self._rbScaleBox = scaleBox
+        if scaleBox is None:
+            return None
+        scaleBox.setZValue(1e9)
+        scaleBox.hide()
+        self.addItem(scaleBox, ignoreBounds=True)
+        return None
+
     def getAspectRatio(self):
-        '''return the current aspect ratio'''
+        """return the current aspect ratio"""
         rect = self.rect()
         vr = self.viewRect()
         if rect.height() == 0 or vr.width() == 0 or vr.height() == 0:
             currentRatio = 1.0
         else:
-            currentRatio = (rect.width()/float(rect.height())) / (
-                                                vr.width()/vr.height())
+            currentRatio = (rect.width() / float(rect.height())) / (
+                    vr.width() / vr.height())
         return currentRatio
 
     def register(self, name):
@@ -352,6 +373,8 @@ class ViewBox(GraphicsWidget):
         """
         if mode not in [ViewBox.PanMode, ViewBox.RectMode]:
             raise Exception("Mode must be ViewBox.PanMode or ViewBox.RectMode")
+        if mode == ViewBox.PanMode:
+            self._rbScaleBox = None
         self.state['mouseMode'] = mode
         self.sigStateChanged.emit(self)
 
@@ -435,6 +458,7 @@ class ViewBox(GraphicsWidget):
 
     def resizeEvent(self, ev):
         if ev.oldSize() != ev.newSize():
+            self._viewPixelSizeCache = None
             self._matrixNeedsUpdate = True
 
             self.linkedXChanged()
@@ -529,7 +553,9 @@ class ViewBox(GraphicsWidget):
         ================== =====================================================================
 
         """
-        changes = {}   # axes
+        self._viewPixelSizeCache = None
+
+        changes = {}  # axes
         setRequested = [False, False]
 
         if rect is not None:
@@ -543,7 +569,6 @@ class ViewBox(GraphicsWidget):
             setRequested[1] = True
 
         if len(changes) == 0:
-            print(rect)
             raise Exception("Must specify at least one of rect, xRange, or yRange. (gave rect=%s)" % str(type(rect)))
 
         # Update axes one at a time
@@ -831,9 +856,6 @@ class ViewBox(GraphicsWidget):
 
         if axis is None:
             axis = ViewBox.XYAxes
-
-        needAutoRangeUpdate = False
-
         if axis == ViewBox.XYAxes or axis == 'xy':
             axes = [0, 1]
         elif axis == ViewBox.XAxis or axis == 'x':
@@ -897,18 +919,19 @@ class ViewBox(GraphicsWidget):
             return
         self._updatingRange = True
         try:
-            targetRect = self.viewRange()
             if not any(self.state['autoRange']):
                 return
 
+            targetRect = self.viewRange()
+
             fractionVisible = self.state['autoRange'][:]
-            for i in [0,1]:
+            for i in [0, 1]:
                 if type(fractionVisible[i]) is bool:
                     fractionVisible[i] = 1.0
 
             childRange = None
 
-            order = [0,1]
+            order = [0, 1]
             if self.state['autoVisibleOnly'][0] is True:
                 order = [1,0]
 
@@ -1238,9 +1261,12 @@ class ViewBox(GraphicsWidget):
 
     def viewPixelSize(self):
         """Return the (width, height) of a screen pixel in view coordinates."""
-        o = self.mapToView(Point(0,0))
-        px, py = [Point(self.mapToView(v) - o) for v in self.pixelVectors()]
-        return (px.length(), py.length())
+        if self._viewPixelSizeCache is None:
+            o = self.mapToView(Point(0, 0))
+            px, py = [Point(self.mapToView(v) - o) for v in self.pixelVectors()]
+            self._viewPixelSizeCache = (px.length(), py.length())
+
+        return self._viewPixelSizeCache
 
     def itemBoundingRect(self, item):
         """Return the bounding rect of the item in view coordinates"""
@@ -1282,30 +1308,31 @@ class ViewBox(GraphicsWidget):
         ## if axis is specified, event will only affect that axis.
         ev.accept()  ## we accept all buttons
 
-        pos = ev.scenePos()
-        dif = pos - ev.lastScenePos()
+        pos = ev.pos()
+        lastPos = ev.lastPos()
+        dif = pos - lastPos
         dif = dif * -1
 
         ## Ignore axes if mouse is disabled
         mouseEnabled = np.array(self.state['mouseEnabled'], dtype=np.float64)
         mask = mouseEnabled.copy()
         if axis is not None:
-            mask[1-axis] = 0.0
+            mask[1 - axis] = 0.0
 
         ## Scale or translate based on mouse button
         if ev.button() in [QtCore.Qt.MouseButton.LeftButton, QtCore.Qt.MouseButton.MiddleButton]:
             if self.state['mouseMode'] == ViewBox.RectMode and axis is None:
                 if ev.isFinish():  ## This is the final move in the drag; change the view scale now
-                    #print "finish"
+                    # print "finish"
                     self.rbScaleBox.hide()
-                    ax = QtCore.QRectF(Point(ev.buttonDownScenePos(ev.button())), Point(pos))
-                    ax = self.childGroup.mapRectFromScene(ax)
+                    ax = QtCore.QRectF(Point(ev.buttonDownPos(ev.button())), Point(pos))
+                    ax = self.childGroup.mapRectFromParent(ax)
                     self.showAxRect(ax)
                     self.axHistoryPointer += 1
                     self.axHistory = self.axHistory[:self.axHistoryPointer] + [ax]
                 else:
                     ## update shape of scale box
-                    self.updateScaleBox(ev.buttonDownScenePos(), ev.scenePos())
+                    self.updateScaleBox(ev.buttonDownPos(), ev.pos())
             else:
                 tr = self.childGroup.transform()
                 tr = fn.invertQTransform(tr)
@@ -1369,7 +1396,7 @@ class ViewBox(GraphicsWidget):
 
     def updateScaleBox(self, p1, p2):
         r = QtCore.QRectF(p1, p2)
-        r = self.childGroup.mapRectFromScene(r)
+        r = self.childGroup.mapRectFromParent(r)
         self.rbScaleBox.setPos(r.topLeft())
         tr = QtGui.QTransform.fromScale(r.width(), r.height())
         self.rbScaleBox.setTransform(tr)
@@ -1400,9 +1427,6 @@ class ViewBox(GraphicsWidget):
         profiler = debug.Profiler()
         if items is None:
             items = self.addedItems
-
-        ## measure pixel dimensions in view box
-        px, py = [v.length() if v is not None else 0 for v in self.childGroup.pixelVectors()]
 
         ## First collect all boundary information
         itemBounds = []

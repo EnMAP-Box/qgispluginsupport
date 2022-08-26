@@ -17,8 +17,9 @@ from collections import OrderedDict
 import numpy as np
 
 from . import Qt, debug, reload
-from .metaarray import MetaArray
+from . import getConfigOption
 from .Qt import QT_LIB, QtCore, QtGui
+from .metaarray import MetaArray
 from .util.cupy_helper import getCupy
 from .util.numba_helper import getNumbaFunctions
 
@@ -1218,9 +1219,10 @@ def clip_array(arr, vmin, vmax, out=None):
         return np.core.umath.maximum(arr, vmin, out=out)
     elif _win32_clip_workaround_needed:
         if out is None:
-            out = np.empty_like(arr)
+            out = np.empty(arr.shape, dtype=np.find_common_type([arr.dtype], [type(vmax)]))
         out = np.core.umath.minimum(arr, vmax, out=out)
         return np.core.umath.maximum(out, vmin, out=out)
+
     else:
         return np.core.umath.clip(arr, vmin, vmax, out=out)
 
@@ -1353,7 +1355,7 @@ def makeRGBA(*args, **kwds):
     return makeARGB(*args, **kwds)
 
 
-def makeARGB(data, lut=None, levels=None, scale=None, useRGBA=False, output=None):
+def makeARGB(data, lut=None, levels=None, scale=None, useRGBA=False, maskNans=True, output=None):
     """
     Convert an array of values into an ARGB array suitable for building QImages,
     OpenGL textures, etc.
@@ -1391,6 +1393,7 @@ def makeARGB(data, lut=None, levels=None, scale=None, useRGBA=False, output=None
                    The default is False, which returns in ARGB order for use with QImage 
                    (Note that 'ARGB' is a term used by the Qt documentation; the *actual* order 
                    is BGRA).
+    maskNans       Enable or disable masking NaNs as transparent.
     ============== ==================================================================================
     """
     cp = getCupy()
@@ -1446,7 +1449,7 @@ def makeARGB(data, lut=None, levels=None, scale=None, useRGBA=False, output=None
 
     # awkward, but fastest numpy native nan evaluation
     nanMask = None
-    if data.dtype.kind == 'f' and xp.isnan(data.min()):
+    if maskNans and data.dtype.kind == 'f' and xp.isnan(data.min()):
         nanMask = xp.isnan(data)
         if data.ndim > 2:
             nanMask = xp.any(nanMask, axis=-1)
@@ -2132,13 +2135,21 @@ def arrayToQPath(x, y, connect='all', finiteCheck=True):
     if connect == 'all':
         return _arrayToQPath_all(x, y, finiteCheck)
 
-    backstore = QtCore.QByteArray()
-    backstore.resize(4 + n*20 + 8)      # contents uninitialized
-    backstore.replace(0, 4, struct.pack('>i', n))
-    # cStart, fillRule (Qt.FillRule.OddEvenFill)
-    backstore.replace(4+n*20, 8, struct.pack('>ii', 0, 0))
-    arr = np.frombuffer(backstore, dtype=[('c', '>i4'), ('x', '>f8'), ('y', '>f8')],
-        count=n, offset=4)
+    path = QtGui.QPainterPath()
+    if hasattr(path, 'reserve'):  # Qt 5.13
+        path.reserve(n)
+
+    if hasattr(path, 'reserve') and getConfigOption('enableExperimental'):
+        backstore = None
+        arr = Qt.internals.get_qpainterpath_element_array(path, n)
+    else:
+        backstore = QtCore.QByteArray()
+        backstore.resize(4 + n * 20 + 8)  # contents uninitialized
+        backstore.replace(0, 4, struct.pack('>i', n))
+        # cStart, fillRule (Qt.FillRule.OddEvenFill)
+        backstore.replace(4 + n * 20, 8, struct.pack('>ii', 0, 0))
+        arr = np.frombuffer(backstore, dtype=[('c', '>i4'), ('x', '>f8'), ('y', '>f8')],
+                            count=n, offset=4)
 
     backfill_idx = None
     if finiteCheck:
@@ -2169,12 +2180,9 @@ def arrayToQPath(x, y, connect='all', finiteCheck=True):
     else:
         raise ValueError('connect argument must be "all", "pairs", "finite", or array')
 
-    path = QtGui.QPainterPath()
-    if hasattr(path, 'reserve'):    # Qt 5.13
-        path.reserve(n)
-
-    ds = QtCore.QDataStream(backstore)
-    ds >> path
+    if isinstance(backstore, QtCore.QByteArray):
+        ds = QtCore.QDataStream(backstore)
+        ds >> path
     return path
 
 def ndarray_from_qpolygonf(polyline):

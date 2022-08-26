@@ -1,5 +1,7 @@
-from ...Qt import QT_LIB, QtCore
+from enum import Enum
+
 from .list import ListParameter
+from ...Qt import QT_LIB, QtCore
 
 
 class QtEnumParameter(ListParameter):
@@ -50,7 +52,10 @@ class QtEnumParameter(ListParameter):
 
     def _getAllowedEnums(self, enum):
         """Pyside provides a dict for easy evaluation"""
-        if 'PySide' in QT_LIB:
+        if issubclass(enum, Enum):
+            # PyQt6 and PySide6 (opt-in in 6.3.1) use python enums
+            vals = {e.name: e for e in enum}
+        elif 'PySide' in QT_LIB:
             vals = enum.values
         elif 'PyQt5' in QT_LIB:
             vals = {}
@@ -58,8 +63,6 @@ class QtEnumParameter(ListParameter):
                 value = getattr(self.searchObj, key)
                 if isinstance(value, enum):
                     vals[key] = value
-        elif 'PyQt6' in QT_LIB:
-            vals = {e.name: e for e in enum}
         else:
             raise RuntimeError(f'Cannot find associated enum values for qt lib {QT_LIB}')
         # Remove "M<enum>" since it's not a real option

@@ -4,8 +4,8 @@ from collections import OrderedDict
 
 import numpy as np
 
-from ..Qt import QtWidgets
 from .TableWidget import TableWidget
+from ..Qt import QtWidgets
 
 try:
     import metaarray  # noqa
@@ -49,9 +49,7 @@ class DataTreeWidget(QtWidgets.QTreeWidget):
         self.nodes[path] = node
 
         typeStr, desc, childs, widget = self.parse(data)
-        node.setText(1, typeStr)
-        node.setText(2, desc)
-            
+
         # Truncate description and add text box if needed
         if len(desc) > 100:
             desc = desc[:97] + '...'
@@ -59,7 +57,10 @@ class DataTreeWidget(QtWidgets.QTreeWidget):
                 widget = QtWidgets.QPlainTextEdit(str(data))
                 widget.setMaximumHeight(200)
                 widget.setReadOnly(True)
-        
+
+        node.setText(1, typeStr)
+        node.setText(2, desc)
+
         # Add widget to new subnode
         if widget is not None:
             self.widgets.append(widget)
@@ -67,7 +68,7 @@ class DataTreeWidget(QtWidgets.QTreeWidget):
             node.addChild(subnode)
             self.setItemWidget(subnode, 0, widget)
             subnode.setFirstColumnSpanned(True)
-            
+
         # recurse to children
         for key, data in childs.items():
             self.buildTree(data, node, str(key), path=path+(key,))

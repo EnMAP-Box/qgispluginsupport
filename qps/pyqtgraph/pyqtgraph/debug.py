@@ -7,8 +7,8 @@ Distributed under MIT/X11 license. See license.txt for more information.
 
 from __future__ import print_function
 
-import contextlib
 import cProfile
+import contextlib
 import gc
 import inspect
 import os
@@ -29,8 +29,13 @@ from .util import cprint
 
 if sys.version.startswith("3.8") and QT_LIB == "PySide2":
     from .Qt import PySide2
-    if tuple(map(int, PySide2.__version__.split("."))) < (5, 14):
-        warnings.warn("Due to PYSIDE-1140, ThreadChase and ThreadColor won't work")
+
+    if tuple(map(int, PySide2.__version__.split("."))) < (5, 14) \
+            and PySide2.__version__.startswith(QtCore.__version__):
+        warnings.warn(
+            "Due to PYSIDE-1140, ThreadChase and ThreadColor will not work" +
+            " on pip-installed PySide2 bindings < 5.14"
+        )
 from .util.mutex import Mutex
 
 
@@ -889,7 +894,6 @@ class ObjTracker(object):
         
     def findTypes(self, refs, regex):
         allObjs = get_all_objects()
-        ids = {}
         objs = []
         r = re.compile(regex)
         for k in refs:
@@ -1053,10 +1057,8 @@ def walkQObjectTree(obj, counts=None, verbose=False, depth=0):
     
     if verbose:
         print("  "*depth + typeStr(obj))
-    report = False
     if counts is None:
         counts = {}
-        report = True
     typ = str(type(obj))
     try:
         counts[typ] += 1

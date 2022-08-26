@@ -6,12 +6,12 @@ from collections import OrderedDict
 
 import numpy as np
 
+from .GraphicsObject import GraphicsObject
 from .. import Qt, debug
 from .. import functions as fn
 from .. import getConfigOption
 from ..Point import Point
 from ..Qt import QT_LIB, QtCore, QtGui
-from .GraphicsObject import GraphicsObject
 
 __all__ = ['ScatterPlotItem', 'SpotItem']
 
@@ -97,7 +97,8 @@ def renderSymbol(symbol, size, pen, brush, device=None):
     ## Render a spot with the given parameters to a pixmap
     penPxWidth = max(math.ceil(pen.widthF()), 1)
     if device is None:
-        device = QtGui.QImage(int(size+penPxWidth), int(size+penPxWidth), QtGui.QImage.Format.Format_ARGB32)
+        device = QtGui.QImage(int(size + penPxWidth), int(size + penPxWidth),
+                              QtGui.QImage.Format.Format_ARGB32_Premultiplied)
         device.fill(QtCore.Qt.GlobalColor.transparent)
     p = QtGui.QPainter(device)
     try:
@@ -144,6 +145,14 @@ def _mkBrush(*args, **kwargs):
 
 class PixmapFragments:
     def __init__(self):
+        self.use_sip_array = (
+                Qt.QT_LIB.startswith('PyQt') and
+                hasattr(Qt.sip, 'array') and
+                (
+                        (0x60301 <= QtCore.PYQT_VERSION) or
+                        (0x50f07 <= QtCore.PYQT_VERSION < 0x60000)
+                )
+        )
         self.alloc(0)
 
     def alloc(self, size):
@@ -158,24 +167,31 @@ class PixmapFragments:
         #    - this is mitigated here by reusing the instance pointers
         # 2) PyQt will anyway deconstruct the Python list and repack the PixmapFragment
         #    instances into a contiguous array, in order to call the underlying C++ native API.
-        self.arr = np.empty((size, 10), dtype=np.float64)
-        if QT_LIB.startswith('PyQt'):
-            self.ptrs = list(map(Qt.sip.wrapinstance,
-                itertools.count(self.arr.ctypes.data, self.arr.strides[0]),
-                itertools.repeat(QtGui.QPainter.PixmapFragment, self.arr.shape[0])))
+        if self.use_sip_array:
+            self.objs = Qt.sip.array(QtGui.QPainter.PixmapFragment, size)
+            vp = Qt.sip.voidptr(self.objs, len(self.objs) * 10 * 8)
+            self.arr = np.frombuffer(vp, dtype=np.float64).reshape((-1, 10))
         else:
-            self.ptrs = Qt.shiboken.wrapInstance(self.arr.ctypes.data, QtGui.QPainter.PixmapFragment)
+            self.arr = np.empty((size, 10), dtype=np.float64)
+            if QT_LIB.startswith('PyQt'):
+                self.objs = list(map(Qt.sip.wrapinstance,
+                                     itertools.count(self.arr.ctypes.data, self.arr.strides[0]),
+                                     itertools.repeat(QtGui.QPainter.PixmapFragment, self.arr.shape[0])))
+            else:
+                self.objs = Qt.shiboken.wrapInstance(self.arr.ctypes.data, QtGui.QPainter.PixmapFragment)
 
     def array(self, size):
-        if size > self.arr.shape[0]:
-            self.alloc(size + 16)
-        return self.arr[:size]
+        if size != self.arr.shape[0]:
+            self.alloc(size)
+        return self.arr
 
-    def draw(self, painter, size, pixmap):
+    def draw(self, painter, pixmap):
+        if not len(self.arr):
+            return
         if QT_LIB.startswith('PyQt'):
-            painter.drawPixmapFragments(self.ptrs[:size], pixmap)
+            painter.drawPixmapFragments(self.objs, pixmap)
         else:
-            painter.drawPixmapFragments(self.ptrs, size, pixmap)
+            painter.drawPixmapFragments(self.objs, len(self.arr), pixmap)
 
 
 class SymbolAtlas(object):
@@ -229,7 +245,7 @@ class SymbolAtlas(object):
         return self._maxWidth
 
     def rebuild(self, styles=None):
-        profiler = debug.Profiler()
+        profiler = debug.Profiler()  # noqa: profiler prints on GC
         if styles is None:
             data = []
         else:
@@ -279,7 +295,7 @@ class SymbolAtlas(object):
         data = []
         for key, style in styles.items():
             img = renderSymbol(*style)
-            arr = fn.imageToArray(img, copy=False, transpose=False)
+            arr = fn.ndarray_from_qimage(img)
             images.append(img)  # keep these to delay garbage collection
             data.append((key, arr))
 
@@ -353,11 +369,12 @@ class SymbolAtlas(object):
         return int(w), int(y + h)
 
     def _createPixmap(self):
-        profiler = debug.Profiler()
+        profiler = debug.Profiler()  # noqa: profiler prints on GC
         if self._data.size == 0:
             pm = QtGui.QPixmap(0, 0)
         else:
-            img = fn.makeQImage(self._data, copy=False, transpose=False)
+            img = fn.ndarray_to_qimage(self._data,
+                                       QtGui.QImage.Format.Format_ARGB32_Premultiplied)
             pm = QtGui.QPixmap(img)
         return pm
 
@@ -441,7 +458,11 @@ class ScatterPlotItem(GraphicsObject):
         self.setData(*args, **kargs)
         profiler('setData')
 
-        #self.setCacheMode(self.DeviceCoordinateCache)
+        # self.setCacheMode(self.DeviceCoordinateCache)
+
+        # track when the tooltip is cleared so we only clear it once
+        # this allows another item in the VB to set the tooltip
+        self._toolTipCleared = True
 
     def setData(self, *args, **kargs):
         """
@@ -479,6 +500,9 @@ class ScatterPlotItem(GraphicsObject):
         *hoverSize*            A single size to use for hovered spots. Set to -1 to keep size unchanged. Default is -1.
         *hoverPen*             A single pen to use for hovered spots. Set to None to keep pen unchanged. Default is None.
         *hoverBrush*           A single brush to use for hovered spots. Set to None to keep brush unchanged. Default is None.
+        *useCache*             (bool) By default, generated point graphics items are cached to
+                               improve performance. Setting this to False can improve image quality
+                               in certain situations.
         *antialias*            Whether to draw symbols with antialiasing. Note that if pxMode is True, symbols are
                                always rendered with antialiasing (since the rendered symbols can be cached, this
                                incurs very little performance cost)
@@ -593,6 +617,8 @@ class ScatterPlotItem(GraphicsObject):
             self.opts['hoverable'] = bool(kargs['hoverable'])
         if 'tip' in kargs:
             self.opts['tip'] = kargs['tip']
+        if 'useCache' in kargs:
+            self.opts['useCache'] = kargs['useCache']
 
         ## Set any extra parameters provided in keyword arguments
         for k in ['pen', 'brush', 'symbol', 'size']:
@@ -803,8 +829,7 @@ class ScatterPlotItem(GraphicsObject):
         self.invalidate()
 
     def updateSpots(self, dataSet=None):
-        profiler = debug.Profiler()
-
+        profiler = debug.Profiler()  # noqa: profiler prints on GC
         if dataSet is None:
             dataSet = self.data
 
@@ -965,7 +990,6 @@ class ScatterPlotItem(GraphicsObject):
         if orthoRange is not None:
             mask = (d2 >= orthoRange[0]) * (d2 <= orthoRange[1])
             d = d[mask]
-            d2 = d2[mask]
 
             if d.size == 0:
                 return (None, None)
@@ -1077,7 +1101,7 @@ class ScatterPlotItem(GraphicsObject):
 
         if self.opts['pxMode'] is True:
             # Cull points that are outside view
-            viewMask = self._maskAt(self.getViewBox().viewRect())
+            viewMask = self._maskAt(self.viewRect())
 
             # Map points using painter's world transform so they are drawn with pixel-valued sizes
             pts = np.vstack([self.data['x'], self.data['y']])
@@ -1098,7 +1122,7 @@ class ScatterPlotItem(GraphicsObject):
                 frags[:, 6:10] = [1.0, 1.0, 0.0, 1.0]   # scaleX, scaleY, rotation, opacity
 
                 profiler('prep')
-                self._pixmapFragments.draw(p, len(frags), self.fragmentAtlas.pixmap)
+                self._pixmapFragments.draw(p, self.fragmentAtlas.pixmap)
                 profiler('draw')
             else:
                 # render each symbol individually
@@ -1217,12 +1241,17 @@ class ScatterPlotItem(GraphicsObject):
             # Show information about hovered points in a tool tip
             vb = self.getViewBox()
             if vb is not None and self.opts['tip'] is not None:
-                cutoff = 3
-                tip = [self.opts['tip'](x=pt.pos().x(), y=pt.pos().y(), data=pt.data())
-                       for pt in points[:cutoff]]
-                if len(points) > cutoff:
-                    tip.append('({} others...)'.format(len(points) - cutoff))
-                vb.setToolTip('\n\n'.join(tip))
+                if len(points) > 0:
+                    cutoff = 3
+                    tip = [self.opts['tip'](x=pt.pos().x(), y=pt.pos().y(), data=pt.data())
+                           for pt in points[:cutoff]]
+                    if len(points) > cutoff:
+                        tip.append('({} others...)'.format(len(points) - cutoff))
+                    vb.setToolTip('\n\n'.join(tip))
+                    self._toolTipCleared = False
+                elif not self._toolTipCleared:
+                    vb.setToolTip("")
+                    self._toolTipCleared = True
 
             self.sigHovered.emit(self, points, ev)
 

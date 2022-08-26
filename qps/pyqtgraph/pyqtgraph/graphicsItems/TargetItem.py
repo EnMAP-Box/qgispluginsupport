@@ -2,16 +2,17 @@ import string
 import warnings
 from math import atan2
 
-from .. import functions as fn
-from ..Point import Point
-from ..Qt import QtCore, QtGui
 from .GraphicsObject import GraphicsObject
 from .ScatterPlotItem import Symbols, makeCrosshair
 from .TextItem import TextItem
 from .UIGraphicsItem import UIGraphicsItem
 from .ViewBox import ViewBox
+from .. import functions as fn
+from ..Point import Point
+from ..Qt import QtCore, QtGui
 
 __all__ = ['TargetItem', 'TargetLabel']
+
 
 class TargetItem(UIGraphicsItem):
     """Draws a draggable target symbol (circle plus crosshair).
@@ -78,7 +79,7 @@ class TargetItem(UIGraphicsItem):
             A dict of keyword arguments to use when constructing the text
             label. See :class:`TargetLabel` and :class:`~pyqtgraph.TextItem`
         """
-        super().__init__(self)
+        super().__init__()
         self.movable = movable
         self.moving = False
         self._label = None
