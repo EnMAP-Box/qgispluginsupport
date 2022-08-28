@@ -5,18 +5,18 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import unittest
 import pathlib
 import re
-from qgis.PyQt.QtGui import QIcon
+import unittest
 
+from qgis.PyQt.QtGui import QIcon
 from qgis.core import QgsApplication
 from qgis.gui import QgsEditorWidgetFactory
 
 
 class testClassTesting(unittest.TestCase):
 
-    @unittest.skipIf(True or isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication already started')
+    @unittest.skipIf(isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication already started')
     def test_init(self):
 
         from qps.testing import start_app

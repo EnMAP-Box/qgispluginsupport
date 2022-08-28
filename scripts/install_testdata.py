@@ -1,14 +1,16 @@
-import os
-import shutil
-import requests
-import zipfile
-import pathlib
-import io
 import argparse
+import io
+import os
+import pathlib
+import shutil
+import zipfile
+
+import requests
 
 URL_QGIS_RESOURCES = r'https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip'
 
 DIR_REPO = pathlib.Path(__file__).parents[1]
+
 
 def install_zipfile(url: str, localPath: pathlib.Path, zip_root: str = None):
     assert isinstance(localPath, pathlib.Path)
@@ -40,8 +42,9 @@ def install_zipfile(url: str, localPath: pathlib.Path, zip_root: str = None):
             with open(dst, "wb") as f:
                 f.write(z.read(src))
 
-    #z.extractall(path=localPath, members=to_extract)
+    # z.extractall(path=localPath, members=to_extract)
     del response
+
 
 def install_qgisresources():
     localpath = DIR_REPO / 'qgisresources'

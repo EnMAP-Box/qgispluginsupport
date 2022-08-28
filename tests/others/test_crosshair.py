@@ -12,7 +12,6 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 
-
 from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle, QgsProject
 from qgis.gui import QgsMapCanvas
 from qps.crosshair.crosshair import CrosshairStyle, CrosshairMapCanvasItem

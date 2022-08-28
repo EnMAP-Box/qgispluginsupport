@@ -1,4 +1,5 @@
 import unittest
+
 from qps.testing import TestObjects, TestCase
 from qps.vectorlayertools import VectorLayerTools
 

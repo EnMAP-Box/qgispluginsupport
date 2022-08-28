@@ -20,7 +20,6 @@
 import os
 import unittest
 
-
 from qgis.PyQt.QtCore import QVariant, QSize
 from qgis.PyQt.QtGui import QPen, QColor
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QCheckBox, QComboBox

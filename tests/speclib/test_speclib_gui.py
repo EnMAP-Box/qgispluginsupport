@@ -16,7 +16,6 @@
 *                                                                         *
 ***************************************************************************
 """
-import math
 # noinspection PyPep8Naming
 import os
 import pathlib
@@ -24,6 +23,7 @@ import unittest
 
 import numpy as np
 from osgeo import ogr, gdal
+
 from qgis.PyQt.QtCore import QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
@@ -33,14 +33,12 @@ from qgis.core import QgsFeature
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes
 from qgis.gui import QgsOptionsDialogBase, QgsMapCanvas, \
     QgsDualView, QgsGui
-
 from qps.layerproperties import AddAttributeDialog
-from qps.plotstyling.plotstyling import PlotStyle
 from qps.pyqtgraph import pyqtgraph as pg
 from qps.speclib.core import profile_field_list, is_spectral_library
-from qps.speclib.core.spectrallibrary import defaultCurvePlotStyle, SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import SpectralProfile, decodeProfileValueDict
-from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotDataItem, SpectralProfilePlotWidget
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+from qps.speclib.core.spectralprofile import decodeProfileValueDict
+from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
@@ -110,47 +108,6 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(plotWidget, pg.PlotWidget)
 
         self.showGui(plotWidget)
-
-    @unittest.skipIf(False, '')
-    def test_SpectraLibraryPlotDataItem(self):
-
-        profile = SpectralProfile()
-        self.assertIsInstance(profile, SpectralProfile)
-
-        yValues = np.asarray(
-            [700., np.nan, 954.0, 1714.0, 1584.0, 1771.0, np.nan, 2302.0, np.nan, 1049.0, 2670.0, np.nan, 800.])
-        xValues = np.asarray([0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1])
-
-        profile.setValues(xValues, yValues)
-
-        yValues = profile.yValues()
-        xValues = profile.xValues()
-
-        self.assertTrue(any([math.isnan(v) for v in yValues]))
-
-        print('plot {}'.format(yValues))
-        # w0 = pg.plot(yValues, connect='finite')
-
-        pdi = SpectralProfilePlotDataItem()
-
-        self.assertIsInstance(pdi, SpectralProfilePlotDataItem)
-
-        style = PlotStyle.fromPlotDataItem(pdi)
-
-        plotStyle = defaultCurvePlotStyle()
-        plotStyle.setLineWidth(10)
-        plotStyle.setLineColor('red')
-        plotStyle.setMarkerColor('green')
-        plotStyle.setMarkerLinecolor('blue')
-        plotStyle.setMarkerSymbol('Triangle')
-        plotStyle.apply(pdi)
-
-        ps2 = PlotStyle.fromPlotDataItem(pdi)
-        self.assertEqual(plotStyle, ps2)
-
-        w1 = profile.plot()
-        w2 = pdi.plot()
-        self.showGui([w1])
 
     def test_SpectralLibraryPlotWidget(self):
 

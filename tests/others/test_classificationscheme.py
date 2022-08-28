@@ -8,14 +8,14 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import os
 import pathlib
-import unittest
 import tempfile
+import unittest
+
+from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex, QFile
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
 from qgis.PyQt.QtXml import QDomDocument
-
-from qgis.PyQt.QtCore import NULL
 from qgis.core import QgsRasterRenderer, QgsRasterLayer, QgsVectorLayer, QgsProject, \
     QgsMapLayerStore, QgsFeature, QgsEditorWidgetSetup, \
     QgsPalettedRasterRenderer, QgsCategorizedSymbolRenderer, \
@@ -27,7 +27,6 @@ from qps.classification.classificationscheme import ClassificationScheme, ClassI
     registerClassificationSchemeEditorWidget, ClassificationSchemeWidgetFactory, ClassificationSchemeEditorConfigWidget, \
     ClassificationSchemeEditorWidgetWrapper, findMapLayersWithClassInfo, ClassificationSchemeWidget, \
     ClassificationSchemeComboBoxModel, MIMEDATA_KEY_QGIS_STYLE
-
 from qps.testing import TestObjects, TestCase
 from qps.utils import MAP_LAYER_STORES, registerMapLayerStore, file_search
 

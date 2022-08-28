@@ -24,6 +24,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
+
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QDate, QDateTime, QByteArray, QUrl, QRect, QPoint, QVariant
 from qgis.PyQt.QtGui import QColor
@@ -31,7 +32,6 @@ from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWid
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
-
 from qps.testing import TestCase
 from qps.testing import TestObjects
 from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItemsToMenu, value2str, filenameFromString, \

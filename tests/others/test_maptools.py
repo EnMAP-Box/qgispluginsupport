@@ -15,7 +15,6 @@ import unittest
 
 from qgis.PyQt.QtCore import QPointF, Qt, QEvent, QTimer, pyqtSlot
 from qgis.PyQt.QtGui import QMouseEvent
-
 from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle, \
     QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, QgsMapToolZoom, \

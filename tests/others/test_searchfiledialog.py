@@ -1,6 +1,5 @@
 import unittest
 
-
 from qps.searchfiledialog import SearchFilesDialog
 from qps.testing import TestCase
 

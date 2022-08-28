@@ -1,6 +1,5 @@
 import unittest
 
-
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QPushButton, QGroupBox
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout

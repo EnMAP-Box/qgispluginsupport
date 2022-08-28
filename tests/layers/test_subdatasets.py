@@ -3,7 +3,6 @@ import pathlib
 import typing
 import unittest
 
-
 from qgis.core import QgsRasterLayer
 from qps.subdatasets import DatasetInfo, SubDatasetType, \
     SubDatasetLoadingTask, SubDatasetSelectionDialog

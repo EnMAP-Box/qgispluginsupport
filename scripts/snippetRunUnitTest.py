@@ -12,7 +12,7 @@ site.addsitedir(REPO)
 site.addsitedir(REPO / 'tests')
 os.environ['CI'] = 'True'
 
-import test_processing
+from others import test_processing
 
 importlib.reload(test_processing)
 TestCases = test_processing.ProcessingToolsTest()
