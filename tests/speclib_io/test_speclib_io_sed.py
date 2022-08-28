@@ -1,9 +1,8 @@
 import pathlib
 import unittest
 
-from qgis._core import QgsGeometry
-
-from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorLayerExporter, QgsCoordinateReferenceSystem, Qgis
+from qgis.core import QgsGeometry, QgsProcessingFeedback, QgsFeature, QgsVectorLayerExporter, \
+    QgsCoordinateReferenceSystem, Qgis
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.spectralevolution import SEDSpectralLibraryIO, SEDFile, SED_FIELDS

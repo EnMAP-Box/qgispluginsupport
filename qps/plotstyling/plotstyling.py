@@ -43,7 +43,6 @@ from qgis.core import QgsField, QgsVectorLayer, QgsSymbolLayerUtils, QgsAction, 
 from qgis.gui import QgsDialog
 from qgis.gui import QgsEditorWidgetWrapper, QgsPenStyleComboBox, \
     QgsSearchWidgetWrapper, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsGui
-
 from ..pyqtgraph import pyqtgraph as pg
 from ..pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import renderSymbol, drawSymbol
 from ..utils import findMapLayer, loadUi
@@ -858,7 +857,6 @@ class PlotStyleWidget(QWidget):
             pi.setVisible(style.isVisible())
             pi.update()
             self.plotWidget.update()
-
 
     def setPlotStyle(self, style):
         assert isinstance(style, PlotStyle)

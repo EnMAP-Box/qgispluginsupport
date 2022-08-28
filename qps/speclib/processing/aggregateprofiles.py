@@ -590,6 +590,7 @@ class SpectralAggregation(QgsExpressionFunction):
     def handlesNull(self) -> bool:
         return True
 
+
 def spfcnAggregate(values: list, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
     # first node is layer id or name
     node: QgsExpressionNode = values[0]
@@ -732,7 +733,7 @@ def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
         QgsExpressionFunction.Parameter('order_by', optional=True, defaultValue=None, isSubExpression=True)
     ]
     functions = [
-        #StaticExpressionFunction('aggregateProfiles', aggParams2,
+        # StaticExpressionFunction('aggregateProfiles', aggParams2,
         #                         spfcnAggregate, 'Aggregates', '',
         #                         usesGeometry=usesGeometryCallback,
         #                         referencedColumns=referencedColumnsCallback),

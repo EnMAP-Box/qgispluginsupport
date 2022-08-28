@@ -9,15 +9,21 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
+
+import qps.testing
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
     QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
 
-import qps.testing
-
 
 class testClassTesting(unittest.TestCase):
+
+    def setUp(self) -> None:
+        app = QgsApplication.instance()
+        import qgis.testing
+        if hasattr(qgis.testing, 'QGISAPP'):
+            qgis.testing.stop_app()
 
     def test_init(self):
         import qps.testing

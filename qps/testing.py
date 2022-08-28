@@ -46,10 +46,10 @@ import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt, QThreadPool
+from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
-from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, QApplication, QWidget, QAction, \
-    QMenu
+from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
+    QApplication, QWidget, QAction, QMenu
 from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
@@ -532,24 +532,6 @@ class TestCase(qgis.testing.TestCase):
 
         return
         # let failures fail fast
-
-        # return
-        QApplication.processEvents()
-        QThreadPool.globalInstance().waitForDone()
-        # QgsProject.instance().removeAllMapLayers()
-
-        import gc
-        gc.collect()
-        super().tearDown()
-
-    @classmethod
-    def tearDownClass(cls):
-        if False:  # bug in qgis
-            try:
-                stop_app()
-            except NameError as ex:
-                s = ""
-                pass
 
     def createTestOutputDirectory(self, name: str = 'test-outputs', subdir: str = None) -> pathlib.Path:
         """

@@ -4,6 +4,7 @@ import typing
 from typing import List
 
 import numpy as np
+
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
@@ -23,7 +24,6 @@ from qgis.core import QgsRasterLayer
 from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
-
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget, PlotUpdateBlocker
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
@@ -1509,9 +1509,9 @@ class SpectralLibraryPlotWidget(QWidget):
 
         widgetXAxis: QWidget = self.plotWidget.viewBox().menu.widgetGroups[0]
         widgetYAxis: QWidget = self.plotWidget.viewBox().menu.widgetGroups[1]
-        grid: QGridLayout = widgetXAxis.layout()
-        grid.addWidget(QLabel('Unit:'), 0, 0, 1, 1)
-        grid.addWidget(self.optionXUnit.createUnitComboBox(), 0, 2, 1, 2)
+        # grid: QGridLayout = widgetXAxis.layout()
+        # grid.addWidget(QLabel('Unit:'), 0, 0, 1, 1)
+        # grid.addWidget(self.optionXUnit.createUnitComboBox(), 0, 2, 1, 2)
 
         self.plotWidget.plotItem.sigPopulateContextMenuItems.connect(self.populateProfilePlotContextMenu)
 
