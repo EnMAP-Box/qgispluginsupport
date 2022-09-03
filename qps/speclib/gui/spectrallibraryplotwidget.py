@@ -303,7 +303,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if rawData == NI or not self.mEnableCaching:
             # load profile data
             d: dict = decodeProfileValueDict(feature.attribute(fieldIndex))
-            if d is None or len(d) == 0:
+            if d is None or len(d) == 0 or 'y' not in d.keys():
                 # no profile
                 rawData = None
             else:
@@ -311,6 +311,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 if rawData.get('x', None) is None:
                     rawData['x'] = list(range(len(rawData['y'])))
                     rawData['xUnit'] = BAND_INDEX
+
+                # convert None values to NaN so that numpy arrays will become numeric
+                rawData['y'] = [v if v else np.NaN for v in rawData['y']]
+
             self.mCACHE_PROFILE_DATA[id_attribute] = rawData
         return self.mCACHE_PROFILE_DATA[id_attribute]
 
@@ -750,7 +754,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def profileDataToXUnit(self, profileData: dict, xUnit: str) -> dict:
         """
         Converts the x values from plotData.get('xUnit') to xUnit.
-        Returns None of a conversion is not possible (e.g. from meters to time)
+        Returns None if a conversion is not possible (e.g. from meters to time)
         :param profileData: profile dictionary
         :param xUnit: str
         :return: dict | None

@@ -195,40 +195,6 @@ class SpeclibCoreTests(TestCase):
         self.assertIsInstance(sp2, SpectralProfile)
         self.assertListEqual(sp2.yValues(), [v * v for v in yvals])
 
-    @unittest.skipIf(TestCase.runsInCI(), 'processes finish error')
-    def test_SpectralProfileLoadingTask(self):
-
-        speclib = TestObjects.createSpectralLibrary(n=10, n_bands=[-1, 64])
-        self.assertIsInstance(speclib, QgsVectorLayer)
-        self.assertTrue(speclib.featureCount() == 20)
-        self.assertEqual(len(profile_field_list(speclib)), 1)
-
-        RESULTS = dict()
-
-        def onProfilesLoaded(loaded_profiles):
-            print(loaded_profiles)
-            RESULTS.update(loaded_profiles)
-
-        def onFinished(result, task):
-            print('Finished')
-            self.assertIsInstance(task, SpectralProfileLoadingTask)
-            self.assertTrue(result)
-            self.assertEqual(len(task.RESULTS), speclib.featureCount())
-            RESULTS.update(task.RESULTS)
-            self.assertEqual(len(RESULTS), speclib.featureCount())
-
-        task = SpectralProfileLoadingTask(speclib, callback=onFinished)
-        task.finished(task.run())
-
-        tm: QgsTaskManager = QgsApplication.instance().taskManager()
-        task = SpectralProfileLoadingTask(speclib, callback=onFinished)
-        # task.sigProfilesLoaded.connect(onProfilesLoaded)
-        taskID = tm.addTask(task)
-
-        while tm.countActiveTasks() > 0:
-            QgsApplication.processEvents()
-            pass
-
     def test_SpectralProfile_BadBandList(self):
 
         sp = SpectralProfile()

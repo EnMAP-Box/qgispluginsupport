@@ -1784,7 +1784,8 @@ class SpectralProfileBridge(TreeModel):
                                        make_permanent=add_permanent,
                                        currentProfileStyles=candidate_styles,
                                        )
-
+            else:
+                slw.setCurrentProfiles([])
         return RESULTS
 
     def profileSamplingModeModel(self) -> SpectralProfileSamplingModeModel:

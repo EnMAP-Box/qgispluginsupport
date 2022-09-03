@@ -9,7 +9,7 @@ import typing
 import warnings
 from json import JSONDecodeError
 from typing import Any, List, Union, Tuple
-
+from math import nan
 import numpy as np
 from osgeo import gdal
 
@@ -216,6 +216,9 @@ def encodeProfileValueDict(d: dict,
             if isinstance(v, np.ndarray):
                 v = v.tolist()
             d2[k] = v
+
+    # convert None to NaN
+    d2['y'] = [v if v else nan for v in d2['y']]
 
     # convert date/time X values to strings
     xValues = d2.get('x')
