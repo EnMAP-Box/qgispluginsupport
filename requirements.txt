@@ -6,6 +6,7 @@
 osgeo
 scipy
 numpy
+gdal
 # scikit-learn>=0.19.2
 
 # clean code
