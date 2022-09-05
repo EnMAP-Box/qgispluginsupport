@@ -1,8 +1,8 @@
-from qgis.core import QgsProcessingProvider, QgsApplication, QgsProcessingRegistry, QgsProcessingAlgorithm, \
-    QgsProcessingParameterRasterLayer, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
+from processing.modeler.ModelerDialog import ModelerDialog
+from qgis.core import QgsApplication, QgsProcessingRegistry, QgsProcessingAlgorithm, \
+    QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
     QgsProcessingContext, QgsProcessingFeedback, QgsProcessingParameterFile
 from qps.testing import start_app, StartOptions, ExampleAlgorithmProvider
-from processing.modeler.ModelerDialog import ModelerDialog
 
 app: QgsApplication = start_app(options=StartOptions.All)
 
