@@ -25,6 +25,9 @@ class testClassTesting(unittest.TestCase):
         if hasattr(qgis.testing, 'QGISAPP'):
             qgis.testing.stop_app()
 
+    def test_fail(self):
+        self.assertTrue(False)
+
     def test_init(self):
         import qps.testing
         self.assertTrue(qps.testing is not None)
