@@ -20,8 +20,8 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd):/usr/share/qgis/python/plugins"
 
 dirOut = 'test-reports/today'
 linesSh = [PREFACE_SH,
-           'mkdir {}'.format(os.path.dirname(dirOut)),
-           'mkdir {}'.format(dirOut)]
+           'mkdir -p {}'.format(os.path.dirname(dirOut)),
+           'mkdir -p {}'.format(dirOut)]
 
 bnDirTests = os.path.basename(DIR_TESTS)
 for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py', recursive=True)):

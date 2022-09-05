@@ -29,7 +29,7 @@ from osgeo import ogr
 from qgis.PyQt.QtCore import QJsonDocument, NULL
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
 from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
-    QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsApplication, QgsTaskManager, QgsFields
+    QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsFields
 from qgis.gui import QgsGui
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field, \
@@ -37,7 +37,7 @@ from qps.speclib.core import is_spectral_library, profile_field_list, profile_fi
 from qps.speclib.core.spectrallibrary import MIMEDATA_SPECLIB_LINK, SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
-    SpectralProfileBlock, encodeProfileValueDict, SpectralProfileLoadingTask, prepareProfileValueDict, ProfileEncoding, \
+    SpectralProfileBlock, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
     validateProfileValueDict
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.speclib.io.csvdata import CSVSpectralLibraryIO
