@@ -282,23 +282,23 @@ class Testing(QtWidgets.QMainWindow):
 
         # Main widget
         w = QtWidgets.QWidget()
-        l = QtWidgets.QVBoxLayout()
-        w.setLayout(l)
+        layout = QtWidgets.QVBoxLayout()
+        w.setLayout(layout)
         self.setCentralWidget(w)
 
         # spacer
-        l.addWidget(QtWidgets.QLabel(''), 1)
+        layout.addWidget(QtWidgets.QLabel(''), 1)
 
         # Checkbox
         check = HTMLCheckBox('<b>HTML Text</b> <i>in a CheckBox</i>', self)
         check.setSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Preferred)
-        l.addWidget(check)
+        layout.addWidget(check)
 
         # Radio Buttons
         hbox_w = QtWidgets.QWidget()
         hbox = QtWidgets.QHBoxLayout()
         hbox_w.setLayout(hbox)
-        l.addWidget(hbox_w)
+        layout.addWidget(hbox_w)
         rb = HTMLRadioButton('<b>Radio 1</b>', self)
         hbox.addWidget(rb, 0)
         rb = HTMLRadioButton('<i>Radio 2</i>', self)
@@ -310,10 +310,10 @@ class Testing(QtWidgets.QMainWindow):
         cb.addItem('<b>Bold</b> Text', None)
         cb.addItem('<i>Italic</i> Text', None)
         cb.addItem('<b>Bold</b> and <i>Italic</i> Text', None)
-        l.addWidget(cb)
+        layout.addWidget(cb)
 
         # spacer
-        l.addWidget(QtWidgets.QLabel(''), 1)
+        layout.addWidget(QtWidgets.QLabel(''), 1)
 
         # A bit of window housekeeping
         self.resize(400, 400)
