@@ -6,7 +6,7 @@ from qps.utils import file_search
 DIR_REPO = pathlib.Path(__file__).parents[1]
 DIR_TESTS = DIR_REPO / 'tests'
 
-RUN_PYTEST = True
+RUN_PYTEST = False
 PATH_RUNTESTS_SH = DIR_REPO / 'runtests.sh'
 
 PREFACE_SH = \
@@ -15,7 +15,6 @@ export QT_QPA_PLATFORM=offscreen
 export CI=True
 export PYTHONPATH="${PYTHONPATH}$(pwd)"
 find . -name "*.pyc" -exec rm -f {} \;
-export PYTHONPATH="${PYTHONPATH}:$(pwd):/usr/share/qgis/python/plugins"
 """
 
 dirOut = 'test-reports/today'

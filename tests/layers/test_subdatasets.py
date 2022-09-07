@@ -69,32 +69,6 @@ SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_2020010
 
             self.assertTrue(len(foundInfos) > 0)
 
-    def test_subdatasetdialog(self):
-        files = self.create_references_filelist()
-        filesString = r'"H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20191208T140049_N0208_R067_T21LWL_20191208T153903.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20191211T141039_N0208_R110_T21LWL_20191211T154826.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20200107T140049_N0208_R067_T21LWL_20200107T153927.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20191218T140049_N0208_R067_T21LWL_20191218T153923.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20191221T141039_N0208_R110_T21LWL_20191221T154811.SAFE\MTD_MSIL1C.xml" "H:\Processing_BJ\01_Data\Sentinel2\T21LWL\S2B_MSIL1C_20200110T141039_N0208_R110_T21LWL_20200110T154843.SAFE\MTD_MSIL1C.xml"'
-
-        d = SubDatasetSelectionDialog()
-        d.setWindowTitle('Select Sentinel2 Images')
-        d.setFileFilter('*.xml')
-        d.fileWidget.setFilePath(filesString)
-
-        defRoot = pathlib.Path('~').expanduser().as_posix()
-        d.setDefaultRoot(defRoot)
-        self.assertEqual(defRoot, d.defaultRoot())
-
-        def onAccepted():
-            files = d.selectedSubDatasets()
-
-            for file in files:
-                print('Load {}'.format(file))
-                self.assertIsInstance(file, str)
-                lyr = QgsRasterLayer(file)
-                self.assertIsInstance(lyr, QgsRasterLayer)
-                self.assertTrue(lyr.isValid())
-
-        d.accepted.connect(onAccepted)
-        self.showGui(d)
-
 
 if __name__ == '__main__':
 
