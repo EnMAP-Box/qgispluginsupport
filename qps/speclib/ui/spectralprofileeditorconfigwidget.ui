@@ -17,7 +17,7 @@
    <item row="0" column="1">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>A binary field to store Spectral Profiles</string>
+      <string>A field to store Spectral Profiles</string>
      </property>
     </widget>
    </item>
