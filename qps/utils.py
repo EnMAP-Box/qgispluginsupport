@@ -1744,7 +1744,8 @@ def equalRasterRenderer(renderer1: QgsRasterRenderer, renderer2: QgsRasterRender
 
 def defaultBands(dataset) -> list:
     """
-    Returns a list of 3 default bands
+    Returns a list of 3 default bands.
+    Band numbers start counting with 1
     :param dataset:
     :return:
     """
