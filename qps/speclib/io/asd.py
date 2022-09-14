@@ -585,5 +585,5 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
             else:
                 asd: ASDBinaryFile = ASDBinaryFile(file)
                 profiles.append(asd.asFeature())
-            feedback.setProgress((i + 1) / n_total)
+            feedback.setProgress(int((i + 1) / n_total))
         return profiles
