@@ -27,6 +27,7 @@ import pathlib
 import re
 import typing
 from typing import List, Pattern, Tuple, Union
+
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
@@ -37,13 +38,14 @@ from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget,
 from qgis.core import QgsFeatureSink, QgsAttributeTableConfig, QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
     QgsEditorWidgetSetup, \
     QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
-from qgis.gui import QgsGui, QgsFieldCalculator, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, \
+from qgis.gui import QgsGui, QgsFieldCalculator, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, \
+    QgsDualView, \
     QgsAttributeTableModel, QgsAttributeEditorContext
 from .core import QpsMapLayerConfigWidget
+from .. import debugLog
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ..utils import loadUi, gdalDataset
-from .. import debugLog
 
 PROTECTED = [
     'IMAGE_STRUCTURE:INTERLEAVE',
@@ -647,7 +649,7 @@ class GDALMetadataModel(QAbstractTableModel):
         self.mFeatures.extend(features)
         self.mFeaturesBackup.extend(features.copy())
         self.endResetModel()
-        print(f'DEBUG: add & commit features {datetime.datetime.now() - t0}')
+        debugLog(f'DEBUG: add & commit features {datetime.datetime.now() - t0}')
 
     def applyToLayer(self):
         pass
@@ -1240,7 +1242,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         self.updateGroupVisibilities()
 
-        print(f'DEBUG: Total Sync time: {datetime.datetime.now() - t0}')
+        debugLog(f'Total Sync time: {datetime.datetime.now() - t0}')
 
     def updateGroupVisibilities(self):
 

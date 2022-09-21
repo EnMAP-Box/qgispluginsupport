@@ -24,9 +24,9 @@
 ***************************************************************************
 """
 
+import os
 import pathlib
 import sys
-import os
 import typing
 import warnings
 
@@ -50,13 +50,13 @@ if Qgis.QGIS_VERSION < MIN_QGIS_VERSION:
 KEY_MAPLAYERCONFIGWIDGETFACTORIES = 'QPS_MAPLAYER_CONFIGWIDGET_FACTORIES'
 
 
-def debugLog(msg: str):
+def debugLog(msg: str, prefix: str = 'DEBUG:'):
     """
     Prints message 'msg' to console only if environmental variable DEBUG is set
     :param msg: str
     """
     if str(os.environ.get('DEBUG', False)).lower() in ['1', 'true']:
-        print('DEBUG:' + msg, flush=True)
+        print(f'{prefix} {msg}', flush=True)
 
 
 def registerMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactory) -> QgsMapLayerConfigWidgetFactory:
