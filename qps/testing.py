@@ -25,6 +25,7 @@
 ***************************************************************************
 """
 import enum
+import gc
 import inspect
 import itertools
 import os
@@ -37,6 +38,7 @@ import traceback
 import typing
 import uuid
 import warnings
+from typing import Set
 from unittest import mock
 
 import numpy as np
@@ -63,7 +65,7 @@ from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
-from .resources import findQGISResourceFiles, initResourceFile
+from .resources import initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
 from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
 from .speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -481,6 +483,9 @@ def _set_iface(ifaceMock):
         m.iface = ifaceMock
 
 
+APP = None
+
+
 class TestCase(qgis.testing.TestCase):
     IFACE = None
 
@@ -496,7 +501,9 @@ class TestCase(qgis.testing.TestCase):
     def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
 
         if not isinstance(QgsApplication.instance(), QgsApplication):
-            qgis.testing.start_app(cleanup=False)
+            global APP
+            assert APP is None
+            APP = qgis.testing.start_app(cleanup=False)
 
         if TestCase.IFACE is None:
             TestCase.IFACE = get_iface()
@@ -508,19 +515,13 @@ class TestCase(qgis.testing.TestCase):
         if QgsGui.editorWidgetRegistry().name('TextEdit') in ['', None]:
             QgsGui.editorWidgetRegistry().initEditors()
 
-        return
+    @classmethod
+    def _readVSIMemFiles(cls) -> Set[str]:
 
-        if resources is None:
-            resources = []
-        # try to find QGIS resource files
-        for r in findQGISResourceFiles():
-            if r not in resources:
-                resources.append(r)
-
-        start_app(cleanup=cleanup, options=options, resources=resources)
-
-        from osgeo import gdal
-        gdal.AllRegister()
+        r = gdal.ReadDirRecursive('/vsimem/')
+        if r is None:
+            return set([])
+        return set(r)
 
     def tearDown(self):
         if isinstance(TestCase.IFACE, QgisInterface):
@@ -530,8 +531,10 @@ class TestCase(qgis.testing.TestCase):
         if QgsProject.instance():
             QgsProject.instance().removeAllMapLayers()
 
-        return
-        # let failures fail fast
+        if isinstance(QgsApplication.instance(), QgsApplication) and APP == QgsApplication.instance():
+            pass
+            # stop_app()
+        gc.collect()
 
     def createTestOutputDirectory(self, name: str = 'test-outputs', subdir: str = None) -> pathlib.Path:
         """
@@ -1024,6 +1027,7 @@ class TestObjects(object):
         """
         Generates a gdal.Dataset of arbitrary size based on true data from a smaller EnMAP raster image
         """
+        # gdal.AllRegister()
         from .classification.classificationscheme import ClassificationScheme
         scheme = None
         if nc is None:
@@ -1033,20 +1037,25 @@ class TestObjects(object):
             eType = gdal.GDT_Byte if nc < 256 else gdal.GDT_Int16
             scheme = ClassificationScheme()
             scheme.createClasses(nc)
+        if gdal.GetDriverCount() == 0:
+            gdal.AllRegister()
 
         if isinstance(drv, str):
             drv = gdal.GetDriverByName(drv)
         elif drv is None:
             drv = gdal.GetDriverByName('GTiff')
-        assert isinstance(drv, gdal.Driver)
+        assert isinstance(drv, gdal.Driver), 'Unable to load GDAL Driver'
 
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
         elif path is None:
+            ext = drv.GetMetadataItem('DMD_EXTENSION')
+            if len(ext) > 0:
+                ext = f'.{ext}'
             if nc > 0:
-                path = '/vsimem/testClassification.{}.tif'.format(str(uuid.uuid4()))
+                path = f'/vsimem/testClassification.{uuid.uuid4()}{ext}'
             else:
-                path = '/vsimem/testImage.{}.tif'.format(str(uuid.uuid4()))
+                path = f'/vsimem/testImage.{uuid.uuid4()}{ext}'
         assert isinstance(path, str)
 
         ds: gdal.Driver = drv.Create(path, ns, nl, bands=nb, eType=eType)
@@ -1184,6 +1193,7 @@ class TestObjects(object):
         Create an in-memory ogr.DataSource
         :return: ogr.DataSource
         """
+        # ogr.RegisterAll()
         ogr.UseExceptions()
         assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
 
@@ -1196,7 +1206,7 @@ class TestObjects(object):
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
 
         dsSrc = ogr.Open(pathSrc.as_posix())
-        assert isinstance(dsSrc, ogr.DataSource)
+        assert isinstance(dsSrc, ogr.DataSource), f'Unable to load {pathSrc}'
         lyrSrc = dsSrc.GetLayerByIndex(0)
         assert isinstance(lyrSrc, ogr.Layer)
 

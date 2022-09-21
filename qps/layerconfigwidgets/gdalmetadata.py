@@ -439,6 +439,20 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             self.endEditCommand()
         assert self.commitChanges(not was_editable)
 
+    def updateENVIHeader(self, ds: gdal.Dataset):
+        drv: gdal.Driver = ds.GetDriver()
+        if drv.ShortName in ['ENVI', 'GTiff']:
+            for f in ds.GetFileList():
+                if f.endswith('.hdr'):
+                    stat = gdal.VSIStatL(f)
+                    fp = gdal.VSIFOpenL(f, "rb")
+                    assert fp
+                    content = gdal.VSIFReadL(1, stat.size, fp).decode("utf-8")
+                    gdal.VSIFCloseL(fp)
+                    txt = gdal.VSIFReadL(f)
+                    s = ""
+        s = ""
+
     def applyToLayer(self, *args):
 
         if not (isGDALRasterLayer(self.mMapLayer) and self.isEditable()):
@@ -447,13 +461,24 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         ds: gdal.Dataset = None
         try:
             ds = gdalDataset(self.mMapLayer)
-        except Exception as ex:
+        except (NotImplementedError, AssertionError) as ex:
             pass
 
+        def value2str(v) -> str:
+            """
+            Converts a QgsFeature attribute value into a string
+            """
+            if v in [None, NULL]:
+                return ''
+            else:
+                return str(v)
+
         if isinstance(ds, gdal.Dataset):
-            for f in self.getFeatures():
+
+            for f in self.getFeatures(list(range(1, ds.RasterCount + 1))):
                 f: QgsFeature
                 bandNo = f.attribute(BandFieldNames.Number)
+                assert f.id() == bandNo
                 band: gdal.Band = ds.GetRasterBand(bandNo)
                 if not isinstance(band, gdal.Band):
                     continue
@@ -468,23 +493,22 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
 
                     n = field.name()
 
+                    # write band name
                     if n == BandFieldNames.Name:
-                        name = f.attribute(BandFieldNames.Name)
-                        if name in [None, NULL]:
-                            band.SetDescription('')
-                        else:
-                            band.SetDescription(str(name))
+                        value = value2str(f.attribute(BandFieldNames.Name))
+                        band.SetDescription(value)
                         continue
 
-                    value = f.attribute(n)
-                    enviName = self.FIELD2GDALKey.get(field.name(), None)
-                    if enviName:
-                        if value in [None, NULL]:
-                            band.SetMetadataItem(enviName, '', domain)
-                        else:
-                            band.SetMetadataItem(enviName, str(value), domain)
+                    value = value2str(f.attribute(n))
+                    md_key = self.FIELD2GDALKey.get(field.name(), None)
+                    if md_key:
+                        band.SetMetadataItem(md_key, value, domain)
+
             ds.FlushCache()
+            self.updateENVIHeader(ds)
             del ds
+
+            self.mMapLayer.reload()
 
 
 class GDALMetadataItem(object):
