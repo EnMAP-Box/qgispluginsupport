@@ -37,19 +37,13 @@ from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget,
 from qgis.core import QgsFeatureSink, QgsAttributeTableConfig, QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
     QgsEditorWidgetSetup, \
     QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
-from qgis.gui import QgsGui, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, \
+from qgis.gui import QgsGui, QgsFieldCalculator, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, QgsDualView, \
     QgsAttributeTableModel, QgsAttributeEditorContext
 from .core import QpsMapLayerConfigWidget
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ..utils import loadUi, gdalDataset
-
-try:
-    from qgis.gui import QgsFieldCalculator
-
-    FIELD_CALCULATOR = True
-except ImportError:
-    FIELD_CALCULATOR = False
+from .. import debugLog
 
 PROTECTED = [
     'IMAGE_STRUCTURE:INTERLEAVE',
@@ -828,20 +822,20 @@ class GDALMetadataModel_OLD(GDALMetadataModelBase):
                         features.extend(self.createMajorObjectFeatures(ogrLayer, sub_object=layerid))
                 del ds
 
-        print(f'DEBUG: create features {datetime.datetime.now() - t0}')
+        debugLog(f'DEBUG: create features {datetime.datetime.now() - t0}')
         t0 = datetime.datetime.now()
         objField.setConstraints(c)
-        print(f'DEBUG: A set contraints {datetime.datetime.now() - t0}')
+        debugLog(f'DEBUG: A set contraints {datetime.datetime.now() - t0}')
         t0 = datetime.datetime.now()
         assert self.addFeatures(features, QgsFeatureSink.FastInsert)
-        print(f'DEBUG: B Add features {datetime.datetime.now() - t0}')
+        debugLog(f'DEBUG: B Add features {datetime.datetime.now() - t0}')
         t0 = datetime.datetime.now()
         self.endEditCommand()
-        print(f'DEBUG: C end edit command {datetime.datetime.now() - t0}')
+        debugLog(f'DEBUG: C end edit command {datetime.datetime.now() - t0}')
         t0 = datetime.datetime.now()
         assert self.commitChanges(not editable)
-        print(f'DEBUG: E commit {datetime.datetime.now() - t0}')
-        print(f'DEBUG: add & commit features {datetime.datetime.now() - t0}')
+        debugLog(f'DEBUG: E commit {datetime.datetime.now() - t0}')
+        debugLog(f'DEBUG: add & commit features {datetime.datetime.now() - t0}')
 
     def applyToLayer(self):
         pass
@@ -1091,12 +1085,11 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
     def showCalculator(self, dualView: QgsDualView):
         assert isinstance(dualView, QgsDualView)
         masterModel: QgsAttributeTableModel = dualView.masterModel()
-        if FIELD_CALCULATOR:
-            calc: QgsFieldCalculator = QgsFieldCalculator(dualView.masterModel().layer(), self)
-            if calc.exec_() == QDialog.Accepted:
-                col = masterModel.fieldCol(calc.changedAttributeId())
-                if col >= 0:
-                    masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
+        calc: QgsFieldCalculator = QgsFieldCalculator(dualView.masterModel().layer(), self)
+        if calc.exec_() == QDialog.Accepted:
+            col = masterModel.fieldCol(calc.changedAttributeId())
+            if col >= 0:
+                masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
 
     def onBandFormModeChanged(self, *args):
         self.actionBandTableView.setChecked(self.bandDualView.view() == QgsDualView.AttributeTable)
