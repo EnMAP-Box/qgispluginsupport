@@ -48,6 +48,8 @@ def stringToTypeList(value: str) -> List:
     if matchENVI:
         # removes leading & trailing { and spaces }
         value = matchENVI.group('value')
+        # remove inline comments
+
     return [stringToType(v) for v in re.split(r'[\s,;]+', value)]
 
 
@@ -240,7 +242,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
 
     def badBands(self, default: int = 1) -> typing.List[int]:
         """
-        Convenience function to returns the bad band (multiplier) values as list
+        Convenience function to return bad band (multiplier) values as list
         0 = False = do not use
         1 = True = do use (default)
         values > 1 might be used for other special meanings
