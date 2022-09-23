@@ -66,7 +66,7 @@ def speclibSettings() -> QgsSettings:
     Returns SpectralLibrary relevant QSettings
     :return: QSettings
     """
-    return QgsSettings('HUB', 'speclib')
+    return QgsSettings('EnMAP', 'speclib')
 
 
 def speclibUiPath(name: str) -> str:
