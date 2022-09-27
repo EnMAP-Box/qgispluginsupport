@@ -110,7 +110,6 @@ class TestsGdalMetadata(TestCase):
         ds: gdal.Dataset = gdal.Open(path)
         bbl = ds.GetMetadataItem('bbl', 'ENVI')
         print(bbl)
-        s = ""
 
         bbl2 = ds.GetMetadata_Dict('ENVI')['bbl']
 
