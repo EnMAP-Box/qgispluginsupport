@@ -640,7 +640,7 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
 
         if nb >= 3:
             if isinstance(defaultRenderer, QgsMultiBandColorRenderer):
-                bandIndices = [b-1 for b in defaultBands(layer)]
+                bandIndices = [b - 1 for b in defaultBands(layer)]
             else:
                 bandIndices = [2, 1, 0]
         else:
