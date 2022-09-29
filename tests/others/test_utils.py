@@ -387,6 +387,7 @@ class TestUtils(TestCase):
             pxLL = geoLL.toPixelPosition(layer)
             self.assertEqual(pxGeo, pxRef)
             self.assertEqual(pxLL, pxRef)
+
     def test_rasterLayerArray(self):
 
         lyrR = TestObjects.createRasterLayer()
