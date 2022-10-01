@@ -1,8 +1,6 @@
-from qgis.core import QgsProcessingParameterDefinition, QgsApplication, \
-    QgsProcessingRegistry, QgsProcessingParameterType, \
+from qgis.core import QgsProcessingParameterType, \
     QgsProcessingParameterBoolean
 from qgis.gui import QgsProcessingParameterDefinitionDialog
-from qgis.PyQt.QtCore import QObject
 
 REFS = []
 
@@ -83,25 +81,11 @@ class MyParameterType(QgsProcessingParameterType):
         return MY_TYPE_ID
 
 
-
-
-from qgis.core import QgsVectorLayer, QgsMapLayer, QgsRasterLayer, QgsActionManager, \
-    QgsField, QgsApplication, QgsWkbTypes, QgsProcessingRegistry,  \
-    QgsProcessingContext, QgsProcessingParameterDefinition, QgsProcessingModelAlgorithm
-
-from qpstestdata import enmap, hymap
-from qpstestdata import speclib as speclibpath
-import unittest
-import random
-import math
-from qps.testing import TestObjects, TestCase, StartOptions
-import numpy as np
-
-
-
+from qgis.core import QgsApplication, QgsProcessingRegistry, \
+    QgsProcessingModelAlgorithm
 
 from qps.testing import TestCase
-from qps.models import TreeView, TreeNode, TreeModel
+
 
 class SpectralMathTests(TestCase):
 

@@ -10,16 +10,15 @@ enmap_polygon = testvectordata
 
 # from qpstestdata
 hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()
-envi_bsq = (pathlib.Path(__file__).parent / 'envi').as_posix()
-speclib = (pathlib.Path(__file__).parent / 'speclib.sli').as_posix()
-speclib_labeled = \
-    (pathlib.Path(__file__).parent / 'library_berlin.sli').as_posix()
+envi_bsq = (pathlib.Path(__file__).parent / 'envi' / 'envi').as_posix()
+envi_sli = (pathlib.Path(__file__).parent / 'envi' / 'speclib.sli').as_posix()
+
 ndvi_ts = (pathlib.Path(__file__).parent / 'ndvi_ts.tif').as_posix()
 geojson = (pathlib.Path(__file__).parent / 'geojson' / 'profiles.geojson').as_posix()
 
 DIR_ECOSIS = (pathlib.Path(__file__).parent / 'ecosis').as_posix()
 DIR_SPECCHIO = (pathlib.Path(__file__).parent / 'specchio').as_posix()
-ecosis_csv = (pathlib.Path(__file__).parent / 'ecosis.csv').as_posix()
+ecosis_csv = (pathlib.Path(DIR_ECOSIS) / 'excel_csv_example.csv').as_posix()
 DIR_ASD_BIN = (pathlib.Path(__file__).parent / 'asd' / 'bin').as_posix()
 DIR_ASD_AS7 = (pathlib.Path(__file__).parent / 'asd' / 'as7').as_posix()
 DIR_ASD_TXT = (pathlib.Path(__file__).parent / 'asd' / 'txt').as_posix()
