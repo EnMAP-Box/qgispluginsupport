@@ -49,8 +49,8 @@ from collections import defaultdict
 from typing import Union, List, Optional
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
 
+from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
     QDateTime, QDate, QVariant, QByteArray, QUrl, Qt
@@ -198,7 +198,9 @@ MAP_LAYER_STORES = [QPS_MAPLAYER_STORE, QgsProject.instance()]
 
 def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
     """
-    Searches for an file or directory in an upward path of the base path
+    Searches for a file or directory in an upward path of a base path.
+    E.g. DIR_REPO = findUpwardPath(__file__, '.git').parent returns the repository directory
+         that contains the module refered by __file__
 
     :param basepath:
     :param name:

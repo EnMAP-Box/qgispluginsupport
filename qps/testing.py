@@ -31,6 +31,7 @@ import itertools
 import os
 import pathlib
 import random
+import shutil
 import site
 import sqlite3
 import sys
@@ -42,11 +43,11 @@ from typing import Set
 from unittest import mock
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
+from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
@@ -514,6 +515,26 @@ class TestCase(qgis.testing.TestCase):
 
         if QgsGui.editorWidgetRegistry().name('TextEdit') in ['', None]:
             QgsGui.editorWidgetRegistry().initEditors()
+
+    def tempDir(self, subdir: str = None, cleanup: bool = False) -> pathlib.Path:
+        """
+        Returns the <enmapbox-repository/test-outputs/test name> directory
+        :param subdir:
+        :param cleanup:
+        :return: pathlib.Path
+        """
+        DIR_REPO = findUpwardPath(__file__, '.git').parent
+        if isinstance(self, TestCase):
+            foldername = self.__class__.__name__
+        else:
+            foldername = self.__name__
+        p = pathlib.Path(DIR_REPO) / 'test-outputs' / foldername
+        if isinstance(subdir, str):
+            p = p / subdir
+        if cleanup and p.exists() and p.is_dir():
+            shutil.rmtree(p)
+        os.makedirs(p, exist_ok=True)
+        return p
 
     @classmethod
     def _readVSIMemFiles(cls) -> Set[str]:
