@@ -5,8 +5,8 @@ import unittest
 from typing import List
 
 import numpy as np
-from osgeo import gdal, ogr, gdal_array
 
+from osgeo import gdal, ogr, gdal_array
 from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout
 from qgis.core import QgsFeature
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
@@ -148,7 +148,7 @@ class TestsGdalMetadata(TestCase):
         # changing metadata will only be written to ENVI hdr if dataset is opened in update mode!
         ds: gdal.Dataset = gdal.Open(path, gdal.GA_Update)
         setBandNames(ds, ['A', 'B', 'C'])
-        ds.SetMetadataItem('bbl', '{0,\n;comment\n1,0}', 'ENVI')
+        ds.SetMetadataItem('bbl', '{0,1,0}', 'ENVI')
         ds.SetMetadataItem('bbl false', '0,1,0', 'ENVI')
         ds.FlushCache()
 
@@ -162,8 +162,8 @@ class TestsGdalMetadata(TestCase):
         # Check band names in GDAL PAM
         self.assertEqual(bandNames(ds), ['A', 'B', 'C'])
         self.assertEqual(bandNames(ds2), ['A', 'B', 'C'])
-        self.assertEqual(ds.GetMetadataItem('bbl', 'ENVI'), '{0,\n;comment\n1,0}')
-        self.assertEqual(ds2.GetMetadataItem('bbl', 'ENVI'), '{0,\n;comment\n1,0}')
+        self.assertEqual(ds.GetMetadataItem('bbl', 'ENVI'), '{0,1,0}')
+        self.assertEqual(ds2.GetMetadataItem('bbl', 'ENVI'), '{0,1,0}')
 
         # the original data set still points on old band names / MD values!
         self.assertEqual(bandNames(ds0), ['', '', ''])
@@ -193,33 +193,37 @@ class TestsGdalMetadata(TestCase):
         self.assertTrue('bbl = {0,1,0}' in content_hdr)
 
     def test_modify_metadata(self):
-        nb, nl, ns = 5, 1, 1
+        nb, nl, ns = 5, 2, 2
 
-        ds: gdal.Dataset = TestObjects.createRasterDataset(ns=ns, nl=nl, nb=nb, drv='ENVI')
+        path = self.tempDir() / 'test.img'
+        path = path.as_posix()
 
-        path = ds.GetDescription()
+        drv: gdal.Driver = gdal.GetDriverByName('ENVI')
+        ds: gdal.Dataset = drv.Create(path, ns, nl, nb, eType=gdal.GDT_Byte)
+
+        for b in range(ds.RasterCount):
+            band: gdal.Band = ds.GetRasterBand(b + 1)
+            band.Fill(b + 1)
+            band.GetStatistics(1, 1)
+            band.SetDescription(f'MyBand {b + 1}')
+        ds.FlushCache()
+        del band
+        originalBandNames = [ds.GetRasterBand(b + 1).GetDescription() for b in range(nb)]
+
+        path_hdr: str = [f for f in ds.GetFileList() if f.endswith('.hdr')][0]
         del ds
+
+        def readHeader():
+            fp = gdal.VSIFOpenL(path_hdr, "rb")
+            hdr: str = gdal.VSIFReadL(1, gdal.VSIStatL(path_hdr).size, fp).decode("utf-8")
+            gdal.VSIFCloseL(fp)
+            return hdr
 
         lyr = QgsRasterLayer(path)
         self.assertTrue(lyr.isValid())
-        del lyr
-        # delete vsimemory file
-        gdal.Unlink(path)
-
-        lyr = QgsRasterLayer(path)
-        self.assertFalse(lyr.isValid())
-
-        ds: gdal.Dataset = TestObjects.createRasterDataset(ns=1, nl=1, nb=5, drv='ENVI')
-        originalBandNames = [ds.GetRasterBand(b + 1).GetDescription() for b in range(nb)]
-        path = ds.GetDescription()
-        del ds
-
-        lyr1 = QgsRasterLayer(path)
-        lyr2 = QgsRasterLayer(path)
-        self.assertTrue(lyr1.isValid())
 
         bandModel = GDALBandMetadataModel()
-        bandModel.setLayer(lyr1)
+        bandModel.setLayer(lyr)
 
         # this model is a vector layer with fields for each supported band property
         self.assertIsInstance(bandModel, QgsVectorLayer)
@@ -228,25 +232,32 @@ class TestsGdalMetadata(TestCase):
             feature: QgsFeature
             fid = feature.id()
             self.assertTrue(0 < fid <= nb)
-
             self.assertEqual(originalBandNames[fid - 1], feature.attribute(BandFieldNames.Name))
 
+        modifiedBandNames = ['A', 'B', 'C', 'D', 'E']
         # modify band properties
         # set a band names
         bandModel.startEditing()
 
-        f: QgsFeature = bandModel.getFeature(2)
-        f.setAttribute(BandFieldNames.Name, 'My Band Name')
-        bandModel.updateFeature(f)
-        bandModel.changeAttributeValue(3, bandModel.fields().lookupField(BandFieldNames.Name), 'Another Band Name')
+        for b, name in enumerate(modifiedBandNames):
+            f: QgsFeature = bandModel.getFeature(b + 1)
+            f.setAttribute(BandFieldNames.Name, name)
+            bandModel.updateFeature(f)
 
+            # bandModel.changeAttributeValue(3, iField, 'Another Band Name')
+
+        hdr1 = readHeader()
         bandModel.applyToLayer()
-        bandModel.commitChanges()
 
         ds2: gdal.Dataset = gdal.Open(path)
-        changedBandNamesGDAL = [ds2.GetRasterBand(b + 1).GetDescription() for b in range(nb)]
-        self.assertEqual(changedBandNamesGDAL[2 - 1], 'My Band Name')
-        self.assertEqual(changedBandNamesGDAL[3 - 1], 'Another Band Name')
+        bandNames = [ds2.GetRasterBand(b + 1).GetDescription() for b in range(ds2.RasterCount)]
+
+        self.assertListEqual(bandNames, modifiedBandNames)
+
+        # hdr2 = readHeader()
+        # bandModel.commitChanges()
+        # self.assertTrue('My Band Name' not in hdr1)
+        # self.assertTrue('My Band Name' in hdr2)
 
     def test_GDAL_PAM(self):
         test_dir = self.createTestOutputDirectory(subdir='gdalmetadata_PAM')

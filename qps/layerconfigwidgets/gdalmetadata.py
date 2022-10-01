@@ -29,7 +29,6 @@ import typing
 from typing import List, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
-
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
     QSortFilterProxyModel
 from qgis.PyQt.QtGui import QIcon
@@ -100,8 +99,8 @@ class BandFieldNames(object):
     Wavelength = 'Wavelength'
     WavelengthUnit = 'Wavelength Unit'
     # ENVI Header
-    ENVIDataGain = 'Data Gain'
-    ENVIDataOffset = 'Data Offset'
+    # ENVIDataGain = 'Data Gain' # GDAL 3.6 -> Scale
+    # ENVIDataOffset = 'Data Offset' # GDAL 3.6 -> Offset
     ENVIDataReflectanceGain = 'Data Refl. Gain'
     ENVIDataReflectanceOffset = 'Data Refl. Offset'
 
@@ -216,11 +215,11 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         BandFieldNames.Domain: "Metadata domain.<br>'' = default domain<br>'ENVI' = ENVI domain",
         BandFieldNames.BadBand: 'Bad band multiplier value. <br>0 = exclude, <br>1 = use band',
         BandFieldNames.FWHM: 'Full width at half maximum or band width, respectively',
-        BandFieldNames.Offset: 'Data offset (GDAL)',
-        BandFieldNames.Scale: 'Data scale (GDAL)',
+        BandFieldNames.Offset: 'Data offset',
+        BandFieldNames.Scale: 'Data scale or gain',
 
-        BandFieldNames.ENVIDataOffset: 'ENVI Header Data Offset<br>Values can differ from normal (GDAL) data offset',
-        BandFieldNames.ENVIDataGain: 'ENVI Header Data Gain<br>Values can differ from normal (GDAL) data scale',
+        # BandFieldNames.ENVIDataOffset: 'ENVI Header Data Offset<br>Values can differ from normal (GDAL) data offset',
+        # BandFieldNames.ENVIDataGain: 'ENVI Header Data Gain<br>Values can differ from normal (GDAL) data scale',
     }
 
     def __init__(self):
@@ -277,14 +276,15 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         OFFSET = QgsField(BandFieldNames.Offset, type=QVariant.Double)
         SCALE = QgsField(BandFieldNames.Scale, type=QVariant.Double)
 
-        ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QVariant.Double)
-        ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QVariant.Double)
+        # ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QVariant.Double)
+        # ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QVariant.Double)
 
         # add fields
         for field in [BANDNO,
                       DOMAIN,
                       bandName, NODATA, BBL, WL, WLU, FWHM, RANGE, OFFSET, SCALE,
-                      ENVI_OFFSET, ENVI_GAIN]:
+                      # ENVI_OFFSET, ENVI_GAIN
+                      ]:
             field: QgsField
             field.setComment(self.FIELD_TOOLTIP.get(field.name(), ''))
             self.addAttribute(field)
@@ -383,8 +383,8 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
 
             for c in columnConfigs:
                 c: QgsAttributeTableConfig.ColumnConfig
-                if c.name in [BandFieldNames.ENVIDataOffset, BandFieldNames.ENVIDataGain]:
-                    c.hidden = not show_envi
+                # if c.name in [BandFieldNames.ENVIDataOffset, BandFieldNames.ENVIDataGain]:
+                #    c.hidden = not show_envi
             tableConfig.setColumns(columnConfigs)
             self.setAttributeTableConfig(tableConfig)
 
@@ -414,8 +414,8 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                 BandFieldNames.Offset: lambda i: lyrOffset[i],
                 BandFieldNames.Scale: lambda i: lyrScale[i],
 
-                BandFieldNames.ENVIDataOffset: lambda i: ENVIDataOffset[i],
-                BandFieldNames.ENVIDataGain: lambda i: ENVIDataGain[i],
+                # BandFieldNames.ENVIDataOffset: lambda i: ENVIDataOffset[i],
+                # BandFieldNames.ENVIDataGain: lambda i: ENVIDataGain[i],
             }
 
             domain = ''
@@ -439,29 +439,19 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             self.endEditCommand()
         assert self.commitChanges(not was_editable)
 
-    def updateENVIHeader(self, ds: gdal.Dataset):
-        drv: gdal.Driver = ds.GetDriver()
-        if drv.ShortName in ['ENVI', 'GTiff']:
-            for f in ds.GetFileList():
-                if f.endswith('.hdr'):
-                    stat = gdal.VSIStatL(f)
-                    fp = gdal.VSIFOpenL(f, "rb")
-                    assert fp
-                    content = gdal.VSIFReadL(1, stat.size, fp).decode("utf-8")
-                    gdal.VSIFCloseL(fp)
-                    txt = gdal.VSIFReadL(f)
-                    s = ""
-        s = ""
-
     def applyToLayer(self, *args):
 
         if not (isGDALRasterLayer(self.mMapLayer) and self.isEditable()):
             return
 
+        # self.mMapLayer.reload()
         ds: gdal.Dataset = None
         try:
-            ds = gdalDataset(self.mMapLayer)
+            ds = gdalDataset(self.mMapLayer, eAccess=gdal.GA_Update)
         except (NotImplementedError, AssertionError) as ex:
+            s = ""
+        except Exception:
+            s = ""
             pass
 
         def value2str(v) -> str:
@@ -475,7 +465,8 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
 
         if isinstance(ds, gdal.Dataset):
 
-            for f in self.getFeatures(list(range(1, ds.RasterCount + 1))):
+            featureOrder = list(range(1, ds.RasterCount + 1))
+            for f in self.getFeatures(featureOrder):
                 f: QgsFeature
                 bandNo = f.attribute(BandFieldNames.Number)
                 assert f.id() == bandNo
@@ -492,23 +483,47 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                         continue
 
                     n = field.name()
-
-                    # write band name
+                    value = f.attribute(n)
                     if n == BandFieldNames.Name:
-                        value = value2str(f.attribute(BandFieldNames.Name))
-                        band.SetDescription(value)
-                        continue
+                        band.SetDescription(value2str(value))
 
-                    value = value2str(f.attribute(n))
-                    md_key = self.FIELD2GDALKey.get(field.name(), None)
-                    if md_key:
-                        band.SetMetadataItem(md_key, value, domain)
+                    elif n == BandFieldNames.Scale:
+                        band.SetScale(value)
 
+                    elif n == BandFieldNames.Offset:
+                        band.SetOffset(value)
+
+                    elif n == BandFieldNames.NoData:
+                        if value in [None, NULL]:
+                            band.DeleteNoDataValue()
+                        else:
+                            band.SetNoDataValue(value)
+
+                    else:
+                        v = value2str(value)
+                        md_key = self.FIELD2GDALKey.get(field.name(), None)
+                        if md_key:
+                            band.SetMetadataItem(md_key, v, domain)
+
+            self.driverSpecific(ds)
             ds.FlushCache()
-            self.updateENVIHeader(ds)
             del ds
 
-            self.mMapLayer.reload()
+            # self.mMapLayer.reload()
+
+    def driverSpecific(self, ds: gdal.Dataset):
+
+        drv: gdal.Driver = ds.GetDriver()
+
+        if drv.ShortName == 'ENVI':
+            wlu = ds.GetRasterBand(1).GetMetadataItem('wavelength units')
+            ds.SetMetadataItem('wavelength units', wlu, 'ENVI')
+            bandNames = []
+            wl = []
+            for b in range(ds.RasterCount):
+                band: gdal.Band = ds.GetRasterBand(b + 1)
+                bandNames.append(band.GetDescription())
+                wl.append(band.GetMetadataItem('wavelengths'))
 
 
 class GDALMetadataItem(object):
