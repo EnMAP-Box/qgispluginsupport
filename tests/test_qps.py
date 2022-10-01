@@ -12,6 +12,19 @@ DIR_QPS = pathlib.Path(__file__).parents[1] / 'qps'
 
 class ResourceTests(unittest.TestCase):
 
+    def test_testdata(self):
+
+        import qpstestdata
+
+        path_keys = [k for k in qpstestdata.__dict__.keys()
+                     if not k.startswith('__') and k not in ['pathlib']]
+        for k in path_keys:
+            path = pathlib.Path(getattr(qpstestdata, k))
+            if k.startswith('DIR'):
+                self.assertTrue(path.is_dir(), msg=f'Unable to find directory "{k}" = {path}')
+            else:
+                self.assertTrue(path.is_file(), msg=f'Unable to find file "{k}" = {path}')
+
     def test_imports(self):
         """
         This test ensures that all imports of qps modules are relative.

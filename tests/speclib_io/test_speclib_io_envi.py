@@ -14,7 +14,7 @@ from qps.speclib.io.envi import EnviSpectralLibraryIO, findENVIHeader, EnviSpect
     EnviSpectralLibraryImportWidget
 from qps.testing import TestObjects, TestCase
 from qpstestdata import enmap
-from qpstestdata import speclib as speclibpath
+from qpstestdata import envi_sli as speclibpath
 
 
 class TestSpeclibIO_ENVI(TestCase):

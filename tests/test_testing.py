@@ -8,25 +8,22 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import numpy as np
-from osgeo import gdal
 
 import qps.testing
+from osgeo import gdal
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
     QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
 
 
-class testClassTesting(unittest.TestCase):
+class TestCasesClassTesting(unittest.TestCase):
 
     def setUp(self) -> None:
         app = QgsApplication.instance()
         import qgis.testing
         if hasattr(qgis.testing, 'QGISAPP'):
             qgis.testing.stop_app()
-
-    def test_fail(self):
-        self.assertTrue(False)
 
     def test_init(self):
         import qps.testing
@@ -85,7 +82,7 @@ class testClassTesting(unittest.TestCase):
         self.assertIsInstance(qgis_app.libexecPath(), str)
 
 
-class test_TestObject(qps.testing.TestCase):
+class TestCasesTestObject(qps.testing.TestCase):
 
     def test_spectralProfiles(self):
         from qps.testing import TestObjects

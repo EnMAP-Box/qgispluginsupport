@@ -22,7 +22,6 @@ import pathlib
 import re
 import unittest
 
-
 from qgis.core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature
 from qgis.core import QgsVectorLayer
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -61,7 +60,7 @@ class TestIO(TestCase):
         import qpstestdata
         gpkg = TestObjects.createSpectralLibrary(n_bands=[75, 75])
         EXAMPLES = {
-            EnviSpectralLibraryImportWidget.__name__: qpstestdata.speclib,
+            EnviSpectralLibraryImportWidget.__name__: qpstestdata.envi_sli,
             GeoPackageSpectralLibraryImportWidget.__name__: gpkg.source()
         }
         n_bands = [[25, 75], [50, 100]]
