@@ -4,7 +4,11 @@ on:
   push:
     paths:
       - '**.py'
+    branches:
+      - 'master'
   pull_request:
+    branches:
+      - '*'
     paths:
       - '**.py'
 
