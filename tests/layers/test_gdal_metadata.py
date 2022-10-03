@@ -192,6 +192,7 @@ class TestsGdalMetadata(TestCase):
         self.assertTrue('band names = {A, B, C}' in content_hdr)
         self.assertTrue('bbl = {0,1,0}' in content_hdr)
 
+    @unittest.skipIf(gdal.VersionInfo() < '3060000', 'Requires GDAL 3.6+')
     def test_modify_metadata(self):
         nb, nl, ns = 5, 2, 2
 
@@ -225,6 +226,7 @@ class TestsGdalMetadata(TestCase):
         bandModel = GDALBandMetadataModel()
         bandModel.setLayer(lyr)
 
+        map1 = bandModel.asMap()
         # this model is a vector layer with fields for each supported band property
         self.assertIsInstance(bandModel, QgsVectorLayer)
 
@@ -246,7 +248,7 @@ class TestsGdalMetadata(TestCase):
 
             # bandModel.changeAttributeValue(3, iField, 'Another Band Name')
 
-        hdr1 = readHeader()
+        bandModel.mMapLayer.reload()
         bandModel.applyToLayer()
 
         ds2: gdal.Dataset = gdal.Open(path)
