@@ -826,9 +826,9 @@ def gdalDataset(dataset: typing.Union[str,
     if isinstance(dataset, pathlib.Path):
         dataset = dataset.as_posix()
     if isinstance(dataset, QgsRasterLayer):
-        return gdalDataset(dataset.source())
+        return gdalDataset(dataset.source(), eAccess=eAccess)
     if isinstance(dataset, QgsRasterDataProvider):
-        return gdalDataset(dataset.dataSourceUri())
+        return gdalDataset(dataset.dataSourceUri(), eAccess=eAccess)
     if isinstance(dataset, str):
         ds = gdal.Open(dataset, eAccess)
         assert isinstance(ds, gdal.Dataset), f'Can not read {dataset} as gdal.Dataset'

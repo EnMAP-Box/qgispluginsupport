@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>522</width>
+    <width>581</width>
     <height>495</height>
    </rect>
   </property>
@@ -96,6 +96,12 @@
          </property>
          <item>
           <widget class="QgsFilterLineEdit" name="tbBandFilter">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="minimumSize">
             <size>
              <width>200</width>
@@ -142,8 +148,10 @@
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>
+             :/images/themes/default/mActionOpenTable.svg
+            </iconset>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -156,8 +164,29 @@
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>
+             :/images/themes/default/mActionFormView.svg
+            </iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnBandEdit">
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/mActionToggleEditing.svg</normaloff>
+             :/images/themes/default/mActionToggleEditing.svg
+            </iconset>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -166,12 +195,36 @@
          </item>
          <item>
           <widget class="QToolButton" name="btnBandCalculator">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="text">
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>:/images/themes/default/mActionCalculateField.svg</iconset>
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
+             :/images/themes/default/mActionCalculateField.svg
+            </iconset>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnBandReset">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>R</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/mActionCancelEdits.svg</normaloff>
+             :/images/themes/default/mActionCancelEdits.svg
+            </iconset>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -305,6 +358,12 @@
          </property>
          <item>
           <widget class="QgsFilterLineEdit" name="tbFilter">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="minimumSize">
             <size>
              <width>200</width>
@@ -346,13 +405,36 @@
           </widget>
          </item>
          <item>
-          <widget class="QToolButton" name="btnAddItem">
+          <widget class="QToolButton" name="btnEdit">
            <property name="text">
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/mActionToggleEditing.svg</normaloff>
+             :/images/themes/default/mActionToggleEditing.svg
+            </iconset>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoRaise">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QToolButton" name="btnAddItem">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
+           <property name="text">
+            <string>...</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg
+            </iconset>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -361,12 +443,17 @@
          </item>
          <item>
           <widget class="QToolButton" name="btnRemoveItem">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="text">
             <string>...</string>
            </property>
            <property name="icon">
-            <iconset>
-             <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>
+             :/images/themes/default/symbologyRemove.svg
+            </iconset>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -375,8 +462,17 @@
          </item>
          <item>
           <widget class="QToolButton" name="btnReset">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="text">
             <string>R</string>
+           </property>
+           <property name="icon">
+            <iconset resource="../../../QGIS/images/images.qrc">
+             <normaloff>:/images/themes/default/mActionCancelEdits.svg</normaloff>
+             :/images/themes/default/mActionCancelEdits.svg
+            </iconset>
            </property>
            <property name="autoRaise">
             <bool>true</bool>
@@ -408,7 +504,7 @@
          <bool>true</bool>
         </property>
         <attribute name="horizontalHeaderDefaultSectionSize">
-         <number>39</number>
+         <number>42</number>
         </attribute>
        </widget>
       </item>
@@ -453,8 +549,9 @@
   </action>
   <action name="actionAddItem">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg
+    </iconset>
    </property>
    <property name="text">
     <string>Add Item</string>
@@ -465,8 +562,9 @@
   </action>
   <action name="actionRemoveItem">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/symbologyRemove.svg</normaloff>:/images/themes/default/symbologyRemove.svg
+    </iconset>
    </property>
    <property name="text">
     <string>Remove Items</string>
@@ -477,8 +575,9 @@
   </action>
   <action name="actionReset">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mIconClearText.svg</normaloff>:/images/themes/default/mIconClearText.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionCancelEdits.svg</normaloff>:/images/themes/default/mActionCancelEdits.svg
+    </iconset>
    </property>
    <property name="text">
     <string>Reset</string>
@@ -489,8 +588,9 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg
+    </iconset>
    </property>
    <property name="text">
     <string>BandTableView</string>
@@ -501,8 +601,9 @@
   </action>
   <action name="actionBandFormView">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg
+    </iconset>
    </property>
    <property name="text">
     <string>BandFormView</string>
@@ -513,8 +614,10 @@
   </action>
   <action name="actionBandCalculator">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>:/images/themes/default/mActionCalculateField.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionCalculateField.svg</normaloff>
+     :/images/themes/default/mActionCalculateField.svg
+    </iconset>
    </property>
    <property name="text">
     <string>BandCalculator</string>
@@ -550,8 +653,9 @@
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionOpenTable.svg</normaloff>:/images/themes/default/mActionOpenTable.svg
+    </iconset>
    </property>
    <property name="text">
     <string>BandTableView</string>
@@ -562,14 +666,62 @@
   </action>
   <action name="actionFormView">
    <property name="icon">
-    <iconset>
-     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg</iconset>
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionFormView.svg</normaloff>:/images/themes/default/mActionFormView.svg
+    </iconset>
    </property>
    <property name="text">
     <string>FormView</string>
    </property>
    <property name="toolTip">
     <string>Show metadata items in form view</string>
+   </property>
+  </action>
+  <action name="actionBandReset">
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionCancelEdits.svg</normaloff>:/images/themes/default/mActionCancelEdits.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Band Resert</string>
+   </property>
+   <property name="toolTip">
+    <string>Reset changes</string>
+   </property>
+  </action>
+  <action name="optionEdit">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionToggleEditing.svg</normaloff>
+     :/images/themes/default/mActionToggleEditing.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Edit Dataset</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to edit metadata that describes the dataset.</string>
+   </property>
+  </action>
+  <action name="optionBandEdit">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../../../QGIS/images/images.qrc">
+     <normaloff>:/images/themes/default/mActionToggleEditing.svg</normaloff>
+     :/images/themes/default/mActionToggleEditing.svg
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Edit Band metadata</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate to edit band metadata.</string>
    </property>
   </action>
  </widget>
