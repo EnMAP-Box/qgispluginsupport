@@ -130,7 +130,7 @@ class SpectralProcessingTests(TestCase):
 
         # add sources
         panel.addSources(MapCanvasLayerProfileSource())
-        panel.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_BOTTOM_LAYER))
+        panel.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_LAST_LAYER))
         panel.addSources(sources)
 
         # add widgets
@@ -310,6 +310,25 @@ class SpectralProcessingTests(TestCase):
         inputBlock = SpectralProfileBlock(array, spectral_setting)
         return inputBlock
 
+    def test_MapCanvasLayerProfileSource(self):
+
+        source1 = MapCanvasLayerProfileSource()
+        source2 = MapCanvasLayerProfileSource(MapCanvasLayerProfileSource.MODE_LAST_LAYER)
+        self.assertEqual(source1.mMode, MapCanvasLayerProfileSource.MODE_FIRST_LAYER)
+        self.assertEqual(source2.mMode, MapCanvasLayerProfileSource.MODE_LAST_LAYER)
+
+        self.assertEqual(source1.toolTip(), MapCanvasLayerProfileSource.MODE_TOOLTIP[source1.mMode])
+        self.assertEqual(source2.toolTip(), MapCanvasLayerProfileSource.MODE_TOOLTIP[source2.mMode])
+
+        canvas = QgsMapCanvas()
+        lyr1 = TestObjects.createRasterLayer()
+        lyr2 = TestObjects.createRasterLayer()
+        canvas.setLayers([lyr1, lyr2])
+        canvas.zoomToFullExtent()
+
+        self.assertEqual(lyr1, source1.rasterLayer(canvas, canvas.center()))
+        self.assertEqual(lyr2, source2.rasterLayer(canvas, canvas.center()))
+
     def test_ProfileSamplingModel(self):
 
         from qpstestdata import enmap
@@ -379,7 +398,7 @@ class SpectralProcessingTests(TestCase):
 
         model = SpectralProfileBridge()
         model.addSources(MapCanvasLayerProfileSource())
-        model.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_BOTTOM_LAYER))
+        model.addSources(MapCanvasLayerProfileSource(mode=MapCanvasLayerProfileSource.MODE_LAST_LAYER))
         model.addSources(sources)
         model.createFeatureGenerator()
         # model.createFeatureGenerator()

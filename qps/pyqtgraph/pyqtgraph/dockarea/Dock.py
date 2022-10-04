@@ -347,7 +347,7 @@ class DockLabel(VerticalLabel):
         ev.accept()
 
     def mouseMoveEvent(self, ev):
-        if not self.mouseMoved:
+        if not self.mouseMoved and hasattr(self, 'pressPos'):
             lpos = ev.position() if hasattr(ev, 'position') else ev.localPos()
             self.mouseMoved = (lpos - self.pressPos).manhattanLength() > QtWidgets.QApplication.startDragDistance()
 
