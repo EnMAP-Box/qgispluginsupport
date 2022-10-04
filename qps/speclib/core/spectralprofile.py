@@ -203,7 +203,7 @@ def encodeProfileValueDict(d: dict,
     :param encoding: QgsField Field definition
     :return: QByteArray or str, respecting the datatype that can be stored in field
     """
-    if not isinstance(d, dict) or len(d) == 0:
+    if not (isinstance(d, dict) and 'y' in d.keys()):
         return None
 
     encoding = ProfileEncoding.fromInput(encoding)

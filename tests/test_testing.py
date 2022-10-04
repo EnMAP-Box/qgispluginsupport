@@ -7,13 +7,8 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 
-import numpy as np
-
 import qps.testing
-from osgeo import gdal
-from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
-from qgis.core import QgsProject, QgsApplication, QgsVectorLayer, QgsCoordinateReferenceSystem, \
-    QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
+from qgis.core import QgsProject, QgsApplication, QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
 
 
@@ -26,7 +21,6 @@ class TestCasesClassTesting(unittest.TestCase):
             qgis.testing.stop_app()
 
     def test_init(self):
-        import qps.testing
         self.assertTrue(qps.testing is not None)
 
         qgis_app = qps.testing.start_app(options=qps.testing.StartOptions.All)
