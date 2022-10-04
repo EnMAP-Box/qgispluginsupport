@@ -1,3 +1,4 @@
+import unittest
 from osgeo import gdal
 from qgis.core import QgsRasterLayer, QgsRasterFileWriter, QgsRasterPipe, QgsProcessingContext, QgsRasterBlockFeedback
 
@@ -61,4 +62,7 @@ class TestCore(TestCase):
             self.assertListEqual(settingB.x(), wl.tolist())
             self.assertEqual(settingB.xUnit(), wlu)
             self.assertEqual(settingA, settingB)
-        print('done')
+
+
+if __name__ == '__main__':
+    unittest.main(buffer=False)
