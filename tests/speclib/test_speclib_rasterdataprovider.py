@@ -1,3 +1,4 @@
+import unittest
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.core import QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRasterRange, QgsMapLayerStore, \
     QgsRasterPipe
@@ -145,3 +146,7 @@ class RasterDataProviderTests(TestCase):
             self.assertIsInstance(lyr, QgsRasterLayer)
             dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
+
+
+if __name__ == '__main__':
+    unittest.main(buffer=False)
