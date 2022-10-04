@@ -41,9 +41,7 @@ import uuid
 import warnings
 from typing import Set
 from unittest import mock
-
 import numpy as np
-
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
@@ -475,9 +473,9 @@ def _set_iface(ifaceMock):
     Replaces the iface variable in other plugins, i.e. the  QGIS processing plugin
     :param ifaceMock: QgisInterface
     """
-    import processing.ProcessingPlugin
 
-    # enhance this list with further positions where iface needs to be replaces or remains None otherwise
+    # enhance this list with further positions where iface needs to be replaced or remains None otherwise
+    import processing.ProcessingPlugin
     modules = [processing.ProcessingPlugin]
 
     for m in modules:
