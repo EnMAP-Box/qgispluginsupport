@@ -1207,7 +1207,9 @@ class TestObjects(object):
         return lyr
 
     @staticmethod
-    def createVectorDataSet(wkb=ogr.wkbPolygon, n_features: int = None) -> ogr.DataSource:
+    def createVectorDataSet(wkb=ogr.wkbPolygon,
+                            n_features: int = None,
+                            path: typing.Union[str, pathlib.Path] = None) -> ogr.DataSource:
         """
         Create an in-memory ogr.DataSource
         :return: ogr.DataSource
@@ -1239,17 +1241,20 @@ class TestObjects(object):
         assert isinstance(drv, ogr.Driver)
 
         # set temp path
-        if wkb == ogr.wkbPolygon:
-            lname = 'polygons'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.polygons.gpkg'
-        elif wkb == ogr.wkbPoint:
-            lname = 'points'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.centroids.gpkg'
-        elif wkb == ogr.wkbLineString:
-            lname = 'lines'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.line.gpkg'
+        if path:
+            pathDst = pathlib.Path(path).as_posix()
         else:
-            raise NotImplementedError()
+            if wkb == ogr.wkbPolygon:
+                lname = 'polygons'
+                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.polygons.gpkg'
+            elif wkb == ogr.wkbPoint:
+                lname = 'points'
+                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.centroids.gpkg'
+            elif wkb == ogr.wkbLineString:
+                lname = 'lines'
+                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.line.gpkg'
+            else:
+                raise NotImplementedError()
 
         dsDst = drv.CreateDataSource(pathDst)
         assert isinstance(dsDst, ogr.DataSource)
@@ -1304,7 +1309,9 @@ class TestObjects(object):
         return dsDst
 
     @staticmethod
-    def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon, n_features: int = None) -> QgsVectorLayer:
+    def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
+                          n_features: int = None,
+                          path: typing.Union[str, pathlib.Path] = None) -> QgsVectorLayer:
         """
         Create a QgsVectorLayer
         :return: QgsVectorLayer
@@ -1321,7 +1328,7 @@ class TestObjects(object):
             wkb = ogr.wkbPolygon
 
         assert wkb is not None
-        dsSrc = TestObjects.createVectorDataSet(wkb=wkb, n_features=n_features)
+        dsSrc = TestObjects.createVectorDataSet(wkb=wkb, n_features=n_features, path=path)
 
         assert isinstance(dsSrc, ogr.DataSource)
         lyr = dsSrc.GetLayer(0)
