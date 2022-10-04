@@ -22,8 +22,8 @@ import pathlib
 import unittest
 
 import numpy as np
-from osgeo import ogr, gdal
 
+from osgeo import ogr, gdal
 from qgis.PyQt.QtCore import QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
@@ -172,14 +172,14 @@ class TestSpeclibWidgets(TestCase):
         slw = SpectralLibraryWidget()
         # drop a valid speclib
         md = QMimeData()
-        from qpstestdata import speclib
+        from qpstestdata import envi_sli
 
-        sl = QgsVectorLayer(speclib, 'Speclib')
+        sl = QgsVectorLayer(envi_sli, 'Speclib')
 
-        md.setUrls([QUrl.fromLocalFile(speclib)])
+        md.setUrls([QUrl.fromLocalFile(envi_sli)])
 
         event = QDropEvent(QPoint(0, 0), Qt.CopyAction, md, Qt.LeftButton, Qt.NoModifier)
-        print('Drop {}'.format(speclib), flush=True)
+        print('Drop {}'.format(envi_sli), flush=True)
         slw.dropEvent(event)
         self.assertEqual(len(slw.speclib()), len(sl))
 

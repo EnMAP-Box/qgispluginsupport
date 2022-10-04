@@ -2,9 +2,8 @@ name: 🧪 Tests
 
 on:
   push:
-    branches:
-      - master
-      - release-**
+    branches: [master]
+
   pull_request:
     branches:
       - '**'
@@ -17,7 +16,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        qgis_version: [latest, release-3_24]
+        qgis_version: [latest]
     env:
       QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
     steps:

@@ -25,11 +25,13 @@
 ***************************************************************************
 """
 import enum
+import gc
 import inspect
 import itertools
 import os
 import pathlib
 import random
+import shutil
 import site
 import sqlite3
 import sys
@@ -37,14 +39,13 @@ import traceback
 import typing
 import uuid
 import warnings
+from typing import Set
 from unittest import mock
-
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
-
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
+from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
@@ -63,7 +64,7 @@ from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
-from .resources import findQGISResourceFiles, initResourceFile
+from .resources import initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
 from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
 from .speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -472,13 +473,16 @@ def _set_iface(ifaceMock):
     Replaces the iface variable in other plugins, i.e. the  QGIS processing plugin
     :param ifaceMock: QgisInterface
     """
-    import processing.ProcessingPlugin
 
-    # enhance this list with further positions where iface needs to be replaces or remains None otherwise
+    # enhance this list with further positions where iface needs to be replaced or remains None otherwise
+    import processing.ProcessingPlugin
     modules = [processing.ProcessingPlugin]
 
     for m in modules:
         m.iface = ifaceMock
+
+
+APP = None
 
 
 class TestCase(qgis.testing.TestCase):
@@ -496,7 +500,9 @@ class TestCase(qgis.testing.TestCase):
     def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
 
         if not isinstance(QgsApplication.instance(), QgsApplication):
-            qgis.testing.start_app(cleanup=False)
+            global APP
+            assert APP is None
+            APP = qgis.testing.start_app(cleanup=False)
 
         if TestCase.IFACE is None:
             TestCase.IFACE = get_iface()
@@ -508,19 +514,33 @@ class TestCase(qgis.testing.TestCase):
         if QgsGui.editorWidgetRegistry().name('TextEdit') in ['', None]:
             QgsGui.editorWidgetRegistry().initEditors()
 
-        return
+    def tempDir(self, subdir: str = None, cleanup: bool = False) -> pathlib.Path:
+        """
+        Returns the <enmapbox-repository/test-outputs/test name> directory
+        :param subdir:
+        :param cleanup:
+        :return: pathlib.Path
+        """
+        DIR_REPO = findUpwardPath(__file__, '.git').parent
+        if isinstance(self, TestCase):
+            foldername = self.__class__.__name__
+        else:
+            foldername = self.__name__
+        p = pathlib.Path(DIR_REPO) / 'test-outputs' / foldername
+        if isinstance(subdir, str):
+            p = p / subdir
+        if cleanup and p.exists() and p.is_dir():
+            shutil.rmtree(p)
+        os.makedirs(p, exist_ok=True)
+        return p
 
-        if resources is None:
-            resources = []
-        # try to find QGIS resource files
-        for r in findQGISResourceFiles():
-            if r not in resources:
-                resources.append(r)
+    @classmethod
+    def _readVSIMemFiles(cls) -> Set[str]:
 
-        start_app(cleanup=cleanup, options=options, resources=resources)
-
-        from osgeo import gdal
-        gdal.AllRegister()
+        r = gdal.ReadDirRecursive('/vsimem/')
+        if r is None:
+            return set([])
+        return set(r)
 
     def tearDown(self):
         if isinstance(TestCase.IFACE, QgisInterface):
@@ -530,8 +550,10 @@ class TestCase(qgis.testing.TestCase):
         if QgsProject.instance():
             QgsProject.instance().removeAllMapLayers()
 
-        return
-        # let failures fail fast
+        if isinstance(QgsApplication.instance(), QgsApplication) and APP == QgsApplication.instance():
+            pass
+            # stop_app()
+        gc.collect()
 
     def createTestOutputDirectory(self, name: str = 'test-outputs', subdir: str = None) -> pathlib.Path:
         """
@@ -1024,6 +1046,7 @@ class TestObjects(object):
         """
         Generates a gdal.Dataset of arbitrary size based on true data from a smaller EnMAP raster image
         """
+        # gdal.AllRegister()
         from .classification.classificationscheme import ClassificationScheme
         scheme = None
         if nc is None:
@@ -1033,20 +1056,25 @@ class TestObjects(object):
             eType = gdal.GDT_Byte if nc < 256 else gdal.GDT_Int16
             scheme = ClassificationScheme()
             scheme.createClasses(nc)
+        if gdal.GetDriverCount() == 0:
+            gdal.AllRegister()
 
         if isinstance(drv, str):
             drv = gdal.GetDriverByName(drv)
         elif drv is None:
             drv = gdal.GetDriverByName('GTiff')
-        assert isinstance(drv, gdal.Driver)
+        assert isinstance(drv, gdal.Driver), 'Unable to load GDAL Driver'
 
         if isinstance(path, pathlib.Path):
             path = path.as_posix()
         elif path is None:
+            ext = drv.GetMetadataItem('DMD_EXTENSION')
+            if len(ext) > 0:
+                ext = f'.{ext}'
             if nc > 0:
-                path = '/vsimem/testClassification.{}.tif'.format(str(uuid.uuid4()))
+                path = f'/vsimem/testClassification.{uuid.uuid4()}{ext}'
             else:
-                path = '/vsimem/testImage.{}.tif'.format(str(uuid.uuid4()))
+                path = f'/vsimem/testImage.{uuid.uuid4()}{ext}'
         assert isinstance(path, str)
 
         ds: gdal.Driver = drv.Create(path, ns, nl, bands=nb, eType=eType)
@@ -1179,11 +1207,14 @@ class TestObjects(object):
         return lyr
 
     @staticmethod
-    def createVectorDataSet(wkb=ogr.wkbPolygon, n_features: int = None) -> ogr.DataSource:
+    def createVectorDataSet(wkb=ogr.wkbPolygon,
+                            n_features: int = None,
+                            path: typing.Union[str, pathlib.Path] = None) -> ogr.DataSource:
         """
         Create an in-memory ogr.DataSource
         :return: ogr.DataSource
         """
+        # ogr.RegisterAll()
         ogr.UseExceptions()
         assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
 
@@ -1196,7 +1227,7 @@ class TestObjects(object):
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
 
         dsSrc = ogr.Open(pathSrc.as_posix())
-        assert isinstance(dsSrc, ogr.DataSource)
+        assert isinstance(dsSrc, ogr.DataSource), f'Unable to load {pathSrc}'
         lyrSrc = dsSrc.GetLayerByIndex(0)
         assert isinstance(lyrSrc, ogr.Layer)
 
@@ -1210,17 +1241,20 @@ class TestObjects(object):
         assert isinstance(drv, ogr.Driver)
 
         # set temp path
-        if wkb == ogr.wkbPolygon:
-            lname = 'polygons'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.polygons.gpkg'
-        elif wkb == ogr.wkbPoint:
-            lname = 'points'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.centroids.gpkg'
-        elif wkb == ogr.wkbLineString:
-            lname = 'lines'
-            pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.line.gpkg'
+        if path:
+            pathDst = pathlib.Path(path).as_posix()
         else:
-            raise NotImplementedError()
+            if wkb == ogr.wkbPolygon:
+                lname = 'polygons'
+                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.polygons.gpkg'
+            elif wkb == ogr.wkbPoint:
+                lname = 'points'
+                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.centroids.gpkg'
+            elif wkb == ogr.wkbLineString:
+                lname = 'lines'
+                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.line.gpkg'
+            else:
+                raise NotImplementedError()
 
         dsDst = drv.CreateDataSource(pathDst)
         assert isinstance(dsDst, ogr.DataSource)
@@ -1275,7 +1309,9 @@ class TestObjects(object):
         return dsDst
 
     @staticmethod
-    def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon, n_features: int = None) -> QgsVectorLayer:
+    def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
+                          n_features: int = None,
+                          path: typing.Union[str, pathlib.Path] = None) -> QgsVectorLayer:
         """
         Create a QgsVectorLayer
         :return: QgsVectorLayer
@@ -1292,7 +1328,7 @@ class TestObjects(object):
             wkb = ogr.wkbPolygon
 
         assert wkb is not None
-        dsSrc = TestObjects.createVectorDataSet(wkb=wkb, n_features=n_features)
+        dsSrc = TestObjects.createVectorDataSet(wkb=wkb, n_features=n_features, path=path)
 
         assert isinstance(dsSrc, ogr.DataSource)
         lyr = dsSrc.GetLayer(0)

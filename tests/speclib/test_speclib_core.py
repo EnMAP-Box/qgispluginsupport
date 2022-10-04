@@ -24,8 +24,8 @@ import unittest
 from typing import List
 
 import numpy as np
-from osgeo import ogr
 
+from osgeo import ogr
 from qgis.PyQt.QtCore import QJsonDocument, NULL
 from qgis.PyQt.QtCore import QMimeData, QByteArray, QVariant
 from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
@@ -668,11 +668,11 @@ class SpeclibCoreTests(TestCase):
 
     def test_SpectralLibraryUtils(self):
 
-        from qpstestdata import speclib
+        from qpstestdata import envi_sli
         from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
         initSpectralLibraryIOs()
 
-        vl = SpectralLibraryUtils.readFromSource(speclib)
+        vl = SpectralLibraryUtils.readFromSource(envi_sli)
         self.assertIsInstance(vl, QgsVectorLayer)
         self.assertTrue(is_spectral_library(vl))
 

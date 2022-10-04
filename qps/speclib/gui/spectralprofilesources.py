@@ -70,21 +70,24 @@ class SpectralProfileSource(object):
 
 class MapCanvasLayerProfileSource(SpectralProfileSource):
     MODE_FIRST_LAYER = 'first'
-    MODE_TOP_LAYER = 'top'
-    MODE_BOTTOM_LAYER = 'bottom'
+    MODE_LAST_LAYER = 'last'
+
+    MODE_TOOLTIP = {MODE_FIRST_LAYER:
+                        'Returns profiles of the first / top visible raster layer in the map layer stack',
+                    MODE_LAST_LAYER:
+                        'Returns profiles of the last / bottom visible raster layer in the map layer stack'
+                    }
 
     def __init__(self, mode: str = None):
         super().__init__()
         self.mMapCanvas: QgsMapCanvas = None
         if mode is None:
             mode = self.MODE_FIRST_LAYER
-
-        assert mode in [self.MODE_TOP_LAYER, self.MODE_FIRST_LAYER, self.MODE_BOTTOM_LAYER]
+        else:
+            assert mode in [self.MODE_FIRST_LAYER, self.MODE_LAST_LAYER]
         self.mMode = mode
 
-        if self.mMode == self.MODE_TOP_LAYER:
-            self.mName = '<i>Top raster layer</i>'
-        elif self.mMode == self.MODE_BOTTOM_LAYER:
+        if self.mMode == self.MODE_LAST_LAYER:
             self.mName = '<i>Last raster layer</i>'
         elif self.mMode == self.MODE_FIRST_LAYER:
             self.mName = '<i>First raster layer</i>'
@@ -93,14 +96,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         return isinstance(other, MapCanvasLayerProfileSource) and other.mMode == self.mMode
 
     def toolTip(self) -> str:
-        if self.mMode == self.MODE_TOP_LAYER:
-            return 'Returns profiles from the top raster layer  in the map layer stack'
-        elif self.mMode == self.MODE_BOTTOM_LAYER:
-            return 'Returns profiles from the bottom raster layer in the map layer stack'
-        elif self.mMode == self.MODE_FIRST_LAYER:
-            return 'Returns profiles of the first visible raster layer in the map layer stack'
-        else:
-            raise NotImplementedError()
+        return self.MODE_TOOLTIP[self.mMode]
 
     def rasterLayer(self, mapCanvas: QgsMapCanvas = None, position: SpatialPoint = None) -> QgsRasterLayer:
         """
@@ -112,26 +108,27 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         if not (isinstance(mapCanvas, QgsMapCanvas) and isinstance(position, QgsPointXY)):
             return None
 
+        if not isinstance(position, SpatialPoint):
+            position = SpatialPoint(mapCanvas.mapSettings().destinationCrs(), position.x(), position.y())
+
         raster_layers = [layer for layer in mapCanvas.layers() if isinstance(layer, QgsRasterLayer) and layer.isValid()]
 
-        if self.mMode == self.MODE_TOP_LAYER:
-            raster_layers = raster_layers[0:1]
-        elif self.mMode == self.MODE_BOTTOM_LAYER:
-            raster_layers = raster_layers[-1:]
-        elif self.mMode == self.MODE_FIRST_LAYER:
-            # test which raster layer has a valid pixel
-            for lyr in raster_layers:
-                pt = position.toCrs(lyr.crs())
-                if not lyr.extent().contains(pt):
-                    continue
-                dp: QgsRasterDataProvider = lyr.dataProvider()
-                result: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormatValue, QgsRectangle())
-                s = ""
-                if result.isValid():
-                    for v in result.results().values():
-                        if v not in [None]:
-                            # a valid numeric value
-                            return lyr
+        if self.mMode == self.MODE_LAST_LAYER:
+            raster_layers = reversed(raster_layers)
+
+        # test which raster layer has a valid pixel
+        for lyr in raster_layers:
+            pt = position.toCrs(lyr.crs())
+            if not lyr.extent().contains(pt):
+                continue
+            dp: QgsRasterDataProvider = lyr.dataProvider()
+            result: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormatValue, QgsRectangle())
+            s = ""
+            if result.isValid():
+                for v in result.results().values():
+                    if v not in [None]:
+                        # a valid numeric value
+                        return lyr
 
         return None
 

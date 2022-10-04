@@ -13,7 +13,7 @@ PREFACE_SH = \
     """#!/bin/bash
 export QT_QPA_PLATFORM=offscreen
 export CI=True
-export PYTHONPATH="${PYTHONPATH}$(pwd)"
+# export PYTHONPATH="${PYTHONPATH}$(pwd)"
 find . -name "*.pyc" -exec rm -f {} \;
 """
 
@@ -23,7 +23,8 @@ linesSh = [PREFACE_SH,
            'mkdir -p {}'.format(dirOut)]
 
 bnDirTests = os.path.basename(DIR_TESTS)
-for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py', recursive=True)):
+files = sorted(file_search(DIR_TESTS, 'test_*.py', recursive=True))
+for i, file in enumerate(files):
     file = pathlib.Path(file)
     bn = os.path.basename(file)
     bn = os.path.splitext(bn)[0]
@@ -33,7 +34,8 @@ for i, file in enumerate(file_search(DIR_TESTS, 'test_*.py', recursive=True)):
     if RUN_PYTEST:
         lineSh = 'pytest -x {}'.format(pathTest.as_posix())
     else:
-        lineSh = 'python3 -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
+        # lineSh = 'python3 -m coverage run --rcfile=.coveragec {}  {}'.format(do_append, pathTest.as_posix())
+        lineSh = 'python3 -m unittest -f {}'.format(pathTest.as_posix())
     linesSh.append(lineSh)
 
 if not RUN_PYTEST:

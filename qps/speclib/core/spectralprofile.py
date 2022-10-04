@@ -203,7 +203,7 @@ def encodeProfileValueDict(d: dict,
     :param encoding: QgsField Field definition
     :return: QByteArray or str, respecting the datatype that can be stored in field
     """
-    if not isinstance(d, dict) or len(d) == 0:
+    if not (isinstance(d, dict) and 'y' in d.keys()):
         return None
 
     encoding = ProfileEncoding.fromInput(encoding)
@@ -702,7 +702,7 @@ class SpectralProfile(QgsFeature):
         :param profile_field: name or index of profile_field that contains the spectral values information.
                             Needs to be a BLOB profile_field.
         """
-        warnings.warn(DeprecationWarning('SpectraProfile class will be removed'), stacklevel=2)
+        warnings.warn(DeprecationWarning('SpectralProfile class will be removed'), stacklevel=2)
         if fields is None:
             fields = createStandardFields()
         assert isinstance(fields, QgsFields)

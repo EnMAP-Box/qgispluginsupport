@@ -28,7 +28,9 @@ class TestQgsRasterLayerProperties(TestCase):
         from qpstestdata import envi_bsq
 
         lyr = QgsRasterLayer(envi_bsq)
+        self.assertIsInstance(lyr, QgsRasterLayer)
         properties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
+        self.assertIsInstance(properties, QgsRasterLayerSpectralProperties)
         p2 = QgsRasterLayerSpectralProperties.fromRasterLayer(envi_bsq)
         self.assertEqual(properties, p2)
 

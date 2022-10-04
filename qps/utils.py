@@ -49,8 +49,8 @@ from collections import defaultdict
 from typing import Union, List, Optional
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
 
+from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
     QDateTime, QDate, QVariant, QByteArray, QUrl, Qt
@@ -58,7 +58,8 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
     QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
-from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
+from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel, \
+    QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
     QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
     QgsFields
@@ -197,7 +198,9 @@ MAP_LAYER_STORES = [QPS_MAPLAYER_STORE, QgsProject.instance()]
 
 def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
     """
-    Searches for an file or directory in an upward path of the base path
+    Searches for a file or directory in an upward path of a base path.
+    E.g. DIR_REPO = findUpwardPath(__file__, '.git').parent returns the repository directory
+         that contains the module refered by __file__
 
     :param basepath:
     :param name:
@@ -657,6 +660,7 @@ def toType(t, arg, empty2None=True, empty_values=[None, NULL]):
         toType(int, '42') == 42,
         toType(float, ['23.42', '123.4']) == [23.42, 123.4]
 
+    :param empty_values:
     :param t: type
     :param arg: value to convert
     :param empty2None: returns None in case arg is an emptry value (None, '', NoneType, ...)
@@ -822,9 +826,9 @@ def gdalDataset(dataset: typing.Union[str,
     if isinstance(dataset, pathlib.Path):
         dataset = dataset.as_posix()
     if isinstance(dataset, QgsRasterLayer):
-        return gdalDataset(dataset.source())
+        return gdalDataset(dataset.source(), eAccess=eAccess)
     if isinstance(dataset, QgsRasterDataProvider):
-        return gdalDataset(dataset.dataSourceUri())
+        return gdalDataset(dataset.dataSourceUri(), eAccess=eAccess)
     if isinstance(dataset, str):
         ds = gdal.Open(dataset, eAccess)
         assert isinstance(ds, gdal.Dataset), f'Can not read {dataset} as gdal.Dataset'
@@ -1744,7 +1748,8 @@ def equalRasterRenderer(renderer1: QgsRasterRenderer, renderer2: QgsRasterRender
 
 def defaultBands(dataset) -> list:
     """
-    Returns a list of 3 default bands
+    Returns a list of 3 default bands.
+    Band numbers start counting with 1
     :param dataset:
     :return:
     """
@@ -2170,7 +2175,7 @@ def geo2pxF(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPoin
 def geo2px(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPoint:
     """
     Returns the pixel position related to a Geo-Coordinate as integer number.
-    Floating-point coordinate are casted to integer coordinate, e.g. the pixel
+    Floating-point coordinate are cast to integer coordinate, e.g. the pixel
     coordinate (0.815, 23.42) is returned as (0,23)
     :param geo: Geo-Coordinate as QgsPointXY
     :param gt: GDAL Geo-Transformation tuple, as described in http://www.gdal.org/gdal_datamodel.html or
@@ -2515,21 +2520,29 @@ class SpatialPoint(QgsPointXY):
         :param allowOutOfRaster: set True to return out-of-raster pixel positions, e.g. QPoint(-1,0)
         :return: the pixel position as QPoint
         """
-        ds = gdalDataset(rasterDataSource)
-        ns, nl = ds.RasterXSize, ds.RasterYSize
-        gt = ds.GetGeoTransform()
-
-        pt = self.toCrs(ds.GetProjection())
-        if pt is None:
+        lyr: QgsRasterLayer = qgsRasterLayer(rasterDataSource)
+        if not lyr.isValid():
             return None
 
-        px = geo2px(pt, gt)
-        if not allowOutOfRaster:
-            if px.x() < 0 or px.x() >= ns:
-                return None
-            if px.y() < 0 or px.y() >= nl:
-                return None
-        return px
+        geoPt = self.toCrs(lyr.crs())
+        if not isinstance(geoPt, SpatialPoint):
+            return None
+
+        mapUnitsPerPixel = lyr.rasterUnitsPerPixelX()
+        center = lyr.extent().center()
+        rotation = 0
+        m2p = QgsMapToPixel(mapUnitsPerPixel,
+                            center.x(),
+                            center.y(),
+                            lyr.width(),
+                            lyr.height(),
+                            rotation)
+        pxPt: QgsPointXY = m2p.transform(geoPt)
+        pxPt: QPoint = QPoint(int(pxPt.x()), int(pxPt.y()))
+        if (not allowOutOfRaster) and not (0 <= pxPt.x() < lyr.width() and 0 <= pxPt.y() < lyr.height()):
+            return None
+        else:
+            return pxPt
 
     def writeXml(self, node: QDomNode, doc: QDomDocument):
         node_geom = doc.createElement('SpatialPoint')

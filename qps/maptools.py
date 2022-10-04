@@ -24,15 +24,15 @@
 import enum
 import math
 import sys
+from typing import Dict, Any, List
 
+from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal, QTimer, QObject, QPoint, QRect, QSize, QEvent
 from qgis.PyQt.QtGui import QColor, QKeyEvent, QIcon, QCursor
 from qgis.PyQt.QtWidgets import QApplication, QAction, QLabel, QHBoxLayout, QWidget, QSizePolicy, QAbstractButton
-
-from qgis.PyQt.QtCore import Qt
-from qgis.core import QgsRasterDataProvider
-from qgis.core import QgsWkbTypes, QgsVectorLayerTools, QgsProject, QgsVectorLayer, QgsPoint, QgsGeometry, \
-    QgsCoordinateReferenceSystem, QgsPointXY, QgsFeature, QgsSettings, QgsEditFormConfig, QgsMultiPoint, \
+from qgis.core import QgsRasterDataProvider, QgsSettingsRegistryCore, QgsSettingsEntryBool, \
+    QgsWkbTypes, QgsVectorLayerTools, QgsProject, QgsVectorLayer, QgsPoint, QgsGeometry, \
+    QgsCoordinateReferenceSystem, QgsPointXY, QgsFeature, QgsEditFormConfig, QgsMultiPoint, \
     QgsFeatureRequest, QgsExpressionContextUtils, QgsRenderContext, QgsCsException, QgsDistanceArea, QgsLineString, \
     QgsRectangle, QgsVectorLayerUtils, QgsVectorDataProvider, Qgis, QgsRasterLayer, QgsAction, QgsMapLayer, \
     QgsApplication, QgsPointLocator, QgsCurvePolygon, QgsPolygon, QgsFeatureIterator, QgsCoordinateTransform, \
@@ -45,7 +45,6 @@ from qgis.gui import QgsAttributeEditorContext, \
     QgsDoubleSpinBox, \
     QgsVertexMarker, QgsHighlight
 from .utils import SpatialPoint, SpatialExtent
-
 from .vectorlayertools import VectorLayerTools
 
 
@@ -387,7 +386,7 @@ class PixelScaleExtentMapTool(QgsMapTool):
             canvas.zoomByFactor(res / canvas.mapUnitsPerPixel())
         else:
             canvas.zoomByFactor(
-                math.sqrt(layer.rasterUnitsPerPixelX()**2 + layer.rasterUnitsPerPixelY()**2) / diagonalSize)
+                math.sqrt(layer.rasterUnitsPerPixelX() ** 2 + layer.rasterUnitsPerPixelY() ** 2) / diagonalSize)
 
 
 class FullExtentMapTool(QgsMapTool):
@@ -584,7 +583,7 @@ class QgsFeatureAction(QAction):
     """
     This is a python copy of the qgis/app/QgsFeatureAction.cpp
     """
-    sLastUsedValues = dict()
+    sLastUsedValues: Dict[str, Dict[int, Any]] = dict()
 
     def __init__(self, name: str, f: QgsFeature, layer: QgsVectorLayer,
                  actionID: id = '',
@@ -716,14 +715,36 @@ class QgsFeatureAction(QAction):
         return True
 
     def addFeature(self,
-                   initialAttributeValues: dict = dict(),
+                   defaultAttributeValues: dict = dict(),
                    showModal: bool = True,
                    scope: QgsExpressionContextScope = None) -> bool:
 
         if not (isinstance(self.mLayer, QgsVectorLayer) and self.mLayer.isEditable()):
             return
 
-        reuseLastValues = bool(QgsSettings().value('qgis/digitizing/reuseLastValues', False))
+        qgsSettingsRegistry = QgsSettingsRegistryCore()
+        initialAttributeValues = dict()
+        reuseLastValues = False
+        entry = qgsSettingsRegistry.settingsEntry('qgis/digitizing/reuseLastValues')
+        if isinstance(entry, QgsSettingsEntryBool):
+            reuseLastValues = entry.value()
+
+        lyr: QgsVectorLayer = self.mLayer
+        for idx in range(lyr.fields().count()):
+
+            if idx in defaultAttributeValues.keys():
+                initialAttributeValues[idx] = defaultAttributeValues[idx]
+            elif (reuseLastValues or lyr.editFormConfig().reuseLastValue(idx)) and \
+                    self.mLayer.id() in self.sLastUsedValues.keys() and \
+                    idx in self.sLastUsedValues[lyr.id()].keys():
+
+                lastUsed = self.sLastUsedValues[lyr.id()][idx]
+                """
+                // Only set initial attribute value if it's different from the default clause or we may trigger
+                // unique constraint checks for no reason, see https://github.com/qgis/QGIS/issues/42909
+                """
+                if lyr.dataProvider() and lyr.dataProvider().defaultValueClause(idx) != lastUsed:
+                    initialAttributeValues[idx] = lastUsed
 
         fields = self.mLayer.fields()
 
@@ -736,8 +757,11 @@ class QgsFeatureAction(QAction):
 
         self.mFeature = newFeature
 
-        isDisabledAttributesValueDlg = bool(
-            QgsSettings().value('qgis/digitizing/disable_enter_attribute_values_dialog', False))
+        isDisabledAttributesValueDlg = False
+        entry = qgsSettingsRegistry.settingsEntry('qgis/digitizing/disable_enter_attribute_values_dialog')
+        if isinstance(entry, QgsSettingsEntryBool):
+            isDisabledAttributesValueDlg = entry.value()
+
         if not self.mLayer.isSpatial():
             isDisabledAttributesValueDlg = False
 
@@ -796,20 +820,22 @@ class QgsFeatureAction(QAction):
 
         self.mFeatureSaved = True
 
-        settings = QgsSettings()
+        qgsSettingsRegistry = QgsSettingsRegistryCore()
 
-        reuseLastValues = bool(settings.value("qgis/digitizing/reuseLastValues", False))
-        # QgsDebugMsg(QStringLiteral("reuseLastValues: %1").arg(reuseLastValues));
+        reuseLastValues = False
+        entry = qgsSettingsRegistry.settingsEntry('qgis/digitizing/reuseLastValues')
+        if isinstance(entry, QgsSettingsEntryBool):
+            reuseLastValues = entry.value()
+
+        lyr = self.mLayer
 
         if reuseLastValues:
-            fields = self.mLayer.fields()
+            fields = lyr.fields()
+            origValues: Dict[int, Any] = self.sLastUsedValues.get(lyr.id(), dict())
+            newValues: List = feature.attributes()
             for idx in range(fields.count()):
-
-                newValues = feature.attributes()
-                origValues = self.sLastUsedValues[self.mLayer.id()]
-
-                if origValues[idx] != newValues.at(idx):
-                    self.sLastUsedValues[self.mLayer.id()][idx] = newValues.at(idx)
+                origValues[idx] = newValues[idx]
+            self.sLastUsedValues[lyr.id()] = origValues
 
 
 class QgsMapToolDigitizeFeature(QgsMapToolCapture):
@@ -1096,7 +1122,7 @@ class QgsMapToolAddFeature(QgsMapToolDigitizeFeature):
                  vectorLayerTools: QgsVectorLayerTools = None):
         super(QgsMapToolAddFeature, self).__init__(canvas, canvas.currentLayer(), mode, cadDockWidget,
                                                    vectorLayerTools=vectorLayerTools)
-
+        self._d: QWidget = None
         self.setCheckGeometryType(True)
         QgsProject.instance().readProject.connect(self.stopCapturing)
         QgsProject.instance().projectSaved.connect(self.stopCapturing)
@@ -1260,11 +1286,11 @@ class QgsMapToolSelectUtils(object):
     def selectMultipleFeatures(canvas: QgsMapCanvas, selectGeometry: QgsGeometry, modifiers: Qt.KeyboardModifiers):
 
         behavior = QgsVectorLayer.SetSelection
-        if (modifiers & Qt.ShiftModifier and modifiers & Qt.ControlModifier):
+        if modifiers & Qt.ShiftModifier and modifiers & Qt.ControlModifier:
             behavior = QgsVectorLayer.IntersectSelection
-        elif (modifiers & Qt.ShiftModifier):
+        elif modifiers & Qt.ShiftModifier:
             behavior = QgsVectorLayer.AddToSelection
-        elif (modifiers & Qt.ControlModifier):
+        elif modifiers & Qt.ControlModifier:
             behavior = QgsVectorLayer.RemoveFromSelection
 
         doContains = modifiers & Qt.AltModifier
@@ -1282,7 +1308,7 @@ class QgsMapToolSelectUtils(object):
         selectedFeatures = QgsMapToolSelectUtils.getMatchingFeatures(canvas, selectGeometry, False, True)
         if len(selectedFeatures) == 0:
 
-            if (not (modifiers & Qt.ShiftModifier or modifiers & Qt.ControlModifier)):
+            if not (modifiers & Qt.ShiftModifier or modifiers & Qt.ControlModifier):
                 # if no modifiers then clicking outside features clears the selection
                 # but if there's a shift or ctrl modifier, then it's likely the user was trying
                 # to modify an existing selection by adding or subtracting features and just
@@ -1331,7 +1357,7 @@ class QgsMapToolSelectUtils(object):
 
         newSelectedFeatures = []
 
-        if (selectGeometry.type() != QgsWkbTypes.PolygonGeometry):
+        if selectGeometry.type() != QgsWkbTypes.PolygonGeometry:
             return newSelectedFeatures
 
         vlayer = QgsMapToolSelectUtils.getCurrentVectorLayer(canvas)
@@ -1361,14 +1387,14 @@ class QgsMapToolSelectUtils(object):
         context = QgsRenderContext.fromMapSettings(canvas.mapSettings())
         context.expressionContext().appendScope(QgsExpressionContextUtils.layerScope(vlayer))
         r = None
-        if (vlayer.renderer()):
+        if vlayer.renderer():
             r = vlayer.renderer().clone()
             r.startRender(context, vlayer.fields())
 
         request = QgsFeatureRequest()
         request.setFilterRect(selectGeomTrans.boundingBox())
         request.setFlags(QgsFeatureRequest.ExactIntersect)
-        if (r):
+        if r:
             request.setSubsetOfAttributes(r.usedAttributes(context), vlayer.fields())
         else:
             request.setNoAttributes()
@@ -1392,14 +1418,14 @@ class QgsMapToolSelectUtils(object):
                 if not selectGeomTrans.contains(g):
                     continue
             else:
-                if (not selectGeomTrans.intersects(g)):
+                if not selectGeomTrans.intersects(g):
                     continue
 
-            if (singleSelect):
+            if singleSelect:
 
                 foundSingleFeature = True
                 distance = g.distance(selectGeomTrans)
-                if (distance <= closestFeatureDist):
+                if distance <= closestFeatureDist:
                     closestFeatureDist = distance
                     closestFeatureId = f.id()
 
@@ -1410,7 +1436,7 @@ class QgsMapToolSelectUtils(object):
         if singleSelect and foundSingleFeature:
             newSelectedFeatures.append(closestFeatureId)
 
-        if (r):
+        if r:
             r.stopRender(context)
 
         return newSelectedFeatures
@@ -1573,7 +1599,7 @@ class QgsMapToolSelectionHandler(QObject):
                 self.setSelectedGeometry(selectedFeatures[0].mFeature.geometry(), e.modifiers())
             return
 
-            # // Handle definition of polygon by clicking points on cancas
+            # // Handle definition of polygon by clicking points on canvas
         if not self.mSelectionRubberBand:
             self.initRubberBand()
 

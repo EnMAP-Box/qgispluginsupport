@@ -607,7 +607,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             feedback: QgsProcessingFeedback = QgsProcessingFeedback()
             progressDialog = QProgressDialog(parent=parent)
             progressDialog.setWindowTitle('Import profiles')
-            feedback.progressChanged.connect(feedback.setProgress)
+            feedback.progressChanged.connect(progressDialog.setValue)
             progressDialog.canceled.connect(feedback.cancel)
             progressDialog.show()
 

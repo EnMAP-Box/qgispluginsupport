@@ -22,6 +22,7 @@ import re
 import sys
 import typing
 import warnings
+from typing import List
 
 from osgeo import gdal, osr
 
@@ -576,14 +577,26 @@ def rendererFromXml(xml):
     return None
 
 
-def defaultRasterRenderer(layer: QgsRasterLayer, bandIndices: list = None, sampleSize: int = 256,
+def defaultRasterRenderer(layer: QgsRasterLayer,
+                          bandIndices: List[int] = None,
+                          sampleSize: int = 256,
                           readQml: bool = True) -> QgsRasterRenderer:
     """
-    Returns a default Raster Renderer.
+    Returns a good default Raster Renderer.
     See https://bitbucket.org/hu-geomatics/enmap-box/issues/166/default-raster-visualization
-    :param layer: QgsRasterLayer
-    :return: QgsRasterRenderer
+
+    :param layer:
+    :type layer:
+    :param bandIndices:
+    :type bandIndices:
+    :param sampleSize:
+    :type sampleSize:
+    :param readQml:
+    :type readQml:
+    :return:
+    :rtype:
     """
+
     assert isinstance(sampleSize, int) and sampleSize > 0
     renderer = None
 
@@ -626,9 +639,8 @@ def defaultRasterRenderer(layer: QgsRasterLayer, bandIndices: list = None, sampl
                     print(msg, file=sys.stderr)
 
         if nb >= 3:
-
             if isinstance(defaultRenderer, QgsMultiBandColorRenderer):
-                bandIndices = defaultBands(layer)
+                bandIndices = [b - 1 for b in defaultBands(layer)]
             else:
                 bandIndices = [2, 1, 0]
         else:
