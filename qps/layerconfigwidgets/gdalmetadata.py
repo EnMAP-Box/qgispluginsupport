@@ -991,7 +991,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.onEditToggled(self.optionEdit.isChecked())
 
         self.onBandFormModeChanged()
-        self.setEditable(True)
+        self.setEditable(False)
 
     def setBandModelView(self, viewMode: QgsDualView.ViewMode):
         self.bandDualView.setView(viewMode)
@@ -1281,6 +1281,7 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         # w.metadataModel.setIsEditable(True)
         w.setWindowTitle(self.title())
         w.setWindowIcon(self.icon())
+        w.setEditable(False)
         return w
 
     def title(self) -> str:
