@@ -7,7 +7,7 @@ import zipfile
 
 import requests
 
-URL_QGIS_RESOURCES = r'https://bitbucket.org/jakimowb/qgispluginsupport/downloads/qgisresources.zip'
+URL_QGIS_RESOURCES = r'https://bitbucket.org/hu-geomatics/enmap-box/downloads/qgisresources.zip'
 
 DIR_REPO = pathlib.Path(__file__).parents[1]
 
