@@ -1,3 +1,4 @@
+import unittest
 from qgis.PyQt.QtCore import QSize, Qt, NULL, QVariant
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox
 from qgis.core import QgsActionManager, QgsFeature
@@ -10,7 +11,7 @@ from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFac
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorWidget, registerSpectralProfileEditorWidget, \
     SpectralProfileTableModel, SpectralProfileJsonEditor, SpectralProfileTableEditor
 from qps.testing import TestCase, TestObjects
-from test_speclib_core import SpeclibCoreTests
+from .test_speclib_core import SpeclibCoreTests
 
 
 class TestSpeclibWidgets(TestCase):
@@ -146,3 +147,7 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui([w, configWidget])
         speclib.commitChanges()
+
+
+if __name__ == '__main__':
+    unittest.main(buffer=False)
