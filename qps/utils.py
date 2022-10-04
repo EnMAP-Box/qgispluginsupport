@@ -1746,7 +1746,7 @@ def equalRasterRenderer(renderer1: QgsRasterRenderer, renderer2: QgsRasterRender
     return xml1.toByteArray() == xml2.toByteArray()
 
 
-def defaultBands(dataset) -> list:
+def defaultBands(dataset) -> List[int]:
     """
     Returns a list of 3 default bands.
     Band numbers start counting with 1
@@ -1786,14 +1786,13 @@ def defaultBands(dataset) -> list:
         if isinstance(defaultRenderer, QgsRasterRenderer):
             db = defaultRenderer.usesBands()
             if len(db) == 0:
-                return [0, 1, 2]
+                return [1, 2, 3]
             if len(db) > 3:
                 db = db[0:3]
-            db = [b - 1 for b in db]
         return db
 
     else:
-        return [0, 0, 0]
+        return [1, 1, 1]
 
 
 def bandClosestToWavelength(dataset, wl, wl_unit='nm') -> int:
