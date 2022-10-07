@@ -1777,7 +1777,7 @@ def defaultBands(dataset) -> List[int]:
             assert isinstance(band, gdal.Band)
             ci = band.GetColorInterpretation()
             if ci in cis:
-                db[cis.index(ci)] = b
+                db[cis.index(ci)] = b + 1
         if 0 not in db:
             return db
 
