@@ -1778,7 +1778,7 @@ def defaultBands(dataset) -> List[int]:
             ci = band.GetColorInterpretation()
             if ci in cis:
                 db[cis.index(ci)] = b
-        if db != [0, 0, 0]:
+        if 0 not in db:
             return db
 
         rl = QgsRasterLayer(dataset.GetDescription())
