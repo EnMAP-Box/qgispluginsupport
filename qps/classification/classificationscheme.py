@@ -977,6 +977,21 @@ class ClassificationScheme(QAbstractTableModel):
             assert isinstance(c, QColor)
             rgba = (c.red(), c.green(), c.blue(), c.alpha())
             ct.SetColorEntry(i, rgba)
+        if len(cat) == 0:
+            ct = None
+
+        def equalColorTables(ct1: gdal.ColorTable, ct2: gdal.ColorTable) -> bool:
+            if ct1 is None and ct2 is None:
+                return True
+            elif isinstance(ct1, gdal.ColorTable) and isinstance(ct2, gdal.ColorTable):
+                if ct1.GetCount() != ct2.GetCount():
+                    return False
+                for c in range(ct1.GetCount()):
+                    if ct1.GetColorEntry(c) != ct2.GetColorEntry(c):
+                        return False
+                return True
+            else:
+                return False
 
         try:
             band.SetCategoryNames(cat)
@@ -984,7 +999,8 @@ class ClassificationScheme(QAbstractTableModel):
             print(ex, file=sys.stderr)
 
         try:
-            band.SetColorTable(ct)
+            if not equalColorTables(ct, band.GetColorTable()):
+                band.SetColorTable(ct)
         except Exception as ex:
             print(ex, file=sys.stderr)
 
