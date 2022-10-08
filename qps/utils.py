@@ -1777,8 +1777,8 @@ def defaultBands(dataset) -> List[int]:
             assert isinstance(band, gdal.Band)
             ci = band.GetColorInterpretation()
             if ci in cis:
-                db[cis.index(ci)] = b
-        if db != [0, 0, 0]:
+                db[cis.index(ci)] = b + 1
+        if 0 not in db:
             return db
 
         rl = QgsRasterLayer(dataset.GetDescription())
