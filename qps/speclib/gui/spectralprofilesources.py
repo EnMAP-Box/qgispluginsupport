@@ -1883,7 +1883,7 @@ class SpectralProfileBridge(TreeModel):
                             return f
 
                     if role == Qt.ToolTipRole:
-                        return 'Select a Spectral Library Window'
+                        return 'Select a Spectral Library View'
                 else:
                     speclib = node.speclib()
 

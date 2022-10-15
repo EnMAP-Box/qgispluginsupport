@@ -23,6 +23,7 @@
 """
 import copy
 import datetime
+import json
 import math
 import pathlib
 import re
@@ -31,10 +32,10 @@ from typing import List, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
-    QSortFilterProxyModel
+    QSortFilterProxyModel, QMimeData
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget, \
-    QDialog, QAction, QTableView, QGroupBox
+    QDialog, QAction, QTableView, QGroupBox, QMenu, QApplication
 from qgis.core import QgsAttributeTableConfig, QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
     QgsEditorWidgetSetup, \
     QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature
@@ -56,6 +57,8 @@ PROTECTED = [
 ]
 
 MAJOR_OBJECTS = [gdal.Dataset.__name__, gdal.Band.__name__, ogr.DataSource.__name__, ogr.Layer.__name__]
+
+MDF_GDAL_BANDMETADATA = 'qgs/gdal_band_metadata'
 
 
 class GDALErrorHandler(object):
@@ -330,6 +333,61 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                     data[mapKey] = value
         return data
 
+    def onWillShowBandContextMenu(self, menu: QMenu, index: QModelIndex):
+        tv: QTableView = menu.parent()
+        cName = tv.model().headerData(index.column(), Qt.Horizontal)
+
+        aCopyMD: QAction = menu.addAction('Copy Metadata')
+        aCopyMD.triggered.connect(self.copyBandMetadata)
+
+        aCopyCol: QAction = menu.addAction(f'Copy {cName}')
+        aCopyCol.triggered.connect(lambda *args, f=cName: self.copyBandMetadata(field=f))
+
+        aPasteCol: QAction = menu.addAction('Paste Metadata')
+        aPasteCol.setEnabled(self.isEditable() and QApplication.clipboard()
+                             .mimeData().hasFormat(MDF_GDAL_BANDMETADATA))
+        aPasteCol.triggered.connect(self.pasteBandMetadata)
+
+    def pasteBandMetadata(self, *args):
+        mimeData: QMimeData = QApplication.clipboard().mimeData()
+        if mimeData.hasFormat(MDF_GDAL_BANDMETADATA) and self.isEditable():
+            dump = mimeData.data(MDF_GDAL_BANDMETADATA)
+            data = bytes(dump).decode('UTF-8')
+            MD = json.loads(data)
+            fields = [k for k in MD.keys() if k in self.fields().names()
+                      and not self.fields().field(k).isReadOnly()]
+            for b, feature in enumerate(self.orderedFeatures()):
+                for f in fields:
+                    fieldId: int = self.fields().lookupField(f)
+                    vector = MD[f]
+                    if b < len(vector):
+                        self.changeAttributeValue(feature.id(), fieldId, vector[b])
+
+            self.dataChanged.emit()
+
+    def copyBandMetadata(self, bands: List[int] = None, field: str = None):
+
+        if field is None:
+            fields = self.fields().names()
+        else:
+            assert field in self.fields().names()
+            fields = [field]
+
+        MD = {f: [] for f in fields}
+
+        for b, feature in enumerate(self.orderedFeatures()):
+            feature: QgsFeature
+            for f in MD.keys():
+                v = feature.attribute(f)
+                if v == NULL:
+                    v = None
+                MD[f].append(v)
+        data = json.dumps(MD)
+        mimeData = QMimeData()
+        mimeData.setData(MDF_GDAL_BANDMETADATA, data.encode('utf-8'))
+        mimeData.setText(data)
+        QApplication.clipboard().setMimeData(mimeData)
+
     def syncToLayer(self, *args, spectralProperties: QgsRasterLayerSpectralProperties = None):
         was_editable = self.isEditable()
         self.startEditing()
@@ -436,6 +494,11 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             self.endEditCommand()
         assert self.commitChanges(not was_editable)
 
+    def orderedFeatures(self) -> List[QgsFeature]:
+        request = QgsFeatureRequest()
+        request.addOrderBy('"Band"', True, True)
+        return self.getFeatures(request)
+
     def applyToLayer(self, *args):
 
         if not (isGDALRasterLayer(self.mMapLayer) and self.isEditable()):
@@ -466,9 +529,7 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
             if is_envi:
                 domain = 'ENVI'
 
-            request = QgsFeatureRequest()
-            request.addOrderBy('"Band"', True, True)
-            for f in self.getFeatures(request):
+            for f in self.orderedFeatures():
                 f: QgsFeature
                 bandNo = f.attribute(BandFieldNames.Number)
                 # assert f.id() == bandNo
@@ -922,7 +983,8 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
 
         self.bandDualView.init(self.bandMetadataModel, self.canvas())
         self.bandDualView.currentChanged.connect(self.onBandFormModeChanged)
-
+        self.bandDualView.tableView().willShowContextMenu.connect(
+            self.bandMetadataModel.onWillShowBandContextMenu)
         self.actionBandTableView.setCheckable(True)
         self.actionBandFormView.setCheckable(True)
 
@@ -991,7 +1053,10 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         self.onEditToggled(self.optionEdit.isChecked())
 
         self.onBandFormModeChanged()
-        self.setEditable(True)
+        self.setEditable(False)
+
+    def onCustomBandContextMenuRequested(self, *args):
+        s = ""
 
     def setBandModelView(self, viewMode: QgsDualView.ViewMode):
         self.bandDualView.setView(viewMode)
@@ -1281,6 +1346,7 @@ class GDALMetadataConfigWidgetFactory(QgsMapLayerConfigWidgetFactory):
         # w.metadataModel.setIsEditable(True)
         w.setWindowTitle(self.title())
         w.setWindowIcon(self.icon())
+        w.setEditable(False)
         return w
 
     def title(self) -> str:
