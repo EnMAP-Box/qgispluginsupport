@@ -28,10 +28,10 @@ import math
 import pathlib
 import re
 import typing
-from typing import List, Pattern, Tuple, Union, Dict, Any
+from typing import List, Pattern, Tuple, Union, Dict
 
-from PyQt5.QtGui import QClipboard
 from osgeo import gdal, ogr
+
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
     QSortFilterProxyModel, QMimeData
 from qgis.PyQt.QtGui import QIcon

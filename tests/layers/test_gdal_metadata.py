@@ -265,14 +265,14 @@ class TestsGdalMetadata(TestCase):
 
         hdr = """
 ENVI
-foo A=bar 
-foo B = bar2 
-foo C=b a r 3 
+foo A=bar \n
+foo B = bar2 \n
+foo C=b a r 3 \n
 foo D={a,b, c}
 foo E={1,2
 ,3,4}
-stupid -- broken 
- stuff
+stupid -- broken \n
+stuff
 foo F = {1, 2
     , 3, 4
     }
@@ -289,7 +289,6 @@ foo H =
             self.assertIsInstance(v, (str, list))
         for a in 'H':
             self.assertTrue(f'foo {a}' not in found.keys())
-
 
     def test_GDAL_PAM(self):
         test_dir = self.createTestOutputDirectory(subdir='gdalmetadata_PAM')
