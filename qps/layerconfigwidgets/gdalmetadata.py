@@ -389,7 +389,10 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
 
     def onWillShowBandContextMenu(self, menu: QMenu, index: QModelIndex):
         tv: QTableView = menu.parent()
-        cName = tv.model().headerData(index.column(), Qt.Horizontal)
+        if isinstance(tv, QTableView):
+            cName = tv.model().headerData(index.column(), Qt.Horizontal)
+        else:
+            cName = self.fields().names()[index.column()]
 
         aCopyMD: QAction = menu.addAction('Copy Metadata')
         aCopyMD.triggered.connect(self.copyBandMetadata)
@@ -404,42 +407,46 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         mPaste.setEnabled(self.isEditable() and len(metadata))
         mPaste.triggered.connect(self.pasteBandMetadata)
         aPasteAll = mPaste.addAction('All')
-        aPasteAll.triggered.connect(lambda *arg, md=metadata: self.pasteBandMetadata(medatdata=md))
-        self._mPasteRef = mPaste
+
+        aPasteAll.triggered.connect(lambda *args, md=metadata: self.pasteBandMetadata(metadata=md))
+
         for n in self.fields().names():
             field: QgsField = self.fields().field(n)
             if not field.isReadOnly():
-                aPaste: QAction = mPaste.addAction(n)
+                a: QAction = mPaste.addAction(n)
 
                 if n in metadata.keys():
-                    aPaste.setEnabled(True)
-                    subset = dict(n=metadata[n])
-                    aPaste.triggered.connect(
-                        lambda *args, md=subset: self.pasteBandMetadata(metadata=md))
+                    a.setEnabled(True)
+                    a.triggered.connect(lambda *args, md={n: metadata[n]}: self.pasteBandMetadata(*args, metadata=md))
                 else:
-                    aPaste.setEnabled(False)
+                    a.setEnabled(False)
 
-    def pasteBandMetadata(self, *args, metadata: dict = None):
+    def pasteBandMetadata(self, *args, metadata: dict = None) -> List[str]:
         if not self.isEditable():
             return
 
-        if metadata is None:
+        if not isinstance(metadata, dict):
             metadata = self.bandMetadataFromMimeData(QApplication.clipboard().mimeData())
-
-        assert isinstance(metadata, dict)
+            if len(args) > 0 and isinstance(args[0], QAction):
+                n = args[0].text()
+                if n in metadata.keys():
+                    metadata = {n: metadata[n]}
+        if not isinstance(metadata, dict):
+            return
 
         fields = [k for k in metadata.keys() if k in self.fields().names()
                   and not self.fields().field(k).isReadOnly()]
         for b, feature in enumerate(self.orderedFeatures()):
             for f in fields:
                 fieldId: int = self.fields().lookupField(f)
-                value = metadata[f]
+                value = metadata.get(f, None)
                 if isinstance(value, str):
                     self.changeAttributeValue(feature.id(), fieldId, value)
                 elif isinstance(value, list):
                     if b < len(value):
                         self.changeAttributeValue(feature.id(), fieldId, value[b])
         self.dataChanged.emit()
+        return fields
 
     def copyBandMetadata(self, bands: List[int] = None, field: str = None):
 

@@ -11,6 +11,7 @@ enmap_polygon = testvectordata
 # from qpstestdata
 hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()
 envi_bsq = (pathlib.Path(__file__).parent / 'envi' / 'envi').as_posix()
+envi_hdr = (pathlib.Path(__file__).parent / 'envi' / 'envi.hdr').as_posix()
 envi_sli = (pathlib.Path(__file__).parent / 'envi' / 'speclib.sli').as_posix()
 
 ndvi_ts = (pathlib.Path(__file__).parent / 'ndvi_ts.tif').as_posix()

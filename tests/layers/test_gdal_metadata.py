@@ -5,9 +5,10 @@ import unittest
 from typing import List
 
 import numpy as np
-
+from qgis.PyQt.QtCore import QMimeData, QModelIndex
 from osgeo import gdal, ogr, gdal_array
-from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout
+
+from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QMenu, QAction
 from qgis.core import QgsFeature
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
@@ -407,6 +408,45 @@ foo H =
 
         w = ControlWidget()
         self.showGui(w)
+
+    def test_GDALBandMetadataModelContextMenus(self):
+        from qpstestdata import enmap
+        from qpstestdata import envi_hdr
+
+        with open(envi_hdr) as f:
+            hdr = f.read()
+
+        img_path = self.createImageCopy(enmap)
+        lyr = QgsRasterLayer(img_path)
+        model = GDALBandMetadataModel()
+        c = QgsMapCanvas()
+        view = QgsDualView()
+        view.init(model, c)
+        model.setLayer(lyr)
+        model.syncToLayer()
+        model.startEditing()
+
+        mimeData: QMimeData = QMimeData()
+        mimeData.setText(hdr)
+        QApplication.clipboard().setMimeData(mimeData)
+        md = model.bandMetadataFromMimeData(QApplication.clipboard().mimeData())
+        self.assertIsInstance(md, dict)
+
+        menu1 = QMenu()
+        model.onWillShowBandContextMenu(menu1, QModelIndex())
+        for a in menu1.findChildren(QAction):
+            a: QAction
+            if a.isEnabled():
+                print(f'Trigger "{a.text()}"')
+                a.trigger()
+
+        mimeData: QMimeData = QMimeData()
+        mimeData.setText(hdr)
+        QApplication.clipboard().setMimeData(mimeData)
+        menu2 = QMenu()
+        model.onWillShowBandContextMenu(menu2, QModelIndex())
+
+        model.pasteBandMetadata()
 
     def test_GDALMetadataModel(self):
 
