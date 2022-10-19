@@ -3058,7 +3058,7 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
     """
     if not isinstance(rasterInterface, QgsRasterInterface):
         rlayer = qgsRasterLayer(rasterInterface)
-        assert isinstance(rlayer, QgsRasterLayer)
+        assert isinstance(rlayer, QgsRasterLayer) and rlayer.isValid()
         rasterInterface = rlayer.dataProvider()
     assert isinstance(rasterInterface, QgsRasterInterface)
 
