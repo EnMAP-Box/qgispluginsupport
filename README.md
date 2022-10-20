@@ -42,10 +42,10 @@ Push updates (replace with your fork):
 
 1. Copy the qgs folder into your source code, e.g. ``mymodule/qps``, and ensure that the Qt resource files are compiled:
 
-    ```python
+   ```python
     from mymodule.qps.setup import compileQPSResources
     compileQPSResources()
-     ```
+   ```
 
 2. QPS uses the Qt resource system, e.g. to access icons. This requires to convert the ``qps/qpsresources.qrc`` file 
 into a corresponding python module ``qps/qpsresources.py``.  
