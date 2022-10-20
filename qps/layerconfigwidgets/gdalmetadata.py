@@ -28,9 +28,10 @@ import math
 import pathlib
 import re
 import typing
-from typing import List, Pattern, Tuple, Union
+from typing import List, Pattern, Tuple, Union, Dict
 
 from osgeo import gdal, ogr
+
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
     QSortFilterProxyModel, QMimeData
 from qgis.PyQt.QtGui import QIcon
@@ -59,6 +60,33 @@ PROTECTED = [
 MAJOR_OBJECTS = [gdal.Dataset.__name__, gdal.Band.__name__, ogr.DataSource.__name__, ogr.Layer.__name__]
 
 MDF_GDAL_BANDMETADATA = 'qgs/gdal_band_metadata'
+
+
+class ENVIMetadataUtils(object):
+    """
+    A class to parse ENVI metadata headers
+    """
+    rxSingle = re.compile(r'^(?P<key>[^=\n]+)= *(?P<value>[^{ ][^{}\n]*)', re.M)
+    rxArray = re.compile(r'^(?P<key>[^=\n]+)= *{(?P<values>[^{}]+)}', re.M)
+
+    @staticmethod
+    def parseEnviHeader(text: str) -> Dict[str, Union[str, List]]:
+
+        # remove comments
+        lines = text.splitlines(False)
+        lines = [line for line in lines if not re.search(r'\s*#.*', line)]
+        lines = '\n'.join(lines)
+
+        ITEMS = dict()
+        r1 = ENVIMetadataUtils.rxSingle.findall(lines)
+        r2 = ENVIMetadataUtils.rxArray.findall(lines)
+        for r in r1 + r2:
+            value = re.sub(' *\n+ *', ' ', r[1].strip()).strip()
+            if len(value) > 0:
+                if r in r2:
+                    value = re.split(r' *, *', value)
+                ITEMS[r[0].strip()] = value
+        return ITEMS
 
 
 class GDALErrorHandler(object):
@@ -333,9 +361,38 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
                     data[mapKey] = value
         return data
 
+    @classmethod
+    def bandMetadataFromMimeData(cls, mimeData: QMimeData) -> Dict[str, Union[str, List]]:
+
+        metadata = dict()
+        enviMD = ENVIMetadataUtils.parseEnviHeader(mimeData.text())
+
+        LUT = {'wavelength units': BandFieldNames.WavelengthUnit,
+               'wavelengths': BandFieldNames.Wavelength,
+               'fwhm': BandFieldNames.FWHM,
+               'bbl': BandFieldNames.BadBand,
+               'band names': BandFieldNames.Name,
+               'data gain values': BandFieldNames.Scale,
+               'data offset values': BandFieldNames.Offset,
+               'data ignore value': BandFieldNames.NoData
+               }
+
+        for enviKey, fieldName in LUT.items():
+            if enviKey in enviMD.keys():
+                metadata[fieldName] = enviMD[enviKey]
+
+        dump = mimeData.data(MDF_GDAL_BANDMETADATA)
+        data = bytes(dump).decode('UTF-8')
+        metadata.update(json.loads(data) if data != '' else dict())
+
+        return metadata
+
     def onWillShowBandContextMenu(self, menu: QMenu, index: QModelIndex):
         tv: QTableView = menu.parent()
-        cName = tv.model().headerData(index.column(), Qt.Horizontal)
+        if isinstance(tv, QTableView):
+            cName = tv.model().headerData(index.column(), Qt.Horizontal)
+        else:
+            cName = self.fields().names()[index.column()]
 
         aCopyMD: QAction = menu.addAction('Copy Metadata')
         aCopyMD.triggered.connect(self.copyBandMetadata)
@@ -343,27 +400,53 @@ class GDALBandMetadataModel(GDALMetadataModelBase):
         aCopyCol: QAction = menu.addAction(f'Copy {cName}')
         aCopyCol.triggered.connect(lambda *args, f=cName: self.copyBandMetadata(field=f))
 
-        aPasteCol: QAction = menu.addAction('Paste Metadata')
-        aPasteCol.setEnabled(self.isEditable() and QApplication.clipboard()
-                             .mimeData().hasFormat(MDF_GDAL_BANDMETADATA))
-        aPasteCol.triggered.connect(self.pasteBandMetadata)
+        mPaste: QMenu = menu.addMenu('Paste Metadata')
 
-    def pasteBandMetadata(self, *args):
-        mimeData: QMimeData = QApplication.clipboard().mimeData()
-        if mimeData.hasFormat(MDF_GDAL_BANDMETADATA) and self.isEditable():
-            dump = mimeData.data(MDF_GDAL_BANDMETADATA)
-            data = bytes(dump).decode('UTF-8')
-            MD = json.loads(data)
-            fields = [k for k in MD.keys() if k in self.fields().names()
-                      and not self.fields().field(k).isReadOnly()]
-            for b, feature in enumerate(self.orderedFeatures()):
-                for f in fields:
-                    fieldId: int = self.fields().lookupField(f)
-                    vector = MD[f]
-                    if b < len(vector):
-                        self.changeAttributeValue(feature.id(), fieldId, vector[b])
+        metadata: dict = self.bandMetadataFromMimeData(QApplication.clipboard().mimeData())
 
-            self.dataChanged.emit()
+        mPaste.setEnabled(self.isEditable() and len(metadata))
+        mPaste.triggered.connect(self.pasteBandMetadata)
+        aPasteAll = mPaste.addAction('All')
+
+        aPasteAll.triggered.connect(lambda *args, md=metadata: self.pasteBandMetadata(metadata=md))
+
+        for n in self.fields().names():
+            field: QgsField = self.fields().field(n)
+            if not field.isReadOnly():
+                a: QAction = mPaste.addAction(n)
+
+                if n in metadata.keys():
+                    a.setEnabled(True)
+                    a.triggered.connect(lambda *args, md={n: metadata[n]}: self.pasteBandMetadata(*args, metadata=md))
+                else:
+                    a.setEnabled(False)
+
+    def pasteBandMetadata(self, *args, metadata: dict = None) -> List[str]:
+        if not self.isEditable():
+            return
+
+        if not isinstance(metadata, dict):
+            metadata = self.bandMetadataFromMimeData(QApplication.clipboard().mimeData())
+            if len(args) > 0 and isinstance(args[0], QAction):
+                n = args[0].text()
+                if n in metadata.keys():
+                    metadata = {n: metadata[n]}
+        if not isinstance(metadata, dict):
+            return
+
+        fields = [k for k in metadata.keys() if k in self.fields().names()
+                  and not self.fields().field(k).isReadOnly()]
+        for b, feature in enumerate(self.orderedFeatures()):
+            for f in fields:
+                fieldId: int = self.fields().lookupField(f)
+                value = metadata.get(f, None)
+                if isinstance(value, str):
+                    self.changeAttributeValue(feature.id(), fieldId, value)
+                elif isinstance(value, list):
+                    if b < len(value):
+                        self.changeAttributeValue(feature.id(), fieldId, value[b])
+        self.dataChanged.emit()
+        return fields
 
     def copyBandMetadata(self, bands: List[int] = None, field: str = None):
 

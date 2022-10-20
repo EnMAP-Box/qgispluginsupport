@@ -5,14 +5,15 @@ import unittest
 from typing import List
 
 import numpy as np
-
+from qgis.PyQt.QtCore import QMimeData, QModelIndex
 from osgeo import gdal, ogr, gdal_array
-from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout
+
+from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QMenu, QAction
 from qgis.core import QgsFeature
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
 from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
-    GDALMetadataModelConfigWidget, BandFieldNames
+    GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.testing import TestCase, TestObjects
 from qpstestdata import enmap
@@ -261,6 +262,35 @@ class TestsGdalMetadata(TestCase):
         # self.assertTrue('My Band Name' not in hdr1)
         # self.assertTrue('My Band Name' in hdr2)
 
+    def test_ENVI_Header_Utils(self):
+
+        hdr = """
+ENVI
+foo A=bar \n
+foo B = bar2 \n
+foo C=b a r 3 \n
+foo D={a,b, c}
+foo E={1,2
+,3,4}
+stupid -- broken \n
+stuff
+foo F = {1, 2
+    , 3, 4
+    }
+foo G = {1,
+  # comment
+2}
+foo H =
+        """
+        found = ENVIMetadataUtils.parseEnviHeader(hdr)
+        for a in 'ABCDEFG':
+            k = f'foo {a}'
+            self.assertTrue(k in found.keys())
+            v = found[k]
+            self.assertIsInstance(v, (str, list))
+        for a in 'H':
+            self.assertTrue(f'foo {a}' not in found.keys())
+
     def test_GDAL_PAM(self):
         test_dir = self.createTestOutputDirectory(subdir='gdalmetadata_PAM')
         path = test_dir / 'example.tif'
@@ -378,6 +408,45 @@ class TestsGdalMetadata(TestCase):
 
         w = ControlWidget()
         self.showGui(w)
+
+    def test_GDALBandMetadataModelContextMenus(self):
+        from qpstestdata import enmap
+        from qpstestdata import envi_hdr
+
+        with open(envi_hdr) as f:
+            hdr = f.read()
+
+        img_path = self.createImageCopy(enmap)
+        lyr = QgsRasterLayer(img_path)
+        model = GDALBandMetadataModel()
+        c = QgsMapCanvas()
+        view = QgsDualView()
+        view.init(model, c)
+        model.setLayer(lyr)
+        model.syncToLayer()
+        model.startEditing()
+
+        mimeData: QMimeData = QMimeData()
+        mimeData.setText(hdr)
+        QApplication.clipboard().setMimeData(mimeData)
+        md = model.bandMetadataFromMimeData(QApplication.clipboard().mimeData())
+        self.assertIsInstance(md, dict)
+
+        menu1 = QMenu()
+        model.onWillShowBandContextMenu(menu1, QModelIndex())
+        for a in menu1.findChildren(QAction):
+            a: QAction
+            if a.isEnabled():
+                print(f'Trigger "{a.text()}"')
+                a.trigger()
+
+        mimeData: QMimeData = QMimeData()
+        mimeData.setText(hdr)
+        QApplication.clipboard().setMimeData(mimeData)
+        menu2 = QMenu()
+        model.onWillShowBandContextMenu(menu2, QModelIndex())
+
+        model.pasteBandMetadata()
 
     def test_GDALMetadataModel(self):
 
