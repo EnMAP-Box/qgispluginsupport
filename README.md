@@ -63,14 +63,10 @@ your application, e.g. by calling:
 
 ## Dependencies
 
-QPS depends on the following type of packages:
-1. those available in a standard QGIS installation, i.e. QGIS python API, numpy, gdal, etc.
-2. pyqtgraph. 
-   QPS uses the fork https://github.com/EnMAP-Box/pyqtgraph branch qps_modifications
-   These files are included as subtree
-   git subtree add --prefix qps/pyqtgraph git@github.com:EnMAP-Box/pyqtgraph.git qps_modifications --squash
-3. 
-
+QPS depends on what-is-already-in-QGIS only:
+1. QGIS python API, numpy and gdal
+2. pyqtgraph. Ok, that's not part of QGIS, so QPS uses a fork https://github.com/EnMAP-Box/pyqtgraph branch qps_modifications
+   These files are included in QGIS 
 
 
 ## Examples ###
@@ -107,7 +103,7 @@ reduces the plugin size.
 For development, you might load the QGIS repository `images/images.qrc` to your reosurce files in the Qt Designer.
 
 1. Clone the QGIS Repository to access its `images/images.qrc` 
-   To donwload the `/images` folder only, you can do a sparse checkout:
+   To download the `/images` folder only, you can do a sparse checkout:
     
     
     ```
