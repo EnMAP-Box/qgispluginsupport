@@ -1219,8 +1219,8 @@ class TestObjects(object):
         assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
 
         # find the QGIS world_map.shp
-        pkgPath = QgsApplication.instance().pkgDataPath()
-        assert os.path.isdir(pkgPath)
+        # pkgPath = QgsApplication.instance().pkgDataPath()
+        # assert os.path.isdir(pkgPath)
 
         # pathSrc = pathlib.Path(__file__).parent / 'landcover_polygons.geojson'
         pathSrc = TEST_VECTOR_GEOJSON

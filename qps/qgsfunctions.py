@@ -38,6 +38,8 @@ from qgis.PyQt.QtCore import QVariant, NULL
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
 from qgis.core import QgsExpressionNodeFunction, QgsField
+from qgis.core import QgsGeometry, QgsProject, QgsRasterLayer, QgsRasterDataProvider, QgsRaster, QgsPointXY
+from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding
@@ -361,6 +363,93 @@ class StaticExpressionFunction(QgsExpressionFunction):
             return self.mFnc(values, context, parent, node)
         else:
             return QVariant()
+
+
+class RasterProfile(QgsExpressionFunction):
+
+    def __init__(self):
+        group = SPECLIB_FUNCTION_GROUP
+        name = 'raster_profile'
+
+        args = [
+            QgsExpressionFunction.Parameter('layer', optional=False),
+            QgsExpressionFunction.Parameter('geometry', optional=False),
+            QgsExpressionFunction.Parameter('aggregation', optional=True),
+            QgsExpressionFunction.Parameter('format', optional=True),
+        ]
+
+        helptext = HM.helpText(name, args)
+        super().__init__(name, args, group, helptext)
+
+    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
+
+        lyrR = values[0]
+        geom = values[1]
+
+        if not isinstance(context, QgsExpressionContext):
+            return None
+
+        if not isinstance(geom, QgsGeometry):
+            return None
+
+        if isinstance(lyrR, str):
+            project = QgsProject.instance()
+            lyr = project.mapLayer(lyrR)
+            if not isinstance(lyr, QgsRasterLayer):
+                layers = project.mapLayersByName(lyrR)
+                if len(layers) > 0:
+                    lyr = layers[0]
+            if isinstance(lyr, QgsRasterLayer):
+                lyrR = lyr
+
+        if not isinstance(lyrR, QgsRasterLayer):
+            parent.setEvalErrorString('Unable to find raster layer')
+            return None
+
+        sp_key = 'spectralProperties'
+        if not context.hasCachedValue(sp_key):
+            sp = QgsRasterLayerSpectralProperties.fromRasterLayer(lyrR)
+            bbl = sp.badBands()
+            wl = sp.wavelengths()
+            wlu = sp.wavelengthUnits()
+            context.setCachedValue(sp_key, sp)
+            context.setCachedValue('bbl', bbl)
+            context.setCachedValue('wl', wl)
+            context.setCachedValue('wlu', wlu)
+
+        else:
+
+            wl = context.cachedValue('wl')
+            wlu = context.cachedValue('wlu')
+            bbl = context.cachedValue('bbl')
+
+        try:
+            if not lyrR.extent().intersects(geom.boundingBox()):
+                return None
+
+            point: QgsPointXY = geom.asPoint()
+            dp: QgsRasterDataProvider = lyrR.dataProvider()
+
+            results = lyrR.dataProvider().identify(point, QgsRaster.IdentifyFormatValue).results()
+
+            y = list(results.values())
+            y = [v if isinstance(v, (int, float)) else float('NaN') for v in y]
+
+            d = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=sp.badBands())
+            return d
+
+        except Exception as ex:
+            parent.setEvalErrorString(str(ex))
+            return None
+
+    def usesGeometry(self, node) -> bool:
+        return True
+
+    def referencedColumns(self, node) -> typing.List[str]:
+        return [QgsFeatureRequest.ALL_ATTRIBUTES]
+
+    def handlesNull(self) -> bool:
+        return True
 
 
 class SpectralData(QgsExpressionFunction):
