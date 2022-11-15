@@ -25,8 +25,8 @@ from ...utils import SpatialExtent, SpatialPoint, nextColor
 class SpectralLibraryWidget(AttributeTableWidget):
     sigFilesCreated = pyqtSignal(list)
     sigLoadFromMapRequest = pyqtSignal()
-    sigMapExtentRequested = pyqtSignal(SpatialExtent)
-    sigMapCenterRequested = pyqtSignal(SpatialPoint)
+    sigMapExtentRequested = pyqtSignal(object)
+    sigMapCenterRequested = pyqtSignal(object)
     sigCurrentProfilesChanged = pyqtSignal(list)
 
     class ViewType(enum.Flag):
