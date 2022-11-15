@@ -23,6 +23,8 @@ class SignalingClass(QObject):
 def genericSlot(*args):
     print(f'slot argument type: {type(args[0])}')
 
+
+# from qgis.testing import start_app
 # start_app() # uncomment to raise KeyError: 'there is no matching overloaded signal'
 
 SC = SignalingClass()
