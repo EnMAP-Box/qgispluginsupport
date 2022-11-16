@@ -1,0 +1,17 @@
+{
+  "name": "raster_profile",
+  "type": "function",
+  "description": "Returns spectral profile values from a raster layer",
+  "arguments": [ {
+    "arg":"layer",
+    "description":"raster layer"},
+{
+    "arg":"geometry",
+    "description":"geometry to select profiles for. Supported geometries: point, polygon (centroid)"},
+  {"arg":"format","description":"output format: <code>bytes</code>, <code>text</code> or <code>map</code>"}
+  ],
+  "examples": [{
+    "expression":"raster_profile('myrasterlayer', @geometry)",
+    "returns":"Returns the spectral profile from layer 'myrasterlayer' at position @geometry"}
+  ]
+}

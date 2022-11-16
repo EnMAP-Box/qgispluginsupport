@@ -43,7 +43,7 @@ class SpectralProcessingTests(TestCase):
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
         assert isinstance(procReg, QgsProcessingRegistry)
 
-        provider_names = [p.name() for p in procReg.providers()]
+        # provider_names = [p.name() for p in procReg.providers()]
 
         return procReg, procGuiReg
 
@@ -228,7 +228,7 @@ class SpectralProcessingTests(TestCase):
         for file in tempFiles:
             setting = SpectralSetting.fromRasterLayer(file)
             assert setting.xUnit() not in [None, '']
-
+        self.assertTrue(True)
         self.showGui([slw, procw])
 
     def test_SpectralProcessingRasterLayerWidgetWrapper(self):

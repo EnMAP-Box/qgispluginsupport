@@ -19,14 +19,14 @@ from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
-from ...utils import SpatialExtent, SpatialPoint, nextColor
+from ...utils import nextColor
 
 
 class SpectralLibraryWidget(AttributeTableWidget):
     sigFilesCreated = pyqtSignal(list)
     sigLoadFromMapRequest = pyqtSignal()
-    sigMapExtentRequested = pyqtSignal(SpatialExtent)
-    sigMapCenterRequested = pyqtSignal(SpatialPoint)
+    sigMapExtentRequested = pyqtSignal(object)
+    sigMapCenterRequested = pyqtSignal(object)
     sigCurrentProfilesChanged = pyqtSignal(list)
 
     class ViewType(enum.Flag):
