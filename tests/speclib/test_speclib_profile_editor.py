@@ -1,4 +1,6 @@
 import unittest
+from typing import List
+
 from qgis.PyQt.QtCore import QSize, Qt, NULL, QVariant
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox
 from qgis.core import QgsActionManager, QgsFeature
@@ -11,13 +13,27 @@ from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFac
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorWidget, registerSpectralProfileEditorWidget, \
     SpectralProfileTableModel, SpectralProfileJsonEditor, SpectralProfileTableEditor
 from qps.testing import TestCase, TestObjects
-from .test_speclib_core import SpeclibCoreTests
+from qps.unitmodel import BAND_NUMBER
+
+
+def valid_profile_dicts() -> List[dict]:
+    examples = [
+        dict(y=[1, 2, 3], bbl=[1, 2, 3]),
+        dict(y=[1, 2, 3]),
+        dict(y=[1, 2, 3], x=[2, 3, 4]),
+        dict(y=[1, 2, 3], x=['2005-02-25', '2005-03-25', '2005-04-25']),
+        dict(y=[1, 2, 3], x=[2, 3, 4], xUnit=BAND_NUMBER),
+        dict(y=[1, 2, 3], x=[2, 3, 4], xUnit='foobar'),
+        dict(y=[1, 2, 3], bbl=[1, 1, 0]),
+
+    ]
+    return examples
 
 
 class TestSpeclibWidgets(TestCase):
 
     def valid_profile_dicts(self):
-        return SpeclibCoreTests.valid_profile_dicts()
+        return valid_profile_dicts()
 
     def test_SpectralProfileTableModel(self):
 

@@ -19,7 +19,7 @@ from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
-from ...utils import SpatialExtent, SpatialPoint, nextColor
+from ...utils import nextColor
 
 
 class SpectralLibraryWidget(AttributeTableWidget):

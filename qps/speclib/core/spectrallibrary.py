@@ -717,7 +717,7 @@ class SpectralLibraryUtils:
         assert is_spectral_library(speclib)
         app = None
         if not isinstance(QgsApplication.instance(), QgsApplication):
-            from ...testing import start_app
+            from qgis.testing import start_app
             app = start_app()
 
         from ..gui.spectrallibrarywidget import SpectralLibraryWidget

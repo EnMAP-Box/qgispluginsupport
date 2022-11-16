@@ -42,6 +42,7 @@ import warnings
 from typing import Set
 from unittest import mock
 import numpy as np
+
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
@@ -64,6 +65,7 @@ from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
+from . import QPS_RESOURCE_FILE
 from .resources import initResourceFile
 from .speclib import createStandardFields, FIELD_VALUES
 from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
@@ -88,30 +90,6 @@ WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
              'version=''auto'''
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.geojson'
-
-
-def initQgisApplication(*args, qgisResourceDir: str = None,
-                        loadProcessingFramework=True,
-                        loadEditorWidgets=True,
-                        loadPythonRunner=True,
-                        minimal=False,
-                        **kwds) -> QgsApplication:
-    """
-    Initializes a QGIS Environment
-    :param qgisResourceDir: path to folder with QGIS resource modules. default = None
-    :param loadProcessingFramework:  True, loads the QgsProcessingFramework plugins
-    :param loadEditorWidgets: True, load the Editor widgets
-    :param loadPythonRunner:  True, initializes a Python Runner
-    :param minimal: False, if set on True, will deactivate the `load*` and return only a basic QgsApplication
-    :return:
-    """
-    """
-
-    :return: QgsApplication instance of local QGIS installation
-    """
-    warnings.warn('Use qps.testing.start_app instead', DeprecationWarning)
-    return start_app(cleanup=True, options=StartOptions.All)
-
 
 @enum.unique
 class StartOptions(enum.IntFlag):
@@ -156,7 +134,7 @@ _PYTHON_RUNNER = None
 
 
 def start_app(cleanup: bool = True,
-              options=StartOptions.Minimized,
+              options=StartOptions.All,
               resources: typing.List[typing.Union[str, pathlib.Path]] = None) -> QgsApplication:
     """
     :param cleanup:
@@ -487,6 +465,7 @@ APP = None
 
 class TestCase(qgis.testing.TestCase):
     IFACE = None
+    APP: QgsApplication = None
 
     @staticmethod
     def runsInCI() -> True:
@@ -500,9 +479,8 @@ class TestCase(qgis.testing.TestCase):
     def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
 
         if not isinstance(QgsApplication.instance(), QgsApplication):
-            global APP
-            assert APP is None
-            APP = qgis.testing.start_app(cleanup=False)
+            # TestCase.APP = start_app()
+            TestCase.APP = qgis.testing.start_app(cleanup=False)
 
         if TestCase.IFACE is None:
             TestCase.IFACE = get_iface()
@@ -513,6 +491,8 @@ class TestCase(qgis.testing.TestCase):
 
         if QgsGui.editorWidgetRegistry().name('TextEdit') in ['', None]:
             QgsGui.editorWidgetRegistry().initEditors()
+
+        initResourceFile(QPS_RESOURCE_FILE)
 
     def tempDir(self, subdir: str = None, cleanup: bool = False) -> pathlib.Path:
         """
@@ -1033,6 +1013,16 @@ class TestObjects(object):
         return lyr
 
     @staticmethod
+    def tmpDirPrefix() -> str:
+        if True:
+            path_dir = pathlib.Path('/vsimem/tmp')
+        else:
+            path_dir = findUpwardPath(__file__, '.git').parent / 'test-outputs' / 'vsimem' / 'tmp'
+            os.makedirs(path_dir, exist_ok=True)
+
+        return path_dir.as_posix() + '/'
+
+    @staticmethod
     def createRasterDataset(ns=10, nl=20, nb=1,
                             crs=None, gt=None,
                             eType: int = gdal.GDT_Int16,
@@ -1069,12 +1059,13 @@ class TestObjects(object):
             path = path.as_posix()
         elif path is None:
             ext = drv.GetMetadataItem('DMD_EXTENSION')
+            prefix = TestObjects.tmpDirPrefix()
             if len(ext) > 0:
                 ext = f'.{ext}'
             if nc > 0:
-                path = f'/vsimem/testClassification.{uuid.uuid4()}{ext}'
+                path = f'{prefix}testClassification.{uuid.uuid4()}{ext}'
             else:
-                path = f'/vsimem/testImage.{uuid.uuid4()}{ext}'
+                path = f'{prefix}testImage.{uuid.uuid4()}{ext}'
         assert isinstance(path, str)
 
         ds: gdal.Driver = drv.Create(path, ns, nl, bands=nb, eType=eType)
@@ -1244,15 +1235,16 @@ class TestObjects(object):
         if path:
             pathDst = pathlib.Path(path).as_posix()
         else:
+            prefix = TestObjects.tmpDirPrefix() + str(uuid.uuid4())
             if wkb == ogr.wkbPolygon:
                 lname = 'polygons'
-                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.polygons.gpkg'
+                pathDst = prefix + '.test.polygons.gpkg'
             elif wkb == ogr.wkbPoint:
                 lname = 'points'
-                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.centroids.gpkg'
+                pathDst = prefix + '.test.centroids.gpkg'
             elif wkb == ogr.wkbLineString:
                 lname = 'lines'
-                pathDst = '/vsimem/tmp' + str(uuid.uuid4()) + '.test.line.gpkg'
+                pathDst = prefix + '.test.line.gpkg'
             else:
                 raise NotImplementedError()
 

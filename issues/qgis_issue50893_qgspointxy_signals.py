@@ -1,6 +1,5 @@
 from qgis.PyQt.QtCore import QObject, pyqtSignal
 from qgis.core import QgsPointXY
-from qgis.testing import start_app
 
 
 class MyQObject(QObject):
