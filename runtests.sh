@@ -46,4 +46,5 @@ python3 -m unittest -f tests/test_init.py
 python3 -m unittest -f tests/test_qps.py
 python3 -m unittest -f tests/test_resources.py
 python3 -m unittest -f tests/test_testing.py
+python3 -m unittest -f tests/test_testobjects.py
 python3 -m coverage report
