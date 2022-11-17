@@ -1,0 +1,16 @@
+{
+  "name": "raster_array",
+  "type": "function",
+  "description": "Returns the raster pixel values as array",
+  "arguments": [ {"arg":"layer", "description":"name or id of raster layer"},
+                 {"arg":"geometry",
+                   "description":"geometry to select profiles for. Supported geometries: point, polygon (centroid)"}
+  ],
+  "examples": [{
+    "expression":"raster_array('myrasterlayer')",
+    "returns":"Returns the raster profile from layer 'myrasterlayer' at position @geometry"},
+    {
+    "expression":"raster_array('myrasterlayer', @geometry)",
+    "returns":"Returns the spectral profile at position @geometry"}
+  ]
+}

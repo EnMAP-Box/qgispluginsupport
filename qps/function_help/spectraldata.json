@@ -4,7 +4,7 @@
   "description": "Returns spectral profile values",
   "arguments": [ {
     "arg":"profile_field",
-    "description":"binary data field (BLOB) with widget type Spectral Profiles"}
+    "description":"field (BLOB, text, JSON) with widget type Spectral Profiles"}
                  ],
   "examples": [{
     "expression":"spectralData(\"profiles\")",

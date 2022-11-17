@@ -1,0 +1,23 @@
+{
+  "name": "rasterProfile",
+  "type": "function",
+  "description": "Returns spectral profile values from a raster layer",
+  "arguments": [
+    {
+      "arg":"layer",
+      "description":"name or id of raster layer"},
+    {
+      "arg":"geometry",
+      "description":"geometry to select profiles for. Supported geometries: point, polygon (centroid)"},
+    {
+      "arg":"encoding",
+      "description":"output format of spectral profile: 'text', 'json', 'map' or 'bytes'"}
+  ],
+  "examples": [{
+    "expression":"rasterProfile('myrasterlayer')",
+    "returns":"Returns the spectral profile for the current (centroid) point coordinate from 'myrasterlayer'"},
+    {
+    "expression":"rasterProfile('myrasterlayer', encoding:='text')",
+    "returns":"Returns the spectral profile as JSON text string"}
+  ]
+}

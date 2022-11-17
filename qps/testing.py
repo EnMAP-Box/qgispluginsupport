@@ -91,6 +91,7 @@ WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.geojson'
 
+
 @enum.unique
 class StartOptions(enum.IntFlag):
     Minimized = 0
