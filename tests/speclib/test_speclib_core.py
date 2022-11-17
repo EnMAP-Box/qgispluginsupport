@@ -53,7 +53,6 @@ class SpeclibCoreTests(TestCase):
     def setUpClass(cls, *args, **kwds) -> None:
         super(SpeclibCoreTests, cls).setUpClass(*args, **kwds)
 
-
     def setUp(self):
         super().setUp()
         QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())

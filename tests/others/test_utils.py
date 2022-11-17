@@ -352,7 +352,7 @@ class TestUtils(TestCase):
         self.assertEqual(lowerRightPx, QPoint(lyrR.width() - 1, lyrR.height() - 1))
         s = ""
 
-    def test_SpatialPoint_toPixelPosition(self):
+    def test_SpatialPoint_pixel_positions(self):
 
         layer = TestObjects.createRasterLayer()
         pointA = SpatialPoint(layer.crs(), layer.extent().center())
@@ -387,6 +387,17 @@ class TestUtils(TestCase):
             pxLL = geoLL.toPixelPosition(layer)
             self.assertEqual(pxGeo, pxRef)
             self.assertEqual(pxLL, pxRef)
+
+            geoC2 = SpatialPoint.fromPixelPosition(layer, pxRef)
+            resx, resy = layer.rasterUnitsPerPixelX() * 0.5, layer.rasterUnitsPerPixelY() * 0.5
+            self.assertTrue(geoC.x() - resx <= geoC2.x() <= geoC.x() + resx)
+            self.assertTrue(geoC.y() - resy <= geoC2.y() <= geoC.y() + resy)
+
+        for x, y in zip([0, 1, 1, 0], [0, 0, 1, 1]):
+            ptPx = SpatialPoint.fromPixelPosition(layer, x, y).toPixelPosition(layer)
+            self.assertEqual(ptPx.x(), x)
+            self.assertEqual(ptPx.y(), y)
+        s = ""
 
     def test_rasterLayerArray(self):
 

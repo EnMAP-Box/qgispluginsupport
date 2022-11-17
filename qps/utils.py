@@ -2471,6 +2471,28 @@ class SpatialPoint(QgsPointXY):
         crs = spatialExtent.crs()
         return SpatialPoint(crs, spatialExtent.center())
 
+    @staticmethod
+    def fromPixelPosition(rasterLayer: QgsRasterLayer, x: Union[int, QPoint], y: Optional[int] = None):
+        assert isinstance(rasterLayer, QgsRasterLayer)
+        if isinstance(x, QPoint):
+            y = x.y()
+            x = x.x()
+        assert isinstance(x, int)
+        assert isinstance(y, int)
+
+        mapUnitsPerPixel = rasterLayer.rasterUnitsPerPixelX()
+        center = rasterLayer.extent().center()
+        rotation = 0
+        m2p = QgsMapToPixel(mapUnitsPerPixel,
+                            center.x(),
+                            center.y(),
+                            rasterLayer.width(),
+                            rasterLayer.height(),
+                            rotation)
+
+        geoPt = m2p.toMapCoordinates(x, y)
+        return SpatialPoint(rasterLayer.crs(), geoPt)
+
     def __init__(self, crs, *args):
         if not isinstance(crs, QgsCoordinateReferenceSystem):
             crs = QgsCoordinateReferenceSystem(crs)

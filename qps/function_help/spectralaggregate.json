@@ -4,7 +4,7 @@
   "description": "Aggregates spectral profiles",
   "arguments": [
     {"arg":"layer", "description":"a string representing the Spectral Library layer name or layer ID"},
-    {"arg":"aggregate", "description":"a string corresponding to the aggegate to calculate" },
+    {"arg":"aggregate", "description":"a string corresponding to the aggregate to calculate" },
     {"arg":"expression", "description":"sub expression or spectral profile field to aggregate"},
     {"arg":"filter","description":"optional filter expression to limit the features used for calculating the aggregate. Fields and geometry are from the features on the joined layer. The source feature can be accesses with the variable @parent."},
     {"arg":"concatenator","description":"optional string to use to join values for 'concatenate' aggregate."},
