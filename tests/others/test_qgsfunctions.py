@@ -7,7 +7,8 @@ from osgeo import gdal_array
 from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsProperty, QgsExpressionContextUtils
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry, QgsFields
-from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py, RasterProfile, RasterArray
+from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py, RasterProfile, RasterArray, \
+    ExpressionFunctionUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.testing import TestObjects, TestCase
 from qps.utils import SpatialPoint
@@ -52,6 +53,14 @@ class QgsFunctionTests(TestCase):
         assert exp.evalErrorString() == '', exp.evalErrorString()
         s = ""
 
+    def test_ExpressionFunctionUtils(self):
+
+
+
+
+        ExpressionFunctionUtils.extractVectorLayer()
+
+
     def test_raster_array(self):
 
         f = RasterArray()
@@ -80,10 +89,9 @@ class QgsFunctionTests(TestCase):
             for i, feature in enumerate(lyrV.getFeatures()):
                 self.assertIsInstance(feature, QgsFeature)
                 context.setFeature(feature)
-                # context = QgsExpressionContextUtils.createFeatureBasedContext(feature, QgsFields())
-                if i > 0:
-                    self.assertIsInstance(context.cachedValue('crs_trans'), QgsCoordinateTransform)
+
                 exp.prepare(context)
+
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
 
                 profile = exp.evaluate(context)

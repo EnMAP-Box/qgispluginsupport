@@ -31,11 +31,12 @@ import re
 import sys
 import typing
 from json import JSONDecodeError
-from typing import Union, List, Set, Callable, Iterable, Any, Tuple
+from typing import Union, List, Set, Callable, Iterable, Any, Tuple, Dict
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, NULL
+from qgis.core import QgsVectorLayer, QgsMapLayer
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
@@ -422,7 +423,7 @@ class RasterProfile(QgsExpressionFunction):
             # default: dictionary
             format = ProfileEncoding.Dict
 
-            #todo: consider target field (if known from context)
+            # todo: consider target field (if known from context)
 
         format = ProfileEncoding.fromInput(format)
 
@@ -503,6 +504,84 @@ class RasterProfile(QgsExpressionFunction):
         return True
 
 
+class ExpressionFunctionUtils(object):
+
+    @staticmethod
+    def extractVectorLayer(p: QgsExpressionFunction.Parameter,
+                           value, context: QgsExpressionContext) -> QgsVectorLayer:
+
+        s = ""
+        pass
+
+    @staticmethod
+    def cachedCrsTransformation(layer: QgsMapLayer,
+                                context: QgsExpressionContext,
+                                ) \
+            -> QgsCoordinateTransform:
+
+        k = f'crstrans_{context.variable("layer_id")}->{layer.id()}'
+        trans = context.cachedValue(k)
+        if not isinstance(trans, QgsCoordinateTransform):
+            lyr_crs = QgsExpression('@layer_crs').evaluate(context)
+            crs = QgsCoordinateReferenceSystem(lyr_crs)
+            if isinstance(crs, QgsCoordinateReferenceSystem) and crs.isValid():
+                trans = QgsCoordinateTransform()
+                trans.setSourceCrs(crs)
+                trans.setDestinationCrs(layer.crs())
+                context.setCachedValue(k, trans)
+        return trans
+    @staticmethod
+    def extractRasterLayer(p: QgsExpressionFunction.Parameter,
+                           value,
+                           context: QgsExpressionContext) -> QgsRasterLayer:
+
+        if isinstance(value, str):
+            for lyr in QgsExpression('@layers').evaluate(context):
+                if isinstance(lyr, QgsRasterLayer) and value in [lyr.name(), lyr.id()]:
+                    return lyr
+
+        if isinstance(value, QgsRasterLayer):
+            return value
+        else:
+            return None
+
+    @staticmethod
+    def extractSpectralProfileField(p: QgsExpressionFunction.Parameter,
+                                    value,
+                                    context: QgsExpressionFunction,
+                                    raise_error: bool = True) -> QgsField:
+
+        s = ""
+
+    @staticmethod
+    def extractGeometry(p: QgsExpressionFunction.Parameter,
+                        value,
+                        context: QgsExpressionFunction):
+
+        if not isinstance(value, QgsGeometry):
+            for a in ['@geometry', '$geometry']:
+                v = QgsExpression(a).evaluate(context)
+                if isinstance(v, QgsGeometry):
+                    return v
+        return None
+
+    @staticmethod
+    def extractValues(f: QgsExpressionFunction, values: tuple, context: QgsExpressionContext):
+
+        results = []
+
+        for p, v in zip(f.parameters(), values):
+            name = p.name()
+            if re.search(name, '.*vector.*', re.I):
+                v = ExpressionFunctionUtils.extractVectorLayer(p, v)
+            elif re.search(name, '.*raster.*', re.I):
+                v = ExpressionFunctionUtils.extractRasterLayer(p, v)
+            elif re.search(name, '.*profile.*', re.I):
+                v = ExpressionFunctionUtils.extractSpectralProfileField(p, v)
+            results.append(v)
+        return results
+
+
 class RasterArray(QgsExpressionFunction):
 
     def __init__(self):
@@ -517,46 +596,16 @@ class RasterArray(QgsExpressionFunction):
         helptext = HM.helpText(name, args)
         super().__init__(name, args, group, helptext)
 
-    def parseArguments(self, values: tuple, context: QgsExpressionContext) \
-            -> Tuple[QgsRasterLayer, QgsGeometry, QgsCoordinateTransform]:
-
-        lyrR = values[0]
-        geom = values[1]
-
-        if isinstance(lyrR, str):
-            layers = QgsExpression('@layers').evaluate(context)
-            for lyr in layers:
-                if isinstance(lyr, QgsRasterLayer) and lyrR in [lyr.name(), lyr.id()]:
-                    lyrR = lyr
-                    break
-
-        if not isinstance(lyrR, QgsRasterLayer):
-            return None, None, None
-
-        if not isinstance(geom, QgsGeometry):
-            geom = QgsExpression('@geometry').evaluate(context)
-
-        if not isinstance(geom, QgsGeometry):
-            return None, None, None
-
-        trans = context.cachedValue('crs_trans')
-        if not isinstance(trans, QgsCoordinateTransform):
-            lyr_crs = QgsExpression('@layer_crs').evaluate(context)
-            crsV = QgsCoordinateReferenceSystem(lyr_crs)
-            if isinstance(crsV, QgsCoordinateReferenceSystem) and crsV.isValid() and isinstance(lyrR, QgsRasterLayer):
-                trans = QgsCoordinateTransform()
-                trans.setSourceCrs(crsV)
-                trans.setDestinationCrs(lyrR.crs())
-                context.setCachedValue('crs_trans', trans)
-
-        return lyrR, geom, trans
 
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
         if not isinstance(context, QgsExpressionContext):
             return None
 
-        lyrR, geom, crs_trans = self.parseArguments(values, context)
+        lyrR = ExpressionFunctionUtils.extractRasterLayer(self.parameters()[0], values[0], context)
+        geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
+        crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(lyrR, context)
+
 
         if not isinstance(geom, QgsGeometry):
             return None
@@ -565,7 +614,6 @@ class RasterArray(QgsExpressionFunction):
             parent.setEvalErrorString('Unable to find raster layer')
             return None
         try:
-
             if not crs_trans.isShortCircuited():
                 assert geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success
 
