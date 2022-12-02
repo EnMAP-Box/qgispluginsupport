@@ -74,7 +74,7 @@ class HTMLStyle(QtWidgets.QProxyStyle):
             width = size.width() + widget.width_adjust_contents
         return super().sizeFromContents(contents_type,
                                         option,
-                                        QtCore.QSize(width, height),
+                                        QtCore.QSize(int(width), int(height)),
                                         widget)
 
 
@@ -206,7 +206,7 @@ class HTMLComboBox(QtWidgets.QComboBox):
             # arrow selector
             max_w += self.width_adjust_sizehint
 
-            self.stored_size = QtCore.QSize(max_w, max_h)
+            self.stored_size = QtCore.QSize(int(max_w), int(max_h))
         return self.stored_size
 
     def minimumSizeHint(self):
@@ -248,8 +248,8 @@ class HTMLWidgetHelper(object):
             opt = QtWidgets.QStyleOptionButton()
             self.initStyleOption(opt)
             self.stored_size = QtCore.QSize(
-                size.width() + opt.iconSize.width() + 4,
-                max(size.height(), opt.iconSize.height()))
+                int(size.width() + opt.iconSize.width() + 4),
+                int(max(size.height(), opt.iconSize.height())))
         return self.stored_size
 
     def minimumSizeHint(self):

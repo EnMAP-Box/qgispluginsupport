@@ -78,7 +78,8 @@ class FlowLayout(QLayout):
             size.expandedTo(item.minimumSize())
 
         margins = self.contentsMargins()
-        size += QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+        size += QSize(int(margins.left() + margins.right()),
+                      int(margins.top() + margins.bottom()))
         return size
 
     def doLayout(self, rect: QRect, testOnly: bool) -> int:
