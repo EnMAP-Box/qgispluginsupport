@@ -596,7 +596,6 @@ class RasterArray(QgsExpressionFunction):
         helptext = HM.helpText(name, args)
         super().__init__(name, args, group, helptext)
 
-
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
         if not isinstance(context, QgsExpressionContext):
@@ -605,7 +604,6 @@ class RasterArray(QgsExpressionFunction):
         lyrR = ExpressionFunctionUtils.extractRasterLayer(self.parameters()[0], values[0], context)
         geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
         crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(lyrR, context)
-
 
         if not isinstance(geom, QgsGeometry):
             return None
@@ -642,6 +640,11 @@ class RasterArray(QgsExpressionFunction):
     def handlesNull(self) -> bool:
         return True
 
+    def isStatic(self,
+                 node: QgsExpressionNodeFunction,
+                 parent: QgsExpression,
+                 context: QgsExpressionContext) -> bool:
+        return False
 
 class SpectralData(QgsExpressionFunction):
     def __init__(self):

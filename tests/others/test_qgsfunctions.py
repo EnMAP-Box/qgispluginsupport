@@ -96,7 +96,7 @@ class QgsFunctionTests(TestCase):
 
                 profile = exp.evaluate(context)
                 self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
-
+                self.assertIsInstance(profile, list)
                 pt = SpatialPoint(lyrV.crs(), feature.geometry().asPoint())
                 px = pt.toPixelPosition(lyrR)
 
@@ -126,7 +126,7 @@ class QgsFunctionTests(TestCase):
         self.assertTrue(lyrV.commitChanges())
         return lyrR, lyrV
 
-    def test_SpectralProfile(self):
+    def test_RasterProfile(self):
 
         f = RasterProfile()
 
@@ -170,7 +170,7 @@ class QgsFunctionTests(TestCase):
                 elif re.search(r'(text|json)', exp.expression()):
                     self.assertIsInstance(profile, str)
                 else:
-                    self.assertIsInstance(profile, dict)
+                    self.assertIsInstance(profile, dict, msg=exp.expression())
 
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
 
