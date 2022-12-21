@@ -2472,13 +2472,21 @@ class SpatialPoint(QgsPointXY):
         return SpatialPoint(crs, spatialExtent.center())
 
     @staticmethod
-    def fromPixelPosition(rasterLayer: QgsRasterLayer, x: Union[int, QPoint], y: Optional[int] = None):
+    def fromPixelPosition(rasterLayer: QgsRasterLayer,
+                          x: Union[int, float, QPoint, QPointF], y: Optional[Union[int, float]] = None):
+        """
+        Returns the coordinate of pixel at position x,y (upper left). Use x+0.5, y+0.5 for pixel center coordinate.
+        :param rasterLayer:
+        :param x:
+        :param y:
+        :return:
+        """
         assert isinstance(rasterLayer, QgsRasterLayer)
-        if isinstance(x, QPoint):
+        if isinstance(x, (QPoint, QPointF)):
             y = x.y()
             x = x.x()
-        assert isinstance(x, int)
-        assert isinstance(y, int)
+        assert isinstance(x, (int, float))
+        assert isinstance(y, (int, float))
 
         mapUnitsPerPixel = rasterLayer.rasterUnitsPerPixelX()
         center = rasterLayer.extent().center()
@@ -2490,7 +2498,7 @@ class SpatialPoint(QgsPointXY):
                             rasterLayer.height(),
                             rotation)
 
-        geoPt = m2p.toMapCoordinates(x, y)
+        geoPt = m2p.toMapCoordinatesF(x, y)
         return SpatialPoint(rasterLayer.crs(), geoPt)
 
     def __init__(self, crs, *args):
