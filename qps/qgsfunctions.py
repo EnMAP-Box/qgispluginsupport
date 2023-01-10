@@ -422,7 +422,7 @@ class RasterProfile(QgsExpressionFunction):
             # default: dictionary
             format = ProfileEncoding.Dict
 
-            #todo: consider target field (if known from context)
+            # todo: consider target field (if known from context)
 
         format = ProfileEncoding.fromInput(format)
 

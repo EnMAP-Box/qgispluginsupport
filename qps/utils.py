@@ -209,8 +209,9 @@ def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
     """
     tmp = pathlib.Path(basepath).resolve()
     while tmp != pathlib.Path(tmp.anchor):
-        if (is_directory and os.path.isdir(tmp / name)) or os.path.isfile(tmp / name):
-            return tmp / name
+        tmp2 = tmp / name
+        if (is_directory and tmp2.is_dir()) or (not is_directory and tmp2.is_file()):
+            return tmp2
         else:
             tmp = tmp.parent
     return None

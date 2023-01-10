@@ -1,7 +1,7 @@
 import re
 import unittest
 
-from PyQt5.QtCore import QByteArray
+from qgis.PyQt.QtCore import QByteArray
 from osgeo import gdal_array
 
 from qgis.core import QgsCoordinateTransform

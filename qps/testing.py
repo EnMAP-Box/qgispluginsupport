@@ -52,6 +52,7 @@ from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPoi
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu
+from qgis.core import QgsTemporalController
 from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
@@ -254,7 +255,9 @@ class QgisMockup(QgisInterface):
 
         self.mMapLayerPanelFactories: typing.List[QgsMapLayerConfigWidgetFactory] = []
 
+        self.mTemporalController = QgsTemporalController()
         self.mCanvas = QgsMapCanvas()
+        self.mCanvas.setTemporalController(self.mTemporalController)
         self.mCanvas.blockSignals(False)
         self.mCanvas.setCanvasColor(Qt.black)
         self.mLayerTreeView = QgsLayerTreeView()
@@ -790,10 +793,10 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         results = TestObjects._coreData, \
-                  TestObjects._coreDataWL, \
-                  TestObjects._coreDataWLU, \
-                  TestObjects._coreDataGT, \
-                  TestObjects._coreDataWkt
+            TestObjects._coreDataWL, \
+            TestObjects._coreDataWLU, \
+            TestObjects._coreDataGT, \
+            TestObjects._coreDataWkt
         return results
 
     @staticmethod
@@ -1016,6 +1019,14 @@ class TestObjects(object):
         assert lyr.isValid()
 
         return lyr
+
+    @staticmethod
+    def repoDirGDAL(local='gdal') -> pathlib.Path:
+        d = findUpwardPath(__file__, local + '/.git', is_directory=True)
+        if d:
+            return d.parent
+        else:
+            return None
 
     @staticmethod
     def tmpDirPrefix() -> str:

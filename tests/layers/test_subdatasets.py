@@ -1,73 +1,78 @@
 import os
-import typing
+import shutil
 import unittest
 
-from qps.subdatasets import DatasetInfo, SubDatasetType, \
-    SubDatasetLoadingTask
-from qps.testing import TestCase
+from qgis.PyQt.QtWidgets import QDialog
+from qgis.core import QgsProviderSublayerDetails, QgsApplication
+
+from qps.subdatasets import SubDatasetLoadingTask, SubDatasetSelectionDialog
+from qps.testing import TestCase, TestObjects
 
 
+@unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
 class TestSubDataSets(TestCase):
-    ref_file = r'D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml'
-
-    @unittest.skipIf(not os.path.isfile(ref_file), 'Missing S2 Testfile')
-    def test_subdataset_info(self):
-
-        info = DatasetInfo.fromRaster(TestSubDataSets.ref_file)
-
-        self.assertIsInstance(info, DatasetInfo)
-        s = ""
-        for name, descr, sdtype in zip(info.subdataset_names(), info.subdataset_descriptions(),
-                                       info.subdataset_types()):
-            self.assertIsInstance(name, str)
-            self.assertIsInstance(descr, str)
-            self.assertIsInstance(sdtype, SubDatasetType)
-            self.assertEqual(sdtype.name, descr)
-
-    def create_subset_infos(self) -> typing.List[DatasetInfo]:
-
-        subs = r"""
-SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml:10m:EPSG_32631###Bands B2, B3, B4, B8 with 10m resolution, UTM 31N
-SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml:20m:EPSG_32631###Bands B5, B6, B7, B8A, B11, B12 with 20m resolution, UTM 31N
-SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml:60m:EPSG_32631###Bands B1, B9 with 60m resolution, UTM 31N
-SENTINEL2_L2A:D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml:TCI:EPSG_32631###True color image, UTM 31N
-        """
-        subs = [line.strip() for line in subs.splitlines()]
-        subs = [line.split('###') for line in subs if len(line) > 0]
-        subs = [(line[0], line[1]) for line in subs]
-        results = []
-        path = r'D:\LUMOS\Data\S2B_MSIL2A_20200106T105339_N0213_R051_T31UFS_20200106T121433.SAFE\MTD_MSIL2A.xml'
-        results.append(DatasetInfo(path, subs))
-        return results
-
-    def create_references_filelist(self) -> typing.List[str]:
-        infos = self.create_subset_infos()
-        return [i.mReferenceFile for i in infos]
-
-    def test_subdatasetdescription(self):
-        d = SubDatasetType('a', False)
-        self.assertEqual(d.checked, False)
-        self.assertEqual(d.name, 'a')
 
     def test_subdatasettask(self):
-        files = self.create_references_filelist()
-        files = [f for f in files if os.path.isfile(f)]
-        if len(files) > 0:
-            foundInfos = []
 
-            def onSubDatasetsFound(infos: typing.List[DatasetInfo]):
-                self.assertIsInstance(infos, list)
-                for info in infos:
-                    self.assertIsInstance(info, DatasetInfo)
-                    foundInfos.append(info)
+        dir_gdal = TestObjects.repoDirGDAL()
+        sources = [
+            dir_gdal / 'autotest/gdrivers/data/hdf5/groups.h5',
+            dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l1c/S2A_OPER_PRD_MSIL1C.SAFE/S2A_OPER_MTD_SAFL1C.xml',
+            dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l2a/S2A_USER_PRD_MSIL2A.SAFE/S2A_USER_MTD_SAFL2A.xml',
+            dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l2a/S2A_USER_PRD_MSIL2A.SAFE/S2A_USER_MTD_SAFL2A.xml',
+            dir_gdal / 'autotest/gdrivers/data/gpkg/50000_25000_uint16.gpkg.zip/50000_25000_uint16.gpkg'
+        ]
+        for s in sources:
+            self.assertTrue(s.is_file(), msg=str(s))
 
-            task = SubDatasetLoadingTask(files)
-            task.sigFoundSubDataSets.connect(onSubDatasetsFound)
-            task.run()
+        task = SubDatasetLoadingTask(sources)
+        task.run()
+        for p, results in task.results().items():
+            self.assertTrue(os.path.isfile(p))
+            self.assertTrue(len(results) > 0)
+            for r in results:
+                self.assertIsInstance(r, QgsProviderSublayerDetails)
 
-            self.assertTrue(len(foundInfos) > 0)
+    @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
+    def test_subdatasetDialog(self):
+
+        dir_gdal = TestObjects.repoDirGDAL()
+        path_grps = dir_gdal / 'autotest/gdrivers/data/hdf5/groups.h5'
+        path_grps2 = self.createTestOutputDirectory() / 'groups2.h5'
+        if not path_grps2.is_file():
+            shutil.copy(path_grps, path_grps2)
+            self.assertTrue(path_grps2.is_file())
+
+        sources = [
+            path_grps,
+            path_grps2,
+            dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l1c/S2A_OPER_PRD_MSIL1C.SAFE/S2A_OPER_MTD_SAFL1C.xml',
+            dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l2a/S2A_USER_PRD_MSIL2A.SAFE/S2A_USER_MTD_SAFL2A.xml',
+            dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l2a/S2A_USER_PRD_MSIL2A.SAFE/S2A_USER_MTD_SAFL2A.xml',
+            dir_gdal / 'autotest/gdrivers/data/gpkg/50000_25000_uint16.gpkg.zip/50000_25000_uint16.gpkg',
+            dir_gdal / 'autotest/ogr/data/gpkg/domains.gpkg',
+            dir_gdal / 'autotest/ogr/data/gpkg/poly.gpkg.zip',
+        ]
+
+        d = SubDatasetSelectionDialog()
+        d.setFiles(sources)
+        QgsApplication.processEvents()
+        d.showMultiFiles(False)
+        d.showMultiFiles(True)
+
+        while len(QgsApplication.taskManager().tasks()) > 0:
+            QgsApplication.processEvents()
+
+        self.assertTrue(d.tvSubDatasets.model().rowCount() > 0)
+
+        d.tvSubDatasets.selectRow(0)
+        sublayers = d.selectedSublayerDetails()
+        self.assertEqual(len(sublayers), 2)
+
+        if not TestCase.runsInCI():
+            if d.exec() == QDialog.Accepted:
+                sublayers = d.selectedSublayerDetails()
 
 
 if __name__ == '__main__':
-
     unittest.main(buffer=False)
