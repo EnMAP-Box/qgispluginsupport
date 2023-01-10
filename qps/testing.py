@@ -277,6 +277,7 @@ class QgisMockup(QgisInterface):
         self.mRasterMenu = self.ui.menuBar().addMenu('Raster')
         self.mWindowMenu = self.ui.menuBar().addMenu('Window')
 
+        self.mSelectionToolBar = QToolBar()
         self.mMessageBar = QgsMessageBar()
         mainFrame = QFrame()
         self.ui.setCentralWidget(mainFrame)
@@ -335,6 +336,9 @@ class QgisMockup(QgisInterface):
     def setActiveLayer(self, mapLayer: QgsMapLayer):
         if mapLayer in self.mapCanvas().layers():
             self.mapCanvas().setCurrentLayer(mapLayer)
+
+    def selectionToolBar(self) -> QToolBar:
+        return self.mSelectionToolBar
 
     def cutSelectionToClipboard(self, mapLayer: QgsMapLayer):
         if isinstance(mapLayer, QgsVectorLayer):
