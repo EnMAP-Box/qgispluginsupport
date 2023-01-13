@@ -1,9 +1,9 @@
 import math
 import re
-import typing
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple, Any, Dict
 
 import numpy as np
+
 from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDateTime, QByteArray
 from qgis.PyQt.QtCore import Qt
@@ -14,7 +14,6 @@ from qgis.core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLa
 from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, QgsRasterDataProvider, QgsField, \
     QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
     QgsProviderRegistry, QgsMessageLog
-
 from ..core import profile_fields, is_profile_field
 from ..core.spectralprofile import SpectralSetting, groupBySpectralProperties, decodeProfileValueDict
 from ...unitmodel import BAND_INDEX
@@ -22,8 +21,8 @@ from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextC
     HashableRectangle
 
 
-def createRasterLayers(features: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],
-                       fields=None) -> typing.List[QgsRasterLayer]:
+def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
+                       fields=None) -> List[QgsRasterLayer]:
     """
     Converts a list of QgsFeatures into a set of QgsRasterLayers.
     :param features:
@@ -78,17 +77,15 @@ def nn_resample(img, shape):
         ratio = 0.5 * in_sz / out_sz
         return np.round(np.linspace(ratio - 0.5, in_sz - ratio - 0.5, num=out_sz)).astype(int)
 
-    return img[per_axis(img.shape[0], shape[0])[:, None],
-               per_axis(img.shape[1], shape[1])]
+    return img[per_axis(img.shape[0], shape[0])[:, None], per_axis(img.shape[1], shape[1])]
 
 
 def featuresToArrays(speclib: QgsVectorLayer,
-                     spectral_profile_fields: typing.List[QgsField],
-                     fids: typing.List[int] = None,
+                     spectral_profile_fields: List[QgsField],
+                     fids: List[int] = None,
                      allow_empty_profiles: bool = False,
                      ) -> \
-        typing.Dict[typing.Tuple[SpectralSetting, ...],
-                    typing.Tuple[np.ndarray, typing.List[np.ndarray]]]:
+        Dict[Tuple[SpectralSetting, ...], Tuple[np.ndarray, List[np.ndarray]]]:
     assert isinstance(speclib, QgsVectorLayer)
 
     if spectral_profile_fields is None:
@@ -118,8 +115,8 @@ def featuresToArrays(speclib: QgsVectorLayer,
 
     for feature in speclib.getFeatures(request):
         feature: QgsFeature
-        settings: typing.List[SpectralSetting] = list()
-        profile_dicts: typing.List[dict] = list()
+        settings: List[SpectralSetting] = list()
+        profile_dicts: List[dict] = list()
         for i, f in zip(spectral_profile_field_indices, spectral_profile_fields):
             d = decodeProfileValueDict(feature.attribute(i))
             d['fid'] = feature.id()
@@ -131,13 +128,12 @@ def featuresToArrays(speclib: QgsVectorLayer,
         PROFILE_DATA.append(profile_dicts)
         PROFILE_DICTS[settings] = PROFILE_DATA
 
-    ARRAYS: typing.Dict[typing.Tuple[SpectralSetting, ...],
-                        typing.Tuple[np.ndarray, typing.List[np.ndarray]]] = dict()
+    ARRAYS: Dict[Tuple[SpectralSetting, ...], Tuple[np.ndarray, List[np.ndarray]]] = dict()
     for settings, profile_dicts in PROFILE_DICTS.items():
 
         ns = len(profile_dicts)
         fids = np.empty((ns,), dtype=int)
-        arrays: typing.List[np.ndarray] = list()
+        arrays: List[np.ndarray] = list()
 
         for i, setting in enumerate(settings):
             if isinstance(setting, SpectralSetting):
@@ -167,7 +163,7 @@ class SpectralLibraryRasterLayerModel(QgsMapLayerModel):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-    def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
+    def data(self, index: QModelIndex, role: int = ...) -> Any:
         if not index.isValid():
             return None
 
@@ -229,14 +225,17 @@ class FieldToRasterValueConverter(QObject):
         """
         return SpectralSetting(list(range(self.bandCount())), xUnit=BAND_INDEX, field_name=self.field().name())
 
-    def updateRasterData(self, features: typing.List[QgsFeature]):
+    def updateRasterData(self, features: List[QgsFeature]):
 
         self.mRasterData = None
         fieldValues = [f.attribute(self.mField.name()) for f in features]
         self.mRasterData, self.mColorTable, self.mNoData = self.toRasterValues(fieldValues)
 
     def colorInterpretationName(self, bandNo: int):
-        return QgsRaster.UndefinedColorInterpretation
+        if Qgis.versionInt() >= 32900:
+            return Qgis.RasterColorInterpretation.Undefined
+        else:
+            return QgsRaster.UndefinedColorInterpretation
 
     def htmlMetadata(self) -> str:
         return f'Field: {self.field().name()} Type: {self.field().typeName()}'
@@ -246,12 +245,19 @@ class FieldToRasterValueConverter(QObject):
         return self.field().type() == QVariant.String
 
     def colorInterpretation(self, bandNo: int) -> int:
-        if self.isClassification():
-            return QgsRaster.PalettedColor
-        else:
-            return QgsRaster.GrayIndex
 
-    def colorTable(self, bandNo: int) -> typing.List[QgsColorRampShader.ColorRampItem]:
+        if Qgis.versionInt() >= 32900:
+            if self.isClassification():
+                return Qgis.RasterColorInterpretation.PaletteIndex
+            else:
+                return Qgis.RasterColorInterpretation.GrayIndex
+        else:
+            if self.isClassification():
+                return QgsRaster.PalettedColor
+            else:
+                return QgsRaster.GrayIndex
+
+    def colorTable(self, bandNo: int) -> List[QgsColorRampShader.ColorRampItem]:
         return self.mColorTable[:]
 
     def field(self) -> QgsField:
@@ -287,16 +293,14 @@ class FieldToRasterValueConverter(QObject):
     def dataType(self, band: int) -> Qgis.DataType:
         return FieldToRasterValueConverter.LUT_FIELD_TYPES.get(self.mField.type(), Qgis.DataType.UnknownDataType)
 
-    def toRasterValues(self, fieldValues: typing.List) -> \
-            typing.Tuple[np.ndarray,
-                         typing.List[QgsColorRampShader.ColorRampItem],
-                         typing.Any]:
+    def toRasterValues(self, fieldValues: List) -> \
+            Tuple[np.ndarray, List[QgsColorRampShader.ColorRampItem], Any]:
         ns = len(fieldValues)
         nb = self.bandCount()
         field = self.mField
         dtype = qgisToNumpyDataType(self.dataType(1))
 
-        colorTable: typing.List[QgsColorRampShader.ColorRampItem] = []
+        colorTable: List[QgsColorRampShader.ColorRampItem] = []
 
         noData = None
         numericValues = None
@@ -363,7 +367,7 @@ class FieldToRasterValueConverter(QObject):
         return array, colorTable, noData
 
     @classmethod
-    def toFieldValues(cls, field: QgsField, rasterValues: np.ndarray) -> typing.List:
+    def toFieldValues(cls, field: QgsField, rasterValues: np.ndarray) -> List:
         raise NotImplementedError
 
 
@@ -379,7 +383,10 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         self.mSpectralSetting: SpectralSetting = None
 
     def colorInterpretation(self, bandNo: int) -> int:
-        return QgsRaster.MultiBandColor
+        if Qgis.versionInt() >= 32900:
+            return Qgis.RasterColorInterpretation.GrayIndex
+        else:
+            return QgsRaster.MultiBandColor
 
     def spectralSetting(self) -> SpectralSetting:
         return self.mSpectralSetting
@@ -399,17 +406,16 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
         else:
             return Qgis.DataType.UnknownDataType
 
-    def toRasterValues(self, fieldValues: typing.List) -> \
-            typing.Tuple[np.ndarray, typing.List[QgsColorRampShader.ColorRampItem],
-                         typing.Any]:
+    def toRasterValues(self, fieldValues: List) -> \
+            Tuple[np.ndarray, List[QgsColorRampShader.ColorRampItem], Any]:
 
         # get spectral setting
         self.mSpectralSetting = None
 
         ns = len(fieldValues)
         nb = 0
-        profileData: typing.List = []
-        profileIndices: typing.List[int] = []
+        profileData: List = []
+        profileIndices: List[int] = []
 
         for i, v in enumerate(fieldValues):
             if isinstance(v, (QByteArray, str, dict)):
@@ -467,7 +473,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
     def __init__(self,
                  uri: str,
                  providerOptions: QgsDataProvider.ProviderOptions = QgsDataProvider.ProviderOptions(),
-                 flags: typing.Union[QgsDataProvider.ReadFlags, QgsDataProvider.ReadFlag] = QgsDataProvider.ReadFlags(),
+                 flags: Union[QgsDataProvider.ReadFlags, QgsDataProvider.ReadFlag] = QgsDataProvider.ReadFlags(),
                  ):
 
         super().__init__(uri, providerOptions=providerOptions, flags=flags)
@@ -475,13 +481,13 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.mFlags = flags
         self.mField: QgsField = None
         self.mFieldConverter: FieldToRasterValueConverter = None
-        self.mFeatures: typing.List[QgsFeature] = []
+        self.mFeatures: List[QgsFeature] = []
         self.mStatsCache = dict()
         self.mYOffset: int = 0
         self.mYOffsetManual: bool = False
         self.initWithDataSourceUri(self.dataSourceUri())
 
-    def activeFeatures(self) -> typing.List[QgsFeature]:
+    def activeFeatures(self) -> List[QgsFeature]:
         return self.mFeatures
 
     def initWithDataSourceUri(self, uri: str) -> None:
@@ -532,7 +538,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
               boundingBox: QgsRectangle,
               width: int,
               height: int,
-              feedback: typing.Optional[QgsRasterBlockFeedback] = None) -> QgsRasterBlock:
+              feedback: Optional[QgsRasterBlockFeedback] = None) -> QgsRasterBlock:
 
         # print(f'# block: {bandNo}: {boundingBox} : {width} : {height}', flush=True)
 
@@ -593,7 +599,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
                       stats: int = ...,
                       extent: QgsRectangle = ...,
                       sampleSize: int = ...,
-                      feedback: typing.Optional['QgsRasterBlockFeedback'] = ...) -> bool:
+                      feedback: Optional['QgsRasterBlockFeedback'] = ...) -> bool:
         return True
         # statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
         # return statsKey in self.mStatsCache.keys()
@@ -606,7 +612,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
                        stats: int = ...,
                        extent: QgsRectangle = ...,
                        sampleSize: int = ...,
-                       feedback: typing.Optional['QgsRasterBlockFeedback'] = ...) -> 'QgsRasterBandStats':
+                       feedback: Optional['QgsRasterBlockFeedback'] = ...) -> 'QgsRasterBandStats':
 
         statsKey = self._statsKey(bandNo, stats, extent, sampleSize)
         if statsKey in self.mStatsCache.keys():
@@ -650,7 +656,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         else:
             return 0
 
-    def setActiveField(self, field: typing.Union[str, int, QgsField, FieldToRasterValueConverter]):
+    def setActiveField(self, field: Union[str, int, QgsField, FieldToRasterValueConverter]):
         lastField: QgsField = self.activeField()
 
         if isinstance(field, FieldToRasterValueConverter):
@@ -690,7 +696,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         return self.mField
 
     def setActiveFeatures(self,
-                          features: typing.List[QgsFeature],
+                          features: List[QgsFeature],
                           field: Union[QgsField, FieldToRasterValueConverter] = None
                           ):
 
@@ -710,7 +716,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         self.fullExtentCalculated.emit()
         self.dataChanged.emit()
 
-    def activeFeatureIds(self) -> typing.List[int]:
+    def activeFeatureIds(self) -> List[int]:
         return [f.id() for f in self.mFeatures]
 
     def setFieldConverter(self, converter: FieldToRasterValueConverter):
@@ -796,12 +802,16 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         return provider
 
     def colorInterpretation(self, bandNo: int) -> int:
+
         if self.hasFieldConverter():
             return self.fieldConverter().colorInterpretation(bandNo)
         else:
-            return QgsRaster.GrayIndex
+            if Qgis.versionInt() >= 32900:
+                return Qgis.RasterColorInterpretation.GrayIndex
+            else:
+                return QgsRaster.GrayIndex
 
-    def colorTable(self, bandNo: int) -> typing.List[QgsColorRampShader.ColorRampItem]:
+    def colorTable(self, bandNo: int) -> List[QgsColorRampShader.ColorRampItem]:
         return self.fieldConverter().colorTable(bandNo)
 
     def clone(self) -> 'VectorLayerFieldRasterDataProvider':
@@ -855,15 +865,14 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
     An
     """
 
-    def __init__(self, *args, speclib=None, fids: typing.List[int] = None, **kwds):
+    def __init__(self, *args, speclib=None, fids: List[int] = None, **kwds):
 
         super().__init__(*args, **kwds)
 
         self.mSpeclib: QgsVectorLayer = None
         self.mProfileFields: QgsFields = QgsFields()
-        self.mARRAYS: typing.Dict[typing.Tuple[SpectralSetting, ...],
-                                  typing.Tuple[np.ndarray, typing.List[np.ndarray]]] = dict()
-        self.mActiveProfileSettings: typing.Tuple[SpectralSetting, ...] = None
+        self.mARRAYS: Dict[Tuple[SpectralSetting, ...], Tuple[np.ndarray, List[np.ndarray]]] = dict()
+        self.mActiveProfileSettings: Tuple[SpectralSetting, ...] = None
         self.mActiveProfileField: QgsField = None
 
         if speclib:
@@ -871,7 +880,7 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
 
     def createFieldLayer(self,
                          field: QgsField,
-                         settings: typing.Tuple[SpectralSetting, ...]) -> QgsRasterLayer:
+                         settings: Tuple[SpectralSetting, ...]) -> QgsRasterLayer:
         i = self.profileFields().indexOf(field.name())
         assert i >= 0
 
@@ -891,8 +900,8 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
 
     def createFieldLayers(self,
                           fields: QgsFields = None,
-                          profileSettingsList: typing.List[typing.Tuple[SpectralSetting, ...]] = None,
-                          one_setting_per_field: bool = True) -> typing.List[QgsRasterLayer]:
+                          profileSettingsList: List[Tuple[SpectralSetting, ...]] = None,
+                          one_setting_per_field: bool = True) -> List[QgsRasterLayer]:
 
         FIELD_LAYERS = []
         FIELD_NAMES = set()
@@ -952,8 +961,8 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
 
     def _field_and_settings(self,
                             field: QgsField = None,
-                            settings: typing.Tuple[SpectralSetting, ...] = None) -> \
-            typing.Tuple[QgsField, typing.Tuple[SpectralSetting, ...]]:
+                            settings: Tuple[SpectralSetting, ...] = None) -> \
+            Tuple[QgsField, Tuple[SpectralSetting, ...]]:
         if field is None:
             field = self.activeProfileField()
         if settings is None:
@@ -965,7 +974,7 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
 
     def profileSetting(self,
                        field: QgsField = None,
-                       settings: typing.Tuple[SpectralSetting, ...] = None) -> SpectralSetting:
+                       settings: Tuple[SpectralSetting, ...] = None) -> SpectralSetting:
         field, settings = self._field_and_settings(field, settings)
         if not (isinstance(field, QgsField) and len(settings) > 0):
             return None
@@ -973,7 +982,7 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
 
     def profileArray(self,
                      field: QgsField = None,
-                     settings: typing.Tuple[SpectralSetting, ...] = None) -> np.ndarray:
+                     settings: Tuple[SpectralSetting, ...] = None) -> np.ndarray:
         field, settings = self._field_and_settings(field, settings)
         if not isinstance(field, QgsField):
             return np.empty((0,), dtype=int)
@@ -981,7 +990,7 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
         return arrays[self.mProfileFields.indexOf(field.name())]
 
     def profileFIDs(self,
-                    settings: typing.Tuple[SpectralSetting, ...] = None) -> np.ndarray:
+                    settings: Tuple[SpectralSetting, ...] = None) -> np.ndarray:
         if settings is None:
             settings = self.activeProfileSettings()
         fids, arrays = self.mARRAYS.get(settings, (np.empty((0,), dtype=int), []))
@@ -998,14 +1007,14 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
         i = self.profileFields().indexOf(self.activeProfileField().name())
         return self.activeProfileSettings()[i]
 
-    def activeProfileFIDs(self) -> typing.List[int]:
+    def activeProfileFIDs(self) -> List[int]:
         return self.profileFIDs(self.activeProfileSettings())
 
-    def setActiveProfileSettings(self, settings: typing.Tuple[SpectralSetting, ...]):
+    def setActiveProfileSettings(self, settings: Tuple[SpectralSetting, ...]):
         assert settings in self.mARRAYS.keys()
         self.mActiveProfileSettings = settings
 
-    def activeProfileSettings(self) -> typing.Tuple[SpectralSetting, ...]:
+    def activeProfileSettings(self) -> Tuple[SpectralSetting, ...]:
         return self.mActiveProfileSettings
 
     def xSize(self) -> int:
@@ -1082,10 +1091,10 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
         else:
             return self.profileSetting().n_bands()
 
-    def profileSettingsList(self) -> typing.List[typing.Tuple[SpectralSetting, ...]]:
+    def profileSettingsList(self) -> List[Tuple[SpectralSetting, ...]]:
         return list(self.mARRAYS.keys())
 
-    def initData(self, speclib: QgsVectorLayer, fids: typing.List[int] = None):
+    def initData(self, speclib: QgsVectorLayer, fids: List[int] = None):
         self.mSpeclib = speclib
         self.mProfileFields = profile_fields(speclib)
         self.mARRAYS = featuresToArrays(speclib, self.mProfileFields, fids=fids)
