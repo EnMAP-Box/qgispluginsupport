@@ -28,6 +28,7 @@ import pathlib
 import sys
 import typing
 import warnings
+from typing import List, Union, Generator, Dict
 
 import numpy as np
 from osgeo import gdal
@@ -169,7 +170,7 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer)
                                    and QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
 
-    def profiles(self) -> typing.List[QgsFeature]:
+    def profiles(self) -> List[QgsFeature]:
         return self.mProfiles[:]
 
     def speclib(self) -> SpectralLibrary:
@@ -400,9 +401,9 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: typing.Union[str, pathlib.Path, QUrl],
+                       path: Union[str, pathlib.Path, QUrl],
                        importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
 
         path = cls.extractFilePath(path)
         required_fields = QgsFields()
@@ -442,7 +443,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         return profiles
 
     @staticmethod
-    def readRaster(raster, fields: QgsFields) -> typing.Generator[QgsFeature, None, None]:
+    def readRaster(raster, fields: QgsFields) -> Generator[QgsFeature, None, None]:
 
         raster: QgsRasterLayer
         try:
@@ -525,7 +526,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
     def readRasterVector(raster, vector,
                          fields: QgsFields,
                          all_touched: bool = True,
-                         cache: int = 5 * 2 ** 20) -> typing.Generator[QgsFeature, None, None]:
+                         cache: int = 5 * 2 ** 20) -> Generator[QgsFeature, None, None]:
 
         ds: gdal.Dataset = gdalDataset(raster)
         assert isinstance(ds, gdal.Dataset), f'Unable to open {raster.source()} as gdal.Dataset'
@@ -566,7 +567,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
         PROFILE_COUNTS = dict()
 
-        FEATURES: typing.Dict[int, QgsFeature] = dict()
+        FEATURES: Dict[int, QgsFeature] = dict()
 
         for y in range(nYBlocks):
             yoff = y * block_size[1]

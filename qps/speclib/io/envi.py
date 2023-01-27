@@ -33,7 +33,7 @@ import tempfile
 import time
 import typing
 import uuid
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 
 import numpy as np
 from osgeo import gdal, gdal_array
@@ -193,7 +193,7 @@ def readCSVMetadata(pathESL) -> QgsVectorLayer:
         return None
 
 
-def writeCSVMetadata(pathCSV: str, profiles: typing.List[QgsFeature], profile_names: typing.List[str]):
+def writeCSVMetadata(pathCSV: str, profiles: List[QgsFeature], profile_names: List[str]):
     """
     :param pathCSV:
     :param profiles:
@@ -249,12 +249,15 @@ class EnviSpectralLibraryExportWidget(SpectralLibraryExportWidget):
     def setSpeclib(self, speclib: QgsVectorLayer):
         pfields: QgsFields = profile_fields(speclib)
         self.mProfileField.setFields(pfields)
-        if pfields.count() > 0 and self.mProfileField.currentIndex() < 0:
+        if pfields.count() > 0 > self.mProfileField.currentIndex():
             self.mProfileField.setCurrentIndex(0)
 
         self.mNameExpr.setFields(speclib.fields())
 
     def supportsMultipleSpectralSettings(self) -> bool:
+        return False
+
+    def supportsLayerName(self) -> bool:
         return False
 
     def formatName(self) -> str:
@@ -382,7 +385,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
     def importProfiles(cls,
                        path: Union[str, pathlib.Path],
                        importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
 
         path = pathlib.Path(path).as_posix()
         assert isinstance(path, str)
@@ -391,7 +394,12 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         fields, md = EnviSpectralLibraryIO.sourceFieldsMetadata(pathHdr)
 
         tmpVrt = tempfile.mktemp(prefix='tmpESLVrt', suffix='.esl.vrt', dir=os.path.join(VSI_DIR, 'ENVIIO'))
-        ds = esl2vrt(pathESL, tmpVrt)
+        try:
+            ds = esl2vrt(pathESL, tmpVrt)
+        except AssertionError as ex:
+            feedback.reportError(str(ex))
+            return []
+
         profileArray = ds.ReadAsArray()
 
         # remove the temporary VRT, as it was created internally only
@@ -418,7 +426,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         if bbl:
             bbl = np.asarray(bbl, dtype=np.byte).tolist()
 
-        profiles: typing.List[QgsFeature] = []
+        profiles: List[QgsFeature] = []
 
         featureIterator = None
         copyFields = []
@@ -454,9 +462,9 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def exportProfiles(cls,
                        path: str,
-                       profiles: typing.Union[typing.List[QgsFeature], QgsVectorLayer],
+                       profiles: Union[List[QgsFeature], QgsVectorLayer],
                        exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[str]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
 
         profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
         if len(profiles) == 0:
@@ -613,7 +621,7 @@ def canRead(pathESL) -> bool:
 RX_SUPPORTED_ENVI_FILETYPES = re.compile(r'.*Spectral Library', re.I)
 
 
-def esl2vrt(pathESL, pathVrt=None):
+def esl2vrt(pathESL, pathVrt=None) -> gdal.Dataset:
     """
     Creates a GDAL Virtual Raster (VRT) that allows to read an ENVI Spectral Library file
     :param pathESL: path ENVI Spectral Library file (binary part)

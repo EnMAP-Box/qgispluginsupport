@@ -32,6 +32,7 @@ import re
 import struct
 import typing
 import warnings
+from typing import Tuple, List, Union
 
 import numpy as np
 
@@ -347,7 +348,7 @@ class ASDBinaryFile(object):
 
         return f
 
-    def readFromBinaryFile(self, path: typing.Union[str, pathlib.Path]):
+    def readFromBinaryFile(self, path: Union[str, pathlib.Path]):
         """
         Reads data from a binary file
         :param path:
@@ -361,7 +362,7 @@ class ASDBinaryFile(object):
             def sub(start, length):
                 return DATA[start:start + length]
 
-            def n_string(start: int) -> typing.Tuple[str, int]:
+            def n_string(start: int) -> Tuple[str, int]:
                 # 2 byte int for length
                 # 2 + length
                 # empty string = 2 byte = 0
@@ -516,7 +517,7 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
         return ASDBinaryFile(path).asFeature()
 
     @classmethod
-    def readCSVFile(cls, filePath: str) -> typing.List[QgsFeature]:
+    def readCSVFile(cls, filePath: str) -> List[QgsFeature]:
         """
         Read profiles from a text file
         :param filePath:
@@ -556,9 +557,9 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: typing.Union[str, pathlib.Path],
+                       path: Union[str, pathlib.Path],
                        importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
         profiles = []
 
         if isinstance(path, str):

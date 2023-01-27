@@ -10,6 +10,7 @@ from qgis.PyQt.QtGui import QIcon, QRegExpValidator
 from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, QProgressDialog, \
     QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox, QToolButton, QAction
+from qgis.core import QgsProviderUtils
 from qgis.core import QgsProject, QgsMapLayer, QgsVectorLayer, QgsFeature, QgsFields, \
     QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
@@ -982,6 +983,8 @@ class SpectralLibraryExportDialog(QDialog):
         b = export_widget.supportsLayerName()
         self.tbLayerName.setEnabled(b)
         self.labelLayerName.setEnabled(b)
+        self.tbLayerName.setVisible(b)
+        self.labelLayerName.setVisible(b)
 
         self.gbFormatOptions.setVisible(export_widget.findChild(QWidget) is not None)
 
@@ -992,8 +995,13 @@ class SpectralLibraryExportDialog(QDialog):
 
         self.mSpeclib = speclib
         self.mSpeclib.selectionChanged.connect(self.onSelectionChanged)
-        # if self.tbLayerName.text() == '':
-        #     self.tbLayerName.setText(re.sub(r'[^0-9a-zA-Z_]', '_', speclib.name()))
+
+        if self.tbLayerName.text() == '':
+            lyrname = speclib.name()
+            if lyrname == '':
+                lyrname = speclib.source()
+            lyrname = QgsProviderUtils.suggestLayerNameFromFilePath(lyrname)
+            self.tbLayerName.setText(lyrname)
         for w in self.exportWidgets():
             w.setSpeclib(speclib)
 

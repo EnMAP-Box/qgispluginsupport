@@ -1,6 +1,7 @@
 import os
 import pathlib
 import typing
+from typing import Union, Any, List
 
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsCoordinateReferenceSystem, QgsVectorFileWriter, QgsCoordinateTransformContext
@@ -95,10 +96,10 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def exportProfiles(cls,
-                       path: typing.Union[str, pathlib.Path],
-                       profiles: typing.Any,
+                       path: Union[str, pathlib.Path],
+                       profiles: Any,
                        exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[str]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
 
         """
         :param fileName: file name to write to
@@ -165,7 +166,7 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
     def importProfiles(cls,
                        path: str,
                        importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
         lyr = QgsVectorLayer(path)
         # load editor widget information on spectral profile fields
         lyr.loadDefaultStyle()
