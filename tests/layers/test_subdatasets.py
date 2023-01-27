@@ -11,7 +11,7 @@ from qps.testing import TestCase, TestObjects
 
 @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
 class TestSubDataSets(TestCase):
-
+    @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
     def test_subdatasettask(self):
 
         dir_gdal = TestObjects.repoDirGDAL()
@@ -20,7 +20,7 @@ class TestSubDataSets(TestCase):
             dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l1c/S2A_OPER_PRD_MSIL1C.SAFE/S2A_OPER_MTD_SAFL1C.xml',
             dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l2a/S2A_USER_PRD_MSIL2A.SAFE/S2A_USER_MTD_SAFL2A.xml',
             dir_gdal / 'autotest/gdrivers/data/sentinel2/fake_l2a/S2A_USER_PRD_MSIL2A.SAFE/S2A_USER_MTD_SAFL2A.xml',
-            dir_gdal / 'autotest/gdrivers/data/gpkg/50000_25000_uint16.gpkg.zip/50000_25000_uint16.gpkg'
+            dir_gdal / 'autotest/gdrivers/data/gpkg/50000_25000_uint16.gpkg.zip'
         ]
         for s in sources:
             self.assertTrue(s.is_file(), msg=str(s))
