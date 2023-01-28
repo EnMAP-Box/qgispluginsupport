@@ -50,16 +50,15 @@ Push updates (replace with your fork):
 2. QPS uses the Qt resource system, e.g. to access icons. This requires to convert the ``qps/qpsresources.qrc`` file 
 into a corresponding python module ``qps/qpsresources.py``.  
 
-
 3. Now you can use the QPS python API. Keep in mind that some of its features need to be 
 registered to a running Qt Application or the QGIS Application instance. 
 This is preferably done in the ```__init__.py``` of 
 your application, e.g. by calling:
 
-    ```python
-    from mymodule.qps import initAll 
-    initAll()
-    ```
+   ```python
+   from mymodule.qps import initAll 
+   initAll()
+   ```
 
 ## Dependencies
 
@@ -96,7 +95,7 @@ Note that the first two lines and the last line are not required if QGIS is alre
 
 ### QGIS Resource files
 
-Many QGIS icons are available as resource strings. Based on the Qt reosurce system, theses icons
+Many QGIS icons are available as resource strings. Based on the Qt resource system, these icons
 can be used in own QGIS plugins, which reduces the need to provide own `*.png` or `*.svg` files and 
 reduces the plugin size. 
 
@@ -104,17 +103,16 @@ For development, you might load the QGIS repository `images/images.qrc` to your 
 
 1. Clone the QGIS Repository to access its `images/images.qrc` 
    To download the `/images` folder only, you can do a sparse checkout:
-    
-    
-    ```
-    mkdir QGIS_Images
-    cd QGIS_Images
-    git init
-    git config core.sparseCheckout true
-    git remote add -t master origin https://github.com/qgis/QGIS.git
-    echo '/images/' > .git/info/sparse-checkout
-    git pull origin master
-    ```
+
+   ```
+   mkdir QGIS_Images
+   cd QGIS_Images
+   git init
+   git config core.sparseCheckout true
+   git remote add -t master origin https://github.com/qgis/QGIS.git
+   echo '/images/' > .git/info/sparse-checkout
+   git pull origin master
+   ```
 
 2. Open the `images/images.qrc` to your Qt Designer / Qt Creator to visualize icons and copy & paste their resource
    paths. E.g. `':/images/icons/qgis_icon.svg'` for the QGIS icon.
