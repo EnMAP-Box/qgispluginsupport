@@ -29,9 +29,9 @@ import os
 import pathlib
 import re
 import sys
-import typing
+
 from json import JSONDecodeError
-from typing import Union, List, Set, Callable, Iterable, Any, Tuple
+from typing import Union, List, Set, Callable, Iterable, Any, Tuple, Dict
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
@@ -48,7 +48,7 @@ from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileV
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
-QGIS_FUNCTION_INSTANCES: typing.Dict[str, QgsExpressionFunction] = dict()
+QGIS_FUNCTION_INSTANCES: Dict[str, QgsExpressionFunction] = dict()
 
 
 class HelpStringMaker(object):
@@ -71,7 +71,7 @@ class HelpStringMaker(object):
                         raise Exception(f'Failed to read {e.path}:\n{err}')
 
     def helpText(self, name: str,
-                 parameters: typing.List[QgsExpressionFunction.Parameter] = []) -> str:
+                 parameters: List[QgsExpressionFunction.Parameter] = []) -> str:
         """
         re-implementation of QString QgsExpression::helpText( QString name )
         to generate similar help strings
@@ -212,7 +212,7 @@ class Format_Py(QgsExpressionFunction):
     def usesGeometry(self, node) -> bool:
         return False
 
-    def referencedColumns(self, node) -> typing.List[str]:
+    def referencedColumns(self, node) -> List[str]:
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:
@@ -266,7 +266,7 @@ class SpectralEncoding(QgsExpressionFunction):
     def usesGeometry(self, node) -> bool:
         return True
 
-    def referencedColumns(self, node) -> typing.List[str]:
+    def referencedColumns(self, node) -> List[str]:
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:
@@ -496,7 +496,7 @@ class RasterProfile(QgsExpressionFunction):
     def usesGeometry(self, node) -> bool:
         return True
 
-    def referencedColumns(self, node) -> typing.List[str]:
+    def referencedColumns(self, node) -> List[str]:
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:
@@ -588,7 +588,7 @@ class RasterArray(QgsExpressionFunction):
     def usesGeometry(self, node) -> bool:
         return True
 
-    def referencedColumns(self, node) -> typing.List[str]:
+    def referencedColumns(self, node) -> List[str]:
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:
@@ -629,7 +629,7 @@ class SpectralData(QgsExpressionFunction):
     def usesGeometry(self, node) -> bool:
         return False
 
-    def referencedColumns(self, node) -> typing.List[str]:
+    def referencedColumns(self, node) -> List[str]:
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:
@@ -722,7 +722,7 @@ class SpectralMath(QgsExpressionFunction):
     def usesGeometry(self, node) -> bool:
         return True
 
-    def referencedColumns(self, node) -> typing.List[str]:
+    def referencedColumns(self, node) -> List[str]:
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:

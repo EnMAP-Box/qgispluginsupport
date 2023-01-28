@@ -1,7 +1,8 @@
 import enum
 import sys
-import typing
+
 import warnings
+from typing import List, Set, Dict, Tuple, Generator
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
@@ -57,7 +58,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mSpectralProcessingWidget: SpectralProcessingDialog = None
 
         self.mToolbar: QToolBar
-        self.mIODialogs: typing.List[QWidget] = list()
+        self.mIODialogs: List[QWidget] = list()
 
         self.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
         self.mMainView.showContextMenuExternally.connect(self.onShowContextMenuAttributeEditor)
@@ -445,7 +446,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.plotControl().updatePlot(fids)
         # self.updateActions()
 
-    def temporaryProfileIDs(self) -> typing.Set[int]:
+    def temporaryProfileIDs(self) -> Set[int]:
         return self.plotControl().profileCandidates().count()
         # return self.plotControl().mTemporaryProfileIDs
 
@@ -468,9 +469,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         return self.mSpeclibPlotWidget
 
     def setCurrentProfiles(self,
-                           currentProfiles: typing.List[QgsFeature],
+                           currentProfiles: List[QgsFeature],
                            make_permanent: bool = None,
-                           currentProfileStyles: typing.Dict[typing.Tuple[int, str], PlotStyle] = None,
+                           currentProfileStyles: Dict[Tuple[int, str], PlotStyle] = None,
                            ):
         """
         Sets temporary profiles for the spectral library.
@@ -480,7 +481,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :param currentProfiles:
         :return:
         """
-        if isinstance(currentProfiles, typing.Generator):
+        if isinstance(currentProfiles, Generator):
             currentProfiles = list(currentProfiles)
         assert isinstance(currentProfiles, (list,))
 
@@ -532,7 +533,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
                 # give current spectra the current spectral style
                 # self.plotControl().mTemporaryProfileIDs.update(addedFIDs)
 
-                # affected_profile_fields: typing.Dict[str, QColor] = dict()
+                # affected_profile_fields: Dict[str, QColor] = dict()
 
                 # find a profile style for each profile candidate
 

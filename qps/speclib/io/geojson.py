@@ -1,6 +1,6 @@
 import os
 import pathlib
-import typing
+
 from typing import Any, List
 
 import numpy as np

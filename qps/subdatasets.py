@@ -28,8 +28,8 @@
 import datetime
 import re
 import sys
-import typing
-from typing import List, Dict, Tuple
+
+from typing import List, Dict, Tuple, Any
 
 from qgis.PyQt.QtCore import QItemSelectionModel
 from qgis.PyQt.QtWidgets import QTableView, QPushButton
@@ -46,7 +46,7 @@ from .utils import loadUi
 
 class SubDatasetLoadingTask(QgsTask):
     def __init__(self,
-                 files: typing.List[str],
+                 files: List[str],
                  description: str = "Collect subdata sets",
                  callback=None,
                  progress_interval: int = 1):
@@ -102,7 +102,7 @@ class DatasetTableModel(QAbstractTableModel):
         self.mColumnNames = ['Dataset', '#']
         self.mColumnToolTip = ['Dataset location',
                                'Number of Sublayers']
-        self.mDatasetInfos: typing.List[Tuple[str, List[QgsProviderSublayerDetails]]] = []
+        self.mDatasetInfos: List[Tuple[str, List[QgsProviderSublayerDetails]]] = []
 
     def clear(self):
         self.beginResetModel()
@@ -180,7 +180,7 @@ class DatasetTableModel(QAbstractTableModel):
             self.mDatasetInfos.extend(infos)
             self.endInsertRows()
 
-    def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
+    def data(self, index: QModelIndex, role: int = ...) -> Any:
         if not index.isValid():
             return None
 
@@ -253,7 +253,7 @@ class SubDatasetSelectionDialog(QDialog):
         if Qt.CheckStateRole in roles:
             self.validate()
 
-    def setFiles(self, files: typing.List[str]):
+    def setFiles(self, files: List[str]):
         assert isinstance(files, list)
         fileString = ' '.join(['"{}"'.format(f) for f in files])
         self.fileWidget.setFilePath(fileString)
@@ -344,7 +344,7 @@ class SubDatasetSelectionDialog(QDialog):
 
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(len(rows) > 0)
 
-    def selectedSublayerDetails(self) -> typing.List[QgsProviderSublayerDetails]:
+    def selectedSublayerDetails(self) -> List[QgsProviderSublayerDetails]:
         """
         Returns the selected QgsProviderSublayerDetails from all input sources
         """

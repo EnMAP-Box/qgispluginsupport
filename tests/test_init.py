@@ -36,7 +36,7 @@ class testClassTesting(unittest.TestCase):
         import qps
         qps.registerEditorWidgets()
 
-        import qps.speclib.core.spectrallibrary
+        import qps.speclib.gui.spectralprofileeditor
         self.assertIsInstance(qps.speclib.gui.spectralprofileeditor.SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY,
                               QgsEditorWidgetFactory)
 

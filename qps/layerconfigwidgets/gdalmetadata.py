@@ -27,8 +27,8 @@ import json
 import math
 import pathlib
 import re
-import typing
-from typing import List, Pattern, Tuple, Union, Dict
+
+from typing import List, Pattern, Tuple, Union, Dict, Any, Match
 
 from osgeo import gdal, ogr
 
@@ -830,7 +830,7 @@ class GDALMetadataModel(QAbstractTableModel):
 
         elif isOGRVectorLayer(lyr):
             match = RX_OGR_URI.search(lyr.source())
-            if isinstance(match, typing.Match):
+            if isinstance(match, Match):
                 D = match.groupdict()
                 ds: ogr.DataSource = ogr.Open(D['path'])
                 if isinstance(ds, ogr.DataSource):
@@ -863,7 +863,7 @@ class GDALMetadataModel(QAbstractTableModel):
     def columnCount(self, parent: QModelIndex = ...) -> int:
         return len(self.mColumnNames)
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> typing.Any:
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> Any:
         if orientation == Qt.Horizontal:
             if role == Qt.DisplayRole:
                 return self.mColumnNames[section]
@@ -884,7 +884,7 @@ class GDALMetadataModel(QAbstractTableModel):
 
         return flags
 
-    def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
+    def data(self, index: QModelIndex, role: int = ...) -> Any:
 
         if not index.isValid():
             return None
@@ -897,7 +897,7 @@ class GDALMetadataModel(QAbstractTableModel):
             return item[col]
         return None
 
-    def setData(self, index: QModelIndex, value: typing.Any, role: int = ...) -> bool:
+    def setData(self, index: QModelIndex, value: Any, role: int = ...) -> bool:
 
         if not index.isValid():
             return False
@@ -940,8 +940,8 @@ def list_or_empty(values, domain: str = None) -> str:
 class GDALMetadataItemDialog(QDialog):
 
     def __init__(self, *args,
-                 major_objects: typing.List[str] = [],
-                 domains: typing.List[str] = [],
+                 major_objects: List[str] = [],
+                 domains: List[str] = [],
                  **kwds):
         super().__init__(*args, **kwds)
         pathUi = pathlib.Path(__file__).parents[1] / 'ui' / 'gdalmetadatamodelitemwidget.ui'

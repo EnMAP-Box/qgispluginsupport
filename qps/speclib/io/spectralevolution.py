@@ -28,7 +28,7 @@ import datetime
 import os
 import pathlib
 import re
-import typing
+
 from typing import Union, List
 
 from qgis.PyQt.QtCore import QVariant, QDate, QTime

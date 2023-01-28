@@ -1,6 +1,6 @@
 import os
 import pathlib
-import typing
+
 from typing import Union, Any, List
 
 from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \

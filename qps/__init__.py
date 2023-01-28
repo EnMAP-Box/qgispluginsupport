@@ -27,8 +27,9 @@
 import os
 import pathlib
 import sys
-import typing
+
 import warnings
+from typing import List
 
 from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
@@ -41,7 +42,7 @@ DIR_UI_FILES = DIR_QPS / 'ui'
 DIR_ICONS = DIR_UI_FILES / 'icons'
 QPS_RESOURCE_FILE = DIR_QPS / 'qpsresources_rc.py'
 
-MAPLAYER_CONFIGWIDGET_FACTORIES: typing.List[QgsMapLayerConfigWidgetFactory] = list()
+MAPLAYER_CONFIGWIDGET_FACTORIES: List[QgsMapLayerConfigWidgetFactory] = list()
 
 if Qgis.QGIS_VERSION < MIN_QGIS_VERSION:
     warnings.warn(f'Your QGIS ({Qgis.QGIS_VERSION}) is outdated. '
@@ -110,7 +111,7 @@ def unregisterMapLayerConfigWidgetFactory(factory: QgsMapLayerConfigWidgetFactor
         QgsApplication.instance().messageLog().logMessage(f'Unregistered {factory.__class__.__name__}', level=Qgis.Info)
 
 
-def mapLayerConfigWidgetFactories() -> typing.List[QgsMapLayerConfigWidgetFactory]:
+def mapLayerConfigWidgetFactories() -> List[QgsMapLayerConfigWidgetFactory]:
     """
     Returns registered QgsMapLayerConfigWidgetFactories
     :return: list of QgsMapLayerConfigWidgetFactories

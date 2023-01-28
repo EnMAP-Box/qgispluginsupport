@@ -20,9 +20,9 @@ import os
 import pathlib
 import re
 import sys
-import typing
+
 import warnings
-from typing import List
+from typing import List, Dict, Any, Union
 
 from osgeo import gdal, osr
 
@@ -111,8 +111,8 @@ class CheckableQgsFieldModel(QgsFieldModel):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self.mChecked: typing.Dict[int, bool] = dict()
-        self.mDisabled: typing.Dict[int, bool] = dict()
+        self.mChecked: Dict[int, bool] = dict()
+        self.mDisabled: Dict[int, bool] = dict()
 
     def setDisabledFields(self, disabled: QgsFields):
 
@@ -151,7 +151,7 @@ class CheckableQgsFieldModel(QgsFieldModel):
 
         return flags
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int) -> typing.Any:
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int) -> Any:
 
         if role == Qt.DisplayRole and orientation == Qt.Horizontal:
             if section == 0:
@@ -173,9 +173,9 @@ class CheckableQgsFieldModel(QgsFieldModel):
 
         return super().data(index, role)
 
-    def setData(self, index: QModelIndex, value: typing.Any, role) -> bool:
+    def setData(self, index: QModelIndex, value: Any, role) -> bool:
         if not index.isValid():
-            return None
+            return False
 
         row = index.row()
 
@@ -196,7 +196,7 @@ class CopyAttributesDialog(QDialog):
 
     @staticmethod
     def copyLayerFields(layer: QgsVectorLayer,
-                        fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature],
+                        fields: Union[QgsFields, QgsVectorLayer, QgsFeature],
                         parent=None) -> bool:
 
         d = CopyAttributesDialog(layer, fields)
@@ -214,7 +214,7 @@ class CopyAttributesDialog(QDialog):
 
     def __init__(self,
                  layer: QgsVectorLayer,
-                 fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature],
+                 fields: Union[QgsFields, QgsVectorLayer, QgsFeature],
                  parent=None, **kwds):
 
         super().__init__(parent, **kwds)
@@ -307,7 +307,7 @@ class AddAttributeDialog(QDialog):
         self.cbType = QComboBox()
         self.typeModel = OptionListModel()
 
-        nativeTypes: typing.List[QgsVectorDataProvider.NativeType] = self.mLayer.dataProvider().nativeTypes()
+        nativeTypes: List[QgsVectorDataProvider.NativeType] = self.mLayer.dataProvider().nativeTypes()
         for ntype in nativeTypes:
             assert isinstance(ntype, QgsVectorDataProvider.NativeType)
 
@@ -447,7 +447,7 @@ class AddAttributeDialog(QDialog):
         elif value < vMin:
             sb.setValue(vMin)
 
-    def validate(self, *args) -> typing.Union[bool, str]:
+    def validate(self, *args) -> Union[bool, str]:
         """
         Validates the inputs
         :return: (bool, str with error message(s))
@@ -498,16 +498,16 @@ class RemoveAttributeDialog(QDialog):
         layout.addWidget(self.btnBox)
         self.setLayout(layout)
 
-    def fields(self) -> typing.List[QgsField]:
+    def fields(self) -> List[QgsField]:
         """
         Returns the selected QgsFields
         """
         return self.fieldModel.checkedFields()
 
-    def fieldIndices(self) -> typing.List[int]:
+    def fieldIndices(self) -> List[int]:
         return [self.mLayer.fields().lookupField(f.name()) for f in self.fields()]
 
-    def fieldNames(self) -> typing.List[str]:
+    def fieldNames(self) -> List[str]:
         return [f.name() for f in self.fields()]
 
 
@@ -842,7 +842,7 @@ def equal_styles(lyr1: QgsMapLayer, lyr2: QgsMapLayer) -> bool:
     return style1.xmlData() == style2.xmlData()
 
 
-def subLayerDefinitions(mapLayer: QgsMapLayer) -> typing.List[QgsSublayersDialog.LayerDefinition]:
+def subLayerDefinitions(mapLayer: QgsMapLayer) -> List[QgsSublayersDialog.LayerDefinition]:
     """
 
     :param mapLayer:QgsMapLayer
@@ -891,7 +891,7 @@ def subLayerDefinitions(mapLayer: QgsMapLayer) -> typing.List[QgsSublayersDialog
     return definitions
 
 
-def subLayers(mapLayer: QgsMapLayer, subLayers: list = None) -> typing.List[QgsMapLayer]:
+def subLayers(mapLayer: QgsMapLayer, subLayers: list = None) -> List[QgsMapLayer]:
     """
     Returns a list of QgsMapLayer instances extracted from the input QgsMapLayer.
     Returns the "parent" QgsMapLayer in case no sublayers can be extracted
@@ -948,7 +948,7 @@ def subLayers(mapLayer: QgsMapLayer, subLayers: list = None) -> typing.List[QgsM
 class LayerPropertiesDialog(QgsOptionsDialogBase):
 
     @staticmethod
-    def defaultFactories() -> typing.List[QgsMapLayerConfigWidgetFactory]:
+    def defaultFactories() -> List[QgsMapLayerConfigWidgetFactory]:
         """
         Returns a list of default QgsMapLayerConfigWidgetFactory
         """
@@ -968,10 +968,10 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         return factories
 
     def __init__(self,
-                 lyr: typing.Union[QgsRasterLayer, QgsVectorLayer],
+                 lyr: Union[QgsRasterLayer, QgsVectorLayer],
                  canvas: QgsMapCanvas = None,
                  parent=None,
-                 mapLayerConfigFactories: typing.List[QgsMapLayerConfigWidgetFactory] = None):
+                 mapLayerConfigFactories: List[QgsMapLayerConfigWidgetFactory] = None):
         warnings.warn('This dialog emulates only parts of the real QGIS Layer Properties dialog. '
                       'Use for testing only.', Warning, stacklevel=2)
         super(QgsOptionsDialogBase, self).__init__('QPS_LAYER_PROPERTIES', parent, Qt.Dialog, settings=None)
@@ -1083,7 +1083,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
         self.mapLayer().triggerRepaint()
         self.sync()
 
-    def setPage(self, page: typing.Union[QgsMapLayerConfigWidget, int]):
+    def setPage(self, page: Union[QgsMapLayerConfigWidget, int]):
         if isinstance(page, QgsMapLayerConfigWidget):
             pages = list(self.pages())
             assert page in pages
@@ -1093,7 +1093,7 @@ class LayerPropertiesDialog(QgsOptionsDialogBase):
             assert isinstance(page, int) and 0 <= page < self.mOptionsListWidget.count()
             self.mOptionsListWidget.setCurrentRow(page)
 
-    def pages(self) -> typing.List[QgsMapLayerConfigWidget]:
+    def pages(self) -> List[QgsMapLayerConfigWidget]:
         for i in range(self.mOptionsStackedWidget.count()):
             w = self.mOptionsStackedWidget.widget(i)
             if isinstance(w, QgsMapLayerConfigWidget):
@@ -1139,7 +1139,7 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
                               modal: bool = True,
                               page: str = None,
                               messageBar: QgsMessageBar = None,
-                              useQGISDialog: bool = False) -> typing.Union[QDialog.DialogCode, QDialog]:
+                              useQGISDialog: bool = False) -> Union[QDialog.DialogCode, QDialog]:
     """
     Opens a dialog to adjust map layer settings.
     :param layer: QgsMapLayer of type QgsVectorLayer or QgsRasterLayer

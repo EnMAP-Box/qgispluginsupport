@@ -30,7 +30,7 @@ import os
 import pathlib
 import re
 import struct
-import typing
+
 import warnings
 from typing import Tuple, List, Union
 

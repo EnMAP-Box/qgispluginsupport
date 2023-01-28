@@ -1,8 +1,8 @@
 # noinspection PyPep8Naming
 import datetime
-import typing
-import unittest
 
+import unittest
+from typing import Tuple
 
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QGridLayout
@@ -38,7 +38,7 @@ class SpectralProcessingTests(TestCase):
         super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
         initAll()
 
-    def initProcessingRegistry(self) -> typing.Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
+    def initProcessingRegistry(self) -> Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
         procReg = QgsApplication.instance().processingRegistry()
         procGuiReg: QgsProcessingGuiRegistry = QgsGui.processingGuiRegistry()
         assert isinstance(procReg, QgsProcessingRegistry)

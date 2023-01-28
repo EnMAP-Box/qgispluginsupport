@@ -1,8 +1,8 @@
 import json
 import re
-import typing
+
 from copy import copy
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
 
 import numpy as np
 from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant, QJsonDocument, \
@@ -592,7 +592,7 @@ class SpectralProfileEditorWidgetWrapper(QgsEditorWidgetWrapper):
         if isinstance(w, SpectralProfileEditorWidget):
             w.setEnabled(enabled)
 
-    def setValue(self, value: typing.Any) -> None:
+    def setValue(self, value: Any) -> None:
         self.mLastValue = value
         w = self.widget()
         if isinstance(w, SpectralProfileEditorWidget):
@@ -658,7 +658,7 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         w.changed.connect(lambda *args, ww=w, k=key: self.writeConfig(key, ww.config()))
         return w
 
-    def configKey(self, layer: QgsVectorLayer, fieldIdx: int) -> typing.Tuple[str, int]:
+    def configKey(self, layer: QgsVectorLayer, fieldIdx: int) -> Tuple[str, int]:
         """
         Returns a tuple to be used as dictionary key to identify a layer profile_field configuration.
         :param layer: QgsVectorLayer

@@ -1,7 +1,7 @@
 import re
 import sys
-import typing
-from typing import List
+
+from typing import List, Pattern, Optional, Union, Any
 
 import numpy as np
 from osgeo import gdal
@@ -94,13 +94,13 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     }
 
     @staticmethod
-    def combinedLookupPattern() -> typing.Pattern:
+    def combinedLookupPattern() -> Pattern:
         patters = '|'.join([rx.pattern for rx in QgsRasterLayerSpectralProperties.LOOKUP_PATTERNS.values()])
         return re.compile(f'({patters})', re.IGNORECASE)
 
     @staticmethod
-    def fromRasterLayer(layer: typing.Union[QgsRasterLayer, gdal.Dataset, str]) \
-            -> typing.Optional['QgsRasterLayerSpectralProperties']:
+    def fromRasterLayer(layer: Union[QgsRasterLayer, gdal.Dataset, str]) \
+            -> Optional['QgsRasterLayerSpectralProperties']:
         """
         Returns the QgsRasterLayerSpectralProperties for a raster layer
         """
@@ -182,16 +182,16 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         return f'{self.bandKey(bandNo)}/{self.itemKey(itemKey)}'
 
-    def bandValue(self, bandNo: int, itemKey: str) -> typing.Any:
+    def bandValue(self, bandNo: int, itemKey: str) -> Any:
         """
         Returns the band values for band bandNo and a specific item key.
         """
         return self.bandValues([bandNo], itemKey)[0]
 
-    def setBandValue(self, bandNo: typing.Union[int, str], itemKey: str, value):
+    def setBandValue(self, bandNo: Union[int, str], itemKey: str, value):
         self.setBandValues([bandNo], itemKey, [value])
 
-    def setBandValues(self, bands: typing.List[int], itemKey, values):
+    def setBandValues(self, bands: List[int], itemKey, values):
         """
         Sets the n values to the corresponding n bands
         if bands = 'all', it is expected values contains either a single value or n = bandCount() values.
@@ -208,7 +208,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         for value, band in zip(values, bands):
             self.setValue(self.bandItemKey(band, itemKey), value)
 
-    def bandValues(self, bands: typing.List[int], itemKey, default=None) -> typing.List[typing.Any]:
+    def bandValues(self, bands: List[int], itemKey, default=None) -> List[Any]:
         """
         Returns the n values for n bands and itemKey.
         Returns the default value in case the itemKey is undefined for a band.
@@ -222,25 +222,25 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
             values = [v if v is not None else default for v in values]
         return values
 
-    def dataOffsets(self, default: float = float('nan')) -> typing.List[float]:
+    def dataOffsets(self, default: float = float('nan')) -> List[float]:
         return self.bandValues(None, SpectralPropertyKeys.DataOffset, default=default)
 
     def dataGains(self, default: float = float('nan')):
         return self.bandValues(None, SpectralPropertyKeys.DataGain, default=default)
 
-    def wavelengths(self) -> typing.List[float]:
+    def wavelengths(self) -> List[float]:
         """
         Returns n = .bandCount() wavelengths.
         """
         return self.bandValues(None, SpectralPropertyKeys.Wavelength)
 
-    def wavelengthUnits(self) -> typing.List[str]:
+    def wavelengthUnits(self) -> List[str]:
         """
         Returns n= .bandCount() wavelength units.
         """
         return self.bandValues(None, SpectralPropertyKeys.WavelengthUnit)
 
-    def badBands(self, default: int = 1) -> typing.List[int]:
+    def badBands(self, default: int = 1) -> List[int]:
         """
         Convenience function to return bad band (multiplier) values as list
         0 = False = do not use
@@ -252,13 +252,13 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         """
         return [int(v) for v in self.bandValues(None, SpectralPropertyKeys.BadBand, default=default)]
 
-    def fwhm(self, default: float = float('nan')) -> typing.List[float]:
+    def fwhm(self, default: float = float('nan')) -> List[float]:
         """
         Returns the FWHM values for each band
         """
         return self.bandValues(None, SpectralPropertyKeys.BandWidth, default=default)
 
-    def fullWidthHalfMaximum(self, default: float = float('nan')) -> typing.List[float]:
+    def fullWidthHalfMaximum(self, default: float = float('nan')) -> List[float]:
         """
         Returns the FWHM values for each band
         """
@@ -471,7 +471,7 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
         self.addAttribute(FWHM)
         self.commitChanges(b)
 
-    def fieldIndex(self, field: typing.Union[int, str, QgsField]) -> int:
+    def fieldIndex(self, field: Union[int, str, QgsField]) -> int:
         if isinstance(field, int):
             return field
         elif isinstance(field, str):
@@ -479,13 +479,13 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
         elif isinstance(field, QgsField):
             return self.fields().indexFromName(field.name())
 
-    def setValue(self, field: typing.Union[int, str, QgsField], bandNo: int, value: typing.Any) -> bool:
+    def setValue(self, field: Union[int, str, QgsField], bandNo: int, value: Any) -> bool:
         return self.setValues(field, [bandNo], [value])
 
     def setValues(self,
-                  field: typing.Union[int, str, QgsField],
-                  bands: typing.List[int],
-                  values: typing.List[typing.Any]) -> bool:
+                  field: Union[int, str, QgsField],
+                  bands: List[int],
+                  values: List[Any]) -> bool:
         i = self.fieldIndex(field)
         if i < 0:
             print(f'Spectral Property Field {field} does not exists', file=sys.stderr)
@@ -497,12 +497,12 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
             self.setAttribute(bandNo, value)
         return self.commitChanges()
 
-    def value(self, field: typing.Union[int, str, QgsField], bandNo: int) -> typing.Any:
+    def value(self, field: Union[int, str, QgsField], bandNo: int) -> Any:
         return self.values(field, [bandNo])
 
     def values(self,
-               field: typing.Union[int, str, QgsField],
-               bands: typing.List[int] = None) -> typing.List[typing.Any]:
+               field: Union[int, str, QgsField],
+               bands: List[int] = None) -> List[Any]:
         i = self.fieldIndex(field)
         if i < 0:
             print(f'Spectral Property Field {field} does not exists', file=sys.stderr)
@@ -515,7 +515,7 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
             values.append(self.mSpectralProperties.getFeature(band)[i])
         return values
 
-    def names(self) -> typing.List[str]:
+    def names(self) -> List[str]:
         """
         Returns the available property names
         """

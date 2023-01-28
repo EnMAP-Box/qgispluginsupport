@@ -22,7 +22,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this software. If not, see <http://www.gnu.org/licenses/>.
+    along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
 import pathlib
@@ -30,6 +30,9 @@ import site
 
 
 def setupRepository():
+    """
+    Initializes the QPS repository after it has been clones
+    """
     DIR_REPO = pathlib.Path(__file__).parent.resolve()
     site.addsitedir(DIR_REPO)
 
@@ -44,14 +47,14 @@ def setupRepository():
     try:
         import os.path
         import qps.qpsresources
-        qps.resources
+        assert qps.qpsresouces is not None
         pathQrc = DIR_REPO / 'qps' / 'qpsresources.qrc'
         pathPy = DIR_REPO / 'qps' / 'qpsresources.py'
 
         if not pathPy.is_file() or os.path.getmtime(pathPy) < os.path.getmtime(pathQrc):
             makeQrc = True
 
-    except Exception as ex:
+    except (ImportError, ModuleNotFoundError):
         # compile resources
         makeQrc = True
 

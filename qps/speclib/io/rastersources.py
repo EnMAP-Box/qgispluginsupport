@@ -26,7 +26,7 @@
 """
 import pathlib
 import sys
-import typing
+
 import warnings
 from typing import List, Union, Generator, Dict
 

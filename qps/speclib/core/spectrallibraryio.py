@@ -1,8 +1,9 @@
 import os
 import pathlib
 import sys
-import typing
+
 import warnings
+from typing import Dict, Callable, Union, List, Tuple, Any
 
 from qgis.PyQt.QtCore import QObject
 from qgis.PyQt.QtCore import pyqtSignal, QRegExp, QUrl
@@ -181,7 +182,7 @@ class SpectralLibraryIO(QObject):
     """
     Abstract class interface to define I/O operations for spectral libraries
     """
-    SPECTRAL_LIBRARY_IO_REGISTRY: typing.Dict[str, typing.Callable] = dict()
+    SPECTRAL_LIBRARY_IO_REGISTRY: Dict[str, Callable] = dict()
 
     IMPSET_FIELDS = 'fields'
     IMPSET_REQUIRED_FIELDS = 'required_fields'
@@ -190,7 +191,7 @@ class SpectralLibraryIO(QObject):
         super().__init__(*args, **kwds)
 
     @classmethod
-    def copyEditorWidgetSetup(cls, path: typing.Union[str, pathlib.Path], fields: QgsFields):
+    def copyEditorWidgetSetup(cls, path: Union[str, pathlib.Path], fields: QgsFields):
         path = pathlib.Path(path).as_posix()
         lyr = QgsVectorLayer(path)
 
@@ -204,7 +205,7 @@ class SpectralLibraryIO(QObject):
                 print(msg, file=sys.stderr)
 
     @classmethod
-    def extractFilePath(cls, uri: typing.Union[str, pathlib.Path, QUrl]) -> pathlib.Path:
+    def extractFilePath(cls, uri: Union[str, pathlib.Path, QUrl]) -> pathlib.Path:
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
@@ -212,13 +213,13 @@ class SpectralLibraryIO(QObject):
 
     @classmethod
     def extractWriterInfos(cls,
-                           input: typing.Union[
+                           input: Union[
                                QgsFeature,
                                QgsVectorLayer,
                                QgsFeatureIterator,
-                               typing.List[QgsFeature]],
-                           settings: dict = dict()) -> typing.Tuple[
-        typing.List[QgsFeature],
+                               List[QgsFeature]],
+                           settings: dict = dict()) -> Tuple[
+        List[QgsFeature],
         QgsFields,
         QgsCoordinateReferenceSystem,
         QgsWkbTypes.Type
@@ -256,7 +257,7 @@ class SpectralLibraryIO(QObject):
         return profiles, fields, crs, wkbType
 
     @staticmethod
-    def registerSpectralLibraryIO(speclibIO: typing.Union['SpectralLibraryIO', typing.List['SpectralLibraryIO']]):
+    def registerSpectralLibraryIO(speclibIO: Union['SpectralLibraryIO', List['SpectralLibraryIO']]):
 
         if isinstance(speclibIO, list):
             for io in speclibIO:
@@ -269,7 +270,7 @@ class SpectralLibraryIO(QObject):
             SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY[name] = speclibIO
 
     @staticmethod
-    def spectralLibraryIOs() -> typing.List['SpectralLibraryIO']:
+    def spectralLibraryIOs() -> List['SpectralLibraryIO']:
         return list(SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY.values())
 
     @staticmethod
@@ -307,7 +308,7 @@ class SpectralLibraryIO(QObject):
     def importProfiles(cls,
                        path: str,
                        importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
         """
         Import the profiles based on the source specified by 'path' and further settings in 'importSettings'.
         Returns QgsFeatures
@@ -323,10 +324,10 @@ class SpectralLibraryIO(QObject):
 
     @classmethod
     def exportProfiles(cls,
-                       path: typing.Union[str, pathlib.Path, QUrl],
-                       profiles: typing.List[QgsFeature],
+                       path: Union[str, pathlib.Path, QUrl],
+                       profiles: List[QgsFeature],
                        exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[str]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
         """
         Writes the files and returns a list of written files paths that can be used to import the profile
         :param path:
@@ -340,8 +341,8 @@ class SpectralLibraryIO(QObject):
 
     @staticmethod
     def readProfilesFromUri(
-            uri: typing.Union[QUrl, str, pathlib.Path],
-            feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+            uri: Union[QUrl, str, pathlib.Path],
+            feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
@@ -356,7 +357,7 @@ class SpectralLibraryIO(QObject):
 
         ext = os.path.splitext(uri)[1]
 
-        matched_formats: typing.List[SpectralLibraryImportWidget] = []
+        matched_formats: List[SpectralLibraryImportWidget] = []
         for IO in SpectralLibraryIO.spectralLibraryIOs():
             format = IO.createImportWidget()
             if isinstance(format, SpectralLibraryImportWidget):
@@ -382,14 +383,14 @@ class SpectralLibraryIO(QObject):
 
     @classmethod
     def writeToSource(cls,
-                      profiles: typing.Union[
+                      profiles: Union[
                                QgsFeature,
                                QgsVectorLayer,
                                QgsFeatureIterator,
-                               typing.List[QgsFeature]],
-                      uri: typing.Union[str, pathlib.Path, QUrl],
+                               List[QgsFeature]],
+                      uri: Union[str, pathlib.Path, QUrl],
                       settings: dict = dict(),
-                      feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[str]:
+                      feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
 
         profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, settings)
         if len(profiles) == 0:
@@ -404,7 +405,7 @@ class SpectralLibraryIO(QObject):
         if not isinstance(settings, dict):
             settings = dict()
 
-        matched_formats: typing.List[SpectralLibraryImportWidget] = []
+        matched_formats: List[SpectralLibraryImportWidget] = []
 
         if len(SpectralLibraryIO.spectralLibraryIOs()) == 0:
             warnings.warn('No SpectralLibraryIO registered. Register SpectralLibraryIOs with '
@@ -431,7 +432,7 @@ class SpectralLibraryIO(QObject):
             # 1. write profiles from different fields
             # 2. profiles of different wavelength
 
-            GROUPS: typing.Dict[str, typing.List[typing.List[QgsFeature]]] = dict()
+            GROUPS: Dict[str, List[List[QgsFeature]]] = dict()
 
             needs_field_separation = len(pFields) > 1 and not format.supportsMultipleProfileFields()
             needs_setting_groups = not format.supportsMultipleSpectralSettings()
@@ -534,7 +535,7 @@ class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
         super().setExpressionContext(context)
         self.mContext = context
 
-    def remapFeature(self, feature: QgsFeature) -> typing.List[QgsFeature]:
+    def remapFeature(self, feature: QgsFeature) -> List[QgsFeature]:
         features = super().remapFeature(feature)
 
         return features
@@ -546,7 +547,7 @@ class ProfileProperty(QgsProperty, QObject):
         QObject.__init__(self)
         self.mField = targetField
 
-    def value(self, *args, **kwds) -> typing.Tuple[typing.Any, bool]:
+    def value(self, *args, **kwds) -> Tuple[Any, bool]:
         v = super().value(*args, **kwds)
 
         s = ""
@@ -574,7 +575,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
 
     @staticmethod
     def importProfiles(speclib: QgsVectorLayer,
-                       defaultRoot: typing.Union[str, pathlib.Path] = None,
+                       defaultRoot: Union[str, pathlib.Path] = None,
                        parent: QWidget = None):
         assert isinstance(speclib, QgsVectorLayer) and speclib.isValid()
 
@@ -652,7 +653,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
     def __init__(self,
                  *args,
                  speclib: QgsVectorLayer = None,
-                 defaultRoot: typing.Union[str, pathlib.Path] = None,
+                 defaultRoot: Union[str, pathlib.Path] = None,
                  **kwds):
 
         super().__init__(*args, **kwds)
@@ -684,7 +685,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
 
         self.mSpeclib: QgsVectorLayer = None
 
-        self.mFIELD_PROPERTY_MAPS: typing.Dict[str, typing.Dict[str, QgsProperty]] = dict()
+        self.mFIELD_PROPERTY_MAPS: Dict[str, Dict[str, QgsProperty]] = dict()
 
         first_format = None
         for io in SpectralLibraryIO.spectralLibraryIOs():
@@ -762,7 +763,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
                 return True
         return False
 
-    def setSource(self, source: typing.Union[str, pathlib.Path]):
+    def setSource(self, source: Union[str, pathlib.Path]):
         if isinstance(source, pathlib.Path):
             source = source.as_posix()
         self.fileWidget.setFilePath(source)
@@ -782,7 +783,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
         else:
             self.actionAddMissingSourceFields.setEnabled(False)
 
-    def setImportWidget(self, import_format: typing.Union[int, str, SpectralLibraryImportWidget]):
+    def setImportWidget(self, import_format: Union[int, str, SpectralLibraryImportWidget]):
         self.cbFormat: QComboBox
         import_widgets = self.importWidgets()
         last_widget = self.currentImportWidget()
@@ -833,7 +834,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
         import_widget.setSource(self.source())
         self.onSourceFieldsChanged()
 
-    def importWidgets(self) -> typing.List[SpectralLibraryImportWidget]:
+    def importWidgets(self) -> List[SpectralLibraryImportWidget]:
         self.stackedWidgetFormatOptions: QStackedWidget
         return [self.stackedWidgetFormatOptions.widget(i)
                 for i in range(self.stackedWidgetFormatOptions.count())
@@ -870,7 +871,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
 class SpectralLibraryExportDialog(QDialog):
 
     @staticmethod
-    def exportProfiles(speclib: QgsVectorLayer, parent: QWidget = None) -> typing.List[str]:
+    def exportProfiles(speclib: QgsVectorLayer, parent: QWidget = None) -> List[str]:
 
         dialog = SpectralLibraryExportDialog(parent=parent, speclib=speclib)
 
@@ -948,7 +949,7 @@ class SpectralLibraryExportDialog(QDialog):
 
         return w.exportSettings(settings)
 
-    def exportWidgets(self) -> typing.List[SpectralLibraryExportWidget]:
+    def exportWidgets(self) -> List[SpectralLibraryExportWidget]:
         self.stackedWidgetFormatOptions: QStackedWidget
         return [self.stackedWidgetFormatOptions.widget(i)
                 for i in range(self.stackedWidgetFormatOptions.count())
@@ -960,7 +961,7 @@ class SpectralLibraryExportDialog(QDialog):
     def currentExportWidget(self) -> SpectralLibraryExportWidget:
         return self.stackedWidgetFormatOptions.currentWidget()
 
-    def setExportWidget(self, widget: typing.Union[int, str, SpectralLibraryExportWidget]):
+    def setExportWidget(self, widget: Union[int, str, SpectralLibraryExportWidget]):
         last_widget = self.currentExportWidget()
         if isinstance(last_widget, SpectralLibraryExportWidget):
             s = ""
