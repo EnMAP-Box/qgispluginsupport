@@ -31,17 +31,18 @@ import re
 import sys
 import typing
 from json import JSONDecodeError
-from typing import Union, List, Set, Callable, Iterable, Any, Tuple, Dict
+from typing import Union, List, Set, Callable, Iterable, Any, Tuple
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, NULL
-from qgis.core import QgsVectorLayer, QgsMapLayer
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
 from qgis.core import QgsExpressionNodeFunction, QgsField
 from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider, QgsRaster, QgsPointXY
+from qgis.core import QgsMapLayer
+from qgis.core import QgsProject
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
@@ -185,10 +186,10 @@ def format_py(fmt: str, *args):
 
 
 class Format_Py(QgsExpressionFunction):
+    NAME = 'format_py'
+    GROUP = 'String'
 
     def __init__(self):
-        group = 'String'
-        name = 'format_py'
 
         args = [
             QgsExpressionFunction.Parameter('fmt', optional=False, defaultValue=FIELD_VALUES),
@@ -196,8 +197,8 @@ class Format_Py(QgsExpressionFunction):
             QgsExpressionFunction.Parameter('arg2', optional=True),
             QgsExpressionFunction.Parameter('argN', optional=True),
         ]
-        helptext = HM.helpText(name, args)
-        super(Format_Py, self).__init__(name, -1, group, helptext)
+        helptext = HM.helpText(self.NAME, args)
+        super(Format_Py, self).__init__(self.NAME, -1, self.GROUP, helptext)
 
     def func(self, values, context: QgsExpressionContext, parent, node):
         if len(values) == 0 or values[0] in (None, NULL):
@@ -221,37 +222,31 @@ class Format_Py(QgsExpressionFunction):
 
 
 class SpectralEncoding(QgsExpressionFunction):
+    GROUP = SPECLIB_FUNCTION_GROUP
+    NAME = 'encode_profile'
 
     def __init__(self):
-        group = SPECLIB_FUNCTION_GROUP
-        name = 'encodeProfile'
 
         args = [
             QgsExpressionFunction.Parameter('profile_field', optional=False),
             QgsExpressionFunction.Parameter('encoding', optional=False),
 
         ]
-        helptext = HM.helpText(name, args)
-        super().__init__(name, args, group, helptext)
+        helptext = HM.helpText(self.NAME, args)
+        super().__init__(self.NAME, args, self.GROUP, helptext)
 
     def func(self, values, context: QgsExpressionContext, parent, node):
 
-        ba, encoding = values
-        if context:
-            feature = context.feature()
-        if not isinstance(context, QgsExpressionContext):
+        profile = decodeProfileValueDict(values[0])
+        if profile is None:
             return None
 
-        if ba is None:
+        encoding = ExpressionFunctionUtils.extractSpectralProfileEncoding(self.parameters()[1], values[1], context)
+        if not isinstance(encoding, ProfileEncoding):
             return None
 
         try:
-            assert isinstance(encoding, str)
-            encoding = encoding.lower()
-            assert encoding in ('map', 'bytes', 'json', 'text')
 
-            assert context.fields()
-            values = decodeProfileValueDict(ba)
             if encoding == 'map':
                 return values
             elif encoding == 'json':
@@ -372,10 +367,10 @@ class StaticExpressionFunction(QgsExpressionFunction):
 
 
 class RasterProfile(QgsExpressionFunction):
+    GROUP = SPECLIB_FUNCTION_GROUP
+    NAME = 'raster_profile'
 
     def __init__(self):
-        group = SPECLIB_FUNCTION_GROUP
-        name = 'rasterProfile'
 
         args = [
             QgsExpressionFunction.Parameter('layer', optional=False),
@@ -383,10 +378,10 @@ class RasterProfile(QgsExpressionFunction):
             QgsExpressionFunction.Parameter('encoding', optional=True, defaultValue='map'),
         ]
 
-        helptext = HM.helpText(name, args)
-        super().__init__(name, args, group, helptext)
+        helptext = HM.helpText(self.NAME, args)
+        super().__init__(self.NAME, args, self.GROUP, helptext)
 
-    def parseArguments(self, values: tuple, context: QgsExpressionContext) \
+    def __parseArguments(self, values: tuple, context: QgsExpressionContext) \
             -> Tuple[QgsRasterLayer, QgsGeometry, QgsCoordinateTransform, ProfileEncoding]:
 
         lyrR = values[0]
@@ -395,6 +390,8 @@ class RasterProfile(QgsExpressionFunction):
 
         if isinstance(lyrR, str):
             layers = QgsExpression('@layers').evaluate(context)
+            if layers is None:
+                layers = []
             for lyr in layers:
                 if isinstance(lyr, QgsRasterLayer) and lyrR in [lyr.name(), lyr.id()]:
                     lyrR = lyr
@@ -431,63 +428,47 @@ class RasterProfile(QgsExpressionFunction):
 
     CACHED_SPECTRAL_PROPERTIES = 'spectralProperties'
 
-    def spectralProperties(self, rasterLayer: QgsRasterLayer, context: QgsExpressionContext) -> dict:
-
-        spectral_properties = context.cachedValue(self.CACHED_SPECTRAL_PROPERTIES)
-        if spectral_properties is None:
-            sp = QgsRasterLayerSpectralProperties.fromRasterLayer(rasterLayer)
-
-            bbl = sp.badBands()
-            wl = sp.wavelengths()
-            wlu = sp.wavelengthUnits()
-
-            spectral_properties = dict(bbl=bbl, wl=wl, wlu=wlu)
-            context.setCachedValue(self.CACHED_SPECTRAL_PROPERTIES, spectral_properties)
-
-        return spectral_properties
-
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
         if not isinstance(context, QgsExpressionContext):
             return None
-        try:
-            rasterLayer, geom, crs_trans, encoding = self.parseArguments(values, context)
-        except Exception as ex:
-            parent.setEvalErrorString(str(ex))
-            return None
 
-        if not isinstance(geom, QgsGeometry):
-            return None
-
-        if not isinstance(rasterLayer, QgsRasterLayer):
+        lyrR = ExpressionFunctionUtils.extractRasterLayer(self.parameters()[0], values[0], context)
+        if not isinstance(lyrR, QgsRasterLayer):
             parent.setEvalErrorString('Unable to find raster layer')
             return None
 
+        geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
+        if not isinstance(geom, QgsGeometry):
+            parent.setEvalErrorString('Unable to find geometry')
+            return None
+
+        profile_encoding = ExpressionFunctionUtils.extractSpectralProfileEncoding(self.parameters()[2], values[2], context)
+        if not isinstance(profile_encoding, ProfileEncoding):
+            parent.setEvalErrorString('Unable to find profile encoding')
+            return None
+        crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(context, lyrR)
+
+        if not (crs_trans.isShortCircuited() and geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success):
+            parent.setEvalErrorString('Unable to transform geometry into raster CRS')
+            return None
+
         try:
-            if not crs_trans.isShortCircuited():
-                assert geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success
-
-            if not rasterLayer.extent().intersects(geom.boundingBox()):
-                return None
-
-            spectral_properties = self.spectralProperties(rasterLayer, context)
-            wl = spectral_properties['wl']
-            wlu = spectral_properties['wlu'][0]
-
-            bbl = spectral_properties['bbl']
-
             point: QgsPointXY = geom.asPoint()
-            dp: QgsRasterDataProvider = rasterLayer.dataProvider()
+            dp: QgsRasterDataProvider = lyrR.dataProvider()
             results = dp.identify(point, QgsRaster.IdentifyFormatValue).results()
 
             y = list(results.values())
             y = [v if isinstance(v, (int, float)) else float('NaN') for v in y]
 
-            result = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
+            spectral_properties = ExpressionFunctionUtils.chachedSpectralProperties(context, lyrR)
+            wl = spectral_properties['wl']
+            wlu = spectral_properties['wlu'][0]
+            bbl = spectral_properties['bbl']
 
-            if encoding != ProfileEncoding.Dict:
-                encoding = ProfileEncoding.fromInput(encoding)
-                result = encodeProfileValueDict(result, encoding)
+            result = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
+            if profile_encoding != ProfileEncoding.Dict:
+                result = encodeProfileValueDict(result, profile_encoding)
             return result
 
         except Exception as ex:
@@ -507,36 +488,64 @@ class RasterProfile(QgsExpressionFunction):
 class ExpressionFunctionUtils(object):
 
     @staticmethod
-    def extractVectorLayer(p: QgsExpressionFunction.Parameter,
-                           value, context: QgsExpressionContext) -> QgsVectorLayer:
+    def chachedSpectralProperties(context: QgsExpressionContext, rasterLayer: QgsRasterLayer) -> dict:
+        """
+        Returns the spectral properties of the rasterLayer.
+        """
+        k = f'spectralproperties_{rasterLayer.id()}'
+        spectral_properties = context.cachedValue(k)
+        if spectral_properties is None:
+            sp = QgsRasterLayerSpectralProperties.fromRasterLayer(rasterLayer)
+            bbl = sp.badBands()
+            wl = sp.wavelengths()
+            wlu = sp.wavelengthUnits()
 
-        s = ""
-        pass
+            spectral_properties = dict(bbl=bbl, wl=wl, wlu=wlu)
+            context.setCachedValue(k, spectral_properties)
+
+        return spectral_properties
 
     @staticmethod
-    def cachedCrsTransformation(layer: QgsMapLayer,
-                                context: QgsExpressionContext,
-                                ) \
+    def cachedCrsTransformation(context: QgsExpressionContext, layer: QgsMapLayer) \
             -> QgsCoordinateTransform:
-
+        """
+        Returns a CRS Transformation from the context to the layer CRS
+        """
         k = f'crstrans_{context.variable("layer_id")}->{layer.id()}'
         trans = context.cachedValue(k)
         if not isinstance(trans, QgsCoordinateTransform):
-            lyr_crs = QgsExpression('@layer_crs').evaluate(context)
-            crs = QgsCoordinateReferenceSystem(lyr_crs)
-            if isinstance(crs, QgsCoordinateReferenceSystem) and crs.isValid():
+            context_crs = QgsExpression('@layer_crs').evaluate(context)
+            if context_crs:
+                context_crs = QgsCoordinateReferenceSystem(context_crs)
+            else:
+                # no other CRS defined, we must assume that context and layer CRS are the same
+                context_crs = layer.crs()
+            if isinstance(context_crs, QgsCoordinateReferenceSystem) and context_crs.isValid():
                 trans = QgsCoordinateTransform()
-                trans.setSourceCrs(crs)
+                trans.setSourceCrs(context_crs)
                 trans.setDestinationCrs(layer.crs())
                 context.setCachedValue(k, trans)
         return trans
+
+    @staticmethod
+    def extractSpectralProfileEncoding(p: QgsExpressionFunction.Parameter,
+                                       value,
+                                       context: QgsExpressionContext) -> ProfileEncoding:
+
+        return ProfileEncoding.fromInput(value)
+
     @staticmethod
     def extractRasterLayer(p: QgsExpressionFunction.Parameter,
                            value,
                            context: QgsExpressionContext) -> QgsRasterLayer:
-
+        """
+        Extracts a QgsRasterLayer instance
+        """
         if isinstance(value, str):
-            for lyr in QgsExpression('@layers').evaluate(context):
+            layers = QgsExpression('@layers').evaluate(context)
+            if layers is None:
+                layers = list(QgsProject.instance().mapLayers().values())
+            for lyr in layers:
                 if isinstance(lyr, QgsRasterLayer) and value in [lyr.name(), lyr.id()]:
                     return lyr
 
@@ -556,14 +565,15 @@ class ExpressionFunctionUtils(object):
     @staticmethod
     def extractGeometry(p: QgsExpressionFunction.Parameter,
                         value,
-                        context: QgsExpressionFunction):
+                        context: QgsExpressionFunction) -> QgsGeometry:
 
         if not isinstance(value, QgsGeometry):
             for a in ['@geometry', '$geometry']:
                 v = QgsExpression(a).evaluate(context)
                 if isinstance(v, QgsGeometry):
                     return v
-        return None
+        else:
+            return value
 
     @staticmethod
     def extractValues(f: QgsExpressionFunction, values: tuple, context: QgsExpressionContext):
@@ -583,18 +593,18 @@ class ExpressionFunctionUtils(object):
 
 
 class RasterArray(QgsExpressionFunction):
+    GROUP = 'Rasters'
+    NAME = 'raster_array'
 
     def __init__(self):
-        group = 'Rasters'
-        name = 'raster_array'
 
         args = [
             QgsExpressionFunction.Parameter('layer', optional=False),
             QgsExpressionFunction.Parameter('geometry', optional=True, defaultValue='@geometry'),
         ]
 
-        helptext = HM.helpText(name, args)
-        super().__init__(name, args, group, helptext)
+        helptext = HM.helpText(self.NAME, args)
+        super().__init__(self.NAME, args, self.GROUP, helptext)
 
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
@@ -602,22 +612,25 @@ class RasterArray(QgsExpressionFunction):
             return None
 
         lyrR = ExpressionFunctionUtils.extractRasterLayer(self.parameters()[0], values[0], context)
-        geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
-        crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(lyrR, context)
-
-        if not isinstance(geom, QgsGeometry):
-            return None
-
         if not isinstance(lyrR, QgsRasterLayer):
             parent.setEvalErrorString('Unable to find raster layer')
             return None
+
+        geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
+        if not isinstance(geom, QgsGeometry):
+            parent.setEvalErrorString(('Unable to find geometry'))
+            return None
+
+        crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(context, lyrR)
+
+        if not (crs_trans.isShortCircuited() and geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success):
+            parent.setEvalErrorString('Unable to transform geometry into raster CRS')
+            return None
+
+        if not lyrR.extent().intersects(geom.boundingBox()):
+            return None
+
         try:
-            if not crs_trans.isShortCircuited():
-                assert geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success
-
-            if not lyrR.extent().intersects(geom.boundingBox()):
-                return None
-
             point: QgsPointXY = geom.asPoint()
             dp: QgsRasterDataProvider = lyrR.dataProvider()
             results = dp.identify(point, QgsRaster.IdentifyFormatValue).results()
@@ -646,17 +659,19 @@ class RasterArray(QgsExpressionFunction):
                  context: QgsExpressionContext) -> bool:
         return False
 
+
 class SpectralData(QgsExpressionFunction):
+    GROUP = SPECLIB_FUNCTION_GROUP
+    NAME = 'spectralData'
+
     def __init__(self):
-        group = SPECLIB_FUNCTION_GROUP
-        name = 'spectralData'
 
         args = [
             QgsExpressionFunction.Parameter('profile_field', optional=False)
         ]
 
-        helptext = HM.helpText(name, args)
-        super().__init__(name, args, group, helptext)
+        helptext = HM.helpText(self.NAME, args)
+        super().__init__(self.NAME, args, self.GROUP, helptext)
 
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
@@ -688,12 +703,12 @@ class SpectralData(QgsExpressionFunction):
 
 
 class SpectralMath(QgsExpressionFunction):
+    GROUP = SPECLIB_FUNCTION_GROUP
+    NAME = 'spectralMath'
+
     RX_ENCODINGS = re.compile('^({})$'.format('|'.join(ProfileEncoding.__members__.keys())), re.I)
 
     def __init__(self):
-        group = SPECLIB_FUNCTION_GROUP
-        name = 'spectralMath'
-
         args = [
             QgsExpressionFunction.Parameter('p1', optional=True),
             QgsExpressionFunction.Parameter('p2', optional=True),
@@ -701,9 +716,8 @@ class SpectralMath(QgsExpressionFunction):
             QgsExpressionFunction.Parameter('expression', optional=False, isSubExpression=True),
             QgsExpressionFunction.Parameter('format', optional=True),
         ]
-        helptext = HM.helpText(name, args)
-        # super().__init__(name, args, group, helptext)
-        super().__init__(name, -1, group, helptext)
+        helptext = HM.helpText(self.NAME, args)
+        super().__init__(self.NAME, -1, self.GROUP, helptext)
 
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
