@@ -31,10 +31,9 @@ import os
 import pathlib
 import re
 import sys
-import typing
+from typing import List, Union
 
 from qgis.PyQt.QtCore import QUrlQuery
-
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog, QProgressDialog
 from qgis.core import QgsFeature, QgsFields, QgsField, QgsExpressionContext, QgsVectorLayer
@@ -161,13 +160,13 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: typing.Union[str, pathlib.Path],
+                       path: Union[str, pathlib.Path],
                        importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
 
         path = pathlib.Path(path)
 
-        profiles: typing.List[QgsFeature] = []
+        profiles: List[QgsFeature] = []
 
         query = QUrlQuery()
         # query.addQueryItem('encoding', 'UTF-8')

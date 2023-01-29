@@ -1,4 +1,4 @@
-import typing
+
 
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QLineEdit, QHBoxLayout, QWidget, QCheckBox
@@ -21,7 +21,7 @@ for name in names:
 assert lyr.commitChanges()
 
 renderer = QgsCategorizedSymbolRenderer('name', [])
-colors: typing.Dict[str, QColor] = dict()
+colors: Dict[str, QColor] = dict()
 color = QColor('red')
 for name in names:
     symbol = QgsMarkerSymbol()

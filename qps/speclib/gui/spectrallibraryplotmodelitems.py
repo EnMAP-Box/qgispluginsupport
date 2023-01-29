@@ -1,5 +1,5 @@
 import sys
-import typing
+from typing import List, Any, Dict, Tuple, Union
 
 import numpy as np
 from qgis.PyQt.QtCore import Qt, QModelIndex, pyqtSignal, QMimeData, QObject, QSize, QSignalBlocker
@@ -127,7 +127,7 @@ class PropertyItemBase(QStandardItem):
     def firstColumnSpanned(self) -> bool:
         return len(self.propertyRow()) == 1
 
-    def propertyRow(self) -> typing.List[QStandardItem]:
+    def propertyRow(self) -> List[QStandardItem]:
         return [self]
 
     def readXml(self, parentNode: QDomElement):
@@ -148,7 +148,7 @@ class PropertyItemBase(QStandardItem):
     def hasPixmap(self) -> bool:
         return False
 
-    def data(self, role: int = ...) -> typing.Any:
+    def data(self, role: int = ...) -> Any:
 
         if role == Qt.UserRole:
             return self
@@ -192,7 +192,7 @@ class PropertyLabel(QStandardItem):
         if isinstance(item, PropertyItem) and item.label() == self:
             return item
 
-    def data(self, role: int = ...) -> typing.Any:
+    def data(self, role: int = ...) -> Any:
         if role == Qt.UserRole:
             return self
         return super().data(role)
@@ -268,7 +268,7 @@ class PropertyItem(PropertyItemBase):
     def label(self) -> PropertyLabel:
         return self.mLabel
 
-    def propertyRow(self) -> typing.List[QStandardItem]:
+    def propertyRow(self) -> List[QStandardItem]:
         return [self.label(), self]
 
     def writeXml(self, parentNode: QDomElement, doc: QDomDocument, attribute: bool = False):
@@ -300,7 +300,7 @@ class PropertyItemGroup(PropertyItemBase):
     Represents a group of properties.
 
     """
-    XML_FACTORIES: typing.Dict[str, 'PropertyItemGroup'] = dict()
+    XML_FACTORIES: Dict[str, 'PropertyItemGroup'] = dict()
 
     class Signals(PropertyItem.Signals):
         """
@@ -344,7 +344,7 @@ class PropertyItemGroup(PropertyItemBase):
 
         return None
 
-    def plotDataItems(self) -> typing.List[PlotDataItem]:
+    def plotDataItems(self) -> List[PlotDataItem]:
         """
         Returns a list with all pyqtgraph plot data items
         """
@@ -356,7 +356,7 @@ class PropertyItemGroup(PropertyItemBase):
         """
         pass
 
-    def propertyItems(self) -> typing.List['PropertyItem']:
+    def propertyItems(self) -> List['PropertyItem']:
         items = []
         for r in range(self.rowCount()):
             child = self.child(r, 1)
@@ -405,7 +405,7 @@ class PropertyItemGroup(PropertyItemBase):
         """
         return self.checkState() == Qt.Checked
 
-    def data(self, role: int = ...) -> typing.Any:
+    def data(self, role: int = ...) -> Any:
 
         if role == Qt.ForegroundRole:
             if not self.isVisible():
@@ -415,7 +415,7 @@ class PropertyItemGroup(PropertyItemBase):
 
         return super().data(role)
 
-    def setData(self, value: typing.Any, role: int = ...) -> None:
+    def setData(self, value: Any, role: int = ...) -> None:
         value = super().setData(value, role)
 
         if role == Qt.CheckStateRole:
@@ -434,7 +434,7 @@ class PropertyItemGroup(PropertyItemBase):
     MIME_TYPE = 'application/SpectralProfilePlot/PropertyItems'
 
     @staticmethod
-    def toMimeData(propertyGroups: typing.List['PropertyItemGroup']):
+    def toMimeData(propertyGroups: List['PropertyItemGroup']):
 
         for g in propertyGroups:
             assert isinstance(g, PropertyItemGroup)
@@ -456,7 +456,7 @@ class PropertyItemGroup(PropertyItemBase):
         return md
 
     @staticmethod
-    def fromMimeData(mimeData: QMimeData) -> typing.List['ProfileVisualizationGroup']:
+    def fromMimeData(mimeData: QMimeData) -> List['ProfileVisualizationGroup']:
         groups = []
         if mimeData.hasFormat(PropertyItemGroup.MIME_TYPE):
             ba = mimeData.data(PropertyItemGroup.MIME_TYPE)
@@ -481,7 +481,7 @@ class GeneralSettingsGroup(PropertyItemGroup):
     """
     General Plot Settings
     """
-    DEFAULT_STYLES: typing.Dict[str, object] = dict()
+    DEFAULT_STYLES: Dict[str, object] = dict()
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -761,7 +761,7 @@ class LegendGroup(PropertyItemGroup):
 
         self.signals().dataChanged.connect(self.applySettings)
 
-    def setData(self, value: typing.Any, role: int = ...) -> None:
+    def setData(self, value: Any, role: int = ...) -> None:
         super().setData(value, role)
 
     def emitDataChanged(self):
@@ -982,7 +982,7 @@ class QgsPropertyItem(PropertyItem):
     def definition(self) -> QgsPropertyDefinition:
         return self.mDefinition
 
-    def data(self, role: int = ...) -> typing.Any:
+    def data(self, role: int = ...) -> Any:
 
         if self.mProperty is None:
             return None
@@ -1197,7 +1197,7 @@ class ProfileCandidateItem(PlotStyleItem):
         self.label().setCheckable(False)
         self.setEditColors(True)
         # self.label().setCheckState(Qt.Checked)
-        self.mCellKey: typing.Tuple[int, str] = None
+        self.mCellKey: Tuple[int, str] = None
 
         from .spectrallibraryplotitems import SpectralProfilePlotDataItem
         self.mPlotItem = SpectralProfilePlotDataItem()
@@ -1216,7 +1216,7 @@ class ProfileCandidateItem(PlotStyleItem):
         scope.setVariable('field_index', self.featureFieldIndex())
         return scope
 
-    def cellKey(self) -> typing.Tuple[int, str]:
+    def cellKey(self) -> Tuple[int, str]:
         return self.mCellKey
 
     def featureId(self) -> int:
@@ -1440,10 +1440,10 @@ class RasterRendererGroup(PropertyItemGroup):
 
         return None
 
-    def setData(self, value: typing.Any, role: int = ...) -> None:
+    def setData(self, value: Any, role: int = ...) -> None:
         super(RasterRendererGroup, self).setData(value, role)
 
-    def plotDataItems(self) -> typing.List[PlotDataItem]:
+    def plotDataItems(self) -> List[PlotDataItem]:
         """
         Returns the activated plot data items
         Note that bandPlotItems() returns all plot items, even those that are not used and should be hidden.
@@ -1578,7 +1578,7 @@ class RasterRendererGroup(PropertyItemGroup):
     def bandPositions(self) -> dict:
         pass
 
-    def bandPlotItems(self) -> typing.List[InfiniteLine]:
+    def bandPlotItems(self) -> List[InfiniteLine]:
         return [self.mBarR, self.mBarG, self.mBarB, self.mBarA]
 
 
@@ -1599,7 +1599,7 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
         self.mDefaultPlotStyle.label().setToolTip('Default plot style of current profiles before they '
                                                   'are added to the spectral library.')
         # self.appendRow(self.mDefaultPlotStyle.propertyRow())
-        self.mCandidateStyleItems: typing.Dict[typing.Tuple[int, str], PlotStyleItem] = dict()
+        self.mCandidateStyleItems: Dict[Tuple[int, str], PlotStyleItem] = dict()
 
         self.initBasicSettings()
         self.setEditable(False)
@@ -1629,7 +1629,7 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
     def generatePlotStyle(self, context: QgsExpressionContext) -> PlotStyle:
         return self.candidateStyle(context.feature().id(), context.variable('field_name'))
 
-    def plotDataItems(self) -> typing.List[PlotDataItem]:
+    def plotDataItems(self) -> List[PlotDataItem]:
         return [item.plotItem() for item in self.candidateItems()]
 
     def syncCandidates(self):
@@ -1638,7 +1638,7 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
         to_remove = [k for k in self.mCandidateStyleItems.keys() if k[0] not in temp_fids]
         self.removeCandidates(to_remove)
 
-    def setCandidates(self, candidateStyles: typing.Dict[typing.Tuple[int, str], PlotStyle]):
+    def setCandidates(self, candidateStyles: Dict[Tuple[int, str], PlotStyle]):
         self.clearCandidates()
         i = 0
         for (fid, field), style in candidateStyles.items():
@@ -1657,16 +1657,16 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
             return item.plotStyle()
         return None
 
-    def candidateKeys(self) -> typing.List[typing.Tuple[int, str]]:
+    def candidateKeys(self) -> List[Tuple[int, str]]:
         return list(self.mCandidateStyleItems.keys())
 
-    def candidateItems(self) -> typing.List[ProfileCandidateItem]:
+    def candidateItems(self) -> List[ProfileCandidateItem]:
         return list(self.mCandidateStyleItems.values())
 
-    def candidateFeatureIds(self) -> typing.List[int]:
+    def candidateFeatureIds(self) -> List[int]:
         return set([i[0] for i in self.candidateKeys()])
 
-    def removeCandidates(self, candidateKeys: typing.List[typing.Tuple[int, str]]):
+    def removeCandidates(self, candidateKeys: List[Tuple[int, str]]):
 
         to_remove = []
         for k in list(candidateKeys):
@@ -1703,7 +1703,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.mFirstColumnSpanned = False
         self.mSpeclib: QgsVectorLayer = None
 
-        self.mPlotDataItems: typing.List[PlotDataItem] = []
+        self.mPlotDataItems: List[PlotDataItem] = []
 
         self.mPField = QgsPropertyItem('Field')
         self.mPField.setDefinition(QgsPropertyDefinition(
@@ -1750,7 +1750,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
     def initWithPlotModel(self, model):
         self.setSpeclib(model.speclib())
 
-    def propertyRow(self) -> typing.List[QStandardItem]:
+    def propertyRow(self) -> List[QStandardItem]:
         return [self]
 
     def writeXml(self, parentNode: QDomElement, doc: QDomDocument):
@@ -1780,7 +1780,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         scope.setVariable('vis_name', self.name(), isStatic=True)
         return scope
 
-    def readXml(self, parentNode: QDomElement) -> typing.List['ProfileVisualizationGroup']:
+    def readXml(self, parentNode: QDomElement) -> List['ProfileVisualizationGroup']:
         model = self.model()
         self.setText(parentNode.attribute('name'))
         self.setVisible(parentNode.attribute('visible').lower() in ['1', 'true', 'yes'])
@@ -1838,7 +1838,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.mPStyle.plotStyle().setBackgroundColor(color)
         self.mPStyle.setPlotStyle(self.mPStyle.plotStyle())
 
-    def setColor(self, color: typing.Union[str, QColor]):
+    def setColor(self, color: Union[str, QColor]):
         c = QColor(color)
         p = self.mPColor.property()
         p.setStaticValue(c)
@@ -1918,7 +1918,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         """
         return self.mPLabel.property()
 
-    def setField(self, field: typing.Union[QgsField, str]):
+    def setField(self, field: Union[QgsField, str]):
 
         if isinstance(field, str):
             speclib = self.speclib()
@@ -1982,7 +1982,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             style.setMarkerLinecolor(featureColor)
         return style
 
-    def plotDataItems(self) -> typing.List[PlotDataItem]:
+    def plotDataItems(self) -> List[PlotDataItem]:
         """
         Returns a list with all pyqtgraph plot data items
         """

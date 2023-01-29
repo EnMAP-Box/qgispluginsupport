@@ -32,8 +32,9 @@ import pathlib
 import pickle
 import re
 import sys
-import typing
+
 import warnings
+from typing import List, Any, Union
 
 import numpy as np
 from qgis.PyQt.QtCore import QModelIndex, QMimeData, pyqtSignal, QVariant, QAbstractListModel, QItemSelectionModel, \
@@ -266,7 +267,7 @@ class ClassificationScheme(QAbstractTableModel):
 
     def __init__(self, name: str = 'Classification', zero_based: bool = False):
         super(ClassificationScheme, self).__init__()
-        self.mClasses: typing.List[ClassInfo] = []
+        self.mClasses: List[ClassInfo] = []
         self.mName = name
         self.mIsEditable = True
 
@@ -398,10 +399,10 @@ class ClassificationScheme(QAbstractTableModel):
         row = self.mClasses.index(classInfo)
         return self.createIndex(row, 0)
 
-    def classInfos(self) -> typing.List[ClassInfo]:
+    def classInfos(self) -> List[ClassInfo]:
         return self.mClasses[:]
 
-    def classInfo(self, label: typing.Any = None, name: str = None) -> ClassInfo:
+    def classInfo(self, label: Any = None, name: str = None) -> ClassInfo:
         """
         Returns the 1st ClassInfo instance that matches a given label or class name
         :param label: the class label to match with
@@ -652,7 +653,7 @@ class ClassificationScheme(QAbstractTableModel):
         return cs
 
     def featureRenderer(self,
-                        symbolType: typing.Union[QgsMarkerSymbol, QgsFillSymbol, QgsLineSymbol] = QgsFillSymbol) -> \
+                        symbolType: Union[QgsMarkerSymbol, QgsFillSymbol, QgsLineSymbol] = QgsFillSymbol) -> \
             QgsCategorizedSymbolRenderer:
         """
         Returns the ClassificationScheme as QgsCategorizedSymbolRenderer
@@ -1004,7 +1005,7 @@ class ClassificationScheme(QAbstractTableModel):
         except Exception as ex:
             print(ex, file=sys.stderr)
 
-    def saveToRaster(self, raster: typing.Union[str, gdal.Dataset, QgsRasterLayer], bandIndex=0):
+    def saveToRaster(self, raster: Union[str, gdal.Dataset, QgsRasterLayer], bandIndex=0):
         """
         Saves this ClassificationScheme to an raster image
         :param raster: path (str) of raster image or gdal.Dataset instance
@@ -1776,10 +1777,10 @@ class ClassificationSchemeWidget(QWidget):
         self.actionCopyClasses.setEnabled(b)
         self.actionSaveClasses.setEnabled(b)
 
-    def createClasses(self, n) -> typing.List[ClassInfo]:
+    def createClasses(self, n) -> List[ClassInfo]:
         self.mScheme.createClasses(n)
 
-    def selectedClasses(self, allIfNone: bool = False) -> typing.List[ClassInfo]:
+    def selectedClasses(self, allIfNone: bool = False) -> List[ClassInfo]:
         """
         Returns the list of selected ClassInfos
         :return: [list-of-ClassInfo]

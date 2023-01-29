@@ -1,4 +1,4 @@
-import typing
+
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
@@ -34,7 +34,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
         super().__init__(*args, **kwds)
         self.mFIDs = None
 
-    def setFidsFilter(self, fids: typing.Any) -> None:
+    def setFidsFilter(self, fids: Any) -> None:
         super(AggregateProfilesCalculator, self).setFidsFilter(fids)
 
         self.mFIDs = fids
@@ -42,8 +42,8 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
     def calculate(self,
                   aggregate: QgsAggregateCalculator.Aggregate,
                   fieldOrExpression: str,
-                  context: typing.Optional[QgsExpressionContext] = ...,
-                  feedback: typing.Optional[QgsFeedback] = ...) -> typing.Tuple[typing.Any, bool]:
+                  context: Optional[QgsExpressionContext] = ...,
+                  feedback: Optional[QgsFeedback] = ...) -> Tuple[Any, bool]:
 
         if not isinstance(self.layer(), QgsVectorLayer):
             return QVariant()
@@ -584,7 +584,7 @@ class SpectralAggregation(QgsExpressionFunction):
     def usesGeometry(self, node) -> bool:
         return True
 
-    def referencedColumns(self, node) -> typing.List[str]:
+    def referencedColumns(self, node) -> List[str]:
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:

@@ -1,9 +1,9 @@
 # noinspection PyPep8Naming
 import datetime
 import random
-import typing
-import unittest
 
+import unittest
+from typing import Tuple, List
 
 from qgis.PyQt.QtWidgets import QComboBox, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QGridLayout
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes
@@ -357,8 +357,8 @@ class SpectralProcessingTests(TestCase):
         cb.setModel(model)
         self.showGui(cb)
 
-    def createTestObjects(self) -> typing.Tuple[
-        typing.List[QgsRasterLayer], typing.List[SpectralLibraryWidget]
+    def createTestObjects(self) -> Tuple[
+        List[QgsRasterLayer], List[SpectralLibraryWidget]
     ]:
         n_profiles_per_n_bands = 5
         n_bands = [177, 6]

@@ -27,7 +27,6 @@ qgisresources/
 qgisresources/*
 qgisresources.zip
 *_rc.py
-.coverage
 qps/qpsresources.py
 qgisresources
 enmapboxtestdata/

@@ -29,7 +29,7 @@ import os
 import pathlib
 import re
 import sys
-import typing
+from typing import Union, List, Generator, Any
 
 from qgis.PyQt.QtCore import QFile, QModelIndex, QTextStream, QSortFilterProxyModel, QDirIterator, QAbstractTableModel, \
     QRegExp, Qt
@@ -206,7 +206,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     os.chdir(last_cwd)
 
 
-def compileQGISResourceFiles(qgis_repo: typing.Union[str, pathlib.Path, None], target: str = None):
+def compileQGISResourceFiles(qgis_repo: Union[str, pathlib.Path, None], target: str = None):
     """
     Searches for *.qrc files in the QGIS repository and compile them to <target>
 
@@ -302,7 +302,7 @@ def initResourceFile(path):
         sys.path.remove(path.parent.as_posix())
 
 
-def findQGISResourceFiles() -> typing.List[pathlib.Path]:
+def findQGISResourceFiles() -> List[pathlib.Path]:
     """
     Tries to find a folder 'qgisresources'.
     See snippets/create_qgisresourcefilearchive.py to create the 'qgisresources' folder.
@@ -332,7 +332,7 @@ def findQGISResourceFiles() -> typing.List[pathlib.Path]:
     return results
 
 
-def scanResources(path=':') -> typing.Generator[str, None, None]:
+def scanResources(path=':') -> Generator[str, None, None]:
     """Recursively returns file paths in directory"""
     D = QDirIterator(path)
     while D.hasNext():
@@ -374,10 +374,10 @@ class ResourceTableModel(QAbstractTableModel):
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self.RESOURCES)
 
-    def columnNames(self) -> typing.List[str]:
+    def columnNames(self) -> List[str]:
         return [self.cnUri, self.cnIcon]
 
-    def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> typing.Any:
+    def headerData(self, section: int, orientation: Qt.Orientation, role: int = ...) -> Any:
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
                 return self.columnNames()[section]
@@ -387,7 +387,7 @@ class ResourceTableModel(QAbstractTableModel):
 
         return super().headerData(section, orientation, role)
 
-    def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
+    def data(self, index: QModelIndex, role: int = ...) -> Any:
         if not index.isValid():
             return None
 

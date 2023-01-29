@@ -26,9 +26,11 @@
 import os.path
 import pathlib
 import re
-import typing
+
 from os import getenv
 import platform
+from typing import List
+
 from qgis.PyQt.QtCore import QStandardPaths, QSettings
 from qgis.core import QgsApplication
 
@@ -96,10 +98,10 @@ class QGISMetadataFileWriter(object):
         self.mRepository = ''
         self.mIsExperimental = ''
         self.mHasProcessingProvider: bool = False
-        self.mTags: typing.List[str] = []
+        self.mTags: List[str] = []
         self.mCategory: str = ''
         self.mChangelog: str = ''
-        self.mPlugin_dependencies: typing.List[str] = []
+        self.mPlugin_dependencies: List[str] = []
 
     def validate(self) -> bool:
         return True

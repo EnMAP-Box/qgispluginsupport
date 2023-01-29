@@ -25,255 +25,73 @@
 ***************************************************************************
 """
 
-import collections
-import pathlib
+import datetime
 import re
 import sys
-import typing
 
-from qgis.PyQt.QtCore import Qt, QModelIndex, QAbstractTableModel, pyqtSignal, QSortFilterProxyModel
-from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
-from osgeo import gdal
+from typing import List, Dict, Tuple, Any
+
+from qgis.PyQt.QtCore import QItemSelectionModel
+from qgis.PyQt.QtWidgets import QTableView, QPushButton
 
 from qgis.PyQt import sip
+from qgis.PyQt.QtCore import Qt, QModelIndex, QAbstractTableModel, QSortFilterProxyModel
+from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
+from qgis.core import QgsProviderSublayerTask, QgsProviderSublayerDetails, QgsProviderSublayerModel, \
+    QgsProviderSublayerProxyModel
 from qgis.core import QgsTaskManager, QgsApplication, QgsTask
 from . import DIR_UI_FILES
 from .utils import loadUi
 
 
-# read https://gdal.org/user/raster_data_model.html#subdatasets-domain
-
-class SubDatasetType(object):
-    def __init__(self, name: str, checked: bool = False):
-        assert isinstance(name, str)
-        self.name: str = name
-        self.checked: bool = checked
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def __eq__(self, other):
-        if not isinstance(other, SubDatasetType):
-            return False
-        return self.name == other.name
-
-
-class DatasetInfo(object):
-
-    @staticmethod
-    def fromRaster(obj):
-        if isinstance(obj, pathlib.Path):
-            obj = str(obj)
-        if isinstance(obj, str):
-            try:
-                obj = gdal.Open(obj)
-            except Exception:
-                pass
-        if isinstance(obj, gdal.Dataset):
-            subs = obj.GetSubDatasets()
-            if isinstance(subs, list) and len(subs) > 0:
-                return DatasetInfo(obj.GetDescription(), subs)
-
-        return None
-
-    def __init__(self, file: str, subs: typing.List[typing.Tuple[str, str]]):
-
-        assert isinstance(file, str)
-        assert isinstance(subs, list) and len(subs) > 0
-
-        self.mReferenceFile: str = str(file)
-        self.mSubDescriptions: typing.List[str] = [s[1] for s in subs]
-        self.mSubNames: typing.List[str] = [s[0] for s in subs]
-
-    def __hash__(self):
-        return hash(self.mReferenceFile)
-
-    def reference_file(self) -> str:
-        return self.mReferenceFile
-
-    def subdataset_types(self) -> typing.List[SubDatasetType]:
-        return [SubDatasetType(d) for d in self.mSubDescriptions[:]]
-
-    def subdataset_descriptions(self) -> typing.List[str]:
-        return self.mSubDescriptions[:]
-
-    def subdataset_names(self) -> typing.List[str]:
-        return self.mSubNames[:]
-
-    def contains_name(self, name: str) -> bool:
-        return name in self.mSubNames
-
-    def contains_description(self, description: str) -> bool:
-        return description in self.mSubDescriptions
-
-    def contains_subdataset_type(self, subdataset_type: SubDatasetType) -> bool:
-        return subdataset_type in self.subdataset_types()
-
-    def equal_descriptions(self, other) -> bool:
-        assert isinstance(other, DatasetInfo)
-        return self.mSubDescriptions == other.mSubDescriptions
-
-    def __gt__(self, other):
-        assert isinstance(other, DatasetInfo)
-        return self.mReferenceFile > other.mReferenceFile
-
-    def __eq__(self, other):
-        """
-        Two subset infos are equal if they point to the same ref file
-        """
-        if not isinstance(other, DatasetInfo):
-            return False
-        return self.mReferenceFile == other.mReferenceFile
-
-
 class SubDatasetLoadingTask(QgsTask):
-    sigFoundSubDataSets = pyqtSignal(list)
-    sigMessage = pyqtSignal(str, bool)
-
     def __init__(self,
-                 files: typing.List[str],
+                 files: List[str],
                  description: str = "Collect subdata sets",
                  callback=None,
-                 block_size: int = 10):
+                 progress_interval: int = 1):
 
         super().__init__(description=description)
-        self.mFiles = files
+        self.mFiles: List[str] = [str(f) for f in files]
         self.mCallback = callback
-        self.mSubDataSets = collections.OrderedDict()
-        self.mResultBlockSize = block_size
+        self.mMessages: Dict[str, str] = dict()
+        self.mTimeOutSec = progress_interval
+        self.mSubDataSets: Dict[str, List[QgsProviderSublayerDetails]] = dict()
 
-    def subDataSets(self) -> collections.OrderedDict:
+    def results(self) -> Dict[str, List[QgsProviderSublayerDetails]]:
         return self.mSubDataSets.copy()
 
+    def messages(self) -> Dict[str, str]:
+        return self.mMessages.copy()
+
     def run(self):
-        result_block = []
         n = len(self.mFiles)
+        t0 = datetime.datetime.now()
+
         for i, path in enumerate(self.mFiles):
             assert isinstance(path, str)
-            try:
-                info = DatasetInfo.fromRaster(path)
-                if isinstance(info, DatasetInfo):
-                    result_block.append(info)
-            except Exception as ex:
-                self.sigMessage.emit(str(ex), True)
 
-            if len(result_block) >= self.mResultBlockSize:
-                self.sigFoundSubDataSets.emit(result_block[:])
-                result_block.clear()
+            try:
+                task = QgsProviderSublayerTask(path)
+                task.run()
+                self.mSubDataSets[path] = task.results()
+            except Exception as ex:
+                self.mMessages[path] = str(ex)
+
             if self.isCanceled():
                 return False
-            self.setProgress(100 * (i + 1) / n)
 
-        if len(result_block) > 0:
-            self.sigFoundSubDataSets.emit(result_block[:])
+            dt = datetime.datetime.now() - t0
+            if dt.seconds > self.mTimeOutSec:
+                self.setProgress(100 * (i + 1) / n)
+
+        self.setProgress(100 * (i + 1) / n)
         return True
 
     def finished(self, result):
 
         if self.mCallback is not None:
             self.mCallback(result, self)
-
-
-class SubDatasetDescriptionModel(QAbstractTableModel):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-        self.mSubDatasetDescriptions: typing.List[SubDatasetType] = []
-        self.mColumnNames = ['Subsets']
-
-    def clear(self):
-        self.beginResetModel()
-        self.mSubDatasetDescriptions.clear()
-        self.endResetModel()
-
-    def addSubDatasetDescriptions(self, descriptions: typing.List[SubDatasetType]):
-        if not isinstance(descriptions, list):
-            descriptions = [descriptions]
-        for d in descriptions:
-            assert isinstance(d, SubDatasetType)
-
-        to_add = []
-        [to_add.append(d) for d in descriptions if d not in self.mSubDatasetDescriptions
-         and d not in to_add]
-
-        if len(to_add) > 0:
-            r0 = self.rowCount()
-            r1 = r0 + len(to_add) - 1
-            self.beginInsertRows(QModelIndex(), r0, r1)
-            self.mSubDatasetDescriptions.extend(to_add)
-            self.endInsertRows()
-
-    def rowCount(self, parent: QModelIndex = ...) -> int:
-        return len(self.mSubDatasetDescriptions)
-
-    def columnCount(self, parent: QModelIndex = ...) -> int:
-        return len(self.mColumnNames)
-
-    def headerData(self, col, orientation, role=None):
-        if orientation == Qt.Horizontal:
-            if role == Qt.DisplayRole:
-                return self.mColumnNames[col]
-        elif orientation == Qt.Vertical and role == Qt.DisplayRole:
-            return col + 1
-        return None
-
-    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
-        if not index.isValid():
-            return Qt.NoItemFlags
-
-        return Qt.ItemIsSelectable | Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
-
-    def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
-        if not index.isValid():
-            return None
-
-        descr = self.mSubDatasetDescriptions[index.row()]
-        assert isinstance(descr, SubDatasetType)
-        col = index.column()
-        if role == Qt.DisplayRole:
-            if col == 0:
-                return descr.name
-        if role == Qt.ToolTipRole:
-            if col == 0:
-                return descr.name
-        if role == Qt.CheckStateRole:
-            if col == 0:
-                return Qt.Checked if descr.checked else Qt.Unchecked
-        if role == Qt.UserRole:
-            return descr
-
-        return None
-
-    def setData(self, index: QModelIndex, value: typing.Any, role: int = ...) -> bool:
-
-        if not index.isValid():
-            return None
-
-        descr = self.mSubDatasetDescriptions[index.row()]
-        assert isinstance(descr, SubDatasetType)
-
-        b = False
-        if role == Qt.CheckStateRole:
-            descr.checked = True if value == Qt.Checked else False
-            b = True
-
-        if b:
-            self.dataChanged.emit(index, index, [role])
-        return b
-
-    def subDatasetDescriptions(self, checked: bool = None) -> typing.List[SubDatasetType]:
-        """
-        Returns the sub-dataset descriptions
-        :param checked: if True, returns only the checked sub-dataset descriptions
-        :type checked:
-        :return:
-        :rtype:
-        """
-        subs = self.mSubDatasetDescriptions[:]
-        if isinstance(checked, bool):
-            subs = [s for s in subs if s.checked == checked]
-        return subs
 
 
 class DatasetTableModel(QAbstractTableModel):
@@ -283,8 +101,8 @@ class DatasetTableModel(QAbstractTableModel):
 
         self.mColumnNames = ['Dataset', '#']
         self.mColumnToolTip = ['Dataset location',
-                               'Number of Subdatasets']
-        self.mDatasetInfos: typing.List[DatasetInfo] = []
+                               'Number of Sublayers']
+        self.mDatasetInfos: List[Tuple[str, List[QgsProviderSublayerDetails]]] = []
 
     def clear(self):
         self.beginResetModel()
@@ -298,20 +116,34 @@ class DatasetTableModel(QAbstractTableModel):
         return 1
         return len(self.mColumnNames)
 
-    def subDatasetNames(self, subdataset_types: typing.List[SubDatasetType] = []) -> typing.List[str]:
-        results = []
-        if len(subdataset_types) > 0:
-            for d in subdataset_types:
-                assert isinstance(d, SubDatasetType)
-            for info in self.mDatasetInfos:
-                assert isinstance(info, DatasetInfo)
-                for name, sub_type in zip(info.subdataset_names(), info.subdataset_types()):
-                    if sub_type in subdataset_types:
-                        results.append(name)
-        else:
-            for info in self.mDatasetInfos:
-                results.extend(info.subdataset_names())
-        return results
+    def allSublayerDetails(self) -> List[QgsProviderSublayerDetails]:
+
+        return [d for t in self.mDatasetInfos for d in t[1]]
+
+    def uniqueSublayerDetails(self) -> List[QgsProviderSublayerDetails]:
+        """
+        Returns a unique set of subset details
+        """
+        all_details = self.allSublayerDetails()
+
+        RESULTS = dict()
+        for d in self.allSublayerDetails():
+            t = self.sublayerDetailKey(d)
+            if t not in RESULTS.keys():
+                RESULTS[t] = d
+        return list(RESULTS.values())
+
+    def sublayerDetailKey(self, detail: QgsProviderSublayerDetails) -> Tuple[int, str, str, str]:
+        return (detail.wkbType(), detail.providerKey(), detail.name(), detail.description())
+
+    def similarSublayerDetails(self, referenceDetails: List[QgsProviderSublayerDetails]):
+        """
+        Returns all sublayer details that are similar to those in referenceDetails.
+        """
+
+        requested_settings = set([self.sublayerDetailKey(d) for d in referenceDetails])
+
+        return [d for d in self.allSublayerDetails() if self.sublayerDetailKey(d) in requested_settings]
 
     def headerData(self, col, orientation, role=None):
         if orientation == Qt.Horizontal:
@@ -327,39 +159,48 @@ class DatasetTableModel(QAbstractTableModel):
         sds = self.mDatasetInfos[row]
         return self.createIndex(row, column, sds)
 
-    def addDatasetInfos(self, infos: typing.List[DatasetInfo]):
-        if not isinstance(infos, list):
-            infos = [infos]
-        for i in infos:
-            assert isinstance(i, DatasetInfo)
+    def addDatasetInfos(self, infos: List[Tuple[str, List[QgsProviderSublayerDetails]]]):
 
-        # remove existing
-        to_add = sorted(set(infos).difference(set(self.mDatasetInfos)))
+        # remove existing sources, might have been updated
+        sources = [d[0] for d in infos]
+        to_remove = [d for d in self.mDatasetInfos if d[0] in sources]
 
-        if len(to_add) > 0:
+        if len(to_remove) > 0:
+            for d in to_remove:
+                if d in self.mDatasetInfos:
+                    c = self.mDatasetInfos.index(d)
+                    self.beginRemoveRows(QModelIndex(), c, c)
+                    self.mDatasetInfos.remove(d)
+                    self.endRemoveRows()
+
+        if len(infos) > 0:
             r0 = self.rowCount()
-            r1 = r0 + len(to_add) - 1
+            r1 = r0 + len(infos) - 1
             self.beginInsertRows(QModelIndex(), r0, r1)
-            self.mDatasetInfos.extend(to_add)
+            self.mDatasetInfos.extend(infos)
             self.endInsertRows()
 
-    def data(self, index: QModelIndex, role: int = ...) -> typing.Any:
+    def data(self, index: QModelIndex, role: int = ...) -> Any:
         if not index.isValid():
             return None
 
         info = self.mDatasetInfos[index.row()]
-        assert isinstance(info, DatasetInfo)
+        src, details = info
+        src: str
+        details: List[QgsProviderSublayerDetails]
+
         col = index.column()
 
         if role == Qt.DisplayRole:
             if col == 0:
-                return info.reference_file()
+                return src
             if col == 1:
-                return len(info.mSubNames)
+                return len(details)
 
         if role == Qt.ToolTipRole:
-            tt = [info.reference_file()]
-            tt.append('\n  ' + '\n  '.join(info.subdataset_names()))
+            tt = [src]
+
+            tt.append('\n  ' + '\n  '.join([d.description() for d in details]))
             return '\n'.join(tt)
 
         if role == Qt.UserRole:
@@ -382,34 +223,57 @@ class SubDatasetSelectionDialog(QDialog):
         self.datasetFilterModel.setSourceModel(self.datasetModel)
         self.datasetFilterModel.setFilterKeyColumn(0)
 
-        self.subDatasetModel = SubDatasetDescriptionModel()
-        self.subDatasetFilterModel = QSortFilterProxyModel()
+        self.subDatasetModel = QgsProviderSublayerModel()
+        self.subDatasetFilterModel = QgsProviderSublayerProxyModel()
         self.subDatasetFilterModel.setSourceModel(self.subDatasetModel)
-        self.subDatasetFilterModel.setFilterKeyColumn(0)
-        self.subDatasetModel.dataChanged.connect(self.onSubsetDataChanged)
 
+        self.tvSubDatasets: QTableView
         self.tvDatasets.setModel(self.datasetFilterModel)
+
+        self.tvSubDatasets: QTableView
         self.tvSubDatasets.setModel(self.subDatasetFilterModel)
+        smodel: QItemSelectionModel = self.tvSubDatasets.selectionModel()
+        smodel.selectionChanged.connect(self.validate)
+
+        self.btnSelectAll: QPushButton
+        self.btnDeselectAll: QPushButton
+        self.btnSelectAll.clicked.connect(self.tvSubDatasets.selectAll)
+        self.btnDeselectAll.clicked.connect(smodel.clearSelection)
 
         self.tbFilterDatasets.valueChanged.connect(self.datasetFilterModel.setFilterWildcard)
-        self.tbFilterSubDatasets.valueChanged.connect(self.subDatasetFilterModel.setFilterWildcard)
+        self.tbFilterSubDatasets.valueChanged.connect(self.subDatasetFilterModel.setFilterString)
         self.validate()
+
+    def showMultiFiles(self, b: bool):
+
+        self.frameFiles.setVisible(b)
+        self.gbFiles.setVisible(b)
 
     def onSubsetDataChanged(self, i1, i2, roles):
         if Qt.CheckStateRole in roles:
             self.validate()
 
-    def setFiles(self, files: typing.List[str]):
+    def setFiles(self, files: List[str]):
         assert isinstance(files, list)
         fileString = ' '.join(['"{}"'.format(f) for f in files])
         self.fileWidget.setFilePath(fileString)
+
+    def setSubDatasetDetails(self, details: List[QgsProviderSublayerDetails]):
+        """
+        Allows to set SubDatasetDetails directly
+        """
+        self.fileWidget.setFilePath('')
+        self.subDatasetModel.setSublayerDetails([])
+        self.datasetModel.clear()
+
+        self.addDatasetInfos([('dummy', details)])
 
     def onFilesChanged(self, files: str):
         files = re.split(r'["\n]', files)
         files = [f.strip() for f in files]
         files = [f for f in files if len(f) > 0]
 
-        self.subDatasetModel.clear()
+        self.subDatasetModel.setSublayerDetails([])
         self.datasetModel.clear()
 
         if len(files) == 0:
@@ -419,24 +283,25 @@ class SubDatasetSelectionDialog(QDialog):
         tm = QgsApplication.taskManager()
         assert isinstance(tm, QgsTaskManager)
         qgsTask = SubDatasetLoadingTask(files, description='Search Subdatasets', callback=self.onCompleted)
-        qgsTask.sigFoundSubDataSets.connect(self.add_subdatasetinfos)
         self.startTask(qgsTask)
 
-    def add_subdatasetinfos(self, infos: typing.List[DatasetInfo]):
+    def addDatasetInfos(self, infos: List[Tuple[str, List[QgsProviderSublayerDetails]]]):
+
+        infos = [i for i in infos if len(i[1]) > 0]
+
         self.datasetModel.addDatasetInfos(infos)
-        descriptions = []
-        [descriptions.extend(i.subdataset_types()) for i in infos]
-        self.subDatasetModel.addSubDatasetDescriptions(descriptions)
+        details = self.datasetModel.uniqueSublayerDetails()
+        self.subDatasetModel.setSublayerDetails(details)
 
     def startTask(self, qgsTask: QgsTask):
         self.setCursor(Qt.WaitCursor)
         self.fileWidget.setEnabled(False)
         self.fileWidget.lineEdit().setShowSpinner(True)
         tid = id(qgsTask)
-        qgsTask.progressChanged.connect(lambda p: self.setInfo('Loaded {:0.2f} %'.format(p)))
+        qgsTask.progressChanged.connect(lambda p: self.setInfo('Read {:0.2f} %'.format(p)))
         qgsTask.taskCompleted.connect(lambda *args, t=tid: self.onRemoveTask(t))
         qgsTask.taskTerminated.connect(lambda *args, t=tid: self.onRemoveTask(t))
-        qgsTask.sigMessage.connect(self.onTaskMessage)
+
         self.mTasks[tid] = qgsTask
         tm = QgsApplication.taskManager()
         assert isinstance(tm, QgsTaskManager)
@@ -450,6 +315,10 @@ class SubDatasetSelectionDialog(QDialog):
 
     def onCompleted(self, result: bool, task: QgsTask):
         if isinstance(task, SubDatasetLoadingTask) and not sip.isdeleted(task):
+            infos = [(k, details) for k, details in task.results().items()]
+
+            self.addDatasetInfos(infos)
+
             self.onRemoveTask(id(task))
 
     def onTaskMessage(self, msg: str, is_error: bool):
@@ -471,15 +340,22 @@ class SubDatasetSelectionDialog(QDialog):
 
     def validate(self):
 
-        selected = len(self.subDatasetModel.subDatasetDescriptions(checked=True)) > 0
-        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(selected)
+        rows = self.tvSubDatasets.selectionModel().selectedRows()
 
-    def selectedSubDatasets(self) -> typing.List[str]:
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(len(rows) > 0)
+
+    def selectedSublayerDetails(self) -> List[QgsProviderSublayerDetails]:
         """
-        Returns the subdataset strings that can be used as input to QgsRasterLayers or gdal.Open()
+        Returns the selected QgsProviderSublayerDetails from all input sources
         """
-        description_filter = self.subDatasetModel.subDatasetDescriptions(checked=True)
-        return self.datasetModel.subDatasetNames(description_filter)
+
+        selectedRows = self.tvSubDatasets.selectionModel().selectedRows()
+        referenceRows = [self.tvSubDatasets.model().mapToSource(idx) for idx in selectedRows]
+
+        referenceDetails = self.subDatasetModel.sublayerDetails()
+        referenceDetails = [referenceDetails[idx.row()] for idx in referenceRows]
+
+        return self.datasetModel.similarSublayerDetails(referenceDetails)
 
     def setFileFilter(self, filter: str):
         """

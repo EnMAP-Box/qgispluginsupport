@@ -1,7 +1,7 @@
 #!/bin/bash
 export QT_QPA_PLATFORM=offscreen
 export CI=True
-# export PYTHONPATH="${PYTHONPATH}$(pwd)"
+
 find . -name "*.pyc" -exec rm -f {} \;
 
 mkdir -p test-reports

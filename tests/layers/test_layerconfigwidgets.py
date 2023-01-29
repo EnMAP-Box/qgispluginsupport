@@ -10,8 +10,9 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-import typing
+
 import unittest
+from typing import Match
 
 from osgeo import gdal
 
@@ -212,7 +213,7 @@ class LayerConfigWidgetsTests(TestCase):
     def test_rx_ogr_uri(self):
 
         match = RX_OGR_URI.search('qps/testvectordata.kml|layername=landcover|layerid=3')
-        self.assertIsInstance(match, typing.Match)
+        self.assertIsInstance(match, Match)
         D = match.groupdict()
         self.assertEqual(D.get('path'), 'qps/testvectordata.kml')
         self.assertEqual(D.get('layername'), 'landcover')

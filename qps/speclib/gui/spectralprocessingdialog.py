@@ -2,9 +2,9 @@ import datetime
 import json
 import os
 import pathlib
-import typing
+
 from json import JSONDecodeError
-from typing import Dict
+from typing import Dict, List, Any, Union
 
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
@@ -334,7 +334,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         self.name: str = self.algorithm().displayName()
 
         # internal list of layers + internal project
-        self.mExampleLayers: typing.List[QgsRasterLayer] = []
+        self.mExampleLayers: List[QgsRasterLayer] = []
         self.mProject: QgsProject = QgsProject()
         self.mProject.setTitle('SpectralProcessing')
 
@@ -343,11 +343,11 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         self.mSpeclib.attributeDeleted.connect(self.updateExampleLayers)
         self.updateExampleLayers()
 
-        self.mParameterWidgets: typing.Dict[str, QWidget] = dict()
-        self.mOutputWidgets: typing.Dict[str, QWidget] = dict()
+        self.mParameterWidgets: Dict[str, QWidget] = dict()
+        self.mOutputWidgets: Dict[str, QWidget] = dict()
 
-        # self.parameterValuesDefault: typing.Dict[str, typing.Any] = dict()
-        self.mParameterValues: typing.Dict[str, typing.Any] = dict()
+        # self.parameterValuesDefault: Dict[str, Any] = dict()
+        self.mParameterValues: Dict[str, Any] = dict()
 
         self.mWrappers = {}
         self.mExtra_parameters = {}
@@ -520,7 +520,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         self.mProject.removeAllMapLayers()
         self.mProject.addMapLayers(self.mExampleLayers)
 
-    def exampleLayers(self) -> typing.List[QgsRasterLayer]:
+    def exampleLayers(self) -> List[QgsRasterLayer]:
         return self.mExampleLayers[:]
 
     def __hash__(self):
@@ -540,7 +540,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.btnAlgorithm.setIcon(QIcon(':/images/themes/default/processingAlgorithm.svg'))
         self.btnAlgorithm.clicked.connect(self.onSetAlgorithm)
 
-        self.mTemporaryRaster: typing.List[str] = []
+        self.mTemporaryRaster: List[str] = []
         self.tbAlgorithmName: QLineEdit = QLineEdit()
         self.tbAlgorithmName.setPlaceholderText('Select a raster processing algorithm / model')
         self.tbAlgorithmName.setReadOnly(True)
@@ -885,7 +885,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
         self.log('Done')
         self.processingFeedback().setProgress(int(100))
 
-    def temporaryRaster(self) -> typing.List[str]:
+    def temporaryRaster(self) -> List[str]:
         """
         Returns a list of all files which have been written by writeTemporaryRaster
         when calling runAlgorithm()
@@ -972,7 +972,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             self.flag_invalid_output_extension(e.message, e.widget)
         return {}
 
-    def setAlgorithm(self, alg: typing.Union[str, pathlib.Path, QgsProcessingAlgorithm]):
+    def setAlgorithm(self, alg: Union[str, pathlib.Path, QgsProcessingAlgorithm]):
 
         if isinstance(alg, str):
             reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()

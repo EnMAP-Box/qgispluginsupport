@@ -12,6 +12,7 @@ from qgis.core import QgsProject, QgsApplication, QgsProcessingRegistry, QgsLaye
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
 
 
+@unittest.skipIf(isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication must be None')
 class TestCasesClassTesting(unittest.TestCase):
 
     def setUp(self) -> None:

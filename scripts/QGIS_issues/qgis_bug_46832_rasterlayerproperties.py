@@ -13,7 +13,7 @@ __copyright__ = 'Copyright 2022, The QGIS Project'
 
 import qgis
 import pathlib
-import typing
+
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.PyQt.QtGui import QIcon
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapLayerConfigWidget, QgsRasterLayerProperties
@@ -65,7 +65,7 @@ class TestQgsRasterLayerProperties(unittest.TestCase):
                              layer: QgsMapLayer,
                              canvas: QgsMapCanvas,
                              dockWidget: bool = ..., parent:
-                    typing.Optional[QWidget] = ...) -> QgsMapLayerConfigWidget:
+                    Optional[QWidget] = ...) -> QgsMapLayerConfigWidget:
                 MyFactory.COUNT += 1
                 w = MyWidget(layer, canvas, parent=parent)
                 return w

@@ -28,7 +28,8 @@ import datetime
 import os
 import pathlib
 import re
-import typing
+
+from typing import Union, List
 
 from qgis.PyQt.QtCore import QVariant, QDate, QTime
 from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
@@ -163,7 +164,7 @@ class SEDFile(object):
     def feature(self) -> QgsFeature:
         return self.mFeature
 
-    def readFromSEDFile(self, path: typing.Union[str, pathlib.Path]):
+    def readFromSEDFile(self, path: Union[str, pathlib.Path]):
         """
         Reads data from a binary file
         :param path:
@@ -343,9 +344,9 @@ class SEDSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: typing.Union[str, pathlib.Path],
+                       path: Union[str, pathlib.Path],
                        importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
         profiles = []
 
         if isinstance(path, str):

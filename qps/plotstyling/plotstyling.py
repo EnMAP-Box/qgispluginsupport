@@ -29,9 +29,10 @@ import json
 import pathlib
 import re
 import sys
-import typing
+
 import warnings
 from json import JSONDecodeError
+from typing import Union, Dict, List
 
 from qgis.PyQt.QtCore import QVariant, QObject, pyqtSignal, QSize, QByteArray, QDataStream, QIODevice, Qt
 from qgis.PyQt.QtGui import QPainter, QPixmap, QPainterPath, QIcon, QColor, QPen, QBrush
@@ -439,7 +440,7 @@ class PlotStyle(QObject):
     def setBackgroundColor(self, *color):
         self.backgroundColor = QColor(*color)
 
-    def setLineColor(self, *color: typing.Union[QColor, str]):
+    def setLineColor(self, *color: Union[QColor, str]):
         """
         Sets the line color
         :param color: QColor
@@ -1273,7 +1274,7 @@ def registerPlotStyleEditorWidget():
 
 
 class PlotWidgetStyle(object):
-    PLOT_WIDGET_STYLES: typing.Dict[str, 'PlotWidgetStyle'] = dict()
+    PLOT_WIDGET_STYLES: Dict[str, 'PlotWidgetStyle'] = dict()
 
     @staticmethod
     def registerPlotWidgetStyle(style: 'PlotWidgetStyle', overwrite: bool = False):
@@ -1290,7 +1291,7 @@ class PlotWidgetStyle(object):
         return PlotWidgetStyle.PLOT_WIDGET_STYLES.get(key, None)
 
     @staticmethod
-    def plotWidgetStyles() -> typing.List['PlotWidgetStyle']:
+    def plotWidgetStyles() -> List['PlotWidgetStyle']:
         if len(PlotWidgetStyle.PLOT_WIDGET_STYLES) == 0:
             PlotWidgetStyle.initializeStandardStyles()
         return list(PlotWidgetStyle.PLOT_WIDGET_STYLES.values())
@@ -1443,7 +1444,7 @@ class PlotWidgetStyle(object):
         raise NotImplementedError()
 
     @staticmethod
-    def writeJson(path, styles: typing.List['PlotWidgetStyle']):
+    def writeJson(path, styles: List['PlotWidgetStyle']):
         path = pathlib.Path(path)
 
         JSON = []
@@ -1455,7 +1456,7 @@ class PlotWidgetStyle(object):
                 json.dump(JSON, fp, indent=4)
 
     @staticmethod
-    def fromJson(path) -> typing.List['PlotWidgetStyle']:
+    def fromJson(path) -> List['PlotWidgetStyle']:
         path = pathlib.Path(path)
         styles = []
         with open(path, 'r', encoding='utf8') as fp:
