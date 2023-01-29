@@ -710,11 +710,11 @@ class SpectralMath(QgsExpressionFunction):
 
     def __init__(self):
         args = [
-            QgsExpressionFunction.Parameter('p1', optional=True),
+            QgsExpressionFunction.Parameter('p1', optional=False),
             QgsExpressionFunction.Parameter('p2', optional=True),
             QgsExpressionFunction.Parameter('pN', optional=True),
             QgsExpressionFunction.Parameter('expression', optional=False, isSubExpression=True),
-            QgsExpressionFunction.Parameter('format', optional=True),
+            QgsExpressionFunction.Parameter('format', optional=True, defaultValue='map'),
         ]
         helptext = HM.helpText(self.NAME, args)
         super().__init__(self.NAME, -1, self.GROUP, helptext)
