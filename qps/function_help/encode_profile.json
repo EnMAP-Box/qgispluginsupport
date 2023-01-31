@@ -1,5 +1,5 @@
 {
-  "name": "encodeProfile",
+  "name": "encode_profile",
   "type": "function",
   "description": "Encodes spectral profile data",
   "arguments": [ {"arg":"profile_field","description":"field or expression to load the spectral profile from"},

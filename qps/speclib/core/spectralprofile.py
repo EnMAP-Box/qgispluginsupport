@@ -163,6 +163,13 @@ def validateProfileValueDict(d: dict, allowEmpty: bool = False) -> Tuple[bool, s
         return True, '', d
 
 
+def isProfileValueDict(d: dict) -> bool:
+    """
+    Returns True if the input is a valid dictionary with spectral profile values
+    """
+    return validateProfileValueDict(d)[0]
+
+
 class ProfileEncoding(enum.Enum):
     Text = 0
     Json = 0
@@ -218,7 +225,7 @@ def encodeProfileValueDict(d: dict,
             d2[k] = v
 
     # convert None to NaN
-    d2['y'] = [v if v else nan for v in d2['y']]
+    d2['y'] = [nan if v is None else v for v in d2['y']]
 
     # convert date/time X values to strings
     xValues = d2.get('x')

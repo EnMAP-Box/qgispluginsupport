@@ -1,5 +1,5 @@
 {
-  "name": "rasterProfile",
+  "name": "raster_profile",
   "type": "function",
   "description": "Returns spectral profile values from a raster layer",
   "arguments": [

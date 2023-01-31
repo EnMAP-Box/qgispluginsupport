@@ -237,6 +237,16 @@ class SpeclibCoreTests(TestCase):
             decode = decodeProfileValueDict(dump)
             self.assertEqual(d, decode)
 
+        # ensure that 0 stays 0
+        d = {'y': [0, 8, 15]}
+        d2 = decodeProfileValueDict(encodeProfileValueDict(d, ProfileEncoding.Text))
+        self.assertListEqual(d['y'], d2['y'])
+
+        # convert None to NaN
+        d = {'y': [None, 8, 15]}
+        d2 = decodeProfileValueDict(encodeProfileValueDict(d, ProfileEncoding.Text))
+        self.assertListEqual(d['y'], d2['y'])
+
     def test_profile_fields(self):
 
         path = '/vsimem/test.gpkg'

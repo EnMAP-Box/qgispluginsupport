@@ -1,14 +1,16 @@
 import re
 import unittest
-
-from qgis.PyQt.QtCore import QByteArray
 from osgeo import gdal_array
-
+from qgis.PyQt.QtCore import QByteArray, QVariant
+from qgis.core import QgsField
 from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsProperty, QgsExpressionContextUtils
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry, QgsFields
-from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py, RasterProfile, RasterArray
-from qps.speclib.core.spectralprofile import decodeProfileValueDict
+from qgis.gui import QgsFieldCalculator
+from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py, RasterProfile, RasterArray, SpectralData, \
+    SpectralEncoding, registerQgsExpressionFunctions
+from qps.speclib.core import profile_fields
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict
 from qps.testing import TestObjects, TestCase
 from qps.utils import SpatialPoint
 
@@ -58,6 +60,65 @@ class QgsFunctionTests(TestCase):
         self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
         self.assertListEqual(v_array, v_profile['y'])
 
+    def test_SpectralEncoding(self):
+
+        f = SpectralEncoding()
+        self.assertIsInstance(f, QgsExpressionFunction)
+        self.assertTrue(QgsExpression.registerFunction(f))
+        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+
+        sl = TestObjects.createSpectralLibrary(n_empty=0, n_bands=[24, 255], profile_field_names=['p1', 'p2'])
+        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
+
+        for sfield in profile_fields(sl).names():
+            # 'text', 'json', 'map' or 'bytes'
+
+            for feature in sl.getFeatures():
+                context.setFeature(feature)
+                exp = QgsExpression(f'{f.name()}("{sfield}", \'text\')')
+                exp.prepare(context)
+                self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+                profile = exp.evaluate(context)
+                self.assertIsInstance(profile, str)
+
+                exp = QgsExpression(f'{f.name()}("{sfield}", \'json\')')
+                exp.prepare(context)
+                self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+                profile = exp.evaluate(context)
+                self.assertIsInstance(profile, str)
+
+                exp = QgsExpression(f'{f.name()}("{sfield}", \'map\')')
+                exp.prepare(context)
+                self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+                profile = exp.evaluate(context)
+                self.assertIsInstance(profile, dict)
+
+                exp = QgsExpression(f'{f.name()}("{sfield}", \'bytes\')')
+                exp.prepare(context)
+                self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+                profile = exp.evaluate(context)
+                self.assertIsInstance(profile, QByteArray)
+
+    def test_SpectralData(self):
+
+        f = SpectralData()
+        self.assertIsInstance(f, QgsExpressionFunction)
+        self.assertTrue(QgsExpression.registerFunction(f))
+        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+
+        sl = TestObjects.createSpectralLibrary(n_empty=0, n_bands=[24, 255], profile_field_names=['p1', 'p2'])
+        sfields = profile_fields(sl)
+
+        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
+        for n in sfields.names():
+            exp = QgsExpression(f'{f.name()}("{n}")')
+            for feature in sl.getFeatures():
+                context.setFeature(feature)
+                exp.prepare(context)
+                self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+                profile = exp.evaluate(context)
+                self.assertTrue(isProfileValueDict(profile))
+
     def test_RasterArray(self):
 
         f = RasterArray()
@@ -88,7 +149,6 @@ class QgsFunctionTests(TestCase):
                 context.setFeature(feature)
 
                 exp.prepare(context)
-
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
 
                 profile = exp.evaluate(context)
@@ -160,8 +220,10 @@ class QgsFunctionTests(TestCase):
                 context.setFeature(feature)
                 # context = QgsExpressionContextUtils.createFeatureBasedContext(feature, QgsFields())
                 if i > 0:
-                    self.assertIsInstance(context.cachedValue('crs_trans'), QgsCoordinateTransform)
-                    self.assertIsInstance(context.cachedValue(f.CACHED_SPECTRAL_PROPERTIES), dict)
+                    k = f'crstrans_{context.variable("layer_id")}->{lyrR.id()}'
+                    self.assertIsInstance(context.cachedValue(k), QgsCoordinateTransform)
+                    k = f'spectralproperties_{lyrR.id()}'
+                    self.assertIsInstance(context.cachedValue(k), dict)
                 exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
 
@@ -229,6 +291,58 @@ class QgsFunctionTests(TestCase):
         html = HM.helpText(f.name(), f.parameters())
         self.assertIsInstance(html, str)
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
+
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    def test_functiondialog(self):
+        functions = [
+            Format_Py(),
+            RasterArray(),
+            RasterProfile(),
+            SpectralMath(),
+            SpectralData(),
+            SpectralEncoding(),
+        ]
+        for f in functions:
+            self.assertTrue(QgsExpression.registerFunction(f))
+            self.assertTrue(QgsExpression.isFunctionName(f.name()))
+
+        sl = TestObjects.createSpectralLibrary()
+
+        gui = QgsFieldCalculator(sl, None)
+        gui.exec_()
+
+    def test_aggragation_functions(self):
+
+        registerQgsExpressionFunctions()
+
+        sl = TestObjects.createSpectralLibrary(n=10, n_bands=[25, 50], profile_field_names=['P1', 'P2'])
+        sl.setName('speclib')
+        sl.startEditing()
+        sl.addAttribute(QgsField('class', QVariant.String))
+        sl.commitChanges(False)
+
+        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
+
+        idx = sl.fields().lookupField('class')
+        for i, f in enumerate(sl.getFeatures()):
+            name = 'A'
+            if i > 3:
+                name = 'B'
+            sl.changeAttributeValue(f.id(), idx, name)
+
+        sl.commitChanges()
+        fname = profile_fields(sl.fields())[0].name()
+        classes = sl.uniqueValues(idx)
+        """
+        mean_profile("profiles0",group_by:="state") → mean population value, grouped by state field
+        """
+        exp = QgsExpression(f'mean_profile("{fname}", group_by:=\'class\')')
+        exp.prepare(context)
+        self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+
+        profile = exp.evaluate(context)
+        self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
+        s = ""
 
 
 if __name__ == '__main__':

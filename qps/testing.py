@@ -559,6 +559,25 @@ class TestCase(qgis.testing.TestCase):
 
         return testDir
 
+    def createProcessingContextFeedback(self) -> Tuple[QgsProcessingContext, QgsProcessingFeedback]:
+        """
+        Create a QgsProcessingContext with connected QgsProcessingFeedback
+        """
+        def onProgress(progress: float):
+            sys.stdout.write('\r{:0.2f} %'.format(progress))
+            sys.stdout.flush()
+
+            if progress == 100:
+                print('')
+
+        feedback = QgsProcessingFeedback()
+        feedback.progressChanged.connect(onProgress)
+
+        context = QgsProcessingContext()
+        context.setFeedback(feedback)
+
+        return context, feedback
+
     def createProcessingFeedback(self) -> QgsProcessingFeedback:
         """
         Creates a QgsProcessingFeedback.
@@ -872,7 +891,7 @@ class TestObjects(object):
             n_bands = [n_bands]
 
         assert len(n_bands) == profile_fields.count(), \
-            f'Number of bands list ({n_bands}) has different lenghts that number of profile fields'
+            f'Number of bands list ({n_bands}) has different lengths that number of profile fields'
 
         profileGenerator: SpectralProfileDataIterator = SpectralProfileDataIterator(n_bands)
 

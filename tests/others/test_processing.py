@@ -19,23 +19,23 @@
 # noinspection PyPep8Naming
 import unittest
 
+import processing
 import qgis.utils
 from processing import AlgorithmDialog
 from processing.ProcessingPlugin import ProcessingPlugin
 from qgis.PyQt.QtCore import QObject, Qt, QModelIndex
-from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.core import QgsApplication, QgsVectorLayer, QgsField
-from qgis.core import QgsProcessingFeedback, QgsProcessingContext
+from qgis.core import QgsApplication, QgsVectorLayer, QgsFeature
 from qgis.core import QgsProject, QgsProcessingRegistry, QgsProcessingAlgorithm, QgsProcessingOutputRasterLayer
 from qgis.gui import QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog
 from qps import initResources
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.qgsfunctions import registerQgsExpressionFunctions
-from qps.speclib.core import is_profile_field
-from qps.speclib.core.spectralprofile import decodeProfileValueDict
+from qps.speclib.core import profile_field_names
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, ProfileEncoding, encodeProfileValueDict
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
-from qps.testing import TestCase, TestObjects, ExampleAlgorithmProvider
+from qps.testing import TestCase, ExampleAlgorithmProvider
 
 
 class ProcessingToolsTest(TestCase):
@@ -89,89 +89,100 @@ class ProcessingToolsTest(TestCase):
             alg = d.algorithm()
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_aggregate_profiles(self):
         registerQgsExpressionFunctions()
+        enc = ProfileEncoding.Json
+        sl1: QgsVectorLayer = SpectralLibraryUtils.createSpectralLibrary(
+            name='SL', profile_fields=['profiles'], encoding=enc)
+
+        context, feedback = self.createProcessingContextFeedback()
+
+        project = QgsProject.instance()
+        project.addMapLayers([sl1])
+
+        sl1.startEditing()
+        sl1.renameAttribute(sl1.fields().lookupField('name'), 'group')
+        sl1.commitChanges(False)
+        content = [
+            {'group': 'A', 'profiles': {'y': [1, 1, 1]}},
+            {'group': 'A', 'profiles': {'y': [1, 1, 1]}},
+            {'group': 'A', 'profiles': {'y': [4, 4, 4]}},
+            {'group': 'B', 'profiles': {'y': [0, 8, 15]}},
+        ]
+        for c in content:
+            f = QgsFeature(sl1.fields())
+            f.setAttribute('group', c['group'])
+            f.setAttribute('profiles', encodeProfileValueDict(c['profiles'], enc))
+            self.assertTrue(sl1.addFeature(f))
+        self.assertTrue(sl1.commitChanges())
+
+        groups = sl1.uniqueValues(sl1.fields().lookupField('group'))
+        self.assertEqual(groups, {'A', 'B'})
 
         provider = ExampleAlgorithmProvider()
         processingPlugin = qgis.utils.plugins.get('processing', ProcessingPlugin(TestCase.IFACE))
-        vl = TestObjects.createVectorLayer()
-        sl: QgsVectorLayer = TestObjects.createSpectralLibrary()
-        sl.startEditing()
-        sl.addAttribute(QgsField('group', type=QVariant.String))
-        sl.commitChanges(False)
-        i_name = sl.fields().lookupField('name')
-        i_group = sl.fields().lookupField('group')
-        for i, p in enumerate(sl.getFeatures()):
-            sl.changeAttributeValue(p.id(), i_name, f'Profile {i + 1}')
-            sl.changeAttributeValue(p.id(), i_group, str(i % 2 == 0))
-        self.assertTrue(sl.commitChanges())
+
         reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         reg.addProvider(provider)
         self.assertTrue(provider.addAlgorithm(AggregateProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
         alg_id = provider.algorithms()[0].id()
-        # alg_id = 'native:aggregate'
-        conf = {}
-        project = QgsProject()
-        project = QgsProject.instance()
-        project.addMapLayers([vl, sl])
-        context = QgsProcessingContext()
-        context.setProject(project)
-        feedback = QgsProcessingFeedback()
-        context.setFeedback(feedback)
-
-        if True:
+        alg = reg.algorithmById(alg_id)
+        self.assertIsInstance(alg, AggregateProfiles)
+        s = ""
+        if False:
             alg = reg.algorithmById(alg_id)
             d = AlgorithmDialog(alg, False, None)
             d.context = context
             d.exec_()
             processingPlugin.executeAlgorithm(alg_id, None, in_place=False, as_batch=False)
 
-        alg = reg.algorithmById(alg_id)
-        # self.assertIsInstance(alg, AggregateProfiles)
-        # alg.initAlgorithm(conf)
-        if False:
-            parameters = {AggregateProfiles.P_AGGREGATES: [
-                {'aggregate': 'mean', 'delimiter': ',', 'input': '"fid"', 'length': 0, 'name': 'mean_id',
-                 'precision': 0,
-                 'sub_type': 0, 'type': 4, 'type_name': 'int8'},
-                {'aggregate': 'first_value', 'delimiter': ',', 'input': '"level_1_id"', 'length': 0,
-                 'name': 'level_1_id',
-                 'precision': 0, 'sub_type': 0, 'type': 2, 'type_name': 'integer'},
-                {'aggregate': 'concatenate', 'delimiter': ',', 'input': '"level_1"', 'length': 0, 'name': 'level_1',
-                 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'}],
-                AggregateProfiles.P_GROUP_BY: '"level_1"',
-                AggregateProfiles.P_INPUT: vl,
-                AggregateProfiles.P_OUTPUT: 'TEMPORARY_OUTPUT'}
-        else:
-            parameters = {AggregateProfiles.P_AGGREGATES: [
-                {'aggregate': 'concatenate', 'delimiter': ',', 'input': '"name"', 'length': 0, 'name': 'name',
-                 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'},
-                {'aggregate': 'mean', 'delimiter': ',', 'input': '"profiles0"', 'length': 0, 'name': 'pMean',
-                 'precision': 0, 'sub_type': 0, 'type': 12, 'type_name': 'binary'},
-                {'aggregate': 'min', 'delimiter': ',', 'input': '"profiles0"', 'length': 0, 'name': 'pMin',
-                 'precision': 0, 'sub_type': 0, 'type': 12, 'type_name': 'binary'}],
-                AggregateProfiles.P_GROUP_BY: 'group',
-                AggregateProfiles.P_INPUT: sl,
-                AggregateProfiles.P_OUTPUT: './tempoutput3.gpkg'}
-        self.assertTrue(alg.prepare(parameters, context, feedback), msg=feedback.textLog())
-        result2 = alg.processAlgorithm(parameters, context, feedback)
-        result3, success = alg.run(parameters, context, feedback)
-        self.assertTrue(success, msg=feedback.textLog())
+        parameters = {
+            AggregateProfiles.P_INPUT: sl1,
+            AggregateProfiles.P_GROUP_BY: 'group',
+            AggregateProfiles.P_AGGREGATES: [
+                {'aggregate': 'first_value', 'delimiter': ',', 'input': '"group"', 'length': 0,
+                 'name': 'group', 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'},
+                {'aggregate': 'minimum', 'delimiter': ',', 'input': '"profiles"', 'length': -1,
+                 'name': 'p_min', 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'},
+                {'aggregate': 'maximum', 'delimiter': ',', 'input': '"profiles"', 'length': -1,
+                 'name': 'p_max', 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'},
+                {'aggregate': 'mean', 'delimiter': ',', 'input': '"profiles"', 'length': -1,
+                 'name': 'p_mean', 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'},
+                {'aggregate': 'median', 'delimiter': ',', 'input': '"profiles"', 'length': -1,
+                 'name': 'p_median', 'precision': 0, 'sub_type': 0, 'type': 10, 'type_name': 'text'}
+            ],
+            AggregateProfiles.P_OUTPUT: 'TEMPORARY_OUTPUT'}
 
-        vl = QgsVectorLayer(result3[AggregateProfiles.P_OUTPUT])
-        self.assertTrue(vl.isValid())
-        self.assertTrue(is_profile_field(vl.fields().field('pMean')))
-        self.assertTrue(is_profile_field(vl.fields().field('pMin')))
+        # r1 = alg.prepare(parameters, context, feedback)
+        # r2 = alg.processAlgorithm(parameters, context, feedback)
 
-        self.assertTrue(vl.featureCount() > 0)
-        for feature in vl.getFeatures():
-            dMean = decodeProfileValueDict(feature.attribute('pMean'))
-            dMin = decodeProfileValueDict(feature.attribute('pMin'))
-            self.assertTrue(len(dMean) > 0)
-            self.assertTrue(len(dMin) > 0)
+        sl2 = processing.run(alg_id, parameters, context=context)[AggregateProfiles.P_OUTPUT]
+        self.assertIsInstance(sl2, QgsVectorLayer)
+
+        pfields2 = profile_field_names(sl2)
+        self.assertEqual(set(pfields2), {'p_min', 'p_max', 'p_mean', 'p_median'})
+        self.assertEqual(len(pfields2), 4)
+        self.assertEqual(sl1.featureCount(), 4)
+        self.assertEqual(sl2.featureCount(), 2)
+
+        fA = list(sl2.getFeatures('"group" = \'A\''))
+        self.assertTrue(len(fA) == 1)
+        fA = fA[0]
+        p_min = decodeProfileValueDict(fA['p_min'])
+        p_max = decodeProfileValueDict(fA['p_max'])
+        p_mean = decodeProfileValueDict(fA['p_mean'])
+        p_median = decodeProfileValueDict(fA['p_median'])
+        self.assertEqual(p_min['y'], [1, 1, 1])
+        self.assertEqual(p_max['y'], [4, 4, 4])
+        self.assertEqual(p_median['y'], [1, 1, 1])
+        self.assertEqual(p_mean['y'], [2, 2, 2])
+
+        fB = list(sl2.getFeatures('"group" = \'B\''))[0]
+        for k in ['p_min', 'p_max', 'p_mean', 'p_median']:
+            p = decodeProfileValueDict(fB[k])
+            self.assertEqual(p['y'], [0, 8, 15])
 
 
 if __name__ == '__main__':
