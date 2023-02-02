@@ -1257,7 +1257,7 @@ class TestObjects(object):
         :return: ogr.DataSource
         """
         # ogr.RegisterAll()
-        ogr.UseExceptions()
+        # ogr.UseExceptions()
         assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
 
         # find the QGIS world_map.shp
@@ -1269,6 +1269,9 @@ class TestObjects(object):
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
 
         dsSrc = ogr.Open(pathSrc.as_posix())
+        if not isinstance(dsSrc, ogr.DataSource):
+            lyr = QgsVectorLayer(pathSrc.as_posix())
+            assert lyr.isValid(), f'Unable to load QGS Layer: {pathSrc.as_posix()}'
         assert isinstance(dsSrc, ogr.DataSource), f'Unable to load {pathSrc}'
         lyrSrc = dsSrc.GetLayerByIndex(0)
         assert isinstance(lyrSrc, ogr.Layer)
