@@ -1,3 +1,27 @@
+"""
+***************************************************************************
+    spectralibraryplotmodelitems.py
+
+    Items to described plot components in a spectral library plot.
+    ---------------------
+    Beginning            : January 2022
+    Copyright            : (C) 2023 by Benjamin Jakimow
+    Email                : benjamin.jakimow@geo.hu-berlin.de
+***************************************************************************
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this software. If not, see <http://www.gnu.org/licenses/>.
+***************************************************************************
+"""
 import sys
 from typing import List, Any, Dict, Tuple, Union
 
@@ -7,7 +31,7 @@ from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QP
 from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout, QCheckBox, QDoubleSpinBox, \
     QSpinBox, QMenu
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsField, QgsPropertyDefinition, QgsProperty, QgsExpressionContext, QgsRasterLayer, \
+from qgis.core import QgsWkbTypes, QgsField, QgsPropertyDefinition, QgsProperty, QgsExpressionContext, QgsRasterLayer, \
     QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer, QgsSingleBandPseudoColorRenderer, \
     QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
     QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsRenderContext, QgsFeatureRenderer, QgsFeature, \
@@ -74,16 +98,9 @@ class SpectralProfileColorPropertyWidget(QWidget):
             feature = f
             break
         if isinstance(feature, QgsFeature):
-            self.mContext.setFeature(f)
+            self.mContext.setFeature(feature)
             self.mRenderContext.setExpressionContext(self.mContext)
             self.mRenderer = layer.renderer().clone()
-            # self.mRenderer.startRender(self.mRenderContext, layer.fields())
-            # symbol = self.mRenderer.symbolForFeature(feature, self.mRenderContext)
-            # scope = symbol.symbolRenderContext().expressionContextScope()
-            # self.mContext.appendScope(scope)
-
-            # self.mTMP = [renderContext, scope, symbol, renderer]
-            s = ""
 
     def onButtonColorChanged(self, color: QColor):
         self.mPropertyOverrideButton.setActive(False)
@@ -1866,6 +1883,10 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
     def setSpeclib(self, speclib: QgsVectorLayer):
         assert isinstance(speclib, QgsVectorLayer)
+        if speclib.geometryType() in [QgsWkbTypes.GeometryType.PointGeometry,
+                                      QgsWkbTypes.GeometryType.LineGeometry,
+                                      QgsWkbTypes.GeometryType.PolygonGeometry]:
+            self.mPColor.setToSymbolColor()
         self.mSpeclib = speclib
         self.update()
 
