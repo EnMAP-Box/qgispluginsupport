@@ -333,7 +333,7 @@ Please not that not each aggregate function might be available for each field ty
 
     def spectralProfileAggregateExpression(self, aggregateType: str, source: str, concatenate: bool, groupBy):
         # expr = f"spectralAggregate(@layer, '{aggregateType}', '{source}', '{groupBy}')"
-        expr = f'{aggregateType}_profile({source}, "{groupBy}")'
+        expr = f'{aggregateType}_profile({source}, {groupBy})'
 
         return expr
 
