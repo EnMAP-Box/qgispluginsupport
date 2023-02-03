@@ -505,13 +505,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if v.isVisible() and v.isComplete() and v.speclib() == self.speclib():
                 visualizations.append(v)
 
-        pdiGenerator = PDIGenerator([], onProfileClicked=self.mPlotWidget.onProfileClicked)
+        pdi_generator = PDIGenerator([], onProfileClicked=self.mPlotWidget.onProfileClicked)
 
-        featureRenderer = self.speclib().renderer()
-        if isinstance(featureRenderer, QgsFeatureRenderer):
-            featureRenderer = featureRenderer.clone()
+        feature_renderer: QgsFeatureRenderer = self.speclib().renderer()
+        if isinstance(feature_renderer, QgsFeatureRenderer):
+            feature_renderer = feature_renderer.clone()
         else:
-            featureRenderer = self.mDefaultSymbolRenderer.clone()
+            feature_renderer = self.mDefaultSymbolRenderer.clone()
 
         request = QgsFeatureRequest()
         request.setFilterFids(feature_priority)
@@ -534,7 +534,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             fieldIndex = item.featureFieldIndex()
             feature: QgsFeature = self.mVectorLayerCache.getFeature(fid)
             context.setFeature(feature)
-            scope = item.createExpressionContextScope()
+            scope = item.expressionContextScope()
             context.appendScope(scope)
 
             if not isinstance(feature, QgsFeature):
@@ -579,27 +579,24 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             renderContext = QgsRenderContext()
             renderContext.setExpressionContext(context)
-            featureRenderer.startRender(renderContext, feature.fields())
-            qgssymbol = featureRenderer.symbolForFeature(feature, renderContext)
+            feature_renderer.startRender(renderContext, feature.fields())
+            qgssymbol = feature_renderer.symbolForFeature(feature, renderContext)
             symbolScope = None
             if isinstance(qgssymbol, QgsSymbol):
                 symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
                 context.appendScope(symbolScope)
 
             for vis in visualizations:
+                vis: ProfileVisualizationGroup
+
                 if len(PLOT_ITEMS) >= max_profiles:
                     profile_limit_reached = True
                     break
-                vis: ProfileVisualizationGroup
-                fieldIndex = vis.fieldIdx()
-
-                # context.appendScope(vis.createExpressionContextScope())
-                context.lastScope().setVariable('field_name', vis.fieldName())
-                context.lastScope().setVariable('field_index', fieldIndex)
-                context.lastScope().setVariable('visualization_name', vis.name())
+                plotContext = QgsExpressionContext(context)
+                plotContext.appendScope(vis.expressionContextScope())
 
                 if fid not in selected_fids and vis.filterProperty().expressionString() != '':
-                    b, success = vis.filterProperty().valueAsBool(context, defaultValue=False)
+                    b, success = vis.filterProperty().valueAsBool(plotContext, defaultValue=False)
                     if b is False:
                         continue
                 plot_data: dict = self.plotData(feature, vis.fieldIdx(), xunit)
@@ -608,12 +605,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     # profile data can not be transformed to requested x-unit
                     continue
 
-                plot_style: PlotStyle = vis.generatePlotStyle(context)
-                plot_label: str = vis.generateLabel(context)
-                plot_tooltip: str = vis.generateTooltip(context)
-                pdi = pdiGenerator.__next__()
+                plot_style: PlotStyle = vis.generatePlotStyle(plotContext)
+                plot_label: str = vis.generateLabel(plotContext)
+                plot_tooltip: str = vis.generateTooltip(plotContext)
+                pdi = pdi_generator.__next__()
                 pdi: SpectralProfilePlotDataItem
-                vis_key = (vis, fid, fieldIndex, xunit)
+                vis_key = (vis, fid, vis.fieldIdx(), xunit)
                 pdi.setVisualizationKey(vis_key)
                 pdi.setProfileData(plot_data, plot_style,
                                    showBadBands=show_bad_bands,
@@ -624,13 +621,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
                 vis.mPlotDataItems.append(pdi)
                 PLOT_ITEMS.append(pdi)
+                del plotContext
 
-            featureRenderer.stopRender(renderContext)
+            feature_renderer.stopRender(renderContext)
 
             if context.lastScope() == symbolScope:
                 context.popScope()
 
-        # selectionColor = QColor(self.mPlotWidgetStyle.selectionColor)
         selectionColor = self.mGeneralSettings.selectionColor()
         for pdi in PLOT_ITEMS:
             pdi: SpectralProfilePlotDataItem

@@ -1,21 +1,17 @@
 # noinspection PyPep8Naming
 import datetime
-
 import unittest
 from typing import Tuple
 
-from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QGridLayout
 from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import QgsProcessingAlgorithm, QgsProcessingModelChildAlgorithm, QgsProject, QgsProcessingModelOutput, \
-    QgsProcessingModelParameter, QgsProcessingModelChildParameterSource, QgsProcessingParameterRasterLayer, \
-    QgsProcessingOutputRasterLayer, QgsProcessingFeedback, QgsProcessingContext, QgsProcessingModelAlgorithm, \
-    QgsProcessingRegistry, QgsApplication
+from qgis.core import QgsProject, QgsProcessingParameterRasterLayer, \
+    QgsProcessingContext, QgsProcessingRegistry, QgsApplication
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator, \
     QgsProcessingAlgorithmDialogBase
 from qgis.gui import QgsMapCanvas, QgsDualView
-from qgis.gui import QgsProcessingGuiRegistry, QgsProcessingParameterDefinitionDialog
+from qgis.gui import QgsProcessingGuiRegistry
 from qps import initAll
 from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectralprofile import SpectralSetting
@@ -73,110 +69,6 @@ class SpectralProcessingTests(TestCase):
         print(f'Required {datetime.datetime.now() - t0} to delete {n_del} features')
         # self.showGui(dv)
 
-    @unittest.skipIf(True, 'Deprecated')
-    def test_simple_processing_model(self):
-
-        self.initProcessingRegistry()
-
-        configuration = {}
-        feedback = QgsProcessingFeedback()
-        context = QgsProcessingContext()
-        context.setFeedback(feedback)
-
-        speclib_source = TestObjects.createSpectralLibrary(20, n_bands=[10, 15])
-
-        model = QgsProcessingModelAlgorithm()
-        model.setName('ExampleModel')
-
-        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
-        alg: QgsProcessingAlgorithm = reg.algorithmById(
-            'testalgorithmprovider:spectral_python_code_processing')
-
-        self.assertIsInstance(alg, QgsProcessingAlgorithm)
-
-        childAlg = QgsProcessingModelChildAlgorithm(alg.id())
-        childAlg.generateChildId(model)
-        childAlg.setDescription('MySpectralAlg')
-
-        childId: str = model.addChildAlgorithm(childAlg)
-
-        # Important: addChildAlgorithm creates a copy
-        childAlg = model.childAlgorithm(childId)
-
-        input_name = 'input_profiles'
-        output_name = 'output_profiles'
-
-        model.addModelParameter(QgsProcessingParameterRasterLayer(input_name, description='Source Speclib'),
-                                QgsProcessingModelParameter(input_name))
-        childAlg.addParameterSources(
-            alg.INPUT, [QgsProcessingModelChildParameterSource.fromModelParameter(input_name)]
-        )
-
-        # define algorithm instance outputs for the model,
-        # e.g. to be used by other algorithms
-        childOutput = QgsProcessingModelOutput(output_name)
-        childOutput.setChildOutputName(alg.OUTPUT)
-        childAlg.setModelOutputs({output_name: childOutput})
-
-        # define model outputs, e.g. to be used by other users
-        model.addOutput(QgsProcessingOutputRasterLayer(output_name))
-        model.initAlgorithm(configuration)
-
-        input_names = [d.name() for d in model.parameterDefinitions()]
-        output_names = [d.name() for d in model.outputDefinitions()]
-        self.assertTrue(input_name in input_names)
-        self.assertTrue(output_name in output_names)
-
-        speclibSrc = TestObjects.createSpectralLibrary(10)
-        speclibDst = TestObjects.createSpectralLibrary(1)
-        parameters = {input_name: speclibSrc,
-                      output_name: speclibDst}
-
-        is_valid, msg = model.checkParameterValues(parameters, context)
-        self.assertTrue(is_valid, msg=msg)
-        can_execute, msg = model.canExecute()
-        self.assertTrue(can_execute, msg=msg)
-        self.assertTrue(model.prepareAlgorithm(parameters, context, feedback))
-        results = model.processAlgorithm(parameters, context, feedback)
-
-        child_alg = model.childAlgorithm(childId)
-        child_results = results['CHILD_RESULTS'][childId]
-        for output_name, output in child_alg.modelOutputs().items():
-            final_key = f'{childId}:{output_name}'
-            final_value = child_results[output.childOutputName()]
-            s = ""
-        s = ""
-
-        # new API
-        # context = createContext()
-        widget_context = QgsProcessingParameterWidgetContext()
-        widget_context.setProject(QgsProject.instance())
-        from qgis.utils import iface
-        if iface is not None:
-            widget_context.setMapCanvas(iface.mapCanvas())
-            widget_context.setActiveLayer(iface.activeLayer())
-
-        widget_context.setModel(model)
-
-        existing_param = model.parameterDefinitions()[0]
-        algorithm = model
-
-        dlg = QgsProcessingParameterDefinitionDialog(type=existing_param.type(),
-                                                     context=context,
-                                                     widgetContext=widget_context,
-                                                     definition=existing_param,
-                                                     algorithm=algorithm)
-        dlg.setComments('My Comment')
-        dlg.setCommentColor(QColor('green'))
-        # if edit_comment:
-        #    dlg.switchToCommentTab()
-
-        if False and dlg.exec_():
-            s = ""
-            new_param = dlg.createParameter(existing_param.name())
-            comment = dlg.comments()
-            comment_color = dlg.commentColor()
-
     def test_algwidget(self):
         self.initProcessingRegistry()
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
@@ -196,6 +88,7 @@ class SpectralProcessingTests(TestCase):
         procw.setAlgorithm(alg2)
         self.showGui(procw)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_SpectralProcessingWidget2(self):
         self.initProcessingRegistry()
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider

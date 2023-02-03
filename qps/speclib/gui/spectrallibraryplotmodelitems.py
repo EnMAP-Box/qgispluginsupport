@@ -921,8 +921,8 @@ class QgsPropertyItem(PropertyItem):
 
     def __eq__(self, other):
         return isinstance(other, QgsPropertyItem) \
-               and self.mDefinition == other.definition() \
-               and self.mProperty == other.property()
+            and self.mDefinition == other.definition() \
+            and self.mProperty == other.property()
 
     def update(self):
         self.setText(self.mProperty.valueAsString(QgsExpressionContext()))
@@ -1210,7 +1210,7 @@ class ProfileCandidateItem(PlotStyleItem):
         self.mCellKey = (fid, field)
         self.label().setText(f'{fid} {field}')
 
-    def createExpressionContextScope(self) -> QgsExpressionContextScope:
+    def expressionContextScope(self) -> QgsExpressionContextScope:
         scope = QgsExpressionContextScope()
         scope.setVariable('field_name', self.featureField())
         scope.setVariable('field_index', self.featureFieldIndex())
@@ -1691,7 +1691,7 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
 
 class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
     """
-    Controls the visualization of a set of profiles
+    Controls the visualization for a set of profiles
     """
     MIME_TYPE = 'application/SpectralProfilePlotVisualization'
 
@@ -1746,6 +1746,16 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             propertyItem.signals().dataChanged.connect(self.signals().dataChanged.emit)
         self.signals().dataChanged.connect(self.update)
         # self.initBasicSettings()
+
+    def expressionContextScope(self) -> QgsExpressionContextScope:
+        """
+        Returns the expression context scope of this visualization
+        """
+        scope = QgsExpressionContextScope(f'ProfileVisualizationGroup {self.name()}')
+        scope.setVariable('field_name', self.fieldName())
+        scope.setVariable('field_index', self.fieldIdx())
+        scope.setVariable('visualization_name', self.name())
+        return scope
 
     def initWithPlotModel(self, model):
         self.setSpeclib(model.speclib())
