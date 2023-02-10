@@ -51,7 +51,7 @@ from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
 
-from . import field_index
+from . import field_index, supports_field
 from . import profile_field_list, first_profile_field_index, create_profile_field, \
     is_spectral_library
 from .spectralprofile import SpectralProfile, SpectralProfileBlock, \
@@ -430,6 +430,13 @@ class SpectralLibraryUtils:
         conf.setActionWidgetStyle(QgsAttributeTableConfig.ButtonList)
 
         speclib.setAttributeTableConfig(conf)
+
+    @staticmethod
+    def setAsProfileField(layer: QgsVectorLayer, field: Union[int, str, QgsField]):
+        idx = field_index(layer, field)
+        assert idx >= 0, 'Unknown field'
+        assert supports_field(layer.fields().field(idx)), 'Field cannot store spectral profiles'
+        layer.setEditorWidgetSetup(idx, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
     @staticmethod
     def canReadFromMimeData(mimeData: QMimeData) -> bool:
