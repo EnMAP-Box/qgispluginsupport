@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 # noinspection PyPep8Naming
-# -*- coding: utf-8 -*-
-# noinspection PyPep8Naming
 """
 ***************************************************************************
     speclib/__init__.py

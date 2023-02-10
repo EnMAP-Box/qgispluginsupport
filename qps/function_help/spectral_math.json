@@ -1,5 +1,5 @@
 {
-  "name": "spectralMath",
+  "name": "spectral_math",
   "type": "function",
   "description": "Modifies SpectralProfiles with python code",
   "arguments": [

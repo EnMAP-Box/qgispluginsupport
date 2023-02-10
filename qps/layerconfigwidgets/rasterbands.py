@@ -23,7 +23,7 @@
 ***************************************************************************
 """
 import pathlib
-import typing
+from typing import Union, List
 
 import numpy as np
 from qgis.core import Qgis
@@ -90,7 +90,7 @@ class BandCombination(object):
     """
 
     def __init__(self,
-                 band_keys: typing.Union[str, tuple],
+                 band_keys: Union[str, tuple],
                  name: str = None,
                  tooltip: str = None,
                  icon: QIcon = None):
@@ -133,7 +133,7 @@ class BandCombination(object):
         return len(self.mBand_keys)
 
 
-BAND_COMBINATIONS: typing.List[BandCombination] = []
+BAND_COMBINATIONS: List[BandCombination] = []
 # single-band renders
 BAND_COMBINATIONS += [BandCombination(b) for b in LUT_WAVELENGTH.keys()]
 # 3-band renderers (Order: R-G-B color channel)
@@ -300,13 +300,13 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
         self.mRendererXMLString = rendererXML(newRenderer).toString()
         return newRenderer
 
-    def rendererName(self, renderer: typing.Union[str, QgsRasterRenderer]) -> str:
+    def rendererName(self, renderer: Union[str, QgsRasterRenderer]) -> str:
         if isinstance(renderer, QgsRasterRenderer):
             renderer = renderer.type()
         assert isinstance(renderer, str)
         return RENDER_TYPE2NAME.get(renderer, renderer)
 
-    def blockableWidgets(self) -> typing.List[QWidget]:
+    def blockableWidgets(self) -> List[QWidget]:
 
         return [self.cbSingleBand,
                 self.cbMultiBandRed,

@@ -1,6 +1,7 @@
 import os
 import pathlib
-import typing
+
+from typing import Any, List
 
 import numpy as np
 
@@ -121,7 +122,7 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
     def clone(self) -> QgsVectorFileWriter.FieldValueConverter:
         return GeoJsonFieldValueConverter(self.mFields)
 
-    def convert(self, fieldIdxInLayer: int, value: typing.Any) -> typing.Any:
+    def convert(self, fieldIdxInLayer: int, value: Any) -> Any:
         return self.mFieldConverters[fieldIdxInLayer](value)
 
     def fieldDefinition(self, field: QgsField) -> QgsField:
@@ -156,7 +157,7 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
                        path: str,
                        profiles,
                        exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[str]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
 
         """
         :param fileName: file name to write to
@@ -253,7 +254,7 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
     def importProfiles(cls,
                        path: str,
                        importSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> typing.List[QgsFeature]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
         lyr = QgsVectorLayer(path)
         lyr.loadDefaultStyle()
         return list(lyr.getFeatures())

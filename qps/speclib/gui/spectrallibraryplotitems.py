@@ -2,8 +2,9 @@ import collections
 import datetime
 import sys
 import textwrap
-import typing
+
 import warnings
+from typing import Tuple, List, Dict
 
 import numpy as np
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, Qt, QPointF
@@ -233,7 +234,7 @@ class SpectralViewBox(pg.ViewBox):
         """
         super().__init__(parent, enableMenu=True)
 
-        # self.mCurrentCursorPosition: typing.Tuple[int, int] = (0, 0)
+        # self.mCurrentCursorPosition: Tuple[int, int] = (0, 0)
         # define actions
 
         # create menu
@@ -283,8 +284,8 @@ FEATURE_ID = int
 FIELD_INDEX = int
 MODEL_NAME = str
 X_UNIT = str
-PLOT_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, X_UNIT]
-VISUALIZATION_KEY = typing.Tuple[QStandardItem, FEATURE_ID, FIELD_INDEX, X_UNIT]
+PLOT_DATA_KEY = Tuple[FEATURE_ID, FIELD_INDEX, X_UNIT]
+VISUALIZATION_KEY = Tuple[QStandardItem, FEATURE_ID, FIELD_INDEX, X_UNIT]
 
 
 class SpectralProfilePlotDataItem(pg.PlotDataItem):
@@ -387,7 +388,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
     def visualizationKey(self) -> VISUALIZATION_KEY:
         return self.mVisualizationKey
 
-    def closestDataPoint(self, pos) -> typing.Tuple[int, float, float, float]:
+    def closestDataPoint(self, pos) -> Tuple[int, float, float, float]:
         x = pos.x()
         y = pos.y()
         pw = self.pixelWidth()
@@ -537,7 +538,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         self.mInfoScatterPoints.setZValue(9999999)
         self.mInfoScatterPoints.setBrush(self.mCrosshairLineH.pen.color())
 
-        self.mInfoScatterPointHtml: typing.Dict[pg.Point, str] = dict()
+        self.mInfoScatterPointHtml: Dict[pg.Point, str] = dict()
 
         self.mCrosshairLineH.pen.setWidth(2)
         self.mCrosshairLineV.pen.setWidth(2)
@@ -615,7 +616,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
 
         self.updatePositionInfo()
 
-    def existingInfoScatterPoints(self) -> typing.List[HashablePointF]:
+    def existingInfoScatterPoints(self) -> List[HashablePointF]:
         return [HashablePointF(p.pos()) for p in self.mInfoScatterPoints.points()]
 
     def setShowCrosshair(self, b: bool):
@@ -696,7 +697,7 @@ class SpectralProfilePlotWidget(pg.PlotWidget):
         positionInfoHtml += '</body></html>'
         self.mInfoLabelCursor.setHtml(positionInfoHtml)
 
-    def spectralProfilePlotDataItems(self) -> typing.List[SpectralProfilePlotDataItem]:
+    def spectralProfilePlotDataItems(self) -> List[SpectralProfilePlotDataItem]:
         return [item for item in self.plotItem.listDataItems()
                 if isinstance(item, SpectralProfilePlotDataItem)]
 

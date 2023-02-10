@@ -41,12 +41,12 @@ import re
 import shutil
 import sys
 import traceback
-import typing
+
 import warnings
 import weakref
 import zipfile
 from collections import defaultdict
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Any, Tuple, Iterator, Dict, Iterable
 
 import numpy as np
 
@@ -133,7 +133,7 @@ class SignalBlocker(object):
 
     def __init__(self, *objects: QObject):
         self.mObjects = objects
-        self.mWasBlocked: typing.List[bool] = []
+        self.mWasBlocked: List[bool] = []
 
     def __enter__(self):
         self.mWasBlocked = [obj.blockSignals(True) for obj in self.mObjects]
@@ -209,8 +209,9 @@ def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
     """
     tmp = pathlib.Path(basepath).resolve()
     while tmp != pathlib.Path(tmp.anchor):
-        if (is_directory and os.path.isdir(tmp / name)) or os.path.isfile(tmp / name):
-            return tmp / name
+        tmp2 = tmp / name
+        if (is_directory and tmp2.is_dir()) or (not is_directory and tmp2.is_file()):
+            return tmp2
         else:
             tmp = tmp.parent
     return None
@@ -305,15 +306,15 @@ class UnitLookup(object):
     UNIT_LOOKUP = {}
 
     @staticmethod
-    def metric_units() -> typing.List[str]:
+    def metric_units() -> List[str]:
         return list(UnitLookup.METRIC_EXPONENTS.keys())
 
     @staticmethod
-    def date_units() -> typing.List[str]:
+    def date_units() -> List[str]:
         return list(UnitLookup.DATE_UNITS)
 
     @staticmethod
-    def time_units() -> typing.List[str]:
+    def time_units() -> List[str]:
         return list(UnitLookup.TIME_UNITS)
 
     @staticmethod
@@ -413,7 +414,7 @@ class UnitLookup(object):
         return baseUnit in UnitLookup.time_units() + UnitLookup.date_units()
 
     @staticmethod
-    def convertMetricUnit(value: typing.Union[float, np.ndarray], u1: str, u2: str) -> float:
+    def convertMetricUnit(value: Union[float, np.ndarray], u1: str, u2: str) -> float:
         """
         Converts value `value` from unit `u1` into unit `u2`
         :param value: float | int | might work with numpy.arrays as well
@@ -563,7 +564,7 @@ def nextColor(color, mode='cat') -> QColor:
     return QColor.fromHsv(hue, sat, value, alpha)
 
 
-def findMapLayerStores() -> typing.List[typing.Union[QgsProject, QgsMapLayerStore]]:
+def findMapLayerStores() -> List[Union[QgsProject, QgsMapLayerStore]]:
     import gc
     yield QgsProject.instance()
     for obj in gc.get_objects():
@@ -676,7 +677,7 @@ def toType(t, arg, empty2None=True, empty_values=[None, NULL]):
             return t(arg)
 
 
-def createQgsField(name: str, exampleValue: typing.Any, comment: str = None) -> QgsField:
+def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsField:
     """
     Creates a QgsField based on the type properties of an Python-datatype exampleValue
     :param name: field name
@@ -809,7 +810,7 @@ def showMessage(message: str, title: str, level):
     v.showMessage(True)
 
 
-def gdalDataset(dataset: typing.Union[str,
+def gdalDataset(dataset: Union[str,
                                       pathlib.Path,
                                       QgsRasterLayer,
                                       QgsRasterDataProvider,
@@ -890,7 +891,7 @@ def ogrDataSource(data_source) -> ogr.DataSource:
 def optimize_block_size(ds: gdal.Dataset,
                         nb: int = None,
                         cache: int = 5 * 2 ** 20  # defaults: 5 megabytes
-                        ) -> typing.List[int]:
+                        ) -> List[int]:
     """
     Calculates a block_size for fast raster access given a defined cache size in bytes.
     :param ds: gdal.Dataset
@@ -930,9 +931,9 @@ def optimize_block_size(ds: gdal.Dataset,
 
 def fid2pixelindices(raster: gdal.Dataset,
                      vector: ogr.DataSource,
-                     layer: typing.Union[int, str] = 0,
+                     layer: Union[int, str] = 0,
                      all_touched: bool = True,
-                     raster_fids: typing.Union[str, pathlib.Path] = None) -> typing.Tuple[np.ndarray, int]:
+                     raster_fids: Union[str, pathlib.Path] = None) -> Tuple[np.ndarray, int]:
     """
     Returns vector feature pixel positions.
 
@@ -1065,7 +1066,7 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
 
-def qgsFields(source: typing.Union[List[QgsField], QgsFeature, QgsFields, QgsVectorLayer]) -> QgsFields:
+def qgsFields(source: Union[List[QgsField], QgsFeature, QgsFields, QgsVectorLayer]) -> QgsFields:
     """
     Returns the QgsFields of its inputs
     :return: QgsFields
@@ -1084,8 +1085,8 @@ def qgsFields(source: typing.Union[List[QgsField], QgsFeature, QgsFields, QgsVec
     return None
 
 
-def qgsField(layer_fields: typing.Union[QgsFields, QgsVectorLayer, QgsFeature],
-             field: typing.Union[QgsField, str, int]) -> QgsField:
+def qgsField(layer_fields: Union[QgsFields, QgsVectorLayer, QgsFeature],
+             field: Union[QgsField, str, int]) -> QgsField:
     """
     Returns the QgsField relating to the input value in "field"
     :param layer_fields: QgsVectorLayer | QgsFields
@@ -1152,7 +1153,7 @@ def setComboboxValue(cb: QComboBox, text: str):
         print('ComboBox index not found for "{}"'.format(text))
 
 
-def qgsRasterLayers(sources) -> typing.Iterator[QgsRasterLayer]:
+def qgsRasterLayers(sources) -> Iterator[QgsRasterLayer]:
     """
     Like qgsRasterLayer, but on multiple inputs and with extraction of sub-layers
     :param sources:
@@ -1170,7 +1171,7 @@ def qgsRasterLayers(sources) -> typing.Iterator[QgsRasterLayer]:
             yield lyr
 
 
-def qgsMapLayer(value: typing.Any) -> QgsMapLayer:
+def qgsMapLayer(value: Any) -> QgsMapLayer:
     """
     Tries to convert the input into a QgsMapLayer
     :param value: any
@@ -1195,10 +1196,10 @@ def qgsMapLayer(value: typing.Any) -> QgsMapLayer:
     return None
 
 
-UI_STORE: typing.Dict[pathlib.Path, str] = dict()
+UI_STORE: Dict[pathlib.Path, str] = dict()
 
 
-def loadUi(uifile: typing.Union[str, pathlib.Path],
+def loadUi(uifile: Union[str, pathlib.Path],
            baseinstance=None,
            resource_suffix: str = '_rc',
            remove_resource_references: bool = True,
@@ -1475,7 +1476,7 @@ def check_package(name, package=None, stop_on_error=False):
     return True
 
 
-def qgsFieldAttributes2List(attributes: typing.List[typing.Any]) -> typing.List[typing.Any]:
+def qgsFieldAttributes2List(attributes: List[Any]) -> List[Any]:
     """Returns a list of attributes with None instead of NULL or QVariant.NULL"""
     r = QVariant(None)
     return [None if v == r else v for v in attributes]
@@ -1563,7 +1564,7 @@ def zipdir(pathDir, pathZip):
                     zip.write(filename, arcname)
 
 
-def scanResources(path=':') -> typing.Iterator[str]:
+def scanResources(path=':') -> Iterator[str]:
     """
     Returns all resource-paths of the Qt Resource system
     :param path:
@@ -1822,7 +1823,7 @@ def bandClosestToWavelength(dataset, wl, wl_unit='nm') -> int:
     return 0
 
 
-def parseBadBandList(dataset) -> typing.List[int]:
+def parseBadBandList(dataset) -> List[int]:
     """
     Returns the bad-band-list if it is specified explicitly
     :param dataset:
@@ -1956,7 +1957,7 @@ def checkWavelengthUnit(key: str, value: str) -> str:
     return wlu
 
 
-def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
+def parseWavelength(dataset) -> Tuple[np.ndarray, str]:
     """
     Returns the wavelength + wavelength unit of a raster
     :param dataset:
@@ -1985,7 +1986,7 @@ def parseWavelength(dataset) -> typing.Tuple[np.ndarray, str]:
             wlu = 'Nanometers'
             return wl, wlu
 
-    def sort_domains(domains) -> typing.List[str]:
+    def sort_domains(domains) -> List[str]:
         if not isinstance(domains, list):
             domains = []
         return sorted(domains, key=lambda n: n != ['ENVI'])
@@ -2157,7 +2158,7 @@ def fileSizeString(num, suffix='B', div=1000) -> str:
     return "{:.1f} {}{}".format(num, unit, suffix)
 
 
-def geo2pxF(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPointF:
+def geo2pxF(geo: QgsPointXY, gt: Union[list, np.ndarray, tuple]) -> QPointF:
     """
     Returns the pixel position related to a Geo-Coordinate in floating point precision.
     :param geo: Geo-Coordinate as QgsPoint
@@ -2171,7 +2172,7 @@ def geo2pxF(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPoin
     return QPointF(px, py)
 
 
-def geo2px(geo: QgsPointXY, gt: typing.Union[list, np.ndarray, tuple]) -> QPoint:
+def geo2px(geo: QgsPointXY, gt: Union[list, np.ndarray, tuple]) -> QPoint:
     """
     Returns the pixel position related to a Geo-Coordinate as integer number.
     Floating-point coordinate are cast to integer coordinate, e.g. the pixel
@@ -2230,7 +2231,7 @@ def check_vsimem() -> bool:
     return result
 
 
-def layerGeoTransform(rasterLayer: QgsRasterLayer) -> typing.Tuple[float, float, float, float, float, float]:
+def layerGeoTransform(rasterLayer: QgsRasterLayer) -> Tuple[float, float, float, float, float, float]:
     """
     Returns the geo-transform vector from a QgsRasterLayer.
     See https://www.gdal.org/gdal_datamodel.html
@@ -2284,7 +2285,7 @@ def px2geocoordinatesV2(layer: QgsRasterLayer,
                         ycoordinates: np.ndarray = None,
                         subpixel_pos: float = 0.5,
                         subpixel_pos_x: float = None,
-                        subpixel_pos_y: float = None) -> typing.Tuple[np.ndarray, np.ndarray]:
+                        subpixel_pos_y: float = None) -> Tuple[np.ndarray, np.ndarray]:
     """
     Returns the pixel centers as coordinate in a raster layer's CRS
     :param layer: QgsRasterLayer
@@ -2322,7 +2323,7 @@ def px2geocoordinatesV2(layer: QgsRasterLayer,
     return geo_x, geo_y
 
 
-def px2geocoordinates(raster, target_srs=None, pxCenter: bool = True) -> typing.Tuple[np.ndarray, np.ndarray]:
+def px2geocoordinates(raster, target_srs=None, pxCenter: bool = True) -> Tuple[np.ndarray, np.ndarray]:
     """
     Returns the pixel positions as geo-coordinates
     :param pxCenter: bool, set True to return coordinates in pixel center
@@ -2472,13 +2473,21 @@ class SpatialPoint(QgsPointXY):
         return SpatialPoint(crs, spatialExtent.center())
 
     @staticmethod
-    def fromPixelPosition(rasterLayer: QgsRasterLayer, x: Union[int, QPoint], y: Optional[int] = None):
+    def fromPixelPosition(rasterLayer: QgsRasterLayer,
+                          x: Union[int, float, QPoint, QPointF], y: Optional[Union[int, float]] = None):
+        """
+        Returns the coordinate of pixel at position x,y (upper left). Use x+0.5, y+0.5 for pixel center coordinate.
+        :param rasterLayer:
+        :param x:
+        :param y:
+        :return:
+        """
         assert isinstance(rasterLayer, QgsRasterLayer)
-        if isinstance(x, QPoint):
+        if isinstance(x, (QPoint, QPointF)):
             y = x.y()
             x = x.x()
-        assert isinstance(x, int)
-        assert isinstance(y, int)
+        assert isinstance(x, (int, float))
+        assert isinstance(y, (int, float))
 
         mapUnitsPerPixel = rasterLayer.rasterUnitsPerPixelX()
         center = rasterLayer.extent().center()
@@ -2490,7 +2499,7 @@ class SpatialPoint(QgsPointXY):
                             rasterLayer.height(),
                             rotation)
 
-        geoPt = m2p.toMapCoordinates(x, y)
+        geoPt = m2p.toMapCoordinatesF(x, y)
         return SpatialPoint(rasterLayer.crs(), geoPt)
 
     def __init__(self, crs, *args):
@@ -2643,7 +2652,7 @@ def px2spatialPoint(rasterInterface: Union[QgsRasterInterface, QgsRasterLayer],
                         ext.yMaximum() - (px.y() + subpixel_pos_y) * resY)
 
 
-def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: typing.Union[QgsPointXY, SpatialPoint]) -> Optional[QPoint]:
+def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: Union[QgsPointXY, SpatialPoint]) -> Optional[QPoint]:
     """
     Converts a spatial point into a raster pixel coordinate
     :param layer:
@@ -2704,7 +2713,7 @@ def findParent(qObject, parentType, checkInstance=False):
     return parent
 
 
-def iconForFieldType(field: typing.Union[QgsField, QgsVectorDataProvider.NativeType]) -> QIcon:
+def iconForFieldType(field: Union[QgsField, QgsVectorDataProvider.NativeType]) -> QIcon:
     """
     Returns an icon for field types, including own defined
     :return:
@@ -2737,10 +2746,10 @@ def createCRSTransform(src: QgsCoordinateReferenceSystem, dst: QgsCoordinateRefe
     return t
 
 
-def saveTransform(geom: typing.Union[QgsPointXY, QgsRectangle,
-                                     typing.Tuple[np.ndarray, np.ndarray]],
+def saveTransform(geom: Union[QgsPointXY, QgsRectangle,
+                                     Tuple[np.ndarray, np.ndarray]],
                   crs1: QgsCoordinateReferenceSystem,
-                  crs2: QgsCoordinateReferenceSystem) -> typing.Union[QgsPointXY, QgsRectangle]:
+                  crs2: QgsCoordinateReferenceSystem) -> Union[QgsPointXY, QgsRectangle]:
     """
     Transforms geometries from into another QgsCoordinateReferenceSystem
     :param geom: QgsGeometry
@@ -3062,10 +3071,10 @@ def rasterLayerArray(*args, **kwds):
 
 
 def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
-                rect: typing.Union[QRect, QgsRasterInterface, QgsRectangle, SpatialExtent] = None,
-                ul: typing.Union[SpatialPoint, QPoint] = None,
-                lr: typing.Union[SpatialPoint, QPoint] = None,
-                bands: typing.Union[str, int, typing.List[int]] = None) -> np.ndarray:
+                rect: Union[QRect, QgsRasterInterface, QgsRectangle, SpatialExtent] = None,
+                ul: Union[SpatialPoint, QPoint] = None,
+                lr: Union[SpatialPoint, QPoint] = None,
+                bands: Union[str, int, List[int]] = None) -> np.ndarray:
     """
     Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of shape (bands, height, width)
     :param rasterInterface: QgsRasterLayer
@@ -3317,7 +3326,7 @@ class FeatureReferenceIterator(object):
     Iterator for QgsFeatures that uses the 1st feature as reference
     """
 
-    def __init__(self, features: typing.Iterable[QgsFeature]):
+    def __init__(self, features: Iterable[QgsFeature]):
 
         self.mNextFeatureIndex = -1
         self.mReferenceFeature = None
@@ -3352,7 +3361,7 @@ class FeatureReferenceIterator(object):
 
 def printCaller(prefix: str = None,
                 suffix: str = None,
-                dt: typing.Union[datetime.datetime, datetime.timedelta] = None) -> datetime.datetime:
+                dt: Union[datetime.datetime, datetime.timedelta] = None) -> datetime.datetime:
     """
     prints out the current code location in calling method
     :param prefix: prefix text

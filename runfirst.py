@@ -4,7 +4,7 @@
 ***************************************************************************
     runfirst.py
 
-    run this script to setup the QPS repository.
+    run this script to set up the QPS repository.
     It compiles *.svg icons into corresponding *_rc.py files
     that make icons available to the Qt resource system.
     ---------------------
@@ -22,7 +22,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this software. If not, see <http://www.gnu.org/licenses/>.
+    along with this software. If not, see <https://www.gnu.org/licenses/>.
 ***************************************************************************
 """
 import pathlib
@@ -30,35 +30,38 @@ import site
 
 
 def setupRepository():
-    DIR_REPO = pathlib.Path(__file__).parent.resolve()
-    site.addsitedir(DIR_REPO)
+    """
+    Initializes the QPS repository after it has been clones
+    """
+    dir_repo = pathlib.Path(__file__).parent.resolve()
+    site.addsitedir(dir_repo.as_posix())
 
     from qps.resources import compileResourceFiles
 
-    path_images = DIR_REPO / 'qgisresources' / 'images_rc.py'
+    path_images = dir_repo / 'qgisresources' / 'images_rc.py'
     if not path_images.is_file():
         from scripts.install_testdata import install_qgisresources
         install_qgisresources()
 
-    makeQrc = False
+    make_qrc = False
     try:
         import os.path
         import qps.qpsresources
-        qps.resources
-        pathQrc = DIR_REPO / 'qps' / 'qpsresources.qrc'
-        pathPy = DIR_REPO / 'qps' / 'qpsresources.py'
+        assert qps.qpsresouces is not None
+        path_qrc = dir_repo / 'qps' / 'qpsresources.qrc'
+        path_py = dir_repo / 'qps' / 'qpsresources.py'
 
-        if not pathPy.is_file() or os.path.getmtime(pathPy) < os.path.getmtime(pathQrc):
-            makeQrc = True
+        if not path_py.is_file() or os.path.getmtime(path_py) < os.path.getmtime(path_qrc):
+            make_qrc = True
 
-    except Exception as ex:
+    except (ImportError, ModuleNotFoundError):
         # compile resources
-        makeQrc = True
+        make_qrc = True
 
-    if makeQrc:
+    if make_qrc:
         print('Need to create qpsresources.py')
-        print('Start *.qrc search  in {}'.format(DIR_REPO))
-        compileResourceFiles(DIR_REPO)
+        print('Start *.qrc search  in {}'.format(dir_repo))
+        compileResourceFiles(dir_repo.as_posix())
     else:
         print('qpsresources.py exists and is up-to-date')
 

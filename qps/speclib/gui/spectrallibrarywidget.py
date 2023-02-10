@@ -1,7 +1,8 @@
 import enum
 import sys
-import typing
+
 import warnings
+from typing import List, Set, Dict, Tuple, Generator
 
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
@@ -57,7 +58,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.mSpectralProcessingWidget: SpectralProcessingDialog = None
 
         self.mToolbar: QToolBar
-        self.mIODialogs: typing.List[QWidget] = list()
+        self.mIODialogs: List[QWidget] = list()
 
         self.tableView().willShowContextMenu.connect(self.onWillShowContextMenuAttributeTable)
         self.mMainView.showContextMenuExternally.connect(self.onShowContextMenuAttributeEditor)
@@ -78,7 +79,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.widgetRight.setVisible(False)
 
         self.widgetCenter.currentChanged.connect(self.updateToolbarVisibility)
-        # self.widgetCenter.visibilityChanged.connect(self.updateToolbarVisibility)
         self.mMainView.formModeChanged.connect(self.updateToolbarVisibility)
 
         # define Actions and Options
@@ -157,7 +157,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProfileView.setCheckable(True)
         self.actionShowProfileView.setChecked(True)
         self.actionShowProfileView.setIcon(QIcon(self.mSpeclibPlotWidget.windowIcon()))
-        self.actionShowProfileView.triggered.connect(self.setCenterView)
+        self.actionShowProfileView.triggered.connect(self.onChangeViewVisibility)
 
         self.actionShowProfileViewSettings = self.mSpeclibPlotWidget.optionShowVisualizationSettings
         self.actionShowProfileView.toggled.connect(self.actionShowProfileViewSettings.setEnabled)
@@ -169,12 +169,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowFormView = QAction('Show Form View', parent=self)
         self.actionShowFormView.setCheckable(True)
         self.actionShowFormView.setIcon(QIcon(':/images/themes/default/mActionFormView.svg'))
-        self.actionShowFormView.triggered.connect(self.setCenterView)
+        self.actionShowFormView.triggered.connect(self.onChangeViewVisibility)
 
         self.actionShowAttributeTable = QAction('Show Attribute Table', parent=self)
         self.actionShowAttributeTable.setCheckable(True)
         self.actionShowAttributeTable.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
-        self.actionShowAttributeTable.triggered.connect(self.setCenterView)
+        self.actionShowAttributeTable.triggered.connect(self.onChangeViewVisibility)
 
         self.mMainViewButtonGroup.buttonClicked.connect(self.updateToolbarVisibility)
 
@@ -186,8 +186,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
 
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
-
-        # update toolbar visibilities
         self.updateToolbarVisibility()
         self.updateActions()
 
@@ -198,23 +196,19 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
         #                                   self.btnShowProperties)
 
-        # show attribute table by default
-        self.actionShowAttributeTable.trigger()
-
         # QIcon(':/images/themes/default/mActionMultiEdit.svg').pixmap(20,20).isNull()
         self.setAcceptDrops(True)
 
+        # show attribute table by default
         self.setViewVisibility(SpectralLibraryWidget.ViewType.Standard)
-
-        # if self.speclib().featureCount() > 0:
-        #    for field in profile_field_list(self.speclib()):
-        #        self.spectralLibraryPlotWidget().createProfileVis(field=field)
 
         # try to give the plot widget most space
         self.splitter.setStretchFactor(0, 4)
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setStretchFactor(2, 0)
         self.splitter.setSizes([200, 10, 0])
+
+        s = ""
 
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
@@ -235,53 +229,53 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         assert isinstance(viewType, SpectralLibraryWidget.ViewType)
 
-        self.actionShowProfileView.setChecked(SpectralLibraryWidget.ViewType.ProfileView in viewType)
-        self.actionShowProfileViewSettings.setChecked(SpectralLibraryWidget.ViewType.ProfileViewSettings in viewType)
+        show_profiles = SpectralLibraryWidget.ViewType.ProfileView in viewType
+        show_profile_settings = SpectralLibraryWidget.ViewType.ProfileViewSettings in viewType
+        self.actionShowProfileViewSettings.setChecked(show_profile_settings)
 
-        exclusive_actions = [self.actionShowAttributeTable,
-                             self.actionShowFormView]
-
-        sender = None
+        show_dual_view = False
+        dual_view_mode: QgsDualView.ViewMode = self.mMainView.view()
         if SpectralLibraryWidget.ViewType.AttributeTable in viewType:
-            sender = self.actionShowAttributeTable
+            dual_view_mode = QgsDualView.ViewMode.AttributeTable
+            show_dual_view = True
         elif SpectralLibraryWidget.ViewType.FormView in viewType:
-            sender = self.actionShowFormView
+            dual_view_mode = QgsDualView.ViewMode.AttributeTable
+            show_dual_view = True
 
-        for a in exclusive_actions:
-            a.setChecked(a == sender)
+        self.widgetLeft.setVisible(show_profiles)
+        self.widgetCenter.setVisible(show_dual_view)
+        self.mMainView.setView(dual_view_mode)
 
-        self.setCenterView()
+        # QTimer.singleShot(1000, self.updateActions)
+        self.updateActions()
 
-    def setCenterView(self):
+    def onChangeViewVisibility(self):
 
-        sender = self.sender()
+        sender: QAction = self.sender()
+        assert isinstance(sender, QAction)
 
-        # either show attribute table or form view widget
-        exclusive_actions = [self.actionShowAttributeTable,
-                             self.actionShowFormView]
+        dualview_actions = [self.actionShowAttributeTable,
+                            self.actionShowFormView]
 
-        if sender in exclusive_actions:
-            for a in exclusive_actions:
-                if a != sender:
-                    a.setChecked(False)
+        if sender == self.actionShowProfileView:
+            self.widgetLeft.setVisible(sender.isChecked())
+        elif sender in dualview_actions:
 
-        is_profileview = self.actionShowProfileView.isChecked()
-        is_formview = self.actionShowFormView.isChecked()
-        is_tableview = self.actionShowAttributeTable.isChecked()
+            # either show attribute table or form view widget
+            show_formview = sender == self.actionShowFormView and sender.isChecked()
+            show_tableview = sender == self.actionShowAttributeTable and sender.isChecked()
 
-        self.widgetLeft.setVisible(is_profileview)
+            if not any([show_formview, show_tableview]):
+                self.widgetCenter.setVisible(False)
+            else:
+                if show_tableview:
+                    self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
+                    self.mMainView.setView(QgsDualView.AttributeTable)
+                elif show_formview:
+                    self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
+                    self.mMainView.setView(QgsDualView.AttributeEditor)
 
-        if not any([is_formview, is_tableview]):
-            self.widgetCenter.setVisible(False)
-        else:
-            if is_tableview:
-                self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
-                self.mMainView.setView(QgsDualView.AttributeTable)
-            elif is_formview:
-                self.widgetCenter.setCurrentWidget(self.pageAttributeTable)
-                self.mMainView.setView(QgsDualView.AttributeEditor)
-
-            self.widgetCenter.setVisible(True)
+                self.widgetCenter.setVisible(True)
 
         self.updateToolbarVisibility()
 
@@ -375,10 +369,15 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :rtype:
         """
         self.actionAddCurrentProfiles.setEnabled(self.plotControl().profileCandidates().count() > 0)
-        is_editor = self.mMainView.isVisible() and self.mMainView.view() == QgsDualView.AttributeEditor
-        is_table = self.mMainView.isVisible() and self.mMainView.view() == QgsDualView.AttributeTable
-        self.actionShowFormView.setChecked(is_editor)
-        self.actionShowAttributeTable.setChecked(is_table)
+        dual_view_mode = self.mMainView.view()
+
+        has_editor = self.widgetCenter.isVisibleTo(self) and dual_view_mode == QgsDualView.AttributeEditor
+        has_table = self.widgetCenter.isVisibleTo(self) and dual_view_mode == QgsDualView.AttributeTable
+        has_profiles = self.widgetLeft.isVisibleTo(self)
+
+        self.actionShowFormView.setChecked(has_editor)
+        self.actionShowAttributeTable.setChecked(has_table)
+        self.actionShowProfileView.setChecked(has_profiles)
 
     def updatePlot(self):
         self.plotControl().updatePlot()
@@ -447,7 +446,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.plotControl().updatePlot(fids)
         # self.updateActions()
 
-    def temporaryProfileIDs(self) -> typing.Set[int]:
+    def temporaryProfileIDs(self) -> Set[int]:
         return self.plotControl().profileCandidates().count()
         # return self.plotControl().mTemporaryProfileIDs
 
@@ -470,9 +469,9 @@ class SpectralLibraryWidget(AttributeTableWidget):
         return self.mSpeclibPlotWidget
 
     def setCurrentProfiles(self,
-                           currentProfiles: typing.List[QgsFeature],
+                           currentProfiles: List[QgsFeature],
                            make_permanent: bool = None,
-                           currentProfileStyles: typing.Dict[typing.Tuple[int, str], PlotStyle] = None,
+                           currentProfileStyles: Dict[Tuple[int, str], PlotStyle] = None,
                            ):
         """
         Sets temporary profiles for the spectral library.
@@ -482,7 +481,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :param currentProfiles:
         :return:
         """
-        if isinstance(currentProfiles, typing.Generator):
+        if isinstance(currentProfiles, Generator):
             currentProfiles = list(currentProfiles)
         assert isinstance(currentProfiles, (list,))
 
@@ -534,7 +533,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
                 # give current spectra the current spectral style
                 # self.plotControl().mTemporaryProfileIDs.update(addedFIDs)
 
-                # affected_profile_fields: typing.Dict[str, QColor] = dict()
+                # affected_profile_fields: Dict[str, QColor] = dict()
 
                 # find a profile style for each profile candidate
 

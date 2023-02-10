@@ -5,10 +5,10 @@ import os
 import pathlib
 import pickle
 import sys
-import typing
+
 import warnings
 from json import JSONDecodeError
-from typing import Any, List, Union, Tuple
+from typing import Any, List, Union, Tuple, Dict, Optional, Iterable, Callable
 from math import nan
 import numpy as np
 from osgeo import gdal
@@ -163,6 +163,13 @@ def validateProfileValueDict(d: dict, allowEmpty: bool = False) -> Tuple[bool, s
         return True, '', d
 
 
+def isProfileValueDict(d: dict) -> bool:
+    """
+    Returns True if the input is a valid dictionary with spectral profile values
+    """
+    return validateProfileValueDict(d)[0]
+
+
 class ProfileEncoding(enum.Enum):
     Text = 0
     Json = 0
@@ -194,8 +201,8 @@ class ProfileEncoding(enum.Enum):
 
 
 def encodeProfileValueDict(d: dict,
-                           encoding: typing.Union[str, QgsField, ProfileEncoding],
-                           jsonFormat: QJsonDocument.JsonFormat = QJsonDocument.Compact) -> typing.Any:
+                           encoding: Union[str, QgsField, ProfileEncoding],
+                           jsonFormat: QJsonDocument.JsonFormat = QJsonDocument.Compact) -> Any:
     """
     Serializes a SpectralProfile value dictionary into a QByteArray
     extracted with `decodeProfileValueDict`.
@@ -218,7 +225,7 @@ def encodeProfileValueDict(d: dict,
             d2[k] = v
 
     # convert None to NaN
-    d2['y'] = [v if v else nan for v in d2['y']]
+    d2['y'] = [nan if v is None else v for v in d2['y']]
 
     # convert date/time X values to strings
     xValues = d2.get('x')
@@ -239,7 +246,7 @@ def encodeProfileValueDict(d: dict,
         return bytes(jsonDoc.toJson(jsonFormat)).decode('UTF-8')
 
 
-def decodeProfileValueDict(dump: typing.Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
+def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
     """
     Converts a text / json / pickle / bytes representation of a SpectralProfile into a dictionary.
 
@@ -353,10 +360,10 @@ class SpectralSetting(object):
             return None
 
     def __init__(self,
-                 x: typing.Union[int, tuple, list, np.ndarray],
+                 x: Union[int, tuple, list, np.ndarray],
                  xUnit: str = BAND_INDEX,
                  yUnit: str = None,
-                 bbl: typing.Union[tuple, list, np.ndarray] = None,
+                 bbl: Union[tuple, list, np.ndarray] = None,
                  field: QgsField = None,
                  field_name: str = None,
                  field_encoding: ProfileEncoding = None):
@@ -375,10 +382,10 @@ class SpectralSetting(object):
             assert len(bbl) == len(x)
             bbl = tuple(bbl)
 
-        self.mX: typing.Tuple = x
+        self.mX: Tuple = x
         self.mXUnit: str = xUnit
         self.mYUnit: str = yUnit
-        self.mBadBandList: typing.Tuple = bbl
+        self.mBadBandList: Tuple = bbl
         self.mHash = hash((self.mX, self.mXUnit, self.mYUnit, self.mBadBandList))
 
         # other properties, which will not be used to distinct SpectralSettings from each other
@@ -404,7 +411,7 @@ class SpectralSetting(object):
     def __str__(self):
         return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
 
-    def x(self) -> typing.List:
+    def x(self) -> List:
         if self.mX:
             return list(self.mX)
         return None
@@ -670,7 +677,7 @@ class SpectralProfile(QgsFeature):
         return profile
 
     @staticmethod
-    def fromQgsFeature(feature: QgsFeature, profile_field: typing.Union[int, str, QgsField] = None) \
+    def fromQgsFeature(feature: QgsFeature, profile_field: Union[int, str, QgsField] = None) \
             -> 'SpectralProfile':
         """
         Converts a QgsFeature into a SpectralProfile
@@ -694,7 +701,7 @@ class SpectralProfile(QgsFeature):
     def __init__(self, parent=None,
                  id: int = None,
                  fields: QgsFields = None,
-                 profile_field: typing.List[typing.Union[int, str, QgsField]] = None):
+                 profile_field: List[Union[int, str, QgsField]] = None):
         """
         :param parent:
         :param fields:
@@ -717,7 +724,7 @@ class SpectralProfile(QgsFeature):
         self.mCurrentProfileFieldIndex: int = self._profile_field_index(profile_field)
         assert self.mCurrentProfileFieldIndex >= 0, f'Unable to find field "{profile_field}" with spectral profiles'
 
-        self.mValueCache: typing.Dict[int, dict] = dict()
+        self.mValueCache: Dict[int, dict] = dict()
 
     def _profile_field_index(self, field) -> int:
         if isinstance(field, int):
@@ -787,7 +794,7 @@ class SpectralProfile(QgsFeature):
         sp.setValues(self.xValues(), yvals)
         return sp
 
-    def fieldNames(self) -> typing.List[str]:
+    def fieldNames(self) -> List[str]:
         """
         Returns all profile_field names
         :return:
@@ -809,7 +816,7 @@ class SpectralProfile(QgsFeature):
         warnings.warn('Not supported anymore', DeprecationWarning, stacklevel=2)
         return None
 
-    def setCurrentProfileField(self, field: typing.Union[str, int, QgsField]) -> int:
+    def setCurrentProfileField(self, field: Union[str, int, QgsField]) -> int:
         """
         Sets the current profile profile_field the SpectralProfile loads and saves data from/to-
         :param field: str|int|QgsField
@@ -881,7 +888,7 @@ class SpectralProfile(QgsFeature):
         fidx = self._profile_field_index(profile_field)
         return self.attribute(fidx) in [None, QVariant(), NULL, '']
 
-    def values(self, profile_field_index: typing.List[typing.Union[int, str, QgsField]] = None) -> dict:
+    def values(self, profile_field_index: List[Union[int, str, QgsField]] = None) -> dict:
         """
         Returns a dictionary with 'x', 'y', 'xUnit' and 'yUnit' values.
         :return: {'x':list,'y':list,'xUnit':str,'yUnit':str, 'bbl':list}
@@ -1100,10 +1107,10 @@ class SpectralProfile(QgsFeature):
         return len(self.yValues())
 
 
-def groupBySpectralProperties(profiles: typing.Union[QgsVectorLayer, typing.List[QgsFeature]],
+def groupBySpectralProperties(profiles: Union[QgsVectorLayer, List[QgsFeature]],
                               excludeEmptyProfiles: bool = True,
-                              profile_field: typing.Union[int, str, QgsField] = None
-                              ) -> typing.Dict[SpectralSetting, typing.List[QgsFeature]]:
+                              profile_field: Union[int, str, QgsField] = None
+                              ) -> Dict[SpectralSetting, List[QgsFeature]]:
     """
     Returns SpectralProfiles grouped by key = (xValues, xUnit and yUnit):
 
@@ -1168,7 +1175,7 @@ class SpectralProfileBlock(object):
     """
 
     @staticmethod
-    def dummy(n=5, n_bands=10, wlu='nm') -> typing.Optional['SpectralProfileBlock']:
+    def dummy(n=5, n_bands=10, wlu='nm') -> Optional['SpectralProfileBlock']:
         """
         Creates a dummy block, e.g. to be used for testing
         :return:
@@ -1183,7 +1190,7 @@ class SpectralProfileBlock(object):
 
     @staticmethod
     def fromSpectralLibrary(speclib: QgsVectorLayer,
-                            profile_field: typing.Union[int, str, QgsField] = None,
+                            profile_field: Union[int, str, QgsField] = None,
                             feedback: QgsProcessingFeedback = None):
         if profile_field is None:
             profile_field = first_profile_field_index(speclib)
@@ -1196,8 +1203,8 @@ class SpectralProfileBlock(object):
             feedback=feedback)
 
     @staticmethod
-    def fromSpectralProfiles(profiles: typing.List[QgsFeature],
-                             profile_field: typing.Union[int, str, QgsField] = None,
+    def fromSpectralProfiles(profiles: List[QgsFeature],
+                             profile_field: Union[int, str, QgsField] = None,
                              crs: QgsCoordinateReferenceSystem = None,
                              feedback: QgsProcessingFeedback = None):
 
@@ -1258,9 +1265,9 @@ class SpectralProfileBlock(object):
         return block
 
     def __init__(self,
-                 data: typing.Union[np.ndarray, np.ma.masked_array],
+                 data: Union[np.ndarray, np.ma.masked_array],
                  spectralSetting: SpectralSetting,
-                 fids: typing.List[int] = None,
+                 fids: List[int] = None,
                  positionsX: np.ndarray = None,
                  positionsY: np.ndarray = None,
                  crs: QgsCoordinateReferenceSystem = None,
@@ -1284,7 +1291,7 @@ class SpectralProfileBlock(object):
 
         self.mSpectralSetting = spectralSetting
         self.mXValues: np.ndarray = xValues
-        self.mFIDs: typing.List[int] = None
+        self.mFIDs: List[int] = None
 
         if not isinstance(metadata, dict):
             metadata = dict()
@@ -1307,7 +1314,7 @@ class SpectralProfileBlock(object):
         """
         return self.mMetadata.copy()
 
-    def setFIDs(self, fids: typing.List[int]):
+    def setFIDs(self, fids: List[int]):
         """
         :param fids:
         :return:
@@ -1316,7 +1323,7 @@ class SpectralProfileBlock(object):
             f'Number of Feature IDs ({len(fids)}) must be equal to number of profiles ({self.n_profiles()})'
         self.mFIDs = fids
 
-    def fids(self) -> typing.List[int]:
+    def fids(self) -> List[int]:
         """
         Returns the fid for each profile (flattened list)
         :return: list
@@ -1384,7 +1391,7 @@ class SpectralProfileBlock(object):
         return kwds
 
     @staticmethod
-    def fromVariantMap(kwds: dict) -> typing.Optional['SpectralProfileBlock']:
+    def fromVariantMap(kwds: dict) -> Optional['SpectralProfileBlock']:
         values = kwds['profiledata']
         assert isinstance(values, np.ndarray)
         geodata = kwds.get('geodata', None)
@@ -1417,7 +1424,7 @@ class SpectralProfileBlock(object):
     def __len__(self) -> int:
         return self.n_profiles()
 
-    def geoPositions(self) -> typing.Tuple[np.ndarray, np.ndarray, QgsCoordinateReferenceSystem]:
+    def geoPositions(self) -> Tuple[np.ndarray, np.ndarray, QgsCoordinateReferenceSystem]:
         """
         Returns the geoposition data for each pixel in the profile block data
         :return: (numpy 2D array x coordinates,
@@ -1465,7 +1472,7 @@ class SpectralProfileBlock(object):
     def setPositions(self,
                      pos_x: np.ndarray,
                      pos_y: np.ndarray,
-                     crs: typing.Union[str, QgsCoordinateReferenceSystem]):
+                     crs: Union[str, QgsCoordinateReferenceSystem]):
         """
         Sets the geo-positions of each spectral profile in this block.
         If set, SpectralProfiles returned with .profiles() will contain a QgsGeometry in crs coordinates-
@@ -1494,7 +1501,7 @@ class SpectralProfileBlock(object):
         self.mPositionsY = pos_y
         self.mCrs = crs
 
-    def profiles(self) -> typing.Iterable[QgsFeature]:
+    def profiles(self) -> Iterable[QgsFeature]:
         """
         Returns the profile block data as SpectralProfiles
         :return: iterator
@@ -1514,7 +1521,7 @@ class SpectralProfileBlock(object):
     def __iter__(self):
         return self.profiles()
 
-    def profileValueDictionaries(self) -> typing.List[typing.Tuple[int, dict, QgsGeometry]]:
+    def profileValueDictionaries(self) -> List[Tuple[int, dict, QgsGeometry]]:
         """
         Converts the block data into profile value dictionaries
         :return: (fid: int, value_dict: dict, geometry: QgsGeometry)
@@ -1550,7 +1557,7 @@ class SpectralProfileBlock(object):
             else:
                 yield None, d, g
 
-    def profileValueByteArrays(self) -> typing.List[typing.Tuple[int, QByteArray, QgsGeometry]]:
+    def profileValueByteArrays(self) -> List[Tuple[int, QByteArray, QgsGeometry]]:
         """
         Converts the block data into serialized value dictionaries
         that can be stored in a QByteArray field
@@ -1576,15 +1583,15 @@ class SpectralProfileBlock(object):
 class SpectralProfileLoadingTask(QgsTask):
 
     def __init__(self, speclib: QgsVectorLayer,
-                 fids: typing.List[int] = None,
-                 callback: typing.Callable = None):
+                 fids: List[int] = None,
+                 callback: Callable = None):
         super().__init__('Load spectral profiles', QgsTask.CanCancel)
         assert isinstance(speclib, QgsVectorLayer)
-        self.mCallback: typing.Callable = callback
+        self.mCallback: Callable = callback
         self.mSpeclib: QgsVectorLayer = speclib
         self.mSpeclibSource: str = speclib.source()
         self.mPathSpeclib: pathlib.Path = pathlib.Path(speclib.source())
-        self.mProfileFields: typing.List[QgsField] = profile_field_list(speclib)
+        self.mProfileFields: List[QgsField] = profile_field_list(speclib)
 
         if fids:
             #
@@ -1594,7 +1601,7 @@ class SpectralProfileLoadingTask(QgsTask):
         self.exception: Exception = None
         assert len(self.mProfileFields) > 0
         self.mTimeDelta = datetime.timedelta(seconds=2)
-        self.RESULTS: typing.Dict[int, SpectralProfile] = dict()
+        self.RESULTS: Dict[int, SpectralProfile] = dict()
 
     def dependentLayers(self):
         return [self.mSpeclibSource]

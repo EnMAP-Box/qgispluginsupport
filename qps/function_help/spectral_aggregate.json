@@ -1,5 +1,5 @@
 {
-  "name": "spectralAggregate",
+  "name": "spectral_aggregate",
   "type": "function",
   "description": "Aggregates spectral profiles",
   "arguments": [

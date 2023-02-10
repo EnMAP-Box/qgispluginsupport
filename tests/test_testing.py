@@ -12,6 +12,7 @@ from qgis.core import QgsProject, QgsApplication, QgsProcessingRegistry, QgsLaye
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
 
 
+@unittest.skipIf(isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication must be None')
 class TestCasesClassTesting(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -20,11 +21,12 @@ class TestCasesClassTesting(unittest.TestCase):
         if hasattr(qgis.testing, 'QGISAPP'):
             qgis.testing.stop_app()
 
+    @unittest.skipIf(isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication must be None')
     def test_init(self):
         self.assertTrue(qps.testing is not None)
 
         qgis_app = qps.testing.start_app(options=qps.testing.StartOptions.All)
-
+        print(f'qgis_app: {qgis_app}', flush=True)
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
 

@@ -1,4 +1,4 @@
-import typing
+from typing import Union, List, Dict
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
@@ -40,7 +40,7 @@ def is_profile_field(field: QgsField) -> bool:
     return supports_field(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
 
 
-def contains_profile_field(object: typing.Union[QgsVectorLayer, QgsFeature, QgsFields]) -> bool:
+def contains_profile_field(object: Union[QgsVectorLayer, QgsFeature, QgsFields]) -> bool:
     """
     Returns True if the input contains a QgsField of type binary and editorWidget SpectralProfile
     :param object:
@@ -76,7 +76,7 @@ def is_spectral_feature(feature: QgsFeature) -> bool:
     return contains_profile_field(feature)
 
 
-def profile_fields(fields: typing.Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsFields:
+def profile_fields(fields: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> QgsFields:
     """
     Returns the spectral profile fields
     :param fields: fields to check
@@ -106,7 +106,7 @@ def profile_fields(fields: typing.Union[QgsFeature, QgsVectorLayer, QgsFields]) 
     return pfields
 
 
-def profile_field_list(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer, QgsFields]) -> typing.List[QgsField]:
+def profile_field_list(spectralLibrary: Union[QgsFeature, QgsVectorLayer, QgsFields]) -> List[QgsField]:
     """
     Returns the fields that contains values of SpectralProfiles
     :param spectralLibrary:
@@ -116,8 +116,8 @@ def profile_field_list(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer,
     return [pfields.at(i) for i in range(pfields.count())]
 
 
-def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> \
-        typing.Dict[typing.Union[int, str], QgsField]:
+def profile_field_lookup(spectralLibrary: Union[QgsFeature, QgsVectorLayer]) -> \
+        Dict[Union[int, str], QgsField]:
     """
     Returns a dictionary to lookup spectral profile fields by name or field index
     :param spectralLibrary: QgsVectorLayer
@@ -130,7 +130,7 @@ def profile_field_lookup(spectralLibrary: typing.Union[QgsFeature, QgsVectorLaye
     return D
 
 
-def profile_field_indices(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[int]:
+def profile_field_indices(spectralLibrary: Union[QgsFeature, QgsVectorLayer]) -> List[int]:
     """
     Returns the indices of spectral profile fields
     :param spectralLibrary: QgsVectorLayer
@@ -139,7 +139,7 @@ def profile_field_indices(spectralLibrary: typing.Union[QgsFeature, QgsVectorLay
     return [spectralLibrary.fields().lookupField(f.name()) for f in profile_field_list(spectralLibrary)]
 
 
-def profile_field_names(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer]) -> typing.List[str]:
+def profile_field_names(spectralLibrary: Union[QgsFeature, QgsVectorLayer]) -> List[str]:
     """
     Returns the names of spectral profile fields
     :param spectralLibrary: QgsVectorLayer
@@ -148,7 +148,7 @@ def profile_field_names(spectralLibrary: typing.Union[QgsFeature, QgsVectorLayer
     return [f.name() for f in profile_field_list(spectralLibrary)]
 
 
-def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVectorLayer]) -> int:
+def first_profile_field_index(source: Union[QgsFields, QgsFeature, QgsVectorLayer]) -> int:
     """
     Returns the 1st QByteArray field that can be used to store Spectral Profile data
     :param source:
@@ -166,8 +166,8 @@ def first_profile_field_index(source: typing.Union[QgsFields, QgsFeature, QgsVec
     return -1
 
 
-def field_index(source: typing.Union[QgsFields, QgsFeature, QgsVectorLayer],
-                field: typing.Union[str, int, QgsField]) -> int:
+def field_index(source: Union[QgsFields, QgsFeature, QgsVectorLayer],
+                field: Union[str, int, QgsField]) -> int:
     """
     Returns the field index as int, or -1, if not found
     :param source:

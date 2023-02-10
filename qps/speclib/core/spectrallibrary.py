@@ -356,7 +356,8 @@ class SpectralLibraryUtils:
     @staticmethod
     def createSpectralLibrary(
             profile_fields: List[str] = [FIELD_VALUES],
-            name: str = DEFAULT_NAME) -> QgsVectorLayer:
+            name: str = DEFAULT_NAME,
+            encoding: ProfileEncoding = ProfileEncoding.Json) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """
@@ -373,7 +374,7 @@ class SpectralLibraryUtils:
         for fieldname in profile_fields:
             if isinstance(fieldname, QgsField):
                 fieldname = fieldname.name()
-            SpectralLibraryUtils.addAttribute(lyr, create_profile_field(fieldname))
+            SpectralLibraryUtils.addAttribute(lyr, create_profile_field(fieldname, encoding=encoding))
         lyr.endEditCommand()
         assert lyr.commitChanges(stopEditing=True)
 

@@ -1,7 +1,7 @@
 import datetime
 import re
-import typing
-from typing import List
+
+from typing import List, Tuple, Set, Iterator, Union, Iterable, Dict, Callable, Optional
 
 import numpy as np
 
@@ -127,9 +127,9 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
 MAX_PROFILES_DEFAULT: int = 516
 FIELD_NAME = str
 
-ATTRIBUTE_ID = typing.Tuple[FEATURE_ID, FIELD_INDEX]
-MODEL_DATA_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME]
-PROFILE_DATA_CACHE_KEY = typing.Tuple[FEATURE_ID, FIELD_INDEX]
+ATTRIBUTE_ID = Tuple[FEATURE_ID, FIELD_INDEX]
+MODEL_DATA_KEY = Tuple[FEATURE_ID, FIELD_INDEX, MODEL_NAME]
+PROFILE_DATA_CACHE_KEY = Tuple[FEATURE_ID, FIELD_INDEX]
 
 
 class SpectralProfilePlotModelProxyModel(QSortFilterProxyModel):
@@ -170,7 +170,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mProject: QgsProject = QgsProject.instance()
 
-        self.mModelItems: typing.Set[PropertyItemGroup] = set()
+        self.mModelItems: Set[PropertyItemGroup] = set()
 
         # # workaround https://github.com/qgis/QGIS/issues/45228
         self.mStartedCommitEditWrapper: bool = False
@@ -202,16 +202,16 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mVectorLayerCache: QgsVectorLayerCache = None
 
-        self.mChangedFIDs: typing.Set[int] = set()
-        self.mChangedAttributes: typing.Set[typing.Tuple[int, int]] = set()
+        self.mChangedFIDs: Set[int] = set()
+        self.mChangedAttributes: Set[Tuple[int, int]] = set()
         self.mLastEditCommand: str = None
-        # self.mPlotDataItems: typing.List[SpectralProfilePlotDataItem] = list()
+        # self.mPlotDataItems: List[SpectralProfilePlotDataItem] = list()
 
         # Update plot data and colors
 
-        # .mCache2ModelData: typing.Dict[MODEL_DATA_KEY, dict] = dict()
+        # .mCache2ModelData: Dict[MODEL_DATA_KEY, dict] = dict()
         # mCache2ModelData[(fid, fidx, modelId, xunit))] -> dict
-        # self.mCache3PlotData: typing.Dict[PLOT_DATA_KEY, dict] = dict()
+        # self.mCache3PlotData: Dict[PLOT_DATA_KEY, dict] = dict()
 
         self.mUnitConverterFunctionModel = UnitConverterFunctionModel()
         self.mDualView: QgsDualView = None
@@ -318,7 +318,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.mCACHE_PROFILE_DATA[id_attribute] = rawData
         return self.mCACHE_PROFILE_DATA[id_attribute]
 
-    def plotData(self, feature: QgsFeature, fieldIndex: int, xUnit: str) -> typing.Tuple[dict, bool]:
+    def plotData(self, feature: QgsFeature, fieldIndex: int, xUnit: str) -> Tuple[dict, bool]:
         """
         Returns the data struct of a deserialized spectral profile, converted to xUnit
         """
@@ -399,13 +399,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def __len__(self) -> int:
         return len(self.visualizations())
 
-    def __iter__(self) -> typing.Iterator[ProfileVisualizationGroup]:
+    def __iter__(self) -> Iterator[ProfileVisualizationGroup]:
         return iter(self.visualizations())
 
     def profileFieldsModel(self) -> QgsFieldModel:
         return self.mProfileFieldModel
 
-    def propertyGroups(self) -> typing.List[PropertyItemGroup]:
+    def propertyGroups(self) -> List[PropertyItemGroup]:
         groups = []
         for r in range(self.rowCount()):
             grp = self.invisibleRootItem().child(r, 0)
@@ -413,17 +413,17 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 groups.append(grp)
         return groups
 
-    def layerRendererVisualizations(self) -> typing.List[RasterRendererGroup]:
+    def layerRendererVisualizations(self) -> List[RasterRendererGroup]:
         return [v for v in self.propertyGroups() if isinstance(v, RasterRendererGroup)]
 
-    def visualizations(self) -> typing.List[ProfileVisualizationGroup]:
+    def visualizations(self) -> List[ProfileVisualizationGroup]:
 
         return [v for v in self.propertyGroups() if isinstance(v, ProfileVisualizationGroup)]
 
     def insertPropertyGroup(self,
-                            index: typing.Union[int, QModelIndex],
-                            items: typing.Union[PropertyItemGroup,
-                                                typing.List[PropertyItemGroup]],
+                            index: Union[int, QModelIndex],
+                            items: Union[PropertyItemGroup,
+                                                List[PropertyItemGroup]],
                             ):
         if isinstance(index, QModelIndex):
             index = index.row()
@@ -444,7 +444,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             item.signals().requestRemoval.connect(lambda *arg, itm=item: self.removePropertyItemGroups(itm))
             item.signals().requestPlotUpdate.connect(self.updatePlot)
 
-            new_set: typing.List[PropertyItemGroup] = self.propertyGroups()
+            new_set: List[PropertyItemGroup] = self.propertyGroups()
             new_set.insert(index + i, item)
             new_set = sorted(new_set, key=lambda g: g.zValue())
             _index = new_set.index(item)
@@ -454,8 +454,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
             # if necessary, this should update the plot
             item.initWithPlotModel(self)
 
-    def removePropertyItemGroups(self, groups: typing.Union[PropertyItemGroup,
-                                                            typing.List[PropertyItemGroup]]):
+    def removePropertyItemGroups(self, groups: Union[PropertyItemGroup,
+                                                            List[PropertyItemGroup]]):
 
         if isinstance(groups, PropertyItemGroup):
             groups = [groups]
@@ -487,7 +487,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         xunit = self.xUnit()
 
         # Recycle plot items
-        old_spdis: typing.List[SpectralProfilePlotDataItem] = self.mPlotWidget.spectralProfilePlotDataItems()
+        old_spdis: List[SpectralProfilePlotDataItem] = self.mPlotWidget.spectralProfilePlotDataItems()
 
         CANDIDATES = self.profileCandidates()
 
@@ -505,18 +505,18 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if v.isVisible() and v.isComplete() and v.speclib() == self.speclib():
                 visualizations.append(v)
 
-        pdiGenerator = PDIGenerator([], onProfileClicked=self.mPlotWidget.onProfileClicked)
+        pdi_generator = PDIGenerator([], onProfileClicked=self.mPlotWidget.onProfileClicked)
 
-        featureRenderer = self.speclib().renderer()
-        if isinstance(featureRenderer, QgsFeatureRenderer):
-            featureRenderer = featureRenderer.clone()
+        feature_renderer: QgsFeatureRenderer = self.speclib().renderer()
+        if isinstance(feature_renderer, QgsFeatureRenderer):
+            feature_renderer = feature_renderer.clone()
         else:
-            featureRenderer = self.mDefaultSymbolRenderer.clone()
+            feature_renderer = self.mDefaultSymbolRenderer.clone()
 
         request = QgsFeatureRequest()
         request.setFilterFids(feature_priority)
 
-        # PROFILE_DATA: typing.Dict[tuple, dict] = dict()
+        # PROFILE_DATA: Dict[tuple, dict] = dict()
 
         profile_limit_reached: bool = False
         max_profiles = self.generalSettings().maximumProfiles()
@@ -534,7 +534,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             fieldIndex = item.featureFieldIndex()
             feature: QgsFeature = self.mVectorLayerCache.getFeature(fid)
             context.setFeature(feature)
-            scope = item.createExpressionContextScope()
+            scope = item.expressionContextScope()
             context.appendScope(scope)
 
             if not isinstance(feature, QgsFeature):
@@ -579,27 +579,24 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             renderContext = QgsRenderContext()
             renderContext.setExpressionContext(context)
-            featureRenderer.startRender(renderContext, feature.fields())
-            qgssymbol = featureRenderer.symbolForFeature(feature, renderContext)
+            feature_renderer.startRender(renderContext, feature.fields())
+            qgssymbol = feature_renderer.symbolForFeature(feature, renderContext)
             symbolScope = None
             if isinstance(qgssymbol, QgsSymbol):
                 symbolScope = qgssymbol.symbolRenderContext().expressionContextScope()
                 context.appendScope(symbolScope)
 
             for vis in visualizations:
+                vis: ProfileVisualizationGroup
+
                 if len(PLOT_ITEMS) >= max_profiles:
                     profile_limit_reached = True
                     break
-                vis: ProfileVisualizationGroup
-                fieldIndex = vis.fieldIdx()
-
-                # context.appendScope(vis.createExpressionContextScope())
-                context.lastScope().setVariable('field_name', vis.fieldName())
-                context.lastScope().setVariable('field_index', fieldIndex)
-                context.lastScope().setVariable('visualization_name', vis.name())
+                plotContext = QgsExpressionContext(context)
+                plotContext.appendScope(vis.expressionContextScope())
 
                 if fid not in selected_fids and vis.filterProperty().expressionString() != '':
-                    b, success = vis.filterProperty().valueAsBool(context, defaultValue=False)
+                    b, success = vis.filterProperty().valueAsBool(plotContext, defaultValue=False)
                     if b is False:
                         continue
                 plot_data: dict = self.plotData(feature, vis.fieldIdx(), xunit)
@@ -608,12 +605,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     # profile data can not be transformed to requested x-unit
                     continue
 
-                plot_style: PlotStyle = vis.generatePlotStyle(context)
-                plot_label: str = vis.generateLabel(context)
-                plot_tooltip: str = vis.generateTooltip(context)
-                pdi = pdiGenerator.__next__()
+                plot_style: PlotStyle = vis.generatePlotStyle(plotContext)
+                plot_label: str = vis.generateLabel(plotContext)
+                plot_tooltip: str = vis.generateTooltip(plotContext)
+                pdi = pdi_generator.__next__()
                 pdi: SpectralProfilePlotDataItem
-                vis_key = (vis, fid, fieldIndex, xunit)
+                vis_key = (vis, fid, vis.fieldIdx(), xunit)
                 pdi.setVisualizationKey(vis_key)
                 pdi.setProfileData(plot_data, plot_style,
                                    showBadBands=show_bad_bands,
@@ -624,13 +621,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
                 vis.mPlotDataItems.append(pdi)
                 PLOT_ITEMS.append(pdi)
+                del plotContext
 
-            featureRenderer.stopRender(renderContext)
+            feature_renderer.stopRender(renderContext)
 
             if context.lastScope() == symbolScope:
                 context.popScope()
 
-        # selectionColor = QColor(self.mPlotWidgetStyle.selectionColor)
         selectionColor = self.mGeneralSettings.selectionColor()
         for pdi in PLOT_ITEMS:
             pdi: SpectralProfilePlotDataItem
@@ -735,12 +732,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
         else:
             return False
 
-    def mimeTypes(self) -> typing.List[str]:
+    def mimeTypes(self) -> List[str]:
         return [PropertyItemGroup.MIME_TYPE]
 
-    def mimeData(self, indexes: typing.Iterable[QModelIndex]) -> QMimeData:
+    def mimeData(self, indexes: Iterable[QModelIndex]) -> QMimeData:
 
-        groups: typing.List[PropertyItemGroup] = []
+        groups: List[PropertyItemGroup] = []
 
         for idx in indexes:
             r = idx.row()
@@ -787,7 +784,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             profileData['xUnit'] = xUnit
             return profileData
 
-    def featurePriority(self) -> typing.List[int]:
+    def featurePriority(self) -> List[int]:
         """
         Returns the list of potential feature keys to be visualized, ordered by its importance.
         Can contain keys to "empty" profiles, where the value profile_field BLOB is NULL
@@ -816,9 +813,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         # overlaid features / current spectral
 
-        priority1: typing.List[int] = []  # visible features
-        priority2: typing.List[int] = []  # selected features
-        priority3: typing.List[int] = []  # any other : not visible / not selected
+        priority1: List[int] = []  # visible features
+        priority2: List[int] = []  # selected features
+        priority3: List[int] = []  # any other : not visible / not selected
 
         if isinstance(dualView, QgsDualView):
             tv = dualView.tableView()
@@ -986,7 +983,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if b:
             self.updatePlot()
 
-    def onSpeclibSelectionChanged(self, selected: typing.List[int], deselected: typing.List[int], clearAndSelect: bool):
+    def onSpeclibSelectionChanged(self, selected: List[int], deselected: List[int], clearAndSelect: bool):
         s = ""
         self.updatePlot()
 
@@ -1008,7 +1005,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.updatePlot()
         s = ""
 
-    def onSpeclibCommittedAttributeValuesChanges(self, lid: str, changedAttributeValues: typing.Dict[int, dict]):
+    def onSpeclibCommittedAttributeValuesChanges(self, lid: str, changedAttributeValues: Dict[int, dict]):
         changedAttributes = set()
         for fid, attributeMap in changedAttributeValues.items():
             for i in attributeMap.keys():
@@ -1074,13 +1071,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def speclib(self) -> QgsVectorLayer:
         return self.mSpeclib
 
-    def profileFields(self) -> typing.List[QgsField]:
+    def profileFields(self) -> List[QgsField]:
         return profile_field_list(self.speclib())
 
-    def profileFieldIndices(self) -> typing.List[int]:
+    def profileFieldIndices(self) -> List[int]:
         return profile_field_indices(self.speclib())
 
-    def profileFieldNames(self) -> typing.List[str]:
+    def profileFieldNames(self) -> List[str]:
         return profile_field_indices()
 
     PropertyIndexRole = Qt.UserRole + 1
@@ -1094,9 +1091,9 @@ class PDIGenerator(object):
     Uses existing ones and, if nececessary, creates new ones.
     """
 
-    def __init__(self, existingPDIs: typing.List[SpectralProfilePlotDataItem] = [],
-                 onProfileClicked: typing.Callable = None):
-        self.pdiList: typing.List[SpectralProfilePlotDataItem] = existingPDIs
+    def __init__(self, existingPDIs: List[SpectralProfilePlotDataItem] = [],
+                 onProfileClicked: Callable = None):
+        self.pdiList: List[SpectralProfilePlotDataItem] = existingPDIs
         self.onProfileClicked = onProfileClicked
         self.mZValue = -1
 
@@ -1119,7 +1116,7 @@ class PDIGenerator(object):
 
             return pdi
 
-    def remaining(self) -> typing.List[SpectralProfilePlotDataItem]:
+    def remaining(self) -> List[SpectralProfilePlotDataItem]:
         return self.pdiList[:]
 
 
@@ -1135,7 +1132,7 @@ class SpectralProfilePlotView(QTreeView):
     def controlTable(self) -> SpectralProfilePlotModel:
         return self.model()
 
-    def selectedPropertyGroups(self) -> typing.List[PropertyItemGroup]:
+    def selectedPropertyGroups(self) -> List[PropertyItemGroup]:
         return [idx.data(Qt.UserRole)
                 for idx in self.selectionModel().selectedIndexes()
                 if isinstance(idx.data(Qt.UserRole), PropertyItemGroup)]
@@ -1152,7 +1149,7 @@ class SpectralProfilePlotView(QTreeView):
             if isinstance(vis, ProfileVisualizationGroup) and vis in visualizations:
                 self.selectionModel().select(idx, QItemSelectionModel.Rows)
 
-    def setModel(self, model: typing.Optional[QAbstractItemModel]) -> None:
+    def setModel(self, model: Optional[QAbstractItemModel]) -> None:
         super().setModel(model)
         if isinstance(model, QAbstractItemModel):
             model.rowsInserted.connect(self.onRowsInserted)
@@ -1237,7 +1234,7 @@ class SpectralProfilePlotView(QTreeView):
         if not menu.isEmpty():
             menu.exec_(self.viewport().mapToGlobal(event.pos()))
 
-    def removeItems(self, vis: typing.List[PropertyItemGroup]):
+    def removeItems(self, vis: List[PropertyItemGroup]):
 
         model = self.model()
 
@@ -1247,7 +1244,7 @@ class SpectralProfilePlotView(QTreeView):
         if isinstance(model, SpectralProfilePlotModel):
             model.removePropertyItemGroups(vis)
 
-    def copyItems(self, visualizations: typing.List[ProfileVisualizationGroup]):
+    def copyItems(self, visualizations: List[ProfileVisualizationGroup]):
 
         indices = []
         for vis in visualizations:
@@ -1283,7 +1280,7 @@ class SpectralProfilePlotView(QTreeView):
 
         return None
 
-    def userColorsFromSymbolRenderer(self, vis: typing.List[ProfileVisualizationGroup]):
+    def userColorsFromSymbolRenderer(self, vis: List[ProfileVisualizationGroup]):
         for v in vis:
             if isinstance(v, ProfileVisualizationGroup):
                 v.mPColor.setToSymbolColor()
@@ -1617,8 +1614,8 @@ class SpectralLibraryPlotWidget(QWidget):
 
     def createProfileVisualization(self, *args,
                                    name: str = None,
-                                   field: typing.Union[QgsField, int, str] = None,
-                                   color: typing.Union[str, QColor] = None,
+                                   field: Union[QgsField, int, str] = None,
+                                   color: Union[str, QColor] = None,
                                    style: PlotStyle = None):
         item = ProfileVisualizationGroup()
 
@@ -1689,7 +1686,7 @@ class SpectralLibraryPlotWidget(QWidget):
 
         self.mPlotControlModel.insertPropertyGroup(-1, item)
 
-    def profileVisualizations(self) -> typing.List[ProfileVisualizationGroup]:
+    def profileVisualizations(self) -> List[ProfileVisualizationGroup]:
         return self.mPlotControlModel.visualizations()
 
     def dragEnterEvent(self, event: QDragEnterEvent):

@@ -1,5 +1,5 @@
 {
-  "name": "spectralData",
+  "name": "spectral_data",
   "type": "function",
   "description": "Returns spectral profile values",
   "arguments": [ {

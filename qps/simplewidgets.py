@@ -1,4 +1,4 @@
-import typing
+from typing import List
 
 from qgis.PyQt.QtCore import QObject, QRect, QSize, QPoint
 from qgis.PyQt.QtCore import pyqtSignal, Qt
@@ -18,7 +18,7 @@ class FlowLayout(QLayout):
 
         self.m_hSpace = hSpacing
         self.m_vSpace = vSpacing
-        self.m_itemlist: typing.List[QLayoutItem] = []
+        self.m_itemlist: List[QLayoutItem] = []
         self.setContentsMargins(margin, margin, margin, margin)
 
     def setSpacing(self, space: int) -> None:

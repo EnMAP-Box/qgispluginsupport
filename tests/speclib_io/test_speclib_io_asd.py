@@ -1,8 +1,9 @@
 # noinspection PyPep8Naming
 import pathlib
 import re
-import typing
+
 import unittest
+from typing import List
 
 from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorLayerExporter, QgsCoordinateReferenceSystem, Qgis
 from qgis.core import QgsVectorLayer
@@ -89,7 +90,7 @@ class TestSpeclibIO_ASD(TestCase):
             for p in profiles:
                 self.assertTrue(is_spectral_feature(p))
 
-    def asdBinFiles(self) -> typing.List[str]:
+    def asdBinFiles(self) -> List[str]:
         import qpstestdata
         ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'asd'
         return list(file_search(ASD_DIR, re.compile(r'\w+\d+\.(asd)$'), recursive=True))

@@ -1,4 +1,4 @@
-import typing
+
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
@@ -34,7 +34,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
         super().__init__(*args, **kwds)
         self.mFIDs = None
 
-    def setFidsFilter(self, fids: typing.Any) -> None:
+    def setFidsFilter(self, fids: Any) -> None:
         super(AggregateProfilesCalculator, self).setFidsFilter(fids)
 
         self.mFIDs = fids
@@ -42,8 +42,8 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
     def calculate(self,
                   aggregate: QgsAggregateCalculator.Aggregate,
                   fieldOrExpression: str,
-                  context: typing.Optional[QgsExpressionContext] = ...,
-                  feedback: typing.Optional[QgsFeedback] = ...) -> typing.Tuple[typing.Any, bool]:
+                  context: Optional[QgsExpressionContext] = ...,
+                  feedback: Optional[QgsFeedback] = ...) -> Tuple[Any, bool]:
 
         if not isinstance(self.layer(), QgsVectorLayer):
             return QVariant()
@@ -333,7 +333,7 @@ Please not that not each aggregate function might be available for each field ty
 
     def spectralProfileAggregateExpression(self, aggregateType: str, source: str, concatenate: bool, groupBy):
         # expr = f"spectralAggregate(@layer, '{aggregateType}', '{source}', '{groupBy}')"
-        expr = f'{aggregateType}Profile({source}, "{groupBy}")'
+        expr = f'{aggregateType}_profile({source}, {groupBy})'
 
         return expr
 
@@ -450,7 +450,7 @@ Please not that not each aggregate function might be available for each field ty
 
         # todo: modify editor widget type
         del sink
-        vl = QgsVectorLayer(destId)
+        vl = context.getMapLayer(destId)
         if vl.isValid():
             for fieldName in self.mOutputProfileFields:
                 idx = vl.fields().lookupField(fieldName)
@@ -584,7 +584,7 @@ class SpectralAggregation(QgsExpressionFunction):
     def usesGeometry(self, node) -> bool:
         return True
 
-    def referencedColumns(self, node) -> typing.List[str]:
+    def referencedColumns(self, node) -> List[str]:
         return [QgsFeatureRequest.ALL_ATTRIBUTES]
 
     def handlesNull(self) -> bool:
@@ -686,7 +686,13 @@ def spfcnAggregateGeneric(
         if is_profile_field(field):
             AGG = AggregateProfilesCalculator(vl)
             AGG.setParameters(parameters)
-            result = AGG.calculate(aggregate, subExpression, context, None)
+            result = AGG.calculate(aggregate, subExpression, context, context.feedback())
+            s = ""
+        else:
+            AGG = QgsAggregateCalculator(vl)
+            AGG.setParameters(parameters)
+            result = AGG.calculate(aggregate, subExpression, context, context.feedback())
+            s = ""
 
     if result != QVariant():
         context.setCachedValue(cacheKey, result)
@@ -737,13 +743,13 @@ def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
         #                         spfcnAggregate, 'Aggregates', '',
         #                         usesGeometry=usesGeometryCallback,
         #                         referencedColumns=referencedColumnsCallback),
-        StaticExpressionFunction('meanProfile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('mean_profile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
-        StaticExpressionFunction('medianProfile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('median_profile', aggParams, spfcnAggregateMedian, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
-        StaticExpressionFunction('minProfile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('minimum_profile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
-        StaticExpressionFunction('maxProfile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('maximum_profile', aggParams, spfcnAggregateMaximum, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
     ]
 

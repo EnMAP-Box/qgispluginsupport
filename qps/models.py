@@ -29,7 +29,7 @@ import enum
 import inspect
 import re
 import types
-import typing
+from typing import List, Iterator, Type, Union, Tuple, Dict, Pattern
 
 import numpy as np
 from qgis.PyQt.QtWidgets import QStyleOptionViewItem
@@ -142,7 +142,7 @@ class OptionListModel(QAbstractListModel):
     def __init__(self, options=None, parent=None):
         super(OptionListModel, self).__init__(parent)
 
-        self.mOptions: typing.List[Option] = []
+        self.mOptions: List[Option] = []
 
         self.insertOptions(options)
 
@@ -208,7 +208,7 @@ class OptionListModel(QAbstractListModel):
             value = Option(value, '{}'.format(value))
         return value
 
-    def options(self) -> typing.List[Option]:
+    def options(self) -> List[Option]:
         """
         :return: [list-of-Options]
         """
@@ -310,7 +310,7 @@ class TreeNode(QObject):
         super().__init__()
 
         self.mParentNode: TreeNode = None
-        self.mChildren: typing.List[TreeNode] = []
+        self.mChildren: List[TreeNode] = []
         self.mName: str = name
         self.mValues: list = []
         self.mIcon: QIcon = None
@@ -516,7 +516,7 @@ class TreeNode(QObject):
         """
         if isinstance(child_nodes, TreeNode):
             child_nodes = [child_nodes]
-        child_nodes: typing.List[TreeNode]
+        child_nodes: List[TreeNode]
         for node in child_nodes:
             assert isinstance(node, TreeNode)
             assert node in self.mChildren
@@ -651,14 +651,14 @@ class TreeNode(QObject):
         """Returns the number of child nodes"""
         return len(self.mChildren)
 
-    def childNodes(self) -> typing.Iterator['TreeNode']:
+    def childNodes(self) -> Iterator['TreeNode']:
         """
         Returns the child nodes
         :return: [list-of-TreeNodes]
         """
         return self.mChildren[:]
 
-    def findParentNode(self, nodeType) -> typing.Type['TreeNode']:
+    def findParentNode(self, nodeType) -> Type['TreeNode']:
         """
         Returns the next upper TreeNode of type "nodeType"
         :param nodeType:
@@ -712,7 +712,7 @@ class OptionTreeNode(TreeNode):
     def option(self) -> Option:
         return self.mOption
 
-    def options(self) -> typing.List[Option]:
+    def options(self) -> List[Option]:
         return self.mOptionModel.options()
 
 
@@ -780,7 +780,7 @@ class PyObjectTreeNode(TreeNode):
         return not self.mIsFetched
 
     @staticmethod
-    def valueAndTooltip(obj) -> typing.Tuple[str, str]:
+    def valueAndTooltip(obj) -> Tuple[str, str]:
         pass
 
     def hasChildren(self) -> bool:
@@ -803,13 +803,13 @@ class PyObjectTreeNode(TreeNode):
                 self.mFetchIterator = iter(self.mPyObject.items())
             elif isinstance(self.mPyObject, object):
                 self.mFetchIterator = iter(sorted(inspect.getmembers(self.mPyObject)))
-            elif isinstance(iter(self.mPyObject), typing.Iterator):
+            elif isinstance(iter(self.mPyObject), Iterator):
                 self.mFetchIterator = self.mPyObject
             else:
                 self.mIsFetched = True
                 return
 
-        newNodes: typing.List[PyObjectTreeNode] = []
+        newNodes: List[PyObjectTreeNode] = []
 
         i = 0
         try:
@@ -993,7 +993,7 @@ class TreeModel(QAbstractItemModel):
         return self.mColumnNames[:]
 
     def printModel(self,
-                   index: typing.Union[QModelIndex, TreeNode],
+                   index: Union[QModelIndex, TreeNode],
                    prefix: str = '',
                    depth: int = 1):
         """
@@ -1247,7 +1247,7 @@ class TreeView(QTreeView):
 
         self.mAutoExpansionDepth: int = 1
         self.mModel = None
-        self.mNodeExpansion: typing.Dict[str, bool] = dict()
+        self.mNodeExpansion: Dict[str, bool] = dict()
         self.mAutoFirstColumnSpan: bool = True
 
     def setAutoFirstColumnSpan(self, b: bool):
@@ -1295,7 +1295,7 @@ class TreeView(QTreeView):
     def updateNodeExpansion(self,
                             restore: bool,
                             index: QModelIndex = None,
-                            prefix='') -> typing.Dict[str, bool]:
+                            prefix='') -> Dict[str, bool]:
         """
         Allows to save and restore the state of node expansion
         :param restore: bool, set True to save the state, False to restore it
@@ -1462,14 +1462,14 @@ class SettingsModel(TreeModel):
     def __init__(self,
                  settings: QgsSettings,
                  key_filter: re.Pattern = '.*',
-                 options: typing.Dict = None,
-                 ranges: typing.Dict = None,
+                 options: Dict = None,
+                 ranges: Dict = None,
                  parent: QObject = None):
 
         super().__init__(parent=parent)
 
-        self.mRANGES: typing.Dict[str, typing.Tuple] = dict()
-        self.mOPTIONS: typing.Dict[str, typing.List[Option]] = dict()
+        self.mRANGES: Dict[str, Tuple] = dict()
+        self.mOPTIONS: Dict[str, List[Option]] = dict()
         self.mSettings: QgsSettings = None
         self.initSettings(settings, key_filter=key_filter)
         if options:
@@ -1490,17 +1490,17 @@ class SettingsModel(TreeModel):
                 flags = flags | Qt.ItemIsUserCheckable
         return flags
 
-    def keys(self) -> typing.List[str]:
+    def keys(self) -> List[str]:
         keys = [n.mSettingsKey for n in self.findChildren(SettingsNode)]
         return keys
 
-    def updateRanges(self, ranges: typing.Dict[str, typing.Tuple]):
+    def updateRanges(self, ranges: Dict[str, Tuple]):
         for k, v in ranges.items():
             assert len(v) >= 2
 
         self.mRANGES.update(ranges)
 
-    def updateOptions(self, options: typing.Dict[str, typing.List[Option]]):
+    def updateOptions(self, options: Dict[str, List[Option]]):
         assert isinstance(options, dict)
         opt = dict()
         for k, olist in options.items():
@@ -1522,7 +1522,7 @@ class SettingsModel(TreeModel):
         self.mOPTIONS.update(opt)
 
     def initSettings(self, settings: QgsSettings,
-                     key_filter: typing.Union[typing.Pattern, str] = None):
+                     key_filter: Union[Pattern, str] = None):
 
         self.mSettings = settings
 
@@ -1532,7 +1532,7 @@ class SettingsModel(TreeModel):
         for i in range(len(key_filter)):
             if isinstance(key_filter[i], str):
                 key_filter[i] = re.compile(key_filter[i])
-            assert isinstance(key_filter[i], typing.Pattern)
+            assert isinstance(key_filter[i], Pattern)
 
         self.mRootNode.removeAllChildNodes()
         self._readGroup(settings, '', self.mRootNode, key_filter)

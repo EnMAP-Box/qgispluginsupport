@@ -26,7 +26,7 @@
 
 import collections
 import os
-import typing
+from typing import List
 
 from qgis.PyQt.QtCore import QModelIndex, QPoint, QAbstractListModel, pyqtSignal
 from qgis.PyQt.QtGui import QIcon, QClipboard, QColor
@@ -175,7 +175,7 @@ class CursorLocationInfoModel(TreeModel):
             return
         bn = os.path.basename(sourceValueSet.source)
 
-        newSourceNodes: typing.List[TreeNode] = []
+        newSourceNodes: List[TreeNode] = []
 
         if isinstance(sourceValueSet, RasterValueSet):
 

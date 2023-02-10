@@ -36,10 +36,10 @@ import site
 import sqlite3
 import sys
 import traceback
-import typing
+
 import uuid
 import warnings
-from typing import Set
+from typing import Set, List, Union, Tuple
 from unittest import mock
 import numpy as np
 
@@ -52,6 +52,7 @@ from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPoi
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu
+from qgis.core import QgsTemporalController
 from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
@@ -136,7 +137,7 @@ _PYTHON_RUNNER = None
 
 def start_app(cleanup: bool = True,
               options=StartOptions.All,
-              resources: typing.List[typing.Union[str, pathlib.Path]] = None) -> QgsApplication:
+              resources: List[Union[str, pathlib.Path]] = None) -> QgsApplication:
     """
     :param cleanup:
     :param options: combination of StartOptions
@@ -252,9 +253,11 @@ class QgisMockup(QgisInterface):
     def __init__(self, *args):
         super(QgisMockup, self).__init__()
 
-        self.mMapLayerPanelFactories: typing.List[QgsMapLayerConfigWidgetFactory] = []
+        self.mMapLayerPanelFactories: List[QgsMapLayerConfigWidgetFactory] = []
 
+        self.mTemporalController = QgsTemporalController()
         self.mCanvas = QgsMapCanvas()
+        self.mCanvas.setTemporalController(self.mTemporalController)
         self.mCanvas.blockSignals(False)
         self.mCanvas.setCanvasColor(Qt.black)
         self.mLayerTreeView = QgsLayerTreeView()
@@ -277,6 +280,7 @@ class QgisMockup(QgisInterface):
         self.mRasterMenu = self.ui.menuBar().addMenu('Raster')
         self.mWindowMenu = self.ui.menuBar().addMenu('Window')
 
+        self.mSelectionToolBar = QToolBar()
         self.mMessageBar = QgsMessageBar()
         mainFrame = QFrame()
         self.ui.setCentralWidget(mainFrame)
@@ -305,7 +309,7 @@ class QgisMockup(QgisInterface):
                     setattr(self, n, getattr(self._mock, n))
 
     def _onRemoveLayers(self, layerIDs):
-        to_remove: typing.List[QgsLayerTreeLayer] = []
+        to_remove: List[QgsLayerTreeLayer] = []
         for lyr in self.mRootNode.findLayers():
             lyr: QgsLayerTreeLayer
             if lyr.layerId() in layerIDs:
@@ -322,7 +326,7 @@ class QgisMockup(QgisInterface):
         assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
         self.mMapLayerPanelFactories = [f for f in self.mMapLayerPanelFactories if f.title() != factory.title()]
 
-    def addLegendLayers(self, mapLayers: typing.List[QgsMapLayer]):
+    def addLegendLayers(self, mapLayers: List[QgsMapLayer]):
         for lyr in mapLayers:
             self.mRootNode.addLayer(lyr)
 
@@ -335,6 +339,9 @@ class QgisMockup(QgisInterface):
     def setActiveLayer(self, mapLayer: QgsMapLayer):
         if mapLayer in self.mapCanvas().layers():
             self.mapCanvas().setCurrentLayer(mapLayer)
+
+    def selectionToolBar(self) -> QToolBar:
+        return self.mSelectionToolBar
 
     def cutSelectionToClipboard(self, mapLayer: QgsMapLayer):
         if isinstance(mapLayer, QgsVectorLayer):
@@ -411,7 +418,7 @@ class QgisMockup(QgisInterface):
     def mapCanvas(self) -> QgsMapCanvas:
         return self.mCanvas
 
-    def mapCanvases(self) -> typing.List[QgsMapCanvas]:
+    def mapCanvases(self) -> List[QgsMapCanvas]:
         return [self.mCanvas]
 
     def mapNavToolToolBar(self) -> QToolBar:
@@ -552,6 +559,25 @@ class TestCase(qgis.testing.TestCase):
 
         return testDir
 
+    def createProcessingContextFeedback(self) -> Tuple[QgsProcessingContext, QgsProcessingFeedback]:
+        """
+        Create a QgsProcessingContext with connected QgsProcessingFeedback
+        """
+        def onProgress(progress: float):
+            sys.stdout.write('\r{:0.2f} %'.format(progress))
+            sys.stdout.flush()
+
+            if progress == 100:
+                print('')
+
+        feedback = QgsProcessingFeedback()
+        feedback.progressChanged.connect(onProgress)
+
+        context = QgsProcessingContext()
+        context.setFeedback(feedback)
+
+        return context, feedback
+
     def createProcessingFeedback(self) -> QgsProcessingFeedback:
         """
         Creates a QgsProcessingFeedback.
@@ -593,7 +619,7 @@ class TestCase(qgis.testing.TestCase):
 
         return newpath.as_posix()
 
-    def showGui(self, widgets: typing.Union[QWidget, typing.List[QWidget]] = None) -> bool:
+    def showGui(self, widgets: Union[QWidget, List[QWidget]] = None) -> bool:
         """
         Call this to show GUI(s) in case we do not run within a CI system
         """
@@ -688,7 +714,7 @@ class ExampleAlgorithmProvider(QgsProcessingProvider):
 class SpectralProfileDataIterator(object):
 
     def __init__(self,
-                 n_bands_per_field: typing.Union[int, typing.List[int]],
+                 n_bands_per_field: Union[int, List[int]],
                  target_crs=None):
 
         if not isinstance(n_bands_per_field, list):
@@ -711,7 +737,7 @@ class SpectralProfileDataIterator(object):
         for nb in n_bands_per_field:
             assert nb is None or 0 < nb
             # assert 0 < nb <= self.cnb, f'Max. number of bands can be {self.cnb}'
-        self.band_indices: typing.List[np.ndarray] = []
+        self.band_indices: List[np.ndarray] = []
         for nb in n_bands_per_field:
             if nb is None:
                 self.band_indices.append(None)
@@ -772,7 +798,7 @@ class TestObjects(object):
     _coreData = _coreDataWL = _coreDataWLU = _coreDataWkt = _coreDataGT = None
 
     @staticmethod
-    def coreData() -> typing.Tuple[np.ndarray, np.ndarray, str, tuple, str]:
+    def coreData() -> Tuple[np.ndarray, np.ndarray, str, tuple, str]:
         if TestObjects._coreData is None:
             source_raster = pathlib.Path(__file__).parent / 'enmap.tif'
             assert source_raster.is_file()
@@ -786,10 +812,10 @@ class TestObjects(object):
             TestObjects._coreDataWL, TestObjects._coreDataWLU = parseWavelength(ds)
 
         results = TestObjects._coreData, \
-                  TestObjects._coreDataWL, \
-                  TestObjects._coreDataWLU, \
-                  TestObjects._coreDataGT, \
-                  TestObjects._coreDataWkt
+            TestObjects._coreDataWL, \
+            TestObjects._coreDataWLU, \
+            TestObjects._coreDataGT, \
+            TestObjects._coreDataWkt
         return results
 
     @staticmethod
@@ -799,7 +825,7 @@ class TestObjects(object):
 
     @staticmethod
     def spectralProfileData(n: int = 10,
-                            n_bands: typing.List[int] = None):
+                            n_bands: List[int] = None):
         """
         Returns n random spectral profiles from the test data
         :return: lost of (N,3) array of floats specifying point locations.
@@ -834,9 +860,9 @@ class TestObjects(object):
     @staticmethod
     def spectralProfiles(n=10,
                          fields: QgsFields = None,
-                         n_bands: typing.List[int] = None,
+                         n_bands: List[int] = None,
                          wlu: str = None,
-                         profile_fields: typing.List[typing.Union[str, QgsField]] = None):
+                         profile_fields: List[Union[str, QgsField]] = None):
 
         if fields is None:
             fields = createStandardFields()
@@ -865,7 +891,7 @@ class TestObjects(object):
             n_bands = [n_bands]
 
         assert len(n_bands) == profile_fields.count(), \
-            f'Number of bands list ({n_bands}) has different lenghts that number of profile fields'
+            f'Number of bands list ({n_bands}) has different lengths that number of profile fields'
 
         profileGenerator: SpectralProfileDataIterator = SpectralProfileDataIterator(n_bands)
 
@@ -904,8 +930,8 @@ class TestObjects(object):
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
-                              n_bands: typing.Union[int, typing.List[int], np.ndarray] = [-1],
-                              profile_field_names: typing.List[str] = None,
+                              n_bands: Union[int, List[int], np.ndarray] = [-1],
+                              profile_field_names: List[str] = None,
                               wlu: str = None) -> QgsVectorLayer:
         """
         Creates a Spectral Library
@@ -1014,6 +1040,30 @@ class TestObjects(object):
         return lyr
 
     @staticmethod
+    def repoDirGDAL(local='gdal') -> pathlib.Path:
+        """
+        Returns the path to a local GDAL repository.
+        GDAL must be installed into the same path / upward path of this repository
+        """
+        d = findUpwardPath(__file__, local + '/.git', is_directory=True)
+        if d:
+            return d.parent
+        else:
+            return None
+
+    @staticmethod
+    def repoDirQGIS(local='QGIS') -> pathlib.Path:
+        """
+        Returns the path to a local QGIS repository.
+        QGIS must be installed into the same path / upward path of this repository
+        """
+        d = findUpwardPath(__file__, local + '/.git', is_directory=True)
+        if d:
+            return d.parent
+        else:
+            return None
+
+    @staticmethod
     def tmpDirPrefix() -> str:
         if True:
             path_dir = pathlib.Path('/vsimem/tmp')
@@ -1028,12 +1078,12 @@ class TestObjects(object):
                             crs=None, gt=None,
                             eType: int = gdal.GDT_Int16,
                             nc: int = 0,
-                            path: typing.Union[str, pathlib.Path] = None,
-                            drv: typing.Union[str, gdal.Driver] = None,
+                            path: Union[str, pathlib.Path] = None,
+                            drv: Union[str, gdal.Driver] = None,
                             wlu: str = None,
                             pixel_size: float = None,
                             no_data_rectangle: int = 0,
-                            no_data_value: typing.Union[int, float] = -9999) -> gdal.Dataset:
+                            no_data_value: Union[int, float] = -9999) -> gdal.Dataset:
         """
         Generates a gdal.Dataset of arbitrary size based on true data from a smaller EnMAP raster image
         """
@@ -1201,13 +1251,13 @@ class TestObjects(object):
     @staticmethod
     def createVectorDataSet(wkb=ogr.wkbPolygon,
                             n_features: int = None,
-                            path: typing.Union[str, pathlib.Path] = None) -> ogr.DataSource:
+                            path: Union[str, pathlib.Path] = None) -> ogr.DataSource:
         """
         Create an in-memory ogr.DataSource
         :return: ogr.DataSource
         """
         # ogr.RegisterAll()
-        ogr.UseExceptions()
+        # ogr.UseExceptions()
         assert wkb in [ogr.wkbPoint, ogr.wkbPolygon, ogr.wkbLineString]
 
         # find the QGIS world_map.shp
@@ -1219,6 +1269,9 @@ class TestObjects(object):
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
 
         dsSrc = ogr.Open(pathSrc.as_posix())
+        if not isinstance(dsSrc, ogr.DataSource):
+            lyr = QgsVectorLayer(pathSrc.as_posix())
+            assert lyr.isValid(), f'Unable to load QGS Layer: {pathSrc.as_posix()}'
         assert isinstance(dsSrc, ogr.DataSource), f'Unable to load {pathSrc}'
         lyrSrc = dsSrc.GetLayerByIndex(0)
         assert isinstance(lyrSrc, ogr.Layer)
@@ -1260,7 +1313,7 @@ class TestObjects(object):
         assert n_features >= 0
 
         # copy features
-        TMP_FEATURES: typing.List[ogr.Feature] = []
+        TMP_FEATURES: List[ogr.Feature] = []
         for fSrc in lyrSrc:
             assert isinstance(fSrc, ogr.Feature)
             TMP_FEATURES.append(fSrc)
@@ -1304,7 +1357,7 @@ class TestObjects(object):
     @staticmethod
     def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
                           n_features: int = None,
-                          path: typing.Union[str, pathlib.Path] = None) -> QgsVectorLayer:
+                          path: Union[str, pathlib.Path] = None) -> QgsVectorLayer:
         """
         Create a QgsVectorLayer
         :return: QgsVectorLayer
@@ -1465,7 +1518,7 @@ class QgsClipboardMockup(QObject):
 
         return self.mFeatureClipboard
 
-    def transformedCopyOf(self, crs: QgsCoordinateReferenceSystem, fields: QgsFields) -> typing.List[QgsFeature]:
+    def transformedCopyOf(self, crs: QgsCoordinateReferenceSystem, fields: QgsFields) -> List[QgsFeature]:
 
         features = self.copyOf(fields)
         ct = QgsCoordinateTransform(self.mCRS, crs, QgsProject.instance())

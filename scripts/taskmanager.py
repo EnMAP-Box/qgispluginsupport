@@ -90,7 +90,7 @@ class MyTaskDialog(QDialog):
         if self.pbar.value() >= self.pbar.maximum():
             self.close()
 
-    def addTasks(self, tasks:typing.List[MyTask], start=True):
+    def addTasks(self, tasks:List[MyTask], start=True):
         self.mTasks.extend(tasks)
         if start:
             self.btnStart.click()
