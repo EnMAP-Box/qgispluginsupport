@@ -5,14 +5,14 @@ import pathlib
 
 from json import JSONDecodeError
 from typing import Dict, List, Any, Union
-
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
+from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
 from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, Qt, QTimer, \
     QVariant
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QDialog, \
-    QPushButton, QSizePolicy
+    QPushButton, QSizePolicy, QVBoxLayout
 from qgis.core import QgsEditorWidgetSetup, QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
     QgsProcessingRegistry, QgsMapLayer, QgsPalettedRasterRenderer, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
@@ -407,7 +407,16 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                 # workaround https://github.com/qgis/QGIS/issues/46673
                 wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.Standard)
             else:
-                wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
+                # todo: remove for QGSI 4.0
+                wrapper_metadata = param.metadata().get('widget_wrapper', None)
+                # VERY messy logic here to avoid breaking 3.0 API which allowed metadata "widget_wrapper" value to be either
+                # a string name of a class OR a dict.
+                # TODO QGIS 4.0 -- require widget_wrapper to be a dict.
+                if wrapper_metadata and (
+                        not isinstance(wrapper_metadata, dict) or wrapper_metadata.get('class', None) is not None):
+                    wrapper = WidgetWrapperFactory.create_wrapper_from_metadata(param, self.parent(), row=0, col=0)
+                else:
+                    wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
 
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.mContextGenerator)
@@ -419,8 +428,16 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             label = wrapper.createWrappedLabel()
             self.addParameterLabel(param, label)
             processing_context = self.mProcessing_context
-            widget = wrapper.createWrappedWidget(processing_context)
-            stretch = wrapper.stretch()
+
+            # TODO QGIS 4.0 - remove
+            is_python_wrapper = issubclass(wrapper.__class__, WidgetWrapper)
+            stretch = 0
+            if not is_python_wrapper:
+                widget = wrapper.createWrappedWidget(processing_context)
+                stretch = wrapper.stretch()
+            else:
+                widget = wrapper.widget
+
             self.addParameterWidget(param, widget, stretch)
 
         for output in self.algorithm().destinationParameterDefinitions():
@@ -608,6 +625,14 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             if isinstance(w, SpectralProcessingRasterLayerWidgetWrapper):
                                 s = ""
                         s = ""
+
+
+    @staticmethod
+    def resetSettings():
+        settings = speclibSettings()
+        K = SpectralProcessingDialog.__name__
+        settings.setValue(f'{K}/algorithmId', None)
+        settings.value(f'{K}/algorithmParameters', None)
 
     def close(self):
 
@@ -1009,9 +1034,12 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             panel = SpectralProcessingModelCreatorAlgorithmWrapper(alg,
                                                                    self.mSpeclib,
                                                                    processingContext=self.mProcessingContext,
+                                                                   parent=self
                                                                    )
         else:
             panel = QgsPanelWidget()
+            if not panel.layout():
+                panel.setLayout(QVBoxLayout())
             panel.layout().addWidget(QLabel('Missing spectral library'))
         return panel
 
