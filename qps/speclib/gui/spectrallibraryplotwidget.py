@@ -606,8 +606,10 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     continue
 
                 plot_style: PlotStyle = vis.generatePlotStyle(plotContext)
+                if not plot_style.isVisible():
+                    continue
                 plot_label: str = vis.generateLabel(plotContext)
-                plot_tooltip: str = vis.generateTooltip(plotContext)
+                plot_tooltip: str = vis.generateTooltip(plotContext, label=plot_label)
                 pdi = pdi_generator.__next__()
                 pdi: SpectralProfilePlotDataItem
                 vis_key = (vis, fid, vis.fieldIdx(), xunit)

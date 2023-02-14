@@ -124,9 +124,9 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
         # l = QLabel(f'<html><img width="20"px" height="20"
         # src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
         # label = QLabel(f'{self.parameterDefinition().description()} (to field)')
-        label = QLabel(f'<html> <img src=":/qps/ui/icons/raster_to_field.svg"/>   '
+        label = QLabel(f'<html> <img src=":/qps/ui/icons/field_from_raster.svg"/>   '
                        f'{self.parameterDefinition().description()}</html>')
-        label.setToolTip('An existing or new field to write raster values to')
+        label.setToolTip('An existing or new field to write raster values into')
         self.mLabel = label
         return label
 
@@ -275,7 +275,7 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         elif isinstance(param, QgsProcessingParameterMultipleLayers):
             label = QLabel(f'<html><img src=":/qps/ui/icons/field_to_raster.svg">   '
                            f'{self.parameterDefinition().description()}')
-            label.setToolTip('A set of fiels whose values will be converted into temporary raster images')
+            label.setToolTip('A set of fields whose values will be converted into temporary raster images')
         else:
             raise NotImplementedError()
         self.mLabel = label

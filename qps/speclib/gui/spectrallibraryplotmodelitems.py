@@ -1977,9 +1977,10 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
     def setPlotStyle(self, style: PlotStyle):
         self.mPStyle.setPlotStyle(style)
 
-    def generateTooltip(self, context: QgsExpressionContext) -> str:
+    def generateTooltip(self, context: QgsExpressionContext, label: str = None) -> str:
         tooltip = '<html><body><table>'
-        label = ''
+        if label is None:
+            label = self.generateLabel(context)
         fid = context.feature().id()
         fname = context.variable('field_name')
         if label:
@@ -2011,6 +2012,10 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             style.setLineColor(featureColor)
             style.setMarkerColor(featureColor)
             style.setMarkerLinecolor(featureColor)
+
+        # show default style in case an empty context was used
+        # this way we can hide profiles with disabled symbol_color
+        style.setVisibility(success or context.scopeCount() == 0)
         return style
 
     def plotDataItems(self) -> List[PlotDataItem]:

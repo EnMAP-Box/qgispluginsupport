@@ -217,7 +217,7 @@ QSplitter::handle:pressed {
   </action>
   <action name="actionReload">
    <property name="icon">
-    <iconset resource="../../../QGIS/images/images.qrc">
+    <iconset>
      <normaloff>:/images/themes/default/mActionReload.svg</normaloff>:/images/themes/default/mActionReload.svg</iconset>
    </property>
    <property name="text">
@@ -244,7 +244,7 @@ QSplitter::handle:pressed {
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../../../QGIS/images/images.qrc"/>
+  <include location="../qpsresources.qrc"/>
  </resources>
  <connections/>
 </ui>
