@@ -229,7 +229,7 @@ class SpectralEncoding(QgsExpressionFunction):
 
         args = [
             QgsExpressionFunction.Parameter('profile_field', optional=False),
-            QgsExpressionFunction.Parameter('encoding', optional=False),
+            QgsExpressionFunction.Parameter('encoding', defaultValue='text', optional=True),
 
         ]
         helptext = HM.helpText(self.NAME, args)
@@ -241,11 +241,10 @@ class SpectralEncoding(QgsExpressionFunction):
         if profile is None:
             return None
 
-        encoding = ExpressionFunctionUtils.extractSpectralProfileEncoding(self.parameters()[1], values[1], context)
-        if not isinstance(encoding, ProfileEncoding):
-            return None
-
         try:
+            encoding = ExpressionFunctionUtils.extractSpectralProfileEncoding(self.parameters()[1], values[1], context)
+            if not isinstance(encoding, ProfileEncoding):
+                return None
             return encodeProfileValueDict(profile, encoding)
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
