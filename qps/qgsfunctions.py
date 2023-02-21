@@ -29,9 +29,8 @@ import os
 import pathlib
 import re
 import sys
-
 from json import JSONDecodeError
-from typing import Union, List, Set, Callable, Iterable, Any, Tuple, Dict
+from typing import Union, List, Set, Callable, Iterable, Any, Dict
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication

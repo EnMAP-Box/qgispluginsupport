@@ -248,12 +248,11 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
             if isinstance(value, str):
                 # find the best match in order of
 
-
                 LAYER_INFOS: Dict[int, Tuple[str, str]] = dict()
 
                 max_similarity = 0
                 for i in range(self.mMapLayerWidget.count()):
-                    layer: QgsMapLayer = self.mMapLayerWidget.itemData(i,QgsMapLayerModel.ItemDataRole.LayerRole)
+                    layer: QgsMapLayer = self.mMapLayerWidget.itemData(i, QgsMapLayerModel.ItemDataRole.LayerRole)
 
                     if not isinstance(layer, QgsMapLayer):
                         continue
@@ -437,7 +436,8 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                         not isinstance(wrapper_metadata, dict) or wrapper_metadata.get('class', None) is not None):
                     wrapper = WidgetWrapperFactory.create_wrapper_from_metadata(param, self.parent(), row=0, col=0)
                 else:
-                    wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param, QgsProcessingGui.Standard)
+                    wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param,
+                                                                                          QgsProcessingGui.Standard)
 
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.mContextGenerator)
@@ -647,9 +647,11 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 s = ""
                         s = ""
 
-
     @staticmethod
     def resetSettings():
+        """
+        Resets all settings which may have been derived from QSettings
+        """
         settings = speclibSettings()
         K = SpectralProcessingDialog.__name__
         settings.setValue(f'{K}/algorithmId', None)
