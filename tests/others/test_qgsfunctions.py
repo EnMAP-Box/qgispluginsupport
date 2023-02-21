@@ -1,7 +1,12 @@
 import re
 import unittest
 from osgeo import gdal_array
+
+import processing
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+from qps.utils import SpatialExtent
 from qgis.PyQt.QtCore import QByteArray, QVariant
+from qgis.core import QgsWkbTypes
 from qgis.core import QgsField
 from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsProperty, QgsExpressionContextUtils
@@ -237,6 +242,42 @@ class QgsFunctionTests(TestCase):
                     self.assertIsInstance(profile, dict, msg=exp.expression())
 
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
+
+
+    def test_RasterProfile2(self):
+
+        f = RasterProfile()
+
+        self.assertIsInstance(f, QgsExpressionFunction)
+        self.assertTrue(QgsExpression.registerFunction(f))
+        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+        lyrRaster = TestObjects.createRasterLayer(nb=100)
+        lyrRaster.setName('EnMAP')
+        lyrPoints = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.GeometryType.PointGeometry, n_features=3)
+
+        extR = SpatialExtent.fromLayer(lyrRaster)
+        extP = SpatialExtent.fromLayer(lyrPoints).toCrs(lyrRaster.crs())
+        self.assertTrue(extR.contains(extP))
+        s= ""
+
+        QgsProject.instance().addMapLayers([lyrRaster, lyrPoints])
+        results = processing.run("native:fieldcalculator",
+                                 {'INPUT': lyrPoints,
+                                  'FIELD_NAME': 'profiles', 'FIELD_TYPE': 2, 'FIELD_LENGTH': 0, 'FIELD_PRECISION': 0,
+                                  'FORMULA': " raster_profile('EnMAP')", 'OUTPUT': 'TEMPORARY_OUTPUT'},
+                                )
+        lyrSpeclib: QgsVectorLayer = results['OUTPUT']
+        lyrSpeclib.setName('Spectral Library')
+        SpectralLibraryUtils.setAsProfileField(lyrSpeclib, 'profiles')
+
+        for f in lyrSpeclib.getFeatures():
+            f: QgsFeature
+            jsonStr = f.attribute('profiles')
+
+            d = decodeProfileValueDict(jsonStr)
+            self.assertTrue(isProfileValueDict(d))
+            self.assertTrue(len(d['y']) == lyrRaster.bandCount())
+            s = ""
 
     def test_SpectralMath(self):
 
