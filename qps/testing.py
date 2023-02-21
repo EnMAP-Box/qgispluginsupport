@@ -243,6 +243,40 @@ def start_app(cleanup: bool = True,
 
     return qgsApp
 
+css = """
+QGroupBox{ font-weight: 600; }
+QListWidget#mOptionsListWidget {
+    background-color: rgba(69, 69, 69, 0);    
+    outline: 0;}
+QFrame#mOptionsListFrame {
+    background-color: rgba(69, 69, 69, 220);}
+QListWidget#mOptionsListWidget::item {
+    color: white; padding: 3px;}
+QListWidget#mOptionsListWidget::item::selected {
+    color: palette(window-text);
+    background-color:palette(window);
+    padding-right: 0px;}
+QTreeView#mOptionsTreeView {
+    background-color: rgba(69, 69, 69, 0);
+    outline: 0;}
+QFrame#mOptionsListFrame {
+    background-color: rgba(69, 69, 69, 220);}
+QTreeView#mOptionsTreeView::item {
+    color: white;
+    padding: 3px;}
+QTreeView#mOptionsTreeView::item::selected, QTreeView#mOptionsTreeView::branch::selected {
+    color: palette(window-text);
+    background-color:palette(window);
+    padding-right: 0px;}
+QTableView {
+    selection-background-color: #0078d7;
+    selection-color: #ffffff;}
+QgsPropertyOverrideButton {
+    background: none; 
+    border: 1px solid rgba(0, 0, 0, 0%); } 
+QgsPropertyOverrideButton:focus { 
+    border: 1px solid palette(highlight); }'
+"""
 
 class QgisMockup(QgisInterface):
     """
@@ -296,7 +330,7 @@ class QgisMockup(QgisInterface):
         self.lyrs = []
         self.createActions()
         self.mClipBoard = QgsClipboardMockup()
-
+        self.ui.setStyleSheet(css)
         # mock other functions
         excluded = QObject.__dict__.keys()
         self._mock = mock.Mock(spec=QgisInterface)

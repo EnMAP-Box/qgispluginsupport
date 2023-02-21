@@ -2,9 +2,10 @@ import datetime
 import json
 import os
 import pathlib
+from difflib import SequenceMatcher
 
 from json import JSONDecodeError
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any, Union, Tuple
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
@@ -245,11 +246,31 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
     def setWidgetValue(self, value, context: QgsProcessingContext):
         if isinstance(self.mMapLayerWidget, QComboBox):
             if isinstance(value, str):
+                # find the best match in order of
 
+
+                LAYER_INFOS: Dict[int, Tuple[str, str]] = dict()
+
+                max_similarity = 0
                 for i in range(self.mMapLayerWidget.count()):
-                    role1 = self.mMapLayerWidget.itemData(i, Qt.DisplayRole)
-                    role2 = self.mMapLayerWidget.itemData(i, Qt.UserRole)
-                    if value == role1 or value == role2:
+                    layer: QgsMapLayer = self.mMapLayerWidget.itemData(i,QgsMapLayerModel.ItemDataRole.LayerRole)
+
+                    if not isinstance(layer, QgsMapLayer):
+                        continue
+
+                    similarity = SequenceMatcher(None, layer.name(), value).ratio()
+                    max_similarity = max(max_similarity, similarity)
+                    LAYER_INFOS[i] = (layer.id() == value, layer.name() == value, value in layer.name(), similarity)
+                # match on 1. exact layer id,  2. exact layer name, 3. value in layer name
+                for j in range(0, 3):
+                    for i, t in LAYER_INFOS.items():
+                        if t[j]:
+                            self.mMapLayerWidget.setCurrentIndex(i)
+                            return
+
+                # match on 4. max similarity
+                for i, t in LAYER_INFOS.items():
+                    if t[3] == max_similarity:
                         self.mMapLayerWidget.setCurrentIndex(i)
                         return
 
