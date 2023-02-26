@@ -153,10 +153,10 @@ class ProcessingToolsTest(TestCase):
         sl1.renameAttribute(sl1.fields().lookupField('name'), 'group')
         sl1.commitChanges(False)
         content = [
-            {'group': 'A', 'profiles': {'y': [1, 1, 1]}},
-            {'group': 'A', 'profiles': {'y': [1, 1, 1]}},
-            {'group': 'A', 'profiles': {'y': [4, 4, 4]}},
-            {'group': 'B', 'profiles': {'y': [0, 8, 15]}},
+            {'group': 'A', 'profiles': {'y': [1, 1, 1], 'x': [100,200, 300], 'xUnit':'nm'}},
+            {'group': 'A', 'profiles': {'y': [1, 1, 1], 'x': [100,200, 300], 'xUnit':'nm'}},
+            {'group': 'A', 'profiles': {'y': [4, 4, 4], 'x': [100,200, 300], 'xUnit':'nm'}},
+            {'group': 'B', 'profiles': {'y': [0, 8, 15], 'x': [100,200, 300], 'xUnit':'nm'}},
         ]
         for c in content:
             f = QgsFeature(sl1.fields())
@@ -179,13 +179,6 @@ class ProcessingToolsTest(TestCase):
         alg_id = provider.algorithms()[0].id()
         alg = reg.algorithmById(alg_id)
         self.assertIsInstance(alg, AggregateProfiles)
-        s = ""
-        if False:
-            alg = reg.algorithmById(alg_id)
-            d = AlgorithmDialog(alg, False, None)
-            d.context = context
-            d.exec_()
-            processingPlugin.executeAlgorithm(alg_id, None, in_place=False, as_batch=False)
 
         parameters = {
             AggregateProfiles.P_INPUT: sl1,
@@ -223,6 +216,11 @@ class ProcessingToolsTest(TestCase):
         p_max = decodeProfileValueDict(fA['p_max'])
         p_mean = decodeProfileValueDict(fA['p_mean'])
         p_median = decodeProfileValueDict(fA['p_median'])
+
+        for pdict in [p_min, p_max, p_mean, p_median]:
+            self.assertEqual(pdict['x'], [100, 200, 300])
+            self.assertEqual(pdict['xUnit'], 'nm')
+
         self.assertEqual(p_min['y'], [1, 1, 1])
         self.assertEqual(p_max['y'], [4, 4, 4])
         self.assertEqual(p_median['y'], [1, 1, 1])

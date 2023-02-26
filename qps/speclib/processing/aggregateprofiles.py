@@ -84,9 +84,11 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
         profileDictionaries = []
         n = None
         x = None
-        wl = None
-        wlu = None
+        xUnit = None
+        yUnit = None
         bbl = None
+
+        # get values for x axis, x axis unit and y axis unit
         for feature in features:
             d = decodeProfileValueDict(feature.attribute(attrNum), numpy_arrays=True)
             if len(d) > 0:
@@ -100,11 +102,11 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
                 if x is None:
                     x = d.get('x')
 
-                if wl is None:
-                    wl = d.get('wl')
+                if xUnit is None:
+                    xUnit = d.get('xUnit')
 
-                if wlu is None:
-                    wlu = d.get('wlu')
+                if yUnit is None:
+                    yUnit = d.get('yUnit')
 
         if len(profileDictionaries) == 0:
             return QVariant()
@@ -136,7 +138,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
             y = np.max(vstack, axis=0) - np.min(vstack, axis=0)
 
         if y is not None:
-            d = prepareProfileValueDict(y=y, x=x, xUnit=wlu, bbl=bbl)
+            d = prepareProfileValueDict(y=y, x=x, xUnit=xUnit, bbl=bbl)
             dump = encodeProfileValueDict(d, encoding=encoding)
             return dump
 
