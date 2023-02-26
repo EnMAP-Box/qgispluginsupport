@@ -1,7 +1,7 @@
 import time, typing, multiprocessing, os
+from typing import List
 
-
-
+from qgis.core import QgsApplication, QgsTask, QgsTaskManager
 from qgis.testing import start_app
 
 

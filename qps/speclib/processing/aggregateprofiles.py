@@ -1,4 +1,3 @@
-
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
@@ -229,6 +228,7 @@ class AggregateProfiles(QgsProcessingAlgorithm):
 
         self.mOutputProfileFields: List[str] = []
         self._TempLayers: List[AggregateMemoryLayer] = []
+        self._results: Dict = dict()
 
     def name(self) -> str:
         return 'aggregateprofiles'
@@ -449,22 +449,29 @@ Please not that not each aggregate function might be available for each field ty
             feedback.setProgress(50.0 + current * progressStep)
             if feedback.isCanceled():
                 break
-
         del sink
-        vl = context.getMapLayer(destId)
+        self._results = {self.P_OUTPUT: destId}
+
+        return self._results
+
+    def postProcessAlgorithm(self, context: QgsProcessingContext, feedback: QgsProcessingFeedback) -> Dict[str, Any]:
+
+        vl = self._results.get(self.P_OUTPUT)
         if isinstance(vl, str):
-            vl = QgsVectorLayer(vl)
-        if isinstance(vl, QgsVectorLayer) and vl.isValid():
-            for fieldName in self.mOutputProfileFields:
-                idx = vl.fields().lookupField(fieldName)
-                if idx > -1:
-                    setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
-                    vl.setEditorWidgetSetup(idx, setup)
-            vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
-        else:
-            feedback.pushWarning(f'Unable to reload {destId} as vectorlayer and set profile fields')
-        results = {self.P_OUTPUT: destId}
-        return results
+            lyr_id = vl
+            vl = QgsProcessingUtils.mapLayerFromString(vl, context,
+                                                       allowLoadingNewLayers=True,
+                                                       typeHint=QgsProcessingUtils.LayerHint.Vector)
+            if isinstance(vl, QgsVectorLayer) and vl.isValid():
+                for fieldName in self.mOutputProfileFields:
+                    idx = vl.fields().lookupField(fieldName)
+                    if idx > -1:
+                        setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+                        vl.setEditorWidgetSetup(idx, setup)
+                vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+            else:
+                feedback.pushWarning(f'Unable to reload {lyr_id} as vectorlayer and set profile fields')
+        return {self.P_OUTPUT: vl}
 
     def _createFeatureSink(self,
                            context: QgsExpressionContext,
@@ -750,11 +757,14 @@ def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
         #                         referencedColumns=referencedColumnsCallback),
         StaticExpressionFunction('mean_profile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
-        StaticExpressionFunction('median_profile', aggParams, spfcnAggregateMedian, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('median_profile', aggParams, spfcnAggregateMedian, SPECLIB_FUNCTION_GROUP, '', False,
+                                 [],
                                  True),
-        StaticExpressionFunction('minimum_profile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('minimum_profile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False,
+                                 [],
                                  True),
-        StaticExpressionFunction('maximum_profile', aggParams, spfcnAggregateMaximum, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('maximum_profile', aggParams, spfcnAggregateMaximum, SPECLIB_FUNCTION_GROUP, '', False,
+                                 [],
                                  True),
     ]
 
