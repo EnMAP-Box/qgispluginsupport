@@ -89,6 +89,55 @@ class ProcessingToolsTest(TestCase):
             alg = d.algorithm()
             self.assertIsInstance(alg, QgsProcessingAlgorithm)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    def test_aggregate_profiles_dialog(self):
+        registerQgsExpressionFunctions()
+        enc = ProfileEncoding.Json
+        sl1: QgsVectorLayer = SpectralLibraryUtils.createSpectralLibrary(
+            name='SL', profile_fields=['profiles'], encoding=enc)
+
+        context, feedback = self.createProcessingContextFeedback()
+
+        project = QgsProject.instance()
+        project.addMapLayers([sl1])
+
+        sl1.startEditing()
+        sl1.renameAttribute(sl1.fields().lookupField('name'), 'group')
+        sl1.commitChanges(False)
+        content = [
+            {'group': 'A', 'profiles': {'y': [1, 1, 1]}},
+            {'group': 'A', 'profiles': {'y': [1, 1, 1]}},
+            {'group': 'A', 'profiles': {'y': [4, 4, 4]}},
+            {'group': 'B', 'profiles': {'y': [0, 8, 15]}},
+        ]
+        for c in content:
+            f = QgsFeature(sl1.fields())
+            f.setAttribute('group', c['group'])
+            f.setAttribute('profiles', encodeProfileValueDict(c['profiles'], enc))
+            self.assertTrue(sl1.addFeature(f))
+        self.assertTrue(sl1.commitChanges())
+
+        groups = sl1.uniqueValues(sl1.fields().lookupField('group'))
+        self.assertEqual(groups, {'A', 'B'})
+
+        provider = ExampleAlgorithmProvider()
+        processingPlugin = qgis.utils.plugins.get('processing', ProcessingPlugin(TestCase.IFACE))
+
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        reg.addProvider(provider)
+        self.assertTrue(provider.addAlgorithm(AggregateProfiles()))
+        reg.providerById(ExampleAlgorithmProvider.NAME.lower())
+
+        alg_id = provider.algorithms()[0].id()
+        alg = reg.algorithmById(alg_id)
+        self.assertIsInstance(alg, AggregateProfiles)
+
+        alg = reg.algorithmById(alg_id)
+        d = AlgorithmDialog(alg, False, None)
+        d.context = context
+        d.exec_()
+        processingPlugin.executeAlgorithm(alg_id, None, in_place=False, as_batch=False)
+
     def test_aggregate_profiles(self):
         registerQgsExpressionFunctions()
         enc = ProfileEncoding.Json

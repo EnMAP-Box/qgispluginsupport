@@ -448,16 +448,19 @@ Please not that not each aggregate function might be available for each field ty
             if feedback.isCanceled():
                 break
 
-        # todo: modify editor widget type
         del sink
         vl = context.getMapLayer(destId)
-        if vl.isValid():
+        if isinstance(vl, str):
+            vl = QgsVectorLayer(vl)
+        if isinstance(vl, QgsVectorLayer) and vl.isValid():
             for fieldName in self.mOutputProfileFields:
                 idx = vl.fields().lookupField(fieldName)
                 if idx > -1:
                     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                     vl.setEditorWidgetSetup(idx, setup)
             vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+        else:
+            feedback.pushWarning(f'Unable to reload {destId} as vectorlayer and set profile fields')
         results = {self.P_OUTPUT: destId}
         return results
 
