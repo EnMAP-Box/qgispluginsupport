@@ -1,4 +1,3 @@
-
 from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
@@ -84,9 +83,11 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
         profileDictionaries = []
         n = None
         x = None
-        wl = None
-        wlu = None
+        xUnit = None
+        yUnit = None
         bbl = None
+
+        # get values for x axis, x axis unit and y axis unit
         for feature in features:
             d = decodeProfileValueDict(feature.attribute(attrNum), numpy_arrays=True)
             if len(d) > 0:
@@ -100,11 +101,11 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
                 if x is None:
                     x = d.get('x')
 
-                if wl is None:
-                    wl = d.get('wl')
+                if xUnit is None:
+                    xUnit = d.get('xUnit')
 
-                if wlu is None:
-                    wlu = d.get('wlu')
+                if yUnit is None:
+                    yUnit = d.get('yUnit')
 
         if len(profileDictionaries) == 0:
             return QVariant()
@@ -136,7 +137,7 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
             y = np.max(vstack, axis=0) - np.min(vstack, axis=0)
 
         if y is not None:
-            d = prepareProfileValueDict(y=y, x=x, xUnit=wlu, bbl=bbl)
+            d = prepareProfileValueDict(y=y, x=x, xUnit=xUnit, bbl=bbl)
             dump = encodeProfileValueDict(d, encoding=encoding)
             return dump
 
@@ -227,6 +228,7 @@ class AggregateProfiles(QgsProcessingAlgorithm):
 
         self.mOutputProfileFields: List[str] = []
         self._TempLayers: List[AggregateMemoryLayer] = []
+        self._results: Dict = dict()
 
     def name(self) -> str:
         return 'aggregateprofiles'
@@ -447,19 +449,29 @@ Please not that not each aggregate function might be available for each field ty
             feedback.setProgress(50.0 + current * progressStep)
             if feedback.isCanceled():
                 break
-
-        # todo: modify editor widget type
         del sink
-        vl = context.getMapLayer(destId)
-        if vl.isValid():
-            for fieldName in self.mOutputProfileFields:
-                idx = vl.fields().lookupField(fieldName)
-                if idx > -1:
-                    setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
-                    vl.setEditorWidgetSetup(idx, setup)
-            vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
-        results = {self.P_OUTPUT: destId}
-        return results
+        self._results = {self.P_OUTPUT: destId}
+
+        return self._results
+
+    def postProcessAlgorithm(self, context: QgsProcessingContext, feedback: QgsProcessingFeedback) -> Dict[str, Any]:
+
+        vl = self._results.get(self.P_OUTPUT)
+        if isinstance(vl, str):
+            lyr_id = vl
+            vl = QgsProcessingUtils.mapLayerFromString(vl, context,
+                                                       allowLoadingNewLayers=True,
+                                                       typeHint=QgsProcessingUtils.LayerHint.Vector)
+            if isinstance(vl, QgsVectorLayer) and vl.isValid():
+                for fieldName in self.mOutputProfileFields:
+                    idx = vl.fields().lookupField(fieldName)
+                    if idx > -1:
+                        setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+                        vl.setEditorWidgetSetup(idx, setup)
+                vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
+            else:
+                feedback.pushWarning(f'Unable to reload {lyr_id} as vectorlayer and set profile fields')
+        return {self.P_OUTPUT: vl}
 
     def _createFeatureSink(self,
                            context: QgsExpressionContext,
@@ -745,11 +757,14 @@ def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
         #                         referencedColumns=referencedColumnsCallback),
         StaticExpressionFunction('mean_profile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
                                  True),
-        StaticExpressionFunction('median_profile', aggParams, spfcnAggregateMedian, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('median_profile', aggParams, spfcnAggregateMedian, SPECLIB_FUNCTION_GROUP, '', False,
+                                 [],
                                  True),
-        StaticExpressionFunction('minimum_profile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('minimum_profile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False,
+                                 [],
                                  True),
-        StaticExpressionFunction('maximum_profile', aggParams, spfcnAggregateMaximum, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('maximum_profile', aggParams, spfcnAggregateMaximum, SPECLIB_FUNCTION_GROUP, '', False,
+                                 [],
                                  True),
     ]
 

@@ -243,40 +243,22 @@ def start_app(cleanup: bool = True,
 
     return qgsApp
 
+
 css = """
 QGroupBox{ font-weight: 600; }
-QListWidget#mOptionsListWidget {
-    background-color: rgba(69, 69, 69, 0);    
-    outline: 0;}
-QFrame#mOptionsListFrame {
-    background-color: rgba(69, 69, 69, 220);}
-QListWidget#mOptionsListWidget::item {
-    color: white; padding: 3px;}
-QListWidget#mOptionsListWidget::item::selected {
-    color: palette(window-text);
-    background-color:palette(window);
-    padding-right: 0px;}
-QTreeView#mOptionsTreeView {
-    background-color: rgba(69, 69, 69, 0);
-    outline: 0;}
-QFrame#mOptionsListFrame {
-    background-color: rgba(69, 69, 69, 220);}
-QTreeView#mOptionsTreeView::item {
-    color: white;
-    padding: 3px;}
-QTreeView#mOptionsTreeView::item::selected, QTreeView#mOptionsTreeView::branch::selected {
-    color: palette(window-text);
-    background-color:palette(window);
-    padding-right: 0px;}
-QTableView {
-    selection-background-color: #0078d7;
-    selection-color: #ffffff;}
-QgsPropertyOverrideButton {
-    background: none; 
-    border: 1px solid rgba(0, 0, 0, 0%); } 
-QgsPropertyOverrideButton:focus { 
-    border: 1px solid palette(highlight); }'
+QListWidget#mOptionsListWidget { background-color: rgba(69, 69, 69, 0); outline: 0;}
+QFrame#mOptionsListFrame { background-color: rgba(69, 69, 69, 220);}
+QListWidget#mOptionsListWidget::item { color: white; padding: 3px;}
+QListWidget#mOptionsListWidget::item::selected { color: palette(window-text); background-color:palette(window); padding-right: 0px;}
+QTreeView#mOptionsTreeView { background-color: rgba(69, 69, 69, 0); outline: 0;}
+QFrame#mOptionsListFrame { background-color: rgba(69, 69, 69, 220);}
+QTreeView#mOptionsTreeView::item { color: white; padding: 3px;}
+QTreeView#mOptionsTreeView::item::selected, QTreeView#mOptionsTreeView::branch::selected { color: palette(window-text); background-color:palette(window); padding-right: 0px;}
+QTableView { selection-background-color: #0078d7; selection-color: #ffffff;}
+QgsPropertyOverrideButton { background: none; border: 1px solid rgba(0, 0, 0, 0%); }
+QgsPropertyOverrideButton:focus { border: 1px solid palette(highlight); }'
 """
+
 
 class QgisMockup(QgisInterface):
     """
@@ -597,6 +579,7 @@ class TestCase(qgis.testing.TestCase):
         """
         Create a QgsProcessingContext with connected QgsProcessingFeedback
         """
+
         def onProgress(progress: float):
             sys.stdout.write('\r{:0.2f} %'.format(progress))
             sys.stdout.flush()

@@ -29,9 +29,8 @@ import os
 import pathlib
 import re
 import sys
-
 from json import JSONDecodeError
-from typing import Union, List, Set, Callable, Iterable, Any, Tuple, Dict
+from typing import Union, List, Set, Callable, Iterable, Any, Dict
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
@@ -366,56 +365,11 @@ class RasterProfile(QgsExpressionFunction):
         args = [
             QgsExpressionFunction.Parameter('layer', optional=False),
             QgsExpressionFunction.Parameter('geometry', optional=True, defaultValue='@geometry'),
-            QgsExpressionFunction.Parameter('encoding', optional=True, defaultValue='map'),
+            QgsExpressionFunction.Parameter('encoding', optional=True, defaultValue='text'),
         ]
 
         helptext = HM.helpText(self.NAME, args)
         super().__init__(self.NAME, args, self.GROUP, helptext)
-
-    def __parseArguments(self, values: tuple, context: QgsExpressionContext) \
-            -> Tuple[QgsRasterLayer, QgsGeometry, QgsCoordinateTransform, ProfileEncoding]:
-
-        lyrR = values[0]
-        geom = values[1]
-        format = values[2]
-
-        if isinstance(lyrR, str):
-            layers = QgsExpression('@layers').evaluate(context)
-            if layers is None:
-                layers = []
-            for lyr in layers:
-                if isinstance(lyr, QgsRasterLayer) and lyrR in [lyr.name(), lyr.id()]:
-                    lyrR = lyr
-                    break
-
-        if not isinstance(lyrR, QgsRasterLayer):
-            return None, None, None, None
-
-        if not isinstance(geom, QgsGeometry):
-            geom = QgsExpression('@geometry').evaluate(context)
-
-        if not isinstance(geom, QgsGeometry):
-            return None, None, None, None
-
-        trans = context.cachedValue('crs_trans')
-        if not isinstance(trans, QgsCoordinateTransform):
-            lyr_crs = QgsExpression('@layer_crs').evaluate(context)
-            crsV = QgsCoordinateReferenceSystem(lyr_crs)
-            if isinstance(crsV, QgsCoordinateReferenceSystem) and crsV.isValid() and isinstance(lyrR, QgsRasterLayer):
-                trans = QgsCoordinateTransform()
-                trans.setSourceCrs(crsV)
-                trans.setDestinationCrs(lyrR.crs())
-                context.setCachedValue('crs_trans', trans)
-
-        if format is None:
-            # default: dictionary
-            format = ProfileEncoding.Dict
-
-            # todo: consider target field (if known from context)
-
-        format = ProfileEncoding.fromInput(format)
-
-        return lyrR, geom, trans, format
 
     def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
