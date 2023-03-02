@@ -30,6 +30,7 @@
 import math
 import pathlib
 import warnings
+from typing import Union
 
 import numpy as np
 
@@ -60,14 +61,13 @@ class CrosshairStyle(object):
         self.mShowDistanceMarker = True
         self.mShowDistanceLabel = True
 
-    def setColor(self, color: QColor):
+    def setColor(self, color: Union[str, QColor]):
         """
         Sets the crosshair color
         :param color: QCoolor
         :return:
         """
-        assert isinstance(color, QColor)
-        self.mColor = color
+        self.mColor = QColor(color)
 
     def setSize(self, size):
         self.mSize = self._normalize(size)
