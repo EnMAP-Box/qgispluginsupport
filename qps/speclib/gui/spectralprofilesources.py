@@ -1182,16 +1182,16 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
 
         if is_valid:
             expr = self.expression()
+            if expr.expression() != '':
+                genNode: SpectralFeatureGeneratorNode = self.parentNode()
+                if isinstance(genNode, SpectralFeatureGeneratorNode):
+                    context = genNode.expressionContextGenerator().createExpressionContext()
+                    expr.prepare(context)
 
-            genNode: SpectralFeatureGeneratorNode = self.parentNode()
-            if isinstance(genNode, SpectralFeatureGeneratorNode):
-                context = genNode.expressionContextGenerator().createExpressionContext()
-                expr.prepare(context)
-
-            if expr.hasParserError():
-                self.mErrors.append(expr.parserErrorString().strip())
-            if expr.hasEvalError():
-                self.mErrors.append(expr.evalErrorString().strip())
+                if expr.hasParserError():
+                    self.mErrors.append(expr.parserErrorString().strip())
+                if expr.hasEvalError():
+                    self.mErrors.append(expr.evalErrorString().strip())
 
         return len(self.errors()) == 0, self.errors()
 
@@ -2237,6 +2237,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
             elif isinstance(node, StandardFieldGeneratorNode) and index.column() == 1:
                 w = QgsFieldExpressionWidget(parent=parent)
+                w.setAllowEmptyFieldName(True)
                 field: QgsField = node.field()
 
                 genNode: SpectralFeatureGeneratorNode = node.parentNode()
@@ -2296,6 +2297,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
             if isinstance(genNode, SpectralFeatureGeneratorNode) and isinstance(genNode.speclib(), QgsVectorLayer):
                 contextGen: SpectralFeatureGeneratorExpressionContextGenerator = genNode.expressionContextGenerator()
                 editor.setLayer(genNode.speclib())
+                editor.registerExpressionContextGenerator(contextGen)
 
             editor.setExpression(node.expression().expression())
 
