@@ -29,11 +29,13 @@ import collections
 import re
 import sys
 import io
+
+from qgis.core import QgsVectorLayer, QgsFeature
 from qgis.core import QgsProcessingFeedback
 import numpy as np
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog
 from ..core import is_spectral_library
-from ..core.spectrallibrary import SpectralSetting
+from ..core.spectrallibrary import SpectralSetting, SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO
 from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
 from ...utils import findTypeFromString, createQgsField
@@ -65,7 +67,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
     def readFrom(cls, path: str,
                  wlu='nm',
                  delimiter=',',
-                 feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
+                 feedback: QgsProcessingFeedback = None):
         """
          Returns the SpectralLibrary read from "path"
         :param path:
@@ -79,7 +81,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         :return:
         :rtype:
         """
-        sl = SpectralLibrary()
+        sl = SpectralLibraryUtils.createSpectralLibrary()
         sl.startEditing()
         sl.addMissingFields(createStandardFields())
         sl.commitChanges(stopEditing=False)
@@ -147,7 +149,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
 
             profiles = []
             for i in range(nProfiles):
-                profile = SpectralProfile(fields=sl.fields())
+                profile = QgsFeature(fields=sl.fields())
                 # add profile name
                 if FIELD_NAME in metadataKeys:
                     profile.setAttribute(FIELD_NAME, DATA[FIELD_NAME][i])
@@ -171,7 +173,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         return sl
 
     @classmethod
-    def write(cls, speclib: SpectralLibrary, path: str, feedback: QgsProcessingFeedback = None,
+    def write(cls, speclib: QgsVectorLayer, path: str, feedback: QgsProcessingFeedback = None,
               delimiter: str = ',') -> list:
         """
         Writes the SpectralLibrary to path and returns a list of written files
@@ -204,7 +206,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
                     continue
                 line = [fn]
                 for p in profiles:
-                    assert isinstance(p, SpectralProfile)
+                    assert isinstance(p, QgsFeature)
                     line.append(str(p.attribute(fn)))
                 stream.write(delimiter.join(line) + '\n')
             #
@@ -217,7 +219,7 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
             for i, xValue in enumerate(xValues):
                 line = [str(xValue)]
                 for p in profiles:
-                    assert isinstance(p, SpectralProfile)
+                    assert isinstance(p, QgsFeature)
                     yValue = p.values()['y'][i]
                     line.append(str(yValue))
                 stream.write(delimiter.join(line) + '\n')
@@ -231,9 +233,9 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         return writtenFiles
 
     @classmethod
-    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    def addExportActions(cls, spectralLibrary: QgsVectorLayer, menu: QMenu) -> list:
 
-        def write(speclib: SpectralLibrary):
+        def write(speclib: QgsVectorLayer):
             path, filter = QFileDialog.getSaveFileName(caption='Write SPECCHIO CSV Spectral Library ',
                                                        filter='Textfile (*.csv)')
             if isinstance(path, str) and len(path) > 0:
@@ -244,9 +246,9 @@ class SPECCHIOSpectralLibraryIO(SpectralLibraryIO):
         m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
 
     @classmethod
-    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    def addImportActions(cls, spectralLibrary: QgsVectorLayer, menu: QMenu) -> list:
 
-        def read(speclib: SpectralLibrary):
+        def read(speclib: QgsVectorLayer):
 
             path, filter = QFileDialog.getOpenFileName(caption='Read SPECCHIO CSV File',
                                                        filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')

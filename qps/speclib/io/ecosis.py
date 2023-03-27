@@ -44,7 +44,7 @@ from ..core import create_profile_field, is_spectral_library
 from ..core.spectrallibrary import FIELD_VALUES
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
 from ..core.spectralprofile import encodeProfileValueDict
-from ...utils import findTypeFromString
+from ...utils import findTypeFromString, createQgsField
 
 
 class __DEPR__EcoSISCSVDialect(pycsv.Dialect):
