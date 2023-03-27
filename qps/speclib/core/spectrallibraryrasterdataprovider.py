@@ -448,6 +448,9 @@ class SpectralProfileValueConverter(FieldToRasterValueConverter):
                 noData = c
                 break
 
+        if profileData.dtype == np.int64:
+            profileData = profileData.astype(np.int32)
+
         rasterData = np.ones((nb, 1, ns), dtype=profileData.dtype) * noData
         if len(profileIndices) > 0:
             rasterData[:, :, profileIndices] = profileData
