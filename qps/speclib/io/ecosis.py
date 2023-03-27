@@ -41,14 +41,13 @@ from qgis.core import QgsProcessingFeedback
 from .envi import readCSVMetadata
 from .. import createStandardFields, FIELD_NAME
 from ..core import create_profile_field, is_spectral_library
-from ..core.spectrallibrary import FIELD_VALUES, createQgsField
-from ..core.spectrallibrary import SpectralLibrary
+from ..core.spectrallibrary import FIELD_VALUES
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
-from ..core.spectralprofile import encodeProfileValueDict, SpectralProfile
+from ..core.spectralprofile import encodeProfileValueDict
 from ...utils import findTypeFromString
 
 
-class EcoSISCSVDialect(pycsv.Dialect):
+class __DEPR__EcoSISCSVDialect(pycsv.Dialect):
     delimiter = ','
     quotechar = '"'
     doublequote = True

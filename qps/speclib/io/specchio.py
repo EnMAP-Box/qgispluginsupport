@@ -33,7 +33,7 @@ from qgis.core import QgsProcessingFeedback
 import numpy as np
 from qgis.PyQt.QtWidgets import QMenu, QFileDialog
 from ..core import is_spectral_library
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, SpectralSetting
+from ..core.spectrallibrary import SpectralSetting
 from ..core.spectrallibraryio import SpectralLibraryIO
 from .. import FIELD_VALUES, FIELD_NAME, FIELD_FID, createStandardFields
 from ...utils import findTypeFromString, createQgsField

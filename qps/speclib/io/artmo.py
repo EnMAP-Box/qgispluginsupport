@@ -32,7 +32,6 @@ import re
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
 from qgis.core import QgsProcessingFeedback
 from ..core import is_spectral_library
-from ..core.spectrallibrary import SpectralProfile, SpectralLibrary, createQgsField
 from ..core.spectrallibraryio import SpectralLibraryIO
 
 

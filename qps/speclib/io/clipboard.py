@@ -35,12 +35,11 @@ import locale
 
 from qgis.core import QgsProcessingFeedback, QgsPoint
 from ..core import is_spectral_library
-from ..core.spectrallibrary import MIMEDATA_SPECLIB, MIMEDATA_XQT_WINDOWS_CSV, SpectralLibrary
+from ..core.spectrallibrary import MIMEDATA_SPECLIB, MIMEDATA_XQT_WINDOWS_CSV
 from ..core.spectrallibraryio import SpectralLibraryIO
-from ..core.spectralprofile import SpectralProfile
 
 
-class ClipboardIO(SpectralLibraryIO):
+class _DEPR_ClipboardIO(SpectralLibraryIO):
     """
     Reads and write SpectralLibrary from/to system clipboard.
     """
