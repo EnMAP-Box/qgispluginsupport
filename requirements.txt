@@ -9,7 +9,6 @@ flake8-qgis
 
 # for unit testing only
 coverage
-xmlrunner
 unittest-xml-reporting
 pytest
 
