@@ -5,6 +5,7 @@ import unittest
 from osgeo import gdal_array
 
 from qgis.PyQt.QtCore import QByteArray, QVariant
+from qgis.core import Qgis
 from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsProperty, QgsExpressionContextUtils
 from qgis.core import QgsField
@@ -217,12 +218,17 @@ class QgsFunctionTests(TestCaseBase):
             f"{f.name()}('{lyrR.name()}', encoding:='text')",
         ]
 
-        store = QgsMapLayerStore()
+        if Qgis.versionInt() >= 33000:
+            store = QgsMapLayerStore()
+        else:
+            store = QgsProject.instance().layerStore()
         store.addMapLayers([lyrR, lyrV])
 
         for e in expressions:
             context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(lyrV))
-            context.setLoadedLayerStore(store)
+            if Qgis.versionInt() >= 33000:
+                context.setLoadedLayerStore(store)
+
             exp = QgsExpression(e)
             for i, feature in enumerate(lyrV.getFeatures()):
                 self.assertIsInstance(feature, QgsFeature)

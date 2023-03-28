@@ -56,7 +56,7 @@ from .spectralprofile import SpectralSetting, groupBySpectralProperties, prepare
 from .. import EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from .. import FIELD_VALUES, FIELD_NAME
 from ...plotstyling.plotstyling import PlotStyle
-from ...qgsfunctions import RasterProfile
+
 from ...utils import findMapLayer, \
     qgsField, copyEditorWidgetSetup, SpatialPoint
 
@@ -330,7 +330,7 @@ class SpectralLibraryUtils:
         add_layer = store.mapLayer(layer.id()) != layer
         if add_layer:
             store.addMapLayer(layer)
-
+        from ...qgsfunctions import RasterProfile
         exp = QgsExpression(f"{RasterProfile.NAME}('{layer.id()}', $geometry, encoding:='dict')")
         exp.prepare(context)
 
