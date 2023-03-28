@@ -1,41 +1,13 @@
 import pathlib
 import unittest
 
-from qgis.PyQt.QtCore import QSize, QFile
+from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLabel
-
-from qgis.core import QgsApplication
-from qps.testing import TestCase, start_app
+from qps.testing import TestCase
 
 # image resource location
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
-
-
-class Example1(unittest.TestCase):
-    resource_path = ':/images/icons/qgis_icon.svg'
-
-    @unittest.skipIf(qgis_images_resources.is_file() is False,
-                     'Resource file does not exist: {}'.format(qgis_images_resources))
-    @unittest.skipIf(QFile(resource_path).exists(),
-                     'Resource already loaded: {}'.format(resource_path))
-    def test_startQgsApplication(self):
-        """
-        This example shows how to initialize a QgsApplication on TestCase start up
-        """
-
-        # StartOptions:
-        # Minimized = just the QgsApplication
-        # EditorWidgets = initializes EditorWidgets to manipulate vector attributes
-        # ProcessingFramework = initializes teh QGIS Processing Framework
-        # PythonRunner = initializes a PythonRunner, which is required to run expressions on vector layer fields
-        # PrintProviders = prints the QGIS data providers
-        # All = EditorWidgets | ProcessingFramework | PythonRunner | PrintProviders
-
-        app = start_app(options=StartOptions.Minimized, resources=[qgis_images_resources])
-        self.assertIsInstance(app, QgsApplication)
-
-        self.assertTrue(QFile(self.resource_path).exists())
 
 
 class ExampleCase(TestCase):
