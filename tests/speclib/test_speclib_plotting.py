@@ -25,11 +25,11 @@ from qps.speclib.gui.spectrallibraryplotmodelitems import RasterRendererGroup, P
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import nextColor, parseWavelength
 
-start_app2()
+start_app()
 
 
 class TestSpeclibPlotting(TestCaseBase):

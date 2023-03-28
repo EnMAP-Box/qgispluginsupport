@@ -36,9 +36,9 @@ from qps.speclib.core import profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, ProfileEncoding, encodeProfileValueDict
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
-from qps.testing import TestCaseBase, ExampleAlgorithmProvider, start_app2
+from qps.testing import TestCaseBase, ExampleAlgorithmProvider, start_app
 
-start_app2()
+start_app()
 
 
 class MyAlgModel(QgsProcessingToolboxProxyModel):

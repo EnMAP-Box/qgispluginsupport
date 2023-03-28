@@ -1,9 +1,9 @@
 import unittest
 
 from qps.searchfiledialog import SearchFilesDialog
-from qps.testing import TestCaseBase, start_app2
+from qps.testing import TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class SearchFileDialogTest(TestCaseBase):

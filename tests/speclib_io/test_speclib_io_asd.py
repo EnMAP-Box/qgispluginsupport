@@ -11,10 +11,10 @@ from qps.speclib.core import is_spectral_feature
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDSpectralLibraryImportWidget, ASDBinaryFile
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import file_search
 
-start_app2()
+start_app()
 
 
 class TestSpeclibIO_ASD(TestCaseBase):

@@ -8,9 +8,9 @@ from qgis.core import QgsVectorLayer, QgsFeature, QgsProcessingFeedback
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryExportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class TestSpeclibIO_GPKG(TestCaseBase):

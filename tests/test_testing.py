@@ -8,21 +8,20 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import qps.testing
-from qps.testing import TestCaseBase, start_app2
+from qps.testing import TestCase
 from qgis.core import QgsProject, QgsApplication, QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
 
-start_app2()
 
-
-class TestCasesClassTesting(TestCaseBase):
+class TestCasesClassTesting(TestCase):
 
     def test_init(self):
         self.assertTrue(qps.testing is not None)
 
         qgis_app = QgsApplication.instance()
-        print(f'qgis_app: {qgis_app}', flush=True)
         self.assertIsInstance(qgis_app, QgsApplication)
+        # print(f'qgis_app: {qgis_app}', flush=True)
+
         self.assertIsInstance(qgis_app.libexecPath(), str)
 
         self.assertTrue(len(qgis_app.processingRegistry().providers()) > 0)
@@ -68,6 +67,10 @@ class TestCasesClassTesting(TestCaseBase):
 
         QgsProject.instance().removeAllMapLayers()
         # qps.testing.stop_app()
+
+    # def test_fail_to_remove_layers(self):
+    #    lyr1 = qps.testing.TestObjects.createVectorLayer()
+    #    QgsProject.instance().addMapLayer(lyr1)
 
 
 if __name__ == "__main__":

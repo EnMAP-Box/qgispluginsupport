@@ -15,10 +15,10 @@ import unittest
 from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle, QgsProject
 from qgis.gui import QgsMapCanvas
 from qps.crosshair.crosshair import CrosshairStyle, CrosshairMapCanvasItem
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import SpatialPoint
 
-start_app2()
+start_app()
 
 
 class CrosshairTests(TestCaseBase):

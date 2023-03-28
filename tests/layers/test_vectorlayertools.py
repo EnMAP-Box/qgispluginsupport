@@ -1,9 +1,9 @@
 import unittest
 
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.vectorlayertools import VectorLayerTools
 
-start_app2()
+start_app()
 
 
 class TestCasesVectorLayerTools(TestCaseBase):

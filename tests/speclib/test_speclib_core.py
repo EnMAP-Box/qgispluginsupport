@@ -40,13 +40,13 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralSet
     SpectralProfileBlock, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
     validateProfileValueDict, isProfileValueDict
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import toType, findTypeFromString, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
     createQgsField, qgsFields2str, str2QgsFields
 
 
-start_app2()
+start_app()
 
 
 class SpeclibCoreTests(TestCaseBase):

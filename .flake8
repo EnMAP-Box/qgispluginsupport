@@ -38,3 +38,5 @@ per-file-ignores =
     #  QGS104 Use 'import qgis.PyQt.pyrcc_main' instead of 'import PyQt5.pyrcc_main'
     # just not available in OSGeo4W installations
     qps/resources.py:QGS104
+    # allow QgisInterface as argument
+    qps/testing.py:QGS105

@@ -5,9 +5,9 @@ from qgis.PyQt.QtWidgets import QPushButton, QGroupBox
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout
 from qgis.gui import QgsSpinBox
 from qps.simplewidgets import SliderSpinBox, DoubleSliderSpinBox, FlowLayout
-from qps.testing import TestCaseBase, start_app2
+from qps.testing import TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class SimpleWidgetTests(TestCaseBase):

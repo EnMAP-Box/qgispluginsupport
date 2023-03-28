@@ -21,10 +21,10 @@ from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, Q
     QgsProject, QgsCoordinateReferenceSystem
 from qgis.gui import QgsMapCanvas
 from qps.cursorlocationvalue import CursorLocationInfoDock
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import SpatialPoint
 
-start_app2()
+start_app()
 
 
 class CursorLocationTest(TestCaseBase):

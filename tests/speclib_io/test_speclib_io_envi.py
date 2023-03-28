@@ -12,11 +12,11 @@ from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibrar
     SpectralLibraryImportWidget
 from qps.speclib.io.envi import EnviSpectralLibraryIO, findENVIHeader, EnviSpectralLibraryExportWidget, \
     EnviSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qpstestdata import enmap
 from qpstestdata import envi_sli as speclibpath
 
-start_app2()
+start_app()
 
 
 class TestSpeclibIO_ENVI(TestCaseBase):

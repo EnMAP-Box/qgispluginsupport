@@ -8,9 +8,9 @@ from qgis.core import QgsProject
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.rastersources import RasterLayerSpectralLibraryIO, RasterLayerSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class TestSpeclibIO_Raster(TestCaseBase):

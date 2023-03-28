@@ -6,9 +6,9 @@ from qgis.PyQt.QtWidgets import QDialog
 from qgis.core import QgsProviderSublayerDetails, QgsApplication
 
 from qps.subdatasets import SubDatasetLoadingTask, SubDatasetSelectionDialog
-from qps.testing import TestCaseBase, TestObjects, start_app2
+from qps.testing import TestCaseBase, TestObjects, start_app
 
-start_app2()
+start_app()
 
 
 @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')

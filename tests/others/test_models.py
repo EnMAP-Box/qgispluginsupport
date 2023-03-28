@@ -13,9 +13,9 @@ from qgis.gui import QgsMapCanvas
 from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option, PyObjectTreeNode, SettingsModel, \
     SettingsTreeView, SettingsNode
 from qps.plotstyling.plotstyling import MarkerSymbol
-from qps.testing import TestCaseBase, start_app2
+from qps.testing import TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class ModelTests(TestCaseBase):

@@ -27,10 +27,10 @@ from qps.classification.classificationscheme import ClassificationScheme, ClassI
     registerClassificationSchemeEditorWidget, ClassificationSchemeWidgetFactory, ClassificationSchemeEditorConfigWidget, \
     ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
     ClassificationSchemeComboBoxModel, MIMEDATA_KEY_QGIS_STYLE
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import file_search
 
-start_app2()
+start_app()
 
 
 class TestsClassificationScheme(TestCaseBase):

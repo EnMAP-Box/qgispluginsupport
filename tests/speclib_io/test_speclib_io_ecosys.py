@@ -8,9 +8,9 @@ from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorLayer
 
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class TestSpeclibIO_EcoSIS(TestCaseBase):

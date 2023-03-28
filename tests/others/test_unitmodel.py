@@ -1,8 +1,8 @@
 from qgis.PyQt.QtWidgets import QComboBox
-from qps.testing import TestCaseBase, start_app2
+from qps.testing import TestCaseBase, start_app
 from qps.unitmodel import UnitModel, XUnitModel
 
-start_app2()
+start_app()
 
 
 class UnitModelTests(TestCaseBase):

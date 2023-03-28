@@ -30,10 +30,10 @@ from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, Spec
 from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
 from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import file_search
 
-start_app2()
+start_app()
 
 
 class TestIO(TestCaseBase):

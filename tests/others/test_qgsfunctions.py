@@ -18,11 +18,11 @@ from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py, RasterPro
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import SpatialExtent
 from qps.utils import SpatialPoint
 
-start_app2()
+start_app()
 
 
 class QgsFunctionTests(TestCaseBase):

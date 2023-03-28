@@ -16,11 +16,11 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SingleProfileSamplingMode, SpectralProfileSamplingModeModel, SpectralProfileSamplingMode, \
     SamplingBlockDescription, \
     SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode
-from qps.testing import TestCaseBase, start_app2
+from qps.testing import TestCaseBase, start_app
 from qps.testing import TestObjects
 from qps.utils import SpatialPoint, spatialPoint2px, parseWavelength, rasterArray, SpatialExtent
 
-start_app2()
+start_app()
 
 
 class SpectralProcessingTests(TestCaseBase):

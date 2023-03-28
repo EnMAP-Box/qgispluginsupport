@@ -21,10 +21,10 @@ from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, 
     QgsMapToolCapture, QgsMapMouseEvent
 from qps.maptools import SpatialExtentMapTool, QgsMapToolSelectionHandler, QgsMapToolAddFeature, MapToolCenter, \
     QgsMapToolSelect, MapTools, PixelScaleExtentMapTool, FullExtentMapTool
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import SpatialExtent
 
-start_app2()
+start_app()
 
 
 class TestMapTools(TestCaseBase):

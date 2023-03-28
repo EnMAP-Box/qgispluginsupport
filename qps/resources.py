@@ -275,7 +275,7 @@ def initQtResources(roots: list = []):
         initResourceFile(path)
 
 
-def initResourceFile(path):
+def initResourceFile(path: Union[str, pathlib.Path]):
     """
     Loads a '*_rc.py' file into the QApplication's resource system
     """

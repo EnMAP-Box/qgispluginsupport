@@ -42,12 +42,12 @@ from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER
 from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
 from qpstestdata import enmap, hymap
 
-start_app2()
+start_app()
 
 
 class TestSpeclibWidgets(TestCaseBase):

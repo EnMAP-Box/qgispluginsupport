@@ -23,12 +23,12 @@ from qps import registerMapLayerConfigWidgetFactories, MAPLAYER_CONFIGWIDGET_FAC
 from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
 from qps.layerproperties import RemoveAttributeDialog, AttributeTableWidget, CopyAttributesDialog, AddAttributeDialog, \
     showLayerPropertiesDialog, defaultRasterRenderer, equal_styles
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import createQgsField
 
 LAYER_WIDGET_REPS = 5
 
-start_app2()
+start_app()
 
 
 class LayerPropertyTests(TestCaseBase):

@@ -17,9 +17,9 @@ from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
     SpectralProcessingRasterLayerWidgetWrapper
-from qps.testing import TestObjects, TestCaseBase, ExampleAlgorithmProvider, start_app2
+from qps.testing import TestObjects, TestCaseBase, ExampleAlgorithmProvider, start_app
 
-start_app2()
+start_app()
 
 
 class SpectralProcessingTests(TestCaseBase):

@@ -8,10 +8,10 @@ from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider, \
     VectorLayerFieldRasterDataProvider, createRasterLayers
 from qps.speclib.core.spectralprofile import SpectralSetting, decodeProfileValueDict
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import rasterArray
 
-start_app2()
+start_app()
 
 
 class RasterDataProviderTests(TestCaseBase):

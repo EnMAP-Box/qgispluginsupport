@@ -24,8 +24,6 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-import enum
-import gc
 import inspect
 import itertools
 import os
@@ -36,23 +34,22 @@ import site
 import sqlite3
 import sys
 import traceback
-
 import uuid
 import warnings
 from typing import Set, List, Union, Tuple
 from unittest import mock
+
 import numpy as np
+from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
-from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu
-from qgis.core import QgsTemporalController, edit
 from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
@@ -62,6 +59,7 @@ from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, 
     QgsProviderRegistry, QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge, \
     QgsProcessingModelAlgorithm, QgsProcessingRegistry, QgsProcessingContext, \
     QgsProcessingFeedback
+from qgis.core import QgsTemporalController, edit
 from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
@@ -92,54 +90,16 @@ WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.geojson'
 
-
-@enum.unique
-class StartOptions(enum.IntFlag):
-    Minimized = 0
-    EditorWidgets = 1
-    ProcessingFramework = 2
-    PythonRunner = 4
-    PrintProviders = 8
-    All = EditorWidgets | ProcessingFramework | PythonRunner | PrintProviders
-
-
-def stop_app():
-    """
-    Stops the QGIS Application, if started via qgis.test.start_app()
-    """
-    global _QGIS_MOCKUP
-    global _PYTHON_RUNNER
-    _PYTHON_RUNNER = None
-    _QGIS_MOCKUP = None
-    QgsPythonRunner.setInstance(None)
-    import qgis.utils
-    if isinstance(qgis.utils.iface, QgisInterface):
-        from qgis.PyQt.sip import unwrapinstance
-        unwrapinstance(qgis.utils.iface)
-        qgis.utils.iface = None
-
-    import qgis.testing as qtest
-    if isinstance(getattr(qtest, 'QGISAPP', None), QgsApplication):
-        try:
-            qtest.stop_app()
-        except NameError as ex:
-            s = ""
-        except Exception as ex2:
-            s = ""
-            pass
-    import gc
-    gc.collect()
-
-
 _QGIS_MOCKUP = None
 _PYTHON_RUNNER = None
 
 
-def start_app2(cleanup: bool = True,
-               init_processing: bool = True,
-               init_python_runner: bool = True,
-               init_editor_widgets: bool = True,
-               init_iface: bool = True):
+def start_app(cleanup: bool = True,
+              init_processing: bool = True,
+              init_python_runner: bool = True,
+              init_editor_widgets: bool = True,
+              init_iface: bool = True,
+              resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
     app = qgis.testing.start_app(cleanup)
     providers = QgsApplication.processingRegistry().providers()
     global _PYTHON_RUNNER
@@ -159,10 +119,15 @@ def start_app2(cleanup: bool = True,
     if init_iface:
         get_iface()
 
+    for path in resources:
+        initResourceFile(path)
 
-def start_app(cleanup: bool = True,
-              options=StartOptions.All,
-              resources: List[Union[str, pathlib.Path]] = None) -> QgsApplication:
+    return app
+
+
+def depr_start_app(cleanup: bool = True,
+                   # options=StartOptions.All,
+                   resources: List[Union[str, pathlib.Path]] = None) -> QgsApplication:
     """
     :param cleanup:
     :param options: combination of StartOptions
@@ -209,14 +174,14 @@ def start_app(cleanup: bool = True,
                 QgsProviderRegistry.instance().libraryDirectory().path())
 
         # initiate a PythonRunner instance if None exists
-        if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
-            if not isinstance(_PYTHON_RUNNER, QgsPythonRunnerMockup):
-                _PYTHON_RUNNER = QgsPythonRunnerMockup()
-            QgsPythonRunner.setInstance(_PYTHON_RUNNER)
+        # if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
+        #    if not isinstance(_PYTHON_RUNNER, QgsPythonRunnerMockup):
+        #        _PYTHON_RUNNER = QgsPythonRunnerMockup()
+        #    QgsPythonRunner.setInstance(_PYTHON_RUNNER)
 
         # init standard EditorWidgets
-        if StartOptions.EditorWidgets in options and len(QgsGui.editorWidgetRegistry().factories()) == 0:
-            QgsGui.editorWidgetRegistry().initEditors()
+        # if StartOptions.EditorWidgets in options and len(QgsGui.editorWidgetRegistry().factories()) == 0:
+        #    QgsGui.editorWidgetRegistry().initEditors()
 
         # test SRS
         assert os.path.isfile(QgsApplication.qgisUserDatabaseFilePath()), \
@@ -238,8 +203,8 @@ def start_app(cleanup: bool = True,
                                        / 'python' / 'plugins').as_posix()
 
         # initialize the QGIS processing framework
-        if StartOptions.ProcessingFramework in options:
-
+        # if StartOptions.ProcessingFramework in options:
+        if True:
             pfProviderIds = [p.id() for p in QgsApplication.processingRegistry().providers()]
             if 'native' not in pfProviderIds:
                 from qgis.analysis import QgsNativeAlgorithms
@@ -262,10 +227,11 @@ def start_app(cleanup: bool = True,
                 from processing.core.Processing import Processing
                 Processing.initialize()
 
+        """
         if StartOptions.PrintProviders in options:
             providers = QgsProviderRegistry.instance().providerList()
             print('Providers: {}'.format(', '.join(providers)))
-
+        """
     return qgsApp
 
 
@@ -495,7 +461,7 @@ def get_iface() -> QgisInterface:
     return qgis.utils.iface
 
 
-def _set_iface(ifaceMock):
+def _set_iface(ifaceMock: QgisInterface):
     """
     Replaces the iface variable in other plugins, i.e. the  QGIS processing plugin
     :param ifaceMock: QgisInterface
@@ -514,19 +480,28 @@ APP = None
 
 class TestCaseBase(qgis.testing.TestCase):
 
+    @staticmethod
+    def check_empty_layerstore(name: str):
+        error = None
+        if len(QgsProject.instance().mapLayers()) > 0:
+            error = f'QgsProject layers store is not empty: {name}'
+            QgsProject.instance().removeAllMapLayers()
+        if error:
+            raise Exception(error)
+
     def setUp(self):
-        assert len(QgsProject.instance().mapLayers()) == 0, self.__class__.__name__
+        self.check_empty_layerstore(f'{self.__class__.__name__}::{self._testMethodName}')
 
     def tearDown(self):
-        assert len(QgsProject.instance().mapLayers()) == 0, self.__class__.__name__
+        self.check_empty_layerstore(f'{self.__class__.__name__}::{self._testMethodName}')
 
     @classmethod
     def setUpClass(cls):
-        assert len(QgsProject.instance().mapLayers()) == 0, cls.__class__.__name__
+        cls.check_empty_layerstore(cls.__class__)
 
     @classmethod
     def tearDownClass(cls):
-        assert len(QgsProject.instance().mapLayers()) == 0, cls.__name__
+        cls.check_empty_layerstore(cls.__class__)
 
     @classmethod
     def showGui(cls, widgets: Union[QWidget, List[QWidget]] = None) -> bool:
@@ -687,45 +662,19 @@ class TestCaseBase(qgis.testing.TestCase):
 
 
 class TestCase(TestCaseBase):
-    IFACE = None
-    APP: QgsApplication = None
 
-    def __int__(self, *args, **kwds):
-        super().__int__(*args, **kwds)
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
 
     @classmethod
-    def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
+    def setUpClass(cls, *args, **kwargs) -> None:
+        resources = kwargs.pop('resources', [])
 
-        if not isinstance(QgsApplication.instance(), QgsApplication):
-            # TestCase.APP = start_app()
-            TestCase.APP = qgis.testing.start_app(cleanup=cleanup)
+        super().setUpClass(*args, **kwargs)
+        resources.append(QPS_RESOURCE_FILE)
+        start_app(cleanup=kwargs.get('cleanup'), resources=resources)
 
-        if TestCase.IFACE is None:
-            TestCase.IFACE = get_iface()
-
-        if not QgsApplication.processingRegistry().providers():
-            from processing.core.Processing import Processing
-            Processing.initialize()
-
-        if QgsGui.editorWidgetRegistry().name('TextEdit') in ['', None]:
-            QgsGui.editorWidgetRegistry().initEditors()
-
-        initResourceFile(QPS_RESOURCE_FILE)
-
-    def tearDown(self):
-        if isinstance(TestCase.IFACE, QgisInterface):
-            # clean layers
-            TestCase.IFACE.layerTreeView().layerTreeModel().rootGroup().removeAllChildren()
-
-        if QgsProject.instance():
-            QgsProject.instance().removeAllMapLayers()
-
-        if isinstance(QgsApplication.instance(), QgsApplication) and APP == QgsApplication.instance():
-            pass
-            # stop_app()
-        gc.collect()
-
-    def assertIconsEqual(self, icon1, icon2):
+    def assertIconsEqual(self, icon1: QIcon, icon2: QIcon):
         self.assertIsInstance(icon1, QIcon)
         self.assertIsInstance(icon2, QIcon)
         size = QSize(256, 256)

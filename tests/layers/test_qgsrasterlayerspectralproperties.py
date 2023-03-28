@@ -2,12 +2,11 @@ import unittest
 
 from qgis.core import QgsRasterLayer
 from qgis.gui import QgsGui
-from qgis.testing import start_app
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, QgsRasterLayerSpectralProperties, stringToType
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class TestQgsRasterLayerProperties(TestCaseBase):

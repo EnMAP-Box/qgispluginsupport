@@ -15,10 +15,10 @@ from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLay
 from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
     GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 from qpstestdata import enmap
 
-start_app2()
+start_app()
 
 
 class ControlWidget(QWidget):

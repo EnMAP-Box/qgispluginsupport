@@ -6,7 +6,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLabel
 
 from qgis.core import QgsApplication
-from qps.testing import TestCase, StartOptions, start_app
+from qps.testing import TestCase, start_app
 
 # image resource location
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
@@ -50,7 +50,7 @@ class ExampleCase(TestCase):
         resources = []
         if qgis_images_resources.is_file():
             resources.append(qgis_images_resources)
-        super().setUpClass(cleanup=False, options=StartOptions.Minimized, resources=resources)
+        super().setUpClass(resources=resources)
 
     @unittest.skipIf(not qgis_images_resources.is_file(),
                      'Resource file does not exist: {}'.format(qgis_images_resources))

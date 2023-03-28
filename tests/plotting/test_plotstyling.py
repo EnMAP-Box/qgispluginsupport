@@ -30,9 +30,9 @@ from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
 from qps.plotstyling.plotstyling import PlotStyleButton, pen2tuple, PlotStyle, XMLTAG_PLOTSTYLENODE, \
     createSetPlotStyleAction, MarkerSymbol, tuple2pen, registerPlotStyleEditorWidget, PlotStyleEditorWidgetFactory, \
     PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget, PlotWidgetStyle
-from qps.testing import TestCaseBase, start_app2
+from qps.testing import TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class PlotStyleTests(TestCaseBase):

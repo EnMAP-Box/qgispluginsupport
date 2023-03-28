@@ -23,9 +23,9 @@ from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerComboBox,
     QgsMapLayerConfigWidgetFactory
 from qps.layerconfigwidgets.gdalmetadata import RX_OGR_URI
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 
-start_app2()
+start_app()
 LAYER_WIDGET_REPS = 5
 
 

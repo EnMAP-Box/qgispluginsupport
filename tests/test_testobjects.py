@@ -12,9 +12,9 @@ from osgeo import gdal, ogr
 
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem
-from qps.testing import TestObjects, start_app2, TestCaseBase
+from qps.testing import TestObjects, start_app, TestCaseBase
 
-start_app2()
+start_app()
 
 
 class TestCasesTestObject(TestCaseBase):

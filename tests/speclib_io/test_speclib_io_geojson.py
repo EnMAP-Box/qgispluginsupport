@@ -13,9 +13,9 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO, GeoJsonSpectralLibraryExportWidget, \
     GeoJsonFieldValueConverter
-from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.testing import TestObjects, TestCaseBase, start_app
 
-start_app2()
+start_app()
 
 
 class TestSpeclibIOGeoJSON(TestCaseBase):

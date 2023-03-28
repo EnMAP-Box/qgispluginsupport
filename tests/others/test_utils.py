@@ -32,8 +32,7 @@ from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWid
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
-from qps.testing import TestCase
-from qps.testing import TestObjects
+from qps.testing import TestObjects, TestCase
 from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItemsToMenu, value2str, filenameFromString, \
     SelectMapLayersDialog, defaultBands, relativePath, nextColor, convertMetricUnit, createQgsField, px2geo, geo2px, \
     SpatialPoint, layerGeoTransform, displayBandNames, UnitLookup, qgsRasterLayer, gdalDataset, px2geocoordinates, \
@@ -54,11 +53,6 @@ class TestUtils(TestCase):
                       'typename=''fis:re_postleit'' ' \
                       'url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
                       'version=''auto'''
-        QgsProject.instance().removeAllMapLayers()
-
-    def tearDown(self):
-
-        super().tearDown()
 
     def test_loadUi(self):
 
@@ -723,6 +717,8 @@ class TestUtils(TestCase):
         d.addLayerDescription('A Raster Layer', QgsMapLayerProxyModel.RasterLayer)
 
         self.showGui(d)
+
+        QgsProject.instance().removeAllMapLayers()
 
     def test_defaultBands(self):
 
