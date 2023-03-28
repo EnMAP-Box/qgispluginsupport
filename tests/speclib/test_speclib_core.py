@@ -36,18 +36,20 @@ from qps.speclib.core import is_spectral_library, profile_field_list, profile_fi
     create_profile_field, is_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfile, SpectralSetting, \
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralSetting, \
     SpectralProfileBlock, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
-    validateProfileValueDict
+    validateProfileValueDict, isProfileValueDict
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-from qps.speclib.io.csvdata import CSVSpectralLibraryIO
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import toType, findTypeFromString, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
     createQgsField, qgsFields2str, str2QgsFields
 
 
-class SpeclibCoreTests(TestCase):
+start_app2()
+
+
+class SpeclibCoreTests(TestCaseBase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
@@ -391,14 +393,10 @@ class SpeclibCoreTests(TestCase):
 
         outOfImage = SpatialPoint(extent.crs(), extent.xMinimum() - 10, extent.yMaximum() + 10)
 
-        sp = SpectralProfile.fromRasterLayer(lyr, center)
-        self.assertIsInstance(sp, SpectralProfile)
-        self.assertIsInstance(sp.xValues(), list)
-        self.assertIsInstance(sp.yValues(), list)
-        self.assertEqual(len(sp.xValues()), lyr.bandCount())
-        self.assertEqual(len(sp.yValues()), lyr.bandCount())
+        sp = SpectralLibraryUtils.readProfileDict(lyr, center)
+        self.assertTrue(isProfileValueDict(sp))
 
-        sp = SpectralProfile.fromRasterLayer(lyr, outOfImage)
+        sp = SpectralLibraryUtils.readProfileDict(lyr, outOfImage)
         self.assertTrue(sp is None)
 
     @unittest.SkipTest
@@ -535,9 +533,11 @@ class SpeclibCoreTests(TestCase):
 
     def test_SpectralLibraryUtils(self):
 
-        from qpstestdata import envi_sli
+        from qpstestdata import envi_sli, enmap
+        from qps import registerExpressionFunctions
         from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
         initSpectralLibraryIOs()
+        registerExpressionFunctions()
 
         vl = SpectralLibraryUtils.readFromSource(envi_sli)
         self.assertIsInstance(vl, QgsVectorLayer)
@@ -546,6 +546,15 @@ class SpeclibCoreTests(TestCase):
         vl2 = SpectralLibraryUtils.readFromVectorLayer(vl)
         self.assertTrue(vl2, QgsVectorLayer)
         self.assertTrue(is_spectral_library(vl2))
+
+        rl = QgsRasterLayer(enmap)
+        rl = TestObjects.createRasterLayer()
+        self.assertTrue(rl.crs().isValid())
+        # QgsProject.instance().addMapLayer(rl)
+        pt = SpatialPoint.fromMapLayerCenter(rl)
+
+        d = SpectralLibraryUtils.readProfileDict(rl, pt)
+        self.assertTrue(isProfileValueDict(d))
 
     def test_featuresToArrays(self):
         # lyrWMS = QgsRasterLayer(WMS_GMAPS, 'test', 'wms')
@@ -585,21 +594,6 @@ class SpeclibCoreTests(TestCase):
         self.assertTrue(findTypeFromString('23.3') is float)
         self.assertTrue(findTypeFromString('xyz23.3') is str)
         self.assertTrue(findTypeFromString('') is str)
-
-        regex = CSVSpectralLibraryIO.REGEX_BANDVALUE_COLUMN
-
-        # REGEX to identify band value column names
-
-        for text in ['b1', 'b1_']:
-            match = regex.match(text)
-            self.assertEqual(match.group('band'), '1')
-            self.assertEqual(match.group('xvalue'), None)
-            self.assertEqual(match.group('xunit'), None)
-
-        match = regex.match('b1 23.34 nm')
-        self.assertEqual(match.group('band'), '1')
-        self.assertEqual(match.group('xvalue'), '23.34')
-        self.assertEqual(match.group('xunit'), 'nm')
 
     def test_writeAsRaster(self):
 

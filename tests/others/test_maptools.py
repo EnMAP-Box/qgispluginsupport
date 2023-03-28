@@ -21,29 +21,22 @@ from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, 
     QgsMapToolCapture, QgsMapMouseEvent
 from qps.maptools import SpatialExtentMapTool, QgsMapToolSelectionHandler, QgsMapToolAddFeature, MapToolCenter, \
     QgsMapToolSelect, MapTools, PixelScaleExtentMapTool, FullExtentMapTool
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.utils import SpatialExtent
 
+start_app2()
 
-class TestMapTools(TestCase):
 
-    def setUp(self):
-        self.canvas = QgsMapCanvas()
-        self.lyr = TestObjects.createVectorLayer()
-        QgsProject.instance().addMapLayer(self.lyr)
+class TestMapTools(TestCaseBase):
 
-    def createCanvas(self) -> QgsMapCanvas:
+    def createCanvas(self) -> [QgsMapCanvas, QgsVectorLayer]:
         canvas = QgsMapCanvas()
         lyr = TestObjects.createVectorLayer()
         QgsProject.instance().addMapLayer(lyr)
         canvas.setLayers([lyr])
         canvas.setExtent(lyr.extent())
         canvas.setExtent(canvas.fullExtent())
-        return canvas
-
-    def tearDown(self):
-        self.canvas.close()
-        QgsProject.instance().removeMapLayer(self.lyr)
+        return canvas, lyr
 
     def test_QgsMapTools(self):
 
@@ -68,7 +61,7 @@ class TestMapTools(TestCase):
         canvas.setCurrentLayer(lyrV_Point)
 
         lyrV_Point.startEditing()
-        mt = QgsMapToolAddFeature(canvas, QgsMapToolCapture.CapturePoint, cadDockWidget)
+        mt = QgsMapToolAddFeature(canvas, cadDockWidget, QgsMapToolCapture.CapturePoint)
         self.assertIsInstance(mt, QgsMapToolAddFeature)
         canvas.setMapTool(mt)
         mt.activate()
@@ -118,6 +111,7 @@ class TestMapTools(TestCase):
         # time.sleep(2)
 
         self.showGui(canvas)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_PixelScaleExtentMapTool(self):
 
@@ -137,12 +131,13 @@ class TestMapTools(TestCase):
 
     def test_CenterMapCanvasMapTool(self):
 
-        canvas = self.createCanvas()
+        canvas, lyr = self.createCanvas()
         canvas.show()
         mt = MapToolCenter(canvas)
         canvas.setMapTool(mt)
 
         self.showGui(canvas)
+        QgsProject.instance().removeAllMapLayers()
 
     def onExtentReceived(self, crs: QgsCoordinateReferenceSystem, rect: QgsRectangle):
         spatialExtent = SpatialExtent(crs, rect)
@@ -151,7 +146,7 @@ class TestMapTools(TestCase):
 
     def test_SpatialExtentMapTool(self):
 
-        canvas = self.createCanvas()
+        canvas, lyr = self.createCanvas()
         canvas.show()
         canvas.setCurrentLayer(canvas.layers()[0])
         mt = SpatialExtentMapTool(canvas)
@@ -173,10 +168,11 @@ class TestMapTools(TestCase):
         canvas.mouseReleaseEvent(event)
 
         self.assertIsInstance(self.mSpatialExtent, SpatialExtent)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_QgsFeatureSelectTool(self):
 
-        canvas = self.createCanvas()
+        canvas, lyr = self.createCanvas()
         canvas.show()
         canvas.setCurrentLayer(canvas.layers()[0])
         mt1 = QgsMapToolSelect(canvas)
@@ -189,11 +185,11 @@ class TestMapTools(TestCase):
         canvas.setMapTool(mt1)
 
         self.showGui(canvas)
-        print('DONE')
+        QgsProject.instance().removeAllMapLayers()
 
     def test_AddFeature(self):
 
-        canvas = self.createCanvas()
+        canvas, lyr = self.createCanvas()
         canvas.show()
         cadDockWidget = QgsAdvancedDigitizingDockWidget(canvas)
         for lyr in canvas.layers():
@@ -202,9 +198,13 @@ class TestMapTools(TestCase):
                 lyr.startEditing()
                 break
         from qps.maptools import QgsMapToolDigitizeFeature
-        mt = QgsMapToolAddFeature(canvas, QgsMapToolDigitizeFeature.CaptureNone, cadDockWidget)
+        mt = QgsMapToolAddFeature(canvas, cadDockWidget, QgsMapToolDigitizeFeature.CaptureNone)
         canvas.setMapTool(mt)
         self.showGui(canvas)
+        # mt.deactivate()
+        del mt
+        QgsProject.instance().removeAllMapLayers()
+        s = ""
 
     def test_MapTools(self):
         canvas = QgsMapCanvas()
@@ -229,7 +229,7 @@ class TestMapTools(TestCase):
                              QgsMapToolCapture.CaptureLine,
                              QgsMapToolCapture.CapturePolygon,
                              QgsMapToolCapture.CaptureNone]:
-                    mt = MapTools.create(mte, canvas, mode, cadDockWidget)
+                    mt = MapTools.create(mte, canvas, mode=mode, cadDockWidget=cadDockWidget)
                     self.assertIsInstance(mt, QgsMapTool)
                     tools.append(mt)
             else:
@@ -239,11 +239,14 @@ class TestMapTools(TestCase):
 
         for enum in MapTools.mapToolEnums():
             print('Test MapTool {}...'.format(enum.name))
-            mapTool = MapTools.create(name, self.canvas)
+            if enum.name in [MapTools.AddFeature.name]:
+                mapTool = MapTools.create(enum.name, canvas, cadDockWidget)
+            else:
+                mapTool = MapTools.create(enum.name, canvas)
             self.assertIsInstance(mapTool, QgsMapTool)
-            self.assertEqual(mapTool, self.canvas.mapTool())
+            self.assertEqual(mapTool, canvas.mapTool())
 
-            size = self.canvas.size()
+            size = canvas.size()
 
             mouseEvent = QMouseEvent(
                 QEvent.MouseButtonPress,
@@ -252,16 +255,18 @@ class TestMapTools(TestCase):
                 Qt.LeftButton,
                 Qt.NoModifier)
 
-            qgsMouseEvent = QgsMapMouseEvent(self.canvas, mouseEvent)
+            qgsMouseEvent = QgsMapMouseEvent(canvas, mouseEvent)
 
             mapTool.canvasPressEvent(qgsMouseEvent)
             mapTool.canvasReleaseEvent(qgsMouseEvent)
 
-        mt = PixelScaleExtentMapTool(self.canvas)
+        mt = PixelScaleExtentMapTool(canvas)
         self.assertIsInstance(mt, PixelScaleExtentMapTool)
 
-        mt = FullExtentMapTool(self.canvas)
+        mt = FullExtentMapTool(canvas)
         self.assertIsInstance(mt, FullExtentMapTool)
+
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == "__main__":

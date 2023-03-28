@@ -12,8 +12,10 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory, SpectralProfileEditorConfigWidget, \
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorWidget, registerSpectralProfileEditorWidget, \
     SpectralProfileTableModel, SpectralProfileJsonEditor, SpectralProfileTableEditor
-from qps.testing import TestCase, TestObjects
+from qps.testing import TestCaseBase, TestObjects, start_app2
 from qps.unitmodel import BAND_NUMBER
+
+start_app2()
 
 
 def valid_profile_dicts() -> List[dict]:
@@ -30,7 +32,7 @@ def valid_profile_dicts() -> List[dict]:
     return examples
 
 
-class TestSpeclibWidgets(TestCase):
+class TestSpeclibWidgets(TestCaseBase):
 
     def valid_profile_dicts(self):
         return valid_profile_dicts()

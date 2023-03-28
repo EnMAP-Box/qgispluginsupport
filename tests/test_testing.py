@@ -8,24 +8,19 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import qps.testing
+from qps.testing import TestCaseBase, start_app2
 from qgis.core import QgsProject, QgsApplication, QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
 
+start_app2()
 
-@unittest.skipIf(isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication must be None')
-class TestCasesClassTesting(unittest.TestCase):
 
-    def setUp(self) -> None:
-        app = QgsApplication.instance()
-        import qgis.testing
-        if hasattr(qgis.testing, 'QGISAPP'):
-            qgis.testing.stop_app()
+class TestCasesClassTesting(TestCaseBase):
 
-    @unittest.skipIf(isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication must be None')
     def test_init(self):
         self.assertTrue(qps.testing is not None)
 
-        qgis_app = qps.testing.start_app(options=qps.testing.StartOptions.All)
+        qgis_app = QgsApplication.instance()
         print(f'qgis_app: {qgis_app}', flush=True)
         self.assertIsInstance(qgis_app, QgsApplication)
         self.assertIsInstance(qgis_app.libexecPath(), str)
@@ -71,6 +66,7 @@ class TestCasesClassTesting(unittest.TestCase):
         for k in sorted(ENV.keys()):
             print('{}={}'.format(k, ENV[k]))
 
+        QgsProject.instance().removeAllMapLayers()
         # qps.testing.stop_app()
 
 

@@ -15,8 +15,10 @@ from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLay
 from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
     GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from qps.testing import TestCase, TestObjects
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qpstestdata import enmap
+
+start_app2()
 
 
 class ControlWidget(QWidget):
@@ -71,7 +73,7 @@ class ControlWidget(QWidget):
         self.setLayout(vl)
 
 
-class TestsGdalMetadata(TestCase):
+class TestsGdalMetadata(TestCaseBase):
 
     def test_GDALBandMetadataModel(self):
         from qpstestdata import enmap
@@ -328,6 +330,7 @@ foo H =
 
         W = ControlWidget()
         self.showGui(W)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_rasterFormats(self):
         from qpstestdata import enmap
@@ -408,6 +411,7 @@ foo H =
 
         w = ControlWidget()
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_GDALBandMetadataModelContextMenus(self):
         from qpstestdata import enmap

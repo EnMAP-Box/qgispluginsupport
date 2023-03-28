@@ -1,36 +1,26 @@
 import datetime
 import enum
 import json
-import os
-import pathlib
 import pickle
 import sys
-
-import warnings
 from json import JSONDecodeError
-from typing import Any, List, Union, Tuple, Dict, Optional, Iterable, Callable
 from math import nan
+from typing import Any, List, Union, Tuple, Dict, Optional, Iterable
+
 import numpy as np
 from osgeo import gdal
 
 from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.PyQt.QtCore import QJsonDocument
-from qgis.PyQt.QtCore import QPoint, QVariant, QByteArray, NULL
-from qgis.PyQt.QtWidgets import QWidget
+from qgis.PyQt.QtCore import QVariant, QByteArray
 from qgis.core import QgsFeature, QgsMapLayer, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
-    QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsRaster, QgsPoint, QgsProcessingFeedback
-from qgis.core import QgsTask, QgsFeatureRequest
-from qgis.gui import QgsMapCanvas
-from . import profile_field_list, profile_field_indices, first_profile_field_index, field_index, profile_fields, \
+    QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsProcessingFeedback
+from . import profile_field_indices, profile_fields, \
     is_profile_field, create_profile_field
-from .. import SPECLIB_CRS, EMPTY_VALUES, FIELD_VALUES, FIELD_FID, createStandardFields
-from ...plotstyling.plotstyling import PlotStyle
-from ...pyqtgraph import pyqtgraph as pg
+from .. import SPECLIB_CRS, EMPTY_VALUES
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...unitmodel import BAND_INDEX, BAND_NUMBER
-from ...utils import SpatialPoint, px2geo, geo2px, parseWavelength, qgsFields2str, str2QgsFields, \
-    qgsFieldAttributes2List, \
-    spatialPoint2px, saveTransform, qgsRasterLayer, qgsField
+from ...utils import saveTransform, qgsRasterLayer, qgsField
 
 # The values that describe a spectral profiles
 # y in 1st position ot show profile values in string representations first
@@ -512,6 +502,7 @@ class SpectralSetting(object):
                     band.SetMetadata(METADATA)
                 ds.FlushCache()
                 del ds
+
 
 def groupBySpectralProperties(profiles: Union[QgsVectorLayer, List[QgsFeature]],
                               excludeEmptyProfiles: bool = True,

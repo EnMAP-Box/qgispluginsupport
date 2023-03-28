@@ -13,10 +13,12 @@ from qgis.gui import QgsMapCanvas
 from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option, PyObjectTreeNode, SettingsModel, \
     SettingsTreeView, SettingsNode
 from qps.plotstyling.plotstyling import MarkerSymbol
-from qps.testing import TestCase
+from qps.testing import TestCaseBase, start_app2
+
+start_app2()
 
 
-class ModelTests(TestCase):
+class ModelTests(TestCaseBase):
 
     def createTestNodes(self, parentNode: TreeNode,
                         rows: int = 2,
@@ -76,7 +78,7 @@ class ModelTests(TestCase):
         n.appendChildNodes(objNode)
         root.appendChildNodes(n)
         tv.setModel(m)
-        self.showGui(tv)
+        #  self.showGui(tv)
 
     def test_treeNode(self):
 
@@ -183,7 +185,7 @@ class ModelTests(TestCase):
 
         w = QWidget()
         w.setLayout(vbLayout)
-        self.showGui(w)
+        #  self.showGui(w)
 
     def test_treeView(self):
 
@@ -243,7 +245,7 @@ class ModelTests(TestCase):
 
         nLast.parentNode().removeChildNodes(nLast)
         self.assertEqual(TM.findParentNode(nLast, TestNodeB), None)
-        self.showGui(TV)
+        #  self.showGui(TV)
 
     def test_nodeColumnSpan(self):
 
@@ -283,7 +285,7 @@ class ModelTests(TestCase):
             n21.setValues(None)
 
         # todo: test if columns are spanned / not
-        self.showGui(TV)
+        #  self.showGui(TV)
 
     def test_proxyModel(self):
 
@@ -318,7 +320,7 @@ class ModelTests(TestCase):
         w = QWidget()
         w.setWindowTitle('TreeModel test')
         w.setLayout(gridLayout)
-        self.showGui(w)
+        #  self.showGui(w)
 
     def test_modelview(self):
 
@@ -344,7 +346,7 @@ class ModelTests(TestCase):
         n1.appendChildNodes([n3])
         n1.appendChildNodes(n4)
 
-        self.showGui(tv)
+        #  self.showGui(tv)
 
     def test_SettingsModel(self):
 
@@ -393,7 +395,7 @@ class ModelTests(TestCase):
         view = SettingsTreeView()
         view.setModel(model)
 
-        self.showGui(view)
+        #  self.showGui(view)
 
 
 if __name__ == '__main__':

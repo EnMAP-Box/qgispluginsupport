@@ -14,31 +14,24 @@ import unittest
 
 from osgeo import gdal
 
-from qgis.PyQt.QtWidgets import QDialog, QHBoxLayout, QWidget, QGridLayout
+from qgis.PyQt.QtWidgets import QDialog, QWidget, QGridLayout
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
-    QgsMultiBandColorRenderer, QgsStyle, QgsTextFormat, QgsSingleBandGrayRenderer, QgsProject
-from qgis.gui import QgsMapLayerConfigWidget, QgsRendererPropertiesDialog, QgsMapCanvas, \
-    QgsMapLayerStyleManagerWidget, QgsRendererRasterPropertiesWidget, QgsRasterTransparencyWidget, \
-    QgsTextFormatPanelWidget
+    QgsMultiBandColorRenderer, QgsStyle, QgsSingleBandGrayRenderer, QgsProject
 from qgis.gui import QgsRasterLayerProperties, QgsOptionsDialogBase, QgsMapLayerConfigWidgetFactory
+from qgis.gui import QgsRendererPropertiesDialog, QgsMapCanvas
 from qps import registerMapLayerConfigWidgetFactories, MAPLAYER_CONFIGWIDGET_FACTORIES
 from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
 from qps.layerproperties import RemoveAttributeDialog, AttributeTableWidget, CopyAttributesDialog, AddAttributeDialog, \
-    showLayerPropertiesDialog, LayerPropertiesDialog, defaultRasterRenderer, equal_styles
-from qps.resources import findQGISResourceFiles, initQtResources
-from qps.testing import TestObjects, TestCase, StartOptions
+    showLayerPropertiesDialog, defaultRasterRenderer, equal_styles
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.utils import createQgsField
 
 LAYER_WIDGET_REPS = 5
 
+start_app2()
 
-class LayerPropertyTests(TestCase):
 
-    @classmethod
-    def setUpClass(cls, cleanup=True, options=StartOptions.EditorWidgets, resources=[]) -> None:
-        resources += findQGISResourceFiles()
-        super(LayerPropertyTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
-        initQtResources()
+class LayerPropertyTests(TestCaseBase):
 
     def test_equal_styles(self):
 
@@ -103,7 +96,7 @@ class LayerPropertyTests(TestCase):
         d = QgsRendererPropertiesDialog(lyr, style, embedded=True)
         self.showGui(d)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'blocking dialog')
     def test_layer_properties(self):
         from qps import registerMapLayerConfigWidgetFactories
         registerMapLayerConfigWidgetFactories()
@@ -113,28 +106,6 @@ class LayerPropertyTests(TestCase):
 
         vl = TestObjects.createVectorLayer()
         showLayerPropertiesDialog(vl)
-
-    def test_LayerPropertiesDialog_Vector(self):
-        registerMapLayerConfigWidgetFactories()
-        lyr = TestObjects.createVectorLayer()
-        d = LayerPropertiesDialog(lyr)
-        self.assertIsInstance(d, LayerPropertiesDialog)
-        d.show()
-        d.sync()
-        for p in d.pages():
-            self.assertIsInstance(p, QgsMapLayerConfigWidget)
-            p.apply()
-            d.setPage(p)
-
-        w2 = QgsTextFormatPanelWidget(QgsTextFormat(), d.canvas(), None, lyr)
-        w2.show()
-
-        w = QWidget()
-        w.setLayout(QHBoxLayout())
-        w.layout().addWidget(d.canvas())
-        w.layout().addWidget(d)
-
-        self.showGui([w])
 
     def test_layerPropertiesDialog_RasterBandWidget(self):
 
@@ -169,6 +140,7 @@ class LayerPropertyTests(TestCase):
         w.setWindowTitle('Dialog Test')
         w.setLayout(grid)
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_LayerPropertiesDialog_Raster(self):
 
@@ -189,6 +161,7 @@ class LayerPropertyTests(TestCase):
                 d.addPropertiesPageFactory(factory)
 
         self.showGui(d)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_LayerProperties(self):
 
@@ -231,25 +204,13 @@ class LayerPropertyTests(TestCase):
         d.setName('test')
         self.showGui(d)
 
-    def test_p(self):
-
-        rl = TestObjects.createRasterLayer()
-        vl = TestObjects.createVectorLayer()
-        vd = QgsRendererPropertiesDialog(vl, QgsStyle(), True, None)
-        canvas = QgsMapCanvas()
-        rd = QgsRendererRasterPropertiesWidget(rl, canvas, None)
-        wtrans = QgsRasterTransparencyWidget(rl, canvas, None)
-
-        style = QgsMapLayerStyleManagerWidget(rl, canvas, None)
-        self.showGui([vd, rd, wtrans, style])
-
     def test_RemoveAttributeDialog(self):
         vl = TestObjects.createVectorLayer()
         d = RemoveAttributeDialog(vl)
 
         self.showGui(d)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking dialog')
     def test_CopyAttributesDialog(self):
 
         sl: QgsVectorLayer = TestObjects.createSpectralLibrary()

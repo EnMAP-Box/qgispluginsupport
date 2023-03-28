@@ -1,9 +1,11 @@
 from qgis.PyQt.QtWidgets import QComboBox
-from qps.testing import TestCase
+from qps.testing import TestCaseBase, start_app2
 from qps.unitmodel import UnitModel, XUnitModel
 
+start_app2()
 
-class UnitModelTests(TestCase):
+
+class UnitModelTests(TestCaseBase):
 
     def test_unitmodel(self):
         model = UnitModel()

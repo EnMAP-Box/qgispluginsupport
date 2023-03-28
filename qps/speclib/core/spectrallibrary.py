@@ -40,6 +40,8 @@ from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData
 from qgis.PyQt.QtWidgets import QWidget
+from qgis.core import QgsExpressionContextUtils, QgsExpression, QgsRasterLayer, QgsPointXY, QgsGeometry, \
+    QgsMapLayerStore, QgsProject, Qgis, edit
 from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsFeature, QgsVectorLayer, QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, \
     QgsActionManager, QgsFeatureRequest, \
@@ -54,8 +56,9 @@ from .spectralprofile import SpectralSetting, groupBySpectralProperties, prepare
 from .. import EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from .. import FIELD_VALUES, FIELD_NAME
 from ...plotstyling.plotstyling import PlotStyle
+from ...qgsfunctions import RasterProfile
 from ...utils import findMapLayer, \
-    qgsField, copyEditorWidgetSetup
+    qgsField, copyEditorWidgetSetup, SpatialPoint
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -114,11 +117,6 @@ for i in range(ogr.GetDriverCount()):
 OGR_EXTENSION2DRIVER[None] = OGR_EXTENSION2DRIVER['']
 
 DEBUG = os.environ.get('DEBUG', 'false').lower() in ['true', '1']
-
-
-def read_profiles(*args, **kwds):
-    warnings.warn('Use SpectralProfileUtils.profiles() instead')
-    return SpectralLibraryUtils.readProfiles(*args, **kwds)
 
 
 def containsSpeclib(mimeData: QMimeData) -> bool:
@@ -311,6 +309,39 @@ class SpectralLibraryUtils:
         return source
 
     @staticmethod
+    def readProfileDict(layer: QgsRasterLayer, point: Union[SpatialPoint, QgsPointXY],
+                        store: Optional[QgsMapLayerStore] = None) -> Dict:
+        """
+        Reads a spectral profile dictionary from a QgsRasterLayer at position point
+        """
+
+        if isinstance(point, SpatialPoint):
+            point = point.toCrs(layer.crs())
+
+        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(layer))
+        context.setGeometry(QgsGeometry.fromPointXY(point))
+
+        if Qgis.versionInt() >= 33000:
+            store = QgsMapLayerStore()
+            context.setLoadedLayerStore(store)
+        else:
+            store = QgsProject.instance().layerStore()
+
+        add_layer = store.mapLayer(layer.id()) != layer
+        if add_layer:
+            store.addMapLayer(layer)
+
+        exp = QgsExpression(f"{RasterProfile.NAME}('{layer.id()}', $geometry, encoding:='dict')")
+        exp.prepare(context)
+
+        assert exp.parserErrorString() == '', exp.parserErrorString()
+        d = exp.evaluate(context)
+        assert exp.evalErrorString() == '', exp.evalErrorString()
+        if add_layer:
+            store.takeMapLayer(layer)
+        return d
+
+    @staticmethod
     def readFromMimeData(mimeData: QMimeData) -> Optional[QgsVectorLayer]:
         """
         Reads a SpectraLibrary from mime data.
@@ -360,20 +391,19 @@ class SpectralLibraryUtils:
 
         lyr = QgsVectorLayer(path, name, provider, options=options)
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
-        lyr.startEditing()
-        lyr.beginEditCommand('Add fields')
+        with edit(lyr):
+            lyr.beginEditCommand('Add fields')
 
-        assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QVariant.String))
-        for fieldname in profile_fields:
-            if isinstance(fieldname, QgsField):
-                fieldname = fieldname.name()
-            SpectralLibraryUtils.addAttribute(lyr, create_profile_field(fieldname, encoding=encoding))
-        lyr.endEditCommand()
-        assert lyr.commitChanges(stopEditing=True)
+            assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QVariant.String))
+            for fieldname in profile_fields:
+                if isinstance(fieldname, QgsField):
+                    fieldname = fieldname.name()
+                SpectralLibraryUtils.addAttribute(lyr, create_profile_field(fieldname, encoding=encoding))
+            lyr.endEditCommand()
 
-        SpectralLibraryUtils.initTableConfig(lyr)
+            SpectralLibraryUtils.initTableConfig(lyr)
+            lyr.setDisplayExpression(f'format(\'%1 %2\', $id, "{FIELD_NAME}")')
 
-        lyr.setDisplayExpression(f'format(\'%1 %2\', $id, "{FIELD_NAME}")')
         return lyr
 
     @staticmethod
@@ -578,7 +608,7 @@ class SpectralLibraryUtils:
         feedback.setProgressText(f'Add {nTotal} profiles')
         feedback.setProgress(0)
 
-        speclib.commitChanges(False)
+        # speclib.commitChanges(False)
 
         sinkDefinition = QgsRemappingSinkDefinition()
         sinkDefinition.setSourceCrs(crs)
@@ -605,6 +635,8 @@ class SpectralLibraryUtils:
 
         if not featureSink.addFeatures(profiles):
             print(featureSink.lastError(), file=sys.stderr)
+            if new_edit_command:
+                speclib.endEditCommand()
             return []
         else:
             featureSink.flushBuffer()

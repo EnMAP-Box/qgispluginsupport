@@ -52,7 +52,7 @@ from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPoi
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu
-from qgis.core import QgsTemporalController
+from qgis.core import QgsTemporalController, edit
 from qgis.core import QgsField, QgsGeometry
 from qgis.core import QgsLayerTreeLayer
 from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
@@ -133,6 +133,31 @@ def stop_app():
 
 _QGIS_MOCKUP = None
 _PYTHON_RUNNER = None
+
+
+def start_app2(cleanup: bool = True,
+               init_processing: bool = True,
+               init_python_runner: bool = True,
+               init_editor_widgets: bool = True,
+               init_iface: bool = True):
+    app = qgis.testing.start_app(cleanup)
+    providers = QgsApplication.processingRegistry().providers()
+    global _PYTHON_RUNNER
+    global _QGIS_MOCKUP
+    if init_processing and len(providers) == 0:
+        from processing.core.Processing import Processing
+        Processing.initialize()
+
+    if init_python_runner and not QgsPythonRunner.isValid():
+        _PYTHON_RUNNER = QgsPythonRunnerMockup()
+        QgsPythonRunner.setInstance(_PYTHON_RUNNER)
+
+    # init standard EditorWidgets
+    if init_editor_widgets and len(QgsGui.editorWidgetRegistry().factories()) == 0:
+        QgsGui.editorWidgetRegistry().initEditors()
+
+    if init_iface:
+        get_iface()
 
 
 def start_app(cleanup: bool = True,
@@ -487,9 +512,50 @@ def _set_iface(ifaceMock):
 APP = None
 
 
-class TestCase(qgis.testing.TestCase):
-    IFACE = None
-    APP: QgsApplication = None
+class TestCaseBase(qgis.testing.TestCase):
+
+    def setUp(self):
+        assert len(QgsProject.instance().mapLayers()) == 0, self.__class__.__name__
+
+    def tearDown(self):
+        assert len(QgsProject.instance().mapLayers()) == 0, self.__class__.__name__
+
+    @classmethod
+    def setUpClass(cls):
+        assert len(QgsProject.instance().mapLayers()) == 0, cls.__class__.__name__
+
+    @classmethod
+    def tearDownClass(cls):
+        assert len(QgsProject.instance().mapLayers()) == 0, cls.__name__
+
+    @classmethod
+    def showGui(cls, widgets: Union[QWidget, List[QWidget]] = None) -> bool:
+        """
+        Call this to show GUI(s) in case we do not run within a CI system
+        """
+
+        if widgets is None:
+            widgets = []
+        if not isinstance(widgets, list):
+            widgets = [widgets]
+
+        keepOpen = False
+
+        for w in widgets:
+            if isinstance(w, QWidget):
+                w.show()
+                keepOpen = True
+            elif callable(w):
+                w()
+
+        if cls.runsInCI():
+            return False
+
+        app = QApplication.instance()
+        if isinstance(app, QApplication) and keepOpen:
+            app.exec_()
+
+        return True
 
     @staticmethod
     def runsInCI() -> True:
@@ -500,82 +566,7 @@ class TestCase(qgis.testing.TestCase):
         return str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0']
 
     @classmethod
-    def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
-
-        if not isinstance(QgsApplication.instance(), QgsApplication):
-            # TestCase.APP = start_app()
-            TestCase.APP = qgis.testing.start_app(cleanup=False)
-
-        if TestCase.IFACE is None:
-            TestCase.IFACE = get_iface()
-
-        if not QgsApplication.processingRegistry().providers():
-            from processing.core.Processing import Processing
-            Processing.initialize()
-
-        if QgsGui.editorWidgetRegistry().name('TextEdit') in ['', None]:
-            QgsGui.editorWidgetRegistry().initEditors()
-
-        initResourceFile(QPS_RESOURCE_FILE)
-
-    def tempDir(self, subdir: str = None, cleanup: bool = False) -> pathlib.Path:
-        """
-        Returns the <enmapbox-repository/test-outputs/test name> directory
-        :param subdir:
-        :param cleanup:
-        :return: pathlib.Path
-        """
-        DIR_REPO = findUpwardPath(__file__, '.git').parent
-        if isinstance(self, TestCase):
-            foldername = self.__class__.__name__
-        else:
-            foldername = self.__name__
-        p = pathlib.Path(DIR_REPO) / 'test-outputs' / foldername
-        if isinstance(subdir, str):
-            p = p / subdir
-        if cleanup and p.exists() and p.is_dir():
-            shutil.rmtree(p)
-        os.makedirs(p, exist_ok=True)
-        return p
-
-    @classmethod
-    def _readVSIMemFiles(cls) -> Set[str]:
-
-        r = gdal.ReadDirRecursive('/vsimem/')
-        if r is None:
-            return set([])
-        return set(r)
-
-    def tearDown(self):
-        if isinstance(TestCase.IFACE, QgisInterface):
-            # clean layers
-            TestCase.IFACE.layerTreeView().layerTreeModel().rootGroup().removeAllChildren()
-
-        if QgsProject.instance():
-            QgsProject.instance().removeAllMapLayers()
-
-        if isinstance(QgsApplication.instance(), QgsApplication) and APP == QgsApplication.instance():
-            pass
-            # stop_app()
-        gc.collect()
-
-    def createTestOutputDirectory(self, name: str = 'test-outputs', subdir: str = None) -> pathlib.Path:
-        """
-        Returns the path to a test output directory
-        :return:
-        """
-        repo = findUpwardPath(inspect.getfile(self.__class__), '.git').parent
-
-        testDir = repo / name
-        os.makedirs(testDir, exist_ok=True)
-
-        if subdir:
-            testDir = testDir / subdir
-            os.makedirs(testDir, exist_ok=True)
-
-        return testDir
-
-    def createProcessingContextFeedback(self) -> Tuple[QgsProcessingContext, QgsProcessingFeedback]:
+    def createProcessingContextFeedback(cls) -> Tuple[QgsProcessingContext, QgsProcessingFeedback]:
         """
         Create a QgsProcessingContext with connected QgsProcessingFeedback
         """
@@ -595,7 +586,8 @@ class TestCase(qgis.testing.TestCase):
 
         return context, feedback
 
-    def createProcessingFeedback(self) -> QgsProcessingFeedback:
+    @classmethod
+    def createProcessingFeedback(cls) -> QgsProcessingFeedback:
         """
         Creates a QgsProcessingFeedback.
         :return:
@@ -636,33 +628,102 @@ class TestCase(qgis.testing.TestCase):
 
         return newpath.as_posix()
 
-    def showGui(self, widgets: Union[QWidget, List[QWidget]] = None) -> bool:
+    def createTestOutputDirectory(self, name: str = 'test-outputs', subdir: str = None) -> pathlib.Path:
         """
-        Call this to show GUI(s) in case we do not run within a CI system
+        Returns the path to a test output directory
+        :return:
         """
+        repo = findUpwardPath(inspect.getfile(self.__class__), '.git').parent
 
-        if widgets is None:
-            widgets = []
-        if not isinstance(widgets, list):
-            widgets = [widgets]
+        testDir = repo / name
+        os.makedirs(testDir, exist_ok=True)
 
-        keepOpen = False
+        if subdir:
+            testDir = testDir / subdir
+            os.makedirs(testDir, exist_ok=True)
 
-        for w in widgets:
-            if isinstance(w, QWidget):
-                w.show()
-                keepOpen = True
-            elif callable(w):
-                w()
+        return testDir
 
-        if self.runsInCI():
+    @classmethod
+    def assertImagesEqual(cls, image1: QImage, image2: QImage):
+        if image1.size() != image2.size():
+            return False
+        if image1.format() != image2.format():
             return False
 
-        app = QApplication.instance()
-        if isinstance(app, QApplication) and keepOpen:
-            app.exec_()
-
+        for x in range(image1.width()):
+            for y in range(image1.height()):
+                if image1.pixel(x, y, ) != image2.pixel(x, y):
+                    return False
         return True
+
+    def tempDir(self, subdir: str = None, cleanup: bool = False) -> pathlib.Path:
+        """
+        Returns the <enmapbox-repository/test-outputs/test name> directory
+        :param subdir:
+        :param cleanup:
+        :return: pathlib.Path
+        """
+        DIR_REPO = findUpwardPath(__file__, '.git').parent
+        if isinstance(self, TestCaseBase):
+            foldername = self.__class__.__name__
+        else:
+            foldername = self.__name__
+        p = pathlib.Path(DIR_REPO) / 'test-outputs' / foldername
+        if isinstance(subdir, str):
+            p = p / subdir
+        if cleanup and p.exists() and p.is_dir():
+            shutil.rmtree(p)
+        os.makedirs(p, exist_ok=True)
+        return p
+
+    @classmethod
+    def _readVSIMemFiles(cls) -> Set[str]:
+
+        r = gdal.ReadDirRecursive('/vsimem/')
+        if r is None:
+            return set([])
+        return set(r)
+
+
+class TestCase(TestCaseBase):
+    IFACE = None
+    APP: QgsApplication = None
+
+    def __int__(self, *args, **kwds):
+        super().__int__(*args, **kwds)
+
+    @classmethod
+    def setUpClass(cls, cleanup: bool = True, options=StartOptions.All, resources: list = None) -> None:
+
+        if not isinstance(QgsApplication.instance(), QgsApplication):
+            # TestCase.APP = start_app()
+            TestCase.APP = qgis.testing.start_app(cleanup=cleanup)
+
+        if TestCase.IFACE is None:
+            TestCase.IFACE = get_iface()
+
+        if not QgsApplication.processingRegistry().providers():
+            from processing.core.Processing import Processing
+            Processing.initialize()
+
+        if QgsGui.editorWidgetRegistry().name('TextEdit') in ['', None]:
+            QgsGui.editorWidgetRegistry().initEditors()
+
+        initResourceFile(QPS_RESOURCE_FILE)
+
+    def tearDown(self):
+        if isinstance(TestCase.IFACE, QgisInterface):
+            # clean layers
+            TestCase.IFACE.layerTreeView().layerTreeModel().rootGroup().removeAllChildren()
+
+        if QgsProject.instance():
+            QgsProject.instance().removeAllMapLayers()
+
+        if isinstance(QgsApplication.instance(), QgsApplication) and APP == QgsApplication.instance():
+            pass
+            # stop_app()
+        gc.collect()
 
     def assertIconsEqual(self, icon1, icon2):
         self.assertIsInstance(icon1, QIcon)
@@ -673,19 +734,6 @@ class TestCase(qgis.testing.TestCase):
         img1 = QImage(icon1.pixmap(size))
         img2 = QImage(icon2.pixmap(size))
         self.assertImagesEqual(img1, img2)
-
-    def assertImagesEqual(self, image1: QImage, image2: QImage):
-        if image1.size() != image2.size():
-            return False
-        if image1.format() != image2.format():
-            return False
-
-        for x in range(image1.width()):
-            for y in range(image1.height()):
-                s = image1.bits()
-                if image1.pixel(x, y, ) != image2.pixel(x, y):
-                    return False
-        return True
 
 
 class ExampleAlgorithmProvider(QgsProcessingProvider):
@@ -961,8 +1009,8 @@ class TestObjects(object):
         :type n: int
         :param n_empty: number of empty profiles, SpectralProfiles with empty x/y values
         :type n_empty: int
-        :return: SpectralLibrary
-        :rtype: SpectralLibrary
+        :return: QgsVectorLayer
+        :rtype: QgsVectorLayer
         """
         assert n >= 0
         assert 0 <= n_empty <= n
@@ -982,36 +1030,33 @@ class TestObjects(object):
             profile_field_names = [f'{FIELD_VALUES}{i}' for i in range(n_profile_columns)]
 
         slib: QgsVectorLayer = SpectralLibraryUtils.createSpectralLibrary(profile_fields=profile_field_names)
-        assert slib.startEditing()
+        with edit(slib):
 
-        pfield_indices = profile_field_indices(slib)
+            pfield_indices = profile_field_indices(slib)
 
-        assert len(pfield_indices) == len(profile_field_names)
+            assert len(pfield_indices) == len(profile_field_names)
 
-        if n == 0:
-            slib.commitChanges()
-            return slib
+            if n > 0:
+                # slib.beginEditCommand(f'Add {n} features')
+                # and random profiles
+                for groupIndex in range(n_bands.shape[0]):
+                    bandsPerField = n_bands[groupIndex].tolist()
+                    profiles = list(TestObjects.spectralProfiles(n,
+                                                                 fields=slib.fields(),
+                                                                 n_bands=bandsPerField,
+                                                                 wlu=wlu,
+                                                                 profile_fields=pfield_indices))
 
-        # and random profiles
-        for groupIndex in range(n_bands.shape[0]):
-            bandsPerField = n_bands[groupIndex].tolist()
-            profiles = list(TestObjects.spectralProfiles(n,
-                                                         fields=slib.fields(),
-                                                         n_bands=bandsPerField,
-                                                         wlu=wlu,
-                                                         profile_fields=pfield_indices))
+                    SpectralLibraryUtils.addProfiles(slib, profiles, addMissingFields=False)
 
-            SpectralLibraryUtils.addProfiles(slib, profiles, addMissingFields=False)
-
-        # delete empty profiles
-        for i, feature in enumerate(slib.getFeatures()):
-            if i >= n_empty:
-                break
-            for field in profile_field_names:
-                feature.setAttribute(field, None)
-            slib.updateFeature(feature)
-
-        assert slib.commitChanges()
+                # delete empty profiles
+                for i, feature in enumerate(slib.getFeatures()):
+                    if i >= n_empty:
+                        break
+                    for field in profile_field_names:
+                        feature.setAttribute(field, None)
+                    slib.updateFeature(feature)
+                # slib.endEditCommand()
         return slib
 
     @staticmethod

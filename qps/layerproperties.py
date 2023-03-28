@@ -20,18 +20,14 @@ import os
 import pathlib
 import re
 import sys
-
-import warnings
 from typing import List, Dict, Any, Union
 
 from osgeo import gdal, osr
 
 from qgis.PyQt.QtCore import QMimeData, QTimer, pyqtSignal, QObject, QVariant, QModelIndex
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
-from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindow, QPushButton, \
-    QDialogButtonBox, QAction, QCheckBox, \
-    QButtonGroup, QToolButton, QListWidget, QStackedWidget, QListWidgetItem, \
-    QApplication, QLabel, QSpinBox, QComboBox, \
+from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindow, QDialogButtonBox, QAction, QCheckBox, \
+    QButtonGroup, QToolButton, QApplication, QLabel, QSpinBox, QComboBox, \
     QLineEdit, QGridLayout, QTableView, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsEditorWidgetSetup, QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, \
@@ -67,11 +63,8 @@ from qgis.gui import \
     QgsDockWidget, \
     QgsDualView, \
     QgsExpressionSelectionDialog, \
-    QgsMapLayerConfigWidget, \
     QgsMapLayerConfigWidgetFactory, \
     QgsMessageBar, \
-    QgsOptionsDialogBase, \
-    QgsRasterTransparencyWidget, \
     QgsSublayersDialog, \
     QgsFilterLineEdit, \
     QgsExpressionBuilderDialog
@@ -945,194 +938,6 @@ def subLayers(mapLayer: QgsMapLayer, subLayers: list = None) -> List[QgsMapLayer
     return layers
 
 
-class LayerPropertiesDialog(QgsOptionsDialogBase):
-
-    @staticmethod
-    def defaultFactories() -> List[QgsMapLayerConfigWidgetFactory]:
-        """
-        Returns a list of default QgsMapLayerConfigWidgetFactory
-        """
-        from .layerconfigwidgets.vectorlabeling import LabelingConfigWidgetFactory
-        from .layerconfigwidgets.rasterbands import RasterBandConfigWidgetFactory
-        from .layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
-        from .layerconfigwidgets.vectorlayerfields import \
-            LayerAttributeFormConfigWidgetFactory, \
-            LayerFieldsConfigWidgetFactory
-        factories = [
-            RasterBandConfigWidgetFactory(),
-            LabelingConfigWidgetFactory(),
-            GDALMetadataConfigWidgetFactory(),
-            LayerFieldsConfigWidgetFactory(),
-            LayerAttributeFormConfigWidgetFactory(),
-        ]
-        return factories
-
-    def __init__(self,
-                 lyr: Union[QgsRasterLayer, QgsVectorLayer],
-                 canvas: QgsMapCanvas = None,
-                 parent=None,
-                 mapLayerConfigFactories: List[QgsMapLayerConfigWidgetFactory] = None):
-        warnings.warn('This dialog emulates only parts of the real QGIS Layer Properties dialog. '
-                      'Use for testing only.', Warning, stacklevel=2)
-        super(QgsOptionsDialogBase, self).__init__('QPS_LAYER_PROPERTIES', parent, Qt.Dialog, settings=None)
-        pathUi = pathlib.Path(__file__).parent / 'ui' / 'layerpropertiesdialog.ui'
-        loadUi(pathUi.as_posix(), self)
-        self.initOptionsBase(False, 'Layer Properties - {}'.format(lyr.name()))
-        self.mOptionsListWidget: QListWidget
-        self.mOptionsStackedWidget: QStackedWidget
-        assert isinstance(self.mOptionsListWidget, QListWidget)
-        assert isinstance(self.mOptionsStackedWidget, QStackedWidget)
-        assert isinstance(lyr, QgsMapLayer)
-        self.btnConfigWidgetMenu: QPushButton = QPushButton('<menu>')
-        self.btnConfigWidgetMenu.setVisible(False)
-        assert isinstance(self.btnConfigWidgetMenu, QPushButton)
-        self.mOptionsListWidget.currentRowChanged.connect(self.onPageChanged)
-        self.mLayer: QgsMapLayer = lyr
-
-        assert isinstance(self.btnConfigWidgetMenu, QPushButton)
-        self.buttonBox: QDialogButtonBox
-
-        if not isinstance(canvas, QgsMapCanvas):
-            canvas = QgsMapCanvas()
-            canvas.setDestinationCrs(lyr.crs())
-            canvas.setExtent(lyr.extent())
-            canvas.setLayers([lyr])
-
-        self.mCanvas: QgsMapCanvas
-        self.mCanvas = canvas
-
-        self.buttonBox.layout().insertWidget(0, self.btnConfigWidgetMenu)
-
-        self.btnApply: QPushButton = self.buttonBox.button(QDialogButtonBox.Apply)
-        self.btnCancel: QPushButton = self.buttonBox.button(QDialogButtonBox.Cancel)
-        self.btnOk: QPushButton = self.buttonBox.button(QDialogButtonBox.Ok)
-
-        self.btnHelp: QPushButton = self.buttonBox.button(QDialogButtonBox.Help)
-        # not connected
-        self.btnHelp.setVisible(False)
-        s = ""
-
-        assert isinstance(self.mOptionsListWidget, QListWidget)
-
-        if mapLayerConfigFactories is None:
-            mapLayerConfigFactories = LayerPropertiesDialog.defaultFactories()
-
-        for f in mapLayerConfigFactories:
-            assert isinstance(f, QgsMapLayerConfigWidgetFactory)
-            if f.supportsLayer(self.mapLayer()) and f.supportLayerPropertiesDialog():
-                pageWidget = f.createWidget(self.mapLayer(), self.canvas(), dockWidget=False)
-                assert isinstance(pageWidget, QgsMapLayerConfigWidget)
-                title = f.title()
-                icon = f.icon()
-                pageItem = QListWidgetItem(icon, title)
-                assert isinstance(pageItem, QListWidgetItem)
-                pageItem.setToolTip(pageWidget.toolTip())
-                self.mOptionsListWidget.addItem(pageItem)
-                self.mOptionsStackedWidget.addWidget(pageWidget)
-
-        self.btnApply.clicked.connect(self.apply)
-        self.btnOk.clicked.connect(self.onOk)
-        self.btnCancel.clicked.connect(self.onCancel)
-
-        # select the first item
-        self.mOptionsListWidget.setCurrentRow(0)
-
-    def onPageChanged(self, row):
-        page = self.currentPage()
-        menu = None
-
-        if isinstance(page, QgsMapLayerConfigWidget):
-            # comes with QGIS 3.12
-
-            if hasattr(page, 'menuButtonMenu'):
-                menu = page.menuButtonMenu()
-
-            if hasattr(page, 'menuButtonToolTip'):
-                self.btnConfigWidgetMenu.setToolTip(page.menuButtonToolTip())
-
-        self.btnConfigWidgetMenu.setMenu(menu)
-        if isinstance(menu, QMenu):
-            self.btnConfigWidgetMenu.setVisible(True)
-            self.btnConfigWidgetMenu.setText(menu.title())
-        else:
-            self.btnConfigWidgetMenu.setVisible(False)
-            self.btnConfigWidgetMenu.setText('<empty>')
-
-    def onOk(self):
-        self.apply()
-        self.accept()
-
-    def onCancel(self):
-        # do restore previous settings?
-
-        # self.setResult(QDialog.Rejected)
-        self.reject()
-
-    def currentPage(self) -> QWidget:
-        return self.mOptionsStackedWidget.currentWidget()
-
-    def apply(self):
-
-        page = self.currentPage()
-        if isinstance(page, QgsMapLayerConfigWidget) and hasattr(page, 'apply'):
-            page.apply()
-        else:
-
-            s = ""
-
-        self.mapLayer().triggerRepaint()
-        self.sync()
-
-    def setPage(self, page: Union[QgsMapLayerConfigWidget, int]):
-        if isinstance(page, QgsMapLayerConfigWidget):
-            pages = list(self.pages())
-            assert page in pages
-            i = pages.index(page)
-            self.setPage(i)
-        else:
-            assert isinstance(page, int) and 0 <= page < self.mOptionsListWidget.count()
-            self.mOptionsListWidget.setCurrentRow(page)
-
-    def pages(self) -> List[QgsMapLayerConfigWidget]:
-        for i in range(self.mOptionsStackedWidget.count()):
-            w = self.mOptionsStackedWidget.widget(i)
-            if isinstance(w, QgsMapLayerConfigWidget):
-                yield w
-
-    def canvas(self) -> QgsMapCanvas:
-        return self.mCanvas
-
-    def mapLayer(self) -> QgsMapLayer:
-        """
-        Returns the QgsMapLayer
-        :return:
-        :rtype:
-        """
-        return self.mLayer
-
-    def sync(self):
-        """
-        Call to reload properties
-        """
-        lyr = self.mapLayer()
-        w = self.currentPage()
-
-        if isinstance(w, QgsMapLayerConfigWidget) and hasattr(w, 'syncToLayer'):
-            if isinstance(w, QgsRasterTransparencyWidget):
-                # skip, until this issue is solved in QGIS https://github.com/qgis/QGIS/pull/34969
-                # w.syncToLayer()
-                pass
-            else:
-                w.syncToLayer()
-
-        for page in self.pages():
-            if page != w:
-                if hasattr(w, 'syncToLayer'):
-                    page.syncToLayer()
-
-        s = ""
-
-
 def showLayerPropertiesDialog(layer: QgsMapLayer,
                               canvas: QgsMapCanvas = None,
                               parent: QObject = None,
@@ -1185,36 +990,32 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
             canvas = QgsMapCanvas()
         if not isinstance(messageBar, QgsMessageBar):
             messageBar = QgsMessageBar()
-        if True:
-            if isinstance(layer, QgsRasterLayer):
-                dialog = QgsRasterLayerProperties(layer, canvas, parent=parent)
 
-            elif isinstance(layer, QgsVectorLayer):
-                dialog = QgsVectorLayerProperties(canvas=canvas, messageBar=messageBar, lyr=layer, parent=parent)
+        if isinstance(layer, QgsRasterLayer):
+            dialog = QgsRasterLayerProperties(layer, canvas, parent=parent)
 
-            if dialog:
-                if hasattr(dialog, 'addPropertiesPageFactory'):
-                    #  QgsGui::providerGuiRegistry()->mapLayerConfigWidgetFactories( mapLayer )
-                    from . import MAPLAYER_CONFIGWIDGET_FACTORIES
-                    added = []
-                    if Qgis.versionInt() >= 32000:
-                        for factory in QgsGui.providerGuiRegistry().mapLayerConfigWidgetFactories(layer):
-                            factory: QgsMapLayerConfigWidgetFactory
-                            added.append(factory.title())
-                            dialog.addPropertiesPageFactory(factory)
-                    for factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
+        elif isinstance(layer, QgsVectorLayer):
+            dialog = QgsVectorLayerProperties(canvas=canvas, messageBar=messageBar, lyr=layer, parent=parent)
+
+        if dialog:
+            if hasattr(dialog, 'addPropertiesPageFactory'):
+                #  QgsGui::providerGuiRegistry()->mapLayerConfigWidgetFactories( mapLayer )
+                from . import MAPLAYER_CONFIGWIDGET_FACTORIES
+                added = []
+                if Qgis.versionInt() >= 32000:
+                    for factory in QgsGui.providerGuiRegistry().mapLayerConfigWidgetFactories(layer):
                         factory: QgsMapLayerConfigWidgetFactory
-                        if factory.title() not in added:
-                            dialog.addPropertiesPageFactory(factory)
-                    # for f in MAPLAYER_CONFIGWIDGET_FACTORIES:
-                    #    dialog.addPropertiesPageFactory(f)
+                        added.append(factory.title())
+                        dialog.addPropertiesPageFactory(factory)
+                for factory in MAPLAYER_CONFIGWIDGET_FACTORIES:
+                    factory: QgsMapLayerConfigWidgetFactory
+                    if factory.title() not in added:
+                        dialog.addPropertiesPageFactory(factory)
 
-                if page:
-                    dialog.setCurrentPage(page)
-                else:
-                    dialog.restoreLastPage()
-        else:
-            dialog = LayerPropertiesDialog(layer, canvas=canvas)
+            if page:
+                dialog.setCurrentPage(page)
+            else:
+                dialog.restoreLastPage()
 
         if dialog:
             if modal:

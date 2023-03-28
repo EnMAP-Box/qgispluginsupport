@@ -1,21 +1,20 @@
 import unittest
+
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
-from qgis.core import QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRasterRange, QgsMapLayerStore, \
-    QgsRasterPipe
-
-from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas, QgsGui
-
+from qgis.core import QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRasterRange, QgsRasterPipe
+from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas
 from qps import initResources
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider, \
     VectorLayerFieldRasterDataProvider, createRasterLayers
 from qps.speclib.core.spectralprofile import SpectralSetting, decodeProfileValueDict
-from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.utils import rasterArray
 
+start_app2()
 
-class RasterDataProviderTests(TestCase):
+
+class RasterDataProviderTests(TestCaseBase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
@@ -24,22 +23,6 @@ class RasterDataProviderTests(TestCase):
         from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
         initSpectralLibraryIOs()
         registerDataProvider()
-
-    def setUp(self):
-        super().setUp()
-        QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
-
-        self.mapLayerStore = QgsMapLayerStore()
-        reg = QgsGui.editorWidgetRegistry()
-        if len(reg.factories()) == 0:
-            reg.initEditors()
-
-        registerSpectralProfileEditorWidget()
-        from qps import registerEditorWidgets
-        registerEditorWidgets()
-
-        from qps import registerMapLayerConfigWidgetFactories
-        registerMapLayerConfigWidgetFactories()
 
     def test_VectorLayerRasterDataProvider(self):
         vl = TestObjects.createVectorLayer()
@@ -88,12 +71,13 @@ class RasterDataProviderTests(TestCase):
         lyr = layers[0]
         c = self.rasterProviderTestSuite(lyr)
         self.showGui(c)
+        QgsProject.instance().removeAllMapLayers()
         # print('SHOW GUI')
 
     def rasterProviderTestSuite(self, layer: QgsRasterLayer) -> QgsMapCanvas:
         self.assertIsInstance(layer, QgsRasterLayer)
 
-        QgsProject.instance().addMapLayer(layer, False)
+        QgsProject.instance().addMapLayer(layer)
 
         pipe = layer.pipe()
         self.assertIsInstance(pipe, QgsRasterPipe)
@@ -112,14 +96,13 @@ class RasterDataProviderTests(TestCase):
         w.show()
         return w
 
-        return c
-
     def test_createExampleLayers(self):
 
         n_total = 20
         n_empty = 2
         vl = TestObjects.createSpectralLibrary(n_total, n_bands=[[13, 25, 5], [22, None, 42]], n_empty=n_empty)
         fields = profile_fields(vl)
+        QgsProject.instance().addMapLayer(vl, addToLegend=False)
         layers = createRasterLayers(vl, fields.at(1))
         for lyr in layers:
             self.assertIsInstance(lyr, QgsRasterLayer)
@@ -131,7 +114,7 @@ class RasterDataProviderTests(TestCase):
 
             # read entire raster image
             array = rasterArray(dp)
-            self.assertEqual(array.shape, (setting.n_bands(), 1, n_total))
+            self.assertEqual(array.shape, (setting.n_bands(), 1, n_total - n_empty))
 
             # check for each profile its raster band values
             for iPx, fid in enumerate(dp.activeFeatureIds()):
@@ -146,6 +129,8 @@ class RasterDataProviderTests(TestCase):
             self.assertIsInstance(lyr, QgsRasterLayer)
             dp: VectorLayerFieldRasterDataProvider = lyr.dataProvider()
             self.assertIsInstance(dp, VectorLayerFieldRasterDataProvider)
+
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == '__main__':

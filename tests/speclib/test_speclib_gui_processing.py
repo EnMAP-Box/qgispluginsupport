@@ -12,27 +12,17 @@ from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingG
     QgsProcessingAlgorithmDialogBase
 from qgis.gui import QgsMapCanvas, QgsDualView
 from qgis.gui import QgsProcessingGuiRegistry
-from qps import initAll
 from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
     SpectralProcessingRasterLayerWidgetWrapper
-from qps.testing import TestCase, ExampleAlgorithmProvider
-from qps.testing import TestObjects, StartOptions
+from qps.testing import TestObjects, TestCaseBase, ExampleAlgorithmProvider, start_app2
+
+start_app2()
 
 
-class SpectralProcessingTests(TestCase):
-
-    @classmethod
-    def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
-        from qps import QPS_RESOURCE_FILE
-        from qps.resources import findQGISResourceFiles
-        resources.extend(findQGISResourceFiles())
-        resources.append(QPS_RESOURCE_FILE)
-
-        super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
-        initAll()
+class SpectralProcessingTests(TestCaseBase):
 
     def initProcessingRegistry(self) -> Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
         procReg = QgsApplication.instance().processingRegistry()
@@ -88,7 +78,7 @@ class SpectralProcessingTests(TestCase):
         procw.setAlgorithm(alg2)
         self.showGui(procw)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking dialog')
     def test_SpectralProcessingWidget2(self):
         self.initProcessingRegistry()
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
@@ -178,7 +168,7 @@ class SpectralProcessingTests(TestCase):
         w.setLayout(gridLayout)
         self.showGui(w)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Sandbox only')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Sandbox only')
     def test_dialog(self):
         class D(QgsProcessingAlgorithmDialogBase):
             def __init__(self, *args, **kwds):

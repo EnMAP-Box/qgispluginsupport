@@ -18,23 +18,18 @@ from osgeo import gdal
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QTableView, QPushButton, QHBoxLayout
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsField, QgsAbstractVectorLayerLabeling
+from qgis.core import QgsRasterLayer, QgsProject, QgsField
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerComboBox, QgsRasterTransparencyWidget, \
     QgsMapLayerConfigWidgetFactory
 from qps.layerconfigwidgets.gdalmetadata import RX_OGR_URI
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
-from qps.resources import initQtResources
-from qps.testing import TestObjects, TestCase, StartOptions
+from qps.testing import TestObjects, TestCaseBase, start_app2
 
+start_app2()
 LAYER_WIDGET_REPS = 5
 
 
-class LayerConfigWidgetsTests(TestCase):
-
-    @classmethod
-    def setUpClass(cls, cleanup=True, options=StartOptions.EditorWidgets, resources=[]) -> None:
-        super(LayerConfigWidgetsTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
-        initQtResources()
+class LayerConfigWidgetsTests(TestCaseBase):
 
     def canvasWithLayer(self, lyr) -> QgsMapCanvas:
         c = QgsMapCanvas()
@@ -42,42 +37,6 @@ class LayerConfigWidgetsTests(TestCase):
         c.setDestinationCrs(lyr.crs())
         c.setExtent(lyr.extent())
         return c
-
-    def test_labels(self):
-
-        from qps.layerconfigwidgets.vectorlabeling import LabelingConfigWidgetFactory, LabelingConfigWidget
-
-        lyrV = TestObjects.createVectorLayer()
-        lyrR = TestObjects.createRasterLayer()
-        canvas = self.canvasWithLayer(lyrV)
-
-        f = LabelingConfigWidgetFactory()
-        self.assertTrue(f.supportsLayer(lyrV))
-        self.assertFalse(f.supportsLayer(lyrR))
-
-        w = f.createWidget(lyrV, canvas)
-        self.assertIsInstance(w, LabelingConfigWidget)
-        self.assertIsInstance(lyrV, QgsVectorLayer)
-
-        self.assertTrue(w.mapLayer() == lyrV)
-        for i in range(w.comboBox.count()):
-            w.comboBox.setCurrentIndex(i)
-            if i == 0:
-                self.assertTrue(w.labeling() is None)
-                w.apply()
-                self.assertFalse(lyrV.labelsEnabled())
-                self.assertEqual(lyrV.labeling(), None)
-            else:
-                if not w.labeling() is None:
-                    self.assertIsInstance(w.labeling(), QgsAbstractVectorLayerLabeling)
-                    w.apply()
-                    self.assertTrue(lyrV.labelsEnabled())
-                    self.assertEqual(type(lyrV.labeling()), type(w.labeling()))
-
-            labeling = w.labeling()
-            w.setLabeling(labeling)
-
-        self.showGui(w)
 
     def test_transparency(self):
 
@@ -209,6 +168,7 @@ class LayerConfigWidgetsTests(TestCase):
         w = QWidget()
         w.setLayout(vbLayout)
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_rx_ogr_uri(self):
 

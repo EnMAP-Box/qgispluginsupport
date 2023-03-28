@@ -1,4 +1,6 @@
 import pathlib
+from qgis.testing import start_app
+app = start_app()
 
 if __name__ == '__main__':
     from qps.resources import compileResourceFiles

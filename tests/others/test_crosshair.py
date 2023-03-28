@@ -15,11 +15,13 @@ import unittest
 from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle, QgsProject
 from qgis.gui import QgsMapCanvas
 from qps.crosshair.crosshair import CrosshairStyle, CrosshairMapCanvasItem
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.utils import SpatialPoint
 
+start_app2()
 
-class CrosshairTests(TestCase):
+
+class CrosshairTests(TestCaseBase):
 
     def test_Crosshair(self):
         # add site-packages to sys.data_source as done by enmapboxplugin.py
@@ -47,6 +49,7 @@ class CrosshairTests(TestCase):
         item.setCrosshairStyle(style)
 
         self.showGui(refCanvas)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_noCRS(self):
         refCanvas = QgsMapCanvas()

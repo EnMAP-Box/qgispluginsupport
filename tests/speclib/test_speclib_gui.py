@@ -22,8 +22,8 @@ import pathlib
 import unittest
 
 import numpy as np
-
 from osgeo import ogr, gdal
+
 from qgis.PyQt.QtCore import QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
@@ -31,7 +31,7 @@ from qgis.PyQt.QtWidgets import QApplication, QToolBar, QVBoxLayout, QPushButton
     QToolButton, QAction, QComboBox, QWidget, QDialog
 from qgis.core import QgsFeature
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes
-from qgis.gui import QgsOptionsDialogBase, QgsMapCanvas, \
+from qgis.gui import QgsMapCanvas, \
     QgsDualView, QgsGui
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
@@ -42,20 +42,20 @@ from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-from qps.testing import TestObjects, TestCase, StartOptions
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER
 from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
 from qpstestdata import enmap, hymap
 
+start_app2()
 
-class TestSpeclibWidgets(TestCase):
+
+class TestSpeclibWidgets(TestCaseBase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
 
-        options = StartOptions.All
-
-        super(TestSpeclibWidgets, cls).setUpClass(*args, options=options)
+        super(TestSpeclibWidgets, cls).setUpClass(*args, **kwds)
 
         from qps import initAll
         initAll()
@@ -91,13 +91,6 @@ class TestSpeclibWidgets(TestCase):
 
         from qps import registerMapLayerConfigWidgetFactories
         registerMapLayerConfigWidgetFactories()
-
-    def tearDown(self):
-        super().tearDown()
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSpeclibWidgets, cls).tearDownClass()
 
     @unittest.skipIf(False, '')
     def test_PyQtGraphPlot(self):
@@ -160,7 +153,7 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui(cb)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Fuzz test (drag and drop)')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Fuzz test (drag and drop)')
     def test_dropping_speclibs(self):
 
         files = []
@@ -299,6 +292,8 @@ class TestSpeclibWidgets(TestCase):
 
         self.showGui([slw])
 
+        QgsProject.instance().removeAllMapLayers()
+
     @unittest.skipIf(False, '')
     def test_SpectralLibraryPanel(self):
 
@@ -332,6 +327,7 @@ class TestSpeclibWidgets(TestCase):
         slw.sigMapExtentRequested.connect(setLayers)
 
         self.showGui([canvas, slw])
+        QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(False, '')
     def test_editing(self):
@@ -346,18 +342,6 @@ class TestSpeclibWidgets(TestCase):
 
         # self.assertTrue()
         self.showGui(slw)
-
-    @unittest.skipIf(True, 'Deprecated')
-    def test_speclibAttributeWidgets(self):
-
-        speclib = TestObjects.createSpectralLibrary()
-
-        slw = SpectralLibraryWidget(speclib=speclib)
-
-        import qps.layerproperties
-        propertiesDialog = qps.layerproperties.LayerPropertiesDialog(speclib, None)
-        self.assertIsInstance(propertiesDialog, QgsOptionsDialogBase)
-        self.showGui([slw, propertiesDialog])
 
     def test_addAttribute(self):
 
@@ -445,8 +429,9 @@ class TestSpeclibWidgets(TestCase):
             d.close()
 
         # self.showGui(d)
+        QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Opens blocking dialog')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Opens blocking dialog')
     def test_AttributeDialog(self):
 
         SLIB = TestObjects.createSpectralLibrary()

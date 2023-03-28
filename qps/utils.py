@@ -58,6 +58,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
     QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
+from qgis.core import QgsRasterBlockFeedback
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel, \
     QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
@@ -3154,8 +3155,9 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
     bands = sorted(set(bands))
     nb = len(bands)
     assert nb > 0
+    feedback = QgsRasterBlockFeedback()
     for i, band in enumerate(bands):
-        band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px)
+        band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px, feedback=feedback)
         if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
             return None
 

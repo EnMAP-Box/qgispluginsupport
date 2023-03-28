@@ -152,7 +152,7 @@ class MapTools(enum.Enum):
             mapTool = CursorLocationMapTool(canvas, *args, **kwds)
         elif mapToolEnum == MapTools.MoveToCenter:
             mapTool = CursorLocationMapTool(canvas, *args, **kwds)
-            mapTool.sigLocationRequest.connect(canvas.setCenter)
+            mapTool.sigLocationRequest.connect(lambda crs, pt, c=canvas: c.setCenter(pt))
         elif mapToolEnum == MapTools.SpectralProfile:
             mapTool = SpectralProfileMapTool(canvas, *args, **kwds)
         elif mapToolEnum == MapTools.TemporalProfile:
@@ -845,10 +845,9 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
     def __init__(self,
                  canvas: QgsMapCanvas,
                  layer: QgsMapLayer,
-                 mode: QgsMapToolCapture.CaptureMode,
                  cadDockWidget: QgsAdvancedDigitizingDockWidget,
-                 vectorLayerTools: QgsVectorLayerTools = None
-                 ):
+                 mode: QgsMapToolCapture.CaptureMode = QgsMapToolCapture.CaptureMode.CaptureNone,
+                 vectorLayerTools: QgsVectorLayerTools = None):
 
         super(QgsMapToolDigitizeFeature, self).__init__(canvas, cadDockWidget, mode)
 
@@ -1118,9 +1117,12 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
 class QgsMapToolAddFeature(QgsMapToolDigitizeFeature):
 
-    def __init__(self, canvas: QgsMapCanvas, mode, cadDockWidget: QgsAdvancedDigitizingDockWidget,
+    def __init__(self,
+                 canvas: QgsMapCanvas,
+                 cadDockWidget: QgsAdvancedDigitizingDockWidget,
+                 mode=QgsMapToolCapture.CaptureMode.CaptureNone,
                  vectorLayerTools: QgsVectorLayerTools = None):
-        super(QgsMapToolAddFeature, self).__init__(canvas, canvas.currentLayer(), mode, cadDockWidget,
+        super(QgsMapToolAddFeature, self).__init__(canvas, canvas.currentLayer(), cadDockWidget, mode=mode,
                                                    vectorLayerTools=vectorLayerTools)
         self._d: QWidget = None
         self.setCheckGeometryType(True)
@@ -1637,7 +1639,8 @@ class QgsMapToolSelectionHandler(QObject):
                 if self.mSelectionRubberBand and self.mSelectionRubberBand.numberOfVertices() > 2:
                     self.setSelectedGeometry(self.mSelectionRubberBand.asGeometry(), e.modifiers())
 
-            self.mSelectionRubberBand.reset()
+            if self.mSelectionRubberBand:
+                self.mSelectionRubberBand.reset()
             self.mSelectionActive = False
 
     def selectRadiusMoveEvent(self, e: QgsMapMouseEvent):

@@ -25,6 +25,7 @@
 ***************************************************************************
 """
 import json
+import math
 import os
 import pathlib
 import re
@@ -403,9 +404,11 @@ class RasterProfile(QgsExpressionFunction):
             results = dp.identify(point, QgsRaster.IdentifyFormatValue).results()
 
             y = list(results.values())
-            y = [v if isinstance(v, (int, float)) else float('NaN') for v in y]
-
-            spectral_properties = ExpressionFunctionUtils.chachedSpectralProperties(context, lyrR)
+            nan = float('nan')
+            y = [v if isinstance(v, (int, float)) else nan for v in y]
+            if all([math.isnan(v) for v in y]):
+                return None
+            spectral_properties = ExpressionFunctionUtils.cachedSpectralProperties(context, lyrR)
             wl = spectral_properties['wl']
             wlu = spectral_properties['wlu'][0]
             bbl = spectral_properties['bbl']
@@ -430,24 +433,35 @@ class RasterProfile(QgsExpressionFunction):
 
 
 class ExpressionFunctionUtils(object):
+    CONTEXT_CACHE = dict()
 
     @staticmethod
-    def chachedSpectralProperties(context: QgsExpressionContext, rasterLayer: QgsRasterLayer) -> dict:
+    def cachedSpectralPropertiesKey(rasterLayer: QgsRasterLayer) -> str:
+        return f'spectralproperties_{rasterLayer.id()}'
+
+    @staticmethod
+    def cachedSpectralProperties(context: QgsExpressionContext, rasterLayer: QgsRasterLayer) -> dict:
         """
         Returns the spectral properties of the rasterLayer.
         """
-        k = f'spectralproperties_{rasterLayer.id()}'
-        spectral_properties = context.cachedValue(k)
-        if spectral_properties is None:
+        k = ExpressionFunctionUtils.cachedSpectralPropertiesKey(rasterLayer)
+        dump = context.cachedValue(k)
+        if dump is None:
             sp = QgsRasterLayerSpectralProperties.fromRasterLayer(rasterLayer)
             bbl = sp.badBands()
             wl = sp.wavelengths()
             wlu = sp.wavelengthUnits()
 
-            spectral_properties = dict(bbl=bbl, wl=wl, wlu=wlu)
-            context.setCachedValue(k, spectral_properties)
+            dump = json.dumps(dict(bbl=bbl, wl=wl, wlu=wlu))
+            context.setCachedValue(k, dump)
 
+        spectral_properties = json.loads(dump)
         return spectral_properties
+
+    @staticmethod
+    def cachedCrsTransformationKey(context: QgsExpressionContext, source_layer: QgsMapLayer) -> str:
+        k = f'{context.variable("layer_id")}->{source_layer.id()}'
+        return k
 
     @staticmethod
     def cachedCrsTransformation(context: QgsExpressionContext, layer: QgsMapLayer) \
@@ -455,20 +469,32 @@ class ExpressionFunctionUtils(object):
         """
         Returns a CRS Transformation from the context to the layer CRS
         """
-        k = f'crstrans_{context.variable("layer_id")}->{layer.id()}'
-        trans = context.cachedValue(k)
-        if not isinstance(trans, QgsCoordinateTransform):
-            context_crs = QgsExpression('@layer_crs').evaluate(context)
-            if context_crs:
-                context_crs = QgsCoordinateReferenceSystem(context_crs)
-            else:
-                # no other CRS defined, we must assume that context and layer CRS are the same
-                context_crs = layer.crs()
-            if isinstance(context_crs, QgsCoordinateReferenceSystem) and context_crs.isValid():
-                trans = QgsCoordinateTransform()
-                trans.setSourceCrs(context_crs)
-                trans.setDestinationCrs(layer.crs())
-                context.setCachedValue(k, trans)
+        context_crs = QgsExpression('@layer_crs').evaluate(context)
+        if context_crs:
+            context_crs = QgsCoordinateReferenceSystem(context_crs)
+        else:
+            # no other CRS defined, we must assume that context and layer CRS are the same
+            context_crs = layer.crs()
+
+        if True:
+            # seems there is no way to store QgsCoordinateTransform in the QgsExpressionContext
+            # so we need to create a QgsCoordinateTransformation each time
+            trans = QgsCoordinateTransform()
+            trans.setSourceCrs(context_crs)
+            trans.setDestinationCrs(layer.crs())
+            return trans
+        else:
+            # we cannot store QgsCoordinateTransform instance in the context
+            k = ExpressionFunctionUtils.cachedCrsTransformationKey(context, layer)
+            trans = context.cachedValue(k)
+            if not isinstance(trans, QgsCoordinateTransform):
+                if isinstance(context_crs, QgsCoordinateReferenceSystem) and context_crs.isValid():
+                    trans = QgsCoordinateTransform()
+                    trans.setSourceCrs(context_crs)
+                    trans.setDestinationCrs(layer.crs())
+                    context.setCachedValue(k, trans)
+                    ExpressionFunctionUtils.CONTEXT_CACHE[k] = trans
+                    # print(f'Added: {k}', flush=True)
         return trans
 
     @staticmethod
@@ -487,8 +513,13 @@ class ExpressionFunctionUtils(object):
         """
         if isinstance(value, str):
             layers = QgsExpression('@layers').evaluate(context)
-            if layers is None:
-                layers = list(QgsProject.instance().mapLayers().values())
+            if layers in [None, []]:
+                stores = [QgsProject.instance().layerStore()]
+                if Qgis.versionInt() >= 33000:
+                    stores = context.layerStores() + stores
+
+                layers = [lyr for s in stores for lyr in s.mapLayers().values()]
+
             for lyr in layers:
                 if isinstance(lyr, QgsRasterLayer) and value in [lyr.name(), lyr.id()]:
                     return lyr
@@ -505,7 +536,10 @@ class ExpressionFunctionUtils(object):
                                raise_error: bool = True) -> dict:
 
         if not isinstance(value, dict):
-            value = QgsExpression(value).evaluate(context)
+            if isinstance(value, str):
+                e = QgsExpression(value)
+                if e.isValid():
+                    value = QgsExpression(value).evaluate(context)
             if value is None:
                 return None
             value = decodeProfileValueDict(value)
@@ -575,9 +609,10 @@ class RasterArray(QgsExpressionFunction):
 
         crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(context, lyrR)
 
-        if not (crs_trans.isShortCircuited() and geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success):
-            parent.setEvalErrorString('Unable to transform geometry into raster CRS')
-            return None
+        if not crs_trans.isShortCircuited():
+            if not geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success:
+                parent.setEvalErrorString('Unable to transform geometry into raster CRS')
+                return None
 
         if not lyrR.extent().intersects(geom.boundingBox()):
             return None
@@ -643,6 +678,10 @@ class SpectralData(QgsExpressionFunction):
 
     def handlesNull(self) -> bool:
         return True
+
+    def isStatic(self, node: 'QgsExpressionNodeFunction', parent: 'QgsExpression',
+                 context: 'QgsExpressionContext') -> bool:
+        return False
 
 
 class SpectralMath(QgsExpressionFunction):

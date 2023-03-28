@@ -127,6 +127,12 @@ def registerSpectralLibraryPlotFactories():
     PropertyItemGroup.registerXmlFactory(ProfileVisualizationGroup())
 
 
+def unregisterSpectralLibraryPlotFactories():
+    from .speclib.gui.spectrallibraryplotwidget import PropertyItemGroup, RasterRendererGroup, ProfileVisualizationGroup
+    PropertyItemGroup.unregisterXmlFactory(RasterRendererGroup.__name__)
+    PropertyItemGroup.unregisterXmlFactory(ProfileVisualizationGroup.__name__)
+
+
 def registerEditorWidgets():
     """
     Call this function to register QgsEditorwidgetFactories to the QgsEditorWidgetRegistry
@@ -190,10 +196,8 @@ def unregisterExpressionFunctions():
 
 
 def registerMapLayerConfigWidgetFactories():
-    from .layerconfigwidgets.rasterbands import RasterBandConfigWidgetFactory
     from .layerconfigwidgets.gdalmetadata import GDALMetadataConfigWidgetFactory
 
-    registerMapLayerConfigWidgetFactory(RasterBandConfigWidgetFactory())
     registerMapLayerConfigWidgetFactory(GDALMetadataConfigWidgetFactory())
 
 

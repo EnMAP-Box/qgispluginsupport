@@ -1,11 +1,14 @@
 import unittest
 
 from qps.searchfiledialog import SearchFilesDialog
-from qps.testing import TestCase
+from qps.testing import TestCaseBase, start_app2
+
+start_app2()
 
 
-class SearchFileDialogTest(TestCase):
+class SearchFileDialogTest(TestCaseBase):
 
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking Dialog')
     def test_search_files_dialog(self):
         d = SearchFilesDialog()
 

@@ -8,10 +8,12 @@ from qgis.core import QgsProject
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.rastersources import RasterLayerSpectralLibraryIO, RasterLayerSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
+
+start_app2()
 
 
-class TestSpeclibIO_Raster(TestCase):
+class TestSpeclibIO_Raster(TestCaseBase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_Raster, cls).setUpClass(*args, **kwds)
@@ -34,6 +36,7 @@ class TestSpeclibIO_Raster(TestCase):
         w = RasterLayerSpectralLibraryImportWidget()
 
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_read_raster(self):
         self.registerIO()
@@ -41,7 +44,7 @@ class TestSpeclibIO_Raster(TestCase):
     def test_write_raster(self):
         self.registerIO()
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Test skipped because it opens a blocking dialog')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Test skipped because it opens a blocking dialog')
     def test_dialog(self):
         self.registerIO()
         layers = [TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon),
@@ -57,6 +60,7 @@ class TestSpeclibIO_Raster(TestCase):
         root = pathlib.Path(qpstestdata.__file__).parent
 
         SpectralLibraryImportDialog.importProfiles(sl, defaultRoot=root.as_posix())
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == '__main__':

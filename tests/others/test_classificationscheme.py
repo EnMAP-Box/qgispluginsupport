@@ -16,8 +16,8 @@ from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex, QFile
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import QgsRasterRenderer, QgsRasterLayer, QgsVectorLayer, QgsProject, \
-    QgsMapLayerStore, QgsFeature, QgsEditorWidgetSetup, \
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, \
+    QgsFeature, QgsEditorWidgetSetup, \
     QgsPalettedRasterRenderer, QgsCategorizedSymbolRenderer, \
     QgsReadWriteContext, QgsFeatureRenderer, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsRendererCategory, \
     QgsField, QgsWkbTypes
@@ -25,27 +25,15 @@ from qgis.gui import QgsMapCanvas, QgsDualView, QgsMapLayerComboBox, QgsGui, Qgs
 from qps.classification.classificationscheme import ClassificationScheme, ClassInfo, EDITOR_WIDGET_REGISTRY_KEY, \
     ClassificationMapLayerComboBox, DEFAULT_UNCLASSIFIEDCOLOR, MIMEDATA_KEY, ClassificationSchemeComboBox, \
     registerClassificationSchemeEditorWidget, ClassificationSchemeWidgetFactory, ClassificationSchemeEditorConfigWidget, \
-    ClassificationSchemeEditorWidgetWrapper, findMapLayersWithClassInfo, ClassificationSchemeWidget, \
+    ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
     ClassificationSchemeComboBoxModel, MIMEDATA_KEY_QGIS_STYLE
-from qps.testing import TestObjects, TestCase
-from qps.utils import MAP_LAYER_STORES, registerMapLayerStore, file_search
+from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.utils import file_search
+
+start_app2()
 
 
-class TestsClassificationScheme(TestCase):
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        super(TestsClassificationScheme, cls).setUpClass(cls)
-
-        import qps
-        qps.initResources()
-
-    def setUp(self):
-        super().setUp()
-        self.nameL1 = 'Level 1 (int)'
-        self.nameL2 = 'Level 2 (str)'
-        QgsProject.instance().removeAllMapLayers()
-        MAP_LAYER_STORES.clear()
+class TestsClassificationScheme(TestCaseBase):
 
     def createClassSchemeA(self) -> ClassificationScheme:
 
@@ -84,8 +72,8 @@ class TestsClassificationScheme(TestCase):
         vl.startEditing()
         # add fields
         vl.addAttribute(QgsField("name", QVariant.String))
-        nameL1 = self.nameL1
-        nameL2 = self.nameL2
+        nameL1 = 'field1'
+        nameL2 = 'field2'
         vl.addAttribute(QgsField(nameL1, QVariant.Int))
         vl.addAttribute(QgsField(nameL2, QVariant.String))
         f = QgsFeature(vl.fields())
@@ -143,7 +131,6 @@ class TestsClassificationScheme(TestCase):
 
     def test_classificationmaplayercombobox(self):
 
-        QgsProject.instance().removeAllMapLayers()
         layers = [TestObjects.createVectorLayer(),
                   TestObjects.createRasterLayer(nc=10),
                   TestObjects.createRasterLayer(nb=4)]
@@ -158,6 +145,7 @@ class TestsClassificationScheme(TestCase):
         self.assertIsInstance(cs, ClassificationScheme)
         self.assertTrue(len(cs) > 0)
         self.assertEqual(cb.count(), n)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_ClassificationScheme(self):
         cs = ClassificationScheme.create(3)
@@ -266,12 +254,9 @@ class TestsClassificationScheme(TestCase):
         w.resize(QSize(300, 250))
         # print(vl.fields().names())
         look = vl.fields().lookupField
-        score = factory.fieldScore(vl, look(self.nameL1))
-        # self.assertTrue(factory.fieldScore(vl, look(self.nameL1)) == 20)
-        # self.assertTrue(factory.fieldScore(vl, look(self.nameL2)) == 20)
 
         parent = QWidget()
-        configWidget = factory.configWidget(vl, look(self.nameL1), None)
+        configWidget = factory.configWidget(vl, look('field1'), None)
         self.assertIsInstance(configWidget, ClassificationSchemeEditorConfigWidget)
 
         self.assertIsInstance(factory.createSearchWidget(vl, 0, dv), QgsSearchWidgetWrapper)
@@ -283,39 +268,6 @@ class TestsClassificationScheme(TestCase):
         # eww.valueChanged.connect(lambda v: print('value changed: {}'.format(v)))
 
         self.showGui([configWidget, dv, w])
-
-    def test_findMapLayerWithClassInfo(self):
-
-        rr = self.createClassSchemeA().rasterRenderer()
-        vr = self.createClassSchemeB().featureRenderer()
-        vl = self.createVectorLayer()
-        rl = self.createRasterLayer()
-        self.assertIsInstance(vl, QgsVectorLayer)
-        self.assertIsInstance(rl, QgsRasterLayer)
-        self.assertIsInstance(rr, QgsRasterRenderer)
-        self.assertIsInstance(vr, QgsFeatureRenderer)
-
-        vl.setRenderer(vr)
-        rl.setRenderer(rr)
-
-        store = QgsMapLayerStore()
-
-        lyrs = findMapLayersWithClassInfo()
-        self.assertIsInstance(lyrs, list)
-        self.assertTrue(len(lyrs) == 0)
-
-        registerMapLayerStore(store)
-        store.addMapLayers([vl, rl])
-
-        lyrs = findMapLayersWithClassInfo()
-        self.assertIsInstance(lyrs, list)
-        self.assertTrue(len(lyrs) == 2)
-        self.assertTrue(vl in lyrs)
-        self.assertTrue(rl in lyrs)
-
-        w = ClassificationSchemeWidget()
-
-        self.showGui(w)
 
     def test_ClassificationSchemeWidget(self):
 

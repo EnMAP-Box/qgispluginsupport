@@ -1,7 +1,6 @@
 # noinspection PyPep8Naming
 import datetime
 import random
-
 import unittest
 from typing import Tuple, List
 
@@ -9,7 +8,6 @@ from qgis.PyQt.QtWidgets import QComboBox, QPushButton, QHBoxLayout, QVBoxLayout
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes
 from qgis.core import QgsRasterLayer, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
-from qps import initAll
 from qps.maptools import CursorLocationMapTool
 from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -18,21 +16,14 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SingleProfileSamplingMode, SpectralProfileSamplingModeModel, SpectralProfileSamplingMode, \
     SamplingBlockDescription, \
     SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode
-from qps.testing import TestCase
-from qps.testing import TestObjects, StartOptions
+from qps.testing import TestCaseBase, start_app2
+from qps.testing import TestObjects
 from qps.utils import SpatialPoint, spatialPoint2px, parseWavelength, rasterArray, SpatialExtent
 
+start_app2()
 
-class SpectralProcessingTests(TestCase):
 
-    @classmethod
-    def setUpClass(cls, cleanup=True, options=StartOptions.All, resources=[]) -> None:
-        from qps import QPS_RESOURCE_FILE
-        from qps.resources import findQGISResourceFiles
-        resources.extend(findQGISResourceFiles())
-        resources.append(QPS_RESOURCE_FILE)
-        super(SpectralProcessingTests, cls).setUpClass(cleanup=cleanup, options=options, resources=resources)
-        initAll()
+class SpectralProcessingTests(TestCaseBase):
 
     def test_dualview(self):
 
@@ -259,6 +250,7 @@ class SpectralProcessingTests(TestCase):
         w2 = QWidget()
         w2.setLayout(grid)
         self.showGui(w2)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_kernelSampling(self):
 

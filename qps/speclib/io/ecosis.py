@@ -57,7 +57,13 @@ class __DEPR__EcoSISCSVDialect(pycsv.Dialect):
     quoting = pycsv.QUOTE_NONE
 
 
-def findDialect(file) -> pycsv.Dialect:
+class EcoSISCSVDialect(pycsv.Dialect):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+
+def findDialect(file) -> EcoSISCSVDialect:
     if isinstance(file, str):
         file = open(file, 'r', encoding='utf-8')
 
@@ -281,7 +287,7 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def readFrom(cls,
                  path,
-                 feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
+                 feedback: QgsProcessingFeedback = None):
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -318,7 +324,7 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
             fieldnames = [n for n in fieldnames if n not in xValueNames]
 
-            speclib = SpectralLibrary()
+            speclib = None
             speclib.startEditing()
             speclib.addMissingFields(createStandardFields())
 
@@ -341,7 +347,7 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
                         speclib.startEditing()
                         missing_field_definitions.remove(fieldName)
 
-                profile = SpectralProfile(fields=speclib.fields())
+                profile = QgsFeature(fields=speclib.fields())
                 yValues = [float(row[n]) for n in xValueNames]
                 profile.setValues(x=xValues, y=yValues, xUnit=xUnit, yUnit=yUnit)
 
@@ -363,7 +369,7 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
         return speclib
 
     @classmethod
-    def write(cls, speclib: SpectralLibrary, path: str, feedback: QProgressDialog = None, delimiter: str = ';'):
+    def write(cls, speclib, path: str, feedback: QProgressDialog = None, delimiter: str = ';'):
         """
         Writes the SpectralLibrary to path and returns a list of written files
         that can be used to open the spectral library with readFrom
@@ -390,7 +396,7 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
             W.writeheader()
 
             for profile in profiles:
-                assert isinstance(profile, SpectralProfile)
+                assert isinstance(profile, QgsFeature)
 
                 rowDict = dict()
                 for n in fieldNames:
@@ -414,9 +420,9 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
         return writtenFiles
 
     @classmethod
-    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    def addImportActions(cls, spectralLibrary, menu: QMenu) -> list:
 
-        def read(speclib: SpectralLibrary):
+        def read(speclib):
 
             path, filter = QFileDialog.getOpenFileName(caption='EcoSIS CSV File',
                                                        filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
@@ -435,9 +441,9 @@ class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
         m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
 
     @classmethod
-    def addExportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    def addExportActions(cls, spectralLibrary, menu: QMenu) -> list:
 
-        def write(speclib: SpectralLibrary):
+        def write(speclib):
             path, filter = QFileDialog.getSaveFileName(caption='Write to EcoSIS CSV File',
                                                        filter='EcoSIS CSV (*.csv);;Text files (*.txt)')
             if isinstance(path, str) and len(path) > 0:

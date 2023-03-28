@@ -8,10 +8,12 @@ from qgis.core import QgsVectorLayer, QgsFeature, QgsProcessingFeedback
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryExportWidget
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
+
+start_app2()
 
 
-class TestSpeclibIO_GPKG(TestCase):
+class TestSpeclibIO_GPKG(TestCaseBase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_GPKG, cls).setUpClass(*args, **kwds)

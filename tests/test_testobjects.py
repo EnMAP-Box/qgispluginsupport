@@ -8,25 +8,24 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import numpy as np
+from osgeo import gdal, ogr
 
-import qps.testing
-from osgeo import gdal
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem
+from qps.testing import TestObjects, start_app2, TestCaseBase
+
+start_app2()
 
 
-class TestCasesTestObject(qps.testing.TestCase):
+class TestCasesTestObject(TestCaseBase):
 
     def test_spectralProfiles(self):
-        from qps.testing import TestObjects
 
         profiles = list(TestObjects.spectralProfiles(10))
         self.assertIsInstance(profiles, list)
         self.assertTrue(len(profiles) == 10)
 
     def test_VectorLayers(self):
-        from qps.testing import TestObjects
-        from osgeo import ogr
 
         ds = TestObjects.createVectorDataSet(wkb=ogr.wkbPoint)
         self.assertIsInstance(ds, ogr.DataSource)
@@ -62,8 +61,6 @@ class TestCasesTestObject(qps.testing.TestCase):
                 self.assertTrue(g.isGeosValid(), msg=f'{f.id()} {f.attributeMap()}')
 
     def test_coredata(self):
-        from qps.testing import TestObjects
-        import numpy as np
         array, wl, wlu, gt, wkt = TestObjects.coreData()
         self.assertIsInstance(array, np.ndarray)
         self.assertIsInstance(wl, np.ndarray)
@@ -73,7 +70,6 @@ class TestCasesTestObject(qps.testing.TestCase):
         self.assertIsInstance(wkt, str)
 
     def test_RasterData(self):
-        from qps.testing import TestObjects
 
         cl = TestObjects.createRasterDataset(10, 20, nc=7)
         self.assertIsInstance(cl, gdal.Dataset)
@@ -106,7 +102,7 @@ class TestCasesTestObject(qps.testing.TestCase):
         self.assertIsInstance(dsDst, gdal.Dataset)
 
     def test_Speclibs(self):
-        from qps.testing import TestObjects
+
         slib = TestObjects.createSpectralLibrary(7)
         self.assertIsInstance(slib, QgsVectorLayer)
         self.assertTrue(len(slib) == 7)

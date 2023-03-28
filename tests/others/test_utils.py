@@ -546,7 +546,7 @@ class TestUtils(TestCase):
                   ]
 
         for v in values:
-            print('Create QgsField for {}'.format(type(v)))
+            # print('Create QgsField for {}'.format(type(v)))
             field = createQgsField('field', v)
             self.assertIsInstance(field, QgsField)
 
@@ -729,8 +729,8 @@ class TestUtils(TestCase):
         ds = TestObjects.createRasterDataset(nb=10)
         self.assertIsInstance(ds, gdal.Dataset)
 
-        self.assertListEqual([0, 1, 2], defaultBands(ds))
-        self.assertListEqual([0, 1, 2], defaultBands(ds.GetDescription()))
+        self.assertListEqual([1, 2, 3], defaultBands(ds))
+        self.assertListEqual([1, 2, 3], defaultBands(ds.GetDescription()))
 
         ds.SetMetadataItem('default bands', '{4,3,1}', 'ENVI')
         self.assertListEqual([4, 3, 1], defaultBands(ds))

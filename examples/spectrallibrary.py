@@ -1,6 +1,17 @@
+from typing import List
 
+from qgis.core import QgsFeature
+from qgis.core import QgsCoordinateReferenceSystem, QgsPointXY, QgsRasterLayer
+from qgis.gui import QgsMapCanvas
+from qps import initAll
+from qps.maptools import CursorLocationMapTool
+from qps.resources import findQGISResourceFiles
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
+from qps.testing import start_app, TestObjects
+from qps.utils import SpatialPoint
 
-app = start_app(resources=findQGISResourceFiles(), options=StartOptions.EditorWidgets)
+app = start_app(resources=findQGISResourceFiles())
 initAll()
 
 
@@ -17,13 +28,11 @@ canvas.show()
 
 def loadProfile(crs: QgsCoordinateReferenceSystem, pt: QgsPointXY):
     spatialPoint = SpatialPoint(crs, pt)
-    profiles = []
+    profiles: List[QgsFeature] = []
     for layer in canvas.layers():
         if isinstance(layer, QgsRasterLayer):
-            profile = SpectralProfile.fromRasterLayer(layer, spatialPoint)
-            if isinstance(profile, SpectralProfile):
-                profiles.append(profile)
-
+            d = SpectralLibraryUtils.readProfileDict(layer, spatialPoint)
+            s = ""
     slw.setCurrentProfiles(profiles)
 
 

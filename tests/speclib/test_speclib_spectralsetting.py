@@ -3,11 +3,13 @@ from osgeo import gdal
 from qgis.core import QgsRasterLayer, QgsRasterFileWriter, QgsRasterPipe, QgsProcessingContext, QgsRasterBlockFeedback
 
 from qps.speclib.core.spectralprofile import SpectralSetting
-from qps.testing import TestCase, TestObjects
+from qps.testing import TestCaseBase, TestObjects, start_app2
 from qps.utils import parseWavelength
 
+start_app2()
 
-class TestCore(TestCase):
+
+class TestCore(TestCaseBase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:

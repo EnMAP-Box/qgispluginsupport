@@ -11,18 +11,13 @@ from qps.speclib.core import is_spectral_feature
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDSpectralLibraryImportWidget, ASDBinaryFile
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.utils import file_search
 
+start_app2()
 
-class TestSpeclibIO_ASD(TestCase):
-    @classmethod
-    def setUpClass(cls, *args, **kwds) -> None:
-        super(TestSpeclibIO_ASD, cls).setUpClass(*args, **kwds)
 
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSpeclibIO_ASD, cls).tearDownClass()
+class TestSpeclibIO_ASD(TestCaseBase):
 
     def registerIO(self):
 
@@ -121,7 +116,7 @@ class TestSpeclibIO_ASD(TestCase):
 
         self.showGui(importWidget)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()

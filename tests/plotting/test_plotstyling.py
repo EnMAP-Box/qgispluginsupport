@@ -30,10 +30,12 @@ from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
 from qps.plotstyling.plotstyling import PlotStyleButton, pen2tuple, PlotStyle, XMLTAG_PLOTSTYLENODE, \
     createSetPlotStyleAction, MarkerSymbol, tuple2pen, registerPlotStyleEditorWidget, PlotStyleEditorWidgetFactory, \
     PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget, PlotWidgetStyle
-from qps.testing import TestCase
+from qps.testing import TestCaseBase, start_app2
+
+start_app2()
 
 
-class PlotStyleTests(TestCase):
+class PlotStyleTests(TestCaseBase):
 
     def create_vectordataset(self) -> QgsVectorLayer:
         vl = QgsVectorLayer("Point?crs=EPSG:4326", 'test', "memory")

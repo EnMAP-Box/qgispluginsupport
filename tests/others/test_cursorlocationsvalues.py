@@ -12,7 +12,6 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
-import os
 import unittest
 
 from osgeo import gdal
@@ -22,11 +21,13 @@ from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, Q
     QgsProject, QgsCoordinateReferenceSystem
 from qgis.gui import QgsMapCanvas
 from qps.cursorlocationvalue import CursorLocationInfoDock
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.utils import SpatialPoint
 
+start_app2()
 
-class CursorLocationTest(TestCase):
+
+class CursorLocationTest(TestCaseBase):
 
     def setUp(self):
         self.wmsUri1 = r'crs=EPSG:3857&format&type=xyz&url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
@@ -83,6 +84,7 @@ class CursorLocationTest(TestCase):
         hboxLayout.addWidget(tv2)
         w.setLayout(hboxLayout)
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_locallayers(self):
 
@@ -121,11 +123,9 @@ class CursorLocationTest(TestCase):
 
         self.showGui(cldock)
 
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Do not test in CI')
     def test_weblayertest(self):
 
-        if os.environ.get('CI'):
-            # do not run in CI
-            return
         canvas = QgsMapCanvas()
 
         layers = self.webLayers()
@@ -144,6 +144,7 @@ class CursorLocationTest(TestCase):
         self.assertIsInstance(point, SpatialPoint)
 
         self.showGui([cldock, canvas])
+        s = ""
 
 
 if __name__ == "__main__":

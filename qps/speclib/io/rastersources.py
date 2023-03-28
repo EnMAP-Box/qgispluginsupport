@@ -44,7 +44,7 @@ from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
 from qgis.gui import QgsMapLayerComboBox
 from .. import speclibUiPath, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field
-from ..core.spectrallibrary import SpectralLibrary, SpectralLibraryUtils
+from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget, \
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
@@ -173,7 +173,7 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
     def profiles(self) -> List[QgsFeature]:
         return self.mProfiles[:]
 
-    def speclib(self) -> SpectralLibrary:
+    def speclib(self) -> QgsVectorLayer:
         slib = SpectralLibraryUtils.createSpectralLibrary(profile_fields=[])
         slib.startEditing()
         SpectralLibraryUtils.addProfiles(slib, self.mProfiles, addMissingFields=True)

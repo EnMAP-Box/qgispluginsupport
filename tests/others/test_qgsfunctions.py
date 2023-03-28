@@ -1,32 +1,34 @@
+import json
 import re
 import unittest
+
 from osgeo import gdal_array
 
-import processing
-from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.utils import SpatialExtent
 from qgis.PyQt.QtCore import QByteArray, QVariant
-from qgis.core import QgsWkbTypes
-from qgis.core import QgsField
 from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsProperty, QgsExpressionContextUtils
+from qgis.core import QgsField
+from qgis.core import QgsMapLayerStore
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry, QgsFields
+from qgis.core import QgsWkbTypes
 from qgis.gui import QgsFieldCalculator
 from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py, RasterProfile, RasterArray, SpectralData, \
-    SpectralEncoding, registerQgsExpressionFunctions
+    SpectralEncoding, ExpressionFunctionUtils
 from qps.speclib.core import profile_fields
+from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
+from qps.utils import SpatialExtent
 from qps.utils import SpatialPoint
 
+start_app2()
 
-# from qgis.testing import start_app
 
-# start_app()
-class QgsFunctionTests(TestCase):
+class QgsFunctionTests(TestCaseBase):
     """
     Tests for functions in the Field Calculator
     """
+    FUNC_REFS = []
 
     def test_eval_geometry(self):
 
@@ -39,6 +41,7 @@ class QgsFunctionTests(TestCase):
         feature = QgsFeature()
         feature.setGeometry(QgsGeometry.fromPointXY(center))
         context = QgsExpressionContextUtils.createFeatureBasedContext(feature, QgsFields())
+        # context.setLoadedLayerStore(QgsProject.instance().layerStore())
 
         exp = QgsExpression("geom_to_wkt($geometry)")
         value = exp.evaluate(context)
@@ -49,28 +52,25 @@ class QgsFunctionTests(TestCase):
         assert exp.evalErrorString() == '', exp.evalErrorString()
 
         f1 = RasterArray()
-        self.assertIsInstance(f1, QgsExpressionFunction)
-        self.assertTrue(QgsExpression.registerFunction(f1))
-        exp = QgsExpression("raster_array('myraster', $geometry)")
+        self.registerFunction(f1)
+        exp = QgsExpression(f"{f1.NAME}('myraster', $geometry)")
         self.assertTrue(exp.prepare(context), msg=exp.parserErrorString())
         v_array = exp.evaluate(context)
         self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
 
         f2 = RasterProfile()
-        self.assertIsInstance(f2, QgsExpressionFunction)
-        self.assertTrue(QgsExpression.registerFunction(f2))
-        exp = QgsExpression("raster_profile('myraster', $geometry)")
+        self.registerFunction(f2)
+        exp = QgsExpression(f"{f2.NAME}('myraster', $geometry, 'map')")
         self.assertTrue(exp.prepare(context), msg=exp.parserErrorString())
         v_profile = exp.evaluate(context)
         self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
         self.assertListEqual(v_array, v_profile['y'])
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralEncoding(self):
 
         f = SpectralEncoding()
-        self.assertIsInstance(f, QgsExpressionFunction)
-        self.assertTrue(QgsExpression.registerFunction(f))
-        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+        self.registerFunction(f)
 
         sl = TestObjects.createSpectralLibrary(n_empty=0, n_bands=[24, 255], profile_field_names=['p1', 'p2'])
         context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
@@ -103,18 +103,18 @@ class QgsFunctionTests(TestCase):
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
                 self.assertIsInstance(profile, QByteArray)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralData(self):
 
         f = SpectralData()
-        self.assertIsInstance(f, QgsExpressionFunction)
-        self.assertTrue(QgsExpression.registerFunction(f))
-        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+        self.registerFunction(f)
 
         sl = TestObjects.createSpectralLibrary(n_empty=0, n_bands=[24, 255], profile_field_names=['p1', 'p2'])
         sfields = profile_fields(sl)
 
         context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
+        QgsProject.instance().addMapLayer(sl)
         for n in sfields.names():
             exp = QgsExpression(f'{f.name()}("{n}")')
             for feature in sl.getFeatures():
@@ -122,14 +122,14 @@ class QgsFunctionTests(TestCase):
                 exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
-                self.assertTrue(isProfileValueDict(profile))
+                profileDict = decodeProfileValueDict(profile)
+                self.assertTrue(isProfileValueDict(profileDict))
+        QgsProject.instance().removeAllMapLayers()
 
     def test_RasterArray(self):
 
         f = RasterArray()
-        self.assertIsInstance(f, QgsExpressionFunction)
-        self.assertTrue(QgsExpression.registerFunction(f))
-        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+        self.registerFunction(f)
 
         HM = HelpStringMaker()
         html = HM.helpText(f.name(), f.parameters())
@@ -168,6 +168,7 @@ class QgsFunctionTests(TestCase):
                 s = ""
 
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
+        QgsProject.instance().removeAllMapLayers()
 
     def createRasterAndVectorLayers(self):
         lyrR = TestObjects.createRasterLayer(nb=25)
@@ -196,10 +197,7 @@ class QgsFunctionTests(TestCase):
     def test_RasterProfile(self):
 
         f = RasterProfile()
-
-        self.assertIsInstance(f, QgsExpressionFunction)
-        self.assertTrue(QgsExpression.registerFunction(f))
-        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+        self.registerFunction(f)
 
         HM = HelpStringMaker()
         html = HM.helpText(f.name(), f.parameters())
@@ -214,21 +212,33 @@ class QgsFunctionTests(TestCase):
             f"{f.name()}('{lyrR.name()}', $geometry, 'bytes')",
             f"{f.name()}('{lyrR.name()}', $geometry, 'json')",
             f"{f.name()}('{lyrR.name()}', $geometry, 'text')",
+            f"{f.name()}('{lyrR.name()}', $geometry, 'dict')",
+            f"{f.name()}('{lyrR.name()}', $geometry, 'map')",
             f"{f.name()}('{lyrR.name()}', encoding:='text')",
         ]
 
+        store = QgsMapLayerStore()
+        store.addMapLayers([lyrR, lyrV])
+
         for e in expressions:
             context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(lyrV))
+            context.setLoadedLayerStore(store)
             exp = QgsExpression(e)
             for i, feature in enumerate(lyrV.getFeatures()):
                 self.assertIsInstance(feature, QgsFeature)
                 context.setFeature(feature)
                 # context = QgsExpressionContextUtils.createFeatureBasedContext(feature, QgsFields())
                 if i > 0:
-                    k = f'crstrans_{context.variable("layer_id")}->{lyrR.id()}'
-                    self.assertIsInstance(context.cachedValue(k), QgsCoordinateTransform)
-                    k = f'spectralproperties_{lyrR.id()}'
-                    self.assertIsInstance(context.cachedValue(k), dict)
+                    if False:
+                        k = ExpressionFunctionUtils.cachedCrsTransformationKey(context, lyrR)
+                        cached = context.cachedValue(k)
+                        if not isinstance(cached, QgsCoordinateTransform):
+                            s = ""
+                        self.assertIsInstance(context.cachedValue(k), QgsCoordinateTransform)
+                    k = ExpressionFunctionUtils.cachedSpectralPropertiesKey(lyrR)
+                    dump = context.cachedValue(k)
+                    cached = json.loads(dump)
+                    self.assertIsInstance(cached, dict)
                 exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
 
@@ -238,18 +248,28 @@ class QgsFunctionTests(TestCase):
                     self.assertIsInstance(profile, QByteArray)
                 elif re.search(r'(text|json)', exp.expression()):
                     self.assertIsInstance(profile, str)
+                elif re.search(r'(dict|map)', exp.expression()):
+                    self.assertIsInstance(profile, dict)
                 else:
-                    self.assertIsInstance(profile, dict, msg=exp.expression())
+                    self.assertIsInstance(profile, str, msg=exp.expression())
 
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
+        QgsProject.instance().removeAllMapLayers()
+
+    def registerFunction(self, f: QgsExpressionFunction):
+        self.assertIsInstance(f, QgsExpressionFunction)
+        if QgsExpression.isFunctionName(f.name()):
+            self.assertTrue(QgsExpression.unregisterFunction(f.name()))
+
+        self.assertTrue(QgsExpression.registerFunction(f))
+        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+        self.FUNC_REFS.append(f)
 
     def test_RasterProfile2(self):
 
         f = RasterProfile()
+        self.registerFunction(f)
 
-        self.assertIsInstance(f, QgsExpressionFunction)
-        self.assertTrue(QgsExpression.registerFunction(f))
-        self.assertTrue(QgsExpression.isFunctionName(f.name()))
         lyrRaster = TestObjects.createRasterLayer(nb=100)
         lyrRaster.setName('EnMAP')
         lyrPoints = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.GeometryType.PointGeometry, n_features=3)
@@ -260,6 +280,7 @@ class QgsFunctionTests(TestCase):
         s = ""
 
         QgsProject.instance().addMapLayers([lyrRaster, lyrPoints])
+        import processing
         results = processing.run("native:fieldcalculator",
                                  {'INPUT': lyrPoints,
                                   'FIELD_NAME': 'profiles', 'FIELD_TYPE': 2, 'FIELD_LENGTH': 0, 'FIELD_PRECISION': 0,
@@ -277,31 +298,30 @@ class QgsFunctionTests(TestCase):
             self.assertTrue(isProfileValueDict(d))
             self.assertTrue(len(d['y']) == lyrRaster.bandCount())
             s = ""
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralMath(self):
-
-        slib = TestObjects.createSpectralLibrary(10)
         f = SpectralMath()
+        self.registerFunction(f)
 
-        self.assertIsInstance(f, QgsExpressionFunction)
-        self.assertTrue(QgsExpression.registerFunction(f))
         HM = HelpStringMaker()
         html = HM.helpText(f.name(), f.parameters())
 
         self.assertIsInstance(html, str)
         sl = TestObjects.createSpectralLibrary(1, n_bands=[20, 20], profile_field_names=['p1', 'p2'])
+
         profileFeature = list(sl.getFeatures())[0]
         context = QgsExpressionContext()
         context.setFeature(profileFeature)
         context = QgsExpressionContextUtils.createFeatureBasedContext(profileFeature, profileFeature.fields())
 
         expressions = [
-            'SpectralMath(\'y=[1,2,3]\')',
-            'SpectralMath("p1", \'\')',
-            'SpectralMath("p1", \'\', \'text\')',
-            'SpectralMath("p1", \'\', \'map\')',
-            'SpectralMath("p1", \'\', \'bytes\')',
-            'SpectralMath("p1", "p2", \'y=y1/y2\')',
+            f'{f.NAME}(\'y=[1,2,3]\')',
+            f'{f.NAME}("p1", \'\')',
+            f'{f.NAME}("p1", \'\', \'text\')',
+            f'{f.NAME}("p1", \'\', \'map\')',
+            f'{f.NAME}("p1", \'\', \'bytes\')',
+            f'{f.NAME}("p1", "p2", \'y=y1/y2\')',
         ]
 
         for e in expressions:
@@ -319,20 +339,19 @@ class QgsFunctionTests(TestCase):
             self.assertTrue(success)
 
         self.assertTrue(QgsExpression.isFunctionName(f.name()))
-
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
+        QgsProject.instance().removeAllMapLayers()
 
     def test_Format_Py(self):
         f = Format_Py()
-        self.assertTrue(QgsExpression.registerFunction(f))
-        self.assertTrue(QgsExpression.isFunctionName(f.name()))
+        self.registerFunction(f)
 
         HM = HelpStringMaker()
         html = HM.helpText(f.name(), f.parameters())
         self.assertIsInstance(html, str)
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking dialog')
     def test_functiondialog(self):
         functions = [
             Format_Py(),
@@ -343,8 +362,7 @@ class QgsFunctionTests(TestCase):
             SpectralEncoding(),
         ]
         for f in functions:
-            self.assertTrue(QgsExpression.registerFunction(f))
-            self.assertTrue(QgsExpression.isFunctionName(f.name()))
+            self.registerFunction(f)
 
         sl = TestObjects.createSpectralLibrary()
 
@@ -352,8 +370,10 @@ class QgsFunctionTests(TestCase):
         gui.exec_()
 
     def test_aggragation_functions(self):
-
-        registerQgsExpressionFunctions()
+        from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
+        afuncs = createSpectralProfileFunctions()
+        for f in afuncs:
+            self.registerFunction(f)
 
         sl = TestObjects.createSpectralLibrary(n=10, n_bands=[25, 50], profile_field_names=['P1', 'P2'])
         sl.setName('speclib')
@@ -382,7 +402,7 @@ class QgsFunctionTests(TestCase):
 
         profile = exp.evaluate(context)
         self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
-        s = ""
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == '__main__':

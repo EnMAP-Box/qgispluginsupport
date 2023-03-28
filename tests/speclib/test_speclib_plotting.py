@@ -1,6 +1,7 @@
 import unittest
 
-from osgeo import gdal, ogr
+from osgeo import gdal
+
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtGui import QMouseEvent, QColor
@@ -13,7 +14,7 @@ from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
-
+from qps import registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
 from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
@@ -24,25 +25,14 @@ from qps.speclib.gui.spectrallibraryplotmodelitems import RasterRendererGroup, P
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-from qps.testing import StartOptions, TestCase, TestObjects
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import nextColor, parseWavelength
 
+start_app2()
 
-class TestSpeclibPlotting(TestCase):
 
-    @classmethod
-    def setUpClass(cls, *args, **kwds) -> None:
-        options = StartOptions.All
-
-        super(TestSpeclibPlotting, cls).setUpClass(*args, options=options)
-
-        from qps import initAll
-        initAll()
-
-        gdal.UseExceptions()
-        gdal.PushErrorHandler(TestSpeclibPlotting.gdal_error_handler)
-        ogr.UseExceptions()
+class TestSpeclibPlotting(TestCaseBase):
 
     @staticmethod
     def gdal_error_handler(err_class, err_num, err_msg):
@@ -256,8 +246,11 @@ class TestSpeclibPlotting(TestCase):
 
         self.assertTrue(is_removed)
         self.assertTrue(vis.mLayer is None)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralProfilePlotControlModel(self):
+
+        registerSpectralLibraryPlotFactories()
         model = SpectralProfilePlotModel()
         speclib = TestObjects.createSpectralLibrary()
         canvas = QgsMapCanvas()
@@ -295,6 +288,9 @@ class TestSpeclibPlotting(TestCase):
         self.assertTrue(model.dropMimeData(mimeData, Qt.CopyAction, 0, 0, QModelIndex()))
 
         self.showGui(tv)
+
+        unregisterSpectralLibraryPlotFactories()
+        QgsProject.instance().removeAllMapLayers()
 
     def test_QgsPropertyItems(self):
 
@@ -491,6 +487,7 @@ class TestSpeclibPlotting(TestCase):
         major.setLayout(layout)
 
         self.showGui(major)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_rendering(self):
 
@@ -510,6 +507,7 @@ class TestSpeclibPlotting(TestCase):
         w = QWidget()
         w.setLayout(layout)
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
 
 if __name__ == '__main__':

@@ -30,11 +30,13 @@ from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, Spec
 from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
 from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.utils import file_search
 
+start_app2()
 
-class TestIO(TestCase):
+
+class TestIO(TestCaseBase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestIO, cls).setUpClass(*args, **kwds)
@@ -221,7 +223,7 @@ class TestIO(TestCase):
 
         self.showGui(dialog)
 
-    @unittest.skipIf(TestCase.runsInCI(), 'Opens blocking dialog')
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'Opens blocking dialog')
     def test_ImportDialog2(self):
         self.registerIO()
 

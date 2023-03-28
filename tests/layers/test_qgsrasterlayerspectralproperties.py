@@ -5,10 +5,12 @@ from qgis.gui import QgsGui
 from qgis.testing import start_app
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralPropertiesTable, \
     QgsRasterLayerSpectralPropertiesTableWidget, QgsRasterLayerSpectralProperties, stringToType
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
+
+start_app2()
 
 
-class TestQgsRasterLayerProperties(TestCase):
+class TestQgsRasterLayerProperties(TestCaseBase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:

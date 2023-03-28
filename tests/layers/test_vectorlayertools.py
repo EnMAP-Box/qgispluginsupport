@@ -1,10 +1,12 @@
 import unittest
 
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
 from qps.vectorlayertools import VectorLayerTools
 
+start_app2()
 
-class TestCasesVectorLayerTools(TestCase):
+
+class TestCasesVectorLayerTools(TestCaseBase):
 
     def test_VectorLayerTools(self):
         lyr0 = TestObjects.createVectorLayer()

@@ -30,9 +30,10 @@ import os
 import re
 
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu
-from qgis.core import QgsProcessingFeedback
+from qgis.core import QgsFeature, QgsProcessingFeedback
 from ..core import is_spectral_library
 from ..core.spectrallibraryio import SpectralLibraryIO
+from ...utils import createQgsField
 
 
 class ARTMOSpectralLibraryIO(SpectralLibraryIO):
@@ -66,7 +67,7 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
         return False
 
     @classmethod
-    def readFrom(cls, path: str, feedback: QgsProcessingFeedback = None) -> SpectralLibrary:
+    def readFrom(cls, path: str, feedback: QgsProcessingFeedback = None):
         """
         Returns the SpectralLibrary read from "path"
         :param path: source of SpectralLibrary
@@ -93,7 +94,7 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
         for c, name in re.findall(r'Column (\d+): ([^\t]+)', meta):
             COLUMNS[int(c) - 1] = name
 
-        speclib = SpectralLibrary()
+        speclib = None  # SpectralLibrary()
         speclib.startEditing()
 
         for name in COLUMNS.values():
@@ -116,7 +117,7 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
                 elif iLine > firstLine:
 
                     yValues = [float(v) for v in parts[firstXValueColumn:]]
-                    profile = SpectralProfile(fields=speclib.fields())
+                    profile = QgsFeature(fields=speclib.fields())  # SpectralProfile(fields=speclib.fields())
 
                     name = None
                     if name is None:
@@ -136,9 +137,9 @@ class ARTMOSpectralLibraryIO(SpectralLibraryIO):
         return speclib
 
     @classmethod
-    def addImportActions(cls, spectralLibrary: SpectralLibrary, menu: QMenu) -> list:
+    def addImportActions(cls, spectralLibrary, menu: QMenu) -> list:
 
-        def read(speclib: SpectralLibrary):
+        def read(speclib):
 
             path, filter = QFileDialog.getOpenFileName(caption='ARTMO CSV File',
                                                        filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')

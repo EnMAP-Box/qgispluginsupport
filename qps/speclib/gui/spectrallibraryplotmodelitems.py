@@ -338,6 +338,13 @@ class PropertyItemGroup(PropertyItemBase):
         if xml_tag not in PropertyItemGroup.XML_FACTORIES.keys():
             PropertyItemGroup.XML_FACTORIES[xml_tag] = grp.__class__
 
+    @staticmethod
+    def unregisterXmlFactory(xml_tag: Union[str, 'PropertyItemGroup']):
+        if isinstance(xml_tag, PropertyItemGroup):
+            xml_tag = xml_tag.__class__.__name__
+        assert xml_tag in PropertyItemGroup.XML_FACTORIES
+        PropertyItemGroup.XML_FACTORIES.pop(xml_tag)
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mMissingValues: bool = False
@@ -1961,12 +1968,12 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         self.mPField.setProperty(p)
 
     def field(self) -> QgsField:
-        fields = self.speclib().fields()
-        i = fields.lookupField(self.fieldName())
-        if i < 0:
-            return None
-        else:
-            return fields.at(i)
+        if isinstance(self.speclib(), QgsVectorLayer):
+            fields = self.speclib().fields()
+            i = fields.lookupField(self.fieldName())
+            if i >= 0:
+                return fields.at(i)
+        return None
 
     def fieldName(self) -> str:
         return self.mPField.property().field()

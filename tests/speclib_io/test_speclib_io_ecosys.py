@@ -8,10 +8,12 @@ from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorLayer
 
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCaseBase, start_app2
+
+start_app2()
 
 
-class TestSpeclibIO_EcoSIS(TestCase):
+class TestSpeclibIO_EcoSIS(TestCaseBase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_EcoSIS, cls).setUpClass(*args, **kwds)
@@ -47,7 +49,6 @@ class TestSpeclibIO_EcoSIS(TestCase):
         feedback = QgsProcessingFeedback()
 
         for path in ecosysFiles:
-
             print('Read {}...'.format(path))
 
             importSettings = dict()
