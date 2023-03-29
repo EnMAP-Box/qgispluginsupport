@@ -766,7 +766,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         func = self.mUnitConverterFunctionModel.convertFunction(profileData.get('xUnit', None), xUnit)
         x = func(profileData['x'])
         y = profileData['y']
-        if x is None or len(x) == 0:
+        if x is None or len(x) == 0 or len(x) != len(y):
             return None
         else:
             # convert date units to float values with decimal year and second precision to make them plotable
