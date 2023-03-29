@@ -1555,8 +1555,8 @@ class RasterRendererGroup(PropertyItemGroup):
                 # rendererName = 'Raster Contour'
             elif isinstance(renderer, QgsSingleBandColorDataRenderer):
                 bandR = None
-                # rendererName = 'Single Band Color'
-                # todo
+            elif isinstance(renderer, QgsSingleBandPseudoColorRenderer):
+                bandR = renderer.band()
             elif isinstance(renderer, QgsSingleBandGrayRenderer):
                 bandR = renderer.grayBand()
                 # rendererName = 'Single Band Gray'
