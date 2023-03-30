@@ -9,11 +9,11 @@ from qgis.PyQt.QtCore import QMimeData, QModelIndex
 from osgeo import gdal, ogr, gdal_array
 
 from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QMenu, QAction
-from qgis.core import QgsFeature
+from qgis.core import QgsFeature, edit
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
 from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
-    GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils
+    GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils, GDALMetadataItem
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qpstestdata import enmap
@@ -87,6 +87,7 @@ class TestsGdalMetadata(TestCaseBase):
         model2.syncToLayer()
         model2.startEditing()
         model2.applyToLayer()
+
         self.showGui(view)
 
     def test_gdal_envi_header_comments(self):
@@ -242,15 +243,17 @@ class TestsGdalMetadata(TestCaseBase):
         modifiedBandNames = ['A', 'B', 'C', 'D', 'E']
         # modify band properties
         # set a band names
-        bandModel.startEditing()
+        self.assertFalse(bandModel.hasEdits)
+        bandModel.commitChanges()
+        with edit(bandModel):
 
-        for b, name in enumerate(modifiedBandNames):
-            f: QgsFeature = bandModel.getFeature(b + 1)
-            f.setAttribute(BandFieldNames.Name, name)
-            bandModel.updateFeature(f)
+            for b, name in enumerate(modifiedBandNames):
+                f: QgsFeature = bandModel.getFeature(b + 1)
+                f.setAttribute(BandFieldNames.Name, name)
+                bandModel.updateFeature(f)
 
             # bandModel.changeAttributeValue(3, iField, 'Another Band Name')
-
+        self.assertTrue(bandModel.hasEdits)
         bandModel.mMapLayer.reload()
         bandModel.applyToLayer()
 
@@ -454,11 +457,12 @@ foo H =
 
     def test_GDALMetadataModel(self):
 
-        layers = [QgsRasterLayer(self.createImageCopy(enmap)),
+        layers = [TestObjects.createVectorLayer(),
+                  QgsRasterLayer(self.createImageCopy(enmap)),
                   TestObjects.createRasterLayer(),
-                  TestObjects.createVectorLayer(),
                   TestObjects.createSpectralLibrary()
                   ]
+
         for lyr in layers:
             self.assertIsInstance(lyr, QgsMapLayer)
             model = GDALMetadataModel()
@@ -466,6 +470,23 @@ foo H =
             model.startEditing()
             model.syncToLayer()
             model.applyToLayer()
+
+            items = []
+            for o in model.majorObjects():
+                item = GDALMetadataItem(o, domain='mydomain', value='myvalue', key='mykey')
+                item.initialValue = None
+                items.append(item)
+                model.appendMetadataItem(item)
+
+            try:
+                model.applyToLayer()
+                model.syncToLayer()
+            except Exception as ex:
+                s = ""
+            if isinstance(lyr, QgsRasterLayer):
+                existing = [str(f) for f in model.mFeatures]
+                for f in items:
+                    self.assertTrue(str(f) in existing, msg=f'Failed to save: {f} to {lyr.source()}')
 
     def test_GDALMetadataModelItemWidget(self):
 
