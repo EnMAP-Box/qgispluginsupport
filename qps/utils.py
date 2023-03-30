@@ -812,10 +812,10 @@ def showMessage(message: str, title: str, level):
 
 
 def gdalDataset(dataset: Union[str,
-                                      pathlib.Path,
-                                      QgsRasterLayer,
-                                      QgsRasterDataProvider,
-                                      gdal.Dataset],
+                                pathlib.Path,
+                                QgsRasterLayer,
+                                QgsRasterDataProvider,
+                                gdal.Dataset],
                 eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
@@ -841,7 +841,7 @@ def gdalDataset(dataset: Union[str,
     return dataset
 
 
-def ogrDataSource(data_source, update:int = 0) -> ogr.DataSource:
+def ogrDataSource(data_source, update: int = 0) -> ogr.DataSource:
     """
     Returns an OGR DataSource instance
     :param data_source: ogr.DataSource | str | pathlib.Path | QgsVectorLayer
@@ -2747,8 +2747,7 @@ def createCRSTransform(src: QgsCoordinateReferenceSystem, dst: QgsCoordinateRefe
     return t
 
 
-def saveTransform(geom: Union[QgsPointXY, QgsRectangle,
-                                     Tuple[np.ndarray, np.ndarray]],
+def saveTransform(geom: Union[QgsPointXY, QgsRectangle, Tuple[np.ndarray, np.ndarray]],
                   crs1: QgsCoordinateReferenceSystem,
                   crs2: QgsCoordinateReferenceSystem) -> Union[QgsPointXY, QgsRectangle]:
     """

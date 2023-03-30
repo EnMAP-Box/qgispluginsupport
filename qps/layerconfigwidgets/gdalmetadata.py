@@ -148,7 +148,6 @@ class BandFieldNames(object):
     ENVIDataReflectanceOffset = 'Data Refl. Offset'
 
 
-
 def isGDALRasterLayer(lyr) -> bool:
     b = isinstance(lyr, QgsRasterLayer) \
         and lyr.isValid() \
@@ -211,7 +210,6 @@ class GDALBandMetadataModel(QgsVectorLayer):
         self.committedFeaturesRemoved.connect(setEditsTrue)
         self.committedAttributeValuesChanges.connect(setEditsTrue)
 
-
     def resetChangesFlag(self) -> bool:
         v = self.wasChangedFlag
         self.wasChangedFlag = False
@@ -258,7 +256,6 @@ class GDALBandMetadataModel(QgsVectorLayer):
             self.mMapLayer = None
 
         self.syncToLayer(spectralProperties=spectralProperties)
-
 
     def toFieldValue(self, value):
 
@@ -351,6 +348,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
         self.setAttributeTableConfig(config)
 
         self.commitChanges(not is_editable)
+
     def asMap(self) -> dict:
 
         data = dict()
@@ -597,6 +595,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
         self.hasEdits = False
         if was_editable:
             self.startEditing()
+
     def orderedFeatures(self) -> List[QgsFeature]:
         request = QgsFeatureRequest()
         request.addOrderBy('"Band"', True, True)
@@ -681,7 +680,6 @@ class GDALBandMetadataModel(QgsVectorLayer):
             self.resetEditsFlag()
 
             self.mMapLayer.reload()
-
 
     def driverSpecific(self, ds: gdal.Dataset):
 
@@ -951,6 +949,7 @@ class GDALMetadataModel(QAbstractTableModel):
         ds.FlushCache()
         del ds
         s = ""
+
     def applyToLayer(self):
 
         if self.hasEdits:
@@ -1436,6 +1435,7 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
                 self.messageBar().pushMessage(info, Qgis.MessageLevel.Info)
 
             QTimer.singleShot(1000, self.syncToLayer)
+
     def syncToLayer(self, *args):
 
         t0 = datetime.datetime.now()
