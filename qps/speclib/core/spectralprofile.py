@@ -93,7 +93,9 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
     bbl = d.get('bbl', None)
     if bbl:
         assert isinstance(bbl, list)
-        assert len(bbl) == len(y), f'bbl has length {len(y)} instead of {len(y)}'
+        if len(bbl) != len(y):
+            s = ""
+        assert len(bbl) == len(y), f'bbl has length {len(bbl)} instead of {len(y)}'
 
     return d
 

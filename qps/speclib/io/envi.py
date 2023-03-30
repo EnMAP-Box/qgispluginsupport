@@ -528,6 +528,8 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
             # stack profiles
             pData = np.vstack(pData)
 
+            if bbl and len(bbl) != len(pData[0]):
+                s = ""
             # convert array to data type GDAL is able to write
             if pData.dtype == np.int64:
                 pData = pData.astype(np.int32)

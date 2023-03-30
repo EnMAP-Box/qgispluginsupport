@@ -110,12 +110,12 @@ class SpectralLibraryExportWidget(SpectralLibraryIOWidget):
         return settings
 
 
-class SpectralLibraryImportWidget(SpectralLibraryIOWidget, QgsExpressionContextGenerator):
+class SpectralLibraryImportWidget(SpectralLibraryIOWidget):
     sigSourceChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
         super(SpectralLibraryImportWidget, self).__init__(*args, **kwds)
-        QgsExpressionContextGenerator.__init__(self)
+        # super(QgsExpressionContextGenerator, self).__init__()
         self.mSource: str = None
 
     def setSource(self, source: str):
@@ -359,22 +359,23 @@ class SpectralLibraryIO(QObject):
 
         matched_formats: List[SpectralLibraryImportWidget] = []
         for IO in SpectralLibraryIO.spectralLibraryIOs():
-            format = IO.createImportWidget()
-            if isinstance(format, SpectralLibraryImportWidget):
-                for e in QgsFileUtils.extensionsFromFilter(format.filter()):
+            fmt = IO.createImportWidget()
+            if isinstance(fmt, SpectralLibraryImportWidget):
+                for e in QgsFileUtils.extensionsFromFilter(fmt.filter()):
                     if ext.endswith(e):
-                        matched_formats.append(format)
+                        matched_formats.append(fmt)
                         break
 
-        for format in matched_formats:
-            format: SpectralLibraryImportWidget
-            IO: SpectralLibraryIO = format.spectralLibraryIO()
-            format.setSource(uri)
-            fields = QgsFields(format.sourceFields())
+        for fmt in matched_formats:
+            fmt: SpectralLibraryImportWidget
+            IO: SpectralLibraryIO = fmt.spectralLibraryIO()
+            fmt.setSource(uri)
+            fields = QgsFields(fmt.sourceFields())
             if fields.count() == 0:
                 continue
-            settings = dict(fields=QgsFields(format.sourceFields()))
-            settings = format.importSettings(settings)
+            settings = dict(fields=QgsFields(fmt.sourceFields()))
+            settings = fmt.importSettings(settings)
+
             importedProfiles = IO.importProfiles(uri, settings, feedback=feedback)
             if len(importedProfiles) > 0:
                 return importedProfiles
@@ -501,12 +502,14 @@ class SpectralLibraryIO(QObject):
         assert isinstance(uri, str)
         # 1. Try to open directly as vector layer
         try:
-            speclib = QgsVectorLayer(uri, os.path.basename(uri))
-            if not speclib.isValid():
-                speclib = None
+            sl = QgsVectorLayer(uri, os.path.basename(uri))
+            if sl.isValid():
+                return sl
+            del sl
         except Exception:
             s = ""
             pass
+
 
         # 2. Search for suited IO options
         if not isinstance(speclib, QgsVectorLayer):

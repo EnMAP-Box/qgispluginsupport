@@ -1490,6 +1490,7 @@ class QgsMapToolSelectionHandler(QObject):
             self.selectFreehandReleaseEvent(e)
         elif self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectRadius:
             self.selectRadiusReleaseEvent(e)
+        s = ""
 
     def canvasMoveEvent(self, e: QgsMapMouseEvent):
         if self.mSelectionMode == QgsMapToolSelectionHandler.SelectionMode.SelectSimple:

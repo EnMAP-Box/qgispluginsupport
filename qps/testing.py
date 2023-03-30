@@ -27,6 +27,7 @@
 import inspect
 import itertools
 import os
+import gc
 import pathlib
 import random
 import shutil
@@ -494,6 +495,10 @@ class TestCaseBase(qgis.testing.TestCase):
 
     def tearDown(self):
         self.check_empty_layerstore(f'{self.__class__.__name__}::{self._testMethodName}')
+        gc.collect()
+        app = QApplication.instance()
+        if isinstance(app, QApplication):
+            app.processEvents()
 
     @classmethod
     def setUpClass(cls):

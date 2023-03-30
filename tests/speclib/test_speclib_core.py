@@ -24,17 +24,19 @@ import unittest
 from typing import List
 
 import numpy as np
+from PyQt5.QtWidgets import QWidget
 from osgeo import ogr
 
 from qgis.PyQt.QtCore import QByteArray, QVariant
 from qgis.PyQt.QtCore import QJsonDocument, NULL
 from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
-    QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsFields
+    QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsFields, edit
 from qgis.gui import QgsGui
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field, \
     create_profile_field, is_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralSetting, \
     SpectralProfileBlock, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
@@ -44,32 +46,20 @@ from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import toType, findTypeFromString, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
     createQgsField, qgsFields2str, str2QgsFields
-
+from qps import registerMapLayerConfigWidgetFactories, registerEditorWidgets, initAll
+from qpstestdata import envi_sli, enmap
 
 start_app()
-
+initAll()
+# registerSpectralProfileEditorWidget()
+# registerEditorWidgets()
+#
+# registerMapLayerConfigWidgetFactories()
 
 class SpeclibCoreTests(TestCaseBase):
 
-    @classmethod
-    def setUpClass(cls, *args, **kwds) -> None:
-        super(SpeclibCoreTests, cls).setUpClass(*args, **kwds)
 
-    def setUp(self):
-        super().setUp()
-        QgsProject.instance().removeMapLayers(QgsProject.instance().mapLayers().keys())
-
-        reg = QgsGui.editorWidgetRegistry()
-        if len(reg.factories()) == 0:
-            reg.initEditors()
-
-        registerSpectralProfileEditorWidget()
-        from qps import registerEditorWidgets
-        registerEditorWidgets()
-
-        from qps import registerMapLayerConfigWidgetFactories
-        registerMapLayerConfigWidgetFactories()
-
+    # @unittest.skip('')
     def test_fields(self):
 
         f1 = createQgsField('foo', 9999)
@@ -135,6 +125,7 @@ class SpeclibCoreTests(TestCaseBase):
         ]
         return examples
 
+    # @unittest.skip('')
     def test_validate_profile_dict(self):
 
         for p in self.valid_profile_dicts():
@@ -154,6 +145,7 @@ class SpeclibCoreTests(TestCaseBase):
             self.assertTrue(len(msg) > 0)
             self.assertEqual(d, dict())
 
+    # @unittest.skip('')
     def test_Serialization(self):
 
         x = [1, 2, 3, 4, 5]
@@ -249,6 +241,7 @@ class SpeclibCoreTests(TestCaseBase):
         d2 = decodeProfileValueDict(encodeProfileValueDict(d, ProfileEncoding.Text))
         self.assertListEqual(d['y'], d2['y'])
 
+    # @unittest.skip('')
     def test_profile_fields(self):
 
         path = '/vsimem/test.gpkg'
@@ -325,6 +318,7 @@ class SpeclibCoreTests(TestCaseBase):
                 s = ""
         s = ""
 
+    # @unittest.skip('')
     def test_FeatureReferenceIterator(self):
         sl = TestObjects.createSpectralLibrary(10)
         all_profiles = list(sl.getFeatures())
@@ -352,6 +346,7 @@ class SpeclibCoreTests(TestCaseBase):
         self.assertIsInstance(fpi.referenceFeature(), QgsFeature)
         check_profiles(fpi)
 
+    # @unittest.skip('')
     def test_SpectralProfileBlock(self):
 
         coredata, core_wl, core_wlu, core_gt, core_wkt = TestObjects.coreData()
@@ -382,6 +377,7 @@ class SpeclibCoreTests(TestCaseBase):
             block3.toCrs(newCRS)
             self.assertTrue(block3.crs() == newCRS)
 
+    # @unittest.skip('')
     def test_SpectralProfileReading(self):
 
         lyr = TestObjects.createRasterLayer()
@@ -399,10 +395,10 @@ class SpeclibCoreTests(TestCaseBase):
         sp = SpectralLibraryUtils.readProfileDict(lyr, outOfImage)
         self.assertTrue(sp is None)
 
-    @unittest.SkipTest
-    def test_spectralProfileSpeedUpacking(self):
+    # @unittest.SkipTest
+    def test_spectralProfileSpeedUnpacking(self):
 
-        n_profiles = 10000
+        n_profiles = 2000
         n_bands = 300
         pinfo = f'{n_profiles} profiles[{n_bands} bands]'
         print(f'Test loading/writing times for {pinfo}')
@@ -419,14 +415,19 @@ class SpeclibCoreTests(TestCaseBase):
         path_local = DIR / 'speedtest.gpkg'
         # files = sl.write(path_local)
         pfield = profile_field_list(sl)[0]
+
+        SpectralLibraryUtils.writeToSource(sl, path_local)
         sl = QgsVectorLayer(path_local.as_posix())
-        self.assertIsInstance(sl, QgsVectorLayer)
+
+        self.assertTrue(sl.isValid())
         self.assertEqual(sl.featureCount(), n_profiles)
+
+        iPField = sl.fields().indexOf(pfield.name())
         DATA = dict()
+
 
         # test decoding
         t0 = now()
-
         for f in sl.getFeatures():
             ba = f.attribute(pfield.name())
         print(f'{pinfo}: read only: {now() - t0}')
@@ -438,34 +439,16 @@ class SpeclibCoreTests(TestCaseBase):
         self.assertEqual(n_profiles, sl.featureCount())
 
         t0 = now()
+        with edit(sl):
+            sl.beginEditCommand('read & write profiles')
+            for f in sl.getFeatures():
+                dump = encodeProfileValueDict(DATA[f.id()], pfield)
+                sl.changeAttributeValue(f.id(), iPField, dump)
+            sl.endEditCommand()
+        dt = now() - t0
+        print(f'Read & write {sl.featureCount()} profiles from/to GPKG: {dt}')
 
-        for f in sl.getFeatures():
-            ba = encodeProfileValueDict(DATA[f.id()], pfield)
-            f.setAttribute(pfield.name(), ba)
-
-        print(f'{pinfo}: encode & write: {now() - t0}')
-
-        n_reads = 10
-        t0 = now()
-        for i in range(n_reads):
-
-            for j, f in enumerate(sl.getFeatures()):
-                ba = f.attribute(pfield.name())
-                DATA[f.id()] = decodeProfileValueDict(ba)
-            assert j == n_profiles - 1
-        print(f'{pinfo}: read & decode {n_reads}x without feature cache: {now() - t0}')
-
-        cacheSizes = [256, 512, 1024, 2048, 4096]
-        for cacheSize in cacheSizes:
-            cache = QgsVectorLayerCache(sl, cacheSize)
-            t0 = now()
-            for i in range(n_reads):
-                for j, f in enumerate(cache.getFeatures()):
-                    ba = f.attribute(pfield.name())
-                    DATA[f.id()] = decodeProfileValueDict(ba)
-                assert j == n_profiles - 1
-            print(f'{pinfo}: read & decode {n_reads}x with feature cache ({cacheSize}): {now() - t0}')
-
+    # @unittest.skip('')
     def test_groupBySpectralProperties(self):
 
         sl1 = TestObjects.createSpectralLibrary(n_empty=1)
@@ -494,6 +477,7 @@ class SpeclibCoreTests(TestCaseBase):
                 d2 = decodeProfileValueDict(profiles[0].attribute(key.fieldName()))
                 self.assertEqual(d2['x'], x)
 
+    # @unittest.skip('')
     def test_SpectralProfileFields(self):
 
         sl = SpectralLibraryUtils.createSpectralLibrary(profile_fields=['profiles', 'derived1'])
@@ -510,6 +494,7 @@ class SpeclibCoreTests(TestCaseBase):
         self.assertTrue(sl.commitChanges())
         self.assertEqual(profile_fields(sl).count(), 3)
 
+    # @unittest.skip('')
     def test_example_profile_fields(self):
         fieldNP = QgsField('no profile', type=QVariant.ByteArray)
         self.assertFalse(is_profile_field(fieldNP))
@@ -531,13 +516,8 @@ class SpeclibCoreTests(TestCaseBase):
         lyr.setEditorWidgetSetup(i, fieldP.editorWidgetSetup())
         print(f'Is SpectralProfile field? {is_profile_field(lyr.fields().at(i))}')
 
+    # @unittest.skip('')
     def test_SpectralLibraryUtils(self):
-
-        from qpstestdata import envi_sli, enmap
-        from qps import registerExpressionFunctions
-        from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
-        initSpectralLibraryIOs()
-        registerExpressionFunctions()
 
         vl = SpectralLibraryUtils.readFromSource(envi_sli)
         self.assertIsInstance(vl, QgsVectorLayer)
@@ -556,6 +536,7 @@ class SpeclibCoreTests(TestCaseBase):
         d = SpectralLibraryUtils.readProfileDict(rl, pt)
         self.assertTrue(isProfileValueDict(d))
 
+    # @unittest.skip('')
     def test_featuresToArrays(self):
         # lyrWMS = QgsRasterLayer(WMS_GMAPS, 'test', 'wms')
 
@@ -583,6 +564,7 @@ class SpeclibCoreTests(TestCaseBase):
                 self.assertEqual(array.shape[0], setting.n_bands())
                 self.assertEqual(array.shape[1], len(fids))
 
+    # @unittest.skip('')
     def test_others(self):
 
         self.assertEqual(23, toType(int, '23'))
@@ -595,6 +577,7 @@ class SpeclibCoreTests(TestCaseBase):
         self.assertTrue(findTypeFromString('xyz23.3') is str)
         self.assertTrue(findTypeFromString('') is str)
 
+    # @unittest.skip('')
     def test_writeAsRaster(self):
 
         speclib = SpectralLibraryUtils.createSpectralLibrary()
