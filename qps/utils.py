@@ -841,7 +841,7 @@ def gdalDataset(dataset: Union[str,
     return dataset
 
 
-def ogrDataSource(data_source) -> ogr.DataSource:
+def ogrDataSource(data_source, update:int = 0) -> ogr.DataSource:
     """
     Returns an OGR DataSource instance
     :param data_source: ogr.DataSource | str | pathlib.Path | QgsVectorLayer
@@ -883,7 +883,7 @@ def ogrDataSource(data_source) -> ogr.DataSource:
         data_source = data_source.as_posix()
 
     if isinstance(data_source, str):
-        data_source = ogr.Open(data_source)
+        data_source = ogr.Open(data_source, update=update)
 
     assert isinstance(data_source, ogr.DataSource), 'Can not read {} as ogr.DataSource'.format(data_source)
     return data_source
