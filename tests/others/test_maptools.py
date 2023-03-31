@@ -14,8 +14,6 @@ __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 import gc
 import unittest
 
-from PyQt5.QtWidgets import QApplication
-
 from qgis.PyQt.QtCore import QPointF, Qt, QEvent, QTimer, pyqtSlot
 from qgis.PyQt.QtGui import QMouseEvent
 from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle, \
@@ -41,7 +39,7 @@ class TestMapTools(TestCaseBase):
         canvas.setExtent(canvas.fullExtent())
         return canvas, lyr
 
-    @unittest.skip('')
+    # @unittest.skip('')
     def test_QgsMapTools(self):
 
         lyrR = TestObjects.createRasterLayer()
@@ -117,7 +115,7 @@ class TestMapTools(TestCaseBase):
         self.showGui(canvas)
         QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skip('')
+    # @unittest.skip('')
     def test_PixelScaleExtentMapTool(self):
 
         canvas = QgsMapCanvas()
@@ -136,7 +134,7 @@ class TestMapTools(TestCaseBase):
 
         QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skip('')
+    # @unittest.skip('')
     def test_CenterMapCanvasMapTool(self):
 
         canvas, lyr = self.createCanvas()
@@ -148,7 +146,7 @@ class TestMapTools(TestCaseBase):
         QgsProject.instance().removeAllMapLayers()
         del canvas
 
-    @unittest.skip('')
+    # @unittest.skip('')
     def test_SpatialExtentMapTool(self):
 
         canvas, lyr = self.createCanvas()
@@ -221,7 +219,7 @@ class TestMapTools(TestCaseBase):
         gc.collect()
         QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skip('')
+    # @unittest.skip('')
     def test_QgsFeatureSelectTool(self):
 
         canvas, lyr = self.createCanvas()
@@ -240,7 +238,7 @@ class TestMapTools(TestCaseBase):
         del canvas, mt1, mt2, lyr
         QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skip('')
+    # @unittest.skip('')
     def test_AddFeature(self):
 
         canvas, lyr = self.createCanvas()
@@ -264,7 +262,7 @@ class TestMapTools(TestCaseBase):
         QgsProject.instance().removeAllMapLayers()
         s = ""
 
-    @unittest.skip('')
+    # @unittest.skip('')
     def test_MapTools(self):
 
         canvas = QgsMapCanvas()
@@ -324,7 +322,6 @@ class TestMapTools(TestCaseBase):
             self.assertIsInstance(mapTool, QgsMapTool)
             self.assertEqual(mapTool, canvas.mapTool())
 
-
             size = canvas.size()
 
             mouseEvent = QMouseEvent(
@@ -337,8 +334,6 @@ class TestMapTools(TestCaseBase):
             qgsMouseEvent = QgsMapMouseEvent(canvas, mouseEvent)
             mapTool.canvasPressEvent(qgsMouseEvent)
 
-
-
             mouseEvent2 = QMouseEvent(
                 QEvent.MouseButtonPress,
                 QPointF(0.5 * size.width(), 0.5 * size.height()),
@@ -346,13 +341,8 @@ class TestMapTools(TestCaseBase):
                 Qt.LeftButton,
                 Qt.NoModifier)
 
-
             qgsMouseEvent2 = QgsMapMouseEvent(canvas, mouseEvent2)
             mapTool.canvasReleaseEvent(qgsMouseEvent2)
-
-
-
-
 
         mt = PixelScaleExtentMapTool(canvas)
         self.assertIsInstance(mt, PixelScaleExtentMapTool)

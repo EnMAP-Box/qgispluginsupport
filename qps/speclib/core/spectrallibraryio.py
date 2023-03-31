@@ -385,10 +385,10 @@ class SpectralLibraryIO(QObject):
     @classmethod
     def writeToSource(cls,
                       profiles: Union[
-                               QgsFeature,
-                               QgsVectorLayer,
-                               QgsFeatureIterator,
-                               List[QgsFeature]],
+                          QgsFeature,
+                          QgsVectorLayer,
+                          QgsFeatureIterator,
+                          List[QgsFeature]],
                       uri: Union[str, pathlib.Path, QUrl],
                       settings: dict = dict(),
                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
@@ -509,7 +509,6 @@ class SpectralLibraryIO(QObject):
         except Exception:
             s = ""
             pass
-
 
         # 2. Search for suited IO options
         if not isinstance(speclib, QgsVectorLayer):

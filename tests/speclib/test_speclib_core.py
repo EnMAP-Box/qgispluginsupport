@@ -24,40 +24,37 @@ import unittest
 from typing import List
 
 import numpy as np
-from PyQt5.QtWidgets import QWidget
 from osgeo import ogr
-
 from qgis.PyQt.QtCore import QByteArray, QVariant
 from qgis.PyQt.QtCore import QJsonDocument, NULL
-from qgis.core import QgsProject, QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
-    QgsVectorLayerCache, QgsCoordinateReferenceSystem, QgsFields, edit
-from qgis.gui import QgsGui
+from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
+    QgsCoordinateReferenceSystem, QgsFields, edit
+
+from qps import initAll
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field, \
     create_profile_field, is_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralSetting, \
     SpectralProfileBlock, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
     validateProfileValueDict, isProfileValueDict
-from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import toType, findTypeFromString, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
     createQgsField, qgsFields2str, str2QgsFields
-from qps import registerMapLayerConfigWidgetFactories, registerEditorWidgets, initAll
 from qpstestdata import envi_sli, enmap
 
 start_app()
 initAll()
+
+
 # registerSpectralProfileEditorWidget()
 # registerEditorWidgets()
 #
 # registerMapLayerConfigWidgetFactories()
 
 class SpeclibCoreTests(TestCaseBase):
-
 
     # @unittest.skip('')
     def test_fields(self):
@@ -424,7 +421,6 @@ class SpeclibCoreTests(TestCaseBase):
 
         iPField = sl.fields().indexOf(pfield.name())
         DATA = dict()
-
 
         # test decoding
         t0 = now()
