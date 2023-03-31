@@ -29,6 +29,7 @@ from qps.utils import createQgsField
 LAYER_WIDGET_REPS = 5
 
 start_app()
+registerMapLayerConfigWidgetFactories()
 
 
 class LayerPropertyTests(TestCaseBase):
@@ -40,12 +41,6 @@ class LayerPropertyTests(TestCaseBase):
 
         self.assertTrue(equal_styles(lyr1, lyr1))
         self.assertFalse(equal_styles(lyr1, lyr2))
-
-    def test_SubLayerSelection(self):
-
-        p = r'F:\Temp\Hajo\S3A_OL_2_EFR____20160614T082507_20160614T082707_20170930T190837_0119_005_178______MR1_R_NT_002_vical_c2rcc015nets20170704.nc'
-
-        # d = QgsSublayersDialog(QgsSublayersDialog.Gdal, )
 
     def test_subLayerDefinitions(self):
 
@@ -62,6 +57,8 @@ class LayerPropertyTests(TestCaseBase):
         sLayers = subLayers(vl)
         self.assertIsInstance(sLayers, list)
         self.assertTrue(len(sLayers) == 1)
+
+        QgsProject.instance().removeAllMapLayers()
 
     def test_defaultRenderer(self):
 
@@ -89,6 +86,8 @@ class LayerPropertyTests(TestCaseBase):
         r = defaultRasterRenderer(lyr)
         self.assertIsInstance(r, QgsMultiBandColorRenderer)
 
+        QgsProject.instance().removeAllMapLayers()
+
     def test_enmapboxbug_452(self):
         lyr = TestObjects.createVectorLayer()
         rlr = TestObjects.createRasterLayer()
@@ -96,10 +95,10 @@ class LayerPropertyTests(TestCaseBase):
         d = QgsRendererPropertiesDialog(lyr, style, embedded=True)
         self.showGui(d)
 
+        QgsProject.instance().removeAllMapLayers()
+
     @unittest.skipIf(TestCaseBase.runsInCI(), 'blocking dialog')
     def test_layer_properties(self):
-        from qps import registerMapLayerConfigWidgetFactories
-        registerMapLayerConfigWidgetFactories()
 
         rl = TestObjects.createRasterLayer(nb=300)
         showLayerPropertiesDialog(rl)
@@ -109,7 +108,6 @@ class LayerPropertyTests(TestCaseBase):
 
     def test_layerPropertiesDialog_RasterBandWidget(self):
 
-        registerMapLayerConfigWidgetFactories()
         lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
         QgsProject.instance().addMapLayer(lyr)
         w = QWidget()
@@ -144,8 +142,6 @@ class LayerPropertyTests(TestCaseBase):
 
     def test_LayerPropertiesDialog_Raster(self):
 
-        registerMapLayerConfigWidgetFactories()
-
         s = ""
 
         lyr = TestObjects.createRasterLayer(nb=255, eType=gdal.GDT_UInt16)
@@ -161,6 +157,7 @@ class LayerPropertyTests(TestCaseBase):
                 d.addPropertiesPageFactory(factory)
 
         self.showGui(d)
+        del d
         QgsProject.instance().removeAllMapLayers()
 
     def test_LayerProperties(self):
@@ -179,6 +176,9 @@ class LayerPropertyTests(TestCaseBase):
             # dialog = showLayerPropertiesDialog(lyr, modal=False)
             # dialog.btnOk.click()
             # self.assertTrue(dialog.result() == QDialog.Accepted)
+            del dialog
+
+        QgsProject.instance().removeAllMapLayers()
 
     def test_add_attributes(self):
 

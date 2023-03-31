@@ -495,10 +495,12 @@ class TestCaseBase(qgis.testing.TestCase):
 
     def tearDown(self):
         self.check_empty_layerstore(f'{self.__class__.__name__}::{self._testMethodName}')
+        # call gc and processEvents to fail fast
         gc.collect()
         app = QApplication.instance()
         if isinstance(app, QApplication):
             app.processEvents()
+        gc.collect()
 
     @classmethod
     def setUpClass(cls):
