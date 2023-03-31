@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - '**.py'
+      - '**flake8.yml'
 
   pull_request:
     branches:
