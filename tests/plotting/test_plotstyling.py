@@ -27,9 +27,11 @@ from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsFeature, QgsField, QgsVectorLayer, QgsAttributeTableConfig, \
     QgsEditorWidgetSetup, QgsActionManager, QgsAction
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsGui, QgsSearchWidgetWrapper
+
 from qps.plotstyling.plotstyling import PlotStyleButton, pen2tuple, PlotStyle, XMLTAG_PLOTSTYLENODE, \
-    createSetPlotStyleAction, MarkerSymbol, tuple2pen, registerPlotStyleEditorWidget, PlotStyleEditorWidgetFactory, \
-    PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget, PlotWidgetStyle
+    createSetPlotStyleAction, MarkerSymbol, tuple2pen, PlotStyleEditorWidgetFactory, \
+    PlotStyleEditorWidgetWrapper, PlotStyleWidget, MarkerSymbolComboBox, PlotStyleEditorConfigWidget, PlotWidgetStyle, \
+    plotStyleEditorWidgetFactory
 from qps.testing import TestCaseBase, start_app
 
 start_app()
@@ -235,7 +237,7 @@ class PlotStyleTests(TestCaseBase):
         if len(reg.factories()) == 0:
             reg.initEditors()
 
-        registerPlotStyleEditorWidget()
+        plotStyleEditorWidgetFactory(True)
         from qps.plotstyling.plotstyling import EDITOR_WIDGET_REGISTRY_KEY
         self.assertTrue(EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys())
 

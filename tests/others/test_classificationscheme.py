@@ -24,9 +24,9 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, \
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsMapLayerComboBox, QgsGui, QgsSearchWidgetWrapper
 from qps.classification.classificationscheme import ClassificationScheme, ClassInfo, EDITOR_WIDGET_REGISTRY_KEY, \
     ClassificationMapLayerComboBox, DEFAULT_UNCLASSIFIEDCOLOR, MIMEDATA_KEY, ClassificationSchemeComboBox, \
-    registerClassificationSchemeEditorWidget, ClassificationSchemeWidgetFactory, ClassificationSchemeEditorConfigWidget, \
+    ClassificationSchemeWidgetFactory, ClassificationSchemeEditorConfigWidget, \
     ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
-    ClassificationSchemeComboBoxModel, MIMEDATA_KEY_QGIS_STYLE
+    ClassificationSchemeComboBoxModel, MIMEDATA_KEY_QGIS_STYLE, classificationSchemeEditorWidgetFactory
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import file_search
 
@@ -222,7 +222,7 @@ class TestsClassificationScheme(TestCaseBase):
         if len(reg.factories()) == 0:
             reg.initEditors()
 
-        registerClassificationSchemeEditorWidget()
+        classificationSchemeEditorWidgetFactory(True)
         self.assertTrue(EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys())
         factory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
         self.assertIsInstance(factory, ClassificationSchemeWidgetFactory)

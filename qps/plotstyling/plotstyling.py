@@ -52,6 +52,8 @@ DEBUG = False
 
 MODULE_IMPORT_PATH = None
 XMLTAG_PLOTSTYLENODE = 'PlotStyle'
+_PLOTSTYLE_EDITOR_WIDGET_FACTORY = None
+EDITOR_WIDGET_REGISTRY_KEY = 'Plot Settings'
 
 for name, module in sys.modules.items():
     if hasattr(module, '__file__') and module.__file__ == __file__:
@@ -1261,16 +1263,25 @@ class PlotStyleEditorWidgetFactory(QgsEditorWidgetFactory):
         return d
 
 
-EDITOR_WIDGET_REGISTRY_KEY = 'Plot Settings'
+def plotStyleEditorWidgetFactory(register: bool = True) -> PlotStyleEditorWidgetFactory:
+    global _PLOTSTYLE_EDITOR_WIDGET_FACTORY
+    if not isinstance(_PLOTSTYLE_EDITOR_WIDGET_FACTORY, PlotStyleEditorWidgetFactory):
+        _PLOTSTYLE_EDITOR_WIDGET_FACTORY = PlotStyleEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
+    reg = QgsGui.editorWidgetRegistry()
+    if register and EDITOR_WIDGET_REGISTRY_KEY not in reg.factories().keys():
+        reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, _PLOTSTYLE_EDITOR_WIDGET_FACTORY)
+    return reg.factory(EDITOR_WIDGET_REGISTRY_KEY)
 
 
 def registerPlotStyleEditorWidget():
-    reg = QgsGui.editorWidgetRegistry()
+    warnings.warn(DeprecationWarning('Use plotstyling.plotStyleEditorWidgetFactory(True)'),
+                  stacklevel=2)
+    return plotStyleEditorWidgetFactory(True)
 
-    if EDITOR_WIDGET_REGISTRY_KEY not in reg.factories().keys():
-        global PLOTSTYLE_EDITOR_WIDGET_FACTORY
-        PLOTSTYLE_EDITOR_WIDGET_FACTORY = PlotStyleEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
-        reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, PLOTSTYLE_EDITOR_WIDGET_FACTORY)
+
+def registerPlotStyleEditorWidgetFactory():
+    warnings.warn(DeprecationWarning('Use plotstyling.plotStyleEditorWidgetFactory(True)'))
+    return plotStyleEditorWidgetFactory(True)
 
 
 class PlotWidgetStyle(object):

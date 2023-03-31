@@ -1,7 +1,6 @@
 import unittest
 
 from osgeo import gdal
-
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtGui import QMouseEvent, QColor
@@ -14,6 +13,7 @@ from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
+
 from qps import registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.speclib.core import create_profile_field, profile_fields
@@ -24,7 +24,7 @@ from qps.speclib.gui.spectrallibraryplotmodelitems import RasterRendererGroup, P
     QgsPropertyItem
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
+from qps.speclib.gui.spectralprofileeditor import spectralProfileEditorWidgetFactory
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import nextColor, parseWavelength
@@ -50,7 +50,7 @@ class TestSpeclibPlotting(TestCaseBase):
         print('Error Message: %s' % (err_msg))
 
     def setUp(self):
-        registerSpectralProfileEditorWidget()
+        spectralProfileEditorWidgetFactory(True)
         super().setUp()
 
     def test_SpectralProfilePlotVisualization(self):

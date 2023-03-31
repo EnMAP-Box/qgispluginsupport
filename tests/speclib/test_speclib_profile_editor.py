@@ -10,8 +10,8 @@ from qps.speclib import FIELD_VALUES, EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory, SpectralProfileEditorConfigWidget, \
-    SpectralProfileEditorWidgetWrapper, SpectralProfileEditorWidget, registerSpectralProfileEditorWidget, \
-    SpectralProfileTableModel, SpectralProfileJsonEditor, SpectralProfileTableEditor
+    SpectralProfileEditorWidgetWrapper, SpectralProfileEditorWidget, SpectralProfileTableModel, \
+    SpectralProfileJsonEditor, SpectralProfileTableEditor, spectralProfileEditorWidgetFactory
 from qps.testing import TestCaseBase, TestObjects, start_app
 from qps.unitmodel import BAND_NUMBER
 
@@ -108,7 +108,7 @@ class TestSpeclibWidgets(TestCaseBase):
         reg = QgsGui.editorWidgetRegistry()
         if len(reg.factories()) == 0:
             reg.initEditors()
-        registerSpectralProfileEditorWidget()
+        spectralProfileEditorWidgetFactory(True)
 
         self.assertTrue(EDITOR_WIDGET_REGISTRY_KEY in reg.factories().keys())
         factory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]

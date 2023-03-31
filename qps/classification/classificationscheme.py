@@ -63,6 +63,7 @@ MIMEDATA_KEY_TEXT = 'text/plain'
 MIMEDATA_INTERNAL_IDs = 'classinfo_ids'
 MIMEDATA_KEY_QGIS_STYLE = QGSCLIPBOARD_STYLE_MIME = 'application/qgis.style'
 MAX_UNIQUE_CLASSES = 100
+_CLASS_SCHEME_EDITOR_WIDGET_FACTORY = None
 
 
 def findMapLayersWithClassInfo() -> list:
@@ -2145,11 +2146,17 @@ class ClassificationSchemeWidgetFactory(QgsEditorWidgetFactory):
 EDITOR_WIDGET_REGISTRY_KEY = 'Raster Classification'
 
 
-def registerClassificationSchemeEditorWidget():
+def classificationSchemeEditorWidgetFactory(register: bool = True) -> ClassificationSchemeWidgetFactory:
+    global _CLASS_SCHEME_EDITOR_WIDGET_FACTORY
+    if not isinstance(_CLASS_SCHEME_EDITOR_WIDGET_FACTORY, ClassificationSchemeWidgetFactory):
+        _CLASS_SCHEME_EDITOR_WIDGET_FACTORY = ClassificationSchemeWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
     reg = QgsGui.editorWidgetRegistry()
+    if register and EDITOR_WIDGET_REGISTRY_KEY not in reg.factories().keys():
+        reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, _CLASS_SCHEME_EDITOR_WIDGET_FACTORY)
+    return reg.factory(EDITOR_WIDGET_REGISTRY_KEY)
 
-    if EDITOR_WIDGET_REGISTRY_KEY not in reg.factories().keys():
-        global CLASS_SCHEME_EDITOR_WIDGET_FACTORY
-        factory = ClassificationSchemeWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
-        reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, factory)
-        CLASS_SCHEME_EDITOR_WIDGET_FACTORY = factory
+
+def registerClassificationSchemeEditorWidget():
+    warnings.warn(DeprecationWarning('Use classificationscheme.classificationSchemeEditorWidgetFactory(register=True)'),
+                  stacklevel=2)
+    classificationSchemeEditorWidgetFactory(True)

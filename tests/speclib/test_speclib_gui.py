@@ -23,7 +23,6 @@ import unittest
 
 import numpy as np
 from osgeo import ogr, gdal
-
 from qgis.PyQt.QtCore import QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
@@ -33,6 +32,8 @@ from qgis.core import QgsFeature
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes
 from qgis.gui import QgsMapCanvas, \
     QgsDualView, QgsGui
+
+from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
 from qps.speclib.core import profile_field_list, is_spectral_library
@@ -41,7 +42,6 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
-from qps.speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER
 from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
@@ -84,10 +84,7 @@ class TestSpeclibWidgets(TestCaseBase):
         reg = QgsGui.editorWidgetRegistry()
         if len(reg.factories()) == 0:
             reg.initEditors()
-
-        registerSpectralProfileEditorWidget()
-        from qps import registerEditorWidgets
-        registerEditorWidgets()
+            registerEditorWidgets()
 
         from qps import registerMapLayerConfigWidgetFactories
         registerMapLayerConfigWidgetFactories()

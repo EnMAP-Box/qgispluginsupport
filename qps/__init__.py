@@ -35,7 +35,7 @@ from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
 
 MIN_QGIS_VERSION = '3.26'
-__version__ = '1.4'
+__version__ = '1.5'
 
 DIR_QPS = pathlib.Path(__file__).parent
 DIR_UI_FILES = DIR_QPS / 'ui'
@@ -135,32 +135,21 @@ def unregisterSpectralLibraryPlotFactories():
 
 def registerEditorWidgets():
     """
-    Call this function to register QgsEditorwidgetFactories to the QgsEditorWidgetRegistry
+    Call this function to register QgsEditorWidgetFactories to the QgsEditorWidgetRegistry
     It is required that a QgsApplication has been instantiated.
     """
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
+    from .classification.classificationscheme import (
+        classificationSchemeEditorWidgetFactory, ClassificationSchemeWidgetFactory)
+    assert isinstance(classificationSchemeEditorWidgetFactory(True), ClassificationSchemeWidgetFactory)
 
-    try:
-        from .speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-        registerSpectralProfileEditorWidget()
-    except Exception as ex:
-        print('Failed to call registerSpectralProfileEditorWidget()', file=sys.stderr)
-        print(ex, file=sys.stderr)
+    from .speclib.gui.spectralprofileeditor import (
+        spectralProfileEditorWidgetFactory, SpectralProfileEditorWidgetFactory)
+    assert isinstance(spectralProfileEditorWidgetFactory(True), SpectralProfileEditorWidgetFactory)
 
-    try:
-        from .classification.classificationscheme import registerClassificationSchemeEditorWidget
-        registerClassificationSchemeEditorWidget()
-    except Exception as ex:
-        print('Failed to call registerClassificationSchemeEditorWidget()',
-              file=sys.stderr)
-        print(ex, file=sys.stderr)
-
-    try:
-        from .plotstyling.plotstyling import registerPlotStyleEditorWidget
-        registerPlotStyleEditorWidget()
-    except Exception as ex:
-        print('Failed to call qps.plotstyling.plotstyling.registerPlotStyleEditorWidget()', file=sys.stderr)
-        print(ex, file=sys.stderr)
+    from .plotstyling.plotstyling import (
+        plotStyleEditorWidgetFactory, PlotStyleEditorWidgetFactory)
+    assert isinstance(plotStyleEditorWidgetFactory(True), PlotStyleEditorWidgetFactory)
 
 
 def unregisterEditorWidgets():

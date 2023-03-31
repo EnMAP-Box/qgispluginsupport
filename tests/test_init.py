@@ -10,49 +10,44 @@ import re
 import unittest
 
 from qgis.PyQt.QtGui import QIcon
-from qgis.core import QgsApplication
-from qgis.gui import QgsEditorWidgetFactory
+from qgis.gui import QgsGui, QgsEditorWidgetRegistry
+
+from qps import registerEditorWidgets
+from qps.classification.classificationscheme import ClassificationSchemeWidgetFactory
+from qps.plotstyling.plotstyling import PlotStyleEditorWidgetFactory
+from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory
+from qps.testing import TestCase, start_app
+from qps.utils import scanResources, file_search
+from scripts.create_resourcefile import create_resource_files
+
+start_app()
 
 
-class testClassTesting(unittest.TestCase):
+class TestsCases_Init(TestCase):
 
-    @unittest.skipIf(isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication already started')
     def test_init(self):
 
-        from qps.testing import start_app
-        from qps.utils import scanResources
-        import qps
-        app = start_app()
-        self.assertIsInstance(app, QgsApplication)
-
-        qps.initResources()
-
+        create_resource_files()
         paths = [p for p in scanResources() if p.startswith(':/qps/')]
-        self.assertTrue(len(paths) > 0)
+        self.assertTrue(len(paths) > 0, msg='missing resources')
         for p in paths:
             icon = QIcon(p)
             self.assertFalse((icon.isNull()))
 
-        import qps
-        qps.registerEditorWidgets()
+        registerEditorWidgets()
+        from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY as keyProfiles
+        reg: QgsEditorWidgetRegistry = QgsGui.editorWidgetRegistry()
+        self.assertIsInstance(reg.factory(keyProfiles), SpectralProfileEditorWidgetFactory)
 
-        import qps.speclib.gui.spectralprofileeditor
-        self.assertIsInstance(qps.speclib.gui.spectralprofileeditor.SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY,
-                              QgsEditorWidgetFactory)
+        from qps.plotstyling.plotstyling import EDITOR_WIDGET_REGISTRY_KEY as keyPlotStyling
+        self.assertIsInstance(reg.factory(keyPlotStyling), PlotStyleEditorWidgetFactory)
 
-        import qps.plotstyling.plotstyling
-        self.assertIsInstance(qps.plotstyling.plotstyling.PLOTSTYLE_EDITOR_WIDGET_FACTORY,
-                              QgsEditorWidgetFactory)
-
-        import qps.classification.classificationscheme
-        self.assertIsInstance(qps.classification.classificationscheme.CLASS_SCHEME_EDITOR_WIDGET_FACTORY,
-                              QgsEditorWidgetFactory)
+        from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY as keyClassScheme
+        self.assertIsInstance(reg.factory(keyClassScheme), ClassificationSchemeWidgetFactory)
 
     def test_relative_imports(self):
 
         root = pathlib.Path(__file__).parents[1]
-
-        from qps.utils import file_search
 
         re1 = re.compile(r'^\w*import qps')
         re2 = re.compile(r'^\w*from qps')
