@@ -1,7 +1,4 @@
 [run]
-include =
-    qps/*
-
 
 omit =
     qps/pyqtgraph/*

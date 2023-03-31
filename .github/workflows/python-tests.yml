@@ -3,6 +3,8 @@ name: 🧪 Tests
 on:
   push:
     branches: [master]
+    paths:
+      - '**.py'
 
   pull_request:
     branches:
