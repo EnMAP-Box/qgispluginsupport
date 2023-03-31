@@ -5,10 +5,11 @@
 
 scipy
 # clean code
+flake8
 flake8-qgis
 
 # for unit testing only
-coverage
 unittest-xml-reporting
 pytest
+pytest-cov
 
