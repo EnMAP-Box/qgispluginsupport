@@ -21,7 +21,9 @@ jobs:
       QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        #uses: actions/checkout@v2
+        #uses: actions/checkout@v3.50
+        uses: actions/checkout@latest
         with:
           submodules: recursive
       - name: Test on QGIS
