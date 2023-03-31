@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         #uses: actions/checkout@v2
         #uses: actions/checkout@v3.50
-        uses: actions/checkout@latest
+        uses: actions/checkout@main
         with:
           submodules: recursive
       - name: Test on QGIS
