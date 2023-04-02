@@ -4,7 +4,6 @@ see https://github.com/qgis/QGIS/issues/47127
 import unittest
 
 from qgis.PyQt.QtXml import QDomDocument
-from qgis._core import QgsExpressionContext
 from qgis.core import QgsProperty, QgsXmlUtils, QgsExpression
 from qgis.testing import start_app, TestCase
 

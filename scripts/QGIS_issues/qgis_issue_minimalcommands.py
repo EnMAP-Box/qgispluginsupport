@@ -1,4 +1,4 @@
-from qgis._core import QgsProcessingAlgorithm, QgsProcessingParameterString, QgsProcessingContext
+from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterString, QgsProcessingContext
 from qgis.testing import TestCase, start_app
 
 start_app()
