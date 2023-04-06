@@ -423,7 +423,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def insertPropertyGroup(self,
                             index: Union[int, QModelIndex],
                             items: Union[PropertyItemGroup,
-                                                List[PropertyItemGroup]],
+                                         List[PropertyItemGroup]],
                             ):
         if isinstance(index, QModelIndex):
             index = index.row()
@@ -455,7 +455,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             item.initWithPlotModel(self)
 
     def removePropertyItemGroups(self, groups: Union[PropertyItemGroup,
-                                                            List[PropertyItemGroup]]):
+                                                     List[PropertyItemGroup]]):
 
         if isinstance(groups, PropertyItemGroup):
             groups = [groups]

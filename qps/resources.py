@@ -30,6 +30,7 @@ import pathlib
 import re
 import sys
 from typing import Union, List, Generator, Any
+import PyQt5.pyrcc_main
 
 from qgis.PyQt.QtCore import QFile, QModelIndex, QTextStream, QSortFilterProxyModel, QDirIterator, QAbstractTableModel, \
     QRegExp, Qt
@@ -183,8 +184,6 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
     cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
     # print(cmd)
-
-    import PyQt5.pyrcc_main
 
     if True:
         last_level = PyQt5.pyrcc_main.compressLevel

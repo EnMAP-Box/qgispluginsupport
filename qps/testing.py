@@ -485,10 +485,10 @@ class TestCaseBase(qgis.testing.TestCase):
     def check_empty_layerstore(name: str):
         error = None
         if len(QgsProject.instance().mapLayers()) > 0:
-            error = f'QgsProject layers store is not empty: {name}'
-            QgsProject.instance().removeAllMapLayers()
-        if error:
-            raise Exception(error)
+            error = f'QgsProject layers store is not empty:\n{name}:'
+            for lyr in QgsProject.instance().mapLayers().values():
+                error += f'\n\t{lyr.id()}: "{lyr.name()}"'
+            raise AssertionError(error)
 
     def setUp(self):
         self.check_empty_layerstore(f'{self.__class__.__name__}::{self._testMethodName}')

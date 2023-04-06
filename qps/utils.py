@@ -812,10 +812,10 @@ def showMessage(message: str, title: str, level):
 
 
 def gdalDataset(dataset: Union[str,
-                                pathlib.Path,
-                                QgsRasterLayer,
-                                QgsRasterDataProvider,
-                                gdal.Dataset],
+                               pathlib.Path,
+                               QgsRasterLayer,
+                               QgsRasterDataProvider,
+                               gdal.Dataset],
                 eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
@@ -1220,7 +1220,7 @@ def loadUi(uifile: Union[str, pathlib.Path],
     :param package: argument to `uic.loadUi(...)`
     :return:
     """
-    if baseinstance:
+    if baseinstance is not None:
         assert isinstance(baseinstance, QWidget)
 
     uifile = pathlib.Path(uifile).resolve()
