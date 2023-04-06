@@ -30,6 +30,7 @@ from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindo
     QButtonGroup, QToolButton, QApplication, QLabel, QSpinBox, QComboBox, \
     QLineEdit, QGridLayout, QTableView, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
 from qgis.PyQt.QtXml import QDomDocument
+from qgis.core import QgsSingleBandColorDataRenderer
 from qgis.core import QgsEditorWidgetSetup, QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, \
     QgsFeatureRequest, \
     QgsExpressionContext, QgsExpressionContextUtils, QgsField, QgsScopedProxyProgressTask, QgsExpressionContextScope, \
@@ -82,6 +83,7 @@ RENDER_CLASSES = {}
 RENDER_CLASSES['rasterrenderer'] = {
     'singlebandpseudocolor': QgsSingleBandPseudoColorRenderer,
     'singlebandgray': QgsSingleBandGrayRenderer,
+    'singlebandcolordata': QgsSingleBandColorDataRenderer,
     'paletted': QgsPalettedRasterRenderer,
     'multibandcolor': QgsMultiBandColorRenderer,
     'hillshade': QgsHillshadeRenderer
