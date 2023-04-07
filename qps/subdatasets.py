@@ -26,10 +26,11 @@
 """
 
 import datetime
+import pathlib
 import re
 import sys
 
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Union
 
 from qgis.PyQt.QtCore import QItemSelectionModel
 from qgis.PyQt.QtWidgets import QTableView, QPushButton
@@ -37,6 +38,7 @@ from qgis.PyQt.QtWidgets import QTableView, QPushButton
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import Qt, QModelIndex, QAbstractTableModel, QSortFilterProxyModel
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QDialog
+from qgis.core import QgsMapLayer, QgsProviderRegistry, QgsProject
 from qgis.core import QgsProviderSublayerTask, QgsProviderSublayerDetails, QgsProviderSublayerModel, \
     QgsProviderSublayerProxyModel
 from qgis.core import QgsTaskManager, QgsApplication, QgsTask
@@ -92,6 +94,23 @@ class SubDatasetLoadingTask(QgsTask):
 
         if self.mCallback is not None:
             self.mCallback(result, self)
+
+
+def subLayerDetails(uri: Union[str, pathlib.Path, QgsMapLayer]) -> List[QgsProviderSublayerDetails]:
+    if isinstance(uri, QgsMapLayer):
+        uri = uri.source()
+    else:
+        uri = str(uri)
+
+    return QgsProviderRegistry.instance().querySublayers(uri)
+
+
+def subLayers(uri: Union[str, pathlib.Path, QgsMapLayer],
+              options: QgsProviderSublayerDetails.LayerOptions = None) -> List[QgsMapLayer]:
+    if options is None:
+        options = QgsProviderSublayerDetails.LayerOptions(
+                  QgsProject.instance().transformContext())
+    return [s.toLayer(options) for s in subLayerDetails(uri)]
 
 
 class DatasetTableModel(QAbstractTableModel):

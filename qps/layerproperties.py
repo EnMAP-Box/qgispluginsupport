@@ -16,7 +16,6 @@
 *                                                                         *
 ***************************************************************************
 """
-import os
 import pathlib
 import re
 import sys
@@ -31,7 +30,6 @@ from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindo
     QButtonGroup, QToolButton, QApplication, QLabel, QSpinBox, QComboBox, \
     QLineEdit, QGridLayout, QTableView, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import QgsSingleBandColorDataRenderer
 from qgis.core import QgsEditorWidgetSetup, QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, \
     QgsFeatureRequest, \
     QgsExpressionContext, QgsExpressionContextUtils, QgsField, QgsScopedProxyProgressTask, QgsExpressionContextScope, \
@@ -41,9 +39,10 @@ from qgis.core import QgsEditorWidgetSetup, QgsVectorLayer, QgsExpression, QgsDi
     QgsContrastEnhancement, Qgis, QgsSingleBandGrayRenderer, \
     QgsMultiBandColorRenderer, QgsVectorDataProvider, QgsAction, QgsEditFormConfig, QgsExpressionContextGenerator, \
     QgsApplication, QgsFeatureRenderer, QgsWkbTypes, QgsFieldProxyModel, \
-    QgsFeature, QgsRectangle, QgsProviderRegistry, \
-    QgsRasterDataProvider, QgsFields, QgsFieldModel, QgsSingleSymbolRenderer, QgsCategorizedSymbolRenderer, \
+    QgsFeature, QgsRectangle, QgsRasterDataProvider, QgsFields, QgsFieldModel, QgsSingleSymbolRenderer, \
+    QgsCategorizedSymbolRenderer, \
     QgsHillshadeRenderer, QgsPalettedRasterRenderer, QgsSingleBandPseudoColorRenderer
+from qgis.core import QgsSingleBandColorDataRenderer
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 try:
@@ -895,51 +894,9 @@ def subLayers(mapLayer: QgsMapLayer, subLayers: list = None) -> List[QgsMapLayer
     :param mapLayer: QgsMapLayer
     :return: [list-of-QgsMapLayers]
     """
-    layers = []
-    dp = mapLayer.dataProvider()
-
-    uriParts = QgsProviderRegistry.instance().decodeUri(mapLayer.providerType(),
-                                                        mapLayer.dataProvider().dataSourceUri())
-    uri = uriParts['path']
-    if subLayers is None:
-        ldefs = subLayerDefinitions(mapLayer)
-    else:
-        ldefs = subLayers
-
-    if len(ldefs) == 0:
-        layers = [mapLayer]
-    else:
-        uniqueNames = len(set([d.layerName for d in ldefs])) == len(ldefs)
-        options = QgsProject.instance().transformContext()
-        options.loadDefaultStyle = False
-
-        fileName = os.path.basename(uri)
-
-        if dp.name() == 'ogr':
-
-            for ldef in ldefs:
-                assert isinstance(ldef, QgsSublayersDialog.LayerDefinition)
-                if uniqueNames:
-                    composedURI = '{}|layername={}'.format(uri, ldef.layerName)
-                else:
-                    composedURI = '{}|layerid={}'.format(uri, ldef.layerId)
-
-                name = '{} {}'.format(fileName, ldef.layerName)
-
-                lyr = QgsVectorLayer(composedURI, name, dp.name())
-                layers.append(lyr)
-
-        elif dp.name() == 'gdal':
-            subLayers = dp.subLayers()
-            for ldef in ldefs:
-                name = '{} {}'.format(fileName, ldef.layerName)
-                lyr = QgsRasterLayer(subLayers[ldef.layerId], name, dp.name())
-                layers.append(lyr)
-
-        else:
-            layers.append(mapLayer)
-
-    return layers
+    warnings.warn(DeprecationWarning('Use subdatasets.subLayers'), stacklevel=2)
+    import subdatasets
+    return subdatasets.subLayers(mapLayer)
 
 
 def showLayerPropertiesDialog(layer: QgsMapLayer,
