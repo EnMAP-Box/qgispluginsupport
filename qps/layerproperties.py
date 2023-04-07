@@ -895,8 +895,8 @@ def subLayers(mapLayer: QgsMapLayer, subLayers: list = None) -> List[QgsMapLayer
     :return: [list-of-QgsMapLayers]
     """
     warnings.warn(DeprecationWarning('Use subdatasets.subLayers'), stacklevel=2)
-    import subdatasets
-    return subdatasets.subLayers(mapLayer)
+    from .subdatasets import subLayers
+    return subLayers(mapLayer)
 
 
 def showLayerPropertiesDialog(layer: QgsMapLayer,
