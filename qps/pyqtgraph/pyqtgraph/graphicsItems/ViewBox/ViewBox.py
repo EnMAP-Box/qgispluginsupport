@@ -303,7 +303,10 @@ class ViewBox(GraphicsWidget):
         return interface == 'ViewBox'
 
     def itemChange(self, change, value):
-        ret = super().itemChange(change, value)
+        try:
+            ret = super().itemChange(change, value)
+        except TypeError:
+            return None
         if change == self.GraphicsItemChange.ItemSceneChange:
             scene = self.scene()
             if scene is not None and hasattr(scene, 'sigPrepareForPaint'):

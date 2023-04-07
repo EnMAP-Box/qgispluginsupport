@@ -73,7 +73,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
     MODE_LAST_LAYER = 'last'
 
     MODE_TOOLTIP = {MODE_FIRST_LAYER:
-                        'Returns profiles of the first / top visible raster layer in the map layer stack',
+                    'Returns profiles of the first / top visible raster layer in the map layer stack',
                     MODE_LAST_LAYER:
                         'Returns profiles of the last / bottom visible raster layer in the map layer stack'
                     }
@@ -1670,7 +1670,7 @@ class SpectralProfileBridge(TreeModel):
             new_temporal_styles: List[Tuple[int, PlotStyle]] = []
             # calculate final profile value dictionaries
             FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode,
-                                              List[Tuple[QByteArray, QgsGeometry]]] = dict()
+                                       List[Tuple[QByteArray, QgsGeometry]]] = dict()
 
             for pgnode in fgnode.spectralProfileGeneratorNodes():
                 pgnode: SpectralProfileGeneratorNode
@@ -2052,7 +2052,7 @@ class SpectralProfileBridge(TreeModel):
         return self.mSrcModel.sources()
 
     def addSpectralLibraryWidgets(self, slws: Union[SpectralLibraryWidget,
-                                                           Iterable[SpectralLibraryWidget]]):
+                                                    Iterable[SpectralLibraryWidget]]):
 
         if not isinstance(slws, Iterable):
             slws = [slws]

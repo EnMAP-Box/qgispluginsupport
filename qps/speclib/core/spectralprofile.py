@@ -806,8 +806,8 @@ class SpectralProfileBlock(object):
         :return:
         """
         result = isinstance(self.mPositionsY, np.ndarray) \
-                 and isinstance(self.mPositionsX, np.ndarray) \
-                 and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
+            and isinstance(self.mPositionsX, np.ndarray) \
+            and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
         return result
 
     def crs(self) -> QgsCoordinateReferenceSystem:

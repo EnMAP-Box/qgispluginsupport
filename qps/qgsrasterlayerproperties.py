@@ -80,7 +80,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         SpectralPropertyKeys.WavelengthUnit: re.compile(
             r'(wlu|wavelength[ -_]?units?)$', re.I),
         SpectralPropertyKeys.Wavelength: re.compile(
-            r'(wl|wavelengths?)$', re.I),
+            r'(wl|wavelengths?|center[_ ]wavelengths?)$', re.I),
         SpectralPropertyKeys.BandWidth: re.compile(
             r'(bw|bandwiths?)$', re.I),
         SpectralPropertyKeys.DataGain: re.compile(
