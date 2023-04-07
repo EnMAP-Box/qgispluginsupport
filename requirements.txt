@@ -12,4 +12,4 @@ flake8-qgis
 unittest-xml-reporting
 pytest
 pytest-cov
-
+coverage-badge

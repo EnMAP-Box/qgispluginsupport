@@ -141,15 +141,15 @@ def registerEditorWidgets():
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
     from .classification.classificationscheme import (
         classificationSchemeEditorWidgetFactory, ClassificationSchemeWidgetFactory)
-    assert isinstance(classificationSchemeEditorWidgetFactory(True), ClassificationSchemeWidgetFactory)
+    assert isinstance(classificationSchemeEditorWidgetFactory, ClassificationSchemeWidgetFactory)
 
     from .speclib.gui.spectralprofileeditor import (
         spectralProfileEditorWidgetFactory, SpectralProfileEditorWidgetFactory)
-    assert isinstance(spectralProfileEditorWidgetFactory(True), SpectralProfileEditorWidgetFactory)
+    assert isinstance(spectralProfileEditorWidgetFactory, SpectralProfileEditorWidgetFactory)
 
     from .plotstyling.plotstyling import (
         plotStyleEditorWidgetFactory, PlotStyleEditorWidgetFactory)
-    assert isinstance(plotStyleEditorWidgetFactory(True), PlotStyleEditorWidgetFactory)
+    assert isinstance(plotStyleEditorWidgetFactory, PlotStyleEditorWidgetFactory)
 
 
 def unregisterEditorWidgets():
