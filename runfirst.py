@@ -31,7 +31,7 @@ import site
 
 def setupRepository():
     """
-    Initializes the QPS repository after it has been clones
+    Initializes the QPS repository after it has been cloned
     """
     dir_repo = pathlib.Path(__file__).parent.resolve()
     site.addsitedir(dir_repo.as_posix())
