@@ -164,6 +164,7 @@ class LayerPropertyTests(TestCaseBase):
 
         layers = [TestObjects.createRasterLayer(),
                   TestObjects.createVectorLayer()]
+        QgsProject.instance().addMapLayers(layers)
         for lyr in layers:
             dialog = showLayerPropertiesDialog(lyr, modal=False)
             self.assertIsInstance(dialog, QgsOptionsDialogBase)
