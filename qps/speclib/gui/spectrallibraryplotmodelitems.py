@@ -1663,13 +1663,18 @@ class ProfileCandidateGroup(SpectralProfilePlotDataItemGroup):
         self.removeCandidates(to_remove)
 
     def setCandidates(self, candidateStyles: Dict[Tuple[int, str], PlotStyle]):
+        """
+        Sets the profile candidates and its styling
+        canditateStyles: Dict[(fid:int, field-name:str), PlotStyle]
+        """
         self.clearCandidates()
         i = 0
         for (fid, field), style in candidateStyles.items():
             i += 1
             item = ProfileCandidateItem(f'Candidate{i}')
             item.setCellKey(fid, field)
-
+            if style is None:
+                style = PlotStyle()
             item.label().setToolTip(f'Feature ID: {fid} field: {field}')
             item.setPlotStyle(style)
             self.mCandidateStyleItems[(fid, field)] = item

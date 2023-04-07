@@ -541,7 +541,16 @@ class SpectralLibraryWidget(AttributeTableWidget):
                     currentProfilesStyles = {(addedFIDs[inputFIDs.index(fid)], field): style
                                              for (fid, field), style in currentProfileStyles.items()}
 
-                    plotModel.profileCandidates().setCandidates(currentProfilesStyles)
+                else:
+                    currentProfilesStyles = {}
+                    style = PlotStyle()
+                    style.setLineColor('green')
+                    style.setMarkerColor('green')
+                    for f in self.speclib().getFeatures(addedFIDs):
+                        for n in profile_fields(f).names():
+                            currentProfilesStyles[f.id(), n] = style
+
+                plotModel.profileCandidates().setCandidates(currentProfilesStyles)
 
             visualized_attributes = [v.field().name() for v in self.plotControl().visualizations() if v.isComplete()]
             missing_visualization = [a for a in affected_profile_fields if a not in visualized_attributes]

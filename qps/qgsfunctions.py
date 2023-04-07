@@ -513,13 +513,14 @@ class ExpressionFunctionUtils(object):
         """
         if isinstance(value, str):
             layers = QgsExpression('@layers').evaluate(context)
-            if layers in [None, []]:
-                stores = [QgsProject.instance().layerStore()]
-                if Qgis.versionInt() >= 33000:
-                    stores = context.layerStores() + stores
-
-                layers = [lyr for s in stores for lyr in s.mapLayers().values()]
-
+            if layers is None:
+                layers = []
+            stores = [QgsProject.instance().layerStore()]
+            if Qgis.versionInt() >= 33000:
+                stores = context.layerStores() + stores
+            for s in stores:
+                layers.extend(s.mapLayers().values())
+            layers = set(layers)
             for lyr in layers:
                 if isinstance(lyr, QgsRasterLayer) and value in [lyr.name(), lyr.id()]:
                     return lyr
