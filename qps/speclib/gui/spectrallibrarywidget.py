@@ -542,10 +542,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
                                              for (fid, field), style in currentProfileStyles.items()}
 
                 else:
+                    if isinstance(currentProfileStyles, PlotStyle):
+                        style = currentProfileStyles
+                    else:
+                        style = PlotStyle()
+                        style.setLineColor('green')
+                        style.setMarkerColor('green')
                     currentProfilesStyles = {}
-                    style = PlotStyle()
-                    style.setLineColor('green')
-                    style.setMarkerColor('green')
                     for f in self.speclib().getFeatures(addedFIDs):
                         for n in profile_fields(f).names():
                             currentProfilesStyles[f.id(), n] = style

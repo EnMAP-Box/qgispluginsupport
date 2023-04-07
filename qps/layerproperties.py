@@ -20,6 +20,7 @@ import os
 import pathlib
 import re
 import sys
+import warnings
 from typing import List, Dict, Any, Union
 
 from osgeo import gdal, osr
@@ -843,6 +844,7 @@ def subLayerDefinitions(mapLayer: QgsMapLayer) -> List[QgsSublayersDialog.LayerD
     :param mapLayer:QgsMapLayer
     :return: list of sublayer definitions
     """
+    warnings.warn(DeprecationWarning('will be removed'), stacklevel=2)
     definitions = []
     dp: QgsDataProvider = mapLayer.dataProvider()
     subLayers = dp.subLayers()
