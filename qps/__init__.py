@@ -139,11 +139,11 @@ def registerEditorWidgets():
     It is required that a QgsApplication has been instantiated.
     """
     assert isinstance(QgsApplication.instance(), QgsApplication), 'QgsApplication has not been instantiated'
-    from .classification.classificationscheme import registerClassificationSchemeEditorWidget
-    registerClassificationSchemeEditorWidget()
+    from .classification.classificationscheme import classificationSchemeEditorWidgetFactory
+    classificationSchemeEditorWidgetFactory(register=True)
 
-    from .speclib.gui.spectralprofileeditor import registerSpectralProfileEditorWidget
-    registerClassificationSchemeEditorWidget()
+    from .speclib.gui.spectralprofileeditor import spectralProfileEditorWidgetFactory
+    spectralProfileEditorWidgetFactory(register=True)
 
     from .plotstyling.plotstyling import registerPlotStyleEditorWidget, registerPlotStyleEditorWidgetFactory
     registerPlotStyleEditorWidget()
