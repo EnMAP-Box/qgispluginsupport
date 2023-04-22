@@ -32,10 +32,6 @@ class SpectralLibraryIOWidget(QWidget):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mSpeclib: QgsVectorLayer = None
-        fl = QFormLayout()
-        fl.setContentsMargins(0, 0, 0, 0)
-        fl.setSpacing(7)
-        self.setLayout(fl)
 
     def spectralLibraryIO(self) -> 'SpectralLibraryIO':
         raise NotImplementedError()
@@ -114,8 +110,7 @@ class SpectralLibraryImportWidget(SpectralLibraryIOWidget):
     sigSourceChanged = pyqtSignal()
 
     def __init__(self, *args, **kwds):
-        super(SpectralLibraryImportWidget, self).__init__(*args, **kwds)
-        # super(QgsExpressionContextGenerator, self).__init__()
+        super().__init__(*args, **kwds)
         self.mSource: str = None
 
     def setSource(self, source: str):
@@ -792,27 +787,22 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
         if isinstance(last_widget, SpectralLibraryImportWidget):
             self.mFIELD_PROPERTY_MAPS[last_widget.formatName()] = self.fieldMappingWidget.fieldPropertyMap()
 
-        if isinstance(import_format, SpectralLibraryImportWidget):
+        i_fmt = -1
+        if isinstance(import_format, int):
+            i_fmt = import_format
+        else:
             for i, w in enumerate(import_widgets):
                 w: SpectralLibraryImportWidget
-                if w.formatName() == import_format.formatName():
-                    self.cbFormat.setCurrentIndex(i)
-                    return
-
-        elif isinstance(import_format, str):
-            for i, w in enumerate(import_widgets):
-                w: SpectralLibraryImportWidget
-                if w.formatName() == import_format:
-                    self.cbFormat.setCurrentIndex(i)
-                    return
+                if isinstance(import_format, QWidget) and w == import_format or \
+                   isinstance(import_format, str) and w.formatName() == import_format:
+                    i_fmt = i
+                    break
+        assert i_fmt >= 0, f'import_format={import_format} (type {import_format})'
+        if i_fmt != self.cbFormat.currentIndex():
+            self.cbFormat.setCurrentIndex(i_fmt)
             return
 
-        assert isinstance(import_format, int), f'import_format={import_format} (type {import_format})'
-        if import_format != self.cbFormat.currentIndex():
-            self.cbFormat.setCurrentIndex(import_format)
-            return
-
-        import_widget: SpectralLibraryImportWidget = import_widgets[import_format]
+        import_widget: SpectralLibraryImportWidget = import_widgets[i_fmt]
 
         assert isinstance(import_widget, SpectralLibraryImportWidget)
         assert import_widget in import_widgets
@@ -823,6 +813,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
         if support is None:
             self.fileWidget.setVisible(False)
             self.labelFilename.setVisible(False)
+            pass
         else:
             self.fileWidget.setVisible(True)
             self.labelFilename.setVisible(True)

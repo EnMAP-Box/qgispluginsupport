@@ -7,7 +7,8 @@ from qgis.core import QgsVectorLayer, QgsFeature, QgsProcessingFeedback
 
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryExportWidget
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryExportWidget, \
+    GeoPackageSpectralLibraryImportWidget
 from qps.testing import TestObjects, TestCaseBase, start_app
 
 start_app()
@@ -66,6 +67,22 @@ class TestSpeclibIO_GPKG(TestCaseBase):
             self.assertTrue(lyr.featureCount() > 0)
 
         s = ""
+
+    def test_export_widget(self):
+
+        IO = GeoPackageSpectralLibraryIO()
+        importWidget = IO.createImportWidget()
+        self.assertIsInstance(importWidget, GeoPackageSpectralLibraryImportWidget)
+        sl: QgsVectorLayer = TestObjects.createSpectralLibrary()
+        sl.startEditing()
+        for f in sl.getFeatures():
+            f: QgsFeature
+            f.setAttribute('name', f'Name {f.id()}')
+            sl.updateFeature(f)
+        self.assertTrue(sl.commitChanges())
+
+        importWidget.setSpeclib(sl)
+        self.showGui(importWidget)
 
 
 if __name__ == '__main__':

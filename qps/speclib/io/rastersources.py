@@ -282,7 +282,7 @@ RASTER_FIELDS.append(QgsField(RF_PX_Y, QVariant.Int))
 class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
     def __init__(self, *args, **kwds):
-        super(RasterLayerSpectralLibraryImportWidget, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
         loadUi(speclibUiPath('rasterspectrallibraryinput.ui'), self)
         self.mFields: QgsFields = QgsFields(RASTER_FIELDS)
 
@@ -292,7 +292,6 @@ class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         # self.mCbAllAttributes: QCheckBox
         self.tbInfo: QTextEdit
 
-        Qgis.version()
         self.cbRasterLayer.setAllowEmptyLayer(False)
         if Qgis.versionInt() < 32000:
             self.cbVectorLayer.setAllowEmptyLayer(True)

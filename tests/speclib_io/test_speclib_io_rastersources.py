@@ -2,9 +2,8 @@
 import pathlib
 import unittest
 
-from qgis.core import QgsWkbTypes
-
 from qgis.core import QgsProject
+from qgis.core import QgsWkbTypes
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.rastersources import RasterLayerSpectralLibraryIO, RasterLayerSpectralLibraryImportWidget
@@ -34,7 +33,6 @@ class TestSpeclibIO_Raster(TestCaseBase):
 
         QgsProject.instance().addMapLayers(layers)
         w = RasterLayerSpectralLibraryImportWidget()
-
         self.showGui(w)
         QgsProject.instance().removeAllMapLayers()
 

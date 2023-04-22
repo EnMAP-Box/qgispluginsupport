@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>583</width>
-    <height>177</height>
+    <width>430</width>
+    <height>156</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,10 +15,10 @@
   </property>
   <layout class="QFormLayout" name="formLayout">
    <property name="horizontalSpacing">
-    <number>7</number>
+    <number>2</number>
    </property>
    <property name="verticalSpacing">
-    <number>7</number>
+    <number>2</number>
    </property>
    <property name="leftMargin">
     <number>2</number>

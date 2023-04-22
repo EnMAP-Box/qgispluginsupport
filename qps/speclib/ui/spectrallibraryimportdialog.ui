@@ -107,6 +107,9 @@
            <height>50</height>
           </size>
          </property>
+         <property name="whatsThis">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This field allows to declare how values from a profile data source will be written to attributes of the spectral library.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="title">
           <string>Field Value Import</string>
          </property>
