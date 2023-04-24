@@ -145,13 +145,15 @@ def registerEditorWidgets():
     from .speclib.gui.spectralprofileeditor import spectralProfileEditorWidgetFactory
     spectralProfileEditorWidgetFactory(register=True)
 
-    from .plotstyling.plotstyling import registerPlotStyleEditorWidget, plotStyleEditorWidgetFactory
-    registerPlotStyleEditorWidget()
+    from .plotstyling.plotstyling import plotStyleEditorWidgetFactory
     plotStyleEditorWidgetFactory(register=True)
 
 
 def unregisterEditorWidgets():
-    # just for convenience
+    """
+    Convenience function to remove registered widgets/factories.
+    (Not implemented yet)
+    """
     pass
 
 
