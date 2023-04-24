@@ -1280,7 +1280,7 @@ def registerPlotStyleEditorWidget():
 
 
 def registerPlotStyleEditorWidgetFactory():
-    warnings.warn(DeprecationWarning('Use plotstyling.plotStyleEditorWidgetFactory(True)'))
+    warnings.warn(DeprecationWarning('Use plotstyling.plotStyleEditorWidgetFactory(True)'), stacklevel=2)
     return plotStyleEditorWidgetFactory(True)
 
 

@@ -145,9 +145,9 @@ def registerEditorWidgets():
     from .speclib.gui.spectralprofileeditor import spectralProfileEditorWidgetFactory
     spectralProfileEditorWidgetFactory(register=True)
 
-    from .plotstyling.plotstyling import registerPlotStyleEditorWidget, registerPlotStyleEditorWidgetFactory
+    from .plotstyling.plotstyling import registerPlotStyleEditorWidget, plotStyleEditorWidgetFactory
     registerPlotStyleEditorWidget()
-    registerPlotStyleEditorWidgetFactory()
+    plotStyleEditorWidgetFactory(register=True)
 
 
 def unregisterEditorWidgets():
