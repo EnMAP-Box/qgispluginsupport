@@ -51,9 +51,8 @@ from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPoi
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu
-from qgis.core import QgsField, QgsGeometry
-from qgis.core import QgsLayerTreeLayer
-from qgis.core import QgsMapLayer, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
+from qgis.core import Qgis, QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
+    QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
     QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
@@ -944,9 +943,6 @@ class TestObjects(object):
 
             yield profile
 
-    """
-    Class with static routines to create test objects
-    """
 
     @staticmethod
     def createSpectralLibrary(n: int = 10,
@@ -1371,6 +1367,38 @@ class TestObjects(object):
         assert isinstance(dsDst, ogr.DataSource)
         dsDst.FlushCache()
         return dsDst
+
+    @staticmethod
+    def createEmptyMemoryLayer(fields: QgsFields,
+                               name: str = 'memory layer',
+                               crs: QgsCoordinateReferenceSystem = None,
+                               wkbType: Qgis.WkbType = Qgis.WkbType.NoGeometry):
+
+        """
+            Class with static routines to create test objects
+            """
+
+        uri = ''
+        if wkbType != Qgis.WkbType.NoGeometry:
+            uri += QgsWkbTypes.displayString(wkbType)
+        else:
+            uri += 'none'
+        uri += '?'
+        if isinstance(crs, QgsCoordinateReferenceSystem):
+            uri += f'crs=epsg:{crs.srsid()}'
+        options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
+        lyr = QgsVectorLayer(uri, name, 'memory', options=options)
+        lyr.setCustomProperty('skipMemoryLayerCheck', 1)
+
+        assert lyr.isValid()
+        with edit(lyr):
+            for a in fields:
+                success = lyr.addAttribute(a)
+                if success:
+                    i = lyr.fields().lookupField(a.name())
+                    if i > -1:
+                        lyr.setEditorWidgetSetup(i, a.editorWidgetSetup())
+        return lyr
 
     @staticmethod
     def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,

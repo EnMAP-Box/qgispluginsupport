@@ -1,7 +1,6 @@
 import os
 import pathlib
 import sys
-
 import warnings
 from typing import Dict, Callable, Union, List, Tuple, Any
 
@@ -11,15 +10,16 @@ from qgis.PyQt.QtGui import QIcon, QRegExpValidator
 from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, QProgressDialog, \
     QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox, QToolButton, QAction
-from qgis.core import QgsProviderUtils
 from qgis.core import QgsProject, QgsMapLayer, QgsVectorLayer, QgsFeature, QgsFields, \
     QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsCoordinateReferenceSystem, QgsExpressionContextScope, QgsProcessingFeedback, QgsField, \
     QgsExpressionContext, QgsFeatureIterator, QgsWkbTypes
+from qgis.core import QgsPropertyTransformer
+from qgis.core import QgsProviderUtils
 from qgis.gui import QgsFileWidget, QgsFieldMappingWidget
-from . import profile_field_list, profile_field_names
-from .spectralprofile import groupBySpectralProperties
+from . import profile_field_list, profile_field_names, is_profile_field
+from .spectralprofile import groupBySpectralProperties, SpectralProfilePropertyTransformer
 from .. import speclibUiPath, speclibSettings
 from ...layerproperties import CopyAttributesDialog
 from ...utils import loadUi
@@ -522,17 +522,39 @@ class SpectralLibraryIO(QObject):
 
 class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
 
-    def __init__(self, sinkDefinition, speclib: QgsVectorLayer):
+    def __init__(self, sinkDefinition: QgsRemappingSinkDefinition, speclib: QgsVectorLayer):
+
+        # take care of required conversions
+        fieldMap = sinkDefinition.fieldMap()
+        fieldMap2 = dict()
+        transformers = []
+        for k, srcProp in fieldMap.items():
+            srcProp: QgsProperty
+            dstField: QgsField = speclib.fields().field(k)
+            if is_profile_field(dstField) and not isinstance(srcProp.transformer(), QgsPropertyTransformer):
+                transformer = SpectralProfilePropertyTransformer(dstField)
+                srcProp.setTransformer(transformer)
+                transformers.append(transformer)
+            fieldMap2[k] = srcProp
+        sinkDefinition.setFieldMap(fieldMap2)
         super().__init__(sinkDefinition, speclib)
         self.mSpeclib = speclib
         self.mProfileFieldNames = profile_field_names(self.mSpeclib)
         self.mContext: QgsExpressionContext = None
+        self.mFieldMap = sinkDefinition.fieldMap()
+        self.mTransformers = transformers
 
     def setExpressionContext(self, context: QgsExpressionContext) -> None:
         super().setExpressionContext(context)
         self.mContext = context
 
+    def addFeature(self, feature, *args, **kwargs):
+
+        s = ""
+        return super().addFeature(feature, *args, **kwargs)
+
     def remapFeature(self, feature: QgsFeature) -> List[QgsFeature]:
+        s = ""
         features = super().remapFeature(feature)
 
         return features
@@ -574,6 +596,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
     def importProfiles(speclib: QgsVectorLayer,
                        defaultRoot: Union[str, pathlib.Path] = None,
                        parent: QWidget = None):
+
         assert isinstance(speclib, QgsVectorLayer) and speclib.isValid()
 
         dialog = SpectralLibraryImportDialog(parent=parent, speclib=speclib, defaultRoot=defaultRoot)
@@ -794,7 +817,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             for i, w in enumerate(import_widgets):
                 w: SpectralLibraryImportWidget
                 if isinstance(import_format, QWidget) and w == import_format or \
-                   isinstance(import_format, str) and w.formatName() == import_format:
+                        isinstance(import_format, str) and w.formatName() == import_format:
                     i_fmt = i
                     break
         assert i_fmt >= 0, f'import_format={import_format} (type {import_format})'

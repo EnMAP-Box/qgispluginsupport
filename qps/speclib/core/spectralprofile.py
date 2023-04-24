@@ -9,6 +9,7 @@ from typing import Any, List, Union, Tuple, Dict, Optional, Iterable
 
 import numpy as np
 from osgeo import gdal
+from qgis.core import QgsExpressionContext, QgsPropertyTransformer
 
 from qgis.PyQt.QtCore import QDateTime, Qt
 from qgis.PyQt.QtCore import QJsonDocument
@@ -806,8 +807,8 @@ class SpectralProfileBlock(object):
         :return:
         """
         result = isinstance(self.mPositionsY, np.ndarray) \
-            and isinstance(self.mPositionsX, np.ndarray) \
-            and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
+                 and isinstance(self.mPositionsX, np.ndarray) \
+                 and isinstance(self.mCrs, QgsCoordinateReferenceSystem)
         return result
 
     def crs(self) -> QgsCoordinateReferenceSystem:
@@ -941,3 +942,24 @@ class SpectralProfileBlock(object):
         :return: np.ndarray
         """
         return self.mData
+
+
+class SpectralProfilePropertyTransformer(QgsPropertyTransformer):
+    """
+    A QgsPropertyTransformer to transform encoded spectral profile dictionaries,
+    which by be returned by QgsProperty expressions, into the correct encoding as
+    required by a QgsField data type (str, json or bytes).
+    """
+
+    def __init__(self, encoding: Union[str, ProfileEncoding, QgsField]):
+        super().__init__()
+        self.mEncoding = ProfileEncoding.fromInput(encoding)
+
+    def clone(self) -> 'QgsPropertyTransformer':
+        return SpectralProfilePropertyTransformer(self.mEncoding)
+
+    def transform(self, context: QgsExpressionContext, value: Any) -> Any:
+        if value:
+            d = decodeProfileValueDict(value)
+            return encodeProfileValueDict(d, encoding=self.mEncoding)
+        return None

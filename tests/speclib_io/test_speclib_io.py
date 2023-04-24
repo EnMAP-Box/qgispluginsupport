@@ -22,11 +22,17 @@ import pathlib
 import re
 import unittest
 
-from qgis.core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature
+from qgis.PyQt.QtCore import QVariant
+from qgis.core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature, edit
+from qgis.core import QgsRemappingSinkDefinition, QgsProperty, QgsExpressionContextScope, QgsProject, QgsField
 from qgis.core import QgsVectorLayer
+from qps.speclib.core import create_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
     SpectralLibraryIO, SpectralLibraryImportWidget, SpectralLibraryExportWidget
+from qps.speclib.core.spectrallibraryio import SpectralLibraryImportFeatureSink
+from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict, \
+    decodeProfileValueDict
 from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
 from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO
 from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget
@@ -190,6 +196,83 @@ class TestIO(TestCaseBase):
         n_bands = [1025, 240, 8]
         profile_field_names = ['ASD', 'EnMAP', 'Landsat']
         return TestObjects.createSpectralLibrary(n_bands=n_bands, profile_field_names=profile_field_names)
+
+    def test_SpectralLibraryImportFeatureSink(self):
+
+        srcFields = QgsFields()
+        srcFields.append(QgsField('srcName', QVariant.String))
+        srcFields.append(create_profile_field('srcProfiles', encoding='bytes'))
+
+        dstFields = QgsFields()
+        dstFields.append(QgsField('dstName', QVariant.String))
+        dstFields.append(create_profile_field('dstProfilesB', encoding='bytes'))
+        dstFields.append(create_profile_field('dstProfilesS', encoding='text'))
+        dstFields.append(create_profile_field('dstProfilesJ', encoding='json'))
+
+        d = prepareProfileValueDict(x=[1, 2, 3], y=[14, 15, 16], xUnit='nm', yUnit='ukn')
+
+        f = QgsFeature(srcFields)
+        f.setAttribute('srcName', 'myname')
+        f.setAttribute('srcProfiles', encodeProfileValueDict(d, encoding=srcFields.field('srcProfiles')))
+
+        profiles = [f]
+
+        propertyMap = {
+            'dstName': QgsProperty.fromField('srcName'),
+            'dstProfilesB': QgsProperty.fromField('srcProfiles'),
+            'dstProfilesS': QgsProperty.fromField('srcProfiles'),
+            'dstProfilesJ': QgsProperty.fromField('srcProfiles')
+        }
+
+        speclib: QgsVectorLayer = TestObjects.createEmptyMemoryLayer(dstFields)
+
+        srcCrs = dstSrc = speclib.crs()
+        sinkDefinition = QgsRemappingSinkDefinition()
+        sinkDefinition.setDestinationFields(speclib.fields())
+        sinkDefinition.setSourceCrs(srcCrs)
+        sinkDefinition.setDestinationCrs(dstSrc)
+        sinkDefinition.setDestinationWkbType(speclib.wkbType())
+        sinkDefinition.setFieldMap(propertyMap)
+
+        feedback: QgsProcessingFeedback = QgsProcessingFeedback()
+        context = QgsExpressionContext()
+        context.setFields(srcFields)
+        context.setFeedback(feedback)
+
+        scope = QgsExpressionContextScope()
+        scope.setFields(srcFields)
+        context.appendScope(scope)
+
+        # sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
+        sink = SpectralLibraryImportFeatureSink(sinkDefinition, speclib)
+        sink.setExpressionContext(context)
+        sink.setTransformContext(QgsProject.instance().transformContext())
+
+        with edit(speclib):
+            speclib.beginEditCommand('Import profiles')
+            self.assertTrue(sink.addFeatures(profiles))
+            speclib.endEditCommand()
+
+        for f in speclib.getFeatures():
+            f: QgsFeature
+
+            name: str = f.attribute('dstName')
+
+            dumpB = f.attribute('dstProfilesB')
+            dumpS = f.attribute('dstProfilesS')
+            dumpJ = f.attribute('dstProfilesJ')
+
+            self.assertTrue(dumpB is not None)
+            self.assertTrue(dumpS is not None)
+            self.assertTrue(dumpJ is not None)
+
+            dB = decodeProfileValueDict(dumpB)
+            dS = decodeProfileValueDict(dumpS)
+            dJ = decodeProfileValueDict(dumpJ)
+
+            self.assertEqual(d, dB)
+            self.assertEqual(d, dS)
+            self.assertEqual(d, dJ)
 
     def test_exportDialog(self):
         self.registerIO()
