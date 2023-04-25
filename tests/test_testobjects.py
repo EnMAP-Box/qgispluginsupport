@@ -8,10 +8,9 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import numpy as np
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 from osgeo import gdal, ogr
-from qgis._core import QgsFields, QgsField
-
+from qgis.core import QgsFields, QgsField
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem
 from qps.speclib.core import create_profile_field

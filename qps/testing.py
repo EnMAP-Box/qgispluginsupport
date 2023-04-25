@@ -948,7 +948,6 @@ class TestObjects(object):
 
             yield profile
 
-
     @staticmethod
     def createSpectralLibrary(n: int = 10,
                               n_empty: int = 0,
