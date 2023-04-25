@@ -20,10 +20,7 @@ class TestCasesClassTesting(TestCase):
 
         qgis_app = QgsApplication.instance()
         self.assertIsInstance(qgis_app, QgsApplication)
-        # print(f'qgis_app: {qgis_app}', flush=True)
-
         self.assertIsInstance(qgis_app.libexecPath(), str)
-
         self.assertTrue(len(qgis_app.processingRegistry().providers()) > 0)
 
         self.assertIsInstance(qgis_app.processingRegistry(), QgsProcessingRegistry)

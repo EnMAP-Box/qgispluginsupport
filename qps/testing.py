@@ -72,6 +72,11 @@ from .speclib.core.spectrallibrary import SpectralLibraryUtils
 from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from .utils import UnitLookup, px2geo, SpatialPoint, findUpwardPath
 
+if Qgis.versionInt() >= 33000:
+    TYPE_WkbType = Qgis.WkbType
+else:
+    TYPE_WkbType = QgsWkbTypes.Type
+
 WMS_GMAPS = r'crs=EPSG:3857&' \
             r'format&' \
             r'type=xyz&' \
@@ -1372,14 +1377,13 @@ class TestObjects(object):
     def createEmptyMemoryLayer(fields: QgsFields,
                                name: str = 'memory layer',
                                crs: QgsCoordinateReferenceSystem = None,
-                               wkbType: Qgis.WkbType = Qgis.WkbType.NoGeometry):
+                               wkbType: TYPE_WkbType = TYPE_WkbType.NoGeometry):
 
         """
             Class with static routines to create test objects
             """
-
         uri = ''
-        if wkbType != Qgis.WkbType.NoGeometry:
+        if wkbType != TYPE_WkbType.NoGeometry:
             uri += QgsWkbTypes.displayString(wkbType)
         else:
             uri += 'none'

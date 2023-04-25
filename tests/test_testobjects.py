@@ -8,10 +8,13 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import numpy as np
+from PyQt5.QtCore import QVariant
 from osgeo import gdal, ogr
+from qgis._core import QgsFields, QgsField
 
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem
+from qps.speclib.core import create_profile_field
 from qps.testing import TestObjects, start_app, TestCaseBase
 
 start_app()
@@ -24,6 +27,25 @@ class TestCasesTestObject(TestCaseBase):
         profiles = list(TestObjects.spectralProfiles(10))
         self.assertIsInstance(profiles, list)
         self.assertTrue(len(profiles) == 10)
+
+    def test_EmptyMemoryLayer(self):
+
+        fields = QgsFields()
+        fields.append(QgsField('f1', QVariant.String))
+        fields.append(QgsField('f2', QVariant.Double))
+        fields.append(create_profile_field('profilesB', 'bytes'))
+        fields.append(create_profile_field('profilesJ', 'json'))
+        fields.append(create_profile_field('profilesS', 'text'))
+
+        lyr = TestObjects.createEmptyMemoryLayer(fields)
+
+        for i, name in enumerate(fields.names()):
+            f1: QgsField = fields.at(i)
+            f2: QgsField = lyr.fields().field(name)
+
+            self.assertEqual(f1.name(), f2.name())
+            self.assertEqual(f1.type(), f2.type())
+            self.assertEqual(f1.editorWidgetSetup().type(), f2.editorWidgetSetup().type())
 
     def test_VectorLayers(self):
 
