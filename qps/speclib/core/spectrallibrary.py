@@ -247,12 +247,12 @@ class SpectralLibraryUtils:
     def createProfileField(
             name: str,
             comment: str = 'SpectralProfile Field',
-            encoding: ProfileEncoding = ProfileEncoding.Bytes) -> QgsField:
+            encoding: ProfileEncoding = ProfileEncoding.Text) -> QgsField:
         """
         Creates a QgsField that can store spectral profiles
         :param name: field name
         :param comment: field comment, optional
-        :param encoding: ProfileEncoding, e.g. 'text', 'bytes' or 'JSON'
+        :param encoding: ProfileEncoding, e.g. 'text' (default), 'bytes' or 'json'
         :return: QgsField
         """
         encoding = ProfileEncoding.fromInput(encoding)
