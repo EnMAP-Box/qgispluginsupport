@@ -3,14 +3,13 @@ import pathlib
 import sys
 import warnings
 from typing import Dict, Callable, Union, List, Tuple, Any
-
 from qgis.PyQt.QtCore import QObject
 from qgis.PyQt.QtCore import pyqtSignal, QRegExp, QUrl
 from qgis.PyQt.QtGui import QIcon, QRegExpValidator
 from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, QProgressDialog, \
     QComboBox, QStackedWidget, QDialogButtonBox, \
     QLineEdit, QCheckBox, QToolButton, QAction
-from qgis.core import QgsProject, QgsMapLayer, QgsVectorLayer, QgsFeature, QgsFields, \
+from qgis.core import QgsProject, QgsFeatureSink, QgsMapLayer, QgsVectorLayer, QgsFeature, QgsFields, \
     QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsCoordinateReferenceSystem, QgsExpressionContextScope, QgsProcessingFeedback, QgsField, \
@@ -522,15 +521,23 @@ class SpectralLibraryIO(QObject):
 
 class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
 
-    def __init__(self, sinkDefinition: QgsRemappingSinkDefinition, speclib: QgsVectorLayer):
+    def __init__(self,
+                 sinkDefinition: QgsRemappingSinkDefinition,
+                 speclib: QgsFeatureSink,
+                 dstFields: QgsFields = None):
 
         # take care of required conversions
         fieldMap = sinkDefinition.fieldMap()
         fieldMap2 = dict()
         transformers = []
+
+        if dstFields is None and isinstance(speclib, QgsVectorLayer):
+            dstFields = speclib.fields()
+        assert isinstance(dstFields, QgsFields), 'Destination Fields (dstFields) not specified'
+
         for k, srcProp in fieldMap.items():
             srcProp: QgsProperty
-            dstField: QgsField = speclib.fields().field(k)
+            dstField: QgsField = dstFields.field(k)
             if is_profile_field(dstField) and not isinstance(srcProp.transformer(), QgsPropertyTransformer):
                 transformer = SpectralProfilePropertyTransformer(dstField)
                 srcProp.setTransformer(transformer)

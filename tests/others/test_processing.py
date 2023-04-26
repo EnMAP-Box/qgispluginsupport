@@ -16,6 +16,7 @@
 *                                                                         *
 ***************************************************************************
 """
+import pathlib
 # noinspection PyPep8Naming
 import unittest
 
@@ -32,10 +33,13 @@ from qgis.core import QgsProject, QgsProcessingRegistry, QgsProcessingAlgorithm,
 from qgis.gui import QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.qgsfunctions import registerQgsExpressionFunctions
-from qps.speclib.core import profile_field_names
+from qps.speclib.core import profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, ProfileEncoding, encodeProfileValueDict
+from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, ProfileEncoding, encodeProfileValueDict, \
+    isProfileValueDict
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
+from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import TestCaseBase, ExampleAlgorithmProvider, start_app
 
 start_app()
@@ -260,6 +264,59 @@ class ProcessingToolsTest(TestCaseBase):
         reg.removeProvider(pid)
         QgsProject.instance().removeAllMapLayers()
         s = ""
+
+    def test_spectralprofile_import(self):
+
+        provider = ExampleAlgorithmProvider()
+        initSpectralLibraryIOs()
+        reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
+        reg.addProvider(provider)
+        self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
+        reg.providerById(ExampleAlgorithmProvider.NAME.lower())
+
+        from qpstestdata import envi_sli, DIR_ASD_BIN, DIR_ARTMO, DIR_ECOSIS
+
+        input_files = [
+            envi_sli,
+            DIR_ASD_BIN,
+            DIR_ARTMO,
+            DIR_ECOSIS,
+        ]
+
+        for f in input_files:
+            p = pathlib.Path(f)
+            self.assertTrue(p.is_dir() or p.is_file())
+
+        par = {
+            ImportSpectralProfiles.P_INPUT: input_files,
+            ImportSpectralProfiles.P_OUTPUT: 'TEMPORARY_OUTPUT'
+        }
+
+        context, feedback = self.createProcessingContextFeedback()
+        conf = {}
+        alg = ImportSpectralProfiles()
+        alg.initAlgorithm(conf)
+
+        results, success = alg.run(par, context, feedback, conf)
+        self.assertTrue(success)
+
+        lyr = results[ImportSpectralProfiles.P_OUTPUT]
+        self.assertIsInstance(lyr, QgsVectorLayer)
+        self.assertTrue(lyr.isValid())
+        sfields = profile_fields(lyr)
+
+        self.assertTrue(sfields.count() > 0)
+
+        self.assertTrue(lyr.featureCount() > 0)
+
+        for f in lyr.getFeatures():
+            f: QgsFeature
+            for n in sfields.names():
+                dump = f.attribute(n)
+                if dump:
+                    d = decodeProfileValueDict(dump)
+                    self.assertTrue(isProfileValueDict(d),
+                                    msg=f'Not a spectral profile: {dump}')
 
 
 if __name__ == '__main__':

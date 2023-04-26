@@ -261,7 +261,7 @@ Please not that not each aggregate function might be available for each field ty
     def groupId(self) -> str:
         return 'spectrallibrary'
 
-    def createInstance(self) -> 'QgsProcessingAlgorithm':
+    def createInstance(self) -> 'AggregateProfiles':
         return AggregateProfiles()
 
     def initAlgorithm(self, configuration: Dict[str, Any] = ...) -> None:
