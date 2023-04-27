@@ -2,7 +2,7 @@ import os
 import pathlib
 import sys
 import warnings
-from typing import Dict, Callable, Union, List, Tuple, Any
+from typing import Dict, Callable, Union, List, Tuple, Any, Optional
 from qgis.PyQt.QtCore import QObject
 from qgis.PyQt.QtCore import pyqtSignal, QRegExp, QUrl
 from qgis.PyQt.QtGui import QIcon, QRegExpValidator
@@ -59,7 +59,7 @@ class SpectralLibraryIOWidget(QWidget):
 
 class SpectralLibraryExportWidget(SpectralLibraryIOWidget):
     """
-    Abstract Interface of an Widget to export / write a spectral library
+    Abstract Interface of a Widget to export / write a spectral library
     """
 
     def __init__(self, *args, **kwds):
@@ -264,8 +264,29 @@ class SpectralLibraryIO(QObject):
             SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY[name] = speclibIO
 
     @staticmethod
-    def spectralLibraryIOs() -> List['SpectralLibraryIO']:
-        return list(SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY.values())
+    def spectralLibraryIOs(read: Optional[bool] = None,
+                           write: Optional[bool] = None) -> List['SpectralLibraryIO']:
+        """
+
+        Parameters
+        ----------
+        read: bool, optional. Set True/False to return only SpectralLibraryIOs that support/do not support reading.
+        write: bool, optional. Set True/False to return only SpectralLibraryIOs that support/do not support writing.
+
+        Returns
+        -------
+        A list of registered SpectralLibraryIO definitions
+        """
+
+        results: List[SpectralLibraryIO] = list(SpectralLibraryIO.SPECTRAL_LIBRARY_IO_REGISTRY.values())
+
+        if isinstance(read, bool):
+            results = [r for r in results if isinstance(r.createImportWidget(), SpectralLibraryImportWidget) == read]
+
+        if isinstance(write, bool):
+            results = [r for r in results if isinstance(r.createExportWidget(), SpectralLibraryExportWidget) == write]
+
+        return results
 
     @staticmethod
     def spectralLibraryIOInstances(formatName: str) -> 'SpectralLibraryIO':
