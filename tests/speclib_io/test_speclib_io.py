@@ -29,7 +29,7 @@ from qgis.core import QgsVectorLayer
 from qps.speclib.core import create_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
-    SpectralLibraryIO, SpectralLibraryImportWidget, SpectralLibraryExportWidget
+    SpectralLibraryIO, SpectralLibraryImportWidget, SpectralLibraryExportWidget, initSpectralLibraryIOs
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportFeatureSink
 from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict, \
     decodeProfileValueDict
@@ -196,6 +196,20 @@ class TestIO(TestCaseBase):
         n_bands = [1025, 240, 8]
         profile_field_names = ['ASD', 'EnMAP', 'Landsat']
         return TestObjects.createSpectralLibrary(n_bands=n_bands, profile_field_names=profile_field_names)
+
+    def test_SpectralLibraryIO(self):
+
+        initSpectralLibraryIOs()
+
+        importFormats = SpectralLibraryIO.spectralLibraryIOs(read=True)
+        self.assertTrue(len(importFormats) > 0)
+        for fmt in importFormats:
+            self.assertIsInstance(fmt.createImportWidget(), SpectralLibraryImportWidget)
+
+        exportFormats = SpectralLibraryIO.spectralLibraryIOs(write=True)
+        self.assertTrue(len(exportFormats) > 0)
+        for fmt in exportFormats:
+            self.assertIsInstance(fmt.createExportWidget(), SpectralLibraryExportWidget)
 
     def test_SpectralLibraryImportFeatureSink(self):
 
