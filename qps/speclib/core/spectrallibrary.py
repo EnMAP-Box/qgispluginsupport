@@ -649,13 +649,19 @@ class SpectralLibraryUtils:
         return fids_inserted
 
     @staticmethod
-    def setProfileValues(feature: QgsFeature, *args, field: Union[int, str, QgsField] = None, **kwds):
+    def setProfileValues(feature: QgsFeature, *args,
+                         profileDict: dict = None,
+                         field: Union[int, str, QgsField] = None,
+                         **kwds):
         if field is None:
             # use the first profile field by default
             field = profile_field_list(feature)[0]
         else:
             field: QgsField = qgsField(feature, field)
-        profileDict = prepareProfileValueDict(*args, **kwds)
+
+        if profileDict is None:
+            profileDict = prepareProfileValueDict(*args, **kwds)
+
         value = encodeProfileValueDict(profileDict, field)
         feature.setAttribute(field.name(), value)
 

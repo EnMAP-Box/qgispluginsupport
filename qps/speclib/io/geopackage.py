@@ -30,7 +30,7 @@ class GeoPackageSpectralLibraryExportWidget(SpectralLibraryExportWidget):
         return SpectralLibraryIO.spectralLibraryIOInstances(GeoPackageSpectralLibraryIO)
 
     def filter(self) -> str:
-        return "Geopackage (*.gpkg);;SpatialLite (*.sqlite)"
+        return "Geopackage (*.gpkg)"
 
     def exportSettings(self, settings: dict) -> dict:
         speclib = self.speclib()
@@ -51,7 +51,7 @@ class GeoPackageSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         return SpectralLibraryIO.spectralLibraryIOInstances(GeoPackageSpectralLibraryIO)
 
     def filter(self) -> str:
-        return "Geopackage (*.gpkg);;SpatialLite (*.sqlite)"
+        return "Geopackage (*.gpkg)"
 
     def setSource(self, source: str):
         lyr = QgsVectorLayer(source)

@@ -614,11 +614,15 @@ class TestCaseBase(qgis.testing.TestCase):
 
         return newpath.as_posix()
 
-    def createTestOutputDirectory(self, name: str = 'test-outputs', subdir: str = None) -> pathlib.Path:
+    def createTestOutputDirectory(self,
+                                  name: str = 'test-outputs',
+                                  subdir: str = None) -> pathlib.Path:
         """
         Returns the path to a test output directory
         :return:
         """
+        if name is None:
+            name = 'test-outputs'
         repo = findUpwardPath(inspect.getfile(self.__class__), '.git').parent
 
         testDir = repo / name
@@ -629,6 +633,21 @@ class TestCaseBase(qgis.testing.TestCase):
             os.makedirs(testDir, exist_ok=True)
 
         return testDir
+
+    def createTestCaseDirectory(self,
+                                basename: str = None,
+                                testclass: bool = True,
+                                testmethod: bool = True
+                                ):
+
+        d = self.createTestOutputDirectory(name=basename)
+        if testclass:
+            d = d / self.__class__.__name__
+        if testmethod:
+            d = d / self._testMethodName
+
+        os.makedirs(d, exist_ok=True)
+        return d
 
     @classmethod
     def assertImagesEqual(cls, image1: QImage, image2: QImage):
@@ -734,6 +753,13 @@ class ExampleAlgorithmProvider(QgsProcessingProvider):
 
     def supportsNonFileBasedOutput(self) -> True:
         return True
+
+    def addAlgorithm(self, algorithm):
+        result = super().addAlgorithm(algorithm)
+        if result:
+            # keep reference
+            self._algs.append(algorithm)
+        return result
 
 
 class SpectralProfileDataIterator(object):
