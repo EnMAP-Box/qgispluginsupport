@@ -41,6 +41,7 @@ from typing import Set, List, Union, Tuple
 from unittest import mock
 
 import numpy as np
+from PyQt5.QtWidgets import QDockWidget
 from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
@@ -401,6 +402,11 @@ class QgisMockup(QgisInterface):
     def removeToolBarIcon(self, action):
         assert isinstance(action, QAction)
 
+    def addToolBar(self, name: str) -> QToolBar:
+        return self.mainWindow().addToolBar(name)
+    def addDockWidget(self, area: Qt.DockWidgetArea, dockwidget: QDockWidget) -> None:
+
+        return self.mainWindow().addDockWidget(area, dockwidget)
     def addVectorLayer(self, path, basename=None, providerkey: str = 'ogr'):
         if basename is None:
             basename = os.path.basename(path)
