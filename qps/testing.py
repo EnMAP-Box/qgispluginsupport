@@ -276,6 +276,10 @@ class QgisMockup(QgisInterface):
         self.mRootNode = QgsLayerTree()
         self.mLayerTreeRegistryBridge = QgsLayerTreeRegistryBridge(self.mRootNode, QgsProject.instance())
         self.mLayerTreeModel = QgsLayerTreeModel(self.mRootNode)
+        self.mLayerTreeModel.setFlag(QgsLayerTreeModel.Flag.AllowNodeReorder, True)
+        self.mLayerTreeModel.setFlag(QgsLayerTreeModel.Flag.AllowNodeRename, True)
+        self.mLayerTreeModel.setFlag(QgsLayerTreeModel.Flag.AllowNodeChangeVisibility, True)
+
         QgsProject.instance().layersWillBeRemoved.connect(self._onRemoveLayers)
 
         self.mLayerTreeView.setModel(self.mLayerTreeModel)
@@ -327,7 +331,7 @@ class QgisMockup(QgisInterface):
             if lyr.layerId() in layerIDs:
                 to_remove.append(lyr)
         for lyr in reversed(to_remove):
-            lyr.parent().removedChildren(lyr)
+            lyr.parent().removeChildNode(lyr)
 
     def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
         assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
