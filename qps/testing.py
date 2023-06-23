@@ -52,6 +52,7 @@ from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPoi
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu
+from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
 from qgis.core import Qgis, QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
     QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
@@ -274,6 +275,9 @@ class QgisMockup(QgisInterface):
         self.mCanvas.blockSignals(False)
         self.mCanvas.setCanvasColor(Qt.black)
         self.mLayerTreeView = QgsLayerTreeView()
+        self.mLayerTreeView.currentLayerChanged.connect(self.activateDeactivateLayerRelatedActions)
+        self.mMapToolHandler: List[QgsAbstractMapToolHandler] = []
+
         self.mRootNode = QgsLayerTree()
         self.mLayerTreeRegistryBridge = QgsLayerTreeRegistryBridge(self.mRootNode, QgsProject.instance())
         self.mLayerTreeModel = QgsLayerTreeModel(self.mRootNode)
@@ -333,6 +337,52 @@ class QgisMockup(QgisInterface):
                 to_remove.append(lyr)
         for lyr in reversed(to_remove):
             lyr.parent().removeChildNode(lyr)
+
+    def activeLayer(self) -> QgsMapLayer:
+        return self.mLayerTreeView.currentLayer()
+    def registerMapToolHandler(self, handler: QgsAbstractMapToolHandler) -> None:
+
+        assert isinstance(handler, QgsAbstractMapToolHandler)
+        assert isinstance(handler.action(), QAction) and \
+        isinstance(handler.mapTool(), QgsMapTool), 'Map tool handler is not properly constructed'
+
+        self.mMapToolHandler.append(handler)
+        handler.action().setCheckable(True)
+        handler.mapTool().setAction(handler.action())
+        handler.action().triggered.connect(self.switchToMapToolViaHandler)
+        context = QgsAbstractMapToolHandler.Context()
+        handler.action().setEnabled(handler.isCompatibleWithLayer(self.activeLayer(), context))
+    def unregisterMapToolHandler(self, handler: QgsAbstractMapToolHandler) -> None:
+        assert isinstance(handler, QgsAbstractMapToolHandler)
+        if handler in self.mMapToolHandler:
+            self.mMapToolHandler.remove(handler)
+            if isinstance(handler.action(), QAction):
+                handler.action().triggered.disconnect(self.switchToMapToolViaHandler)
+
+    def switchToMapToolViaHandler(self):
+        action: QAction = self.sender()
+        if not isinstance(action, QAction):
+            return
+
+        for h in self.mMapToolHandler:
+            h: QgsAbstractMapToolHandler
+            if h.action() == action and self.mapCanvas().mapTool() != h.mapTool():
+                h.setLayerForTool(self.activeLayer())
+                self.mapCanvas().setMapTool(h.mapTool())
+                return
+
+    def activateDeactivateLayerRelatedActions(self, layer: QgsMapLayer):
+
+        context = QgsAbstractMapToolHandler.Context()
+        for h in self.mMapToolHandler:
+            h: QgsAbstractMapToolHandler
+            h.action().setEnabled(h.isCompatibleWithLayer(layer, context))
+            if h.mapTool() == self.mapCanvas().mapTool():
+                if not h.action().isEnabled():
+                    self.mapCanvas().unsetMapTool(h.mapTool())
+                    # self.mMapToolPan.trigger()
+                else:
+                    h.setLayerForTool(layer)
 
     def registerMapLayerConfigWidgetFactory(self, factory: QgsMapLayerConfigWidgetFactory):
         assert isinstance(factory, QgsMapLayerConfigWidgetFactory)
