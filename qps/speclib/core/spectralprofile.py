@@ -232,11 +232,13 @@ def encodeProfileValueDict(d: dict,
     if encoding == ProfileEncoding.Dict:
         return d2
 
-    jsonDoc = QJsonDocument.fromVariant(d2)
+    # json2 =
+
     if encoding == ProfileEncoding.Bytes:
+        jsonDoc = QJsonDocument.fromVariant(d2)
         return jsonDoc.toBinaryData()
     else:
-        return bytes(jsonDoc.toJson(jsonFormat)).decode('UTF-8')
+        return json.dumps(d2, ensure_ascii=False)
 
 
 def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
