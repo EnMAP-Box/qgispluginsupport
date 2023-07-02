@@ -181,7 +181,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mPlotWidget: SpectralProfilePlotWidget = None
         symbol = QgsMarkerSymbol.createSimple({'name': 'square', 'color': 'white'})
-        self.mDefaultSymbolRenderer = QgsSingleSymbolRenderer(symbol)
+
+        try:
+            self.mDefaultSymbolRenderer = QgsSingleSymbolRenderer(symbol)
+        except TypeError:
+            self.mDefaultSymbolRenderer = QgsSingleSymbolRenderer(symbol, None)
 
         hdr0 = QStandardItem('Name')
         hdr0.setToolTip('Visualization property names')

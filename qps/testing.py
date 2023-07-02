@@ -41,7 +41,6 @@ from typing import Set, List, Union, Tuple
 from unittest import mock
 
 import numpy as np
-from PyQt5.QtWidgets import QDockWidget
 from osgeo import gdal, ogr, osr, gdal_array
 
 import qgis.testing
@@ -51,7 +50,7 @@ from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
-    QApplication, QWidget, QAction, QMenu
+    QApplication, QWidget, QAction, QMenu, QDockWidget
 from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
 from qgis.core import Qgis, QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
     QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
@@ -340,11 +339,12 @@ class QgisMockup(QgisInterface):
 
     def activeLayer(self) -> QgsMapLayer:
         return self.mLayerTreeView.currentLayer()
+
     def registerMapToolHandler(self, handler: QgsAbstractMapToolHandler) -> None:
 
         assert isinstance(handler, QgsAbstractMapToolHandler)
         assert isinstance(handler.action(), QAction) and \
-        isinstance(handler.mapTool(), QgsMapTool), 'Map tool handler is not properly constructed'
+               isinstance(handler.mapTool(), QgsMapTool), 'Map tool handler is not properly constructed'
 
         self.mMapToolHandler.append(handler)
         handler.action().setCheckable(True)
@@ -352,6 +352,7 @@ class QgisMockup(QgisInterface):
         handler.action().triggered.connect(self.switchToMapToolViaHandler)
         context = QgsAbstractMapToolHandler.Context()
         handler.action().setEnabled(handler.isCompatibleWithLayer(self.activeLayer(), context))
+
     def unregisterMapToolHandler(self, handler: QgsAbstractMapToolHandler) -> None:
         assert isinstance(handler, QgsAbstractMapToolHandler)
         if handler in self.mMapToolHandler:
@@ -399,9 +400,6 @@ class QgisMockup(QgisInterface):
 
     def pluginManagerInterface(self) -> QgsPluginManagerInterface:
         return self.mPluginManager
-
-    def activeLayer(self):
-        return self.mapCanvas().currentLayer()
 
     def setActiveLayer(self, mapLayer: QgsMapLayer):
         if mapLayer in self.mapCanvas().layers():
@@ -454,9 +452,11 @@ class QgisMockup(QgisInterface):
 
     def addToolBar(self, name: str) -> QToolBar:
         return self.mainWindow().addToolBar(name)
+
     def addDockWidget(self, area: Qt.DockWidgetArea, dockwidget: QDockWidget) -> None:
 
         return self.mainWindow().addDockWidget(area, dockwidget)
+
     def addVectorLayer(self, path, basename=None, providerkey: str = 'ogr'):
         if basename is None:
             basename = os.path.basename(path)

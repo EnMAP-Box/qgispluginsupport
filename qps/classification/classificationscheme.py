@@ -665,9 +665,16 @@ class ClassificationScheme(QAbstractTableModel):
 
         for c in self:
             assert isinstance(c, ClassInfo)
-            symbol = symbolType()
+            try:
+                symbol = symbolType()
+            except TypeError:
+                symbol = symbolType(None)
             symbol.setColor(QColor(c.color()))
-            cat = QgsRendererCategory(c.label(), symbol, c.name(), render=True)
+            cat = QgsRendererCategory()
+            cat.setValue(c.label())
+            cat.setSymbol(symbol)
+            cat.setLabel(c.name())
+            cat.setRenderState(True)
             r.addCategory(cat)
         return r
 

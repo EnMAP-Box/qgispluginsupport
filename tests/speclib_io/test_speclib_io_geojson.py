@@ -4,6 +4,7 @@ import unittest
 
 
 from qgis.PyQt.QtCore import QVariant
+from qgis.core import QgsProject
 from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorFileWriter, QgsField, QgsVectorLayer
 from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import is_profile_field, profile_field_names
@@ -68,10 +69,12 @@ class TestSpeclibIOGeoJSON(TestCaseBase):
             self.assertTrue(len(profile_field_names(p)) > 0)
 
         lyr = QgsVectorLayer(geojson, 'GeoJSON')
+        QgsProject.instance().addMapLayer(lyr)
         self.assertTrue(lyr.isValid())
 
         w = SpectralLibraryWidget(speclib=lyr)
         self.showGui(w)
+        QgsProject.instance().removeAllMapLayers()
 
     @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking dialog')
     def test_import_merge(self):

@@ -19,17 +19,18 @@
 # noinspection PyPep8Naming
 import datetime
 import json
+import math
 import pickle
 import unittest
 from typing import List
 
 import numpy as np
 from osgeo import ogr
+
 from qgis.PyQt.QtCore import QByteArray, QVariant
 from qgis.PyQt.QtCore import QJsonDocument, NULL
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
     QgsCoordinateReferenceSystem, QgsFields, edit
-
 from qps import initAll
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field, \
@@ -236,7 +237,8 @@ class SpeclibCoreTests(TestCaseBase):
         # convert None to NaN
         d = {'y': [None, 8, 15]}
         d2 = decodeProfileValueDict(encodeProfileValueDict(d, ProfileEncoding.Text))
-        self.assertListEqual(d['y'], d2['y'])
+        self.assertTrue(math.isnan(d2['y'][0]))
+        self.assertListEqual(d['y'][1:], d2['y'][1:])
 
     # @unittest.skip('')
     def test_profile_fields(self):

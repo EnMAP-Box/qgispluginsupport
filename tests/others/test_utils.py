@@ -45,10 +45,6 @@ class TestUtils(TestCase):
     def setUp(self):
         super().setUp()
 
-        self.wmsUri = r'crs=EPSG:3857&format' \
-                      r'&type=xyz' \
-                      r'&url=https://mt1.google.com/vt/' \
-                      r'lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
         self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
                       'typename=''fis:re_postleit'' ' \
                       'url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
@@ -479,12 +475,13 @@ class TestUtils(TestCase):
         ds = TestObjects.createRasterDataset()
         pathRaster = ds.GetDescription()
 
-        validSources = [QgsRasterLayer(self.wmsUri, '', 'wms'),
-                        pathRaster,
+        validSources = [pathRaster,
                         QgsRasterLayer(pathRaster),
                         gdal.Open(pathRaster)]
 
         for src in validSources:
+            if isinstance(src, QgsRasterLayer):
+                self.assertTrue(src.isValid())
             names = displayBandNames(src, leadingBandNumber=True)
             self.assertIsInstance(names, list, msg='Unable to derive band names from {}'.format(src))
             self.assertTrue(len(names) > 0)

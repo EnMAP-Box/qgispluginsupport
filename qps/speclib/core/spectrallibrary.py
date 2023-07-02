@@ -318,7 +318,10 @@ class SpectralLibraryUtils:
         if isinstance(point, SpatialPoint):
             point = point.toCrs(layer.crs())
 
-        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(layer))
+        scopes = QgsExpressionContextUtils.globalProjectLayerScopes(layer)
+        context = QgsExpressionContext()
+        context.appendScopes(scopes)
+
         context.setGeometry(QgsGeometry.fromPointXY(point))
 
         if Qgis.versionInt() >= 33000:

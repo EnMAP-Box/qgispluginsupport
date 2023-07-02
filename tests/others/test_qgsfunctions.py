@@ -74,7 +74,8 @@ class QgsFunctionTests(TestCaseBase):
         self.registerFunction(f)
 
         sl = TestObjects.createSpectralLibrary(n_empty=0, n_bands=[24, 255], profile_field_names=['p1', 'p2'])
-        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
+        context = QgsExpressionContext()
+        context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
 
         for sfield in profile_fields(sl).names():
             # 'text', 'json', 'map' or 'bytes'
@@ -114,7 +115,8 @@ class QgsFunctionTests(TestCaseBase):
         sl = TestObjects.createSpectralLibrary(n_empty=0, n_bands=[24, 255], profile_field_names=['p1', 'p2'])
         sfields = profile_fields(sl)
 
-        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
+        context = QgsExpressionContext()
+        context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
         QgsProject.instance().addMapLayer(sl)
         for n in sfields.names():
             exp = QgsExpression(f'{f.name()}("{n}")')
@@ -148,7 +150,8 @@ class QgsFunctionTests(TestCaseBase):
 
         RASTER_ARRAY = gdal_array.LoadFile(lyrR.source())
         for e in expressions:
-            context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(lyrV))
+            context = QgsExpressionContext()
+            context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyrV))
             exp = QgsExpression(e)
             for i, feature in enumerate(lyrV.getFeatures()):
                 self.assertIsInstance(feature, QgsFeature)
@@ -225,7 +228,8 @@ class QgsFunctionTests(TestCaseBase):
         store.addMapLayers([lyrR, lyrV])
 
         for e in expressions:
-            context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(lyrV))
+            context = QgsExpressionContext()
+            context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyrV))
             if Qgis.versionInt() >= 33000:
                 context.setLoadedLayerStore(store)
 
@@ -387,7 +391,8 @@ class QgsFunctionTests(TestCaseBase):
         sl.addAttribute(QgsField('class', QVariant.String))
         sl.commitChanges(False)
 
-        context = QgsExpressionContext(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
+        context = QgsExpressionContext()
+        context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
 
         idx = sl.fields().lookupField('class')
         for i, f in enumerate(sl.getFeatures()):
