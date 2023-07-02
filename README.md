@@ -47,6 +47,14 @@ Push updates (replace with your fork):
    compileQPSResources()
    ```
 
+   Alternatively, you can import QPS as a submodule:
+   
+   ````commandline
+   cd myrepository
+   git submodule add git@github.com:EnMAP-Box/qgispluginsupport.git   
+   ````
+   
+
 2. QPS uses the Qt resource system, e.g. to access icons. This requires to convert the ``qps/qpsresources.qrc`` file 
 into a corresponding python module ``qps/qpsresources.py``.  
 
@@ -64,7 +72,7 @@ your application, e.g. by calling:
 
 QPS depends on what-is-already-in-QGIS only:
 1. QGIS python API, numpy and gdal
-2. pyqtgraph. Ok, that's not part of QGIS, so QPS uses a fork https://github.com/EnMAP-Box/pyqtgraph branch qps_modifications
+2. pyqtgraph. It is not part of QGIS, so QPS uses a fork https://github.com/EnMAP-Box/pyqtgraph branch qps_modifications
    These files are included in QGIS 
 
 
