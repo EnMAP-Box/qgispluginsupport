@@ -40,7 +40,8 @@ from qps.speclib.core import profile_field_list, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotXAxisUnitModel
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
+from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER

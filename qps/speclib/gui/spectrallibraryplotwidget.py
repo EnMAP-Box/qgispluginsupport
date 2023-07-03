@@ -5,7 +5,6 @@ from typing import List, Tuple, Set, Iterator, Union, Iterable, Dict, Callable, 
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
@@ -13,7 +12,7 @@ from qgis.PyQt.QtGui import QPen, QBrush, QPixmap
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QMessageBox, QAbstractItemView
-from qgis.PyQt.QtWidgets import QWidgetAction, QWidget, QGridLayout, QLabel, QFrame, QAction, QApplication, \
+from qgis.PyQt.QtWidgets import QWidget, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
 from qgis.core import QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
@@ -29,100 +28,16 @@ from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
 from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
     ProfileVisualizationGroup, PlotStyleItem, ProfileCandidateGroup, PropertyItemBase, ProfileCandidateItem, \
     GeneralSettingsGroup, PropertyLabel
+from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel, SpectralProfilePlotXAxisUnitWidgetAction
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
 from ...externals.htmlwidgets import HTMLStyle
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel, UnitModel
-from ...utils import datetime64, UnitLookup, loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
+from ...unitmodel import BAND_INDEX, UnitConverterFunctionModel
+from ...utils import datetime64, loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
     SelectMapLayerDialog, SignalBlocker, printCaller
-
-
-class SpectralProfilePlotXAxisUnitModel(UnitModel):
-    """
-    A unit model for the SpectralProfilePlot's X Axis
-    """
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-        self.addUnit(BAND_NUMBER, description=BAND_NUMBER, tooltip=f'{BAND_NUMBER} (1st band = 1)')
-        self.addUnit(BAND_INDEX, description=BAND_INDEX, tooltip=f'{BAND_INDEX} (1st band = 0)')
-        for u in ['Nanometer',
-                  'Micrometer',
-                  'Millimeter',
-                  'Meter']:
-            baseUnit = UnitLookup.baseUnit(u)
-            assert isinstance(baseUnit, str), u
-            self.addUnit(baseUnit, description=f'Wavelength [{baseUnit}]', tooltip=f'Wavelength in {u} [{baseUnit}]')
-
-        self.addUnit('DateTime', description='Date Time', tooltip='Date Time in ISO 8601 format')
-        self.addUnit('DecimalYear', description='Decimal Year', tooltip='Decimal year')
-        self.addUnit('DOY', description='Day of Year', tooltip='Day of Year (DOY)')
-
-    def findUnit(self, unit):
-        if unit in [None, NULL]:
-            unit = BAND_NUMBER
-        return super().findUnit(unit)
-
-
-class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
-    sigUnitChanged = pyqtSignal(str)
-
-    def __init__(self, parent, unit_model: UnitModel = None, **kwds):
-        super().__init__(parent)
-        self.mUnitModel: SpectralProfilePlotXAxisUnitModel
-        if isinstance(unit_model, UnitModel):
-            self.mUnitModel = unit_model
-        else:
-            self.mUnitModel = SpectralProfilePlotXAxisUnitModel()
-        self.mUnit: str = BAND_INDEX
-
-    def unitModel(self) -> SpectralProfilePlotXAxisUnitModel:
-        return self.mUnitModel
-
-    def setUnit(self, unit: str):
-        unit = self.mUnitModel.findUnit(unit)
-
-        if isinstance(unit, str) and self.mUnit != unit:
-            self.mUnit = unit
-            self.sigUnitChanged.emit(unit)
-
-    def unit(self) -> str:
-        return self.mUnit
-
-    def unitData(self, unit: str, role=Qt.DisplayRole) -> str:
-        return self.mUnitModel.unitData(unit, role)
-
-    def createUnitComboBox(self) -> QComboBox:
-        unitComboBox = QComboBox()
-        unitComboBox.setModel(self.mUnitModel)
-        unitComboBox.setCurrentIndex(self.mUnitModel.unitIndex(self.unit()).row())
-        unitComboBox.currentIndexChanged.connect(
-            lambda: self.setUnit(unitComboBox.currentData(Qt.UserRole))
-        )
-
-        self.sigUnitChanged.connect(
-            lambda unit, cb=unitComboBox: cb.setCurrentIndex(self.mUnitModel.unitIndex(unit).row()))
-        return unitComboBox
-
-    def createWidget(self, parent: QWidget) -> QWidget:
-        # define the widget to set X-Axis options
-        frame = QFrame(parent)
-        gl = QGridLayout()
-        frame.setLayout(gl)
-
-        mCBXAxisUnit = self.createUnitComboBox()
-
-        gl.addWidget(QLabel('Unit'), 2, 0)
-        gl.addWidget(mCBXAxisUnit, 2, 1)
-        gl.setMargin(0)
-        gl.setSpacing(6)
-        frame.setMinimumSize(gl.sizeHint())
-        return frame
-
 
 MAX_PROFILES_DEFAULT: int = 516
 FIELD_NAME = str

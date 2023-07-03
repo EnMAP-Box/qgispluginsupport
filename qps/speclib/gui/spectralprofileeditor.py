@@ -17,7 +17,7 @@ from qgis.core import Qgis, QgsVectorLayer, QgsField, QgsFieldFormatter, QgsAppl
 from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsEditorWidgetFactory, QgsCodeEditorJson, \
     QgsMessageBar
 
-from .spectrallibraryplotwidget import SpectralProfilePlotXAxisUnitModel
+from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import supports_field
 from ..core.spectralprofile import encodeProfileValueDict, decodeProfileValueDict, \
