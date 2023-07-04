@@ -35,8 +35,8 @@ from ..core.spectralprofile import decodeProfileValueDict
 from ...externals.htmlwidgets import HTMLStyle
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...unitmodel import BAND_INDEX, UnitConverterFunctionModel
-from ...utils import datetime64, loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
+from ...unitmodel import BAND_INDEX, UnitConverterFunctionModel, datetime64
+from ...utils import loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
     SelectMapLayerDialog, SignalBlocker, printCaller
 
 MAX_PROFILES_DEFAULT: int = 516

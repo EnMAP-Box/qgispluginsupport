@@ -33,12 +33,13 @@ from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
 from qps.testing import TestObjects, TestCase
-from qps.utils import SpatialExtent, convertDateUnit, days_per_year, appendItemsToMenu, value2str, filenameFromString, \
+from qps.utils import SpatialExtent, convertDateUnit, appendItemsToMenu, value2str, filenameFromString, \
     SelectMapLayersDialog, defaultBands, relativePath, nextColor, convertMetricUnit, createQgsField, px2geo, geo2px, \
-    SpatialPoint, layerGeoTransform, displayBandNames, UnitLookup, qgsRasterLayer, gdalDataset, px2geocoordinates, \
+    SpatialPoint, layerGeoTransform, displayBandNames, qgsRasterLayer, gdalDataset, px2geocoordinates, \
     rasterArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
-    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, datetime64, SelectMapLayerDialog, parseFWHM
+    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, SelectMapLayerDialog, parseFWHM
+from qps.unitmodel import UnitLookup, datetime64, days_per_year
 
 
 class TestUtils(TestCase):

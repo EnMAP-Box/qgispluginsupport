@@ -14,7 +14,8 @@ from qgis.core import QgsProject
 
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
-from ...utils import datetime64, SignalObjectWrapper, HashablePointF
+from ...utils import SignalObjectWrapper, HashablePointF
+from ...unitmodel import datetime64
 
 
 class SpectralXAxis(pg.AxisItem):

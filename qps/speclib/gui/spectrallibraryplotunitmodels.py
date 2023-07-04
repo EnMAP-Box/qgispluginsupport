@@ -1,7 +1,6 @@
 from qgis.PyQt.QtWidgets import QWidgetAction, QComboBox, QWidget, QFrame, QGridLayout, QLabel
 from qgis.PyQt.QtCore import NULL, pyqtSignal, Qt
-from qps.unitmodel import UnitModel, BAND_NUMBER, BAND_INDEX
-from qps.utils import UnitLookup
+from qps.unitmodel import UnitModel, BAND_NUMBER, BAND_INDEX, UnitLookup
 
 
 class SpectralProfilePlotXAxisUnitModel(UnitModel):
