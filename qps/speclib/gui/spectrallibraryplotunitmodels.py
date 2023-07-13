@@ -1,6 +1,6 @@
 from qgis.PyQt.QtWidgets import QWidgetAction, QComboBox, QWidget, QFrame, QGridLayout, QLabel
 from qgis.PyQt.QtCore import NULL, pyqtSignal, Qt
-from qps.unitmodel import UnitModel, BAND_NUMBER, BAND_INDEX, UnitLookup
+from ...unitmodel import UnitModel, BAND_NUMBER, BAND_INDEX, UnitLookup
 
 
 class SpectralProfilePlotXAxisUnitModel(UnitModel):
@@ -34,7 +34,7 @@ class SpectralProfilePlotXAxisUnitModel(UnitModel):
             baseUnit = UnitLookup.baseUnit(u)
             self.addUnit(baseUnit, description=f'Distance [{baseUnit}', tooltip=f'Distance in {u} [{baseUnit}]')
 
-    def findUnit(self, unit):
+    def findUnit(self, unit) -> str:
         if unit in [None, NULL]:
             unit = BAND_NUMBER
         return super().findUnit(unit)

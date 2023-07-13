@@ -4,7 +4,7 @@ import datetime
 import re
 import warnings
 from math import log10
-from typing import Dict, List, Union
+from typing import List, Union, Iterator
 
 import numpy as np
 from qgis.PyQt.QtCore import Qt, NULL, QAbstractListModel, QModelIndex, QDate, QDateTime
@@ -14,9 +14,31 @@ BAND_INDEX = 'Band Index'
 BAND_NUMBER = 'Band Number'
 UNKNOWN = ''
 
+# Exponents of base 10 to 1 meter [m]
 METRIC_EXPONENTS = {
     'nm': -9, 'μm': -6, 'mm': -3, 'cm': -2, 'dm': -1, 'm': 0, 'hm': 2, 'km': 3
 }
+
+
+class UnitWrapper(object):
+
+    def __init__(self,
+                 unit: str,
+                 description: str = None,
+                 tooltip: str = None,
+                 icon: QIcon = QIcon()
+                 ):
+        # if possible, ensure that a known base-unit is used
+        # bunit = UnitLookup.baseUnit(unit)
+        # if isinstance(bunit, str):
+        #    unit = bunit
+        self.unit: str = unit
+        self.description: str = description if isinstance(description, str) else unit
+        self.tooltip: str = tooltip if isinstance(tooltip, str) else self.description
+        self.icon: QIcon = icon
+
+    def __hash__(self):
+        return hash((self.unit, self.description))
 
 
 class UnitModel(QAbstractListModel):
@@ -24,11 +46,10 @@ class UnitModel(QAbstractListModel):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self.mUnits: Dict[str, tuple] = dict()
+        self.mUnits: List[UnitWrapper] = []
         self.mRedundantUnits: bool = False
 
-    def setAllowRedundantUnits(self, b: bool):
-        self.mRedundantUnits = b
+        self.mEmpty = UnitWrapper(None, 'None')
 
     def setAllowEmptyUnit(self,
                           allowEmpty: bool,
@@ -36,95 +57,115 @@ class UnitModel(QAbstractListModel):
                           tooltip: str = 'None',
                           icon: QIcon = QIcon()):
 
+        self.mEmpty.description = text
+        self.mEmpty.tooltip = tooltip
+        self.mEmpty.icon = icon
+
         self.beginResetModel()
         if allowEmpty:
-            self.mUnits[None] = (None, text, tooltip, icon)
+            if self.mEmpty not in self.mUnits:
+                self.beginInsertRows(QModelIndex(), 0, 0)
+                self.mUnits.insert(0, self.mEmpty)
+                self.endInsertRows()
         else:
-            if None in self.mUnits.keys():
-                self.mUnits.pop(None)
+            if self.mEmpty in self.mUnits:
+                r = self.mUnits.index(self.mEmpty)
+                self.beginRemoveRows(QModelIndex(), r, r)
+                self.mUnits.pop(r)
+                self.endRemoveRows()
 
-        items = sorted(self.mUnits.values(), key=lambda v: v[0] is not None)
-        self.mUnits.clear()
-        for item in items:
-            self.mUnits[item[0]] = item
+    def __contains__(self, item) -> bool:
+        return item in self.mUnits or any([u.unit == item for u in self.mUnits])
 
-        self.endResetModel()
-
-    def __contains__(self, item):
-        return item in self.mUnits
-
-    def __iter__(self):
-        return iter(self.mUnits.keys())
+    def __iter__(self) -> Iterator[UnitWrapper]:
+        return iter(self.mUnits)
 
     def __getitem__(self, slice):
-        return list(self.mUnits.keys())[slice]
+        return list(self.mUnits[slice])
 
     def rowCount(self, parent=None, *args, **kwargs) -> int:
         return len(self.mUnits)
 
-    def findUnit(self, value: str) -> str:
+    def findUnitWrapper(self, value: Union[str, UnitWrapper]) -> UnitWrapper:
         """
-        Returns a matching unit string, e.g. nm for Nanometers
+        Returns a matching unit wrapper. Tries to convert unit descriptions,
+        e.g. searching for 'Nanometers' return the UnitWrapper mit unit 'nm'
+        """
+        if isinstance(value, UnitWrapper) and value in self.mUnits:
+            return value
+
+        elif isinstance(value, str):
+            base_unit = UnitLookup.baseUnit(value)
+            v_low = value.lower()
+            for w in self.mUnits:
+                if w.unit == base_unit or \
+                        w.unit.lower() == v_low or \
+                        w.description.lower() == v_low:
+                    return w
+        return None
+
+    def findUnit(self, value: Union[str, UnitWrapper]) -> str:
+        """
+        Returns a matching unit string, e.g. `nm` for `Nanometers`
         :param value:
         :return:
         """
+        w = self.findUnitWrapper(value)
+        if isinstance(w, UnitWrapper):
+            return w.unit
 
-        if value in self.mUnits.keys():
-            return value
-
-        baseUnit = UnitLookup.baseUnit(value)
-        if baseUnit in self.mUnits.keys():
-            return baseUnit
-
-        for unit, description in self.mUnits.items():
-            if self.unitMatch(value, description):
-                return unit
         return None
 
-    def unitMatch(self, unit: str, description: tuple) -> bool:
-        for p in description:
-            if p == unit or str(p).lower() == str(unit).lower():
-                return True
-        return False
-
-    def removeUnit(self, unit: str):
+    def removeUnit(self, unit: Union[str, UnitWrapper]):
         """
         Removes a unit from this model
         :param unit: str
         """
-        unit = self.findUnit(unit)
-        units = list(self.mUnits.keys())
-        if unit in units:
-            row = units.index(unit)
-            self.beginRemoveRows(QModelIndex(), row, row)
-            self.mUnits.pop(unit)
+
+        while w := self.findUnitWrapper(unit):
+            r = self.mUnits.index(w)
+            self.beginRemoveRows(QModelIndex(), r, r)
+            self.mUnits.pop(r)
             self.endRemoveRows()
 
     def addUnit(self,
-                unit: str,
+                unit: Union[str, UnitWrapper],
                 description: str = None,
                 tooltip: str = None,
-                icon: str = None):
+                icon: str = None) -> bool:
         """
         Adds a unit to the unit model
         :param unit:
         :type unit:
         :param description:
+
         :type description:
         :param tooltip:
         :type tooltip:
         :return:
         :rtype:
         """
-        if description is None:
-            description = unit
 
-        if unit not in self.mUnits.keys():
-            t = (unit, description, tooltip, icon)
-            r = len(self.mUnits)
-            self.beginInsertRows(QModelIndex(), r, r)
-            self.mUnits[unit] = t
-            self.endInsertRows()
+        if not isinstance(unit, UnitWrapper):
+            if isinstance(unit, str):
+                base_unit = UnitLookup.baseUnit(unit)
+                if isinstance(base_unit, str):
+                    unit = base_unit
+
+            unit = UnitWrapper(unit,
+                               description=description,
+                               tooltip=tooltip, icon=icon)
+
+        for u in self:
+            if u.unit == unit.unit and u.description == unit.description:
+                # unit + unit description already exists
+                return False
+
+        r = len(self.mUnits)
+        self.beginInsertRows(QModelIndex(), r, r)
+        self.mUnits.append(unit)
+        self.endInsertRows()
+        return True
 
     def unitIndex(self, unit: str) -> QModelIndex:
         """
@@ -134,9 +175,9 @@ class UnitModel(QAbstractListModel):
         :return:
         :rtype:
         """
-        for i, description in enumerate(self.mUnits.values()):
-            if self.unitMatch(unit, description):
-                return self.index(i, 0)
+        w = self.findUnitWrapper(unit)
+        if isinstance(w, UnitWrapper):
+            return self.index(self.mUnits.index(w), 0)
         return QModelIndex()
 
     def unitData(self, unit: str, role=Qt.DisplayRole):
@@ -155,16 +196,18 @@ class UnitModel(QAbstractListModel):
         if not index.isValid():
             return None
 
-        unit, description, tooltip, icon = list(self.mUnits.values())[index.row()]
+        w = self.mUnits[index.row()]
 
         if role == Qt.DisplayRole:
-            return description
+            return w.description
         if role == Qt.ToolTipRole:
-            return tooltip
+            return w.tooltip
         if role == Qt.DecorationRole:
-            return icon
+            return w.icon
         if role == Qt.UserRole:
-            return unit
+            return w.unit
+        if role == Qt.UserRole + 1:
+            return w
 
 
 class UnitConverterFunctionModel(object):
@@ -244,7 +287,7 @@ class XUnitModel(UnitModel):
         self.addUnit('')
         self.addUnit(UNKNOWN, description='Unknown Unit')
 
-    def findUnit(self, unit):
+    def findUnit(self, unit) -> str:
         if unit in [None, NULL]:
             unit = BAND_NUMBER
         return super(XUnitModel, self).findUnit(unit)
@@ -266,10 +309,10 @@ def log10_with_sign(v):
 
 class UnitLookup(object):
     DATE_UNITS = ['DateTime', 'DOY', 'DecimalYear', 'DecimalYear[366]', 'DecimalYear[365]', 'Y', 'M', 'W', 'D']
-    TIME_UNITS = ['h', 'm', 's', 'ms', 'us', 'ns', 'ps', 'fs', 'as']
+    TIME_UNITS = ['h', 'min', 's', 'ms', 'us', 'ns', 'ps', 'fs', 'as']
 
     IMPERIAL_LENGTH_UNITS = {
-        # values in m (si meters)
+        # values in log10(m) (m = si meters)
         'in': 0.0254, 'ft': 0.3048, 'yd': 0.9144, 'mi': 1609.344, 'nmi': 1852
     }
 
@@ -343,7 +386,28 @@ class UnitLookup(object):
                 UnitLookup.area_units() + \
                 UnitLookup.date_units() + \
                 UnitLookup.time_units():
-            base_unit = unit
+            return unit
+
+        # Area units?
+        RX1 = re.compile(r'((sq[. ]|square )(?P<core>.*[^.2²])\.?)$', re.I)
+        RX2 = re.compile(r'(?P<core>.*)[2²]$', re.I)
+        for rx in [RX1, RX2]:
+            match = rx.match(unit)
+            if match:
+                length_unit = UnitLookup.baseUnit(match.group('core'))
+                if isinstance(length_unit, str):
+                    area_unit = length_unit + '²'
+                    if area_unit in UnitLookup.AREA_UNITS.keys():
+                        return area_unit
+
+        # imperial area units
+        if re.search(r'^acres?$', unit, re.I):
+            base_unit = 'acre'
+        elif re.search(r'^square miles?$', unit, re.I):
+            base_unit = 'sqmi'
+
+        # Volumetric units?
+
         elif re.search(r'^(Nanomet(er|re)s?)$', unit, re.I):
             base_unit = 'nm'
         elif re.search(r'^(Micromet(er|re)s?|um|μm)$', unit, re.I):
@@ -382,7 +446,7 @@ class UnitLookup(object):
         elif re.search(r'^Hours?$', unit, re.I):
             base_unit = 'h'
         elif re.search(r'^Minutes?$', unit, re.I):
-            base_unit = 'm'
+            base_unit = 'min'
         elif re.search(r'^Seconds?$', unit, re.I):
             base_unit = 's'
         elif re.search(r'^MilliSeconds?$', unit, re.I):
@@ -410,13 +474,8 @@ class UnitLookup(object):
         elif re.search(r'^nautical[_ ]miles?$', unit, re.I):
             base_unit = 'nmi'
 
-        # imperial area units
-        elif re.search(r'^acres?$', unit, re.I):
-            base_unit = 'acre'
-        elif re.search(r'^square miles?$', unit, re.I):
-            base_unit = 'sqmi'
-
         if base_unit:
+            # store the base_unit, unit pair into a global lookup table
             UnitLookup.UNIT_LOOKUP[unit] = base_unit
         return base_unit
 
@@ -431,32 +490,26 @@ class UnitLookup(object):
         return baseUnit in UnitLookup.time_units() + UnitLookup.date_units()
 
     @staticmethod
-    def convertMetricUnit(value: Union[float, np.ndarray], u1: str, u2: str) -> float:
-        """
-        Converts value `value` from unit `u1` into unit `u2`
-        :param value: float | int | might work with numpy arrays as well
-        :param u1: str, identifier of unit 1
-        :param u2: str, identifier of unit 2
-        :return: float | numpy.array, converted values
-                 or None in case conversion is not possible
-        """
-        assert isinstance(u1, str), 'Source unit needs to be a str'
-        assert isinstance(u2, str), 'Destination unit needs to be a str'
+    def convertUnit(value: Union[float, np.ndarray], u1: str, u2: str) -> float:
+
         u1 = UnitLookup.baseUnit(u1)
         u2 = UnitLookup.baseUnit(u2)
 
-        e1 = UnitLookup.METRIC_EXPONENTS.get(u1)
-        e2 = UnitLookup.METRIC_EXPONENTS.get(u2)
+        if isinstance(u1, str) and isinstance(u2, str):
 
-        if all([arg is not None for arg in [value, e1, e2]]):
-            if e1 == e2:
-                return copy.copy(value)
-            elif isinstance(value, list):
-                return [v * 10 ** (e1 - e2) for v in value]
+            if u1 in UnitLookup.LENGTH_UNITS and u2 in UnitLookup.LENGTH_UNITS:
+                return UnitLookup.convertLengthUnit(value, u1, u2)
+            elif u1 in UnitLookup.AREA_UNITS and u2 in UnitLookup.AREA_UNITS:
+                return UnitLookup.convertAreaUnit(value, u1, u2)
+            elif u1 in UnitLookup.TIME_UNITS and u2 in UnitLookup.TIME_UNITS:
+                return UnitLookup.convertTimeUnit(value, u1, u2)
             else:
-                return value * 10 ** (e1 - e2)
-        else:
-            return None
+                return None
+
+    @staticmethod
+    def convertMetricUnit(*args, **kwds) -> float:
+        warnings.warn(DeprecationWarning('Use convertLengthUnit'))
+        return UnitLookup.convertLengthUnit(*args, **kwds)
 
     @staticmethod
     def convertLengthUnit(value: Union[float, np.ndarray], u1: str, u2: str) -> float:

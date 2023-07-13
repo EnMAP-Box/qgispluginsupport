@@ -44,8 +44,8 @@ from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.testing import TestObjects, TestCaseBase, start_app
-from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER
-from qps.utils import setToolButtonDefaultActionMenu, METRIC_EXPONENTS
+from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER, UnitLookup
+from qps.utils import setToolButtonDefaultActionMenu
 from qpstestdata import enmap, hymap
 
 start_app()
@@ -144,7 +144,7 @@ class TestSpeclibWidgets(TestCaseBase):
 
         cb = QComboBox()
         model = SpectralProfilePlotXAxisUnitModel()
-        for k in METRIC_EXPONENTS.keys():
+        for k in UnitLookup.LENGTH_UNITS.keys():
             model.addUnit(k)
 
         cb.setModel(model)
