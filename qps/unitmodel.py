@@ -88,7 +88,7 @@ class UnitModel(QAbstractListModel):
 
     def findUnitWrapper(self, value: Union[str, UnitWrapper]) -> UnitWrapper:
         """
-        Returns a matching unit wrapper. Tries to convert unit descriptions,
+        Returns a matching unit wrapper. Tries to convert unit description strings,
         e.g. searching for 'Nanometers' return the UnitWrapper mit unit 'nm'
         """
         if isinstance(value, UnitWrapper) and value in self.mUnits:
@@ -98,10 +98,11 @@ class UnitModel(QAbstractListModel):
             base_unit = UnitLookup.baseUnit(value)
             v_low = value.lower()
             for w in self.mUnits:
-                if w.unit == base_unit or \
-                        w.unit.lower() == v_low or \
-                        w.description.lower() == v_low:
+                if w.unit == base_unit:
                     return w
+                for v in [w.unit, w.description]:
+                    if isinstance(v, str) and v.lower() == v_low:
+                        return w
         return None
 
     def findUnit(self, value: Union[str, UnitWrapper]) -> str:
@@ -508,7 +509,7 @@ class UnitLookup(object):
 
     @staticmethod
     def convertMetricUnit(*args, **kwds) -> float:
-        warnings.warn(DeprecationWarning('Use convertLengthUnit'))
+        warnings.warn(DeprecationWarning('Use convertLengthUnit'), stacklevel=2)
         return UnitLookup.convertLengthUnit(*args, **kwds)
 
     @staticmethod

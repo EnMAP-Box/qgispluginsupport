@@ -1028,7 +1028,7 @@ class TestObjects(object):
                     elif wlu == '-':
                         wl = wlu = None
                     elif wlu != data_wlu:
-                        wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
+                        wl = UnitLookup.convertLengthUnit(wl, data_wlu, wlu)
                     profileDict = prepareProfileValueDict(y=data, x=wl, xUnit=wlu)
                     value = encodeProfileValueDict(profileDict, profile_field)
                     profile.setAttribute(profile_field.name(), value)
