@@ -12,7 +12,7 @@ from qgis.PyQt.QtGui import QIcon
 
 BAND_INDEX = 'Band Index'
 BAND_NUMBER = 'Band Number'
-UNKNOWN = ''
+UNKNOWN = None
 
 # Exponents of base 10 to 1 meter [m]
 METRIC_EXPONENTS = {
@@ -36,6 +36,9 @@ class UnitWrapper(object):
         self.description: str = description if isinstance(description, str) else unit
         self.tooltip: str = tooltip if isinstance(tooltip, str) else self.description
         self.icon: QIcon = icon
+
+    def __repr__(self):
+        return super().__repr__() + f' {self.unit}:{self.description}'
 
     def __hash__(self):
         return hash((self.unit, self.description))
@@ -96,13 +99,16 @@ class UnitModel(QAbstractListModel):
 
         elif isinstance(value, str):
             base_unit = UnitLookup.baseUnit(value)
-            v_low = value.lower()
-            for w in self.mUnits:
-                if w.unit == base_unit:
-                    return w
-                for v in [w.unit, w.description]:
-                    if isinstance(v, str) and v.lower() == v_low:
+            if isinstance(base_unit, str):
+                for w in self.mUnits:
+                    if w.unit == base_unit:
                         return w
+            else:
+                v_low = value.lower()
+                for w in self.mUnits:
+                    for v in [w.unit, w.description]:
+                        if isinstance(v, str) and v.lower() == v_low:
+                            return w
         return None
 
     def findUnit(self, value: Union[str, UnitWrapper]) -> str:
@@ -164,7 +170,7 @@ class UnitModel(QAbstractListModel):
 
         r = len(self.mUnits)
         self.beginInsertRows(QModelIndex(), r, r)
-        self.mUnits.append(unit)
+        self.mUnits.insert(r, unit)
         self.endInsertRows()
         return True
 
@@ -348,11 +354,13 @@ class UnitLookup(object):
     # a dictionary to lookup other names of length or area units
     # e.g. UNIT_LOOKUP['meters'] = 'm'
     # will be filled dynamically
-    UNIT_LOOKUP = {}
+    UNIT_LOOKUP = {BAND_INDEX: BAND_INDEX,
+                   BAND_NUMBER: BAND_NUMBER,
+                   UNKNOWN: UNKNOWN}
 
     @staticmethod
     def metric_units() -> List[str]:
-        warnings.warn(DeprecationWarning('Use area_units() or length_units()'))
+        warnings.warn(DeprecationWarning('Use area_units() or length_units()'), stacklevel=2)
         return list(METRIC_EXPONENTS.keys())
 
     @staticmethod

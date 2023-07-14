@@ -295,7 +295,7 @@ def registeredMapLayers() -> list:
     return layers
 
 
-convertMetricUnit = UnitLookup.convertMetricUnit
+convertLengthUnit = UnitLookup.convertLengthUnit
 convertDateUnit = UnitLookup.convertDateUnit
 
 # contains a lookup for wavelengths in nanometers

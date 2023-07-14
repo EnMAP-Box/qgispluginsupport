@@ -37,6 +37,7 @@ import sys
 import traceback
 import uuid
 import warnings
+from time import sleep
 from typing import Set, List, Union, Tuple
 from unittest import mock
 
@@ -545,6 +546,7 @@ APP = None
 
 
 class TestCaseBase(qgis.testing.TestCase):
+    gdal.UseExceptions()
 
     @staticmethod
     def check_empty_layerstore(name: str):
@@ -651,10 +653,10 @@ class TestCaseBase(qgis.testing.TestCase):
         :return:
         :rtype:
         """
-        if isinstance(path, pathlib.Path):
-            path = path.as_posix()
+        path = pathlib.Path(path)
+        assert path.is_file()
 
-        ds: gdal.Dataset = gdal.Open(path)
+        ds: gdal.Dataset = gdal.Open(path.as_posix())
         assert isinstance(ds, gdal.Dataset)
         drv: gdal.Driver = ds.GetDriver()
 
@@ -664,14 +666,28 @@ class TestCaseBase(qgis.testing.TestCase):
 
         newpath = testdir / f'{bn}{ext}'
         i = 0
-        if overwrite_existing and newpath.is_file():
-            drv.Delete(newpath.as_posix())
-        else:
-            while newpath.is_file():
-                i += 1
-                newpath = testdir / f'{bn}{i}{ext}'
+        if newpath.is_file():
+            deleted = False
+            if overwrite_existing:
+                ds2: gdal.Dataset = gdal.Open(newpath.as_posix())
+                path2 = ds2.GetFileList()[0]
+                drv2: gdal.Driver = ds2.GetDriver()
+                del ds2
+                n_tries = 5
+                while not deleted and n_tries > 5:
+                    try:
+                        drv2.Delete(path2)
+                        deleted = True
+                    except RuntimeError as ex:
+                        sleep(1)
+                        n_tries -= 1
 
-        drv.CopyFiles(newpath.as_posix(), path)
+            if not deleted:
+                while newpath.is_file():
+                    i += 1
+                    newpath = testdir / f'{bn}{i}{ext}'
+
+        drv.CopyFiles(newpath.as_posix(), path.as_posix())
 
         return newpath.as_posix()
 

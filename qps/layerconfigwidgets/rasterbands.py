@@ -199,7 +199,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
             # convert internally to nanometers
             if mWLUnit != 'nm':
                 try:
-                    mWL = UnitLookup.convertMetricUnit(mWL, mWLUnit, 'nm')
+                    mWL = UnitLookup.convertLengthUnit(mWL, mWLUnit, 'nm')
                     mWLUnit = 'nm'
                 except Exception:
                     mWL = None

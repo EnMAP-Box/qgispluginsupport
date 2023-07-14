@@ -8,7 +8,8 @@ from qgis.gui import QgsGui, QgsMapCanvas, QgsDualView, QgsSearchWidgetWrapper
 
 from qps.speclib import FIELD_VALUES, EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import profile_field_list
-from qps.speclib.core.spectralprofile import decodeProfileValueDict
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, prepareProfileValueDict
+from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory, SpectralProfileEditorConfigWidget, \
     SpectralProfileEditorWidgetWrapper, SpectralProfileEditorWidget, SpectralProfileTableModel, \
     SpectralProfileJsonEditor, SpectralProfileTableEditor, spectralProfileEditorWidgetFactory
@@ -20,15 +21,21 @@ start_app()
 
 def valid_profile_dicts() -> List[dict]:
     examples = [
+        dict(y=[1, 2, 3], x=[2, 3, 4], xUnit='foobar'),
         dict(y=[1, 2, 3], bbl=[1, 2, 3]),
         dict(y=[1, 2, 3]),
         dict(y=[1, 2, 3], x=[2, 3, 4]),
         dict(y=[1, 2, 3], x=['2005-02-25', '2005-03-25', '2005-04-25']),
         dict(y=[1, 2, 3], x=[2, 3, 4], xUnit=BAND_NUMBER),
-        dict(y=[1, 2, 3], x=[2, 3, 4], xUnit='foobar'),
-        dict(y=[1, 2, 3], bbl=[1, 1, 0]),
 
+        dict(y=[1, 2, 3], bbl=[1, 1, 0]),
     ]
+    for u in SpectralProfilePlotXAxisUnitModel.instance():
+        examples.append(
+            dict(y=[0, 8, 15], x=[1, 2, 3], xUnit=u.unit)
+        )
+
+    examples = [prepareProfileValueDict(prototype=e) for e in examples]
     return examples
 
 
@@ -52,10 +59,14 @@ class TestSpeclibWidgets(TestCaseBase):
                    SpectralProfileJsonEditor()]
 
         for editor in editors:
-            for profile in self.valid_profile_dicts():
-                editor.setProfileDict(profile)
-                d = editor.profileDict()
-                self.assertEqual(profile, d)
+            for i, d1 in enumerate(self.valid_profile_dicts()):
+                editor.setProfileDict(d1)
+                d2 = editor.profileDict()
+                if d1 != d2:
+                    editor.setProfileDict(d1)
+                    d2 = editor.profileDict()
+                    s = ""
+                self.assertEqual(d1, d2)
             editor.clear()
             self.assertEqual(editor.profileDict(), dict())
 

@@ -271,7 +271,7 @@ class SpectralProfileTableEditor(QFrame):
         self.tableView.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.tableView.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
 
-        self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel()
+        self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
         self.mXUnitModel.setAllowEmptyUnit(True)
         self.cbXUnit = QComboBox()
         self.cbXUnit.setModel(self.mXUnitModel)
@@ -306,6 +306,9 @@ class SpectralProfileTableEditor(QFrame):
                 idx = self.mXUnitModel.unitIndex(unit)
             if idx.isValid():
                 self.cbXUnit.setCurrentIndex(idx.row())
+            else:
+                # select the empty unit
+                self.cbXUnit.setCurrentIndex(0)
 
     def setYUnit(self, unit: str):
         if self.yUnit() != unit:
@@ -331,14 +334,9 @@ class SpectralProfileTableEditor(QFrame):
             # empty profile dict
             return dict()
 
-        xUnit = self.xUnit()
-        yUnit = self.yUnit()
-
-        if 'x' in d.keys() and xUnit:
-            d['xUnit'] = xUnit
-
-        if 'y' in d.keys() and yUnit:
-            d['yUnit'] = yUnit
+        d = prepareProfileValueDict(prototype=d,
+                                    xUnit=self.xUnit(),
+                                    yUnit=self.yUnit())
 
         return d
 
