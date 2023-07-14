@@ -1,38 +1,26 @@
-from qgis.PyQt.QtWidgets import QWidgetAction, QComboBox, QWidget, QFrame, QGridLayout, QLabel
 from qgis.PyQt.QtCore import NULL, pyqtSignal, Qt
-from ...unitmodel import UnitModel, BAND_NUMBER, BAND_INDEX, UnitLookup
+from qgis.PyQt.QtWidgets import QWidgetAction, QComboBox, QWidget, QFrame, QGridLayout, QLabel
+from ...unitmodel import UnitModel, BAND_NUMBER, BAND_INDEX, XUnitModel
 
 
-class SpectralProfilePlotXAxisUnitModel(UnitModel):
+class SpectralProfilePlotXAxisUnitModel(XUnitModel):
     """
     A unit model for the SpectralProfilePlot's X Axis
     """
 
+    _instance = None
+
+    @staticmethod
+    def instance() -> 'SpectralProfilePlotXAxisUnitModel':
+        """Returns a singleton of this class. Can be used to
+           show the same units in different SpectralProfilePlot instances
+        """
+        if SpectralProfilePlotXAxisUnitModel._instance is None:
+            SpectralProfilePlotXAxisUnitModel._instance = SpectralProfilePlotXAxisUnitModel()
+        return SpectralProfilePlotXAxisUnitModel._instance
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-
-        self.addUnit(BAND_NUMBER, description=BAND_NUMBER, tooltip=f'{BAND_NUMBER} (1st band = 1)')
-        self.addUnit(BAND_INDEX, description=BAND_INDEX, tooltip=f'{BAND_INDEX} (1st band = 0)')
-
-        # add Wavelength
-
-        for u in ['Nanometer',
-                  'Micrometer',
-                  'Millimeter',
-                  'Meter']:
-            baseUnit = UnitLookup.baseUnit(u)
-            assert isinstance(baseUnit, str), u
-            self.addUnit(baseUnit, description=f'Wavelength [{baseUnit}]', tooltip=f'Wavelength in {u} [{baseUnit}]')
-
-        # add Time Units
-        self.addUnit('DateTime', description='Date Time', tooltip='Date Time in ISO 8601 format')
-        self.addUnit('DecimalYear', description='Decimal Year', tooltip='Decimal year')
-        self.addUnit('DOY', description='Day of Year', tooltip='Day of Year (DOY)')
-
-        # add Distance Units
-        for u in ['Meter', 'Kilometer']:
-            baseUnit = UnitLookup.baseUnit(u)
-            self.addUnit(baseUnit, description=f'Distance [{baseUnit}', tooltip=f'Distance in {u} [{baseUnit}]')
 
     def findUnit(self, unit) -> str:
         if unit in [None, NULL]:
@@ -49,7 +37,7 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
         if isinstance(unit_model, UnitModel):
             self.mUnitModel = unit_model
         else:
-            self.mUnitModel = SpectralProfilePlotXAxisUnitModel()
+            self.mUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
         self.mUnit: str = BAND_INDEX
 
     def unitModel(self) -> SpectralProfilePlotXAxisUnitModel:

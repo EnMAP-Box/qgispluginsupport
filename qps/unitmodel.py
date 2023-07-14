@@ -81,7 +81,7 @@ class UnitModel(QAbstractListModel):
         return iter(self.mUnits)
 
     def __getitem__(self, slice):
-        return list(self.mUnits[slice])
+        return self.mUnits[slice]
 
     def rowCount(self, parent=None, *args, **kwargs) -> int:
         return len(self.mUnits)
@@ -212,6 +212,19 @@ class UnitModel(QAbstractListModel):
 
 
 class UnitConverterFunctionModel(object):
+    _instance = None
+
+    @staticmethod
+    def instance() -> 'UnitConverterFunctionModel':
+        """
+        Returns a singleton instance of the UnitConverterFunctionModel,
+        which can be used to share updates
+        -------
+
+        """
+        if UnitConverterFunctionModel._instance is None:
+            UnitConverterFunctionModel._instance = UnitConverterFunctionModel()
+        return UnitConverterFunctionModel._instance
 
     def __init__(self):
 
@@ -225,13 +238,13 @@ class UnitConverterFunctionModel(object):
         self.func_return_same = lambda v, *args: v
         self.func_return_decimalyear = lambda v, *args: UnitLookup.convertDateUnit(v, 'DecimalYear')
 
-        # metric units
-        for u1, e1 in METRIC_EXPONENTS.items():
-            for u2, e2 in METRIC_EXPONENTS.items():
+        # length units
+        for u1, e1 in UnitLookup.LENGTH_UNITS.items():
+            for u2, e2 in UnitLookup.LENGTH_UNITS.items():
                 key = (u1, u2)
                 if key not in self.mLUT.keys():
                     if u1 != u2:
-                        self.mLUT[key] = lambda v, *args, k1=u1, k2=u2: UnitLookup.convertMetricUnit(v, k1, k2)
+                        self.mLUT[key] = lambda v, *args, k1=u1, k2=u2: UnitLookup.convertLengthUnit(v, k1, k2)
 
         # time units
         # convert between DecimalYear and DateTime stamp
@@ -245,7 +258,7 @@ class UnitConverterFunctionModel(object):
     def convertFunction(self, unitSrc: str, unitDst: str):
         if unitDst == BAND_INDEX:
             return self.func_return_band_index
-        elif unitDst == BAND_NUMBER:
+        elif unitDst in [BAND_NUMBER, UNKNOWN]:
             return self.func_return_band_number
 
         unitSrc = UnitLookup.baseUnit(unitSrc)
@@ -255,9 +268,7 @@ class UnitConverterFunctionModel(object):
         if unitSrc == unitDst:
             return self.func_return_same
         key = (unitSrc, unitDst)
-        if key not in self.mLUT.keys():
-            s = ""
-        return self.mLUT.get((unitSrc, unitDst), self.func_return_none)
+        return self.mLUT.get(key, self.func_return_none)
 
 
 class XUnitModel(UnitModel):
@@ -269,12 +280,12 @@ class XUnitModel(UnitModel):
         self.addUnit(BAND_INDEX, description=BAND_INDEX)
         for u in ['Nanometers',
                   'Micrometers',
-                  'Millimeters',
-                  'Meters',
-                  'Kilometers']:
+                  'Millimeters']:
             baseUnit = UnitLookup.baseUnit(u)
             assert isinstance(baseUnit, str), u
-            self.addUnit(baseUnit, description='{} [{}]'.format(u, baseUnit))
+            self.addUnit(baseUnit,
+                         description=f'Wavelength [{baseUnit}]',
+                         tooltip=f'Wavelength in {u} [{baseUnit}]')
 
         self.addUnit('DateTime', description='Date Time')
         self.addUnit('DecimalYear', description='Decimal Year')
@@ -283,9 +294,10 @@ class XUnitModel(UnitModel):
         for u in ['Meters', 'Kilometers', 'Yards', 'Miles']:
             baseUnit = UnitLookup.baseUnit(u)
             assert isinstance(baseUnit, str), u
-            self.addUnit(baseUnit, description='{} []')
+            self.addUnit(baseUnit,
+                         description=f'Distance [{baseUnit}]',
+                         tooltip=f'Distance in {u} [{baseUnit}]')
 
-        self.addUnit('')
         self.addUnit(UNKNOWN, description='Unknown Unit')
 
     def findUnit(self, unit) -> str:

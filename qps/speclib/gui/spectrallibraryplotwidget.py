@@ -132,12 +132,12 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # mCache2ModelData[(fid, fidx, modelId, xunit))] -> dict
         # self.mCache3PlotData: Dict[PLOT_DATA_KEY, dict] = dict()
 
-        self.mUnitConverterFunctionModel = UnitConverterFunctionModel()
+        self.mUnitConverterFunctionModel = UnitConverterFunctionModel.instance()
         self.mDualView: QgsDualView = None
         self.mSpeclib: QgsVectorLayer = None
 
         self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel()
-        self.mXUnit: str = self.mXUnitModel[0]
+        self.mXUnit: str = self.mXUnitModel[0].unit
         self.mXUnitInitialized: bool = False
         self.mShowSelectedFeaturesOnly: bool = False
 
@@ -281,7 +281,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def setXUnit(self, unit: str):
         if self.mXUnit != unit:
             unit_ = self.mXUnitModel.findUnit(unit)
-            assert unit_, f'Unknown unit for x-axis: {unit}'
+            assert isinstance(unit_, str), f'Unknown unit for x-axis: {unit}'
             self.mXUnit = unit_
 
             #  baseUnit = UnitLookup.baseUnit(unit_)

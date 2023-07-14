@@ -21,8 +21,8 @@ import os
 import pathlib
 import unittest
 
-import numpy as np
 from osgeo import ogr, gdal
+
 from qgis.PyQt.QtCore import QMimeData, QUrl, QPoint, Qt
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
@@ -32,7 +32,6 @@ from qgis.core import QgsFeature
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes
 from qgis.gui import QgsMapCanvas, \
     QgsDualView, QgsGui
-
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
@@ -40,11 +39,11 @@ from qps.speclib.core import profile_field_list, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
-from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
+from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
 from qps.testing import TestObjects, TestCaseBase, start_app
-from qps.unitmodel import UnitConverterFunctionModel, BAND_NUMBER, UnitLookup
+from qps.unitmodel import BAND_NUMBER, UnitLookup
 from qps.utils import setToolButtonDefaultActionMenu
 from qpstestdata import enmap, hymap
 
@@ -107,20 +106,6 @@ class TestSpeclibWidgets(TestCaseBase):
         rb = ResourceBrowser()
 
         self.showGui([w, rb])
-
-    def test_UnitConverterFunctionModel(self):
-
-        m = UnitConverterFunctionModel()
-
-        v = np.asarray([100, 200, 300])
-
-        for dst in ['um', 'μm', u'μm']:
-            f = m.convertFunction('nm', dst)
-            r = f(v, 'X')
-            self.assertListEqual(list(r), [0.1, 0.2, 0.3], msg='Failed to convert from nm to {}'.format(dst))
-
-        r = m.convertFunction('nm', 'nm')(v, 'X')
-        self.assertListEqual(list(r), [100, 200, 300])
 
     @unittest.skipIf(False, '')
     def test_toolbarStackedActions(self):

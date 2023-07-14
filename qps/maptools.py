@@ -889,7 +889,6 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
             self.mCurrentLayer = None
             self.digitizingFinished.emit()
 
-
     def checkGeometryType(self) -> bool:
         return self.mCheckGeometryType
 

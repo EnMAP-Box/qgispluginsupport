@@ -1,6 +1,7 @@
 from qgis.PyQt.QtWidgets import QComboBox
 from qps.testing import TestCaseBase, start_app
-from qps.unitmodel import UnitModel, XUnitModel, UnitLookup
+from qps.unitmodel import UnitModel, XUnitModel, UnitLookup, UnitWrapper, UnitConverterFunctionModel
+import numpy as np
 
 start_app()
 
@@ -129,7 +130,23 @@ class UnitModelTests(TestCaseBase):
         model = XUnitModel()
         model.setAllowEmptyUnit(False)
 
+        uw = model[3]
+        self.assertIsInstance(uw, UnitWrapper)
         cb = QComboBox()
         cb.setModel(model)
 
         self.showGui(cb)
+
+    def test_UnitConverterFunctionModel(self):
+
+        m = UnitConverterFunctionModel()
+
+        v = np.asarray([100, 200, 300])
+
+        for dst in ['um', 'μm', u'μm']:
+            f = m.convertFunction('nm', dst)
+            r = f(v, 'X')
+            self.assertListEqual(list(r), [0.1, 0.2, 0.3], msg='Failed to convert from nm to {}'.format(dst))
+
+        r = m.convertFunction('nm', 'nm')(v, 'X')
+        self.assertListEqual(list(r), [100, 200, 300])
