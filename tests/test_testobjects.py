@@ -65,17 +65,17 @@ class TestCasesTestObject(TestCaseBase):
         self.assertTrue(lyr.GetFeatureCount() > 0)
         self.assertEqual(lyr.GetGeomType(), ogr.wkbLineString)
 
-        wkbTypes = [QgsWkbTypes.PointGeometry, QgsWkbTypes.Point,
+        geomTypes = [QgsWkbTypes.PointGeometry, QgsWkbTypes.Point,
                     QgsWkbTypes.LineGeometry, QgsWkbTypes.LineString,
                     QgsWkbTypes.PolygonGeometry, QgsWkbTypes.Polygon]
-        for wkbType in wkbTypes:
-            lyr = TestObjects.createVectorLayer(wkbType)
+        for geomType in geomTypes:
+            lyr = TestObjects.createVectorLayer(geomType)
             self.assertIsInstance(lyr, QgsVectorLayer)
             self.assertTrue(lyr.isValid())
             self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
             self.assertTrue(lyr.crs().isValid(),
-                            msg=f'Failed to create layer of wkbType: {wkbType} ' +
-                                f'"{QgsWkbTypes.displayString(wkbType)}"')
+                            msg=f'Failed to create layer of geometry type: {geomType} ' +
+                                f'"{geomType.name}"')
 
             for f in lyr.getFeatures():
                 f: QgsFeature

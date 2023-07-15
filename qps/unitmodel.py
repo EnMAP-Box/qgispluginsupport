@@ -503,7 +503,7 @@ class UnitLookup(object):
     @staticmethod
     def isMetricUnit(unit: str) -> bool:
         baseUnit = UnitLookup.baseUnit(unit)
-        return baseUnit in UnitLookup.metric_units()
+        return baseUnit in METRIC_EXPONENTS.keys()
 
     @staticmethod
     def isTemporalUnit(unit: str) -> bool:
