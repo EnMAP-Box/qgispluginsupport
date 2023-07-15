@@ -73,7 +73,10 @@ class TestCasesTestObject(TestCaseBase):
             self.assertIsInstance(lyr, QgsVectorLayer)
             self.assertTrue(lyr.isValid())
             self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
-            self.assertTrue(lyr.crs().isValid())
+            self.assertTrue(lyr.crs().isValid(),
+                            msg=f'Failed to create layer of wkbType: {wkbType} ' +
+                                f'"{QgsWkbTypes.displayString(wkbType)}"')
+
             for f in lyr.getFeatures():
                 f: QgsFeature
                 g: QgsGeometry = f.geometry()
