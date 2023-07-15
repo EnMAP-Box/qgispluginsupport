@@ -1332,7 +1332,7 @@ class TestObjects(object):
             if wlu is None:
                 wlu = core_wlu
             elif wlu != core_wlu:
-                wl = UnitLookup.convertMetricUnit(wl, core_wlu, wlu)
+                wl = UnitLookup.convertLengthUnit(wl, core_wlu, wlu)
 
             domain = None
             if drv.ShortName == 'ENVI':

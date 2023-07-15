@@ -1514,7 +1514,7 @@ def bandClosestToWavelength(dataset, wl, wl_unit='nm') -> int:
                 return 0
 
             if ds_wlu != wl_unit:
-                wl = UnitLookup.convertMetricUnit(wl, wl_unit, ds_wlu)
+                wl = UnitLookup.convertLengthUnit(wl, wl_unit, ds_wlu)
             return int(np.argmin(np.abs(ds_wl - wl)))
         except Exception:
             pass
