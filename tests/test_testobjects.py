@@ -8,9 +8,10 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import numpy as np
+
 from qgis.PyQt.QtCore import QVariant
 from osgeo import gdal, ogr
-from qgis.core import QgsFields, QgsField
+from qgis.core import Qgis, QgsFields, QgsField
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem
 from qps.speclib.core import create_profile_field
@@ -71,13 +72,14 @@ class TestCasesTestObject(TestCaseBase):
         for i, geomType in enumerate(geomTypes):
             lyr = TestObjects.createVectorLayer(geomType)
             self.assertIsInstance(lyr, QgsVectorLayer)
-            self.assertTrue(lyr.isValid(),
-                            msg=f'Failed test {i + 1} to create layer of '
-                                f'geometry type: {geomType} "{geomType.name}"'
-                            )
+            if Qgis.versionInt() >= 33000:
+                msg = f'Failed test {i + 1} to create layer of geometry type: {geomType} "{geomType.name}"'
+            else:
+                msg = f'Failed test {i + 1}'
+            self.assertTrue(lyr.isValid(), msg=msg)
+
             self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
-            self.assertTrue(lyr.crs().isValid(),
-                            msg=f'Text {i+1} "{geomType.name}": CRS is invalid: {lyr.crs()}')
+            self.assertTrue(lyr.crs().isValid())
 
             for f in lyr.getFeatures():
                 f: QgsFeature
