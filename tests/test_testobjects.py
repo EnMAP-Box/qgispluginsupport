@@ -68,13 +68,16 @@ class TestCasesTestObject(TestCaseBase):
         geomTypes = [QgsWkbTypes.PointGeometry, QgsWkbTypes.Point,
                      QgsWkbTypes.LineGeometry, QgsWkbTypes.LineString,
                      QgsWkbTypes.PolygonGeometry, QgsWkbTypes.Polygon]
-        for geomType in geomTypes:
+        for i, geomType in enumerate(geomTypes):
             lyr = TestObjects.createVectorLayer(geomType)
             self.assertIsInstance(lyr, QgsVectorLayer)
-            self.assertTrue(lyr.isValid())
+            self.assertTrue(lyr.isValid(),
+                            msg=f'Failed test {i + 1} to create layer of '
+                                f'geometry type: {geomType} "{geomType.name}"'
+                            )
             self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
             self.assertTrue(lyr.crs().isValid(),
-                            msg=f'Failed to create layer of geometry type: {geomType} "{geomType.name}"')
+                            msg=f'Text {i+1} "{geomType.name}": CRS is invalid: {lyr.crs()}')
 
             for f in lyr.getFeatures():
                 f: QgsFeature

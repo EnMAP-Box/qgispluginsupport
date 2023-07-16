@@ -96,7 +96,7 @@ WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
              'url=''https://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
              'version=''auto'''
 
-TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.geojson'
+TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
 _QGIS_MOCKUP = None
 _PYTHON_RUNNER = None
@@ -108,7 +108,17 @@ def start_app(cleanup: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
+
+    # workaround for CRS bug???. has to be done before qgis.test.start_app
+    # from qgis.core import QgsCoordinateReferenceSystem
+    # wkt = 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,3],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],AXIS["ellipsoidal height (h)",up,ORDER[3],LENGTHUNIT["metre",1]],USAGE[SCOPE["Geodesy. Navigation and positioning using GPS satellite system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4979]]'
+    # assert QgsCoordinateReferenceSystem(wkt).isValid()
+
     app = qgis.testing.start_app(cleanup)
+
+    from qgis.core import QgsCoordinateReferenceSystem
+    assert QgsCoordinateReferenceSystem('EPSG:4979').isValid()
+
     providers = QgsApplication.processingRegistry().providers()
     global _PYTHON_RUNNER
     global _QGIS_MOCKUP
@@ -1534,10 +1544,18 @@ class TestObjects(object):
         assert lyr.GetFeatureCount() > 0
         # uri = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
         uri = dsSrc.GetName()
-        # dsSrc = None
+
         vl = QgsVectorLayer(uri, 'testlayer', 'ogr', lyrOptions)
         assert isinstance(vl, QgsVectorLayer)
         assert vl.isValid()
+        if not vl.crs().isValid():
+            srs = lyr.GetSpatialRef()
+            srs_wkt = srs.ExportToWkt()
+            crs2 = QgsCoordinateReferenceSystem(srs_wkt)
+            assert crs2.isValid()
+            s = ""
+
+        assert vl.crs().isValid()
         assert vl.featureCount() == lyr.GetFeatureCount()
         return vl
 

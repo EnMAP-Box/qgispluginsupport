@@ -16,11 +16,8 @@ jobs:
   # Run unit tests
   test:
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        qgis_version: [release-3_28, release-3_30]
     env:
-      QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
+      QGIS_TEST_VERSION: latest
     steps:
       - name: Checkout
         #uses: actions/checkout@v2
@@ -34,5 +31,3 @@ jobs:
           chmod +x .docker/run_docker_tests.sh
           chmod +x runtests.sh
           docker-compose -f .docker/docker-compose.gh.yml run qgis ./usr/src/.docker/run_docker_tests.sh
-      - name: Generate Coverage Badge
-        run: coverage-badge -o coverage.svg
