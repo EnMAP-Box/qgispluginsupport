@@ -22,4 +22,5 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 python3 runfirst.py
 pytest --no-cov-on-fail --cov-config=.coveragec
 coverage-badge -o coverage.svg
+echo "::set-output name=coverage-badge::coverage.svg"  # Set the output as an artifact
 popd

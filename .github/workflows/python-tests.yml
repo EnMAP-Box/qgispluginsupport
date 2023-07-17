@@ -34,7 +34,19 @@ jobs:
           chmod +x .docker/run_docker_tests.sh
           chmod +x runtests.sh
           docker-compose -f .docker/docker-compose.gh.yml run qgis ./usr/src/.docker/run_docker_tests.sh
-      - name: Generate Coverage Badge
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-badge
+          path: ${{ steps.coverage-badge.outputs.coverage-badge }}
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: coverage-badge
+          path: coverage-badge
+
+      - name: Update README.md
         run: |
-          pip install coverage-badge  # Install coverage-badge package
-          coverage-badge -o coverage.svg  # Generate the coverage badge
+          cp coverage-badge/coverage.svg ./
