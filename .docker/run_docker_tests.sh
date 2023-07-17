@@ -22,5 +22,5 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 python3 runfirst.py
 pytest --no-cov-on-fail --cov-config=.coveragec
 coverage-badge -o coverage.svg
-echo "coverage-badge=coverage.svg" >> $GITHUB_OUTPUT
+# echo "coverage-badge=coverage.svg" >> $GITHUB_OUTPUT
 popd
