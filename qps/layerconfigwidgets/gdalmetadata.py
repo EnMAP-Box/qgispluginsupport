@@ -27,9 +27,9 @@ import json
 import math
 import pathlib
 import re
-
 from typing import List, Pattern, Tuple, Union, Dict, Any, Match
 
+from qgis.PyQt.QtWidgets import QCheckBox, QLabel, QSizePolicy, QGridLayout
 from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
@@ -1279,21 +1279,52 @@ class GDALMetadataModelConfigWidget(QpsMapLayerConfigWidget):
         masterModel: QgsAttributeTableModel = dualView.masterModel()
         calc: QgsFieldCalculator = QgsFieldCalculator(dualView.masterModel().layer(), self)
 
-        gb: QGroupBox = calc.findChild(QGroupBox, name='mNewFieldGroupBox')
-        if isinstance(gb, QGroupBox):
-            gb.setVisible(False)
-            gb.setChecked(False)
-            # gb.parentWidget().layout().removeWidget(gb)
-        gb: QGroupBox = calc.findChild(QGroupBox, name='mUpdateExistingGroupBox')
-        if isinstance(gb, QGroupBox):
-            gb.setVisible(True)
-            gb.setChecked(True)
-            # gb.setCheckable(False)
+        self.modifyFieldCalculatorWidget(calc)
 
         if calc.exec_() == QDialog.Accepted:
             col = masterModel.fieldCol(calc.changedAttributeId())
             if col >= 0:
                 masterModel.reload(masterModel.index(0, col), masterModel.index(masterModel.rowCount() - 1, col))
+
+    def modifyFieldCalculatorWidget(self, calc: QWidget):
+
+        if not calc.objectName() == 'QgsFieldCalculatorBase':
+            return
+        calc.setWindowTitle('Band Property Calculator')
+
+        cb: QCheckBox = calc.findChild(QCheckBox, name='mOnlyUpdateSelectedCheckBox')
+        if isinstance(cb, QCheckBox):
+            cb.setText('Only update selected bands')
+
+        gb: QGroupBox = calc.findChild(QGroupBox, name='mNewFieldGroupBox')
+
+        if isinstance(gb, QGroupBox):
+            gb.parentWidget().layout().removeWidget(gb)
+            gb.setVisible(False)
+            gb.setChecked(False)
+            policy: QSizePolicy = gb.sizePolicy()
+            policy.setVerticalPolicy(QSizePolicy.Preferred)
+            policy.setHorizontalPolicy(QSizePolicy.Preferred)
+            gb.setSizePolicy(policy)
+
+            # gb.parentWidget().layout().removeWidget(gb)
+        gb: QGroupBox = calc.findChild(QGroupBox, name='mUpdateExistingGroupBox')
+        if isinstance(gb, QGroupBox):
+            gridLayout: QGridLayout = gb.parent().layout()
+            gridLayout.removeWidget(gb)
+            gridLayout.addWidget(gb, 0, 1)
+            gb.setVisible(True)
+            gb.setChecked(True)
+            gb.setCheckable(False)
+            gb.setTitle('Update property')
+            policy: QSizePolicy = gb.sizePolicy()
+            policy.setHorizontalStretch(2)
+            gb.setSizePolicy(policy)
+
+        label_2 = calc.findChildren(QLabel, name='label_2', options=Qt.FindChildrenRecursively)
+        if len(label_2) == 1 and isinstance(label_2[0], QLabel):
+            label_2: QLabel = label_2[0]
+            label_2.setText('Band')
 
     def onBandFormModeChanged(self, *args):
         self.actionBandTableView.setChecked(self.bandDualView.view() == QgsDualView.AttributeTable)
