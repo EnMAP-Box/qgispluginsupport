@@ -34,5 +34,3 @@ jobs:
           chmod +x .docker/run_docker_tests.sh
           chmod +x runtests.sh
           docker-compose -f .docker/docker-compose.gh.yml run qgis ./usr/src/.docker/run_docker_tests.sh
-      - name: Generate Coverage Badge
-        run: coverage-badge -o coverage.svg
