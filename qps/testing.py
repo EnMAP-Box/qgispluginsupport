@@ -414,8 +414,7 @@ class QgisMockup(QgisInterface):
         return self.mPluginManager
 
     def setActiveLayer(self, mapLayer: QgsMapLayer):
-        if mapLayer in self.mapCanvas().layers():
-            self.mapCanvas().setCurrentLayer(mapLayer)
+        self.mLayerTreeView.setCurrentLayer(mapLayer)
 
     def selectionToolBar(self) -> QToolBar:
         return self.mSelectionToolBar
