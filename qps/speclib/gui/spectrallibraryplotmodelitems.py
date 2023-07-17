@@ -1272,7 +1272,7 @@ class RasterRendererGroup(PropertyItemGroup):
         # self.mPropertyTooltips[LayerRendererVisualization.PIX_TYPE] = 'raster layer renderer type'
 
         self.mLayer: QgsRasterLayer = None
-        self.mUnitConverter: UnitConverterFunctionModel = UnitConverterFunctionModel()
+        self.mUnitConverter: UnitConverterFunctionModel = UnitConverterFunctionModel.instance()
         self.mIsVisible: bool = True
 
         self.mBarR: InfiniteLine = InfiniteLine(pos=1, angle=90, movable=True)

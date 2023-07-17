@@ -7,10 +7,14 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 
-import qps.testing
-from qps.testing import TestCase
 from qgis.core import QgsProject, QgsApplication, QgsProcessingRegistry, QgsLayerTree, QgsLayerTreeModel
 from qgis.gui import QgsLayerTreeView, QgisInterface, QgsGui
+
+import qps.testing
+from qps.testing import TestCase
+from qps.testing import start_app
+
+start_app()
 
 
 class TestCasesClassTesting(TestCase):

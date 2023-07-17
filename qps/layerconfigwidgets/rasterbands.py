@@ -42,8 +42,9 @@ from qgis.core import QgsRasterLayer, QgsMapLayer, \
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, QgsRasterBandComboBox
 from ..layerconfigwidgets.core import QpsMapLayerConfigWidget
 from ..simplewidgets import FlowLayout
-from ..utils import loadUi, parseWavelength, UnitLookup, parseFWHM, LUT_WAVELENGTH, WAVELENGTH_DESCRIPTION, \
+from ..utils import loadUi, parseWavelength, parseFWHM, LUT_WAVELENGTH, WAVELENGTH_DESCRIPTION, \
     SignalBlocker, printCaller, rendererXML
+from ..unitmodel import UnitLookup
 
 
 class RasterBandComboBox(QgsRasterBandComboBox):
@@ -198,7 +199,7 @@ class RasterBandConfigWidget(QpsMapLayerConfigWidget):
             # convert internally to nanometers
             if mWLUnit != 'nm':
                 try:
-                    mWL = UnitLookup.convertMetricUnit(mWL, mWLUnit, 'nm')
+                    mWL = UnitLookup.convertLengthUnit(mWL, mWLUnit, 'nm')
                     mWLUnit = 'nm'
                 except Exception:
                     mWL = None

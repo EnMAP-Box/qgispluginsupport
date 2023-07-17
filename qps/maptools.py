@@ -853,7 +853,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
 
         self.mCheckGeometryType = True
         self.mLayer = layer
-        self.mCurrentLayer = None
+        self.mCurrentLayer: QgsMapLayer = None
         self.mVectorLayerTools = vectorLayerTools
 
     def setVectorLayerTools(self, vectorLayerTools: QgsVectorLayerTools):
@@ -886,6 +886,7 @@ class QgsMapToolDigitizeFeature(QgsMapToolCapture):
         if self.mCurrentLayer:
             # //set the layer back to the one remembered
             self.canvas().setCurrentLayer(self.mCurrentLayer)
+            self.mCurrentLayer = None
             self.digitizingFinished.emit()
 
     def checkGeometryType(self) -> bool:

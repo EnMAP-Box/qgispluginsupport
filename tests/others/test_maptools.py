@@ -14,7 +14,7 @@ __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 import gc
 import unittest
 
-from qgis.PyQt.QtCore import QPointF, Qt, QEvent, QTimer, pyqtSlot
+from qgis.PyQt.QtCore import QPointF, Qt, QEvent, pyqtSlot
 from qgis.PyQt.QtGui import QMouseEvent
 from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle, \
     QgsVectorLayer, QgsWkbTypes
@@ -63,10 +63,10 @@ class TestMapTools(TestCaseBase):
         canvas.setCurrentLayer(lyrV_Point)
 
         lyrV_Point.startEditing()
-        mt = QgsMapToolAddFeature(canvas, cadDockWidget, QgsMapToolCapture.CapturePoint)
-        self.assertIsInstance(mt, QgsMapToolAddFeature)
-        canvas.setMapTool(mt)
-        mt.activate()
+        mt1 = QgsMapToolAddFeature(canvas, cadDockWidget, QgsMapToolCapture.CapturePoint)
+        self.assertIsInstance(mt1, QgsMapToolAddFeature)
+        canvas.setMapTool(mt1)
+        mt1.activate()
         me1 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * w, 0.5 * h), Qt.LeftButton, Qt.LeftButton,
                           Qt.NoModifier)
         canvas.mousePressEvent(me1)
@@ -86,12 +86,12 @@ class TestMapTools(TestCaseBase):
         canvas.mousePressEvent(me1)
         canvas.mousePressEvent(me2)
         canvas.mousePressEvent(me3)
-        if not self.runsInCI():
-            me4 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * h, 0.5 * w), Qt.RightButton, Qt.RightButton,
-                              Qt.NoModifier)
-            canvas.mousePressEvent(me4)
+        # if not self.runsInCI():
+        #   me4 = QMouseEvent(QEvent.MouseButtonPress, QPointF(0.5 * h, 0.5 * w), Qt.RightButton, Qt.RightButton,
+        #                    Qt.NoModifier)
+        # canvas.mousePressEvent(me4)
 
-        mt = SpatialExtentMapTool(canvas)
+        mt2 = SpatialExtentMapTool(canvas)
 
         @pyqtSlot(QgsCoordinateReferenceSystem, QgsRectangle)
         def onEmit(crs, rect):
@@ -99,20 +99,21 @@ class TestMapTools(TestCaseBase):
             self.assertIsInstance(crs, QgsCoordinateReferenceSystem)
             self.assertIsInstance(rect, QgsRectangle)
 
-        mt.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].connect(onEmit)
+        mt2.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].connect(onEmit)
 
         @pyqtSlot()
         def doEmit():
             print('#doEmit')
             ext = SpatialExtent.fromMapCanvas(canvas)
-            mt.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), canvas.extent())
+            mt2.sigSpatialExtentSelected[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), canvas.extent())
 
-        QTimer.singleShot(2, doEmit)
-        doEmit()
+        # QTimer.singleShot(2, doEmit)
+        # doEmit()
         # import time
         # time.sleep(2)
 
         self.showGui(canvas)
+
         QgsProject.instance().removeAllMapLayers()
 
     # @unittest.skip('')

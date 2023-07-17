@@ -37,6 +37,7 @@ import sys
 import traceback
 import uuid
 import warnings
+from time import sleep
 from typing import Set, List, Union, Tuple
 from unittest import mock
 
@@ -71,7 +72,8 @@ from .speclib import createStandardFields, FIELD_VALUES
 from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
 from .speclib.core.spectrallibrary import SpectralLibraryUtils
 from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
-from .utils import UnitLookup, px2geo, SpatialPoint, findUpwardPath
+from .utils import px2geo, SpatialPoint, findUpwardPath
+from .unitmodel import UnitLookup
 
 if Qgis.versionInt() >= 33000:
     TYPE_WkbType = Qgis.WkbType
@@ -94,7 +96,7 @@ WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
              'url=''https://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
              'version=''auto'''
 
-TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.geojson'
+TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
 _QGIS_MOCKUP = None
 _PYTHON_RUNNER = None
@@ -106,7 +108,17 @@ def start_app(cleanup: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
+
+    # workaround for CRS bug???. has to be done before qgis.test.start_app
+    # from qgis.core import QgsCoordinateReferenceSystem
+    # wkt = 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,3],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],AXIS["ellipsoidal height (h)",up,ORDER[3],LENGTHUNIT["metre",1]],USAGE[SCOPE["Geodesy. Navigation and positioning using GPS satellite system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4979]]'
+    # assert QgsCoordinateReferenceSystem(wkt).isValid()
+
     app = qgis.testing.start_app(cleanup)
+
+    from qgis.core import QgsCoordinateReferenceSystem
+    assert QgsCoordinateReferenceSystem('EPSG:4979').isValid()
+
     providers = QgsApplication.processingRegistry().providers()
     global _PYTHON_RUNNER
     global _QGIS_MOCKUP
@@ -544,6 +556,7 @@ APP = None
 
 
 class TestCaseBase(qgis.testing.TestCase):
+    gdal.UseExceptions()
 
     @staticmethod
     def check_empty_layerstore(name: str):
@@ -650,10 +663,10 @@ class TestCaseBase(qgis.testing.TestCase):
         :return:
         :rtype:
         """
-        if isinstance(path, pathlib.Path):
-            path = path.as_posix()
+        path = pathlib.Path(path)
+        assert path.is_file()
 
-        ds: gdal.Dataset = gdal.Open(path)
+        ds: gdal.Dataset = gdal.Open(path.as_posix())
         assert isinstance(ds, gdal.Dataset)
         drv: gdal.Driver = ds.GetDriver()
 
@@ -663,14 +676,28 @@ class TestCaseBase(qgis.testing.TestCase):
 
         newpath = testdir / f'{bn}{ext}'
         i = 0
-        if overwrite_existing and newpath.is_file():
-            drv.Delete(newpath.as_posix())
-        else:
-            while newpath.is_file():
-                i += 1
-                newpath = testdir / f'{bn}{i}{ext}'
+        if newpath.is_file():
+            deleted = False
+            if overwrite_existing:
+                ds2: gdal.Dataset = gdal.Open(newpath.as_posix())
+                path2 = ds2.GetFileList()[0]
+                drv2: gdal.Driver = ds2.GetDriver()
+                del ds2
+                n_tries = 5
+                while not deleted and n_tries > 5:
+                    try:
+                        drv2.Delete(path2)
+                        deleted = True
+                    except RuntimeError as ex:
+                        sleep(1)
+                        n_tries -= 1
 
-        drv.CopyFiles(newpath.as_posix(), path)
+            if not deleted:
+                while newpath.is_file():
+                    i += 1
+                    newpath = testdir / f'{bn}{i}{ext}'
+
+        drv.CopyFiles(newpath.as_posix(), path.as_posix())
 
         return newpath.as_posix()
 
@@ -1027,7 +1054,7 @@ class TestObjects(object):
                     elif wlu == '-':
                         wl = wlu = None
                     elif wlu != data_wlu:
-                        wl = UnitLookup.convertMetricUnit(wl, data_wlu, wlu)
+                        wl = UnitLookup.convertLengthUnit(wl, data_wlu, wlu)
                     profileDict = prepareProfileValueDict(y=data, x=wl, xUnit=wlu)
                     value = encodeProfileValueDict(profileDict, profile_field)
                     profile.setAttribute(profile_field.name(), value)
@@ -1315,7 +1342,7 @@ class TestObjects(object):
             if wlu is None:
                 wlu = core_wlu
             elif wlu != core_wlu:
-                wl = UnitLookup.convertMetricUnit(wl, core_wlu, wlu)
+                wl = UnitLookup.convertLengthUnit(wl, core_wlu, wlu)
 
             domain = None
             if drv.ShortName == 'ENVI':
@@ -1517,10 +1544,18 @@ class TestObjects(object):
         assert lyr.GetFeatureCount() > 0
         # uri = '{}|{}'.format(dsSrc.GetName(), lyr.GetName())
         uri = dsSrc.GetName()
-        # dsSrc = None
+
         vl = QgsVectorLayer(uri, 'testlayer', 'ogr', lyrOptions)
         assert isinstance(vl, QgsVectorLayer)
         assert vl.isValid()
+        if not vl.crs().isValid():
+            srs = lyr.GetSpatialRef()
+            srs_wkt = srs.ExportToWkt()
+            crs2 = QgsCoordinateReferenceSystem(srs_wkt)
+            assert crs2.isValid()
+            s = ""
+
+        assert vl.crs().isValid()
         assert vl.featureCount() == lyr.GetFeatureCount()
         return vl
 

@@ -1,6 +1,7 @@
 # QGIS Plugin Support (QPS) 
 [![❄ Flake8](https://github.com/EnMAP-Box/qgispluginsupport/actions/workflows/flake8.yml/badge.svg?branch=master)](https://github.com/EnMAP-Box/qgispluginsupport/actions/workflows/flake8.yml)
 [![Unit Tests](https://github.com/EnMAP-Box/qgispluginsupport/actions/workflows/python-tests.yml/badge.svg?branch=master)](https://github.com/EnMAP-Box/qgispluginsupport/actions/workflows/python-tests.yml)
+[![Coverage](./coverage.svg)](./coverage.svg)
 
 The QGIS Plugin Support (QPS) library helps to develop QGIS plugins specifically for remote sensing applications.
 

@@ -48,7 +48,8 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
     """
 
     if isinstance(prototype, dict) and len(prototype) > 0:
-        d = prototype.copy()
+        d = {k: v for k, v in prototype.items() if v is not None}
+
     else:
         d = dict()
 

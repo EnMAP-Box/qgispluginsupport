@@ -8,9 +8,10 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import numpy as np
+
 from qgis.PyQt.QtCore import QVariant
 from osgeo import gdal, ogr
-from qgis.core import QgsFields, QgsField
+from qgis.core import Qgis, QgsFields, QgsField
 from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
 from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem
 from qps.speclib.core import create_profile_field
@@ -65,15 +66,21 @@ class TestCasesTestObject(TestCaseBase):
         self.assertTrue(lyr.GetFeatureCount() > 0)
         self.assertEqual(lyr.GetGeomType(), ogr.wkbLineString)
 
-        wkbTypes = [QgsWkbTypes.PointGeometry, QgsWkbTypes.Point,
-                    QgsWkbTypes.LineGeometry, QgsWkbTypes.LineString,
-                    QgsWkbTypes.PolygonGeometry, QgsWkbTypes.Polygon]
-        for wkbType in wkbTypes:
-            lyr = TestObjects.createVectorLayer(wkbType)
+        geomTypes = [QgsWkbTypes.PointGeometry, QgsWkbTypes.Point,
+                     QgsWkbTypes.LineGeometry, QgsWkbTypes.LineString,
+                     QgsWkbTypes.PolygonGeometry, QgsWkbTypes.Polygon]
+        for i, geomType in enumerate(geomTypes):
+            lyr = TestObjects.createVectorLayer(geomType)
             self.assertIsInstance(lyr, QgsVectorLayer)
-            self.assertTrue(lyr.isValid())
+            if Qgis.versionInt() >= 33000:
+                msg = f'Failed test {i + 1} to create layer of geometry type: {geomType} "{geomType.name}"'
+            else:
+                msg = f'Failed test {i + 1}'
+            self.assertTrue(lyr.isValid(), msg=msg)
+
             self.assertIsInstance(lyr.crs(), QgsCoordinateReferenceSystem)
             self.assertTrue(lyr.crs().isValid())
+
             for f in lyr.getFeatures():
                 f: QgsFeature
                 g: QgsGeometry = f.geometry()

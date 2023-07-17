@@ -6,6 +6,7 @@ tmp/
 doc/build/
 .idea/*
 .idea/*.*
+coverage.svg
 deploy/*
 temp/
 */temp/
