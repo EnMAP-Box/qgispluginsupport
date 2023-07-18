@@ -283,7 +283,18 @@ class UnitConverterFunctionModel(object):
         return sorted(set([k[1] for k in self.mLUT.keys()]))
 
     def addConvertFunc(self, unitSrc: str, unitDst: str, func):
-        # todo: test func with dummy variables
+        """
+        Adds a function to convert values from unitStr to unitDst
+        The function must have a
+        signature func(values: Union[number(s), numpy-array, list], *args) -> Union[np.ndarray or single value]
+        list/array inputs must return list/array outputs of the same shape
+        single number input must return a single number output
+        """
+        # test func with dummy variables
+        assert not isinstance(func(1), (list, np.ndarray))
+        assert len(func([1, 2])) == 2
+        assert len(func(np.asarray([1, 2]))) == 2
+
         k = (unitSrc, unitDst)
 
         assert k not in self.mLUT, k
