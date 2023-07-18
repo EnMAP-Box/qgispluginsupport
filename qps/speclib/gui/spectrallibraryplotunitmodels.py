@@ -1,6 +1,9 @@
-from qgis.PyQt.QtCore import NULL, pyqtSignal, Qt
+from typing import Union
+
+from qgis.PyQt.QtCore import pyqtSignal, Qt
 from qgis.PyQt.QtWidgets import QWidgetAction, QComboBox, QWidget, QFrame, QGridLayout, QLabel
-from ...unitmodel import UnitModel, BAND_NUMBER, BAND_INDEX, XUnitModel
+
+from ...unitmodel import UnitModel, BAND_INDEX, XUnitModel, UnitWrapper
 
 
 class SpectralProfilePlotXAxisUnitModel(XUnitModel):
@@ -8,28 +11,12 @@ class SpectralProfilePlotXAxisUnitModel(XUnitModel):
     A unit model for the SpectralProfilePlot's X Axis
     """
 
-    _instance = None
-
-    @staticmethod
-    def instance() -> 'SpectralProfilePlotXAxisUnitModel':
-        """Returns a singleton of this class. Can be used to
-           show the same units in different SpectralProfilePlot instances
-        """
-        if SpectralProfilePlotXAxisUnitModel._instance is None:
-            SpectralProfilePlotXAxisUnitModel._instance = SpectralProfilePlotXAxisUnitModel()
-        return SpectralProfilePlotXAxisUnitModel._instance
-
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-    def findUnit(self, unit) -> str:
-        if unit in [None, NULL]:
-            unit = BAND_NUMBER
-        return super().findUnit(unit)
-
 
 class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
-    sigUnitChanged = pyqtSignal(str)
+    sigUnitChanged = pyqtSignal(UnitWrapper)
 
     def __init__(self, parent, unit_model: UnitModel = None, **kwds):
         super().__init__(parent)
@@ -38,22 +25,22 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
             self.mUnitModel = unit_model
         else:
             self.mUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
-        self.mUnit: str = BAND_INDEX
+        self.mUnit: UnitWrapper = self.mUnitModel.findUnitWrapper(BAND_INDEX)
 
     def unitModel(self) -> SpectralProfilePlotXAxisUnitModel:
         return self.mUnitModel
 
-    def setUnit(self, unit: str):
-        unit = self.mUnitModel.findUnit(unit)
+    def setUnit(self, unit: Union[str, UnitWrapper]):
+        unit = self.mUnitModel.findUnitWrapper(unit)
 
-        if isinstance(unit, str) and self.mUnit != unit:
+        if self.mUnit != unit:
             self.mUnit = unit
             self.sigUnitChanged.emit(unit)
 
-    def unit(self) -> str:
-        return self.mUnit
+    def unit(self) -> UnitWrapper:
+        return self.mUnit.unit
 
-    def unitData(self, unit: str, role=Qt.DisplayRole) -> str:
+    def unitData(self, unit: Union[str, UnitWrapper], role=Qt.DisplayRole) -> str:
         return self.mUnitModel.unitData(unit, role)
 
     def createUnitComboBox(self) -> QComboBox:
@@ -61,7 +48,7 @@ class SpectralProfilePlotXAxisUnitWidgetAction(QWidgetAction):
         unitComboBox.setModel(self.mUnitModel)
         unitComboBox.setCurrentIndex(self.mUnitModel.unitIndex(self.unit()).row())
         unitComboBox.currentIndexChanged.connect(
-            lambda: self.setUnit(unitComboBox.currentData(Qt.UserRole))
+            lambda: self.setUnit(unitComboBox.currentData(Qt.UserRole + 1))
         )
 
         self.sigUnitChanged.connect(

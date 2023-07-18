@@ -4,7 +4,7 @@ import sys
 import textwrap
 
 import warnings
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Union
 
 import numpy as np
 from qgis.PyQt.QtCore import pyqtSignal, QPoint, Qt, QPointF
@@ -15,7 +15,7 @@ from qgis.core import QgsProject
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
 from ...utils import SignalObjectWrapper, HashablePointF
-from ...unitmodel import datetime64
+from ...unitmodel import datetime64, UnitWrapper
 
 
 class SpectralXAxis(pg.AxisItem):
@@ -72,13 +72,15 @@ class SpectralXAxis(pg.AxisItem):
         else:
             return super(SpectralXAxis, self).tickStrings(values, scale, spacing)
 
-    def setUnit(self, unit: str, labelName: str = None):
+    def setUnit(self, unit: Union[str, UnitWrapper], labelName: str = None):
         """
         Sets the unit of this axis
         :param unit: str
         :param labelName: str, defaults to unit
         """
-        assert isinstance(unit, str)
+        if isinstance(unit, UnitWrapper):
+            unit = unit.unit
+        assert unit is None or isinstance(unit, str)
         self.mUnit = unit
 
         if isinstance(labelName, str):

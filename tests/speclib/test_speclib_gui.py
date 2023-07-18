@@ -433,7 +433,7 @@ class TestSpeclibWidgets(TestCaseBase):
         self.assertIsInstance(sw, SpectralLibraryWidget)
         pw = sw.plotWidget()
         self.assertIsInstance(pw, SpectralProfilePlotWidget)
-        self.assertEqual(pw.xAxis().unit(), BAND_NUMBER)
+        self.assertEqual(BAND_NUMBER, pw.xAxis().unit())
         slib = TestObjects.createSpectralLibrary(10)
 
         pField = profile_field_list(slib)[0]

@@ -1328,7 +1328,7 @@ class RasterRendererGroup(PropertyItemGroup):
     def initWithPlotModel(self, model):
         from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
         assert isinstance(model, SpectralProfilePlotModel)
-        self.setXUnit(model.xUnit())
+        self.setXUnit(model.xUnit().unit)
         # self.updateBarVisiblity()
         for bar in self.bandPlotItems():
             model.mPlotWidget.plotItem.addItem(bar)
@@ -1340,6 +1340,7 @@ class RasterRendererGroup(PropertyItemGroup):
         return item
 
     def setXUnit(self, xUnit: str):
+        assert xUnit is None or isinstance(xUnit, str)
         if xUnit is None:
             xUnit = BAND_NUMBER
         self.mXUnit = xUnit

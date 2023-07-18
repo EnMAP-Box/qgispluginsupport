@@ -35,7 +35,7 @@ from ..core.spectralprofile import decodeProfileValueDict
 from ...externals.htmlwidgets import HTMLStyle
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...unitmodel import BAND_INDEX, UnitConverterFunctionModel, datetime64
+from ...unitmodel import BAND_INDEX, UnitConverterFunctionModel, datetime64, UnitWrapper, BAND_NUMBER
 from ...utils import loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
     SelectMapLayerDialog, SignalBlocker, printCaller
 
@@ -136,8 +136,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.mDualView: QgsDualView = None
         self.mSpeclib: QgsVectorLayer = None
 
-        self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel()
-        self.mXUnit: str = self.mXUnitModel[0].unit
+        self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
+        self.mXUnit: UnitWrapper = self.mXUnitModel.findUnitWrapper(BAND_NUMBER)
         self.mXUnitInitialized: bool = False
         self.mShowSelectedFeaturesOnly: bool = False
 
@@ -237,7 +237,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.mCACHE_PROFILE_DATA[id_attribute] = rawData
         return self.mCACHE_PROFILE_DATA[id_attribute]
 
-    def plotData(self, feature: QgsFeature, fieldIndex: int, xUnit: str) -> Tuple[dict, bool]:
+    def plotData(self, feature: QgsFeature, fieldIndex: int, xUnit: UnitWrapper) -> Tuple[dict, bool]:
         """
         Returns the data struct of a deserialized spectral profile, converted to xUnit
         """
@@ -276,25 +276,25 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def showSelectedFeaturesOnly(self) -> bool:
         return self.mShowSelectedFeaturesOnly
 
-    sigXUnitChanged = pyqtSignal(str)
+    sigXUnitChanged = pyqtSignal(UnitWrapper)
 
-    def setXUnit(self, unit: str):
+    def setXUnit(self, unit: Union[str, UnitWrapper]):
+        unit = self.mXUnitModel.findUnitWrapper(unit)
         if self.mXUnit != unit:
-            unit_ = self.mXUnitModel.findUnit(unit)
-            assert isinstance(unit_, str), f'Unknown unit for x-axis: {unit}'
-            self.mXUnit = unit_
+
+            self.mXUnit = unit
 
             #  baseUnit = UnitLookup.baseUnit(unit_)
-            labelName = self.mXUnitModel.unitData(unit_, Qt.DisplayRole)
+            labelName = self.mXUnitModel.unitData(unit, Qt.DisplayRole)
             self.mPlotWidget.xAxis().setUnit(unit, labelName=labelName)
             self.mPlotWidget.clearInfoScatterPoints()
             # self.mPlotWidget.xAxis().setLabel(text='x values', unit=unit_)
             for bv in self.layerRendererVisualizations():
-                bv.setXUnit(self.mXUnit)
+                bv.setXUnit(self.mXUnit.unit)
             self.updatePlot()
             self.sigXUnitChanged.emit(self.mXUnit)
 
-    def xUnit(self) -> str:
+    def xUnit(self) -> UnitWrapper:
         return self.mXUnit
 
     def setPlotWidget(self, plotWidget: SpectralProfilePlotWidget):
@@ -403,7 +403,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget) and isinstance(self.speclib(), QgsVectorLayer)):
             return
 
-        xunit = self.xUnit()
+        xunit: str = self.xUnit().unit
 
         # Recycle plot items
         old_spdis: List[SpectralProfilePlotDataItem] = self.mPlotWidget.spectralProfilePlotDataItems()

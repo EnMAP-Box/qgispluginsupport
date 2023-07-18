@@ -12,7 +12,6 @@ from qgis.PyQt.QtGui import QIcon
 
 BAND_INDEX = 'Band Index'
 BAND_NUMBER = 'Band Number'
-UNKNOWN = None
 
 # Exponents of base 10 to 1 meter [m]
 METRIC_EXPONENTS = {
@@ -45,6 +44,16 @@ class UnitWrapper(object):
 
 
 class UnitModel(QAbstractListModel):
+    _instance = None
+
+    @classmethod
+    def instance(cls) -> 'UnitModel':
+        """Returns a singleton of this class. Can be used to
+           show the same units in different SpectralProfilePlot instances
+        """
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -96,6 +105,9 @@ class UnitModel(QAbstractListModel):
         """
         if isinstance(value, UnitWrapper) and value in self.mUnits:
             return value
+
+        elif value is None and self.mEmpty in self.mUnits:
+            return self.mEmpty
 
         elif isinstance(value, str):
             base_unit = UnitLookup.baseUnit(value)
@@ -174,7 +186,7 @@ class UnitModel(QAbstractListModel):
         self.endInsertRows()
         return True
 
-    def unitIndex(self, unit: str) -> QModelIndex:
+    def unitIndex(self, unit: Union[str, UnitWrapper]) -> QModelIndex:
         """
         Returns the QModelIndex of a unit.
         :param unit:
@@ -187,7 +199,7 @@ class UnitModel(QAbstractListModel):
             return self.index(self.mUnits.index(w), 0)
         return QModelIndex()
 
-    def unitData(self, unit: str, role=Qt.DisplayRole):
+    def unitData(self, unit: Union[str, UnitWrapper], role=Qt.DisplayRole):
         """
         Convenience function to access unit metadata
         :param unit:
@@ -261,20 +273,47 @@ class UnitConverterFunctionModel(object):
         self.mLUT[('DecimalYear', 'DOY')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DOY')
         self.mLUT[('DateTime', 'DOY')] = lambda v, *args: UnitLookup.convertDateUnit(v, 'DOY')
 
+    def __iter__(self):
+        return iter(self.mLUT.items())
+
+    def sourceUnits(self) -> List[str]:
+        return sorted(set([k[0] for k in self.mLUT.keys()]))
+
+    def destinationUnits(self) -> List[str]:
+        return sorted(set([k[1] for k in self.mLUT.keys()]))
+
+    def addConvertFunc(self, unitSrc: str, unitDst: str, func):
+        # todo: test func with dummy variables
+        k = (unitSrc, unitDst)
+
+        assert k not in self.mLUT, k
+        self.mLUT[k] = func
+
     def convertFunction(self, unitSrc: str, unitDst: str):
         if unitDst == BAND_INDEX:
             return self.func_return_band_index
-        elif unitDst in [BAND_NUMBER, UNKNOWN]:
+        elif unitDst in [BAND_NUMBER, None, '']:
             return self.func_return_band_number
 
-        unitSrc = UnitLookup.baseUnit(unitSrc)
-        unitDst = UnitLookup.baseUnit(unitDst)
         if unitSrc is None or unitDst is None:
             return self.func_return_none
-        if unitSrc == unitDst:
-            return self.func_return_same
-        key = (unitSrc, unitDst)
-        return self.mLUT.get(key, self.func_return_none)
+
+        _unitSrc = UnitLookup.baseUnit(unitSrc)
+        _unitDst = UnitLookup.baseUnit(unitDst)
+        for key in [
+            (unitSrc, unitDst),  # units exist
+            (unitSrc, _unitDst),  # destination unit's base-unit is known
+            (_unitSrc, unitDst),  # source unit's base-unit is known
+            (_unitSrc, _unitDst)  # base-unit's derivable for both
+        ]:
+            if key in self.mLUT:
+                return self.mLUT[key]
+
+            k1, k2 = key
+            if isinstance(k1, str) and isinstance(k2, str) and k1 == k2:
+                return self.func_return_same
+
+        return self.func_return_none
 
 
 class XUnitModel(UnitModel):
@@ -304,11 +343,12 @@ class XUnitModel(UnitModel):
                          description=f'Distance [{baseUnit}]',
                          tooltip=f'Distance in {u} [{baseUnit}]')
 
-        self.addUnit(UNKNOWN, description='Unknown Unit')
+        self.addUnit(None, description='Unknown Unit')
 
     def findUnit(self, unit) -> str:
         if unit in [None, NULL]:
-            unit = BAND_NUMBER
+            if self.mEmpty not in self.mUnits:
+                unit = BAND_NUMBER
         return super(XUnitModel, self).findUnit(unit)
 
 
@@ -356,7 +396,7 @@ class UnitLookup(object):
     # will be filled dynamically
     UNIT_LOOKUP = {BAND_INDEX: BAND_INDEX,
                    BAND_NUMBER: BAND_NUMBER,
-                   UNKNOWN: UNKNOWN}
+                   None: None}
 
     @staticmethod
     def metric_units() -> List[str]:
