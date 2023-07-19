@@ -2139,15 +2139,14 @@ class HashableRect(QRect):
 
 
 def rasterLayerMapToPixel(layer: QgsRasterLayer) -> QgsMapToPixel:
-   assert isinstance(layer, QgsRasterLayer)
-   c = layer.extent().center()
+    assert isinstance(layer, QgsRasterLayer)
+    c = layer.extent().center()
 
-   m2p = QgsMapToPixel(layer.rasterUnitsPerPixelX(),
-                       c.x(), c.y(),
-                       layer.width(), layer.height(),
-                       0)
-   return m2p
-
+    m2p = QgsMapToPixel(layer.rasterUnitsPerPixelX(),
+                        c.x(), c.y(),
+                        layer.width(), layer.height(),
+                        0)
+    return m2p
 
 
 class SpatialPoint(QgsPointXY):
@@ -2381,7 +2380,7 @@ def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: Union[QgsPointXY, Spati
     return QPoint(x, y)
 
 
-def rasterBlockArray(block: QgsRasterBlock, masked:bool = False) -> Union[np.ndarray, np.ma.MaskedArray]:
+def rasterBlockArray(block: QgsRasterBlock, masked: bool = False) -> Union[np.ndarray, np.ma.MaskedArray]:
     """
     Returns the content of a QgsRasterBlock as 2D numpy array
     :param block: QgsRasterBlock, the block to read values

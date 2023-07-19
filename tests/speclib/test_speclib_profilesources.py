@@ -4,14 +4,14 @@ import random
 import unittest
 from typing import Tuple, List
 
-from PyQt5.QtCore import QSize
+from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtWidgets import QComboBox, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QGridLayout
-from qgis._core import QgsExpressionContext, QgsPoint, QgsPointXY, QgsMapToPixel
+from qgis.core import QgsExpressionContext, QgsPoint, QgsPointXY, QgsMapToPixel, Qgis
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes
 from qgis.core import QgsRasterLayer, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
+
 from qps.maptools import CursorLocationMapTool
-from qps.speclib.core import is_profile_field
 from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting, isProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, \
@@ -259,7 +259,7 @@ class SpectralProcessingTests(TestCaseBase):
     def validate_profile_data(self, profileData, lyr: QgsRasterLayer, ptR: QgsPointXY):
 
         array = rasterArray(lyr)
-
+        dp: QgsRasterDataProvider = lyr.dataProvider()
         for (d, context) in profileData:
             self.assertTrue(isProfileValueDict(d))
             self.assertIsInstance(context, QgsExpressionContext)
@@ -271,7 +271,6 @@ class SpectralProcessingTests(TestCaseBase):
             self.assertTrue(ext.yMinimum() <= ptXY.y() <= ext.yMaximum())
             self.assertTrue(ext.contains(ptXY),
                             msg=f'Layer extent {ext} \n does not contain context point\n {pt}')
-
             m2p = QgsMapToPixel(lyr.rasterUnitsPerPixelX(),
                                 lyr.extent().center().x(),
                                 lyr.extent().center().y(),
@@ -287,8 +286,10 @@ class SpectralProcessingTests(TestCaseBase):
             self.assertEqual(px_xR, px_x)
             self.assertEqual(px_yR, px_y)
 
+            results = dp.identify(ptXY, Qgis.RasterIdentifyFormat.Value)
+
             yValues = d['y']
-            yValuesR = array[:, px_y, px_x].tolist()
+            yValuesR = [results.results()[b] for b in range(1, lyr.bandCount() + 1)]
 
             if yValues != yValuesR:
                 s = ""

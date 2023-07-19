@@ -2,12 +2,10 @@ import difflib
 import math
 import re
 import sys
-
 from typing import List, Any, Iterable, Optional, Dict, Union, Tuple, Set, Iterator
 
 import numpy as np
-from PyQt5.QtCore import pyqtSignal, QObject
-
+from qgis.PyQt.QtCore import pyqtSignal, QObject
 from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
     QSortFilterProxyModel, QItemSelection, NULL
 from qgis.PyQt.QtCore import Qt
@@ -15,14 +13,13 @@ from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, Q
 from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
     QTableView, QStyle, QStyleOptionViewItem
 from qgis.PyQt.QtWidgets import QTreeView
-from qgis._core import QgsMapToPixel, QgsRasterBlockFeedback, QgsRasterBlock
-
+from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, QgsRasterBlock, Qgis
 from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, \
     QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRaster, QgsRectangle
 from qgis.core import QgsLayerItem
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
     QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
 
@@ -45,9 +42,9 @@ SCOPE_VAR_SAMPLE_ID = 'sample_id'
 
 
 class SpectralProfileSource(QObject):
-
     sigRemoveMe = pyqtSignal()
-    def __init__(self, name: str = None, toolTip: str = None, parent: QObject =None):
+
+    def __init__(self, name: str = None, toolTip: str = None, parent: QObject = None):
         super().__init__(parent=parent)
         self.mName: str = name
         self.mToolTip: str = toolTip
@@ -157,7 +154,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
 
         context = QgsExpressionContext()
         context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
-
+        context.setGeometry(QgsGeometry.fromPointXY(point))
         px = self.m2p.transform(point)
 
         scope = QgsExpressionContextScope('pixel')
@@ -189,8 +186,8 @@ class StandardLayerProfileSource(SpectralProfileSource):
         sp = QgsRasterLayerSpectralProperties.fromRasterLayer(self.mLayer)
 
         rect = QRectF(0, 0,
-                     resX * kernel_size.width(),
-                     resY * kernel_size.height())
+                      resX * kernel_size.width(),
+                      resY * kernel_size.height())
         rect.moveCenter(point.toQPointF())
         rect = QgsRectangle(rect)
 
@@ -199,32 +196,6 @@ class StandardLayerProfileSource(SpectralProfileSource):
         nb = self.mLayer.bandCount()
         nx = kernel_size.width()
         ny = kernel_size.height()
-        bands = list(range(1, nb + 1))
-
-        bandNoData = []
-        for i, band in enumerate(bands):
-            band_block: QgsRasterBlock = dp.block(band, rect,
-                                                  nx, ny,
-                                                  feedback=feedback)
-            if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
-                return None
-
-            if band_block.hasNoDataValue():
-                bandNoData.append(band_block.noDataValue())
-            else:
-                bandNoData.append(None)
-
-            assert isinstance(band_block, QgsRasterBlock)
-            band_array: np.ma.MaskedArray = rasterBlockArray(band_block, masked=True)
-            assert band_array.shape == (ny, nx)
-            if i == 0:
-                result_array = np.ma.empty((nb, ny, nx), dtype=band_array.dtype)
-            result_array[i, :, :] = band_array
-
-        profiles = []
-        bbl = sp.badBands()
-        wl = sp.wavelengths()
-        wlu = sp.wavelengthUnits()
 
         geo_x = np.arange(0, nx) * resX
         geo_y = np.arange(0, ny) * resY
@@ -233,30 +204,78 @@ class StandardLayerProfileSource(SpectralProfileSource):
         geo_x += point.x()
         geo_y += point.y()
 
-        for iX in range(nx):
-            for iY in range(ny):
+        profiles = []
+        bbl = sp.badBands()
+        wl = sp.wavelengths()
+        wlu = sp.wavelengthUnits()
+        if True:
+            dp: QgsRasterDataProvider = self.mLayer.dataProvider()
+            for iX in range(nx):
+                for iY in range(ny):
 
-                geo_x = rect.xMinimum() + 0.5 * resX * (iX + 1)
-                geo_y = rect.yMaximum() - 0.5 * resY * (iY + 1)
-                pt = QgsPointXY(geo_x, geo_y)
+                    pt = QgsPointXY(geo_x[iX], geo_y[iY])
+                    if not self.mLayer.extent().contains(pt):
+                        continue
 
-                masked_y_values = result_array[:, iY, iX]
-                if np.all(masked_y_values.mask):
-                    continue
-                yValues = masked_y_values.tolist()
+                    profileContext = self.expressionContext(pt)
 
-                ext = self.mLayer.extent()
-                if not (ext.xMinimum() <= pt.x() <= ext.xMaximum()):
-                    s = ""
-                if not (ext.yMinimum() <= pt.y() <= ext.yMaximum()):
-                    s = ""
+                    R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat.Value)
+                    if not R.isValid():
+                        continue
 
-                profileContext = self.expressionContext(pt)
-                profileContext.setGeometry(QgsGeometry.fromPointXY(pt))
+                    results = R.results()
+                    yValues = [results[b + 1] for b in range(self.mLayer.bandCount())]
 
+                    d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu, bbl=bbl)
+                    if isinstance(d, dict):
+                        profiles.append((d, profileContext))
 
-                d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu)
-                profiles.append((d, profileContext))
+        if False:
+            bands = list(range(1, nb + 1))
+
+            bandNoData = []
+            for i, band in enumerate(bands):
+                band_block: QgsRasterBlock = dp.block(band, rect,
+                                                      nx, ny,
+                                                      feedback=feedback)
+                if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
+                    return None
+
+                if band_block.hasNoDataValue():
+                    bandNoData.append(band_block.noDataValue())
+                else:
+                    bandNoData.append(None)
+
+                assert isinstance(band_block, QgsRasterBlock)
+                band_array: np.ma.MaskedArray = rasterBlockArray(band_block, masked=True)
+                assert band_array.shape == (ny, nx)
+                if i == 0:
+                    result_array = np.ma.empty((nb, ny, nx), dtype=band_array.dtype)
+                result_array[i, :, :] = band_array
+
+            for iX in range(nx):
+                for iY in range(ny):
+
+                    geo_x = rect.xMinimum() + 0.5 * resX * (iX + 1)
+                    geo_y = rect.yMaximum() - 0.5 * resY * (iY + 1)
+                    pt = QgsPointXY(geo_x, geo_y)
+
+                    masked_y_values = result_array[:, iY, iX]
+                    if np.all(masked_y_values.mask):
+                        continue
+                    yValues = masked_y_values.tolist()
+
+                    ext = self.mLayer.extent()
+                    if not (ext.xMinimum() <= pt.x() <= ext.xMaximum()):
+                        s = ""
+                    if not (ext.yMinimum() <= pt.y() <= ext.yMaximum()):
+                        s = ""
+
+                    profileContext = self.expressionContext(pt)
+                    profileContext.setGeometry(QgsGeometry.fromPointXY(pt))
+
+                    d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu)
+                    profiles.append((d, profileContext))
 
         return profiles
 
@@ -1489,7 +1508,7 @@ class SpectralFeatureGeneratorNode(TreeNode):
         :return:
         """
         nodes = [n for n in self.childNodes() if isinstance(n, SpectralProfileGeneratorNode)]
-        if isinstance(checked, bool) and checked == True:
+        if isinstance(checked, bool) and checked:
             nodes = [n for n in nodes if n.checked()]
         return nodes
 
@@ -1668,7 +1687,6 @@ class SpectralProfileBridge(TreeModel):
         """
         self.mLastDestinations.clear()
         RESULTS: Dict[str, List[QgsFeature]] = dict()
-        TEMPORAL_STYLES: Dict[str, List[Tuple[int, PlotStyle]]] = dict()
 
         # 1. collect feature generators with at least one checked profileGenerator
         featureGenerators: List[SpectralFeatureGeneratorNode] = []
@@ -1682,195 +1700,6 @@ class SpectralProfileBridge(TreeModel):
             for pgnode in fgnode.spectralProfileGeneratorNodes(checked=True):
                 pgnode.sampling()
 
-        # order by source the blocks we need to read
-        SOURCE_BLOCKS: Dict[str, Dict[HashableRect, SpectralProfileBlock]] = dict()
-        for pgnode, sbd in SAMPLING_BLOCK_DESCRIPTIONS.items():
-            sbd: SamplingBlockDescription
-            uri = sbd.uri()
-            URI2LAYER[uri] = sbd.layer()
-            source_blocks: Dict[HashableRect, np.ndarray] = SOURCE_BLOCKS.get(uri, dict())
-            source_blocks[sbd.rect()] = None
-            SOURCE_BLOCKS[uri] = source_blocks
-
-
-        # read blocks
-        for uri, BLOCKS in SOURCE_BLOCKS.items():
-            layer: QgsRasterLayer = URI2LAYER[uri]
-            spectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
-
-            for rect in list(BLOCKS.keys()):
-                array = rasterArray(layer, rect)
-
-                if not isinstance(array, np.ndarray):
-                    continue
-                is_nodata = np.zeros(array.shape, dtype=bool)
-                dp: QgsRasterDataProvider = layer.dataProvider()
-
-                for b in range(dp.bandCount()):
-                    band = b + 1
-                    band_mask = is_nodata[b, :, :]
-                    if dp.sourceHasNoDataValue(band):
-                        no_data = dp.sourceNoDataValue(band)
-                        band_mask = band_mask | (array[b, :, :] == no_data)
-                    for no_data in dp.userNoDataValues(band):
-                        band_mask = band_mask | (array[b, :, :] == no_data)
-                    is_nodata[b, :, :] = band_mask
-                if is_nodata.all():
-                    continue
-                array = np.ma.array(array, mask=is_nodata)
-                wl = spectralProperties.wavelengths()
-                bbl = spectralProperties.badBands()
-                wlu = spectralProperties.wavelengthUnits()
-                nb = spectralProperties.bandCount()
-                if len(wl) > 0:
-                    settings = SpectralSetting(wl, xUnit=wlu[0], bbl=bbl)
-                else:
-                    settings = SpectralSetting(nb, bbl=bbl)
-
-                profileBlock = SpectralProfileBlock(array, settings)
-
-                px_x, px_y = np.meshgrid(np.arange(rect.width()), np.arange(rect.height()))
-                px_x = px_x + rect.x()
-                px_y = px_y + rect.y()
-                geo_x, geo_y = px2geocoordinatesV2(layer, px_x, px_y)
-
-                # get shift between pixel center and true click positions
-                if not self.mSnapToPixelCenter:
-                    pointClicked = spatialPoint.toCrs(layer.crs())
-                    pointPxCenter = px2spatialPoint(layer, spatialPoint2px(layer, pointClicked))
-                    dx = pointPxCenter.x() - pointClicked.x()
-                    dy = pointPxCenter.y() - pointClicked.y()
-                    geo_x -= dx
-                    geo_y -= dy
-
-                profileBlock.setPositions(geo_x, geo_y, layer.crs())
-                BLOCKS[rect] = profileBlock
-
-        # 3. calculate required source profiles
-        for fgnode in SAMPLING_FEATURES:
-            assert isinstance(fgnode, SpectralFeatureGeneratorNode)
-            speclib = fgnode.speclib()
-            if not speclib:
-                continue
-
-            new_speclib_features: List[QgsFeature] = []
-            # new_temporal_colors: List[Tuple[int, QColor]] = []
-            new_temporal_styles: List[Tuple[int, PlotStyle]] = []
-            # calculate final profile value dictionaries
-            FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode,
-            List[Tuple[QByteArray, QgsGeometry]]] = dict()
-
-            for pgnode in fgnode.spectralProfileGeneratorNodes():
-                pgnode: SpectralProfileGeneratorNode
-
-                sbd: SamplingBlockDescription = SAMPLING_BLOCK_DESCRIPTIONS.get(pgnode, None)
-                if not isinstance(sbd, SamplingBlockDescription):
-                    continue
-
-                inputProfileBlock: SpectralProfileBlock = SOURCE_BLOCKS[sbd.uri()].get(sbd.rect(), None)
-                if isinstance(inputProfileBlock, SpectralProfileBlock):
-                    # convert profileBlock to final profiles
-                    outputProfileBlock: SpectralProfileBlock = pgnode.profiles(inputProfileBlock, sbd)
-                    outputProfileBlock.toCrs(speclib.crs())
-                    outputProfileBlock.mData = pgnode.offset() + outputProfileBlock.mData * pgnode.scale()
-
-                    FINAL_PROFILE_VALUES[pgnode] = []
-                    for _, ba, g in outputProfileBlock.profileValueDictionaries():
-                        FINAL_PROFILE_VALUES[pgnode].append((ba, g))
-
-            n_new_features = 0
-            for node, profiles in FINAL_PROFILE_VALUES.items():
-                n_new_features = max(n_new_features, len(profiles))
-
-            for i in range(n_new_features):
-                new_feature: QgsFeature = QgsFeature(fgnode.speclib().fields())
-                # new_feature_colors: List[Tuple[str, QColor]] = []
-                new_feature_styles: List[Tuple[str, PlotStyle]] = []
-                # set profile fields
-                # let's say the sampling methods for profile fields A, B and C return 1, 3 and 4 profiles, then
-                # we create 4 new features with
-                # feature 1: A, B, C
-                # feature 2: None, B, C
-                # feature 4: None, None, C
-
-                for pgnode, profileInputs in FINAL_PROFILE_VALUES.items():
-
-                    if len(profileInputs) > 0:
-                        # pop 1st profile
-                        profileDict, geometry = profileInputs.pop(0)
-                        assert isinstance(profileDict, dict)
-                        assert isinstance(geometry, QgsGeometry)
-                        if new_feature.geometry().type() in [QgsWkbTypes.UnknownGeometry, QgsWkbTypes.NullGeometry]:
-                            new_feature.setGeometry(geometry)
-                        field_name = pgnode.field().name()
-                        new_feature[field_name] = encodeProfileValueDict(profileDict, encoding=pgnode.field())
-                        d2 = decodeProfileValueDict(new_feature[field_name])
-                        # new_feature_colors.append((field_name, pgnode.mColorNode.color()))
-                        new_feature_styles.append((field_name, pgnode.mProfileStyleNode.value()))
-
-                new_speclib_features.append(new_feature)
-                # new_temporal_colors.append(new_feature_colors)
-                new_temporal_styles.append(new_feature_styles)
-
-            sample_id = 1
-            if isinstance(speclib, QgsVectorLayer) and len(new_speclib_features) > 0:
-                # increase click count
-                self.mClickCount[speclib.id()] = self.mClickCount.get(speclib.id(), 0) + 1
-                if speclib.featureCount() > 0:
-                    fids = sorted(speclib.allFeatureIds())
-                    sample_id = fids[-1]
-                    if sample_id < 0:
-                        sample_id = 0
-
-                    # account for already existing temporary features with fid < 0
-                    sample_id += len([f for f in fids if f < 0])
-
-                    # ensure a none-existing sample id
-                    while sample_id in fids:
-                        sample_id += 1
-
-            for i, new_feature in enumerate(new_speclib_features):
-                # create context for other values
-                scope = fgnode.speclib().createExpressionContextScope()
-                scope.setVariable(SCOPE_VAR_SAMPLE_CLICK, self.mClickCount[speclib.id()])
-                scope.setVariable(SCOPE_VAR_SAMPLE_FEATURE, i + 1)
-                scope.setVariable(SCOPE_VAR_SAMPLE_ID, sample_id + i)
-
-                context = fgnode.expressionContextGenerator().createExpressionContext()
-                context.setFeature(new_feature)
-                context.appendScope(scope)
-                for node in fgnode.childNodes():
-                    if isinstance(node, StandardFieldGeneratorNode) and node.checked():
-                        expr = node.expression()
-                        if expr.isValid() and expr.prepare(context):
-                            new_feature[node.field().name()] = expr.evaluate(context)
-
-            sid = fgnode.speclib().id()
-
-            RESULTS[sid] = RESULTS.get(sid, []) + new_speclib_features
-            # TEMPORAL_COLORS[sid] = TEMPORAL_COLORS.get(sid, []) + new_temporal_colors
-            TEMPORAL_STYLES[sid] = TEMPORAL_STYLES.get(sid, []) + new_temporal_styles
-            self.mLastDestinations.add(fgnode.speclib().id())
-
-        for slw in self.destinations():
-            speclib = slw.speclib()
-            if isinstance(speclib, QgsVectorLayer) and speclib.id() in RESULTS.keys():
-                features = RESULTS[speclib.id()]
-
-                candidate_styles = dict()
-                # ensure unique FIDs
-                for i, f in enumerate(features):
-                    fid = f.id() + i
-                    f.setId(f.id() + i)
-                    for (field, style) in TEMPORAL_STYLES[speclib.id()][i]:
-                        candidate_styles[(fid, field)] = style
-
-                slw.setCurrentProfiles(features,
-                                       make_permanent=add_permanent,
-                                       currentProfileStyles=candidate_styles,
-                                       )
-            else:
-                slw.setCurrentProfiles([])
         return RESULTS
 
     def loadProfiles(self,
@@ -1988,8 +1817,7 @@ class SpectralProfileBridge(TreeModel):
             # new_temporal_colors: List[Tuple[int, QColor]] = []
             new_temporal_styles: List[Tuple[int, PlotStyle]] = []
             # calculate final profile value dictionaries
-            FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode,
-            List[Tuple[QByteArray, QgsGeometry]]] = dict()
+            FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode, List[Tuple[QByteArray, QgsGeometry]]] = dict()
 
             for pgnode in fgnode.spectralProfileGeneratorNodes():
                 pgnode: SpectralProfileGeneratorNode
@@ -2370,8 +2198,7 @@ class SpectralProfileBridge(TreeModel):
     def sources(self) -> List[SpectralProfileSource]:
         return self.mSrcModel.sources()
 
-    def addSpectralLibraryWidgets(self, slws: Union[SpectralLibraryWidget,
-    Iterable[SpectralLibraryWidget]]):
+    def addSpectralLibraryWidgets(self, slws: Union[SpectralLibraryWidget, Iterable[SpectralLibraryWidget]]):
 
         if not isinstance(slws, Iterable):
             slws = [slws]
