@@ -149,11 +149,14 @@ class StandardLayerProfileSource(SpectralProfileSource):
         return isinstance(other, StandardLayerProfileSource) \
             and other.mLayer == self.mLayer
 
-    def expressionContext(self, point: SpatialPoint) -> QgsExpressionContext:
+    def expressionContext(self, point: Union[QgsPointXY, SpatialPoint]) -> QgsExpressionContext:
+        if isinstance(point, SpatialPoint):
+            point = point.toCrs(self.mLayer.crs())
+            if point is None:
+                return None
 
         context = QgsExpressionContext()
         context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
-        point = point.toCrs(self.mLayer.crs())
 
         px = self.m2p.transform(point)
 
@@ -223,25 +226,33 @@ class StandardLayerProfileSource(SpectralProfileSource):
         wl = sp.wavelengths()
         wlu = sp.wavelengthUnits()
 
-        geo_x = np.arange(0, nx) - int(nx * 0.5) * resX + point.x()
-        geo_y = np.arange(0, nx) - int(ny * 0.5) * resY + point.y()
+        geo_x = np.arange(0, nx) * resX
+        geo_y = np.arange(0, ny) * resY
+        geo_x -= 0.5 * geo_x[-1]
+        geo_y -= 0.5 * geo_y[-1]
+        geo_x += point.x()
+        geo_y += point.y()
 
         for iX in range(nx):
             for iY in range(ny):
+
+                geo_x = rect.xMinimum() + 0.5 * resX * (iX + 1)
+                geo_y = rect.yMaximum() - 0.5 * resY * (iY + 1)
+                pt = QgsPointXY(geo_x, geo_y)
+
                 masked_y_values = result_array[:, iY, iX]
                 if np.all(masked_y_values.mask):
                     continue
                 yValues = masked_y_values.tolist()
-                point = SpatialPoint(self.mLayer.crs(), geo_x[iX], geo_y[iY])
 
                 ext = self.mLayer.extent()
-                if not (ext.xMinimum() <= point.x() <= ext.xMaximum()):
+                if not (ext.xMinimum() <= pt.x() <= ext.xMaximum()):
                     s = ""
-                if not (ext.yMinimum() <= point.y() <= ext.yMaximum()):
+                if not (ext.yMinimum() <= pt.y() <= ext.yMaximum()):
                     s = ""
 
-                profileContext = self.expressionContext(point)
-                profileContext.setGeometry(QgsGeometry.fromPointXY(point))
+                profileContext = self.expressionContext(pt)
+                profileContext.setGeometry(QgsGeometry.fromPointXY(pt))
 
 
                 d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu)

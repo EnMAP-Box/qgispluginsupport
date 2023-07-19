@@ -278,7 +278,7 @@ class SpectralProcessingTests(TestCaseBase):
                                 lyr.width(),
                                 lyr.height(),
                                 0)
-            pxR = m2p.transform(ptR)
+            pxR = m2p.transform(ptXY)
             px_xR, px_yR = int(pxR.x()), int(pxR.y())
 
             px_x = context.variable('px_x')
