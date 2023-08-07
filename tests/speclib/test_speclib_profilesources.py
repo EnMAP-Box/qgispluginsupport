@@ -19,7 +19,7 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SingleProfileSamplingMode, SpectralProfileSamplingModeModel, SpectralProfileSamplingMode, \
     SamplingBlockDescription, \
     SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode, \
-    SpectralProfileSourceModel, StandardLayerProfileSource
+    SpectralProfileSourceModel, StandardLayerProfileSource, SpectralProfileSource
 from qps.testing import TestCaseBase, start_app
 from qps.testing import TestObjects
 from qps.utils import SpatialPoint, spatialPoint2px, parseWavelength, rasterArray, SpatialExtent
@@ -315,20 +315,19 @@ class SpectralProcessingTests(TestCaseBase):
         self.assertListEqual(sources, [src1, src2])
         for src in model:
             for pt in [pt1, pt2]:
-                self.assertIsInstance(src, StandardLayerProfileSource)
-                src: StandardLayerProfileSource
-
-                lyr: QgsRasterLayer = src.mLayer
-
+                self.assertIsInstance(src, SpectralProfileSource)
                 profileData1 = src.collectProfiles(pt)
                 self.assertTrue(len(profileData1) == 1)
-                self.validate_profile_data(profileData1, lyr, pt)
 
                 profileData2 = src.collectProfiles(pt, QSize(3, 3))
-                self.validate_profile_data(profileData2, lyr, pt)
-
                 profileData3 = src.collectProfiles(pt, QSize(5, 2))
-                self.validate_profile_data(profileData3, lyr, pt)
+
+                if isinstance(src, StandardLayerProfileSource):
+                    lyr: QgsRasterLayer = src.mLayer
+                    self.validate_profile_data(profileData1, lyr, pt)
+                    self.validate_profile_data(profileData2, lyr, pt)
+                    self.validate_profile_data(profileData3, lyr, pt)
+
 
     def test_kernelSampling(self):
 
