@@ -2201,6 +2201,9 @@ class SpatialPoint(QgsPointXY):
         return SpatialPoint(rasterLayer.crs(), geoPt)
 
     def __init__(self, crs, *args):
+        if isinstance(crs, SpatialPoint):
+            crs, args = crs.crs(), [crs]
+
         if not isinstance(crs, QgsCoordinateReferenceSystem):
             crs = QgsCoordinateReferenceSystem(crs)
         assert isinstance(crs, QgsCoordinateReferenceSystem)
@@ -2578,6 +2581,9 @@ class SpatialExtent(QgsRectangle):
         return SpatialExtent(crs, extent)
 
     def __init__(self, crs, *args):
+
+        if isinstance(crs, SpatialExtent):
+            crs, args = crs.crs(), [crs]
         if not isinstance(crs, QgsCoordinateReferenceSystem):
             crs = QgsCoordinateReferenceSystem(crs)
         assert isinstance(crs, QgsCoordinateReferenceSystem)

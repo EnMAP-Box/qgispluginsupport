@@ -253,6 +253,8 @@ class TestUtils(TestCase):
         self.assertEqual(ext1, ext2)
         self.assertEqual(ext1.crs().toWkt(), ext2.crs().toWkt())
 
+        ext3 = SpatialExtent(ext1)
+        self.assertEqual(ext3.asWktPolygon(), ext1.asWktPolygon())
     def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
 
         DIR = super().createTestOutputDirectory(name) / 'utils'
@@ -346,6 +348,11 @@ class TestUtils(TestCase):
         layer = TestObjects.createRasterLayer()
         pointA = SpatialPoint(layer.crs(), layer.extent().center())
         pixelA = pointA.toPixelPosition(layer)
+
+        pointB = SpatialPoint(pointA)
+        self.assertEqual(pointA, pointB)
+        self.assertNotEqual(id(pointA), id(pointB))
+        self.assertEqual(pointA.asWkt(), pointB.asWkt())
 
         self.assertIsInstance(pixelA, QPoint)
         self.assertEqual(pixelA.x(), int(layer.width() * 0.5))
