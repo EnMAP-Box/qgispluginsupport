@@ -1575,6 +1575,7 @@ class SpectralProfileBridge(TreeModel):
         URI2LAYER: Dict[str, QgsRasterLayer] = dict()
         SAMPLING_BLOCK_DESCRIPTIONS: Dict[SpectralProfileGeneratorNode, SamplingBlockDescription] = dict()
         SAMPLING_FEATURES: List[SpectralFeatureGeneratorNode] = []
+
         # 1. collect source infos
         for fgnode in self.featureGenerators(speclib=True, checked=True):
 

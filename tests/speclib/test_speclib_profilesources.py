@@ -252,6 +252,11 @@ class SpectralProcessingTests(TestCaseBase):
         self.showGui(w2)
         QgsProject.instance().removeAllMapLayers()
 
+    def test_profile_source(self):
+
+        pass
+
+
     def test_kernelSampling(self):
 
         mode = KernelProfileSamplingMode()
