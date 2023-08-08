@@ -257,6 +257,79 @@ class SpectralProcessingTests(TestCaseBase):
         pass
 
 
+    def validate_profile_data(self, profileData, lyr: QgsRasterLayer, ptR: QgsPointXY):
+
+        array = rasterArray(lyr)
+        dp: QgsRasterDataProvider = lyr.dataProvider()
+        for (d, context) in profileData:
+            self.assertTrue(isProfileValueDict(d))
+            self.assertIsInstance(context, QgsExpressionContext)
+            pt = context.geometry()
+            self.assertTrue(pt, QgsPoint)
+            ptXY: QgsPointXY = pt.asPoint()
+            ext = lyr.extent()
+            self.assertTrue(ext.xMinimum() <= ptXY.x() <= ext.xMaximum())
+            self.assertTrue(ext.yMinimum() <= ptXY.y() <= ext.yMaximum())
+            self.assertTrue(ext.contains(ptXY),
+                            msg=f'Layer extent {ext} \n does not contain context point\n {pt}')
+            m2p = QgsMapToPixel(lyr.rasterUnitsPerPixelX(),
+                                lyr.extent().center().x(),
+                                lyr.extent().center().y(),
+                                lyr.width(),
+                                lyr.height(),
+                                0)
+            pxR = m2p.transform(ptXY)
+            px_xR, px_yR = int(pxR.x()), int(pxR.y())
+
+            px_x = context.variable('px_x')
+            px_y = context.variable('px_y')
+
+            self.assertEqual(px_xR, px_x)
+            self.assertEqual(px_yR, px_y)
+
+            results = dp.identify(ptXY, Qgis.RasterIdentifyFormat.Value)
+
+            yValues = d['y']
+            yValuesR = [results.results()[b] for b in range(1, lyr.bandCount() + 1)]
+
+            if yValues != yValuesR:
+                s = ""
+            self.assertListEqual(yValues, yValuesR)
+
+    def test_spectral_profile_source_model(self):
+
+        lyr1 = TestObjects.createRasterLayer(nb=2, ns=5, nl=5)
+        lyr2 = TestObjects.createRasterLayer(nb=25, ns=5, nl=5)
+        pt1 = SpatialPoint.fromPixelPosition(lyr1, 0.5, 0.5)
+        pt2 = SpatialPoint.fromPixelPosition(lyr1, 1.5, 1.5)
+
+        model = SpectralProfileSourceModel()
+        self.assertTrue(len(model) == 0)
+
+        src1 = StandardLayerProfileSource(lyr1)
+        src2 = StandardLayerProfileSource(lyr2)
+
+        model.addSources([src1, src1, src2])
+        self.assertEqual(len(model), 2)
+
+        sources = model[:]
+        self.assertListEqual(sources, [src1, src2])
+        for src in model:
+            for pt in [pt1, pt2]:
+                self.assertIsInstance(src, SpectralProfileSource)
+                profileData1 = src.collectProfiles(pt)
+                self.assertTrue(len(profileData1) == 1)
+
+                profileData2 = src.collectProfiles(pt, QSize(3, 3))
+                profileData3 = src.collectProfiles(pt, QSize(5, 2))
+
+                if isinstance(src, StandardLayerProfileSource):
+                    lyr: QgsRasterLayer = src.mLayer
+                    self.validate_profile_data(profileData1, lyr, pt)
+                    self.validate_profile_data(profileData2, lyr, pt)
+                    self.validate_profile_data(profileData3, lyr, pt)
+
+
     def test_kernelSampling(self):
 
         mode = KernelProfileSamplingMode()

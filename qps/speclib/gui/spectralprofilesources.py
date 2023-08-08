@@ -2,11 +2,10 @@ import difflib
 import math
 import re
 import sys
-
 from typing import List, Any, Iterable, Optional, Dict, Union, Tuple, Set, Iterator
 
 import numpy as np
-
+from qgis.PyQt.QtCore import pyqtSignal, QObject
 from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
     QSortFilterProxyModel, QItemSelection, NULL
 from qgis.PyQt.QtCore import Qt
@@ -14,38 +13,44 @@ from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, Q
 from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
     QTableView, QStyle, QStyleOptionViewItem
 from qgis.PyQt.QtWidgets import QTreeView
-
+from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, QgsRasterBlock, Qgis
 from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, \
     QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRaster, QgsRectangle
 from qgis.core import QgsLayerItem
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
     QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
 
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, decodeProfileValueDict
+from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, \
+    decodeProfileValueDict, prepareProfileValueDict
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SpatialPoint, loadUi, rasterArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
+    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor, rasterBlockArray, \
+    rasterLayerMapToPixel
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
 SCOPE_VAR_SAMPLE_ID = 'sample_id'
 
 
-class SpectralProfileSource(object):
+class SpectralProfileSource(QObject):
+    sigRemoveMe = pyqtSignal()
 
-    def __init__(self):
-        self.mName: str = None
-        self.mUri: str = None
-        self.mProvider: str = None
+    def __init__(self, name: str = None, toolTip: str = None, parent: QObject = None):
+        super().__init__(parent=parent)
+        self.mName: str = name
+        self.mToolTip: str = toolTip
+
+    def __eq__(self, other):
+        raise NotImplementedError()
 
     def setName(self, name: str):
         self.mName = name
@@ -54,17 +59,12 @@ class SpectralProfileSource(object):
         return self.mName
 
     def toolTip(self) -> str:
-        return self.mUri
+        return self.mToolTip
 
-    def __hash__(self):
-        return hash((self.mUri, self.mProvider))
+    def setToolTip(self, toolTip: str):
+        self.mToolTip = toolTip
 
-    def __eq__(self, other):
-        if not isinstance(other, SpectralProfileSource):
-            return False
-        return self.mUri == other.mUri and self.mProvider == other.mProvider
-
-    def rasterLayer(self, **kwds) -> QgsRasterLayer:
+    def collectProfiles(self, point: SpatialPoint, kernel_size: QSize = QSize(1, 1)) -> List[Tuple[Dict, QgsExpressionContext]]:
         raise NotImplementedError
 
 
@@ -73,7 +73,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
     MODE_LAST_LAYER = 'last'
 
     MODE_TOOLTIP = {MODE_FIRST_LAYER:
-                    'Returns profiles of the first / top visible raster layer in the map layer stack',
+                        'Returns profiles of the first / top visible raster layer in the map layer stack',
                     MODE_LAST_LAYER:
                         'Returns profiles of the last / bottom visible raster layer in the map layer stack'
                     }
@@ -135,34 +135,149 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
 
 class StandardLayerProfileSource(SpectralProfileSource):
 
-    @staticmethod
-    def fromRasterLayer(lyr: QgsRasterLayer):
-        if lyr.isValid():
-            return StandardLayerProfileSource(lyr.source(), lyr.name(), lyr.providerType(), lyr.renderer().clone())
-        else:
-            return None
+    def __init__(self, layer: QgsRasterLayer):
+        assert isinstance(layer, QgsRasterLayer)
+        super().__init__(name=layer.name())
+        self.mLayer: QgsRasterLayer = layer
+        self.m2p: QgsMapToPixel = rasterLayerMapToPixel(layer)
+        self.mLayer.willBeDeleted.connect(self.sigRemoveMe)
 
-    def __init__(self, uri: str, name: str, provider: str, renderer: QgsRasterRenderer = None):
-        super().__init__()
-        assert len(uri) > 0
-        self.mUri = uri
-        self.mName = name
-        self.mProvider = provider
-        self.mRenderer: QgsRasterRenderer = None
-        if isinstance(renderer, QgsRasterRenderer):
-            self.mRenderer = renderer.clone()
-            self.mRenderer.setInput(None)
+    def __eq__(self, other):
+        return isinstance(other, StandardLayerProfileSource) \
+            and other.mLayer == self.mLayer
 
-        self.mLyr = None
+    def expressionContext(self, point: Union[QgsPointXY, SpatialPoint]) -> QgsExpressionContext:
+        if isinstance(point, SpatialPoint):
+            point = point.toCrs(self.mLayer.crs())
+            if point is None:
+                return None
 
-    def rasterLayer(self, **kwds) -> QgsRasterLayer:
-        if not isinstance(self.mLyr, QgsRasterLayer):
-            loptions = QgsRasterLayer.LayerOptions(loadDefaultStyle=False)
-            self.mLyr = QgsRasterLayer(self.mUri, self.mName, self.mProvider, options=loptions)
-            if isinstance(self.mRenderer, QgsRasterRenderer):
-                self.mRenderer.setInput(self.mLyr.dataProvider())
-                self.mLyr.setRenderer(self.mRenderer)
-        return self.mLyr
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
+        context.setGeometry(QgsGeometry.fromPointXY(point))
+        px = self.m2p.transform(point)
+
+        scope = QgsExpressionContextScope('pixel')
+        scope.setVariable('px_x', int(px.x()))
+        scope.setVariable('px_y', int(px.y()))
+        scope.setVariable('geo_x', point.x())
+        scope.setVariable('geo_y', point.y())
+
+        context.appendScope(scope)
+        return context
+
+    def collectProfiles(self, point: SpatialPoint, kernel_size: QSize = QSize(1, 1)) -> List[Tuple[Dict, QgsExpressionContext]]:
+
+        point = point.toCrs(self.mLayer.crs())
+        if not isinstance(point, SpatialPoint):
+            return []
+
+        resX = self.mLayer.rasterUnitsPerPixelX()
+        resY = self.mLayer.rasterUnitsPerPixelY()
+        c = self.mLayer.extent().center()
+        m2p = QgsMapToPixel(resX,
+                            c.x(), c.y(),
+                            self.mLayer.width(), self.mLayer.height(),
+                            0)
+
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
+
+        sp = QgsRasterLayerSpectralProperties.fromRasterLayer(self.mLayer)
+
+        rect = QRectF(0, 0,
+                      resX * kernel_size.width(),
+                      resY * kernel_size.height())
+        rect.moveCenter(point.toQPointF())
+        rect = QgsRectangle(rect)
+
+        dp: QgsRasterDataProvider = self.mLayer.dataProvider()
+        feedback = QgsRasterBlockFeedback()
+        nb = self.mLayer.bandCount()
+        nx = kernel_size.width()
+        ny = kernel_size.height()
+
+        geo_x = np.arange(0, nx) * resX
+        geo_y = np.arange(0, ny) * resY
+        geo_x -= 0.5 * geo_x[-1]
+        geo_y -= 0.5 * geo_y[-1]
+        geo_x += point.x()
+        geo_y += point.y()
+
+        profiles = []
+        bbl = sp.badBands()
+        wl = sp.wavelengths()
+        wlu = sp.wavelengthUnits()
+        if True:
+            dp: QgsRasterDataProvider = self.mLayer.dataProvider()
+            for iX in range(nx):
+                for iY in range(ny):
+
+                    pt = QgsPointXY(geo_x[iX], geo_y[iY])
+                    if not self.mLayer.extent().contains(pt):
+                        continue
+
+                    profileContext = self.expressionContext(pt)
+
+                    R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat.Value)
+                    if not R.isValid():
+                        continue
+
+                    results = R.results()
+                    yValues = [results[b + 1] for b in range(self.mLayer.bandCount())]
+
+                    d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu, bbl=bbl)
+                    if isinstance(d, dict):
+                        profiles.append((d, profileContext))
+
+        if False:
+            bands = list(range(1, nb + 1))
+
+            bandNoData = []
+            for i, band in enumerate(bands):
+                band_block: QgsRasterBlock = dp.block(band, rect,
+                                                      nx, ny,
+                                                      feedback=feedback)
+                if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
+                    return None
+
+                if band_block.hasNoDataValue():
+                    bandNoData.append(band_block.noDataValue())
+                else:
+                    bandNoData.append(None)
+
+                assert isinstance(band_block, QgsRasterBlock)
+                band_array: np.ma.MaskedArray = rasterBlockArray(band_block, masked=True)
+                assert band_array.shape == (ny, nx)
+                if i == 0:
+                    result_array = np.ma.empty((nb, ny, nx), dtype=band_array.dtype)
+                result_array[i, :, :] = band_array
+
+            for iX in range(nx):
+                for iY in range(ny):
+
+                    geo_x = rect.xMinimum() + 0.5 * resX * (iX + 1)
+                    geo_y = rect.yMaximum() - 0.5 * resY * (iY + 1)
+                    pt = QgsPointXY(geo_x, geo_y)
+
+                    masked_y_values = result_array[:, iY, iX]
+                    if np.all(masked_y_values.mask):
+                        continue
+                    yValues = masked_y_values.tolist()
+
+                    ext = self.mLayer.extent()
+                    if not (ext.xMinimum() <= pt.x() <= ext.xMaximum()):
+                        s = ""
+                    if not (ext.yMinimum() <= pt.y() <= ext.yMaximum()):
+                        s = ""
+
+                    profileContext = self.expressionContext(pt)
+                    profileContext.setGeometry(QgsGeometry.fromPointXY(pt))
+
+                    d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu)
+                    profiles.append((d, profileContext))
+
+        return profiles
 
 
 class SpectralProfileTopLayerSource(StandardLayerProfileSource):
@@ -194,15 +309,15 @@ class SpectralProfileSourceModel(QAbstractListModel):
     def __init__(self, *args, **kwds):
         super(SpectralProfileSourceModel, self).__init__(*args, **kwds)
 
-        self.mSources: List[SpectralProfileSource] = [None]
+        self.mSources: List[SpectralProfileSource] = []
         self.mDefaultSource: SpectralProfileSource = None
 
     def setDefaultSource(self, source: SpectralProfileSource):
         """
         Sets a default SpectralProfileSource that is used for SpectralProfileGenerator Nodes
         """
+        assert isinstance(source, SpectralProfileSource)
         self.addSources(source)
-
         self.mDefaultSource = source
 
     def defaultSource(self) -> SpectralProfileSource:
@@ -239,14 +354,15 @@ class SpectralProfileSourceModel(QAbstractListModel):
                 source = QgsRasterLayer(source)
 
             if isinstance(source, QgsRasterLayer):
-                source = StandardLayerProfileSource.fromRasterLayer(source)
+                source = StandardLayerProfileSource(source)
 
             if source is None:
                 # already in model
                 continue
 
             assert isinstance(source, SpectralProfileSource), f'Got {source} instead SpectralProfileSource'
-            if source not in self.mSources:
+            if source not in self.mSources \
+                    and source not in to_insert:
                 to_insert.append(source)
 
         if len(to_insert) > 0:
@@ -1386,12 +1502,15 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
         return new_nodes
 
-    def spectralProfileGeneratorNodes(self) -> List[SpectralProfileGeneratorNode]:
+    def spectralProfileGeneratorNodes(self, checked=None) -> List[SpectralProfileGeneratorNode]:
         """
         Returns a list of SpectralProfileGeneratorNodes
         :return:
         """
-        return [n for n in self.childNodes() if isinstance(n, SpectralProfileGeneratorNode)]
+        nodes = [n for n in self.childNodes() if isinstance(n, SpectralProfileGeneratorNode)]
+        if isinstance(checked, bool) and checked:
+            nodes = [n for n in nodes if n.checked()]
+        return nodes
 
     def spectralProfileSources(self) -> Set[SpectralProfileSource]:
         """
@@ -1554,6 +1673,35 @@ class SpectralProfileBridge(TreeModel):
     def __getitem__(self, slice):
         return self.rootNode().childNodes()[slice]
 
+    def loadProfilesV2(self,
+                       spatialPoint: SpatialPoint,
+                       mapCanvas: QgsMapCanvas = None,
+                       add_permanent: bool = None,
+                       runAsync: bool = False) -> Dict[str, List[QgsFeature]]:
+        """
+        Loads the spectral profiles as defined in the bridge model
+        :param spatialPoint:
+        :param mapCanvas:
+        :param runAsync:
+        :return:
+        """
+        self.mLastDestinations.clear()
+        RESULTS: Dict[str, List[QgsFeature]] = dict()
+
+        # 1. collect feature generators with at least one checked profileGenerator
+        featureGenerators: List[SpectralFeatureGeneratorNode] = []
+        for fgnode in self.featureGenerators(speclib=True, checked=True):
+            for pgnode in fgnode.spectralProfileGeneratorNodes(checked=True):
+                featureGenerators.append(fgnode)
+                break
+
+        for fgnode in featureGenerators:
+
+            for pgnode in fgnode.spectralProfileGeneratorNodes(checked=True):
+                pgnode.sampling()
+
+        return RESULTS
+
     def loadProfiles(self,
                      spatialPoint: SpatialPoint,
                      mapCanvas: QgsMapCanvas = None,
@@ -1670,8 +1818,7 @@ class SpectralProfileBridge(TreeModel):
             # new_temporal_colors: List[Tuple[int, QColor]] = []
             new_temporal_styles: List[Tuple[int, PlotStyle]] = []
             # calculate final profile value dictionaries
-            FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode,
-                                       List[Tuple[QByteArray, QgsGeometry]]] = dict()
+            FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode, List[Tuple[QByteArray, QgsGeometry]]] = dict()
 
             for pgnode in fgnode.spectralProfileGeneratorNodes():
                 pgnode: SpectralProfileGeneratorNode
@@ -2052,8 +2199,7 @@ class SpectralProfileBridge(TreeModel):
     def sources(self) -> List[SpectralProfileSource]:
         return self.mSrcModel.sources()
 
-    def addSpectralLibraryWidgets(self, slws: Union[SpectralLibraryWidget,
-                                                    Iterable[SpectralLibraryWidget]]):
+    def addSpectralLibraryWidgets(self, slws: Union[SpectralLibraryWidget, Iterable[SpectralLibraryWidget]]):
 
         if not isinstance(slws, Iterable):
             slws = [slws]
