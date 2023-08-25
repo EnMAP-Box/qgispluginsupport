@@ -1,5 +1,6 @@
 import itertools
 import os.path
+import pathlib
 import re
 import unittest
 from typing import List
@@ -88,6 +89,55 @@ class TestsGdalMetadata(TestCaseBase):
         model2.syncToLayer()
         model2.startEditing()
         model2.applyToLayer()
+
+        self.showGui(view)
+
+    def test_GDALBandMetadataModel_PAM(self):
+        from qpstestdata import enmap
+        img_path = self.createImageCopy(enmap)
+
+        def read_aux_xml(path):
+            path = pathlib.Path(path)
+            aux_file = [f for f in gdal.Open(path.as_posix()).GetFileList() if f.endswith('.aux.xml')][0]
+            with open(aux_file, 'r') as f:
+                xml_string = f.read()
+            return xml_string
+
+        aux_xml1 = read_aux_xml(img_path)
+        assert 'MYNAME_1' not in aux_xml1
+        s = ""
+        lyr = QgsRasterLayer(img_path)
+        model = GDALBandMetadataModel()
+        c = QgsMapCanvas()
+        view = QgsDualView()
+        view.init(model, c)
+        model.setLayer(lyr)
+        model.syncToLayer()
+        model.startEditing()
+
+        bandNames = []
+        wavelLength = []
+        for i, f in enumerate(list(model.getFeatures())):
+            f: QgsFeature
+            bandName = f'MYNAME_{i+1}'
+            wl = 500 + i + 1
+            f.setAttribute(BandFieldNames.Name, bandName)
+            f.setAttribute(BandFieldNames.Wavelength, wl)
+            bandNames.append(bandName)
+            wavelLength.append(wl)
+            model.updateFeature(f)
+        model.commitChanges(True)
+        assert model.hasEdits
+        model.applyToLayer()
+        del model, lyr
+        aux_xml2 = read_aux_xml(img_path)
+
+        ds: gdal.Dataset = gdal.Open(img_path)
+        for b in range(ds.RasterCount):
+            band: gdal.Band = ds.GetRasterBand(b + 1)
+            name1 = band.GetDescription()
+            assert name1 == bandNames[b]
+            assert float(band.GetMetadataItem('wavelength')) == float(wavelLength[b])
 
         self.showGui(view)
 

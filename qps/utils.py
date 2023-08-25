@@ -200,7 +200,7 @@ def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
     """
     Searches for a file or directory in an upward path of a base path.
     E.g. DIR_REPO = findUpwardPath(__file__, '.git').parent returns the repository directory
-         that contains the module refered by __file__
+         that contains the module referred by __file__
 
     :param basepath:
     :param name:
@@ -2201,6 +2201,9 @@ class SpatialPoint(QgsPointXY):
         return SpatialPoint(rasterLayer.crs(), geoPt)
 
     def __init__(self, crs, *args):
+        if isinstance(crs, SpatialPoint):
+            crs, args = crs.crs(), [crs]
+
         if not isinstance(crs, QgsCoordinateReferenceSystem):
             crs = QgsCoordinateReferenceSystem(crs)
         assert isinstance(crs, QgsCoordinateReferenceSystem)
@@ -2578,6 +2581,9 @@ class SpatialExtent(QgsRectangle):
         return SpatialExtent(crs, extent)
 
     def __init__(self, crs, *args):
+
+        if isinstance(crs, SpatialExtent):
+            crs, args = crs.crs(), [crs]
         if not isinstance(crs, QgsCoordinateReferenceSystem):
             crs = QgsCoordinateReferenceSystem(crs)
         assert isinstance(crs, QgsCoordinateReferenceSystem)

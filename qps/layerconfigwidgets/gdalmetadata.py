@@ -604,6 +604,9 @@ class GDALBandMetadataModel(QgsVectorLayer):
 
     def applyToGDALSource(self):
 
+        cpl_state_pam: str = gdal.GetConfigOption('GDAL_PAM_ENABLED', 'YES')
+        gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
+
         ds = gdalDataset(self.mMapLayer, eAccess=gdal.GA_Update)
         assert isinstance(ds, gdal.Dataset)
 
@@ -666,6 +669,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         self.driverSpecific(ds)
         ds.FlushCache()
         del ds
+
+        gdal.SetConfigOption('GDAL_PAM_ENABLED', cpl_state_pam)
 
     def applyToOGRSource(self):
         pass
@@ -903,6 +908,10 @@ class GDALMetadataModel(QAbstractTableModel):
         self.endInsertRows()
 
     def applyToGDALSource(self):
+
+        cpl_state_pam: str = gdal.GetConfigOption('GDAL_PAM_ENABLED', 'YES')
+        gdal.SetConfigOption('GDAL_PAM_ENABLED', 'YES')
+
         ds: gdal.Dataset = gdalDataset(self.mMapLayer, gdal.GA_Update)
         assert isinstance(ds, gdal.Dataset)
 
@@ -922,7 +931,8 @@ class GDALMetadataModel(QAbstractTableModel):
 
         ds.FlushCache()
         del ds
-        s = ""
+
+        gdal.SetConfigOption('GDAL_PAM_ENABLED', cpl_state_pam)
 
     def applyToOGRSource(self):
         ds: ogr.DataSource = ogrDataSource(self.mMapLayer, update=gdal.GA_Update)
