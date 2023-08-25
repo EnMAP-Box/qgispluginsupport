@@ -5,6 +5,7 @@ import unittest
 from typing import List
 
 import numpy as np
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtCore import QMimeData, QModelIndex
 from osgeo import gdal, ogr, gdal_array
 
@@ -13,7 +14,7 @@ from qgis.core import QgsFeature, edit
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
 from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
-    GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils, GDALMetadataItem
+    GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils, GDALMetadataItem, BandPropertyCalculator
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qpstestdata import enmap
@@ -312,6 +313,25 @@ foo H =
         band.SetDescription('BAND_EXAMPLE')
         ds.FlushCache()
         del ds
+
+    @unittest.skipIf(TestCaseBase.runsInCI(), 'GUI dialog')
+    def test_BandPropertyCalculator(self):
+        from qps import registerExpressionFunctions
+        registerExpressionFunctions()
+        from qpstestdata import envi_bsq
+
+        envi_bsq = self.createImageCopy(envi_bsq)
+        lyr = QgsRasterLayer(envi_bsq)
+        self.assertTrue(lyr.isValid())
+        mdm = GDALBandMetadataModel()
+        mdm.setLayer(lyr)
+
+        w = QWidget()
+
+        calc = BandPropertyCalculator(mdm)
+
+        if calc.exec_() == QDialog.Accepted:
+            pass
 
     def test_GDALMetadataModelConfigWidget(self):
         from qpstestdata import envi_bsq, enmap_polygon
