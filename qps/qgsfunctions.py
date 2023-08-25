@@ -200,7 +200,7 @@ class Format_Py(QgsExpressionFunction):
         helptext = HM.helpText(self.NAME, args)
         super(Format_Py, self).__init__(self.NAME, -1, self.GROUP, helptext)
 
-    def func(self, values, context: QgsExpressionContext, parent, node):
+    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node):
         if len(values) == 0 or values[0] in (None, NULL):
             return None
         assert isinstance(values[0], str)
@@ -208,7 +208,12 @@ class Format_Py(QgsExpressionFunction):
         fmtArgs = values[1:]
         try:
             return fmt.format(*fmtArgs)
-        except (ValueError, AttributeError):
+        except Exception as ex:
+            if isinstance(parent, QgsExpression):
+                errStr = parent.evalErrorString()
+                errStr += str(ex)
+                parent.setEvalErrorString(errStr)
+
             return None
 
     def usesGeometry(self, node) -> bool:
