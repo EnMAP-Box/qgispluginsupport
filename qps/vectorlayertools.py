@@ -162,7 +162,7 @@ class VectorLayerTools(QgsVectorLayerTools):
         if isinstance(layer, QgsVectorLayer) and layer.selectedFeatureCount() > 0:
             bbox = layer.boundingBoxOfSelected()
             ext = SpatialExtent(layer.crs(), bbox)
-            self.sigZoomRequest[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), ext)
+            self.sigZoomRequest[QgsCoordinateReferenceSystem, QgsRectangle].emit(ext.crs(), QgsRectangle(ext))
 
     def featureBoundingBox(self, layer: QgsVectorLayer, featureIds: List[int]):
         request = QgsFeatureRequest()
