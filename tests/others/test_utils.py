@@ -255,6 +255,7 @@ class TestUtils(TestCase):
 
         ext3 = SpatialExtent(ext1)
         self.assertEqual(ext3.asWktPolygon(), ext1.asWktPolygon())
+
     def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
 
         DIR = super().createTestOutputDirectory(name) / 'utils'
