@@ -5,9 +5,9 @@ import unittest
 from typing import Tuple, List
 
 from qgis.PyQt.QtCore import QSize, QVariant, Qt
+from qgis.PyQt.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QGridLayout
 from qgis.core import QgsExpressionContext, QgsPoint, QgsPointXY, QgsMapToPixel, Qgis, QgsField
-
-from qgis.PyQt.QtWidgets import QComboBox, QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QGridLayout
+from qgis.core import QgsGeometry
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes, edit
 from qgis.core import QgsRasterLayer, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
@@ -21,7 +21,7 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SpectralProfileSourceModel, StandardLayerProfileSource, SpectralProfileSource, ProfileSamplingModeV2
 from qps.testing import TestCaseBase, start_app
 from qps.testing import TestObjects
-from qps.utils import SpatialPoint, spatialPoint2px, parseWavelength, rasterArray, SpatialExtent
+from qps.utils import SpatialPoint, parseWavelength, rasterArray, SpatialExtent
 
 start_app()
 
@@ -66,24 +66,20 @@ class SpectralProcessingTests(TestCaseBase):
             SpatialPoint(lyr.crs(), ext.xMaximum() + 0.0001 * pxx, ext.yMaximum())
         ]
 
-        SpectralProfileSamplingModeModel.registerMode(SingleProfileSamplingMode())
-        SpectralProfileSamplingModeModel.registerMode(KernelProfileSamplingMode())
+        source = StandardLayerProfileSource(lyr)
 
-        sp_mode = SingleProfileSamplingMode()
-        k_mode = KernelProfileSamplingMode()
+        k_mode = ProfileSamplingModeV2()
         k_mode.setKernelSize(3, 3)
-        k_mode.setAggregation(KernelProfileSamplingMode.NO_AGGREGATION)
+        k_mode.setAggregation(ProfileSamplingModeV2.NO_AGGREGATION)
 
         for pt in out_of_image:
             self.assertFalse(lyr.extent().contains(pt))
-            pos = spatialPoint2px(lyr, pt)
-            blockInfo = sp_mode.samplingBlockDescription(lyr, pt)
-            self.assertTrue(blockInfo is None)
+            x, y = k_mode.kernelSize()
+            profiles = source.collectProfiles(pt, QSize(x, y))
+            self.assertTrue(len(profiles) > 0)
+            self.assertTrue(len(profiles) < x * y)
 
-            blockInfo = k_mode.samplingBlockDescription(lyr, pt)
-            self.assertIsInstance(blockInfo, SamplingBlockDescription)
-            outputProfileBlock = self.simulate_block_reading(blockInfo, lyr)
-
+            s = ""
         slw = SpectralLibraryWidget()
         panel = SpectralProfileSourcePanel()
         panel.addSources(lyr)
@@ -405,18 +401,19 @@ class SpectralProcessingTests(TestCaseBase):
 
     def test_kernelSampling(self):
 
-        mode = KernelProfileSamplingMode()
-
-        aggregations = [KernelProfileSamplingMode.NO_AGGREGATION,
-                        KernelProfileSamplingMode.AGGREGATE_MEAN,
-                        KernelProfileSamplingMode.AGGREGATE_MEDIAN,
-                        KernelProfileSamplingMode.AGGREGATE_MIN,
-                        KernelProfileSamplingMode.AGGREGATE_MAX]
-        kernels = ['3x3', '4x4', '5x5']
+        aggregations = [ProfileSamplingModeV2.NO_AGGREGATION,
+                        ProfileSamplingModeV2.AGGREGATE_MEAN,
+                        ProfileSamplingModeV2.AGGREGATE_MEDIAN,
+                        ProfileSamplingModeV2.AGGREGATE_MIN,
+                        ProfileSamplingModeV2.AGGREGATE_MAX]
+        kernels = [('3x3'), ('4x4'), ('5x5')]
         from qpstestdata import enmap
         lyr = QgsRasterLayer(enmap)
-        center = lyr.extent().center()
+        center = SpatialPoint.fromMapLayerCenter(lyr)
 
+        source = StandardLayerProfileSource(lyr)
+
+        mode = ProfileSamplingModeV2()
         for aggregation in aggregations:
             for kernel in kernels:
                 mode.setKernelSize(kernel)
@@ -424,21 +421,30 @@ class SpectralProcessingTests(TestCaseBase):
 
                 x, y = mode.kernelSize()
                 self.assertEqual(kernel, f'{x}x{y}')
+                mode.setKernelSize(QSize(x, y))
+                x2, y2 = mode.kernelSize()
+                self.assertEqual(QSize(x, y), QSize(x2, y2))
+
                 self.assertEqual(aggregation, mode.aggregation())
 
-                description = mode.samplingBlockDescription(lyr, center)
-                self.assertIsInstance(description, SamplingBlockDescription)
-                w, h = description.rect().width(), description.rect().height()
-                self.assertEqual((x, y), (w, h)), f'Sampling block size is {w}x{h} instead {kernel}'
+                profiles = source.collectProfiles(center, QSize(*mode.kernelSize()))
 
-                inputBlock = self.simulate_block_reading(description, lyr)
+                self.assertEqual(len(profiles), x * y)
 
-                outputBlock = mode.profiles(inputBlock, description)
-                self.assertIsInstance(outputBlock, SpectralProfileBlock)
-                if aggregation == KernelProfileSamplingMode.NO_AGGREGATION:
-                    self.assertTrue(outputBlock.n_profiles() == x * y)
+                profiles_aggr = mode.profiles(profiles)
+
+                if aggregation == ProfileSamplingModeV2.NO_AGGREGATION:
+                    self.assertEqual(len(profiles), len(profiles_aggr))
                 else:
-                    self.assertTrue(outputBlock.n_profiles() == 1)
+                    self.assertEqual(len(profiles_aggr), 1)
+                for t in profiles:
+                    self.assertIsInstance(t, tuple)
+                    self.assertEqual(len(t), 2)
+                    p, c = t
+                    self.assertIsInstance(p, dict)
+                    self.assertIsInstance(c, QgsExpressionContext)
+                    self.assertIsInstance(c.geometry(), QgsGeometry)
+                    self.assertEqual(c.geometry().type(), Qgis.GeometryType.Point)
 
     def simulate_block_reading(self,
                                description: SamplingBlockDescription,
@@ -471,34 +477,6 @@ class SpectralProcessingTests(TestCaseBase):
 
         self.assertEqual(lyr1, source1.rasterLayer(canvas, canvas.center()))
         self.assertEqual(lyr2, source2.rasterLayer(canvas, canvas.center()))
-
-    def test_ProfileSamplingModel(self):
-
-        from qpstestdata import enmap
-
-        lyr = QgsRasterLayer(enmap)
-        center = SpatialPoint.fromMapLayerCenter(lyr)
-
-        modes = [SingleProfileSamplingMode,
-                 KernelProfileSamplingMode]
-        for m in modes:
-            SpectralProfileSamplingModeModel.registerMode(m())
-        model = SpectralProfileSamplingModeModel()
-
-        for mode in model:
-            print(f'Test: {mode.__class__.__name__}')
-            assert isinstance(mode, SpectralProfileSamplingMode)
-            blockDescription = mode.samplingBlockDescription(lyr, center)
-            self.assertIsInstance(blockDescription, SamplingBlockDescription)
-
-            inputBlock = self.simulate_block_reading(blockDescription, lyr)
-            self.assertIsInstance(inputBlock, SpectralProfileBlock)
-            outputBlock = mode.profiles(inputBlock, blockDescription)
-            self.assertIsInstance(outputBlock, SpectralProfileBlock)
-
-        cb = QComboBox()
-        cb.setModel(model)
-        self.showGui(cb)
 
     def createTestObjects(self) -> Tuple[
         List[QgsRasterLayer], List[SpectralLibraryWidget]

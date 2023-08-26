@@ -98,6 +98,7 @@ class ProfileSamplingModeV2(object):
 
     KERNEL_MODEL = OptionListModel()
     KERNEL_MODEL.addOptions([
+        Option('1x1', name='Single pixel', toolTip='Reads 1 single pixel at cursor location'),
         Option('3x3', toolTip='Reads the 3x3 pixel around the cursor location'),
         Option('5x5', toolTip='Reads the 5x5 pixel around the cursor location'),
         Option('7x7', toolTip='Reads the 7x7 pixel around the cursor location'),
@@ -173,7 +174,7 @@ class ProfileSamplingModeV2(object):
             nProfiles = 1
         self.mProfilesPerClick.setValue(nProfiles)
 
-    def setKernelSize(self, x: int, y: int = None):
+    def setKernelSize(self, x: Union[int, str, QSize], y: int = None):
         """
         Sets the kernel size
         :param x: str | int
@@ -183,6 +184,9 @@ class ProfileSamplingModeV2(object):
             match = self.RX_KERNEL_SIZE.match(x)
             x = int(match.group('x'))
             y = int(match.group('y'))
+        elif isinstance(x, QSize):
+            x, y = x.width(), x.height()
+
         assert isinstance(x, int) and x > 0
         if y is None:
             y = x
