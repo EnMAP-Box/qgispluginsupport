@@ -81,10 +81,14 @@ class SpectralProfileSource(QObject):
         """
         raise NotImplementedError
 
-    def expressionContextPrototype(self) -> QgsExpressionContext:
-        context = QgsExpressionContext()
+    def expressionContext(self) -> QgsExpressionContext:
+        """
+        Returns a QgsExpressionContext prototype similar to that returned by collectProfiles
+        It should contain all variables with exemplary values that can be used e.g. to define expression functions.
+        -------
 
-        return context
+        """
+        raise NotImplementedError()
 
 
 class ProfileSamplingModeV2(object):
@@ -275,64 +279,6 @@ class ProfileSamplingModeV2(object):
         return [(profile, context)]
 
 
-class MapCanvasLayerProfileSource(SpectralProfileSource):
-    MODE_FIRST_LAYER = 'first'
-    MODE_LAST_LAYER = 'last'
-
-    MODE_TOOLTIP = {MODE_FIRST_LAYER:
-                        'Returns profiles of the first / top visible raster layer in the map layer stack',
-                    MODE_LAST_LAYER:
-                        'Returns profiles of the last / bottom visible raster layer in the map layer stack'
-                    }
-
-    def __init__(self, canvas: QgsMapCanvas = None, mode: str = MODE_FIRST_LAYER):
-        super().__init__()
-        self.mMapCanvas: QgsMapCanvas = canvas
-        if mode is None:
-            mode = self.MODE_FIRST_LAYER
-        else:
-            assert mode in [self.MODE_FIRST_LAYER, self.MODE_LAST_LAYER]
-        self.mMode = mode
-
-        if self.mMode == self.MODE_LAST_LAYER:
-            self.mName = '<i>Last raster layer</i>'
-        elif self.mMode == self.MODE_FIRST_LAYER:
-            self.mName = '<i>First raster layer</i>'
-
-    def __eq__(self, other):
-        return isinstance(other, MapCanvasLayerProfileSource) \
-            and other.mMode == self.mMode \
-            and other.mMapCanvas == self.mMapCanvas
-
-    def toolTip(self) -> str:
-        return self.MODE_TOOLTIP[self.mMode]
-
-    def collectProfiles(self, point: SpatialPoint, kernel_size: QSize = QSize(1, 1), **kwargs) \
-            -> List[Tuple[Dict, QgsExpressionContext]]:
-
-        if not isinstance(self.mMapCanvas, QgsMapCanvas) and isinstance(point, SpatialPoint):
-            return []
-
-        raster_layers = [layer for layer in self.mMapCanvas.layers()
-                         if isinstance(layer, QgsRasterLayer) and layer.isValid()]
-
-        if self.mMode == self.MODE_LAST_LAYER:
-            raster_layers = reversed(raster_layers)
-
-        # test which raster layer has a valid pixel
-        for lyr in raster_layers:
-            pt = point.toCrs(lyr.crs())
-            if not lyr.extent().contains(pt):
-                continue
-
-            source = StandardLayerProfileSource(lyr)
-            results = source.collectProfiles(pt, kernel_size=kernel_size)
-            if isinstance(results, list) and len(results) > 0:
-                return results
-
-        return []
-
-
 class StandardLayerProfileSource(SpectralProfileSource):
 
     @staticmethod
@@ -360,23 +306,35 @@ class StandardLayerProfileSource(SpectralProfileSource):
     def layer(self) -> QgsRasterLayer:
         return self.mLayer
 
-    def expressionContext(self, point: Union[QgsPointXY, SpatialPoint]) -> QgsExpressionContext:
-        if isinstance(point, SpatialPoint):
-            point = point.toCrs(self.mLayer.crs())
-            if point is None:
-                return None
+    def expressionContext(self, point: Union[QgsPointXY, SpatialPoint] = None) -> QgsExpressionContext:
+        if point is None:
+            # dummy point
+            point = SpatialPoint.fromMapLayerCenter(self.mLayer)
+        else:
+            if isinstance(point, SpatialPoint):
+                point = point.toCrs(self.mLayer.crs())
+        assert isinstance(point, QgsPointXY)
 
         context = QgsExpressionContext()
-        context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
+        source_scope = QgsExpressionContextUtils.layerScope(self.mLayer)
+        renameScopeVariables(source_scope, 'layer_', 'source_')
+        renameScopeVariables(source_scope, '_layer_', '_source_')
+        context.appendScope(source_scope)
         context.setGeometry(QgsGeometry.fromPointXY(point))
         px = self.m2p.transform(point)
-
         scope = QgsExpressionContextScope('pixel')
-        scope.setVariable('px_x', int(px.x()))
-        scope.setVariable('px_y', int(px.y()))
-        scope.setVariable('geo_x', point.x())
-        scope.setVariable('geo_y', point.y())
 
+        def addVar(name, value, description):
+            scope.addVariable(QgsExpressionContextScope.StaticVariable(
+                name=name, value=value, description=description
+            ))
+
+        addVar('px_x', int(px.x()), 'Pixel x position.<br>Most-left = 0')
+        addVar('px_y', int(px.y()), 'Pixel y position.<br>Most-top = 0')
+        addVar('geo_x', point.x(), 'Pixel x coordinate in source CRS')
+        addVar('geo_y', point.y(), 'Pixel y coordinate in source CRS')
+
+        context.setHighlightedVariables(['px_x', 'px_y', 'geo_x', 'geo_y'])
         context.appendScope(scope)
         return context
 
@@ -445,54 +403,92 @@ class StandardLayerProfileSource(SpectralProfileSource):
                     if isinstance(d, dict):
                         profiles.append((d, profileContext))
 
-        if False:
-            bands = list(range(1, nb + 1))
-
-            bandNoData = []
-            for i, band in enumerate(bands):
-                band_block: QgsRasterBlock = dp.block(band, rect,
-                                                      nx, ny,
-                                                      feedback=feedback)
-                if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
-                    return None
-
-                if band_block.hasNoDataValue():
-                    bandNoData.append(band_block.noDataValue())
-                else:
-                    bandNoData.append(None)
-
-                assert isinstance(band_block, QgsRasterBlock)
-                band_array: np.ma.MaskedArray = rasterBlockArray(band_block, masked=True)
-                assert band_array.shape == (ny, nx)
-                if i == 0:
-                    result_array = np.ma.empty((nb, ny, nx), dtype=band_array.dtype)
-                result_array[i, :, :] = band_array
-
-            for iX in range(nx):
-                for iY in range(ny):
-
-                    geo_x = rect.xMinimum() + 0.5 * resX * (iX + 1)
-                    geo_y = rect.yMaximum() - 0.5 * resY * (iY + 1)
-                    pt = QgsPointXY(geo_x, geo_y)
-
-                    masked_y_values = result_array[:, iY, iX]
-                    if np.all(masked_y_values.mask):
-                        continue
-                    yValues = masked_y_values.tolist()
-
-                    ext = self.mLayer.extent()
-                    if not (ext.xMinimum() <= pt.x() <= ext.xMaximum()):
-                        s = ""
-                    if not (ext.yMinimum() <= pt.y() <= ext.yMaximum()):
-                        s = ""
-
-                    profileContext = self.expressionContext(pt)
-                    profileContext.setGeometry(QgsGeometry.fromPointXY(pt))
-
-                    d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu)
-                    profiles.append((d, profileContext))
-
         return profiles
+
+
+class MapCanvasLayerProfileSource(SpectralProfileSource):
+    MODE_FIRST_LAYER = 'first'
+    MODE_LAST_LAYER = 'last'
+    MODE_ALL_LAYERS = 'all'
+
+    MODE_TOOLTIP = {MODE_FIRST_LAYER:
+                        'Returns profiles of the first / top visible raster layer in the map layer stack',
+                    MODE_LAST_LAYER:
+                        'Returns profiles of the last / bottom visible raster layer in the map layer stack',
+                    MODE_ALL_LAYERS:
+                        'Returns profiles of all raster layers',
+                    }
+
+    def __init__(self, canvas: QgsMapCanvas = None, mode: str = MODE_FIRST_LAYER):
+        super().__init__()
+        self.mMapCanvas: QgsMapCanvas = canvas
+        if mode is None:
+            mode = self.MODE_FIRST_LAYER
+        else:
+            assert mode in self.MODE_TOOLTIP.keys(), f'Unknown mode: {mode}'
+        self.mMode = mode
+
+        if self.mMode == self.MODE_LAST_LAYER:
+            self.mName = '<i>Last raster layer</i>'
+        elif self.mMode == self.MODE_FIRST_LAYER:
+            self.mName = '<i>First raster layer</i>'
+
+        self.mLastContext: QgsExpressionContext = None
+
+    def __eq__(self, other):
+        return isinstance(other, MapCanvasLayerProfileSource) \
+            and other.mMode == self.mMode \
+            and other.mMapCanvas == self.mMapCanvas
+
+    def toolTip(self) -> str:
+        return self.MODE_TOOLTIP[self.mMode]
+
+    def expressionContext(self) -> QgsExpressionContext:
+        if self.mLastContext:
+            return self.mLastContext
+        elif isinstance(self.mMapCanvas, QgsMapCanvas):
+            for lyr in self.mMapCanvas.layers():
+                if isinstance(lyr, QgsRasterLayer):
+                    src = StandardLayerProfileSource(lyr)
+                    return src.expressionContext()
+            return QgsExpressionContext()
+
+    def collectProfiles(self, point: SpatialPoint,
+                        kernel_size: QSize = QSize(1, 1),
+                        canvas: QgsMapCanvas = None,
+                        **kwargs) \
+            -> List[Tuple[Dict, QgsExpressionContext]]:
+        if isinstance(canvas, QgsMapCanvas):
+            self.mMapCanvas = canvas
+
+        if not isinstance(self.mMapCanvas, QgsMapCanvas) and isinstance(point, SpatialPoint):
+            self.mLastContext = None
+            return []
+
+        raster_layers = [layer for layer in self.mMapCanvas.layers()
+                         if isinstance(layer, QgsRasterLayer) and layer.isValid()]
+
+        if self.mMode == self.MODE_LAST_LAYER:
+            raster_layers = reversed(raster_layers)
+
+        results: List[Tuple[dict, QgsExpressionContext]] = []
+        # test which raster layer has a valid pixel
+        for lyr in raster_layers:
+            pt = point.toCrs(lyr.crs())
+            if not lyr.extent().contains(pt):
+                continue
+
+            source = StandardLayerProfileSource(lyr)
+            r = source.collectProfiles(pt, kernel_size=kernel_size)
+
+            if isinstance(r, list) and len(r) > 0:
+                results.extend(r)
+                if self.mMode != self.MODE_ALL_LAYERS:
+                    break
+
+        if len(results) > 0:
+            self.mLastContext = QgsExpressionContext(results[0][1])
+        return results
 
 
 class SpectralProfileTopLayerSource(StandardLayerProfileSource):
@@ -1206,25 +1202,31 @@ class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGen
         super().__init__(*args, **kwds)
         self.mNode: SpectralFeatureGeneratorNode = None
         self.mFeature: QgsFeature = None
+        self.mLastContext: QgsExpressionContext = QgsExpressionContext()
 
     def createExpressionContext(self) -> QgsExpressionContext:
+        """
+        Returns the Expression Context that is used within the Expression Widget
+        """
         context = QgsExpressionContext()
-
+        highlighted = set(context.highlightedVariables())
         if isinstance(self.mNode, SpectralFeatureGeneratorNode):
             speclib = self.mNode.speclib()
             if isinstance(speclib, QgsVectorLayer) and speclib.isValid():
-                context.appendScope(QgsExpressionContextUtils.layerScope(speclib))
                 context.appendScope(QgsExpressionContextUtils.globalScope())
+                context.appendScope(QgsExpressionContextUtils.layerScope(speclib))
                 context.setFields(speclib.fields())
                 self.mFeature = QgsFeature(speclib.fields())
                 context.setFeature(self.mFeature)
 
-        scope = QgsExpressionContextScope()
-        scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_CLICK, 1))
-        scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_FEATURE, 1))
-        scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_ID, 1))
-        context.appendScope(scope)
+            scope = QgsExpressionContextScope('profiles')
+            for source in self.mNode.spectralProfileSources(checked=True):
+                c = source.expressionContext()
+                highlighted.update(c.highlightedVariables())
+                addVariablesToScope(scope, c)
+            context.appendScope(scope)
 
+        context.setHighlightedVariables(list(highlighted))
         self.mLastContext = context
 
         return context
@@ -1412,13 +1414,17 @@ class SpectralFeatureGeneratorNode(TreeNode):
         return [n for n in self.fieldNodes(checked=checked)
                 if isinstance(n, SpectralProfileGeneratorNode)]
 
-    def spectralProfileSources(self) -> Set[SpectralProfileSource]:
+    def spectralProfileSources(self, checked: bool = None) -> List[SpectralProfileSource]:
         """
         Returns the set of used SpectralProfileSources
         :return: set of SpectralProfileSources
         """
-        return {n.profileSource() for n in self.spectralProfileGeneratorNodes() if
-                isinstance(n.profileSource(), SpectralProfileSource)}
+        sources = []
+        for node in self.spectralProfileGeneratorNodes(checked=checked):
+            s = node.profileSource()
+            if isinstance(s, SpectralProfileSource) and s not in sources:
+                sources.append(s)
+        return sources
 
     def updateFieldNodes(self, *args):
 
@@ -1501,6 +1507,37 @@ class SpectralProfileScalingNode(TreeNode):
 
     def offset(self) -> float:
         return float(self.nOffset.value())
+
+
+def addVariablesToScope(scope: QgsExpressionContextScope,
+                        context: QgsExpressionContext) -> QgsExpressionContextScope:
+    """
+    Copies variables of a QgsExpressionContext to an QgsExpressionContextScope
+    Parameters
+    ----------
+    scope: the QgsExpressionContextScope to copy the variables
+    context: the QgsExpressionContext to thake the variables from
+
+    """
+    for v1 in context.variableNames():
+        v2 = v1
+        i = 0
+        while v2 in scope.variableNames():
+            i += 1
+            v2 = f'{v1}{i}'
+        scope.addVariable(QgsExpressionContextScope.StaticVariable(
+            name=v2, value=context.variable(v1), description=context.description(v1)))
+
+    return scope
+
+
+def renameScopeVariables(scope: QgsExpressionContextScope, old_prefix: str, new_prefix: str):
+    names = [n for n in scope.variableNames() if n.startswith(old_prefix)]
+    for n1 in names:
+        n2 = new_prefix + n1[len(old_prefix):]
+        scope.addVariable(QgsExpressionContextScope.StaticVariable(
+            name=n2, value=scope.variable(n1), description=scope.description(n1)))
+        scope.removeVariable(n1)
 
 
 class SpectralProfileBridge(TreeModel):
@@ -1611,6 +1648,7 @@ class SpectralProfileBridge(TreeModel):
                        point: SpatialPoint,
                        canvas: QgsMapCanvas = None) -> List[QgsFeature]:
         fgnode: SpectralFeatureGeneratorNode
+
         speclib: QgsVectorLayer = fgnode.speclib()
 
         if not isinstance(speclib, QgsVectorLayer) and speclib.isValid():
@@ -1627,7 +1665,9 @@ class SpectralProfileBridge(TreeModel):
         while len(PROFILE_DATA) > 0:
             pfields = list(PROFILE_DATA.keys())
             new_feature = QgsFeature(speclib.fields())
-            context = QgsExpressionContext()
+
+            context = fgnode.expressionContextGenerator().createExpressionContext()
+            # context = QgsExpressionContext()
             # context.setFeature(new_feature)
 
             scope = QgsExpressionContextScope('profile')
@@ -1643,14 +1683,8 @@ class SpectralProfileBridge(TreeModel):
                 if g is None and pcontext.hasGeometry():
                     g = QgsGeometry(pcontext.geometry())
 
+                addVariablesToScope(scope, pcontext)
                 # provide context variables from potentially multiple profile sources
-                for v1 in pcontext.variableNames():
-                    v2 = v1
-                    i = 0
-                    while v2 in scope.variableNames():
-                        i += 1
-                        v2 = f'{v1}{i}'
-                    scope.setVariable(v2, pcontext.variable(v1))
 
             # remove empty list
             for f in list(PROFILE_DATA.keys()):
