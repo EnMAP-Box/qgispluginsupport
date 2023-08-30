@@ -1,20 +1,41 @@
+import argparse
 import os
 import pathlib
 import sys
 import zipfile
+import os
+
+REPO:pathlib.Path = pathlib.Path(__file__).parents[1]
+def findQGISRepo() -> pathlib.Path:
+
+    if 'QGIS_REPO' in os.environ.keys():
+        return pathlib.Path(os.environ['QGIS_REPO'])
+
+    QGISREPO = REPO.parent / 'QGIS'
+
+    if QGISREPO.is_dir():
+        return QGISREPO
+
+    return None
 
 
-def create_qgis_resource_file(qgis_repo=None):
-    from qps.utils import findUpwardPath
+def create_qgis_resource_file_archive(qgis_repo=None):
+
     from qps.resources import compileQGISResourceFiles
-    REPO = findUpwardPath(pathlib.Path(__file__).resolve(), '.git')
 
-    assert isinstance(REPO, pathlib.Path) and REPO.is_dir()
-    REPO = REPO.parent
+    if qgis_repo is None:
+        qgis_repo = findQGISRepo()
+    else:
+        qgis_repo = pathlib.Path(qgis_repo)
 
-    TARGET_DIR = pathlib.Path(__file__).parents[1] / 'qgisresources'
-    TARGET_ZIP = pathlib.Path(__file__).parents[1] / 'qgisresources.zip'
+    assert isinstance(qgis_repo, pathlib.Path)
+    assert qgis_repo.is_dir()
+    assert pathlib.Path(qgis_repo/'.git').is_dir()
 
+    TARGET_DIR = REPO / 'qgisresources'
+    TARGET_ZIP = REPO / 'qgisresources.zip'
+
+    os.makedirs(TARGET_DIR, exist_ok=True)
     compileQGISResourceFiles(qgis_repo, TARGET_DIR)
 
     # create the zip file that contains all PLUGIN_FILES
@@ -27,13 +48,11 @@ def create_qgis_resource_file(qgis_repo=None):
 
 
 if __name__ == '__main__':
-
-    import getopt
-
-    try:
-        print(sys.argv)
-        opts, qgis_repo = getopt.getopt(sys.argv[1:], "")
-    except getopt.GetoptError as err:
-        print(err)
-
-    create_qgis_resource_file()
+    parser = argparse.ArgumentParser(description='Create QGIS Resource file archive', formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-q', '--qgisrepo',
+                        required=False,
+                        default=None,
+                        help='Path to local QGIS repository',
+                        action='store_true')
+    args = parser.parse_args()
+    create_qgis_resource_file_archive(qgis_repo=args.qgisrepo)

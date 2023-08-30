@@ -207,7 +207,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
 
 def compileQGISResourceFiles(qgis_repo: Union[str, pathlib.Path, None], target: str = None):
     """
-    Searches for *.qrc files in the QGIS repository and compile them to <target>
+    Searches for *.qrc files in the QGIS repository and compiles them to <target>
 
     :param qgis_repo: str, path to local QGIS repository.
     :param target: str, path to directory that contains the compiled QGIS resources. By default it will be
