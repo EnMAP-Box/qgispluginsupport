@@ -487,7 +487,8 @@ class ValidateNode(TreeNode):
 
     def validateChildNode(self):
         self.childNodes()
-    def hasErrors(self, recursive:bool = False) -> bool:
+
+    def hasErrors(self, recursive: bool = False) -> bool:
         e = len(self.mErrors) > 0
         if e:
             return True
@@ -496,7 +497,6 @@ class ValidateNode(TreeNode):
                 if isinstance(c, ValidateNode) and c.hasErrors():
                     return True
         return False
-
 
     def errors(self, recursive: bool = False) -> List[str]:
         """
@@ -1023,6 +1023,7 @@ class PlotStyleNode(TreeNode):
     def plotStyle(self) -> PlotStyle:
         return self.value()
 
+
 class ColorNode(TreeNode):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -1119,7 +1120,6 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
         self.mProfileStyleNode = PlotStyleNode('Style', toolTip='Style of temporary profile candidates')
 
-
         self.appendChildNodes([
             # self.mColorNode,
             self.mProfileStyleNode, self.mSourceNode, self.mSamplingNode, self.mScalingNode])
@@ -1149,7 +1149,6 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
         return b
 
-
     def profileSource(self) -> SpectralProfileSource:
         return self.mSourceNode.profileSource()
 
@@ -1165,6 +1164,7 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
     def profileStyle(self) -> PlotStyle:
         return self.mProfileStyleNode
+
     def profiles(self, *args, **kwargs) -> List[Tuple[Dict, QgsExpressionContext]]:
 
         kwargs = copy.copy(kwargs)
@@ -1514,11 +1514,14 @@ class SpectralFeatureGeneratorNode(ValidateNode):
     def validate(self) -> bool:
         super().validate()
 
-        for n in self.findChildNodes(ValidateNode, recursive=True):
-            n: ValidateNode
+        for n in self.fieldNodes(checked=True):
             n.validate()
+            errors = n.errors(recursive=True)
+            if len(errors) > 0:
+                errStr = '\n'.join(errors)
+                self.mErrors.append(f'{n.name()}:{errStr}')
 
-        return not self.hasErrors(recursive=True)
+        return not self.hasErrors()
 
     def updateSpeclibName(self):
         speclib = self.speclib()
@@ -1581,6 +1584,7 @@ class SpectralProfileScalingNode(TreeNode):
                           ]
 
         return profiles
+
 
 def addVariablesToScope(scope: QgsExpressionContextScope,
                         context: QgsExpressionContext) -> QgsExpressionContextScope:
@@ -1693,7 +1697,6 @@ class SpectralProfileBridge(TreeModel):
         """
         self.mLastDestinations.clear()
 
-
         errorNodes: List[FieldGeneratorNode] = []
         # 1. collect feature generators with at least one checked profileGenerator
         featureGenerators: List[SpectralFeatureGeneratorNode] = []
@@ -1713,7 +1716,7 @@ class SpectralProfileBridge(TreeModel):
         # 3. generate features from a feature generators
         #    multiple feature generators could create features for the same speclib
         RESULTS: Dict[str, Tuple[List[QgsFeature],
-                                 Dict[Tuple[int, str], PlotStyle]]] = dict()
+        Dict[Tuple[int, str], PlotStyle]]] = dict()
 
         for fgnode in featureGenerators:
             fgnode: SpectralFeatureGeneratorNode
@@ -1728,7 +1731,7 @@ class SpectralProfileBridge(TreeModel):
 
             features1, styles = self.createFeatures(fgnode, spatialPoint, canvas=mapCanvas)
             for i, f in enumerate(features1):
-                fid = fid0 + i # the unique feature ID
+                fid = fid0 + i  # the unique feature ID
                 f.setId(fid)
                 for fname, style in styles.items():
                     feature_styles[(fid, fname)] = style
@@ -2317,7 +2320,7 @@ class SpectralProfileBridge(TreeModel):
             changed = node.checkState() != value
             if changed:
                 node.setCheckState(value)
-                update_parent = isinstance(node, FieldGeneratorNode)
+                update_parent = isinstance(node, ValidateNode)
                 # return True
                 c0 = 1
                 c1 = 1
@@ -2388,8 +2391,12 @@ class SpectralProfileBridge(TreeModel):
         if update_parent:
             r = index.parent().row()
             c = index.parent().column()
-            self.dataChanged.emit(self.index(r, c, index.parent().parent()),
-                                  self.index(r, c, index.parent().parent()))
+
+            fnode = node.findParentNode(SpectralFeatureGeneratorNode)
+            if isinstance(fnode, SpectralFeatureGeneratorNode):
+                fnode.validate()
+            # self.dataChanged.emit(self.index(r, c, index.parent().parent()),
+            #                      self.index(r, c, index.parent().parent()))
         return changed
 
     def addRasterLayer(self, layer: QgsRasterLayer):
