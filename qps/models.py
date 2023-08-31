@@ -103,6 +103,9 @@ class Option(object):
         self.mTooltip = toolTip
         self.mIcon = icon
 
+    def __repr__(self):
+        return f'Option(name={self.mName} value={self.mValue}) id {id(self)}'
+
     def value(self) -> object:
         """
         Returns the option value
