@@ -22,7 +22,7 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SpectralProfileBridgeTreeView, SpectralProfileBridgeViewDelegate, \
     SamplingBlockDescription, \
     SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode, \
-    SpectralProfileSourceModel, StandardLayerProfileSource, SpectralProfileSource, ProfileSamplingModeV2, \
+    SpectralProfileSourceModel, StandardLayerProfileSource, SpectralProfileSource, ProfileSamplingMode, \
     StandardFieldGeneratorNode, FieldGeneratorNode
 from qps.testing import TestCaseBase, start_app
 from qps.testing import TestObjects
@@ -73,9 +73,9 @@ class SpectralProcessingTests(TestCaseBase):
 
         source = StandardLayerProfileSource(lyr)
 
-        k_mode = ProfileSamplingModeV2()
+        k_mode = ProfileSamplingMode()
         k_mode.setKernelSize(3, 3)
-        k_mode.setAggregation(ProfileSamplingModeV2.NO_AGGREGATION)
+        k_mode.setAggregation(ProfileSamplingMode.NO_AGGREGATION)
 
         for pt in out_of_image:
             self.assertFalse(lyr.extent().contains(pt))
@@ -197,8 +197,8 @@ class SpectralProcessingTests(TestCaseBase):
         self.assertIsInstance(n, SpectralProfileGeneratorNode)
         lyrA = sources[0]
         n.setProfileSource(lyrA)
-        mode = n.setSampling(ProfileSamplingModeV2())
-        self.assertIsInstance(mode, ProfileSamplingModeV2)
+        mode = n.setSampling(ProfileSamplingMode())
+        self.assertIsInstance(mode, ProfileSamplingMode)
         size = mode.kernelSize()
         g.spectralProfileGeneratorNodes()
 
@@ -252,14 +252,14 @@ class SpectralProcessingTests(TestCaseBase):
         # re-add sources
         panel.addSources(map_sources)
 
-        modes = [ProfileSamplingModeV2(),
-                 ProfileSamplingModeV2()]
+        modes = [ProfileSamplingMode(),
+                 ProfileSamplingMode()]
         modes[1].setKernelSize(3, 3)
-        modes[1].setAggregation(ProfileSamplingModeV2.NO_AGGREGATION)
+        modes[1].setAggregation(ProfileSamplingMode.NO_AGGREGATION)
 
         for o, pgnode in enumerate(fgnode1.spectralProfileGeneratorNodes()):
             pgnode.setProfileSource(map_sources[0])
-            self.assertIsInstance(pgnode.sampling(), ProfileSamplingModeV2)
+            self.assertIsInstance(pgnode.sampling(), ProfileSamplingMode)
             pgnode.setSampling(modes[0])
             pgnode.setScaling(o * 10, 1)
 
@@ -422,11 +422,11 @@ class SpectralProcessingTests(TestCaseBase):
 
     def test_kernelSampling(self):
 
-        aggregations = [ProfileSamplingModeV2.NO_AGGREGATION,
-                        ProfileSamplingModeV2.AGGREGATE_MEAN,
-                        ProfileSamplingModeV2.AGGREGATE_MEDIAN,
-                        ProfileSamplingModeV2.AGGREGATE_MIN,
-                        ProfileSamplingModeV2.AGGREGATE_MAX]
+        aggregations = [ProfileSamplingMode.NO_AGGREGATION,
+                        ProfileSamplingMode.AGGREGATE_MEAN,
+                        ProfileSamplingMode.AGGREGATE_MEDIAN,
+                        ProfileSamplingMode.AGGREGATE_MIN,
+                        ProfileSamplingMode.AGGREGATE_MAX]
         kernels = [('3x3'), ('4x4'), ('5x5')]
         from qpstestdata import enmap
         lyr = QgsRasterLayer(enmap)
@@ -434,7 +434,7 @@ class SpectralProcessingTests(TestCaseBase):
 
         source = StandardLayerProfileSource(lyr)
 
-        mode = ProfileSamplingModeV2()
+        mode = ProfileSamplingMode()
         for aggregation in aggregations:
             for kernel in kernels:
                 mode.setKernelSize(kernel)
@@ -454,7 +454,7 @@ class SpectralProcessingTests(TestCaseBase):
 
                 profiles_aggr = mode.profiles(profiles)
 
-                if aggregation == ProfileSamplingModeV2.NO_AGGREGATION:
+                if aggregation == ProfileSamplingMode.NO_AGGREGATION:
                     self.assertEqual(len(profiles), len(profiles_aggr))
                 else:
                     self.assertEqual(len(profiles_aggr), 1)

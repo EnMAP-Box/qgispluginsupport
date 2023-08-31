@@ -91,7 +91,7 @@ class SpectralProfileSource(QObject):
         raise NotImplementedError()
 
 
-class ProfileSamplingModeV2(object):
+class ProfileSamplingMode(object):
     NO_AGGREGATION = 'no_aggregation'
     AGGREGATE_MEAN = 'mean'
     AGGREGATE_MEDIAN = 'median'
@@ -100,136 +100,88 @@ class ProfileSamplingModeV2(object):
 
     RX_KERNEL_SIZE = re.compile(r'(?P<x>\d+)x(?P<y>\d+)')
 
-    KERNEL_MODEL = OptionListModel()
-    KERNEL_MODEL.addOptions([
-        Option('1x1', name='Single pixel', toolTip='Reads 1 single pixel at cursor location'),
-        Option('3x3', toolTip='Reads the 3x3 pixel around the cursor location'),
-        Option('5x5', toolTip='Reads the 5x5 pixel around the cursor location'),
-        Option('7x7', toolTip='Reads the 7x7 pixel around the cursor location'),
-    ]
-    )
+    def __init__(self,
+                 kernelSize: Union[QSize, str, Tuple[int, int]] = QSize(1, 1),
+                 aggregation: str = None):
 
-    AGGREGATION_MODEL = OptionListModel()
-    AGGREGATION_MODEL.addOptions([
-        Option(NO_AGGREGATION, name='All profiles', toolTip='Keep all profiles'),
-        Option(AGGREGATE_MEAN, name='Mean', toolTip='Mean profile'),
-        Option(AGGREGATE_MEDIAN, name='Median', toolTip='Median profile'),
-        Option(AGGREGATE_MIN, name='Min', toolTip='Min value profile'),
-        Option(AGGREGATE_MAX, name='Max', toolTip='Max value profile'),
-    ])
+        if aggregation is None:
+            aggregation = self.NO_AGGREGATION
 
-    def __init__(self):
+        self.mKernelSize = QSize(1, 1)
+        self.mAggregation: str = self.NO_AGGREGATION
 
-        self.mKernel = OptionTreeNode(self.KERNEL_MODEL)
-        self.mKernel.setName('Kernel')
+        self.setKernelSize(kernelSize)
+        self.setAggregation(aggregation)
 
-        self.mAggregation = OptionTreeNode(self.AGGREGATION_MODEL)
-        self.mAggregation.setName('Aggregation')
+    def __eq__(self, other):
+        if not isinstance(other, ProfileSamplingMode):
+            return False
+        else:
+            return other.mAggregation == self.mAggregation and other.mKernelSize == self.mKernelSize
 
-        self.mKernel.sigUpdated.connect(self.updateProfilesPerClickNode)
-        self.mAggregation.sigUpdated.connect(self.updateProfilesPerClickNode)
+    def numberOfProfiles(self) -> int:
 
-        self.mProfilesPerClick = TreeNode()
-        self.mProfilesPerClick.setName('Profiles')
-        self.mProfilesPerClick.setToolTip('Profiles per click')
-        self.updateProfilesPerClickNode()
+        if self.mAggregation == ProfileSamplingMode.NO_AGGREGATION:
+            return self.kernelSize().width() * self.kernelSize().height()
+        else:
+            return 1
 
     def clone(self):
 
-        mode = ProfileSamplingModeV2()
+        mode = ProfileSamplingMode()
         mode.setKernelSize(*self.kernelSize())
         mode.setAggregation(self.aggregation())
         return mode
 
-    def nodes(self) -> List[TreeNode]:
-        return [self.mKernel, self.mAggregation, self.mProfilesPerClick]
-
-    def name(self) -> str:
-        return 'Kernel'
-
-    def tooltip(self) -> str:
-
-        kernel = self.kernelSize()
-        if kernel == (1, 1):
-            info = ['Sample 1 pixel']
-        else:
-            info = ['Sample {}x{} pixel'.format(*kernel)]
-
-            aggr = self.aggregation()
-            if aggr != self.NO_AGGREGATION:
-                info.append(f'Aggregation: {aggr}')
-
-        return '<br>'.join(info)
-
-    def settings(self) -> dict:
-        settings = dict()
-        settings['kernel'] = '{}x{}'.format(*self.kernelSize())
-        settings['aggregation'] = self.aggregation()
-        return settings
-
-    def updateProfilesPerClickNode(self):
-        """
-        Updates the description on how many profiles will be created
-        """
-        if self.aggregation() == self.NO_AGGREGATION:
-            x, y = self.kernelSize()
-            nProfiles = x * y
-        else:
-            nProfiles = 1
-        self.mProfilesPerClick.setValue(nProfiles)
-
-    def setKernelSize(self, x: Union[int, str, QSize], y: int = None):
+    def setKernelSize(self, x: Union[int, str, QSize, Tuple[int, int]], y: int = None):
         """
         Sets the kernel size
         :param x: str | int
         :param y: int (optional)
         """
+        if isinstance(x, Tuple) and len(x) == 2:
+            x, y = x
+
         if isinstance(x, str):
             match = self.RX_KERNEL_SIZE.match(x)
             x = int(match.group('x'))
             y = int(match.group('y'))
+            size = QSize(x, y)
+        elif isinstance(x, int):
+            if isinstance(y, int):
+                size = QSize(x, y)
+            elif y is None:
+                size = QSize(x, x)
+
         elif isinstance(x, QSize):
-            x, y = x.width(), x.height()
+            size = x
+        assert isinstance(size, QSize)
+        assert size.width() > 0 and size.height() > 0
 
-        assert isinstance(x, int) and x > 0
-        if y is None:
-            y = x
+        self.mKernelSize = size
 
-        assert isinstance(y, int) and y > 0
-        kernel_string = f'{x}x{y}'
-        option = self.KERNEL_MODEL.findOption(kernel_string)
-        if not isinstance(option, Option):
-            # make new kernel available to other kernel nodes
-            option = Option(f'{x}x{y}', toolTip=f'Reads the {x}x{y} pixel around the cursor location.')
-            self.KERNEL_MODEL.addOption(option)
-
-        self.mKernel.setOption(option)
-
-    def kernelSize(self) -> Tuple[int, int]:
+    def kernelSize(self) -> QSize:
         """
         Returns the kernel size
         :return: (int x, int y)
         """
 
-        kernel_string = self.mKernel.option().value()
-        match = self.RX_KERNEL_SIZE.match(kernel_string)
-        return int(match.group('x')), int(match.group('y'))
+        return self.mKernelSize
+
+    def aggregationModes(self) -> List[str]:
+        return [self.NO_AGGREGATION,
+                self.AGGREGATE_MEDIAN,
+                self.AGGREGATE_MEAN,
+                self.AGGREGATE_MAX,
+                self.AGGREGATE_MIN, ]
 
     def setAggregation(self, aggregation: str):
-        option = self.AGGREGATION_MODEL.findOption(aggregation)
-        assert isinstance(option, Option), f'"{aggregation}" is not supported'
-        self.mAggregation.setOption(option)
+
+        assert aggregation in self.aggregationModes()
+        self.mAggregation = aggregation
 
     def aggregation(self) -> str:
-        return self.mAggregation.option().value()
-
-    def htmlSummary(self) -> str:
-        S = self.settings()
-        info = f'Kernel <i>{S["kernel"]}'
-        if S['aggregation']:
-            info += f' {S["aggregation"]}'
-        info += '</i>'
-        return info
+        return self.mAggregation
 
     def profiles(self, profiles: List[Tuple[Dict, QgsExpressionContext]]) \
             -> List[Tuple[Dict, QgsExpressionContext]]:
@@ -238,7 +190,7 @@ class ProfileSamplingModeV2(object):
         in the way as described
         """
 
-        x, y = self.kernelSize()
+        ksize = self.kernelSize()
 
         aggregation = self.aggregation()
 
@@ -256,7 +208,7 @@ class ProfileSamplingModeV2(object):
                     pcontexts.append(c)
                     arrays.append(np.asarray(p))
 
-            data = np.stack(arrays).reshape((x * y, len(arrays[0])))
+            data = np.stack(arrays).reshape((ksize.width() * ksize.height(), len(arrays[0])))
             if data.dtype == object:
                 data = data.astype(float)
 
@@ -888,39 +840,105 @@ class SamplingBlockDescription(object):
 
 
 class SpectralProfileSamplingModeNode(TreeNode):
+    KERNEL_MODEL = OptionListModel()
+    KERNEL_MODEL.addOptions([
+        Option(QSize(1, 1), name='Single pixel', toolTip='Reads 1 single pixel at cursor location'),
+        Option(QSize(3, 3), name='3x3', toolTip='Reads the 3x3 pixel around the cursor location'),
+        Option(QSize(5, 5), name='5x5', toolTip='Reads the 5x5 pixel around the cursor location'),
+        Option(QSize(7, 7), name='7x7', toolTip='Reads the 7x7 pixel around the cursor location'),
+    ]
+    )
+
+    AGGREGATION_MODEL = OptionListModel()
+    AGGREGATION_MODEL.addOptions([
+        Option(ProfileSamplingMode.NO_AGGREGATION, name='All profiles', toolTip='Keep all profiles'),
+        Option(ProfileSamplingMode.AGGREGATE_MEAN, name='Mean', toolTip='Mean profile'),
+        Option(ProfileSamplingMode.AGGREGATE_MEDIAN, name='Median', toolTip='Median profile'),
+        Option(ProfileSamplingMode.AGGREGATE_MIN, name='Min', toolTip='Min value profile'),
+        Option(ProfileSamplingMode.AGGREGATE_MAX, name='Max', toolTip='Max value profile'),
+    ])
 
     def __init__(self, *args, **kwds):
-        super(SpectralProfileSamplingModeNode, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
+        sampling: ProfileSamplingMode = ProfileSamplingMode()
+        self.mProfileSamplingMode: ProfileSamplingMode = sampling
 
-        self.mProfileSamplingMode: ProfileSamplingModeV2 = None
-        self.setProfileSamplingMode(ProfileSamplingModeV2())
+        self.nodeAggregation = OptionTreeNode(self.AGGREGATION_MODEL)
+        self.nodeAggregation.setName('Aggregation')
+        self.nodeAggregation.sigUpdated.connect(self.onAggregationChanged)
 
-    def profileSamplingMode(self) -> ProfileSamplingModeV2:
+        self.nodeProfilesPerClick = TreeNode()
+        self.nodeProfilesPerClick.setName('Profiles')
+        self.nodeProfilesPerClick.setToolTip('Profiles per click')
+        self.appendChildNodes([self.nodeAggregation, self.nodeProfilesPerClick])
+
+        self.setProfileSamplingMode(sampling)
+
+    def onAggregationChanged(self):
+
+        aggr = self.nodeAggregation.option().value()
+        if aggr != self.mProfileSamplingMode.aggregation():
+            self.mProfileSamplingMode.setAggregation(aggr)
+            self.updateProfilesPerClickNode()
+            self.sigUpdated.emit(self)  # this resets tooltips ets.
+    def updateChildVisibility(self):
+
+        # do not show the aggregation and number of profiles node in
+        # case we sample a single pixel only
+        mode = self.profileSamplingMode()
+        show_nodes = mode.kernelSize() != QSize(1, 1)
+        nodes = [self.nodeAggregation, self.nodeProfilesPerClick]
+        if show_nodes:
+            to_add = [n for n in nodes if not n in self.childNodes()]
+            self.insertChildNodes(0, to_add)
+        else:
+            to_remove = [n for n in nodes if n in self.childNodes()]
+            self.removeChildNodes(to_remove)
+
+
+    def toolTip(self) -> str:
+        mode = self.profileSamplingMode()
+        kernel = mode.kernelSize()
+        x, y = kernel.width(), kernel.height()
+
+        if (x, y) == (1, 1):
+            info = ['Sample 1 pixel']
+        else:
+            info = [f'Sample {x}x{y} pixel']
+
+        if mode.aggregation() != ProfileSamplingMode.NO_AGGREGATION:
+            info.append(f'Aggregation: {mode.aggregation()}')
+
+        return '<br>'.join(info)
+
+    def settings(self) -> dict:
+        settings = dict()
+        settings['kernel'] = '{}x{}'.format(*self.kernelSize())
+        settings['aggregation'] = self.aggregation()
+        return settings
+
+    def updateProfilesPerClickNode(self):
+        """
+        Updates the description on how many profiles will be created
+        """
+        mode = self.profileSamplingMode()
+        self.nodeProfilesPerClick.setValue(mode.numberOfProfiles())
+
+    def profileSamplingMode(self) -> ProfileSamplingMode:
         return self.mProfileSamplingMode
 
-    def setProfileSamplingMode(self, mode: ProfileSamplingModeV2) -> ProfileSamplingModeV2:
-        assert isinstance(mode, ProfileSamplingModeV2)
+    def setProfileSamplingMode(self, mode: ProfileSamplingMode) -> ProfileSamplingMode:
+        assert isinstance(mode, ProfileSamplingMode)
 
-        oldNodes = self.childNodes()
-        for oldNode in oldNodes:
-            oldNode.sigUpdated.disconnect(self.onChildNodeUpdate)
+        if mode != self.profileSamplingMode():
+            self.mProfileSamplingMode = mode
+            self.nodeAggregation.setValue(mode.aggregation())
+            self.nodeProfilesPerClick.setValue(mode.numberOfProfiles())
 
-        self.removeChildNodes(oldNodes)
-        self.mProfileSamplingMode = mode
-        # self.mModeInstances[mode.__class__.__name__] = mode
-        # self.setValue(mode.name())
-        # set option nodes as child nodes
+        self.updateProfilesPerClickNode()
+        self.updateChildVisibility()
 
-        newNodes = mode.nodes()
-        for newNode in newNodes:
-            newNode.sigUpdated.connect(self.onChildNodeUpdate)
-        self.appendChildNodes(newNodes)
-        self.onChildNodeUpdate()
-        return mode
-
-    def onChildNodeUpdate(self):
-
-        self.setValue(self.profileSamplingMode().name())
+        return self.mProfileSamplingMode
 
 
 class FloatValueNode(TreeNode):
@@ -978,6 +996,8 @@ class FieldGeneratorNode(TreeNode):
 
         self.mErrors: List[str] = []
 
+    def hasErrors(self) -> bool:
+        return len(self.mErrors) > 0
     def errors(self) -> List[str]:
         """
         Returns a list of validation errors
@@ -1044,7 +1064,9 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
         self.setCheckState(Qt.Checked)
         self.sigUpdated.connect(self.onChildNodeUpdate)
+
         self.mSourceNode = SpectralProfileSourceNode('Source')
+        self.mSourceNode.sigUpdated.connect(self.validate)
         self.mSamplingNode = SpectralProfileSamplingModeNode('Sampling')
         self.mScalingNode = SpectralProfileScalingNode('Scaling')
 
@@ -1077,7 +1099,7 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
         if is_valid:
             if not isinstance(self.profileSource(), SpectralProfileSource):
                 self.mErrors.append('No source')
-            if not isinstance(self.sampling(), ProfileSamplingModeV2):
+            if not isinstance(self.sampling(), ProfileSamplingMode):
                 self.mErrors.append('No sampling')
         err = self.errors()
         return len(err) == 0, '\n'.join(err)
@@ -1088,18 +1110,18 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def setProfileSource(self, source: SpectralProfileSource):
         self.mSourceNode.setSpectralProfileSource(source)
 
-    def sampling(self) -> ProfileSamplingModeV2:
+    def sampling(self) -> ProfileSamplingMode:
         return self.mSamplingNode.profileSamplingMode()
 
-    def setSampling(self, mode: ProfileSamplingModeV2) -> ProfileSamplingModeV2:
-        assert isinstance(mode, ProfileSamplingModeV2)
+    def setSampling(self, mode: ProfileSamplingMode) -> ProfileSamplingMode:
+        assert isinstance(mode, ProfileSamplingMode)
         return self.mSamplingNode.setProfileSamplingMode(mode)
 
     def profiles(self, *args, **kwargs) -> List[Tuple[Dict, QgsExpressionContext]]:
 
         kwargs = copy.copy(kwargs)
-        sampling: ProfileSamplingModeV2 = self.sampling()
-        kwargs['kernel_size'] = QSize(*sampling.kernelSize())
+        sampling: ProfileSamplingMode = self.sampling()
+        kwargs['kernel_size'] = QSize(sampling.kernelSize())
         profiles = self.profileSource().collectProfiles(*args, **kwargs)
         results = sampling.profiles(profiles)
         return results
@@ -1119,10 +1141,8 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
             info.append(source.name())
             tt.append(source.toolTip())
 
-        sampling = self.mSamplingNode.profileSamplingMode()
-        info.append(sampling.htmlSummary())
-        tt.append(sampling.tooltip())
-
+        info.append(self.mSamplingNode.name())
+        tt.append(self.mSamplingNode.name())
         info = ' '.join([i for i in info if isinstance(i, str)])
         tt = '<br>'.join([t for t in tt if isinstance(t, str)])
         self.setValue(info)
@@ -1320,7 +1340,7 @@ class SpectralFeatureGeneratorNode(TreeNode):
     def fieldNodeNames(self) -> List[str]:
         return [n.field().name() for n in self.fieldNodes()]
 
-    def errors(self, checked:bool = True) -> List[str]:
+    def errors(self, checked: bool = True) -> List[str]:
         """
 
         """
@@ -1442,6 +1462,9 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
         pass
 
+    def validate(self):
+        for n in self.fieldNodes():
+            n.validate()
     def updateSpeclibName(self):
         speclib = self.speclib()
         if isinstance(speclib, QgsVectorLayer):
@@ -1595,6 +1618,7 @@ class SpectralProfileBridge(TreeModel):
 
     def showErrors(self, fgnode: SpectralFeatureGeneratorNode, errors: Dict[str, str]):
         pass
+
     def loadProfilesV2(self,
                        spatialPoint: SpatialPoint,
                        mapCanvas: QgsMapCanvas = None,
@@ -1988,6 +2012,8 @@ class SpectralProfileBridge(TreeModel):
 
         if generator not in self.rootNode().childNodes():
             self.rootNode().appendChildNodes(generator)
+        for g in generator:
+            g.validate()
 
     def featureGenerators(self, speclib: bool = True, checked: bool = True) -> \
             List[SpectralFeatureGeneratorNode]:
@@ -2016,6 +2042,8 @@ class SpectralProfileBridge(TreeModel):
 
         flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
         node = index.data(Qt.UserRole)
+        if not isinstance(node, TreeNode):
+            s = ""
         if col == 0:
             if isinstance(node, TreeNode) and node.isCheckable():
                 flags = flags | Qt.ItemIsUserCheckable
@@ -2023,12 +2051,12 @@ class SpectralProfileBridge(TreeModel):
                 flags = flags | Qt.ItemIsEditable
 
         if col == 1:
+
             if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileSourceNode,
                                  SpectralProfileGeneratorNode,
                                  SpectralProfileSamplingModeNode, StandardFieldGeneratorNode,
                                  FloatValueNode, ColorNode, OptionTreeNode, PlotStyleNode)):
-                if isinstance(node, StandardFieldGeneratorNode):
-                    s = ""
+
                 flags = flags | Qt.ItemIsEditable
 
         return flags
@@ -2090,11 +2118,23 @@ class SpectralProfileBridge(TreeModel):
                     if role == Qt.ToolTipRole:
                         return node.toolTip()
 
+            if isinstance(node, SpectralProfileSamplingModeNode):
+                mode = node.profileSamplingMode()
+
+                if c == 1:
+                    if role == Qt.DisplayRole:
+                        if mode.kernelSize() == QSize(1, 1):
+                            return 'Single Pixel'
+                        else:
+                            ksize = mode.kernelSize()
+                            aopt = SpectralProfileSamplingModeNode.AGGREGATION_MODEL.findOption(mode.aggregation())
+                            return f'{ksize.width()}x{ksize.height()} {aopt.name()}'
+
             if isinstance(node, FieldGeneratorNode):
                 field: QgsField = node.field()
                 editor = field.editorWidgetSetup().type()
                 errors = node.errors()
-                has_errors = len(errors) > 0
+                has_errors = node.hasErrors()
                 is_checked = node.checked()
                 is_required = not node.isCheckable()
 
@@ -2117,6 +2157,8 @@ class SpectralProfileBridge(TreeModel):
                             tt += '<br><span style="color:' + cstring + '">' + '<br>'.join(errors) + '</span>'
                         return tt
                     if role == Qt.ForegroundRole:
+                        if isinstance(node, SpectralProfileSourceNode):
+                            s = ""
                         return QColor(cstring)
 
                 if c == 1:
@@ -2183,7 +2225,7 @@ class SpectralProfileBridge(TreeModel):
                     roles = [Qt.DisplayRole, Qt.ForegroundRole, Qt.FontRole]
 
         elif isinstance(node, SpectralProfileGeneratorNode):
-            if isinstance(value, ProfileSamplingModeV2):
+            if isinstance(value, ProfileSamplingMode):
                 node.setProfileSamplingMode(value)
                 changed = False
                 # important! node.setProfileSamplingMode has already updated the node
@@ -2196,8 +2238,18 @@ class SpectralProfileBridge(TreeModel):
             node.setSpectralProfileSource(value)
 
         elif isinstance(node, SpectralProfileSamplingModeNode):
-            if isinstance(value, ProfileSamplingModeV2):
-                node.setProfileSamplingMode(value)
+            if isinstance(value, Option):
+                value = value.value()
+
+            mode = None
+            if isinstance(value, ProfileSamplingMode):
+                mode = value
+            elif isinstance(value, QSize):
+                mode = node.profileSamplingMode()
+                mode.setKernelSize(value)
+            if isinstance(mode, ProfileSamplingMode):
+                node.setProfileSamplingMode(mode)
+
 
         elif isinstance(node, OptionTreeNode):
             if isinstance(value, Option):
@@ -2432,10 +2484,9 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
                 w.setModel(model)
 
             elif isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
-                pass
-                # w = HTMLComboBox(parent=parent)
-                # model = bridge.profileSamplingModeModel()
-                # w.setModel(model)
+                w = HTMLComboBox(parent=parent)
+                model = SpectralProfileSamplingModeNode.KERNEL_MODEL
+                w.setModel(model)
 
             elif isinstance(node, OptionTreeNode) and index.column() == 1:
                 w = HTMLComboBox(parent=parent)
@@ -2490,7 +2541,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
         elif isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
             assert isinstance(editor, QComboBox)
-            setCurrentComboBoxValue(editor, node.profileSamplingMode())
+            setCurrentComboBoxValue(editor, node.profileSamplingMode().kernelSize())
 
         elif isinstance(node, OptionTreeNode) and index.column() == 1:
             assert isinstance(editor, QComboBox)
@@ -2595,6 +2646,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
 
     def spectralProfileBridge(self) -> SpectralProfileBridge:
         return self.mBridge
+
     def setFilter(self, pattern: str):
         self.mProxyModel.setFilterWildcard(pattern)
 
