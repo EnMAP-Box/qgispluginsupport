@@ -10,11 +10,9 @@ from typing import List, Any, Iterable, Dict, Union, Tuple, Set, Iterator
 import numpy as np
 from numpy import NaN
 
-from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsProperty
-
 from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QSortFilterProxyModel, \
     QItemSelection, NULL
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtCore import pyqtSignal, QObject
 from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
@@ -25,7 +23,8 @@ from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkb
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRectangle
 from qgis.core import QgsLayerItem
-from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, QgsRasterBlock, Qgis
+from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, Qgis
+from qgis.core import QgsProperty
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
     QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
@@ -33,14 +32,13 @@ from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
 from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, \
-    decodeProfileValueDict, prepareProfileValueDict
+    prepareProfileValueDict
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SpatialPoint, loadUi, rasterArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor, rasterBlockArray, \
-    rasterLayerMapToPixel
+    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor, rasterLayerMapToPixel
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
@@ -162,6 +160,10 @@ class ProfileSamplingMode(object):
         assert size.width() > 0 and size.height() > 0
 
         self.mKernelSize = size
+
+    def kernelSizeXY(self) -> Tuple[int, int]:
+        s = self.kernelSize()
+        return s.width(), s.height()
 
     def kernelSize(self) -> QSize:
         """
@@ -483,7 +485,7 @@ class ValidateNode(TreeNode):
         self.mErrors.clear()
         # implement error checks here
 
-        return self.hasErrors()
+        return not self.hasErrors()
 
     def validateChildNode(self):
         self.childNodes()
@@ -695,7 +697,7 @@ class SpectralProfileSourceNode(ValidateNode):
         if not isinstance(self.mProfileSource, SpectralProfileSource):
             self.mErrors.append('Profile source is undefined')
 
-        return self.hasErrors()
+        return not self.hasErrors()
 
     def profileSource(self) -> SpectralProfileSource:
         return self.mProfileSource
@@ -945,7 +947,7 @@ class SpectralProfileSamplingModeNode(TreeNode):
         show_nodes = mode.kernelSize() != QSize(1, 1)
         nodes = [self.nodeAggregation, self.nodeProfilesPerClick]
         if show_nodes:
-            to_add = [n for n in nodes if not n in self.childNodes()]
+            to_add = [n for n in nodes if n not in self.childNodes()]
             self.insertChildNodes(0, to_add)
         else:
             to_remove = [n for n in nodes if n in self.childNodes()]
@@ -1085,7 +1087,7 @@ class FieldGeneratorNode(ValidateNode):
             self.mErrors.append('Field is not set')
         if self.checked() and self.value() in [None, NULL, '']:
             self.mErrors.append('Undefined. Define a value/expression or uncheck the field.')
-        return self.hasErrors()
+        return not self.hasErrors()
 
 
 class GeometryGeneratorNode(TreeNode):
@@ -1233,7 +1235,7 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
                     if expr.hasEvalError():
                         self.mErrors.append(expr.evalErrorString().strip())
 
-        return self.hasErrors()
+        return not self.hasErrors()
 
 
 class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGenerator):
@@ -1716,7 +1718,7 @@ class SpectralProfileBridge(TreeModel):
         # 3. generate features from a feature generators
         #    multiple feature generators could create features for the same speclib
         RESULTS: Dict[str, Tuple[List[QgsFeature],
-        Dict[Tuple[int, str], PlotStyle]]] = dict()
+                                 Dict[Tuple[int, str], PlotStyle]]] = dict()
 
         for fgnode in featureGenerators:
             fgnode: SpectralFeatureGeneratorNode
@@ -2360,7 +2362,6 @@ class SpectralProfileBridge(TreeModel):
                 mode.setKernelSize(value)
             if isinstance(mode, ProfileSamplingMode):
                 node.setProfileSamplingMode(mode)
-
 
         elif isinstance(node, OptionTreeNode):
             if isinstance(value, Option):

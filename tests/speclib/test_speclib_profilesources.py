@@ -4,17 +4,14 @@ import random
 import unittest
 from typing import Tuple, List
 
-from PyQt5.QtWidgets import QSizePolicy, QSplitter
-
 from qgis.PyQt.QtCore import QSize, QVariant, Qt
-from qgis.PyQt.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QGridLayout
+from qgis.PyQt.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QSplitter
 from qgis.core import QgsExpressionContext, QgsPoint, QgsPointXY, QgsMapToPixel, Qgis, QgsField
 from qgis.core import QgsGeometry
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes, edit
 from qgis.core import QgsRasterLayer, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
 from qps.maptools import CursorLocationMapTool
-from qps.speclib.core import profile_fields, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting, isProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -23,7 +20,7 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SamplingBlockDescription, \
     SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode, \
     SpectralProfileSourceModel, StandardLayerProfileSource, SpectralProfileSource, ProfileSamplingMode, \
-    StandardFieldGeneratorNode, FieldGeneratorNode
+    StandardFieldGeneratorNode, ValidateNode
 from qps.testing import TestCaseBase, start_app
 from qps.testing import TestObjects
 from qps.utils import SpatialPoint, parseWavelength, rasterArray, SpatialExtent
@@ -79,7 +76,8 @@ class SpectralProcessingTests(TestCaseBase):
 
         for pt in out_of_image:
             self.assertFalse(lyr.extent().contains(pt))
-            x, y = k_mode.kernelSize()
+            size = k_mode.kernelSize()
+            x, y = size.width(), size.height()
             profiles = source.collectProfiles(pt, QSize(x, y))
             self.assertTrue(len(profiles) > 0)
             self.assertTrue(len(profiles) < x * y)
@@ -237,7 +235,6 @@ class SpectralProcessingTests(TestCaseBase):
         with edit(sl1):
             assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile2')
 
-
         speclib_sources = [slw1.speclib(), slw2.speclib()]
         QgsProject.instance().addMapLayers(speclib_sources, False)
         maskLayer = TestObjects.createMultiMaskExample(nb=25, ns=50, nl=50)
@@ -328,7 +325,6 @@ class SpectralProcessingTests(TestCaseBase):
         splitV.setOrientation(Qt.Vertical)
         splitV.addWidget(slw1)
         splitV.addWidget(slw2)
-
 
         splitH = QSplitter()
         splitH.addWidget(canvas)
@@ -443,16 +439,17 @@ class SpectralProcessingTests(TestCaseBase):
             for kernel in kernels:
                 mode.setKernelSize(kernel)
                 mode.setAggregation(aggregation)
+                size = mode.kernelSize()
 
-                x, y = mode.kernelSize()
+                x, y = size.width(), size.height()
                 self.assertEqual(kernel, f'{x}x{y}')
                 mode.setKernelSize(QSize(x, y))
-                x2, y2 = mode.kernelSize()
+                x2, y2 = mode.kernelSizeXY()
                 self.assertEqual(QSize(x, y), QSize(x2, y2))
 
                 self.assertEqual(aggregation, mode.aggregation())
 
-                profiles = source.collectProfiles(center, QSize(*mode.kernelSize()))
+                profiles = source.collectProfiles(center, mode.kernelSize())
 
                 self.assertEqual(len(profiles), x * y)
 
@@ -560,10 +557,17 @@ class SpectralProcessingTests(TestCaseBase):
             SpectralProfileGeneratorNode(),
         ]
         for n in nodes:
-            self.assertIsInstance(n, FieldGeneratorNode)
-            b, err = n.validate()
-            self.assertIsInstance(b, bool)
-            self.assertIsInstance(err, str)
+            self.assertIsInstance(n, ValidateNode)
+            is_valid = n.validate()
+            errors = n.errors()
+            self.assertIsInstance(is_valid, bool)
+            self.assertIsInstance(errors, list)
+            if is_valid and n.hasErrors():
+                s = ""
+            self.assertNotEqual(is_valid, n.hasErrors())
+
+            for e in errors:
+                self.assertIsInstance(e, str)
 
     def test_SpectralFeatureGenerator(self):
 
