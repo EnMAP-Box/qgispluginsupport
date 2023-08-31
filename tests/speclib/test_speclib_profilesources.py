@@ -14,7 +14,7 @@ from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbT
 from qgis.core import QgsRasterLayer, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
 from qps.maptools import CursorLocationMapTool
-from qps.speclib.core import profile_fields
+from qps.speclib.core import profile_fields, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting, isProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -213,6 +213,10 @@ class SpectralProcessingTests(TestCaseBase):
         slw.close()
 
         (src1, src2), (slw1, slw2) = self.createTestObjects()
+        sl1 = slw1.speclib()
+
+        with edit(sl1):
+            assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile_new')
 
         # re-add generators
         fgnode1 = panel.createRelation()
@@ -233,7 +237,7 @@ class SpectralProcessingTests(TestCaseBase):
         with edit(sl1):
             assert SpectralLibraryUtils.addSpectralProfileField(sl1, 'profile2')
 
-        profile_fields(sl1)
+
         speclib_sources = [slw1.speclib(), slw2.speclib()]
         QgsProject.instance().addMapLayers(speclib_sources, False)
         maskLayer = TestObjects.createMultiMaskExample(nb=25, ns=50, nl=50)
