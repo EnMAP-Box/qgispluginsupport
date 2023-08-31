@@ -167,8 +167,7 @@ def registerExpressionFunctions():
 
 
 def registerSpectralProfileSamplingModes():
-    from .speclib.gui.spectralprofilesources import initSamplingModes
-    initSamplingModes()
+    warnings.warn(DeprecationWarning('is not required anymore'))
 
 
 def registerSpectralLibraryIOs():
@@ -206,7 +205,6 @@ def initAll():
     registerEditorWidgets()
     registerExpressionFunctions()
     registerMapLayerConfigWidgetFactories()
-    registerSpectralProfileSamplingModes()
     registerSpectralLibraryIOs()
 
 
