@@ -19,6 +19,7 @@ from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, Q
 from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
     QTableView, QStyle, QStyleOptionViewItem
 from qgis.PyQt.QtWidgets import QTreeView
+from qgis.core import QgsRaster
 from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRectangle
@@ -349,7 +350,10 @@ class StandardLayerProfileSource(SpectralProfileSource):
 
                     profileContext = self.expressionContext(pt)
 
-                    R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat.Value)
+                    if Qgis.versionInt() < 33000:
+                        R: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormat.IdentifyFormatValue)
+                    else:
+                        R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat)
                     if not R.isValid():
                         continue
 

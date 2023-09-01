@@ -6,6 +6,7 @@ from typing import Tuple, List
 
 from qgis.PyQt.QtCore import QSize, QVariant, Qt
 from qgis.PyQt.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QSplitter
+from qgis._core import QgsRaster
 from qgis.core import QgsExpressionContext, QgsPoint, QgsPointXY, QgsMapToPixel, Qgis, QgsField
 from qgis.core import QgsGeometry
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes, edit
@@ -368,7 +369,10 @@ class SpectralProcessingTests(TestCaseBase):
             self.assertEqual(px_xR, px_x)
             self.assertEqual(px_yR, px_y)
 
-            results = dp.identify(ptXY, Qgis.RasterIdentifyFormat.Value)
+            if Qgis.versionInt() < 33000:
+                results = dp.identify(ptXY, QgsRaster.IdentifyFormat.IdentifyFormatValue)
+            else:
+                results = dp.identify(ptXY, Qgis.RasterIdentifyFormat.Value)
 
             yValues = d['y']
             yValuesR = [results.results()[b] for b in range(1, lyr.bandCount() + 1)]
@@ -466,7 +470,10 @@ class SpectralProcessingTests(TestCaseBase):
                     self.assertIsInstance(p, dict)
                     self.assertIsInstance(c, QgsExpressionContext)
                     self.assertIsInstance(c.geometry(), QgsGeometry)
-                    self.assertEqual(c.geometry().type(), Qgis.GeometryType.Point)
+                    if Qgis.versionInt() < 33000:
+                        self.assertEqual(c.geometry().type(), QgsWkbTypes.PointGeometry)
+                    else:
+                        self.assertEqual(c.geometry().type(), Qgis.GeometryType.Point)
 
     def simulate_block_reading(self,
                                description: SamplingBlockDescription,
