@@ -21,10 +21,9 @@ import warnings
 import xml.etree.ElementTree as ET
 
 import numpy as np
-from PyQt5.QtCore import QObject
 from osgeo import gdal, ogr, osr, gdal_array
 
-from qgis.PyQt.QtCore import NULL
+from qgis.PyQt.QtCore import NULL, QObject
 from qgis.PyQt.QtCore import QByteArray, QUrl, QRect, QPoint, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
