@@ -2,7 +2,7 @@ name: 🧪 Tests
 
 on:
   push:
-    branches: [master]
+    branches: [master, 14-**]
     paths:
       - '**.py'
 
