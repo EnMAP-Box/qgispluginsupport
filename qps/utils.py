@@ -2420,13 +2420,25 @@ def featureBoundingBox(features) -> QgsRectangle:
     return retval
 
 
-def findParent(qObject, parentType, checkInstance=False):
+def findParent(qObject: QObject, parentType, checkInstance: bool = False):
+    """
+
+    Parameters
+    ----------
+    qObject
+    parentType
+    checkInstance
+
+    Returns
+    -------
+
+    """
     parent = qObject.parent()
     if checkInstance:
         while parent is not None and not isinstance(parent, parentType):
             parent = parent.parent()
     else:
-        while parent is not None and type(parent) != parentType:
+        while parent is not None and parent.__class__.__name__ != parentType.__name__:
             parent = parent.parent()
     return parent
 

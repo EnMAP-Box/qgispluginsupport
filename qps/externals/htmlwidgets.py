@@ -46,7 +46,7 @@ class HTMLStyle(QtWidgets.QProxyStyle):
             painter.setPen(QtGui.QPen(pal.brush(text_role), saved_pen.widthF()))
 
         # Render the text.  There's a bit of voodoo here with the rectangles
-        # and painter translation; there was various bits of finagling necessary
+        # and painter translation; there were various bits of finagling necessary
         # to get this to seem to work with both combo boxes and checkboxes.
         # There's probably better ways to be doing this.
         margin = 3
@@ -69,7 +69,7 @@ class HTMLStyle(QtWidgets.QProxyStyle):
         """
         width = size.width()
         height = size.height()
-        if contents_type == self.CT_ComboBox and widget and type(widget) == HTMLComboBox:
+        if contents_type == self.CT_ComboBox and widget and isinstance(widget, HTMLComboBox):
             size = widget.sizeHint()
             width = size.width() + widget.width_adjust_contents
         return super().sizeFromContents(contents_type,
