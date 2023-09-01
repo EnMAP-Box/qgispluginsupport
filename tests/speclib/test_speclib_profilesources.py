@@ -6,8 +6,7 @@ from typing import Tuple, List
 
 from qgis.PyQt.QtCore import QSize, QVariant, Qt
 from qgis.PyQt.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QSplitter
-from qgis._core import QgsRaster
-from qgis.core import QgsExpressionContext, QgsPoint, QgsPointXY, QgsMapToPixel, Qgis, QgsField
+from qgis.core import QgsExpressionContext, QgsRaster, QgsPoint, QgsPointXY, QgsMapToPixel, Qgis, QgsField
 from qgis.core import QgsGeometry
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes, edit
 from qgis.core import QgsRasterLayer, QgsProject
