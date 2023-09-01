@@ -103,6 +103,9 @@ class Option(object):
         self.mTooltip = toolTip
         self.mIcon = icon
 
+    def __repr__(self):
+        return f'Option(name={self.mName} value={self.mValue}) id {id(self)}'
+
     def value(self) -> object:
         """
         Returns the option value
@@ -569,11 +572,22 @@ class TreeNode(QObject):
         """
         return self.mToolTip
 
-    def setParentNode(self, node):
+    def setParentNode(self, node: 'TreeNode'):
         self.mParentNode: TreeNode = node
 
-    def parentNode(self):
+    def parentNode(self) -> 'TreeNode':
         return self.mParentNode
+
+    def parentNodes(self) -> List['TreeNode']:
+        """
+        Returns all parent nodes
+        """
+        nodes = []
+        p = self.mParentNode
+        while isinstance(p, TreeNode):
+            nodes.append(p)
+            p = p.parentNode()
+        return nodes
 
     def setIcon(self, icon: QIcon):
         """

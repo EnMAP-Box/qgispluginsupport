@@ -1,51 +1,62 @@
+import copy
 import difflib
 import math
+import pathlib
 import re
 import sys
-
-from typing import List, Any, Iterable, Optional, Dict, Union, Tuple, Set, Iterator
+import warnings
+from typing import List, Any, Iterable, Dict, Union, Tuple, Set, Iterator
 
 import numpy as np
+from numpy import NaN
 
-from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QPoint, \
-    QSortFilterProxyModel, QItemSelection, NULL
+from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QSortFilterProxyModel, \
+    QItemSelection, NULL
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import pyqtSignal, QObject
 from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QFont, QPainter
 from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
     QTableView, QStyle, QStyleOptionViewItem
 from qgis.PyQt.QtWidgets import QTreeView
-
-from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsMapLayer, \
-    QgsExpression, \
+from qgis.core import QgsRaster
+from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
-    QgsRasterIdentifyResult, QgsRaster, QgsRectangle
+    QgsRasterIdentifyResult, QgsRectangle
 from qgis.core import QgsLayerItem
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsRasterRenderer, QgsField, QgsFields
+from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, Qgis
+from qgis.core import QgsProperty
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
     QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
-
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, decodeProfileValueDict
+from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, \
+    prepareProfileValueDict
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SpatialPoint, loadUi, rasterArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor
+    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor, rasterLayerMapToPixel
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
 SCOPE_VAR_SAMPLE_ID = 'sample_id'
 
 
-class SpectralProfileSource(object):
+class SpectralProfileSource(QObject):
+    sigRemoveMe = pyqtSignal()
 
-    def __init__(self):
-        self.mName: str = None
-        self.mUri: str = None
-        self.mProvider: str = None
+    def __init__(self, name: str = None, toolTip: str = None, parent: QObject = None):
+        super().__init__(parent=parent)
+        self.mName: str = name
+        self.mToolTip: str = toolTip
+
+    def __eq__(self, other):
+        # required to distinguish sources by content, e.g. file names
+        raise NotImplementedError()
 
     def setName(self, name: str):
         self.mName = name
@@ -54,37 +65,328 @@ class SpectralProfileSource(object):
         return self.mName
 
     def toolTip(self) -> str:
-        return self.mUri
+        return self.mToolTip
 
-    def __hash__(self):
-        return hash((self.mUri, self.mProvider))
+    def setToolTip(self, toolTip: str):
+        self.mToolTip = toolTip
+
+    def collectProfiles(self, point: SpatialPoint, kernel_size: QSize = QSize(1, 1), **kwargs) \
+            -> List[Tuple[Dict, QgsExpressionContext]]:
+        """
+        A function to collect profiles.
+        Needs to consume point and kernel_size
+        Each implementation should be able to ignore additional arguments.
+
+        Returns
+        -------
+        A list of (profile Dictionary, QgsExpressionContext) tuples.
+        """
+        raise NotImplementedError
+
+    def expressionContext(self) -> QgsExpressionContext:
+        """
+        Returns a QgsExpressionContext prototype similar to that returned by collectProfiles
+        It should contain all variables with exemplary values that can be used e.g. to define expression functions.
+        -------
+
+        """
+        raise NotImplementedError()
+
+
+class ProfileSamplingMode(object):
+    NO_AGGREGATION = 'no_aggregation'
+    AGGREGATE_MEAN = 'mean'
+    AGGREGATE_MEDIAN = 'median'
+    AGGREGATE_MIN = 'min'
+    AGGREGATE_MAX = 'max'
+
+    RX_KERNEL_SIZE = re.compile(r'(?P<x>\d+)x(?P<y>\d+)')
+
+    def __init__(self,
+                 kernelSize: Union[QSize, str, Tuple[int, int]] = QSize(1, 1),
+                 aggregation: str = None):
+
+        if aggregation is None:
+            aggregation = self.NO_AGGREGATION
+
+        self.mKernelSize = QSize(1, 1)
+        self.mAggregation: str = self.NO_AGGREGATION
+
+        self.setKernelSize(kernelSize)
+        self.setAggregation(aggregation)
 
     def __eq__(self, other):
-        if not isinstance(other, SpectralProfileSource):
+        if not isinstance(other, ProfileSamplingMode):
             return False
-        return self.mUri == other.mUri and self.mProvider == other.mProvider
+        else:
+            return other.mAggregation == self.mAggregation and other.mKernelSize == self.mKernelSize
 
-    def rasterLayer(self, **kwds) -> QgsRasterLayer:
-        raise NotImplementedError
+    def numberOfProfiles(self) -> int:
+
+        if self.mAggregation == ProfileSamplingMode.NO_AGGREGATION:
+            return self.kernelSize().width() * self.kernelSize().height()
+        else:
+            return 1
+
+    def clone(self):
+
+        mode = ProfileSamplingMode()
+        mode.setKernelSize(*self.kernelSize())
+        mode.setAggregation(self.aggregation())
+        return mode
+
+    def setKernelSize(self, x: Union[int, str, QSize, Tuple[int, int]], y: int = None):
+        """
+        Sets the kernel size
+        :param x: str | int
+        :param y: int (optional)
+        """
+        if isinstance(x, Tuple) and len(x) == 2:
+            x, y = x
+
+        if isinstance(x, str):
+            match = self.RX_KERNEL_SIZE.match(x)
+            x = int(match.group('x'))
+            y = int(match.group('y'))
+            size = QSize(x, y)
+        elif isinstance(x, int):
+            if isinstance(y, int):
+                size = QSize(x, y)
+            elif y is None:
+                size = QSize(x, x)
+
+        elif isinstance(x, QSize):
+            size = x
+        assert isinstance(size, QSize)
+        assert size.width() > 0 and size.height() > 0
+
+        self.mKernelSize = size
+
+    def kernelSizeXY(self) -> Tuple[int, int]:
+        s = self.kernelSize()
+        return s.width(), s.height()
+
+    def kernelSize(self) -> QSize:
+        """
+        Returns the kernel size
+        :return: (int x, int y)
+        """
+
+        return self.mKernelSize
+
+    def aggregationModes(self) -> List[str]:
+        return [self.NO_AGGREGATION,
+                self.AGGREGATE_MEDIAN,
+                self.AGGREGATE_MEAN,
+                self.AGGREGATE_MAX,
+                self.AGGREGATE_MIN, ]
+
+    def setAggregation(self, aggregation: str):
+
+        assert aggregation in self.aggregationModes()
+        self.mAggregation = aggregation
+
+    def aggregation(self) -> str:
+        return self.mAggregation
+
+    def profiles(self, profiles: List[Tuple[Dict, QgsExpressionContext]]) \
+            -> List[Tuple[Dict, QgsExpressionContext]]:
+        """
+        Aggregates the profiles collected from a profile source
+        in the way as described
+        """
+
+        ksize = self.kernelSize()
+
+        aggregation = self.aggregation()
+
+        if aggregation == self.NO_AGGREGATION:
+            return profiles
+        else:
+            # aggregate profiles into a single profile
+            pdicts: List[Dict] = []
+            arrays = []
+            pcontexts: List[QgsExpressionContext] = []
+            for (d, c) in profiles:
+                if 'y' in d:
+                    p = d['y']
+                    pdicts.append(p)
+                    pcontexts.append(c)
+                    arrays.append(np.asarray(p))
+
+            data = np.stack(arrays).reshape((ksize.width() * ksize.height(), len(arrays[0])))
+            if data.dtype == object:
+                data = data.astype(float)
+
+            if aggregation == self.AGGREGATE_MEAN:
+                data = np.nanmean(data, axis=0)
+            elif aggregation == self.AGGREGATE_MEDIAN:
+                data = np.nanmedian(data, axis=0)
+            elif aggregation == self.AGGREGATE_MIN:
+                data = np.nanmin(data, axis=0)
+            elif aggregation == self.AGGREGATE_MAX:
+                data = np.nanmax(data, axis=0)
+
+            x = bbl = xUnit = yUnit = None
+            # bbl - merge, set 0 if any is 0
+            # x, xUnit, yUnit - use 1st
+
+            # context: merge
+            context = pcontexts[0]
+            profile = prepareProfileValueDict(y=data, x=x, xUnit=xUnit, yUnit=yUnit)
+        return [(profile, context)]
+
+
+class StandardLayerProfileSource(SpectralProfileSource):
+
+    @staticmethod
+    def fromRasterLayer(layer: QgsRasterLayer):
+        warnings.warn(DeprecationWarning('Use StandardLayerProfileSource(raster_layer)'))
+        return StandardLayerProfileSource(layer)
+
+    def __init__(self, layer: [QgsRasterLayer, str, pathlib.Path]):
+        if not isinstance(layer, QgsRasterLayer):
+            layer = QgsRasterLayer(str(layer))
+        else:
+            assert isinstance(layer, QgsRasterLayer)
+        assert layer.isValid()
+
+        super().__init__(name=layer.name())
+        self.mLayer: QgsRasterLayer = layer
+        self.m2p: QgsMapToPixel = rasterLayerMapToPixel(layer)
+        self.mLayer.willBeDeleted.connect(self.sigRemoveMe)
+        self.mToolTip = '{}<br>{}'.format(layer.name(), layer.source())
+
+    def __eq__(self, other):
+        return isinstance(other, StandardLayerProfileSource) \
+            and other.mLayer == self.mLayer
+
+    def layer(self) -> QgsRasterLayer:
+        return self.mLayer
+
+    def expressionContext(self, point: Union[QgsPointXY, SpatialPoint] = None) -> QgsExpressionContext:
+        if point is None:
+            # dummy point
+            point = SpatialPoint.fromMapLayerCenter(self.mLayer)
+        else:
+            if isinstance(point, SpatialPoint):
+                point = point.toCrs(self.mLayer.crs())
+        assert isinstance(point, QgsPointXY)
+
+        context = QgsExpressionContext()
+        source_scope = QgsExpressionContextUtils.layerScope(self.mLayer)
+        renameScopeVariables(source_scope, 'layer_', 'source_')
+        renameScopeVariables(source_scope, '_layer_', '_source_')
+        context.appendScope(source_scope)
+        context.setGeometry(QgsGeometry.fromPointXY(point))
+        px = self.m2p.transform(point)
+        scope = QgsExpressionContextScope('pixel')
+
+        def addVar(name, value, description):
+            scope.addVariable(QgsExpressionContextScope.StaticVariable(
+                name=name, value=value, description=description
+            ))
+
+        addVar('px_x', int(px.x()), 'Pixel x position.<br>Most-left = 0')
+        addVar('px_y', int(px.y()), 'Pixel y position.<br>Most-top = 0')
+        addVar('geo_x', point.x(), 'Pixel x coordinate in source CRS')
+        addVar('geo_y', point.y(), 'Pixel y coordinate in source CRS')
+
+        context.setHighlightedVariables(['px_x', 'px_y', 'geo_x', 'geo_y'])
+        context.appendScope(scope)
+        return context
+
+    def collectProfiles(self, point: SpatialPoint, kernel_size: QSize = QSize(1, 1), **kwargs) \
+            -> List[Tuple[Dict, QgsExpressionContext]]:
+
+        point = point.toCrs(self.mLayer.crs())
+        if not isinstance(point, SpatialPoint):
+            return []
+
+        resX = self.mLayer.rasterUnitsPerPixelX()
+        resY = self.mLayer.rasterUnitsPerPixelY()
+        c = self.mLayer.extent().center()
+        m2p = QgsMapToPixel(resX,
+                            c.x(), c.y(),
+                            self.mLayer.width(), self.mLayer.height(),
+                            0)
+
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
+
+        sp = QgsRasterLayerSpectralProperties.fromRasterLayer(self.mLayer)
+
+        rect = QRectF(0, 0,
+                      resX * kernel_size.width(),
+                      resY * kernel_size.height())
+        rect.moveCenter(point.toQPointF())
+        rect = QgsRectangle(rect)
+
+        dp: QgsRasterDataProvider = self.mLayer.dataProvider()
+        feedback = QgsRasterBlockFeedback()
+        nb = self.mLayer.bandCount()
+        nx = kernel_size.width()
+        ny = kernel_size.height()
+
+        geo_x = np.arange(0, nx) * resX
+        geo_y = np.arange(0, ny) * resY
+        geo_x -= 0.5 * geo_x[-1]
+        geo_y -= 0.5 * geo_y[-1]
+        geo_x += point.x()
+        geo_y += point.y()
+
+        profiles = []
+        bbl = sp.badBands()
+        wl = sp.wavelengths()
+        wlu = sp.wavelengthUnits()
+        if True:
+            dp: QgsRasterDataProvider = self.mLayer.dataProvider()
+            for iX in range(nx):
+                for iY in range(ny):
+
+                    pt = QgsPointXY(geo_x[iX], geo_y[iY])
+                    if not self.mLayer.extent().contains(pt):
+                        continue
+
+                    profileContext = self.expressionContext(pt)
+
+                    if Qgis.versionInt() < 33000:
+                        R: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormat.IdentifyFormatValue)
+                    else:
+                        R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat.Value)
+                    if not R.isValid():
+                        continue
+
+                    results = R.results()
+                    yValues = [results[b + 1] for b in range(self.mLayer.bandCount())]
+
+                    d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu, bbl=bbl)
+                    if isinstance(d, dict):
+                        profiles.append((d, profileContext))
+
+        return profiles
 
 
 class MapCanvasLayerProfileSource(SpectralProfileSource):
     MODE_FIRST_LAYER = 'first'
     MODE_LAST_LAYER = 'last'
+    MODE_ALL_LAYERS = 'all'
 
     MODE_TOOLTIP = {MODE_FIRST_LAYER:
-                    'Returns profiles of the first / top visible raster layer in the map layer stack',
+                        'Returns profiles of the first / top visible raster layer in the map layer stack',
                     MODE_LAST_LAYER:
-                        'Returns profiles of the last / bottom visible raster layer in the map layer stack'
+                        'Returns profiles of the last / bottom visible raster layer in the map layer stack',
+                    MODE_ALL_LAYERS:
+                        'Returns profiles of all raster layers',
                     }
 
-    def __init__(self, mode: str = None):
+    def __init__(self, canvas: QgsMapCanvas = None, mode: str = MODE_FIRST_LAYER):
         super().__init__()
-        self.mMapCanvas: QgsMapCanvas = None
+        self.mMapCanvas: QgsMapCanvas = canvas
         if mode is None:
             mode = self.MODE_FIRST_LAYER
         else:
-            assert mode in [self.MODE_FIRST_LAYER, self.MODE_LAST_LAYER]
+            assert mode in self.MODE_TOOLTIP.keys(), f'Unknown mode: {mode}'
         self.mMode = mode
 
         if self.mMode == self.MODE_LAST_LAYER:
@@ -92,77 +394,62 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         elif self.mMode == self.MODE_FIRST_LAYER:
             self.mName = '<i>First raster layer</i>'
 
+        self.mLastContext: QgsExpressionContext = None
+
     def __eq__(self, other):
-        return isinstance(other, MapCanvasLayerProfileSource) and other.mMode == self.mMode
+        return isinstance(other, MapCanvasLayerProfileSource) \
+            and other.mMode == self.mMode \
+            and other.mMapCanvas == self.mMapCanvas
 
     def toolTip(self) -> str:
         return self.MODE_TOOLTIP[self.mMode]
 
-    def rasterLayer(self, mapCanvas: QgsMapCanvas = None, position: SpatialPoint = None) -> QgsRasterLayer:
-        """
-        Searches for a raster layer in mapCanvas with valid pixel values at "position"
-        :param mapCanvas:
-        :param position:
-        :return: QgsRasterLayer
-        """
-        if not (isinstance(mapCanvas, QgsMapCanvas) and isinstance(position, QgsPointXY)):
-            return None
+    def expressionContext(self) -> QgsExpressionContext:
+        if self.mLastContext:
+            return self.mLastContext
+        elif isinstance(self.mMapCanvas, QgsMapCanvas):
+            for lyr in self.mMapCanvas.layers():
+                if isinstance(lyr, QgsRasterLayer):
+                    src = StandardLayerProfileSource(lyr)
+                    return src.expressionContext()
+            return QgsExpressionContext()
 
-        if not isinstance(position, SpatialPoint):
-            position = SpatialPoint(mapCanvas.mapSettings().destinationCrs(), position.x(), position.y())
+    def collectProfiles(self, point: SpatialPoint,
+                        kernel_size: QSize = QSize(1, 1),
+                        canvas: QgsMapCanvas = None,
+                        **kwargs) \
+            -> List[Tuple[Dict, QgsExpressionContext]]:
+        if isinstance(canvas, QgsMapCanvas):
+            self.mMapCanvas = canvas
 
-        raster_layers = [layer for layer in mapCanvas.layers() if isinstance(layer, QgsRasterLayer) and layer.isValid()]
+        if not isinstance(self.mMapCanvas, QgsMapCanvas) and isinstance(point, SpatialPoint):
+            self.mLastContext = None
+            return []
+
+        raster_layers = [layer for layer in self.mMapCanvas.layers()
+                         if isinstance(layer, QgsRasterLayer) and layer.isValid()]
 
         if self.mMode == self.MODE_LAST_LAYER:
             raster_layers = reversed(raster_layers)
 
+        results: List[Tuple[dict, QgsExpressionContext]] = []
         # test which raster layer has a valid pixel
         for lyr in raster_layers:
-            pt = position.toCrs(lyr.crs())
+            pt = point.toCrs(lyr.crs())
             if not lyr.extent().contains(pt):
                 continue
-            dp: QgsRasterDataProvider = lyr.dataProvider()
-            result: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormatValue, QgsRectangle())
-            s = ""
-            if result.isValid():
-                for v in result.results().values():
-                    if v not in [None]:
-                        # a valid numeric value
-                        return lyr
 
-        return None
+            source = StandardLayerProfileSource(lyr)
+            r = source.collectProfiles(pt, kernel_size=kernel_size)
 
+            if isinstance(r, list) and len(r) > 0:
+                results.extend(r)
+                if self.mMode != self.MODE_ALL_LAYERS:
+                    break
 
-class StandardLayerProfileSource(SpectralProfileSource):
-
-    @staticmethod
-    def fromRasterLayer(lyr: QgsRasterLayer):
-        if lyr.isValid():
-            return StandardLayerProfileSource(lyr.source(), lyr.name(), lyr.providerType(), lyr.renderer().clone())
-        else:
-            return None
-
-    def __init__(self, uri: str, name: str, provider: str, renderer: QgsRasterRenderer = None):
-        super().__init__()
-        assert len(uri) > 0
-        self.mUri = uri
-        self.mName = name
-        self.mProvider = provider
-        self.mRenderer: QgsRasterRenderer = None
-        if isinstance(renderer, QgsRasterRenderer):
-            self.mRenderer = renderer.clone()
-            self.mRenderer.setInput(None)
-
-        self.mLyr = None
-
-    def rasterLayer(self, **kwds) -> QgsRasterLayer:
-        if not isinstance(self.mLyr, QgsRasterLayer):
-            loptions = QgsRasterLayer.LayerOptions(loadDefaultStyle=False)
-            self.mLyr = QgsRasterLayer(self.mUri, self.mName, self.mProvider, options=loptions)
-            if isinstance(self.mRenderer, QgsRasterRenderer):
-                self.mRenderer.setInput(self.mLyr.dataProvider())
-                self.mLyr.setRenderer(self.mRenderer)
-        return self.mLyr
+        if len(results) > 0:
+            self.mLastContext = QgsExpressionContext(results[0][1])
+        return results
 
 
 class SpectralProfileTopLayerSource(StandardLayerProfileSource):
@@ -186,23 +473,69 @@ class SpectralProfileTopLayerSource(StandardLayerProfileSource):
         return 'Reads Spectral Profiles from the top raster layer of a clicked map canvas.'
 
 
+class ValidateNode(TreeNode):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+
+        self.mErrors: List[str] = []
+
+    def validate(self) -> Tuple[bool, str]:
+        """
+        A method that validates the node ste.
+        This method should add collected error messages to self.mErrors
+        Returns a tuple (bool: is valid, str: error message)
+        """
+        self.mErrors.clear()
+        # implement error checks here
+
+        return not self.hasErrors()
+
+    def validateChildNode(self):
+        self.childNodes()
+
+    def hasErrors(self, recursive: bool = False) -> bool:
+        e = len(self.mErrors) > 0
+        if e:
+            return True
+        elif recursive:
+            for c in self.findChildNodes(ValidateNode, recursive=True):
+                if isinstance(c, ValidateNode) and c.hasErrors():
+                    return True
+        return False
+
+    def errors(self, recursive: bool = False) -> List[str]:
+        """
+        Returns a list of validation errors
+        :return:
+        """
+        errors = self.mErrors[:]
+        if recursive:
+            for c in self.findChildNodes(ValidateNode, recursive=True):
+                if isinstance(c, ValidateNode) and c.hasErrors():
+                    err = "\n".join(c.errors())
+                    errors.append(f'{c.name()}:{err}')
+        return errors
+
+
 class SpectralProfileSourceModel(QAbstractListModel):
     """
-    A list model that lists (raster) sources of SpectralProfiles.
+    A model that lists sources from which SpectralProfiles can be loaded using a point coordinate,
+    e.g. raster files.
     """
 
     def __init__(self, *args, **kwds):
         super(SpectralProfileSourceModel, self).__init__(*args, **kwds)
 
-        self.mSources: List[SpectralProfileSource] = [None]
+        self.mSources: List[SpectralProfileSource] = []
         self.mDefaultSource: SpectralProfileSource = None
 
     def setDefaultSource(self, source: SpectralProfileSource):
         """
         Sets a default SpectralProfileSource that is used for SpectralProfileGenerator Nodes
         """
+        assert isinstance(source, SpectralProfileSource)
         self.addSources(source)
-
         self.mDefaultSource = source
 
     def defaultSource(self) -> SpectralProfileSource:
@@ -239,14 +572,15 @@ class SpectralProfileSourceModel(QAbstractListModel):
                 source = QgsRasterLayer(source)
 
             if isinstance(source, QgsRasterLayer):
-                source = StandardLayerProfileSource.fromRasterLayer(source)
+                source = StandardLayerProfileSource(source)
 
             if source is None:
                 # already in model
                 continue
 
             assert isinstance(source, SpectralProfileSource), f'Got {source} instead SpectralProfileSource'
-            if source not in self.mSources:
+            if source not in self.mSources \
+                    and source not in to_insert:
                 to_insert.append(source)
 
         if len(to_insert) > 0:
@@ -264,24 +598,30 @@ class SpectralProfileSourceModel(QAbstractListModel):
         else:
             return QModelIndex()
 
-    def findSource(self, source: Any):
-        if isinstance(source, SpectralProfileSource):
-            if source in self.sources():
-                return source
-        uri: str = None
-        if isinstance(source, QgsMapLayer):
-            uri = source.source()
-        elif isinstance(source, str):
-            uri = source
+    def findSource(self, source: Union[SpectralProfileSource, QgsRasterLayer, str]) -> SpectralProfileSource:
+        """
+        Tries to find a stored SpectralProfileSource related that matches the source arguments
+        Parameters
+        ----------
+        source
 
-        if uri:
+        Returns
+        -------
+
+        """
+        if isinstance(source, SpectralProfileSource):
             for s in self.sources():
-                if s.mUri == uri:
-                    return s
+                if isinstance(s, SpectralProfileSource):
+                    if s == source:
+                        return s
+                    if isinstance(s, StandardLayerProfileSource):
+                        if s.layer() == source or s.layer().source == source:
+                            return s
 
         return None
 
-    def removeSources(self, sources: SpectralProfileSource) -> List[SpectralProfileSource]:
+    def removeSources(self, sources: Union[SpectralProfileSource, List[SpectralProfileSource]]) \
+            -> List[SpectralProfileSource]:
         if not isinstance(sources, Iterable):
             sources = [sources]
         removed = []
@@ -344,7 +684,7 @@ class SpectralProfileSourceProxyModel(QSortFilterProxyModel):
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
 
 
-class SpectralProfileSourceNode(TreeNode):
+class SpectralProfileSourceNode(ValidateNode):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -355,13 +695,20 @@ class SpectralProfileSourceNode(TreeNode):
 
     # def icon(self) -> QIcon:
     #    return QIcon(r':/images/themes/default/mIconRaster.svg')
+    def validate(self) -> bool:
+        super().validate()
+
+        if not isinstance(self.mProfileSource, SpectralProfileSource):
+            self.mErrors.append('Profile source is undefined')
+
+        return not self.hasErrors()
 
     def profileSource(self) -> SpectralProfileSource:
         return self.mProfileSource
 
     def setSpectralProfileSource(self, source: SpectralProfileSource):
         if isinstance(source, QgsRasterLayer):
-            source = StandardLayerProfileSource.fromRasterLayer(source)
+            source = StandardLayerProfileSource(source)
         elif isinstance(source, QgsMapCanvas):
             source = MapCanvasLayerProfileSource('top')
 
@@ -553,147 +900,106 @@ class SamplingBlockDescription(object):
         return self.mMeta
 
 
-class SpectralProfileSamplingMode(object):
-
-    def __init__(self):
-        super(SpectralProfileSamplingMode, self).__init__()
-
-    def name(self) -> str:
-        raise NotImplementedError()
-
-    def settings(self) -> dict:
-        return {'name': self.name()}
-
-    def htmlSummary(self) -> str:
-        return self.name()
-
-    def icon(self) -> QIcon:
-        return QIcon()
-
-    def nodes(self) -> List[TreeNode]:
-        """
-        Returns nodes, e.g. to set additional options
-        """
-        return []
-
-    def mapOverlay(self, lyr: QgsRasterLayer, spatialPoint: SpatialPoint) -> Optional[QgsGeometry]:
-        return None
-
-    def samplingBlockDescription(self,
-                                 lyr: QgsRasterLayer,
-                                 point: QgsPointXY) -> SamplingBlockDescription:
-        """
-        Returns rectangle in pixel coordinates for the pixel block to sample and additional metadata
-        :param lyr: QgsRasterLayer, the raster layer to read data from
-        :param point: QgsPointXY, the point within the raster layers's extent to sample values for
-        :return: a tuple with the pixel block boundaries (QRect) and dict of additional metadata
-        """
-        raise NotImplementedError()
-
-    def profiles(self,
-                 profileBlock: SpectralProfileBlock,
-                 blockDescription: SamplingBlockDescription) -> SpectralProfileBlock:
-        """
-        Returns the sampled profile(s) as SpectralProfileBlock
-        :param profileBlock: SpectralProfileBlock with input profiles, as read for the SamplingBlockDescription
-        :param blockDescription: SamplingBlockDescription
-        :return: SpectralProfileBlock with sampled profile, e.g. by aggregation of profiles in SpectralProfileBlock
-        """
-        raise NotImplementedError()
-
-    def tooltip(self) -> str:
-        lines = [self.name()]
-        for k, v in self.settings().items():
-            lines.append(f'{k}: {v}')
-        return '<br>'.join(lines)
-
-    def writeXml(self):
-        pass
-
-    @staticmethod
-    def fromXml(self):
-        pass
-
-    def clone(self):
-        raise NotImplementedError()
-
-
 class SpectralProfileSamplingModeNode(TreeNode):
+    KERNEL_MODEL = OptionListModel()
+    KERNEL_MODEL.addOptions([
+        Option(QSize(1, 1), name='Single pixel', toolTip='Reads 1 single pixel at cursor location'),
+        Option(QSize(3, 3), name='3x3', toolTip='Reads the 3x3 pixel around the cursor location'),
+        Option(QSize(5, 5), name='5x5', toolTip='Reads the 5x5 pixel around the cursor location'),
+        Option(QSize(7, 7), name='7x7', toolTip='Reads the 7x7 pixel around the cursor location'),
+    ]
+    )
+
+    AGGREGATION_MODEL = OptionListModel()
+    AGGREGATION_MODEL.addOptions([
+        Option(ProfileSamplingMode.NO_AGGREGATION, name='All profiles', toolTip='Keep all profiles'),
+        Option(ProfileSamplingMode.AGGREGATE_MEAN, name='Mean', toolTip='Mean profile'),
+        Option(ProfileSamplingMode.AGGREGATE_MEDIAN, name='Median', toolTip='Median profile'),
+        Option(ProfileSamplingMode.AGGREGATE_MIN, name='Min', toolTip='Min value profile'),
+        Option(ProfileSamplingMode.AGGREGATE_MAX, name='Max', toolTip='Max value profile'),
+    ])
 
     def __init__(self, *args, **kwds):
-        super(SpectralProfileSamplingModeNode, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
+        sampling: ProfileSamplingMode = ProfileSamplingMode()
+        self.mProfileSamplingMode: ProfileSamplingMode = sampling
 
-        self.mProfileSamplingMode: SpectralProfileSamplingMode = None
-        self.mModeInstances: Dict[str, SpectralProfileSamplingMode] = dict()
-        self.setProfileSamplingMode(SingleProfileSamplingMode())
+        self.nodeAggregation = OptionTreeNode(self.AGGREGATION_MODEL)
+        self.nodeAggregation.setName('Aggregation')
+        self.nodeAggregation.sigUpdated.connect(self.onAggregationChanged)
 
-    def profileSamplingMode(self) -> SpectralProfileSamplingMode:
+        self.nodeProfilesPerClick = TreeNode()
+        self.nodeProfilesPerClick.setName('Profiles')
+        self.nodeProfilesPerClick.setToolTip('Profiles per click')
+        self.appendChildNodes([self.nodeAggregation, self.nodeProfilesPerClick])
+
+        self.setProfileSamplingMode(sampling)
+
+    def onAggregationChanged(self):
+
+        aggr = self.nodeAggregation.option().value()
+        if aggr != self.mProfileSamplingMode.aggregation():
+            self.mProfileSamplingMode.setAggregation(aggr)
+            self.updateProfilesPerClickNode()
+            self.sigUpdated.emit(self)  # this resets tooltips ets.
+
+    def updateChildVisibility(self):
+
+        # do not show the aggregation and number of profiles node in
+        # case we sample a single pixel only
+        mode = self.profileSamplingMode()
+        show_nodes = mode.kernelSize() != QSize(1, 1)
+        nodes = [self.nodeAggregation, self.nodeProfilesPerClick]
+        if show_nodes:
+            to_add = [n for n in nodes if n not in self.childNodes()]
+            self.insertChildNodes(0, to_add)
+        else:
+            to_remove = [n for n in nodes if n in self.childNodes()]
+            self.removeChildNodes(to_remove)
+
+    def toolTip(self) -> str:
+        mode = self.profileSamplingMode()
+        kernel = mode.kernelSize()
+        x, y = kernel.width(), kernel.height()
+
+        if (x, y) == (1, 1):
+            info = ['Sample 1 pixel']
+        else:
+            info = [f'Sample {x}x{y} pixel']
+
+        if mode.aggregation() != ProfileSamplingMode.NO_AGGREGATION:
+            info.append(f'Aggregation: {mode.aggregation()}')
+
+        return '<br>'.join(info)
+
+    def settings(self) -> dict:
+        settings = dict()
+        settings['kernel'] = '{}x{}'.format(*self.kernelSize())
+        settings['aggregation'] = self.aggregation()
+        return settings
+
+    def updateProfilesPerClickNode(self):
+        """
+        Updates the description on how many profiles will be created
+        """
+        mode = self.profileSamplingMode()
+        self.nodeProfilesPerClick.setValue(mode.numberOfProfiles())
+
+    def profileSamplingMode(self) -> ProfileSamplingMode:
         return self.mProfileSamplingMode
 
-    def setProfileSamplingMode(self, mode: SpectralProfileSamplingMode) -> SpectralProfileSamplingMode:
-        assert isinstance(mode, SpectralProfileSamplingMode)
+    def setProfileSamplingMode(self, mode: ProfileSamplingMode) -> ProfileSamplingMode:
+        assert isinstance(mode, ProfileSamplingMode)
 
-        mode: SpectralProfileSamplingMode = self.mModeInstances.get(mode.__class__.__name__, mode.clone())
+        if mode != self.profileSamplingMode():
+            self.mProfileSamplingMode = mode
+            self.nodeAggregation.setValue(mode.aggregation())
+            self.nodeProfilesPerClick.setValue(mode.numberOfProfiles())
 
-        oldNodes = self.childNodes()
-        for oldNode in oldNodes:
-            oldNode.sigUpdated.disconnect(self.onChildNodeUpdate)
+        self.updateProfilesPerClickNode()
+        self.updateChildVisibility()
 
-        self.removeChildNodes(oldNodes)
-        self.mProfileSamplingMode = mode
-        self.mModeInstances[mode.__class__.__name__] = mode
-        # self.setValue(mode.name())
-        # set option nodes as child nodes
-
-        newNodes = mode.nodes()
-        for newNode in newNodes:
-            newNode.sigUpdated.connect(self.onChildNodeUpdate)
-        self.appendChildNodes(newNodes)
-        self.onChildNodeUpdate()
-        return mode
-
-    def onChildNodeUpdate(self):
-
-        self.setValue(self.profileSamplingMode().name())
-
-
-class SingleProfileSamplingMode(SpectralProfileSamplingMode):
-
-    def __init__(self):
-        super(SingleProfileSamplingMode, self).__init__()
-
-    def clone(self):
-        return SingleProfileSamplingMode()
-
-    def name(self) -> str:
-        return 'Single Profile'
-
-    def tooltip(self) -> str:
-        return 'Returns a single profile from the clicked position'
-
-    def samplingBlockDescription(self, lyr: QgsRasterLayer, point: Union[QgsPointXY, SpatialPoint]) \
-            -> SamplingBlockDescription:
-        assert isinstance(lyr, QgsRasterLayer)
-
-        # convert point to pixel position of interest
-
-        px = spatialPoint2px(lyr, point)
-
-        if isinstance(px, QPoint):
-            if 0 <= px.x() < lyr.width() and 0 <= px.y() < lyr.height():
-                return SamplingBlockDescription(point, lyr, QRect(px, px))
-        else:
-            s = ""
-            return SamplingBlockDescription(point, lyr, QgsRectangle())
-
-        return None
-
-    def profiles(self,
-                 profileBlock: SpectralProfileBlock,
-                 blockDescription: SamplingBlockDescription) -> SpectralProfileBlock:
-        # nothing else to do here
-        assert profileBlock.n_profiles() == 1
-        return profileBlock
+        return self.mProfileSamplingMode
 
 
 class FloatValueNode(TreeNode):
@@ -720,6 +1026,9 @@ class PlotStyleNode(TreeNode):
     def value(self) -> PlotStyle:
         return super().value()
 
+    def plotStyle(self) -> PlotStyle:
+        return self.value()
+
 
 class ColorNode(TreeNode):
     def __init__(self, *args, **kwds):
@@ -738,270 +1047,16 @@ class ColorNode(TreeNode):
         return QColor(super().value())
 
 
-class KernelProfileSamplingMode(SpectralProfileSamplingMode):
-    NO_AGGREGATION = 'no_aggregation'
-    AGGREGATE_MEAN = 'mean'
-    AGGREGATE_MEDIAN = 'median'
-    AGGREGATE_MIN = 'min'
-    AGGREGATE_MAX = 'max'
-
-    RX_KERNEL_SIZE = re.compile(r'(?P<x>\d+)x(?P<y>\d+)')
-
-    KERNEL_MODEL = OptionListModel()
-    KERNEL_MODEL.addOptions([
-        Option('3x3', toolTip='Reads the 3x3 pixel around the cursor location'),
-        Option('5x5', toolTip='Reads the 5x5 pixel around the cursor location'),
-        Option('7x7', toolTip='Reads the 7x7 pixel around the cursor location'),
-    ]
-    )
-
-    AGGREGATION_MODEL = OptionListModel()
-    AGGREGATION_MODEL.addOptions([
-        Option(NO_AGGREGATION, name='All profiles', toolTip='Keep all profiles'),
-        Option(AGGREGATE_MEAN, name='Mean', toolTip='Mean profile'),
-        Option(AGGREGATE_MEDIAN, name='Median', toolTip='Median profile'),
-        Option(AGGREGATE_MIN, name='Min', toolTip='Min value profile'),
-        Option(AGGREGATE_MAX, name='Max', toolTip='Max value profile'),
-    ])
-
-    def __init__(self):
-        super().__init__()
-
-        self.mKernel = OptionTreeNode(KernelProfileSamplingMode.KERNEL_MODEL)
-        self.mKernel.setName('Kernel')
-
-        self.mAggregation = OptionTreeNode(KernelProfileSamplingMode.AGGREGATION_MODEL)
-        self.mAggregation.setName('Aggregation')
-
-        self.mKernel.sigUpdated.connect(self.updateProfilesPerClickNode)
-        self.mAggregation.sigUpdated.connect(self.updateProfilesPerClickNode)
-
-        self.mProfilesPerClick = TreeNode()
-        self.mProfilesPerClick.setName('Profiles')
-        self.mProfilesPerClick.setToolTip('Profiles per click')
-        self.updateProfilesPerClickNode()
-
-    def clone(self):
-
-        mode = KernelProfileSamplingMode()
-        mode.setKernelSize(*self.kernelSize())
-        mode.setAggregation(self.aggregation())
-        return mode
-
-    def nodes(self) -> List[TreeNode]:
-        return [self.mKernel, self.mAggregation, self.mProfilesPerClick]
-
-    def name(self) -> str:
-        return 'Kernel'
-
-    def settings(self) -> dict:
-        settings = super(KernelProfileSamplingMode, self).settings()
-        settings['kernel'] = '{}x{}'.format(*self.kernelSize())
-        settings['aggregation'] = self.aggregation()
-        return settings
-
-    def updateProfilesPerClickNode(self):
-        """
-        Updates the description on how many profiles will be created
-        """
-        if self.aggregation() == KernelProfileSamplingMode.NO_AGGREGATION:
-            x, y = self.kernelSize()
-            nProfiles = x * y
-        else:
-            nProfiles = 1
-        self.mProfilesPerClick.setValue(nProfiles)
-
-    def setKernelSize(self, x: int, y: int = None):
-        """
-        Sets the kernel size
-        :param x: str | int
-        :param y: int (optional)
-        """
-        if isinstance(x, str):
-            match = self.RX_KERNEL_SIZE.match(x)
-            x = int(match.group('x'))
-            y = int(match.group('y'))
-        assert isinstance(x, int) and x > 0
-        if y is None:
-            y = x
-
-        assert isinstance(y, int) and y > 0
-        kernel_string = f'{x}x{y}'
-        option = KernelProfileSamplingMode.KERNEL_MODEL.findOption(kernel_string)
-        if not isinstance(option, Option):
-            # make new kernel available to other kernel nodes
-            option = Option(f'{x}x{y}', toolTip=f'Reads the {x}x{y} pixel around the cursor location.')
-            KernelProfileSamplingMode.KERNEL_MODEL.addOption(option)
-
-        self.mKernel.setOption(option)
-
-    def kernelSize(self) -> Tuple[int, int]:
-        """
-        Returns the kernel size
-        :return: (int x, int y)
-        """
-
-        kernel_string = self.mKernel.option().value()
-        match = self.RX_KERNEL_SIZE.match(kernel_string)
-        return int(match.group('x')), int(match.group('y'))
-
-    def setAggregation(self, aggregation: str):
-        option = KernelProfileSamplingMode.AGGREGATION_MODEL.findOption(aggregation)
-        assert isinstance(option, Option), f'"{aggregation}" is not supported'
-        self.mAggregation.setOption(option)
-
-    def aggregation(self) -> str:
-        return self.mAggregation.option().value()
-
-    def htmlSummary(self) -> str:
-        S = self.settings()
-        info = f'Kernel <i>{S["kernel"]}'
-        if S['aggregation']:
-            info += f' {S["aggregation"]}'
-        info += '</i>'
-        return info
-
-    def samplingBlockDescription(self, lyr: QgsRasterLayer, point: Union[QgsPointXY, SpatialPoint]) \
-            -> SamplingBlockDescription:
-
-        assert isinstance(lyr, QgsRasterLayer)
-        if not isinstance(point, SpatialPoint):
-            assert isinstance(point, QgsPointXY)
-            point = SpatialPoint(lyr.crs(), point.x(), point.y())
-
-        centerPx: QPoint = spatialPoint2px(lyr, point)
-        x, y = self.kernelSize()
-        meta = {'x': x, 'y': y,
-                'aggregation': self.aggregation()}
-
-        xmin = math.floor(centerPx.x() - (x - 1) * 0.5)
-        ymin = math.floor(centerPx.y() - (y - 1) * 0.5)
-
-        xmax = xmin + x - 1
-        ymax = ymin + y - 1
-
-        # fit reading bounds to existing pixels
-        xmin, ymin = max(0, xmin), max(0, ymin)
-        xmax, ymax = min(lyr.width() - 1, xmax), min(lyr.height() - 1, ymax)
-
-        if xmax < xmin or ymax < ymin:
-            # no overlap with existing pixel
-            return None
-        else:
-            rect = QRect(QPoint(xmin, ymin), QPoint(xmax, ymax))
-            return SamplingBlockDescription(point, lyr, rect, meta=meta)
-
-    def profiles(self,
-                 profileBlock: SpectralProfileBlock,
-                 blockDescription: SamplingBlockDescription) -> SpectralProfileBlock:
-        meta = blockDescription.meta()
-        x, y = meta['x'], meta['y']
-        aggregation = meta['aggregation']
-        data: np.ndarray = profileBlock.data()
-        spectra_settings = profileBlock.spectralSetting()
-        result: SpectralProfileBlock = None
-        if aggregation == KernelProfileSamplingMode.NO_AGGREGATION:
-            return profileBlock
-        elif aggregation == KernelProfileSamplingMode.AGGREGATE_MEAN:
-            result = SpectralProfileBlock(np.nanmean(data, axis=(1, 2)), spectra_settings)
-        elif aggregation == KernelProfileSamplingMode.AGGREGATE_MEDIAN:
-            result = SpectralProfileBlock(np.nanmedian(data, axis=(1, 2)), spectra_settings)
-        elif aggregation == KernelProfileSamplingMode.AGGREGATE_MIN:
-            result = SpectralProfileBlock(np.nanmin(data, axis=(1, 2)), spectra_settings)
-        elif aggregation == KernelProfileSamplingMode.AGGREGATE_MAX:
-            result = SpectralProfileBlock(np.nanmax(data, axis=(1, 2)), spectra_settings)
-
-        posX = profileBlock.mPositionsX
-        posY = profileBlock.mPositionsY
-        if isinstance(posX, np.ndarray):
-            if aggregation != KernelProfileSamplingMode.NO_AGGREGATION:
-                posX = np.nanmean(posX)
-                posY = np.nanmean(posY)
-
-            result.setPositions(posX, posY, profileBlock.crs())
-
-        return result
-
-
-class SpectralProfileSamplingModeModel(QAbstractListModel):
-    SAMPLING_MODES: Dict[str, SpectralProfileSamplingMode] = dict()
-
-    @staticmethod
-    def registerMode(mode: SpectralProfileSamplingMode):
-        assert isinstance(mode, SpectralProfileSamplingMode)
-        if mode.__class__.__name__ not in SpectralProfileSamplingModeModel.SAMPLING_MODES.keys():
-            SpectralProfileSamplingModeModel.SAMPLING_MODES[mode.__class__.__name__] = mode
-
-    @staticmethod
-    def registeredModes() -> List[SpectralProfileSamplingMode]:
-        return list(SpectralProfileSamplingModeModel.SAMPLING_MODES.values())
-
-    def __init__(self, *args, **kwds):
-
-        super(SpectralProfileSamplingModeModel, self).__init__(*args, **kwds)
-
-        self.mSamplingMethods = []
-        self.initModes()
-
-    def __getitem__(self, slice):
-        return self.mSamplingMethods[slice]
-
-    def __iter__(self):
-        return iter(self.mSamplingMethods)
-
-    def __len__(self):
-        return len(self.mSamplingMethods)
-
-    def initModes(self):
-
-        self.beginResetModel()
-        self.mSamplingMethods.clear()
-        for mode in SpectralProfileSamplingModeModel.SAMPLING_MODES.values():
-            self.mSamplingMethods.append(mode.__class__())
-        self.endResetModel()
-
-    def rowCount(self, parent: QModelIndex = ...) -> int:
-        return len(self.mSamplingMethods)
-
-    def data(self, index: QModelIndex, role: int) -> Any:
-
-        if not index.isValid():
-            return None
-
-        samplingMode = self.mSamplingMethods[index.row()]
-        if not isinstance(samplingMode, SpectralProfileSamplingMode):
-            return None
-
-        if role == Qt.DisplayRole:
-            return samplingMode.name()
-        if role == Qt.ToolTipRole:
-            return samplingMode.tooltip()
-        if role == Qt.DecorationRole:
-            return samplingMode.icon()
-        if role == Qt.UserRole:
-            return samplingMode
-        return None
-
-
-class FieldGeneratorNode(TreeNode):
+class FieldGeneratorNode(ValidateNode):
     """
-    Base-class for nodes that generate values for a QgsFeature field
+    Base-class for nodes that generate values for a QgsField
     """
 
     def __init__(self, *args, **kwds):
-        super(FieldGeneratorNode, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
         self.mField: QgsField = None
         self.setCheckable(True)
         self.setCheckState(Qt.Unchecked)
-
-        self.mErrors: List[str] = []
-
-    def errors(self) -> List[str]:
-        """
-        Returns a list of validation errors
-        :return:
-        """
-        return self.mErrors[:]
 
     def setField(self, field: QgsField):
         """
@@ -1024,18 +1079,19 @@ class FieldGeneratorNode(TreeNode):
         """
         return self.mField
 
-    def validate(self) -> Tuple[bool, List[str]]:
+    def validate(self) -> bool:
         """
         Returns (True, []) if all settings are fine (default) or (False, ['list of error messages']) if not.
         :return:
         :rtype:
         """
-        self.mErrors.clear()
+        super().validate()
+
         if not isinstance(self.field(), QgsField):
             self.mErrors.append('Field is not set')
         if self.checked() and self.value() in [None, NULL, '']:
-            self.mErrors.append('Undefined')
-        return len(self.errors()) == 0, self.errors()
+            self.mErrors.append('Undefined. Define a value/expression or uncheck the field.')
+        return not self.hasErrors()
 
 
 class GeometryGeneratorNode(TreeNode):
@@ -1062,21 +1118,19 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
 
         self.setCheckState(Qt.Checked)
         self.sigUpdated.connect(self.onChildNodeUpdate)
+
         self.mSourceNode = SpectralProfileSourceNode('Source')
+        self.mSourceNode.sigUpdated.connect(self.validate)
         self.mSamplingNode = SpectralProfileSamplingModeNode('Sampling')
         self.mScalingNode = SpectralProfileScalingNode('Scaling')
 
         self.mProfileStyleNode = PlotStyleNode('Style', toolTip='Style of temporary profile candidates')
-
-        self.mColorNode = ColorNode('Color',
-                                    toolTip='Color of profile candidate in Spectral Profile View')
 
         self.appendChildNodes([
             # self.mColorNode,
             self.mProfileStyleNode, self.mSourceNode, self.mSamplingNode, self.mScalingNode])
 
     def setColor(self, *args, **kwds):
-        self.mColorNode.setColor(*args, **kwds)
         self.mProfileStyleNode.value().setLineColor(QColor(*args))
 
     def setScaling(self, *args, **kwds):
@@ -1085,20 +1139,21 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def scale(self) -> float:
         return self.mScalingNode.scale()
 
+    def plotStyle(self) -> PlotStyle:
+        return self.mProfileStyleNode.plotStyle()
+
     def offset(self) -> float:
         return self.mScalingNode.offset()
 
-    def validate(self) -> Tuple[bool, List[str]]:
+    def validate(self) -> bool:
 
-        is_valid, errors = super().validate()
+        b = super().validate()
 
-        if is_valid:
-            if not isinstance(self.profileSource(), SpectralProfileSource):
-                self.mErrors.append('No source')
-            if not isinstance(self.sampling(), SpectralProfileSamplingMode):
-                self.mErrors.append('No sampling')
+        for n in self.findChildNodes(ValidateNode, recursive=True):
+            n: ValidateNode
+            b &= n.validate()
 
-        return len(self.errors()) == 0, self.errors()
+        return b
 
     def profileSource(self) -> SpectralProfileSource:
         return self.mSourceNode.profileSource()
@@ -1106,36 +1161,26 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def setProfileSource(self, source: SpectralProfileSource):
         self.mSourceNode.setSpectralProfileSource(source)
 
-    def sampling(self) -> SpectralProfileSamplingMode:
+    def sampling(self) -> ProfileSamplingMode:
         return self.mSamplingNode.profileSamplingMode()
 
-    def setSampling(self, mode: SpectralProfileSamplingMode) -> SpectralProfileSamplingMode:
+    def setSampling(self, mode: ProfileSamplingMode) -> ProfileSamplingMode:
+        assert isinstance(mode, ProfileSamplingMode)
         return self.mSamplingNode.setProfileSamplingMode(mode)
 
-    def samplingBlockDescription(self, point: Union[QgsPointXY, SpatialPoint], mapCanvas: QgsMapCanvas) \
-            -> SamplingBlockDescription:
-        """
-        Returns a description of the pixel block to be sampled from a raster layer
-        :param point:
-        :return: QgsRasterLayer, QRect
-        """
-        source = self.profileSource()
-        if not isinstance(source, SpectralProfileSource):
-            return None
+    def profileStyle(self) -> PlotStyle:
+        return self.mProfileStyleNode
 
-        # resolve the source layer
-        layer = source.rasterLayer(mapCanvas=mapCanvas, position=point)
-        if not isinstance(layer, QgsRasterLayer):
-            return None
+    def profiles(self, *args, **kwargs) -> List[Tuple[Dict, QgsExpressionContext]]:
 
-        # get the requested pixel positions for the sampling
-        return self.sampling().samplingBlockDescription(layer, point)
+        kwargs = copy.copy(kwargs)
+        sampling: ProfileSamplingMode = self.sampling()
+        kwargs['kernel_size'] = QSize(sampling.kernelSize())
+        profiles = self.mSourceNode.profileSource().collectProfiles(*args, **kwargs)
+        profiles = sampling.profiles(profiles)
+        profiles = self.mScalingNode.profiles(profiles)
 
-    def profiles(self,
-                 profileBlock: SpectralProfileBlock,
-                 blockDescription: SamplingBlockDescription,
-                 ) -> SpectralProfileBlock:
-        return self.sampling().profiles(profileBlock, blockDescription)
+        return profiles
 
     def onChildNodeUpdate(self):
         """
@@ -1150,14 +1195,12 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
             tt.append('<no source>')
         else:
             info.append(source.name())
-            tt.append(f'Source {source.name()} ({source.mUri})')
+            tt.append(source.toolTip())
 
-        sampling = self.mSamplingNode.profileSamplingMode()
-        info.append(sampling.htmlSummary())
-        tt.append(sampling.tooltip())
-
-        info = ' '.join(info)
-        tt = '<br>'.join(tt)
+        info.append(self.mSamplingNode.name())
+        tt.append(self.mSamplingNode.name())
+        info = ' '.join([i for i in info if isinstance(i, str)])
+        tt = '<br>'.join([t for t in tt if isinstance(t, str)])
         self.setValue(info)
         self.setToolTip(tt)
 
@@ -1166,6 +1209,9 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mExpressionString: str = ''
+
+    def expressionString(self) -> str:
+        return self.mExpressionString.strip()
 
     def expression(self) -> QgsExpression:
         return QgsExpression(self.mExpressionString)
@@ -1176,24 +1222,24 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
         self.mExpressionString = expression
         self.setValue(self.mExpressionString)
 
-    def validate(self) -> Tuple[bool, List[str]]:
+    def validate(self) -> bool:
 
-        is_valid, errors = super().validate()
+        super().validate()
 
-        if is_valid:
-            expr = self.expression()
-            if expr.expression() != '':
-                genNode: SpectralFeatureGeneratorNode = self.parentNode()
-                if isinstance(genNode, SpectralFeatureGeneratorNode):
-                    context = genNode.expressionContextGenerator().createExpressionContext()
-                    expr.prepare(context)
-
+        expr = self.expression()
+        if expr.expression() != '':
+            genNode: SpectralFeatureGeneratorNode = self.parentNode()
+            if isinstance(genNode, SpectralFeatureGeneratorNode):
+                context = genNode.expressionContextGenerator().createExpressionContext()
+                expr.prepare(context)
                 if expr.hasParserError():
                     self.mErrors.append(expr.parserErrorString().strip())
-                if expr.hasEvalError():
-                    self.mErrors.append(expr.evalErrorString().strip())
+                else:
+                    _ = expr.evaluate(context)
+                    if expr.hasEvalError():
+                        self.mErrors.append(expr.evalErrorString().strip())
 
-        return len(self.errors()) == 0, self.errors()
+        return not self.hasErrors()
 
 
 class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGenerator):
@@ -1205,25 +1251,31 @@ class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGen
         super().__init__(*args, **kwds)
         self.mNode: SpectralFeatureGeneratorNode = None
         self.mFeature: QgsFeature = None
+        self.mLastContext: QgsExpressionContext = QgsExpressionContext()
 
     def createExpressionContext(self) -> QgsExpressionContext:
+        """
+        Returns the Expression Context that is used within the Expression Widget
+        """
         context = QgsExpressionContext()
-
+        highlighted = set(context.highlightedVariables())
         if isinstance(self.mNode, SpectralFeatureGeneratorNode):
             speclib = self.mNode.speclib()
             if isinstance(speclib, QgsVectorLayer) and speclib.isValid():
-                context.appendScope(QgsExpressionContextUtils.layerScope(speclib))
                 context.appendScope(QgsExpressionContextUtils.globalScope())
+                context.appendScope(QgsExpressionContextUtils.layerScope(speclib))
                 context.setFields(speclib.fields())
                 self.mFeature = QgsFeature(speclib.fields())
                 context.setFeature(self.mFeature)
 
-        scope = QgsExpressionContextScope()
-        scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_CLICK, 1))
-        scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_FEATURE, 1))
-        scope.addVariable(QgsExpressionContextScope.StaticVariable(SCOPE_VAR_SAMPLE_ID, 1))
-        context.appendScope(scope)
+            scope = QgsExpressionContextScope('profiles')
+            for source in self.mNode.spectralProfileSources(checked=True):
+                c = source.expressionContext()
+                highlighted.update(c.highlightedVariables())
+                addVariablesToScope(scope, c)
+            context.appendScope(scope)
 
+        context.setHighlightedVariables(list(highlighted))
         self.mLastContext = context
 
         return context
@@ -1232,7 +1284,7 @@ class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGen
 RX_MEMORY_UID = re.compile(r'.*uid=[{](?P<uid>[^}]+)}.*')
 
 
-class SpectralFeatureGeneratorNode(TreeNode):
+class SpectralFeatureGeneratorNode(ValidateNode):
 
     def __init__(self, *args, **kwds):
         # assert isinstance(slw, SpectralLibraryWidget)
@@ -1320,11 +1372,37 @@ class SpectralFeatureGeneratorNode(TreeNode):
                 n.mProfileStyleNode.value().setBackgroundColor(QColor(backgroundColor))
                 n.mProfileStyleNode.sigUpdated.emit(n.mProfileStyleNode)
 
-    def fieldNodes(self) -> List[FieldGeneratorNode]:
-        return [n for n in self.childNodes() if isinstance(n, FieldGeneratorNode)]
+    def fieldNode(self, field: Union[str, QgsField, int]) -> FieldGeneratorNode:
+        if isinstance(field, int):
+            field = self.speclib().fields().at(field).name()
+        elif isinstance(field, QgsField):
+            field = field.name()
+
+        if isinstance(field, str):
+            for n in self.fieldNodes():
+                if n.name() == field:
+                    return n
+        return None
+
+    def fieldNodes(self, checked: bool = None) -> List[FieldGeneratorNode]:
+        nodes = [n for n in self.childNodes() if isinstance(n, FieldGeneratorNode)]
+
+        if isinstance(checked, bool) and checked:
+            nodes = [n for n in nodes if n.checked()]
+
+        return nodes
 
     def fieldNodeNames(self) -> List[str]:
         return [n.field().name() for n in self.fieldNodes()]
+
+    def errors(self, checked: bool = True) -> List[str]:
+        """
+
+        """
+        errors = []
+        for n in self.fieldNodes(checked=checked):
+            errors.extend(n.errors())
+        return errors
 
     def createFieldNodes(self, fieldnames: Union[List[str], QgsField, QgsFields, str]):
         """
@@ -1386,20 +1464,25 @@ class SpectralFeatureGeneratorNode(TreeNode):
 
         return new_nodes
 
-    def spectralProfileGeneratorNodes(self) -> List[SpectralProfileGeneratorNode]:
+    def spectralProfileGeneratorNodes(self, checked: bool = None) -> List[SpectralProfileGeneratorNode]:
         """
         Returns a list of SpectralProfileGeneratorNodes
         :return:
         """
-        return [n for n in self.childNodes() if isinstance(n, SpectralProfileGeneratorNode)]
+        return [n for n in self.fieldNodes(checked=checked)
+                if isinstance(n, SpectralProfileGeneratorNode)]
 
-    def spectralProfileSources(self) -> Set[SpectralProfileSource]:
+    def spectralProfileSources(self, checked: bool = None) -> List[SpectralProfileSource]:
         """
         Returns the set of used SpectralProfileSources
         :return: set of SpectralProfileSources
         """
-        return {n.profileSource() for n in self.spectralProfileGeneratorNodes() if
-                isinstance(n.profileSource(), SpectralProfileSource)}
+        sources = []
+        for node in self.spectralProfileGeneratorNodes(checked=checked):
+            s = node.profileSource()
+            if isinstance(s, SpectralProfileSource) and s not in sources:
+                sources.append(s)
+        return sources
 
     def updateFieldNodes(self, *args):
 
@@ -1433,6 +1516,18 @@ class SpectralFeatureGeneratorNode(TreeNode):
     def onAttributeDeleted(self, idx: int):
 
         pass
+
+    def validate(self) -> bool:
+        super().validate()
+
+        for n in self.fieldNodes(checked=True):
+            n.validate()
+            errors = n.errors(recursive=True)
+            if len(errors) > 0:
+                errStr = '\n'.join(errors)
+                self.mErrors.append(f'{n.name()}:{errStr}')
+
+        return not self.hasErrors()
 
     def updateSpeclibName(self):
         speclib = self.speclib()
@@ -1483,6 +1578,50 @@ class SpectralProfileScalingNode(TreeNode):
     def offset(self) -> float:
         return float(self.nOffset.value())
 
+    def profiles(self, profiles: List[Tuple[Dict, QgsExpressionContext]]) -> List[Tuple[Dict, QgsExpressionContext]]:
+        scale = self.scale()
+        offset = self.offset()
+        if offset != 0 or scale != 1:
+            for i in range(len(profiles)):
+                d, _ = profiles[i]
+                y = d['y']
+                d['y'] = [v * scale + offset if v not in [None, NaN] and math.isfinite(v)
+                          else v for v in y
+                          ]
+
+        return profiles
+
+
+def addVariablesToScope(scope: QgsExpressionContextScope,
+                        context: QgsExpressionContext) -> QgsExpressionContextScope:
+    """
+    Copies variables of a QgsExpressionContext to an QgsExpressionContextScope
+    Parameters
+    ----------
+    scope: the QgsExpressionContextScope to copy the variables
+    context: the QgsExpressionContext to thake the variables from
+
+    """
+    for v1 in context.variableNames():
+        v2 = v1
+        i = 0
+        while v2 in scope.variableNames():
+            i += 1
+            v2 = f'{v1}{i}'
+        scope.addVariable(QgsExpressionContextScope.StaticVariable(
+            name=v2, value=context.variable(v1), description=context.description(v1)))
+
+    return scope
+
+
+def renameScopeVariables(scope: QgsExpressionContextScope, old_prefix: str, new_prefix: str):
+    names = [n for n in scope.variableNames() if n.startswith(old_prefix)]
+    for n1 in names:
+        n2 = new_prefix + n1[len(old_prefix):]
+        scope.addVariable(QgsExpressionContextScope.StaticVariable(
+            name=n2, value=scope.variable(n1), description=scope.description(n1)))
+        scope.removeVariable(n1)
+
 
 class SpectralProfileBridge(TreeModel):
 
@@ -1494,18 +1633,11 @@ class SpectralProfileBridge(TreeModel):
         self.mDefaultSource: SpectralProfileSource = None
 
         self.mLastDestinations: Set[str] = set()
-
-        self.mProfileSamplingModeModel = SpectralProfileSamplingModeModel()
         self.mSrcModel.rowsRemoved.connect(self.updateSourceReferences)
-        # self.mSrcModel.rowsInserted.connect(lambda : self.updateListColumn(self.cnSrc))
-
         self.mDstModel.rowsRemoved.connect(self.updateDestinationReferences)
-        # self.mDstModel.rowsInserted.connect(lambda : self.updateListColumn(self.cnDst))
-
         self.mClickCount: Dict[str, int] = dict()
 
         self.mTasks = dict()
-
         self.mSnapToPixelCenter: bool = False
         self.mMinimumSourceNameSimilarity = 0.5
 
@@ -1554,6 +1686,171 @@ class SpectralProfileBridge(TreeModel):
     def __getitem__(self, slice):
         return self.rootNode().childNodes()[slice]
 
+    def showErrors(self, fgnode: SpectralFeatureGeneratorNode, errors: Dict[str, str]):
+        pass
+
+    def loadProfilesV2(self,
+                       spatialPoint: SpatialPoint,
+                       mapCanvas: QgsMapCanvas = None,
+                       add_permanent: bool = None,
+                       runAsync: bool = False) -> Dict[str, List[QgsFeature]]:
+        """
+        Loads the spectral profiles as defined in the bridge model
+        :param spatialPoint:
+        :param mapCanvas:
+        :param runAsync:
+        :return:
+        """
+        self.mLastDestinations.clear()
+
+        errorNodes: List[FieldGeneratorNode] = []
+        # 1. collect feature generators with at least one checked profileGenerator
+        featureGenerators: List[SpectralFeatureGeneratorNode] = []
+        for fgnode in self.featureGenerators(speclib=True, checked=True):
+            is_valid = fgnode.validate()
+            if is_valid:
+                featureGenerators.append(fgnode)
+            else:
+                errorNodes.append(fgnode)
+
+            # update all subnodes to show errors
+            idx_parent = self.node2idx(fgnode)
+            idx0 = self.index(0, 0, idx_parent)
+            idx1 = self.index(self.rowCount(idx_parent) - 1, 0, idx_parent)
+            self.dataChanged.emit(idx0, idx1, [Qt.BackgroundColorRole])
+
+        # 3. generate features from a feature generators
+        #    multiple feature generators could create features for the same speclib
+        RESULTS: Dict[str, Tuple[List[QgsFeature],
+                                 Dict[Tuple[int, str], PlotStyle]]] = dict()
+
+        for fgnode in featureGenerators:
+            fgnode: SpectralFeatureGeneratorNode
+
+            sid = fgnode.speclib().id()
+
+            features, feature_styles = RESULTS.get(sid, ([], dict()))
+            features: List[QgsFeature]
+            feature_styles: Dict[Tuple[int, str], PlotStyle]
+
+            fid0 = len(features)
+
+            features1, styles = self.createFeatures(fgnode, spatialPoint, canvas=mapCanvas)
+            for i, f in enumerate(features1):
+                fid = fid0 + i  # the unique feature ID
+                f.setId(fid)
+                for fname, style in styles.items():
+                    feature_styles[(fid, fname)] = style
+                features.append(f)
+                RESULTS[sid] = (features, feature_styles)
+
+        # Add profiles to speclibs
+        SLWidgets = {fgnode.speclib().id(): fgnode.speclibWidget() for fgnode in featureGenerators}
+        results2 = dict()
+        for sid, (features, styles) in RESULTS.items():
+            slw: SpectralLibraryWidget = SLWidgets[sid]
+            slw.setCurrentProfiles(features, currentProfileStyles=styles)
+            results2[sid] = features
+        return results2
+
+    def createFeatures(self,
+                       fgnode: SpectralFeatureGeneratorNode,
+                       point: SpatialPoint,
+                       canvas: QgsMapCanvas = None) -> Tuple[List[QgsFeature], Dict[str, PlotStyle]]:
+        """
+        Create the QgsFeatures related to position 'point'
+        Parameters
+        ----------
+        fgnode: SpectralFeatureGeneratorNode
+        point: SpatialPoint
+        canvas: QgsMapCanvas (optional)
+
+        Returns: a list of QgsFeatures and plotstyles for each profile field
+        -------
+
+        """
+        fgnode: SpectralFeatureGeneratorNode
+
+        speclib: QgsVectorLayer = fgnode.speclib()
+
+        if not isinstance(speclib, QgsVectorLayer) and speclib.isValid():
+            return []
+
+        new_features: List[QgsFeature] = []
+        PROFILE_DATA: Dict[str, List[dict, QgsExpressionContext]] = dict()
+        PLOT_STYLES: Dict[str, PlotStyle] = dict()
+        for pgnode in fgnode.spectralProfileGeneratorNodes(checked=True):
+            pgnode: SpectralProfileGeneratorNode
+            results = pgnode.profiles(point, canvas=canvas)
+            if len(results) > 0:
+                PROFILE_DATA[pgnode.field().name()] = results
+                PLOT_STYLES[pgnode.field().name()] = pgnode.plotStyle().clone()
+
+        while len(PROFILE_DATA) > 0:
+            pfields = list(PROFILE_DATA.keys())
+            new_feature = QgsFeature(speclib.fields())
+
+            context = fgnode.expressionContextGenerator().createExpressionContext()
+            # context = QgsExpressionContext()
+            # context.setFeature(new_feature)
+
+            scope = QgsExpressionContextScope('profile')
+            g: QgsGeometry = None
+            # add profile field data
+            for f in pfields:
+                pdata, pcontext = PROFILE_DATA[f].pop(0)
+                dump = encodeProfileValueDict(pdata, encoding=speclib.fields()[f])
+                new_feature.setAttribute(f, dump)
+
+                pcontext: QgsExpressionContext
+
+                if g is None and pcontext.hasGeometry():
+                    g = QgsGeometry(pcontext.geometry())
+
+                addVariablesToScope(scope, pcontext)
+                # provide context variables from potentially multiple profile sources
+
+            # remove empty list
+            for f in list(PROFILE_DATA.keys()):
+                if len(PROFILE_DATA[f]) == 0:
+                    del PROFILE_DATA[f]
+
+            if isinstance(g, QgsGeometry) and speclib.geometryType() == g.type():
+                new_feature.setGeometry(g)
+                context.setGeometry(g)
+
+            context.setFeature(new_feature)
+            context.appendScope(scope)
+
+            # set other field values by evaluating expression
+            for node in fgnode.fieldNodes(checked=True):
+                if isinstance(node, SpectralProfileGeneratorNode):
+                    continue
+                node: FieldGeneratorNode
+                field: QgsField = node.field()
+                prop = QgsProperty.fromExpression(node.expressionString())
+                t = field.type()
+                b = False
+                if t == QVariant.Int:
+                    v, b = prop.valueAsInt(context)
+                elif t == QVariant.Bool:
+                    v, b = prop.valueAsBool(context)
+                elif t == QVariant.Double:
+                    v, b = prop.valueAsDouble(context)
+                elif t == QVariant.DateTime:
+                    v, b = prop.valueAsDateTime(context)
+                elif t == QVariant.String:
+                    v, b = prop.valueAsString(context)
+                elif t == QVariant.Color:
+                    v, b = prop.valueAsColor(context)
+                else:
+                    continue
+                if b:
+                    new_feature.setAttribute(field.name(), v)
+
+            new_features.append(new_feature)
+        return new_features, PLOT_STYLES
+
     def loadProfiles(self,
                      spatialPoint: SpatialPoint,
                      mapCanvas: QgsMapCanvas = None,
@@ -1575,6 +1872,7 @@ class SpectralProfileBridge(TreeModel):
         URI2LAYER: Dict[str, QgsRasterLayer] = dict()
         SAMPLING_BLOCK_DESCRIPTIONS: Dict[SpectralProfileGeneratorNode, SamplingBlockDescription] = dict()
         SAMPLING_FEATURES: List[SpectralFeatureGeneratorNode] = []
+
         # 1. collect source infos
         for fgnode in self.featureGenerators(speclib=True, checked=True):
 
@@ -1669,8 +1967,7 @@ class SpectralProfileBridge(TreeModel):
             # new_temporal_colors: List[Tuple[int, QColor]] = []
             new_temporal_styles: List[Tuple[int, PlotStyle]] = []
             # calculate final profile value dictionaries
-            FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode,
-                                       List[Tuple[QByteArray, QgsGeometry]]] = dict()
+            FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode, List[Tuple[QByteArray, QgsGeometry]]] = dict()
 
             for pgnode in fgnode.spectralProfileGeneratorNodes():
                 pgnode: SpectralProfileGeneratorNode
@@ -1716,8 +2013,7 @@ class SpectralProfileBridge(TreeModel):
                             new_feature.setGeometry(geometry)
                         field_name = pgnode.field().name()
                         new_feature[field_name] = encodeProfileValueDict(profileDict, encoding=pgnode.field())
-                        d2 = decodeProfileValueDict(new_feature[field_name])
-                        # new_feature_colors.append((field_name, pgnode.mColorNode.color()))
+
                         new_feature_styles.append((field_name, pgnode.mProfileStyleNode.value()))
 
                 new_speclib_features.append(new_feature)
@@ -1785,9 +2081,6 @@ class SpectralProfileBridge(TreeModel):
                 slw.setCurrentProfiles([])
         return RESULTS
 
-    def profileSamplingModeModel(self) -> SpectralProfileSamplingModeModel:
-        return self.mProfileSamplingModeModel
-
     def spectralLibraryModel(self) -> SpectralLibraryWidgetListModel:
         return self.mDstModel
 
@@ -1816,6 +2109,7 @@ class SpectralProfileBridge(TreeModel):
 
         if generator not in self.rootNode().childNodes():
             self.rootNode().appendChildNodes(generator)
+        generator.validate()
 
     def featureGenerators(self, speclib: bool = True, checked: bool = True) -> \
             List[SpectralFeatureGeneratorNode]:
@@ -1844,6 +2138,8 @@ class SpectralProfileBridge(TreeModel):
 
         flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
         node = index.data(Qt.UserRole)
+        if not isinstance(node, TreeNode):
+            s = ""
         if col == 0:
             if isinstance(node, TreeNode) and node.isCheckable():
                 flags = flags | Qt.ItemIsUserCheckable
@@ -1851,47 +2147,60 @@ class SpectralProfileBridge(TreeModel):
                 flags = flags | Qt.ItemIsEditable
 
         if col == 1:
+
             if isinstance(node, (SpectralFeatureGeneratorNode, SpectralProfileSourceNode,
                                  SpectralProfileGeneratorNode,
                                  SpectralProfileSamplingModeNode, StandardFieldGeneratorNode,
                                  FloatValueNode, ColorNode, OptionTreeNode, PlotStyleNode)):
-                if isinstance(node, StandardFieldGeneratorNode):
-                    s = ""
                 flags = flags | Qt.ItemIsEditable
 
         return flags
 
     def data(self, index: QModelIndex, role=Qt.DisplayRole):
 
-        # handle missing data appearence
+        cError = 'red'
+        cValid = 'black'
+        cNotUsed = 'grey'
+
+        # handle missing data appearance
         value = super().data(index, role)
         node = super().data(index, role=Qt.UserRole)
         c = index.column()
         if index.isValid():
+
+            if isinstance(node, ValidateNode):
+                if role == Qt.ForegroundRole:
+                    if node.hasErrors(recursive=True):
+                        return QColor('red')
+
             if isinstance(node, SpectralFeatureGeneratorNode):
-                if not isinstance(node.speclib(), QgsVectorLayer):
-                    if c == 0:
-                        if role == Qt.DisplayRole:
+                speclib = node.speclib()
+
+                if c == 0:
+                    if role == Qt.DisplayRole:
+                        if not isinstance(speclib, QgsVectorLayer):
                             return 'Missing Spectral Library'
+                        else:
+                            return speclib.name()
 
-                        if role == Qt.ForegroundRole:
-                            return QColor('grey')
+                    if role == Qt.ForegroundRole:
+                        if len(node.errors()) > 0:
+                            return QColor('red')
 
-                        if role == Qt.FontRole:
+                    if role == Qt.FontRole:
+                        if not isinstance(speclib, QgsVectorLayer):
                             f = QFont()
                             f.setItalic(True)
                             return f
 
                     if role == Qt.ToolTipRole:
-                        return 'Select a Spectral Library View'
-                else:
-                    speclib = node.speclib()
-
-                    if role == Qt.ToolTipRole:
-                        tt = f'Spectral Library: {speclib.name()}<br>' \
-                             f'Source: {speclib.source()}<br>' \
-                             f'Features: {speclib.featureCount()}'
-                        return tt
+                        if not isinstance(speclib, QgsVectorLayer):
+                            return 'Select a Spectral Library View'
+                        else:
+                            tt = f'Spectral Library: {speclib.name()}<br>' \
+                                 f'Source: {speclib.source()}<br>' \
+                                 f'Features: {speclib.featureCount()}'
+                            return tt
 
             if isinstance(node, ColorNode):
                 if c == 0:
@@ -1913,41 +2222,88 @@ class SpectralProfileBridge(TreeModel):
                     if role == Qt.ToolTipRole:
                         return node.toolTip()
 
+            if isinstance(node, SpectralProfileSourceNode):
+                has_source = isinstance(node.profileSource(), SpectralProfileSource)
+                p = node.parentNode()
+
+                if role == Qt.ForegroundRole:
+                    if isinstance(p, SpectralProfileGeneratorNode):
+                        if not has_source and p.checked():
+                            return QColor('red')
+                if c == 1 and role == Qt.DisplayRole:
+                    if node.hasErrors() and p.checked():
+                        errorStr = '<br>'.join(node.errors())
+                        return f'<span style="color:{cError};">{node.value()}</span>'
+
+                    return node.value()
+
+            if isinstance(node, SpectralProfileSamplingModeNode):
+                mode = node.profileSamplingMode()
+
+                if c == 1:
+                    if role == Qt.DisplayRole:
+                        if mode.kernelSize() == QSize(1, 1):
+                            return 'Single Pixel'
+                        else:
+                            ksize = mode.kernelSize()
+                            aopt = SpectralProfileSamplingModeNode.AGGREGATION_MODEL.findOption(mode.aggregation())
+                            return f'{ksize.width()}x{ksize.height()} {aopt.name()}'
+
             if isinstance(node, FieldGeneratorNode):
                 field: QgsField = node.field()
                 editor = field.editorWidgetSetup().type()
+                errors = node.errors()
+                has_errors = node.hasErrors()
+                is_checked = node.checked()
+                is_required = not node.isCheckable()
+
+                if is_checked or is_required:
+                    if has_errors:
+                        cstring = cError
+                    else:
+                        cstring = cValid
+                else:
+                    cstring = cNotUsed
 
                 if c == 0:
+                    if role == Qt.DisplayRole:
+                        return value
                     if role == Qt.ToolTipRole:
+                        tt = ''
                         if isinstance(field, QgsField):
-                            return f'"{field.displayName()}" ' \
-                                   f'{field.displayType(False)} {editor}'
+                            tt += f'"{field.displayName()}" {field.displayType(False)} {editor}'
+                        if has_errors:
+                            tt += '<br><span style="color:' + cstring + '">' + '<br>'.join(errors) + '</span>'
+                        return tt
+                    if role == Qt.ForegroundRole:
+                        return QColor(cstring)
 
                 if c == 1:
-                    is_checked = node.checked()
-                    is_required = not node.isCheckable()
-                    errors = node.errors()
-                    if len(errors) > 0:
-                        if role == Qt.DisplayRole:
-                            if is_checked or is_required:
-                                return '<span style="color:red;font-style:italic">{}</span>'.format(''.join(errors))
-                            else:
-                                return '<span style="color:grey;font-style:italic">{}</span>'.format(''.join(errors))
-                        if role == Qt.ToolTipRole:
-                            return '<br>'.join(errors)
-                        if role == Qt.FontRole:
-                            f = QFont()
-                            f.setItalic(True)
-                            return f
-                    else:
+                    if role == Qt.DisplayRole:
                         if isinstance(node, StandardFieldGeneratorNode):
+                            expr = node.expressionString()
+                            if isinstance(expr, str):
+                                if expr == '':
+                                    return f'<span style="color:{cstring};font-style:italic">Undefined</span>'
+                                else:
+                                    return f'<span style="color:{cstring};font-style:italic">{expr}</span>'
 
-                            expr = str(node.mExpressionString).strip()
-                            if expr == '':
-                                if role == Qt.DisplayRole:
-                                    return '<span style="color:grey;font-style:italic">undefined</span>'
+                    if role == Qt.ToolTipRole:
+                        tt = ''
+                        if isinstance(node, StandardFieldGeneratorNode):
+                            tt += node.expressionString().strip() + '<br>'
+                        if has_errors:
+                            tt += '<span style="color:red">' + '<br>'.join(errors) + '</span>'
+                        return tt
 
-                                s = ""
+                    if role == Qt.FontRole:
+                        f = QFont()
+                        f.setItalic(True)
+
+                    if role == Qt.EditRole:
+                        if isinstance(node, StandardFieldGeneratorNode):
+                            return node.expressionString()
+
         return value
 
     def setData(self, index: QModelIndex, value: Any, role: int = Qt.DisplayRole):
@@ -1961,16 +2317,20 @@ class SpectralProfileBridge(TreeModel):
         roles = [role]
         changed = False  # set only True if not handled by underlying TreeNode
 
+        update_parent = None
+
         if role == Qt.CheckStateRole \
                 and isinstance(node, TreeNode) \
                 and node.isCheckable() and \
                 value in [Qt.Checked, Qt.Unchecked]:
-            changed = True
-            node.setCheckState(value)
-            # return True
-            c0 = 1
-            c1 = 1
-            roles.append(Qt.DisplayRole)
+            changed = node.checkState() != value
+            if changed:
+                node.setCheckState(value)
+                update_parent = isinstance(node, ValidateNode)
+                # return True
+                c0 = 1
+                c1 = 1
+                roles.append(Qt.DisplayRole)
 
         elif isinstance(node, SpectralFeatureGeneratorNode):
             if col in [0, 1] and role == Qt.EditRole:
@@ -1982,7 +2342,7 @@ class SpectralProfileBridge(TreeModel):
                     roles = [Qt.DisplayRole, Qt.ForegroundRole, Qt.FontRole]
 
         elif isinstance(node, SpectralProfileGeneratorNode):
-            if isinstance(value, SpectralProfileSamplingMode):
+            if isinstance(value, ProfileSamplingMode):
                 node.setProfileSamplingMode(value)
                 changed = False
                 # important! node.setProfileSamplingMode has already updated the node
@@ -1995,8 +2355,17 @@ class SpectralProfileBridge(TreeModel):
             node.setSpectralProfileSource(value)
 
         elif isinstance(node, SpectralProfileSamplingModeNode):
-            if isinstance(value, SpectralProfileSamplingMode):
-                node.setProfileSamplingMode(value)
+            if isinstance(value, Option):
+                value = value.value()
+
+            mode = None
+            if isinstance(value, ProfileSamplingMode):
+                mode = value
+            elif isinstance(value, QSize):
+                mode = node.profileSamplingMode()
+                mode.setKernelSize(value)
+            if isinstance(mode, ProfileSamplingMode):
+                node.setProfileSamplingMode(mode)
 
         elif isinstance(node, OptionTreeNode):
             if isinstance(value, Option):
@@ -2024,6 +2393,15 @@ class SpectralProfileBridge(TreeModel):
             self.dataChanged.emit(self.index(r0, c0, parent=index.parent()),
                                   self.index(r1, c1, parent=index.parent()),
                                   roles)
+        if update_parent:
+            r = index.parent().row()
+            c = index.parent().column()
+
+            fnode = node.findParentNode(SpectralFeatureGeneratorNode)
+            if isinstance(fnode, SpectralFeatureGeneratorNode):
+                fnode.validate()
+            # self.dataChanged.emit(self.index(r, c, index.parent().parent()),
+            #                      self.index(r, c, index.parent().parent()))
         return changed
 
     def addRasterLayer(self, layer: QgsRasterLayer):
@@ -2051,8 +2429,7 @@ class SpectralProfileBridge(TreeModel):
     def sources(self) -> List[SpectralProfileSource]:
         return self.mSrcModel.sources()
 
-    def addSpectralLibraryWidgets(self, slws: Union[SpectralLibraryWidget,
-                                                    Iterable[SpectralLibraryWidget]]):
+    def addSpectralLibraryWidgets(self, slws: Union[SpectralLibraryWidget, Iterable[SpectralLibraryWidget]]):
 
         if not isinstance(slws, Iterable):
             slws = [slws]
@@ -2228,7 +2605,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
             elif isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
                 w = HTMLComboBox(parent=parent)
-                model = bridge.profileSamplingModeModel()
+                model = SpectralProfileSamplingModeNode.KERNEL_MODEL
                 w.setModel(model)
 
             elif isinstance(node, OptionTreeNode) and index.column() == 1:
@@ -2284,7 +2661,7 @@ class SpectralProfileBridgeViewDelegate(QStyledItemDelegate):
 
         elif isinstance(node, SpectralProfileSamplingModeNode) and index.column() == 1:
             assert isinstance(editor, QComboBox)
-            setCurrentComboBoxValue(editor, node.profileSamplingMode())
+            setCurrentComboBoxValue(editor, node.profileSamplingMode().kernelSize())
 
         elif isinstance(node, OptionTreeNode) and index.column() == 1:
             assert isinstance(editor, QComboBox)
@@ -2387,6 +2764,9 @@ class SpectralProfileSourcePanel(QgsDockWidget):
 
         self.onSelectionChanged([], [])
 
+    def spectralProfileBridge(self) -> SpectralProfileBridge:
+        return self.mBridge
+
     def setFilter(self, pattern: str):
         self.mProxyModel.setFilterWildcard(pattern)
 
@@ -2430,17 +2810,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
                               spatialPoint: SpatialPoint,
                               mapCanvas: QgsMapCanvas = None,
                               runAsync: bool = None) -> Dict[str, List[QgsFeature]]:
-        return self.mBridge.loadProfiles(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)
+        return self.mBridge.loadProfilesV2(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)
 
     def addCurrentProfilesToSpeclib(self):
         self.mBridge.addCurrentProfilesToSpeclib()
-
-
-def initSamplingModes():
-    """
-    Initializes known SpectralProfileSamplingModes to the SpectralProfileSamplingModeModel
-    :rtype:
-    """
-    for mode in [SingleProfileSamplingMode(),
-                 KernelProfileSamplingMode()]:
-        SpectralProfileSamplingModeModel.registerMode(mode)

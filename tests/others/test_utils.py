@@ -23,7 +23,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
 
-from qgis.PyQt.QtCore import NULL
+from qgis.PyQt.QtCore import NULL, QObject
 from qgis.PyQt.QtCore import QByteArray, QUrl, QRect, QPoint, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
@@ -37,7 +37,7 @@ from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromS
     SpatialPoint, layerGeoTransform, displayBandNames, qgsRasterLayer, gdalDataset, px2geocoordinates, \
     rasterArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
-    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, SelectMapLayerDialog, parseFWHM
+    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, SelectMapLayerDialog, parseFWHM, findParent
 
 
 class TestUtils(TestCase):
@@ -131,6 +131,26 @@ class TestUtils(TestCase):
         a2 = qgsFieldAttributes2List(attributes)
         dump = pickle.dumps(a2)
         self.assertIsInstance(dump, bytes)
+
+    def test_findParents(self):
+
+        class ClassA(QObject):
+            def __init__(self, *args, **kwds):
+                super().__init__(*args, **kwds)
+
+        class ClassB(ClassA):
+            def __init__(self, *args, **kwds):
+                super().__init__(*args, **kwds)
+
+        obj1 = ClassA()
+        obj2 = ClassB(parent=obj1)
+        obj3 = ClassA(parent=obj2)
+
+        r = findParent(obj3, ClassA)
+        self.assertEqual(r, obj1)
+
+        r = findParent(obj3, ClassA, checkInstance=True)
+        self.assertEqual(r, obj2)
 
     def test_findmaplayerstores(self):
 

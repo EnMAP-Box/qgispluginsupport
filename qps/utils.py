@@ -2138,6 +2138,17 @@ class HashableRect(QRect):
         return hash((self.x(), self.y(), self.width(), self.height()))
 
 
+def rasterLayerMapToPixel(layer: QgsRasterLayer) -> QgsMapToPixel:
+    assert isinstance(layer, QgsRasterLayer)
+    c = layer.extent().center()
+
+    m2p = QgsMapToPixel(layer.rasterUnitsPerPixelX(),
+                        c.x(), c.y(),
+                        layer.width(), layer.height(),
+                        0)
+    return m2p
+
+
 class SpatialPoint(QgsPointXY):
     """
     Object to keep QgsPoint and QgsCoordinateReferenceSystem together
@@ -2188,7 +2199,8 @@ class SpatialPoint(QgsPointXY):
         assert isinstance(y, (int, float))
 
         mapUnitsPerPixel = rasterLayer.rasterUnitsPerPixelX()
-        center = rasterLayer.extent().center()
+        ext = rasterLayer.extent()
+        center = ext.center()
         rotation = 0
         m2p = QgsMapToPixel(mapUnitsPerPixel,
                             center.x(),
@@ -2220,29 +2232,23 @@ class SpatialPoint(QgsPointXY):
     def crs(self):
         return self.mCrs
 
-    def toPixel(self, layer: QgsMapLayer, allowOutOfRaster: bool = False) -> QPoint:
-        dp: QgsRasterDataProvider = layer.dataProvider()
+    def toPixel(self, layer: QgsRasterLayer) -> QPoint:
+        assert isinstance(layer, QgsRasterLayer)
 
         pt = self.toCrs(layer.crs())
         if not isinstance(pt, SpatialPoint):
             return None
 
-        extent = dp.extent()
-        width = dp.xSize() if dp.capabilities() & dp.Size else 1000
-        height = dp.ySize() if dp.capabilities() & dp.Size else 1000
-        xres = extent.width() / width
-        yres = extent.height() / height
+        c = layer.extent().center()
+        m2p = QgsMapToPixel(layer.rasterUnitsPerPixelX(),
+                            c.x(), c.y(),
+                            layer.width(),
+                            layer.height(),
+                            0)
 
-        # slot called whenever mouse position changes
-        if extent.xMinimum() <= pt.x() <= extent.xMaximum() and \
-                extent.yMinimum() <= pt.y() <= extent.yMaximum():
-            col = int(math.floor((pt.x() - extent.xMinimum()) / xres))
-            row = int(math.floor((extent.yMaximum() - pt.y()) / yres))
+        px = m2p.transform(pt)
 
-            # output row and column index to console
-            return QPoint(col, row)
-        else:
-            return None
+        return QPoint(int(px.x()), int(px.y()))
 
     def toPixelPosition(self, rasterDataSource, allowOutOfRaster=False) -> QPoint:
         """
@@ -2377,14 +2383,25 @@ def spatialPoint2px(layer: QgsRasterLayer, spatialPoint: Union[QgsPointXY, Spati
     return QPoint(x, y)
 
 
-def rasterBlockArray(block: QgsRasterBlock) -> np.ndarray:
+def rasterBlockArray(block: QgsRasterBlock, masked: bool = False) -> Union[np.ndarray, np.ma.MaskedArray]:
     """
     Returns the content of a QgsRasterBlock as 2D numpy array
-    :param block: QgsRasterBlock
-    :return: np.ndarray
+    :param block: QgsRasterBlock, the block to read values
+    :param masked: bool: set True to return values in a numpy.ma.MaskedArray where mask = True if
+                         block values area considered to be a no-data value
+
+    :return: numpy.ndarray or numpy.ma.MaskedArray
     """
     dtype = QGIS2NUMPY_DATA_TYPES[block.dataType()]
-    return np.frombuffer(block.data(), dtype=dtype).reshape(block.height(), block.width())
+    array = np.frombuffer(block.data(), dtype=dtype).reshape(block.height(), block.width())
+    if masked:
+        mask = np.zeros(array.shape, dtype=bool)
+        if block.hasNoData():
+            for col in range(block.width()):
+                for row in range(block.height()):
+                    mask[row, col] = block.isNoData(row, col)
+        array: np.ma.MaskedArray = np.ma.array(array, mask=mask)
+    return array
 
 
 def featureBoundingBox(features) -> QgsRectangle:
@@ -2403,13 +2420,25 @@ def featureBoundingBox(features) -> QgsRectangle:
     return retval
 
 
-def findParent(qObject, parentType, checkInstance=False):
+def findParent(qObject: QObject, parentType, checkInstance: bool = False):
+    """
+
+    Parameters
+    ----------
+    qObject
+    parentType
+    checkInstance
+
+    Returns
+    -------
+
+    """
     parent = qObject.parent()
     if checkInstance:
         while parent is not None and not isinstance(parent, parentType):
             parent = parent.parent()
     else:
-        while parent is not None and type(parent) != parentType:
+        while parent is not None and parent.__class__.__name__ != parentType.__name__:
             parent = parent.parent()
     return parent
 
