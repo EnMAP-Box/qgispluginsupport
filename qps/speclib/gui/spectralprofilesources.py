@@ -353,7 +353,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
                     if Qgis.versionInt() < 33000:
                         R: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormat.IdentifyFormatValue)
                     else:
-                        R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat)
+                        R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat.Value)
                     if not R.isValid():
                         continue
 
