@@ -122,8 +122,13 @@ def start_app(cleanup: bool = True,
     providers = QgsApplication.processingRegistry().providers()
     global _PYTHON_RUNNER
     global _QGIS_MOCKUP
+
+    if init_iface:
+        get_iface()
+
     if init_processing and len(providers) == 0:
         from processing.core.Processing import Processing
+
         Processing.initialize()
 
     if init_python_runner and not QgsPythonRunner.isValid():
@@ -133,9 +138,6 @@ def start_app(cleanup: bool = True,
     # init standard EditorWidgets
     if init_editor_widgets and len(QgsGui.editorWidgetRegistry().factories()) == 0:
         QgsGui.editorWidgetRegistry().initEditors()
-
-    if init_iface:
-        get_iface()
 
     for path in resources:
         initResourceFile(path)
