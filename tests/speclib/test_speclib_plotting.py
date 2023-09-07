@@ -1,5 +1,6 @@
 import unittest
 
+import numpy as np
 from osgeo import gdal
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtCore import QModelIndex
@@ -8,7 +9,7 @@ from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtWidgets import QTreeView
 from qgis.PyQt.QtWidgets import QVBoxLayout
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import QgsPropertyDefinition
+from qgis.core import QgsPropertyDefinition, edit
 from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
@@ -16,8 +17,8 @@ from qgis.gui import QgsMapCanvas, QgsDualView
 
 from qps import registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
-from qps.speclib.core import create_profile_field, profile_fields
-from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
+from qps.speclib.core import create_profile_field, profile_fields, profile_field_list
+from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict, decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralXAxis, SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotmodelitems import RasterRendererGroup, ProfileVisualizationGroup, \
     SpectralProfileColorPropertyWidget, PropertyItemGroup, PlotStyleItem, ProfileCandidateItem, PropertyItem, \
@@ -248,7 +249,37 @@ class TestSpeclibPlotting(TestCaseBase):
         self.assertTrue(vis.mLayer is None)
         QgsProject.instance().removeAllMapLayers()
 
-    def test_SpectralProfilePlotControlModel(self):
+    def test_plot_NaN_values(self):
+
+        x = [1, 2, 3, 4, 5, 6, 7]
+        y = [0, 1, 2, None, np.nan, float('nan'), 7]
+        y2 = [0, 1, 2, np.nan, np.nan, np.nan, 7]
+        d = prepareProfileValueDict(x=x, y=y)
+
+        sl = TestObjects.createSpectralLibrary(n=0)
+
+        pfield = profile_field_list(sl)[0]
+        with edit(sl):
+            f = QgsFeature(sl.fields())
+            dump = encodeProfileValueDict(d, encoding=pfield)
+            p2 = decodeProfileValueDict(dump)
+            f.setAttribute(pfield.name(), dump)
+            p3 = decodeProfileValueDict(f.attribute(pfield.name()))
+            sl.addFeature(f)
+
+        p4 = decodeProfileValueDict(list(sl.getFeatures())[0].attribute(pfield.name()))
+
+        slw = SpectralLibraryWidget(speclib=sl)
+        model = slw.plotControl()
+        self.assertIsInstance(model, SpectralProfilePlotModel)
+
+        idx = sl.fields().lookupField(pfield.name())
+        f1 = list(sl.getFeatures())[0]
+        data = model.rawData(f1, idx)
+        self.assertListEqual(data['x'], x)
+        self.assertListEqual(data['y'], y2)
+
+    def test_SpectralProfilePlotModel(self):
 
         registerSpectralLibraryPlotFactories()
         model = SpectralProfilePlotModel()

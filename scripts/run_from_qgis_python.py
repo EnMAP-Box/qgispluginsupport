@@ -15,4 +15,4 @@ import tests.speclib.test_speclib_plotting
 importlib.reload(tests.speclib.test_speclib_plotting)
 os.environ['CI'] = 'True'
 CASE = tests.speclib.test_speclib_plotting.TestSpeclibPlotting()
-CASE.test_SpectralProfilePlotControlModel()
+CASE.test_SpectralProfilePlotModel()
