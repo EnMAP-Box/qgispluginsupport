@@ -16,8 +16,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-from . import Qt, debug, reload
-from . import getConfigOption
+from . import Qt, debug, getConfigOption, reload
 from .metaarray import MetaArray
 from .Qt import QT_LIB, QtCore, QtGui
 from .util.cupy_helper import getCupy
@@ -241,9 +240,9 @@ def mkColor(*args):
      float           greyscale, 0.0-1.0
      int             see :func:`intColor() <pyqtgraph.intColor>`
      (int, hues)     see :func:`intColor() <pyqtgraph.intColor>`
-     "#RGB"          hexadecimal strings prefixed with '#'
-     "#RGBA"         previously allowed use without prefix is deprecated and 
-     "#RRGGBB"       will be removed in 0.13
+     "#RGB"         
+     "#RGBA"         
+     "#RRGGBB"       
      "#RRGGBBAA"     
      QColor          QColor instance; makes a copy.
     ================ ================================================
@@ -270,11 +269,7 @@ def mkColor(*args):
             if c[0] == '#':
                 c = c[1:]
             else:
-                warnings.warn(
-                    "Parsing of hex strings that do not start with '#' is"
-                    "deprecated and support will be removed in 0.13",
-                    DeprecationWarning, stacklevel=2
-                )
+                raise ValueError(f"Unable to convert {c} to QColor")
             if len(c) == 3:
                 r = int(c[0]*2, 16)
                 g = int(c[1]*2, 16)
@@ -505,7 +500,7 @@ def colorCIELab(qcol):
 
     Returns
     -------
-    NumPy array 
+    np.ndarray 
         Color coordinates `[L, a, b]`.
     """
     srgb = qcol.getRgbF()[:3] # get sRGB values from QColor
@@ -540,7 +535,7 @@ def colorDistance(colors, metric='CIE76'):
     ----------
         colors: list of QColor
             Two or more colors to calculate the distances between.
-        metric: string, optional
+        metric: str, optional
             Metric used to determined the difference. Only 'CIE76' is supported at this time,
             where a distance of 2.3 is considered a "just noticeable difference".
             The default may change as more metrics become available.
@@ -551,7 +546,7 @@ def colorDistance(colors, metric='CIE76'):
         The `N-1` sequential distances between `N` colors.
     """
     metric = metric.upper()
-    if len(colors) < 1: return np.array([], dtype=np.float)
+    if len(colors) < 1: return np.array([], dtype=float)
     if metric == 'CIE76':
         dist = []
         lab1 = None
@@ -999,7 +994,7 @@ def interpolateArray(data, x, default=0.0, order=1):
             sax = f1 * dx[...,ax] + (1-f1) * (1-dx[...,ax])
             sax = sax.reshape(sax.shape + (1,) * (s.ndim-1-sax.ndim))
             s[ax] = sax
-        s = np.product(s, axis=0)
+        s = np.prod(s, axis=0)
         result = fieldData * s
         for i in range(md):
             result = result.sum(axis=0)
@@ -1197,12 +1192,6 @@ def clip_scalar(val, vmin, vmax):
     """ convenience function to avoid using np.clip for scalar values """
     return vmin if val < vmin else vmax if val > vmax else val
 
-# umath.clip was slower than umath.maximum(umath.minimum).
-# See https://github.com/numpy/numpy/pull/20134 for details.
-_win32_clip_workaround_needed = (
-    sys.platform == 'win32' and
-    tuple(map(int, np.__version__.split(".")[:2])) < (1, 22)
-)
 
 def clip_array(arr, vmin, vmax, out=None):
     # replacement for np.clip due to regression in
@@ -1217,12 +1206,6 @@ def clip_array(arr, vmin, vmax, out=None):
         return np.core.umath.minimum(arr, vmax, out=out)
     elif vmax is None:
         return np.core.umath.maximum(arr, vmin, out=out)
-    elif _win32_clip_workaround_needed:
-        if out is None:
-            out = np.empty(arr.shape, dtype=np.find_common_type([arr.dtype], [type(vmax)]))
-        out = np.core.umath.minimum(arr, vmax, out=out)
-        return np.core.umath.maximum(out, vmin, out=out)
-
     else:
         return np.core.umath.clip(arr, vmin, vmax, out=out)
 
@@ -1333,8 +1316,8 @@ def applyLookupTable(data, lut):
 
     Parameters
     ----------
-    data : ndarray
-    lut : ndarray
+    data : np.ndarray
+    lut : np.ndarray
         Either cupy or numpy arrays are accepted, though this function has only
         consistently behaved correctly on windows with cuda toolkit version >= 11.1.
     """
@@ -1536,8 +1519,8 @@ def makeARGB(data, lut=None, levels=None, scale=None, useRGBA=False, maskNans=Tr
     # apply nan mask through alpha channel
     if nanMask is not None:
         alpha = True
-        # Workaround for https://github.com/cupy/cupy/issues/4693
-        if xp == cp:
+        # Workaround for https://github.com/cupy/cupy/issues/4693, fixed in cupy 10.0.0
+        if xp == cp and tuple(map(int, cp.__version__.split("."))) < (10, 0):
             imgData[nanMask, :, dst_order[3]] = 0
         else:
             imgData[nanMask, dst_order[3]] = 0
@@ -2054,17 +2037,17 @@ def arrayToQPath(x, y, connect='all', finiteCheck=True):
     
     Parameters
     ----------
-    x : (N,) ndarray
-        x-values to be plotted
-    y : (N,) ndarray
-        y-values to be plotted, must be same length as `x`
+    x : np.ndarray
+        x-values to be plotted of shape (N,)
+    y : np.ndarray
+        y-values to be plotted, must be same length as `x` of shape (N,)
     connect : {'all', 'pairs', 'finite', (N,) ndarray}, optional
         Argument detailing how to connect the points in the path. `all` will 
         have sequential points being connected.  `pairs` generates lines
         between every other point.  `finite` only connects points that are
         finite.  If an ndarray is passed, containing int32 values of 0 or 1,
         only values with 1 will connect to the previous point.  Def
-    finiteCheck : bool, default Ture
+    finiteCheck : bool, default True
         When false, the check for finite values will be skipped, which can
         improve performance. If nonfinite values are present in `x` or `y`,
         an empty QPainterPath will be generated.
@@ -2186,26 +2169,18 @@ def arrayToQPath(x, y, connect='all', finiteCheck=True):
     return path
 
 def ndarray_from_qpolygonf(polyline):
-    nbytes = 2 * len(polyline) * 8
-    if QT_LIB.startswith('PyQt'):
-        buffer = polyline.data()
-        if buffer is None:
-            buffer = Qt.sip.voidptr(0)
-        buffer.setsize(nbytes)
-    else:
-        ptr = polyline.data()
-        if ptr is None:
-            ptr = 0
-        buffer = Qt.shiboken.VoidPtr(ptr, nbytes, True)
-    memory = np.frombuffer(buffer, np.double).reshape((-1, 2))
-    return memory
+    # polyline.data() will be None if the pointer was null.
+    # voidptr(None) is the same as voidptr(0).
+    vp = Qt.compat.voidptr(polyline.data(), len(polyline)*2*8, True)
+    return np.frombuffer(vp, dtype=np.float64).reshape((-1, 2))
 
 def create_qpolygonf(size):
     polyline = QtGui.QPolygonF()
-    if QT_LIB.startswith('PyQt'):
-        polyline.fill(QtCore.QPointF(), size)
-    else:
+    if hasattr(polyline, 'resize'):
+        # (PySide) and (PyQt6 >= 6.3.1)
         polyline.resize(size)
+    else:
+        polyline.fill(QtCore.QPointF(), size)
     return polyline
 
 def arrayToQPolygonF(x, y):

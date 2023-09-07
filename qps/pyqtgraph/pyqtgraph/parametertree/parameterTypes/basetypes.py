@@ -1,10 +1,10 @@
 import builtins
 
-from ..Parameter import Parameter
-from ..ParameterItem import ParameterItem
 from ... import functions as fn
 from ... import icons
 from ...Qt import QtCore, QtGui, QtWidgets, mkQApp
+from ..Parameter import Parameter
+from ..ParameterItem import ParameterItem
 
 
 class WidgetParameterItem(ParameterItem):
@@ -258,8 +258,8 @@ class SimpleParameter(Parameter):
     """
     Parameter representing a single value.
 
-    This parameter is backed by :class:`WidgetParameterItem` to represent the
-    following parameter names through various subclasses:
+    This parameter is backed by :class:`~pyqtgraph.parametertree.parameterTypes.basetypes.WidgetParameterItem`
+     to represent the following parameter names through various subclasses:
 
       - 'int'
       - 'float'
@@ -274,7 +274,7 @@ class SimpleParameter(Parameter):
         Initialize the parameter.
 
         This is normally called implicitly through :meth:`Parameter.create`.
-        The keyword arguments avaialble to :meth:`Parameter.__init__` are
+        The keyword arguments available to :meth:`Parameter.__init__` are
         applicable.
         """
         Parameter.__init__(self, *args, **kargs)
@@ -337,22 +337,11 @@ class GroupParameterItem(ParameterItem):
         """
         Change set the item font to bold and increase the font size on outermost groups.
         """
-        app = mkQApp()
-        palette = app.palette()
-        background = palette.base().color()
-        h, s, l, a = background.getHslF()
-        lightness = 0.5 + (l - 0.5) * .8
-        altBackground = QtGui.QColor.fromHslF(h, s, lightness, a)
-
         for c in [0, 1]:
             font = self.font(c)
             font.setBold(True)
             if depth == 0:
                 font.setPointSize(self.pointSize() + 1)
-                self.setBackground(c, background)
-            else:
-                self.setBackground(c, altBackground)
-            self.setForeground(c, palette.text().color())
             self.setFont(c, font)
         self.titleChanged()  # sets the size hint for column 0 which is based on the new font
 

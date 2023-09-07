@@ -49,13 +49,12 @@ class ExportDialog(QtWidgets.QWidget):
         self.activateWindow()
         self.raise_()
         self.selectBox.setVisible(True)
-        
         if not self.shown:
             self.shown = True
             vcenter = self.scene.getViewWidget().geometry().center()
-            self.setGeometry(int(vcenter.x() - self.width() / 2),
-                             int(vcenter.y() - self.height() / 2),
-                             self.width(), self.height())
+            x = max(0, int(vcenter.x() - self.width() / 2))
+            y = max(0, int(vcenter.y() - self.height() / 2))
+            self.move(x, y)
         
     def updateItemList(self, select=None):
         self.ui.itemTree.clear()
@@ -105,7 +104,7 @@ class ExportDialog(QtWidgets.QWidget):
         for exp in exporters.listExporters():
             item = FormatExportListWidgetItem(exp, QtCore.QCoreApplication.translate('Exporter', exp.Name))
             self.ui.formatList.addItem(item)
-            if item == current:
+            if item is current:
                 self.ui.formatList.setCurrentRow(self.ui.formatList.count() - 1)
                 gotCurrent = True
                 

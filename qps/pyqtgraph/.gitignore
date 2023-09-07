@@ -77,6 +77,8 @@ coverage.xml
 *.am
 *.tiff
 *.tif
+*.png
+!doc/source/**/*.png
 *.dat
 *.DAT
 
@@ -110,3 +112,5 @@ asv.conf.json
 
 # jupyter notebooks
 .ipynb_checkpoints
+
+.venv
