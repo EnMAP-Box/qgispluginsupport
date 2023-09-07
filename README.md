@@ -3,8 +3,8 @@
 [![Unit Tests](https://github.com/EnMAP-Box/qgispluginsupport/actions/workflows/python-tests.yml/badge.svg?branch=master)](https://github.com/EnMAP-Box/qgispluginsupport/actions/workflows/python-tests.yml)
 [![Coverage](./coverage.svg)](./coverage.svg)
 
-The QGIS Plugin Support (QPS) library helps to develop QGIS plugins specifically for remote sensing applications.
-
+The QGIS Plugin Support (QPS) library helps to develop QGIS plugins specifically for remote 
+sensing applications.
 
 This includes, for example
 - Remote sensing specific metadata handling
