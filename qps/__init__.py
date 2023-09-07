@@ -167,7 +167,7 @@ def registerExpressionFunctions():
 
 
 def registerSpectralProfileSamplingModes():
-    warnings.warn(DeprecationWarning('is not required anymore'))
+    warnings.warn(DeprecationWarning('is not required anymore'), stacklevel=2)
 
 
 def registerSpectralLibraryIOs():
