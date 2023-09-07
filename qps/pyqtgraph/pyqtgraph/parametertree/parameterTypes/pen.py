@@ -1,26 +1,52 @@
 import re
 from contextlib import ExitStack
 
-from . import GroupParameterItem
+from . import GroupParameterItem, WidgetParameterItem
 from .basetypes import GroupParameter, Parameter, ParameterItem
 from .qtenum import QtEnumParameter
 from ... import functions as fn
-from ...Qt import QtCore
+from ...Qt import QtCore, QtWidgets
 from ...SignalProxy import SignalProxy
 from ...widgets.PenPreviewLabel import PenPreviewLabel
 
 class PenParameterItem(GroupParameterItem):
     def __init__(self, param, depth):
+        self.defaultBtn = self.makeDefaultButton()
         super().__init__(param, depth)
+        self.itemWidget = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+
         self.penLabel = PenPreviewLabel(param)
+        for child in self.penLabel, self.defaultBtn:
+            layout.addWidget(child)
+        self.itemWidget.setLayout(layout)
+
+    def optsChanged(self, param, opts):
+        if "enabled" in opts or "readonly" in opts:
+            self.updateDefaultBtn()
 
     def treeWidgetChanged(self):
         ParameterItem.treeWidgetChanged(self)
         tw = self.treeWidget()
         if tw is None:
             return
-        tw.setItemWidget(self, 1, self.penLabel
-                         )
+        tw.setItemWidget(self, 1, self.itemWidget)
+
+    defaultClicked = WidgetParameterItem.defaultClicked
+    makeDefaultButton = WidgetParameterItem.makeDefaultButton
+
+    def valueChanged(self, param, val):
+        self.updateDefaultBtn()
+
+    def updateDefaultBtn(self):
+        self.defaultBtn.setEnabled(
+            not self.param.valueIsDefault()
+            and self.param.opts["enabled"]
+            and self.param.writable()
+        )
+
 
 class PenParameter(GroupParameter):
     """
@@ -46,10 +72,29 @@ class PenParameter(GroupParameter):
         if 'children' in opts:
             raise KeyError('Cannot set "children" argument in Pen Parameter opts')
         super().__init__(**opts, children=list(children))
-        self.valChangingProxy = SignalProxy(self.sigValueChanging, delay=1.0, slot=self._childrenFinishedChanging)
+        self.valChangingProxy = SignalProxy(
+            self.sigValueChanging,
+            delay=1.0,
+            slot=self._childrenFinishedChanging,
+            threadSafe=False,
+        )
 
     def _childrenFinishedChanging(self, paramAndValue):
-        self.sigValueChanged.emit(*paramAndValue)
+        self.setValue(self.pen)
+
+    def setDefault(self, val):
+        pen = self._interpretValue(val)
+        with self.treeChangeBlocker():
+            # Block changes until all are finalized
+            for opt in self.names:
+                # Booleans have different naming convention
+                if isinstance(self[opt], bool):
+                    attrName = f'is{opt.title()}'
+                else:
+                    attrName = opt
+                self.child(opt).setDefault(getattr(pen, attrName)())
+            out = super().setDefault(val)
+        return out
 
     def saveState(self, filter=None):
         state = super().saveState(filter)
@@ -129,20 +174,13 @@ class PenParameter(GroupParameter):
             name = name.title().strip()
             p.setOpts(title=name, default=default)
 
-        def penPropertyWrapper(propertySetter):
-            def tiePenPropToParam(_, value):
-                propertySetter(value)
-                self.sigValueChanging.emit(self, self.pen)
-
-            return tiePenPropToParam
-
         if boundPen is not None:
             self.updateFromPen(param, boundPen)
             for p in param:
-                setter, setName = self._setterForParam(p.name(), boundPen, returnName=True)
+                setName = f'set{p.name().capitalize()}'
                 # Instead, set the parameter which will signal the old setter
                 setattr(boundPen, setName, p.setValue)
-                newSetter = penPropertyWrapper(setter)
+                newSetter = self.penPropertySetter
                 # Edge case: color picker uses a dialog with user interaction, so wait until full change there
                 if p.type() != 'color':
                     p.sigValueChanging.connect(newSetter)
@@ -153,13 +191,13 @@ class PenParameter(GroupParameter):
 
         return param
 
-    @staticmethod
-    def _setterForParam(paramName, obj, returnName=False):
-        formatted = paramName[0].upper() + paramName[1:]
-        setter = getattr(obj, f'set{formatted}')
-        if returnName:
-            return setter, formatted
-        return setter
+    def penPropertySetter(self, p, value):
+        boundPen = self.pen
+        setName = f'set{p.name().capitalize()}'
+        # boundPen.setName has been monkey-patched
+        # so we get the original setter from the class
+        getattr(boundPen.__class__, setName)(boundPen, value)
+        self.sigValueChanging.emit(self, boundPen)
 
     @staticmethod
     def updateFromPen(param, pen):

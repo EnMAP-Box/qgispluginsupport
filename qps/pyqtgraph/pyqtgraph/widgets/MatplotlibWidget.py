@@ -1,9 +1,9 @@
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
 from ..Qt import QtWidgets
-
+import typing
 
 __all__ = ['MatplotlibWidget']
 
@@ -25,11 +25,11 @@ class MatplotlibWidget(QtWidgets.QWidget):
     figsize_default = (5.0, 4.0)
     dpi_default = 100
 
-    @overload
+    @typing.overload
     def __init__(self, figsize=(5.0, 4.0), dpi=100, parent=None):
         pass
 
-    @overload
+    @typing.overload
     def __init__(self, parent=None, figsize=(5.0, 4.0), dpi=100):
         pass
 

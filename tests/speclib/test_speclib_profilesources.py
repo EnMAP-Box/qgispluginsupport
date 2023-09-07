@@ -150,7 +150,8 @@ class SpectralProcessingTests(TestCaseBase):
 
     def test_SpectralProfileSourcePanel(self):
 
-        from qps import registerEditorWidgets
+        from qps import registerEditorWidgets, initResources
+        initResources()
         registerEditorWidgets()
 
         sources, spectralLibraryWidget = self.createTestObjects()

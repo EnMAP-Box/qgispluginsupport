@@ -122,7 +122,7 @@ setup(
         'style': helpers.StyleCommand
     },
     packages=find_namespace_packages(include=['pyqtgraph', 'pyqtgraph.*']),
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     package_dir={"pyqtgraph": "pyqtgraph"},
     package_data={
         'pyqtgraph.examples': ['optics/*.gz', 'relativity/presets/*.cfg'],
@@ -134,7 +134,7 @@ setup(
         ],
     },
     install_requires = [
-        'numpy>=1.20.0',
+        'numpy>=1.22.0',
     ],
     **setupOpts
 )
