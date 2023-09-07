@@ -1,4 +1,5 @@
 import datetime
+import math
 import re
 
 from typing import List, Tuple, Set, Iterator, Union, Iterable, Dict, Callable, Optional
@@ -232,7 +233,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     rawData['xUnit'] = BAND_INDEX
 
                 # convert None values to NaN so that numpy arrays will become numeric
-                rawData['y'] = [v if v else np.NaN for v in rawData['y']]
+                rawData['y'] = [np.NaN if v is None or not math.isfinite(v) else v for v in rawData['y']]
 
             self.mCACHE_PROFILE_DATA[id_attribute] = rawData
         return self.mCACHE_PROFILE_DATA[id_attribute]
