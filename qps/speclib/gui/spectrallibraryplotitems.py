@@ -406,7 +406,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         idx = np.nanargmin(dist)
         return idx, dataX[idx], dataY[idx], dist[idx]
 
-    def plot(self) -> pg.PlotWindow:
+    def plot(self) -> pg.PlotWidget:
         """
         Opens a PlotWindow and plots this SpectralProfilePlotDataItem to
         :return:
