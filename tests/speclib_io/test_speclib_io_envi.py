@@ -42,28 +42,23 @@ class TestSpeclibIO_ENVI(TestCaseBase):
 
     def test_findEnviHeader(self):
 
-        binarypath = speclibpath
+        import qpstestdata
 
-        hdr, bin = findENVIHeader(speclibpath)
+        hdr, bin = findENVIHeader(qpstestdata.envi_sli)
+        self.assertEqual(hdr, qpstestdata.envi_sli_hdr)
+        self.assertEqual(bin, qpstestdata.envi_sli)
 
-        self.assertTrue(os.path.isfile(hdr))
-        self.assertTrue(os.path.isfile(bin))
+        hdr, bin = findENVIHeader(qpstestdata.envi_sli_hdr)
+        self.assertEqual(hdr, qpstestdata.envi_sli_hdr)
+        self.assertEqual(bin, qpstestdata.envi_sli)
 
-        self.assertTrue(bin == speclibpath)
-        self.assertTrue(hdr.endswith('.hdr'))
+        hdr, bin = findENVIHeader(qpstestdata.envi_bsq)
+        self.assertEqual(hdr, qpstestdata.envi_hdr)
+        self.assertEqual(bin, qpstestdata.envi_bsq)
 
-        headerPath = hdr
-
-        # is is possible to use the *.hdr
-        hdr, bin = findENVIHeader(headerPath)
-
-        self.assertTrue(os.path.isfile(hdr))
-        self.assertTrue(os.path.isfile(bin))
-
-        self.assertTrue(bin == speclibpath)
-        self.assertTrue(hdr.endswith('.hdr'))
-
-        feedback = self.createProcessingFeedback()
+        hdr, bin = findENVIHeader(qpstestdata.envi_hdr)
+        self.assertEqual(hdr, qpstestdata.envi_hdr)
+        self.assertEqual(bin, qpstestdata.envi_bsq)
 
         pathWrong = enmap
         hdr, bin = findENVIHeader(pathWrong)
