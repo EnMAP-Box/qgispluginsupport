@@ -102,47 +102,59 @@ def flushCacheWithoutException(dataset: gdal.Dataset):
         n += 1
 
 
-def findENVIHeader(path: str) -> (str, str):
+def findENVIHeader(path: Union[str, pathlib.Path]) -> (str, str):
     """
     Get a path and returns the ENVI header (*.hdr) and the ENVI binary file (e.g. *.sli) for
     :param path: str
     :return: (str, str), e.g. ('pathESL.hdr', 'pathESL.sli')
     """
+
+    path = pathlib.Path(path)
+
+    bn = os.path.splitext(path.name)[0]
+
     # the two file names we want to extract
     pathHdr = None
-    pathSLI = None
+    pathBin = None
 
-    # 1. find header file
-    paths = [os.path.splitext(path)[0] + '.hdr', path + '.hdr']
-    for p in paths:
-        if os.path.exists(p):
-            pathHdr = p
-            break
+    # 1. find the header file
+    if path.name.lower().endswith('.hdr'):
+        # that was easy
+        pathHdr = path
+    else:
+        candidates: List[pathlib.Path] = [
+            path.parent / f'{bn}.hdr',
+            path.parent / f'{path.name}.hdr'
+        ]
+        for p in candidates:
+            if p.is_file():
+                pathHdr = p
+                break
 
-    if pathHdr is None:
+    if not isinstance(pathHdr, pathlib.Path):
         # no header file, no ENVI file
         return None, None
 
     # 2. find binary file
-    if not path.endswith('.hdr') and os.path.isfile(path):
-        # this should be the default
-        pathSLI = path
+    if path is not pathHdr:
+        pathBin = path
     else:
-        # find a binary part ending
-        paths = [os.path.splitext(pathHdr)[0] + '.sli',
-                 pathHdr + '.sli',
-                 os.path.splitext(pathHdr)[0] + '.esl',
-                 pathHdr + '.esl',
-                 ]
-        for p in paths:
-            if os.path.isfile(p):
-                pathSLI = p
+        extensions = ['.bin', '.sli', '.esl']
+        candidates: List[pathlib.Path] = [
+            pathHdr.parent / bn,  # file.hdr and file
+        ]
+        candidates.extend([pathHdr.parent / f'{bn}{ext}' for ext in extensions])  # file.hdr + file.<ext>
+        candidates.extend([pathHdr.parent / f'{pathHdr.name}{ext}' for ext in extensions])  # file.hdr + file.hdr.<ext>
+
+        for c in candidates:
+            if c.is_file():
+                pathBin = c
                 break
 
-    if pathSLI is None:
+    if pathBin is None:
         return None, None
 
-    return pathHdr, pathSLI
+    return pathHdr.as_posix(), pathBin.as_posix()
 
 
 def value2hdrString(values):
