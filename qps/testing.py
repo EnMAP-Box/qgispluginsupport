@@ -280,6 +280,8 @@ class QgisMockup(QgisInterface):
     def __init__(self, *args):
         super(QgisMockup, self).__init__()
 
+        self.mActionSaveProject = QAction('Save Project')
+        self.mActionSaveProject.triggered.connect(self._onSaveProject)
         self.mMapLayerPanelFactories: List[QgsMapLayerConfigWidgetFactory] = []
 
         self.mTemporalController = QgsTemporalController()
@@ -351,6 +353,12 @@ class QgisMockup(QgisInterface):
         for lyr in reversed(to_remove):
             lyr.parent().removeChildNode(lyr)
 
+    def _onSaveProject(self):
+
+        p = QgsProject.instance()
+        p.write()
+    def actionSaveProject(self) -> QAction:
+        return self.mActionSaveProject
     def activeLayer(self) -> QgsMapLayer:
         return self.mLayerTreeView.currentLayer()
 
