@@ -602,10 +602,10 @@ def showMessage(message: str, title: str, level):
 
 
 def gdalDataset(dataset: Union[str,
-                pathlib.Path,
-                QgsRasterLayer,
-                QgsRasterDataProvider,
-                gdal.Dataset],
+pathlib.Path,
+QgsRasterLayer,
+QgsRasterDataProvider,
+gdal.Dataset],
                 eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
@@ -1827,6 +1827,14 @@ def chunks(iterable, size=10):
     iterator = iter(iterable)
     for first in iterator:
         yield itertools.chain([first], itertools.islice(iterator, size - 1))
+
+
+def nodeXmlString(node: QDomElement, indent: int = 1) -> str:
+    assert isinstance(node, QDomElement)
+    doc = QDomDocument()
+    doc.createElement('root')  # curious, we just need to create it, without adding as child
+    doc.appendChild(node.cloneNode(True).toElement())
+    return doc.toString(indent=indent)
 
 
 def getDOMAttributes(elem) -> dict:

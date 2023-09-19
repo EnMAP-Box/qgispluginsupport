@@ -21,6 +21,7 @@ import warnings
 import xml.etree.ElementTree as ET
 
 import numpy as np
+from PyQt5.QtXml import QDomElement
 from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.PyQt.QtCore import NULL, QObject
@@ -32,7 +33,7 @@ from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateRef
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
 from qps.testing import TestObjects, TestCase
 from qps.unitmodel import UnitLookup
-from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromString, \
+from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromString, nodeXmlString, \
     SelectMapLayersDialog, defaultBands, relativePath, nextColor, createQgsField, px2geo, geo2px, \
     SpatialPoint, layerGeoTransform, displayBandNames, qgsRasterLayer, gdalDataset, px2geocoordinates, \
     rasterArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
@@ -318,6 +319,24 @@ class TestUtils(TestCase):
 
         self.showGui()
 
+    def test_nodeXmlString(self):
+
+        doc = QDomDocument()
+        root: QDomElement = doc.createElement('root')
+        doc.appendChild(root)
+        n0: QDomElement = doc.createElement('node0')
+
+        n1: QDomElement = doc.createElement('node1')
+        n2: QDomElement = doc.createElement('node11')
+        n3: QDomElement = doc.createElement('node12')
+
+        n0.appendChild(n1)
+        n1.appendChild(n2)
+        n1.appendChild(n3)
+        root.appendChild(n0)
+
+        xml1 = nodeXmlString(n1)
+        s = ""
     def test_block_size(self):
 
         ds = TestObjects.createRasterDataset(200, 300, 100, eType=gdal.GDT_Int16)
