@@ -21,14 +21,13 @@ import warnings
 import xml.etree.ElementTree as ET
 
 import numpy as np
-from PyQt5.QtXml import QDomElement
 from osgeo import gdal, ogr, osr, gdal_array
 
 from qgis.PyQt.QtCore import NULL, QObject
 from qgis.PyQt.QtCore import QByteArray, QUrl, QRect, QPoint, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
-from qgis.PyQt.QtXml import QDomDocument
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
 from qps.testing import TestObjects, TestCase
@@ -337,6 +336,7 @@ class TestUtils(TestCase):
 
         xml1 = nodeXmlString(n1)
         s = ""
+
     def test_block_size(self):
 
         ds = TestObjects.createRasterDataset(200, 300, 100, eType=gdal.GDT_Int16)

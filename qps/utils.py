@@ -56,7 +56,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
     QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
-from qgis.core import QgsRasterBlockFeedback
+from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel, \
     QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
@@ -602,10 +602,10 @@ def showMessage(message: str, title: str, level):
 
 
 def gdalDataset(dataset: Union[str,
-pathlib.Path,
-QgsRasterLayer,
-QgsRasterDataProvider,
-gdal.Dataset],
+                                pathlib.Path,
+                                QgsRasterLayer,
+                                QgsRasterDataProvider,
+                                gdal.Dataset],
                 eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
@@ -1164,6 +1164,49 @@ def read_vsimem(fn):
     vsileng = gdal.VSIFTellL(vsifile)
     gdal.VSIFSeekL(vsifile, 0, 0)
     return gdal.VSIFReadL(1, vsileng, vsifile)
+
+
+def writeAsVectorFormat(layer: QgsVectorLayer, path: Union[str, pathlib.Path],
+                        options: QgsVectorFileWriter.SaveVectorOptions = None,
+                        feedback: QgsFeedback = None) -> QgsVectorLayer:
+    path = pathlib.Path(path)
+
+    if not isinstance(options, QgsVectorFileWriter.SaveVectorOptions):
+
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
+        options.feedback = feedback
+        options.fileEncoding = 'UTF-8'
+
+        parts = os.path.splitext(path.name)
+        if len(parts) == 2:
+            options.driverName = QgsVectorFileWriter.driverForExtension(parts[1])
+            options.layerOptions = QgsVectorFileWriter.defaultLayerOptions(options.driverName)
+            options.datasourceOptions = QgsVectorFileWriter.defaultDatasetOptions(options.driverName)
+            options.includeConstraints = True
+            options.layerMetadata = layer.metadata()
+            # options.symbologyExport =
+
+    def onCompleted(newFilename, newLayer):
+
+        s = ""
+
+    def onErrorOccurred(err: int, msg: str):
+        s = ""
+
+    task = QgsVectorFileWriterTask(layer, path.as_posix(), options)
+    task.completed.connect(onCompleted)
+    task.errorOccurred.connect(onErrorOccurred)
+    r = task.run()
+    assert r
+    # save styling
+    pathQlr = path.parent / re.sub(r'\.[^.]+$', '.qml', path.name)
+    msg, success = layer.saveNamedStyle(pathQlr.as_posix())
+    assert success, 'Failed to save style:' + msg
+    lyr2 = QgsVectorLayer(path.as_posix(), layer.name())
+    assert lyr2.isValid()
+
+    return lyr2
 
 
 def write_vsimem(fn: str, data: str):

@@ -4,11 +4,13 @@ import sys
 import warnings
 from typing import List, Set, Dict, Tuple, Generator
 
+from qgis.PyQt.QtXml import QDomElement, QDomDocument
+
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog
-from qgis.core import QgsFeature, QgsProject, QgsVectorLayer
+from qgis.core import QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteContext
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
@@ -20,7 +22,7 @@ from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
 from ...layerproperties import AttributeTableWidget, showLayerPropertiesDialog, CopyAttributesDialog
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleWidget
-from ...utils import nextColor
+from ...utils import nextColor  # , nodeXmlString
 
 
 class SpectralLibraryWidget(AttributeTableWidget):
@@ -361,6 +363,77 @@ class SpectralLibraryWidget(AttributeTableWidget):
         :return: SpectralLibraryPlotItem
         """
         return self.plotWidget().getPlotItem()
+
+    def writeXml(self, parent: QDomElement, context: QgsReadWriteContext) -> QDomElement:
+        doc: QDomDocument = parent.ownerDocument()
+        assert isinstance(doc, QDomDocument)
+
+        sl: QgsVectorLayer = self.speclib()
+
+        nSLW = doc.createElement('SpectralLibraryWidget')
+        # layer node needs to be named 'maplayer'
+        # see qgsvectorlayer.cpp -> bool QgsVectorLayer::writeXml(...)
+        nS: QDomElement = doc.createElement('source')
+        nSL: QDomElement = doc.createElement('maplayer')
+        nVIS: QDomElement = doc.createElement('Visualizations')
+        parent.appendChild(nSLW)
+        for n in [nS, nSL, nVIS]:
+            nSLW.appendChild(n)
+
+        nS.setAttribute('provider', sl.providerType())
+        nS.setAttribute('source', sl.source())
+        nS.setAttribute('name', sl.name())
+        nS.setAttribute('id', sl.id())
+
+        assert self.speclib().writeXml(nSL, doc, context)
+        self.plotControl().writeXml(nVIS, context)
+
+        return nSLW
+
+    @staticmethod
+    def fromXml(node: QDomElement, context: QgsReadWriteContext, speclib: QgsVectorLayer = None,
+                project: QgsProject = None) -> 'SpectralLibraryWidget':
+        nSLW: QDomElement = node if node.tagName() == 'SpectralLibraryWidget' else (
+            node.firstChildElement('SpectralLibraryWidget').toElement())
+
+        if nSLW.isNull():
+            return None
+
+        if not isinstance(project, QgsProject):
+            project = QgsProject.instance()
+
+        if nSLW.isNull():
+            return None
+
+        if not isinstance(speclib, QgsVectorLayer):
+            nS: QDomElement = nSLW.firstChildElement('source').toElement()
+            nSL: QDomElement = nSLW.firstChildElement('maplayer').toElement()
+
+            source = nS.attribute('source')
+            provider = nS.attribute('provider')
+            name = nS.attribute('name')
+            sid = nS.attribute('id')
+
+            # find layer in project
+            speclib = project.mapLayer(sid)
+            if not isinstance(speclib, QgsVectorLayer):
+                for lyr in project.mapLayersByName(name):
+                    speclib = lyr
+                    break
+            if not isinstance(speclib, QgsVectorLayer):
+                c = QgsVectorLayer(source, name, provider)
+                if isinstance(c, QgsVectorLayer) and c.isValid():
+                    project.addMapLayer(c)
+                    speclib = c
+
+        if not isinstance(speclib, QgsVectorLayer):
+            return None
+
+        slw = SpectralLibraryWidget(speclib=speclib)
+        pm = slw.plotControl()
+        pm.readXml(node.firstChildElement('Visualizations'), context)
+
+        return slw
 
     def updateActions(self):
         """

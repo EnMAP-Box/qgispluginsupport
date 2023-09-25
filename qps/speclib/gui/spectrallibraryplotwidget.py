@@ -1,7 +1,6 @@
 import datetime
 import math
 import re
-
 from typing import List, Tuple, Set, Iterator, Union, Iterable, Dict, Callable, Optional
 
 import numpy as np
@@ -15,12 +14,14 @@ from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QMessageBox, QAbstractItemView
 from qgis.PyQt.QtWidgets import QWidget, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
+from qgis.PyQt.QtXml import QDomElement, QDomDocument
 from qgis.core import QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
 from qgis.core import QgsProject, QgsMapLayerProxyModel
 from qgis.core import QgsProperty, QgsExpressionContextScope
 from qgis.core import QgsRasterLayer
+from qgis.core import QgsReadWriteContext
 from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
@@ -298,6 +299,44 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def xUnit(self) -> UnitWrapper:
         return self.mXUnit
 
+    def writeXml(self, parent: QDomElement, context: QgsReadWriteContext) -> QDomElement:
+        doc: QDomDocument = parent.ownerDocument()
+
+        if not parent.tagName() == 'Visualizations':
+            parent = doc.createElement('Visualizations')
+            doc.appendChild(parent)
+
+        for v in self.visualizations():
+            nV: QDomElement = doc.createElement('Visualization')
+            parent.appendChild(nV)
+            v.writeXml(nV, doc)
+
+        return parent
+
+    def readXml(self, parent: QDomElement, context: QgsReadWriteContext):
+        if not parent.tagName() == 'Visualizations':
+            parent = parent.firstChildElement('Visualizations')
+
+        if parent.isNull():
+            return False
+
+        nV = parent.firstChildElement('Visualization').toElement()
+
+        # clean old visualizations
+        self.removePropertyItemGroups(self.visualizations())
+
+        while not nV.isNull():
+
+            vis = ProfileVisualizationGroup()
+            vis.initWithPlotModel(self)
+            vis.readXml(nV)
+            self.insertPropertyGroup(-1, vis)
+            nV = nV.nextSibling().toElement()
+        # clean all
+
+        # append vis
+        s = ""
+
     def setPlotWidget(self, plotWidget: SpectralProfilePlotWidget):
         self.mPlotWidget = plotWidget
         self.mPlotWidget.sigPlotDataItemSelected.connect(self.onPlotSelectionRequest)
@@ -345,17 +384,11 @@ class SpectralProfilePlotModel(QStandardItemModel):
                             items: Union[PropertyItemGroup,
                                          List[PropertyItemGroup]],
                             ):
-        if isinstance(index, QModelIndex):
-            index = index.row()
-        if index == -1:
-            index = len(self)
-
-        if isinstance(items, PropertyItemGroup):
-            items = [items]
 
         # map to model index within group of same zValues
-
-        _index = 0
+        if isinstance(items, PropertyItemGroup):
+            items = [items]
+        _index = None
 
         for i, item in enumerate(items):
             assert isinstance(item, PropertyItemGroup)
@@ -364,13 +397,20 @@ class SpectralProfilePlotModel(QStandardItemModel):
             item.signals().requestRemoval.connect(lambda *arg, itm=item: self.removePropertyItemGroups(itm))
             item.signals().requestPlotUpdate.connect(self.updatePlot)
 
-            new_set: List[PropertyItemGroup] = self.propertyGroups()
-            new_set.insert(index + i, item)
-            new_set = sorted(new_set, key=lambda g: g.zValue())
-            _index = new_set.index(item)
+            group_order: List[PropertyItemGroup] = self.propertyGroups()
+            GROUPS: dict = dict()
+            for g in self.propertyGroups():
+                GROUPS[g.zValue()] = GROUPS.get(g.zValue(), []) + [g]
 
+            group = GROUPS.get(item.zValue(), []) + [item]
+
+            GROUPS[item.zValue()] = group
+
+            new_group_order = []
+            for i in sorted(GROUPS.keys()):
+                new_group_order += GROUPS[i]
             self.mModelItems.add(item)
-            self.insertRow(_index, item)
+            self.insertRow(new_group_order.index(item), item)
             # if necessary, this should update the plot
             item.initWithPlotModel(self)
 
@@ -1235,6 +1275,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
 
             elif isinstance(item, ProfileVisualizationGroup):
                 super().paint(painter, option, index)
+
                 rect = option.rect
                 plot_style: PlotStyle = item.mPStyle.plotStyle()
                 html_style = HTMLStyle()
@@ -1261,6 +1302,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     rect3 = QRect(rect2.x() + rect2.width(), rect.y(), total_w - rect2.x() - rect2.width(), dy)
                     # pixmap = style.createPixmap(size=QSize(w - x0, total_h), hline=True, bc=bc)
                     if item.isComplete():
+
                         pixmap = plot_style.createPixmap(size=rect2.size(), hline=True, bc=bc)
                         painter.drawPixmap(rect2, pixmap)
                     # rect2 = QRect(rect.x() + x0, rect.y(), rect.width() - 2*x0, rect.height())

@@ -139,8 +139,6 @@ class PropertyItemBase(QStandardItem):
         # QObject.__init__(self)
         # QStandardItem.__init__(self, *args, **kwds)
 
-        s = ""
-
     def firstColumnSpanned(self) -> bool:
         return len(self.propertyRow()) == 1
 
@@ -169,6 +167,7 @@ class PropertyItemBase(QStandardItem):
 
         if role == Qt.UserRole:
             return self
+            # return None
         else:
             return super().data(role)
 
@@ -352,6 +351,21 @@ class PropertyItemGroup(PropertyItemBase):
         self.mSignals = PropertyItemGroup.Signals()
         self.mFirstColumnSpanned = True
 
+    def __eq__(self, other):
+
+        if not (isinstance(other, PropertyItemGroup) and self.__class__.__name__ == other.__class__.__name__):
+            return False
+
+        ud1 = self.data(Qt.DisplayRole)
+        ud2 = other.data(Qt.DisplayRole)
+
+        b = (self.checkState() == other.checkState()) and (ud1 == ud2)
+
+        return b
+
+    def __repr__(self):
+        return super().__repr__() + f' "{self.data(Qt.DisplayRole)}"'
+
     def disconnectGroup(self):
         """
         Should implement all actions required to remove this property item from the plot
@@ -471,8 +485,8 @@ class PropertyItemGroup(PropertyItemBase):
             for xml_tag, cl in PropertyItemGroup.XML_FACTORIES.items():
                 if cl == grp.__class__:
                     grpNode = doc.createElement(xml_tag)
-                    grp.writeXml(grpNode, doc)
                     root.appendChild(grpNode)
+                    grp.writeXml(grpNode, doc)
                     break
 
         doc.appendChild(root)
@@ -1820,7 +1834,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         scope.setVariable('vis_name', self.name(), isStatic=True)
         return scope
 
-    def readXml(self, parentNode: QDomElement) -> List['ProfileVisualizationGroup']:
+    def readXml(self, parentNode: QDomElement):
         model = self.model()
         self.setText(parentNode.attribute('name'))
         self.setVisible(parentNode.attribute('visible').lower() in ['1', 'true', 'yes'])
