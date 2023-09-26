@@ -405,7 +405,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
         return self.MODE_TOOLTIP[self.mMode]
 
     def expressionContext(self) -> QgsExpressionContext:
-        if self.mLastContext:
+        if isinstance(self.mLastContext, QgsExpressionContext):
             return self.mLastContext
         elif isinstance(self.mMapCanvas, QgsMapCanvas):
             for lyr in self.mMapCanvas.layers():
