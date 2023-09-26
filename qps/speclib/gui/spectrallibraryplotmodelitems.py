@@ -46,7 +46,7 @@ from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetSty
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
 from ...speclib.core import create_profile_field
 from ...unitmodel import UnitConverterFunctionModel, BAND_NUMBER, BAND_INDEX
-from ...utils import parseWavelength, SignalBlocker
+from ...utils import parseWavelength, SignalBlocker, nodeXmlString
 
 WARNING_ICON = QIcon(r':/images/themes/default/mIconWarning.svg')
 
@@ -148,7 +148,7 @@ class PropertyItemBase(QStandardItem):
     def readXml(self, parentNode: QDomElement):
         pass
 
-    def writeXml(self, parentNode: QDomElement, doc: QDomDocument):
+    def writeXml(self, parentNode: QDomElement):
         pass
 
     def model(self) -> QStandardItemModel:
@@ -218,7 +218,7 @@ class PropertyItem(PropertyItemBase):
     """
     Controls a single property parameter.
     Is paired with a PropertyLabel.
-    .propertRow() -> [PropertyLabel, PropertyItem]
+    .properyRow() -> [PropertyLabel, PropertyItem]
     """
 
     class Signals(QObject):
@@ -287,7 +287,19 @@ class PropertyItem(PropertyItemBase):
     def propertyRow(self) -> List[QStandardItem]:
         return [self.label(), self]
 
-    def writeXml(self, parentNode: QDomElement, doc: QDomDocument, attribute: bool = False):
+    def writeXml(self, parentNode: QDomElement, attribute: bool = False):
+        """
+
+        Parameters
+        ----------
+        parentNode: The parent QDomElement to write this node to
+        attribute: bool, set true to write this informatoin into an attribute node instead a child node.
+
+        Returns
+        -------
+
+        """
+        doc: QDomDocument = parentNode.ownerDocument()
         xml_tag = self.key()
         if attribute:
             parentNode.setAttribute(xml_tag, self.text())
@@ -481,15 +493,16 @@ class PropertyItemGroup(PropertyItemBase):
 
         doc = QDomDocument()
         root = doc.createElement('PropertyItemGroups')
+        doc.appendChild(root)
         for grp in propertyGroups:
             for xml_tag, cl in PropertyItemGroup.XML_FACTORIES.items():
                 if cl == grp.__class__:
                     grpNode = doc.createElement(xml_tag)
                     root.appendChild(grpNode)
-                    grp.writeXml(grpNode, doc)
+                    grp.writeXml(grpNode)
                     break
+                s = ""
 
-        doc.appendChild(root)
         md.setData(PropertyItemGroup.MIME_TYPE, doc.toByteArray())
         return md
 
@@ -502,6 +515,7 @@ class PropertyItemGroup(PropertyItemBase):
             doc.setContent(ba)
             root = doc.firstChildElement('PropertyItemGroups')
             if not root.isNull():
+                print(nodeXmlString(root))
                 grpNode = root.firstChild().toElement()
                 while not grpNode.isNull():
                     classname = grpNode.nodeName()
@@ -924,7 +938,8 @@ class PlotStyleItem(PropertyItem):
         if isinstance(w, PlotStyleButton):
             self.setPlotStyle(w.plotStyle())
 
-    def writeXml(self, parentNode: QDomElement, doc: QDomDocument, attribute: bool = False):
+    def writeXml(self, parentNode: QDomElement, attribute: bool = False):
+        doc: QDomDocument = parentNode.ownerDocument()
         xml_tag = self.key()
         node = doc.createElement(xml_tag)
         self.mPlotStyle.writeXml(node, doc)
@@ -965,7 +980,8 @@ class QgsPropertyItem(PropertyItem):
     def update(self):
         self.setText(self.mProperty.valueAsString(QgsExpressionContext()))
 
-    def writeXml(self, parentNode: QDomElement, doc: QDomDocument, attribute: bool = False):
+    def writeXml(self, parentNode: QDomElement, attribute: bool = False):
+        doc: QDomDocument = parentNode.ownerDocument()
         xml_tag = self.key()
         node = QgsXmlUtils.writeVariant(self.property(), doc)
         node.setTagName(xml_tag)
@@ -1807,7 +1823,9 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
     def propertyRow(self) -> List[QStandardItem]:
         return [self]
 
-    def writeXml(self, parentNode: QDomElement, doc: QDomDocument):
+    def writeXml(self, parentNode: QDomElement):
+
+        doc: QDomDocument = parentNode.ownerDocument()
         # appends this visualization to a parent node
 
         parentNode.setAttribute('name', self.name())

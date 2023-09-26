@@ -309,7 +309,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for v in self.visualizations():
             nV: QDomElement = doc.createElement('Visualization')
             parent.appendChild(nV)
-            v.writeXml(nV, doc)
+            v.writeXml(nV)
 
         return parent
 

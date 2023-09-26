@@ -431,6 +431,9 @@ class TestSpeclibPlotting(TestCaseBase):
 
     def test_plotitems_xml(self):
 
+
+        registerSpectralLibraryPlotFactories()
+
         grp = PropertyItemGroup()
 
         item1 = QgsPropertyItem('Field')
@@ -450,6 +453,7 @@ class TestSpeclibPlotting(TestCaseBase):
 
         doc = QDomDocument()
         root = doc.createElement('TESTGROUP')
+        doc.appendChild(root)
         for item in items:
 
             self.assertIsInstance(item, PropertyItem)
@@ -458,8 +462,9 @@ class TestSpeclibPlotting(TestCaseBase):
 
             nodeA = doc.createElement('nodeA')
             nodeB = doc.createElement('nodeB')
-            item.writeXml(nodeA, doc, attribute=False)
-            item.writeXml(nodeB, doc, attribute=True)
+
+            item.writeXml(nodeA, attribute=False)
+            item.writeXml(nodeB, attribute=True)
 
             cls = item.__class__
             itemA = cls(item.key())
@@ -481,10 +486,13 @@ class TestSpeclibPlotting(TestCaseBase):
                     for role in [Qt.DisplayRole, Qt.DecorationRole]:
                         self.assertEqual(item2.data(role), item.data(role))
 
+        groupsA = [grp]
         mimeData = PropertyItemGroup.toMimeData([grp])
 
-        grp1 = PropertyItemGroup.fromMimeData(mimeData)
+        groupsB = PropertyItemGroup.fromMimeData(mimeData)
 
+        self.assertListEqual(groupsA, groupsB)
+        s = ""
     def test_sortBands(self):
 
         d = prepareProfileValueDict(y=[1, 2, 3, 4, 4, 3, 2, 3, 3, 4],

@@ -123,8 +123,10 @@ def mapLayerConfigWidgetFactories() -> List[QgsMapLayerConfigWidgetFactory]:
 
 def registerSpectralLibraryPlotFactories():
     from .speclib.gui.spectrallibraryplotwidget import PropertyItemGroup, RasterRendererGroup, ProfileVisualizationGroup
+    PropertyItemGroup.registerXmlFactory(PropertyItemGroup())
     PropertyItemGroup.registerXmlFactory(RasterRendererGroup())
     PropertyItemGroup.registerXmlFactory(ProfileVisualizationGroup())
+
 
 
 def unregisterSpectralLibraryPlotFactories():
