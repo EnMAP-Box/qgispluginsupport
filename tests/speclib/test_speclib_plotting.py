@@ -2,22 +2,23 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt.QtCore import QEvent, QPointF, Qt, QVariant
 from qgis.PyQt.QtCore import QModelIndex
 from qgis.PyQt.QtGui import QMouseEvent, QColor
 from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtWidgets import QTreeView
 from qgis.PyQt.QtWidgets import QVBoxLayout
-from qgis.PyQt.QtXml import QDomDocument
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsPropertyDefinition, edit
+from qgis.core import QgsReadWriteContext
 from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer
 from qgis.core import QgsVectorLayer, QgsField, QgsEditorWidgetSetup, QgsProject, QgsProperty, QgsFeature, \
     QgsRenderContext
 from qgis.gui import QgsMapCanvas, QgsDualView
-
 from qps import registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
-from qps.speclib.core import create_profile_field, profile_fields, profile_field_list
+from qps.speclib.core import create_profile_field, profile_fields, profile_field_list, profile_field_names
 from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict, decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralXAxis, SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotmodelitems import RasterRendererGroup, ProfileVisualizationGroup, \
@@ -28,7 +29,7 @@ from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import spectralProfileEditorWidgetFactory
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
-from qps.utils import nextColor, parseWavelength
+from qps.utils import nextColor, parseWavelength, writeAsVectorFormat
 
 start_app()
 
@@ -148,6 +149,64 @@ class TestSpeclibPlotting(TestCaseBase):
         self.assertEqual(color1, color2)
         del renderer
         # self.showGui(w)
+
+    def test_speclib_plotsettings_restore(self):
+
+        fnames = ['profilesA', 'profilesB']
+
+        tmpDir = self.createTestOutputDirectory()
+        path_sl = tmpDir / 'TestSpeclib.gpkg'
+        speclib = TestObjects.createSpectralLibrary(n_bands=[25, 50], profile_field_names=fnames)
+
+        speclib = writeAsVectorFormat(speclib, path_sl)
+        self.assertIsInstance(speclib, QgsVectorLayer)
+        self.assertTrue(speclib.isValid())
+        self.assertTrue(path_sl.is_file())
+
+        self.assertListEqual(fnames, profile_field_names(speclib))
+        p = QgsProject()
+        p.addMapLayer(speclib)
+
+        slw = SpectralLibraryWidget(speclib=speclib)
+        spw: SpectralProfilePlotWidget = slw.spectralLibraryPlotWidget()
+        m: SpectralProfilePlotModel = slw.plotControl()
+
+        vis0 = slw.plotControl().visualizations()
+        for i, vis in enumerate(vis0):
+            self.assertEqual(vis.field().name(), fnames[i])
+
+        doc = QDomDocument()
+        n: QDomElement = doc.createElement('root')
+        doc.appendChild(n)
+        context = QgsReadWriteContext()
+        slw.writeXml(n, context)
+        slw.plotControl().readXml(n.elementsByTagName('Visualizations').item(0).toElement(), context)
+
+        vis1 = slw.plotControl().visualizations()
+
+        self.assertListEqual(vis0, vis1)
+
+        # slw.plotControl().removePropertyItemGroups()
+        # reload, with existing speclib instance
+        slw2 = SpectralLibraryWidget.fromXml(n, context, project=p)
+        self.assertIsInstance(slw2, SpectralLibraryWidget)
+        self.assertEqual(slw.speclib(), slw2.speclib())
+        vis1b, vis2 = slw.plotControl().visualizations(), slw2.plotControl().visualizations()
+        self.assertListEqual(vis1, vis1b)
+        self.assertListEqual(vis1, vis2)
+
+        # reload, without existing speclib instance
+        slw2 = SpectralLibraryWidget.fromXml(n, context)
+        self.assertIsInstance(slw2, SpectralLibraryWidget)
+        self.assertNotEqual(slw.speclib(), slw2.speclib())
+        vis1b, vis2 = slw.plotControl().visualizations(), slw2.plotControl().visualizations()
+        self.assertListEqual(vis1, vis1b)
+        self.assertListEqual(vis1, vis2)
+
+        s = ""
+
+        p.removeAllMapLayers()
+        QgsProject.instance().removeAllMapLayers()
 
     def test_SpectralProfilePlotWidget(self):
 
@@ -372,6 +431,8 @@ class TestSpeclibPlotting(TestCaseBase):
 
     def test_plotitems_xml(self):
 
+        registerSpectralLibraryPlotFactories()
+
         grp = PropertyItemGroup()
 
         item1 = QgsPropertyItem('Field')
@@ -391,6 +452,7 @@ class TestSpeclibPlotting(TestCaseBase):
 
         doc = QDomDocument()
         root = doc.createElement('TESTGROUP')
+        doc.appendChild(root)
         for item in items:
 
             self.assertIsInstance(item, PropertyItem)
@@ -399,8 +461,9 @@ class TestSpeclibPlotting(TestCaseBase):
 
             nodeA = doc.createElement('nodeA')
             nodeB = doc.createElement('nodeB')
-            item.writeXml(nodeA, doc, attribute=False)
-            item.writeXml(nodeB, doc, attribute=True)
+
+            item.writeXml(nodeA, attribute=False)
+            item.writeXml(nodeB, attribute=True)
 
             cls = item.__class__
             itemA = cls(item.key())
@@ -422,9 +485,13 @@ class TestSpeclibPlotting(TestCaseBase):
                     for role in [Qt.DisplayRole, Qt.DecorationRole]:
                         self.assertEqual(item2.data(role), item.data(role))
 
+        groupsA = [grp]
         mimeData = PropertyItemGroup.toMimeData([grp])
 
-        grp1 = PropertyItemGroup.fromMimeData(mimeData)
+        groupsB = PropertyItemGroup.fromMimeData(mimeData)
+
+        self.assertListEqual(groupsA, groupsB)
+        s = ""
 
     def test_sortBands(self):
 
@@ -464,7 +531,7 @@ class TestSpeclibPlotting(TestCaseBase):
         self.showGui(slw)
 
     def test_SpectralLibraryPlotWidget(self):
-
+        registerSpectralLibraryPlotFactories()
         speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
         canvas = QgsMapCanvas()
         dv = QgsDualView()

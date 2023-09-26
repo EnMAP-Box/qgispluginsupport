@@ -1,7 +1,6 @@
 import datetime
 import math
 import re
-
 from typing import List, Tuple, Set, Iterator, Union, Iterable, Dict, Callable, Optional
 
 import numpy as np
@@ -9,18 +8,20 @@ import numpy as np
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
     QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
 from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
-from qgis.PyQt.QtGui import QPen, QBrush, QPixmap
+from qgis.PyQt.QtGui import QPen, QBrush, QPixmap, QPalette, QFontMetrics
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.PyQt.QtWidgets import QMessageBox, QAbstractItemView
+from qgis.PyQt.QtWidgets import QMessageBox, QAbstractItemView, QStyle
 from qgis.PyQt.QtWidgets import QWidget, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
+from qgis.PyQt.QtXml import QDomElement, QDomDocument
 from qgis.core import QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol, \
     QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
 from qgis.core import QgsProject, QgsMapLayerProxyModel
 from qgis.core import QgsProperty, QgsExpressionContextScope
 from qgis.core import QgsRasterLayer
+from qgis.core import QgsReadWriteContext
 from qgis.core import QgsVectorLayerCache
 from qgis.gui import QgsDualView
 from qgis.gui import QgsFilterLineEdit
@@ -33,7 +34,6 @@ from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel, Sp
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
-from ...externals.htmlwidgets import HTMLStyle
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...unitmodel import BAND_INDEX, UnitConverterFunctionModel, datetime64, UnitWrapper, BAND_NUMBER
@@ -298,6 +298,43 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def xUnit(self) -> UnitWrapper:
         return self.mXUnit
 
+    def writeXml(self, parent: QDomElement, context: QgsReadWriteContext) -> QDomElement:
+        doc: QDomDocument = parent.ownerDocument()
+
+        if not parent.tagName() == 'Visualizations':
+            parent = doc.createElement('Visualizations')
+            doc.appendChild(parent)
+
+        for v in self.visualizations():
+            nV: QDomElement = doc.createElement('Visualization')
+            parent.appendChild(nV)
+            v.writeXml(nV)
+
+        return parent
+
+    def readXml(self, parent: QDomElement, context: QgsReadWriteContext):
+        if not parent.tagName() == 'Visualizations':
+            parent = parent.firstChildElement('Visualizations')
+
+        if parent.isNull():
+            return False
+
+        nV = parent.firstChildElement('Visualization').toElement()
+
+        # clean old visualizations
+        self.removePropertyItemGroups(self.visualizations())
+
+        while not nV.isNull():
+            vis = ProfileVisualizationGroup()
+            vis.initWithPlotModel(self)
+            vis.readXml(nV)
+            self.insertPropertyGroup(-1, vis)
+            nV = nV.nextSibling().toElement()
+        # clean all
+
+        # append vis
+        s = ""
+
     def setPlotWidget(self, plotWidget: SpectralProfilePlotWidget):
         self.mPlotWidget = plotWidget
         self.mPlotWidget.sigPlotDataItemSelected.connect(self.onPlotSelectionRequest)
@@ -343,19 +380,16 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def insertPropertyGroup(self,
                             index: Union[int, QModelIndex],
                             items: Union[PropertyItemGroup,
-                                         List[PropertyItemGroup]],
+                                            List[PropertyItemGroup]],
                             ):
-        if isinstance(index, QModelIndex):
-            index = index.row()
-        if index == -1:
-            index = len(self)
-
-        if isinstance(items, PropertyItemGroup):
-            items = [items]
 
         # map to model index within group of same zValues
+        if isinstance(items, PropertyItemGroup):
+            items = [items]
+        _index = None
 
-        _index = 0
+        if isinstance(index, QModelIndex):
+            index = index.row()
 
         for i, item in enumerate(items):
             assert isinstance(item, PropertyItemGroup)
@@ -364,18 +398,28 @@ class SpectralProfilePlotModel(QStandardItemModel):
             item.signals().requestRemoval.connect(lambda *arg, itm=item: self.removePropertyItemGroups(itm))
             item.signals().requestPlotUpdate.connect(self.updatePlot)
 
-            new_set: List[PropertyItemGroup] = self.propertyGroups()
-            new_set.insert(index + i, item)
-            new_set = sorted(new_set, key=lambda g: g.zValue())
-            _index = new_set.index(item)
+            old_order: List[PropertyItemGroup] = self.propertyGroups()
+            idx = index + i
+            if idx < 0 or idx > len(old_order):
+                idx = len(old_order)
+            old_order.insert(idx, item)
+
+            # ensure that items are ordered by zLevel,
+            # i.e. zLevel = 0 items first, zLevel = 1 afterwards etc.
+            GROUPS: dict = dict()
+            for g in old_order:
+                GROUPS[g.zValue()] = GROUPS.get(g.zValue(), []) + [g]
+
+            new_group_order = []
+            for zLevel in sorted(GROUPS.keys()):
+                new_group_order += GROUPS[zLevel]
 
             self.mModelItems.add(item)
-            self.insertRow(_index, item)
+            self.insertRow(new_group_order.index(item), item)
             # if necessary, this should update the plot
             item.initWithPlotModel(self)
 
-    def removePropertyItemGroups(self, groups: Union[PropertyItemGroup,
-                                                     List[PropertyItemGroup]]):
+    def removePropertyItemGroups(self, groups: Union[PropertyItemGroup, List[PropertyItemGroup]]):
 
         if isinstance(groups, PropertyItemGroup):
             groups = [groups]
@@ -1223,7 +1267,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         bc = QColor(self.plotControl().generalSettings().backgroundColor())
         total_h = self.mTreeView.rowHeight(index)
         total_w = self.mTreeView.columnWidth(index.column())
-
+        style: QStyle = option.styleObject.style()
+        margin = 3  # px
         if isinstance(item, PropertyItemBase):
             if item.hasPixmap():
                 super().paint(painter, option, index)
@@ -1234,37 +1279,57 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     painter.drawPixmap(rect, pixmap)
 
             elif isinstance(item, ProfileVisualizationGroup):
-                super().paint(painter, option, index)
-                rect = option.rect
+                # super().paint(painter, option, index)
+                to_paint = []
+                if index.flags() & Qt.ItemIsUserCheckable:
+                    to_paint.append(item.checkState())
+
+                h = option.rect.height()
                 plot_style: PlotStyle = item.mPStyle.plotStyle()
-                html_style = HTMLStyle()
-                x0 = rect.height()
+                # add pixmap
+                pm = plot_style.createPixmap(size=QSize(h, h), hline=True, bc=bc)
+                to_paint.append(pm)
+                if not item.isComplete():
+                    to_paint.append(QIcon(r':/images/themes/default/mIconWarning.svg'))
+                to_paint.append(item.data(Qt.DisplayRole))
 
-                # self.initStyleOption(option, index)
+                x0 = option.rect.x() + 1
+                y0 = option.rect.y()
+                for p in to_paint:
+                    o: QStyleOptionViewItem = QStyleOptionViewItem(option)
+                    self.initStyleOption(o, index)
+                    o.styleObject = option.styleObject
+                    o.palette = QPalette(option.palette)
 
-                # [25px warning icon] | 50 px style | html style text
-                # rect1, rect2, rect3
-                if total_h > 0 and total_w > 0:
-                    dy = rect.height()
-                    w1 = dy  # warning icon -> square
-                    w2 = w1 * 2  # plot style -> rectangle
-                    if not item.isComplete():
-                        item.isComplete()
-                        rect1 = QRect(rect.x() + x0, rect.y(), w1, dy)
-                        icon = QIcon(r':/images/themes/default/mIconWarning.svg')
-                        # overpaint
-                        icon.paint(painter, rect1)
+                    if isinstance(p, Qt.CheckState):
+
+                        o.rect = QRect(x0, y0, h, h)
+                        o.state = {Qt.Unchecked: QStyle.State_Off,
+                                   Qt.Checked: QStyle.State_On,
+                                   Qt.PartiallyChecked: QStyle.State_NoChange}[p]
+                        o.state = o.state | QStyle.State_Enabled
+
+                        style.drawPrimitive(QStyle.PE_IndicatorCheckBox, o, painter, self.mTreeView)
+
+                    elif isinstance(p, QPixmap):
+                        o.rect = QRect(x0, y0, h, h)
+                        painter.drawPixmap(o.rect, p)
+
+                    elif isinstance(p, QIcon):
+                        o.rect = QRect(x0, y0, h, h)
+                        p.paint(painter, o.rect)
+                    elif isinstance(p, str):
+                        font_metrics = QFontMetrics(self.mTreeView.font())
+                        w = font_metrics.horizontalAdvance(p)
+                        o.rect = QRect(x0 + margin, y0, x0 + margin + w, h)
+                        palette = style.standardPalette()
+                        enabled = True
+                        textRole = QPalette.Foreground
+                        style.drawItemText(painter, o.rect, Qt.AlignLeft, palette, enabled, p, textRole=textRole)
+
                     else:
-                        rect1 = QRect(rect.x() + x0, rect.y(), 0, dy)
-                        x0 += dy
-                    rect2 = QRect(rect1.x() + rect1.width(), rect.y(), w1, dy)
-                    rect3 = QRect(rect2.x() + rect2.width(), rect.y(), total_w - rect2.x() - rect2.width(), dy)
-                    # pixmap = style.createPixmap(size=QSize(w - x0, total_h), hline=True, bc=bc)
-                    if item.isComplete():
-                        pixmap = plot_style.createPixmap(size=rect2.size(), hline=True, bc=bc)
-                        painter.drawPixmap(rect2, pixmap)
-                    # rect2 = QRect(rect.x() + x0, rect.y(), rect.width() - 2*x0, rect.height())
-                    # html_style.drawItemText(painter, rect3, None, item.text(), )
+                        raise NotImplementedError(f'Does not support painting of "{p}"')
+                    x0 = o.rect.x() + margin + o.rect.width()
 
             elif isinstance(item, PlotStyleItem):
                 # self.initStyleOption(option, index)
