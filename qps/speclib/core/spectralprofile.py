@@ -723,7 +723,7 @@ class SpectralProfileBlock(object):
         Returns the number of profiles in the block (including masked!)
         :return: int
         """
-        return int(np.product(self.mData.shape[1:]))
+        return int(np.prod(self.mData.shape[1:]))
 
     def n_bands(self) -> int:
         """
