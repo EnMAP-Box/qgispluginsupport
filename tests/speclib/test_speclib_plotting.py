@@ -431,7 +431,6 @@ class TestSpeclibPlotting(TestCaseBase):
 
     def test_plotitems_xml(self):
 
-
         registerSpectralLibraryPlotFactories()
 
         grp = PropertyItemGroup()
@@ -493,6 +492,7 @@ class TestSpeclibPlotting(TestCaseBase):
 
         self.assertListEqual(groupsA, groupsB)
         s = ""
+
     def test_sortBands(self):
 
         d = prepareProfileValueDict(y=[1, 2, 3, 4, 4, 3, 2, 3, 3, 4],

@@ -390,6 +390,9 @@ class SpectralProfilePlotModel(QStandardItemModel):
             items = [items]
         _index = None
 
+        if isinstance(index, QModelIndex):
+            index = index.row()
+
         for i, item in enumerate(items):
             assert isinstance(item, PropertyItemGroup)
 
@@ -397,18 +400,24 @@ class SpectralProfilePlotModel(QStandardItemModel):
             item.signals().requestRemoval.connect(lambda *arg, itm=item: self.removePropertyItemGroups(itm))
             item.signals().requestPlotUpdate.connect(self.updatePlot)
 
-            group_order: List[PropertyItemGroup] = self.propertyGroups()
+            old_order: List[PropertyItemGroup] = self.propertyGroups()
+            idx = index + i
+            if idx < 0:
+                idx = 0
+            elif idx > len(old_order):
+                idx = len(old_order)
+            old_order.insert(idx, item)
+
+            # ensure that items are ordered by zLevel,
+            # i.e. zLevel = 0 items first, zLevel = 1 afterwards etc.
             GROUPS: dict = dict()
-            for g in self.propertyGroups():
+            for g in old_order:
                 GROUPS[g.zValue()] = GROUPS.get(g.zValue(), []) + [g]
 
-            group = GROUPS.get(item.zValue(), []) + [item]
-
-            GROUPS[item.zValue()] = group
-
             new_group_order = []
-            for i in sorted(GROUPS.keys()):
-                new_group_order += GROUPS[i]
+            for zLevel in sorted(GROUPS.keys()):
+                new_group_order += GROUPS[zLevel]
+
             self.mModelItems.add(item)
             self.insertRow(new_group_order.index(item), item)
             # if necessary, this should update the plot
