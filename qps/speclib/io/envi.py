@@ -83,7 +83,6 @@ FILTER_SLI = 'ENVI Spectral Library (*.sli)'
 CSV_PROFILE_NAME_COLUMN_NAMES = ['spectra names', 'name']
 CSV_GEOMETRY_COLUMN = 'wkt'
 
-
 def flushCacheWithoutException(dataset: gdal.Dataset):
     """
     Tries to flush the gdal.Dataset cache up to 5 times, waiting 1 second in between.
@@ -139,7 +138,8 @@ def findENVIHeader(path: Union[str, pathlib.Path]) -> (str, str):
     if path is not pathHdr:
         pathBin = path
     else:
-        extensions = ['.bin', '.sli', '.esl']
+
+        extensions = ['.bin', '.sli', '.esl', '.bip', '.bil', '.bsq']
         candidates: List[pathlib.Path] = [
             pathHdr.parent / bn,  # file.hdr and file
         ]
@@ -668,7 +668,7 @@ def esl2vrt(pathESL, pathVrt=None) -> gdal.Dataset:
     return ds
 
 
-def readENVIHeader(pathESL, typeConversion=False) -> dict:
+def readENVIHeader(pathESL, typeConversion: bool =False) -> dict:
     """
     Reads an ENVI Header File (*.hdr) and returns its values in a dictionary
     :param pathESL: path to ENVI Header
