@@ -531,7 +531,7 @@ class TestSpeclibPlotting(TestCaseBase):
         self.showGui(slw)
 
     def test_SpectralLibraryPlotWidget(self):
-
+        registerSpectralLibraryPlotFactories()
         speclib = TestObjects.createSpectralLibrary(n_bands=[-1, 12])
         canvas = QgsMapCanvas()
         dv = QgsDualView()

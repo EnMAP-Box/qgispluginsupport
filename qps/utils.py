@@ -1873,6 +1873,8 @@ def chunks(iterable, size=10):
 
 
 def nodeXmlString(node: QDomElement, indent: int = 1) -> str:
+    if isinstance(node, QDomDocument):
+        node = node.documentElement()
     assert isinstance(node, QDomElement)
     doc = QDomDocument()
     doc.createElement('root')  # curious, we just need to create it, without adding as child
