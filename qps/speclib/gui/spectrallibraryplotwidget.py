@@ -400,9 +400,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             old_order: List[PropertyItemGroup] = self.propertyGroups()
             idx = index + i
-            if idx < 0:
-                idx = 0
-            elif idx > len(old_order):
+            if idx < 0 or idx > len(old_order):
                 idx = len(old_order)
             old_order.insert(idx, item)
 
