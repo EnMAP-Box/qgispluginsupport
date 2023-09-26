@@ -502,7 +502,7 @@ class PropertyItemGroup(PropertyItemBase):
                     grp.writeXml(grpNode)
                     break
                 s = ""
-
+        # print(nodeXmlString(doc))
         md.setData(PropertyItemGroup.MIME_TYPE, doc.toByteArray())
         return md
 
