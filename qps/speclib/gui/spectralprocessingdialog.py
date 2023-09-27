@@ -5,7 +5,7 @@ import pathlib
 from difflib import SequenceMatcher
 
 from json import JSONDecodeError
-from typing import Dict, List, Any, Union, Tuple
+from typing import Dict, List, Any, Union, Tuple, Optional
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
@@ -143,6 +143,12 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
             self.mFieldComboBox.setObjectName(self.parameterDefinition().name())
         return self.mFieldComboBox
 
+    def createWrappedLabel(self) -> Optional[QLabel]:
+        if not isinstance(self.mLabel, QLabel):
+            self.mLabel = self.createLabel()
+
+        return self.mLabel
+
     def createWidget(self):
         cb = QComboBox()
         cb.setEditable(True)
@@ -243,6 +249,11 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
             self.mMapLayerWidget = self.createWidget()
         return self.mMapLayerWidget
 
+    def createWrappedLabel(self) -> Optional[QLabel]:
+        if not isinstance(self.mLabel, QLabel):
+            self.mLabel = self.createLabel()
+        return self.mLabel
+
     def setWidgetValue(self, value, context: QgsProcessingContext):
         if isinstance(self.mMapLayerWidget, QComboBox):
             if isinstance(value, str):
@@ -286,7 +297,6 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         # l = QLabel(f'<html><img width="20"px" height="20"
         # src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
         param = self.parameterDefinition()
-        label = None
 
         if isinstance(param, QgsProcessingParameterRasterLayer):
             label = QLabel(f'<html><img src=":/qps/ui/icons/field_to_raster.svg">   '
@@ -377,6 +387,8 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         self.mProcessing_context: QgsProcessingContext = processingContext
         self.mProcessing_context.setProject(self.mProject)
 
+        self.mProcessingParameterWidgetContext: QgsProcessingParameterWidgetContext
+        self.mProcessingParameterWidgetContext = None
         class ContextGenerator(QgsProcessingContextGenerator):
 
             def __init__(self, context):
@@ -414,8 +426,10 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         # Create widgets and put them in layouts
         widget_context = QgsProcessingParameterWidgetContext()
         widget_context.setProject(self.mProject)
-
+        self.mProcessingParameterWidgetContext = widget_context
         for param in self.algorithm().parameterDefinitions():
+            if self.parameterWidget(param.name()):
+                s = ""
             if param.flags() & QgsProcessingParameterDefinition.FlagHidden:
                 continue
             # if isinstance(param, (SpectralProcessingProfiles, SpectralProcessingProfilesSink)):
@@ -444,6 +458,9 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             wrapper.registerProcessingParametersGenerator(self)
             wrapper.widgetValueHasChanged.connect(self.parameterWidgetValueChanged)
             # store wrapper instance
+            if param.name() in self.mWrappers:
+                s = ""
+            assert param.name() not in self.mWrappers, f'{param.name()} in {self.mWrappers.keys()}'
             self.mWrappers[param.name()] = wrapper
 
             label = wrapper.createWrappedLabel()
@@ -476,6 +493,7 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.mContextGenerator)
             wrapper.registerProcessingParametersGenerator(self)
+            assert output.name() not in self.mWrappers
             self.mWrappers[output.name()] = wrapper
 
             label = wrapper.createWrappedLabel()
@@ -487,6 +505,16 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
 
         for wrapper in list(self.mWrappers.values()):
             wrapper.postInitialize(list(self.mWrappers.values()))
+
+        for w in list(self.mWrappers.values()):
+            assert isinstance(w, QgsAbstractProcessingParameterWidgetWrapper)
+            name = w.parameterDefinition().name()
+            label = w.wrappedLabel()
+            widget = w.wrappedWidget()
+            print(f'{name}\t{label}\t{widget}')
+        s = ""
+
+
 
     def parameterWidgetValueChanged(self, wrapper: QgsAbstractProcessingParameterWidgetWrapper):
 
