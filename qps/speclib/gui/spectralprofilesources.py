@@ -339,6 +339,9 @@ class StandardLayerProfileSource(SpectralProfileSource):
         bbl = sp.badBands()
         wl = sp.wavelengths()
         wlu = sp.wavelengthUnits()
+        if isinstance(wlu, list):
+            wlu = wlu[0]
+
         if True:
             dp: QgsRasterDataProvider = self.mLayer.dataProvider()
             for iX in range(nx):
