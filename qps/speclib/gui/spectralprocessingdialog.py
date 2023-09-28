@@ -5,7 +5,7 @@ import pathlib
 from difflib import SequenceMatcher
 
 from json import JSONDecodeError
-from typing import Dict, List, Any, Union, Tuple
+from typing import Dict, List, Any, Union, Tuple, Optional
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
@@ -143,6 +143,12 @@ class SpectralProcessingRasterDestination(QgsAbstractProcessingParameterWidgetWr
             self.mFieldComboBox.setObjectName(self.parameterDefinition().name())
         return self.mFieldComboBox
 
+    def createWrappedLabel(self) -> Optional[QLabel]:
+        if not isinstance(self.mLabel, QLabel):
+            self.mLabel = self.createLabel()
+
+        return self.mLabel
+
     def createWidget(self):
         cb = QComboBox()
         cb.setEditable(True)
@@ -243,6 +249,11 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
             self.mMapLayerWidget = self.createWidget()
         return self.mMapLayerWidget
 
+    def createWrappedLabel(self) -> Optional[QLabel]:
+        if not isinstance(self.mLabel, QLabel):
+            self.mLabel = self.createLabel()
+        return self.mLabel
+
     def setWidgetValue(self, value, context: QgsProcessingContext):
         if isinstance(self.mMapLayerWidget, QComboBox):
             if isinstance(value, str):
@@ -286,7 +297,6 @@ class SpectralProcessingRasterLayerWidgetWrapper(QgsAbstractProcessingParameterW
         # l = QLabel(f'<html><img width="20"px" height="20"
         # src=":/qps/ui/icons/profile.svg">{self.parameterDefinition().description()}</html>')
         param = self.parameterDefinition()
-        label = None
 
         if isinstance(param, QgsProcessingParameterRasterLayer):
             label = QLabel(f'<html><img src=":/qps/ui/icons/field_to_raster.svg">   '
@@ -377,6 +387,9 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         self.mProcessing_context: QgsProcessingContext = processingContext
         self.mProcessing_context.setProject(self.mProject)
 
+        self.mProcessingParameterWidgetContext: QgsProcessingParameterWidgetContext
+        self.mProcessingParameterWidgetContext = None
+
         class ContextGenerator(QgsProcessingContextGenerator):
 
             def __init__(self, context):
@@ -414,8 +427,10 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
         # Create widgets and put them in layouts
         widget_context = QgsProcessingParameterWidgetContext()
         widget_context.setProject(self.mProject)
-
+        self.mProcessingParameterWidgetContext = widget_context
         for param in self.algorithm().parameterDefinitions():
+            if self.parameterWidget(param.name()):
+                s = ""
             if param.flags() & QgsProcessingParameterDefinition.FlagHidden:
                 continue
             # if isinstance(param, (SpectralProcessingProfiles, SpectralProcessingProfilesSink)):
@@ -427,39 +442,37 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                 # workaround https://github.com/qgis/QGIS/issues/46673
                 wrapper = SpectralProcessingRasterLayerWidgetWrapper(param, QgsProcessingGui.Standard)
             else:
-                # todo: remove for QGSI 4.0
-                wrapper_metadata = param.metadata().get('widget_wrapper', None)
-                # VERY messy logic here to avoid breaking 3.0 API which allowed metadata "widget_wrapper" value to be either
-                # a string name of a class OR a dict.
-                # TODO QGIS 4.0 -- require widget_wrapper to be a dict.
-                if wrapper_metadata and (
-                        not isinstance(wrapper_metadata, dict) or wrapper_metadata.get('class', None) is not None):
-                    wrapper = WidgetWrapperFactory.create_wrapper_from_metadata(param, self.parent(), row=0, col=0)
-                else:
-                    wrapper = QgsGui.processingGuiRegistry().createParameterWidgetWrapper(param,
-                                                                                          QgsProcessingGui.Standard)
+                wrapper = WidgetWrapperFactory.create_wrapper(param, self.parent(), row=0, col=0)
+
+            assert isinstance(wrapper, QgsAbstractProcessingParameterWidgetWrapper)
 
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.mContextGenerator)
             wrapper.registerProcessingParametersGenerator(self)
             wrapper.widgetValueHasChanged.connect(self.parameterWidgetValueChanged)
-            # store wrapper instance
+
+            # store the wrapper instance
+            assert param.name() not in self.mWrappers, f'{param.name()} in {self.mWrappers.keys()}'
             self.mWrappers[param.name()] = wrapper
 
-            label = wrapper.createWrappedLabel()
-            self.addParameterLabel(param, label)
-            processing_context = self.mProcessing_context
+            old_api = isinstance(wrapper, WidgetWrapper)
+            if old_api:
+                label = wrapper.label
+            else:
+                label = wrapper.createWrappedLabel()
 
-            # TODO QGIS 4.0 - remove
-            is_python_wrapper = issubclass(wrapper.__class__, WidgetWrapper)
+            if isinstance(label, QLabel):
+                self.addParameterLabel(param, label)
+
             stretch = 0
-            if not is_python_wrapper:
-                widget = wrapper.createWrappedWidget(processing_context)
+            if old_api:
+                widget = wrapper.widget
                 stretch = wrapper.stretch()
             else:
-                widget = wrapper.widget
+                widget = wrapper.createWrappedWidget(self.mProcessing_context)
 
-            self.addParameterWidget(param, widget, stretch)
+            if isinstance(widget, QWidget):
+                self.addParameterWidget(param, widget, stretch)
 
         for output in self.algorithm().destinationParameterDefinitions():
             if output.flags() & QgsProcessingParameterDefinition.FlagHidden:
@@ -476,14 +489,16 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
             wrapper.setWidgetContext(widget_context)
             wrapper.registerProcessingContextGenerator(self.mContextGenerator)
             wrapper.registerProcessingParametersGenerator(self)
+            assert output.name() not in self.mWrappers
             self.mWrappers[output.name()] = wrapper
 
             label = wrapper.createWrappedLabel()
-            if label is not None:
+            if isinstance(label, QLabel):
                 self.addOutputLabel(label)
 
             widget = wrapper.createWrappedWidget(self.mProcessing_context)
-            self.addOutputWidget(widget, wrapper.stretch())
+            if isinstance(widget, QWidget):
+                self.addOutputWidget(widget, wrapper.stretch())
 
         for wrapper in list(self.mWrappers.values()):
             wrapper.postInitialize(list(self.mWrappers.values()))
