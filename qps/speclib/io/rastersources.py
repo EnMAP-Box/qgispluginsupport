@@ -32,10 +32,12 @@ from typing import List, Union, Generator, Dict
 
 import numpy as np
 from osgeo import gdal
+from osgeo.ogr import GeometryTypeToName
 
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QVariant, Qt, QUrl
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
+from qgis._core import QgsExpressionContextUtils, QgsExpressionContext, QgsProject, QgsExpression
 from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY, QgsPoint
 from qgis.core import QgsProviderRegistry
@@ -48,8 +50,10 @@ from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget, \
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
+from ...qgsfunctions import RasterProfile
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
-    rasterArray, qgsRasterLayer, px2geocoordinatesV2, optimize_block_size, px2geocoordinates, fid2pixelindices
+    rasterArray, qgsRasterLayer, px2geocoordinatesV2, optimize_block_size, px2geocoordinates, fid2pixelindices, \
+    qgsVectorLayer
 
 PIXEL_LIMIT = 100 * 100
 
@@ -523,6 +527,47 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
     @staticmethod
     def readRasterVector(raster, vector,
+                         fields: QgsFields,
+                         all_touched: bool = True,
+                         cache: int = 5 * 2 ** 20) -> Generator[QgsFeature, None, None]:
+
+        rl = qgsRasterLayer(raster)
+        vl = qgsVectorLayer(vector)
+        f = RasterProfile()
+        store = QgsProject()
+        store.addMapLayers([rl, vl])
+
+        context = QgsExpressionContext()
+        context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(vl))
+        if Qgis.versionInt() >= 33000:
+            context.setLoadedLayerStore(store.layerStore())
+
+
+        exp = QgsExpression(f"{f.name()}('{rl.name()}', $geometry, 'dict')")
+        for i, feature in enumerate(vl.getFeatures()):
+            if not feature.isValid():
+                continue
+
+
+            if vl.geometryType() == GeometryTypeToName().Point:
+                subFeatures = [feature]
+            else:
+                bbox = feature.geometry.boundingBox()
+
+            context.setFeature(feature)
+            # context = QgsExpressionContextUtils.createFeatureBasedContext(feature, QgsFields())
+            exp.prepare(context)
+            assert exp.parserErrorString() == ''
+
+            profile = exp.evaluate(context)
+            assert exp.evalErrorString() == ''
+            s = ""
+            p = QgsFeature(fields)
+
+            yield p
+
+    @staticmethod
+    def readRasterVectorOLD(raster, vector,
                          fields: QgsFields,
                          all_touched: bool = True,
                          cache: int = 5 * 2 ** 20) -> Generator[QgsFeature, None, None]:
