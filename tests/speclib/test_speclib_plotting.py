@@ -29,7 +29,7 @@ from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import spectralProfileEditorWidgetFactory
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
-from qps.utils import nextColor, parseWavelength, writeAsVectorFormat
+from qps.utils import nextColor, parseWavelength, writeAsVectorFormat, nodeXmlString
 
 start_app()
 
@@ -66,6 +66,28 @@ class TestSpeclibPlotting(TestCaseBase):
 
         vis2 = ProfileVisualizationGroup()
         vis2.setSpeclib(sl2)
+
+        doc = QDomDocument('test')
+        root = doc.createElement('root')
+        doc.appendChild(root)
+
+        context = QgsReadWriteContext()
+
+        # restore visualization settings from XML
+        vis0b: ProfileVisualizationGroup = vis0.clone()
+        for p0, p1 in zip(vis0.propertyItems(), vis0b.propertyItems()):
+            self.assertEqual(p0, p1)
+        self.assertEqual(vis0, vis0b)
+        vis0.setColor('red')
+        self.assertNotEqual(vis0, vis0b)
+        vis0.writeXml(root, context)
+        vis0b.readXml(root, context)
+        print(nodeXmlString(root))
+        for p0, p1 in zip(vis0.propertyItems(), vis0b.propertyItems()):
+            if p0 != p1:
+                b = p0 == p1
+                s = ""
+        self.assertEqual(vis0, vis0b)
 
     def test_SpectralLibraryWidget_deleteFeatures(self):
         speclib = TestObjects.createSpectralLibrary(10)
@@ -383,7 +405,7 @@ class TestSpeclibPlotting(TestCaseBase):
         QgsProject.instance().removeAllMapLayers()
 
     def test_QgsPropertyItems(self):
-
+        context = QgsReadWriteContext()
         itemLabel = QgsPropertyItem('Label')
         itemLabel.setDefinition(QgsPropertyDefinition(
             'Label',
@@ -421,13 +443,24 @@ class TestSpeclibPlotting(TestCaseBase):
         for item1 in items:
             self.assertIsInstance(item1, PropertyItem)
             node = doc.createElement('testnode')
-            item1.writeXml(node, doc)
+            item1.writeXml(node, context)
 
             item2 = QgsPropertyItem(item1.key())
             item2.setDefinition(item1.definition())
-            item2.readXml(node)
+            item2.readXml(node, context)
 
             self.assertEqual(item1, item2)
+
+    def test_PlotStyleItem(self):
+
+        item1 = PlotStyleItem('key')
+        item1.plotStyle().setLineColor('red')
+        item2 = item1.clone()
+        self.assertIsInstance(item2, PlotStyleItem)
+        self.assertEqual(item1, item2)
+
+        item2.plotStyle().setLineColor('blue')
+        self.assertNotEqual(item1, item2)
 
     def test_plotitems_xml(self):
 
@@ -450,9 +483,11 @@ class TestSpeclibPlotting(TestCaseBase):
         item3.setCellKey(1, 'testfield')
         items = [item1, item2, item3]
 
+        context = QgsReadWriteContext()
         doc = QDomDocument()
         root = doc.createElement('TESTGROUP')
         doc.appendChild(root)
+
         for item in items:
 
             self.assertIsInstance(item, PropertyItem)
@@ -462,8 +497,8 @@ class TestSpeclibPlotting(TestCaseBase):
             nodeA = doc.createElement('nodeA')
             nodeB = doc.createElement('nodeB')
 
-            item.writeXml(nodeA, attribute=False)
-            item.writeXml(nodeB, attribute=True)
+            item.writeXml(nodeA, context, attribute=False)
+            item.writeXml(nodeB, context, attribute=True)
 
             cls = item.__class__
             itemA = cls(item.key())
@@ -474,8 +509,8 @@ class TestSpeclibPlotting(TestCaseBase):
                 itemA.setDefinition(item.definition())
                 itemB.setDefinition(item.definition())
 
-                itemA.readXml(nodeA, attribute=False)
-                itemB.readXml(nodeB, attribute=True)
+                itemA.readXml(nodeA, context, attribute=False)
+                itemB.readXml(nodeB, context, attribute=True)
 
                 for item2 in [itemA, itemB]:
                     self.assertEqual(item2.key(), item.key())

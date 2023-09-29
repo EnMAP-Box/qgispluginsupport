@@ -308,7 +308,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         for v in self.visualizations():
             nV: QDomElement = doc.createElement('Visualization')
             parent.appendChild(nV)
-            v.writeXml(nV)
+            v.writeXml(nV, context)
 
         return parent
 
@@ -327,7 +327,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
         while not nV.isNull():
             vis = ProfileVisualizationGroup()
             vis.initWithPlotModel(self)
-            vis.readXml(nV)
+            vis.readXml(nV, context)
             self.insertPropertyGroup(-1, vis)
             nV = nV.nextSibling().toElement()
         # clean all
@@ -1302,7 +1302,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     o.palette = QPalette(option.palette)
 
                     if isinstance(p, Qt.CheckState):
-
+                        # size = style.sizeFromContents(QStyle.PE_IndicatorCheckBox, o, QSize(), None)
                         o.rect = QRect(x0, y0, h, h)
                         o.state = {Qt.Unchecked: QStyle.State_Off,
                                    Qt.Checked: QStyle.State_On,

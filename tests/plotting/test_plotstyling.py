@@ -109,15 +109,16 @@ class PlotStyleTests(TestCaseBase):
 
         stylesIn = [style]
         node = doc.createElement('PlotStyles')
+        doc.appendChild(node)
         for style in stylesIn:
             style.writeXml(node, doc)
-        doc.appendChild(node)
 
         with open(path, 'w', encoding='utf-8') as f:
             f.write(doc.toString())
 
         with open(path, 'r', encoding='utf-8') as f:
             xml = f.read()
+
         dom = QDomDocument()
         dom.setContent(xml)
         stylesOut = []
@@ -145,6 +146,10 @@ class PlotStyleTests(TestCaseBase):
         s3.setLineColor('red')
 
         self.assertNotEqual(s1, s3)
+
+        s4 = s3.clone()
+
+        self.assertEqual(s4, s3)
 
     def test_PlotWidgetStyle(self):
 

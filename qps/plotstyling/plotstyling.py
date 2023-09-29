@@ -505,8 +505,7 @@ class PlotStyle(QObject):
         :param args:
         :return:
         """
-        if not node.nodeName() == XMLTAG_PLOTSTYLENODE:
-            node = node.firstChildElement(XMLTAG_PLOTSTYLENODE)
+        node = node if node.nodeName() == XMLTAG_PLOTSTYLENODE else node.firstChildElement(XMLTAG_PLOTSTYLENODE)
         if node.isNull():
             return None
 
