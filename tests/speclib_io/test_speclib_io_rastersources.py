@@ -2,8 +2,10 @@
 import pathlib
 import unittest
 
+from qgis._core import QgsFeature
 from qgis.core import QgsProject
 from qgis.core import QgsWkbTypes
+from qps import registerExpressionFunctions
 from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
     SpectralLibraryIO
 from qps.speclib.io.rastersources import RasterLayerSpectralLibraryIO, RasterLayerSpectralLibraryImportWidget
@@ -25,6 +27,20 @@ class TestSpeclibIO_Raster(TestCaseBase):
         ios = [RasterLayerSpectralLibraryIO()]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
+    def test_raster_reading(self):
+        registerExpressionFunctions()
+
+        io = RasterLayerSpectralLibraryIO()
+        w = RasterLayerSpectralLibraryImportWidget()
+        fields = w.sourceFields()
+
+        from qpstestdata import enmap, landcover
+
+        for f in io.readRasterVector(enmap, landcover):
+
+            self.assertIsInstance(f, QgsFeature)
+            for f in fields.names():
+                self.assertTrue(f.fields())
     def test_raster_input_widget(self):
         layers = [TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon),
                   TestObjects.createVectorLayer(wkbType=QgsWkbTypes.LineString),

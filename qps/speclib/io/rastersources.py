@@ -37,7 +37,9 @@ from osgeo.ogr import GeometryTypeToName
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QVariant, Qt, QUrl
 from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
-from qgis._core import QgsExpressionContextUtils, QgsExpressionContext, QgsProject, QgsExpression
+from qgis._core import QgsExpressionContextUtils, QgsExpressionContext, QgsProject, QgsExpression, \
+    QgsRemappingSinkDefinition, QgsProperty, QgsExpressionContextScope, QgsCoordinateTransformContext, \
+    QgsRemappingProxyFeatureSink, QgsFeatureStore, QgsCoordinateTransform
 from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY, QgsPoint
 from qgis.core import QgsProviderRegistry
@@ -51,6 +53,7 @@ from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWid
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...qgsfunctions import RasterProfile
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
     rasterArray, qgsRasterLayer, px2geocoordinatesV2, optimize_block_size, px2geocoordinates, fid2pixelindices, \
     qgsVectorLayer
@@ -526,7 +529,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
             yield p
 
     @staticmethod
-    def readRasterVector(raster, vector,
+    def readRasterVectorNEW(raster, vector,
                          fields: QgsFields,
                          all_touched: bool = True,
                          cache: int = 5 * 2 ** 20) -> Generator[QgsFeature, None, None]:
@@ -534,6 +537,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         rl = qgsRasterLayer(raster)
         vl = qgsVectorLayer(vector)
         f = RasterProfile()
+
         store = QgsProject()
         store.addMapLayers([rl, vl])
 
@@ -542,27 +546,42 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         if Qgis.versionInt() >= 33000:
             context.setLoadedLayerStore(store.layerStore())
 
+        transform = QgsCoordinateTransform()
+        transform.setSourceCrs(vl.source())
+        transform.setDestinationCrs(rl.source())
 
         exp = QgsExpression(f"{f.name()}('{rl.name()}', $geometry, 'dict')")
         for i, feature in enumerate(vl.getFeatures()):
             if not feature.isValid():
                 continue
+            feature: QgsFeature
+            g: QgsGeometry = feature.geometry()
+            g.transform(transform)
+            feature.setGeometry(g)
 
-
+            features = []
             if vl.geometryType() == GeometryTypeToName().Point:
-                subFeatures = [feature]
+                features.append(feature)
             else:
-                bbox = feature.geometry.boundingBox()
+                # return a point for each covered pixel
 
-            context.setFeature(feature)
-            # context = QgsExpressionContextUtils.createFeatureBasedContext(feature, QgsFields())
-            exp.prepare(context)
-            assert exp.parserErrorString() == ''
+                bbox = g.boundingBox()
+                if bbox.intersects(rl.extent().asPolygon()):
+                    xmin, xmax = bbox.xMinimum(), bbox.xMaximum()
+                    ymin, ymax = bbox.yMinimum(), bbox.yMaximum()
+                    s = ""
 
-            profile = exp.evaluate(context)
-            assert exp.evalErrorString() == ''
-            s = ""
-            p = QgsFeature(fields)
+            for f in features:
+                context.setFeature(f)
+                # context = QgsExpressionContextUtils.createFeatureBasedContext(feature, QgsFields())
+                exp.prepare(context)
+                assert exp.parserErrorString() == ''
+
+                profile = exp.evaluate(context)
+                assert exp.evalErrorString() == ''
+
+                p = QgsFeature(fields)
+
 
             yield p
 
@@ -592,6 +611,111 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         # pixel center coordinates as geolocations
 
         geo_x, geo_y = px2geocoordinates(ds, pxCenter=True)
+
+        # get FID positions
+        layer = 0
+        for sub in vector.dataProvider().subLayers():
+            layer = sub.split('!!::!!')[1]
+            break
+
+        fid_positions, no_fid = fid2pixelindices(ds, vector,
+                                                 layer=layer,
+                                                 all_touched=all_touched)
+
+        i_RF_NAME = fields.lookupField(RF_NAME)
+        i_RF_SOURCE = fields.lookupField(RF_SOURCE)
+        i_RF_PX_X = fields.lookupField(RF_PX_X)
+        i_RF_PX_Y = fields.lookupField(RF_PX_Y)
+        i_RF_PROFILE = fields.lookupField(RF_PROFILE)
+
+        PROFILE_COUNTS = dict()
+
+        FEATURES: Dict[int, QgsFeature] = dict()
+
+        for y in range(nYBlocks):
+            yoff = y * block_size[1]
+            for x in range(nXBlocks):
+                xoff = x * block_size[0]
+                xsize = min(block_size[0], ds.RasterXSize - xoff)
+                ysize = min(block_size[1], ds.RasterYSize - yoff)
+                cube: np.ndarray = ds.ReadAsArray(xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize)
+                cube = cube.reshape((ds.RasterCount, ysize, xsize))
+                fid_pos = fid_positions[yoff:yoff + ysize, xoff:xoff + xsize]
+                assert cube.shape[1:] == fid_pos.shape
+
+                for fid in [int(v) for v in np.unique(fid_pos) if v != no_fid]:
+                    fid_yy, fid_xx = np.where(fid_pos == fid)
+                    n_p = len(fid_yy)
+                    if n_p > 0:
+
+                        if fid not in FEATURES.keys():
+                            FEATURES[fid] = vector.getFeature(fid)
+                        vectorFeature: QgsFeature = FEATURES.get(fid)
+
+                        fid_profiles = cube[:, fid_yy, fid_xx]
+                        profile_geo_x = geo_x[fid_yy + yoff, fid_xx + xoff]
+                        profile_geo_y = geo_y[fid_yy + yoff, fid_xx + xoff]
+                        profile_px_x = fid_xx + xoff
+                        profile_px_y = fid_yy + yoff
+
+                        for i in range(n_p):
+                            # create profile feature
+                            p = QgsFeature(fields)
+
+                            # create geometry
+                            p.setGeometry(QgsPoint(profile_geo_x[i],
+                                                   profile_geo_y[i]))
+
+                            PROFILE_COUNTS[fid] = PROFILE_COUNTS.get(fid, 0) + 1
+                            # sp.setName(f'{fid_basename}_{PROFILE_COUNTS[fid]}')
+
+                            if i_RF_NAME >= 0:
+                                p.setAttribute(i_RF_NAME, raster_name)
+
+                            if i_RF_SOURCE >= 0:
+                                p.setAttribute(i_RF_SOURCE, raster_source)
+
+                            if i_RF_PROFILE >= 0:
+                                spectrum_dict = prepareProfileValueDict(x=wl, y=fid_profiles[:, i], xUnit=wlu, bbl=bbl)
+                                p.setAttribute(i_RF_PROFILE,
+                                               encodeProfileValueDict(spectrum_dict, fields.at(i_RF_PROFILE)))
+
+                            if i_RF_PX_X >= 0:
+                                p[i_RF_PX_X] = int(profile_px_x[i])
+
+                            if i_RF_PX_Y >= 0:
+                                p[i_RF_PX_Y] = int(profile_px_y[i])
+
+                            if isinstance(vectorFeature, QgsFeature) and vectorFeature.isValid():
+                                for field in vectorFeature.fields():
+                                    if field in fields:
+                                        p.setAttribute(field.name(), vectorFeature.attribute(field.name()))
+
+                            yield p
+
+    @staticmethod
+    def readRasterVector(raster, vector,
+                         fields: QgsFields,
+                         all_touched: bool = True,
+                         cache: int = 5 * 2 ** 20) -> Generator[QgsFeature, None, None]:
+
+
+        rl: QgsRasterLayer = qgsRasterLayer(raster)
+        assert isinstance(rl, QgsRasterLayer), f'Unable to open {rl.source()} as QgsRasterLayer'
+
+        sp = QgsRasterLayerSpectralProperties.fromRasterLayer(rl)
+        bbl = sp.badBands()
+        wl = sp.wavelengths()
+        wlu = sp.wavelengthUnits()[0]
+
+        block_size = optimize_block_size(rl, cache=cache)
+        bx = block_size[0] * rl.rasterUnitsPerPixelX()
+        by = block_size[1] * rl.rasterUnitsPerPixelY()
+
+        # Iterate over raster layer
+
+
+        geo_x, geo_y = px2geocoordinates(rl, pxCenter=True)
 
         # get FID positions
         layer = 0
