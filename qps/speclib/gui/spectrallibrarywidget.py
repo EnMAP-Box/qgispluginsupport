@@ -364,6 +364,27 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         return self.plotWidget().getPlotItem()
 
+    def readXml(self, parent: QDomElement, context: QgsReadWriteContext)-> bool:
+        """
+        Reads the visualization settings and tries to restore them on the given spectral library instance.
+        This method can not restore the QgsVectorLayer instance that has been associated with this widget.
+        Use SpectralLibraryWidget.fromXml(...) instead
+        """
+        if not parent.tagName() == 'SpectralLibraryWidget':
+            parent = parent.firstChildElement('SpectralLibraryWidget').toElement()
+
+        if parent.isNull():
+            return False
+        nSLW: QDomElement = parent
+        nS: QDomElement = nSLW.firstChildElement('source')
+        nSL: QDomElement = nSLW.firstChildElement('maplayer')
+        nVIS: QDomElement = nSLW.firstChildElement('Visualizations')
+
+        if not nVIS.isNull():
+            self.plotControl().readXml(nVIS, context)
+        return True
+        s = ""
+
     def writeXml(self, parent: QDomElement, context: QgsReadWriteContext) -> QDomElement:
         doc: QDomDocument = parent.ownerDocument()
         assert isinstance(doc, QDomDocument)

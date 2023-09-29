@@ -109,15 +109,16 @@ class PlotStyleTests(TestCaseBase):
 
         stylesIn = [style]
         node = doc.createElement('PlotStyles')
+        doc.appendChild(node)
         for style in stylesIn:
             style.writeXml(node, doc)
-        doc.appendChild(node)
 
         with open(path, 'w', encoding='utf-8') as f:
             f.write(doc.toString())
 
         with open(path, 'r', encoding='utf-8') as f:
             xml = f.read()
+
         dom = QDomDocument()
         dom.setContent(xml)
         stylesOut = []
