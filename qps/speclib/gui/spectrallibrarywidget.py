@@ -364,7 +364,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         """
         return self.plotWidget().getPlotItem()
 
-    def readXml(self, parent: QDomElement, context: QgsReadWriteContext)-> bool:
+    def readXml(self, parent: QDomElement, context: QgsReadWriteContext) -> bool:
         """
         Reads the visualization settings and tries to restore them on the given spectral library instance.
         This method can not restore the QgsVectorLayer instance that has been associated with this widget.

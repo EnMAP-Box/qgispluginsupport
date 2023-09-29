@@ -147,6 +147,10 @@ class PlotStyleTests(TestCaseBase):
 
         self.assertNotEqual(s1, s3)
 
+        s4 = s3.clone()
+
+        self.assertEqual(s4, s3)
+
     def test_PlotWidgetStyle(self):
 
         style1 = PlotWidgetStyle()
