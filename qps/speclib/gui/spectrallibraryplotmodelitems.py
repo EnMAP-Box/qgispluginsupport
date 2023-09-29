@@ -413,6 +413,9 @@ class PropertyItemGroup(PropertyItemBase):
 
         if self.rowCount() != other.rowCount():
             return False
+        for p1, p2 in zip(self.propertyItems(), other.propertyItems()):
+            if p1 != p2:
+                return False
         return b
 
     def __ne__(self, other):
