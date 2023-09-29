@@ -26,19 +26,21 @@ import sys
 from typing import List, Any, Dict, Tuple, Union
 
 import numpy as np
+
 from qgis.PyQt.QtCore import Qt, QModelIndex, pyqtSignal, QMimeData, QObject, QSize, QSignalBlocker
 from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QPen, QPixmap
 from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout, QCheckBox, QDoubleSpinBox, \
     QSpinBox, QMenu
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsExpressionContextUtils, QgsExpressionContextGenerator
+from qgis.core import QgsReadWriteContext
 from qgis.core import QgsWkbTypes, QgsField, QgsPropertyDefinition, QgsProperty, QgsExpressionContext, QgsRasterLayer, \
     QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer, QgsSingleBandPseudoColorRenderer, \
     QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
-    QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsRenderContext, QgsFeatureRenderer, QgsFeature, \
+    QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsFeature, \
     QgsXmlUtils, QgsTextFormat
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverrideButton, \
     QgsSpinBox, QgsDoubleSpinBox
-
 from .spectrallibraryplotitems import SpectralProfilePlotLegend, SpectralProfilePlotItem
 from ..core import is_profile_field
 from ...externals.htmlwidgets import HTMLComboBox
@@ -46,7 +48,7 @@ from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetSty
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
 from ...speclib.core import create_profile_field
 from ...unitmodel import UnitConverterFunctionModel, BAND_NUMBER, BAND_INDEX
-from ...utils import parseWavelength, SignalBlocker, nodeXmlString
+from ...utils import parseWavelength, SignalBlocker
 
 WARNING_ICON = QIcon(r':/images/themes/default/mIconWarning.svg')
 
@@ -57,12 +59,42 @@ class SpectralProfileColorPropertyWidget(QWidget):
 
     """
 
+    class ContextGenerator(QgsExpressionContextGenerator):
+
+        def __init__(self, widget):
+            super().__init__()
+
+            self.mWidget: 'SpectralProfileColorPropertyWidget' = widget
+
+        def createExpressionContext(self) -> QgsExpressionContext:
+            layer = self.mWidget.mPropertyOverrideButton.vectorLayer()
+            if not isinstance(layer, QgsVectorLayer):
+                return QgsExpressionContext()
+
+            context: QgsExpressionContext = layer.createExpressionContext()
+            feature: QgsFeature = None
+            for f in layer.getFeatures():
+                feature = f
+                break
+            if isinstance(feature, QgsFeature):
+                context.setFeature(feature)
+                symbol = layer.renderer().symbol()
+                j = context.indexOfScope('Symbol')
+                if j < 0:
+                    symbolScope = QgsExpressionContextScope('Symbol')
+                    context.appendScope(symbolScope)
+                else:
+                    symbolScope: QgsExpressionContextScope = context.scope(j)
+                QgsExpressionContextUtils.updateSymbolScope(symbol, symbolScope)
+            return context
+
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.setWindowIcon(QIcon(':/images/themes/default/mIconColorBox.svg'))
-        self.mContext: QgsExpressionContext = QgsExpressionContext()
-        self.mRenderContext: QgsRenderContext = QgsRenderContext()
-        self.mRenderer: QgsFeatureRenderer = None
+        self.mContextGenerator = SpectralProfileColorPropertyWidget.ContextGenerator(self)
+        # self.mContext: QgsExpressionContext = QgsExpressionContext()
+        # self.mRenderContext: QgsRenderContext = QgsRenderContext()
+        # self.mRenderer: QgsFeatureRenderer = None
         self.mDefaultColor = QColor('green')
         self.mColorButton = QgsColorButton()
         self.mColorButton.colorChanged.connect(self.onButtonColorChanged)
@@ -70,6 +102,7 @@ class SpectralProfileColorPropertyWidget(QWidget):
         self.mColorButton.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed))
         self.mPropertyOverrideButton = QgsPropertyOverrideButton()
         self.mPropertyOverrideButton.registerLinkedWidget(self.mColorButton)
+        self.mPropertyOverrideButton.registerExpressionContextGenerator(self.mContextGenerator)
         # self.mPropertyOverrideButton.aboutToShowMenu.connect(self.updateOverrideMenu)
         hl = QHBoxLayout()
         hl.addWidget(self.mColorButton)
@@ -88,19 +121,8 @@ class SpectralProfileColorPropertyWidget(QWidget):
 
     def setLayer(self, layer: QgsVectorLayer):
 
-        self.mPropertyOverrideButton.registerExpressionContextGenerator(layer)
         self.mPropertyOverrideButton.setVectorLayer(layer)
         self.mPropertyOverrideButton.updateFieldLists()
-
-        self.mContext = layer.createExpressionContext()
-        feature: QgsFeature = None
-        for f in layer.getFeatures():
-            feature = f
-            break
-        if isinstance(feature, QgsFeature):
-            self.mContext.setFeature(feature)
-            self.mRenderContext.setExpressionContext(self.mContext)
-            self.mRenderer = layer.renderer().clone()
 
     def onButtonColorChanged(self, color: QColor):
         self.mPropertyOverrideButton.setActive(False)
@@ -112,7 +134,8 @@ class SpectralProfileColorPropertyWidget(QWidget):
         assert isinstance(property, QgsProperty)
 
         if property.propertyType() == QgsProperty.StaticProperty:
-            self.mColorButton.setColor(property.valueAsColor(self.mContext, self.mDefaultColor)[0])
+            self.mColorButton.setColor(
+                property.valueAsColor(self.mContextGenerator.createExpressionContext(), self.mDefaultColor)[0])
             self.mPropertyOverrideButton.setActive(False)
         else:
             self.mPropertyOverrideButton.setActive(True)
@@ -136,8 +159,9 @@ class PropertyItemBase(QStandardItem):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-        # QObject.__init__(self)
-        # QStandardItem.__init__(self, *args, **kwds)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def firstColumnSpanned(self) -> bool:
         return len(self.propertyRow()) == 1
@@ -145,10 +169,10 @@ class PropertyItemBase(QStandardItem):
     def propertyRow(self) -> List[QStandardItem]:
         return [self]
 
-    def readXml(self, parentNode: QDomElement):
+    def readXml(self, parentNode: QDomElement, context: QgsReadWriteContext, ):
         pass
 
-    def writeXml(self, parentNode: QDomElement):
+    def writeXml(self, parentNode: QDomElement, context: QgsReadWriteContext, ):
         pass
 
     def model(self) -> QStandardItemModel:
@@ -244,6 +268,17 @@ class PropertyItem(PropertyItemBase):
         self.mSignals = PropertyItem.Signals()
         self.mLabel.mSignals.sigCheckedChanged.connect(self.mSignals.checkedChanged)
 
+    def __eq__(self, other):
+        if not isinstance(other, PropertyItem):
+            return False
+        if self.__class__.__name__ != other.__class__.__name__:
+            return False
+
+        return self.key() == other.key() and self.data(Qt.DisplayRole) == other.data(Qt.DisplayRole)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def itemIsChecked(self) -> bool:
 
         if self.label().isCheckable():
@@ -272,6 +307,9 @@ class PropertyItem(PropertyItemBase):
 
         return None
 
+    def clone(self):
+        raise NotImplementedError()
+
     def setEditorData(self, editor: QWidget, index: QModelIndex):
         pass
 
@@ -287,7 +325,7 @@ class PropertyItem(PropertyItemBase):
     def propertyRow(self) -> List[QStandardItem]:
         return [self.label(), self]
 
-    def writeXml(self, parentNode: QDomElement, attribute: bool = False):
+    def writeXml(self, parentNode: QDomElement, context: QgsReadWriteContext, attribute: bool = False):
         """
 
         Parameters
@@ -364,7 +402,7 @@ class PropertyItemGroup(PropertyItemBase):
         self.mFirstColumnSpanned = True
 
     def __eq__(self, other):
-
+        s = ""
         if not (isinstance(other, PropertyItemGroup) and self.__class__.__name__ == other.__class__.__name__):
             return False
 
@@ -373,7 +411,15 @@ class PropertyItemGroup(PropertyItemBase):
 
         b = (self.checkState() == other.checkState()) and (ud1 == ud2)
 
+        if self.rowCount() != other.rowCount():
+            return False
+        for p1, p2 in zip(self.propertyItems(), other.propertyItems()):
+            if p1 != p2:
+                return False
         return b
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __repr__(self):
         return super().__repr__() + f' "{self.data(Qt.DisplayRole)}"'
@@ -490,7 +536,7 @@ class PropertyItemGroup(PropertyItemBase):
             assert isinstance(g, PropertyItemGroup)
 
         md = QMimeData()
-
+        context = QgsReadWriteContext()
         doc = QDomDocument()
         root = doc.createElement('PropertyItemGroups')
         doc.appendChild(root)
@@ -499,7 +545,7 @@ class PropertyItemGroup(PropertyItemBase):
                 if cl == grp.__class__:
                     grpNode = doc.createElement(xml_tag)
                     root.appendChild(grpNode)
-                    grp.writeXml(grpNode)
+                    grp.writeXml(grpNode, context)
                     break
                 s = ""
         # print(nodeXmlString(doc))
@@ -508,6 +554,9 @@ class PropertyItemGroup(PropertyItemBase):
 
     @staticmethod
     def fromMimeData(mimeData: QMimeData) -> List['ProfileVisualizationGroup']:
+
+        context = QgsReadWriteContext()
+
         groups = []
         if mimeData.hasFormat(PropertyItemGroup.MIME_TYPE):
             ba = mimeData.data(PropertyItemGroup.MIME_TYPE)
@@ -515,7 +564,7 @@ class PropertyItemGroup(PropertyItemBase):
             doc.setContent(ba)
             root = doc.firstChildElement('PropertyItemGroups')
             if not root.isNull():
-                print(nodeXmlString(root))
+                # print(nodeXmlString(root))
                 grpNode = root.firstChild().toElement()
                 while not grpNode.isNull():
                     classname = grpNode.nodeName()
@@ -523,7 +572,7 @@ class PropertyItemGroup(PropertyItemBase):
                     if class_:
                         grp = class_()
                         if isinstance(grp, PropertyItemGroup):
-                            grp.readXml(grpNode)
+                            grp.readXml(grpNode, context)
                         groups.append(grp)
                     grpNode = grpNode.nextSibling()
         return groups
@@ -911,10 +960,18 @@ class PlotStyleItem(PropertyItem):
 
         self.mEditColors: bool = False
 
+    def clone(self):
+        item = PlotStyleItem(self.key())
+        item.setPlotStyle(self.plotStyle().clone())
+        return item
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self.plotStyle() == other.plotStyle()
+
     def setEditColors(self, b):
         self.mEditColors = b is True
 
-    def setPlotStyle(self, plotStyle):
+    def setPlotStyle(self, plotStyle: PlotStyle):
         self.mPlotStyle = plotStyle
         self.emitDataChanged()
 
@@ -938,14 +995,14 @@ class PlotStyleItem(PropertyItem):
         if isinstance(w, PlotStyleButton):
             self.setPlotStyle(w.plotStyle())
 
-    def writeXml(self, parentNode: QDomElement, attribute: bool = False):
+    def writeXml(self, parentNode: QDomElement, context: QgsReadWriteContext, attribute: bool = False):
         doc: QDomDocument = parentNode.ownerDocument()
         xml_tag = self.key()
         node = doc.createElement(xml_tag)
         self.mPlotStyle.writeXml(node, doc)
         parentNode.appendChild(node)
 
-    def readXml(self, parentNode: QDomElement, attribute: bool = False):
+    def readXml(self, parentNode: QDomElement, context: QgsReadWriteContext, attribute: bool = False):
         node = parentNode.firstChildElement(self.key()).toElement()
         if not node.isNull():
             style = PlotStyle.readXml(node)
@@ -972,22 +1029,17 @@ class QgsPropertyItem(PropertyItem):
 
         self.mIsSpectralProfileField: bool = False
 
-    def __eq__(self, other):
-        return isinstance(other, QgsPropertyItem) \
-            and self.mDefinition == other.definition() \
-            and self.mProperty == other.property()
-
     def update(self):
         self.setText(self.mProperty.valueAsString(QgsExpressionContext()))
 
-    def writeXml(self, parentNode: QDomElement, attribute: bool = False):
+    def writeXml(self, parentNode: QDomElement, context: QgsReadWriteContext, attribute: bool = False):
         doc: QDomDocument = parentNode.ownerDocument()
         xml_tag = self.key()
         node = QgsXmlUtils.writeVariant(self.property(), doc)
         node.setTagName(xml_tag)
         parentNode.appendChild(node)
 
-    def readXml(self, parentNode: QDomElement, attribute: bool = False) -> bool:
+    def readXml(self, parentNode: QDomElement, context: QgsReadWriteContext, attribute: bool = False) -> bool:
 
         xml_tag = self.key()
         child = parentNode.firstChildElement(xml_tag).toElement()
@@ -1823,41 +1875,19 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
     def propertyRow(self) -> List[QStandardItem]:
         return [self]
 
-    def writeXml(self, parentNode: QDomElement):
+    def readXml(self, parentNode: QDomElement, context: QgsReadWriteContext) -> bool:
 
-        doc: QDomDocument = parentNode.ownerDocument()
-        # appends this visualization to a parent node
+        vNodeName: str = self.__class__.__name__
+        vNode = parentNode if parentNode.tagName() == vNodeName else parentNode.firstChildElement(vNodeName)
 
-        parentNode.setAttribute('name', self.name())
-        parentNode.setAttribute('field', self.fieldName())
-        parentNode.setAttribute('visible', '1' if self.isVisible() else '0')
+        if vNode.isNull():
+            return False
 
-        # add speclib node
-        speclib = self.speclib()
-        if isinstance(speclib, QgsVectorLayer):
-            nodeSpeclib = doc.createElement('speclib')
-            nodeSpeclib.setAttribute('id', self.speclib().id())
-            parentNode.appendChild(nodeSpeclib)
-
-        # add name expression node
-        self.mPLabel.writeXml(parentNode, doc)
-        self.mPColor.writeXml(parentNode, doc)
-        self.mPFilter.writeXml(parentNode, doc)
-        self.mPStyle.writeXml(parentNode, doc)
-
-    def createExpressionContextScope(self) -> QgsExpressionContextScope:
-
-        scope = QgsExpressionContextScope('profile_visualization')
-        # todo: add scope variables
-        scope.setVariable('vis_name', self.name(), isStatic=True)
-        return scope
-
-    def readXml(self, parentNode: QDomElement):
         model = self.model()
-        self.setText(parentNode.attribute('name'))
-        self.setVisible(parentNode.attribute('visible').lower() in ['1', 'true', 'yes'])
+        self.setText(vNode.attribute('name'))
+        self.setVisible(vNode.attribute('visible').lower() in ['1', 'true', 'yes'])
 
-        speclibNode = parentNode.firstChildElement('speclib')
+        speclibNode = vNode.firstChildElement('speclib')
         speclib: QgsVectorLayer = None
         if not speclibNode.isNull():
             # try to restore the speclib
@@ -1868,17 +1898,50 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
                 if isinstance(sl, QgsVectorLayer):
                     self.setSpeclib(sl)
 
-            fieldName = parentNode.attribute('field')
+            fieldName = vNode.attribute('field')
             speclib = self.speclib()
             if isinstance(speclib, QgsVectorLayer) and fieldName in speclib.fields().names():
                 self.setField(fieldName)
             else:
                 self.setField(create_profile_field(fieldName))
 
-            self.mPLabel.readXml(parentNode)
-            self.mPFilter.readXml(parentNode)
-            self.mPColor.readXml(parentNode)
-            self.mPStyle.readXml(parentNode)
+        self.mPLabel.readXml(vNode, context)
+        self.mPFilter.readXml(vNode, context)
+        self.mPColor.readXml(vNode, context)
+        self.mPStyle.readXml(vNode, context)
+
+        return True
+
+    def writeXml(self, parentNode: QDomElement, context: QgsReadWriteContext):
+
+        doc: QDomDocument = parentNode.ownerDocument()
+        # appends this visualization to a parent node
+
+        vNode = doc.createElement(self.__class__.__name__)
+        parentNode.appendChild(vNode)
+        vNode.setAttribute('name', self.name())
+        vNode.setAttribute('field', self.fieldName())
+        vNode.setAttribute('visible', '1' if self.isVisible() else '0')
+
+        # add speclib node
+        speclib = self.speclib()
+        if isinstance(speclib, QgsVectorLayer):
+            nodeSpeclib = doc.createElement('speclib')
+            nodeSpeclib.setAttribute('id', self.speclib().id())
+            vNode.appendChild(nodeSpeclib)
+
+        # add name expression node
+        self.mPLabel.writeXml(vNode, context)
+        self.mPColor.writeXml(vNode, context)
+        self.mPFilter.writeXml(vNode, context)
+        self.mPStyle.writeXml(vNode, context)
+
+    def createExpressionContextScope(self) -> QgsExpressionContextScope:
+
+        scope = QgsExpressionContextScope('profile_visualization')
+        # todo: add scope variables
+        scope.setVariable('vis_name', self.name(), isStatic=True)
+        return scope
 
     def setColorProperty(self, property: QgsProperty):
         """
@@ -1899,8 +1962,26 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         """
         return self.mPColor.property()
 
-    def clone(self) -> 'QStandardItem':
+    def clone(self) -> 'ProfileVisualizationGroup':
         v = ProfileVisualizationGroup()
+        v.setName(self.name())
+        v.setIcon(self.icon())
+        v.setEditable(self.isEditable())
+        v.setVisible(self.isVisible())
+        v.setCheckable(self.isCheckable())
+
+        for p0, p1 in zip(v.propertyItems(), self.propertyItems()):
+            if isinstance(p0, PlotStyleItem):
+                p0.mPlotStyle = p1.plotStyle().clone()
+                if p0 != p1:
+                    b = p0.plotStyle() == p1.plotStyle()
+                    b = p0 == p1
+                    s = ""
+            else:
+                p0.setProperty(QgsProperty(p1.property()))
+                if p0 != p1:
+                    b = p0 == p1
+                    s = ""
         return v
 
     def color(self, context: QgsExpressionContext = QgsExpressionContext()):
@@ -1946,10 +2027,11 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
         self.mPField.label().setIcon(QIcon(WARNING_ICON) if valuesMissing else QIcon())
 
-        to_block = [self.signals()] + [item.signals() for item in self.propertyItems()]
-        with SignalBlocker(*to_block) as blocker:
-            # modify without signaling
-            self.setPlotStyle(self.generatePlotStyle())
+        if False:
+            to_block = [self.signals()] + [item.signals() for item in self.propertyItems()]
+            with SignalBlocker(*to_block) as blocker:
+                # modify without signaling
+                self.setPlotStyle(self.generatePlotStyle())
 
         self.signals().requestPlotUpdate.emit()
 
@@ -2048,6 +2130,16 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
             return defaultLabel
 
     def generatePlotStyle(self, context: QgsExpressionContext = QgsExpressionContext()) -> PlotStyle:
+        """
+        Create a PlotStyle that summarized the plotStyle and other color information
+        Parameters
+        ----------
+        context
+
+        Returns
+        -------
+
+        """
         style = self.mPStyle.plotStyle()
         prop = self.colorProperty()
         featureColor, success = prop.valueAsColor(context, defaultColor=style.linePen.color())
