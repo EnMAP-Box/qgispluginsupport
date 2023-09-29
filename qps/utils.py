@@ -605,7 +605,8 @@ def gdalDataset(dataset: Union[str,
                                 pathlib.Path,
                                 QgsRasterLayer,
                                 QgsRasterDataProvider,
-                                gdal.Dataset],
+                                gdal.Dataset,
+                                gdal.Band],
                 eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
@@ -615,6 +616,8 @@ def gdalDataset(dataset: Union[str,
     """
     if isinstance(dataset, gdal.Dataset):
         return dataset
+    if isinstance(dataset, gdal.Band):
+        return dataset.GetDataset()
     if isinstance(dataset, pathlib.Path):
         dataset = dataset.as_posix()
     if isinstance(dataset, QgsRasterLayer):
@@ -682,7 +685,7 @@ def ogrDataSource(data_source, update: int = 0) -> ogr.DataSource:
 def optimize_block_size(ds: gdal.Dataset,
                         nb: int = None,
                         cache: int = 5 * 2 ** 20  # defaults: 5 megabytes
-                        ) -> List[int]:
+                        ) -> Tuple[int, int]:
     """
     Calculates a block_size for fast raster access given a defined cache size in bytes.
     :param ds: gdal.Dataset
@@ -690,8 +693,7 @@ def optimize_block_size(ds: gdal.Dataset,
     :param cache: maximum number of bytes to load with one block. defaults to 5 MB.
     :return:
     """
-    if isinstance(ds, gdal.Band):
-        ds = ds.GetDataset()
+    ds = gdalDataset(ds)
     assert isinstance(ds, gdal.Dataset)
     if nb is None:
         nb = ds.RasterCount
