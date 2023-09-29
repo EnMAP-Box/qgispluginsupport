@@ -1935,8 +1935,19 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
         """
         return self.mPColor.property()
 
-    def clone(self) -> 'QStandardItem':
+    def clone(self) -> 'ProfileVisualizationGroup':
         v = ProfileVisualizationGroup()
+        v.setName(self.name())
+        v.setIcon(self.icon())
+        v.setEditable(self.isEditable())
+        v.setVisible(self.isVisible())
+        v.setCheckable(self.isCheckable())
+
+        for p0, p1 in zip(v.propertyItems(), self.propertyItems()):
+            if isinstance(p0, PlotStyleItem):
+                p0.setPlotStyle(p1.plotStyle())
+            else:
+                p0.setProperty(QgsProperty(p1.property()))
         return v
 
     def color(self, context: QgsExpressionContext = QgsExpressionContext()):

@@ -67,7 +67,7 @@ class TestSpeclibPlotting(TestCaseBase):
         vis2 = ProfileVisualizationGroup()
         vis2.setSpeclib(sl2)
 
-        vis0b = vis0.clone()
+
 
         doc = QDomDocument('test')
         root = doc.createElement('root')
@@ -76,9 +76,15 @@ class TestSpeclibPlotting(TestCaseBase):
         context = QgsReadWriteContext()
 
         # restore visualization settings from XML
+        vis0b: ProfileVisualizationGroup = vis0.clone()
         self.assertEqual(vis0, vis0b)
         vis0.setColor('red')
         self.assertNotEqual(vis0, vis0b)
+
+        for p0, p0b in zip(vis0.propertyItems(), vis0b):
+            self.assertEqual(p0, p0b)
+
+
         vis0.writeXml(root, context)
         vis0b.readXml(root, context)
         print(nodeXmlString(root))
