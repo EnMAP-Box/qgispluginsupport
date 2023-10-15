@@ -39,16 +39,17 @@ import re
 import shutil
 import sys
 import traceback
-
 import warnings
 import weakref
 import zipfile
 from collections import defaultdict
+from math import floor
 from typing import Union, List, Optional, Any, Tuple, Iterator, Dict, Iterable
 
 import numpy as np
-
 from osgeo import gdal, ogr, osr, gdal_array
+from osgeo.osr import SpatialReference
+
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
     QVariant, QByteArray, QUrl, Qt
@@ -56,7 +57,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
     QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
-from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
+from qgis.core import QgsFeatureSource, QgsFeatureRequest
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel, \
     QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
@@ -64,6 +65,8 @@ from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel, \
     QgsFields
 from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
+from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
+from qgis.core import QgsRasterIdentifyResult, QgsRaster, QgsVector
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, datetime64
@@ -74,6 +77,11 @@ REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInC
 
 jp = os.path.join
 dn = os.path.dirname
+
+QGIS2OGR_WKBTYPE = {f'wkb{k}': v for k, v in Qgis.WkbType.__dict__.items() if
+                    (not k.startswith('_')) and k[0] == k[0].upper()}
+QGIS2OGR_WKBTYPE = {v: ogr.__dict__[k] for k, v in QGIS2OGR_WKBTYPE.items() if k in ogr.__dict__}
+QGIS2OGR_WKBTYPE[Qgis.WkbType.PolygonZ] = ogr.wkbPolygonZM
 
 QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.UInt16: np.uint16,
@@ -353,6 +361,43 @@ def nextColor(color, mode='cat') -> QColor:
         hue -= 360
 
     return QColor.fromHsv(hue, sat, value, alpha)
+
+
+def aggregateArray(aggregation: str, array: np.ndarray, *args, axis: int = None, **kwds) -> np.ndarray:
+    aggregation = aggregation.lower()
+    if aggregation == 'none':
+        return array
+    AGGR = {'mean': np.nanmean,
+            'median': np.nanmedian,
+            'var': np.nanvar,
+            'std': np.nanstd,
+            'sum': np.nansum,
+            'min': np.nanmin,
+            'max': np.nanmax,
+            'percentile': np.nanpercentile,
+            'quantile': np.nanquantile}
+    assert aggregation in AGGR.keys(), f'Unknown aggregation "{aggregation}"'
+    return AGGR[aggregation](array, *args, axis=axis, **kwds)
+
+
+def noDataValues(dataProvider: Union[QgsRasterLayer, QgsRasterDataProvider]) -> Dict[int, List[Union[int, float]]]:
+    """
+    Returns all (activated) nodata values
+    """
+    if isinstance(dataProvider, QgsRasterLayer):
+        dataProvider = dataProvider.dataProvider()
+
+    assert isinstance(dataProvider, QgsRasterDataProvider)
+
+    NODATA: Dict[int, List] = dict()
+    for b in range(1, dataProvider.bandCount() + 1):
+        ndv = []
+        if dataProvider.useSourceNoDataValue(b) and dataProvider.sourceHasNoDataValue(b):
+            ndv.append(dataProvider.sourceNoDataValue(b))
+        ndv.extend(dataProvider.userNoDataValues(b))
+        NODATA[b] = ndv
+
+    return NODATA
 
 
 def findMapLayerStores() -> List[Union[QgsProject, QgsMapLayerStore]]:
@@ -2582,6 +2627,26 @@ def saveTransform(geom: Union[QgsPointXY, QgsRectangle, Tuple[np.ndarray, np.nda
     return result
 
 
+def snapGeoCoordinates(coordinates: List[Union[QgsPointXY, QPointF]],
+                       m2p: Union[QgsRasterLayer, QgsMapToPixel]) -> List[QgsPointXY]:
+    if isinstance(m2p, QgsRasterLayer):
+        c = m2p.extent().center()
+        raster = QgsMapToPixel(m2p.rasterUnitsPerPixelX(),
+                               c.x(), c.y(),
+                               m2p.width(), m2p.height(),
+                               0,
+                               )
+    assert isinstance(m2p, QgsMapToPixel)
+    d = QgsVector(0.5 * m2p.mapUnitsPerPixel(),
+                  -0.5 * m2p.mapUnitsPerPixel())
+    snapped = []
+    for c in coordinates:
+        px = m2p.transform(c)
+        geo = m2p.toMapCoordinates(int(px.x()), int(px.y())) + d
+        snapped.append(geo)
+    return snapped
+
+
 def scaledUnitString(num: float,
                      infix: str = ' ',
                      suffix: str = 'B',
@@ -2851,6 +2916,425 @@ class SpatialExtent(QgsRectangle):
         return '{} {} {}'.format(self.upperLeft(), self.lowerRight(), self.crs().authid())
 
 
+class MapGeometryToPixel(object):
+    """
+    A class to return the covered pixel indices related to a vector geometry
+    """
+
+    @staticmethod
+    def fromRaster(raster):
+        raster = qgsRasterLayer(raster)
+        assert isinstance(raster, QgsRasterLayer)
+        center = raster.extent().center()
+        m2p = QgsMapToPixel(raster.rasterUnitsPerPixelX(),
+                            center.x(),
+                            center.y(),
+                            raster.width(),
+                            raster.height(),
+                            0
+                            )
+        return MapGeometryToPixel(m2p, crs=raster.crs())
+
+    @staticmethod
+    def fromExtent(extent: QgsRectangle,
+                   ns: int, nl: int,
+                   mapUnitsPerPixel: float = None,
+                   crs: QgsCoordinateReferenceSystem = None):
+        if mapUnitsPerPixel is None:
+            mapUnitsPerPixel = extent.width() / ns
+        center = extent.center()
+        m2p = QgsMapToPixel(mapUnitsPerPixel,
+                            center.x(), center.y(),
+                            ns, nl, 0
+                            )
+        return MapGeometryToPixel(m2p, crs=crs)
+
+    def __init__(self,
+                 m2p: QgsMapToPixel,
+                 crs: QgsCoordinateReferenceSystem = None):
+        assert m2p.isValid()
+        self.m2p = m2p
+
+        ul = m2p.toMapCoordinatesF(0, 0)
+
+        self.xMin = ul.x()
+        self.yMax = ul.y()
+        self.crs = crs
+        self.srs = None
+
+        # t: QTransform = self.m2p.transform()
+        self.rsMEM: gdal.Dataset = None
+        self.bandMEM: gdal.Band = None
+        self.vsMem: ogr.DataSource = None
+        self.srs: osr.SpatialReference = None
+        self.wkbTypeLayers: Dict[int, ogr.Layer] = dict()
+
+    def nSamples(self) -> int:
+        return self.m2p.mapWidth()
+
+    def nLines(self) -> int:
+        return self.m2p.mapHeight()
+
+    def pixelWidth(self) -> float:
+        return self.m2p.mapUnitsPerPixel()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.wkbTypeLayers.clear()
+        del self.vsMem
+        del self.rsMEM
+
+    def px2geo(self, x: int, y: int) -> QgsPointXY:
+        return self.m2p.toMapCoordinatesF(x, y)
+
+    def px2geoList(self, xvalues, yvalues) -> List[QgsPointXY]:
+        return [self.px2geo(x, y) for x, y in zip(xvalues, yvalues)]
+
+    def px2geoArrays(self, xvalues, yvalues) -> Tuple[np.ndarray, np.ndarray]:
+        geo = self.px2geoList(xvalues, yvalues)
+        px_x = np.asarray([g.x() for g in geo])
+        px_y = np.asarray([g.y() for g in geo])
+        return px_x, px_y
+
+    def geo2px(self, x: float, y: float) -> QPoint:
+        return self.m2p.transform(x, y)
+
+    def geo2pxList(self, xvalues, yvalues) -> List[QPoint]:
+        return [self.geo2px(x, y) for x, y in zip(xvalues, yvalues)]
+
+    def memoryLayerBand(self, wkbType) -> Tuple[gdal.Band, ogr.Layer]:
+        if not isinstance(self.srs, SpatialReference) and \
+                isinstance(self.crs, QgsCoordinateReferenceSystem):
+            self.srs = SpatialReference(self.crs.toWkt())
+
+        if not isinstance(self.rsMEM, gdal.Dataset):
+            self.rsMEM: gdal.Dataset = (gdal.GetDriverByName('MEM')
+                                        .Create('', self.nSamples(), self.nLines(), 1, gdal.GDT_Byte))
+            ul = self.px2geo(0, 0)
+            t, success = self.m2p.transform().inverted()
+            assert success, 'Matrix is not invertable'
+            self.rsMEM.SetGeoTransform((t.m31(), t.m11(), t.m12(),
+                                        t.m32(), t.m21(), t.m22()))
+            #  self.rsMEM.SetGeoTransform((ul.x(), self.pixelWidth(), 0,
+            #                              ul.y(), 0, -self.pixelWidth()))
+
+            if isinstance(self.srs, SpatialReference):
+                self.rsMEM.SetSpatialRef(self.srs)
+            self.bandMEM: gdal.Band = self.rsMEM.GetRasterBand(1)
+
+        if not isinstance(self.vsMem, ogr.DataSource):
+            self.vsMem: ogr.DataSource = ogr.GetDriverByName('Memory').CreateDataSource('')
+
+        if wkbType not in self.wkbTypeLayers:
+            lyr: ogr.Layer = self.vsMem.CreateLayer(f'wkbType{wkbType}',
+                                                    srs=self.srs,
+                                                    geom_type=QGIS2OGR_WKBTYPE[wkbType])
+            lyr.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger))
+            self.wkbTypeLayers[wkbType] = lyr
+
+        return self.bandMEM, self.wkbTypeLayers[wkbType]
+
+    def geometryPixelPositions(self,
+                               g: Union[QgsGeometry, QgsFeature],
+                               all_touched: bool = True,
+                               burn_points=False,
+                               ) -> Tuple[np.ndarray, np.ndarray]:
+        #  rasterizes the feature geometry and returns the pixel positions
+        if isinstance(g, QgsFeature):
+            if g.hasGeometry():
+                g = g.geometry()
+
+        if not isinstance(g, QgsGeometry):
+            return None, None
+
+        if g.isEmpty() or g.type() in [Qgis.GeometryType.Null,
+                                       Qgis.GeometryType.Unknown]:
+            return None, None
+
+        if g.type() == Qgis.GeometryType.Point and not burn_points:
+            g = QgsGeometry(g)
+            g.mapToPixel(self.m2p)
+            px_x = []
+            px_y = []
+            for point in g.constParts():
+                x, y = int(point.x()), int(point.y())
+                if 0 <= x < self.m2p.mapWidth() and 0 <= y < self.m2p.mapHeight():
+                    px_x.append(x)
+                    px_y.append(y)
+                else:
+                    s = ""
+            if len(px_x) > 0:
+                return np.asarray(px_y), np.asarray(px_x)
+            else:
+                return None, None
+        else:
+            bandMEM, lyr = self.memoryLayerBand(g.wkbType())
+            bandMEM: gdal.Band
+            lyr: ogr.Layer
+            dsMEM: gdal.Dataset = bandMEM.GetDataset()
+            ogrFeature = ogr.Feature(lyr.GetLayerDefn())
+            ogrFeature.SetFID(1)
+            ogrFeature.SetField("FID_BURN", 1)
+            ogrFeature.SetGeometryDirectly(ogr.CreateGeometryFromWkb(g.asWkb()))
+            assert ogrFeature.geometry().IsValid()
+            assert ogr.OGRERR_NONE == lyr.UpsertFeature(ogrFeature)
+            assert lyr.GetFeatureCount() == 1
+            lyr.ResetReading()
+            bandMEM.Fill(0)  # ensure that no FIDs are left from previous writes
+            assert gdal.CPLE_None == gdal.RasterizeLayer(dsMEM, [1], lyr,
+                                                         options=['ALL_TOUCHED={}'.format(all_touched),
+                                                                  'ATTRIBUTE={}'.format('FID_BURN')]
+                                                         )
+            is_fid = dsMEM.ReadAsArray() == 1
+            px_y, px_x = np.where(is_fid)
+            if len(px_y) > 0:
+                return px_y, px_x
+            else:
+                return None, None
+
+
+class ExtentTileIterator(object):
+    """
+    An iterator over tiles
+    """
+
+    def __init__(self,
+                 extent: Union[QgsRectangle, QgsMapLayer],
+                 raster: QgsRasterLayer = None,
+                 tileSize: float = None,
+                 tileSizeX: float = None,
+                 tileSizeY: float = None):
+
+        if isinstance(extent, QgsMapLayer):
+            extent = extent.extent()
+
+        if isinstance(tileSize, (int, float)):
+            tileSizeX = tileSizeY = tileSize
+
+        if isinstance(raster, QgsRasterLayer):
+            # get extent and tile size from raster
+            tileSizeX = raster.dataProvider().xBlockSize() * raster.rasterUnitsPerPixelX()
+            tileSizeY = raster.dataProvider().yBlockSize() * raster.rasterUnitsPerPixelY()
+            extent = raster.extent()
+
+        assert isinstance(extent, QgsRectangle) and not extent.isEmpty()
+        if tileSizeX < 0 or tileSizeX > extent.width():
+            tileSizeX = extent.width()
+
+        if tileSizeY < 0 or tileSizeY > extent.height():
+            tileSizeY = extent.width()
+
+        assert 0 < tileSizeX
+        assert 0 < tileSizeY
+
+        self.mExtent = extent
+        self.mTileSizeX = tileSizeX
+        self.mTileSizeY = tileSizeY
+
+        self.mXmin: float = self.mExtent.xMinimum()
+        self.mYmax: float = self.mExtent.yMaximum()
+        self.mXmax = self.mYmin = -1
+        self.n = 0
+
+        self.nTotal = math.ceil(self.mExtent.width() / tileSizeX) * math.ceil(self.mExtent.height() / tileSizeY)
+
+    def resetReading(self):
+        self.mXmin = self.mExtent.xMinimum()
+        self.mYmax = self.mExtent.yMaximum()
+        self.mXmax = self.mYmin = -1
+        self.n = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+
+        if self.mXmin >= self.mExtent.xMaximum():
+            # got next block line
+            self.mXmin = self.mExtent.xMinimum()
+            self.mYmax -= self.mTileSizeY
+
+        if self.mYmax <= self.mExtent.yMinimum():
+            raise StopIteration()
+
+        self.mXmax = min(self.mExtent.xMaximum(), self.mXmin + self.mTileSizeX)
+        self.mYmin = max(self.mExtent.yMinimum(), self.mYmax - self.mTileSizeY)
+        self.n += 1
+        rect = QgsRectangle(QgsPointXY(self.mXmin, self.mYmax),
+                            QgsPointXY(self.mXmax, self.mYmin))
+        self.mXmin += self.mTileSizeX
+        return rect
+
+
+def rasterizeFeatures(featureSource: QgsFeatureSource,
+                      rasterLayer: QgsRasterLayer,
+                      request: QgsFeatureRequest = QgsFeatureRequest(),
+                      all_touched: bool = True,
+                      pixel_metadata: bool = True,
+                      blockSize: int = 0,
+                      feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> \
+        Iterator[Tuple[QgsFeature, np.ndarray, Dict[str, Any]]]:
+    transform = QgsCoordinateTransform()
+    transform.setSourceCrs(featureSource.crs())
+    transform.setDestinationCrs(rasterLayer.crs())
+
+    extF = transform.transformBoundingBox(featureSource.sourceExtent())
+    extR = rasterLayer.extent()
+    extI = extF.intersect(extR)
+
+    # snap to raster grid
+
+    if extI.isEmpty():
+        s = ""
+    dp: QgsRasterDataProvider = rasterLayer.dataProvider()
+
+    c: QgsPointXY = rasterLayer.extent().center()
+    M2P = QgsMapToPixel(rasterLayer.rasterUnitsPerPixelX(),
+                        c.x(), c.y(),
+                        rasterLayer.width(),
+                        rasterLayer.height(), 0)
+
+    half_pixel = QgsVector(0.5 * M2P.mapUnitsPerPixel(),
+                           -0.5 * M2P.mapUnitsPerPixel())
+
+    if blockSize:
+        tileSizeX = blockSize * rasterLayer.rasterUnitsPerPixelX()
+        tileSizeY = blockSize * rasterLayer.rasterUnitsPerPixelY()
+    else:
+        tileSizeX = dp.xBlockSize() * rasterLayer.rasterUnitsPerPixelX()
+        tileSizeY = dp.yBlockSize() * rasterLayer.rasterUnitsPerPixelY()
+
+    tileIterator = ExtentTileIterator(extI, tileSizeX=tileSizeX, tileSizeY=tileSizeY)
+
+    Tile2Features: Dict[int, List[int]] = dict()
+
+    class FeatureData(object):
+
+        def __init__(self, fid: int):
+            self.fid = fid
+            self.tiles: List[int] = []
+            self.arrays: List[np.ndarray] = []
+            self.px: List[QPoint] = []
+            self.geo: List[QgsPointXY] = []
+
+    FEATURE_DATA: Dict[int, FeatureData] = dict()
+    # Feat2Tile: Dict[int, List[int]] = dict()
+    # Feat2Data: Dict[int, List] = dict()
+    # Feat2MD: Dict[int, Dict] = dict()
+
+    for tid, tileExt in enumerate(tileIterator):
+        tileRequest = QgsFeatureRequest(request)
+        tileRequest.setDestinationCrs(dp.crs(), QgsProject.instance().transformContext())
+        tileRequest.setFilterRect(tileExt)
+        tileRequest.setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid)
+
+        Tile2Features[tid] = []
+        for feature in featureSource.getFeatures(tileRequest):
+            fid = feature.id()
+            # create lookup between tile and feature ids
+            Tile2Features[tid].append(fid)
+            # create a FeatureData container to store temporary data
+            # for each in-completed feature
+            fd = FEATURE_DATA.get(fid, FeatureData(fid))
+            fd.tiles.append(tid)
+            FEATURE_DATA[fid] = fd
+
+    tileIterator.resetReading()
+
+    def removeTileID(fid: int, tid: int):
+        # may happen in case of multi-point/line/polygon geometries
+        featureData = FEATURE_DATA[fid]
+        featureData.tiles.remove(tid)
+        Tile2Features[tid].remove(fid)
+
+        if len(Tile2Features[tid]) == 0:
+            Tile2Features.pop(tid)
+
+        if len(featureData.tiles) == 0:
+            FEATURE_DATA.pop(fid)
+            featureProfiles = np.concatenate(featureData.arrays, axis=1)
+
+            # concatenate other metadata
+            featureMetadata = {'px': featureData.px,
+                               'geo': featureData.geo}
+
+            return feature, featureProfiles, featureMetadata
+        else:
+            return None
+
+    for tid, tileExt in enumerate(tileIterator):
+        fids = Tile2Features[tid][:]
+        if fids is None:
+            # no features intersect with this tile
+            continue
+
+        array: np.ndarray = rasterArray(dp, tileExt)
+        if not isinstance(array, np.ndarray):
+            # no intersecting raster pixels
+            # e.g. if the tile covers only the 2nd half of a pixel, but not it's center.
+            for fid in fids:
+                r = removeTileID(fid, tid)
+                if r:
+                    yield r
+        else:
+
+            nb, nl, ns = array.shape
+            MG2PX = MapGeometryToPixel.fromExtent(tileExt,
+                                                  ns, nl,
+                                                  mapUnitsPerPixel=rasterLayer.rasterUnitsPerPixelX(),
+                                                  crs=dp.crs())
+
+            tileRequest = QgsFeatureRequest(request)
+            tileRequest.setDestinationCrs(dp.crs(), QgsProject.instance().transformContext())
+            tileRequest.setFilterRect(tileExt)
+            tileRequest.setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid)
+            tileRequest.setFilterFids(fids)
+
+            for feature in featureSource.getFeatures(tileRequest):
+                fid = feature.id()
+
+                # pixel coordinates of tile subset / in array
+                iy, ix = MG2PX.geometryPixelPositions(feature.geometry(),
+                                                      burn_points=True,
+                                                      all_touched=all_touched)
+
+                if iy is None:
+                    # no pixels covered by this feature
+                    r = removeTileID(fid, tid)
+                    if r:
+                        yield r
+                    continue
+
+                profileData = array[:, iy, ix]
+
+                featData: FeatureData = FEATURE_DATA[fid]
+                featData.arrays.append(profileData)
+
+                if pixel_metadata:
+                    # geo-coordinates
+                    geo_coordinates = MG2PX.px2geoList(ix, iy)
+
+                    # pixel coordinates within pixel grid of total raster layer
+                    px_coordinates = [M2P.transform(p).toQPointF().toPoint() for p in geo_coordinates]
+                    geo_snapped = [M2P.toMapCoordinates(px.x(), px.y()) + half_pixel
+                                   for px in px_coordinates]
+
+                    # snap coordinates
+                    featData.geo.extend(geo_snapped)
+                    featData.px.extend(px_coordinates)
+
+                r = removeTileID(fid, tid)
+                if r:
+                    yield r
+
+        feedback.setProgress((tid + 1.0) * 100. / tileIterator.nTotal)
+
+    assert len(FEATURE_DATA) == 0
+    assert len(Tile2Features) == 0
+
+
 def rasterLayerArray(*args, **kwds):
     warnings.warn(
         DeprecationWarning('Use rasterArray() instead, which supports QgsRasterLayers and QgsRasterInterfaces'))
@@ -2864,15 +3348,21 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
                 bands: Union[str, int, List[int]] = None) -> np.ndarray:
     """
     Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of shape (bands, height, width)
-    :param rasterInterface: QgsRasterLayer
+    :param rasterInterface: QgsRasterLayer, QgsRasterInterface or str to load a QgsRasterLayer from
+    :param rect: Subset to be returned.
+                 QRect for subset in pixel coordinates,
+                 QgsRectangle for geo-coordinates in raster CRS,
+                 SpatialExtent for geo-coodinates with CRS different to the raster CRS (will be transformed)
     :param ul: upper-left corner,
                can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
                defaults to raster layers upper-left corner
     :param lr: lower-right corner,
                can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
                default to raster layers lower-right corner
-    :param bands: list of bands to return. defaults to "all". 1st band = [1]
+    :param bands: list of bands to return the pixel valuse for.
+                  defaults to "all". 1st band = [1]
     :return: numpy.ndarray
+
     """
     if not isinstance(rasterInterface, QgsRasterInterface):
         rlayer = qgsRasterLayer(rasterInterface)
@@ -2895,6 +3385,10 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
             ul = QPoint(rect.x(), rect.y())
             lr = QPoint(rect.x() + rect.width() - 1,
                         rect.y() + rect.height() - 1)
+        elif isinstance(rect, SpatialPoint):
+            ul = lr = rect
+        elif isinstance(rect, QgsPointXY):
+            ul = lr = SpatialPoint(rasterInterface.crs(), rect.x(), rect.y())
         else:
             raise NotImplementedError()
 
@@ -2926,35 +3420,66 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
         bands = list(range(1, rasterInterface.bandCount() + 1))
 
     boundingBox: QgsRectangle = QgsRectangle(ul, lr)
-
-    if isinstance(rect, QRect):
-        width_px = rect.width()
-        height_px = rect.height()
-    else:
-        width_px = int(round(boundingBox.width() / resX))
-        height_px = int(round(boundingBox.height() / resY))
-
     # npx = width_px * height_px
 
     dp = rasterInterface
+
     result_array: np.ndarray = None
     bands = sorted(set(bands))
     nb = len(bands)
     assert nb > 0
     feedback = QgsRasterBlockFeedback()
-    for i, band in enumerate(bands):
-        band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px, feedback=feedback)
-        if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
-            return None
 
-        assert isinstance(band_block, QgsRasterBlock)
-        band_array = rasterBlockArray(band_block)
-        assert band_array.shape == (height_px, width_px)
-        if i == 0:
-            result_array = np.empty((nb, height_px, width_px), dtype=band_array.dtype)
-        result_array[i, :, :] = band_array
+    if not boundingBox.isNull() and boundingBox.isEmpty():
+        # single point -> return single profile.
+        # Use identify, which is faster for single pixels
+        ires: QgsRasterIdentifyResult = dp.identify(boundingBox.center(),
+                                                    QgsRaster.IdentifyFormatValue).results()
 
-    return result_array
+        arr = np.asarray([ires[b] for b in bands]).reshape((len(bands), 1, 1))
+        return arr.astype(QGIS2NUMPY_DATA_TYPES.get(dp.dataType(1), arr.dtype))
+    else:
+
+        if isinstance(rect, QRect):
+            width_px = rect.width()
+            height_px = rect.height()
+        else:
+            # ensure that we always get all pixels whose center coordinate is within the extent
+
+            M2P = QgsMapToPixel(resX, dp.extent().center().x(),
+                                dp.extent().center().y(),
+                                dp.xSize(), dp.ySize(), 0)
+
+            width_px = int(round(boundingBox.width() / resX))
+            height_px = int(round(boundingBox.height() / resY))
+
+            ul = M2P.transform(QgsPointXY(boundingBox.xMinimum(), boundingBox.yMaximum()))
+            lr = M2P.transform(QgsPointXY(boundingBox.xMaximum(), boundingBox.yMinimum()))
+
+            xl, xr = floor(ul.x() - 0.5), floor(lr.x() - 0.5)
+            yt, yb = floor(ul.y() - 0.5), floor(lr.y() - 0.5)
+
+            if xr - xl <= 0 or yb - yt <= 0:
+                return None
+            w_px = xr - xl
+            h_px = yb - yt
+            # we want all pixel indices
+            width_px = w_px
+            height_px = h_px
+
+        for i, band in enumerate(bands):
+            band_block: QgsRasterBlock = dp.block(band, boundingBox, width_px, height_px, feedback=feedback)
+            if not (isinstance(band_block, QgsRasterBlock) and band_block.isValid()):
+                return None
+
+            assert isinstance(band_block, QgsRasterBlock)
+            band_array = rasterBlockArray(band_block)
+            assert band_array.shape == (height_px, width_px)
+            if i == 0:
+                result_array = np.empty((nb, height_px, width_px), dtype=band_array.dtype)
+            result_array[i, :, :] = band_array
+
+        return result_array
 
 
 def setToolButtonDefaultActionMenu(toolButton: QToolButton, actions: list):
