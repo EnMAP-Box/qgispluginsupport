@@ -3012,7 +3012,7 @@ class MapGeometryToPixel(object):
         if not isinstance(self.rsMEM, gdal.Dataset):
             self.rsMEM: gdal.Dataset = (gdal.GetDriverByName('MEM')
                                         .Create('', self.nSamples(), self.nLines(), 1, gdal.GDT_Byte))
-            ul = self.px2geo(0, 0)
+            # ul = self.px2geo(0, 0)
             t, success = self.m2p.transform().inverted()
             assert success, 'Matrix is not invertable'
             self.rsMEM.SetGeoTransform((t.m31(), t.m11(), t.m12(),

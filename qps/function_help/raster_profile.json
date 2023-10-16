@@ -1,23 +1,35 @@
 {
   "name": "raster_profile",
   "type": "function",
-  "description": "Returns spectral profile values from a raster layer",
+  "description": "Returns a dictionary with spectral profile values loaded from a raster layer",
   "arguments": [
     {
       "arg":"layer",
-      "description":"name or id of raster layer"},
-    {
+      "description":"name or id of raster layer"
+    }, {
       "arg":"geometry",
-      "description":"geometry to select profiles for. Supported geometries: point, polygon (centroid)"},
-    {
+      "description":"geometry to select profiles for. Supported geometries: point, polygon (centroid)"
+    }, {
+      "arg":  "aggregate",
+      "description":  "aggregation method if geometry covers multiple pixels. <br>Can be <code>mean</code> (default), <code>media</code>, <code>min</code>, <code>max</code> or <code>none</code> (returns a 2-D array)"
+    }, {
+      "arg":  "at",
+      "description":  "Enables the GDAL rasterize <i>ALL_TOUCHED=YES</i> rasterization option so that all pixels touched by lines or polygons will be used, not just those on the line render path, or whose center point is within the polygon."
+    }, {
       "arg":"encoding",
-      "description":"output format of spectral profile: 'text', 'json', 'map' or 'bytes'"}
+      "description":"output format of spectral profile: 'text', 'json', 'map' or 'bytes'."
+    }
   ],
-  "examples": [{
-    "expression":"rasterProfile('myrasterlayer')",
-    "returns":"Returns the spectral profile for the current (centroid) point coordinate from 'myrasterlayer'"},
+  "examples": [
     {
-    "expression":"rasterProfile('myrasterlayer', encoding:='text')",
-    "returns":"Returns the spectral profile as JSON text string"}
+      "expression":"rasterProfile('myrasterlayer')",
+      "returns":"Returns the spectral profile for the current (centroid) point coordinate from 'myrasterlayer'"
+    }, {
+      "expression":"rasterProfile('myrasterlayer', encoding:='text')",
+      "returns":"Returns the spectral profile as JSON text string"
+    }, {
+      "expression": "rasterProfile('mypolygonLayer', aggregate:='median', at:=True, encoding:='map')",
+      "returns":"Returns the median spectral profile of all pixels touched by a polygon as dictionary."
+    }
   ]
 }

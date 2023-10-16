@@ -469,12 +469,11 @@ class TestUtils(TestCase):
 
             for f in vlPointMulti.getFeatures(request):
                 f: QgsFeature
-                name = f.attribute('name')
                 ay, ax = mg2p.geometryPixelPositions(f, all_touched=True)
                 profiles = array[:, ay, ax]
                 npx_ref = f.attribute('n_px')
                 self.assertEqual(profiles.shape, (rl.bandCount(), npx_ref))
-                pass
+
 
             for f in vlPoly.getFeatures(request):
                 f: QgsFeature
@@ -493,6 +492,13 @@ class TestUtils(TestCase):
                     self.assertTrue(v in ref_x)
                 for v in ay.tolist():
                     self.assertTrue(v in ref_y)
+
+                npx_nat = f.attribute('n_px_nat')
+                if isinstance(npx_nat, int):
+                    ay, ax = mg2p.geometryPixelPositions(f, all_touched=False)
+                    profiles = array[:, ay, ax]
+                    self.assertEqual(profiles.shape, (rl.bandCount(), npx_nat))
+                pass
 
     def test_snapGeoCoordinates(self):
 
