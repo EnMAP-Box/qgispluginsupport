@@ -31,10 +31,11 @@ jobs:
 
         # A comma separated links to exclude during URL checks
         exclude_urls:
-          # https://github.com/SuperKogito/URLs-checker/issues/1,https://github.com/SuperKogito/URLs-checker/issues/2
-
+          http://mrcc.com/qgis.dtd
+          https://github.com/EnMAP-Box/qgispluginsupport.git@master#egg=qps
         # A comma separated patterns to exclude during URL checks
-        exclude_patterns: http://mrcc.com/qgis.dtd
+        exclude_patterns:
+
 
           # https://github.com/SuperKogito/Voice-based-gender-recognition/issues
 
