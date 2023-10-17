@@ -35,7 +35,7 @@ setup(name='qps',
       author_email='benjamin.jakimow@geo.hu-berlin.de',
       packages=find_packages(),
       url='https://github.com/EnMAP-Box/qgispluginsupport',
-      long_description=open('README.md').read(),
+      long_description='QGIS Plugin Support. See https://github.com/EnMAP-Box/qgispluginsupport#readme for details.',
       include_package_data=True,
       dependency_links=['git+https://github.com/EnMAP-Box/qgispluginsupport.git@master#egg=qps']
       )
