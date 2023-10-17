@@ -1983,11 +1983,11 @@ def geo2pxF(geo: QgsPointXY, gt: Union[list, np.ndarray, tuple]) -> QPointF:
     """
     Returns the pixel position related to a Geo-Coordinate in floating point precision.
     :param geo: Geo-Coordinate as QgsPoint
-    :param gt: GDAL Geo-Transformation tuple, as described in http://www.gdal.org/gdal_datamodel.html
+    :param gt: GDAL Geo-Transformation tuple, as described in https://gdal.org/user/raster_data_model.html
     :return: pixel position as QPointF
     """
     assert isinstance(geo, QgsPointXY)
-    # see http://www.gdal.org/gdal_datamodel.html
+    # see https://gdal.org/user/raster_data_model.html#affine-geotransform
     px = (geo.x() - gt[0]) / gt[1]  # x pixel
     py = (geo.y() - gt[3]) / gt[5]  # y pixel
     return QPointF(px, py)
@@ -1999,7 +1999,8 @@ def geo2px(geo: QgsPointXY, gt: Union[list, np.ndarray, tuple]) -> QPoint:
     Floating-point coordinate are cast to integer coordinate, e.g. the pixel
     coordinate (0.815, 23.42) is returned as (0,23)
     :param geo: Geo-Coordinate as QgsPointXY
-    :param gt: GDAL Geo-Transformation tuple, as described in http://www.gdal.org/gdal_datamodel.html or
+    :param gt: GDAL Geo-Transformation tuple, as described in
+               https://gdal.org/user/raster_data_model.html#affine-geotransform or
           gdal.Dataset or QgsRasterLayer
     :return: pixel position as QPpint
     """
@@ -2055,7 +2056,7 @@ def check_vsimem() -> bool:
 def layerGeoTransform(rasterLayer: QgsRasterLayer) -> Tuple[float, float, float, float, float, float]:
     """
     Returns the geo-transform vector from a QgsRasterLayer.
-    See https://www.gdal.org/gdal_datamodel.html
+    See https://gdal.org/user/raster_data_model.html
     :param rasterLayer: QgsRasterLayer
     :return: [array]
     """
@@ -2199,7 +2200,7 @@ def px2geo(px: QPoint, gt, pxCenter: bool = True) -> QgsPointXY:
     :return:
     """
 
-    # see http://www.gdal.org/gdal_datamodel.html
+    # see https://gdal.org/user/raster_data_model.html
 
     gx = gt[0] + px.x() * gt[1] + px.y() * gt[2]
     gy = gt[3] + px.x() * gt[4] + px.y() * gt[5]
