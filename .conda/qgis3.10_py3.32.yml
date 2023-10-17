@@ -1,0 +1,25 @@
+# run: conda env create --file conda_environment.yml
+# see also https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file
+name: qgis3.32_py3.10
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - qgis=3.32
+  - pip
+  - matplotlib
+
+  # Development
+  - gitpython
+  - git-lfs
+  - pytest
+  - pytest-cov
+  - flake8
+  - docutils
+
+  - pip:
+      - flake8-qgis
+      - pytest-env
+
+variables:
+  QT_MAC_WANTS_LAYER: 1
