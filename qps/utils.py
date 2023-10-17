@@ -78,10 +78,33 @@ REMOVE_setShortcutVisibleInContextMenu = hasattr(QAction, 'setShortcutVisibleInC
 jp = os.path.join
 dn = os.path.dirname
 
-QGIS2OGR_WKBTYPE = {f'wkb{k}': v for k, v in Qgis.WkbType.__dict__.items() if
-                    (not k.startswith('_')) and k[0] == k[0].upper()}
-QGIS2OGR_WKBTYPE = {v: ogr.__dict__[k] for k, v in QGIS2OGR_WKBTYPE.items() if k in ogr.__dict__}
-QGIS2OGR_WKBTYPE[Qgis.WkbType.PolygonZ] = ogr.wkbPolygonZM
+if Qgis.versionInt() >= 33000:
+    QGIS_GEOMETRYTYPE_POINT = Qgis.GeometryType.Point
+    QGIS_GEOMETRYTYPE_NULL = Qgis.GeometryType.Null,
+    QGIS_GEOMETRYTYPE_UNKNOWN = Qgis.GeometryType.Unknown
+
+    QGIS_WKBTYPE = Qgis.WkbType
+    QGIS_WKBTYPE_POINT = Qgis.WkbType.Point
+
+    QGIS2OGR_WKBTYPE = {f'wkb{k}': v for k, v in Qgis.WkbType.__dict__.items() if
+                        (not k.startswith('_')) and k[0] == k[0].upper()}
+    QGIS2OGR_WKBTYPE = {v: ogr.__dict__[k] for k, v in QGIS2OGR_WKBTYPE.items() if k in ogr.__dict__}
+    QGIS2OGR_WKBTYPE[Qgis.WkbType.PolygonZ] = ogr.wkbPolygonZM
+
+else:
+    from qgis.core import QgsWkbTypes
+
+    QGIS_GEOMETRYTYPE_POINT = QgsWkbTypes.GeometryType.PointGeometry
+    QGIS_GEOMETRYTYPE_NULL = QgsWkbTypes.GeometryType.NullGeometry
+    QGIS_GEOMETRYTYPE_UNKNOWN = QgsWkbTypes.GeometryType.UnknownGeometry
+
+    QGIS_WKBTYPE = QgsWkbTypes.Type
+    QGIS_WKBTYPE_POINT = QgsWkbTypes.Type.Point
+
+    QGIS2OGR_WKBTYPE = {f'wkb{k}': v for k, v in QgsWkbTypes.__dict__.items() if
+                        (not k.startswith('_')) and k[0] == k[0].upper()}
+    QGIS2OGR_WKBTYPE = {v: ogr.__dict__[k] for k, v in QGIS2OGR_WKBTYPE.items() if k in ogr.__dict__}
+    QGIS2OGR_WKBTYPE[QgsWkbTypes.PolygonZ] = ogr.wkbPolygonZM
 
 QGIS2NUMPY_DATA_TYPES = {Qgis.Byte: np.uint8,
                          Qgis.UInt16: np.uint16,
@@ -3049,11 +3072,11 @@ class MapGeometryToPixel(object):
         if not isinstance(g, QgsGeometry):
             return None, None
 
-        if g.isEmpty() or g.type() in [Qgis.GeometryType.Null,
-                                       Qgis.GeometryType.Unknown]:
+        if g.isEmpty() or g.type() in [QGIS_GEOMETRYTYPE_NULL,
+                                       QGIS_GEOMETRYTYPE_UNKNOWN]:
             return None, None
 
-        if g.type() == Qgis.GeometryType.Point and not burn_points:
+        if g.type() == QGIS_GEOMETRYTYPE_POINT and not burn_points:
             g = QgsGeometry(g)
             g.mapToPixel(self.m2p)
             px_x = []
@@ -3254,15 +3277,15 @@ def rasterizeFeatures(featureSource: QgsFeatureSource,
 
         if len(featureData.tiles) == 0:
             FEATURE_DATA.pop(fid)
-            featureProfiles = np.concatenate(featureData.arrays, axis=1)
+            if len(featureData.arrays) > 0:
+                featureProfiles = np.concatenate(featureData.arrays, axis=1)
+                # concatenate other metadata
+                featureMetadata = {'px': featureData.px,
+                                   'geo': featureData.geo}
 
-            # concatenate other metadata
-            featureMetadata = {'px': featureData.px,
-                               'geo': featureData.geo}
+                return feature, featureProfiles, featureMetadata
 
-            return feature, featureProfiles, featureMetadata
-        else:
-            return None
+        return None
 
     for tid, tileExt in enumerate(tileIterator):
         fids = Tile2Features[tid][:]

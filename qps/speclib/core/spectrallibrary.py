@@ -40,8 +40,8 @@ from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData
 from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import QgsExpressionContextUtils, QgsExpression, QgsRasterLayer, QgsPointXY, QgsGeometry, \
-    QgsMapLayerStore, QgsProject, Qgis, edit
+from qgis.core import (QgsWkbTypes, QgsExpressionContextUtils, QgsExpression, QgsRasterLayer,
+                       QgsPointXY, QgsGeometry, QgsMapLayerStore, QgsProject, Qgis, edit)
 from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsFeature, QgsVectorLayer, QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, \
     QgsActionManager, QgsFeatureRequest, \
@@ -58,7 +58,7 @@ from .. import FIELD_VALUES, FIELD_NAME
 from ...plotstyling.plotstyling import PlotStyle
 
 from ...utils import findMapLayer, \
-    qgsField, copyEditorWidgetSetup, SpatialPoint
+    qgsField, copyEditorWidgetSetup, SpatialPoint, QGIS_WKBTYPE_POINT, QGIS_WKBTYPE
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -384,12 +384,15 @@ class SpectralLibraryUtils:
     def createSpectralLibrary(
             profile_fields: List[str] = [FIELD_VALUES],
             name: str = DEFAULT_NAME,
-            encoding: ProfileEncoding = ProfileEncoding.Json) -> QgsVectorLayer:
+            encoding: ProfileEncoding = ProfileEncoding.Json,
+            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE_POINT) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """
         provider = 'memory'
-        path = f"point?crs=epsg:{SPECLIB_EPSG_CODE}"
+        if not isinstance(wkbType, str):
+            wkbType = QgsWkbTypes.displayString(wkbType)
+        path = f"{wkbType}?crs=epsg:{SPECLIB_EPSG_CODE}"
         options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
 
         lyr = QgsVectorLayer(path, name, provider, options=options)

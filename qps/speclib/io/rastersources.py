@@ -33,7 +33,8 @@ from osgeo import gdal
 
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QVariant, Qt, QUrl, QPoint
-from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
+from qgis.PyQt.QtWidgets import (QComboBox, QLabel, QDialogButtonBox, QProgressBar,
+                                 QDialog, QTextEdit, QCheckBox, QHBoxLayout)
 from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY
@@ -47,16 +48,24 @@ from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget, \
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
+from ...models import Option, OptionListModel
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
-    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray
+    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray, \
+    QGIS_GEOMETRYTYPE_POINT, QGIS_WKBTYPE_POINT
 
 PIXEL_LIMIT = 100 * 100
 
 
 class SpectralProfileLoadingTask(QgsTask):
 
-    def __init__(self, path_vector: str, path_raster: str, all_touched: bool = True, copy_attributes: bool = False):
+    def __init__(self,
+                 path_vector: str,
+                 path_raster: str,
+                 all_touched: bool = True,
+                 copy_attributes: bool = False,
+                 aggregate: str = 'mean'):
+
         super().__init__('Load spectral profiles', QgsTask.CanCancel)
         assert isinstance(path_vector, str)
         assert isinstance(path_raster, str)
@@ -65,8 +74,9 @@ class SpectralProfileLoadingTask(QgsTask):
         self.path_raster = path_raster
         self.all_touched = all_touched
         self.copy_attributes = copy_attributes
+        self.aggregate: str = aggregate
         self.exception = None
-        self.profiles = None
+        self.profiles = []
 
     def run(self):
 
@@ -80,13 +90,14 @@ class SpectralProfileLoadingTask(QgsTask):
             IO = RasterLayerSpectralLibraryIO()
             settings = {'raster_layer': raster,
                         'vector_layer': vector,
-                        'all_touched': self.all_touched}
+                        'all_touched': self.all_touched,
+                        'aggregate': self.aggregate}
             if not self.copy_attributes:
                 settings['required_fields'] = []
 
             profiles = list(IO.importProfiles('', settings, feedback))
 
-            self.profiles = profiles
+            self.profiles.extend(profiles)
         except Exception as ex:
             import traceback
             info = ''.join(traceback.format_stack())
@@ -128,6 +139,18 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         cb.layerChanged.connect(self.onVectorLayerChanged)
 
         self.mProfiles = []
+        self.mWkbType = None
+        self.aggregateOptions = OptionListModel()
+        self.aggregateOptions.addOptions([
+            Option('mean'),
+            Option('median'),
+            Option('min'),
+            Option('max'),
+            Option('none', toolTip='Returns a spectral profile for each covered pixel')
+        ])
+
+        self.mCbAggregation = QComboBox()
+        self.mCbAggregation.setModel(self.aggregateOptions)
 
         self.mCbTouched = QCheckBox(self)
         self.mCbTouched.setText('All touched')
@@ -140,11 +163,15 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
             'Activate to copy vector attributes into the Spectral Library'
         )
 
+        self.labelAggregate = QLabel('Aggregate')
         layout = QHBoxLayout()
+        layout.addStretch(0)
+        layout.addWidget(self.labelAggregate)
+        layout.addWidget(self.mCbAggregation)
         layout.addWidget(self.mCbTouched)
         layout.addWidget(self.mCbAllAttributes)
-        i = self.mGrid.rowCount()
-        self.mGrid.addLayout(layout, i, 1)
+
+        self.mGrid.addLayout(layout, self.mGrid.rowCount(), 0, 1, self.mGrid.columnCount())
 
         self.mProgressBar = QProgressBar(self)
         self.mProgressBar.setRange(0, 100)
@@ -159,6 +186,12 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.mTasks = dict()
         self.mIsFinished = False
 
+    def setWkbType(self, wkbType):
+        self.mWkbType = wkbType
+
+    def wkbType(self):
+        return self.mWkbType
+
     def onCancel(self):
         for t in self.mTasks.items():
             if isinstance(t, QgsTask) and t.canCancel():
@@ -167,14 +200,29 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.reject()
 
     def onVectorLayerChanged(self, layer: QgsVectorLayer):
-        self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer)
-                                   and QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
+
+        if not isinstance(layer, QgsVectorLayer):
+            bTouched = bAggregrate = False
+        else:
+            bTouched = layer.geometryType() != QGIS_GEOMETRYTYPE_POINT
+            bAggregrate = layer.wkbType() != QGIS_WKBTYPE_POINT
+
+            if self.mWkbType is None:
+                self.mWkbType = layer.wkbType()
+
+        for w in [self.labelAggregate, self.mCbAggregation]:
+            w.setEnabled(bAggregrate)
+            w.setVisible(bAggregrate)
+
+        self.mCbTouched.setEnabled(bTouched)
+        self.mCbTouched.setVisible(bTouched)
 
     def profiles(self) -> List[QgsFeature]:
         return self.mProfiles[:]
 
     def speclib(self) -> QgsVectorLayer:
-        slib = SpectralLibraryUtils.createSpectralLibrary(profile_fields=[])
+
+        slib = SpectralLibraryUtils.createSpectralLibrary(wkbType=self.wkbType(), profile_fields=[])
         slib.startEditing()
         SpectralLibraryUtils.addProfiles(slib, self.mProfiles, addMissingFields=True)
         slib.commitChanges()
@@ -216,19 +264,22 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         """
         Call this to start loading the profiles in a background process
         """
+        self.mProfiles.clear()
         task = SpectralProfileLoadingTask(self.vectorSource().source(),
                                           self.rasterSource().source(),
                                           all_touched=self.allTouched(),
-                                          copy_attributes=self.allAttributes()
+                                          copy_attributes=self.allAttributes(),
+                                          aggregate=self.aggregation()
+
                                           )
 
         task.progressChanged.connect(self.onProgressChanged)
+        task.taskCompleted.connect(lambda *args, t=task: self.onCompleted(t))
+        task.taskTerminated.connect(lambda *args, t=task: self.onTerminated(t))
 
         if run_async:
             mgr = QgsApplication.taskManager()
             assert isinstance(mgr, QgsTaskManager)
-            task.taskCompleted.connect(lambda task=task: self.onCompleted(task))
-            task.taskTerminated.connect(lambda task=task: self.onTerminated(task))
 
             id = mgr.addTask(task)
             self.mTasks[id] = task
@@ -249,6 +300,14 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         :return: bool
         """
         return self.mCbTouched.isEnabled() and self.mCbTouched.isChecked()
+
+    def setAggregation(self, aggregation: str):
+        o = self.aggregateOptions.findOption(aggregation)
+        if isinstance(o, Option):
+            self.mCbAggregation.setCurrentIndex(self.aggregateOptions.mOptions.index(o))
+
+    def aggregation(self) -> str:
+        return self.mCbAggregation.currentData().value()
 
     def rasterSource(self) -> QgsRasterLayer:
         """
@@ -433,7 +492,8 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
             if not isinstance(vl, QgsVectorLayer):
                 vl = QgsVectorLayer(vl)
             assert isinstance(vl, QgsVectorLayer) and vl.isValid()
-            generator = RasterLayerSpectralLibraryIO.readRasterVector(rl, vl, required_fields, all_touched, feedback=feedback)
+            generator = RasterLayerSpectralLibraryIO.readRasterVector(rl, vl, required_fields, all_touched,
+                                                                      feedback=feedback)
 
         profiles = []
         if generator:
@@ -444,7 +504,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
     @staticmethod
     def readRaster(raster,
                    fields: QgsFields,
-                   feedback: QgsProcessingFeedback = QgsProcessingFeedback(),) \
+                   feedback: QgsProcessingFeedback = QgsProcessingFeedback(), ) \
             -> Generator[QgsFeature, None, None]:
 
         raster: QgsRasterLayer
@@ -529,7 +589,8 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                          all_touched: bool = True,
                          aggregation: str = 'mean',
                          cache: int = 5 * 2 ** 20,
-                         feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> Generator[QgsFeature, None, None]:
+                         feedback: QgsProcessingFeedback = QgsProcessingFeedback())\
+            -> Generator[QgsFeature, None, None]:
 
         rl = qgsRasterLayer(raster)
         vl = qgsVectorLayer(vector)
@@ -566,9 +627,11 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
             arr: np.ndarray
             md: Dict[str, Any]
 
+            arr = aggregateArray(aggregation, arr, axis=1, keepdims=True)
+
             if arr is None:
                 s = ""
-            arr = aggregateArray(aggregation, arr, axis=1, keepdims=True)
+
             nb, npx = arr.shape
 
             for i in range(npx):

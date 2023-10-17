@@ -21,7 +21,7 @@ from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict
 from qps.testing import TestObjects, TestCaseBase, start_app
-from qps.utils import SpatialExtent
+from qps.utils import SpatialExtent, QGIS_WKBTYPE_POINT
 from qps.utils import SpatialPoint
 from qpstestdata import enmap, enmap_multipolygon, enmap_pixel
 
@@ -364,7 +364,7 @@ class QgsFunctionTests(TestCaseBase):
 
                 self.assertEqual(exp.parserErrorString(), '', msg=exp.parserErrorString())
                 self.assertEqual(exp.evalErrorString(), '', msg=exp.evalErrorString())
-                if lyrV.wkbType() == Qgis.WkbType.Point:
+                if lyrV.wkbType() == QGIS_WKBTYPE_POINT:
                     self.assertIsInstance(results, QByteArray)
                 else:
                     self.assertIsInstance(results, list)

@@ -49,7 +49,7 @@ from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding
-from .utils import MapGeometryToPixel, rasterArray, noDataValues, aggregateArray
+from .utils import MapGeometryToPixel, rasterArray, noDataValues, aggregateArray, QGIS_GEOMETRYTYPE_POINT
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
@@ -592,7 +592,7 @@ class RasterArray(QgsExpressionFunction):
         intersection = e.intersect(geom.boundingBox())
 
         # ensure to overlap entire pixels
-        if geom.type() != Qgis.GeometryType.Point:
+        if geom.type() != QGIS_GEOMETRYTYPE_POINT:
             intersection.setXMinimum(max(e.xMinimum(), intersection.xMinimum() - lyrR.rasterUnitsPerPixelX()))
             intersection.setXMaximum(min(e.xMaximum(), intersection.xMaximum() + lyrR.rasterUnitsPerPixelX()))
             intersection.setYMaximum(min(e.yMaximum(), intersection.yMaximum() + lyrR.rasterUnitsPerPixelY()))
@@ -622,7 +622,7 @@ class RasterArray(QgsExpressionFunction):
                     pixels[b, :] = np.where(band == ndv, np.NAN, band)
 
             pixels = aggregateArray(aggr, pixels, axis=1)
-            if aggr != 'none' or geom.type() == Qgis.GeometryType.Point and not geom.isMultipart():
+            if aggr != 'none' or geom.type() == QGIS_GEOMETRYTYPE_POINT and not geom.isMultipart():
                 pixels = pixels.reshape((pixels.shape[0]))
             else:
                 if transpose:

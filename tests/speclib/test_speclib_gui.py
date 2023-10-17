@@ -373,11 +373,13 @@ class TestSpeclibWidgets(TestCaseBase):
 
         pxPositions = [QPoint(0, 0), QPoint(w - 1, h - 1)]
 
-        vl1 = TestObjects.createVectorLayer(QgsWkbTypes.Polygon)
+        vl1 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
         vl2 = TestObjects.createVectorLayer(QgsWkbTypes.LineGeometry)
-        vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Point)
+        vl3 = TestObjects.createVectorLayer(QgsWkbTypes.Polygon)
 
-        layers = [vl1, vl2, vl3]
+        layers = [vl1,
+                  vl2,
+                  vl3]
         # layers = [speclib1]
 
         QgsProject.instance().addMapLayers(layers)
@@ -388,19 +390,26 @@ class TestSpeclibWidgets(TestCaseBase):
 
             if code == QDialog.Accepted:
                 slib = d.speclib()
+                profiles = d.profiles()
                 self.assertTrue(d.isFinished())
                 self.assertIsInstance(slib, QgsVectorLayer)
-                self.assertIsInstance(d.profiles(), list)
-                self.assertTrue(len(d.profiles()) == len(slib))
-                print('Returned {} profiles from {} and {}'.format(len(slib), d.vectorSource().source(),
-                                                                   d.rasterSource().source()))
+                self.assertIsInstance(profiles, list)
+                self.assertTrue(len(profiles) > 0)
+                if len(profiles) != len(slib):
+                    s = ""
+                self.assertTrue(len(profiles) == len(slib))
 
         for vl in layers:
             d = SpectralProfileImportPointsDialog()
+            self.assertEqual(d.aggregation(), 'mean')
+            d.setAggregation('median')
+            d.setWkbType(vl.wkbType())
+            self.assertEqual(d.aggregation(), 'median')
+
             self.assertIsInstance(d, SpectralProfileImportPointsDialog)
             d.setRasterSource(lyrRaster)
             d.setVectorSource(vl)
-            d.show()
+            self.showGui(d)
             self.assertEqual(lyrRaster, d.rasterSource())
             self.assertEqual(vl, d.vectorSource())
 

@@ -708,7 +708,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def onImportFromRasterSource(self):
         from ..io.rastersources import SpectralProfileImportPointsDialog
         d = SpectralProfileImportPointsDialog(parent=self)
-        d.finished.connect(lambda *args, d=d: self.onIODialogFinished(d))
+        d.setWkbType(self.spectralLibrary().wkbType())
+        d.finished.connect(lambda *args, d0=d: self.onIODialogFinished(d0))
         d.show()
         self.mIODialogs.append(d)
 
