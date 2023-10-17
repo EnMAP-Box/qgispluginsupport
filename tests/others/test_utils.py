@@ -474,7 +474,6 @@ class TestUtils(TestCase):
                 npx_ref = f.attribute('n_px')
                 self.assertEqual(profiles.shape, (rl.bandCount(), npx_ref))
 
-
             for f in vlPoly.getFeatures(request):
                 f: QgsFeature
                 name = f.attribute('name')

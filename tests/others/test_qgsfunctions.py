@@ -2,7 +2,7 @@ import json
 import re
 import unittest
 
- import numpy as np
+import numpy as np
 from osgeo import gdal_array
 
 from qgis.PyQt.QtCore import QByteArray, QVariant
@@ -147,35 +147,36 @@ class QgsFunctionTests(TestCaseBase):
         lyrMP = QgsVectorLayer(enmap_multipolygon, 'MultiPoly')
         QgsProject.instance().addMapLayers([lyrR, lyrMP])
 
-        context = QgsExpressionContext()
-        context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyrMP))
-        for i, feature in enumerate(lyrMP.getFeatures()):
-            self.assertIsInstance(feature, QgsFeature)
-            context.setFeature(feature)
+        if True:
+            context = QgsExpressionContext()
+            context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyrMP))
+            for i, feature in enumerate(lyrMP.getFeatures()):
+                self.assertIsInstance(feature, QgsFeature)
+                context.setFeature(feature)
 
-            gPoly = feature.geometry()
-            bb = gPoly.boundingBox()
-            p1 = bb.center()
-            p2 = QgsPointXY(bb.xMinimum(), bb.yMaximum())
-            gSPoint = QgsGeometry.fromPointXY(p1)
-            gMPoint = QgsGeometry.fromMultiPointXY([p1])
-            gLine = QgsGeometry.fromPolylineXY([p1, p2])
-
-            values = [lyrR, gSPoint, 'none', False]
-            a = np.asarray(f.func(values, context, None, None))
-            self.assertEqual(a.ndim, 1)
-            self.assertEqual(len(a), lyrR.bandCount())
-
-            for g in [gMPoint, gLine, gPoly]:
-                values = [lyrR, QgsGeometry(g), 'none', False]
+                gPoly = feature.geometry()
+                bb = gPoly.boundingBox()
+                p1 = bb.center()
+                p2 = QgsPointXY(bb.xMinimum(), bb.yMaximum())
+                gSPoint = QgsGeometry.fromPointXY(p1)
+                gMPoint = QgsGeometry.fromMultiPointXY([p1])
+                gLine = QgsGeometry.fromPolylineXY([p1, p2])
+                # layer, geometry, aggregate, t, at
+                values = [lyrR, gSPoint, 'none', False, True]
                 a = np.asarray(f.func(values, context, None, None))
-                self.assertEqual(a.ndim, 2, msg=f'ndim != 2 for geometry {g}')
-                self.assertEqual(a.shape[0], lyrR.bandCount())
-
-                values = [lyrR, QgsGeometry(g), 'mean', False]
-                a = np.asarray(f.func(values, context, None, None))
-                self.assertEqual(a.ndim, 1, msg=f'ndim != 1 for aggregated geometry {g}')
+                self.assertEqual(a.ndim, 1)
                 self.assertEqual(len(a), lyrR.bandCount())
+
+                for g in [gMPoint, gLine, gPoly]:
+                    values = [lyrR, QgsGeometry(g), 'none', False, True]
+                    a = np.asarray(f.func(values, context, None, None))
+                    self.assertEqual(a.ndim, 2, msg=f'ndim != 2 for geometry {g}')
+                    self.assertEqual(a.shape[0], lyrR.bandCount())
+
+                    values = [lyrR, QgsGeometry(g), 'mean', False, True]
+                    a = np.asarray(f.func(values, context, None, None))
+                    self.assertEqual(a.ndim, 1, msg=f'ndim != 1 for aggregated geometry {g}')
+                    self.assertEqual(len(a), lyrR.bandCount())
 
         expressions = [
             f"{f.name()}('{lyrR.name()}')",
@@ -188,23 +189,30 @@ class QgsFunctionTests(TestCaseBase):
         for e in expressions:
             context = QgsExpressionContext()
             context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyrMP))
+
             exp = QgsExpression(e)
             for i, feature in enumerate(lyrSP.getFeatures()):
                 self.assertIsInstance(feature, QgsFeature)
                 context.setFeature(feature)
-
+                px_x, px_y = feature.attribute('px_x'), feature.attribute('px_y')
                 exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
 
-                profile = exp.evaluate(context)
+                values = [lyrR, feature.geometry(), 'mean', True, True]
+                exp0 = QgsExpression()
+                profile0 = f.func(values, context, exp0, None)
+                profile1 = exp.evaluate(context)
+
+                self.assertListEqual(profile0, profile1)
                 self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
-                self.assertIsInstance(profile, list, msg=exp.expression())
+                self.assertIsInstance(profile1, list, msg=exp.expression())
                 pt = SpatialPoint(lyrSP.crs(), feature.geometry().asPoint())
                 px = pt.toPixelPosition(lyrR)
+                self.assertEqual(px.x(), px_x)
+                self.assertEqual(px.y(), px_y)
+                profile_ref = RASTER_ARRAY[:, px.y(), px.x()].tolist()
+                self.assertListEqual(profile1, profile_ref)
 
-                profile_ref = RASTER_ARRAY[:, px.y(), px.x()]
-                for p, pref in zip(profile, profile_ref):
-                    self.assertEqual(p, pref)
                 s = ""
 
         context = QgsExpressionContext()
@@ -302,28 +310,29 @@ class QgsFunctionTests(TestCaseBase):
             if isinstance(n_px_nat, int) and isinstance(n_px, int):
                 feat.attribute('n_px_nat')
                 context.setFeature(feat)
-                c1 = QgsExpressionContext(context)
-
-                values = [lyrE, feat.geometry(), 'none', False, 'dict']
-                exp = QgsExpression()
-                profiles_nat = f.func(values, QgsExpressionContext(context), exp, None)
-                self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
-                self.assertIsInstance(profiles_nat, list)
-                self.assertEqual(len(profiles_nat), n_px_nat)
 
                 values = [lyrE, feat.geometry(), 'none', True, 'dict']
                 exp = QgsExpression()
                 profiles_at = f.func(values, QgsExpressionContext(context), exp, None)
                 self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
                 self.assertIsInstance(profiles_at, list)
-                self.assertEqual(len(profiles_at), n_px)
+                self.assertEqual(len(profiles_at), n_px,
+                                 msg=f'Expected {n_px} but got {len(profiles_at)} pixel with ALL_TOUCHED=TRUE')
 
+                values = [lyrE, feat.geometry(), 'none', False, 'dict']
+                exp = QgsExpression()
+                profiles_nat = f.func(values, QgsExpressionContext(context), exp, None)
+                self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
+                self.assertIsInstance(profiles_nat, list)
+                self.assertEqual(len(profiles_nat), n_px_nat,
+                                 msg=f'Expected {n_px} but got {len(profiles_nat)} pixel with ALL_TOUCHED=FALSE')
+
+                c1 = QgsExpressionContext(context)
                 exp1 = QgsExpression(f"raster_profile('{lyrE.name()}', at:=False, aggregate:='none', encoding:='dict')")
                 exp1.prepare(c1)
                 self.assertTrue(exp1.parserErrorString() == '', msg=exp1.parserErrorString())
                 profiles1 = exp1.evaluate(context)
                 self.assertTrue(exp1.evalErrorString() == '', msg=exp1.evalErrorString())
-
 
                 c2 = QgsExpressionContext(context)
                 exp2 = QgsExpression(f"raster_profile('{lyrE.name()}', at:=True, aggregate:='none', encoding:='dict')")
@@ -384,7 +393,6 @@ class QgsFunctionTests(TestCaseBase):
             f"{f.name()}('{lyrR.name()}', $geometry, encoding:='map')",
             f"{f.name()}('{lyrR.name()}', encoding:='text')",
         ]
-
 
         store.addMapLayers([lyrR, lyrV])
 

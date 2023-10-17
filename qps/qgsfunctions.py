@@ -37,11 +37,11 @@ import numpy as np
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, NULL
-from qgis.core import QgsFeature
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
 from qgis.core import QgsExpressionNodeFunction, QgsField
+from qgis.core import QgsFeature
 from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider
 from qgis.core import QgsMapLayer
 from qgis.core import QgsProject
@@ -574,21 +574,30 @@ class RasterArray(QgsExpressionFunction):
 
         crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(context, lyrR)
 
-        transpose = values[3]
-        all_touched = values[4]
-        assert isinstance(all_touched, bool)
+        transpose: bool = values[3]
+        all_touched: bool = values[4]
+        aggr: str = str(values[2]).lower()
 
-        aggr = str(values[2]).lower()
         if aggr not in ['none', 'mean', 'median', 'min', 'max']:
             parent.setEvalErrorString(f'Unknown aggregation "{aggr}"')
             return None
 
         if not crs_trans.isShortCircuited():
+            geom = QgsGeometry(geom)
             if not geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success:
                 parent.setEvalErrorString('Unable to transform geometry into raster CRS')
                 return None
 
-        intersection = lyrR.extent().intersect(geom.boundingBox())
+        e = lyrR.extent()
+        intersection = e.intersect(geom.boundingBox())
+
+        # ensure to overlap entire pixels
+        if geom.type() != Qgis.GeometryType.Point:
+            intersection.setXMinimum(max(e.xMinimum(), intersection.xMinimum() - lyrR.rasterUnitsPerPixelX()))
+            intersection.setXMaximum(min(e.xMaximum(), intersection.xMaximum() + lyrR.rasterUnitsPerPixelX()))
+            intersection.setYMaximum(min(e.yMaximum(), intersection.yMaximum() + lyrR.rasterUnitsPerPixelY()))
+            intersection.setYMinimum(max(e.yMinimum(), intersection.yMinimum() - lyrR.rasterUnitsPerPixelY()))
+
         if not lyrR.extent().intersects(geom.boundingBox()):
             return None
 
@@ -671,12 +680,12 @@ class RasterProfile(QgsExpressionFunction):
         # user RasterProfile to return the raster values
         # transpose = t = True to get values in [band, profile] array
         valuesRasterProfile = [
-            values[0], # raster layer
-            values[1], # geometry
-            values[2], # aggregate
-            True, # transpose
+            values[0],  # raster layer
+            values[1],  # geometry
+            values[2],  # aggregate
+            True,  # transpose
             values[3]  # enable ALL_TOUCHED
-                               ]
+        ]
         results = self.f.func(valuesRasterProfile, context, parent, node)
 
         if parent.parserErrorString() != '' or parent.evalErrorString() != '':
