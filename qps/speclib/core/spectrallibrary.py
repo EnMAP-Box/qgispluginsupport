@@ -26,7 +26,6 @@
 """
 
 import datetime
-# see http://python-future.org/str_literals.html for str issue discussion
 import os
 import pathlib
 import pickle

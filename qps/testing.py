@@ -80,22 +80,6 @@ if Qgis.versionInt() >= 33000:
 else:
     TYPE_WkbType = QgsWkbTypes.Type
 
-WMS_GMAPS = r'crs=EPSG:3857&' \
-            r'format&' \
-            r'type=xyz&' \
-            r'url=https://mt1.google.com/vt/lyrs%3Ds%26x%3D%7Bx%7D%26y%3D%7By%7D%26z%3D%7Bz%7D&zmax=19&zmin=0'
-
-WMS_OSM = r'referer=OpenStreetMap%20contributors,%20under%20ODbL&' \
-          r'type=xyz&' \
-          r'url=https://tiles.wmflabs.org/hikebike/%7Bz%7D/%7Bx%7D/%7By%7D.png&' \
-          r'zmax=17&' \
-          r'zmin=1'
-
-WFS_Berlin = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
-             'typename=''fis:re_postleit'' ' \
-             'url=''https://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
-             'version=''auto'''
-
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
 _QGIS_MOCKUP = None

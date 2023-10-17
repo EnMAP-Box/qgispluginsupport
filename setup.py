@@ -5,7 +5,7 @@
     setup.py
 
     This file is required to allow QPS being installed via pip, e.g. like:
-    # python3 -m pip install --user git+https://bitbucket.org/jakimowb/qgispluginsupport.git@develop#egg=qps
+    # python3 -m pip install --user git+https://github.com/EnMAP-Box/qgispluginsupport.git@master#egg=qps
     ---------------------
     Beginning            : 2019-12-18
     Copyright            : (C) 2020 by Benjamin Jakimow
@@ -34,8 +34,8 @@ setup(name='qps',
       author='Benjamin Jakimow    ',
       author_email='benjamin.jakimow@geo.hu-berlin.de',
       packages=find_packages(),
-      url='https://bitbucket.org/jakimowb/qgispluginsupport',
+      url='https://github.com/EnMAP-Box/qgispluginsupport',
       long_description=open('README.md').read(),
       include_package_data=True,
-      dependency_links=['git+https://bitbucket.org/jakimowb/qgispluginsupport.git@develop#egg=qps']
+      dependency_links=['git+https://github.com/EnMAP-Box/qgispluginsupport.git@master#egg=qps']
       )

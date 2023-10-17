@@ -49,13 +49,6 @@ from qpstestdata import enmap, enmap_pixel, enmap_multipolygon, enmap_multipoint
 
 
 class TestUtils(TestCase):
-    def setUp(self):
-        super().setUp()
-
-        self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
-                      'typename=''fis:re_postleit'' ' \
-                      'url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
-                      'version=''auto'''
 
     def test_loadUi(self):
 

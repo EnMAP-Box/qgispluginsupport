@@ -433,8 +433,6 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
 
         lyrCSV = readCSVMetadata(path)
 
-        # thanks to Ann for https://bitbucket.org/jakimowb/qgispluginsupport/issues/3/speclib-envypy
-
         bbl = md.get('bbl', None)
         if bbl:
             bbl = np.asarray(bbl, dtype=np.byte).tolist()

@@ -34,7 +34,7 @@ jobs:
           # https://github.com/SuperKogito/URLs-checker/issues/1,https://github.com/SuperKogito/URLs-checker/issues/2
 
         # A comma separated patterns to exclude during URL checks
-        exclude_patterns:
+        exclude_patterns: http://mrcc.com/qgis.dtd
 
           # https://github.com/SuperKogito/Voice-based-gender-recognition/issues
 
