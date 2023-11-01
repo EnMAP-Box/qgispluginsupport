@@ -97,7 +97,7 @@ for i in required_imports:
         gui_classes.append(i)
     else:
         raise NotImplementedError()
-lines.append('\n#  Import old classes')
+lines.append('\n#  Import old locations')
 if len(core_classes) > 0:
     lines.append('from qgis.core import (' + ', '.join(core_classes) + ')')
 if len(gui_classes) > 0:
