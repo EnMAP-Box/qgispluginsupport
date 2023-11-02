@@ -67,7 +67,10 @@ def userProfileManager() -> QgsUserProfileManager:
             basePath = home / 'AppData/Roaming/QGIS/QGIS3'
         elif platform.system() == 'Linux':
             basePath = home / '.local/share/QGIS/QGIS3'
-        if basePath is None:
+        elif platform.system() == 'Darwin':
+            basePath = home / r'Library/Application Support/QGIS/QGIS3'
+
+        if basePath is None or not basePath.is_dir():
             raise NotImplementedError(f'No QGIS basePath for {platform.system()}')
 
         configLocalStorageLocation = basePath.as_posix()
