@@ -19,6 +19,7 @@ jobs:
   test:
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: true
       matrix:
         qgis_version: [release-3_28, release-3_32, latest]
     env:
