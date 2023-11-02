@@ -7,7 +7,6 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update
-
 COPY ./requirements.txt /tmp/
 RUN pip3 install -r /tmp/requirements.txt
 RUN pip3 install coverage-badge
@@ -18,5 +17,8 @@ RUN pip3 install coverage-badge
 ENV PATH="/usr/local/bin:${PATH}"
 
 # ENV LANG=C.UTF-8
+
+RUN chmod +x qgis_setup.sh
+RUN ./qgis_setup.sh
 
 WORKDIR /
