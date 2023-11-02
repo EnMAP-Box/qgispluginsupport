@@ -8,7 +8,7 @@ RUN apt-get update && \
 
 RUN apt-get update
 COPY ./requirements.txt /tmp/
-RUN ./.docker/qgis_setup.sh /tmp/
+COPY ./.docker/qgis_setup.sh /tmp/
 RUN pip3 install -r /tmp/requirements.txt
 RUN pip3 install coverage-badge
 ENV PATH="/usr/local/bin:${PATH}"
