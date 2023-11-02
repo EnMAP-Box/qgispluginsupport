@@ -70,4 +70,5 @@ QGIS_TEXTVERTICALALIGNMENT = Qgis.TextVerticalAlignment if Qgis.versionInt() >= 
 QGIS_UNITTYPE = Qgis.UnitType if Qgis.versionInt() >= 33000 else QgsUnitTypes.UnitType
 QGIS_UPSIDEDOWNLABELHANDLING = Qgis.UpsideDownLabelHandling if Qgis.versionInt() >= 32600 else QgsPalLayerSettings.UpsideDownLabels
 QGIS_VOLUMEUNIT = Qgis.VolumeUnit if Qgis.versionInt() >= 33000 else QgsUnitTypes.VolumeUnit
+
 QGIS_WKBTYPE = Qgis.WkbType if Qgis.versionInt() >= 33000 else QgsWkbTypes.Type
