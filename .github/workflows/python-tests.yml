@@ -7,6 +7,7 @@ on:
       - '**'
     paths:
       - '**.py'
+      - '**.docker/**'
 
   pull_request:
     branches:
@@ -17,10 +18,11 @@ on:
 jobs:
   # Run unit tests
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: true
       matrix:
-        qgis_version: [release-3_28, release-3_30, release-3_32]
+        qgis_version: [release-3_28, release-3_32, release-3_34]
     env:
       QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
     steps:

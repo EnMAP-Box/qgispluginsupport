@@ -65,6 +65,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel, \
 from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
+from .qgisenums import QGIS_LAYERFILTER
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, datetime64
 
@@ -3006,7 +3007,7 @@ class SelectMapLayerDialog(QgsDialog):
 class SelectMapLayersDialog(QgsDialog):
     class LayerDescription(object):
 
-        def __init__(self, info: str, filters: QgsMapLayerProxyModel.Filters, allowEmptyLayer=False):
+        def __init__(self, info: str, filters: QGIS_LAYERFILTER, allowEmptyLayer=False):
             self.labelText = info
             self.filters = filters
             self.allowEmptyLayer = allowEmptyLayer
@@ -3054,12 +3055,12 @@ class SelectMapLayersDialog(QgsDialog):
         super(SelectMapLayersDialog, self).exec_()
 
     def addLayerDescription(self, info: str,
-                            filters: QgsMapLayerProxyModel.Filters,
+                            filters: QGIS_LAYERFILTER,
                             allowEmptyLayer=False,
                             layerDescription=None) -> QgsMapLayerComboBox:
         """
         Adds a map layer description
-        :param info: description text
+        :param info:  text
         :param filters: map layer filters
         :param allowEmptyLayer: bool
         :param layerDescription: SelectMapLayersDialog.LayerDescription (overwrites the other attributes)

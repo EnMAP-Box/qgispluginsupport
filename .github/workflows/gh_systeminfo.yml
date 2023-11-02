@@ -1,0 +1,12 @@
+name: Check Github System Info
+on: [push]
+
+jobs:
+  check-info:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check System Info
+      run: |
+        lscpu
+      shell: bash
