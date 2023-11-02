@@ -3055,7 +3055,7 @@ class SelectMapLayersDialog(QgsDialog):
         super(SelectMapLayersDialog, self).exec_()
 
     def addLayerDescription(self, info: str,
-                            filters: QgsMapLayerProxyModel.Filters,
+                            filters: QGIS_LAYERFILTER,
                             allowEmptyLayer=False,
                             layerDescription=None) -> QgsMapLayerComboBox:
         """
