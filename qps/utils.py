@@ -3060,7 +3060,7 @@ class SelectMapLayersDialog(QgsDialog):
                             layerDescription=None) -> QgsMapLayerComboBox:
         """
         Adds a map layer description
-        :param info: description text
+        :param info:  text
         :param filters: map layer filters
         :param allowEmptyLayer: bool
         :param layerDescription: SelectMapLayersDialog.LayerDescription (overwrites the other attributes)

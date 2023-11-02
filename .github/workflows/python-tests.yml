@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        qgis_version: [release-3_28, release-3_32, latest]
+        qgis_version: [release-3_28, release-3_32, release-3_34]
     env:
       QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
     steps:
