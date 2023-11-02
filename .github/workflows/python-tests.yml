@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        qgis_version: [release-3_28, release-3_30, release-3_32]
+        qgis_version: [release-3_28, release-3_32, latest]
     env:
       QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
     steps:
