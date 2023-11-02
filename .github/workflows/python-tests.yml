@@ -7,7 +7,7 @@ on:
       - '**'
     paths:
       - '**.py'
-      - '**.docker/Dockerfile'
+      - '**.docker/**'
 
   pull_request:
     branches:
