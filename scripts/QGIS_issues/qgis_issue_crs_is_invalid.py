@@ -5,7 +5,11 @@ print(f'QGIS Version: {Qgis.version()}  ({Qgis.versionInt()})')
 
 # if a QgsCoordinateReferenceSystem instance is created before start_app(), the assert in the last line will fail
 if True:
-    QgsCoordinateReferenceSystem('EPSG:4326')
+
+    # something like the following definition might be used deep in a nested python project structure
+    # and this way become hard to detect
+    def myCrs(crs: QgsCoordinateReferenceSystem = QgsCoordinateReferenceSystem('EPSG:4326')):
+        print(f'CRS: {crs}')
 
 start_app()
 
