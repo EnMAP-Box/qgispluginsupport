@@ -78,6 +78,7 @@ def start_app(cleanup: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
+    i = QgsProject.instance()
     app = qgis.testing.start_app(cleanup)
 
     from qgis.core import QgsCoordinateReferenceSystem
@@ -105,6 +106,13 @@ def start_app(cleanup: bool = True,
 
     for path in resources:
         initResourceFile(path)
+
+    crs1 = QgsCoordinateReferenceSystem('EPSG:4326')
+    assert crs1.isValid(), 'Failed to initialize QGIS SRS database'
+    crs2 = QgsCoordinateReferenceSystem.fromWkt(crs1.toWkt())
+    assert crs2.isValid(), ('Failed to initialize QGIS SRS database. '
+                            'Likely a QgsCoordinateSystem instance is created before an'
+                            'QgsApplication.instance() calling `qgis.testing.start_app()`.')
 
     return app
 
