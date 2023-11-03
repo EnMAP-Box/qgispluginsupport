@@ -1,5 +1,8 @@
 name: Check Github System Info
-on: [push]
+on:
+  push:
+    branches: *
+  workflow_dispatch: {} # trigger manually only
 
 jobs:
   check-info:
