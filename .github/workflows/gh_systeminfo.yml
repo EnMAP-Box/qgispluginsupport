@@ -1,4 +1,4 @@
-name: Check Github System Info
+name: `:octocat:` Github System Info
 on:
   workflow_dispatch: {} # trigger manually only
 
