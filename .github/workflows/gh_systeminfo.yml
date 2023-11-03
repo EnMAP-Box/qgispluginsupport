@@ -1,7 +1,8 @@
 name: Check Github System Info
 on:
   push:
-    branches: *
+    branches:
+      - *
   workflow_dispatch: {} # trigger manually only
 
 jobs:
