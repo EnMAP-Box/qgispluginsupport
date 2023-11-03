@@ -33,13 +33,16 @@ EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
 EDITOR_WIDGET_REGISTRY_NAME = 'Spectral Profile'
 
 SPECLIB_EPSG_CODE = 4326
-SPECLIB_CRS = QgsCoordinateReferenceSystem('EPSG:{}'.format(SPECLIB_EPSG_CODE))
 
 EMPTY_VALUES = [None, NULL, QVariant(), '', 'None']
 
 FIELD_VALUES = 'profiles'
 FIELD_NAME = 'name'
 FIELD_FID = 'fid'
+
+
+def defaultSpeclibCrs() -> QgsCoordinateReferenceSystem:
+    return QgsCoordinateReferenceSystem(SPECLIB_EPSG_CODE)
 
 
 def createStandardFields() -> QgsFields:

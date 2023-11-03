@@ -50,9 +50,6 @@ class TestCasesClassTesting(TestCase):
         self.assertIsInstance(root, QgsLayerTree)
         self.assertEqual(len(root.findLayers()), 0)
 
-        # QgsProject.instance().layersAdded.connect(lambda : print('ADDED'))
-        # QgsProject.instance().legendLayersAdded.connect(lambda: print('ADDED LEGEND'))
-
         QgsProject.instance().addMapLayer(lyr1, False)
         QgsProject.instance().addMapLayer(lyr2, True)
 

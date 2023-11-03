@@ -39,7 +39,6 @@ import re
 import shutil
 import sys
 import traceback
-
 import warnings
 import weakref
 import zipfile
@@ -47,7 +46,6 @@ from collections import defaultdict
 from typing import Union, List, Optional, Any, Tuple, Iterator, Dict, Iterable
 
 import numpy as np
-
 from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
@@ -56,15 +54,17 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
     QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
-from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
-from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel, \
-    QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore, \
-    QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsRectangle, QgsPointXY, QgsProject, \
-    QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis, QgsGeometry, \
-    QgsFields
+from qgis.core import (QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel,
+                       QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore,
+                       QgsCoordinateReferenceSystem, QgsCoordinateTransform,
+                       QgsRectangle, QgsPointXY, QgsProject,
+                       QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis,
+                       QgsGeometry, QgsFields)
 from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
+from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
+
 from .qgisenums import QGIS_LAYERFILTER
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, datetime64
@@ -192,9 +192,16 @@ def cleanDir(d):
 
 # a QPS internal map layer store
 QPS_MAPLAYER_STORE = QgsMapLayerStore()
+_MAP_LAYER_STORES = [QPS_MAPLAYER_STORE]
 
-# a list of all known maplayer stores.
-MAP_LAYER_STORES = [QPS_MAPLAYER_STORE, QgsProject.instance()]
+
+def mapLayerStores() -> List[Union[QgsMapLayerStore, QgsProject]]:
+    """
+    Returns a list of known map layer stores (included QgsProject.instance()
+    :return:
+    """
+    global _MAP_LAYER_STORES
+    return _MAP_LAYER_STORES[:] + [QgsProject.instance()]
 
 
 def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
@@ -218,6 +225,7 @@ def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
     return None
 
 
+#
 def file_search(rootdir,
                 pattern,
                 recursive: bool = False,
@@ -279,8 +287,8 @@ def registerMapLayerStore(store):
     :param store: QgsProject | QgsMapLayerStore
     """
     assert isinstance(store, (QgsProject, QgsMapLayerStore))
-    if store not in MAP_LAYER_STORES:
-        MAP_LAYER_STORES.append(store)
+    if store not in mapLayerStores():
+        _MAP_LAYER_STORES.append(store)
 
 
 def registeredMapLayers() -> list:
@@ -289,7 +297,7 @@ def registeredMapLayers() -> list:
     :return: [list-of-QgsMapLayers]
     """
     layers = []
-    for store in [QgsProject.instance()] + MAP_LAYER_STORES:
+    for store in mapLayerStores():
         for layer in store.mapLayers().values():
             if layer not in layers:
                 layers.append(layer)
@@ -602,11 +610,7 @@ def showMessage(message: str, title: str, level):
     v.showMessage(True)
 
 
-def gdalDataset(dataset: Union[str,
-                                pathlib.Path,
-                                QgsRasterLayer,
-                                QgsRasterDataProvider,
-                                gdal.Dataset],
+def gdalDataset(dataset: Union[str, pathlib.Path, QgsRasterLayer, QgsRasterDataProvider, gdal.Dataset],
                 eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance

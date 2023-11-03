@@ -56,23 +56,15 @@ from qgis.core import QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
     QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
     QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge, \
     QgsProcessingModelAlgorithm, QgsProcessingRegistry, QgsProcessingContext, \
-    QgsProcessingFeedback
-from qgis.core import QgsTemporalController, edit
-from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
+    QgsProcessingFeedback, QgsTemporalController, edit, QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
 from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
 
-from . import QPS_RESOURCE_FILE
 from .qgisenums import QGIS_WKBTYPE
-from .resources import initResourceFile
-from .speclib import createStandardFields, FIELD_VALUES
-from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
-from .speclib.core.spectrallibrary import SpectralLibraryUtils
-from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
-from .unitmodel import UnitLookup
 from .utils import px2geo, SpatialPoint, findUpwardPath
+from .resources import initResourceFile
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
@@ -86,11 +78,6 @@ def start_app(cleanup: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
-    # workaround for CRS bug???. has to be done before qgis.test.start_app
-    # from qgis.core import QgsCoordinateReferenceSystem
-    # wkt = 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,3],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],AXIS["ellipsoidal height (h)",up,ORDER[3],LENGTHUNIT["metre",1]],USAGE[SCOPE["Geodesy. Navigation and positioning using GPS satellite system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4979]]'
-    # assert QgsCoordinateReferenceSystem(wkt).isValid()
-
     app = qgis.testing.start_app(cleanup)
 
     from qgis.core import QgsCoordinateReferenceSystem
@@ -666,6 +653,7 @@ class TestCase(TestCaseBase):
         resources = kwargs.pop('resources', [])
 
         super().setUpClass(*args, **kwargs)
+        from . import QPS_RESOURCE_FILE
         resources.append(QPS_RESOURCE_FILE)
         start_app(cleanup=kwargs.get('cleanup'), resources=resources)
 
@@ -880,6 +868,12 @@ class TestObjects(object):
                          wlu: str = None,
                          profile_fields: List[Union[str, QgsField]] = None):
 
+        from .speclib import createStandardFields
+        from .speclib.core import create_profile_field, is_profile_field
+        from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
+        from .speclib.core import profile_fields as pFields
+        from .unitmodel import UnitLookup
+
         if fields is None:
             fields = createStandardFields()
 
@@ -891,6 +885,7 @@ class TestObjects(object):
         else:
             for i, f in enumerate(profile_fields):
                 if isinstance(f, str):
+
                     fields.append(create_profile_field(f'profile{i}'))
                 elif isinstance(f, QgsField):
                     fields.append(f)
@@ -933,6 +928,7 @@ class TestObjects(object):
                         wl = wlu = None
                     elif wlu != data_wlu:
                         wl = UnitLookup.convertLengthUnit(wl, data_wlu, wlu)
+
                     profileDict = prepareProfileValueDict(y=data, x=wl, xUnit=wlu)
                     value = encodeProfileValueDict(profileDict, profile_field)
                     profile.setAttribute(profile_field.name(), value)
@@ -959,6 +955,10 @@ class TestObjects(object):
         :return: QgsVectorLayer
         :rtype: QgsVectorLayer
         """
+        from .speclib.core.spectrallibrary import SpectralLibraryUtils
+        from .speclib.core import profile_field_indices
+        from .speclib import FIELD_VALUES
+
         assert n >= 0
         assert 0 <= n_empty <= n
 
@@ -1220,6 +1220,7 @@ class TestObjects(object):
             if wlu is None:
                 wlu = core_wlu
             elif wlu != core_wlu:
+                from .unitmodel import UnitLookup
                 wl = UnitLookup.convertLengthUnit(wl, core_wlu, wlu)
 
             domain = None
