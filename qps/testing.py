@@ -78,7 +78,7 @@ def start_app(cleanup: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
-    i = QgsProject.instance()
+
     app = qgis.testing.start_app(cleanup)
 
     from qgis.core import QgsCoordinateReferenceSystem
