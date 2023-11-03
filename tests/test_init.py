@@ -45,6 +45,20 @@ class TestsCases_Init(TestCase):
         from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY as keyClassScheme
         self.assertIsInstance(reg.factory(keyClassScheme), ClassificationSchemeWidgetFactory)
 
+    def test_crs(self):
+
+        from qgis.core import QgsCoordinateReferenceSystem
+
+        crs1 = QgsCoordinateReferenceSystem('EPSG:4326')
+        assert crs1.isValid()
+
+        wkt1 = crs1.toWkt()
+        crs2 = QgsCoordinateReferenceSystem.fromWkt(wkt1)
+        wkt2 = crs2.toWkt()
+
+        assert wkt1 == wkt2
+        assert crs2.isValid()
+
     def test_relative_imports(self):
 
         root = pathlib.Path(__file__).parents[1]
