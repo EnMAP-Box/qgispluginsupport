@@ -419,10 +419,15 @@ def _set_iface(ifaceMock: QgisInterface):
 
     # enhance this list with further positions where iface needs to be replaced or remains None otherwise
     import processing.ProcessingPlugin
-    modules = [processing.ProcessingPlugin]
+    import processing.tools.general
+    modules = [processing.ProcessingPlugin,
+               processing.tools.general,
+               processing]
 
     for m in modules:
         m.iface = ifaceMock
+
+    s = ""
 
 
 # APP = None
