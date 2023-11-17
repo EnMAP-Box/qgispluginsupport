@@ -332,6 +332,8 @@ class SpectralProcessingTests(TestCaseBase):
         splitH.addWidget(splitV)
         splitH.addWidget(w)
 
+        speclibs = [w.speclib() for w in panel.spectralProfileBridge().destinations()]
+        canvas.setLayers(speclibs + canvas.layers())
         self.showGui(splitH)
         QgsProject.instance().removeAllMapLayers()
 

@@ -33,6 +33,7 @@ from json import JSONDecodeError
 from typing import Union, List, Set, Callable, Iterable, Any, Dict
 
 import numpy as np
+from qgis.core import QgsExpressionContextScope
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
@@ -45,12 +46,12 @@ from qgis.core import QgsFeature
 from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider
 from qgis.core import QgsMapLayer
 from qgis.core import QgsProject
-from .qgisenums import QGIS_GEOMETRYTYPE
+from .qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding
-from .utils import MapGeometryToPixel, rasterArray, noDataValues, aggregateArray
+from .utils import MapGeometryToPixel, rasterArray, noDataValues, aggregateArray, _geometryIsSinglePoint
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
@@ -593,7 +594,7 @@ class RasterArray(QgsExpressionFunction):
         intersection = e.intersect(geom.boundingBox())
 
         # ensure to overlap entire pixels
-        if geom.type() != QGIS_GEOMETRYTYPE.Point:
+        if not _geometryIsSinglePoint(geom):
             intersection.setXMinimum(max(e.xMinimum(), intersection.xMinimum() - lyrR.rasterUnitsPerPixelX()))
             intersection.setXMaximum(min(e.xMaximum(), intersection.xMaximum() + lyrR.rasterUnitsPerPixelX()))
             intersection.setYMaximum(min(e.yMaximum(), intersection.yMaximum() + lyrR.rasterUnitsPerPixelY()))
@@ -605,6 +606,7 @@ class RasterArray(QgsExpressionFunction):
         try:
             dp: QgsRasterDataProvider = lyrR.dataProvider()
             array = rasterArray(dp, rect=intersection)
+            array2 = rasterArray(dp)
             nb, nl, ns = array.shape
 
             mapUnitsPerPixel = lyrR.rasterUnitsPerPixelX() if intersection.isEmpty() else None
@@ -617,17 +619,26 @@ class RasterArray(QgsExpressionFunction):
             pixels = pixels.astype(float)
             # print(pixels.shape)
 
+
+
             for b in range(pixels.shape[0]):
                 for ndv in NODATA.get(b + 1, []):
                     band = pixels[b, :]
                     pixels[b, :] = np.where(band == ndv, np.NAN, band)
 
             pixels = aggregateArray(aggr, pixels, axis=1)
-            if aggr != 'none' or geom.type() == QGIS_GEOMETRYTYPE.Point and not geom.isMultipart():
+            if aggr != 'none' or _geometryIsSinglePoint(geom):
                 pixels = pixels.reshape((pixels.shape[0]))
             else:
+
                 if transpose:
                     pixels = pixels.transpose()
+
+            scope = QgsExpressionContextScope('raster_array_extraction')
+            scope.setVariable('raster_array_px', (i_x.tolist(), i_y.tolist()))
+            px_geo = MG2P.px2geoList(i_x, i_y)
+            scope.setVariable('raster_array_geo', px_geo)
+            context.appendScope(scope)
 
             return pixels.tolist()
 

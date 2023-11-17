@@ -165,7 +165,7 @@ class QgsFunctionTests(TestCaseBase):
                 # layer, geometry, aggregate, t, at
                 values = [lyrR, gSPoint, 'none', False, True]
                 a = np.asarray(f.func(values, context, None, None))
-                self.assertEqual(a.ndim, 1)
+                self.assertEqual(a.ndim, 1, 'Single-Point geometry should return 1-d array profile')
                 self.assertEqual(len(a), lyrR.bandCount())
 
                 for g in [gMPoint, gLine, gPoly]:

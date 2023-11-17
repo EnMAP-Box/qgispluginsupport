@@ -57,7 +57,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
     QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
-from qgis.core import QgsFeatureSource, QgsFeatureRequest, QgsVector, QgsRasterIdentifyResult, QgsRaster
+from qgis.core import QgsFeatureSource, QgsFeatureRequest, QgsVector, QgsRasterIdentifyResult, QgsRaster, QgsWkbTypes
 from qgis.core import (QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel,
                        QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore,
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform,
@@ -69,7 +69,7 @@ from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetu
 from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 
-from .qgisenums import QGIS_LAYERFILTER, QGIS_GEOMETRYTYPE
+from .qgisenums import QGIS_LAYERFILTER, QGIS_GEOMETRYTYPE, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, datetime64
 
@@ -130,6 +130,27 @@ def rm(p):
     elif os.path.isdir(p):
         shutil.rmtree(p)
 
+def _geometryIsEmpty(g: QgsGeometry) -> bool:
+    if g.isEmpty():
+        return True
+    if Qgis.versionInt() >= 33000:
+        if g.type() in [Qgis.GeometryType.Null,
+                        Qgis.GeometryType.Unknown]:
+            return True
+    else:
+        if g.type() in [QgsWkbTypes.NoGeometry,
+                     QgsWkbTypes.NullGeometry,
+                     QgsWkbTypes.UnknownGeometry
+                    ]:
+            return True
+    return False
+
+    s = ""
+
+
+def _geometryIsSinglePoint(g: QgsGeometry) -> bool:
+    return g.wkbType() in [QGIS_WKBTYPE.Point, QGIS_WKBTYPE.PointM,
+                           QGIS_WKBTYPE.PointZM, QGIS_WKBTYPE.Point25D, QGIS_WKBTYPE.PointZ]
 
 class SignalBlocker(object):
     """
@@ -3040,7 +3061,7 @@ class MapGeometryToPixel(object):
     def geometryPixelPositions(self,
                                g: Union[QgsGeometry, QgsFeature],
                                all_touched: bool = True,
-                               burn_points=False,
+                               burn_points: bool = False,
                                ) -> Tuple[np.ndarray, np.ndarray]:
         #  rasterizes the feature geometry and returns the pixel positions
         if isinstance(g, QgsFeature):
@@ -3050,11 +3071,10 @@ class MapGeometryToPixel(object):
         if not isinstance(g, QgsGeometry):
             return None, None
 
-        if g.isEmpty() or g.type() in [QGIS_GEOMETRYTYPE.Null,
-                                       QGIS_GEOMETRYTYPE.Unknown]:
+        if _geometryIsEmpty(g):
             return None, None
 
-        if g.type() == QGIS_GEOMETRYTYPE.Point and not burn_points:
+        if g.wkbType() == QGIS_WKBTYPE.Point and not burn_points:
             g = QgsGeometry(g)
             g.mapToPixel(self.m2p)
             px_x = []
