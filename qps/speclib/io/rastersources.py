@@ -30,7 +30,6 @@ from typing import List, Union, Generator, Dict, Any
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QVariant, Qt, QUrl, QPoint
 from qgis.PyQt.QtWidgets import (QComboBox, QLabel, QDialogButtonBox, QProgressBar,
@@ -42,6 +41,7 @@ from qgis.core import QgsProviderRegistry
 from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
     QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsProcessingFeedback
 from qgis.gui import QgsMapLayerComboBox
+
 from .. import speclibUiPath, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -49,10 +49,11 @@ from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWid
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...models import Option, OptionListModel
-from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE, QGIS_LAYERTYPE
+from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE, QGIS_LAYERFILTER
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
     rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray
+
 PIXEL_LIMIT = 100 * 100
 
 
@@ -355,8 +356,8 @@ class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):
             self.cbVectorLayer.setAllowEmptyLayer(True)
         else:
             self.cbVectorLayer.setAllowEmptyLayer(True, 'Each Raster Pixel')
-        self.cbRasterLayer.setFilters(QGIS_LAYERTYPE.Raster)
-        self.cbVectorLayer.setFilters(QGIS_LAYERTYPE.Vector)
+        self.cbRasterLayer.setFilters(QGIS_LAYERFILTER.RasterLayer)
+        self.cbVectorLayer.setFilters(QGIS_LAYERFILTER.VectorLayer)
         excluded = [p for p in QgsProviderRegistry.instance().providerList() if p not in ['ogr']]
         self.cbVectorLayer.setExcludedProviders(excluded)
         self.mCbTouched.stateChanged.connect(self.updateInfoBox)

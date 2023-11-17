@@ -42,7 +42,9 @@ FIELD_FID = 'fid'
 
 
 def defaultSpeclibCrs() -> QgsCoordinateReferenceSystem:
-    return QgsCoordinateReferenceSystem(SPECLIB_EPSG_CODE)
+    crs = QgsCoordinateReferenceSystem()
+    assert crs.createFromString(f'EPSG:{SPECLIB_EPSG_CODE}'), f'Unable to create CRS for input "{SPECLIB_EPSG_CODE}"'
+    return crs
 
 
 def createStandardFields() -> QgsFields:
