@@ -49,7 +49,7 @@ from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWid
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...models import Option, OptionListModel
-from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE
+from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE, QGIS_LAYERTYPE
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
     rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray
@@ -355,8 +355,8 @@ class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):
             self.cbVectorLayer.setAllowEmptyLayer(True)
         else:
             self.cbVectorLayer.setAllowEmptyLayer(True, 'Each Raster Pixel')
-        self.cbRasterLayer.setFilters(QgsMapLayerProxyModel.RasterLayer)
-        self.cbVectorLayer.setFilters(QgsMapLayerProxyModel.PointLayer | QgsMapLayerProxyModel.PolygonLayer)
+        self.cbRasterLayer.setFilters(QGIS_LAYERTYPE.Raster)
+        self.cbVectorLayer.setFilters(QGIS_LAYERTYPE.Vector)
         excluded = [p for p in QgsProviderRegistry.instance().providerList() if p not in ['ogr']]
         self.cbVectorLayer.setExcludedProviders(excluded)
         self.mCbTouched.stateChanged.connect(self.updateInfoBox)
