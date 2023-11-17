@@ -55,9 +55,10 @@ from .spectralprofile import SpectralSetting, groupBySpectralProperties, prepare
 from .. import EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from .. import FIELD_VALUES, FIELD_NAME
 from ...plotstyling.plotstyling import PlotStyle
+from ...qgisenums import QGIS_WKBTYPE
 
 from ...utils import findMapLayer, \
-    qgsField, copyEditorWidgetSetup, SpatialPoint, QGIS_WKBTYPE_POINT, QGIS_WKBTYPE
+    qgsField, copyEditorWidgetSetup, SpatialPoint
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -384,7 +385,7 @@ class SpectralLibraryUtils:
             profile_fields: List[str] = [FIELD_VALUES],
             name: str = DEFAULT_NAME,
             encoding: ProfileEncoding = ProfileEncoding.Json,
-            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE_POINT) -> QgsVectorLayer:
+            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """

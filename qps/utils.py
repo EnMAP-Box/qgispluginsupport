@@ -3036,7 +3036,7 @@ class MapGeometryToPixel(object):
         if wkbType not in self.wkbTypeLayers:
             lyr: ogr.Layer = self.vsMem.CreateLayer(f'wkbType{wkbType}',
                                                     srs=self.srs,
-                                                    geom_type=QGIS2OGR_WKBTYPE[wkbType])
+                                                    geom_type=int(wkbType))
             lyr.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger))
             self.wkbTypeLayers[wkbType] = lyr
 

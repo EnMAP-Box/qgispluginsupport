@@ -49,11 +49,10 @@ from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWid
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...models import Option, OptionListModel
+from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
-    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray, \
-    QGIS_GEOMETRYTYPE_POINT, QGIS_WKBTYPE_POINT
-
+    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray
 PIXEL_LIMIT = 100 * 100
 
 
@@ -204,8 +203,8 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         if not isinstance(layer, QgsVectorLayer):
             bTouched = bAggregrate = False
         else:
-            bTouched = layer.geometryType() != QGIS_GEOMETRYTYPE_POINT
-            bAggregrate = layer.wkbType() != QGIS_WKBTYPE_POINT
+            bTouched = layer.geometryType() != QGIS_GEOMETRYTYPE.Point
+            bAggregrate = layer.wkbType() != QGIS_WKBTYPE.Point
 
             if self.mWkbType is None:
                 self.mWkbType = layer.wkbType()
