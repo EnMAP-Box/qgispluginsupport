@@ -57,6 +57,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
     QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
 from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
+from qgis.core import QgsFeatureSource, QgsFeatureRequest, QgsVector, QgsRasterIdentifyResult, QgsRaster
 from qgis.core import (QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel,
                        QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore,
                        QgsCoordinateReferenceSystem, QgsCoordinateTransform,
@@ -68,7 +69,7 @@ from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetu
 from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 
-from .qgisenums import QGIS_LAYERFILTER
+from .qgisenums import QGIS_LAYERFILTER, QGIS_GEOMETRYTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, datetime64
 
@@ -3019,7 +3020,7 @@ class MapGeometryToPixel(object):
                                         .Create('', self.nSamples(), self.nLines(), 1, gdal.GDT_Byte))
             # ul = self.px2geo(0, 0)
             t, success = self.m2p.transform().inverted()
-            assert success, 'Matrix is not invertable'
+            assert success, 'Matrix is not invertible'
             self.rsMEM.SetGeoTransform((t.m31(), t.m11(), t.m12(),
                                         t.m32(), t.m21(), t.m22()))
             #  self.rsMEM.SetGeoTransform((ul.x(), self.pixelWidth(), 0,
@@ -3054,11 +3055,11 @@ class MapGeometryToPixel(object):
         if not isinstance(g, QgsGeometry):
             return None, None
 
-        if g.isEmpty() or g.type() in [QGIS_GEOMETRYTYPE_NULL,
-                                       QGIS_GEOMETRYTYPE_UNKNOWN]:
+        if g.isEmpty() or g.type() in [QGIS_GEOMETRYTYPE.Null,
+                                       QGIS_GEOMETRYTYPE.Unknown]:
             return None, None
 
-        if g.type() == QGIS_GEOMETRYTYPE_POINT and not burn_points:
+        if g.type() == QGIS_GEOMETRYTYPE.Point and not burn_points:
             g = QgsGeometry(g)
             g.mapToPixel(self.m2p)
             px_x = []

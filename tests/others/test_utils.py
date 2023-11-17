@@ -36,7 +36,7 @@ from qgis.core import QgsProcessingFeedback, QgsRectangle, QgsFeatureRequest, Qg
     QgsRasterDataProvider, QgsRaster, QgsGeometry
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCase, start_app
 from qps.unitmodel import UnitLookup
 from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromString, nodeXmlString, \
     SelectMapLayersDialog, defaultBands, relativePath, nextColor, createQgsField, px2geo, geo2px, \
@@ -47,7 +47,7 @@ from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromS
     rasterizeFeatures, ExtentTileIterator, MapGeometryToPixel, aggregateArray, snapGeoCoordinates
 from qpstestdata import enmap, enmap_pixel, enmap_multipolygon, enmap_multipoint, hymap, landcover
 
-
+start_app()
 class TestUtils(TestCase):
 
     def test_loadUi(self):
