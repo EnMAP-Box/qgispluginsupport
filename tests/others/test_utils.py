@@ -48,6 +48,8 @@ from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromS
 from qpstestdata import enmap, enmap_pixel, enmap_multipolygon, enmap_multipoint, hymap, landcover
 
 start_app()
+
+
 class TestUtils(TestCase):
 
     def test_loadUi(self):
