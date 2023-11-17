@@ -18,7 +18,7 @@ from qgis.core import QgsFeature, QgsMapLayer, QgsPointXY, QgsCoordinateReferenc
     QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsProcessingFeedback
 from . import profile_field_indices, profile_fields, \
     is_profile_field, create_profile_field
-from .. import SPECLIB_CRS, EMPTY_VALUES
+from .. import EMPTY_VALUES, defaultSpeclibCrs
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...unitmodel import BAND_INDEX, BAND_NUMBER
 from ...utils import saveTransform, qgsRasterLayer, qgsField
@@ -598,7 +598,7 @@ class SpectralProfileBlock(object):
                              feedback: QgsProcessingFeedback = None):
 
         if crs is None:
-            crs = SPECLIB_CRS
+            crs = defaultSpeclibCrs()
 
         for spectral_setting, profiles in groupBySpectralProperties(profiles,
                                                                     profile_field=profile_field,

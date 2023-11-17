@@ -16,9 +16,10 @@ from qps import registerEditorWidgets
 from qps.classification.classificationscheme import ClassificationSchemeWidgetFactory
 from qps.plotstyling.plotstyling import PlotStyleEditorWidgetFactory
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory
-from qps.testing import TestCase, start_app
+
 from qps.utils import scanResources, file_search
 from scripts.create_resourcefile import create_resource_files
+from qps.testing import TestCase, start_app
 
 start_app()
 
@@ -44,6 +45,16 @@ class TestsCases_Init(TestCase):
 
         from qps.classification.classificationscheme import EDITOR_WIDGET_REGISTRY_KEY as keyClassScheme
         self.assertIsInstance(reg.factory(keyClassScheme), ClassificationSchemeWidgetFactory)
+
+    def test_crs(self):
+
+        from qgis.core import QgsCoordinateReferenceSystem
+
+        crs1 = QgsCoordinateReferenceSystem('EPSG:4326')
+        assert crs1.isValid()
+        crs2 = QgsCoordinateReferenceSystem.fromWkt(crs1.toWkt())
+        assert crs1.toWkt() == crs2.toWkt()
+        assert crs2.isValid()
 
     def test_relative_imports(self):
 

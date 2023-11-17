@@ -24,6 +24,7 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
+import gc
 import inspect
 import itertools
 import os
@@ -31,8 +32,6 @@ import gc
 import pathlib
 import random
 import shutil
-import site
-import sqlite3
 import sys
 import traceback
 import uuid
@@ -42,43 +41,31 @@ from typing import Set, List, Union, Tuple
 from unittest import mock
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
-
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
+from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, QDir, Qt
+from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, Qt
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu, QDockWidget
-from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
-from qgis.core import Qgis, QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
+from qgis.core import QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
     QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
     QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
-    QgsProviderRegistry, QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge, \
+    QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge, \
     QgsProcessingModelAlgorithm, QgsProcessingRegistry, QgsProcessingContext, \
-    QgsProcessingFeedback
-from qgis.core import QgsTemporalController, edit
-from qgis.core import QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
+    QgsProcessingFeedback, QgsTemporalController, edit, QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
+from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
-from . import QPS_RESOURCE_FILE
-from .resources import initResourceFile
-from .speclib import createStandardFields, FIELD_VALUES
-from .speclib.core import profile_fields as pFields, create_profile_field, is_profile_field, profile_field_indices
-from .speclib.core.spectrallibrary import SpectralLibraryUtils
-from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
-from .utils import px2geo, SpatialPoint, findUpwardPath
-from .unitmodel import UnitLookup
 
-if Qgis.versionInt() >= 33000:
-    TYPE_WkbType = Qgis.WkbType
-else:
-    TYPE_WkbType = QgsWkbTypes.Type
+from .qgisenums import QGIS_WKBTYPE
+from .utils import px2geo, SpatialPoint, findUpwardPath
+from .resources import initResourceFile
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
@@ -92,10 +79,6 @@ def start_app(cleanup: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
-    # workaround for CRS bug???. has to be done before qgis.test.start_app
-    # from qgis.core import QgsCoordinateReferenceSystem
-    # wkt = 'GEOGCRS["WGS 84",ENSEMBLE["World Geodetic System 1984 ensemble",MEMBER["World Geodetic System 1984 (Transit)"],MEMBER["World Geodetic System 1984 (G730)"],MEMBER["World Geodetic System 1984 (G873)"],MEMBER["World Geodetic System 1984 (G1150)"],MEMBER["World Geodetic System 1984 (G1674)"],MEMBER["World Geodetic System 1984 (G1762)"],MEMBER["World Geodetic System 1984 (G2139)"],ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]],ENSEMBLEACCURACY[2.0]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,3],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],AXIS["ellipsoidal height (h)",up,ORDER[3],LENGTHUNIT["metre",1]],USAGE[SCOPE["Geodesy. Navigation and positioning using GPS satellite system."],AREA["World."],BBOX[-90,-180,90,180]],ID["EPSG",4979]]'
-    # assert QgsCoordinateReferenceSystem(wkt).isValid()
 
     app = qgis.testing.start_app(cleanup)
 
@@ -125,117 +108,14 @@ def start_app(cleanup: bool = True,
     for path in resources:
         initResourceFile(path)
 
+    crs1 = QgsCoordinateReferenceSystem('EPSG:4326')
+    assert crs1.isValid(), 'Failed to initialize QGIS SRS database'
+    crs2 = QgsCoordinateReferenceSystem.fromWkt(crs1.toWkt())
+    assert crs2.isValid(), ('Failed to initialize QGIS SRS database. '
+                            'Likely a QgsCoordinateSystem instance is created before an'
+                            'QgsApplication.instance() calling `qgis.testing.start_app()`.')
+
     return app
-
-
-def depr_start_app(cleanup: bool = True,
-                   # options=StartOptions.All,
-                   resources: List[Union[str, pathlib.Path]] = None) -> QgsApplication:
-    """
-    :param cleanup:
-    :param options: combination of StartOptions
-    :param resources: list of resource files (*_rc.py) to load on start-up into Qt resource system
-    :return:
-    """
-
-    global _PYTHON_RUNNER
-    global _QGIS_MOCKUP
-    global _APP
-
-    if resources is None:
-        resources = []
-
-    if isinstance(QgsApplication.instance(), QgsApplication):
-        print('Found existing QgsApplication.instance()')
-        qgsApp = QgsApplication.instance()
-    else:
-        # load resource files, e.g to make icons available
-        for path in resources:
-            initResourceFile(path)
-
-        qgsApp = qgis.testing.start_app(cleanup=cleanup)
-        # _APP = qgsApp
-        # initialize things not done by qgis.test.start_app()...
-        if not QgsProviderRegistry.instance().libraryDirectory().exists():
-            libDir = pathlib.Path(QgsApplication.instance().pkgDataPath()) / 'plugins'
-            QgsProviderRegistry.instance().setLibraryDirectory(QDir(libDir.as_posix()))
-
-        # check for potentially missing qt plugin folders
-        if not os.environ.get('QT_PLUGIN_PATH'):
-            existing = [pathlib.Path(p).resolve() for p in qgsApp.libraryPaths()]
-
-            prefixDir = pathlib.Path(qgsApp.pkgDataPath()).resolve()
-            candidates = [prefixDir / 'qtplugins',
-                          prefixDir / 'plugins',
-                          prefixDir / 'bin']
-            for candidate in candidates:
-                if candidate.is_dir() and candidate not in existing:
-                    qgsApp.addLibraryPath(candidate.as_posix())
-
-        assert QgsProviderRegistry.instance().libraryDirectory().exists(), \
-            'Directory: {} does not exist. Please check if QGIS_PREFIX_PATH correct'.format(
-                QgsProviderRegistry.instance().libraryDirectory().path())
-
-        # initiate a PythonRunner instance if None exists
-        # if StartOptions.PythonRunner in options and not QgsPythonRunner.isValid():
-        #    if not isinstance(_PYTHON_RUNNER, QgsPythonRunnerMockup):
-        #        _PYTHON_RUNNER = QgsPythonRunnerMockup()
-        #    QgsPythonRunner.setInstance(_PYTHON_RUNNER)
-
-        # init standard EditorWidgets
-        # if StartOptions.EditorWidgets in options and len(QgsGui.editorWidgetRegistry().factories()) == 0:
-        #    QgsGui.editorWidgetRegistry().initEditors()
-
-        # test SRS
-        assert os.path.isfile(QgsApplication.qgisUserDatabaseFilePath()), \
-            'QgsApplication.qgisUserDatabaseFilePath() does not exists: {}'.format(
-                QgsApplication.qgisUserDatabaseFilePath())
-
-        con = sqlite3.connect(QgsApplication.qgisUserDatabaseFilePath())
-        cursor = con.execute(r"SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [v[0] for v in cursor.fetchall() if v[0] != 'sqlite_sequence']
-        if 'tbl_srs' not in tables:
-            info = ['{} misses "tbl_srs"'.format(QgsApplication.qgisSettingsDirPath()),
-                    'Settings directory might be outdated: {}'.format(QgsApplication.instance().qgisSettingsDirPath())]
-            print('\n'.join(info), file=sys.stderr)
-
-        get_iface()  # creates a QGIS Mockup
-
-        # set 'home_plugin_path', which is required from the QGIS Plugin manager
-        qgis.utils.home_plugin_path = (pathlib.Path(QgsApplication.instance().qgisSettingsDirPath())
-                                       / 'python' / 'plugins').as_posix()
-
-        # initialize the QGIS processing framework
-        # if StartOptions.ProcessingFramework in options:
-        if True:
-            pfProviderIds = [p.id() for p in QgsApplication.processingRegistry().providers()]
-            if 'native' not in pfProviderIds:
-                from qgis.analysis import QgsNativeAlgorithms
-                QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
-
-            corePythonPluginCandidates = [
-                pathlib.Path(QgsApplication.pkgDataPath()) / 'python',
-                (pathlib.Path(QgsApplication.pkgDataPath()) / '..' / 'python').resolve()
-            ]
-            for d in corePythonPluginCandidates:
-                d: pathlib.Path
-                if d.is_dir() and (d / 'plugins').is_dir():
-                    site.addsitedir(d)
-                    site.addsitedir(d / 'plugins')
-                    break
-
-            required = ['qgis', 'gdal']  # at least these should be available
-            missing = [p for p in required if p not in pfProviderIds]
-            if len(missing) > 0:
-                from processing.core.Processing import Processing
-                Processing.initialize()
-
-        """
-        if StartOptions.PrintProviders in options:
-            providers = QgsProviderRegistry.instance().providerList()
-            print('Providers: {}'.format(', '.join(providers)))
-        """
-    return qgsApp
 
 
 css = """
@@ -540,13 +420,18 @@ def _set_iface(ifaceMock: QgisInterface):
 
     # enhance this list with further positions where iface needs to be replaced or remains None otherwise
     import processing.ProcessingPlugin
-    modules = [processing.ProcessingPlugin]
+    import processing.tools.general
+    modules = [processing.ProcessingPlugin,
+               processing.tools.general,
+               processing]
 
     for m in modules:
         m.iface = ifaceMock
 
+    s = ""
 
-APP = None
+
+# APP = None
 
 
 class TestCaseBase(qgis.testing.TestCase):
@@ -782,6 +667,7 @@ class TestCase(TestCaseBase):
         resources = kwargs.pop('resources', [])
 
         super().setUpClass(*args, **kwargs)
+        from . import QPS_RESOURCE_FILE
         resources.append(QPS_RESOURCE_FILE)
         start_app(cleanup=kwargs.get('cleanup'), resources=resources)
 
@@ -996,6 +882,12 @@ class TestObjects(object):
                          wlu: str = None,
                          profile_fields: List[Union[str, QgsField]] = None):
 
+        from .speclib import createStandardFields
+        from .speclib.core import create_profile_field, is_profile_field
+        from .speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
+        from .speclib.core import profile_fields as pFields
+        from .unitmodel import UnitLookup
+
         if fields is None:
             fields = createStandardFields()
 
@@ -1007,6 +899,7 @@ class TestObjects(object):
         else:
             for i, f in enumerate(profile_fields):
                 if isinstance(f, str):
+
                     fields.append(create_profile_field(f'profile{i}'))
                 elif isinstance(f, QgsField):
                     fields.append(f)
@@ -1049,6 +942,7 @@ class TestObjects(object):
                         wl = wlu = None
                     elif wlu != data_wlu:
                         wl = UnitLookup.convertLengthUnit(wl, data_wlu, wlu)
+
                     profileDict = prepareProfileValueDict(y=data, x=wl, xUnit=wlu)
                     value = encodeProfileValueDict(profileDict, profile_field)
                     profile.setAttribute(profile_field.name(), value)
@@ -1075,6 +969,10 @@ class TestObjects(object):
         :return: QgsVectorLayer
         :rtype: QgsVectorLayer
         """
+        from .speclib.core.spectrallibrary import SpectralLibraryUtils
+        from .speclib.core import profile_field_indices
+        from .speclib import FIELD_VALUES
+
         assert n >= 0
         assert 0 <= n_empty <= n
 
@@ -1336,6 +1234,7 @@ class TestObjects(object):
             if wlu is None:
                 wlu = core_wlu
             elif wlu != core_wlu:
+                from .unitmodel import UnitLookup
                 wl = UnitLookup.convertLengthUnit(wl, core_wlu, wlu)
 
             domain = None
@@ -1483,13 +1382,13 @@ class TestObjects(object):
     def createEmptyMemoryLayer(fields: QgsFields,
                                name: str = 'memory layer',
                                crs: QgsCoordinateReferenceSystem = None,
-                               wkbType: TYPE_WkbType = TYPE_WkbType.NoGeometry):
+                               wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.NoGeometry):
 
         """
             Class with static routines to create test objects
             """
         uri = ''
-        if wkbType != TYPE_WkbType.NoGeometry:
+        if wkbType != QGIS_WKBTYPE.NoGeometry:
             uri += QgsWkbTypes.displayString(wkbType)
         else:
             uri += 'none'

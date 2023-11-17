@@ -1,0 +1,13 @@
+name: 💻 Github System Info
+on:
+  workflow_dispatch: {} # trigger manually only
+
+jobs:
+  check-info:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check System Info
+      run: |
+        lscpu
+      shell: bash

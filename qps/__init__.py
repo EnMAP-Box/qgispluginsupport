@@ -34,8 +34,8 @@ from typing import List
 from qgis.core import QgsApplication, Qgis
 from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
 
-MIN_QGIS_VERSION = '3.26'
-__version__ = '1.5'
+MIN_QGIS_VERSION = '3.28'
+__version__ = '1.6'
 
 DIR_QPS = pathlib.Path(__file__).parent
 DIR_UI_FILES = DIR_QPS / 'ui'

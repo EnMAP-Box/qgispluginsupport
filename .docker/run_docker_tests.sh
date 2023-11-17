@@ -20,7 +20,7 @@ export QT_QPA_PLATFORM=offscreen
 export CI=True
 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 python3 runfirst.py
-pytest --no-cov-on-fail --cov-config=.coveragec
+pytest --no-cov-on-fail --cov-config=.coveragec -n auto
 coverage-badge -o coverage.svg
 # echo "coverage-badge=coverage.svg" >> $GITHUB_OUTPUT
 popd
