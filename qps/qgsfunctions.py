@@ -31,7 +31,7 @@ import pathlib
 import re
 import sys
 from json import JSONDecodeError
-from typing import Union, List, Set, Callable, Iterable, Any, Dict
+from typing import Union, List, Set, Callable, Iterable, Any, Dict, Tuple
 
 import numpy as np
 
@@ -401,6 +401,25 @@ class ExpressionFunctionUtils(object):
         return NODATA
 
     @staticmethod
+    def cachedScaleValues(context: QgsExpressionContext,
+                          rasterLayer: QgsRasterLayer) -> Dict[int, Tuple[float, float]]:
+
+        k = f'scalevalues_{rasterLayer.id()}'
+        dump = context.cachedValue(k)
+        if dump is None:
+            SCALEVALUES: Dict = dict()
+            dp: QgsRasterDataProvider = rasterLayer.dataProvider()
+            for b in range(1, rasterLayer.bandCount()+1):
+                SCALEVALUES[b] = (dp.bandOffset(b), dp.bandScale(b))
+            dump = json.dumps(SCALEVALUES)
+            context.setCachedValue(k, dump)
+            return SCALEVALUES
+        else:
+            SCALEVALUES = json.loads(dump)
+            SCALEVALUES = {int(k): v for k, v in SCALEVALUES.items()}
+        return SCALEVALUES
+
+    @staticmethod
     def cachedSpectralProperties(context: QgsExpressionContext, rasterLayer: QgsRasterLayer) -> dict:
         """
         Returns the spectral properties of the rasterLayer.
@@ -571,6 +590,7 @@ class RasterArray(QgsExpressionFunction):
             return None
 
         NODATA = ExpressionFunctionUtils.cachedNoDataValues(context, lyrR)
+        SCALING = ExpressionFunctionUtils.cachedScaleValues(context, lyrR)
 
         geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
         if not isinstance(geom, QgsGeometry):
@@ -643,11 +663,15 @@ class RasterArray(QgsExpressionFunction):
             pixels = array[:, i_y, i_x]
             pixels = pixels.astype(float)
 
-            # set no-data values to NaN / bad-band
+
             for b in range(pixels.shape[0]):
-                for ndv in NODATA.get(b + 1, []):
+                # set no-data values to NaN / bad-band
+                bandNo = b + 1
+                for ndv in NODATA.get(bandNo, []):
                     band = pixels[b, :]
                     pixels[b, :] = np.where(band == ndv, np.NAN, band)
+                # set scaling
+                pixels[b, :] = SCALING[bandNo][0] + SCALING[bandNo][1] * pixels[b, :]
 
             # keep only pixels where not all bands are NaN -> either masked or out of image pixel
             is_not_all_nan = np.logical_not(np.alltrue(np.isnan(pixels), axis=0))
