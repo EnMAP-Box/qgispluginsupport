@@ -194,7 +194,7 @@ class ProfileSamplingMode(object):
     def aggregation(self) -> str:
         return self.mAggregation
 
-    def profiles(self, profiles: List[Tuple[Dict, QgsExpressionContext]]) \
+    def profiles(self, point: SpatialPoint, profiles: List[Tuple[Dict, QgsExpressionContext]]) \
             -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         Aggregates the profiles collected from a profile source
@@ -219,7 +219,7 @@ class ProfileSamplingMode(object):
                     pcontexts.append(c)
                     arrays.append(np.asarray(p))
 
-            data = np.stack(arrays).reshape((ksize.width() * ksize.height(), len(arrays[0])))
+            data = np.stack(arrays)
             if data.dtype == object:
                 data = data.astype(float)
 
@@ -228,6 +228,17 @@ class ProfileSamplingMode(object):
             # context: merge
             i_center = int(len(pcontexts) / 2)
             refContext = pcontexts[i_center]
+
+            # use the point coordinate as coordinate for the aggregated profile feature
+            g = QgsGeometry.fromPointXY(point)
+
+            if isinstance(refContext.variable('_source_crs'), QgsCoordinateReferenceSystem):
+                trans = QgsCoordinateTransform()
+                trans.setSourceCrs(point.crs())
+                trans.setDestinationCrs(refContext.variable('_source_crs'))
+                g.transform(trans)
+                refContext.setGeometry(g)
+
             refProfile = pdicts[i_center]
             profile = prepareProfileValueDict(y=data,
                                               x=refProfile.get('x'),
@@ -1173,13 +1184,13 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def profileStyle(self) -> PlotStyle:
         return self.mProfileStyleNode
 
-    def profiles(self, *args, **kwargs) -> List[Tuple[Dict, QgsExpressionContext]]:
+    def profiles(self, point, *args, **kwargs) -> List[Tuple[Dict, QgsExpressionContext]]:
 
         kwargs = copy.copy(kwargs)
         sampling: ProfileSamplingMode = self.sampling()
         kwargs['kernel_size'] = QSize(sampling.kernelSize())
-        profiles = self.mSourceNode.profileSource().collectProfiles(*args, **kwargs)
-        profiles = sampling.profiles(profiles)
+        profiles = self.mSourceNode.profileSource().collectProfiles(point, *args, **kwargs)
+        profiles = sampling.profiles(point, profiles)
         profiles = self.mScalingNode.profiles(profiles)
 
         return profiles
