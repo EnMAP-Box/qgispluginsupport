@@ -465,7 +465,7 @@ class SpectralProcessingTests(TestCaseBase):
 
                 self.assertEqual(len(profiles), x * y)
 
-                profiles_aggr = mode.profiles(profiles)
+                profiles_aggr = mode.profiles(center, profiles)
 
                 if aggregation == ProfileSamplingMode.NO_AGGREGATION:
                     self.assertEqual(len(profiles), len(profiles_aggr))

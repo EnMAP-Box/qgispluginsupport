@@ -26,22 +26,23 @@
 """
 import pathlib
 import sys
-from typing import List, Union, Generator, Dict, Any
+from typing import List, Union, Generator
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QVariant, Qt, QUrl, QPoint
+from qgis.PyQt.QtCore import QVariant, Qt, QUrl
 from qgis.PyQt.QtWidgets import (QComboBox, QLabel, QDialogButtonBox, QProgressBar,
                                  QDialog, QTextEdit, QCheckBox, QHBoxLayout)
 from qgis.core import QgsCoordinateTransform
+from qgis.core import QgsFeatureRequest, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils, QgsProject
 from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY
 from qgis.core import QgsProviderRegistry
 from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
     QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsProcessingFeedback
 from qgis.gui import QgsMapLayerComboBox
-
 from .. import speclibUiPath, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -50,9 +51,10 @@ from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWid
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
 from ...models import Option, OptionListModel
 from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE, QGIS_LAYERFILTER
+from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
-    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray
+    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues
 
 PIXEL_LIMIT = 100 * 100
 
@@ -589,7 +591,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                          all_touched: bool = True,
                          aggregation: str = 'mean',
                          cache: int = 5 * 2 ** 20,
-                         feedback: QgsProcessingFeedback = QgsProcessingFeedback())\
+                         feedback: QgsProcessingFeedback = QgsProcessingFeedback()) \
             -> Generator[QgsFeature, None, None]:
 
         rl = qgsRasterLayer(raster)
@@ -618,30 +620,63 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         PROFILE_COUNTS = dict()
 
         NODATA = noDataValues(rl)
+        errors = set()
 
-        for (f, arr, md) in rasterizeFeatures(vl, rl,
-                                              all_touched=True,
-                                              pixel_metadata=True,
-                                              feedback=feedback):
-            f: QgsFeature
-            arr: np.ndarray
-            md: Dict[str, Any]
+        func = RasterProfile()
 
-            arr = aggregateArray(aggregation, arr, axis=1, keepdims=True)
+        request = QgsFeatureRequest()
+        request.setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid)
+        request.setDestinationCrs(rl.crs(), QgsProject.instance().transformContext())
+        request.setFilterRect(rl.extent())
 
-            if arr is None:
-                s = ""
+        all_touched = False
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.layerScope(rl))
 
-            nb, npx = arr.shape
+        fcontext = QgsExpressionContext(context)
+        n_total = vl.featureCount()
+        next_progress = 5
+        for iFeature, f in enumerate(vl.getFeatures(request)):
+            g = f.geometry()
+            if not isinstance(g, QgsGeometry):
+                continue
 
-            for i in range(npx):
-                y = arr[:, i]
+            all_touched = False
+            values = [rl, g, aggregation, all_touched, 'dict']
+            exp = QgsExpression()
+            fcontext.setGeometry(g)
+            profiles_at = func.func(values, fcontext, exp, None)
+
+            if exp.hasParserError() or exp.hasEvalError():
+                error = '\n'.join([exp.parserErrorString(), exp.evalErrorString()])
+                if error not in errors:
+                    feedback.pushWarning(error)
+                    errors.add(error)
+
+                continue
+
+            if profiles_at is None:
+                continue
+
+            if isinstance(profiles_at, dict):
+                profiles_at = [profiles_at]
+
+            loc_geo = fcontext.variable('raster_array_geo')
+            loc_px_x, loc_px_y = fcontext.variable('raster_array_px')
+
+            progress = int(100. * iFeature / n_total)
+            if progress >= next_progress:
+                feedback.setProgress(progress)
+                next_progress += 5
+
+            for i, pDict in enumerate(profiles_at):
+
                 p = QgsFeature(fields)
-                g: QgsGeometry = f.geometry()
+                if False and aggregation.lower() == 'none':
+                    g: QgsGeometry = f.geometry()
+                else:
+                    g: QgsGeometry = QgsGeometry.fromPointXY(loc_geo[i])
                 p.setGeometry(g)
-
-                geo: QgsPointXY = md['geo'][i]
-                px: QPoint = md['px'][i]
 
                 if i_RF_NAME >= 0:
                     p.setAttribute(i_RF_NAME, raster_name)
@@ -650,19 +685,18 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
                     p.setAttribute(i_RF_SOURCE, raster_source)
 
                 if i_RF_PROFILE >= 0:
-                    spectrum_dict = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
                     p.setAttribute(i_RF_PROFILE,
-                                   encodeProfileValueDict(spectrum_dict, fields.at(i_RF_PROFILE)))
+                                   encodeProfileValueDict(pDict, fields.at(i_RF_PROFILE)))
 
                 if i_RF_PX_X >= 0:
-                    p[i_RF_PX_X] = px.x()
+                    p[i_RF_PX_X] = loc_px_x[i]
 
                 if i_RF_PX_Y >= 0:
-                    p[i_RF_PX_Y] = px.y()
+                    p[i_RF_PX_Y] = loc_px_y[i]
 
                 if isinstance(f, QgsFeature) and f.isValid():
                     for field in f.fields():
                         if field in fields:
                             p.setAttribute(field.name(), f.attribute(field.name()))
-
                 yield p
+        return

@@ -3032,7 +3032,7 @@ class MapGeometryToPixel(object):
     def geo2pxList(self, xvalues, yvalues) -> List[QPoint]:
         return [self.geo2px(x, y) for x, y in zip(xvalues, yvalues)]
 
-    def memoryLayerBand(self, wkbType) -> Tuple[gdal.Band, ogr.Layer]:
+    def memoryLayerBand(self, qgsGeometry: QgsGeometry) -> Tuple[gdal.Band, ogr.Layer]:
         if not isinstance(self.srs, SpatialReference) and \
                 isinstance(self.crs, QgsCoordinateReferenceSystem):
             self.srs = SpatialReference(self.crs.toWkt())
@@ -3055,14 +3055,16 @@ class MapGeometryToPixel(object):
         if not isinstance(self.vsMem, ogr.DataSource):
             self.vsMem: ogr.DataSource = ogr.GetDriverByName('Memory').CreateDataSource('')
 
-        if wkbType not in self.wkbTypeLayers:
-            lyr: ogr.Layer = self.vsMem.CreateLayer(f'wkbType{wkbType}',
-                                                    srs=self.srs,
-                                                    geom_type=int(wkbType))
-            lyr.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger))
-            self.wkbTypeLayers[wkbType] = lyr
+        g = ogr.CreateGeometryFromWkb(qgsGeometry.asWkb())
+        geom_type = g.GetGeometryType()
+        key = f'geomType_{geom_type}'
+        if key not in self.wkbTypeLayers:
+            lyr: ogr.Layer = self.vsMem.CreateLayer(key, srs=self.srs, geom_type=geom_type)
 
-        return self.bandMEM, self.wkbTypeLayers[wkbType]
+            lyr.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger))
+            self.wkbTypeLayers[key] = lyr
+
+        return self.bandMEM, self.wkbTypeLayers[key]
 
     def geometryPixelPositions(self,
                                g: Union[QgsGeometry, QgsFeature],
@@ -3094,7 +3096,7 @@ class MapGeometryToPixel(object):
             else:
                 return None, None
         else:
-            bandMEM, lyr = self.memoryLayerBand(g.wkbType())
+            bandMEM, lyr = self.memoryLayerBand(g)
             bandMEM: gdal.Band
             lyr: ogr.Layer
             dsMEM: gdal.Dataset = bandMEM.GetDataset()
