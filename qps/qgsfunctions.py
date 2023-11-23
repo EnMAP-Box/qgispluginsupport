@@ -409,7 +409,7 @@ class ExpressionFunctionUtils(object):
         if dump is None:
             SCALEVALUES: Dict = dict()
             dp: QgsRasterDataProvider = rasterLayer.dataProvider()
-            for b in range(1, rasterLayer.bandCount()+1):
+            for b in range(1, rasterLayer.bandCount() + 1):
                 SCALEVALUES[b] = (dp.bandOffset(b), dp.bandScale(b))
             dump = json.dumps(SCALEVALUES)
             context.setCachedValue(k, dump)
@@ -662,7 +662,6 @@ class RasterArray(QgsExpressionFunction):
                 return None
             pixels = array[:, i_y, i_x]
             pixels = pixels.astype(float)
-
 
             for b in range(pixels.shape[0]):
                 # set no-data values to NaN / bad-band
