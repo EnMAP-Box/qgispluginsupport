@@ -26,37 +26,46 @@
 """
 import pathlib
 import sys
-
-import warnings
-from typing import List, Union, Generator, Dict
+from typing import List, Union, Generator, Dict, Any
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QVariant, Qt, QUrl
-from qgis.PyQt.QtWidgets import QDialogButtonBox, QProgressBar, QDialog, QTextEdit, QCheckBox, QHBoxLayout
+from qgis.PyQt.QtCore import QVariant, Qt, QUrl, QPoint
+from qgis.PyQt.QtWidgets import (QComboBox, QLabel, QDialogButtonBox, QProgressBar,
+                                 QDialog, QTextEdit, QCheckBox, QHBoxLayout)
+from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
-    QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY, QgsPoint
+    QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY
 from qgis.core import QgsProviderRegistry
 from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
     QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsProcessingFeedback
 from qgis.gui import QgsMapLayerComboBox
+
 from .. import speclibUiPath, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget, \
     IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
 from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
+from ...models import Option, OptionListModel
+from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE, QGIS_LAYERFILTER
+from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
-    rasterArray, qgsRasterLayer, px2geocoordinatesV2, optimize_block_size, px2geocoordinates, fid2pixelindices
+    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray
 
 PIXEL_LIMIT = 100 * 100
 
 
 class SpectralProfileLoadingTask(QgsTask):
 
-    def __init__(self, path_vector: str, path_raster: str, all_touched: bool = True, copy_attributes: bool = False):
+    def __init__(self,
+                 path_vector: str,
+                 path_raster: str,
+                 all_touched: bool = True,
+                 copy_attributes: bool = False,
+                 aggregate: str = 'mean'):
+
         super().__init__('Load spectral profiles', QgsTask.CanCancel)
         assert isinstance(path_vector, str)
         assert isinstance(path_raster, str)
@@ -65,8 +74,9 @@ class SpectralProfileLoadingTask(QgsTask):
         self.path_raster = path_raster
         self.all_touched = all_touched
         self.copy_attributes = copy_attributes
+        self.aggregate: str = aggregate
         self.exception = None
-        self.profiles = None
+        self.profiles = []
 
     def run(self):
 
@@ -80,13 +90,14 @@ class SpectralProfileLoadingTask(QgsTask):
             IO = RasterLayerSpectralLibraryIO()
             settings = {'raster_layer': raster,
                         'vector_layer': vector,
-                        'all_touched': self.all_touched}
+                        'all_touched': self.all_touched,
+                        'aggregate': self.aggregate}
             if not self.copy_attributes:
                 settings['required_fields'] = []
 
             profiles = list(IO.importProfiles('', settings, feedback))
 
-            self.profiles = profiles
+            self.profiles.extend(profiles)
         except Exception as ex:
             import traceback
             info = ''.join(traceback.format_stack())
@@ -128,6 +139,18 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         cb.layerChanged.connect(self.onVectorLayerChanged)
 
         self.mProfiles = []
+        self.mWkbType = None
+        self.aggregateOptions = OptionListModel()
+        self.aggregateOptions.addOptions([
+            Option('mean'),
+            Option('median'),
+            Option('min'),
+            Option('max'),
+            Option('none', toolTip='Returns a spectral profile for each covered pixel')
+        ])
+
+        self.mCbAggregation = QComboBox()
+        self.mCbAggregation.setModel(self.aggregateOptions)
 
         self.mCbTouched = QCheckBox(self)
         self.mCbTouched.setText('All touched')
@@ -140,11 +163,15 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
             'Activate to copy vector attributes into the Spectral Library'
         )
 
+        self.labelAggregate = QLabel('Aggregate')
         layout = QHBoxLayout()
+        layout.addStretch(0)
+        layout.addWidget(self.labelAggregate)
+        layout.addWidget(self.mCbAggregation)
         layout.addWidget(self.mCbTouched)
         layout.addWidget(self.mCbAllAttributes)
-        i = self.mGrid.rowCount()
-        self.mGrid.addLayout(layout, i, 1)
+
+        self.mGrid.addLayout(layout, self.mGrid.rowCount(), 0, 1, self.mGrid.columnCount())
 
         self.mProgressBar = QProgressBar(self)
         self.mProgressBar.setRange(0, 100)
@@ -159,6 +186,12 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.mTasks = dict()
         self.mIsFinished = False
 
+    def setWkbType(self, wkbType):
+        self.mWkbType = wkbType
+
+    def wkbType(self):
+        return self.mWkbType
+
     def onCancel(self):
         for t in self.mTasks.items():
             if isinstance(t, QgsTask) and t.canCancel():
@@ -167,14 +200,29 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         self.reject()
 
     def onVectorLayerChanged(self, layer: QgsVectorLayer):
-        self.mCbTouched.setEnabled(isinstance(layer, QgsVectorLayer)
-                                   and QgsWkbTypes.geometryType(layer.wkbType()) == QgsWkbTypes.PolygonGeometry)
+
+        if not isinstance(layer, QgsVectorLayer):
+            bTouched = bAggregrate = False
+        else:
+            bTouched = layer.geometryType() != QGIS_GEOMETRYTYPE.Point
+            bAggregrate = layer.wkbType() != QGIS_WKBTYPE.Point
+
+            if self.mWkbType is None:
+                self.mWkbType = layer.wkbType()
+
+        for w in [self.labelAggregate, self.mCbAggregation]:
+            w.setEnabled(bAggregrate)
+            w.setVisible(bAggregrate)
+
+        self.mCbTouched.setEnabled(bTouched)
+        self.mCbTouched.setVisible(bTouched)
 
     def profiles(self) -> List[QgsFeature]:
         return self.mProfiles[:]
 
     def speclib(self) -> QgsVectorLayer:
-        slib = SpectralLibraryUtils.createSpectralLibrary(profile_fields=[])
+
+        slib = SpectralLibraryUtils.createSpectralLibrary(wkbType=self.wkbType(), profile_fields=[])
         slib.startEditing()
         SpectralLibraryUtils.addProfiles(slib, self.mProfiles, addMissingFields=True)
         slib.commitChanges()
@@ -216,19 +264,22 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         """
         Call this to start loading the profiles in a background process
         """
+        self.mProfiles.clear()
         task = SpectralProfileLoadingTask(self.vectorSource().source(),
                                           self.rasterSource().source(),
                                           all_touched=self.allTouched(),
-                                          copy_attributes=self.allAttributes()
+                                          copy_attributes=self.allAttributes(),
+                                          aggregate=self.aggregation()
+
                                           )
 
         task.progressChanged.connect(self.onProgressChanged)
+        task.taskCompleted.connect(lambda *args, t=task: self.onCompleted(t))
+        task.taskTerminated.connect(lambda *args, t=task: self.onTerminated(t))
 
         if run_async:
             mgr = QgsApplication.taskManager()
             assert isinstance(mgr, QgsTaskManager)
-            task.taskCompleted.connect(lambda task=task: self.onCompleted(task))
-            task.taskTerminated.connect(lambda task=task: self.onTerminated(task))
 
             id = mgr.addTask(task)
             self.mTasks[id] = task
@@ -249,6 +300,14 @@ class SpectralProfileImportPointsDialog(SelectMapLayersDialog):
         :return: bool
         """
         return self.mCbTouched.isEnabled() and self.mCbTouched.isChecked()
+
+    def setAggregation(self, aggregation: str):
+        o = self.aggregateOptions.findOption(aggregation)
+        if isinstance(o, Option):
+            self.mCbAggregation.setCurrentIndex(self.aggregateOptions.mOptions.index(o))
+
+    def aggregation(self) -> str:
+        return self.mCbAggregation.currentData().value()
 
     def rasterSource(self) -> QgsRasterLayer:
         """
@@ -297,8 +356,8 @@ class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):
             self.cbVectorLayer.setAllowEmptyLayer(True)
         else:
             self.cbVectorLayer.setAllowEmptyLayer(True, 'Each Raster Pixel')
-        self.cbRasterLayer.setFilters(QgsMapLayerProxyModel.RasterLayer)
-        self.cbVectorLayer.setFilters(QgsMapLayerProxyModel.PointLayer | QgsMapLayerProxyModel.PolygonLayer)
+        self.cbRasterLayer.setFilters(QGIS_LAYERFILTER.RasterLayer)
+        self.cbVectorLayer.setFilters(QGIS_LAYERFILTER.VectorLayer)
         excluded = [p for p in QgsProviderRegistry.instance().providerList() if p not in ['ogr']]
         self.cbVectorLayer.setExcludedProviders(excluded)
         self.mCbTouched.stateChanged.connect(self.updateInfoBox)
@@ -428,12 +487,13 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
         generator = None
         if vl is None:
-            generator = RasterLayerSpectralLibraryIO.readRaster(rl, required_fields)
+            generator = RasterLayerSpectralLibraryIO.readRaster(rl, required_fields, feedback=feedback)
         else:
             if not isinstance(vl, QgsVectorLayer):
                 vl = QgsVectorLayer(vl)
             assert isinstance(vl, QgsVectorLayer) and vl.isValid()
-            generator = RasterLayerSpectralLibraryIO.readRasterVector(rl, vl, required_fields, all_touched)
+            generator = RasterLayerSpectralLibraryIO.readRasterVector(rl, vl, required_fields, all_touched,
+                                                                      feedback=feedback)
 
         profiles = []
         if generator:
@@ -442,14 +502,16 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
         return profiles
 
     @staticmethod
-    def readRaster(raster, fields: QgsFields) -> Generator[QgsFeature, None, None]:
+    def readRaster(raster,
+                   fields: QgsFields,
+                   feedback: QgsProcessingFeedback = QgsProcessingFeedback(), ) \
+            -> Generator[QgsFeature, None, None]:
 
         raster: QgsRasterLayer
         try:
             raster = qgsRasterLayer(raster)
-
         except Exception as ex:
-            warnings.warn(f'Unable to open {raster} as QgsRasterLayer.\n{ex}')
+            feedback.pushWarning(f'Unable to open {raster} as QgsRasterLayer.\n{ex}')
             raise StopIteration
 
         assert isinstance(fields, QgsFields)
@@ -525,38 +587,27 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
     def readRasterVector(raster, vector,
                          fields: QgsFields,
                          all_touched: bool = True,
-                         cache: int = 5 * 2 ** 20) -> Generator[QgsFeature, None, None]:
+                         aggregation: str = 'mean',
+                         cache: int = 5 * 2 ** 20,
+                         feedback: QgsProcessingFeedback = QgsProcessingFeedback())\
+            -> Generator[QgsFeature, None, None]:
 
-        ds: gdal.Dataset = gdalDataset(raster)
-        assert isinstance(ds, gdal.Dataset), f'Unable to open {raster.source()} as gdal.Dataset'
+        rl = qgsRasterLayer(raster)
+        vl = qgsVectorLayer(vector)
 
-        path = pathlib.Path(ds.GetDescription())
+        path = pathlib.Path(rl.source())
         raster_name = path.name
         raster_source = path.as_posix()
 
-        bbl = parseBadBandList(ds)
-        wl, wlu = parseWavelength(ds)
+        sp = QgsRasterLayerSpectralProperties.fromRasterLayer(rl)
+        bbl = sp.badBands()
+        wl = sp.wavelengths()
+        wlu = sp.wavelengthUnits()[0]
 
-        block_size = optimize_block_size(ds, cache=cache)
+        transform = QgsCoordinateTransform()
+        transform.setSourceCrs(vl.crs()),
 
-        nXBlocks = int((ds.RasterXSize + block_size[0] - 1) / block_size[0])
-        nYBlocks = int((ds.RasterYSize + block_size[1] - 1) / block_size[1])
-        nBlocksTotal = nXBlocks * nYBlocks
-        nBlocksDone = 0
-
-        # pixel center coordinates as geolocations
-
-        geo_x, geo_y = px2geocoordinates(ds, pxCenter=True)
-
-        # get FID positions
-        layer = 0
-        for sub in vector.dataProvider().subLayers():
-            layer = sub.split('!!::!!')[1]
-            break
-
-        fid_positions, no_fid = fid2pixelindices(ds, vector,
-                                                 layer=layer,
-                                                 all_touched=all_touched)
+        transform.setDestinationCrs(rl.crs())
 
         i_RF_NAME = fields.lookupField(RF_NAME)
         i_RF_SOURCE = fields.lookupField(RF_SOURCE)
@@ -566,65 +617,52 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
         PROFILE_COUNTS = dict()
 
-        FEATURES: Dict[int, QgsFeature] = dict()
+        NODATA = noDataValues(rl)
 
-        for y in range(nYBlocks):
-            yoff = y * block_size[1]
-            for x in range(nXBlocks):
-                xoff = x * block_size[0]
-                xsize = min(block_size[0], ds.RasterXSize - xoff)
-                ysize = min(block_size[1], ds.RasterYSize - yoff)
-                cube: np.ndarray = ds.ReadAsArray(xoff=xoff, yoff=yoff, xsize=xsize, ysize=ysize)
-                cube = cube.reshape((ds.RasterCount, ysize, xsize))
-                fid_pos = fid_positions[yoff:yoff + ysize, xoff:xoff + xsize]
-                assert cube.shape[1:] == fid_pos.shape
+        for (f, arr, md) in rasterizeFeatures(vl, rl,
+                                              all_touched=True,
+                                              pixel_metadata=True,
+                                              feedback=feedback):
+            f: QgsFeature
+            arr: np.ndarray
+            md: Dict[str, Any]
 
-                for fid in [int(v) for v in np.unique(fid_pos) if v != no_fid]:
-                    fid_yy, fid_xx = np.where(fid_pos == fid)
-                    n_p = len(fid_yy)
-                    if n_p > 0:
+            arr = aggregateArray(aggregation, arr, axis=1, keepdims=True)
 
-                        if fid not in FEATURES.keys():
-                            FEATURES[fid] = vector.getFeature(fid)
-                        vectorFeature: QgsFeature = FEATURES.get(fid)
+            if arr is None:
+                s = ""
 
-                        fid_profiles = cube[:, fid_yy, fid_xx]
-                        profile_geo_x = geo_x[fid_yy + yoff, fid_xx + xoff]
-                        profile_geo_y = geo_y[fid_yy + yoff, fid_xx + xoff]
-                        profile_px_x = fid_xx + xoff
-                        profile_px_y = fid_yy + yoff
+            nb, npx = arr.shape
 
-                        for i in range(n_p):
-                            # create profile feature
-                            p = QgsFeature(fields)
+            for i in range(npx):
+                y = arr[:, i]
+                p = QgsFeature(fields)
+                g: QgsGeometry = f.geometry()
+                p.setGeometry(g)
 
-                            # create geometry
-                            p.setGeometry(QgsPoint(profile_geo_x[i],
-                                                   profile_geo_y[i]))
+                geo: QgsPointXY = md['geo'][i]
+                px: QPoint = md['px'][i]
 
-                            PROFILE_COUNTS[fid] = PROFILE_COUNTS.get(fid, 0) + 1
-                            # sp.setName(f'{fid_basename}_{PROFILE_COUNTS[fid]}')
+                if i_RF_NAME >= 0:
+                    p.setAttribute(i_RF_NAME, raster_name)
 
-                            if i_RF_NAME >= 0:
-                                p.setAttribute(i_RF_NAME, raster_name)
+                if i_RF_SOURCE >= 0:
+                    p.setAttribute(i_RF_SOURCE, raster_source)
 
-                            if i_RF_SOURCE >= 0:
-                                p.setAttribute(i_RF_SOURCE, raster_source)
+                if i_RF_PROFILE >= 0:
+                    spectrum_dict = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
+                    p.setAttribute(i_RF_PROFILE,
+                                   encodeProfileValueDict(spectrum_dict, fields.at(i_RF_PROFILE)))
 
-                            if i_RF_PROFILE >= 0:
-                                spectrum_dict = prepareProfileValueDict(x=wl, y=fid_profiles[:, i], xUnit=wlu, bbl=bbl)
-                                p.setAttribute(i_RF_PROFILE,
-                                               encodeProfileValueDict(spectrum_dict, fields.at(i_RF_PROFILE)))
+                if i_RF_PX_X >= 0:
+                    p[i_RF_PX_X] = px.x()
 
-                            if i_RF_PX_X >= 0:
-                                p[i_RF_PX_X] = int(profile_px_x[i])
+                if i_RF_PX_Y >= 0:
+                    p[i_RF_PX_Y] = px.y()
 
-                            if i_RF_PX_Y >= 0:
-                                p[i_RF_PX_Y] = int(profile_px_y[i])
+                if isinstance(f, QgsFeature) and f.isValid():
+                    for field in f.fields():
+                        if field in fields:
+                            p.setAttribute(field.name(), f.attribute(field.name()))
 
-                            if isinstance(vectorFeature, QgsFeature) and vectorFeature.isValid():
-                                for field in vectorFeature.fields():
-                                    if field in fields:
-                                        p.setAttribute(field.name(), vectorFeature.attribute(field.name()))
-
-                            yield p
+                yield p

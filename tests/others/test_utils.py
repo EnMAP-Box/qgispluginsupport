@@ -15,10 +15,12 @@ __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 import os
 import pathlib
 import pickle
+import random
 import re
 import unittest
 import warnings
 import xml.etree.ElementTree as ET
+from typing import Dict
 
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
@@ -28,26 +30,27 @@ from qgis.PyQt.QtCore import QByteArray, QUrl, QRect, QPoint, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsMapToPixel, QgsGeometryParameters
+from qgis.core import QgsRasterIdentifyResult
+from qgis.core import QgsProcessingFeedback, QgsRectangle, QgsFeatureRequest, QgsFeature, \
+    QgsRasterDataProvider, QgsRaster, QgsGeometry
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
-from qps.testing import TestObjects, TestCase
+from qps.testing import TestObjects, TestCase, start_app
 from qps.unitmodel import UnitLookup
 from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromString, nodeXmlString, \
     SelectMapLayersDialog, defaultBands, relativePath, nextColor, createQgsField, px2geo, geo2px, \
     SpatialPoint, layerGeoTransform, displayBandNames, qgsRasterLayer, gdalDataset, px2geocoordinates, \
     rasterArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
-    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, SelectMapLayerDialog, parseFWHM, findParent
+    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, SelectMapLayerDialog, parseFWHM, findParent, \
+    rasterizeFeatures, ExtentTileIterator, MapGeometryToPixel, aggregateArray, snapGeoCoordinates
+from qpstestdata import enmap, enmap_pixel, enmap_multipolygon, enmap_multipoint, hymap, landcover
+
+start_app()
 
 
 class TestUtils(TestCase):
-    def setUp(self):
-        super().setUp()
-
-        self.wfsUri = r'restrictToRequestBBOX=''1'' srsname=''EPSG:25833'' ' \
-                      'typename=''fis:re_postleit'' ' \
-                      'url=''http://fbinter.stadt-berlin.de/fb/wfs/geometry/senstadt/re_postleit'' ' \
-                      'version=''auto'''
 
     def test_loadUi(self):
 
@@ -337,6 +340,250 @@ class TestUtils(TestCase):
         xml1 = nodeXmlString(n1)
         s = ""
 
+    def test_raster_block_interator(self):
+
+        if True:
+            ext = QgsRectangle(QgsPointXY(0, 10000),
+                               QgsPointXY(50000, 0))
+
+            iterator = ExtentTileIterator(ext, ext.width() / 4, ext.height() / 5)
+
+            parts = []
+            for i, ext2 in enumerate(iterator):
+                self.assertIsInstance(ext2, QgsRectangle)
+                self.assertTrue(ext.contains(ext2))
+                self.assertEqual(iterator.n, i + 1)
+                parts.append(QgsGeometry.fromRect(ext2))
+            p = QgsGeometryParameters()
+            p.setGridSize(10)
+            union = QgsGeometry.unaryUnion(parts, p).simplify(0)
+            ext3 = union.boundingBox()
+            self.assertEqual(ext, ext3)
+
+        lyr = QgsRasterLayer(enmap)
+        ARRAY = rasterArray(lyr, bands=[1])
+        self.assertEqual(ARRAY.shape, (1, lyr.height(), lyr.width()))
+        ARRAY = ARRAY.reshape((np.prod(ARRAY.shape)))
+
+        uA = np.unique(ARRAY)
+
+        M2P = QgsMapToPixel(lyr.rasterUnitsPerPixelX(),
+                            lyr.extent().center().x(),
+                            lyr.extent().center().y(),
+                            lyr.width(), lyr.height(), 0)
+        # regardless of the tile size, i.e. sampling rate, we should be able to
+        # reconstruct all pixels of a raster image
+        for i, tileSize in enumerate([26, 29,  # sub-pixel size
+                                      30,  # exact pixel size
+                                      33,  # lager than pixel
+                                      60,  # pixel size multiply
+                                      500,  # larger than image
+                                      ]):
+            iterator = ExtentTileIterator(lyr.extent(), tileSizeX=tileSize, tileSizeY=tileSize)
+            parts = []
+            for j, ext in enumerate(iterator):
+                arr = rasterArray(lyr, rect=ext, bands=[1])
+
+                if arr is None:
+                    continue
+
+                parts.append(arr.reshape((np.prod(arr.shape))))
+            arr = np.concatenate(parts, axis=0)
+            ua = np.unique(arr)
+            self.assertTrue(np.array_equal(uA, ua))
+            self.assertEqual(len(ARRAY), len(arr), msg=f'Invalid output with tileSize={tileSize}')
+
+    def test_MapGeometryToPixel_Rotated(self):
+
+        path = pathlib.Path(r'D:\Repositories\QGIS\tests\testdata\raster\rotated_rgb.png')
+
+        if path.is_file():
+            rl = QgsRasterLayer(path.as_posix())
+            self.assertTrue(rl.isValid())
+
+            ds: gdal.Dataset = gdal.Open(path.as_posix())
+
+            gt = ds.GetGeoTransform()
+
+            array = rasterArray(rl)
+            mg2p = MapGeometryToPixel.fromRaster(rl)
+
+            g = QgsGeometry.fromRect(rl.extent())
+            mg2p.geometryPixelPositions(g)
+            ay, ax = mg2p.geometryPixelPositions(g)
+            all_profiles = array[:, ay, ax]
+            self.assertEqual(all_profiles.shape, (rl.bandCount(), rl.width() * rl.height()))
+            s = ""
+
+    def test_MapGeometryToPixel(self):
+        rl = QgsRasterLayer(enmap)
+        vlPoly = QgsVectorLayer(enmap_multipolygon)
+        vlPoint = QgsVectorLayer(enmap_pixel)
+        vlPointMulti = QgsVectorLayer(enmap_multipoint)
+
+        self.assertTrue(rl.crs() != vlPoly.crs())
+
+        for mg2p in [MapGeometryToPixel.fromRaster(rl),
+                     MapGeometryToPixel.fromExtent(rl.extent(),
+                                                   rl.width(), rl.height(),
+                                                   crs=rl.crs())
+                     ]:
+            ul = mg2p.px2geo(0, 0)
+            self.assertEqual(ul.x(), rl.extent().xMinimum())
+            self.assertEqual(ul.y(), rl.extent().yMaximum())
+
+            lr = mg2p.px2geo(rl.width(), rl.height())
+            self.assertEqual(lr.x(), rl.extent().xMaximum())
+            self.assertEqual(lr.y(), rl.extent().yMinimum())
+
+            self.assertEqual(rl.width(), mg2p.nSamples())
+            self.assertEqual(rl.height(), mg2p.nLines())
+
+        dp: QgsRasterDataProvider = rl.dataProvider()
+        with MapGeometryToPixel.fromRaster(rl) as mg2p:
+            array = rasterArray(rl)
+            request = QgsFeatureRequest()
+            request.setDestinationCrs(rl.crs(), QgsProject.instance().transformContext())
+            for f in vlPoint.getFeatures(request):
+                f: QgsFeature
+                ay, ax = mg2p.geometryPixelPositions(f)
+                by, bx = mg2p.geometryPixelPositions(f, burn_points=True)
+
+                self.assertTrue(len(ay) == 1,
+                                msg='Point geometry should return single pixel only')
+
+                self.assertTrue(np.array_equal(ax, bx))
+                self.assertTrue(np.array_equal(ay, by))
+
+                profile1 = array[:, ay, ax][:, 0].astype(float).tolist()
+                pt: QgsPointXY = f.geometry().asPoint()
+                results = dp.identify(pt, QgsRaster.IdentifyFormatValue).results()
+                profile2 = list(results.values())
+                self.assertListEqual(profile1, profile2,
+                                     msg=f'Wrong profile for point fid {f.id()}')
+
+            for f in vlPointMulti.getFeatures(request):
+                f: QgsFeature
+                ay, ax = mg2p.geometryPixelPositions(f, all_touched=True)
+                profiles = array[:, ay, ax]
+                npx_ref = f.attribute('n_px')
+                self.assertEqual(profiles.shape, (rl.bandCount(), npx_ref))
+
+            for f in vlPoly.getFeatures(request):
+                f: QgsFeature
+                name = f.attribute('name')
+                ay, ax = mg2p.geometryPixelPositions(f, all_touched=True)
+
+                #  compare returned pixel indices with hand labeled in px_x and px_y
+                ref_x = [int(p) for p in f.attribute('px_x').split(',')]
+                ref_y = [int(p) for p in f.attribute('px_y').split(',')]
+
+                # number of touched pixels
+                n_px = f.attribute('n_px')
+                self.assertEqual(n_px, len(ay),
+                                 msg=f'Wrong number of touched pixel for feature "{name}"')
+                for v in ax.tolist():
+                    self.assertTrue(v in ref_x)
+                for v in ay.tolist():
+                    self.assertTrue(v in ref_y)
+
+                npx_nat = f.attribute('n_px_nat')
+                if isinstance(npx_nat, int):
+                    ay, ax = mg2p.geometryPixelPositions(f, all_touched=False)
+                    profiles = array[:, ay, ax]
+                    self.assertEqual(profiles.shape, (rl.bandCount(), npx_nat))
+                pass
+
+    def test_snapGeoCoordinates(self):
+
+        rl = QgsRasterLayer(enmap)
+        ext = rl.extent()
+        m2p = QgsMapToPixel(rl.rasterUnitsPerPixelX(),
+                            ext.center().x(), ext.center().y(),
+                            rl.width(), rl.height(),
+                            0)
+        ul1 = QgsPointXY(ext.xMinimum(), ext.yMaximum())
+        ul2 = snapGeoCoordinates([ul1], m2p)[0]
+        self.assertEqual(ul1.x(), ul2.x() - 0.5 * rl.rasterUnitsPerPixelX())
+        self.assertEqual(ul1.y(), ul2.y() + 0.5 * rl.rasterUnitsPerPixelY())
+
+    def test_rasterize_features(self):
+
+        rl = QgsRasterLayer(enmap)
+        dp: QgsRasterDataProvider = rl.dataProvider()
+        vlPoly = QgsVectorLayer(enmap_multipolygon)
+        c = rl.extent().center()
+        M2P = QgsMapToPixel(rl.rasterUnitsPerPixelX(),
+                            c.x(), c.y(),
+                            rl.width(), rl.height(), 0)
+
+        ARRAY = rasterArray(rl)
+
+        def checkPixelValues(f: QgsFeature, array: np.ndarray, md: Dict):
+            self.assertEqual(array.ndim, 2)
+            geo = md['geo']
+            px = md['px']
+            self.assertIsInstance(f, QgsFeature)
+            nb, npx = array.shape
+            self.assertEqual(npx, len(geo))
+            self.assertEqual(npx, len(px))
+
+            self.assertEqual(nb, rl.bandCount())
+
+            for i in range(npx):
+                cg: QgsPointXY = geo[i]
+                cp: QPoint = px[i]
+
+                arr1 = array[:, i]
+                arr2 = ARRAY[:, cp.y(), cp.x()]
+                ires: QgsRasterIdentifyResult = dp.identify(cg, QgsRaster.IdentifyFormatValue).results()
+                arr3 = np.asarray(list(ires.values()))
+
+                if not np.array_equal(arr1, arr2):
+                    s = ""
+                self.assertTrue(np.array_equal(arr1, arr2))
+                self.assertTrue(np.array_equal(arr1, arr3))
+
+        if True:
+            feedback = QgsProcessingFeedback()
+
+            vl = QgsVectorLayer(landcover)
+            for (f, array, md) in rasterizeFeatures(vl, rl, feedback=feedback):
+                self.assertIsInstance(f, QgsFeature)
+                self.assertIsInstance(array, np.ndarray)
+                self.assertIsInstance(md, dict)
+                self.assertEqual(array.ndim, 2)
+                self.assertEqual(array.shape[0], rl.bandCount())
+                checkPixelValues(f, array, md)
+
+            self.assertEqual(feedback.progress(), 100)
+
+        if True:
+            feedback = QgsProcessingFeedback()
+
+            vlPoints = QgsVectorLayer(enmap_pixel)
+            for (f, array, md) in rasterizeFeatures(vlPoints, rl, blockSize=4, feedback=feedback):
+                self.assertIsInstance(f, QgsFeature)
+                self.assertIsInstance(array, np.ndarray)
+                self.assertIsInstance(md, dict)
+                self.assertEqual(array.ndim, 2)
+                self.assertEqual(array.shape, (rl.bandCount(), 1))
+                checkPixelValues(f, array, md)
+
+            self.assertEqual(feedback.progress(), 100)
+
+        if True:
+            feedback = QgsProcessingFeedback()
+            for (f, array, md) in rasterizeFeatures(vlPoly, rl, blockSize=4, feedback=feedback):
+                self.assertIsInstance(f, QgsFeature)
+                self.assertIsInstance(array, np.ndarray)
+                self.assertIsInstance(md, dict)
+                self.assertEqual(array.ndim, 2)
+                self.assertEqual(array.shape[0], rl.bandCount())
+                checkPixelValues(f, array, md)
+
+            self.assertEqual(feedback.progress(), 100)
+
     def test_block_size(self):
 
         ds = TestObjects.createRasterDataset(200, 300, 100, eType=gdal.GDT_Int16)
@@ -435,9 +682,101 @@ class TestUtils(TestCase):
             self.assertEqual(ptPx.y(), y)
         s = ""
 
-    def test_rasterLayerArray(self):
+    def test_aggregateArray(self):
 
-        lyrR = TestObjects.createRasterLayer()
+        a1 = np.asarray([[1, 4, 1],
+                         [1, 2, 3]])
+
+        self.assertTrue(np.array_equal(aggregateArray('none', a1), a1))
+        REF = [
+            ('min', [1, 1]),
+            ('max', [4, 3]),
+            ('mean', [2, 2]),
+            ('median', [1, 2]),
+        ]
+        for (a, result) in REF:
+            aggr = aggregateArray(a, a1, axis=1).tolist()
+            self.assertListEqual(aggr, result, msg=f'Wrong result for "{a}"')
+
+    def test_rasterArray(self):
+
+        lyr = QgsRasterLayer(enmap)
+        dp: QgsRasterDataProvider = lyr.dataProvider()
+        ext = lyr.extent()
+
+        resX = lyr.rasterUnitsPerPixelX()
+        resY = lyr.rasterUnitsPerPixelY()
+
+        if True:
+            array = rasterArray(lyr)
+            self.assertIsInstance(array, np.ndarray)
+            nb, nl, ns = array.shape
+            self.assertEqual(lyr.bandCount(), nb)
+            self.assertEqual(lyr.width(), ns)
+            self.assertEqual(lyr.height(), nl)
+
+            extP0 = QgsRectangle(ext.xMinimum(), ext.yMaximum(),
+                                 ext.xMinimum() + resX,
+                                 ext.yMaximum() - resY)
+            array = rasterArray(lyr, extP0, bands=[1])
+            self.assertEqual(array.shape, (1, 1, 1))
+
+        # cover pixel, but not the pixel center -> None
+        extP1a = QgsRectangle(ext.xMinimum() + 0.1 * resX,
+                              ext.yMaximum() - 0.1 * resY,
+                              ext.xMinimum() + 0.45 * resX,
+                              ext.yMaximum() - 0.45 * resY)
+        extP1b = QgsRectangle(ext.xMaximum() - 0.1 * resX,
+                              ext.yMinimum() + 0.1 * resY,
+                              ext.xMaximum() - 0.45 * resX,
+                              ext.yMinimum() + 0.45 * resY)
+
+        for e in [extP1a, extP1b]:
+            array = rasterArray(lyr, e, bands=[1])
+            self.assertTrue(array is None)
+            array = rasterArray(lyr, e.center(), bands=[1])
+            self.assertIsInstance(array, np.ndarray)
+            self.assertEqual(array.shape, (1, 1, 1))
+
+        # cover pixel center -> return values
+        c = QgsPointXY(ext.xMinimum() + 0.5 * resX,
+                       ext.yMaximum() - 0.5 * resY)
+
+        e = QgsRectangle(c.x() - 0.1 * resX, c.y() + 0.1 * resY,
+                         c.x() + 0.1 * resX, c.y() - 0.1 * resY)
+
+        arr1 = list(dp.identify(e.center(), QgsRaster.IdentifyFormatValue).results().values())
+        arr2 = rasterArray(lyr, rect=e)
+        self.assertIsInstance(arr2, np.ndarray)
+        self.assertEqual(arr2.shape, (lyr.bandCount(), 1, 1))
+        self.assertListEqual(arr1, arr2.squeeze().tolist())
+
+        arr3 = rasterArray(lyr, rect=e.center())
+        self.assertTrue(np.array_equal(arr2, arr3))
+        s = ""
+
+        lyrR = TestObjects.createRasterLayer(nb=12)
+
+        ext: QgsRectangle = lyrR.extent()
+        points = [QgsPointXY(ext.xMinimum(), ext.yMaximum()),
+                  QgsPointXY(ext.xMaximum(), ext.yMaximum()),
+                  QgsPointXY(ext.xMaximum(), ext.yMinimum()),
+                  QgsPointXY(ext.xMinimum(), ext.yMinimum()),
+                  ]
+
+        for n in range(25):
+            points.append(QgsPointXY(random.uniform(ext.xMinimum(), ext.xMaximum()),
+                                     random.uniform(ext.yMinimum(), ext.yMaximum())))
+
+        for i, p in enumerate(points):
+            # create empty rectangle = single point
+            rect = QgsRectangle(p.x(), p.y(), p.x(), p.y())
+            arr1 = rasterArray(lyrR, rect)
+            arr1 = arr1[:, 0, 0].tolist()
+            ires: QgsRasterIdentifyResult = lyrR.dataProvider().identify(p, QgsRaster.IdentifyFormatValue).results()
+            arr2 = list(ires.values())
+            self.assertListEqual(arr1, arr2)
+
         ext = lyrR.extent()
         ul = SpatialPoint(lyrR.crs(), ext.xMinimum(), ext.yMaximum())
         lr = SpatialPoint(lyrR.crs(), ext.xMaximum(), ext.yMinimum())
@@ -466,8 +805,6 @@ class TestUtils(TestCase):
                 band = block[b, :, :]
                 bandG = ds.GetRasterBand(b + 1).ReadAsArray()
                 self.assertTrue(np.all(band == bandG))
-
-        from qpstestdata import enmap, hymap
 
         lyr1 = QgsRasterLayer(enmap, 'EnMAP')
         lyr2 = QgsRasterLayer(hymap, 'HyMAP')

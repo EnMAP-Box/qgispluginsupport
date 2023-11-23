@@ -235,7 +235,7 @@ def encodeProfileValueDict(d: dict,
 
     # json2 =
 
-    if encoding == ProfileEncoding.Bytes:
+    if encoding in [ProfileEncoding.Bytes, ProfileEncoding.Binary]:
         jsonDoc = QJsonDocument.fromVariant(d2)
         return jsonDoc.toBinaryData()
     else:

@@ -1,10 +1,27 @@
 {
   "name": "raster_array",
   "type": "function",
-  "description": "Returns the raster pixel values as array",
-  "arguments": [ {"arg":"layer", "description":"name or id of raster layer"},
-                 {"arg":"geometry",
-                   "description":"geometry to select profiles for. Supported geometries: point, polygon (centroid)"}
+  "description": "Returns the raster pixel values as array.",
+  "arguments": [
+    {
+      "arg":"layer",
+      "description":"name or id of raster layer"
+    },
+    {
+      "arg":"geometry",
+      "description":"geometry to select profiles for. Supported geometries: point, polygon (centroid)"
+    },
+    {
+      "arg":  "aggregate",
+      "description":  "aggregation method if geometry relates to multiple pixels. <br>Can be <code>mean</code> (default), <code>media</code>, <code>min</code>, <code>max</code> or <code>none</code> (returns a 2-D array)"
+    },
+    {
+      "arg":  "t",
+      "description":  "transpose the 2-D array of values that is returned for MultiPoint, Line and Polygon geometries if <code>aggregate:='none'</code>"},
+    {
+      "arg":  "at",
+      "description":  "Enables the GDAL rasterize <i>ALL_TOUCHED=YES</i> rasterization option so that all pixels touched by lines or polygons will be used, not just those on the line render path, or whose center point is within the polygon."
+    }
   ],
   "examples": [{
     "expression":"raster_array('myrasterlayer')",

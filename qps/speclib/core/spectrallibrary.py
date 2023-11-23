@@ -26,7 +26,6 @@
 """
 
 import datetime
-# see http://python-future.org/str_literals.html for str issue discussion
 import os
 import pathlib
 import pickle
@@ -40,8 +39,8 @@ from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData
 from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import QgsExpressionContextUtils, QgsExpression, QgsRasterLayer, QgsPointXY, QgsGeometry, \
-    QgsMapLayerStore, QgsProject, Qgis, edit
+from qgis.core import (QgsWkbTypes, QgsExpressionContextUtils, QgsExpression, QgsRasterLayer,
+                       QgsPointXY, QgsGeometry, QgsMapLayerStore, QgsProject, Qgis, edit)
 from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsFeature, QgsVectorLayer, QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, \
     QgsActionManager, QgsFeatureRequest, \
@@ -56,6 +55,7 @@ from .spectralprofile import SpectralSetting, groupBySpectralProperties, prepare
 from .. import EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from .. import FIELD_VALUES, FIELD_NAME
 from ...plotstyling.plotstyling import PlotStyle
+from ...qgisenums import QGIS_WKBTYPE
 
 from ...utils import findMapLayer, \
     qgsField, copyEditorWidgetSetup, SpatialPoint
@@ -384,12 +384,15 @@ class SpectralLibraryUtils:
     def createSpectralLibrary(
             profile_fields: List[str] = [FIELD_VALUES],
             name: str = DEFAULT_NAME,
-            encoding: ProfileEncoding = ProfileEncoding.Json) -> QgsVectorLayer:
+            encoding: ProfileEncoding = ProfileEncoding.Json,
+            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """
         provider = 'memory'
-        path = f"point?crs=epsg:{SPECLIB_EPSG_CODE}"
+        if not isinstance(wkbType, str):
+            wkbType = QgsWkbTypes.displayString(wkbType)
+        path = f"{wkbType}?crs=epsg:{SPECLIB_EPSG_CODE}"
         options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
 
         lyr = QgsVectorLayer(path, name, provider, options=options)

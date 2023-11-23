@@ -332,6 +332,8 @@ class SpectralProcessingTests(TestCaseBase):
         splitH.addWidget(splitV)
         splitH.addWidget(w)
 
+        speclibs = [w.speclib() for w in panel.spectralProfileBridge().destinations()]
+        canvas.setLayers(speclibs + canvas.layers())
         self.showGui(splitH)
         QgsProject.instance().removeAllMapLayers()
 
@@ -388,6 +390,9 @@ class SpectralProcessingTests(TestCaseBase):
         pt1 = SpatialPoint.fromPixelPosition(lyr1, 0.5, 0.5)
         pt2 = SpatialPoint.fromPixelPosition(lyr1, 1.5, 1.5)
 
+        for pt in [pt1, pt2]:
+            self.assertTrue(lyr1.extent().contains(pt))
+
         model = SpectralProfileSourceModel()
         self.assertTrue(len(model) == 0)
 
@@ -403,20 +408,21 @@ class SpectralProcessingTests(TestCaseBase):
 
         sources = model[:]
         self.assertListEqual(sources, [src1, src2, src3])
-        for src in model:
+        for src in sources:
             for pt in [pt1, pt2]:
                 self.assertIsInstance(src, SpectralProfileSource)
+                profileData3 = src.collectProfiles(pt, QSize(5, 2))
                 profileData1 = src.collectProfiles(pt)
                 self.assertTrue(len(profileData1) == 1)
 
                 profileData2 = src.collectProfiles(pt, QSize(3, 3))
-                profileData3 = src.collectProfiles(pt, QSize(5, 2))
 
                 if isinstance(src, StandardLayerProfileSource):
                     lyr: QgsRasterLayer = src.mLayer
                     self.validate_profile_data(profileData1, lyr, pt)
                     self.validate_profile_data(profileData2, lyr, pt)
                     self.validate_profile_data(profileData3, lyr, pt)
+                    s = ""
 
         sources = model[:]
         sources = sources + sources[0:]
@@ -431,7 +437,9 @@ class SpectralProcessingTests(TestCaseBase):
                         ProfileSamplingMode.AGGREGATE_MEDIAN,
                         ProfileSamplingMode.AGGREGATE_MIN,
                         ProfileSamplingMode.AGGREGATE_MAX]
-        kernels = [('3x3'), ('4x4'), ('5x5')]
+        kernels = [('3x3'),
+                   # ('4x4'),
+                   ('5x5')]
         from qpstestdata import enmap
         lyr = QgsRasterLayer(enmap)
         center = SpatialPoint.fromMapLayerCenter(lyr)

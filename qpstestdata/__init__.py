@@ -7,6 +7,8 @@ testvectordata = \
 landcover = testvectordata
 enmap_pixel = (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectorpixelcenter.geojson').as_posix()
 enmap_polygon = testvectordata
+enmap_multipolygon = (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata_multipolygon.geojson').as_posix()
+enmap_multipoint = (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata_multipoint.geojson').as_posix()
 
 # from qpstestdata
 hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()

@@ -10,7 +10,7 @@ from typing import List, Any, Iterable, Dict, Union, Tuple, Set, Iterator
 import numpy as np
 from numpy import NaN
 
-from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QSortFilterProxyModel, \
+from qgis.PyQt.QtCore import QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QSortFilterProxyModel, \
     QItemSelection, NULL
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtCore import Qt
@@ -19,27 +19,28 @@ from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, Q
 from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
     QTableView, QStyle, QStyleOptionViewItem
 from qgis.PyQt.QtWidgets import QTreeView
-from qgis.core import QgsRaster
+from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsVector
 from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
-    QgsRasterIdentifyResult, QgsRectangle
+    QgsRectangle
 from qgis.core import QgsLayerItem
-from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, Qgis
+from qgis.core import QgsMapToPixel, Qgis
 from qgis.core import QgsProperty
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsField, QgsFields
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
     QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, \
+from ..core.spectralprofile import encodeProfileValueDict, \
     prepareProfileValueDict
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
+from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import SpatialPoint, loadUi, rasterArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor, rasterLayerMapToPixel
+from ...utils import SpatialPoint, loadUi, HashableRect, iconForFieldType, nextColor, rasterLayerMapToPixel, \
+    aggregateArray
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
@@ -70,13 +71,17 @@ class SpectralProfileSource(QObject):
     def setToolTip(self, toolTip: str):
         self.mToolTip = toolTip
 
-    def collectProfiles(self, point: SpatialPoint, kernel_size: QSize = QSize(1, 1), **kwargs) \
+    def collectProfiles(self,
+                        point: SpatialPoint,
+                        kernel_size: QSize = QSize(1, 1),
+                        snap: bool = False,
+                        **kwargs) \
             -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         A function to collect profiles.
         Needs to consume point and kernel_size
         Each implementation should be able to ignore additional arguments.
-
+        snap : if True, the source should snap to pixel-center
         Returns
         -------
         A list of (profile Dictionary, QgsExpressionContext) tuples.
@@ -200,7 +205,7 @@ class ProfileSamplingMode(object):
 
         aggregation = self.aggregation()
 
-        if aggregation == self.NO_AGGREGATION:
+        if aggregation == self.NO_AGGREGATION or len(profiles) == 1:
             return profiles
         else:
             # aggregate profiles into a single profile
@@ -210,7 +215,7 @@ class ProfileSamplingMode(object):
             for (d, c) in profiles:
                 if 'y' in d:
                     p = d['y']
-                    pdicts.append(p)
+                    pdicts.append(d)
                     pcontexts.append(c)
                     arrays.append(np.asarray(p))
 
@@ -218,23 +223,17 @@ class ProfileSamplingMode(object):
             if data.dtype == object:
                 data = data.astype(float)
 
-            if aggregation == self.AGGREGATE_MEAN:
-                data = np.nanmean(data, axis=0)
-            elif aggregation == self.AGGREGATE_MEDIAN:
-                data = np.nanmedian(data, axis=0)
-            elif aggregation == self.AGGREGATE_MIN:
-                data = np.nanmin(data, axis=0)
-            elif aggregation == self.AGGREGATE_MAX:
-                data = np.nanmax(data, axis=0)
-
-            x = bbl = xUnit = yUnit = None
-            # bbl - merge, set 0 if any is 0
-            # x, xUnit, yUnit - use 1st
+            data = aggregateArray(aggregation, data, axis=0, keepdims=False)
 
             # context: merge
-            context = pcontexts[0]
-            profile = prepareProfileValueDict(y=data, x=x, xUnit=xUnit, yUnit=yUnit)
-        return [(profile, context)]
+            i_center = int(len(pcontexts) / 2)
+            refContext = pcontexts[i_center]
+            refProfile = pdicts[i_center]
+            profile = prepareProfileValueDict(y=data,
+                                              x=refProfile.get('x'),
+                                              xUnit=refProfile.get('xUnit'),
+                                              yUnit=refProfile.get('yUnit'))
+        return [(profile, refContext)]
 
 
 class StandardLayerProfileSource(SpectralProfileSource):
@@ -296,7 +295,11 @@ class StandardLayerProfileSource(SpectralProfileSource):
         context.appendScope(scope)
         return context
 
-    def collectProfiles(self, point: SpatialPoint, kernel_size: QSize = QSize(1, 1), **kwargs) \
+    def collectProfiles(self,
+                        point: SpatialPoint,
+                        kernel_size: QSize = QSize(1, 1),
+                        snap: bool = False,
+                        **kwargs) \
             -> List[Tuple[Dict, QgsExpressionContext]]:
 
         point = point.toCrs(self.mLayer.crs())
@@ -305,11 +308,19 @@ class StandardLayerProfileSource(SpectralProfileSource):
 
         resX = self.mLayer.rasterUnitsPerPixelX()
         resY = self.mLayer.rasterUnitsPerPixelY()
+
         c = self.mLayer.extent().center()
-        m2p = QgsMapToPixel(resX,
-                            c.x(), c.y(),
-                            self.mLayer.width(), self.mLayer.height(),
-                            0)
+
+        if snap:
+            M2PX = QgsMapToPixel(self.mLayer.rasterUnitsPerPixelX(),
+                                 c.x(), c.y(),
+                                 self.mLayer.width(),
+                                 self.mLayer.height(),
+                                 0
+                                 )
+            px = M2PX.transform(point)
+            px_snapped = QgsPointXY(int(px.x()) + 0.5, int(px.y()) + 0.5)
+            point = M2PX.toMapCoordinatesF(px_snapped.x(), px_snapped.y())
 
         context = QgsExpressionContext()
         context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
@@ -320,54 +331,41 @@ class StandardLayerProfileSource(SpectralProfileSource):
                       resX * kernel_size.width(),
                       resY * kernel_size.height())
         rect.moveCenter(point.toQPointF())
-        rect = QgsRectangle(rect)
 
-        dp: QgsRasterDataProvider = self.mLayer.dataProvider()
-        feedback = QgsRasterBlockFeedback()
-        nb = self.mLayer.bandCount()
-        nx = kernel_size.width()
-        ny = kernel_size.height()
+        profilesWithContext: List[Dict, QgsExpressionContext] = []
 
-        geo_x = np.arange(0, nx) * resX
-        geo_y = np.arange(0, ny) * resY
-        geo_x -= 0.5 * geo_x[-1]
-        geo_y -= 0.5 * geo_y[-1]
-        geo_x += point.x()
-        geo_y += point.y()
+        if kernel_size == QSize(1, 1):
+            g = QgsGeometry.fromPointXY(point)
+        else:
+            v = QgsVector(-0.5 * kernel_size.width() * resX,
+                          0.5 * kernel_size.height() * resY)
 
-        profiles = []
-        bbl = sp.badBands()
-        wl = sp.wavelengths()
-        wlu = sp.wavelengthUnits()
-        if isinstance(wlu, list):
-            wlu = wlu[0]
+            k = QgsRectangle(point + v, point - v)
 
-        if True:
-            dp: QgsRasterDataProvider = self.mLayer.dataProvider()
-            for iX in range(nx):
-                for iY in range(ny):
+            g = QgsGeometry.fromRect(k)
 
-                    pt = QgsPointXY(geo_x[iX], geo_y[iY])
-                    if not self.mLayer.extent().contains(pt):
-                        continue
+        f = RasterProfile()
+        all_touched = False
+        values = [self.mLayer, point, 'none', all_touched, 'dict']
+        exp = QgsExpression()
+        fcontext = QgsExpressionContext(context)
+        fcontext.setGeometry(g)
+        profiles_at = f.func(values, fcontext, exp, None)
 
-                    profileContext = self.expressionContext(pt)
+        if exp.hasParserError() or exp.hasEvalError() or profiles_at is None:
+            return []
 
-                    if Qgis.versionInt() < 33000:
-                        R: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormat.IdentifyFormatValue)
-                    else:
-                        R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat.Value)
-                    if not R.isValid():
-                        continue
+        if isinstance(profiles_at, dict):
+            profiles_at = [profiles_at]
 
-                    results = R.results()
-                    yValues = [results[b + 1] for b in range(self.mLayer.bandCount())]
+        loc_geo = fcontext.variable('raster_array_geo')
 
-                    d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu, bbl=bbl)
-                    if isinstance(d, dict):
-                        profiles.append((d, profileContext))
+        for pDict, px_geo in zip(profiles_at, loc_geo):
 
-        return profiles
+            context = self.expressionContext(px_geo)
+            profilesWithContext.append((pDict, context))
+
+        return profilesWithContext
 
 
 class MapCanvasLayerProfileSource(SpectralProfileSource):
@@ -420,6 +418,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
     def collectProfiles(self, point: SpatialPoint,
                         kernel_size: QSize = QSize(1, 1),
                         canvas: QgsMapCanvas = None,
+                        snap: bool = False,
                         **kwargs) \
             -> List[Tuple[Dict, QgsExpressionContext]]:
         if isinstance(canvas, QgsMapCanvas):
@@ -443,7 +442,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
                 continue
 
             source = StandardLayerProfileSource(lyr)
-            r = source.collectProfiles(pt, kernel_size=kernel_size)
+            r = source.collectProfiles(pt, kernel_size=kernel_size, snap=snap)
 
             if isinstance(r, list) and len(r) > 0:
                 results.extend(r)
@@ -1692,11 +1691,11 @@ class SpectralProfileBridge(TreeModel):
     def showErrors(self, fgnode: SpectralFeatureGeneratorNode, errors: Dict[str, str]):
         pass
 
-    def loadProfilesV2(self,
-                       spatialPoint: SpatialPoint,
-                       mapCanvas: QgsMapCanvas = None,
-                       add_permanent: bool = None,
-                       runAsync: bool = False) -> Dict[str, List[QgsFeature]]:
+    def loadProfiles(self,
+                     spatialPoint: SpatialPoint,
+                     mapCanvas: QgsMapCanvas = None,
+                     add_permanent: bool = None,
+                     runAsync: bool = False) -> Dict[str, List[QgsFeature]]:
         """
         Loads the spectral profiles as defined in the bridge model
         :param spatialPoint:
@@ -1724,8 +1723,7 @@ class SpectralProfileBridge(TreeModel):
 
         # 3. generate features from a feature generators
         #    multiple feature generators could create features for the same speclib
-        RESULTS: Dict[str, Tuple[List[QgsFeature],
-                                 Dict[Tuple[int, str], PlotStyle]]] = dict()
+        RESULTS: Dict[str, Tuple[List[QgsFeature], Dict[Tuple[int, str], PlotStyle]]] = dict()
 
         for fgnode in featureGenerators:
             fgnode: SpectralFeatureGeneratorNode
@@ -1750,10 +1748,12 @@ class SpectralProfileBridge(TreeModel):
         # Add profiles to speclibs
         SLWidgets = {fgnode.speclib().id(): fgnode.speclibWidget() for fgnode in featureGenerators}
         results2 = dict()
-        for sid, (features, styles) in RESULTS.items():
-            slw: SpectralLibraryWidget = SLWidgets[sid]
-            slw.setCurrentProfiles(features, currentProfileStyles=styles)
-            results2[sid] = features
+
+        for sid, slw in SLWidgets.items():
+            features, styles = RESULTS.get(sid, ([], dict()))
+            slw.setCurrentProfiles(features, currentProfileStyles=styles, make_permanent=add_permanent)
+            if len(features) > 0:
+                results2[sid] = results2.get(sid, []) + features
         return results2
 
     def createFeatures(self,
@@ -1784,7 +1784,7 @@ class SpectralProfileBridge(TreeModel):
         PLOT_STYLES: Dict[str, PlotStyle] = dict()
         for pgnode in fgnode.spectralProfileGeneratorNodes(checked=True):
             pgnode: SpectralProfileGeneratorNode
-            results = pgnode.profiles(point, canvas=canvas)
+            results = pgnode.profiles(point, canvas=canvas, snap=self.mSnapToPixelCenter)
             if len(results) > 0:
                 PROFILE_DATA[pgnode.field().name()] = results
                 PLOT_STYLES[pgnode.field().name()] = pgnode.plotStyle().clone()
@@ -1799,6 +1799,7 @@ class SpectralProfileBridge(TreeModel):
 
             scope = QgsExpressionContextScope('profile')
             g: QgsGeometry = None
+
             # add profile field data
             for f in pfields:
                 pdata, pcontext = PROFILE_DATA[f].pop(0)
@@ -1808,7 +1809,18 @@ class SpectralProfileBridge(TreeModel):
                 pcontext: QgsExpressionContext
 
                 if g is None and pcontext.hasGeometry():
-                    g = QgsGeometry(pcontext.geometry())
+                    # use the geometry related to the origin of the 1. profile field as
+                    # feature geometry
+                    _g = QgsGeometry(pcontext.geometry())
+                    crs = pcontext.variable('_source_crs')
+                    if speclib.crs().isValid() and isinstance(crs, QgsCoordinateReferenceSystem) and crs.isValid():
+                        trans = QgsCoordinateTransform()
+                        trans.setSourceCrs(crs)
+                        trans.setDestinationCrs(speclib.crs())
+                        if _g.transform(trans) == Qgis.GeometryOperationResult.Success:
+                            g = _g
+
+                    del crs
 
                 addVariablesToScope(scope, pcontext)
                 # provide context variables from potentially multiple profile sources
@@ -1853,236 +1865,6 @@ class SpectralProfileBridge(TreeModel):
 
             new_features.append(new_feature)
         return new_features, PLOT_STYLES
-
-    def loadProfiles(self,
-                     spatialPoint: SpatialPoint,
-                     mapCanvas: QgsMapCanvas = None,
-                     add_permanent: bool = None,
-                     runAsync: bool = False) -> Dict[str, List[QgsFeature]]:
-        """
-        Loads the spectral profiles as defined in the bridge model
-        :param spatialPoint:
-        :param mapCanvas:
-        :param runAsync:
-        :return:
-        """
-        self.mLastDestinations.clear()
-        RESULTS: Dict[str, List[QgsFeature]] = dict()
-        TEMPORAL_COLORS: Dict[str, List[Tuple[int, QColor]]] = dict()
-        TEMPORAL_STYLES: Dict[str, List[Tuple[int, PlotStyle]]] = dict()
-        # 1. collect infos on sources, pixel positions and additional metadata
-
-        URI2LAYER: Dict[str, QgsRasterLayer] = dict()
-        SAMPLING_BLOCK_DESCRIPTIONS: Dict[SpectralProfileGeneratorNode, SamplingBlockDescription] = dict()
-        SAMPLING_FEATURES: List[SpectralFeatureGeneratorNode] = []
-
-        # 1. collect source infos
-        for fgnode in self.featureGenerators(speclib=True, checked=True):
-
-            use_feature_generator: bool = False
-            for pgnode in fgnode.spectralProfileGeneratorNodes():
-                pgnode: SpectralProfileGeneratorNode
-
-                if not pgnode.checked():
-                    continue
-
-                sbd: SamplingBlockDescription = pgnode.samplingBlockDescription(spatialPoint, mapCanvas)
-                if isinstance(sbd, SamplingBlockDescription):
-                    use_feature_generator = True
-                    SAMPLING_BLOCK_DESCRIPTIONS[pgnode] = sbd
-
-            if use_feature_generator:
-                SAMPLING_FEATURES.append(fgnode)
-
-        # order by source the blocks we need to read
-        SOURCE_BLOCKS: Dict[str, Dict[HashableRect, SpectralProfileBlock]] = dict()
-        for pgnode, sbd in SAMPLING_BLOCK_DESCRIPTIONS.items():
-            sbd: SamplingBlockDescription
-            uri = sbd.uri()
-            URI2LAYER[uri] = sbd.layer()
-            source_blocks: Dict[HashableRect, np.ndarray] = SOURCE_BLOCKS.get(uri, dict())
-            source_blocks[sbd.rect()] = None
-            SOURCE_BLOCKS[uri] = source_blocks
-
-        # todo: optimize block reading
-
-        # read blocks
-        for uri, BLOCKS in SOURCE_BLOCKS.items():
-            layer: QgsRasterLayer = URI2LAYER[uri]
-            spectralProperties = QgsRasterLayerSpectralProperties.fromRasterLayer(layer)
-
-            for rect in list(BLOCKS.keys()):
-                array = rasterArray(layer, rect)
-
-                if not isinstance(array, np.ndarray):
-                    continue
-                is_nodata = np.zeros(array.shape, dtype=bool)
-                dp: QgsRasterDataProvider = layer.dataProvider()
-
-                for b in range(dp.bandCount()):
-                    band = b + 1
-                    band_mask = is_nodata[b, :, :]
-                    if dp.sourceHasNoDataValue(band):
-                        no_data = dp.sourceNoDataValue(band)
-                        band_mask = band_mask | (array[b, :, :] == no_data)
-                    for no_data in dp.userNoDataValues(band):
-                        band_mask = band_mask | (array[b, :, :] == no_data)
-                    is_nodata[b, :, :] = band_mask
-                if is_nodata.all():
-                    continue
-                array = np.ma.array(array, mask=is_nodata)
-                wl = spectralProperties.wavelengths()
-                bbl = spectralProperties.badBands()
-                wlu = spectralProperties.wavelengthUnits()
-                nb = spectralProperties.bandCount()
-                if len(wl) > 0:
-                    settings = SpectralSetting(wl, xUnit=wlu[0], bbl=bbl)
-                else:
-                    settings = SpectralSetting(nb, bbl=bbl)
-
-                profileBlock = SpectralProfileBlock(array, settings)
-
-                px_x, px_y = np.meshgrid(np.arange(rect.width()), np.arange(rect.height()))
-                px_x = px_x + rect.x()
-                px_y = px_y + rect.y()
-                geo_x, geo_y = px2geocoordinatesV2(layer, px_x, px_y)
-
-                # get shift between pixel center and true click positions
-                if not self.mSnapToPixelCenter:
-                    pointClicked = spatialPoint.toCrs(layer.crs())
-                    pointPxCenter = px2spatialPoint(layer, spatialPoint2px(layer, pointClicked))
-                    dx = pointPxCenter.x() - pointClicked.x()
-                    dy = pointPxCenter.y() - pointClicked.y()
-                    geo_x -= dx
-                    geo_y -= dy
-
-                profileBlock.setPositions(geo_x, geo_y, layer.crs())
-                BLOCKS[rect] = profileBlock
-
-        # 3. calculate required source profiles
-        for fgnode in SAMPLING_FEATURES:
-            assert isinstance(fgnode, SpectralFeatureGeneratorNode)
-            speclib = fgnode.speclib()
-            if not speclib:
-                continue
-
-            new_speclib_features: List[QgsFeature] = []
-            # new_temporal_colors: List[Tuple[int, QColor]] = []
-            new_temporal_styles: List[Tuple[int, PlotStyle]] = []
-            # calculate final profile value dictionaries
-            FINAL_PROFILE_VALUES: Dict[SpectralProfileGeneratorNode, List[Tuple[QByteArray, QgsGeometry]]] = dict()
-
-            for pgnode in fgnode.spectralProfileGeneratorNodes():
-                pgnode: SpectralProfileGeneratorNode
-
-                sbd: SamplingBlockDescription = SAMPLING_BLOCK_DESCRIPTIONS.get(pgnode, None)
-                if not isinstance(sbd, SamplingBlockDescription):
-                    continue
-
-                inputProfileBlock: SpectralProfileBlock = SOURCE_BLOCKS[sbd.uri()].get(sbd.rect(), None)
-                if isinstance(inputProfileBlock, SpectralProfileBlock):
-                    # convert profileBlock to final profiles
-                    outputProfileBlock: SpectralProfileBlock = pgnode.profiles(inputProfileBlock, sbd)
-                    outputProfileBlock.toCrs(speclib.crs())
-                    outputProfileBlock.mData = pgnode.offset() + outputProfileBlock.mData * pgnode.scale()
-
-                    FINAL_PROFILE_VALUES[pgnode] = []
-                    for _, ba, g in outputProfileBlock.profileValueDictionaries():
-                        FINAL_PROFILE_VALUES[pgnode].append((ba, g))
-
-            n_new_features = 0
-            for node, profiles in FINAL_PROFILE_VALUES.items():
-                n_new_features = max(n_new_features, len(profiles))
-
-            for i in range(n_new_features):
-                new_feature: QgsFeature = QgsFeature(fgnode.speclib().fields())
-                # new_feature_colors: List[Tuple[str, QColor]] = []
-                new_feature_styles: List[Tuple[str, PlotStyle]] = []
-                # set profile fields
-                # let's say the sampling methods for profile fields A, B and C return 1, 3 and 4 profiles, then
-                # we create 4 new features with
-                # feature 1: A, B, C
-                # feature 2: None, B, C
-                # feature 4: None, None, C
-
-                for pgnode, profileInputs in FINAL_PROFILE_VALUES.items():
-
-                    if len(profileInputs) > 0:
-                        # pop 1st profile
-                        profileDict, geometry = profileInputs.pop(0)
-                        assert isinstance(profileDict, dict)
-                        assert isinstance(geometry, QgsGeometry)
-                        if new_feature.geometry().type() in [QgsWkbTypes.UnknownGeometry, QgsWkbTypes.NullGeometry]:
-                            new_feature.setGeometry(geometry)
-                        field_name = pgnode.field().name()
-                        new_feature[field_name] = encodeProfileValueDict(profileDict, encoding=pgnode.field())
-
-                        new_feature_styles.append((field_name, pgnode.mProfileStyleNode.value()))
-
-                new_speclib_features.append(new_feature)
-                # new_temporal_colors.append(new_feature_colors)
-                new_temporal_styles.append(new_feature_styles)
-
-            sample_id = 1
-            if isinstance(speclib, QgsVectorLayer) and len(new_speclib_features) > 0:
-                # increase click count
-                self.mClickCount[speclib.id()] = self.mClickCount.get(speclib.id(), 0) + 1
-                if speclib.featureCount() > 0:
-                    fids = sorted(speclib.allFeatureIds())
-                    sample_id = fids[-1]
-                    if sample_id < 0:
-                        sample_id = 0
-
-                    # account for already existing temporary features with fid < 0
-                    sample_id += len([f for f in fids if f < 0])
-
-                    # ensure a none-existing sample id
-                    while sample_id in fids:
-                        sample_id += 1
-
-            for i, new_feature in enumerate(new_speclib_features):
-                # create context for other values
-                scope = fgnode.speclib().createExpressionContextScope()
-                scope.setVariable(SCOPE_VAR_SAMPLE_CLICK, self.mClickCount[speclib.id()])
-                scope.setVariable(SCOPE_VAR_SAMPLE_FEATURE, i + 1)
-                scope.setVariable(SCOPE_VAR_SAMPLE_ID, sample_id + i)
-
-                context = fgnode.expressionContextGenerator().createExpressionContext()
-                context.setFeature(new_feature)
-                context.appendScope(scope)
-                for node in fgnode.childNodes():
-                    if isinstance(node, StandardFieldGeneratorNode) and node.checked():
-                        expr = node.expression()
-                        if expr.isValid() and expr.prepare(context):
-                            new_feature[node.field().name()] = expr.evaluate(context)
-
-            sid = fgnode.speclib().id()
-
-            RESULTS[sid] = RESULTS.get(sid, []) + new_speclib_features
-            # TEMPORAL_COLORS[sid] = TEMPORAL_COLORS.get(sid, []) + new_temporal_colors
-            TEMPORAL_STYLES[sid] = TEMPORAL_STYLES.get(sid, []) + new_temporal_styles
-            self.mLastDestinations.add(fgnode.speclib().id())
-
-        for slw in self.destinations():
-            speclib = slw.speclib()
-            if isinstance(speclib, QgsVectorLayer) and speclib.id() in RESULTS.keys():
-                features = RESULTS[speclib.id()]
-
-                candidate_styles = dict()
-                # ensure unique FIDs
-                for i, f in enumerate(features):
-                    fid = f.id() + i
-                    f.setId(f.id() + i)
-                    for (field, style) in TEMPORAL_STYLES[speclib.id()][i]:
-                        candidate_styles[(fid, field)] = style
-
-                slw.setCurrentProfiles(features,
-                                       make_permanent=add_permanent,
-                                       currentProfileStyles=candidate_styles,
-                                       )
-            else:
-                slw.setCurrentProfiles([])
-        return RESULTS
 
     def spectralLibraryModel(self) -> SpectralLibraryWidgetListModel:
         return self.mDstModel
@@ -2813,7 +2595,7 @@ class SpectralProfileSourcePanel(QgsDockWidget):
                               spatialPoint: SpatialPoint,
                               mapCanvas: QgsMapCanvas = None,
                               runAsync: bool = None) -> Dict[str, List[QgsFeature]]:
-        return self.mBridge.loadProfilesV2(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)
+        return self.mBridge.loadProfiles(spatialPoint, mapCanvas=mapCanvas, runAsync=runAsync)
 
     def addCurrentProfilesToSpeclib(self):
         self.mBridge.addCurrentProfilesToSpeclib()

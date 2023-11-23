@@ -3,7 +3,7 @@ from qgis.core import Qgis
 
 
 #  Import old locations
-from qgis.core import (QgsAction, QgsArcGisPortalUtils, QgsAttributeEditorElement, QgsEditFormConfig, QgsGpsInformation, QgsGradientFillSymbolLayer, QgsGraduatedSymbolRenderer, QgsLabeling, QgsLabelingEngineSettings, QgsMapLayerProxyModel, QgsMapLayerType, QgsPainting, QgsPalLayerSettings, QgsProject, QgsProviderMetadata, QgsRandomMarkerFillSymbolLayer, QgsRaster, QgsRasterFileWriter, QgsRasterLayer, QgsRelation, QgsSimpleMarkerSymbolLayerBase, QgsStringUtils, QgsTextFormat, QgsTextRenderer, QgsUnitTypes, QgsVectorFileWriter, QgsWkbTypes)
+from qgis.core import (QgsAction, QgsArcGisPortalUtils, QgsAttributeEditorElement, QgsEditFormConfig, QgsGpsInformation, QgsGradientFillSymbolLayer, QgsGraduatedSymbolRenderer, QgsLabeling, QgsLabelingEngineSettings, QgsMapLayerProxyModel, QgsMapLayerType, QgsPainting, QgsPalLayerSettings, QgsProject, QgsProperty, QgsProviderMetadata, QgsRandomMarkerFillSymbolLayer, QgsRaster, QgsRasterFileWriter, QgsRasterLayer, QgsRelation, QgsSimpleMarkerSymbolLayerBase, QgsStringUtils, QgsTextFormat, QgsTextRenderer, QgsUnitTypes, QgsVectorFileWriter, QgsWkbTypes)
 from qgis.gui import (QgsActionMenu, QgsMapLayerAction)
 
 #  API Switches
@@ -23,7 +23,7 @@ QGIS_DISTANCEUNIT = Qgis.DistanceUnit if Qgis.versionInt() >= 33000 else QgsUnit
 QGIS_DISTANCEUNITTYPE = Qgis.DistanceUnitType if Qgis.versionInt() >= 33000 else QgsUnitTypes.DistanceUnitType
 QGIS_FEATURESYMBOLOGYEXPORT = Qgis.FeatureSymbologyExport if Qgis.versionInt() >= 33200 else QgsVectorFileWriter.SymbologyExport
 QGIS_FILEFILTERTYPE = Qgis.FileFilterType if Qgis.versionInt() >= 33200 else QgsProviderMetadata.FilterType
-QGIS_GEOMETRYTYPE = Qgis.GeometryType if Qgis.versionInt() >= 33000 else QgsWkbTypes.GeometryType
+QGIS_GEOMETRYTYPE = Qgis.GeometryType if Qgis.versionInt() >= 33000 else QgsWkbTypes
 QGIS_GPSFIXSTATUS = Qgis.GpsFixStatus if Qgis.versionInt() >= 33000 else QgsGpsInformation.FixStatus
 QGIS_GRADIENTCOLORSOURCE = Qgis.GradientColorSource if Qgis.versionInt() >= 32400 else QgsGradientFillSymbolLayer.GradientColorType
 QGIS_GRADIENTSPREAD = Qgis.GradientSpread if Qgis.versionInt() >= 32400 else QgsGradientFillSymbolLayer.GradientSpread
@@ -48,6 +48,7 @@ QGIS_MARKERSHAPE = Qgis.MarkerShape if Qgis.versionInt() >= 32400 else QgsSimple
 QGIS_POINTCOUNTMETHOD = Qgis.PointCountMethod if Qgis.versionInt() >= 32400 else QgsRandomMarkerFillSymbolLayer.CountMethod
 QGIS_PROJECTFILEFORMAT = Qgis.ProjectFileFormat if Qgis.versionInt() >= 32600 else QgsProject.FileFormat
 QGIS_PROJECTREADFLAG = Qgis.ProjectReadFlag if Qgis.versionInt() >= 32600 else QgsProject.ReadFlag
+QGIS_PROPERTYTYPE = Qgis.PropertyType if Qgis.versionInt() >= 33600 else QgsProperty.Type
 QGIS_RASTERBUILDPYRAMIDOPTION = Qgis.RasterBuildPyramidOption if Qgis.versionInt() >= 33000 else QgsRaster.RasterBuildPyramids
 QGIS_RASTERCOLORINTERPRETATION = Qgis.RasterColorInterpretation if Qgis.versionInt() >= 33000 else QgsRaster.ColorInterpretation
 QGIS_RASTERDRAWINGSTYLE = Qgis.RasterDrawingStyle if Qgis.versionInt() >= 33000 else QgsRaster.DrawingStyle
@@ -70,5 +71,4 @@ QGIS_TEXTVERTICALALIGNMENT = Qgis.TextVerticalAlignment if Qgis.versionInt() >= 
 QGIS_UNITTYPE = Qgis.UnitType if Qgis.versionInt() >= 33000 else QgsUnitTypes.UnitType
 QGIS_UPSIDEDOWNLABELHANDLING = Qgis.UpsideDownLabelHandling if Qgis.versionInt() >= 32600 else QgsPalLayerSettings.UpsideDownLabels
 QGIS_VOLUMEUNIT = Qgis.VolumeUnit if Qgis.versionInt() >= 33000 else QgsUnitTypes.VolumeUnit
-
 QGIS_WKBTYPE = Qgis.WkbType if Qgis.versionInt() >= 33000 else QgsWkbTypes.Type

@@ -8,7 +8,9 @@ import qgis.gui
 QGIS_CORE_CLASSES = vars(qgis.core)
 QGIS_GUI_CLASSES = vars(qgis.gui)
 
-from qgis.core import Qgis
+OLD_NAME_CORRECTION = {
+    'QgsWkbTypes.GeometryType' : 'QgsWkbTypes',
+}
 
 import urllib.request
 url = r'https://raw.githubusercontent.com/qgis/QGIS/master/src/core/qgis.h'
@@ -75,7 +77,8 @@ required_imports = set()
 
 for b in API_BREAKS:
     required_imports.add(b.oldname.split(".")[0])
-    switchline = f'{b.varname} = Qgis.{b.newname} if Qgis.versionInt() >= {b.version_int} else {b.oldname}'
+    switchline = (f'{b.varname} = Qgis.{b.newname} '
+                  f'if Qgis.versionInt() >= {b.version_int} else {OLD_NAME_CORRECTION.get(b.oldname, b.oldname)}')
     switchlines.append(switchline)
 
 

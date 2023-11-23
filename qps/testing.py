@@ -40,10 +40,11 @@ from typing import Set, List, Union, Tuple
 from unittest import mock
 
 import numpy as np
+from osgeo import gdal, ogr, osr, gdal_array
+
 import qgis.testing
 import qgis.testing.mocked
 import qgis.utils
-from osgeo import gdal, ogr, osr, gdal_array
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, Qt
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
@@ -61,10 +62,9 @@ from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
-
 from .qgisenums import QGIS_WKBTYPE
-from .utils import px2geo, SpatialPoint, findUpwardPath
 from .resources import initResourceFile
+from .utils import px2geo, SpatialPoint, findUpwardPath
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 

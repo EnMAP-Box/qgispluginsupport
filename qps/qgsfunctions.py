@@ -33,20 +33,27 @@ import sys
 from json import JSONDecodeError
 from typing import Union, List, Set, Callable, Iterable, Any, Dict
 
+import numpy as np
+
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, NULL
+from qgis.core import QgsPointXY
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
+from qgis.core import QgsExpressionContextScope
 from qgis.core import QgsExpressionNodeFunction, QgsField
-from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider, QgsRaster, QgsPointXY
+from qgis.core import QgsFeature
+from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider
 from qgis.core import QgsMapLayer
+from qgis.core import QgsMapToPixel
 from qgis.core import QgsProject
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding
+from .utils import MapGeometryToPixel, rasterArray, noDataValues, aggregateArray, _geometryIsSinglePoint
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
@@ -362,87 +369,35 @@ class StaticExpressionFunction(QgsExpressionFunction):
             return QVariant()
 
 
-class RasterProfile(QgsExpressionFunction):
-    GROUP = SPECLIB_FUNCTION_GROUP
-    NAME = 'raster_profile'
-
-    def __init__(self):
-
-        args = [
-            QgsExpressionFunction.Parameter('layer', optional=False),
-            QgsExpressionFunction.Parameter('geometry', optional=True, defaultValue='@geometry'),
-            QgsExpressionFunction.Parameter('encoding', optional=True, defaultValue='text'),
-        ]
-
-        helptext = HM.helpText(self.NAME, args)
-        super().__init__(self.NAME, args, self.GROUP, helptext)
-
-    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
-
-        if not isinstance(context, QgsExpressionContext):
-            return None
-
-        lyrR = ExpressionFunctionUtils.extractRasterLayer(self.parameters()[0], values[0], context)
-        if not isinstance(lyrR, QgsRasterLayer):
-            parent.setEvalErrorString('Unable to find raster layer')
-            return None
-
-        geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
-        if not isinstance(geom, QgsGeometry):
-            parent.setEvalErrorString('Unable to find geometry')
-            return None
-
-        profile_encoding = ExpressionFunctionUtils.extractSpectralProfileEncoding(self.parameters()[2], values[2],
-                                                                                  context)
-        if not isinstance(profile_encoding, ProfileEncoding):
-            parent.setEvalErrorString('Unable to find profile encoding')
-            return None
-        crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(context, lyrR)
-
-        if geom.transform(crs_trans) != Qgis.GeometryOperationResult.Success:
-            parent.setEvalErrorString('Unable to transform geometry into raster CRS')
-            return None
-
-        try:
-            point: QgsPointXY = geom.asPoint()
-            dp: QgsRasterDataProvider = lyrR.dataProvider()
-            results = dp.identify(point, QgsRaster.IdentifyFormatValue).results()
-
-            y = list(results.values())
-            nan = float('nan')
-            y = [v if isinstance(v, (int, float)) else nan for v in y]
-            if all([math.isnan(v) for v in y]):
-                return None
-            spectral_properties = ExpressionFunctionUtils.cachedSpectralProperties(context, lyrR)
-            wl = spectral_properties['wl']
-            wlu = spectral_properties['wlu'][0]
-            bbl = spectral_properties['bbl']
-
-            result = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
-            if profile_encoding != ProfileEncoding.Dict:
-                result = encodeProfileValueDict(result, profile_encoding)
-            return result
-
-        except Exception as ex:
-            parent.setEvalErrorString(str(ex))
-            return None
-
-    def usesGeometry(self, node) -> bool:
-        return True
-
-    def referencedColumns(self, node) -> List[str]:
-        return [QgsFeatureRequest.ALL_ATTRIBUTES]
-
-    def handlesNull(self) -> bool:
-        return True
-
-
 class ExpressionFunctionUtils(object):
     CONTEXT_CACHE = dict()
 
     @staticmethod
+    def parameter(func: QgsExpressionFunction, parameter: str) -> QgsExpressionFunction.Parameter:
+        for p in func.parameters():
+            if p.name() == parameter:
+                return p
+        raise NotImplementedError(f'Missing parameter: {parameter}')
+
+    @staticmethod
     def cachedSpectralPropertiesKey(rasterLayer: QgsRasterLayer) -> str:
         return f'spectralproperties_{rasterLayer.id()}'
+
+    @staticmethod
+    def cachedNoDataValues(context: QgsExpressionContext,
+                           rasterLayer: QgsRasterLayer) -> Dict[int, List[Union[float, int]]]:
+
+        k = f'nodatavalues_{rasterLayer.id()}'
+        dump = context.cachedValue(k)
+        if dump is None:
+            NODATA: Dict = noDataValues(rasterLayer)
+            dump = json.dumps(NODATA)
+            context.setCachedValue(k, dump)
+            return NODATA
+        else:
+            NODATA = json.loads(dump)
+            NODATA = {int(k): v for k, v in NODATA.items()}
+        return NODATA
 
     @staticmethod
     def cachedSpectralProperties(context: QgsExpressionContext, rasterLayer: QgsRasterLayer) -> dict:
@@ -559,6 +514,9 @@ class ExpressionFunctionUtils(object):
                         value,
                         context: QgsExpressionFunction) -> QgsGeometry:
 
+        if isinstance(value, QgsFeature):
+            return value.geometry()
+
         if not isinstance(value, QgsGeometry):
             for a in ['@geometry', '$geometry']:
                 v = QgsExpression(a).evaluate(context)
@@ -593,6 +551,9 @@ class RasterArray(QgsExpressionFunction):
         args = [
             QgsExpressionFunction.Parameter('layer', optional=False),
             QgsExpressionFunction.Parameter('geometry', optional=True, defaultValue='@geometry'),
+            QgsExpressionFunction.Parameter('aggregate', optional=True, defaultValue='mean'),
+            QgsExpressionFunction.Parameter('t', optional=True, defaultValue=False),
+            QgsExpressionFunction.Parameter('at', optional=True, defaultValue=False)
         ]
 
         helptext = HM.helpText(self.NAME, args)
@@ -608,30 +569,125 @@ class RasterArray(QgsExpressionFunction):
             parent.setEvalErrorString('Unable to find raster layer')
             return None
 
+        NODATA = ExpressionFunctionUtils.cachedNoDataValues(context, lyrR)
+
         geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
         if not isinstance(geom, QgsGeometry):
-            parent.setEvalErrorString(('Unable to find geometry'))
+            parent.setEvalErrorString('Unable to find geometry')
             return None
 
         crs_trans = ExpressionFunctionUtils.cachedCrsTransformation(context, lyrR)
 
+        transpose: bool = values[3]
+        all_touched: bool = values[4]
+        aggr: str = str(values[2]).lower()
+
+        if aggr not in ['none', 'mean', 'median', 'min', 'max']:
+            parent.setEvalErrorString(f'Unknown aggregation "{aggr}"')
+            return None
+
         if not crs_trans.isShortCircuited():
+            geom = QgsGeometry(geom)
             if not geom.transform(crs_trans) == Qgis.GeometryOperationResult.Success:
                 parent.setEvalErrorString('Unable to transform geometry into raster CRS')
                 return None
 
-        if not lyrR.extent().intersects(geom.boundingBox()):
+        bbox = geom.boundingBox()
+
+        if not lyrR.extent().intersects(bbox):
             return None
 
+        c = bbox.center()
+        e = lyrR.extent()
+        # we want to capture pixel-centers. ensure that a line / point geometry has a
+        # small buffer to indicate which pixels we overlap
+        resX, resY = lyrR.rasterUnitsPerPixelX(), lyrR.rasterUnitsPerPixelY()
+        if 0 in [bbox.width(), bbox.height()]:
+            if bbox.width() == 0:
+                bbox.setXMinimum(c.x() - 0.5 * resX)
+                bbox.setXMaximum(c.x() + 0.5 * resY)
+            if bbox.height() == 0:
+                bbox.setYMinimum(c.y() - 0.5 * resX)
+                bbox.setYMaximum(c.y() + 0.5 * resY)
+            bbox = e.intersect(bbox)
+        else:
+            # expand the bounding box to include all touched pixel
+            if True:
+                bbox = e.intersect(bbox)
+                bbox.setXMinimum(e.xMinimum() + math.floor((bbox.xMinimum() - e.xMinimum()) / resX) * resX)
+                bbox.setXMaximum(e.xMinimum() + math.ceil((bbox.xMaximum() - e.xMinimum()) / resX) * resX)
+                bbox.setYMinimum(e.yMinimum() + math.floor((bbox.yMinimum() - e.yMinimum()) / resY) * resY)
+                bbox.setYMaximum(e.yMinimum() + math.ceil((bbox.yMaximum() - e.yMinimum()) / resY) * resY)
+                bbox = e.intersect(bbox)
+        # bbox = e
         try:
-            point: QgsPointXY = geom.asPoint()
             dp: QgsRasterDataProvider = lyrR.dataProvider()
-            results = dp.identify(point, QgsRaster.IdentifyFormatValue).results()
 
-            y = list(results.values())
-            y = [v if isinstance(v, (int, float)) else float('NaN') for v in y]
+            # read the geometry bounding box only
+            array = rasterArray(dp, rect=bbox)
+            nb, nl, ns = array.shape
 
-            return y
+            mapUnitsPerPixel = lyrR.rasterUnitsPerPixelX()
+
+            # get pixel locations within array subset
+            MG2P = MapGeometryToPixel.fromExtent(bbox, ns, nl,
+                                                 mapUnitsPerPixel=mapUnitsPerPixel,
+                                                 crs=dp.crs())
+            i_y, i_x = MG2P.geometryPixelPositions(geom, all_touched=all_touched)
+            # print(array.shape)
+            pixels = array[:, i_y, i_x]
+            pixels = pixels.astype(float)
+
+            # set no-data values to NaN / bad-band
+            for b in range(pixels.shape[0]):
+                for ndv in NODATA.get(b + 1, []):
+                    band = pixels[b, :]
+                    pixels[b, :] = np.where(band == ndv, np.NAN, band)
+
+            # keep only pixels where not all bands are NaN -> either masked or out of image pixel
+            is_not_all_nan = np.logical_not(np.alltrue(np.isnan(pixels), axis=0))
+
+            # map pixel indices from the subset array to the entire-raster array
+            M2P = QgsMapToPixel(mapUnitsPerPixel,
+                                lyrR.extent().center().x(),
+                                lyrR.extent().center().y(),
+                                lyrR.width(),
+                                lyrR.height(),
+                                0)
+
+            # calculate geo-coordinates
+            px_geo_x, px_geo_y = MG2P.px2geoArrays(i_x + 0.5, i_y + 0.5)
+
+            # keep only pixels that are within the image extent
+            is_in_image = (e.xMinimum() <= px_geo_x) * (px_geo_x <= e.xMaximum()) * \
+                          (e.yMinimum() <= px_geo_y) * (px_geo_y <= e.yMaximum())
+
+            i_valid = np.where(is_in_image * is_not_all_nan)[0]
+            # i_y = i_y[i_valid]
+            # i_x = i_x[i_valid]
+
+            pixels = pixels[:, i_valid]
+            pixels = aggregateArray(aggr, pixels, axis=1, keepdims=True)
+
+            px_geo = [QgsPointXY(x, y) for x, y in zip(px_geo_x[i_valid], px_geo_y[i_valid])]
+            # calculate pixel-coordinates in raster image
+            px_px = [M2P.transform(p) for p in px_geo]
+            px_x = [int(p.x()) for p in px_px]
+            px_y = [int(p.y()) for p in px_px]
+
+            scope = QgsExpressionContextScope('raster_array_extraction')
+            scope.setVariable('raster_array_px', (px_x, px_y))
+
+            scope.setVariable('raster_array_geo', px_geo)
+            context.appendScope(scope)
+
+            if aggr != 'none' or _geometryIsSinglePoint(geom):
+                pixels = pixels.reshape((pixels.shape[0]))
+            else:
+                if transpose:
+                    pixels = pixels.transpose()
+
+            return pixels.tolist()
 
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
@@ -651,6 +707,96 @@ class RasterArray(QgsExpressionFunction):
                  parent: QgsExpression,
                  context: QgsExpressionContext) -> bool:
         return False
+
+
+class RasterProfile(QgsExpressionFunction):
+    GROUP = SPECLIB_FUNCTION_GROUP
+    NAME = 'raster_profile'
+
+    f = RasterArray()
+
+    def __init__(self):
+
+        args = [p for p in self.f.parameters()
+                if p.name() not in ['t']]
+        self.mPOffset = len(args)
+        args.extend([
+            QgsExpressionFunction.Parameter('encoding', optional=True, defaultValue='text'),
+        ])
+
+        helptext = HM.helpText(self.NAME, args)
+        super().__init__(self.NAME, args, self.GROUP, helptext)
+
+    def func(self,
+             values,
+             context: QgsExpressionContext,
+             parent: QgsExpression,
+             node: QgsExpressionNodeFunction):
+
+        if not isinstance(context, QgsExpressionContext):
+            return None
+
+        # user RasterProfile to return the raster values
+        # transpose = t = True to get values in [band, profile] array
+        valuesRasterProfile = [
+            values[0],  # raster layer
+            values[1],  # geometry
+            values[2],  # aggregate
+            True,  # transpose
+            values[3]  # enable ALL_TOUCHED
+        ]
+        results = self.f.func(valuesRasterProfile, context, parent, node)
+
+        if parent.parserErrorString() != '' or parent.evalErrorString() != '':
+            return None
+
+        if results is None or len(results) == 0:
+            return None
+
+        aggr = str(values[2]).lower()
+        has_multiple_profiles = isinstance(results[0], list)
+
+        lyrR: QgsRasterLayer = ExpressionFunctionUtils.extractRasterLayer(self.parameters()[0], values[0], context)
+
+        profile_encoding = ExpressionFunctionUtils.extractSpectralProfileEncoding(
+            self.parameters()[-1], values[-1], context)
+
+        if not isinstance(profile_encoding, ProfileEncoding):
+            parent.setEvalErrorString('Unable to find profile encoding')
+            return None
+
+        try:
+            spectral_properties = ExpressionFunctionUtils.cachedSpectralProperties(context, lyrR)
+            wl = spectral_properties['wl']
+            wlu = spectral_properties['wlu'][0]
+            bbl = spectral_properties['bbl']
+
+            if not has_multiple_profiles:
+                results = [results]
+
+            profiles = []
+            for y in results:
+                pDict = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
+                if profile_encoding != ProfileEncoding.Dict:
+                    pDict = encodeProfileValueDict(pDict, profile_encoding)
+                profiles.append(pDict)
+
+            if not has_multiple_profiles:
+                profiles = profiles[0]
+            return profiles
+
+        except Exception as ex:
+            parent.setEvalErrorString(str(ex))
+            return None
+
+    def usesGeometry(self, node) -> bool:
+        return True
+
+    def referencedColumns(self, node) -> List[str]:
+        return [QgsFeatureRequest.ALL_ATTRIBUTES]
+
+    def handlesNull(self) -> bool:
+        return True
 
 
 class SpectralData(QgsExpressionFunction):
