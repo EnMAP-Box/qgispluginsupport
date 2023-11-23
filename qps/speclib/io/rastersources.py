@@ -26,23 +26,23 @@
 """
 import pathlib
 import sys
-from typing import List, Union, Generator, Dict, Any
+from typing import List, Union, Generator
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QVariant, Qt, QUrl, QPoint
+from qgis.PyQt.QtCore import QVariant, Qt, QUrl
 from qgis.PyQt.QtWidgets import (QComboBox, QLabel, QDialogButtonBox, QProgressBar,
                                  QDialog, QTextEdit, QCheckBox, QHBoxLayout)
-from qgis.core import QgsFeatureRequest, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils, QgsProject
 from qgis.core import QgsCoordinateTransform
+from qgis.core import QgsFeatureRequest, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils, QgsProject
 from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
     QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY
 from qgis.core import QgsProviderRegistry
 from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
     QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsProcessingFeedback
 from qgis.gui import QgsMapLayerComboBox
-
 from .. import speclibUiPath, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -54,7 +54,7 @@ from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE, QGIS_LAYERFILTER
 from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
-    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues, rasterizeFeatures, aggregateArray
+    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues
 
 PIXEL_LIMIT = 100 * 100
 
