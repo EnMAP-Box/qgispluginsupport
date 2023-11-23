@@ -49,6 +49,7 @@ from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider
 from qgis.core import QgsMapLayer
 from qgis.core import QgsMapToPixel
 from qgis.core import QgsProject
+from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
@@ -633,8 +634,12 @@ class RasterArray(QgsExpressionFunction):
             MG2P = MapGeometryToPixel.fromExtent(bbox, ns, nl,
                                                  mapUnitsPerPixel=mapUnitsPerPixel,
                                                  crs=dp.crs())
+            if geom.wkbType() == QGIS_WKBTYPE.PolygonZ:
+                geom = geom.coerceToType(QGIS_WKBTYPE.Polygon)[0]
             i_y, i_x = MG2P.geometryPixelPositions(geom, all_touched=all_touched)
             # print(array.shape)
+            if not isinstance(i_x, np.ndarray):
+                return None
             pixels = array[:, i_y, i_x]
             pixels = pixels.astype(float)
 
@@ -747,7 +752,7 @@ class RasterProfile(QgsExpressionFunction):
         ]
         results = self.f.func(valuesRasterProfile, context, parent, node)
 
-        if parent.parserErrorString() != '' or parent.evalErrorString() != '':
+        if results is None or parent.parserErrorString() != '' or parent.evalErrorString() != '':
             return None
 
         if results is None or len(results) == 0:

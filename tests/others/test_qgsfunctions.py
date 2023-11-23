@@ -306,18 +306,20 @@ class QgsFunctionTests(TestCaseBase):
         context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyrV))
         for feat in lyrV.getFeatures():
             n_px_nat = feat.attribute('n_px_nat')
-            n_px = feat.attribute('n_px')
+            n_px_at = feat.attribute('n_px')
 
-            if isinstance(n_px_nat, int) and isinstance(n_px, int):
+            if isinstance(n_px_nat, int) and isinstance(n_px_at, int):
                 context.setFeature(feat)
-
-                values = [lyrE, feat.geometry(), 'none', True, 'dict']
+                all_touched = True
+                values = [lyrE, feat.geometry(), 'none', all_touched, 'dict']
                 exp = QgsExpression()
                 profiles_at = f.func(values, QgsExpressionContext(context), exp, None)
                 self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
+
                 self.assertIsInstance(profiles_at, list)
-                self.assertEqual(len(profiles_at), n_px,
-                                 msg=f'Expected {n_px} but got {len(profiles_at)} pixel with ALL_TOUCHED=TRUE')
+                n_px_returned = len(profiles_at)
+                self.assertEqual(len(profiles_at), n_px_returned,
+                                 msg=f'Expected {n_px_at} but got {n_px_returned} pixel with ALL_TOUCHED=TRUE')
 
                 values = [lyrE, feat.geometry(), 'none', False, 'dict']
                 exp = QgsExpression()
@@ -325,7 +327,7 @@ class QgsFunctionTests(TestCaseBase):
                 self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
                 self.assertIsInstance(profiles_nat, list)
                 self.assertEqual(len(profiles_nat), n_px_nat,
-                                 msg=f'Expected {n_px} but got {len(profiles_nat)} pixel with ALL_TOUCHED=FALSE')
+                                 msg=f'Expected {n_px_at} but got {len(profiles_nat)} pixel with ALL_TOUCHED=FALSE')
 
                 c1 = QgsExpressionContext(context)
                 exp1 = QgsExpression(f"raster_profile('{lyrE.name()}', at:=False, aggregate:='none', encoding:='dict')")
@@ -342,7 +344,7 @@ class QgsFunctionTests(TestCaseBase):
                 self.assertTrue(exp2.evalErrorString() == '', msg=exp2.evalErrorString())
 
                 self.assertEqual(len(profiles1), n_px_nat)
-                self.assertEqual(len(profiles2), n_px)
+                self.assertEqual(len(profiles2), n_px_at)
 
                 s = ""
 
