@@ -3361,9 +3361,12 @@ def rasterizeFeatures(featureSource: QgsFeatureSource,
                 if r:
                     yield r
 
-        feedback.setProgress((tid + 1.0) * 100. / tileIterator.nTotal)
+        feedback.setProgress(int((tid + 1.0) * 100. / tileIterator.nTotal))
 
     assert len(FEATURE_DATA) == 0
+    for k in list(Tile2Features.keys()):
+        if len(Tile2Features[k]) == 0:
+            del Tile2Features[k]
     assert len(Tile2Features) == 0
 
 
