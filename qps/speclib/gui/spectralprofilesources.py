@@ -24,7 +24,7 @@ from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkb
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRectangle
 from qgis.core import QgsLayerItem
-from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, Qgis
+from qgis.core import QgsMapToPixel, Qgis
 from qgis.core import QgsProperty
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
