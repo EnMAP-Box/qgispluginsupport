@@ -3104,7 +3104,7 @@ class MapGeometryToPixel(object):
             ogrFeature.SetGeometryDirectly(ogr.CreateGeometryFromWkb(g.asWkb()))
             assert ogrFeature.geometry().IsValid()
 
-            assert ogr.OGRERR_NONE == self._upsertFeature(lyr, ogrFeature)
+            assert ogr.OGRERR_NONE == self._clearAndInsert(lyr, ogrFeature)
             assert lyr.GetFeatureCount() == 1
             lyr.ResetReading()
             bandMEM.Fill(0)  # ensure that no FIDs are left from previous writes
@@ -3119,14 +3119,10 @@ class MapGeometryToPixel(object):
             else:
                 return None, None
 
-    def _upsertFeature(self, lyr: ogr.Layer, ogrFeature: ogr.Feature):
-        # Rewrite an existing feature or create a new feature within a layer.
-        # https://gdal.org/api/python/osgeo.ogr.html#osgeo.ogr.Layer.UpsertFeature
-        if int(gdal.VersionInfo()) > 3060000:
-            return lyr.UpsertFeature(ogrFeature)
-        else:
-            lyr.DeleteFeature(ogrFeature.GetFID())
-            return lyr.CreateFeature(ogrFeature)
+    def _clearAndInsert(self, lyr: ogr.Layer, ogrFeature: ogr.Feature):
+        for feature in lyr:
+            lyr.DeleteFeature(feature.GetFID())
+        return lyr.CreateFeature(ogrFeature)
 
 
 class ExtentTileIterator(object):
