@@ -68,8 +68,7 @@ from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetu
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
 from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
-
-from .qgisenums import QGIS_LAYERFILTER, QGIS_GEOMETRYTYPE, QGIS_WKBTYPE
+from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, datetime64
 
@@ -130,6 +129,7 @@ def rm(p):
     elif os.path.isdir(p):
         shutil.rmtree(p)
 
+
 def _geometryIsEmpty(g: QgsGeometry) -> bool:
     if g.isEmpty():
         return True
@@ -139,9 +139,9 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
             return True
     else:
         if g.type() in [QgsWkbTypes.NoGeometry,
-                     QgsWkbTypes.NullGeometry,
-                     QgsWkbTypes.UnknownGeometry
-                    ]:
+                        QgsWkbTypes.NullGeometry,
+                        QgsWkbTypes.UnknownGeometry
+                        ]:
             return True
     return False
 
@@ -151,6 +151,7 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
 def _geometryIsSinglePoint(g: QgsGeometry) -> bool:
     return g.wkbType() in [QGIS_WKBTYPE.Point, QGIS_WKBTYPE.PointM,
                            QGIS_WKBTYPE.PointZM, QGIS_WKBTYPE.Point25D, QGIS_WKBTYPE.PointZ]
+
 
 class SignalBlocker(object):
     """
@@ -403,7 +404,12 @@ def aggregateArray(aggregation: str, array: np.ndarray, *args, axis: int = None,
             'percentile': np.nanpercentile,
             'quantile': np.nanquantile}
     assert aggregation in AGGR.keys(), f'Unknown aggregation "{aggregation}"'
-    return AGGR[aggregation](array, *args, axis=axis, **kwds)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        result = AGGR[aggregation](array, *args, axis=axis, **kwds)
+
+    return result
 
 
 def noDataValues(dataProvider: Union[QgsRasterLayer, QgsRasterDataProvider]) -> Dict[int, List[Union[int, float]]]:
@@ -3068,10 +3074,7 @@ class MapGeometryToPixel(object):
             if g.hasGeometry():
                 g = g.geometry()
 
-        if not isinstance(g, QgsGeometry):
-            return None, None
-
-        if _geometryIsEmpty(g):
+        if not isinstance(g, QgsGeometry) or _geometryIsEmpty(g):
             return None, None
 
         if g.wkbType() == QGIS_WKBTYPE.Point and not burn_points:
@@ -3106,7 +3109,7 @@ class MapGeometryToPixel(object):
             lyr.ResetReading()
             bandMEM.Fill(0)  # ensure that no FIDs are left from previous writes
             assert gdal.CPLE_None == gdal.RasterizeLayer(dsMEM, [1], lyr,
-                                                         options=['ALL_TOUCHED={}'.format(all_touched),
+                                                         options=['ALL_TOUCHED={}'.format(all_touched).upper(),
                                                                   'ATTRIBUTE={}'.format('FID_BURN')]
                                                          )
             is_fid = dsMEM.ReadAsArray() == 1
@@ -3376,14 +3379,14 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
                 rect: Union[QRect, QgsRasterInterface, QgsRectangle, SpatialExtent] = None,
                 ul: Union[SpatialPoint, QPoint] = None,
                 lr: Union[SpatialPoint, QPoint] = None,
-                bands: Union[str, int, List[int]] = None) -> np.ndarray:
+                bands: Union[str, int, List[int]] = None) -> Optional[np.ndarray]:
     """
     Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of shape (bands, height, width)
     :param rasterInterface: QgsRasterLayer, QgsRasterInterface or str to load a QgsRasterLayer from
     :param rect: Subset to be returned.
                  QRect for subset in pixel coordinates,
                  QgsRectangle for geo-coordinates in raster CRS,
-                 SpatialExtent for geo-coodinates with CRS different to the raster CRS (will be transformed)
+                 SpatialExtent for geo-coordinates with CRS different to the raster CRS (will be transformed)
     :param ul: upper-left corner,
                can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
                defaults to raster layers upper-left corner

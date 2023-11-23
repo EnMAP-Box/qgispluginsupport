@@ -25,6 +25,7 @@
 ***************************************************************************
 """
 import json
+import math
 import os
 import pathlib
 import re
@@ -33,20 +34,21 @@ from json import JSONDecodeError
 from typing import Union, List, Set, Callable, Iterable, Any, Dict
 
 import numpy as np
-from qgis.core import QgsExpressionContextScope
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant, NULL
+from qgis.core import QgsPointXY
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
+from qgis.core import QgsExpressionContextScope
 from qgis.core import QgsExpressionNodeFunction, QgsField
 from qgis.core import QgsFeature
 from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider
 from qgis.core import QgsMapLayer
+from qgis.core import QgsMapToPixel
 from qgis.core import QgsProject
-from .qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
@@ -590,55 +592,100 @@ class RasterArray(QgsExpressionFunction):
                 parent.setEvalErrorString('Unable to transform geometry into raster CRS')
                 return None
 
-        e = lyrR.extent()
-        intersection = e.intersect(geom.boundingBox())
+        bbox = geom.boundingBox()
 
-        # ensure to overlap entire pixels
-        if not _geometryIsSinglePoint(geom):
-            intersection.setXMinimum(max(e.xMinimum(), intersection.xMinimum() - lyrR.rasterUnitsPerPixelX()))
-            intersection.setXMaximum(min(e.xMaximum(), intersection.xMaximum() + lyrR.rasterUnitsPerPixelX()))
-            intersection.setYMaximum(min(e.yMaximum(), intersection.yMaximum() + lyrR.rasterUnitsPerPixelY()))
-            intersection.setYMinimum(max(e.yMinimum(), intersection.yMinimum() - lyrR.rasterUnitsPerPixelY()))
-
-        if not lyrR.extent().intersects(geom.boundingBox()):
+        if not lyrR.extent().intersects(bbox):
             return None
 
+        c = bbox.center()
+        e = lyrR.extent()
+        # we want to capture pixel-centers. ensure that a line / point geometry has a
+        # small buffer to indicate which pixels we overlap
+        resX, resY = lyrR.rasterUnitsPerPixelX(), lyrR.rasterUnitsPerPixelY()
+        if 0 in [bbox.width(), bbox.height()]:
+            if bbox.width() == 0:
+                bbox.setXMinimum(c.x() - 0.5 * resX)
+                bbox.setXMaximum(c.x() + 0.5 * resY)
+            if bbox.height() == 0:
+                bbox.setYMinimum(c.y() - 0.5 * resX)
+                bbox.setYMaximum(c.y() + 0.5 * resY)
+            bbox = e.intersect(bbox)
+        else:
+            # expand the bounding box to include all touched pixel
+            if True:
+                bbox = e.intersect(bbox)
+                bbox.setXMinimum(e.xMinimum() + math.floor((bbox.xMinimum() - e.xMinimum()) / resX) * resX)
+                bbox.setXMaximum(e.xMinimum() + math.ceil((bbox.xMaximum() - e.xMinimum()) / resX) * resX)
+                bbox.setYMinimum(e.yMinimum() + math.floor((bbox.yMinimum() - e.yMinimum()) / resY) * resY)
+                bbox.setYMaximum(e.yMinimum() + math.ceil((bbox.yMaximum() - e.yMinimum()) / resY) * resY)
+                bbox = e.intersect(bbox)
+        # bbox = e
         try:
             dp: QgsRasterDataProvider = lyrR.dataProvider()
-            array = rasterArray(dp, rect=intersection)
-            array2 = rasterArray(dp)
+
+            # read the geometry bounding box only
+            array = rasterArray(dp, rect=bbox)
             nb, nl, ns = array.shape
 
-            mapUnitsPerPixel = lyrR.rasterUnitsPerPixelX() if intersection.isEmpty() else None
-            MG2P = MapGeometryToPixel.fromExtent(intersection, ns, nl,
+            mapUnitsPerPixel = lyrR.rasterUnitsPerPixelX()
+
+            # get pixel locations within array subset
+            MG2P = MapGeometryToPixel.fromExtent(bbox, ns, nl,
                                                  mapUnitsPerPixel=mapUnitsPerPixel,
                                                  crs=dp.crs())
             i_y, i_x = MG2P.geometryPixelPositions(geom, all_touched=all_touched)
             # print(array.shape)
             pixels = array[:, i_y, i_x]
             pixels = pixels.astype(float)
-            # print(pixels.shape)
 
-
-
+            # set no-data values to NaN / bad-band
             for b in range(pixels.shape[0]):
                 for ndv in NODATA.get(b + 1, []):
                     band = pixels[b, :]
                     pixels[b, :] = np.where(band == ndv, np.NAN, band)
 
-            pixels = aggregateArray(aggr, pixels, axis=1)
+            # keep only pixels where not all bands are NaN -> either masked or out of image pixel
+            is_not_all_nan = np.logical_not(np.alltrue(np.isnan(pixels), axis=0))
+
+            # map pixel indices from the subset array to the entire-raster array
+            M2P = QgsMapToPixel(mapUnitsPerPixel,
+                                lyrR.extent().center().x(),
+                                lyrR.extent().center().y(),
+                                lyrR.width(),
+                                lyrR.height(),
+                                0)
+
+            # calculate geo-coordinates
+            px_geo_x, px_geo_y = MG2P.px2geoArrays(i_x + 0.5, i_y + 0.5)
+
+            # keep only pixels that are within the image extent
+            is_in_image = (e.xMinimum() <= px_geo_x) * (px_geo_x <= e.xMaximum()) * \
+                          (e.yMinimum() <= px_geo_y) * (px_geo_y <= e.yMaximum())
+
+            i_valid = np.where(is_in_image * is_not_all_nan)[0]
+            # i_y = i_y[i_valid]
+            # i_x = i_x[i_valid]
+
+            pixels = pixels[:, i_valid]
+            pixels = aggregateArray(aggr, pixels, axis=1, keepdims=True)
+
+            px_geo = [QgsPointXY(x, y) for x, y in zip(px_geo_x[i_valid], px_geo_y[i_valid])]
+            # calculate pixel-coordinates in raster image
+            px_px = [M2P.transform(p) for p in px_geo]
+            px_x = [int(p.x()) for p in px_px]
+            px_y = [int(p.y()) for p in px_px]
+
+            scope = QgsExpressionContextScope('raster_array_extraction')
+            scope.setVariable('raster_array_px', (px_x, px_y))
+
+            scope.setVariable('raster_array_geo', px_geo)
+            context.appendScope(scope)
+
             if aggr != 'none' or _geometryIsSinglePoint(geom):
                 pixels = pixels.reshape((pixels.shape[0]))
             else:
-
                 if transpose:
                     pixels = pixels.transpose()
-
-            scope = QgsExpressionContextScope('raster_array_extraction')
-            scope.setVariable('raster_array_px', (i_x.tolist(), i_y.tolist()))
-            px_geo = MG2P.px2geoList(i_x, i_y)
-            scope.setVariable('raster_array_geo', px_geo)
-            context.appendScope(scope)
 
             return pixels.tolist()
 
@@ -729,10 +776,10 @@ class RasterProfile(QgsExpressionFunction):
 
             profiles = []
             for y in results:
-                result = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
+                pDict = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
                 if profile_encoding != ProfileEncoding.Dict:
-                    result = encodeProfileValueDict(result, profile_encoding)
-                profiles.append(result)
+                    pDict = encodeProfileValueDict(pDict, profile_encoding)
+                profiles.append(pDict)
 
             if not has_multiple_profiles:
                 profiles = profiles[0]

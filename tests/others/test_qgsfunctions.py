@@ -309,7 +309,6 @@ class QgsFunctionTests(TestCaseBase):
             n_px = feat.attribute('n_px')
 
             if isinstance(n_px_nat, int) and isinstance(n_px, int):
-                feat.attribute('n_px_nat')
                 context.setFeature(feat)
 
                 values = [lyrE, feat.geometry(), 'none', True, 'dict']
