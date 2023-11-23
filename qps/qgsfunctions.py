@@ -590,7 +590,7 @@ class RasterArray(QgsExpressionFunction):
             return None
 
         NODATA = ExpressionFunctionUtils.cachedNoDataValues(context, lyrR)
-        SCALING = ExpressionFunctionUtils.cachedScaleValues(context, lyrR)
+        #  SCALING = ExpressionFunctionUtils.cachedScaleValues(context, lyrR)
 
         geom = ExpressionFunctionUtils.extractGeometry(self.parameters()[1], values[1], context)
         if not isinstance(geom, QgsGeometry):
@@ -669,8 +669,9 @@ class RasterArray(QgsExpressionFunction):
                 for ndv in NODATA.get(bandNo, []):
                     band = pixels[b, :]
                     pixels[b, :] = np.where(band == ndv, np.NAN, band)
-                # set scaling
-                pixels[b, :] = SCALING[bandNo][0] + SCALING[bandNo][1] * pixels[b, :]
+                # set scaling - is already applied by QGIS API
+                # if False:
+                #    pixels[b, :] = SCALING[bandNo][0] + SCALING[bandNo][1] * pixels[b, :]
 
             # keep only pixels where not all bands are NaN -> either masked or out of image pixel
             is_not_all_nan = np.logical_not(np.alltrue(np.isnan(pixels), axis=0))

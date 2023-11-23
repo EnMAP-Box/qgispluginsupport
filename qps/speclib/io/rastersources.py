@@ -621,130 +621,82 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
 
         NODATA = noDataValues(rl)
         errors = set()
-        if True:
-            func = RasterProfile()
 
-            request = QgsFeatureRequest()
-            request.setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid)
-            request.setDestinationCrs(rl.crs(), QgsProject.instance().transformContext())
-            request.setFilterRect(rl.extent())
+        func = RasterProfile()
+
+        request = QgsFeatureRequest()
+        request.setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid)
+        request.setDestinationCrs(rl.crs(), QgsProject.instance().transformContext())
+        request.setFilterRect(rl.extent())
+
+        all_touched = False
+        context = QgsExpressionContext()
+        context.appendScope(QgsExpressionContextUtils.layerScope(rl))
+
+        fcontext = QgsExpressionContext(context)
+        n_total = vl.featureCount()
+        next_progress = 5
+        for iFeature, f in enumerate(vl.getFeatures(request)):
+            g = f.geometry()
+            if not isinstance(g, QgsGeometry):
+                continue
 
             all_touched = False
-            context = QgsExpressionContext()
-            context.appendScope(QgsExpressionContextUtils.layerScope(rl))
+            values = [rl, g, aggregation, all_touched, 'dict']
+            exp = QgsExpression()
+            fcontext.setGeometry(g)
+            profiles_at = func.func(values, fcontext, exp, None)
 
-            n_total = vl.featureCount()
-            next_progress = 5
-            for iFeature, f in enumerate(vl.getFeatures(request)):
-                g = f.geometry()
-                if not isinstance(g, QgsGeometry):
-                    continue
+            if exp.hasParserError() or exp.hasEvalError():
+                error = '\n'.join([exp.parserErrorString(), exp.evalErrorString()])
+                if error not in errors:
+                    feedback.pushWarning(error)
+                    errors.add(error)
 
-                all_touched = False
-                values = [rl, g, aggregation, all_touched, 'dict']
-                exp = QgsExpression()
-                fcontext = QgsExpressionContext(context)
-                fcontext.setGeometry(g)
-                profiles_at = func.func(values, fcontext, exp, None)
+                continue
 
-                if exp.hasParserError() or exp.hasEvalError():
-                    error = '\n'.join([exp.parserErrorString(), exp.evalErrorString()])
-                    if error not in errors:
-                        feedback.pushWarning(error)
-                        errors.add(error)
+            if profiles_at is None:
+                continue
 
-                    continue
+            if isinstance(profiles_at, dict):
+                profiles_at = [profiles_at]
 
-                if profiles_at is None:
-                    continue
+            loc_geo = fcontext.variable('raster_array_geo')
+            loc_px_x, loc_px_y = fcontext.variable('raster_array_px')
 
-                if isinstance(profiles_at, dict):
-                    profiles_at = [profiles_at]
+            progress = int(100. * iFeature / n_total)
+            if progress >= next_progress:
+                feedback.setProgress(progress)
+                next_progress += 5
 
-                loc_geo = fcontext.variable('raster_array_geo')
-                loc_px_x, loc_px_y = fcontext.variable('raster_array_px')
+            for i, pDict in enumerate(profiles_at):
 
-                progress = int(100. * iFeature / n_total)
-                if progress >= next_progress:
-                    feedback.setProgress(progress)
-                    next_progress += 5
-
-                for i, pDict in enumerate(profiles_at):
-
-                    p = QgsFeature(fields)
-                    if False and aggregation.lower() == 'none':
-                        g: QgsGeometry = f.geometry()
-                    else:
-                        g: QgsGeometry = QgsGeometry.fromPointXY(loc_geo[i])
-                    p.setGeometry(g)
-
-                    if i_RF_NAME >= 0:
-                        p.setAttribute(i_RF_NAME, raster_name)
-
-                    if i_RF_SOURCE >= 0:
-                        p.setAttribute(i_RF_SOURCE, raster_source)
-
-                    if i_RF_PROFILE >= 0:
-                        p.setAttribute(i_RF_PROFILE,
-                                       encodeProfileValueDict(pDict, fields.at(i_RF_PROFILE)))
-
-                    if i_RF_PX_X >= 0:
-                        p[i_RF_PX_X] = loc_px_x[i]
-
-                    if i_RF_PX_Y >= 0:
-                        p[i_RF_PX_Y] = loc_px_y[i]
-
-                    if isinstance(f, QgsFeature) and f.isValid():
-                        for field in f.fields():
-                            if field in fields:
-                                p.setAttribute(field.name(), f.attribute(field.name()))
-                    yield p
-
-        else:
-            for (f, arr, md) in rasterizeFeatures(vl, rl,
-                                                  all_touched=True,
-                                                  pixel_metadata=True,
-                                                  feedback=feedback):
-                f: QgsFeature
-                arr: np.ndarray
-                md: Dict[str, Any]
-
-                arr = aggregateArray(aggregation, arr, axis=1, keepdims=True)
-
-                if arr is None:
-                    s = ""
-
-                nb, npx = arr.shape
-
-                for i in range(npx):
-                    y = arr[:, i]
-                    p = QgsFeature(fields)
+                p = QgsFeature(fields)
+                if False and aggregation.lower() == 'none':
                     g: QgsGeometry = f.geometry()
-                    p.setGeometry(g)
+                else:
+                    g: QgsGeometry = QgsGeometry.fromPointXY(loc_geo[i])
+                p.setGeometry(g)
 
-                    geo: QgsPointXY = md['geo'][i]
-                    px: QPoint = md['px'][i]
+                if i_RF_NAME >= 0:
+                    p.setAttribute(i_RF_NAME, raster_name)
 
-                    if i_RF_NAME >= 0:
-                        p.setAttribute(i_RF_NAME, raster_name)
+                if i_RF_SOURCE >= 0:
+                    p.setAttribute(i_RF_SOURCE, raster_source)
 
-                    if i_RF_SOURCE >= 0:
-                        p.setAttribute(i_RF_SOURCE, raster_source)
+                if i_RF_PROFILE >= 0:
+                    p.setAttribute(i_RF_PROFILE,
+                                   encodeProfileValueDict(pDict, fields.at(i_RF_PROFILE)))
 
-                    if i_RF_PROFILE >= 0:
-                        spectrum_dict = prepareProfileValueDict(x=wl, y=y, xUnit=wlu, bbl=bbl)
-                        p.setAttribute(i_RF_PROFILE,
-                                       encodeProfileValueDict(spectrum_dict, fields.at(i_RF_PROFILE)))
+                if i_RF_PX_X >= 0:
+                    p[i_RF_PX_X] = loc_px_x[i]
 
-                    if i_RF_PX_X >= 0:
-                        p[i_RF_PX_X] = px.x()
+                if i_RF_PX_Y >= 0:
+                    p[i_RF_PX_Y] = loc_px_y[i]
 
-                    if i_RF_PX_Y >= 0:
-                        p[i_RF_PX_Y] = px.y()
-
-                    if isinstance(f, QgsFeature) and f.isValid():
-                        for field in f.fields():
-                            if field in fields:
-                                p.setAttribute(field.name(), f.attribute(field.name()))
-
-                    yield p
+                if isinstance(f, QgsFeature) and f.isValid():
+                    for field in f.fields():
+                        if field in fields:
+                            p.setAttribute(field.name(), f.attribute(field.name()))
+                yield p
+        return
