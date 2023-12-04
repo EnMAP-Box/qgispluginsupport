@@ -48,7 +48,8 @@ from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPoi
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu, QDockWidget
-from qgis.core import QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
+
+from qgis.core import Qgis, QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
     QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
@@ -60,7 +61,7 @@ from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
-from qgis.testing import QgisTestCase
+
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
 from .utils import px2geo, SpatialPoint, findUpwardPath
@@ -77,7 +78,6 @@ def start_app(cleanup: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
-
     app = qgis.testing.start_app(cleanup)
 
     from qgis.core import QgsCoordinateReferenceSystem
@@ -432,7 +432,13 @@ def _set_iface(ifaceMock: QgisInterface):
 # APP = None
 
 
-class TestCaseBase(QgisTestCase):
+if Qgis.versionInt() >= 33400:
+    from qgis.testing import QgisTestCase as _BASECLASS
+else:
+    from qgis.testing import TestCase as _BASECLASS
+
+
+class TestCaseBase(_BASECLASS):
     gdal.UseExceptions()
 
     @staticmethod
@@ -499,7 +505,12 @@ class TestCaseBase(QgisTestCase):
         Returns True if this the environment is supposed to run in a CI environment
         and should not open blocking dialogs
         """
-        return QgisTestCase.is_ci_run() or (str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0'])
+        r = str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0']
+
+        if Qgis.versionInt() >= 33400:
+            from qgis.testing import QgisTestCase
+            r = r or QgisTestCase.is_ci_run()
+        return r
 
     @classmethod
     def createProcessingContextFeedback(cls) -> Tuple[QgsProcessingContext, QgsProcessingFeedback]:

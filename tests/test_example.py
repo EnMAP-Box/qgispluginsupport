@@ -4,10 +4,12 @@ import unittest
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLabel
-from qps.testing import TestCase
+from qps.testing import TestCase, start_app
 
 # image resource location
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
+
+start_app()
 
 
 class ExampleCase(TestCase):
@@ -36,7 +38,7 @@ class ExampleCase(TestCase):
         label = QLabel()
         label.setPixmap(icon.pixmap(QSize(200, 200)))
 
-        # In case the the environmental variable 'CI' is not set,
+        # In case the environmental variable 'CI' is not set,
         # .showGui([list-of-widgets]) function will show and calls QApplication.exec_()
         # to keep the widget open
         self.showGui(label)
