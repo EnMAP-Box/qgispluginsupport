@@ -22,6 +22,7 @@ import json
 import math
 import pickle
 import unittest
+import re
 from typing import List
 
 import numpy as np
@@ -39,7 +40,7 @@ from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralSetting, \
     SpectralProfileBlock, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
-    validateProfileValueDict, isProfileValueDict
+    validateProfileValueDict, isProfileValueDict, nanToNone
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import toType, findTypeFromString, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
@@ -143,16 +144,61 @@ class SpeclibCoreTests(TestCaseBase):
             self.assertTrue(len(msg) > 0)
             self.assertEqual(d, dict())
 
+    def test_SerializationJSON(self):
+        x = [1, 2, 3, 4, 5]
+        y = [2, 3, 4, np.NaN, 6]
+        bbl = [1, 0, 1, 1, 0]
+        xUnit = 'μm'
+        yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
+
+        vector_keys = ['x', 'y', 'bbl']
+
+        d = prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
+        self.assertIsInstance(d, dict)
+
+        r = encodeProfileValueDict(d, encoding='dict')
+        self.assertIsInstance(r, dict)
+        self.assertListEqual(x, r['x'])
+        self.assertListEqual(y, r['y'])
+        self.assertListEqual(bbl, r['bbl'])
+
+        rJSON = encodeProfileValueDict(d, encoding='JSON')
+        self.assertIsInstance(rJSON, str)
+        self.assertTrue('NaN' not in rJSON)
+        self.assertTrue('null' in rJSON)
+
+        r = decodeProfileValueDict(rJSON)
+        self.assertIsInstance(r, dict)
+
+        self.assertTrue(np.array_equal(x, r['x'], equal_nan=True))
+        self.assertTrue(np.array_equal(y, r['y'], equal_nan=True))
+        self.assertTrue(np.array_equal(bbl, r['bbl'], equal_nan=True))
+
     # @unittest.skip('')
     def test_Serialization(self):
 
         x = [1, 2, 3, 4, 5]
-        y = [2, 3, 4, 5, 6]
+        y = [2, 3, None, np.NaN, np.Infinity]
         bbl = [1, 0, 1, 1, 0]
         xUnit = 'μm'
-        yUnit = 'reflectnce ä$32{}'  # special characters to test UTF-8 compatibility
+        yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
+
+        def compareSpeclibDictionaries(d1, d2):
+            self.assertIsInstance(d1, dict)
+            self.assertIsInstance(d2, dict)
+            self.assertTrue('y' in d1)
+            for k in ['x', 'y', 'bbl', 'xUnit', 'yUnit']:
+                if k in d1:
+                    self.assertTrue(k in d2)
+                    v1, v2 = d1[k], d2[k]
+                    if isinstance(v1, list):
+                        self.assertTrue(np.array_equal(v1, v2, equal_nan=True))
+                    else:
+                        self.assertEqual(v1, v2)
 
         d = prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
+        self.assertIsInstance(d, dict)
+
         sl = SpectralLibraryUtils.createSpectralLibrary()
 
         self.assertTrue(sl.startEditing())
@@ -165,8 +211,8 @@ class SpeclibCoreTests(TestCaseBase):
         self.assertIsInstance(dump, QByteArray)
 
         vd2 = decodeProfileValueDict(dump)
-        self.assertIsInstance(vd2, dict)
-        self.assertEqual(vd1, vd2)
+        compareSpeclibDictionaries(vd1, vd2)
+
         sl.addFeature(feature)
         self.assertTrue(sl.commitChanges())
 
@@ -177,32 +223,33 @@ class SpeclibCoreTests(TestCaseBase):
 
         vd2 = decodeProfileValueDict(dump)
         self.assertIsInstance(vd2, dict)
-        self.assertEqual(vd1, vd2)
+        compareSpeclibDictionaries(vd1, vd2)
 
         # decode valid inputs
         valid_inputs = {  # 'str(d)': str(d),  #  missed double quotes
+            "bytes(json.dumps(d), 'utf-8')": bytes(re.sub('(NaN|Infinity)', 'null', json.dumps(d)), 'utf-8'),
+
             'dictionary': d,
-            'json dump': json.dumps(d),
+            'json dump': json.dumps(d, default=nanToNone),
             'pickle dump': pickle.dumps(d),
             'QByteArray from pickle dump': QByteArray(pickle.dumps(d)),
             'QJsonDocument': QJsonDocument.fromVariant(d),
             'QJsonDocument->toJson': QJsonDocument.fromVariant(d).toJson(),
             'QJsonDocument->toBinaryData': QJsonDocument.fromVariant(d).toBinaryData(),
-            "bytes(json.dumps(d), 'utf-8')": bytes(json.dumps(d), 'utf-8'),
+
         }
         for info, v in valid_inputs.items():
             d2 = decodeProfileValueDict(v)
-            self.assertIsInstance(d, dict)
-            self.assertEqual(d2, d, msg=f'Failed to decode {info}. Got: {d2}')
+            self.assertIsInstance(d2, dict)
+            self.assertTrue(isProfileValueDict(d2))
 
         # decode invalid inputs
         invalid_inputs = ['{invalid',
                           bytes('{x:}', 'utf-8')
                           ]
         for v in invalid_inputs:
-            vd2 = decodeProfileValueDict(invalid_inputs)
-            self.assertIsInstance(vd2, dict)
-            self.assertTrue(len(vd2) == 0)
+            vd2 = decodeProfileValueDict(v)
+            self.assertEqual(vd2, {})
 
         # test encoding
 

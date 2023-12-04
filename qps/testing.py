@@ -42,8 +42,6 @@ from unittest import mock
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
 
-import qgis.testing
-import qgis.testing.mocked
 import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, Qt
@@ -62,6 +60,7 @@ from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
+from qgis.testing import QgisTestCase
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
 from .utils import px2geo, SpatialPoint, findUpwardPath
@@ -433,7 +432,7 @@ def _set_iface(ifaceMock: QgisInterface):
 # APP = None
 
 
-class TestCaseBase(qgis.testing.TestCase):
+class TestCaseBase(QgisTestCase):
     gdal.UseExceptions()
 
     @staticmethod
@@ -500,7 +499,7 @@ class TestCaseBase(qgis.testing.TestCase):
         Returns True if this the environment is supposed to run in a CI environment
         and should not open blocking dialogs
         """
-        return str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0']
+        return QgisTestCase.is_ci_run() or (str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0'])
 
     @classmethod
     def createProcessingContextFeedback(cls) -> Tuple[QgsProcessingContext, QgsProcessingFeedback]:

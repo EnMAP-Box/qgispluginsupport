@@ -1,6 +1,7 @@
 import datetime
 import enum
 import json
+import math
 import pickle
 import sys
 from json import JSONDecodeError
@@ -11,7 +12,7 @@ import numpy as np
 from osgeo import gdal
 from qgis.core import QgsExpressionContext, QgsPropertyTransformer
 
-from qgis.PyQt.QtCore import QDateTime, Qt
+from qgis.PyQt.QtCore import QDateTime, Qt, NULL
 from qgis.PyQt.QtCore import QJsonDocument
 from qgis.PyQt.QtCore import QVariant, QByteArray
 from qgis.core import QgsFeature, QgsMapLayer, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
@@ -194,11 +195,32 @@ class ProfileEncoding(enum.Enum):
         raise NotImplementedError(f'Unable to return ProfileEncoding for "{input}"')
 
 
+def nanToNone(v):
+    """
+    Converts NaN, NULL, or Inf values to None, as these can be serialized with json.dump (to "null" strings)
+    :param v:
+    :return:
+    """
+    if isinstance(v, (float, int)) and not math.isfinite(v) or v is NULL:
+        return None
+    else:
+        return v
+
+
+def noneToNan(v):
+    """
+    Returns a NaN in case the value v is None
+    :param v:
+    :return:
+    """
+    return nan if v is None else v
+
+
 def encodeProfileValueDict(d: dict,
                            encoding: Union[str, QgsField, ProfileEncoding],
                            jsonFormat: QJsonDocument.JsonFormat = QJsonDocument.Compact) -> Any:
     """
-    Serializes a SpectralProfile value dictionary into a QByteArray
+    Serializes a SpectralProfile dictionary into JSON string or JSON string compressed as QByteArray
     extracted with `decodeProfileValueDict`.
     :param d: dict
     :param encoding: QgsField Field definition
@@ -218,9 +240,6 @@ def encodeProfileValueDict(d: dict,
                 v = v.tolist()
             d2[k] = v
 
-    # convert None to NaN
-    d2['y'] = [nan if v is None else v for v in d2['y']]
-
     # convert date/time X values to strings
     xValues = d2.get('x')
     if xValues and len(xValues) > 0:
@@ -229,17 +248,26 @@ def encodeProfileValueDict(d: dict,
         elif isinstance(xValues[0], QDateTime):
             d2['x'] = [x.toString(Qt.ISODate) for x in xValues]
 
-    # save as QByteArray
     if encoding == ProfileEncoding.Dict:
+        # convert None to NaN
+        d2['y'] = [noneToNan(v) for v in d2['y']]
         return d2
 
-    # json2 =
+    # save as JSON string or byte compressed JSON
+    # convert NaN to null
+
+    # convert NaN, -Inf, Inf to null
+    # see https://datatracker.ietf.org/doc/html/rfc8259
+    for k in ['x', 'y', 'bbl']:
+        if k in d2:
+            d2[k] = [nanToNone(v) for v in d2[k]]
 
     if encoding in [ProfileEncoding.Bytes, ProfileEncoding.Binary]:
         jsonDoc = QJsonDocument.fromVariant(d2)
         return jsonDoc.toBinaryData()
     else:
-        return json.dumps(d2, ensure_ascii=False)
+        # encoding = JSON or TEXT
+        return json.dumps(d2, allow_nan=False)
 
 
 def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
@@ -251,6 +279,7 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
     :param dump: str
     :return: dict
     """
+
     if dump in EMPTY_VALUES:
         return {}
 
@@ -272,6 +301,7 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
                 pass
             except pickle.UnpicklingError as ex:
                 pass
+
     if isinstance(dump, str):
         try:
             dump = json.loads(dump)
@@ -287,8 +317,15 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
     if d is None and isinstance(jsonDoc, QJsonDocument) and not jsonDoc.isNull():
         d = jsonDoc.toVariant()
 
+    # minimum requirement for a spectral profile dictionary
+    # 1. is a dict, 2. contains a 'y' key
+    # see isProfileValueDict(d) for more extensive check
     if not (isinstance(d, dict) and 'y' in d.keys()):
         return {}
+
+    for k in ['x', 'y', 'bbl']:
+        if k in d.keys():
+            d[k] = [noneToNan(v) for v in d[k]]
 
     if numpy_arrays:
         for k in ['x', 'y', 'bbl']:
