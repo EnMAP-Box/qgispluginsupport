@@ -198,7 +198,7 @@ def encodeProfileValueDict(d: dict,
                            encoding: Union[str, QgsField, ProfileEncoding],
                            jsonFormat: QJsonDocument.JsonFormat = QJsonDocument.Compact) -> Any:
     """
-    Serializes a SpectralProfile value dictionary into a QByteArray
+    Serializes a SpectralProfile dictionary into JSON string or JSON string compressed as QByteArray
     extracted with `decodeProfileValueDict`.
     :param d: dict
     :param encoding: QgsField Field definition
@@ -233,7 +233,8 @@ def encodeProfileValueDict(d: dict,
     if encoding == ProfileEncoding.Dict:
         return d2
 
-    # json2 =
+    # save as JSON string or byte compressed JSON
+    # convert NaN to null
 
     if encoding in [ProfileEncoding.Bytes, ProfileEncoding.Binary]:
         jsonDoc = QJsonDocument.fromVariant(d2)

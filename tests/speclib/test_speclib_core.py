@@ -143,16 +143,36 @@ class SpeclibCoreTests(TestCaseBase):
             self.assertTrue(len(msg) > 0)
             self.assertEqual(d, dict())
 
+    def test_SerializationJSON(self):
+        x = [1, 2, 3, 4, 5]
+        y = [2, 3, 4, np.NaN, 6]
+        bbl = [1, 0, 1, 1, 0]
+        xUnit = 'μm'
+        yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
+
+        d = prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
+        self.assertIsInstance(d, dict)
+
+        r = encodeProfileValueDict(d, encoding='JSON')
+
+        self.assertIsInstance(r, str)
+        self.assertTrue('NaN' not in r)
+        self.assertTrue('null' in r)
+
+        s = ""
+
     # @unittest.skip('')
     def test_Serialization(self):
 
         x = [1, 2, 3, 4, 5]
-        y = [2, 3, 4, 5, 6]
+        y = [2, 3, 4, np.NaN, 6]
         bbl = [1, 0, 1, 1, 0]
         xUnit = 'μm'
-        yUnit = 'reflectnce ä$32{}'  # special characters to test UTF-8 compatibility
+        yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
 
         d = prepareProfileValueDict(x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
+        self.assertIsInstance(d, dict)
+
         sl = SpectralLibraryUtils.createSpectralLibrary()
 
         self.assertTrue(sl.startEditing())
