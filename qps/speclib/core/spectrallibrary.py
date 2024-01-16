@@ -268,6 +268,50 @@ class SpectralLibraryUtils:
         return field
 
     @staticmethod
+    def isProfileField(field: QgsField) -> bool:
+        return supports_field(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
+
+    @staticmethod
+    def findDefaultProfileFields(layer: QgsVectorLayer):
+        """
+        Sets fields that can be used for spectral profiles and without a special editor widget to SpectralProfiles
+        editor widget.
+        Parameters
+        ----------
+        layer
+
+        Returns
+        -------
+
+        """
+        testFeature = None
+        for f in layer.getFeatures():
+            testFeature = f
+            break
+        for field in layer.fields():
+            if field.editorWidgetSetup().type() == '':
+                SpectralLibraryUtils.makeProfileField(layer, field)
+
+    @staticmethod
+    def makeProfileField(layer: QgsVectorLayer, field: QgsField) -> bool:
+        """
+        Changes the QgsEditorWidgetSetup to make a QgsField a SpectralProfile field
+        Parameters
+        ----------
+        field
+
+        Returns: bool, True if successful. False if field type cannot be used to store spectral profiles.
+        -------
+
+        """
+        field = qgsField(layer, field)
+        if supports_field(field):
+            i = layer.fields().lookupField(field.name())
+            layer.setEditorWidgetSetup(i, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
+            return SpectralLibraryUtils.isProfileField(layer.fields().at(i))
+        return False
+
+    @staticmethod
     def writeToSource(*args, **kwds) -> List[str]:
         from .spectrallibraryio import SpectralLibraryIO
         return SpectralLibraryIO.writeToSource(*args, **kwds)

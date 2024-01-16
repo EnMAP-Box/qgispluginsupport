@@ -28,14 +28,14 @@ from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
 from qgis.PyQt.QtWidgets import QApplication, QToolBar, QVBoxLayout, QPushButton, \
     QToolButton, QAction, QComboBox, QWidget, QDialog
-from qgis.core import QgsFeature
+from qgis.core import QgsFeature, edit
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes
 from qgis.gui import QgsMapCanvas, \
     QgsDualView, QgsGui
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
-from qps.speclib.core import profile_field_list, is_spectral_library
+from qps.speclib.core import profile_field_list, is_spectral_library, is_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
@@ -429,6 +429,36 @@ class TestSpeclibWidgets(TestCaseBase):
         SLIB = TestObjects.createSpectralLibrary()
         d = AddAttributeDialog(SLIB)
         self.showGui(d)
+
+    def test_SpectralLibraryWidget_loadProfileFields(self):
+
+        # test profile field detection
+        uri = 'point?crs=epsg:4326&field=id:integer'
+        lyr = QgsVectorLayer(uri, 'NotASpeclib', 'memory')
+
+        with edit(lyr):
+            lyr.addAttribute(QgsField('nofield1', QVariant.Int))
+            lyr.addAttribute(QgsField('nofield2', QVariant.Double))
+            lyr.addAttribute(QgsField('nofield3', QVariant.String, len=255))
+            lyr.addAttribute(QgsField('profile1', QVariant.String, len=0))
+            lyr.addAttribute(QgsField('profile2', QVariant.String, len=-1))
+            lyr.addAttribute(QgsField('profile3', QVariant.ByteArray))
+
+        for f in lyr.fields():
+            self.assertFalse(is_profile_field(f))
+
+        self.assertTrue(lyr.isValid())
+
+        w = SpectralLibraryWidget(speclib=lyr)
+
+        for f in w.speclib().fields():
+            if f.name().startswith('profile'):
+                self.assertTrue(is_profile_field(f))
+            else:
+                self.assertFalse(is_profile_field(f))
+
+        self.showGui(w)
+
 
     def test_SpectralLibraryWidgetProgressDialog(self):
 

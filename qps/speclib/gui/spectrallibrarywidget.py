@@ -2,7 +2,7 @@ import enum
 import sys
 
 import warnings
-from typing import List, Set, Dict, Tuple, Generator
+from typing import List, Set, Dict, Tuple, Generator, Any, Callable
 
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
 
@@ -40,7 +40,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         FormView = enum.auto()
         Standard = ProfileView | AttributeTable
 
-    def __init__(self, *args, speclib: QgsVectorLayer = None, mapCanvas: QgsMapCanvas = None, **kwds):
+    def __init__(self, *args,
+                 speclib: QgsVectorLayer = None,
+                 mapCanvas: QgsMapCanvas = None,
+                 identify_profile_fields: bool = True,
+                 postInitHooks: Dict[str, Callable] = None,
+                 **kwds):
 
         if not isinstance(speclib, QgsVectorLayer):
             speclib = SpectralLibraryUtils.createSpectralLibrary()
@@ -210,7 +215,18 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.splitter.setStretchFactor(2, 0)
         self.splitter.setSizes([200, 10, 0])
 
+        self.mPostInitHooks: Dict[str, Any] = dict()
+
+        if identify_profile_fields:
+            SpectralLibraryUtils.findDefaultProfileFields(self.speclib())
+
+        self.runPostInitHooks()
+
         s = ""
+    def runPostInitHooks(self):
+
+        for name, func in self.mPostInitHooks.items():
+            func(self)
 
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)

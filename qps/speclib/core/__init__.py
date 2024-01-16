@@ -37,12 +37,18 @@ def is_profile_field(field: QgsField) -> bool:
     :param field: QgsField
     :return: bool
     """
-    return supports_field(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
+    from .spectrallibrary import SpectralLibraryUtils
+    return SpectralLibraryUtils.isProfileField(field)
+
+
+def make_profile_field(field: QgsField) ->  True:
+    from .spectrallibrary import SpectralLibraryUtils
+    return SpectralLibraryUtils.makeProfileField(field)
 
 
 def contains_profile_field(object: Union[QgsVectorLayer, QgsFeature, QgsFields]) -> bool:
     """
-    Returns True if the input contains a QgsField of type binary and editorWidget SpectralProfile
+    Returns True if the input contains a QgsField of type binary / string and editorWidget SpectralProfile
     :param object:
     :return: bool
     """
