@@ -19,7 +19,7 @@ from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsE
 
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from .. import EDITOR_WIDGET_REGISTRY_KEY
-from ..core import supports_field
+from ..core import can_store_spectral_profiles
 from ..core.spectralprofile import encodeProfileValueDict, decodeProfileValueDict, \
     prepareProfileValueDict, ProfileEncoding, validateProfileValueDict
 from ...utils import SignalBlocker
@@ -704,7 +704,7 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         :return:
         """
         field: QgsField = vl.fields().at(fieldIdx)
-        return supports_field(field)
+        return can_store_spectral_profiles(field)
 
     def fieldScore(self, vl: QgsVectorLayer, fieldIdx: int) -> int:
         """
@@ -720,7 +720,7 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         # log(' fieldScore()')
         field = vl.fields().at(fieldIdx)
         assert isinstance(field, QgsField)
-        if supports_field(field):
+        if can_store_spectral_profiles(field):
             if field.type() in [QVariant.ByteArray, 8]:
                 return 20
             else:
@@ -737,7 +737,7 @@ def spectralProfileEditorWidgetFactory(register: bool = True) -> SpectralProfile
     global _SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY
     global _SPECTRAL_PROFILE_FIELD_FORMATTER
     if not isinstance(_SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY, SpectralProfileEditorWidgetFactory):
-        _CLASS_SCHEME_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
+        _SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = SpectralProfileEditorWidgetFactory(EDITOR_WIDGET_REGISTRY_KEY)
 
     if not isinstance(_SPECTRAL_PROFILE_FIELD_FORMATTER, SpectralProfileFieldFormatter):
         _SPECTRAL_PROFILE_FIELD_FORMATTER = SpectralProfileFieldFormatter()
@@ -749,7 +749,7 @@ def spectralProfileEditorWidgetFactory(register: bool = True) -> SpectralProfile
     reg: QgsEditorWidgetFactory = QgsGui.editorWidgetRegistry()
 
     if register and EDITOR_WIDGET_REGISTRY_KEY not in reg.factories().keys():
-        reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, _CLASS_SCHEME_EDITOR_WIDGET_FACTORY)
+        reg.registerWidget(EDITOR_WIDGET_REGISTRY_KEY, _SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY)
 
     return reg.factory(EDITOR_WIDGET_REGISTRY_KEY)
 

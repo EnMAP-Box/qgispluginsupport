@@ -16,7 +16,7 @@ from qgis.PyQt.QtWidgets import QWidget, QFrame, QAction, QApplication, \
     QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
 from qgis.core import QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol, \
-    QgsVectorLayer, QgsFieldModel, QgsFields, QgsSettings, QgsApplication, QgsExpressionContext, \
+    QgsVectorLayer, QgsSettings, QgsApplication, QgsExpressionContext, \
     QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
 from qgis.core import QgsProject, QgsMapLayerProxyModel
 from qgis.core import QgsProperty, QgsExpressionContextScope
@@ -31,6 +31,7 @@ from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, Rast
     ProfileVisualizationGroup, PlotStyleItem, ProfileCandidateGroup, PropertyItemBase, ProfileCandidateItem, \
     GeneralSettingsGroup, PropertyLabel
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel, SpectralProfilePlotXAxisUnitWidgetAction
+from .spectralprofilefieldmodel import SpectralProfileFieldListModel
 from .. import speclibUiPath
 from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
@@ -93,7 +94,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
         self.mCACHE_PROFILE_DATA = dict()
         self.mEnableCaching: bool = False
-        self.mProfileFieldModel: QgsFieldModel = QgsFieldModel()
+        self.mProfileFieldModel: SpectralProfileFieldListModel = SpectralProfileFieldListModel()
 
         self.mPlotWidget: SpectralProfilePlotWidget = None
         symbol = QgsMarkerSymbol.createSimple({'name': 'square', 'color': 'white'})
@@ -359,7 +360,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def __iter__(self) -> Iterator[ProfileVisualizationGroup]:
         return iter(self.visualizations())
 
-    def profileFieldsModel(self) -> QgsFieldModel:
+    def profileFieldsModel(self) -> SpectralProfileFieldListModel:
         return self.mProfileFieldModel
 
     def propertyGroups(self) -> List[PropertyItemGroup]:
@@ -379,8 +380,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
     def insertPropertyGroup(self,
                             index: Union[int, QModelIndex],
-                            items: Union[PropertyItemGroup,
-                                            List[PropertyItemGroup]],
+                            items: Union[PropertyItemGroup, List[PropertyItemGroup]],
                             ):
 
         # map to model index within group of same zValues
@@ -840,18 +840,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
                 self.disconnectSpeclibSignals()
 
             self.mSpeclib = speclib
+            self.mProfileFieldModel.setLayer(speclib)
 
             # connect signals
             if isinstance(self.mSpeclib, QgsVectorLayer):
                 self.mVectorLayerCache = QgsVectorLayerCache(speclib, 1000)
                 self.connectSpeclibSignals(self.mSpeclib)
-                self.updateProfileFieldModel()
 
     def connectSpeclibSignals(self, speclib: QgsVectorLayer):
 
-        speclib.updatedFields.connect(self.updateProfileFieldModel)
-        speclib.attributeAdded.connect(self.updateProfileFieldModel)
-        speclib.attributeDeleted.connect(self.updateProfileFieldModel)
         speclib.attributeValueChanged.connect(self.onSpeclibAttributeValueChanged)
         speclib.editCommandStarted.connect(self.onSpeclibEditCommandStarted)
         speclib.editCommandEnded.connect(self.onSpeclibEditCommandEnded)
@@ -865,9 +862,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # speclib.willBeDeleted.connect(lambda *args, sl=speclib: self.disconnectSpeclibSignals(sl))
 
     def disconnectSpeclibSignals(self, speclib: QgsVectorLayer):
-        speclib.updatedFields.disconnect(self.updateProfileFieldModel)
-        speclib.attributeAdded.disconnect(self.updateProfileFieldModel)
-        speclib.attributeDeleted.disconnect(self.updateProfileFieldModel)
 
         speclib.editCommandStarted.disconnect(self.onSpeclibEditCommandStarted)
         speclib.editCommandEnded.disconnect(self.onSpeclibEditCommandEnded)
@@ -932,12 +926,6 @@ class SpectralProfilePlotModel(QStandardItemModel):
             self.profileCandidates().syncCandidates()
 
         self.updatePlot(fids_to_update=OLD2NEW.values())
-
-    def updateProfileFieldModel(self, *args):
-        fields = QgsFields()
-        for f in profile_field_list(self.mSpeclib):
-            fields.append(f)
-        self.mProfileFieldModel.setFields(fields)
 
     def onSpeclibStyleChanged(self, *args):
         # self.loadFeatureColors()

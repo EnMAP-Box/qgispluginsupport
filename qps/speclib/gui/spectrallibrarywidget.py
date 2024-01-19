@@ -17,6 +17,7 @@ from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePl
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
 from .spectralprocessingdialog import SpectralProcessingDialog
+from .spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog
 from ..core import is_spectral_library, profile_fields
 from ..core.spectrallibrary import SpectralLibraryUtils
 from ..core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryExportDialog
@@ -43,7 +44,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
     def __init__(self, *args,
                  speclib: QgsVectorLayer = None,
                  mapCanvas: QgsMapCanvas = None,
-                 identify_profile_fields: bool = True,
+                 profile_fields_check: str = 'first_feature',
                  postInitHooks: Dict[str, Callable] = None,
                  **kwds):
 
@@ -137,6 +138,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProperties.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
         self.actionShowProperties.triggered.connect(self.showProperties)
 
+        self.actionShowProfileFields = QAction('Show Spectral Profile Fields', parent=self)
+        self.actionShowProfileFields.setToolTip(self.tr('Define which fields can contain spectral profiles'))
+        self.actionShowProfileFields.setIcon(QIcon(':/qps/ui/icons/profile_fields.svg'))
+        self.actionShowProfileFields.triggered.connect(self.showProfileFields)
+
         self.tbSpeclibAction = QToolBar('Spectral Library')
         self.tbSpeclibAction.setObjectName('SpectralLibraryToolbar')
         self.tbSpeclibAction.setFloatable(False)
@@ -147,6 +153,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionImportSpeclib)
         self.tbSpeclibAction.addAction(self.actionExportSpeclib)
         self.tbSpeclibAction.addAction(self.actionShowProperties)
+        self.tbSpeclibAction.addAction(self.actionShowProfileFields)
 
         # self.tbSpeclibAction.addSeparator()
         # self.cbXAxisUnit = self.mSpeclibPlotWidget.optionXUnit.createUnitComboBox()
@@ -217,12 +224,13 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         self.mPostInitHooks: Dict[str, Any] = dict()
 
-        if identify_profile_fields:
-            SpectralLibraryUtils.findDefaultProfileFields(self.speclib())
+        if profile_fields_check:
+            SpectralLibraryUtils.activateProfileFields(self.speclib(), check=profile_fields_check)
 
         self.runPostInitHooks()
 
         s = ""
+
     def runPostInitHooks(self):
 
         for name, func in self.mPostInitHooks.items():
@@ -367,6 +375,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def showProperties(self, *args):
         showLayerPropertiesDialog(self.speclib(), None, parent=self)
+
+    def showProfileFields(self, **args):
+        d = SpectralProfileFieldActivatorDialog()
+        d.setLayer(self.speclib())
+        d.exec_()
 
     def plotWidget(self) -> SpectralProfilePlotWidget:
         return self.mSpeclibPlotWidget.plotWidget
@@ -537,7 +550,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         dialog = SpectralProcessingDialog(speclib=self.speclib())
         dialog.setMainMessageBar(self.mainMessageBar())
         dialog.exec_()
-        self.spectralLibraryPlotWidget().plotControlModel().updateProfileFieldModel()
+
         dialog.close()
 
     def addCurrentProfilesAutomatically(self, b: bool):

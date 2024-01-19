@@ -75,7 +75,7 @@ from qgis.gui import QgsRasterLayerProperties, QgsGui, QgsVectorLayerProperties
 from . import DIR_UI_FILES
 from .classification.classificationscheme import ClassificationScheme
 from .models import OptionListModel, Option
-from .speclib.core import supports_field
+from .speclib.core import can_store_spectral_profiles
 from .utils import write_vsimem, loadUi, defaultBands, iconForFieldType, qgsFields, copyEditorWidgetSetup
 from .vectorlayertools import VectorLayerTools
 
@@ -398,7 +398,7 @@ class AddAttributeDialog(QDialog):
         :return:
         """
         field = self.privateField()
-        if supports_field(field) and self.cbSpectralProfile.isEnabled() and self.cbSpectralProfile.isChecked():
+        if can_store_spectral_profiles(field) and self.cbSpectralProfile.isEnabled() and self.cbSpectralProfile.isChecked():
             # field.setComment('Spectral Profile Field')
             setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
             field.setEditorWidgetSetup(setup)
@@ -420,7 +420,7 @@ class AddAttributeDialog(QDialog):
         self.setPrecisionMinMax()
 
         prototype = self.privateField()
-        self.cbSpectralProfile.setEnabled(supports_field(prototype))
+        self.cbSpectralProfile.setEnabled(can_store_spectral_profiles(prototype))
 
     def setPrecisionMinMax(self):
         ntype = self.currentNativeType()

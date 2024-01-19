@@ -39,24 +39,23 @@ from osgeo import gdal, ogr
 
 from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData
 from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import (QgsWkbTypes, QgsExpressionContextUtils, QgsExpression, QgsRasterLayer,
-                       QgsPointXY, QgsGeometry, QgsMapLayerStore, QgsProject, Qgis, edit)
 from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsFeature, QgsVectorLayer, QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, \
     QgsActionManager, QgsFeatureRequest, \
     QgsEditorWidgetSetup, QgsAction, QgsProcessingFeedback, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
     QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
-from . import field_index, supports_field
+from qgis.core import (QgsWkbTypes, QgsExpressionContextUtils, QgsExpression, QgsRasterLayer,
+                       QgsPointXY, QgsGeometry, QgsMapLayerStore, QgsProject, Qgis, edit)
+from . import can_store_spectral_profiles, is_profile_field
 from . import profile_field_list, create_profile_field, \
     is_spectral_library
 from .spectralprofile import SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, \
-    encodeProfileValueDict, ProfileEncoding
+    encodeProfileValueDict, ProfileEncoding, decodeProfileValueDict
 from .. import EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
 from .. import FIELD_VALUES, FIELD_NAME
 from ...plotstyling.plotstyling import PlotStyle
 from ...qgisenums import QGIS_WKBTYPE
-
 from ...utils import findMapLayer, \
     qgsField, copyEditorWidgetSetup, SpatialPoint
 
@@ -246,7 +245,7 @@ class SpectralLibraryUtils:
     @staticmethod
     def createProfileField(
             name: str,
-            comment: str = 'SpectralProfile Field',
+            comment: str = None,
             encoding: ProfileEncoding = ProfileEncoding.Text) -> QgsField:
         """
         Creates a QgsField that can store spectral profiles
@@ -269,12 +268,12 @@ class SpectralLibraryUtils:
 
     @staticmethod
     def isProfileField(field: QgsField) -> bool:
-        return supports_field(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
+        return can_store_spectral_profiles(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
 
     @staticmethod
-    def findDefaultProfileFields(layer: QgsVectorLayer):
+    def activateProfileFields(layer: QgsVectorLayer, check: str = 'first_feature'):
         """
-        Sets fields that can be used for spectral profiles and without a special editor widget to SpectralProfiles
+        Sets fields that can store spectral profiles and without a special editor widget to SpectralProfiles
         editor widget.
         Parameters
         ----------
@@ -282,34 +281,31 @@ class SpectralLibraryUtils:
 
         Returns
         -------
+        :param check:
 
         """
-        testFeature = None
-        for f in layer.getFeatures():
-            testFeature = f
-            break
-        for field in layer.fields():
-            if field.editorWidgetSetup().type() == '':
-                SpectralLibraryUtils.makeProfileField(layer, field)
+        assert check in ['first_feature', 'field_type']
+        candidates = [f for f in layer.fields() if can_store_spectral_profiles(f)]
 
-    @staticmethod
-    def makeProfileField(layer: QgsVectorLayer, field: QgsField) -> bool:
-        """
-        Changes the QgsEditorWidgetSetup to make a QgsField a SpectralProfile field
-        Parameters
-        ----------
-        field
+        if check == 'field_type':
+            for f in candidates:
+                SpectralLibraryUtils.makeToProfileField(layer, f)
+        elif check == 'first_feature':
+            firstFeature = None
+            for f in layer.getFeatures():
+                firstFeature = f
+                break
+            if isinstance(firstFeature, QgsFeature):
+                for f in candidates:
 
-        Returns: bool, True if successful. False if field type cannot be used to store spectral profiles.
-        -------
-
-        """
-        field = qgsField(layer, field)
-        if supports_field(field):
-            i = layer.fields().lookupField(field.name())
-            layer.setEditorWidgetSetup(i, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
-            return SpectralLibraryUtils.isProfileField(layer.fields().at(i))
-        return False
+                    try:
+                        dump = firstFeature.attribute(f.name())
+                        profileDict = decodeProfileValueDict(dump)
+                        if isinstance(profileDict, dict) and len(profileDict) > 0:
+                            SpectralLibraryUtils.makeToProfileField(layer, f)
+                    except Exception:
+                        s = ""
+                        pass
 
     @staticmethod
     def writeToSource(*args, **kwds) -> List[str]:
@@ -463,6 +459,7 @@ class SpectralLibraryUtils:
             i = speclib.fields().lookupField(field.name())
             if i > -1:
                 speclib.setEditorWidgetSetup(i, field.editorWidgetSetup())
+                speclib.updatedFields.emit()
         return success
 
     @staticmethod
@@ -506,11 +503,37 @@ class SpectralLibraryUtils:
         speclib.setAttributeTableConfig(conf)
 
     @staticmethod
-    def setAsProfileField(layer: QgsVectorLayer, field: Union[int, str, QgsField]):
-        idx = field_index(layer, field)
-        assert idx >= 0, 'Unknown field'
-        assert supports_field(layer.fields().field(idx)), 'Field cannot store spectral profiles'
-        layer.setEditorWidgetSetup(idx, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
+    def removeProfileField(layer: QgsVectorLayer, field: Union[int, str, QgsField]) -> bool:
+        assert isinstance(layer, QgsVectorLayer)
+        field = qgsField(layer, field)
+
+        if field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY:
+            i = layer.fields().lookupField(field.name())
+            layer.setEditorWidgetSetup(i, QgsEditorWidgetSetup('', {}))
+            layer.updatedFields.emit()
+        return not is_profile_field(layer.fields()[field.name()])
+
+    @staticmethod
+    def makeToProfileField(layer: QgsVectorLayer, field: Union[int, str, QgsField]) -> bool:
+        """
+        Changes the QgsEditorWidgetSetup to make a QgsField a SpectralProfile field
+        Parameters
+        ----------
+        field
+
+        Returns: True if successful. False if field type cannot be used to store spectral profiles.
+        -------
+        """
+        assert isinstance(layer, QgsVectorLayer)
+        field = qgsField(layer, field)
+        if not can_store_spectral_profiles(field):
+            return False
+        i = layer.fields().lookupField(field.name())
+        layer.setEditorWidgetSetup(i, QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
+
+        # inform that the field has been changed. see https://github.com/qgis/QGIS/issues/55873
+        layer.updatedFields.emit()
+        return SpectralLibraryUtils.isProfileField(layer.fields().at(i))
 
     @staticmethod
     def canReadFromMimeData(mimeData: QMimeData) -> bool:
