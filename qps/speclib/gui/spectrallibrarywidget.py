@@ -12,7 +12,7 @@ from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, 
     QHBoxLayout, QFrame, QDialog
 from qgis.core import QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteContext
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
-    QgsActionMenu
+    QgsActionMenu, QgsMapLayer
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
@@ -210,16 +210,11 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionShowFormView)
         self.tbSpeclibAction.addAction(self.actionShowAttributeTable)
 
+        self.mActionSaveEdits.triggered.connect(self._onSaveEdits)
+
         self.insertToolBar(self.mToolbar, self.tbSpeclibAction)
         self.updateToolbarVisibility()
         self.updateActions()
-
-        # property button now shown in speclib action toolbar only
-        # self.btnShowProperties = QToolButton()
-        # self.btnShowProperties.setAutoRaise(True)
-        # self.btnShowProperties.setDefaultAction(self.actionShowProperties)
-        # self.centerBottomLayout.insertWidget(self.centerBottomLayout.indexOf(self.mAttributeViewButton),
-        #                                   self.btnShowProperties)
 
         # QIcon(':/images/themes/default/mActionMultiEdit.svg').pixmap(20,20).isNull()
         self.setAcceptDrops(True)
@@ -237,7 +232,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         if profile_fields_check:
             SpectralLibraryUtils.activateProfileFields(self.speclib(), check=profile_fields_check)
-
+            self._onSaveEdits()
         self.runPostInitHooks()
 
         s = ""
@@ -246,6 +241,14 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         for name, func in self.mPostInitHooks.items():
             func(self)
+
+    def _onSaveEdits(self, *args):
+
+        # save styling information
+        vl: QgsVectorLayer = self.speclib()
+        styleCategories = QgsMapLayer.Symbology | QgsMapLayer.Forms
+        success = vl.saveDefaultStyle(styleCategories)
+        s = ""
 
     def setProject(self, project: QgsProject):
         assert isinstance(project, QgsProject)
