@@ -51,7 +51,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         if not isinstance(speclib, QgsVectorLayer):
             speclib = SpectralLibraryUtils.createSpectralLibrary()
 
-        self.actionShowSpectralProcessingDialog = QAction('Spectral Processing')
+        self.actionShowSpectralProcessingDialog = QAction(self.tr('Spectral Processing'))
         super().__init__(speclib)
         # self.setAttribute(Qt.WA_DeleteOnClose, on=True)
         self.setWindowIcon(QIcon(':/qps/ui/icons/speclib.svg'))
@@ -91,23 +91,24 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
         # define Actions and Options
 
-        self.actionSelectProfilesFromMap = QAction(r'Select Profiles from Map', parent=self)
-        self.actionSelectProfilesFromMap.setToolTip(r'Select new profile from map')
+        self.actionSelectProfilesFromMap = QAction(self.tr(r'Select Profiles from Map'), parent=self)
+        self.actionSelectProfilesFromMap.setToolTip(self.tr(r'Select new profile from map'))
         self.actionSelectProfilesFromMap.setIcon(QIcon(':/qps/ui/icons/profile_identify.svg'))
         self.actionSelectProfilesFromMap.setVisible(False)
         self.actionSelectProfilesFromMap.triggered.connect(self.sigLoadFromMapRequest.emit)
 
-        self.actionAddCurrentProfiles = QAction('Add Profiles(s)', parent=self)
+        self.actionAddCurrentProfiles = QAction(self.tr('Add Profiles(s)'), parent=self)
         self.actionAddCurrentProfiles.setShortcut(Qt.CTRL + Qt.SHIFT + Qt.Key_A)
         # self.actionAddCurrentProfiles.setShortcut(Qt.Key_Z)
+
         self.actionAddCurrentProfiles.setShortcutContext(Qt.WidgetWithChildrenShortcut)
-        self.actionAddCurrentProfiles.setToolTip('Adds currently overlaid profiles to the spectral library')
+        self.actionAddCurrentProfiles.setToolTip(self.tr('Adds currently overlaid profiles to the spectral library'))
         self.actionAddCurrentProfiles.setIcon(QIcon(':/qps/ui/icons/plus_green_icon.svg'))
         self.actionAddCurrentProfiles.triggered.connect(self.addCurrentProfilesToSpeclib)
 
-        self.optionAddCurrentProfilesAutomatically = QAction('Add profiles automatically', parent=self)
-        self.optionAddCurrentProfilesAutomatically.setToolTip('Activate to add profiles automatically '
-                                                              'into the spectral library')
+        self.optionAddCurrentProfilesAutomatically = QAction(self.tr('Add profiles automatically'), parent=self)
+        self.optionAddCurrentProfilesAutomatically.setToolTip(self.tr(
+            'Activate to add profiles automatically into the spectral library'))
         self.optionAddCurrentProfilesAutomatically.setIcon(QIcon(':/qps/ui/icons/profile_add_auto.svg'))
         self.optionAddCurrentProfilesAutomatically.setCheckable(True)
         self.optionAddCurrentProfilesAutomatically.setChecked(False)
@@ -123,27 +124,38 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionAddProfiles.triggered.connect(self.actionAddCurrentProfiles.trigger)
         self.actionAddProfiles.setMenu(m)
 
-        self.actionImportSpeclib = QAction('Import Spectral Profiles', parent=self)
-        self.actionImportSpeclib.setToolTip('Import spectral profiles from other data sources')
+        self.actionImportSpeclib = QAction(self.tr('Import Spectral Profiles'), parent=self)
+        self.actionImportSpeclib.setToolTip(self.tr('Import spectral profiles from other data sources'))
         self.actionImportSpeclib.setIcon(QIcon(':/qps/ui/icons/speclib_add.svg'))
         self.actionImportSpeclib.triggered.connect(self.onImportProfiles)
 
-        self.actionExportSpeclib = QAction('Export Spectral Profiles', parent=self)
-        self.actionExportSpeclib.setToolTip('Export spectral profiles to other data formats')
+        self.actionExportSpeclib = QAction(self.tr('Export Spectral Profiles'), parent=self)
+        self.actionExportSpeclib.setToolTip(self.tr('Export spectral profiles to other data formats'))
         self.actionExportSpeclib.setIcon(QIcon(':/qps/ui/icons/speclib_save.svg'))
         self.actionExportSpeclib.triggered.connect(self.onExportProfiles)
 
-        self.actionShowProperties = QAction('Show Spectral Library Properties', parent=self)
-        self.actionShowProperties.setToolTip('Show Spectral Library Properties')
+        self.actionShowProperties = QAction(self.tr('Speclib Layer Properties'), parent=self)
+        self.actionShowProperties.setToolTip(self.tr('Show the vector layer properties of the spectral library'))
         self.actionShowProperties.setIcon(QIcon(':/images/themes/default/propertyicons/system.svg'))
         self.actionShowProperties.triggered.connect(self.showProperties)
 
-        self.actionShowProfileFields = QAction('Show Spectral Profile Fields', parent=self)
+        self.actionShowProfileFields = QAction(self.tr('Show Spectral Profile Fields'), parent=self)
         self.actionShowProfileFields.setToolTip(self.tr('Define which fields can contain spectral profiles'))
         self.actionShowProfileFields.setIcon(QIcon(':/qps/ui/icons/profile_fields.svg'))
         self.actionShowProfileFields.triggered.connect(self.showProfileFields)
 
-        self.tbSpeclibAction = QToolBar('Spectral Library')
+        m = QMenu()
+        m.addAction(self.actionShowProperties)
+        m.addAction(self.actionShowProfileFields)
+        m.setDefaultAction(self.actionShowProperties)
+
+        self.actionLayerSettings = QAction(self.actionShowProperties.text(), self)
+        self.actionLayerSettings.setToolTip(self.actionShowProperties.text())
+        self.actionLayerSettings.setIcon(self.actionShowProperties.icon())
+        self.actionLayerSettings.triggered.connect(self.actionShowProperties.trigger)
+        self.actionLayerSettings.setMenu(m)
+
+        self.tbSpeclibAction = QToolBar(self.tr('Spectral Library'))
         self.tbSpeclibAction.setObjectName('SpectralLibraryToolbar')
         self.tbSpeclibAction.setFloatable(False)
         self.tbSpeclibAction.setMovable(False)
@@ -152,8 +164,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.tbSpeclibAction.addAction(self.actionAddProfiles)
         self.tbSpeclibAction.addAction(self.actionImportSpeclib)
         self.tbSpeclibAction.addAction(self.actionExportSpeclib)
-        self.tbSpeclibAction.addAction(self.actionShowProperties)
-        self.tbSpeclibAction.addAction(self.actionShowProfileFields)
+        self.tbSpeclibAction.addAction(self.actionLayerSettings)
 
         # self.tbSpeclibAction.addSeparator()
         # self.cbXAxisUnit = self.mSpeclibPlotWidget.optionXUnit.createUnitComboBox()
@@ -167,7 +178,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mToolbar.insertAction(self.mActionOpenFieldCalculator, self.actionShowSpectralProcessingDialog)
         self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
 
-        self.actionShowProfileView = QAction('Show Profile Plot', parent=self)
+        self.actionShowProfileView = QAction(self.tr('Show Profile Plot'), parent=self)
         self.actionShowProfileView.setCheckable(True)
         self.actionShowProfileView.setChecked(True)
         self.actionShowProfileView.setIcon(QIcon(self.mSpeclibPlotWidget.windowIcon()))
@@ -180,12 +191,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.mAttributeViewButton.setVisible(False)
         self.mTableViewButton.setVisible(False)
 
-        self.actionShowFormView = QAction('Show Form View', parent=self)
+        self.actionShowFormView = QAction(self.tr('Show Form View'), parent=self)
         self.actionShowFormView.setCheckable(True)
         self.actionShowFormView.setIcon(QIcon(':/images/themes/default/mActionFormView.svg'))
         self.actionShowFormView.triggered.connect(self.onChangeViewVisibility)
 
-        self.actionShowAttributeTable = QAction('Show Attribute Table', parent=self)
+        self.actionShowAttributeTable = QAction(self.tr('Show Attribute Table'), parent=self)
         self.actionShowAttributeTable.setCheckable(True)
         self.actionShowAttributeTable.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
         self.actionShowAttributeTable.triggered.connect(self.onChangeViewVisibility)

@@ -7,17 +7,14 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import os
-import pathlib
 import tempfile
 import unittest
 
-from PyQt5.QtXml import QDomElement
-
 from qgis.PyQt.QtCore import NULL
-from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex, QFile
+from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
-from qgis.PyQt.QtXml import QDomDocument
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, \
     QgsFeature, QgsEditorWidgetSetup, \
     QgsPalettedRasterRenderer, QgsCategorizedSymbolRenderer, \
