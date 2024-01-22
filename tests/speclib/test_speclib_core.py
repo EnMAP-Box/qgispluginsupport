@@ -34,7 +34,7 @@ from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
     QgsCoordinateReferenceSystem, QgsFields, edit
 from qps import initAll
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
-from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, supports_field, \
+from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, can_store_spectral_profiles, \
     create_profile_field, is_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
@@ -328,12 +328,12 @@ class SpeclibCoreTests(TestCaseBase):
         for name in ['json', 'text', 'blob']:
             field = fields.field(name)
             self.assertIsInstance(field, QgsField)
-            self.assertTrue(supports_field(field))
+            self.assertTrue(can_store_spectral_profiles(field))
 
         for name in ['text10', 'int', 'float', 'date', 'datetime']:
             field = fields.field(name)
             self.assertIsInstance(field, QgsField)
-            self.assertFalse(supports_field(field))
+            self.assertFalse(can_store_spectral_profiles(field))
         lyr.startEditing()
         lyr.addFeature(QgsFeature(fields))
         lyr.commitChanges(False)
@@ -347,7 +347,7 @@ class SpeclibCoreTests(TestCaseBase):
 
         for profile1 in profiles:
             for field in fields:
-                if supports_field(field):
+                if can_store_spectral_profiles(field):
                     idx = fields.lookupField(field.name())
                     value1 = encodeProfileValueDict(profile1, encoding=field)
                     self.assertTrue(value1 is not None)

@@ -127,12 +127,18 @@ class TestUtils(TestCase):
                b'\x90\x01MX\x02M\xb0\x04M\xc4\te\x8c\x01y\x94]\x94(G?\xcdp\xa3\xd7\n=qG?' \
                b'\xd9\x99\x99\x99\x99\x99\x9aG?\xd3333333G?\xe9\x99\x99\x99\x99\x99\x9aG?' \
                b'\xe6ffffffe\x8c\x05xUnit\x94\x8c\x02nm\x94u.'
-        attributes = [None, NULL, QVariant(None), '', 'None',
+        attributes = [None,
+                      NULL,
+                      QVariant(None),
+                      '',
+                      'None',
                       QByteArray(bstr),
-                      bstr, bytes(bstr)]
+                      bstr,
+                      bytes(bstr)
+                      ]
 
         a2 = qgsFieldAttributes2List(attributes)
-        dump = pickle.dumps(a2)
+        dump = pickle.dumps(a2, protocol=pickle.HIGHEST_PROTOCOL)
         self.assertIsInstance(dump, bytes)
 
     def test_findParents(self):

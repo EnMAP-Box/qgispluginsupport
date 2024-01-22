@@ -213,6 +213,18 @@ Run `scripts/update_pyqtgraph` to update the QPS / EnMAP-Box internal version of
 To take care that our version of PyQtGraph runs with QGIS, we use a fork
 that is hosted at https://github.com/EnMAP-Box/pyqtgraph
 
+# Testing
+
+Requirements:
+
+
+Run tests from shell:
+
+````
+$ runtests -n auto
+````
+
+
 
 
 ## License

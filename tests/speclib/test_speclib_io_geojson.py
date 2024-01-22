@@ -61,14 +61,14 @@ class TestSpeclibIOGeoJSON(TestCaseBase):
 
     def test_import(self):
         IO = GeoJsonSpectralLibraryIO()
-        from qpstestdata import geojson
+        from qpstestdata import speclib_geojson
 
-        profiles = IO.importProfiles(geojson)
+        profiles = IO.importProfiles(speclib_geojson)
         self.assertTrue(len(profiles) > 0)
         for p in profiles:
             self.assertTrue(len(profile_field_names(p)) > 0)
 
-        lyr = QgsVectorLayer(geojson, 'GeoJSON')
+        lyr = QgsVectorLayer(speclib_geojson, 'GeoJSON')
         QgsProject.instance().addMapLayer(lyr)
         self.assertTrue(lyr.isValid())
 

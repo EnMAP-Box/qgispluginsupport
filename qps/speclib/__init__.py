@@ -26,11 +26,12 @@
 """
 import pathlib
 
+from qgis.PyQt.QtWidgets import QWidget
 from qgis.PyQt.QtCore import NULL, QVariant
 from qgis.core import QgsSettings, QgsCoordinateReferenceSystem, QgsField, QgsFields
 
 EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
-EDITOR_WIDGET_REGISTRY_NAME = 'Spectral Profile'
+# EDITOR_WIDGET_REGISTRY_NAME = 'Spectral Profile'
 
 SPECLIB_EPSG_CODE = 4326
 
@@ -80,6 +81,10 @@ def speclibUiPath(name: str) -> str:
     :return: absolute path to *.ui file
     :rtype: str
     """
+
+    if isinstance(name, QWidget):
+        name = name.__class__.__name__.lower() + '.ui'
+
     path = pathlib.Path(__file__).parent / 'ui' / name
     assert path.is_file(), f'File does not exist: {path}'
     return path.as_posix()

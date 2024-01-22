@@ -7,15 +7,14 @@ __date__ = '2017-07-17'
 __copyright__ = 'Copyright 2017, Benjamin Jakimow'
 
 import os
-import pathlib
 import tempfile
 import unittest
 
 from qgis.PyQt.QtCore import NULL
-from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex, QFile
+from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
-from qgis.PyQt.QtXml import QDomDocument
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, \
     QgsFeature, QgsEditorWidgetSetup, \
     QgsPalettedRasterRenderer, QgsCategorizedSymbolRenderer, \
@@ -393,21 +392,21 @@ class TestsClassificationScheme(TestCaseBase):
         cs = self.createClassSchemeA()
         self.assertIsInstance(cs, ClassificationScheme)
 
-        r = cs.rasterRenderer()
+        r: QgsPalettedRasterRenderer = cs.rasterRenderer()
         self.assertIsInstance(r, QgsPalettedRasterRenderer)
         cs2 = ClassificationScheme.fromRasterRenderer(r)
         self.assertIsInstance(cs2, ClassificationScheme)
         self.assertEqual(cs, cs2)
 
-        path = pathlib.Path(__file__).resolve().parent / 'QgsPalettedRasterRenderer.xml'
-        self.assertTrue(path.is_file())
+        doc = QDomDocument()
+        root: QDomElement = doc.createElement('qgis')
+        n = doc.createElement('pipe')
+        root.appendChild(n)
+        doc.appendChild(root)
+        r.writeXml(doc, root)
 
-        dom = QDomDocument()
-        dom.setContent(QFile(path.as_posix()))
-        node = dom.elementsByTagName('rasterrenderer').at(0).toElement()
-        r1 = QgsPalettedRasterRenderer.create(node, None)
         md = QMimeData()
-        md.setData(MIMEDATA_KEY_QGIS_STYLE, dom.toByteArray())
+        md.setData(MIMEDATA_KEY_QGIS_STYLE, doc.toByteArray())
         cs3 = ClassificationScheme.fromMimeData(md)
         self.assertIsInstance(cs3, ClassificationScheme)
         r2 = cs3.rasterRenderer()
@@ -425,8 +424,14 @@ class TestsClassificationScheme(TestCaseBase):
         cs = self.createClassSchemeA()
         self.assertIsInstance(cs, ClassificationScheme)
 
-        r = cs.featureRenderer()
+        r: QgsCategorizedSymbolRenderer = cs.featureRenderer()
         self.assertIsInstance(r, QgsCategorizedSymbolRenderer)
+
+        doc = QDomDocument()
+        root: QDomElement = doc.createElement('qgis')
+        doc.appendChild(root)
+        context = QgsReadWriteContext()
+        root.appendChild(r.save(doc, context))
 
         for t in [QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol]:
             r = cs.featureRenderer(symbolType=t)
@@ -436,15 +441,8 @@ class TestsClassificationScheme(TestCaseBase):
         self.assertIsInstance(cs2, ClassificationScheme)
         self.assertEqual(cs, cs2)
 
-        path = pathlib.Path(__file__).resolve().parent / 'QgsCategorizedSymbolRenderer.xml'
-        self.assertTrue(path.is_file())
-
-        dom = QDomDocument()
-        dom.setContent(QFile(path.as_posix()))
-        node = dom.elementsByTagName('renderer-v2').at(0).toElement()
-        r1 = QgsCategorizedSymbolRenderer.create(node, QgsReadWriteContext())
         md = QMimeData()
-        md.setData(MIMEDATA_KEY_QGIS_STYLE, dom.toByteArray())
+        md.setData(MIMEDATA_KEY_QGIS_STYLE, doc.toByteArray())
         cs3 = ClassificationScheme.fromMimeData(md)
         self.assertIsInstance(cs3, ClassificationScheme)
         r2 = cs3.featureRenderer()

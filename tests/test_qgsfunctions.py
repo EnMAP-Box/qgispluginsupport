@@ -470,7 +470,7 @@ class QgsFunctionTests(TestCaseBase):
                                  )
         lyrSpeclib: QgsVectorLayer = results['OUTPUT']
         lyrSpeclib.setName('Spectral Library')
-        SpectralLibraryUtils.setAsProfileField(lyrSpeclib, 'profiles')
+        assert SpectralLibraryUtils.makeToProfileField(lyrSpeclib, 'profiles')
 
         for f in lyrSpeclib.getFeatures():
             f: QgsFeature

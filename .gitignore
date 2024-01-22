@@ -20,6 +20,7 @@ vrtbuilder/externals/qps/qpsresources.py
 qps/enmap*.*
 qps/enmap.tif
 qps/enmap.tif.aux.xml
+qpstestdata/*.qml
 tests/outputs
 tests/outputs/*
 test-reports.txt

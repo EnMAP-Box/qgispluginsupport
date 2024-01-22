@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="qps">
+    <file>ui/icons/profile_fields.svg</file>
     <file>ui/icons/field_from_raster.svg</file>
     <file>ui/icons/field_to_raster.svg</file>
     <file>ui/icons/raster_to_field.svg</file>

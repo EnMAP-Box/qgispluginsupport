@@ -1,29 +1,36 @@
-import pathlib
+from pathlib import Path
+
+_ROOT = Path(__file__).parents[1]
+_QPS = _ROOT / 'qps'
+_TESTDATA = _ROOT / 'qpstestdata'
 
 # from qps
-enmap = (pathlib.Path(__file__).parents[1] / 'qps' / 'enmap.tif').as_posix()
-testvectordata = \
-    (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata.geojson').as_posix()
+enmap = (_QPS / 'enmap.tif').as_posix()
+testvectordata = (_QPS / 'testvectordata.geojson').as_posix()
 landcover = testvectordata
-enmap_pixel = (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectorpixelcenter.geojson').as_posix()
 enmap_polygon = testvectordata
-enmap_multipolygon = (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata_multipolygon.geojson').as_posix()
-enmap_multipoint = (pathlib.Path(__file__).parents[1] / 'qps' / 'testvectordata_multipoint.geojson').as_posix()
+enmap_pixel = (_QPS / 'testvectorpixelcenter.geojson').as_posix()
+enmap_multipolygon = (_QPS / 'testvectordata_multipolygon.geojson').as_posix()
+enmap_multipoint = (_QPS / 'testvectordata_multipoint.geojson').as_posix()
+
+# speclibs
+speclib_geojson = (_TESTDATA / 'geojson' / 'speclib.geojson').as_posix()
 
 # from qpstestdata
-hymap = (pathlib.Path(__file__).parent / 'hymap.tif').as_posix()
-envi_bsq = (pathlib.Path(__file__).parent / 'envi' / 'envi').as_posix()
-envi_hdr = (pathlib.Path(__file__).parent / 'envi' / 'envi.hdr').as_posix()
-envi_sli = (pathlib.Path(__file__).parent / 'envi' / 'speclib.sli').as_posix()
-envi_sli_hdr = (pathlib.Path(__file__).parent / 'envi' / 'speclib.hdr').as_posix()
+hymap = (_TESTDATA / 'hymap.tif').as_posix()
+envi_bsq = (_TESTDATA / 'envi' / 'envi').as_posix()
+envi_hdr = (_TESTDATA / 'envi' / 'envi.hdr').as_posix()
+envi_sli = (_TESTDATA / 'envi' / 'speclib.sli').as_posix()
+envi_sli_hdr = (_TESTDATA / 'envi' / 'speclib.hdr').as_posix()
 
-ndvi_ts = (pathlib.Path(__file__).parent / 'ndvi_ts.tif').as_posix()
-geojson = (pathlib.Path(__file__).parent / 'geojson' / 'profiles.geojson').as_posix()
+ndvi_ts = (_TESTDATA / 'ndvi_ts.tif').as_posix()
 
-DIR_ECOSIS = (pathlib.Path(__file__).parent / 'ecosis').as_posix()
-DIR_SPECCHIO = (pathlib.Path(__file__).parent / 'specchio').as_posix()
-ecosis_csv = (pathlib.Path(DIR_ECOSIS) / 'excel_csv_example.csv').as_posix()
-DIR_ASD_BIN = (pathlib.Path(__file__).parent / 'asd' / 'bin').as_posix()
-DIR_ASD_AS7 = (pathlib.Path(__file__).parent / 'asd' / 'as7').as_posix()
-DIR_ASD_TXT = (pathlib.Path(__file__).parent / 'asd' / 'txt').as_posix()
-DIR_ARTMO = (pathlib.Path(__file__).parent / 'artmo').as_posix()
+DIR_ECOSIS = _TESTDATA / 'ecosis'
+DIR_SPECCHIO = _TESTDATA / 'specchio'
+ecosis_csv = (DIR_ECOSIS / 'excel_csv_example.csv').as_posix()
+DIR_ASD_BIN = _TESTDATA / 'asd' / 'bin'
+DIR_ASD_AS7 = _TESTDATA / 'asd' / 'as7'
+DIR_ASD_TXT = _TESTDATA / 'asd' / 'txt'
+DIR_ARTMO = _TESTDATA / 'artmo'
+
+del _ROOT, _QPS, _TESTDATA, Path
