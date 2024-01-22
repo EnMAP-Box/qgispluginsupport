@@ -237,9 +237,15 @@ class VectorLayerTools(QgsVectorLayerTools):
             if allowCancel:
                 buttons = buttons | QMessageBox.Abort
 
+            is_mem = layer.dataProvider().name() in ['memory']
+            if is_mem:
+                info = 'Do you want to save the changes to layer {}?<br>(in memory)'.format(layer.name())
+            else:
+                info = 'Do you want to save the changes to layer {}?'.format(layer.name())
+
             button = QMessageBox.question(None,
                                           'Stop Editing',
-                                          'Do you want to save the changes to layer {}'.format(layer.name()),
+                                          info,
                                           buttons)
 
             if button == QMessageBox.Abort:
