@@ -3,6 +3,7 @@ import os.path
 import pathlib
 import re
 import unittest
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -18,7 +19,7 @@ from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetad
     GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils, GDALMetadataItem, BandPropertyCalculator
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.testing import TestObjects, TestCaseBase, start_app
-from qpstestdata import enmap
+from qpstestdata import enmap, envi_bsq, enmap_polygon
 
 start_app()
 
@@ -384,11 +385,10 @@ foo H =
             pass
 
     def test_GDALMetadataModelConfigWidget(self):
-        from qpstestdata import envi_bsq, enmap_polygon
 
-        envi_bsq = self.createImageCopy(envi_bsq)
+        envi_bsq2 = self.createImageCopy(envi_bsq)
 
-        lyrR = QgsRasterLayer(envi_bsq, 'ENVI')
+        lyrR = QgsRasterLayer(envi_bsq2, 'ENVI')
         lyrV = QgsVectorLayer(enmap_polygon, 'Vector')
 
         layers = [QgsRasterLayer(enmap, 'EnMAP'),
@@ -477,7 +477,7 @@ foo H =
 
         layers = []
         for file in files:
-            lyr = QgsRasterLayer(file, os.path.basename(file))
+            lyr = QgsRasterLayer(Path(file).as_posix(), os.path.basename(file))
             self.assertTrue(lyr.isValid())
             layers.append(lyr)
         QgsProject.instance().addMapLayers(layers)

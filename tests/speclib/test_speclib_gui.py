@@ -28,14 +28,14 @@ from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QDropEvent
 from qgis.PyQt.QtWidgets import QApplication, QToolBar, QVBoxLayout, QPushButton, \
     QToolButton, QAction, QComboBox, QWidget, QDialog
-from qgis.core import QgsFeature, edit
+from qgis.core import QgsFeature
 from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes
 from qgis.gui import QgsMapCanvas, \
     QgsDualView, QgsGui
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
-from qps.speclib.core import profile_field_list, is_spectral_library, is_profile_field, can_store_spectral_profiles
+from qps.speclib.core import profile_field_list, is_spectral_library
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
@@ -435,12 +435,11 @@ class TestSpeclibWidgets(TestCaseBase):
         # test profile field detection
         from qpstestdata import speclib_geojson
 
-
-        lyr = QgsVectorLayer(speclib_geojson.as_posix())
+        lyr = QgsVectorLayer(speclib_geojson)
         pfields = profile_field_list(lyr)
         self.assertEqual(1, len(pfields))
 
-        lyr = QgsVectorLayer(speclib_geojson.as_posix(), options= QgsVectorLayer.LayerOptions(loadDefaultStyle=False))
+        lyr = QgsVectorLayer(speclib_geojson, options=QgsVectorLayer.LayerOptions(loadDefaultStyle=False))
         pfields = profile_field_list(lyr)
         self.assertEqual(0, len(pfields))
 

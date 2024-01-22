@@ -1,6 +1,6 @@
 import re
 import sys
-
+from pathlib import Path
 from typing import List, Pattern, Optional, Union, Any
 
 import numpy as np
@@ -99,7 +99,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         return re.compile(f'({patters})', re.IGNORECASE)
 
     @staticmethod
-    def fromRasterLayer(layer: Union[QgsRasterLayer, gdal.Dataset, str]) \
+    def fromRasterLayer(layer: Union[QgsRasterLayer, gdal.Dataset, str, Path]) \
             -> Optional['QgsRasterLayerSpectralProperties']:
         """
         Returns the QgsRasterLayerSpectralProperties for a raster layer
@@ -112,6 +112,9 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         if isinstance(layer, gdal.Dataset):
             options = QgsRasterLayer.LayerOptions(loadDefaultStyle=True)
             layer = QgsRasterLayer(layer.GetDescription(), 'lyr', 'gdal', options=options)
+
+        if isinstance(layer, Path):
+            layer = layer.as_posix()
 
         if isinstance(layer, str):
             options = QgsRasterLayer.LayerOptions(loadDefaultStyle=True)
