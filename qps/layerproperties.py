@@ -990,10 +990,6 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
     return None
 
 
-def tr(t: str) -> str:
-    return t
-
-
 class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     """
     Reimplements QgsAttributeTableDialog which unfortunately is not
@@ -1099,8 +1095,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mActionFeatureActions.setAutoRaise(False)
         self.mActionFeatureActions.setPopupMode(QToolButton.InstantPopup)
         self.mActionFeatureActions.setIcon(QgsApplication.getThemeIcon("/mAction.svg"))
-        self.mActionFeatureActions.setText(tr("Actions"))
-        self.mActionFeatureActions.setToolTip(tr("Actions"))
+        self.mActionFeatureActions.setText(self.tr("Actions"))
+        self.mActionFeatureActions.setToolTip(self.tr("Actions"))
 
         self.mToolbar.addWidget(self.mActionFeatureActions)
         self.mActionSetStyles.triggered.connect(self.openConditionalStyles)
@@ -1227,9 +1223,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             if mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout:
                 # not supported with custom UI
                 self.mActionToggleMultiEdit.setEnabled(False)
-                self.mActionToggleMultiEdit.setToolTip(tr("Multi-edit is not supported when using custom UI forms"))
+                self.mActionToggleMultiEdit.setToolTip(self.tr("Multi-edit is not supported when using custom UI forms"))
                 self.mActionSearchForm.setEnabled(False)
-                self.mActionSearchForm.setToolTip(tr("Search is not supported when using custom UI forms"))
+                self.mActionSearchForm.setToolTip(self.tr("Search is not supported when using custom UI forms"))
 
             self.editingToggled()
 
@@ -1372,7 +1368,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         if fieldindex < 0:
             # // this shouldn't happen... but it did. There's probably some deeper underlying issue
             # // but we may as well play it safe here.
-            QMessageBox.critical(None, tr("Update Attributes"),
+            QMessageBox.critical(None, self.tr("Update Attributes"),
                                  "An error occurred while trying to update the field {}".format(fieldName))
             return
 
@@ -1407,7 +1403,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             fld.name())  # need existing column value to store old attribute when changing field values
         request.setSubsetOfAttributes(referencedColumns, layer.fields())
 
-        task = QgsScopedProxyProgressTask(tr("Calculating field"))
+        task = QgsScopedProxyProgressTask(self.tr("Calculating field"))
 
         count = len(filteredIds) if len(filteredIds) > 0 else layer.featureCount()
         i = 0
@@ -1446,7 +1442,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         if not calculationSuccess:
             QMessageBox.critical(None,
-                                 tr("Update Attributes"),
+                                 self.tr("Update Attributes"),
                                  "An error occurred while evaluating the calculation string:\n{}".format(error))
             self.mLayer.destroyEditCommand()
 
@@ -1576,9 +1572,9 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         )
 
         if self.mMainView.filterMode() == QgsAttributeTableFilterModel.ShowAll:
-            self.mRunFieldCalc.setText(tr("Update All"))
+            self.mRunFieldCalc.setText(self.tr("Update All"))
         else:
-            self.mRunFieldCalc.setText(tr("Update Filtered"))
+            self.mRunFieldCalc.setText(self.tr("Update Filtered"))
 
         canDeleteFeatures = self.mLayer.dataProvider().capabilities() & QgsVectorDataProvider.DeleteFeatures
         enabled = self.mLayer.selectedFeatureCount() > 0
@@ -1725,8 +1721,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             if self.mLayer.deleteAttributes(fieldIndices):
                 self.mLayer.endEditCommand()
             else:
-                self.mainMessageBar().pushMessage(tr("Attribute error"),
-                                                  tr("The attribute(s) could not be deleted"),
+                self.mainMessageBar().pushMessage(self.tr("Attribute error"),
+                                                  self.tr("The attribute(s) could not be deleted"),
                                                   Qgis.Warning)
             self.reloadModel()
 
@@ -1750,7 +1746,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     def showContextMenu(self, menu: QgsActionMenu, fid: int):
         if self.mLayer.isEditable():
             qAction = menu.addAction(QgsApplication.getThemeIcon("/mActionDeleteSelectedFeatures.svg"),
-                                     tr("Delete Feature"))
+                                     self.tr("Delete Feature"))
             qAction.triggered.connect(lambda *args, f=fid: self.deleteFeature(fid))
 
     def deleteFeature(self, fid: int):

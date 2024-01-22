@@ -51,7 +51,6 @@ class SpectralLibraryWidget(AttributeTableWidget):
         if not isinstance(speclib, QgsVectorLayer):
             speclib = SpectralLibraryUtils.createSpectralLibrary()
 
-        self.actionShowSpectralProcessingDialog = QAction(self.tr('Spectral Processing'))
         super().__init__(speclib)
         # self.setAttribute(Qt.WA_DeleteOnClose, on=True)
         self.setWindowIcon(QIcon(':/qps/ui/icons/speclib.svg'))
@@ -171,6 +170,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         # self.tbSpeclibAction.addWidget(self.cbXAxisUnit)
         # self.tbSpeclibAction.addAction(self.mSpeclibPlotWidget.optionColorsFromFeatureRenderer)
 
+        self.actionShowSpectralProcessingDialog = QAction(self.tr('Spectral Processing'))
         self.actionShowSpectralProcessingDialog.setParent(self)
         self.actionShowSpectralProcessingDialog.setCheckable(False)
         self.actionShowSpectralProcessingDialog.setIcon(QIcon(':/qps/ui/icons/profile_processing.svg'))
@@ -254,7 +254,8 @@ class SpectralLibraryWidget(AttributeTableWidget):
 
     def editingToggled(self):
         super().editingToggled()
-        self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
+        if hasattr(self, 'actionShowSpectralProcessingDialog'):
+            self.actionShowSpectralProcessingDialog.setEnabled(self.speclib().isEditable())
 
     def setViewVisibility(self, viewType: ViewType):
         """
