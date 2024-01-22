@@ -10,9 +10,9 @@ from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog
-from qgis.core import QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteContext
+from qgis.core import QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteContext, QgsMapLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
-    QgsActionMenu, QgsMapLayer
+    QgsActionMenu
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
 from .spectrallibraryplotwidget import SpectralLibraryPlotWidget, \
     SpectralProfilePlotModel
