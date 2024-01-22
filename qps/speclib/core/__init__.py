@@ -2,7 +2,6 @@ from typing import Union, List, Dict
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsVectorLayer, QgsField, QgsFeature, QgsFields
-from ...speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 
 def create_profile_field(*args, **kwds) -> QgsField:
@@ -10,7 +9,7 @@ def create_profile_field(*args, **kwds) -> QgsField:
     return SpectralLibraryUtils.createProfileField(*args, **kwds)
 
 
-def supports_field(field: QgsField) -> bool:
+def can_store_spectral_profiles(field: QgsField) -> bool:
     """
     Returns True if the QgsField can be used to store spectral profiles
     """
@@ -37,12 +36,18 @@ def is_profile_field(field: QgsField) -> bool:
     :param field: QgsField
     :return: bool
     """
-    return supports_field(field) and field.editorWidgetSetup().type() == EDITOR_WIDGET_REGISTRY_KEY
+    from .spectrallibrary import SpectralLibraryUtils
+    return SpectralLibraryUtils.isProfileField(field)
+
+
+def make_profile_field(field: QgsField) -> True:
+    from .spectrallibrary import SpectralLibraryUtils
+    return SpectralLibraryUtils.makeToProfileField(field)
 
 
 def contains_profile_field(object: Union[QgsVectorLayer, QgsFeature, QgsFields]) -> bool:
     """
-    Returns True if the input contains a QgsField of type binary and editorWidget SpectralProfile
+    Returns True if the input contains a QgsField of type binary / string and editorWidget SpectralProfile
     :param object:
     :return: bool
     """

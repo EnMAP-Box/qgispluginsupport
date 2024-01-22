@@ -19,6 +19,7 @@
 # noinspection PyPep8Naming
 import os
 import pathlib
+import shutil
 import unittest
 
 from osgeo import ogr, gdal
@@ -35,7 +36,7 @@ from qgis.gui import QgsMapCanvas, \
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
-from qps.speclib.core import profile_field_list, is_spectral_library
+from qps.speclib.core import profile_field_list, is_spectral_library, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
@@ -45,7 +46,7 @@ from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, Spectra
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.unitmodel import BAND_NUMBER, UnitLookup
 from qps.utils import setToolButtonDefaultActionMenu
-from qpstestdata import enmap, hymap
+from qpstestdata import enmap, hymap, speclib_geojson
 
 start_app()
 
@@ -429,6 +430,56 @@ class TestSpeclibWidgets(TestCaseBase):
         SLIB = TestObjects.createSpectralLibrary()
         d = AddAttributeDialog(SLIB)
         self.showGui(d)
+
+    def test_SpectralLibraryWidget_loadProfileFields(self):
+
+        # test profile field detection
+
+        lyr = QgsVectorLayer(speclib_geojson)
+        pfields = profile_field_list(lyr)
+        self.assertEqual(1, len(pfields))
+
+        lyr = QgsVectorLayer(speclib_geojson, options=QgsVectorLayer.LayerOptions(loadDefaultStyle=False))
+        pfields = profile_field_list(lyr)
+        self.assertEqual(0, len(pfields))
+
+        w = SpectralLibraryWidget(speclib=lyr)
+        pfields = profile_field_list(lyr)
+        self.assertEqual(1, len(pfields))
+
+        self.showGui(w)
+
+    def test_SpectralLibraryWidget_saveStyle(self):
+
+        tmp = self.createTestOutputDirectory()
+        path_json = tmp / 'testspeclib.geojson'
+        path_qml = tmp / 'testspeclib.qml'
+        shutil.copyfile(speclib_geojson, path_json)
+
+        self.assertTrue(path_json.is_file())
+        if path_qml.is_file():
+            os.remove(path_qml)
+        self.assertFalse(path_qml.is_file())
+
+        sl = QgsVectorLayer(path_json.as_posix())
+        pfields = profile_field_names(sl)
+        self.assertEqual(pfields, [])
+
+        slw = SpectralLibraryWidget(speclib=sl)
+        self.assertTrue(path_qml.is_file())
+        pfields = profile_field_names(sl)
+        self.assertTrue(len(pfields) == 1)
+        os.remove(path_qml)
+        self.assertFalse(path_qml.is_file())
+
+        slw.mActionSaveEdits.trigger()
+        self.assertTrue(path_qml.is_file())
+
+        del slw
+
+        sl2 = QgsVectorLayer(path_json.as_posix())
+        pfield2 = profile_field_names(sl2)
+        self.assertEqual(pfields, pfield2)
 
     def test_SpectralLibraryWidgetProgressDialog(self):
 

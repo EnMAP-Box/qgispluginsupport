@@ -194,6 +194,7 @@ class SpectralLibraryIO(QObject):
                 i = lyr.fields().lookupField(name)
                 if i >= 0:
                     lyr.setEditorWidgetSetup(i, fields.field(name).editorWidgetSetup())
+            lyr.updatedFields.emit()
             msg, success = lyr.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
             if not success:
                 print(msg, file=sys.stderr)

@@ -600,12 +600,12 @@ class TestCaseBase(_BASECLASS):
             name = 'test-outputs'
         repo = findUpwardPath(inspect.getfile(self.__class__), '.git').parent
 
-        testDir = repo / name
-        os.makedirs(testDir, exist_ok=True)
+        if subdir is None:
+            subdir = f'{self.__module__}.{self.__class__.__name__}'
 
-        if subdir:
-            testDir = testDir / subdir
-            os.makedirs(testDir, exist_ok=True)
+        testDir = repo / name / subdir
+
+        os.makedirs(testDir, exist_ok=True)
 
         return testDir
 

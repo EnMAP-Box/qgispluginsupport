@@ -1372,6 +1372,7 @@ def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, 
         setup = fSrc.editorWidgetSetup()
         if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(vectorLayer, idx):
             vectorLayer.setEditorWidgetSetup(idx, setup)
+    vectorLayer.updatedFields.emit()
 
 
 def check_package(name, package=None, stop_on_error=False):

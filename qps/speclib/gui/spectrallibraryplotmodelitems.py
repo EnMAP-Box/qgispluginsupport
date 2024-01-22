@@ -1139,6 +1139,8 @@ class QgsPropertyItem(PropertyItem):
             model = self.model()
             from ...speclib.gui.spectrallibraryplotwidget import SpectralProfilePlotModel
             if isinstance(model, SpectralProfilePlotModel):
+                # emit updatedFields to apply latest changes
+                speclib.updatedFields.emit()
                 w.setModel(model.profileFieldsModel())
             w.setToolTip(self.definition().description())
 
