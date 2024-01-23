@@ -110,8 +110,8 @@ def start_app(cleanup: bool = True,
     assert crs1.isValid(), 'Failed to initialize QGIS SRS database'
     crs2 = QgsCoordinateReferenceSystem.fromWkt(crs1.toWkt())
     assert crs2.isValid(), ('Failed to initialize QGIS SRS database. '
-                            'Likely a QgsCoordinateSystem instance is created before an'
-                            'QgsApplication.instance() calling `qgis.testing.start_app()`.')
+                            'Is a QgsCoordinateSystem instance created before a '
+                            'QgsApplication.instance() is created, e.g. using `qgis.testing.start_app()`.')
 
     return app
 
