@@ -525,6 +525,8 @@ class SpectralProcessingModelCreatorAlgorithmWrapper(QgsProcessingParametersWidg
                     continue
 
                 widget = wrapper.wrappedWidget()
+                if widget is None and issubclass(wrapper.__class__, WidgetWrapper):
+                    widget = wrapper.widget
 
                 if not isinstance(wrapper, QgsProcessingHiddenWidgetWrapper) and widget is None:
                     continue
@@ -584,8 +586,14 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
     sigSpectralProcessingModelChanged = pyqtSignal()
     sigAboutToBeClosed = pyqtSignal()
 
-    def __init__(self, *args, speclib: QgsVectorLayer = None, parent: QWidget = None, **kwds):
+    def __init__(self, *args,
+                 speclib: Optional[QgsVectorLayer] = None,
+                 algorithmId: Optional[str] = None,
+                 parameters: Optional[dict] = None,
+                 parent: Optional[QWidget] = None,
+                 **kwds):
         super().__init__(parent=parent)
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
         # QgsProcessingContextGenerator.__init__(self)
         self.mDialogName = 'Spectral Processing Dialog'
         self.setWindowIcon(QIcon(r':/qps/ui/icons/profile_processing.svg'))
@@ -635,32 +643,28 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             # load default values from last start
             settings = speclibSettings()
             K = self.__class__.__name__
-            algId = settings.value(f'{K}/algorithmId', None)
-            if algId:
-                s = ""
-                alg: QgsProcessingAlgorithm = QgsApplication.processingRegistry().algorithmById(algId)
+            if algorithmId is None:
+                algorithmId = settings.value(f'{K}/algorithmId', None)
+
+            if algorithmId:
+                alg: QgsProcessingAlgorithm = QgsApplication.processingRegistry().algorithmById(algorithmId)
                 if isinstance(alg, QgsProcessingAlgorithm):
                     self.setAlgorithm(alg)
                     context = self.processingContext()
 
-                    try:
-                        parJson = settings.value(f'{K}/algorithmParameters', '')
-                        parameters = json.loads(parJson)
-                    except (JSONDecodeError, Exception) as ex:
-                        parameters = None
-                    if isinstance(parameters, dict):
+                    if not isinstance(parameters, dict):
+                        try:
+                            parJson = settings.value(f'{K}/algorithmParameters', '')
+                            parameters = json.loads(parJson)
+                        except (JSONDecodeError, Exception) as ex:
+                            parameters = None
 
+                    if isinstance(parameters, dict):
                         wrapper = self.processingModelWrapper()
                         for k, value in parameters.items():
                             w = wrapper.mWrappers.get(k)
                             if isinstance(w, QgsAbstractProcessingParameterWidgetWrapper):
                                 w.setWidgetValue(value, context)
-                    else:
-                        wrapper = self.processingModelWrapper()
-                        for k, w in wrapper.mWrappers.items():
-                            if isinstance(w, SpectralProcessingRasterLayerWidgetWrapper):
-                                s = ""
-                        s = ""
 
     @staticmethod
     def resetSettings():

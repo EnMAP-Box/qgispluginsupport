@@ -2,7 +2,7 @@ import enum
 import sys
 
 import warnings
-from typing import List, Set, Dict, Tuple, Generator, Any, Callable
+from typing import List, Set, Dict, Tuple, Generator, Any, Callable, Optional
 
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
 
@@ -558,11 +558,16 @@ class SpectralLibraryWidget(AttributeTableWidget):
             print(ex, file=sys.stderr)
             pass
 
-    def showSpectralProcessingWidget(self):
+    def showSpectralProcessingWidget(self,
+                                     algorithmId: Optional[str] = None,
+                                     parameters: Optional[dict] = None):
         # alg_key = 'qps/processing/last_alg_id'
         # reg: QgsProcessingRegistry = QgsApplication.instance().processingRegistry()
         # if not isinstance(self.mSpectralProcessingWidget, SpectralProcessingDialog):
-        dialog = SpectralProcessingDialog(speclib=self.speclib())
+        dialog = SpectralProcessingDialog(
+            speclib=self.speclib(),
+            algorithmId=algorithmId,
+            parameters=parameters)
         dialog.setMainMessageBar(self.mainMessageBar())
         dialog.exec_()
 
