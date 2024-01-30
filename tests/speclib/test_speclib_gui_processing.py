@@ -1,3 +1,4 @@
+import copy
 # noinspection PyPep8Naming
 import datetime
 import unittest
@@ -5,13 +6,15 @@ from typing import Tuple
 
 from qgis.PyQt.QtWidgets import QGridLayout
 from qgis.PyQt.QtWidgets import QWidget
+from qgis._core import QgsProcessingAlgorithm, QgsProcessingFeedback
 from qgis.core import QgsProject, QgsProcessingParameterRasterLayer, \
-    QgsProcessingContext, QgsProcessingRegistry, QgsApplication
+    QgsProcessingContext, QgsProcessingRegistry, QgsApplication, edit
 from qgis.core import QgsVectorLayer
 from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator, \
     QgsProcessingAlgorithmDialogBase
 from qgis.gui import QgsMapCanvas, QgsDualView
 from qgis.gui import QgsProcessingGuiRegistry
+from qps import initAll
 from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
@@ -20,6 +23,43 @@ from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
 from qps.testing import TestObjects, TestCaseBase, ExampleAlgorithmProvider, start_app
 
 start_app()
+
+
+class TestAlgorithmLogging(QgsProcessingAlgorithm):
+
+    def __init__(self, logs: dict, name='exampleLoginAlg', ):
+        super(TestAlgorithmLogging, self).__init__()
+        self._name = name
+        self._log = logs
+
+    def createInstance(self):
+        return TestAlgorithmLogging(copy.deepcopy(self._log), name=self.name())
+
+    def name(self):
+        return self._name
+
+    def displayName(self):
+        return 'Example Algorithm with log'
+
+    def groupId(self):
+        return 'exampleapp'
+
+    def group(self):
+        return 'TEST APPS'
+
+    def initAlgorithm(self, configuration=None):
+        pass
+
+    def processAlgorithm(self, parameters: dict, context: QgsProcessingContext,
+                         feedback: QgsProcessingFeedback):
+
+        outputs = {}
+        for k in ['pushDebugInfo', 'pushWarning', 'setProgress', 'setProgressText']:
+            if k in self._log:
+                func = getattr(self, k)
+                func(self._log[k])
+                outputs[k] = self._log[k]
+        return outputs
 
 
 class SpectralProcessingTests(TestCaseBase):
@@ -35,6 +75,36 @@ class SpectralProcessingTests(TestCaseBase):
 
     def algorithmProviderTesting(self) -> 'ExampleAlgorithmProvider':
         return QgsApplication.instance().processingRegistry().providerById(ExampleAlgorithmProvider.NAME.lower())
+
+    def test_logging(self):
+        initAll()
+        logs = {'setProgressText': 'progress test',
+                      'setProgress': 99}
+        provider = ExampleAlgorithmProvider()
+        provider.addAlgorithm(TestAlgorithmLogging(logs))
+
+        preg, preggui = self.initProcessingRegistry()
+        preg.addProvider(provider)
+        algorithmId = provider.algorithms()[0].id()
+        s = ""
+
+        speclib = TestObjects.createSpectralLibrary(2)
+
+
+        TestObjects.processingAlgorithm()
+
+        with edit(speclib):
+            slw = SpectralLibraryWidget(speclib=speclib)
+            spd = SpectralProcessingDialog(speclib=speclib, algorithmId=algorithmId)
+            spd.runAlgorithm(fail_fast=True)
+            # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
+            wrapper = spd.processingModelWrapper()
+
+            s = ""
+            self.showGui([spd, slw])
+
+        preg.removeProvider(provider)
+        QgsProject.instance().removeAllMapLayers()
 
     def test_dualview(self):
 
