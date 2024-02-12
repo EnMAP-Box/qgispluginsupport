@@ -6,7 +6,8 @@ from typing import Tuple
 
 from qgis.PyQt.QtWidgets import QGridLayout
 from qgis.PyQt.QtWidgets import QWidget
-from qgis._core import QgsProcessingAlgorithm, QgsProcessingFeedback
+from qgis.core import QgsProcessingOutputRasterLayer
+from qgis.core import QgsProcessingAlgorithm, QgsProcessingFeedback
 from qgis.core import QgsProject, QgsProcessingParameterRasterLayer, \
     QgsProcessingContext, QgsProcessingRegistry, QgsApplication, edit
 from qgis.core import QgsVectorLayer
@@ -48,17 +49,20 @@ class TestAlgorithmLogging(QgsProcessingAlgorithm):
         return 'TEST APPS'
 
     def initAlgorithm(self, configuration=None):
-        pass
+        # no inputs, but outputs
+        self.addOutput(QgsProcessingOutputRasterLayer('outputProfile',
+                                                      'An output raster layer'))
 
     def processAlgorithm(self, parameters: dict, context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
 
         outputs = {}
-        for k in ['pushDebugInfo', 'pushWarning', 'setProgress', 'setProgressText']:
-            if k in self._log:
-                func = getattr(self, k)
-                func(self._log[k])
-                outputs[k] = self._log[k]
+        for funcName, msg in self._log.items():
+            feedback.pushInfo(f'Test "{funcName}"<-"{msg}"')
+            func = getattr(feedback, funcName)
+            func(msg)
+            outputs[funcName] = msg
+
         return outputs
 
 
@@ -78,8 +82,14 @@ class SpectralProcessingTests(TestCaseBase):
 
     def test_logging(self):
         initAll()
-        logs = {'setProgressText': 'progress test',
-                      'setProgress': 99}
+        logs = {'setProgressText': 'A progress text',
+                'setProgress': 75,
+                'pushInfo': 'A pushInfo',
+                'reportError': 'An error info',
+                'pushDebugInfo': 'A debug info',
+                'pushConsoleInfo': 'A console info',
+                'pushCommandInfo': 'A command info'
+                }
         provider = ExampleAlgorithmProvider()
         provider.addAlgorithm(TestAlgorithmLogging(logs))
 
@@ -90,7 +100,6 @@ class SpectralProcessingTests(TestCaseBase):
 
         speclib = TestObjects.createSpectralLibrary(2)
 
-
         TestObjects.processingAlgorithm()
 
         with edit(speclib):
@@ -98,9 +107,13 @@ class SpectralProcessingTests(TestCaseBase):
             spd = SpectralProcessingDialog(speclib=speclib, algorithmId=algorithmId)
             spd.runAlgorithm(fail_fast=True)
             # slw.showSpectralProcessingWidget(algorithmId=algorithmId)
-            wrapper = spd.processingModelWrapper()
-
+            # wrapper = spd.processingModelWrapper()
             s = ""
+            feedback = spd.processingFeedback()
+            html = feedback.htmlLog()
+            for funcName, value in logs.items():
+                value = str(value)
+                self.assertTrue(value in html)
             self.showGui([spd, slw])
 
         preg.removeProvider(provider)
