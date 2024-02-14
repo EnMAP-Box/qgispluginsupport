@@ -237,9 +237,19 @@ class VectorLayerTools(QgsVectorLayerTools):
             if allowCancel:
                 buttons = buttons | QMessageBox.Abort
 
+            info = 'Do you want to save the changes to layer {}?'.format(layer.name())
+            is_mem = False
+            if layer.dataProvider().name() in ['memory']:
+                is_mem = 'memory'
+            elif layer.source().startswith('/vsimem/'):
+                is_mem = 'vsimem'
+            if is_mem:
+                info += f'<br><i>This is an in-memory layer ({is_mem})</i>'
+                info += '<br><i>Save it in a different format to save the data permanently.</i>'
+
             button = QMessageBox.question(None,
                                           'Stop Editing',
-                                          'Do you want to save the changes to layer {}'.format(layer.name()),
+                                          info,
                                           buttons)
 
             if button == QMessageBox.Abort:

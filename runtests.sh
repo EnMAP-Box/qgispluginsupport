@@ -1,6 +1,7 @@
 #!/bin/bash
 export QT_QPA_PLATFORM=offscreen
 export CI=True
+export QGIS_CONTINUOUS_INTEGRATION_RUN=true
 export PYTHONPATH="${PYTHONPATH}"\
 ":$(pwd)"\
 ":/usr/share/qgis/python/plugins"

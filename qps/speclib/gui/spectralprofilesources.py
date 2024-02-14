@@ -22,12 +22,11 @@ from qgis.PyQt.QtWidgets import QTreeView
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsVector
 from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
-    QgsRasterIdentifyResult, QgsRectangle
+    QgsRectangle
 from qgis.core import QgsLayerItem
-from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, Qgis
+from qgis.core import QgsMapToPixel, Qgis
 from qgis.core import QgsProperty
-from qgis.core import QgsRaster
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsField, QgsFields
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
     QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
 from .spectrallibrarywidget import SpectralLibraryWidget
@@ -40,7 +39,8 @@ from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListM
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import SpatialPoint, loadUi, HashableRect, iconForFieldType, nextColor, rasterLayerMapToPixel
+from ...utils import SpatialPoint, loadUi, HashableRect, iconForFieldType, nextColor, rasterLayerMapToPixel, \
+    aggregateArray
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
@@ -194,7 +194,7 @@ class ProfileSamplingMode(object):
     def aggregation(self) -> str:
         return self.mAggregation
 
-    def profiles(self, profiles: List[Tuple[Dict, QgsExpressionContext]]) \
+    def profiles(self, point: SpatialPoint, profiles: List[Tuple[Dict, QgsExpressionContext]]) \
             -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         Aggregates the profiles collected from a profile source
@@ -205,7 +205,7 @@ class ProfileSamplingMode(object):
 
         aggregation = self.aggregation()
 
-        if aggregation == self.NO_AGGREGATION:
+        if aggregation == self.NO_AGGREGATION or len(profiles) == 1:
             return profiles
         else:
             # aggregate profiles into a single profile
@@ -215,31 +215,36 @@ class ProfileSamplingMode(object):
             for (d, c) in profiles:
                 if 'y' in d:
                     p = d['y']
-                    pdicts.append(p)
+                    pdicts.append(d)
                     pcontexts.append(c)
                     arrays.append(np.asarray(p))
 
-            data = np.stack(arrays).reshape((ksize.width() * ksize.height(), len(arrays[0])))
+            data = np.stack(arrays)
             if data.dtype == object:
                 data = data.astype(float)
 
-            if aggregation == self.AGGREGATE_MEAN:
-                data = np.nanmean(data, axis=0)
-            elif aggregation == self.AGGREGATE_MEDIAN:
-                data = np.nanmedian(data, axis=0)
-            elif aggregation == self.AGGREGATE_MIN:
-                data = np.nanmin(data, axis=0)
-            elif aggregation == self.AGGREGATE_MAX:
-                data = np.nanmax(data, axis=0)
-
-            x = bbl = xUnit = yUnit = None
-            # bbl - merge, set 0 if any is 0
-            # x, xUnit, yUnit - use 1st
+            data = aggregateArray(aggregation, data, axis=0, keepdims=False)
 
             # context: merge
-            context = pcontexts[0]
-            profile = prepareProfileValueDict(y=data, x=x, xUnit=xUnit, yUnit=yUnit)
-        return [(profile, context)]
+            i_center = int(len(pcontexts) / 2)
+            refContext = pcontexts[i_center]
+
+            # use the point coordinate as coordinate for the aggregated profile feature
+            g = QgsGeometry.fromPointXY(point)
+
+            if isinstance(refContext.variable('_source_crs'), QgsCoordinateReferenceSystem):
+                trans = QgsCoordinateTransform()
+                trans.setSourceCrs(point.crs())
+                trans.setDestinationCrs(refContext.variable('_source_crs'))
+                g.transform(trans)
+                refContext.setGeometry(g)
+
+            refProfile = pdicts[i_center]
+            profile = prepareProfileValueDict(y=data,
+                                              x=refProfile.get('x'),
+                                              xUnit=refProfile.get('xUnit'),
+                                              yUnit=refProfile.get('yUnit'))
+        return [(profile, refContext)]
 
 
 class StandardLayerProfileSource(SpectralProfileSource):
@@ -327,7 +332,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
             px = M2PX.transform(point)
             px_snapped = QgsPointXY(int(px.x()) + 0.5, int(px.y()) + 0.5)
             point = M2PX.toMapCoordinatesF(px_snapped.x(), px_snapped.y())
-            s = ""
+
         context = QgsExpressionContext()
         context.appendScope(QgsExpressionContextUtils.layerScope(self.mLayer))
 
@@ -338,76 +343,40 @@ class StandardLayerProfileSource(SpectralProfileSource):
                       resY * kernel_size.height())
         rect.moveCenter(point.toQPointF())
 
-        dp: QgsRasterDataProvider = self.mLayer.dataProvider()
-        feedback = QgsRasterBlockFeedback()
-        nb = self.mLayer.bandCount()
-        nx = kernel_size.width()
-        ny = kernel_size.height()
+        profilesWithContext: List[Dict, QgsExpressionContext] = []
 
-        profiles = []
-        bbl = sp.badBands()
-        wl = sp.wavelengths()
-        wlu = sp.wavelengthUnits()
-        if isinstance(wlu, list):
-            wlu = wlu[0]
-
-        if False:
-            geo_x = np.arange(0, nx) * resX
-            geo_y = np.arange(0, ny) * resY
-            geo_x -= 0.5 * geo_x[-1]
-            geo_y -= 0.5 * geo_y[-1]
-            geo_x += point.x()
-            geo_y += point.y()
-            for iX in range(nx):
-                for iY in range(ny):
-
-                    pt = QgsPointXY(geo_x[iX], geo_y[iY])
-                    if not self.mLayer.extent().contains(pt):
-                        continue
-
-                    profileContext = self.expressionContext(pt)
-
-                    if Qgis.versionInt() < 33000:
-                        R: QgsRasterIdentifyResult = dp.identify(pt, QgsRaster.IdentifyFormat.IdentifyFormatValue)
-                    else:
-                        R: QgsRasterIdentifyResult = dp.identify(pt, Qgis.RasterIdentifyFormat.Value)
-                    if not R.isValid():
-                        continue
-
-                    results = R.results()
-                    yValues = [results[b + 1] for b in range(self.mLayer.bandCount())]
-
-                    d = prepareProfileValueDict(y=yValues, x=wl, xUnit=wlu, bbl=bbl)
-                    if isinstance(d, dict):
-                        profiles.append((d, profileContext))
-
+        if kernel_size == QSize(1, 1):
+            g = QgsGeometry.fromPointXY(point)
         else:
-            if kernel_size == QSize(1, 1):
-                g = QgsGeometry.fromPointXY(point)
-            else:
-                v = QgsVector(-0.5 * kernel_size.width() * resX, 0.5 * kernel_size.height() * resY)
-                ul = point + v
-                lr = point - v
-                k = QgsRectangle(ul, lr)
+            v = QgsVector(-0.5 * kernel_size.width() * resX,
+                          0.5 * kernel_size.height() * resY)
 
-                g = QgsGeometry.fromRect(k)
-                s = ""
+            k = QgsRectangle(point + v, point - v)
 
-            f = RasterProfile()
-            values = [self.mLayer, point, 'none', True, 'dict']
-            exp = QgsExpression()
-            fcontext = QgsExpressionContext(context)
-            fcontext.setGeometry(g)
-            profiles_at = f.func(values, fcontext, exp, None)
+            g = QgsGeometry.fromRect(k)
 
-            if not exp.hasEvalError():
-                loc_geo = fcontext.variable('raster_array_geo')
+        f = RasterProfile()
+        all_touched = False
+        values = [self.mLayer, point, 'none', all_touched, 'dict']
+        exp = QgsExpression()
+        fcontext = QgsExpressionContext(context)
+        fcontext.setGeometry(g)
+        profiles_at = f.func(values, fcontext, exp, None)
 
-                for d, px_geo in zip(profiles_at, loc_geo):
-                    context = self.expressionContext(px_geo)
-                    profiles.append((d, context))
+        if exp.hasParserError() or exp.hasEvalError() or profiles_at is None:
+            return []
 
-        return profiles
+        if isinstance(profiles_at, dict):
+            profiles_at = [profiles_at]
+
+        loc_geo = fcontext.variable('raster_array_geo')
+
+        for pDict, px_geo in zip(profiles_at, loc_geo):
+
+            context = self.expressionContext(px_geo)
+            profilesWithContext.append((pDict, context))
+
+        return profilesWithContext
 
 
 class MapCanvasLayerProfileSource(SpectralProfileSource):
@@ -1215,13 +1184,13 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def profileStyle(self) -> PlotStyle:
         return self.mProfileStyleNode
 
-    def profiles(self, *args, **kwargs) -> List[Tuple[Dict, QgsExpressionContext]]:
+    def profiles(self, point, *args, **kwargs) -> List[Tuple[Dict, QgsExpressionContext]]:
 
         kwargs = copy.copy(kwargs)
         sampling: ProfileSamplingMode = self.sampling()
         kwargs['kernel_size'] = QSize(sampling.kernelSize())
-        profiles = self.mSourceNode.profileSource().collectProfiles(*args, **kwargs)
-        profiles = sampling.profiles(profiles)
+        profiles = self.mSourceNode.profileSource().collectProfiles(point, *args, **kwargs)
+        profiles = sampling.profiles(point, profiles)
         profiles = self.mScalingNode.profiles(profiles)
 
         return profiles

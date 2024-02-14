@@ -404,7 +404,12 @@ def aggregateArray(aggregation: str, array: np.ndarray, *args, axis: int = None,
             'percentile': np.nanpercentile,
             'quantile': np.nanquantile}
     assert aggregation in AGGR.keys(), f'Unknown aggregation "{aggregation}"'
-    return AGGR[aggregation](array, *args, axis=axis, **kwds)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        result = AGGR[aggregation](array, *args, axis=axis, **kwds)
+
+    return result
 
 
 def noDataValues(dataProvider: Union[QgsRasterLayer, QgsRasterDataProvider]) -> Dict[int, List[Union[int, float]]]:
@@ -1367,6 +1372,7 @@ def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, 
         setup = fSrc.editorWidgetSetup()
         if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(vectorLayer, idx):
             vectorLayer.setEditorWidgetSetup(idx, setup)
+    vectorLayer.updatedFields.emit()
 
 
 def check_package(name, package=None, stop_on_error=False):
@@ -3027,7 +3033,7 @@ class MapGeometryToPixel(object):
     def geo2pxList(self, xvalues, yvalues) -> List[QPoint]:
         return [self.geo2px(x, y) for x, y in zip(xvalues, yvalues)]
 
-    def memoryLayerBand(self, wkbType) -> Tuple[gdal.Band, ogr.Layer]:
+    def memoryLayerBand(self, qgsGeometry: QgsGeometry) -> Tuple[gdal.Band, ogr.Layer]:
         if not isinstance(self.srs, SpatialReference) and \
                 isinstance(self.crs, QgsCoordinateReferenceSystem):
             self.srs = SpatialReference(self.crs.toWkt())
@@ -3050,14 +3056,16 @@ class MapGeometryToPixel(object):
         if not isinstance(self.vsMem, ogr.DataSource):
             self.vsMem: ogr.DataSource = ogr.GetDriverByName('Memory').CreateDataSource('')
 
-        if wkbType not in self.wkbTypeLayers:
-            lyr: ogr.Layer = self.vsMem.CreateLayer(f'wkbType{wkbType}',
-                                                    srs=self.srs,
-                                                    geom_type=int(wkbType))
-            lyr.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger))
-            self.wkbTypeLayers[wkbType] = lyr
+        g = ogr.CreateGeometryFromWkb(qgsGeometry.asWkb())
+        geom_type = g.GetGeometryType()
+        key = f'geomType_{geom_type}'
+        if key not in self.wkbTypeLayers:
+            lyr: ogr.Layer = self.vsMem.CreateLayer(key, srs=self.srs, geom_type=geom_type)
 
-        return self.bandMEM, self.wkbTypeLayers[wkbType]
+            lyr.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger))
+            self.wkbTypeLayers[key] = lyr
+
+        return self.bandMEM, self.wkbTypeLayers[key]
 
     def geometryPixelPositions(self,
                                g: Union[QgsGeometry, QgsFeature],
@@ -3069,10 +3077,7 @@ class MapGeometryToPixel(object):
             if g.hasGeometry():
                 g = g.geometry()
 
-        if not isinstance(g, QgsGeometry):
-            return None, None
-
-        if _geometryIsEmpty(g):
+        if not isinstance(g, QgsGeometry) or _geometryIsEmpty(g):
             return None, None
 
         if g.wkbType() == QGIS_WKBTYPE.Point and not burn_points:
@@ -3092,7 +3097,7 @@ class MapGeometryToPixel(object):
             else:
                 return None, None
         else:
-            bandMEM, lyr = self.memoryLayerBand(g.wkbType())
+            bandMEM, lyr = self.memoryLayerBand(g)
             bandMEM: gdal.Band
             lyr: ogr.Layer
             dsMEM: gdal.Dataset = bandMEM.GetDataset()
@@ -3102,12 +3107,12 @@ class MapGeometryToPixel(object):
             ogrFeature.SetGeometryDirectly(ogr.CreateGeometryFromWkb(g.asWkb()))
             assert ogrFeature.geometry().IsValid()
 
-            assert ogr.OGRERR_NONE == self._upsertFeature(lyr, ogrFeature)
+            assert ogr.OGRERR_NONE == self._clearAndInsert(lyr, ogrFeature)
             assert lyr.GetFeatureCount() == 1
             lyr.ResetReading()
             bandMEM.Fill(0)  # ensure that no FIDs are left from previous writes
             assert gdal.CPLE_None == gdal.RasterizeLayer(dsMEM, [1], lyr,
-                                                         options=['ALL_TOUCHED={}'.format(all_touched),
+                                                         options=['ALL_TOUCHED={}'.format(all_touched).upper(),
                                                                   'ATTRIBUTE={}'.format('FID_BURN')]
                                                          )
             is_fid = dsMEM.ReadAsArray() == 1
@@ -3117,14 +3122,10 @@ class MapGeometryToPixel(object):
             else:
                 return None, None
 
-    def _upsertFeature(self, lyr: ogr.Layer, ogrFeature: ogr.Feature):
-        # Rewrite an existing feature or create a new feature within a layer.
-        # https://gdal.org/api/python/osgeo.ogr.html#osgeo.ogr.Layer.UpsertFeature
-        if int(gdal.VersionInfo()) > 3060000:
-            return lyr.UpsertFeature(ogrFeature)
-        else:
-            lyr.DeleteFeature(ogrFeature.GetFID())
-            return lyr.CreateFeature(ogrFeature)
+    def _clearAndInsert(self, lyr: ogr.Layer, ogrFeature: ogr.Feature):
+        for feature in lyr:
+            lyr.DeleteFeature(feature.GetFID())
+        return lyr.CreateFeature(ogrFeature)
 
 
 class ExtentTileIterator(object):
@@ -3361,9 +3362,12 @@ def rasterizeFeatures(featureSource: QgsFeatureSource,
                 if r:
                     yield r
 
-        feedback.setProgress((tid + 1.0) * 100. / tileIterator.nTotal)
+        feedback.setProgress(int((tid + 1.0) * 100. / tileIterator.nTotal))
 
     assert len(FEATURE_DATA) == 0
+    for k in list(Tile2Features.keys()):
+        if len(Tile2Features[k]) == 0:
+            del Tile2Features[k]
     assert len(Tile2Features) == 0
 
 
@@ -3377,14 +3381,14 @@ def rasterArray(rasterInterface: Union[QgsRasterInterface, str, QgsRasterLayer],
                 rect: Union[QRect, QgsRasterInterface, QgsRectangle, SpatialExtent] = None,
                 ul: Union[SpatialPoint, QPoint] = None,
                 lr: Union[SpatialPoint, QPoint] = None,
-                bands: Union[str, int, List[int]] = None) -> np.ndarray:
+                bands: Union[str, int, List[int]] = None) -> Optional[np.ndarray]:
     """
     Returns the raster values of a QgsRasterLayer or QgsRasterInterface as 3D numpy array of shape (bands, height, width)
     :param rasterInterface: QgsRasterLayer, QgsRasterInterface or str to load a QgsRasterLayer from
     :param rect: Subset to be returned.
                  QRect for subset in pixel coordinates,
                  QgsRectangle for geo-coordinates in raster CRS,
-                 SpatialExtent for geo-coodinates with CRS different to the raster CRS (will be transformed)
+                 SpatialExtent for geo-coordinates with CRS different to the raster CRS (will be transformed)
     :param ul: upper-left corner,
                can be a geo-coordinate (SpatialPoint, QgsPointXY) or pixel-coordinate (QPoint)
                defaults to raster layers upper-left corner

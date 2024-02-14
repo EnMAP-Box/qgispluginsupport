@@ -30,7 +30,6 @@ import pathlib
 import re
 import sys
 from typing import Union, List, Generator, Any
-import PyQt5.pyrcc_main
 
 from qgis.PyQt.QtCore import QFile, QModelIndex, QTextStream, QSortFilterProxyModel, QDirIterator, QAbstractTableModel, \
     QRegExp, Qt
@@ -160,6 +159,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     :param pathQrc:
     :return:
     """
+    import PyQt5.pyrcc_main
     if not isinstance(pathQrc, pathlib.Path):
         pathQrc = pathlib.Path(pathQrc)
 
@@ -181,8 +181,6 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     last_cwd = os.getcwd()
     os.chdir(cwd)
 
-    cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
-    cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
     # print(cmd)
 
     if True:
@@ -199,6 +197,9 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
         PyQt5.pyrcc_main.compressLevel = last_level
         PyQt5.pyrcc_main.compressThreshold = last_threshold
     else:
+        cmd = 'pyrcc5 -compress {} -o {} {}'.format(compressLevel, pathPy, pathQrc)
+        cmd2 = 'pyrcc5 -no-compress -o {} {}'.format(pathPy.as_posix(), pathQrc.name)
+
         print(cmd2)
         os.system(cmd2)
 

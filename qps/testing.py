@@ -42,15 +42,14 @@ from unittest import mock
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
 
-import qgis.testing
-import qgis.testing.mocked
 import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, Qt
 from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
 from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
     QApplication, QWidget, QAction, QMenu, QDockWidget
-from qgis.core import QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
+
+from qgis.core import Qgis, QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
     QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
     QgsCoordinateReferenceSystem, QgsProject, \
     QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
@@ -62,6 +61,7 @@ from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
 from qgis.gui import QgsMapLayerConfigWidgetFactory
 from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
     QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
+
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
 from .utils import px2geo, SpatialPoint, findUpwardPath
@@ -78,7 +78,6 @@ def start_app(cleanup: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
-
     app = qgis.testing.start_app(cleanup)
 
     from qgis.core import QgsCoordinateReferenceSystem
@@ -111,8 +110,8 @@ def start_app(cleanup: bool = True,
     assert crs1.isValid(), 'Failed to initialize QGIS SRS database'
     crs2 = QgsCoordinateReferenceSystem.fromWkt(crs1.toWkt())
     assert crs2.isValid(), ('Failed to initialize QGIS SRS database. '
-                            'Likely a QgsCoordinateSystem instance is created before an'
-                            'QgsApplication.instance() calling `qgis.testing.start_app()`.')
+                            'Is a QgsCoordinateSystem instance created before a '
+                            'QgsApplication.instance() is created, e.g. using `qgis.testing.start_app()`.')
 
     return app
 
@@ -433,7 +432,13 @@ def _set_iface(ifaceMock: QgisInterface):
 # APP = None
 
 
-class TestCaseBase(qgis.testing.TestCase):
+if Qgis.versionInt() >= 33400:
+    from qgis.testing import QgisTestCase as _BASECLASS
+else:
+    from qgis.testing import TestCase as _BASECLASS
+
+
+class TestCaseBase(_BASECLASS):
     gdal.UseExceptions()
 
     @staticmethod
@@ -500,7 +505,12 @@ class TestCaseBase(qgis.testing.TestCase):
         Returns True if this the environment is supposed to run in a CI environment
         and should not open blocking dialogs
         """
-        return str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0']
+        r = str(os.environ.get('CI', '')).lower() not in ['', 'none', 'false', '0']
+
+        if Qgis.versionInt() >= 33400:
+            from qgis.testing import QgisTestCase
+            r = r or QgisTestCase.is_ci_run()
+        return r
 
     @classmethod
     def createProcessingContextFeedback(cls) -> Tuple[QgsProcessingContext, QgsProcessingFeedback]:
@@ -590,12 +600,12 @@ class TestCaseBase(qgis.testing.TestCase):
             name = 'test-outputs'
         repo = findUpwardPath(inspect.getfile(self.__class__), '.git').parent
 
-        testDir = repo / name
-        os.makedirs(testDir, exist_ok=True)
+        if subdir is None:
+            subdir = f'{self.__module__}.{self.__class__.__name__}'
 
-        if subdir:
-            testDir = testDir / subdir
-            os.makedirs(testDir, exist_ok=True)
+        testDir = repo / name / subdir
+
+        os.makedirs(testDir, exist_ok=True)
 
         return testDir
 
