@@ -34,7 +34,6 @@ from json import JSONDecodeError
 from typing import Union, List, Set, Callable, Iterable, Any, Dict, Tuple
 
 import numpy as np
-from qgis.core import QgsExpressionContextScope
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
