@@ -68,8 +68,7 @@ from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetu
     QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
 from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
-
-from .qgisenums import QGIS_LAYERFILTER, QGIS_GEOMETRYTYPE, QGIS_WKBTYPE
+from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import UnitLookup, datetime64
 
@@ -130,6 +129,7 @@ def rm(p):
     elif os.path.isdir(p):
         shutil.rmtree(p)
 
+
 def _geometryIsEmpty(g: QgsGeometry) -> bool:
     if g.isEmpty():
         return True
@@ -139,9 +139,9 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
             return True
     else:
         if g.type() in [QgsWkbTypes.NoGeometry,
-                     QgsWkbTypes.NullGeometry,
-                     QgsWkbTypes.UnknownGeometry
-                    ]:
+                        QgsWkbTypes.NullGeometry,
+                        QgsWkbTypes.UnknownGeometry
+                        ]:
             return True
     return False
 
@@ -151,6 +151,7 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
 def _geometryIsSinglePoint(g: QgsGeometry) -> bool:
     return g.wkbType() in [QGIS_WKBTYPE.Point, QGIS_WKBTYPE.PointM,
                            QGIS_WKBTYPE.PointZM, QGIS_WKBTYPE.Point25D, QGIS_WKBTYPE.PointZ]
+
 
 class SignalBlocker(object):
     """

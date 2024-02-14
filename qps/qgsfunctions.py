@@ -33,7 +33,6 @@ from json import JSONDecodeError
 from typing import Union, List, Set, Callable, Iterable, Any, Dict
 
 import numpy as np
-from qgis.core import QgsExpressionContextScope
 
 from qgis.PyQt.QtCore import QByteArray
 from qgis.PyQt.QtCore import QCoreApplication
@@ -41,12 +40,12 @@ from qgis.PyQt.QtCore import QVariant, NULL
 from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
 from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
     QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
+from qgis.core import QgsExpressionContextScope
 from qgis.core import QgsExpressionNodeFunction, QgsField
 from qgis.core import QgsFeature
 from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider
 from qgis.core import QgsMapLayer
 from qgis.core import QgsProject
-from .qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
@@ -618,8 +617,6 @@ class RasterArray(QgsExpressionFunction):
             pixels = array[:, i_y, i_x]
             pixels = pixels.astype(float)
             # print(pixels.shape)
-
-
 
             for b in range(pixels.shape[0]):
                 for ndv in NODATA.get(b + 1, []):

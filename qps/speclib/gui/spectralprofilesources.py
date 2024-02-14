@@ -9,9 +9,8 @@ from typing import List, Any, Iterable, Dict, Union, Tuple, Set, Iterator
 
 import numpy as np
 from numpy import NaN
-from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsVector
 
-from qgis.PyQt.QtCore import QByteArray, QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QSortFilterProxyModel, \
+from qgis.PyQt.QtCore import QModelIndex, QRect, QAbstractListModel, QSize, QRectF, QSortFilterProxyModel, \
     QItemSelection, NULL
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtCore import Qt
@@ -20,29 +19,28 @@ from qgis.PyQt.QtGui import QTextDocument, QAbstractTextDocumentLayout, QIcon, Q
 from qgis.PyQt.QtWidgets import QListWidgetItem, QStyledItemDelegate, QComboBox, QWidget, QDoubleSpinBox, QSpinBox, \
     QTableView, QStyle, QStyleOptionViewItem
 from qgis.PyQt.QtWidgets import QTreeView
-from qgis.core import QgsRaster
+from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem, QgsVector
 from qgis.core import QgsExpressionContextUtils, QgsFeature, QgsGeometry, QgsWkbTypes, QgsPointXY, QgsExpression, \
     QgsFieldConstraints, QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextGenerator, \
     QgsRasterIdentifyResult, QgsRectangle
 from qgis.core import QgsLayerItem
 from qgis.core import QgsMapToPixel, QgsRasterBlockFeedback, Qgis
 from qgis.core import QgsProperty
+from qgis.core import QgsRaster
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsRasterDataProvider, QgsField, QgsFields
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsFilterLineEdit, \
     QgsMapCanvas, QgsDockWidget, QgsDoubleSpinBox
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
-from ..core.spectralprofile import SpectralProfileBlock, SpectralSetting, encodeProfileValueDict, \
+from ..core.spectralprofile import encodeProfileValueDict, \
     prepareProfileValueDict
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import TreeModel, TreeNode, TreeView, OptionTreeNode, OptionListModel, Option, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
-from ...qgisenums import QGIS_GEOMETRYTYPE
 from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import SpatialPoint, loadUi, rasterArray, spatialPoint2px, \
-    HashableRect, px2spatialPoint, px2geocoordinatesV2, iconForFieldType, nextColor, rasterLayerMapToPixel
+from ...utils import SpatialPoint, loadUi, HashableRect, iconForFieldType, nextColor, rasterLayerMapToPixel
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
@@ -77,7 +75,7 @@ class SpectralProfileSource(QObject):
                         point: SpatialPoint,
                         kernel_size: QSize = QSize(1, 1),
                         snap: bool = False,
-                        **kwargs)\
+                        **kwargs) \
             -> List[Tuple[Dict, QgsExpressionContext]]:
         """
         A function to collect profiles.
@@ -346,8 +344,6 @@ class StandardLayerProfileSource(SpectralProfileSource):
         nx = kernel_size.width()
         ny = kernel_size.height()
 
-
-
         profiles = []
         bbl = sp.badBands()
         wl = sp.wavelengths()
@@ -407,7 +403,7 @@ class StandardLayerProfileSource(SpectralProfileSource):
             if not exp.hasEvalError():
                 loc_geo = fcontext.variable('raster_array_geo')
 
-                for d, px_geo in  zip(profiles_at, loc_geo):
+                for d, px_geo in zip(profiles_at, loc_geo):
                     context = self.expressionContext(px_geo)
                     profiles.append((d, context))
 
@@ -1769,8 +1765,7 @@ class SpectralProfileBridge(TreeModel):
 
         # 3. generate features from a feature generators
         #    multiple feature generators could create features for the same speclib
-        RESULTS: Dict[str, Tuple[List[QgsFeature],
-                                 Dict[Tuple[int, str], PlotStyle]]] = dict()
+        RESULTS: Dict[str, Tuple[List[QgsFeature], Dict[Tuple[int, str], PlotStyle]]] = dict()
 
         for fgnode in featureGenerators:
             fgnode: SpectralFeatureGeneratorNode
