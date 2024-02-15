@@ -813,7 +813,7 @@ class PyObjectTreeNode(TreeNode):
 
     def fetch(self):
         FETCH_SIZE = 10
-        print(f'Fetch {self}: "{self.name()}"...')
+        # print(f'Fetch {self}: "{self.name()}"...')
 
         if self.mFetchIterator is None:
             if isinstance(self.mPyObject, (list, tuple)):
