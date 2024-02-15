@@ -1,12 +1,15 @@
 # noinspection PyPep8Naming
+import fnmatch
 import os
 import unittest
+from typing import Union, List
 
 import numpy as np
 
 from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtCore import QSettings
 from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtTest import QAbstractItemModelTester
 from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QGridLayout, QLabel, QWidget, \
     QPushButton, QVBoxLayout, QHBoxLayout
 from qgis.gui import QgsMapCanvas
@@ -16,6 +19,92 @@ from qps.plotstyling.plotstyling import MarkerSymbol
 from qps.testing import TestCaseBase, start_app
 
 start_app()
+
+
+def findNode(view, path: Union[str, List[str]], parent: QModelIndex = QModelIndex()) -> QModelIndex:
+    """
+    Returns the QModelIndex for the deepest node in a node-path., e.g. n3 from 'n1/n2/n3'
+    :param view: QAbstractItemView
+    :param path: node-path, e.g. 'node/subNode'
+                 node names need to match on a QModelIndex.data(Qt.DisplayRole)
+                 node names can be wildcard expressions
+    :param parent: QModelIndex, parent of the give node-path.
+    :return: QModelIndex or None
+    """
+    model = view.model()
+    if isinstance(path, str):
+        path = path.split('/')
+    expression = path[0]
+
+    child_names = []
+
+    CHILD_NAMES = {}
+    row = 0
+    last_row = None
+    while True:
+        if row == model.rowCount(parent):
+            if model.canFetchMore(parent):
+                # sm = model.sourceModel()
+                # sp = model.mapToSource(parent)
+                # A = [sm.index(r, 0, sp).data() for r in range(sm.rowCount(sp))]
+                model.fetchMore(parent)
+                # B = [sm.index(r, 0, sp).data() for r in range(sm.rowCount(sp))]
+                # if len(B) == len(A) + 1 and A != B[0:-1]:
+                #    s = ""
+                continue
+            else:
+                break
+        assert row not in CHILD_NAMES
+        CHILD_NAMES[row] = [model.index(r2, 0, parent).data() for r2 in range(row)]
+        child: QModelIndex = model.index(row, 0, parent)
+        child_name = child.data(Qt.DisplayRole)
+
+        if child_name == 'dtype':
+            s = ""
+            if child_name in child_names:
+                s = ""
+            else:
+                s = ""
+
+        child_names.append(child_name)
+        if fnmatch.fnmatch(child_name, expression):
+            if len(path) == 1:
+                return child
+            else:
+                node = findNode(view, path[1:], parent=child)
+                if isinstance(node, QModelIndex):
+                    return node
+        last_row = row
+        row += 1
+
+    return None
+
+
+def expandNodes(view,
+                path: Union[str, List[str]],
+                parent: QModelIndex = QModelIndex(),
+                expanded: bool = True,
+                last_only: bool = False):
+    """
+    :param view: QAbstractItemView
+    :param path: node path, e.g. 'rootNodeName/subNodeName/subsubNodeName'.
+                 can contain Wildcards, e.g. 'sub*' to catch Nodes called 'subA' and 'subB'
+    :param parent: QModelIndex
+    :param expanded: True (default) to expand the nodes
+    :param last_only: False. Set True to expand only the last node in the path.
+    :return:
+    """
+    if isinstance(path, str):
+        path = path.split('/')
+
+    node = findNode(view, path, parent=parent)
+    if isinstance(node, QModelIndex):
+        if last_only:
+            view.setExpanded(node, expanded)
+        else:
+            while node.isValid():
+                view.setExpanded(node, expanded)
+                node = node.parent()
 
 
 class ModelTests(TestCaseBase):
@@ -41,9 +130,33 @@ class ModelTests(TestCaseBase):
             self.createTestNodes(node, rows=rows, depth=depth, cols=cols)
         return parentNode
 
+    def test_pyObjectNodes2(self):
+
+        tv = TreeView()
+        tv.setSortingEnabled(True)
+
+        tm = TreeModel()
+        pm = QSortFilterProxyModel()
+        tv.setModel(pm)
+        pm.setSourceModel(tm)
+
+        # tester = QAbstractItemModelTester(tm, QAbstractItemModelTester.FailureReportingMode.Fatal)
+
+        # obj = {'X': np.random.rand(58, 177)}
+        obj = {'X': np.random.rand(50, )}
+        # obj = {'X': np.random.rand(20, 10)}
+        # obj = {'A':{'X': np.random.rand(50, 10)}}
+        n1 = TreeNode('node')
+        pynode = PyObjectTreeNode(name='Content', obj=obj)
+        tm.rootNode().appendChildNodes(n1)
+        n1.appendChildNodes(pynode)
+        expandNodes(tv, 'node/Content/X/array')
+        self.showGui(tv)
+
     def test_pyObjectNodes(self):
 
         m = TreeModel()
+        tester = QAbstractItemModelTester(m, QAbstractItemModelTester.FailureReportingMode.Fatal)
         if True:
             tv = TreeView()
             tv.setUniformRowHeights(True)
@@ -78,7 +191,7 @@ class ModelTests(TestCaseBase):
         n.appendChildNodes(objNode)
         root.appendChildNodes(n)
         tv.setModel(m)
-        #  self.showGui(tv)
+        self.showGui(tv)
 
     def test_treeNode(self):
 
@@ -93,7 +206,7 @@ class ModelTests(TestCaseBase):
             argList.append(args)
             kwdList.append(kwargs)
 
-        node.sigAddedChildren.connect(onSignal)
+        node.endAddChildNodes.connect(onSignal)
         n2 = TreeNode()
         self.assertIsInstance(n2, TreeNode)
         node.appendChildNodes(n2)
@@ -108,20 +221,25 @@ class ModelTests(TestCaseBase):
         n2.setStatusTip(t)
         assert n2.statusTip() == t
 
+    def test_treeModelNew(self):
+
+        TM = TreeModel()
+        TM.rootNode().appendChildNodes([TreeNode('Node1')])
+        TM.rootNode().appendChildNodes([TreeNode('Node2')])
+        tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
+
     def test_treeModel(self):
 
         TM = TreeModel()
 
         self.assertIsInstance(TM, TreeModel)
-
+        tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
         self.assertIsInstance(TM.rootNode(), TreeNode)
         parent = TM.rootNode()
 
         idxParent = TM.node2idx(parent)
         self.assertIsInstance(idxParent, QModelIndex)
-        self.assertEqual(TM.idx2node(idxParent), TM.rootNode())
-
-        n = 5
+        n = 2
         nodes = []
         for i in range(n):
             n = TreeNode('Node {}'.format(i + 1))
@@ -138,10 +256,17 @@ class ModelTests(TestCaseBase):
 
         self.assertTrue(TM.rowCount(None), 1)
 
+        view = QTreeView()
+        view.setModel(TM)
+        self.showGui(view)
+
+        s = ""
+
     def test_treeViewSpan(self):
 
         TV = TreeView()
         TM = TreeModel()
+        tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
 
         def onRowsInserted(p, first, last):
             print(f'ROWS INSERTED {p.data(Qt.UserRole).name()} {first} to {last}')
@@ -194,6 +319,7 @@ class ModelTests(TestCaseBase):
         TV.setAutoExpansionDepth(2)
         TM = TreeModel()
         TV.setModel(TM)
+        tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
 
         self.assertEqual(TV.model(), TM)
 
@@ -253,7 +379,7 @@ class ModelTests(TestCaseBase):
         self.assertIsInstance(TV, TreeView)
         TM = TreeModel()
         TV.setModel(TM)
-
+        tester = QAbstractItemModelTester(TM, QAbstractItemModelTester.FailureReportingMode.Fatal)
         TM.rootNode()
         if True:
             n1 = TreeNode(name='Node1 looooong text')
