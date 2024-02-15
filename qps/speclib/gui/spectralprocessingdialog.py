@@ -3,9 +3,9 @@ import json
 import os
 import pathlib
 from difflib import SequenceMatcher
-
 from json import JSONDecodeError
 from typing import Dict, List, Any, Union, Tuple, Optional
+
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
@@ -14,7 +14,6 @@ from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, Qt, QTimer, \
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QDialog, \
     QPushButton, QSizePolicy, QVBoxLayout
-from qgis.core import QgsProcessingOutputVectorLayer
 from qgis.core import QgsEditorWidgetSetup, QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
     QgsProcessingRegistry, QgsMapLayer, QgsPalettedRasterRenderer, \
     QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
@@ -23,6 +22,7 @@ from qgis.core import QgsEditorWidgetSetup, QgsProcessing, QgsProcessingFeedback
     QgsMapLayerModel, QgsProcessingParameterRasterDestination, QgsFields, QgsProcessingOutputLayerDefinition, \
     QgsRasterFileWriter, QgsRasterBlockFeedback, QgsRasterPipe, QgsProcessingUtils, QgsField, \
     QgsProcessingParameterMultipleLayers
+from qgis.core import QgsProcessingOutputVectorLayer, QgsProcessingOutputDefinition
 from qgis.core import QgsRasterDataProvider
 from qgis.gui import QgsMessageBar, QgsProcessingAlgorithmDialogBase, QgsPanelWidget, QgsProcessingParametersGenerator
 from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidgetContext, \
@@ -587,6 +587,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
     sigSpectralProcessingModelChanged = pyqtSignal()
     sigAboutToBeClosed = pyqtSignal()
 
+    sigOutputsCreated = pyqtSignal(dict)
+
     def __init__(self, *args,
                  speclib: Optional[QgsVectorLayer] = None,
                  algorithmId: Optional[str] = None,
@@ -751,7 +753,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             rasterblockFeedback = QgsRasterBlockFeedback()
 
             processingContext: QgsProcessingContext = self.processingContext()
-            processingFeedback = processingContext.feedback()
+            processingFeedback: QgsProcessingFeedback = processingContext.feedback()
             # todo: set more context variables
             # processingContext.setFeedback(processingFeedback)
 
@@ -816,6 +818,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             from processing.gui.AlgorithmExecutor import execute as executeAlg
 
             self.log(f'Execute algorithm: {alg.id()} ...')
+            processingFeedback.pushInfo('Input parameters:')
+            processingFeedback.pushConsoleInfo(str(parametersHard))
             t0 = datetime.datetime.now()
             ok, results = executeAlg(alg,
                                      parametersHard,
@@ -823,15 +827,18 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                      feedback=processingFeedback,
                                      catch_exceptions=not fail_fast)
 
-            self.log(processingFeedback.htmlLog(), isError=not ok)
-            self.log(f'Execution time: {datetime.datetime.now() - t0}')
-
             if ok:
+
+                OUTPUTS: Dict[str, Tuple[QgsProcessingOutputDefinition, Any]] = dict()
                 OUT_RASTERS = dict()
                 for parameter in alg.outputDefinitions():
+                    parameter: QgsProcessingOutputDefinition
                     if parameter.name() not in results.keys():
                         processingFeedback.pushWarning(f'Missing result value for parameter "{parameter.name()}"')
                         continue
+
+                    result_value = results[parameter.name()]
+                    OUTPUTS[parameter.name()] = (parameter, result_value)
 
                     if isinstance(parameter, QgsProcessingOutputRasterLayer):
                         lyr = QgsRasterLayer(results[parameter.name()])
@@ -870,7 +877,8 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                             if target_field_index >= 0:
                                 # if necessary, change editor widget type to SpectralProfile
                                 target_field: QgsField = speclib.fields().at(target_field_index)
-                                if nb > 0 and can_store_spectral_profiles(target_field) and not is_profile_field(target_field):
+                                if nb > 0 and can_store_spectral_profiles(target_field) and not is_profile_field(
+                                        target_field):
                                     setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
                                     speclib.setEditorWidgetSetup(target_field_index, setup)
                                     target_field = speclib.fields().at(target_field_index)
@@ -932,7 +940,14 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                     self.log(f'Update {len(activeFeatures)} features')
                     speclib.endEditCommand()
 
-            s = ""
+                if len(OUTPUTS) > 0:
+                    self.sigOutputsCreated.emit(OUTPUTS)
+
+            processingFeedback.pushInfo(f'Execution completed in {datetime.datetime.now() - t0}')
+            processingFeedback.pushInfo('Results:')
+            processingFeedback.pushConsoleInfo(str(results))
+            self.log(processingFeedback.htmlLog(), isError=not ok)
+
         except AlgorithmDialogBase.InvalidParameterValue as ex1:
             if fail_fast:
                 raise ex1
@@ -955,7 +970,9 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
             mbar: QgsMessageBar = self.messageBar()
             if isinstance(mbar, QgsMessageBar):
                 mbar.pushMessage(msg, level=Qgis.MessageLevel.Critical)
+
         self.log('Done')
+        self.showLog()
         # self.processingFeedback().setProgress(int(100))
 
     def temporaryRaster(self) -> List[str]:

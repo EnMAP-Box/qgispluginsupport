@@ -3,14 +3,13 @@ import sys
 
 import warnings
 from typing import List, Set, Dict, Tuple, Generator, Any, Callable, Optional
-
 from qgis.PyQt.QtXml import QDomElement, QDomDocument
-
 from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex
 from qgis.PyQt.QtGui import QIcon, QDragEnterEvent, QDropEvent, QColor
 from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QAction, QMenu, QToolBar, QWidgetAction, QPushButton, \
     QHBoxLayout, QFrame, QDialog
-from qgis.core import QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteContext, QgsMapLayer
+from qgis.core import (QgsFeature, QgsProject, QgsVectorLayer, QgsReadWriteContext,
+                       QgsMapLayer, QgsProcessingOutputFile)
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsAttributeTableView, QgsDockWidget, \
     QgsActionMenu
 from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotWidget
@@ -569,9 +568,20 @@ class SpectralLibraryWidget(AttributeTableWidget):
             algorithmId=algorithmId,
             parameters=parameters)
         dialog.setMainMessageBar(self.mainMessageBar())
+        dialog.sigOutputsCreated.connect(self.onSpectralProcessingOutputsCreated)
         dialog.exec_()
 
         dialog.close()
+
+    def onSpectralProcessingOutputsCreated(self, outputs: Dict):
+
+        created_files = []
+        for name, (oDef, oValue) in outputs.items():
+            if isinstance(oDef, QgsProcessingOutputFile):
+                created_files.append(oValue)
+
+        if len(created_files) > 0:
+            self.sigFilesCreated.emit(created_files)
 
     def addCurrentProfilesAutomatically(self, b: bool):
         self.optionAddCurrentProfilesAutomatically.setChecked(b)

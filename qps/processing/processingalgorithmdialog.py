@@ -15,6 +15,9 @@ class ProcessingAlgorithmDialog(QDialog):
 
         path_ui = pathlib.Path(__file__).parent / 'processingalgorithmdialog.ui'
         loadUi(path_ui, self)
+
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+
         self.mTreeViewAlgorithms: QgsProcessingToolboxTreeView
         self.mAlgorithmModel: QgsProcessingToolboxProxyModel = QgsProcessingToolboxProxyModel()
         self.mAlgorithmModel.setRecursiveFilteringEnabled(True)
