@@ -972,6 +972,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                 mbar.pushMessage(msg, level=Qgis.MessageLevel.Critical)
 
         self.log('Done')
+        self.setPercentage(0)
         self.showLog()
         # self.processingFeedback().setProgress(int(100))
 
