@@ -26,15 +26,15 @@ from qps.testing import TestObjects, TestCaseBase, ExampleAlgorithmProvider, sta
 start_app()
 
 
-class TestAlgorithmLogging(QgsProcessingAlgorithm):
+class AlgorithmLogging(QgsProcessingAlgorithm):
 
     def __init__(self, logs: dict, name='exampleLoginAlg', ):
-        super(TestAlgorithmLogging, self).__init__()
+        super(AlgorithmLogging, self).__init__()
         self._name = name
         self._log = logs
 
     def createInstance(self):
-        return TestAlgorithmLogging(copy.deepcopy(self._log), name=self.name())
+        return AlgorithmLogging(copy.deepcopy(self._log), name=self.name())
 
     def name(self):
         return self._name
@@ -91,7 +91,7 @@ class SpectralProcessingTests(TestCaseBase):
                 'pushCommandInfo': 'A command info'
                 }
         provider = ExampleAlgorithmProvider()
-        provider.addAlgorithm(TestAlgorithmLogging(logs))
+        provider.addAlgorithm(AlgorithmLogging(logs))
 
         preg, preggui = self.initProcessingRegistry()
         preg.addProvider(provider)
