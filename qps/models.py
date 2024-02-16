@@ -347,6 +347,9 @@ class TreeNode(QObject):
     def __iter__(self):
         return iter(self.mChildren)
 
+    def __repr__(self):
+        return f'{super().__repr__()}"{self.name()}"'
+
     def __len__(self):
         return len(self.mChildren)
 
@@ -578,7 +581,7 @@ class TreeNode(QObject):
 
     def setParentNode(self, node: 'TreeNode'):
         self.mParentNode: TreeNode = node
-        self.setParent(node)
+        # self.setParent(node)
 
     def parentNode(self) -> 'TreeNode':
         return self.mParentNode
@@ -593,6 +596,13 @@ class TreeNode(QObject):
             nodes.append(p)
             p = p.parentNode()
         return nodes
+
+    def rootNode(self) -> 'TreeNode':
+        p = self.mParentNode
+        while isinstance(p, TreeNode) and isinstance(p.parentNode(), TreeNode):
+            p = p.parentNode()
+
+        return p
 
     def setIcon(self, icon: QIcon):
         """
@@ -878,6 +888,8 @@ class TreeModel(QAbstractItemModel):
             self.mRootNode = rootNode
         else:
             self.mRootNode = TreeNode(name='<root node>')
+
+        self.mRootNode.setParent(self)
 
         # monitors the number of being/end blocks for removing / inserting rows
         self.mCNT_REMOVE = 0
