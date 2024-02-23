@@ -135,13 +135,13 @@ class BandFieldNames(object):
     Number = 'Band'
     Name = 'Band Name'
     BadBand = 'BBL'
-    Range = 'Range'
     Offset = 'Offset'
     Scale = 'Scale'
     NoData = 'No Data'
     FWHM = 'FWHM'
     Wavelength = 'Wavelength'
     WavelengthUnit = 'Wavelength Unit'
+    Range = 'Wavelength Range'
     # ENVI Header
     # ENVIDataGain = 'Data Gain' # GDAL 3.6 -> Scale
     # ENVIDataOffset = 'Data Offset' # GDAL 3.6 -> Offset
