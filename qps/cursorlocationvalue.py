@@ -489,9 +489,7 @@ class CursorLocationInfoDock(QDockWidget):
                                 bandValue = as_py_value(bandValue, lyr.dataProvider().dataType(b))
 
                             classInfo: ClassInfo = None
-                            if isinstance(bandValue, (int, float)) \
-                                    and isinstance(classScheme, ClassificationScheme) \
-                                    and 0 <= bandValue < len(classScheme):
+                            if isinstance(bandValue, (int, float)) and isinstance(classScheme, ClassificationScheme):
                                 classInfo = classScheme.classInfo(label=int(bandValue))
                             info = RasterValueSet.BandInfo(b - 1, bandValue, lyr.bandName(b), classInfo=classInfo)
                             v.bandValues.append(info)

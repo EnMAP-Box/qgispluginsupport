@@ -1,0 +1,28 @@
+name: 🧪 Test on QGIS DEV
+
+on:
+  workflow_dispatch:
+
+jobs:
+  # Run unit tests
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        qgis_version: [latest]
+    env:
+      QGIS_TEST_VERSION: ${{ matrix.qgis_version }}
+    steps:
+      - name: Checkout
+        #uses: actions/checkout@v2
+        #uses: actions/checkout@v3.50
+        uses: actions/checkout@main
+        with:
+          submodules: recursive
+      - name: Test on QGIS
+        run: |
+          ls -la .docker/
+          chmod +x .docker/run_docker_tests.sh
+          chmod +x runtests.sh
+          docker-compose -f .docker/docker-compose.gh.yml run qgis ./usr/src/.docker/run_docker_tests.sh -n auto

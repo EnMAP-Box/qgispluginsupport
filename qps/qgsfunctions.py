@@ -674,7 +674,7 @@ class RasterArray(QgsExpressionFunction):
                 #    pixels[b, :] = SCALING[bandNo][0] + SCALING[bandNo][1] * pixels[b, :]
 
             # keep only pixels where not all bands are NaN -> either masked or out of image pixel
-            is_not_all_nan = np.logical_not(np.alltrue(np.isnan(pixels), axis=0))
+            is_not_all_nan = np.logical_not(np.all(np.isnan(pixels), axis=0))
 
             # map pixel indices from the subset array to the entire-raster array
             M2P = QgsMapToPixel(mapUnitsPerPixel,

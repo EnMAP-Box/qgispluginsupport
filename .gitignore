@@ -23,7 +23,7 @@ qps/enmap.tif.aux.xml
 qpstestdata/*.qml
 tests/outputs
 tests/outputs/*
-test-reports.txt
+test-reports/
 test-results/
 qgisresources/
 qgisresources/*
