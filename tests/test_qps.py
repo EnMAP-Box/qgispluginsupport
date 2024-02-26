@@ -41,7 +41,7 @@ class ResourceTests(unittest.TestCase):
         self.assertTrue(rxTest2.search('import qps'))
         self.assertTrue(rxTest2.search('import qps.xyz'))
 
-        rxTest3 = re.compile(r'(from|import) qgis[.]_.+')
+        rxTest3 = re.compile(r'(from|import) qgis[.]_[^3]+')
 
         errors = []
         for path in file_search(DIR_QPS, '*.py', recursive=True):

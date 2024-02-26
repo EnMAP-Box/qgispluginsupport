@@ -40,3 +40,5 @@ per-file-ignores =
     qps/resources.py:QGS104
     # allow QgisInterface as argument
     qps/testing.py:QGS105
+    # see https://github.com/GispoCoding/flake8-qgis/issues/9
+    qps/qgisenums.py:QGS101

@@ -3,12 +3,16 @@ from qgis.core import Qgis
 
 
 #  Import old locations
-from qgis.core import (QgsAction, QgsArcGisPortalUtils, QgsAttributeEditorElement, QgsEditFormConfig, QgsGpsInformation, QgsGradientFillSymbolLayer, QgsGraduatedSymbolRenderer, QgsLabeling, QgsLabelingEngineSettings, QgsMapLayerProxyModel, QgsMapLayerType, QgsPainting, QgsPalLayerSettings, QgsProject, QgsProperty, QgsProviderMetadata, QgsRandomMarkerFillSymbolLayer, QgsRaster, QgsRasterFileWriter, QgsRasterLayer, QgsRelation, QgsSimpleMarkerSymbolLayerBase, QgsStringUtils, QgsTextFormat, QgsTextRenderer, QgsUnitTypes, QgsVectorFileWriter, QgsWkbTypes)
+from qgis.core import (QgsAction, QgsAggregateCalculator, QgsArcGisPortalUtils, QgsAttributeEditorElement, QgsCoordinateReferenceSystem, QgsDataProvider, QgsEditFormConfig, QgsFeatureRequest, QgsFeatureSource, QgsGpsInformation, QgsGradientFillSymbolLayer, QgsGraduatedSymbolRenderer, QgsLabeling, QgsLabelingEngineSettings, QgsMapLayerProxyModel, QgsMapLayerType, QgsPainting, QgsPalLayerSettings, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeatureSource, QgsProcessingFeatureSourceDefinition, QgsProcessingParameterDateTime, QgsProcessingParameterDefinition, QgsProcessingParameterField, QgsProcessingParameterFile, QgsProcessingParameterNumber, QgsProcessingParameterTinInputLayers, QgsProcessingParameterType, QgsProcessingProvider, QgsProject, QgsProperty, QgsProviderMetadata, QgsRandomMarkerFillSymbolLayer, QgsRaster, QgsRasterBandStats, QgsRasterFileWriter, QgsRasterLayer, QgsRelation, QgsSimpleMarkerSymbolLayerBase, QgsStatisticalSummary, QgsStringStatisticalSummary, QgsStringUtils, QgsTemporalNavigationObject, QgsTextFormat, QgsTextRenderer, QgsUnitTypes, QgsVectorFileWriter, QgsWkbTypes)
 from qgis.gui import (QgsActionMenu, QgsMapLayerAction)
+from qgis._3d import (QgsPoint3DSymbol)
+from qgis.analysis import (QgsZonalStatistics)
 
 #  API Switches
 QGIS_ACTIONTYPE = Qgis.ActionType if Qgis.versionInt() >= 33000 else QgsActionMenu.ActionType
+QGIS_AGGREGATE = Qgis.Aggregate if Qgis.versionInt() >= 33600 else QgsAggregateCalculator.Aggregate
 QGIS_ANGLEUNIT = Qgis.AngleUnit if Qgis.versionInt() >= 33000 else QgsUnitTypes.AngleUnit
+QGIS_ANIMATIONSTATE = Qgis.AnimationState if Qgis.versionInt() >= 33600 else QgsTemporalNavigationObject.AnimationState
 QGIS_ARCGISRESTSERVICETYPE = Qgis.ArcGisRestServiceType if Qgis.versionInt() >= 32600 else QgsArcGisPortalUtils.ItemType
 QGIS_AREAUNIT = Qgis.AreaUnit if Qgis.versionInt() >= 33000 else QgsUnitTypes.AreaUnit
 QGIS_ATTRIBUTEACTIONTYPE = Qgis.AttributeActionType if Qgis.versionInt() >= 33000 else QgsAction.ActionType
@@ -19,8 +23,14 @@ QGIS_ATTRIBUTEFORMSUPPRESSION = Qgis.AttributeFormSuppression if Qgis.versionInt
 QGIS_AVOIDINTERSECTIONSMODE = Qgis.AvoidIntersectionsMode if Qgis.versionInt() >= 32600 else QgsProject.AvoidIntersectionsMode
 QGIS_BLENDMODE = Qgis.BlendMode if Qgis.versionInt() >= 33000 else QgsPainting.BlendMode
 QGIS_CAPITALIZATION = Qgis.Capitalization if Qgis.versionInt() >= 32400 else QgsStringUtils.Capitalization
+QGIS_CRSIDENTIFIERTYPE = Qgis.CrsIdentifierType if Qgis.versionInt() >= 33600 else QgsCoordinateReferenceSystem.IdentifierType
+QGIS_CRSWKTVARIANT = Qgis.CrsWktVariant if Qgis.versionInt() >= 33600 else QgsCoordinateReferenceSystem.WktVariant
+QGIS_DATAITEMPROVIDERCAPABILITY = Qgis.DataItemProviderCapability if Qgis.versionInt() >= 33600 else QgsDataProvider.DataCapability
 QGIS_DISTANCEUNIT = Qgis.DistanceUnit if Qgis.versionInt() >= 33000 else QgsUnitTypes.DistanceUnit
 QGIS_DISTANCEUNITTYPE = Qgis.DistanceUnitType if Qgis.versionInt() >= 33000 else QgsUnitTypes.DistanceUnitType
+QGIS_FEATUREAVAILABILITY = Qgis.FeatureAvailability if Qgis.versionInt() >= 33600 else QgsFeatureSource.FeatureAvailability
+QGIS_FEATUREREQUESTFILTERTYPE = Qgis.FeatureRequestFilterType if Qgis.versionInt() >= 33600 else QgsFeatureRequest.FilterType
+QGIS_FEATUREREQUESTFLAG = Qgis.FeatureRequestFlag if Qgis.versionInt() >= 33600 else QgsFeatureRequest.Flag
 QGIS_FEATURESYMBOLOGYEXPORT = Qgis.FeatureSymbologyExport if Qgis.versionInt() >= 33200 else QgsVectorFileWriter.SymbologyExport
 QGIS_FILEFILTERTYPE = Qgis.FileFilterType if Qgis.versionInt() >= 33200 else QgsProviderMetadata.FilterType
 QGIS_GEOMETRYTYPE = Qgis.GeometryType if Qgis.versionInt() >= 33000 else QgsWkbTypes
@@ -29,6 +39,7 @@ QGIS_GRADIENTCOLORSOURCE = Qgis.GradientColorSource if Qgis.versionInt() >= 3240
 QGIS_GRADIENTSPREAD = Qgis.GradientSpread if Qgis.versionInt() >= 32400 else QgsGradientFillSymbolLayer.GradientSpread
 QGIS_GRADIENTTYPE = Qgis.GradientType if Qgis.versionInt() >= 32400 else QgsGradientFillSymbolLayer.GradientType
 QGIS_GRADUATEDMETHOD = Qgis.GraduatedMethod if Qgis.versionInt() >= 32600 else QgsGraduatedSymbolRenderer.GraduatedMethod
+QGIS_INVALIDGEOMETRYCHECK = Qgis.InvalidGeometryCheck if Qgis.versionInt() >= 33600 else QgsFeatureRequest.InvalidGeometryCheck
 QGIS_LABELLINEPLACEMENTFLAG = Qgis.LabelLinePlacementFlag if Qgis.versionInt() >= 33200 else QgsLabeling.LinePlacementFlag
 QGIS_LABELMULTILINEALIGNMENT = Qgis.LabelMultiLineAlignment if Qgis.versionInt() >= 32600 else QgsPalLayerSettings.MultiLineAlign
 QGIS_LABELOFFSETTYPE = Qgis.LabelOffsetType if Qgis.versionInt() >= 32600 else QgsPalLayerSettings.OffsetType
@@ -45,10 +56,26 @@ QGIS_LAYOUTUNITTYPE = Qgis.LayoutUnitType if Qgis.versionInt() >= 33000 else Qgs
 QGIS_MAPLAYERACTIONFLAG = Qgis.MapLayerActionFlag if Qgis.versionInt() >= 33000 else QgsMapLayerAction.Flag
 QGIS_MAPLAYERACTIONTARGET = Qgis.MapLayerActionTarget if Qgis.versionInt() >= 33000 else QgsMapLayerAction.Target
 QGIS_MARKERSHAPE = Qgis.MarkerShape if Qgis.versionInt() >= 32400 else QgsSimpleMarkerSymbolLayerBase.Shape
+QGIS_POINT3DSHAPE = Qgis.Point3DShape if Qgis.versionInt() >= 33600 else QgsPoint3DSymbol.Shape
 QGIS_POINTCOUNTMETHOD = Qgis.PointCountMethod if Qgis.versionInt() >= 32400 else QgsRandomMarkerFillSymbolLayer.CountMethod
+QGIS_PROCESSINGALGORITHMFLAG = Qgis.ProcessingAlgorithmFlag if Qgis.versionInt() >= 33600 else QgsProcessingAlgorithm.Flag
+QGIS_PROCESSINGDATETIMEPARAMETERDATATYPE = Qgis.ProcessingDateTimeParameterDataType if Qgis.versionInt() >= 33600 else QgsProcessingParameterDateTime.Type
+QGIS_PROCESSINGFEATURESOURCEDEFINITIONFLAG = Qgis.ProcessingFeatureSourceDefinitionFlag if Qgis.versionInt() >= 33600 else QgsProcessingFeatureSourceDefinition.Flag
+QGIS_PROCESSINGFEATURESOURCEFLAG = Qgis.ProcessingFeatureSourceFlag if Qgis.versionInt() >= 33600 else QgsProcessingFeatureSource.Flag
+QGIS_PROCESSINGFIELDPARAMETERDATATYPE = Qgis.ProcessingFieldParameterDataType if Qgis.versionInt() >= 33600 else QgsProcessingParameterField.DataType
+QGIS_PROCESSINGFILEPARAMETERBEHAVIOR = Qgis.ProcessingFileParameterBehavior if Qgis.versionInt() >= 33600 else QgsProcessingParameterFile.Behavior
+QGIS_PROCESSINGLOGLEVEL = Qgis.ProcessingLogLevel if Qgis.versionInt() >= 33600 else QgsProcessingContext.LogLevel
+QGIS_PROCESSINGNUMBERPARAMETERTYPE = Qgis.ProcessingNumberParameterType if Qgis.versionInt() >= 33600 else QgsProcessingParameterNumber.Type
+QGIS_PROCESSINGPARAMETERFLAG = Qgis.ProcessingParameterFlag if Qgis.versionInt() >= 33600 else QgsProcessingParameterDefinition.Flag
+QGIS_PROCESSINGPARAMETERTYPEFLAG = Qgis.ProcessingParameterTypeFlag if Qgis.versionInt() >= 33600 else QgsProcessingParameterType.ParameterFlag
+QGIS_PROCESSINGPROPERTYAVAILABILITY = Qgis.ProcessingPropertyAvailability if Qgis.versionInt() >= 33600 else QgsProcessingAlgorithm.PropertyAvailability
+QGIS_PROCESSINGPROVIDERFLAG = Qgis.ProcessingProviderFlag if Qgis.versionInt() >= 33600 else QgsProcessingProvider.Flag
+QGIS_PROCESSINGSOURCETYPE = Qgis.ProcessingSourceType if Qgis.versionInt() >= 33600 else QgsProcessing.SourceType
+QGIS_PROCESSINGTININPUTLAYERTYPE = Qgis.ProcessingTinInputLayerType if Qgis.versionInt() >= 33600 else QgsProcessingParameterTinInputLayers.Type
 QGIS_PROJECTFILEFORMAT = Qgis.ProjectFileFormat if Qgis.versionInt() >= 32600 else QgsProject.FileFormat
 QGIS_PROJECTREADFLAG = Qgis.ProjectReadFlag if Qgis.versionInt() >= 32600 else QgsProject.ReadFlag
 QGIS_PROPERTYTYPE = Qgis.PropertyType if Qgis.versionInt() >= 33600 else QgsProperty.Type
+QGIS_RASTERBANDSTATISTIC = Qgis.RasterBandStatistic if Qgis.versionInt() >= 33600 else QgsRasterBandStats.Stats
 QGIS_RASTERBUILDPYRAMIDOPTION = Qgis.RasterBuildPyramidOption if Qgis.versionInt() >= 33000 else QgsRaster.RasterBuildPyramids
 QGIS_RASTERCOLORINTERPRETATION = Qgis.RasterColorInterpretation if Qgis.versionInt() >= 33000 else QgsRaster.ColorInterpretation
 QGIS_RASTERDRAWINGSTYLE = Qgis.RasterDrawingStyle if Qgis.versionInt() >= 33000 else QgsRaster.DrawingStyle
@@ -60,8 +87,12 @@ QGIS_RASTERPYRAMIDFORMAT = Qgis.RasterPyramidFormat if Qgis.versionInt() >= 3300
 QGIS_RELATIONSHIPSTRENGTH = Qgis.RelationshipStrength if Qgis.versionInt() >= 32800 else QgsRelation.RelationStrength
 QGIS_RELATIONSHIPTYPE = Qgis.RelationshipType if Qgis.versionInt() >= 32800 else QgsRelation.RelationType
 QGIS_RENDERUNIT = Qgis.RenderUnit if Qgis.versionInt() >= 33000 else QgsUnitTypes.RenderUnit
+QGIS_SPATIALINDEXPRESENCE = Qgis.SpatialIndexPresence if Qgis.versionInt() >= 33600 else QgsFeatureSource.SpatialIndexPresence
+QGIS_STATISTIC = Qgis.Statistic if Qgis.versionInt() >= 33600 else QgsStatisticalSummary.Statistic
+QGIS_STRINGSTATISTIC = Qgis.StringStatistic if Qgis.versionInt() >= 33600 else QgsStringStatisticalSummary.Statistic
 QGIS_SYMBOLCOORDINATEREFERENCE = Qgis.SymbolCoordinateReference if Qgis.versionInt() >= 32400 else QgsGradientFillSymbolLayer.GradientCoordinateMode
 QGIS_SYSTEMOFMEASUREMENT = Qgis.SystemOfMeasurement if Qgis.versionInt() >= 33000 else QgsUnitTypes.SystemOfMeasurement
+QGIS_TEMPORALNAVIGATIONMODE = Qgis.TemporalNavigationMode if Qgis.versionInt() >= 33600 else QgsTemporalNavigationObject.NavigationMode
 QGIS_TEMPORALUNIT = Qgis.TemporalUnit if Qgis.versionInt() >= 33000 else QgsUnitTypes.TemporalUnit
 QGIS_TEXTCOMPONENT = Qgis.TextComponent if Qgis.versionInt() >= 32800 else QgsTextRenderer.TextPart
 QGIS_TEXTHORIZONTALALIGNMENT = Qgis.TextHorizontalAlignment if Qgis.versionInt() >= 32800 else QgsTextRenderer.HAlignment
@@ -72,3 +103,5 @@ QGIS_UNITTYPE = Qgis.UnitType if Qgis.versionInt() >= 33000 else QgsUnitTypes.Un
 QGIS_UPSIDEDOWNLABELHANDLING = Qgis.UpsideDownLabelHandling if Qgis.versionInt() >= 32600 else QgsPalLayerSettings.UpsideDownLabels
 QGIS_VOLUMEUNIT = Qgis.VolumeUnit if Qgis.versionInt() >= 33000 else QgsUnitTypes.VolumeUnit
 QGIS_WKBTYPE = Qgis.WkbType if Qgis.versionInt() >= 33000 else QgsWkbTypes.Type
+QGIS_ZONALSTATISTIC = Qgis.ZonalStatistic if Qgis.versionInt() >= 33600 else QgsZonalStatistics.Statistic
+QGIS_ZONALSTATISTICRESULT = Qgis.ZonalStatisticResult if Qgis.versionInt() >= 33600 else QgsZonalStatistics.Result

@@ -5,8 +5,17 @@ from typing import Dict, List
 
 import qgis.core
 import qgis.gui
-QGIS_CORE_CLASSES = vars(qgis.core)
-QGIS_GUI_CLASSES = vars(qgis.gui)
+import qgis._3d
+import qgis.analysis
+from qgis._3d import QgsPoint3DSymbol
+
+NAMESPACE_CLASSES = {
+    'qgis.core': vars(qgis.core),
+    'qgis.gui':  vars(qgis.gui),
+    'qgis._3d' : vars(qgis._3d),
+    'qgis.analysis': vars(qgis.analysis)
+
+}
 
 OLD_NAME_CORRECTION = {
     'QgsWkbTypes.GeometryType' : 'QgsWkbTypes',
@@ -84,20 +93,22 @@ for b in API_BREAKS:
 
 required_imports = sorted(required_imports)
 
-core_classes = []
-gui_classes = []
+NAMESPACES = {'qgis.core',
+              'qgis.gui',
+              }
+
+CHANGES = {}
+
 for i in required_imports:
-    if i in QGIS_CORE_CLASSES:
-        core_classes.append(i)
-    elif i in QGIS_GUI_CLASSES:
-        gui_classes.append(i)
-    else:
-        raise NotImplementedError()
+    for ns, ns_classes in NAMESPACE_CLASSES.items():
+        if i in ns_classes:
+            CHANGES[ns] = CHANGES.get(ns, []) + [i]
+
+
 lines.append('\n#  Import old locations')
-if len(core_classes) > 0:
-    lines.append('from qgis.core import (' + ', '.join(core_classes) + ')')
-if len(gui_classes) > 0:
-    lines.append('from qgis.gui import (' + ', '.join(gui_classes) + ')')
+for ns, ns_classes in CHANGES.items():
+    lines.append(f'from {ns} import (' + ', '.join(ns_classes) + ')')
+
 lines.append('\n#  API Switches')
 lines.extend(switchlines)
 lines.append('') #  final newline
