@@ -694,6 +694,8 @@ class RasterArray(QgsExpressionFunction):
             i_valid = np.where(is_in_image * is_not_all_nan)[0]
             # i_y = i_y[i_valid]
             # i_x = i_x[i_valid]
+            if len(i_valid) == 0:
+                return None
 
             pixels = pixels[:, i_valid]
             pixels = aggregateArray(aggr, pixels, axis=1, keepdims=True)
