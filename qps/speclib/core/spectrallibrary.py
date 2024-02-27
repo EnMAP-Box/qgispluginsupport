@@ -260,7 +260,7 @@ class SpectralLibraryUtils:
         elif encoding == ProfileEncoding.Text:
             field = QgsField(name=name, type=QVariant.String, len=-1, comment=comment)
         elif encoding == ProfileEncoding.Json:
-            field = QgsField(name=name, type=8, comment=comment)
+            field = QgsField(name=name, type=QVariant.Map, typeName='JSON', comment=comment)
 
         setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
         field.setEditorWidgetSetup(setup)
@@ -439,8 +439,8 @@ class SpectralLibraryUtils:
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
         with edit(lyr):
             lyr.beginEditCommand('Add fields')
-
             assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QVariant.String))
+
             for fieldname in profile_fields:
                 if isinstance(fieldname, QgsField):
                     fieldname = fieldname.name()

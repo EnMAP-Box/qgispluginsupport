@@ -1,12 +1,16 @@
 import os
 import pathlib
-
 from typing import Union, Any, List
-
-from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
+import numpy as np
+from qgis.PyQt.QtCore import QVariant
+from osgeo.gdalconst import DMD_CREATIONFIELDDATASUBTYPES
+from osgeo.ogr import Driver, GetDriverByName
+from qgis.core import QgsField, QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
     QgsCoordinateReferenceSystem, QgsVectorFileWriter, QgsCoordinateTransformContext
+from ..core import is_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
     SpectralLibraryExportWidget
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
 
 
 class GeoPackageSpectralLibraryExportWidget(SpectralLibraryExportWidget):
@@ -77,6 +81,54 @@ class GeoPackageSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         return context
 
 
+class GeoPackageFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
+
+    def __init__(self, fields: QgsFields):
+        super(GeoPackageFieldValueConverter, self).__init__()
+        self.mFields: QgsFields = QgsFields(fields)
+
+        # define converter functions
+        self.mFieldDefinitions = dict()
+        self.mFieldConverters = dict()
+
+        # can it write JSON fields?
+        drv: Driver = GetDriverByName('GPKG')
+        supported_subtypes = drv.GetMetadataItem(DMD_CREATIONFIELDDATASUBTYPES)
+        can_write_json = 'JSON' in supported_subtypes
+
+        for field in self.mFields:
+            name = field.name()
+            idx = self.mFields.lookupField(name)
+            if is_profile_field(field) and field.type() == QVariant.Map and not can_write_json:
+                convertedField = QgsField(name=name, type=QVariant.String, len=-1)
+                self.mFieldDefinitions[name] = convertedField
+                self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
+            else:
+                self.mFieldDefinitions[name] = QgsField(super().fieldDefinition(field))
+                self.mFieldConverters[idx] = lambda v: v
+
+    def convertProfileField(self, value, field: QgsField) -> str:
+        d = decodeProfileValueDict(value, numpy_arrays=True)
+        d['y'] = d['y'].astype(np.float32)
+        text = encodeProfileValueDict(d, field)
+        return text
+
+    def clone(self) -> QgsVectorFileWriter.FieldValueConverter:
+        return GeoPackageFieldValueConverter(self.mFields)
+
+    def convert(self, fieldIdxInLayer: int, value: Any) -> Any:
+        return self.mFieldConverters[fieldIdxInLayer](value)
+
+    def fieldDefinition(self, field: QgsField) -> QgsField:
+        return QgsField(self.mFieldDefinitions[field.name()])
+
+    def convertedFields(self) -> QgsFields:
+        fields = QgsFields()
+        for f in self.mFields:
+            fields.append(self.fieldDefinition(f))
+        return fields
+
+
 class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 
     def __init__(self, *args, **kwds):
@@ -143,8 +195,13 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
 
         transformationContext = QgsCoordinateTransformContext()
 
+        converter = GeoPackageFieldValueConverter(fields)
+        options.fieldValueConverter = converter
+        convertedFields = converter.convertedFields()
+
         writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path,
-                                                                 fields,
+                                                                 convertedFields,
+                                                                 # fields,
                                                                  wkbType,
                                                                  crs,
                                                                  transformationContext,
@@ -153,7 +210,7 @@ class GeoPackageSpectralLibraryIO(SpectralLibraryIO):
             raise Exception(f'Error when creating {path}: {writer.errorMessage()}')
 
         if not writer.addFeatures(profiles):
-            if writer.errorCode() != QgsVectorFileWriter.NoError:
+            if writer.hasError() != QgsVectorFileWriter.NoError:
                 raise Exception(f'Error when creating feature: {writer.errorMessage()}')
 
         del writer

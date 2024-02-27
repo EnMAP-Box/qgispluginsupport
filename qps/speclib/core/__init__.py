@@ -23,7 +23,7 @@ def can_store_spectral_profiles(field: QgsField) -> bool:
         return False
     b = field.type() in [QVariant.ByteArray,
                          QVariant.String,
-                         8  # JSON
+                         QVariant.Map  # JSON
                          ]
 
     return b
