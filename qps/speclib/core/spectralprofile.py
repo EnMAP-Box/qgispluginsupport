@@ -167,7 +167,7 @@ def isProfileValueDict(d: dict) -> bool:
 
 class ProfileEncoding(enum.Enum):
     Text = 0
-    Json = 0
+    Json = 1
     Map = 1
     Dict = 1
     Bytes = 2
@@ -256,7 +256,7 @@ def encodeProfileValueDict(d: dict,
     # save as JSON string or byte compressed JSON
     # convert NaN to null
 
-    # convert NaN, -Inf, Inf to null
+    # convert NaN, -Inf, Inf to None
     # see https://datatracker.ietf.org/doc/html/rfc8259
     for k in ['x', 'y', 'bbl']:
         if k in d2:
@@ -266,7 +266,7 @@ def encodeProfileValueDict(d: dict,
         jsonDoc = QJsonDocument.fromVariant(d2)
         return jsonDoc.toBinaryData()
     else:
-        # encoding = JSON or TEXT
+        # encoding = TEXT
         return json.dumps(d2, allow_nan=False)
 
 

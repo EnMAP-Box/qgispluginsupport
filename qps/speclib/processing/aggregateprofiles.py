@@ -10,7 +10,8 @@ from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterFeatureSourc
     QgsWkbTypes, QgsExpressionContextUtils, QgsGeometry, QgsVectorLayer, QgsAggregateCalculator, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsFeedback, \
     QgsExpressionFunction, QgsExpressionContext, QgsExpression, QgsExpressionNodeFunction, QgsField, \
-    QgsFeatureRequest, QgsExpressionNode, QgsExpressionNodeLiteral, QgsExpressionContextScope, QgsEditorWidgetSetup
+    QgsFeatureRequest, QgsExpressionNode, QgsExpressionNodeLiteral, QgsExpressionContextScope, QgsEditorWidgetSetup, \
+    edit
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field
 from ..core.spectralprofile import ProfileEncoding, decodeProfileValueDict, prepareProfileValueDict, \
@@ -303,7 +304,7 @@ Please not that not each aggregate function might be available for each field ty
             flength = int(aggregateDef['length'])
             fprecision = int(aggregateDef['precision'])
 
-            self.mFields.append(QgsField(fname, ftype, ftypeName, flength, fprecision, '', fsubType))
+            field: QgsField = QgsField(fname, ftype, ftypeName, flength, fprecision, '', fsubType)
 
             aggregateType = str(aggregateDef['aggregate'])
             source = str(aggregateDef['input'])
@@ -311,6 +312,9 @@ Please not that not each aggregate function might be available for each field ty
 
             source_idx = QgsExpression.expressionToLayerFieldIndex(source, vl)
             is_profile = source_idx > -1 and is_profile_field(self.mSource.fields().at(source_idx))
+            if is_profile:
+                field.setEditorWidgetSetup(QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
+
             expression: str = None
             if aggregateType == 'first_value':
                 expression = source
@@ -329,6 +333,8 @@ Please not that not each aggregate function might be available for each field ty
                     self.mOutputProfileFields.append(fname)
                 else:
                     expression = f'{aggregateType}({source}, {self.mGroupBy})'
+
+            self.mFields.append(field)
             self.mExpressions.append(self.createExpression(expression, context))
 
         return True
@@ -407,6 +413,8 @@ Please not that not each aggregate function might be available for each field ty
         if len(keys) > 0:
             progressStep = 50.0 / len(keys)
 
+        profile_attribute_indices = [i for i, field in enumerate(self.mFields) if is_profile_field(field)]
+
         for current, key in enumerate(keys):
             group: Group = groups[key]
 
@@ -435,12 +443,16 @@ Please not that not each aggregate function might be available for each field ty
                     if it.hasEvalError():
                         raise QgsProcessingException(
                             f'evaluation error in expression "{it.expression()}":{it.evalErrorString()}')
+
+                    if currentAttributeIndex in profile_attribute_indices:
+                        value = encodeProfileValueDict(value, encoding=self.mFields[currentAttributeIndex])
+
                     attributes.append(value)
                 else:
                     attributes.append(None)
 
             # write output feature
-            outFeat = QgsFeature()
+            outFeat = QgsFeature(self.mFields)
             outFeat.setGeometry(geometry)
             outFeat.setAttributes(attributes)
             if not sink.addFeature(outFeat, QgsFeatureSink.FastInsert):
@@ -481,9 +493,13 @@ Please not that not each aggregate function might be available for each field ty
 
         createOptions = dict(encoding='utf-8')
         name = f'AggregationMemoryLayer{len(self._TempLayers)}'
-        uri = AggregateMemoryLayer.createInitArguments(crs, fields, wkbType)
+        uri = AggregateMemoryLayer.createInitArguments(crs, [], wkbType)
         # layer = AggregateMemoryLayer(name, fields, wkbType, crs)
         layer = QgsVectorLayer(uri, name, 'memory')
+        with edit(layer):
+            for field in fields:
+                layer.addAttribute(QgsField(field))
+
         for field in fields:
             idx = layer.fields().lookupField(field.name())
             layer.setEditorWidgetSetup(idx, QgsEditorWidgetSetup(field.editorWidgetSetup().type(), {}))

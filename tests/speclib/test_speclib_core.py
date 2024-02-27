@@ -163,9 +163,8 @@ class SpeclibCoreTests(TestCaseBase):
         self.assertListEqual(bbl, r['bbl'])
 
         rJSON = encodeProfileValueDict(d, encoding='JSON')
-        self.assertIsInstance(rJSON, str)
-        self.assertTrue('NaN' not in rJSON)
-        self.assertTrue('null' in rJSON)
+        self.assertIsInstance(rJSON, dict)
+        self.assertTrue(None not in rJSON['y'])
 
         r = decodeProfileValueDict(rJSON)
         self.assertIsInstance(r, dict)
@@ -191,8 +190,11 @@ class SpeclibCoreTests(TestCaseBase):
                 if k in d1:
                     self.assertTrue(k in d2)
                     v1, v2 = d1[k], d2[k]
+
                     if isinstance(v1, list):
-                        self.assertTrue(np.array_equal(v1, v2, equal_nan=True))
+                        v1 = [nanToNone(v) for v in v1]
+                        v2 = [nanToNone(v) for v in v2]
+                        self.assertListEqual(v1, v2)
                     else:
                         self.assertEqual(v1, v2)
 
@@ -258,16 +260,18 @@ class SpeclibCoreTests(TestCaseBase):
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, QByteArray)
 
-        for e in [None, 'TeXt', 'JsOn',
+        for e in [None, 'TeXt',
                   ProfileEncoding.Text,
-                  ProfileEncoding.Json,
                   QgsField('dummy', type=QVariant.String),
-                  QgsField('dummy', type=8)
                   ]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, str)
 
         for e in ['dIcT', 'mAp', ProfileEncoding.Dict, ProfileEncoding.Map]:
+            dump = encodeProfileValueDict(d, e)
+            self.assertIsInstance(dump, dict)
+
+        for e in ['jSoN', ProfileEncoding.Json, QgsField('dummy', type=8)]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, dict)
 
@@ -345,15 +349,16 @@ class SpeclibCoreTests(TestCaseBase):
             dict(y=[1, 2, 3], x=[350, 400, 523.4], xUnit='nm', bbl=[0, 1, 1])
         ]
 
-        for profile1 in profiles:
-            for field in fields:
+        for iProfile, profile1 in enumerate(profiles):
+            for iField, field in enumerate(fields):
                 if can_store_spectral_profiles(field):
                     idx = fields.lookupField(field.name())
                     value1 = encodeProfileValueDict(profile1, encoding=field)
                     self.assertTrue(value1 is not None)
                     self.assertTrue(lyr.changeAttributeValue(fid, idx, value1))
                     lyr.commitChanges(False)
-                    value2 = lyr.getFeature(fid)[field.name()]
+                    f2 = lyr.getFeature(fid)
+                    value2 = f2[field.name()]
 
                     if lyr.fields().field(field.name()).typeName() == 'JSON':
                         self.assertEqual(value2, profile1)

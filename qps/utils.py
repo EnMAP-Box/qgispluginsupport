@@ -70,6 +70,7 @@ from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, 
 from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+
 from .unitmodel import UnitLookup, datetime64
 
 QGIS_RESOURCE_WARNINGS = set()
@@ -1240,9 +1241,18 @@ def read_vsimem(fn):
     return gdal.VSIFReadL(1, vsileng, vsifile)
 
 
-def writeAsVectorFormat(layer: QgsVectorLayer, path: Union[str, pathlib.Path],
+def writeAsVectorFormat(layer: QgsVectorLayer,
+                        path: Union[str, pathlib.Path],
                         options: QgsVectorFileWriter.SaveVectorOptions = None,
                         feedback: QgsFeedback = None) -> QgsVectorLayer:
+    """
+    Writes any vector layer into another format. E.g. to store in-memory vector layers persistently
+    :param layer: QgsVectorLayer
+    :param path: path to store the vector file.
+    :param options: optional, QgsVectorFileWriter.SaveVectorOptions
+    :param feedback: QgsFeedback
+    :return: QgsVectorLayer
+    """
     path = pathlib.Path(path)
 
     if not isinstance(options, QgsVectorFileWriter.SaveVectorOptions):
@@ -1253,24 +1263,33 @@ def writeAsVectorFormat(layer: QgsVectorLayer, path: Union[str, pathlib.Path],
         options.fileEncoding = 'UTF-8'
 
         parts = os.path.splitext(path.name)
+
         if len(parts) == 2:
-            options.driverName = QgsVectorFileWriter.driverForExtension(parts[1])
+            driverName = QgsVectorFileWriter.driverForExtension(parts[1])
+            options.driverName = driverName
             options.layerOptions = QgsVectorFileWriter.defaultLayerOptions(options.driverName)
             options.datasourceOptions = QgsVectorFileWriter.defaultDatasetOptions(options.driverName)
             options.includeConstraints = True
             options.layerMetadata = layer.metadata()
+
+            if driverName == 'GPKG':
+                from .speclib.io.geopackage import GeoPackageFieldValueConverter
+                options.fieldValueConverter = GeoPackageFieldValueConverter(layer.fields())
             # options.symbologyExport =
 
     def onCompleted(newFilename, newLayer):
-
         s = ""
 
     def onErrorOccurred(err: int, msg: str):
         s = ""
 
+    def onWriteComplete(newFileName: str):
+        s = ""
+
     task = QgsVectorFileWriterTask(layer, path.as_posix(), options)
     task.completed.connect(onCompleted)
     task.errorOccurred.connect(onErrorOccurred)
+    task.writeComplete.connect(onWriteComplete)
     r = task.run()
     assert r
     # save styling

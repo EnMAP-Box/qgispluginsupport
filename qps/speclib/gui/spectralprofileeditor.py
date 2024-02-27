@@ -236,7 +236,7 @@ class SpectralProfileJsonEditor(QgsCodeEditorJson):
         self.textChanged.connect(self.profileChanged)
 
     def setProfileDict(self, d: dict):
-        jsonText = encodeProfileValueDict(d, ProfileEncoding.Json, jsonFormat=QJsonDocument.Indented)
+        jsonText = encodeProfileValueDict(d, ProfileEncoding.Text, jsonFormat=QJsonDocument.Indented)
         self.setText(jsonText)
 
     def profileDict(self) -> dict:

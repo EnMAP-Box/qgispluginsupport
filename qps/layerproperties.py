@@ -43,6 +43,7 @@ from qgis.core import QgsEditorWidgetSetup, QgsVectorLayer, QgsExpression, QgsDi
     QgsCategorizedSymbolRenderer, \
     QgsHillshadeRenderer, QgsPalettedRasterRenderer, QgsSingleBandPseudoColorRenderer
 from qgis.core import QgsSingleBandColorDataRenderer
+from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
 try:
@@ -644,7 +645,8 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
     assert isinstance(bandIndices, list)
 
     # get band stats
-    bandStats = [layer.dataProvider().bandStatistics(b + 1, stats=QgsRasterBandStats.Min | QgsRasterBandStats.Max,
+    bandStats = [layer.dataProvider().bandStatistics(b + 1,
+                                                     stats=QGIS_RASTERBANDSTATISTIC.Min | QGIS_RASTERBANDSTATISTIC.Max,
                                                      sampleSize=sampleSize) for b in bandIndices]
     dp = layer.dataProvider()
     assert isinstance(dp, QgsRasterDataProvider)

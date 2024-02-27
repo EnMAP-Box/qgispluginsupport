@@ -96,7 +96,7 @@ class QgsFunctionTests(TestCaseBase):
                 exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
-                self.assertIsInstance(profile, str)
+                self.assertIsInstance(profile, dict)
 
                 exp = QgsExpression(f'{f.name()}("{sfield}", \'map\')')
                 exp.prepare(context)
@@ -428,9 +428,9 @@ class QgsFunctionTests(TestCaseBase):
 
                 if re.search(r'(bytes)', exp.expression()):
                     self.assertIsInstance(profile, QByteArray)
-                elif re.search(r'(text|json)', exp.expression()):
+                elif re.search(r'(text)', exp.expression()):
                     self.assertIsInstance(profile, str)
-                elif re.search(r'(dict|map)', exp.expression()):
+                elif re.search(r'(dict|map|json)', exp.expression()):
                     self.assertIsInstance(profile, dict)
                 else:
                     self.assertIsInstance(profile, str, msg=exp.expression())
