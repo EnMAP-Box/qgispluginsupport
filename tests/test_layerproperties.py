@@ -23,10 +23,12 @@ from qps import MAPLAYER_CONFIGWIDGET_FACTORIES
 from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
 from qps.layerproperties import RemoveAttributeDialog, AttributeTableWidget, CopyAttributesDialog, AddAttributeDialog, \
     showLayerPropertiesDialog, defaultRasterRenderer, equal_styles
-from qps.testing import TestObjects, TestCaseBase, TestCase
+from qps.testing import TestObjects, TestCaseBase, TestCase, start_app
 from qps.utils import createQgsField
 
 LAYER_WIDGET_REPS = 5
+
+start_app()
 
 
 class LayerPropertyTests(TestCase):
@@ -215,7 +217,6 @@ class LayerPropertyTests(TestCase):
                 sl.addAttribute(f)
             self.assertTrue(sl.commitChanges())
 
-    @unittest.skip('')
     def test_AttributeTableWidget(self):
         vl = TestObjects.createVectorLayer()
         w = AttributeTableWidget(vl)
