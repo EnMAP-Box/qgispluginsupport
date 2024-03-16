@@ -81,7 +81,7 @@ def start_app(cleanup: bool = True,
     app = qgis.testing.start_app(cleanup)
 
     from qgis.core import QgsCoordinateReferenceSystem
-    assert QgsCoordinateReferenceSystem('EPSG:4979').isValid()
+    assert QgsCoordinateReferenceSystem('EPSG:4326').isValid()
 
     providers = QgsApplication.processingRegistry().providers()
     global _PYTHON_RUNNER

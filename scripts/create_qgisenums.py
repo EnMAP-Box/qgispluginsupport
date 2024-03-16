@@ -63,7 +63,8 @@ for m in re.findall(pattern, code):
     nameNew = matchClass.group(1)
     nameOld = matchPrior.group(2)
     version_int = 30000
-    version_int += int(100 * float(matchPrior.group(1)))
+    # - 100 to include the developer versions on the master branch as well
+    version_int += int(100 * float(matchPrior.group(1))) - 100
 
     if nameOld.endswith('.'):
         nameOld = nameOld[0:-1]
