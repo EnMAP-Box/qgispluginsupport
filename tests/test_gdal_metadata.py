@@ -7,16 +7,16 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
-from qgis.PyQt.QtWidgets import QDialog
-from qgis.PyQt.QtCore import QMimeData, QModelIndex
 from osgeo import gdal, ogr, gdal_array
 
+from qgis.PyQt.QtCore import QMimeData, QModelIndex, QUrl
+from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QMenu, QAction
 from qgis.core import QgsFeature, edit
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
 from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
 from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
-    GDALMetadataModelConfigWidget, BandFieldNames, ENVIMetadataUtils, GDALMetadataItem, BandPropertyCalculator
+    GDALMetadataModelConfigWidget, BandFieldNames, GDALMetadataItem, BandPropertyCalculator
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qpstestdata import enmap, envi_bsq, enmap_polygon
@@ -120,7 +120,7 @@ class TestsGdalMetadata(TestCaseBase):
         wavelLength = []
         for i, f in enumerate(list(model.getFeatures())):
             f: QgsFeature
-            bandName = f'MYNAME_{i+1}'
+            bandName = f'MYNAME_{i + 1}'
             wl = 500 + i + 1
             f.setAttribute(BandFieldNames.Name, bandName)
             f.setAttribute(BandFieldNames.Wavelength, wl)
@@ -319,35 +319,6 @@ class TestsGdalMetadata(TestCaseBase):
         # self.assertTrue('My Band Name' not in hdr1)
         # self.assertTrue('My Band Name' in hdr2)
 
-    def test_ENVI_Header_Utils(self):
-
-        hdr = """
-ENVI
-foo A=bar \n
-foo B = bar2 \n
-foo C=b a r 3 \n
-foo D={a,b, c}
-foo E={1,2
-,3,4}
-stupid -- broken \n
-stuff
-foo F = {1, 2
-    , 3, 4
-    }
-foo G = {1,
-  # comment
-2}
-foo H =
-        """
-        found = ENVIMetadataUtils.parseEnviHeader(hdr)
-        for a in 'ABCDEFG':
-            k = f'foo {a}'
-            self.assertTrue(k in found.keys())
-            v = found[k]
-            self.assertIsInstance(v, (str, list))
-        for a in 'H':
-            self.assertTrue(f'foo {a}' not in found.keys())
-
     def test_GDAL_PAM(self):
         test_dir = self.createTestOutputDirectory(subdir='gdalmetadata_PAM')
         path = test_dir / 'example.tif'
@@ -503,11 +474,25 @@ foo H =
         model.syncToLayer()
         model.startEditing()
 
-        mimeData: QMimeData = QMimeData()
-        mimeData.setText(hdr)
-        QApplication.clipboard().setMimeData(mimeData)
-        md = model.bandMetadataFromMimeData(QApplication.clipboard().mimeData())
-        self.assertIsInstance(md, dict)
+        md1: QMimeData = QMimeData()
+        md1.setText(hdr)
+
+        md2: QMimeData = QMimeData()
+        md2.setUrls([QUrl.fromLocalFile(envi_hdr)])
+
+        md3: QMimeData = QMimeData()
+        md3.setUrls([QUrl.fromLocalFile(r'C:/NoneExisting')])
+
+        md4: QMimeData = QMimeData()
+        md4.setUrls([QUrl.fromLocalFile(r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])
+
+        for mimeData in [md1, md2, md3]:
+            QApplication.clipboard().setMimeData(mimeData)
+            md = model.bandMetadataFromMimeData(QApplication.clipboard().mimeData())
+            self.assertIsInstance(md, dict)
+            if len(md) > 0:
+                self.assertTrue(BandFieldNames.WavelengthUnit in md)
+                self.assertTrue(BandFieldNames.Wavelength in md)
 
         menu1 = QMenu()
         model.onWillShowBandContextMenu(menu1, QModelIndex())

@@ -23,16 +23,17 @@
 """
 import copy
 import datetime
+import importlib.util
 import json
 import math
 import pathlib
 import re
+from pathlib import Path
 from typing import List, Pattern, Tuple, Union, Dict, Any, Match
-
 from qgis.PyQt.QtWidgets import QHBoxLayout
 from osgeo import gdal, ogr
 from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
-    QSortFilterProxyModel, QMimeData
+    QSortFilterProxyModel, QMimeData, QUrl
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QCheckBox, QLabel, QSizePolicy, QGridLayout
 from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget, \
@@ -51,6 +52,8 @@ from ..classification.classificationscheme import ClassificationScheme, Classifi
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ..utils import loadUi, gdalDataset, ogrDataSource
 
+HAS_PYSTAC = importlib.util.find_spec('pystac') is not None
+
 PROTECTED = [
     'IMAGE_STRUCTURE:INTERLEAVE',
     'DERIVED_SUBDATASETS:DERIVED_SUBDATASET_1_NAME',
@@ -63,9 +66,9 @@ MAJOR_OBJECTS = [gdal.Dataset.__name__, gdal.Band.__name__, ogr.DataSource.__nam
 MDF_GDAL_BANDMETADATA = 'qgs/gdal_band_metadata'
 
 
-class ENVIMetadataUtils(object):
+class MetadataUtils(object):
     """
-    A class to parse ENVI metadata headers
+    A class to parse metadata files
     """
     rxSingle = re.compile(r'^(?P<key>[^=\n]+)= *(?P<value>[^{ ][^{}\n]*)', re.M)
     rxArray = re.compile(r'^(?P<key>[^=\n]+)= *{(?P<values>[^{}]+)}', re.M)
@@ -78,16 +81,82 @@ class ENVIMetadataUtils(object):
         lines = [line for line in lines if not re.search(r'\s*#.*', line)]
         lines = '\n'.join(lines)
 
-        ITEMS = dict()
-        r1 = ENVIMetadataUtils.rxSingle.findall(lines)
-        r2 = ENVIMetadataUtils.rxArray.findall(lines)
+        ENVI = dict()
+        r1 = MetadataUtils.rxSingle.findall(lines)
+        r2 = MetadataUtils.rxArray.findall(lines)
         for r in r1 + r2:
             value = re.sub(' *\n+ *', ' ', r[1].strip()).strip()
             if len(value) > 0:
                 if r in r2:
                     value = re.split(r' *, *', value)
-                ITEMS[r[0].strip()] = value
-        return ITEMS
+                ENVI[r[0].strip()] = value
+
+        md = dict()
+
+        if len(ENVI) > 0:
+
+            LUT = {'wavelength units': BandFieldNames.WavelengthUnit,
+                   'wavelength': BandFieldNames.Wavelength,
+                   'fwhm': BandFieldNames.FWHM,
+                   'bbl': BandFieldNames.BadBand,
+                   'band names': BandFieldNames.Name,
+                   'data gain values': BandFieldNames.Scale,
+                   'data offset values': BandFieldNames.Offset,
+                   'data ignore value': BandFieldNames.NoData
+                   }
+
+            for enviKey, fieldName in LUT.items():
+                if enviKey in ENVI.keys():
+                    md[fieldName] = ENVI[enviKey]
+
+        return md
+
+    @staticmethod
+    def parseSTAC(text: str) -> Dict:
+
+        md = dict()
+        if not HAS_PYSTAC:
+            return md
+
+        try:
+            d = json.loads(text)
+        except ValueError:
+            return md
+
+        import pystac
+        from pystac import STACTypeError
+        try:
+            stac_item = pystac.Item.from_dict(d)
+
+            # field, keys
+            field_items = {'eo:bands': [
+                ('common_name', BandFieldNames.Name),
+                ('center_wavelength', BandFieldNames.Wavelength),
+                ('full_width_half_max', BandFieldNames.FWHM),
+                                       ],
+                'raster:bands': [
+                    ('nodata', BandFieldNames.NoData),
+                    ('scale', BandFieldNames.Scale),
+                    ('offset', BandFieldNames.Offset),
+                                ],
+            }
+
+            for asset_key, asset in stac_item.assets.items():
+
+                for field_group, group_members in field_items.items():
+                    if field_group in asset.extra_fields:
+                        for iBand, band_info in enumerate(asset.extra_fields[field_group]):
+                            for (stac_member, tag) in group_members:
+                                if stac_member in band_info:
+                                    md[tag] = md.get(tag, []) + [band_info[stac_member]]
+                                if field_group == 'eo:bands' and stac_member == 'center_wavelength':
+                                    # by default, STAC wavelength are micrometers
+                                    md[BandFieldNames.WavelengthUnit] = (md.get(BandFieldNames.WavelengthUnit, [])
+                                                                         + ['μm'])
+
+        except STACTypeError:
+            return md
+        return md
 
 
 class GDALErrorHandler(object):
@@ -377,27 +446,39 @@ class GDALBandMetadataModel(QgsVectorLayer):
     def bandMetadataFromMimeData(cls, mimeData: QMimeData) -> Dict[str, Union[str, List]]:
 
         metadata = dict()
-        enviMD = ENVIMetadataUtils.parseEnviHeader(mimeData.text())
 
-        LUT = {'wavelength units': BandFieldNames.WavelengthUnit,
-               'wavelengths': BandFieldNames.Wavelength,
-               'fwhm': BandFieldNames.FWHM,
-               'bbl': BandFieldNames.BadBand,
-               'band names': BandFieldNames.Name,
-               'data gain values': BandFieldNames.Scale,
-               'data offset values': BandFieldNames.Offset,
-               'data ignore value': BandFieldNames.NoData
-               }
+        ENVI: dict = dict()
+        STAC: dict = dict()
 
-        for enviKey, fieldName in LUT.items():
-            if enviKey in enviMD.keys():
-                metadata[fieldName] = enviMD[enviKey]
+        if len(metadata) == 0 and mimeData.hasUrls():
+            max_size = 10 ** 1024 * 1024  # 10 MBytes
+            for url in mimeData.urls():
+                url: QUrl
+                if url.isLocalFile():
+                    path = Path(url.toLocalFile())
+                    if path.exists() and path.stat().st_size < max_size:
+                        if path.name.lower().endswith('.hdr'):
+                            with open(path) as f:
+                                ENVI = MetadataUtils.parseEnviHeader(f.read())
+                        elif path.name.lower().endswith('.json'):
+                            with open(path) as f:
+                                STAC = MetadataUtils.parseSTAC(f.read())
+        elif mimeData.hasText():
+            text = mimeData.text()
+            ENVI = MetadataUtils.parseEnviHeader(mimeData.text())
+            STAC = MetadataUtils.parseSTAC(mimeData.text())
 
-        dump = mimeData.data(MDF_GDAL_BANDMETADATA)
-        data = bytes(dump).decode('UTF-8')
-        metadata.update(json.loads(data) if data != '' else dict())
+        elif mimeData.hasFormat(MDF_GDAL_BANDMETADATA):
+            dump = mimeData.data(MDF_GDAL_BANDMETADATA)
+            data = bytes(dump).decode('UTF-8')
+            metadata.update(json.loads(data) if data != '' else dict())
+            return metadata
 
-        return metadata
+        for md in [ENVI, STAC]:
+            if len(md) > 0:
+                return md
+
+        return dict()
 
     def onWillShowBandContextMenu(self, menu: QMenu, index: QModelIndex):
         tv: QTableView = menu.parent()
