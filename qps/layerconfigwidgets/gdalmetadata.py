@@ -456,7 +456,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
                 url: QUrl
                 if url.isLocalFile():
                     path = Path(url.toLocalFile())
-                    if path.stat().st_size < max_size:
+                    if path.exists() and path.stat().st_size < max_size:
                         if path.name.lower().endswith('.hdr'):
                             with open(path) as f:
                                 ENVI = MetadataUtils.parseEnviHeader(f.read())

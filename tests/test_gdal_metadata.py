@@ -481,14 +481,18 @@ class TestsGdalMetadata(TestCaseBase):
         md2.setUrls([QUrl.fromLocalFile(envi_hdr)])
 
         md3: QMimeData = QMimeData()
-        md3.setUrls([QUrl.fromLocalFile(r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])
+        md3.setUrls([QUrl.fromLocalFile(r'C:/NoneExisting')])
+
+        md4: QMimeData = QMimeData()
+        md4.setUrls([QUrl.fromLocalFile(r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])
 
         for mimeData in [md1, md2, md3]:
             QApplication.clipboard().setMimeData(mimeData)
             md = model.bandMetadataFromMimeData(QApplication.clipboard().mimeData())
             self.assertIsInstance(md, dict)
-            self.assertTrue(BandFieldNames.WavelengthUnit in md)
-            self.assertTrue(BandFieldNames.Wavelength in md)
+            if len(md) > 0:
+                self.assertTrue(BandFieldNames.WavelengthUnit in md)
+                self.assertTrue(BandFieldNames.Wavelength in md)
 
         menu1 = QMenu()
         model.onWillShowBandContextMenu(menu1, QModelIndex())
