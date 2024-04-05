@@ -20,7 +20,14 @@ from ...unitmodel import BAND_INDEX
 from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextColor, numpyToQgisDataType, \
     HashableRectangle
 
-DEFAULT_EPSG_CODE = 'EPSG:32631'
+_DEF_CRS = None
+
+
+def defaultCrs() -> QgsCoordinateReferenceSystem:
+    global _DEF_CRS
+    if _DEF_CRS is None:
+        _DEF_CRS = QgsCoordinateReferenceSystem('EPSG:32631')
+    return _DEF_CRS
 
 
 def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
@@ -467,8 +474,6 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
 
     FIELD_CONVERTER: List[FieldToRasterValueConverter] = [SpectralProfileValueConverter, FieldToRasterValueConverter]
 
-    CRS = QgsCoordinateReferenceSystem(DEFAULT_EPSG_CODE)
-
     @staticmethod
     def findFieldConverter(field: QgsField) -> Optional[FieldToRasterValueConverter]:
 
@@ -791,7 +796,7 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         return md
 
     def crs(self) -> QgsCoordinateReferenceSystem:
-        return self.CRS
+        return defaultCrs()
 
     def name(self):
         return self.__class__.__name__
@@ -871,8 +876,6 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
     """
     An
     """
-
-    CRS = QgsCoordinateReferenceSystem(DEFAULT_EPSG_CODE)
 
     def __init__(self, *args, speclib=None, fids: List[int] = None, **kwds):
 
@@ -962,7 +965,7 @@ class SpectralLibraryRasterDataProvider(QgsRasterDataProvider):
         s = ""
 
     def crs(self) -> QgsCoordinateReferenceSystem:
-        return QgsCoordinateReferenceSystem()
+        return defaultCrs()
 
     def isValid(self) -> bool:
         return True
