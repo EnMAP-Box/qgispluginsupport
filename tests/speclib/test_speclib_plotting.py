@@ -10,9 +10,10 @@ from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtWidgets import QTreeView
 from qgis.PyQt.QtWidgets import QVBoxLayout
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
- from qgis.core import QgsExpressionContextScope, QgsSingleSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory, \
-    QgsCategorizedSymbolRenderer, QgsNullSymbolRenderer, QgsGraduatedSymbolRenderer, QgsRendererRange, \
-    QgsClassificationRange
+from qgis.core import (QgsExpressionContextScope, QgsSingleSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory,
+                       QgsCategorizedSymbolRenderer, QgsNullSymbolRenderer, QgsGraduatedSymbolRenderer,
+                       QgsRendererRange,
+                       QgsClassificationRange)
 from qgis.core import QgsPropertyDefinition, edit
 from qgis.core import QgsReadWriteContext
 from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer
