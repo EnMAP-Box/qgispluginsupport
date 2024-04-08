@@ -32,13 +32,15 @@ from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QP
 from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout, QCheckBox, QDoubleSpinBox, \
     QSpinBox, QMenu
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsExpressionContextUtils, QgsExpressionContextGenerator
-from qgis.core import QgsReadWriteContext
-from qgis.core import QgsWkbTypes, QgsField, QgsPropertyDefinition, QgsProperty, QgsExpressionContext, QgsRasterLayer, \
-    QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer, QgsSingleBandPseudoColorRenderer, \
-    QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
-    QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsFeature, \
-    QgsXmlUtils, QgsTextFormat
+from qgis.core import (QgsWkbTypes, QgsField, QgsPropertyDefinition, QgsProperty,
+                       QgsExpressionContext, QgsRasterLayer, QgsReadWriteContext,
+                       QgsExpressionContextUtils, QgsExpressionContextGenerator, QgsRenderContext,
+                       QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer,
+                       QgsSingleBandPseudoColorRenderer,
+                       QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer,
+                       QgsSingleBandGrayRenderer,
+                       QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsFeature,
+                       QgsXmlUtils, QgsTextFormat)
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverrideButton, \
     QgsSpinBox, QgsDoubleSpinBox
 from .spectrallibraryplotitems import SpectralProfilePlotLegend, SpectralProfilePlotItem
@@ -76,16 +78,21 @@ class SpectralProfileColorPropertyWidget(QWidget):
             for f in layer.getFeatures():
                 feature = f
                 break
+
             if isinstance(feature, QgsFeature):
+                renderContext = QgsRenderContext()
                 context.setFeature(feature)
-                symbol = layer.renderer().symbol()
-                j = context.indexOfScope('Symbol')
-                if j < 0:
-                    symbolScope = QgsExpressionContextScope('Symbol')
-                    context.appendScope(symbolScope)
-                else:
-                    symbolScope: QgsExpressionContextScope = context.scope(j)
-                QgsExpressionContextUtils.updateSymbolScope(symbol, symbolScope)
+                symbols = layer.renderer().symbols(renderContext)
+
+                if len(symbols) > 0:
+                    symbol = symbols[0]
+                    j = context.indexOfScope('Symbol')
+                    if j < 0:
+                        symbolScope = QgsExpressionContextScope('Symbol')
+                        context.appendScope(symbolScope)
+                    else:
+                        symbolScope: QgsExpressionContextScope = context.scope(j)
+                    QgsExpressionContextUtils.updateSymbolScope(symbol, symbolScope)
             return context
 
     def __init__(self, *args, **kwds):
@@ -1995,7 +2002,7 @@ class ProfileVisualizationGroup(SpectralProfilePlotDataItemGroup):
 
     def setColor(self, color: Union[str, QColor]):
         c = QColor(color)
-        p = self.mPColor.property()
+        p = QgsProperty(self.mPColor.property())
         p.setStaticValue(c)
         self.mPColor.setProperty(p)
 
