@@ -10,6 +10,9 @@ from qgis.PyQt.QtWidgets import QHBoxLayout, QWidget
 from qgis.PyQt.QtWidgets import QTreeView
 from qgis.PyQt.QtWidgets import QVBoxLayout
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+ from qgis.core import QgsExpressionContextScope, QgsSingleSymbolRenderer, QgsMarkerSymbol, QgsRendererCategory, \
+    QgsCategorizedSymbolRenderer, QgsNullSymbolRenderer, QgsGraduatedSymbolRenderer, QgsRendererRange, \
+    QgsClassificationRange
 from qgis.core import QgsPropertyDefinition, edit
 from qgis.core import QgsReadWriteContext
 from qgis.core import QgsSingleBandGrayRenderer, QgsMultiBandColorRenderer
@@ -127,7 +130,52 @@ class TestSpeclibPlotting(TestCaseBase):
 
         self.showGui(slw)
 
-    @unittest.skipIf(True, '')
+    def test_vectorenderers(self):
+
+        speclib = TestObjects.createSpectralLibrary()
+        with edit(speclib):
+            n = speclib.featureCount()
+            speclib.addAttribute(QgsField('class', QVariant.String))
+            speclib.addAttribute(QgsField('float', QVariant.Double))
+            speclib.addAttribute(QgsField('int', QVariant.Int))
+            for i, feature in enumerate(speclib.getFeatures()):
+                vclass = 'cat1' if i % 2 else 'cat2'
+                vfloat = (i + 1) / n
+                vint = i
+                feature.setAttribute('class', vclass)
+                feature.setAttribute('float', vfloat)
+                feature.setAttribute('int', vint)
+                speclib.updateFeature(feature)
+
+        slw = SpectralLibraryWidget(speclib=speclib)
+        vis0: ProfileVisualizationGroup = slw.plotControl().visualizations()[0]
+        self.assertEqual(vis0.colorProperty().asExpression(), '@symbol_color')
+
+        # change the vector renderers
+        symbolRed = QgsMarkerSymbol.createSimple({'name': 'square', 'color': 'red'})
+        symbolOrange = QgsMarkerSymbol.createSimple({'name': 'circle', 'color': 'orange'})
+        r1 = QgsSingleSymbolRenderer(QgsMarkerSymbol(symbolRed))
+
+        r2 = QgsCategorizedSymbolRenderer()
+        r2.setClassAttribute('class')
+        cat1 = QgsRendererCategory('cat1', symbolOrange.clone(), 'cat 1')
+        cat2 = QgsRendererCategory('cat2', symbolRed.clone(), 'cat 2')
+        r2.addCategory(cat1)
+        r2.addCategory(cat2)
+
+        r3 = QgsNullSymbolRenderer()
+
+        r4 = QgsGraduatedSymbolRenderer()
+        r4.setClassAttribute('float')
+        r4.addClassRange(QgsRendererRange(QgsClassificationRange('class 0-0.5', 0, 0.5), symbolRed.clone()))
+        r4.addClassRange(QgsRendererRange(QgsClassificationRange('class 0.5-1.0', 0.5, 1.0), symbolOrange.clone()))
+
+        for r in [r1, r2, r3, r4]:
+            speclib.setRenderer(r.clone())
+        # change color
+        vis0.setColor(QColor('green'))
+        self.showGui(slw)
+
     def test_SpectralProfileColorProperty(self):
         speclib: QgsVectorLayer = TestObjects.createSpectralLibrary()
         speclib.startEditing()
@@ -153,24 +201,31 @@ class TestSpeclibPlotting(TestCaseBase):
 
         p = w.toProperty()
         renderContext = QgsRenderContext()
-        context = speclib.createExpressionContext()
+        expressionContext = speclib.createExpressionContext()
 
-        profile = speclib[0]
-        context.setFeature(profile)
+        profile = list(speclib.getFeatures())[0]
+        expressionContext.setFeature(profile)
 
         renderer = speclib.renderer().clone()
         renderer.startRender(renderContext, speclib.fields())
+
         symbol = renderer.symbolForFeature(profile, renderContext)
-        context.appendScope(symbol.symbolRenderContext().expressionContextScope())
+
+        renderContext2 = symbol.symbolRenderContext()
+        scope2 = renderContext2.expressionContextScope()
+        # THIS is important! create a copy of the scope2
+        expressionContext.appendScope(QgsExpressionContextScope(scope2))
+
         color1 = symbol.color()
+
         print(color1.name())
         self.assertIsInstance(p, QgsProperty)
-        color2, success = p.valueAsColor(context, defaultColor=QColor('black'))
+        color2, success = p.valueAsColor(expressionContext, defaultColor=QColor('black'))
         print(color2.name())
         renderer.stopRender(renderContext)
         self.assertEqual(color1, color2)
-        del renderer
-        # self.showGui(w)
+
+        self.showGui(w)
 
     def test_speclib_plotsettings_restore(self):
 
