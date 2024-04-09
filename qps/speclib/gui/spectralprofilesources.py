@@ -424,7 +424,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
                 if isinstance(lyr, QgsRasterLayer):
                     src = StandardLayerProfileSource(lyr)
                     return src.expressionContext()
-            return QgsExpressionContext()
+        return QgsExpressionContext()
 
     def collectProfiles(self, point: SpatialPoint,
                         kernel_size: QSize = QSize(1, 1),
