@@ -181,7 +181,7 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowProfileView.setCheckable(True)
         self.actionShowProfileView.setChecked(True)
         self.actionShowProfileView.setIcon(QIcon(self.mSpeclibPlotWidget.windowIcon()))
-        self.actionShowProfileView.triggered.connect(self.onChangeViewVisibility)
+        self.actionShowProfileView.toggled.connect(self.onChangeViewVisibility)
 
         self.actionShowProfileViewSettings = self.mSpeclibPlotWidget.optionShowVisualizationSettings
         self.actionShowProfileView.toggled.connect(self.actionShowProfileViewSettings.setEnabled)
@@ -193,12 +193,12 @@ class SpectralLibraryWidget(AttributeTableWidget):
         self.actionShowFormView = QAction(self.tr('Show Form View'), parent=self)
         self.actionShowFormView.setCheckable(True)
         self.actionShowFormView.setIcon(QIcon(':/images/themes/default/mActionFormView.svg'))
-        self.actionShowFormView.triggered.connect(self.onChangeViewVisibility)
+        self.actionShowFormView.toggled.connect(self.onChangeViewVisibility)
 
         self.actionShowAttributeTable = QAction(self.tr('Show Attribute Table'), parent=self)
         self.actionShowAttributeTable.setCheckable(True)
         self.actionShowAttributeTable.setIcon(QIcon(':/images/themes/default/mActionOpenTable.svg'))
-        self.actionShowAttributeTable.triggered.connect(self.onChangeViewVisibility)
+        self.actionShowAttributeTable.toggled.connect(self.onChangeViewVisibility)
 
         self.mMainViewButtonGroup.buttonClicked.connect(self.updateToolbarVisibility)
 

@@ -424,7 +424,7 @@ class MapCanvasLayerProfileSource(SpectralProfileSource):
                 if isinstance(lyr, QgsRasterLayer):
                     src = StandardLayerProfileSource(lyr)
                     return src.expressionContext()
-            return QgsExpressionContext()
+        return QgsExpressionContext()
 
     def collectProfiles(self, point: SpatialPoint,
                         kernel_size: QSize = QSize(1, 1),
@@ -1783,6 +1783,7 @@ class SpectralProfileBridge(TreeModel):
             slw.setCurrentProfiles(features, currentProfileStyles=styles, make_permanent=add_permanent)
             if len(features) > 0:
                 results2[sid] = results2.get(sid, []) + features
+            self.mLastDestinations.add(sid)
         return results2
 
     def createFeatures(self,
