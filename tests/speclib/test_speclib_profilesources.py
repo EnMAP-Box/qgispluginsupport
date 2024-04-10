@@ -220,8 +220,8 @@ class SpectralProcessingTests(TestCaseBase):
         # re-add generators
         fgnode1 = panel.createRelation()
         fgnode2 = panel.createRelation()
-        for n in [fgnode1, fgnode2]:
-            self.assertIsInstance(n, SpectralFeatureGeneratorNode)
+        self.assertIsInstance(fgnode1, SpectralFeatureGeneratorNode)
+        self.assertIsInstance(fgnode2, SpectralFeatureGeneratorNode)
         fgnode1.setSpeclibWidget(slw1)
         fgnode2.setSpeclibWidget(slw2)
 
