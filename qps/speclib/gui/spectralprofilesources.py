@@ -553,9 +553,15 @@ class SpectralProfileSourceModel(QAbstractListModel):
 
     def defaultSource(self) -> SpectralProfileSource:
         """
-        Returns the default SpectralProfileSource
+        Returns the default SpectralProfileSource.
+        If not set with setDefaultSource(), the 1st input source is used.
         """
-        return self.mDefaultSource
+        if isinstance(self.mDefaultSource, SpectralProfileSource):
+            return self.mDefaultSource
+        elif len(self.mSources) > 0:
+            return self.mSources[0]
+        else:
+            return None
 
     def __len__(self) -> int:
         return len(self.mSources)
@@ -1222,6 +1228,7 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mExpressionString: str = ''
+        self.validate()
 
     def expressionString(self) -> str:
         return self.mExpressionString.strip()
@@ -1232,15 +1239,27 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
     def setExpression(self, expression: Union[str, QgsExpression]):
         if isinstance(expression, QgsExpression):
             expression = expression.expression()
+        elif isinstance(expression, str):
+            expression = expression.strip()
+            # if the expression does not start with @, ' or ", wrap it as string 'example string'
+            if not re.search(r'^[@"\']', expression.strip()):
+                expression = f"'{expression}'"
         self.mExpressionString = expression
-        self.setValue(self.mExpressionString)
+        super().setValue(self.mExpressionString)
+        self.validate()
+
+    def setValue(self, value):
+        self.setExpression(value)
 
     def validate(self) -> bool:
 
         super().validate()
 
         expr = self.expression()
-        if expr.expression() != '':
+
+        if expr.expression() == '':
+            self.mErrors.append('Undefined')
+        else:
             genNode: SpectralFeatureGeneratorNode = self.parentNode()
             if isinstance(genNode, SpectralFeatureGeneratorNode):
                 context = genNode.expressionContextGenerator().createExpressionContext()
@@ -1534,7 +1553,6 @@ class SpectralFeatureGeneratorNode(ValidateNode):
         super().validate()
 
         for n in self.fieldNodes(checked=True):
-            n.validate()
             errors = n.errors(recursive=True)
             if len(errors) > 0:
                 errStr = '\n'.join(errors)
@@ -1897,9 +1915,10 @@ class SpectralProfileBridge(TreeModel):
         else:
             g = self[-1].copy()
 
-        self.addFeatureGenerator(g)
-        self.setDefaultDestination(g)
         self.setDefaultSources(g)
+        self.setDefaultDestination(g)
+        self.addFeatureGenerator(g)
+        g.validate()
         return g
 
     def addFeatureGenerator(self, generator: SpectralFeatureGeneratorNode):
@@ -1965,11 +1984,6 @@ class SpectralProfileBridge(TreeModel):
         c = index.column()
         if index.isValid():
 
-            if isinstance(node, ValidateNode):
-                if role == Qt.ForegroundRole:
-                    if node.hasErrors(recursive=True):
-                        return QColor('red')
-
             if isinstance(node, SpectralFeatureGeneratorNode):
                 speclib = node.speclib()
 
@@ -1981,8 +1995,11 @@ class SpectralProfileBridge(TreeModel):
                             return speclib.name()
 
                     if role == Qt.ForegroundRole:
+                        if not node.checked():
+                            return QColor(cNotUsed)
+
                         if len(node.errors()) > 0:
-                            return QColor('red')
+                            return QColor(cError)
 
                     if role == Qt.FontRole:
                         if not isinstance(speclib, QgsVectorLayer):
@@ -2026,7 +2043,8 @@ class SpectralProfileBridge(TreeModel):
                 if role == Qt.ForegroundRole:
                     if isinstance(p, SpectralProfileGeneratorNode):
                         if not has_source and p.checked():
-                            return QColor('red')
+                            return QColor(cError)
+
                 if c == 1 and role == Qt.DisplayRole:
                     if node.hasErrors() and p.checked():
                         errorStr = '<br>'.join(node.errors())
@@ -2197,8 +2215,6 @@ class SpectralProfileBridge(TreeModel):
             fnode = node.findParentNode(SpectralFeatureGeneratorNode)
             if isinstance(fnode, SpectralFeatureGeneratorNode):
                 fnode.validate()
-            # self.dataChanged.emit(self.index(r, c, index.parent().parent()),
-            #                      self.index(r, c, index.parent().parent()))
         return changed
 
     def addRasterLayer(self, layer: QgsRasterLayer):
