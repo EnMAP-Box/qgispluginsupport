@@ -1195,11 +1195,14 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
         kwargs = copy.copy(kwargs)
         sampling: ProfileSamplingMode = self.sampling()
         kwargs['kernel_size'] = QSize(sampling.kernelSize())
-        profiles = self.mSourceNode.profileSource().collectProfiles(point, *args, **kwargs)
-        profiles = sampling.profiles(point, profiles)
-        profiles = self.mScalingNode.profiles(profiles)
-
-        return profiles
+        source: SpectralProfileSource = self.profileSource()
+        if isinstance(source, SpectralProfileSource):
+            profiles = source.collectProfiles(point, *args, **kwargs)
+            profiles = sampling.profiles(point, profiles)
+            profiles = self.mScalingNode.profiles(profiles)
+            return profiles
+        else:
+            return []
 
     def onChildNodeUpdate(self):
         """
