@@ -149,7 +149,7 @@ class TestsGdalMetadata(TestCaseBase):
         ds: gdal.Dataset = gdal.Open(path, gdal.GA_Update)
         ds.SetMetadataItem('bbl', """{
         0,
-        ; a comment to be excluded. See https://www.l3harrisgeospatial.com/docs/enviheaderfiles.html
+        ; a comment to be excluded. See https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html
         1,
         0}""", 'ENVI')
         ds.FlushCache()
