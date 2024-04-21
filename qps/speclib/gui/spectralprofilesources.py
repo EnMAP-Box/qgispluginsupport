@@ -372,7 +372,6 @@ class StandardLayerProfileSource(SpectralProfileSource):
         loc_geo = fcontext.variable('raster_array_geo')
 
         for pDict, px_geo in zip(profiles_at, loc_geo):
-
             context = self.expressionContext(px_geo)
             profilesWithContext.append((pDict, context))
 
@@ -491,44 +490,40 @@ class ValidateNode(TreeNode):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
 
-        self.mErrors: List[str] = []
-
-    def validate(self) -> Tuple[bool, str]:
+    def validate(self) -> Iterator[str]:
         """
-        A method that validates the node ste.
-        This method should add collected error messages to self.mErrors
-        Returns a tuple (bool: is valid, str: error message)
+        Implements validation tests and, in case of errors, returns them
+        Returns the tests for this node only.
+        User .errors(recursive=True) to collect errors from childs as well
+
         """
-        self.mErrors.clear()
-        # implement error checks here
-
-        return not self.hasErrors()
-
-    def validateChildNode(self):
-        self.childNodes()
+        return []
 
     def hasErrors(self, recursive: bool = False) -> bool:
-        e = len(self.mErrors) > 0
-        if e:
+        """
+        Returns True if this node or any child-node has an error
+
+        """
+        for e in self.errors(recursive=recursive):
             return True
-        elif recursive:
-            for c in self.findChildNodes(ValidateNode, recursive=True):
-                if isinstance(c, ValidateNode) and c.hasErrors():
-                    return True
         return False
 
-    def errors(self, recursive: bool = False) -> List[str]:
+    def errors(self, recursive: bool = False) -> Iterator[str]:
         """
-        Returns a list of validation errors
-        :return:
+        Yields validation errors
+        :return: iterates over all errors
         """
-        errors = self.mErrors[:]
+        # print(self)
+        if self.isCheckable() and self.checked() or not self.isCheckable():
+            for e in self.validate():
+                yield e
         if recursive:
-            for c in self.findChildNodes(ValidateNode, recursive=True):
-                if isinstance(c, ValidateNode) and c.hasErrors():
-                    err = "\n".join(c.errors())
-                    errors.append(f'{c.name()}:{err}')
-        return errors
+            for c in self.findChildNodes(ValidateNode, recursive=False):
+                if c.isCheckable() and not c.checked():
+                    continue
+                for e in c.errors(recursive=recursive):
+                    yield f'{self.name()}:{e}'
+        s = ""
 
 
 class SpectralProfileSourceModel(QAbstractListModel):
@@ -714,13 +709,11 @@ class SpectralProfileSourceNode(ValidateNode):
 
     # def icon(self) -> QIcon:
     #    return QIcon(r':/images/themes/default/mIconRaster.svg')
-    def validate(self) -> bool:
-        super().validate()
-
+    def validate(self) -> Iterator[str]:
+        for err in super().validate():
+            yield err
         if not isinstance(self.mProfileSource, SpectralProfileSource):
-            self.mErrors.append('Profile source is undefined')
-
-        return not self.hasErrors()
+            yield 'Profile source is undefined'
 
     def profileSource(self) -> SpectralProfileSource:
         return self.mProfileSource
@@ -1098,19 +1091,18 @@ class FieldGeneratorNode(ValidateNode):
         """
         return self.mField
 
-    def validate(self) -> bool:
+    def validate(self) -> Iterator[str]:
         """
         Returns (True, []) if all settings are fine (default) or (False, ['list of error messages']) if not.
         :return:
         :rtype:
         """
-        super().validate()
-
+        name = self.name()
         if not isinstance(self.field(), QgsField):
-            self.mErrors.append('Field is not set')
-        if self.checked() and self.value() in [None, NULL, '']:
-            self.mErrors.append('Undefined. Define a value/expression or uncheck the field.')
-        return not self.hasErrors()
+            yield f'{name}: Field is undefined.'
+        if self.isCheckable() and self.checkState() == Qt.Checked or not self.isCheckable():
+            if self.value() in [None, NULL, '']:
+                yield f'{name}: Value is undefined. Needs a value/expression or uncheck the field.'
 
 
 class GeometryGeneratorNode(TreeNode):
@@ -1164,15 +1156,15 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
     def offset(self) -> float:
         return self.mScalingNode.offset()
 
-    def validate(self) -> bool:
+    def validate(self) -> Iterator[str]:
 
-        b = super().validate()
+        for err in super().validate():
+            yield err
 
         for n in self.findChildNodes(ValidateNode, recursive=True):
             n: ValidateNode
-            b &= n.validate()
-
-        return b
+            for err in n.validate():
+                yield err
 
     def profileSource(self) -> SpectralProfileSource:
         return self.mSourceNode.profileSource()
@@ -1195,11 +1187,13 @@ class SpectralProfileGeneratorNode(FieldGeneratorNode):
         kwargs = copy.copy(kwargs)
         sampling: ProfileSamplingMode = self.sampling()
         kwargs['kernel_size'] = QSize(sampling.kernelSize())
-        profiles = self.mSourceNode.profileSource().collectProfiles(point, *args, **kwargs)
-        profiles = sampling.profiles(point, profiles)
-        profiles = self.mScalingNode.profiles(profiles)
+        source = self.mSourceNode.profileSource()
+        if isinstance(source, SpectralProfileSource):
+            profiles = source.collectProfiles(point, *args, **kwargs)
+            profiles = sampling.profiles(point, profiles)
+            return self.mScalingNode.profiles(profiles)
 
-        return profiles
+        return []
 
     def onChildNodeUpdate(self):
         """
@@ -1228,7 +1222,6 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
         self.mExpressionString: str = ''
-        self.validate()
 
     def expressionString(self) -> str:
         return self.mExpressionString.strip()
@@ -1251,27 +1244,30 @@ class StandardFieldGeneratorNode(FieldGeneratorNode):
     def setValue(self, value):
         self.setExpression(value)
 
-    def validate(self) -> bool:
+    def validate(self) -> Iterator[str]:
 
-        super().validate()
+        b = False
+        for err in super().validate():
+            yield err
+            b = True
+
+        if b:
+            return
 
         expr = self.expression()
-
         if expr.expression() == '':
-            self.mErrors.append('Undefined')
+            yield f'{self.name()} Expression is undefined'
         else:
             genNode: SpectralFeatureGeneratorNode = self.parentNode()
             if isinstance(genNode, SpectralFeatureGeneratorNode):
                 context = genNode.expressionContextGenerator().createExpressionContext()
                 expr.prepare(context)
                 if expr.hasParserError():
-                    self.mErrors.append(expr.parserErrorString().strip())
+                    yield f'{self.name()}: {expr.parserErrorString().strip()}'
                 else:
                     _ = expr.evaluate(context)
                     if expr.hasEvalError():
-                        self.mErrors.append(expr.evalErrorString().strip())
-
-        return not self.hasErrors()
+                        yield f'{self.name()}: {expr.evalErrorString().strip()}'
 
 
 class SpectralFeatureGeneratorExpressionContextGenerator(QgsExpressionContextGenerator):
@@ -1396,6 +1392,7 @@ class SpectralFeatureGeneratorNode(ValidateNode):
                 # 3. add other fields
 
                 self.appendChildNodes(new_nodes)
+                self.validate()
 
     def onPlotWidgetStyleChanged(self):
         if isinstance(self.speclibWidget(), SpectralLibraryWidget):
@@ -1426,15 +1423,6 @@ class SpectralFeatureGeneratorNode(ValidateNode):
 
     def fieldNodeNames(self) -> List[str]:
         return [n.field().name() for n in self.fieldNodes()]
-
-    def errors(self, checked: bool = True) -> List[str]:
-        """
-
-        """
-        errors = []
-        for n in self.fieldNodes(checked=checked):
-            errors.extend(n.errors())
-        return errors
 
     def createFieldNodes(self, fieldnames: Union[List[str], QgsField, QgsFields, str]):
         """
@@ -1549,16 +1537,15 @@ class SpectralFeatureGeneratorNode(ValidateNode):
 
         pass
 
-    def validate(self) -> bool:
-        super().validate()
+    def validate(self) -> Iterator[str]:
+        """
+        Checks all checked field nodes for errors
+        Returns True if all checked field nodes are valid
+        -------
 
-        for n in self.fieldNodes(checked=True):
-            errors = n.errors(recursive=True)
-            if len(errors) > 0:
-                errStr = '\n'.join(errors)
-                self.mErrors.append(f'{n.name()}:{errStr}')
-
-        return not self.hasErrors()
+        """
+        if not isinstance(self.mSpeclibWidget, SpectralLibraryWidget):
+            yield 'Missing Spectral Library'
 
     def updateSpeclibName(self):
         speclib = self.speclib()
@@ -1978,11 +1965,22 @@ class SpectralProfileBridge(TreeModel):
         cValid = 'black'
         cNotUsed = 'grey'
 
-        # handle missing data appearance
+        # handle missing data appearances
         value = super().data(index, role)
         node = super().data(index, role=Qt.UserRole)
         c = index.column()
+
         if index.isValid():
+            if isinstance(node, ValidateNode) and role == Qt.ForegroundRole:
+                if isinstance(node, SpectralFeatureGeneratorNode):
+                    s = ""
+                if node.isCheckable() and not node.checked():
+                    return QColor(cNotUsed)
+                if node.hasErrors(recursive=True):
+                    node.hasErrors(recursive=True)
+                    return QColor(cError)
+                else:
+                    return QColor(cValid)
 
             if isinstance(node, SpectralFeatureGeneratorNode):
                 speclib = node.speclib()
@@ -1998,7 +1996,7 @@ class SpectralProfileBridge(TreeModel):
                         if not node.checked():
                             return QColor(cNotUsed)
 
-                        if len(node.errors()) > 0:
+                        if node.hasErrors(True):
                             return QColor(cError)
 
                     if role == Qt.FontRole:
@@ -2046,9 +2044,8 @@ class SpectralProfileBridge(TreeModel):
                             return QColor(cError)
 
                 if c == 1 and role == Qt.DisplayRole:
-                    if node.hasErrors() and p.checked():
-                        errorStr = '<br>'.join(node.errors())
-                        return f'<span style="color:{cError};">{node.value()}</span>'
+                    for err in node.errors():
+                        return f'<span style="color:{cError};">{err}</span>'
 
                     return node.value()
 
@@ -2067,8 +2064,7 @@ class SpectralProfileBridge(TreeModel):
             if isinstance(node, FieldGeneratorNode):
                 field: QgsField = node.field()
                 editor = field.editorWidgetSetup().type()
-                errors = node.errors()
-                has_errors = node.hasErrors()
+                has_errors = node.hasErrors(recursive=True)
                 is_checked = node.checked()
                 is_required = not node.isCheckable()
 
@@ -2088,6 +2084,7 @@ class SpectralProfileBridge(TreeModel):
                         if isinstance(field, QgsField):
                             tt += f'"{field.displayName()}" {field.displayType(False)} {editor}'
                         if has_errors:
+                            errors = node.errors(recursive=True)
                             tt += '<br><span style="color:' + cstring + '">' + '<br>'.join(errors) + '</span>'
                         return tt
                     if role == Qt.ForegroundRole:
@@ -2168,6 +2165,7 @@ class SpectralProfileBridge(TreeModel):
         elif isinstance(node, SpectralProfileSourceNode):
             assert value is None or isinstance(value, SpectralProfileSource)
             node.setSpectralProfileSource(value)
+            update_parent = True
 
         elif isinstance(node, SpectralProfileSamplingModeNode):
             if isinstance(value, Option):

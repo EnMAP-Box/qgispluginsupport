@@ -2,7 +2,7 @@
 import datetime
 import random
 import unittest
-from typing import Tuple, List
+from typing import Tuple, List, Iterator
 
 from qgis.PyQt.QtCore import QSize, QVariant, Qt
 from qgis.PyQt.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QSplitter
@@ -11,6 +11,7 @@ from qgis.core import QgsGeometry
 from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes, edit
 from qgis.core import QgsRasterLayer, QgsProject
 from qgis.gui import QgsMapCanvas, QgsDualView
+
 from qps.maptools import CursorLocationMapTool
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting, isProfileValueDict
@@ -20,7 +21,7 @@ from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, S
     SamplingBlockDescription, \
     SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode, \
     SpectralProfileSourceModel, StandardLayerProfileSource, SpectralProfileSource, ProfileSamplingMode, \
-    StandardFieldGeneratorNode, ValidateNode
+    StandardFieldGeneratorNode
 from qps.testing import TestCaseBase, start_app
 from qps.testing import TestObjects
 from qps.utils import SpatialPoint, parseWavelength, rasterArray, SpatialExtent
@@ -147,6 +148,52 @@ class SpectralProcessingTests(TestCaseBase):
             profiles4 = s.collectProfiles(point, random_other_args='foobar')
             check_profile_results(profiles4)
         QgsProject.instance().removeAllMapLayers()
+
+    def test_nodeValidation(self):
+
+        class TestValNode(StandardFieldGeneratorNode):
+
+            def __init__(self, *args, **kwds):
+                super().__init__(*args, **kwds)
+
+                self.mErrors = []
+
+            def validate(self) -> Iterator[str]:
+                for err in super().validate():
+                    yield err
+                for err in self.mErrors:
+                    yield err
+
+        n1 = TestValNode('n1')
+        n2 = TestValNode('n2')
+        n2.setCheckable(True)
+        n3a = TestValNode('n3a')
+        n3b = TestValNode('n3b')
+        n3a.setCheckable(True)
+        n3b.setCheckable(False)
+
+        n2.appendChildNodes([n3a, n3b])
+        n1.appendChildNodes([n2])
+
+        for n in [n1, n2, n3a, n3b]:
+            n.setCheckState(Qt.Checked)
+
+        self.assertListEqual(list(n3a.errors()),
+                             ['n3a: Field is undefined.',
+                              'n3a: Value is undefined. Needs a value/expression or uncheck the field.'])
+        self.assertListEqual(list(n3b.errors()),
+                             ['n3b: Field is undefined.',
+                              'n3b: Value is undefined. Needs a value/expression or uncheck the field.'])
+        for e in n2.errors(recursive=True):
+            print(e)
+        self.assertListEqual(list(n2.errors(recursive=True)),
+                             ['n2: Field is undefined.',
+                              'n2: Value is undefined. Needs a value/expression or uncheck the field.',
+                              'n2:n3a: Field is undefined.',
+                              'n2:n3a: Value is undefined. Needs a value/expression or uncheck the field.',
+                              'n2:n3b: Field is undefined.',
+                              'n2:n3b: Value is undefined. Needs a value/expression or uncheck the field.']
+                             )
 
     def test_SpectralProfileSourcePanel(self):
 
@@ -567,22 +614,32 @@ class SpectralProcessingTests(TestCaseBase):
 
     def test_FieldNodes(self):
 
-        nodes = [
-            StandardFieldGeneratorNode(),
-            SpectralProfileGeneratorNode(),
-        ]
-        for n in nodes:
-            self.assertIsInstance(n, ValidateNode)
-            is_valid = n.validate()
-            errors = n.errors()
-            self.assertIsInstance(is_valid, bool)
-            self.assertIsInstance(errors, list)
-            if is_valid and n.hasErrors():
-                s = ""
-            self.assertNotEqual(is_valid, n.hasErrors())
+        n1 = StandardFieldGeneratorNode()
+        n1.setName('n1')
+        n1.setCheckState(Qt.Unchecked)
+        self.assertFalse(n1.hasErrors())
+        n1.setCheckState(Qt.Checked)
+        errors = list(n1.errors(recursive=True))
 
-            for e in errors:
-                self.assertIsInstance(e, str)
+        self.assertTrue(n1.hasErrors())
+        self.assertTrue(len(errors) > 0)
+        field = QgsField('n1field', QVariant.String)
+        n1.setField(field)
+        n1.setExpression("'foobar'")
+        errors2 = list(n1.errors(recursive=True))
+        self.assertFalse(n1.hasErrors())
+
+        n2 = SpectralProfileGeneratorNode()
+        n2.setName('n2')
+        errors = list(n2.errors(recursive=True))
+        self.assertTrue(n2.hasErrors())
+
+        lyr = TestObjects.createRasterLayer()
+        profileSource = StandardLayerProfileSource(lyr)
+        n2.setProfileSource(profileSource)
+        n2.setField(field)
+        errors = list(n2.errors(recursive=True))
+        self.assertFalse(n2.hasErrors())
 
     def test_SpectralFeatureGenerator(self):
 
