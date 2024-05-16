@@ -6,13 +6,13 @@ import numpy as np
 from osgeo import gdal_array
 
 from qgis.PyQt.QtCore import QByteArray, QVariant
-from qgis.core import QgsRasterLayer, QgsPointXY
 from qgis.core import Qgis
 from qgis.core import QgsCoordinateTransform
 from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsProperty, QgsExpressionContextUtils
 from qgis.core import QgsField
 from qgis.core import QgsMapLayerStore
 from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry, QgsFields
+from qgis.core import QgsRasterLayer, QgsPointXY, edit
 from qgis.core import QgsWkbTypes
 from qgis.gui import QgsFieldCalculator
 from qps.qgisenums import QGIS_WKBTYPE
@@ -20,13 +20,67 @@ from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py, RasterPro
     SpectralEncoding, ExpressionFunctionUtils
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, ProfileEncoding
+from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
 from qps.testing import TestObjects, TestCaseBase, start_app
 from qps.utils import SpatialExtent
 from qps.utils import SpatialPoint
 from qpstestdata import enmap, enmap_multipolygon, enmap_pixel
 
 start_app()
+
+
+def createAggregateTestLayer():
+    sl = QgsVectorLayer('point?crs=epsg:4326&', 'speclib',
+                        'memory')
+    data = [{'class': 'a', 'num': 1, 't_mean': 1.5, 't_min': 1, 't_max': 2},
+            {'class': 'a', 'num': 2, 't_mean': 1.5, 't_min': 1, 't_max': 2},
+            {'class': 'b', 'num': 3, 't_mean': 4.0, 't_min': 3, 't_max': 5},
+            {'class': 'b', 'num': 5, 't_mean': 4.0, 't_min': 3, 't_max': 5},
+            ]
+    fields = [QgsField('class', QVariant.String),
+              QgsField('num', QVariant.Int),
+              QgsField('t_mean', QVariant.Double),
+              QgsField('t_min', QVariant.Double),
+              QgsField('t_max', QVariant.Double)
+              ]
+    with edit(sl):
+        for f in fields:
+            assert sl.addAttribute(f)
+
+        # add features
+        for d in data:
+            f = QgsFeature(sl.fields())
+            for name, value in d.items():
+                f.setAttribute(name, value)
+            assert sl.addFeature(f)
+
+    for i, f in enumerate(sl.getFeatures()):
+        f: QgsFeature
+        d1: dict = data[i]
+        d2: dict = f.attributeMap()
+        assert d1 == d2
+
+    return sl
+
+
+def createAggregateTestProfileLayer():
+    sl = createAggregateTestLayer()
+    with edit(sl):
+        assert SpectralLibraryUtils.addSpectralProfileField(sl, 'profile', encoding=ProfileEncoding.Json)
+        assert sl.fields()['profile'].editorWidgetSetup().type() == 'SpectralProfile'
+        idx = sl.fields().indexOf('profile')
+        for f in sl.getFeatures():
+            f: QgsFeature
+            d: dict = f.attributeMap()
+            num = d['num']
+
+            yvec = [i * num for i in range(1, 4)]
+            profile = {'y': yvec}
+            assert sl.changeAttributeValue(f.id(), idx, profile)
+            s = ""
+
+    return sl
 
 
 class QgsFunctionTests(TestCaseBase):
@@ -543,52 +597,79 @@ class QgsFunctionTests(TestCaseBase):
             SpectralData(),
             SpectralEncoding(),
         ]
+
+        functions.extend(createSpectralProfileFunctions())
+
         for f in functions:
             self.registerFunction(f)
 
         # sl = TestObjects.createSpectralLibrary()
-        lyr1 = QgsRasterLayer(enmap, 'EnMAP')
-        lyr2 = QgsVectorLayer(enmap_multipolygon, 'Poly')
-        QgsProject.instance().addMapLayers([lyr1, lyr2])
+        lyr = createAggregateTestProfileLayer()
+        QgsProject.instance().addMapLayers([lyr])
 
-        gui = QgsFieldCalculator(lyr2, None)
+        gui = QgsFieldCalculator(lyr, None)
         gui.exec_()
 
-    def test_aggragation_functions(self):
-        from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
+    def test_aggregation_functions(self):
+
         afuncs = createSpectralProfileFunctions()
         for f in afuncs:
+            text = f.helpText()
+            self.assertTrue(f.name() in text)
             self.registerFunction(f)
 
-        sl = TestObjects.createSpectralLibrary(n=10, n_bands=[25, 50], profile_field_names=['P1', 'P2'])
-        sl.setName('speclib')
-        sl.startEditing()
-        sl.addAttribute(QgsField('class', QVariant.String))
-        sl.commitChanges(False)
+        aggrFuncs = ['mean', 'median', 'minimum', 'maximum']
+        for f in aggrFuncs:
+            fname = f'{f}_profile'
+            self.assertTrue(QgsExpression.isFunctionName(fname))
+
+        sl = createAggregateTestProfileLayer()
 
         context = QgsExpressionContext()
         context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
 
-        idx = sl.fields().lookupField('class')
-        for i, f in enumerate(sl.getFeatures()):
-            name = 'A'
-            if i > 3:
-                name = 'B'
-            sl.changeAttributeValue(f.id(), idx, name)
+        def checkProfileAggr(context: QgsExpressionContext, f: QgsFeature, func: str) -> list:
+            c = QgsExpressionContext(context)
+            c.setFeature(f)
+            c.setGeometry(f.geometry())
 
-        sl.commitChanges()
-        fname = profile_fields(sl.fields())[0].name()
-        classes = sl.uniqueValues(idx)
-        """
-        mean_profile("profiles0",group_by:="state") → mean population value, grouped by state field
-        """
-        exp = QgsExpression(f'mean_profile("{fname}", group_by:=\'class\')')
-        exp.prepare(context)
-        self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+            exp = QgsExpression(f'{func}_profile("profile", group_by:="class")')
+            exp.prepare(c)
+            self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString() + f'\n func: {func}_profile')
+            profile = exp.evaluate(c)
+            self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
+            self.assertIsInstance(profile, dict)
+            values = profile.get('y')
+            self.assertIsInstance(values, list)
+            return values
 
-        profile = exp.evaluate(context)
-        self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
-        QgsProject.instance().removeAllMapLayers()
+        ALL_PROFILES = dict()
+        for f in sl.getFeatures():
+            c = f.attribute('class')
+            p = f.attribute('profile')['y']
+            ALL_PROFILES[c] = ALL_PROFILES.get(c, []) + [np.asarray(p)]
+        for c in list(ALL_PROFILES.keys()):
+            ALL_PROFILES[c + '_mean'] = np.mean(ALL_PROFILES[c], axis=0).tolist()
+            ALL_PROFILES[c + '_median'] = np.median(ALL_PROFILES[c], axis=0).tolist()
+            ALL_PROFILES[c + '_minimum'] = np.min(ALL_PROFILES[c], axis=0).tolist()
+            ALL_PROFILES[c + '_maximum'] = np.max(ALL_PROFILES[c], axis=0).tolist()
+
+        for f in sl.getFeatures():
+            classname = f.attribute('class')
+            d = f.attributeMap()
+            c = QgsExpressionContext(context)
+            c.setFeature(f)
+            c.setGeometry(f.geometry())
+
+            # reference aggregation on single number
+            exp = QgsExpression('mean("num",  group_by:="class")')
+            exp.prepare(c)
+            mean_value = exp.evaluate(c)
+            self.assertEqual(mean_value, d['t_mean'])
+
+            for func in aggrFuncs:
+                profile = checkProfileAggr(context, f, func)
+                self.assertListEqual(profile, ALL_PROFILES[f'{classname}_{func}'])
 
 
 if __name__ == '__main__':

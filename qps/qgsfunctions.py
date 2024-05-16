@@ -75,12 +75,21 @@ class HelpStringMaker(object):
                 with open(e.path, 'r', encoding='utf-8') as f:
                     try:
                         data = json.load(f)
-                        if isinstance(data, dict) and 'name' in data.keys():
-                            self.mHELP[data['name']] = data
+                        if isinstance(data, dict):
+                            self._addHelpText(data)
+                        elif isinstance(data, list):
+                            for d in data:
+                                self._addHelpText(d)
                     except JSONDecodeError as err:
                         raise Exception(f'Failed to read {e.path}:\n{err}')
 
-    def helpText(self, name: str,
+    def _addHelpText(self, data:dict):
+        if isinstance(data, dict) and 'name' in data.keys():
+            self.mHELP[data['name']] = data
+
+
+    def helpText(self,
+                 name: str,
                  parameters: List[QgsExpressionFunction.Parameter] = []) -> str:
         """
         re-implementation of QString QgsExpression::helpText( QString name )
@@ -283,12 +292,16 @@ class StaticExpressionFunction(QgsExpressionFunction):
                  params,
                  fcn,
                  group: str,
-                 helpText: str = '',
+                 helpText: str = None,
                  usesGeometry: Union[bool, QgsExpressionNodeFunction] = None,
                  referencedColumns: Set[str] = None,
                  lazyEval: bool = False,
                  aliases: List[str] = [],
                  handlesNull: bool = False):
+        if helpText is None:
+            helpText = HM.helpText(fnname, params)
+        if helpText is None:
+            helpText = ''
         super().__init__(fnname, params, group, helpText, lazyEval, handlesNull, False)
 
         self.mFnc = fcn
