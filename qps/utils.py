@@ -1834,7 +1834,7 @@ def parseWavelength(dataset) -> Tuple[np.ndarray, str]:
     if isinstance(dataset, gdal.Dataset):
         # 1. check on raster level
         for domain in sort_domains(dataset.GetMetadataDomainList()):
-            # see http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for supported wavelength units
+            # see https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html for supported wavelength units
 
             mdDict = dataset.GetMetadata_Dict(domain)
 
@@ -1870,7 +1870,7 @@ def parseWavelength(dataset) -> Tuple[np.ndarray, str]:
             band: gdal.Band = dataset.GetRasterBand(b + 1)
             if b == 0:
                 for domain in sort_domains(band.GetMetadataDomainList()):
-                    # see http://www.harrisgeospatial.com/docs/ENVIHeaderFiles.html for supported wavelength units
+                    # see https://www.nv5geospatialsoftware.com/docs/enviheaderfiles.html for supported wavelength units
                     domainWL = domainWLU = None
 
                     mdDict = band.GetMetadata_Dict(domain)
