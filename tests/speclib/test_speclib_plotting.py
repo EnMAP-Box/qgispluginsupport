@@ -155,7 +155,7 @@ class TestSpeclibPlotting(TestCaseBase):
         # change the vector renderers
         symbolRed = QgsMarkerSymbol.createSimple({'name': 'square', 'color': 'red'})
         symbolOrange = QgsMarkerSymbol.createSimple({'name': 'circle', 'color': 'orange'})
-        r1 = QgsSingleSymbolRenderer(QgsMarkerSymbol(symbolRed))
+        r1 = QgsSingleSymbolRenderer(symbolRed)
 
         r2 = QgsCategorizedSymbolRenderer()
         r2.setClassAttribute('class')
@@ -176,6 +176,7 @@ class TestSpeclibPlotting(TestCaseBase):
         # change color
         vis0.setColor(QColor('green'))
         self.showGui(slw)
+        s = ""
 
     def test_SpectralProfileColorProperty(self):
         speclib: QgsVectorLayer = TestObjects.createSpectralLibrary()

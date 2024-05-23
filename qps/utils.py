@@ -548,7 +548,7 @@ def toType(t, arg, empty2None=True, empty_values=[None, NULL]):
 
 def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsField:
     """
-    Creates a QgsField based on the type properties of an Python-datatype exampleValue
+    Creates a QgsField based on the type properties of a Python-datatype exampleValue
     :param name: field name
     :param exampleValue: value, can be any type
     :param comment: (optional) field comment.

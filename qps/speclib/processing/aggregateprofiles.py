@@ -2,7 +2,8 @@ from typing import List, Dict, Any, Optional, Tuple
 
 import numpy as np
 
-from qgis.PyQt.QtCore import QVariant, QByteArray
+from qgis.PyQt.QtCore import QVariant, QByteArray, NULL
+from qgis.core import QgsExpressionNodeColumnRef
 from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessing, \
     QgsProcessingParameterExpression, QgsProcessingParameterAggregate, QgsProcessingParameterFeatureSink, \
     QgsProcessingFeedback, QgsProcessingContext, QgsProcessingException, QgsDistanceArea, QgsFields, \
@@ -10,7 +11,7 @@ from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterFeatureSourc
     QgsWkbTypes, QgsExpressionContextUtils, QgsGeometry, QgsVectorLayer, QgsAggregateCalculator, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsFeedback, \
     QgsExpressionFunction, QgsExpressionContext, QgsExpression, QgsExpressionNodeFunction, QgsField, \
-    QgsFeatureRequest, QgsExpressionNode, QgsExpressionNodeLiteral, QgsExpressionContextScope, QgsEditorWidgetSetup, \
+    QgsFeatureRequest, QgsExpressionNode, QgsExpressionContextScope, QgsEditorWidgetSetup, \
     edit
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field
@@ -649,21 +650,33 @@ def spfcnAggregateGeneric(
     groupBy: str = None
     if len(values) > 1:
         node = values[1]
-        if isinstance(node, QgsExpressionNodeLiteral) and node.value() != '':
-            groupBy = node.dump()
+        if isinstance(node, QgsExpressionNode):
+            dmp = node.dump()
+            if dmp not in ['', None, NULL, 'NULL']:
+                # todo: handle none-string cases
+                if isinstance(node, QgsExpressionNodeColumnRef):
+                    groupBy = QgsExpression.quotedColumnRef(dmp)
+                else:
+                    groupBy = dmp
 
     # optional, third node is filter
     if len(values) > 2:
         node = values[2]
-        if isinstance(node, QgsExpressionNodeLiteral) and node.value() != '':
-            parameters.filter = node.dump()
+        # if isinstance(node, QgsExpressionNodeLiteral) and node.value() != '':
+        if isinstance(node, QgsExpressionNode):
+            dmp = node.dump()
+            if dmp not in ['', None, NULL, 'NULL']:
+                # todo: handle none-string cases
+                parameters.filter = QgsExpression.quotedValue(dmp)
 
     orderBy: str = None
     if orderByPos >= 0 and len(values) > orderByPos:
         node = values[orderByPos]
-        if isinstance(node, QgsExpressionNodeLiteral) and node.value() != '':
-            orderBy = node.dump()
-            parameters.orderBy.append(QgsFeatureRequest.OrderByClause(orderBy))
+        if isinstance(node, QgsExpressionNode):
+            dmp = node.dump()
+            if dmp not in ['', None, NULL, 'NULL']:
+                orderBy = dmp
+                parameters.orderBy.append(QgsFeatureRequest.OrderByClause(orderBy))
     # build up filter with group by
     # find current group by value
 
@@ -711,16 +724,24 @@ def spfcnAggregateGeneric(
     result = QVariant()
     if field_index != -1:
         field = vl.fields().at(field_index)
+        fids = []
+        if parameters.filter != '':
+            request = QgsFeatureRequest()
+            request.setFilterExpression(parameters.filter)
+            request.setFlags(QgsFeatureRequest.NoGeometry)
+            request.setSubsetOfAttributes([])
+            fids = [f.id() for f in vl.getFeatures(request)]
+
         if is_profile_field(field):
             AGG = AggregateProfilesCalculator(vl)
-            AGG.setParameters(parameters)
-            result = AGG.calculate(aggregate, subExpression, context, context.feedback())
-            s = ""
         else:
             AGG = QgsAggregateCalculator(vl)
-            AGG.setParameters(parameters)
-            result = AGG.calculate(aggregate, subExpression, context, context.feedback())
-            s = ""
+
+        if len(fids) > 0:
+            AGG.setFidsFilter(fids)
+
+        AGG.setParameters(parameters)
+        result = AGG.calculate(aggregate, subExpression, context, context.feedback())
 
     if result != QVariant():
         context.setCachedValue(cacheKey, result)
@@ -753,33 +774,43 @@ def spfcnAggregateMedian(values: list, context: QgsExpressionContext, parent: Qg
 
 def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
     aggParams = [
-        QgsExpressionFunction.Parameter('expression', optional=False),
+        QgsExpressionFunction.Parameter('profiles', optional=False),
         QgsExpressionFunction.Parameter('group_by', optional=True),
         QgsExpressionFunction.Parameter('filter', optional=True),
     ]
 
-    aggParams2 = [
-        QgsExpressionFunction.Parameter('layer'),
-        QgsExpressionFunction.Parameter('aggregate'),
-        QgsExpressionFunction.Parameter('expression', optional=False, defaultValue=None, isSubExpression=True),
-        QgsExpressionFunction.Parameter('filter', optional=True, defaultValue=None, isSubExpression=True),
-        QgsExpressionFunction.Parameter('concatenator', optional=True),
-        QgsExpressionFunction.Parameter('order_by', optional=True, defaultValue=None, isSubExpression=True)
-    ]
     functions = [
         # StaticExpressionFunction('aggregateProfiles', aggParams2,
         #                         spfcnAggregate, 'Aggregates', '',
         #                         usesGeometry=usesGeometryCallback,
         #                         referencedColumns=referencedColumnsCallback),
-        StaticExpressionFunction('mean_profile', aggParams, spfcnAggregateMean, SPECLIB_FUNCTION_GROUP, '', False, [],
+        StaticExpressionFunction('mean_profile',
+                                 aggParams,
+                                 spfcnAggregateMean,
+                                 SPECLIB_FUNCTION_GROUP,
+                                 '', False, [],
                                  True),
-        StaticExpressionFunction('median_profile', aggParams, spfcnAggregateMedian, SPECLIB_FUNCTION_GROUP, '', False,
+        StaticExpressionFunction('median_profile',
+                                 aggParams,
+                                 spfcnAggregateMedian,
+                                 SPECLIB_FUNCTION_GROUP,
+                                 None,
+                                 False,
                                  [],
                                  True),
-        StaticExpressionFunction('minimum_profile', aggParams, spfcnAggregateMinimum, SPECLIB_FUNCTION_GROUP, '', False,
+        StaticExpressionFunction('minimum_profile',
+                                 aggParams,
+                                 spfcnAggregateMinimum,
+                                 SPECLIB_FUNCTION_GROUP,
+                                 None, False,
                                  [],
                                  True),
-        StaticExpressionFunction('maximum_profile', aggParams, spfcnAggregateMaximum, SPECLIB_FUNCTION_GROUP, '', False,
+        StaticExpressionFunction('maximum_profile',
+                                 aggParams,
+                                 spfcnAggregateMaximum,
+                                 SPECLIB_FUNCTION_GROUP,
+                                 None,
+                                 False,
                                  [],
                                  True),
     ]
