@@ -83,10 +83,9 @@ class HelpStringMaker(object):
                     except JSONDecodeError as err:
                         raise Exception(f'Failed to read {e.path}:\n{err}')
 
-    def _addHelpText(self, data:dict):
+    def _addHelpText(self, data: dict):
         if isinstance(data, dict) and 'name' in data.keys():
             self.mHELP[data['name']] = data
-
 
     def helpText(self,
                  name: str,
