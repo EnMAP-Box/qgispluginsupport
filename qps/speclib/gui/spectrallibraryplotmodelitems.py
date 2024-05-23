@@ -38,7 +38,7 @@ from qgis.core import (QgsWkbTypes, QgsField, QgsPropertyDefinition, QgsProperty
                        QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer,
                        QgsSingleBandPseudoColorRenderer,
                        QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer,
-                       QgsSingleBandGrayRenderer,
+                       QgsSingleBandGrayRenderer, QgsFeatureRenderer,
                        QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsFeature,
                        QgsXmlUtils, QgsTextFormat)
 from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverrideButton, \
@@ -82,17 +82,18 @@ class SpectralProfileColorPropertyWidget(QWidget):
             if isinstance(feature, QgsFeature):
                 renderContext = QgsRenderContext()
                 context.setFeature(feature)
-                symbols = layer.renderer().symbols(renderContext)
-
-                if len(symbols) > 0:
-                    symbol = symbols[0]
-                    j = context.indexOfScope('Symbol')
-                    if j < 0:
-                        symbolScope = QgsExpressionContextScope('Symbol')
-                        context.appendScope(symbolScope)
-                    else:
-                        symbolScope: QgsExpressionContextScope = context.scope(j)
-                    QgsExpressionContextUtils.updateSymbolScope(symbol, symbolScope)
+                renderer = layer.renderer()
+                if isinstance(renderer, QgsFeatureRenderer):
+                    symbols = renderer.symbols(renderContext)
+                    if len(symbols) > 0:
+                        symbol = symbols[0]
+                        j = context.indexOfScope('Symbol')
+                        if j < 0:
+                            symbolScope = QgsExpressionContextScope('Symbol')
+                            context.appendScope(symbolScope)
+                        else:
+                            symbolScope: QgsExpressionContextScope = context.scope(j)
+                        QgsExpressionContextUtils.updateSymbolScope(symbol, symbolScope)
             return context
 
     def __init__(self, *args, **kwds):
