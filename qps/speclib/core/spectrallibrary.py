@@ -423,7 +423,7 @@ class SpectralLibraryUtils:
     @staticmethod
     def createSpectralLibrary(
             profile_fields: List[str] = [FIELD_VALUES],
-            name: str = DEFAULT_NAME,
+            name: str = DEFAULT_NAME,  # 
             encoding: ProfileEncoding = ProfileEncoding.Json,
             wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point) -> QgsVectorLayer:
         """
