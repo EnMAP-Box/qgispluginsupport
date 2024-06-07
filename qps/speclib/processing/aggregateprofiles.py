@@ -788,7 +788,7 @@ def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
                                  aggParams,
                                  spfcnAggregateMean,
                                  SPECLIB_FUNCTION_GROUP,
-                                 '', False, [],
+                                 None, False, [],
                                  True),
         StaticExpressionFunction('median_profile',
                                  aggParams,
