@@ -30,7 +30,7 @@ jobs:
           qps/pyqtgraph
 
         # A comma separated links to exclude during URL checks
-        exclude_urls: http://mrcc.com/qgis.dtd,https://github.com/EnMAP-Box/qgispluginsupport.git@master#egg=qps,http://www.qtcentre.org/threads/62867-HTML-rich-text-delegate-and-text-centering-aligning-code-amp-pictures
+        exclude_urls: http://mrcc.com/qgis.dtd,https://github.com/EnMAP-Box/qgispluginsupport.git@master#egg=qps,http://www.qtcentre.org/threads/62867-HTML-rich-text-delegate-and-text-centering-aligning-code-amp-pictures,https://bugreports.qt-project.org/browse/QTBUG-18616
 
         # A comma separated patterns to exclude during URL checks
         exclude_patterns:
