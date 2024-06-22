@@ -28,11 +28,6 @@ class TestSpeclibIO_ENVI(TestCaseBase):
     def tearDownClass(cls):
         super(TestSpeclibIO_ENVI, cls).tearDownClass()
 
-    def testDir(self) -> pathlib.Path:
-        path = self.createTestOutputDirectory() / 'SPECLIB_IO'
-        os.makedirs(path, exist_ok=True)
-        return path
-
     def registerIO(self):
 
         ios = [
@@ -79,8 +74,6 @@ class TestSpeclibIO_ENVI(TestCaseBase):
 
     def test_ENVI_IO(self):
 
-        testdir = self.testDir()
-
         n_bands = [[25, 50],
                    [75, 100]
                    ]
@@ -103,7 +96,8 @@ class TestSpeclibIO_ENVI(TestCaseBase):
         self.assertIsInstance(settings, dict)
         feedback = QgsProcessingFeedback()
         profiles = list(speclib.getFeatures())
-        path = self.testDir() / 'exampleENVI.sli'
+        testdir = self.createTestOutputDirectory()
+        path = testdir / 'exampleENVI.sli'
         files = ENVI_IO.exportProfiles(path.as_posix(), profiles, settings, feedback)
         self.assertIsInstance(files, list)
         self.assertTrue(len(files) == n_bands.shape[0])

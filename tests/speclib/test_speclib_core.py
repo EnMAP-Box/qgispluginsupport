@@ -31,7 +31,7 @@ from osgeo import ogr
 from qgis.PyQt.QtCore import QByteArray, QVariant
 from qgis.PyQt.QtCore import QJsonDocument, NULL
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
-    QgsCoordinateReferenceSystem, QgsFields, edit
+    QgsCoordinateReferenceSystem, QgsFields, edit, QgsWkbTypes
 from qps import initAll
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, can_store_spectral_profiles, \
@@ -585,6 +585,16 @@ class SpeclibCoreTests(TestCaseBase):
 
         d = SpectralLibraryUtils.readProfileDict(rl, pt)
         self.assertTrue(isProfileValueDict(d))
+
+    def test_save_gpkg_crs(self):
+        crs = QgsCoordinateReferenceSystem('EPSG:32632')
+        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point, crs=crs)
+        self.assertEqual(lyr.crs(), crs)
+        TESTDIR = self.createTestOutputDirectory()
+        filenameCopy = TESTDIR / 'copy.gpkg'
+        SpectralLibraryUtils.writeToSource(lyr, filenameCopy.as_posix())
+        layerCopy = QgsVectorLayer(filenameCopy.as_posix())
+        self.assertEqual(layerCopy.crs(), crs)
 
     # @unittest.skip('')
     def test_featuresToArrays(self):
