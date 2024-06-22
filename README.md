@@ -12,22 +12,22 @@ This includes, for example
 - Interactive plotting
 - Tools to test python code that uses the QGIS API
 
-QPS is designed as python package that can be included as subpackage of other QGIS python plugins. This
+QPS is designed as python package that can be included as subpackage of other QGIS python plugins. 
+It is used in projects like:
 
-QPS is used in other projects, for example:
-QPS is used in other project like:
-
-EnMAP-Box https://bitbucket.org/hu-geomatics/enmap-box
-
-EO Time Series Viewer https://bitbucket.org/jakimowb/eo-time-series-viewer
-
-Virtual Raster Builder https://bitbucket.org/jakimowb/virtual-raster-builder
+* EnMAP-Box https://bitbucket.org/hu-geomatics/enmap-box
+* EO Time Series Viewer https://bitbucket.org/jakimowb/eo-time-series-viewer
+* Virtual Raster Builder https://bitbucket.org/jakimowb/virtual-raster-builder
 
 ## Code Design
 
 Ideally, QPS becomes obsolete by providing every feature as part of the PyQGIS
 
 ## Installation ##
+
+## Include as submodule (preferred)
+
+git submodule add https://github.com/EnMAP-Box/qgispluginsupport localfolder/qgispluginsupport 
 
 ### Include as subtree
 

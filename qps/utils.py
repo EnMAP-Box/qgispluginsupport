@@ -858,8 +858,9 @@ def fid2pixelindices(raster: gdal.Dataset,
     lyrMem: ogr.Layer = dsMem.CreateLayer(layer.GetName(),
                                           srs=layer.GetSpatialRef(),
                                           geom_type=layer.GetGeomType())
+    assert ogr.OGRERR_NONE == lyrMem.CreateField(ogr.FieldDefn('FID_BURN', ogr.OFTInteger64))
     ldef: ogr.FeatureDefn = lyrMem.GetLayerDefn()
-    ldef.AddFieldDefn(ogr.FieldDefn('FID_BURN', ogr.OFTInteger64))
+    # ldef.AddFieldDefn(ogr.FieldDefn('FID_BURN', ogr.OFTInteger64))
     dsMem.FlushCache()
 
     for f in layer:
