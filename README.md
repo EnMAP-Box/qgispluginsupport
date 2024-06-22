@@ -24,7 +24,18 @@ It is used in projects like:
 Ideally, QPS becomes obsolete by providing every feature as part of the PyQGIS
 
 ## Installation ##
+## Checkout repository
 
+   ``git clone --recurse-submodules git@github.com:EnMAP-Box/qgispluginsupport.git``
+
+   If you have checked it out without initializing the submodules, call ``git submodule update`` afterwards, as in:
+   
+   ````
+   git clone git@github.com:EnMAP-Box/qgispluginsupport.git
+   cd qgispluginsupport
+   git submodule update --init --remote --recursive
+   ````
+   
 ## Include as submodule (preferred)
 
 git submodule add https://github.com/EnMAP-Box/qgispluginsupport localfolder/qgispluginsupport 
