@@ -1421,7 +1421,8 @@ class TestObjects(object):
     @staticmethod
     def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
                           n_features: int = None,
-                          path: Union[str, pathlib.Path] = None) -> QgsVectorLayer:
+                          path: Union[str, pathlib.Path] = None,
+                          crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
         """
         Create a QgsVectorLayer
         :return: QgsVectorLayer
@@ -1459,6 +1460,17 @@ class TestObjects(object):
 
         assert vl.crs().isValid()
         assert vl.featureCount() == lyr.GetFeatureCount()
+
+        if isinstance(crs, QgsCoordinateReferenceSystem) and vl.crs() != crs:
+            trans = QgsCoordinateTransform(vl.crs(), crs, QgsProject.instance())
+            with edit(vl):
+                for f in vl.getFeatures():
+                    g = f.geometry()
+                    assert g.transform(trans) == Qgis.GeometryOperationResult.Success
+                    f.setGeometry(g)
+                    vl.updateFeature(f)
+            vl.setCrs(crs)
+
         return vl
 
     @staticmethod
