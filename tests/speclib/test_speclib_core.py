@@ -31,7 +31,7 @@ from osgeo import ogr
 from qgis.PyQt.QtCore import QByteArray, QVariant
 from qgis.PyQt.QtCore import QJsonDocument, NULL
 from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
-    QgsCoordinateReferenceSystem, QgsFields, edit
+    QgsCoordinateReferenceSystem, QgsFields, edit, QgsWkbTypes
 from qps import initAll
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, can_store_spectral_profiles, \
@@ -585,6 +585,35 @@ class SpeclibCoreTests(TestCaseBase):
 
         d = SpectralLibraryUtils.readProfileDict(rl, pt)
         self.assertTrue(isProfileValueDict(d))
+
+        # read and set attribute dictionaries
+        f1 = vl.getFeature(1)
+        self.assertIsInstance(f1, QgsFeature)
+        d = f1.attributeMap()
+        self.assertIsInstance(d['profiles'], str)
+        d2 = SpectralLibraryUtils.attributeMap(f1)
+        self.assertIsInstance(d2['profiles'], dict)
+        self.assertIsInstance(d2['profiles']['y'], list)
+
+        d3 = SpectralLibraryUtils.attributeMap(f1, numpy_arrays=True)
+        self.assertIsInstance(d3['profiles'], dict)
+        self.assertIsInstance(d3['profiles']['y'], np.ndarray)
+
+        for dSrc in [d, d2, d3]:
+            fDst = QgsFeature(vl.fields())
+            SpectralLibraryUtils.setAttributeMap(fDst, dSrc)
+            self.assertEqual(f1['profiles'], fDst['profiles'])
+        s = ""
+
+    def test_save_gpkg_crs(self):
+        crs = QgsCoordinateReferenceSystem('EPSG:32632')
+        lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point, crs=crs)
+        self.assertEqual(lyr.crs(), crs)
+        TESTDIR = self.createTestOutputDirectory()
+        filenameCopy = TESTDIR / 'copy.gpkg'
+        SpectralLibraryUtils.writeToSource(lyr, filenameCopy.as_posix())
+        layerCopy = QgsVectorLayer(filenameCopy.as_posix())
+        self.assertEqual(layerCopy.crs(), crs)
 
     # @unittest.skip('')
     def test_featuresToArrays(self):

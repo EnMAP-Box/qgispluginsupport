@@ -22,11 +22,6 @@ class TestSpeclibIO_EcoSIS(TestCaseBase):
     def tearDownClass(cls):
         super(TestSpeclibIO_EcoSIS, cls).tearDownClass()
 
-    def testDir(self) -> pathlib.Path:
-        path = self.createTestOutputDirectory() / 'SPECLIB_IO'
-        os.makedirs(path, exist_ok=True)
-        return path
-
     def registerIO(self):
 
         ios = [

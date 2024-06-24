@@ -1,0 +1,5 @@
+[submodule "qps/pyqtgraph"]
+	path = qps/pyqtgraph
+	url = https://github.com/EnMAP-Box/pyqtgraph.git
+	pushurl = git@github.com:EnMAP-Box/pyqtgraph.git
+	branch = qps_modifications

@@ -496,6 +496,8 @@ class SpectralLibraryIO(QObject):
                     dst_settings = dict()
                     if fieldName != '':
                         dst_settings['profile_field'] = fieldName
+                    if isinstance(crs, QgsCoordinateReferenceSystem) and crs.isValid():
+                        dst_settings['crs'] = crs
                     dst_settings.update(settings)
                     create_files = IO.exportProfiles(path_dst, profiles, exportSettings=dst_settings, feedback=feedback)
                     files_created.extend(create_files)
