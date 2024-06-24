@@ -13,7 +13,7 @@ COPY ./.docker/qgis_setup.sh /tmp/
 RUN mkdir .virtualenvs
 RUN mkdir .virtualenvs/qps
 RUN python3 -m venv --upgrade-deps --system-site-packages .virtualenvs/qps
-RUN .virtualenvs/qps/bin/activate
+RUN . .virtualenvs/qps/bin/activate
 RUN pip3 install -r /tmp/requirements.txt
 RUN pip3 install coverage-badge
 ENV PATH="/usr/local/bin:${PATH}"
