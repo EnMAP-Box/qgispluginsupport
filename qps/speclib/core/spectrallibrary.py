@@ -47,7 +47,7 @@ from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
 from qgis.core import (QgsWkbTypes, QgsExpressionContextUtils, QgsExpression, QgsRasterLayer,
                        QgsPointXY, QgsGeometry, QgsMapLayerStore, QgsProject, Qgis, edit)
-from . import can_store_spectral_profiles, is_profile_field
+from . import can_store_spectral_profiles, is_profile_field, profile_field_names
 from . import profile_field_list, create_profile_field, \
     is_spectral_library
 from .spectralprofile import SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, \
@@ -383,6 +383,34 @@ class SpectralLibraryUtils:
         if add_layer:
             store.takeMapLayer(layer)
         return d
+
+    @staticmethod
+    def attributeMap(feature: QgsFeature, numpy_arrays: bool = False) -> Dict:
+        """
+        Reads the feature attributes. SpectralProfile field content will be converted into Dict
+        :param numpy_arrays: set True to return the x and y values as numpy arrays instead lists.
+        :param feature:
+        :return:
+        """
+        pfields = profile_field_names(feature)
+        d = feature.attributeMap()
+        for field in pfields:
+            d[field] = decodeProfileValueDict(d[field], numpy_arrays=numpy_arrays)
+        return d
+
+    @staticmethod
+    def setAttributeMap(feature: QgsFeature, attributes: Dict):
+        """
+        Sets the attribute values. Spectral profile dictionaries are transformed into the QgsFeature specific field types.
+        :param feature: The QgsFeature to set values for
+        :param attributes: value dictionary.
+        :return:
+        """
+        pfields = profile_field_names(feature)
+        for k, v in attributes.items():
+            if k in pfields and isinstance(v, dict):
+                v = encodeProfileValueDict(v, feature.fields()[k])
+            feature.setAttribute(k, v)
 
     @staticmethod
     def readFromMimeData(mimeData: QMimeData) -> Optional[QgsVectorLayer]:

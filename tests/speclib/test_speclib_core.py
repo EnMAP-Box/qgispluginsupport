@@ -586,6 +586,25 @@ class SpeclibCoreTests(TestCaseBase):
         d = SpectralLibraryUtils.readProfileDict(rl, pt)
         self.assertTrue(isProfileValueDict(d))
 
+        # read and set attribute dictionaries
+        f1 = vl.getFeature(1)
+        self.assertIsInstance(f1, QgsFeature)
+        d = f1.attributeMap()
+        self.assertIsInstance(d['profiles'], str)
+        d2 = SpectralLibraryUtils.attributeMap(f1)
+        self.assertIsInstance(d2['profiles'], dict)
+        self.assertIsInstance(d2['profiles']['y'], list)
+
+        d3 = SpectralLibraryUtils.attributeMap(f1, numpy_arrays=True)
+        self.assertIsInstance(d3['profiles'], dict)
+        self.assertIsInstance(d3['profiles']['y'], np.ndarray)
+
+        for dSrc in [d, d2, d3]:
+            fDst = QgsFeature(vl.fields())
+            SpectralLibraryUtils.setAttributeMap(fDst, dSrc)
+            self.assertEqual(f1['profiles'], fDst['profiles'])
+        s = ""
+
     def test_save_gpkg_crs(self):
         crs = QgsCoordinateReferenceSystem('EPSG:32632')
         lyr = TestObjects.createVectorLayer(QgsWkbTypes.Point, crs=crs)
