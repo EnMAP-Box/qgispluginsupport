@@ -506,7 +506,7 @@ class RasterLayerSpectralLibraryIO(SpectralLibraryIO):
     @staticmethod
     def readRaster(raster,
                    fields: QgsFields,
-                   feedback: QgsProcessingFeedback = QgsProcessingFeedback(), ) \
+                   feedback: QgsProcessingFeedback = QgsProcessingFeedback()) \
             -> Generator[QgsFeature, None, None]:
 
         raster: QgsRasterLayer

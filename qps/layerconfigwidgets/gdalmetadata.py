@@ -361,7 +361,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
         BANDNO.setConstraints(constraints)
         BANDNO.setReadOnly(True)
 
-        bandName = QgsField(BandFieldNames.Name, type=QVariant.String, len=-1, )
+        bandName = QgsField(BandFieldNames.Name, type=QVariant.String, len=-1)
 
         NODATA = QgsField(BandFieldNames.NoData, type=QVariant.Double)
 

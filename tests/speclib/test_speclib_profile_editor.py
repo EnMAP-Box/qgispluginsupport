@@ -125,7 +125,7 @@ class TestSpeclibWidgets(TestCaseBase):
         factory = reg.factories()[EDITOR_WIDGET_REGISTRY_KEY]
         self.assertIsInstance(factory, SpectralProfileEditorWidgetFactory)
 
-        speclib = TestObjects.createSpectralLibrary(n=5, n_bands=5, n_empty=2)
+        speclib = TestObjects.createSpectralLibrary(n=5, n_empty=2, n_bands=5)
 
         am = speclib.actions()
         self.assertIsInstance(am, QgsActionManager)

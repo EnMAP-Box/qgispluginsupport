@@ -664,7 +664,8 @@ class SpeclibCoreTests(TestCaseBase):
         speclib.addFeatures(
             TestObjects.createSpectralLibrary(n=5, n_empty=2, n_bands=5, wlu='Nanometers').getFeatures())
         speclib.addFeatures(
-            TestObjects.createSpectralLibrary(n=4, n_bands=[10, 25], wlu='Micrometers', n_empty=2).getFeatures())
+            TestObjects.createSpectralLibrary(n=4, n_empty=2, n_bands=[10, 25], wlu='Micrometers',
+                                              ).getFeatures())
         speclib.commitChanges()
 
         self.assertIsInstance(speclib, QgsVectorLayer)
