@@ -13,9 +13,9 @@ COPY ./.docker/qgis_setup.sh /tmp/
 RUN mkdir .virtualenvs
 RUN mkdir .virtualenvs/qps
 RUN python3 -m venv --upgrade-deps --system-site-packages .virtualenvs/qps
-RUN . .virtualenvs/qps/bin/activate
-RUN pip3 install -r /tmp/requirements.txt
-RUN pip3 install coverage-badge
+RUN . .virtualenvs/qps/bin/activate && \
+    pip3 install -r /tmp/requirements.txt && \
+    pip3 install coverage-badge
 ENV PATH="/usr/local/bin:${PATH}"
 RUN sh /tmp/qgis_setup.sh
 # Avoid sqlcmd termination due to locale -- see https://github.com/Microsoft/mssql-docker/issues/163
