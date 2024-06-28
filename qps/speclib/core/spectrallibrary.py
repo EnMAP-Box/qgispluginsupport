@@ -453,7 +453,8 @@ class SpectralLibraryUtils:
             profile_fields: List[str] = [FIELD_VALUES],
             name: str = DEFAULT_NAME,
             encoding: ProfileEncoding = ProfileEncoding.Json,
-            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point) -> QgsVectorLayer:
+            wkbType: QGIS_WKBTYPE = QGIS_WKBTYPE.Point,
+            crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
         """
         Creates an empty in-memory spectral library with a "name" and a "profiles" field
         """
@@ -464,6 +465,8 @@ class SpectralLibraryUtils:
         options = QgsVectorLayer.LayerOptions(loadDefaultStyle=True, readExtentFromXml=True)
 
         lyr = QgsVectorLayer(path, name, provider, options=options)
+        if isinstance(crs, QgsCoordinateReferenceSystem):
+            lyr.setCrs(crs)
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
         with edit(lyr):
             lyr.beginEditCommand('Add fields')

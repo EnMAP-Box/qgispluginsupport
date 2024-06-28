@@ -343,7 +343,8 @@ class SpectralLibraryIO(QObject):
                        path: Union[str, pathlib.Path, QUrl],
                        profiles: List[QgsFeature],
                        exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback(),
+                       **kwargs: dict) -> List[str]:
         """
         Writes the files and returns a list of written files paths that can be used to import the profile
         :param path:
@@ -407,7 +408,8 @@ class SpectralLibraryIO(QObject):
                           List[QgsFeature]],
                       uri: Union[str, pathlib.Path, QUrl],
                       settings: dict = dict(),
-                      feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
+                      feedback: QgsProcessingFeedback = QgsProcessingFeedback(),
+                      **kwargs: dict) -> List[str]:
 
         profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, settings)
         if len(profiles) == 0:
@@ -421,7 +423,7 @@ class SpectralLibraryIO(QObject):
 
         if not isinstance(settings, dict):
             settings = dict()
-
+        settings.update(kwargs)
         matched_formats: List[SpectralLibraryImportWidget] = []
 
         if len(SpectralLibraryIO.spectralLibraryIOs()) == 0:
