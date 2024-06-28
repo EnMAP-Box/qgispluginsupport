@@ -1,5 +1,5 @@
 import os
-import pathlib
+from pathlib import Path
 
 from typing import Any, List
 
@@ -176,26 +176,28 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         crsJson = QgsCoordinateReferenceSystem('EPSG:4326')
 
         newLayerName = exportSettings.get('layer_name', '')
+
+        path: Path = Path(path)
+
         if newLayerName == '':
-            newLayerName = os.path.basename(newLayerName)
+            newLayerName = os.path.basename(os.path.splitext(path.name)[0])
 
-        path = pathlib.Path(path).as_posix()
-        datasourceOptions = exportSettings.get('options', dict())
+        datasourceOptions = exportSettings.get('datasourceOptions', dict())
         assert isinstance(datasourceOptions, dict)
+        rfc7946: bool = exportSettings.get('rfc7946', True) is True
 
-        ogrDataSourceOptions = []  # 'ATTRIBUTES_SKIP=NO', 'DATE_AS_STRING=YES', 'ARRAY_AS_STRING=YES']
-        ogrLayerOptions = [  # 'NATIVE_DATA=True',
-            'SIGNIFICANT_FIGURES=15',
-            'RFC7946=YES',
-            f'DESCRIPTION={newLayerName}'
-        ]
+        datasourceOptions = exportSettings.get('datasourceOptions',
+                                               [])  # 'ATTRIBUTES_SKIP=NO', 'DATE_AS_STRING=YES', 'ARRAY_AS_STRING=YES']
+
+        layerOptions = exportSettings.get('layerOptions', [f'DESCRIPTION={newLayerName}'])
+        layerOptions.insert(0, f'RFC7946={"YES" if rfc7946 else "NO"}')
 
         options = QgsVectorFileWriter.SaveVectorOptions()
         options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
         options.feedback = feedback
-        options.datasourceOptions = ogrDataSourceOptions
-        options.layerOptions = ogrLayerOptions
-        options.fileEncoding = 'UTF-8'
+        options.datasourceOptions = datasourceOptions
+        options.layerOptions = layerOptions
+        options.fileEncoding = exportSettings.get('fileEncoding', 'UTF-8')
         options.skipAttributeCreation = False
         options.driverName = 'GeoJSON'
 
@@ -203,16 +205,17 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         options.fieldValueConverter = converter
         convertedFields = converter.convertedFields()
 
-        writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path,
+        writer_crs: QgsCoordinateReferenceSystem = crsJson if rfc7946 else crs
+        writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path.as_posix(),
                                                                  convertedFields,
                                                                  wkbType,
-                                                                 crsJson,
+                                                                 writer_crs,
                                                                  transformContext,
                                                                  options)
         # we might need to transform the coordinates to JSON EPSG:4326
         mappingDefinition = QgsRemappingSinkDefinition()
         mappingDefinition.setSourceCrs(crs)
-        mappingDefinition.setDestinationCrs(crsJson)
+        mappingDefinition.setDestinationCrs(writer_crs)
         mappingDefinition.setDestinationFields(fields)
         mappingDefinition.setDestinationWkbType(wkbType)
 
@@ -246,9 +249,9 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         del writer
 
         # set profile column styles etc.
-        cls.copyEditorWidgetSetup(path, fields)
+        cls.copyEditorWidgetSetup(path.as_posix(), fields)
 
-        return [path]
+        return [path.as_posix()]
 
     @classmethod
     def importProfiles(cls,

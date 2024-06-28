@@ -143,7 +143,7 @@ class ModelTests(TestCaseBase):
         # tester = QAbstractItemModelTester(tm, QAbstractItemModelTester.FailureReportingMode.Fatal)
 
         # obj = {'X': np.random.rand(58, 177)}
-        obj = {'X': np.random.rand(50, )}
+        obj = {'X': np.random.rand(50)}
         # obj = {'X': np.random.rand(20, 10)}
         # obj = {'A':{'X': np.random.rand(50, 10)}}
         n1 = TreeNode('node')

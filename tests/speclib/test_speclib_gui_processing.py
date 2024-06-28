@@ -28,7 +28,7 @@ start_app()
 
 class AlgorithmLogging(QgsProcessingAlgorithm):
 
-    def __init__(self, logs: dict, name='exampleLoginAlg', ):
+    def __init__(self, logs: dict, name='exampleLoginAlg'):
         super(AlgorithmLogging, self).__init__()
         self._name = name
         self._log = logs
