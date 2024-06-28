@@ -9,7 +9,7 @@ RUN apt-get update && \
 
 RUN apt-get update
 COPY ./requirements.txt /tmp/
-COPY ./.docker/qgis_setup.sh /tmp/
+COPY ./.docker/qgis_setup.sh /usr/bin
 RUN mkdir .virtualenvs
 RUN mkdir .virtualenvs/qps
 RUN python3 -m venv --upgrade-deps --system-site-packages .virtualenvs/qps
