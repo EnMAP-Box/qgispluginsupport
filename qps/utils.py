@@ -49,6 +49,7 @@ from typing import Union, List, Optional, Any, Tuple, Iterator, Dict, Iterable
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
 from osgeo.osr import SpatialReference
+from PyQt5.QtCore import QMetaType
 
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
@@ -555,28 +556,28 @@ def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsFiel
     :return: QgsField
     """
     if isinstance(exampleValue, str):
-        return QgsField(name, QVariant.String, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
     elif isinstance(exampleValue, bool):
-        return QgsField(name, QVariant.Bool, 'int', len=1, comment=comment)
+        return QgsField(name, QMetaType.Bool, 'int', len=1, comment=comment)
     elif isinstance(exampleValue, (int, np.int8, np.int16, np.int32, np.int64)):
-        return QgsField(name, QVariant.Int, 'int', comment=comment)
+        return QgsField(name, QMetaType.Int, 'int', comment=comment)
     elif isinstance(exampleValue, (np.uint, np.uint8, np.uint16, np.uint32, np.uint64)):
-        return QgsField(name, QVariant.UInt, 'uint', comment=comment)
+        return QgsField(name, QMetaType.UInt, 'uint', comment=comment)
     elif isinstance(exampleValue, (float, np.double, np.float16, np.float32, np.float64)):
-        return QgsField(name, QVariant.Double, 'double', comment=comment)
+        return QgsField(name, QMetaType.Double, 'double', comment=comment)
     elif isinstance(exampleValue, np.ndarray):
-        return QgsField(name, QVariant.String, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
     elif isinstance(exampleValue, np.datetime64):
-        return QgsField(name, QVariant.String, 'varchar', comment=comment)
+        return QgsField(name, QMetaType.QDateTime, comment=comment)
     elif isinstance(exampleValue, (bytes, QByteArray)):
-        return QgsField(name, QVariant.ByteArray, 'Binary', comment=comment)
+        return QgsField(name, QMetaType.QByteArray, 'Binary', comment=comment)
     elif isinstance(exampleValue, list):
         assert len(exampleValue) > 0, 'need at least one value in provided list'
         v = exampleValue[0]
         prototype = createQgsField(name, v)
         subType = prototype.type()
         typeName = prototype.typeName()
-        return QgsField(name, QVariant.List, typeName, comment=comment, subType=subType)
+        return QgsField(name, QMetaType.QVariantList, typeName, comment=comment, subType=subType)
     elif isinstance(exampleValue, type):
         return createQgsField(name, exampleValue(1), comment=comment)
     else:
