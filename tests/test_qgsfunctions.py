@@ -4,13 +4,13 @@ import unittest
 
 import numpy as np
 from osgeo import gdal_array
-
 from qgis.core import edit, Qgis, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
     QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsFieldCalculator
-from qgis.PyQt.QtCore import QByteArray, QMetaType
-from qps.qgisenums import QGIS_WKBTYPE
+from qgis.PyQt.QtCore import QByteArray
+
+from qps.qgisenums import QGIS_WKBTYPE, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
     SpectralData, SpectralEncoding, SpectralMath
 from qps.speclib.core import profile_fields
@@ -32,11 +32,11 @@ def createAggregateTestLayer():
             {'class': 'b', 'num': 3, 't_mean': 4.0, 't_min': 3, 't_max': 5},
             {'class': 'b', 'num': 5, 't_mean': 4.0, 't_min': 3, 't_max': 5},
             ]
-    fields = [QgsField('class', QMetaType.QString),
-              QgsField('num', QMetaType.Int),
-              QgsField('t_mean', QMetaType.Double),
-              QgsField('t_min', QMetaType.Double),
-              QgsField('t_max', QMetaType.Double)
+    fields = [QgsField('class', QMETATYPE_QSTRING),
+              QgsField('num', QMETATYPE_INT),
+              QgsField('t_mean', QMETATYPE_DOUBLE),
+              QgsField('t_min', QMETATYPE_DOUBLE),
+              QgsField('t_max', QMETATYPE_DOUBLE)
               ]
     with edit(sl):
         for f in fields:

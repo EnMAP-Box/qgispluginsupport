@@ -22,10 +22,10 @@ import pathlib
 import re
 import unittest
 
-from qgis.PyQt.QtCore import QMetaType
-
 from qgis.core import edit, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, \
     QgsFileUtils, QgsProcessingFeedback, QgsProject, QgsProperty, QgsRemappingSinkDefinition, QgsVectorLayer
+
+from qps.qgisenums import QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryExportDialog, \
@@ -213,11 +213,11 @@ class TestIO(TestCaseBase):
     def test_SpectralLibraryImportFeatureSink(self):
 
         srcFields = QgsFields()
-        srcFields.append(QgsField('srcName', QMetaType.QString))
+        srcFields.append(QgsField('srcName', QMETATYPE_QSTRING))
         srcFields.append(create_profile_field('srcProfiles', encoding='bytes'))
 
         dstFields = QgsFields()
-        dstFields.append(QgsField('dstName', QMetaType.QString))
+        dstFields.append(QgsField('dstName', QMETATYPE_QSTRING))
         dstFields.append(create_profile_field('dstProfilesB', encoding='bytes'))
         dstFields.append(create_profile_field('dstProfilesS', encoding='text'))
         dstFields.append(create_profile_field('dstProfilesJ', encoding='json'))

@@ -32,9 +32,11 @@ from qgis.core import edit, QgsApplication, QgsFeature, QgsField, QgsFields, Qgs
     QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
     QgsVectorLayer
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
-from qgis.PyQt.QtCore import QMetaType, QModelIndex, QObject, Qt
+from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog
+
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from qps.qgisenums import QMETATYPE_QSTRING
 from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import create_profile_field, profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -349,7 +351,7 @@ class ProcessingToolsTest(TestCaseBase):
         fields = QgsFields()
         fields.append(create_profile_field('A'))
         fields.append(create_profile_field('B'))
-        fields.append(QgsField('notes', QMetaType.QString))
+        fields.append(QgsField('notes', QMETATYPE_QSTRING))
 
         sl = TestObjects.createEmptyMemoryLayer(fields, name='MySpeclib')
 

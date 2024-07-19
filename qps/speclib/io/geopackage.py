@@ -5,13 +5,14 @@ from typing import Any, List, Union
 import numpy as np
 from osgeo.gdalconst import DMD_CREATIONFIELDDATASUBTYPES
 from osgeo.ogr import Driver, GetDriverByName
-
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, QgsFeature, \
     QgsField, QgsFields, QgsProcessingFeedback, QgsVectorFileWriter, QgsVectorLayer
-from qgis.PyQt.QtCore import QMetaType, QVariant
+from qgis.PyQt.QtCore import QVariant
+
 from ..core import is_profile_field
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from ...qgisenums import QMETATYPE_QSTRING
 
 
 class GeoPackageSpectralLibraryExportWidget(SpectralLibraryExportWidget):
@@ -101,7 +102,7 @@ class GeoPackageFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
             name = field.name()
             idx = self.mFields.lookupField(name)
             if is_profile_field(field) and field.type() == QVariant.Map and not can_write_json:
-                convertedField = QgsField(name=name, type=QMetaType.QString, len=-1)
+                convertedField = QgsField(name=name, type=QMETATYPE_QSTRING, len=-1)
                 self.mFieldDefinitions[name] = convertedField
                 self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
             else:

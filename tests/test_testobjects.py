@@ -9,10 +9,10 @@ import unittest
 
 import numpy as np
 from osgeo import gdal, ogr
-from qgis.PyQt.QtCore import QMetaType
-
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsVectorLayer, \
     QgsWkbTypes
+
+from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field
 from qps.testing import start_app, TestCaseBase, TestObjects
 
@@ -30,8 +30,8 @@ class TestCasesTestObject(TestCaseBase):
     def test_EmptyMemoryLayer(self):
 
         fields = QgsFields()
-        fields.append(QgsField('f1', QMetaType.QString))
-        fields.append(QgsField('f2', QMetaType.Double))
+        fields.append(QgsField('f1', QMETATYPE_QSTRING))
+        fields.append(QgsField('f2', QMETATYPE_DOUBLE))
         fields.append(create_profile_field('profilesB', 'bytes'))
         fields.append(create_profile_field('profilesJ', 'json'))
         fields.append(create_profile_field('profilesS', 'text'))

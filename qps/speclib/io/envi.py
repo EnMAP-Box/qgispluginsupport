@@ -36,18 +36,19 @@ from typing import List, Tuple, Union
 
 import numpy as np
 from osgeo import gdal, gdal_array
-
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFieldComboBox, QgsFieldExpressionWidget
-from qgis.PyQt.QtCore import NULL, QMetaType, QVariant
+from qgis.PyQt.QtCore import NULL, QVariant
 from qgis.PyQt.QtWidgets import QFormLayout
+
 from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field, profile_field_names, profile_fields
 from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
 from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
     prepareProfileValueDict, SpectralSetting
+from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import stringToType
 
 # lookup GDAL Data Type and its size in bytes
@@ -354,18 +355,18 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         n_profiles = md.get('lines')
 
         fields.append(create_profile_field(FIELD_VALUES))
-        fields.append(QgsField(FIELD_NAME, QMetaType.QString))
+        fields.append(QgsField(FIELD_NAME, QMETATYPE_QSTRING))
         # add ENVI Header fields
         to_exclude = SINGLE_VALUE_TAGS
         for k, v in md.items():
             if isinstance(v, list) and k not in to_exclude and len(v) == n_profiles:
                 field = None
                 if isinstance(v[0], float):
-                    fields.append(QgsField(k, QMetaType.Double))
+                    fields.append(QgsField(k, QMETATYPE_DOUBLE))
                 elif isinstance(v[0], int):
-                    fields.append(QgsField(k, QMetaType.Int))
+                    fields.append(QgsField(k, QMETATYPE_INT))
                 else:
-                    fields.append(QgsField(k, QMetaType.QString))
+                    fields.append(QgsField(k, QMETATYPE_QSTRING))
 
         # add CSV fields
         lyrCSV = readCSVMetadata(source)

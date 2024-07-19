@@ -18,8 +18,8 @@ uri = "point?crs=epsg:4326"
 lyr = QgsVectorLayer(uri, "Scratch point layer",  "memory")
 lyr.startEditing()
 lyr.addAttribute(QgsField('blob', QVariant.ByteArray))
-lyr.addAttribute(QgsField('text1', QMetaType.QString))
-lyr.addAttribute(QgsField('text2', QMetaType.QString))
+lyr.addAttribute(QgsField('text1', QMETATYPE_QSTRING))
+lyr.addAttribute(QgsField('text2', QMETATYPE_QSTRING))
 lyr.commitChanges(False)
 
 canvas = QgsMapCanvas()
@@ -49,7 +49,7 @@ s = ""
 # activate debugger breakpoint in void QgsAttributeTableModel::loadAttributes()
 # and observe length of mFieldFormatters compared to mWidgetFactories
 # lyr.startEditing()
-# lyr.addAttribute(QgsField('text3', QMetaType.QString))
+# lyr.addAttribute(QgsField('text3', QMETATYPE_QSTRING))
 # lyr.commitChanges(False)
 
 app.exec_()

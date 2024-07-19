@@ -33,11 +33,13 @@ from typing import List, Union
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, \
     QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFileWidget
-from qgis.PyQt.QtCore import QDate, QMetaType, QTime
+from qgis.PyQt.QtCore import QDate, QTime
+
 from .. import FIELD_NAME
 from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
+from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QSTRING, QMETATYPE_QTIME
 
 
 class SEDAttributes(object):
@@ -79,50 +81,50 @@ class SEDAttributes(object):
 
 
 SED_FIELDS = QgsFields()
-SED_FIELDS.append(QgsField(FIELD_NAME, QMetaType.QString))
+SED_FIELDS.append(QgsField(FIELD_NAME, QMETATYPE_QSTRING))
 SED_FIELDS.append(create_profile_field(SEDAttributes.Reference, encoding=ProfileEncoding.Text))
 SED_FIELDS.append(create_profile_field(SEDAttributes.Target, encoding=ProfileEncoding.Text))
 SED_FIELDS.append(create_profile_field(SEDAttributes.Reflectance, encoding=ProfileEncoding.Text))
-SED_FIELDS.append(QgsField(SEDAttributes.Comment, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.Version, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.FileName, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.Instrument, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.Detectors, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.Measurement, QMetaType.QString))
+SED_FIELDS.append(QgsField(SEDAttributes.Comment, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.Version, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.FileName, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.Instrument, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.Detectors, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.Measurement, QMETATYPE_QSTRING))
 
-SED_FIELDS.append(QgsField(SEDAttributes.Date_R, QMetaType.QDate))
-SED_FIELDS.append(QgsField(SEDAttributes.Date_T, QMetaType.QDate))
-SED_FIELDS.append(QgsField(SEDAttributes.Time_R, QMetaType.QTime))
-SED_FIELDS.append(QgsField(SEDAttributes.Time_T, QMetaType.QTime))
+SED_FIELDS.append(QgsField(SEDAttributes.Date_R, QMETATYPE_QDATE))
+SED_FIELDS.append(QgsField(SEDAttributes.Date_T, QMETATYPE_QDATE))
+SED_FIELDS.append(QgsField(SEDAttributes.Time_R, QMETATYPE_QTIME))
+SED_FIELDS.append(QgsField(SEDAttributes.Time_T, QMETATYPE_QTIME))
 
-SED_FIELDS.append(QgsField(SEDAttributes.Temperature_R, QMetaType.Double))
-SED_FIELDS.append(QgsField(SEDAttributes.Temperature_T, QMetaType.Double))
+SED_FIELDS.append(QgsField(SEDAttributes.Temperature_R, QMETATYPE_DOUBLE))
+SED_FIELDS.append(QgsField(SEDAttributes.Temperature_T, QMETATYPE_DOUBLE))
 
-SED_FIELDS.append(QgsField(SEDAttributes.BatteryVoltage_T, QMetaType.Double))
-SED_FIELDS.append(QgsField(SEDAttributes.BatteryVoltage_R, QMetaType.Double))
+SED_FIELDS.append(QgsField(SEDAttributes.BatteryVoltage_T, QMETATYPE_DOUBLE))
+SED_FIELDS.append(QgsField(SEDAttributes.BatteryVoltage_R, QMETATYPE_DOUBLE))
 
-SED_FIELDS.append(QgsField(SEDAttributes.Integration_R, QMetaType.Int))
-SED_FIELDS.append(QgsField(SEDAttributes.Integration_T, QMetaType.Int))
+SED_FIELDS.append(QgsField(SEDAttributes.Integration_R, QMETATYPE_INT))
+SED_FIELDS.append(QgsField(SEDAttributes.Integration_T, QMETATYPE_INT))
 
-SED_FIELDS.append(QgsField(SEDAttributes.Averages_R, QMetaType.Int))
-SED_FIELDS.append(QgsField(SEDAttributes.Averages_T, QMetaType.Int))
+SED_FIELDS.append(QgsField(SEDAttributes.Averages_R, QMETATYPE_INT))
+SED_FIELDS.append(QgsField(SEDAttributes.Averages_T, QMETATYPE_INT))
 
-SED_FIELDS.append(QgsField(SEDAttributes.DarkMode_R, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.DarkMode_T, QMetaType.QString))
+SED_FIELDS.append(QgsField(SEDAttributes.DarkMode_R, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.DarkMode_T, QMETATYPE_QSTRING))
 
-SED_FIELDS.append(QgsField(SEDAttributes.ForeOptic_R, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.ForeOptic_T, QMetaType.QString))
+SED_FIELDS.append(QgsField(SEDAttributes.ForeOptic_R, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.ForeOptic_T, QMETATYPE_QSTRING))
 
-SED_FIELDS.append(QgsField(SEDAttributes.RadiometricCalibration, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.Units, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.WavelengthRange, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.Latitude, QMetaType.Double))
-SED_FIELDS.append(QgsField(SEDAttributes.Longitude, QMetaType.Double))
-SED_FIELDS.append(QgsField(SEDAttributes.Altitude, QMetaType.Double))
-SED_FIELDS.append(QgsField(SEDAttributes.GPSTime, QMetaType.QTime))
-SED_FIELDS.append(QgsField(SEDAttributes.Satellites, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.CalibratedReferenceCorrectionFile, QMetaType.QString))
-SED_FIELDS.append(QgsField(SEDAttributes.Channels, QMetaType.Int))
+SED_FIELDS.append(QgsField(SEDAttributes.RadiometricCalibration, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.Units, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.WavelengthRange, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.Latitude, QMETATYPE_DOUBLE))
+SED_FIELDS.append(QgsField(SEDAttributes.Longitude, QMETATYPE_DOUBLE))
+SED_FIELDS.append(QgsField(SEDAttributes.Altitude, QMETATYPE_DOUBLE))
+SED_FIELDS.append(QgsField(SEDAttributes.GPSTime, QMETATYPE_QTIME))
+SED_FIELDS.append(QgsField(SEDAttributes.Satellites, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.CalibratedReferenceCorrectionFile, QMETATYPE_QSTRING))
+SED_FIELDS.append(QgsField(SEDAttributes.Channels, QMETATYPE_INT))
 
 KEY2FIELD = {
     'Comment': SEDAttributes.Comment,
@@ -232,13 +234,13 @@ class SEDFile(object):
 
                         field: QgsField = fields.field(fieldName)
 
-                        if field.type() == QMetaType.QString:
+                        if field.type() == QMETATYPE_QSTRING:
                             value = str(value)
-                        elif field.type() == QMetaType.Int:
+                        elif field.type() == QMETATYPE_INT:
                             value = int(value)
-                        elif field.type() == QMetaType.Double:
+                        elif field.type() == QMETATYPE_DOUBLE:
                             value = float(value)
-                        elif field.type() == QMetaType.QTime:
+                        elif field.type() == QMETATYPE_QTIME:
                             value = QTime.fromString(value, 'hh:mm:ss')
                         else:
                             s = ""

@@ -5,13 +5,13 @@ from typing import Any, List, Optional, Pattern, Union
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints, QgsObjectCustomProperties, \
     QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
-from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+
+from .qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 
 rx_bands = re.compile(r'^band[_\s]*(?P<band>\d+)$', re.IGNORECASE)
 rx_more_information = re.compile(r'^more[_\n]*information$', re.IGNORECASE)
@@ -436,7 +436,7 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
 
         super().__init__('none?', '', 'memory')
         self.startEditing()
-        bandNo = QgsField('band', type=QMetaType.Int, comment='Band Number')
+        bandNo = QgsField('band', type=QMETATYPE_INT, comment='Band Number')
         constraints = QgsFieldConstraints()
         constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
         constraints.setConstraint(QgsFieldConstraints.ConstraintNotNull)
@@ -449,25 +449,25 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
         b = self.isEditable()
         self.startEditing()
 
-        BBL = QgsField('BBL', type=QMetaType.Bool, comment='Band Band List')
+        BBL = QgsField('BBL', type=QMETATYPE_BOOL, comment='Band Band List')
         BBL.setDefaultValueDefinition(QgsDefaultValue('True'))
         self.addAttribute(BBL)
 
-        WL = QgsField('WL', type=QMetaType.Double, comment='Wavelength of band center')
+        WL = QgsField('WL', type=QMETATYPE_DOUBLE, comment='Wavelength of band center')
         self.addAttribute(WL)
 
-        WLU = QgsField('WLU', type=QMetaType.QString, comment='Wavelength Unit')
+        WLU = QgsField('WLU', type=QMETATYPE_QSTRING, comment='Wavelength Unit')
         wluConstraints = QgsFieldConstraints()
         wluConstraints.setConstraintExpression('"WLU" in [\'nm\', \'m\']')
         WLU.setConstraints(wluConstraints)
         self.addAttribute(WLU)
 
-        WL_MIN = QgsField('WLmin', type=QMetaType.Double, comment='Minimum Wavelength')
+        WL_MIN = QgsField('WLmin', type=QMETATYPE_DOUBLE, comment='Minimum Wavelength')
         self.addAttribute(WL_MIN)
-        WL_MAX = QgsField('WLmax', type=QMetaType.Double, comment='Maximum Wavelength')
+        WL_MAX = QgsField('WLmax', type=QMETATYPE_DOUBLE, comment='Maximum Wavelength')
         self.addAttribute(WL_MAX)
 
-        FWHM = QgsField('FWHM', type=QMetaType.Double, comment='Full width at half maximum')
+        FWHM = QgsField('FWHM', type=QMETATYPE_DOUBLE, comment='Full width at half maximum')
         fwhmConstraints = QgsFieldConstraints()
         fwhmConstraints.setConstraintExpression('"FWHM" > 0')
         FWHM.setConstraints(fwhmConstraints)

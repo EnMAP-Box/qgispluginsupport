@@ -37,18 +37,19 @@ from typing import Any, List, Union
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.core import Qgis, QgsCategorizedSymbolRenderer, QgsField, QgsFillSymbol, QgsLineSymbol, QgsMapLayer, \
     QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsProviderRegistry, QgsRasterLayer, QgsRasterRenderer, \
     QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer
 from qgis.gui import QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
     QgsMapLayerComboBox
 from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel, \
-    QMetaType, QMimeData, QModelIndex, QObject, QSize, Qt, QVariant
+    QMimeData, QModelIndex, QObject, QSize, Qt, QVariant
 from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
 from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
     QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
+
+from ..qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers
 
 DEFAULT_UNCLASSIFIEDCOLOR = QColor('black')
@@ -1915,9 +1916,9 @@ class ClassificationSchemeEditorWidgetWrapper(QgsEditorWidgetWrapper):
             if isinstance(classInfo, ClassInfo):
 
                 typeCode = self.field().type()
-                if typeCode == QMetaType.QString:
+                if typeCode == QMETATYPE_QSTRING:
                     value = classInfo.name()
-                elif typeCode in [QMetaType.Int, QMetaType.Double]:
+                elif typeCode in [QMETATYPE_INT, QMETATYPE_DOUBLE]:
                     value = classInfo.label()
                 else:
                     s = ""

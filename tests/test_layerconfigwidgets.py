@@ -10,20 +10,19 @@
 
 __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
-
 import unittest
 from typing import Match
 
 from osgeo import gdal
+from qgis.core import QgsField, QgsProject, QgsRasterLayer
+from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, \
+    QgsRasterTransparencyWidget
+from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QTableView, QVBoxLayout, QWidget
 
-from qgis.PyQt.QtCore import QMetaType
-from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QTableView, QPushButton, QHBoxLayout
-from qgis.core import QgsRasterLayer, QgsProject, QgsField
-from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerComboBox, QgsRasterTransparencyWidget, \
-    QgsMapLayerConfigWidgetFactory
 from qps.layerconfigwidgets.gdalmetadata import RX_OGR_URI
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.qgisenums import QMETATYPE_QSTRING
+from qps.testing import start_app, TestCaseBase, TestObjects
 
 start_app()
 LAYER_WIDGET_REPS = 5
@@ -39,7 +38,6 @@ class LayerConfigWidgetsTests(TestCaseBase):
         return c
 
     def test_transparency(self):
-
         lyr = TestObjects.createRasterLayer()
         c = QgsMapCanvas()
         c.setLayers([lyr])
@@ -151,7 +149,6 @@ class LayerConfigWidgetsTests(TestCaseBase):
         self.showGui([cR, w])
 
     def test_empty_gdalmetadata(self):
-
         lyrR = TestObjects.createRasterLayer(nb=100, eType=gdal.GDT_Byte)
         lyrV = TestObjects.createVectorLayer()
         lyrE = QgsRasterLayer()
@@ -171,7 +168,6 @@ class LayerConfigWidgetsTests(TestCaseBase):
         QgsProject.instance().removeAllMapLayers()
 
     def test_rx_ogr_uri(self):
-
         match = RX_OGR_URI.search('qps/testvectordata.kml|layername=landcover|layerid=3')
         self.assertIsInstance(match, Match)
         D = match.groupdict()
@@ -180,7 +176,6 @@ class LayerConfigWidgetsTests(TestCaseBase):
         self.assertEqual(D.get('layerid'), '3')
 
     def test_vectorfieldmodels(self):
-
         lyr = TestObjects.createVectorLayer()
         v = QTableView()
         from qps.layerconfigwidgets.vectorlayerfields import LayerFieldsTableModel
@@ -189,7 +184,7 @@ class LayerConfigWidgetsTests(TestCaseBase):
         v.setModel(m)
 
         self.assertTrue(lyr.startEditing())
-        f = QgsField('newField', QMetaType.QString, 'String')
+        f = QgsField('newField', QMETATYPE_QSTRING, 'String')
         lyr.addAttribute(f)
         self.assertTrue(lyr.commitChanges())
         self.showGui(v)

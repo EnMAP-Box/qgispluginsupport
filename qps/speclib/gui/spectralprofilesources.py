@@ -9,18 +9,18 @@ from typing import Any, Dict, Iterable, Iterator, List, Set, Tuple, Union
 
 import numpy as np
 from numpy import NaN
-
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsField, \
     QgsFieldConstraints, QgsFields, QgsGeometry, QgsLayerItem, QgsMapToPixel, QgsPointXY, QgsProperty, QgsRasterLayer, \
     QgsRectangle, QgsVector, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsColorButton, QgsDockWidget, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsFilterLineEdit, \
     QgsMapCanvas
-from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QItemSelection, QMetaType, QModelIndex, QObject, \
+from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QItemSelection, QModelIndex, QObject, \
     QRect, QRectF, QSize, QSortFilterProxyModel, Qt, QVariant
 from qgis.PyQt.QtGui import QAbstractTextDocumentLayout, QColor, QFont, QIcon, QPainter, QTextDocument
 from qgis.PyQt.QtWidgets import QComboBox, QDoubleSpinBox, QListWidgetItem, QSpinBox, QStyle, QStyledItemDelegate, \
     QStyleOptionViewItem, QTableView, QTreeView, QWidget
+
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
@@ -29,6 +29,7 @@ from ..core.spectralprofile import encodeProfileValueDict, \
 from ...externals.htmlwidgets import HTMLComboBox
 from ...models import Option, OptionListModel, OptionTreeNode, setCurrentComboBoxValue, TreeModel, TreeNode, TreeView
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
+from ...qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATETIME, QMETATYPE_QSTRING
 from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import aggregateArray, HashableRect, iconForFieldType, loadUi, nextColor, rasterLayerMapToPixel, \
@@ -1855,15 +1856,15 @@ class SpectralProfileBridge(TreeModel):
                 prop = QgsProperty.fromExpression(node.expressionString())
                 t = field.type()
                 b = False
-                if t == QMetaType.Int:
+                if t == QMETATYPE_INT:
                     v, b = prop.valueAsInt(context)
-                elif t == QMetaType.Bool:
+                elif t == QMETATYPE_BOOL:
                     v, b = prop.valueAsBool(context)
-                elif t == QMetaType.Double:
+                elif t == QMETATYPE_DOUBLE:
                     v, b = prop.valueAsDouble(context)
-                elif t == QMetaType.QDateTime:
+                elif t == QMETATYPE_QDATETIME:
                     v, b = prop.valueAsDateTime(context)
-                elif t == QMetaType.QString:
+                elif t == QMETATYPE_QSTRING:
                     v, b = prop.valueAsString(context)
                 elif t == QVariant.Color:
                     v, b = prop.valueAsColor(context)

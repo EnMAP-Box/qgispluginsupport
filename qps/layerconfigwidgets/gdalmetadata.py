@@ -32,19 +32,20 @@ from pathlib import Path
 from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
 from osgeo import gdal, ogr
-
 from qgis.core import edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsEditorWidgetSetup, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsFieldConstraints, QgsMapLayer, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui, \
     QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar
-from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMetaType, QMimeData, QModelIndex, QRegExp, \
+from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMimeData, QModelIndex, QRegExp, \
     QSortFilterProxyModel, Qt, QTimer, QUrl
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, \
     QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu, QSizePolicy, QTableView, QWidget
+
 from .core import QpsMapLayerConfigWidget
 from .. import debugLog
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
+from ..qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ..utils import gdalDataset, loadUi, ogrDataSource
 
@@ -285,7 +286,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
         return self.mMapLayer
 
     def createDomainField(self) -> QgsField:
-        DOMAIN = QgsField(BandFieldNames.Domain, type=QMetaType.QString)
+        DOMAIN = QgsField(BandFieldNames.Domain, type=QMETATYPE_QSTRING)
         constraint = QgsFieldConstraints()
         DOMAIN.setReadOnly(True)
         DOMAIN.setDefaultValueDefinition(QgsDefaultValue(''))
@@ -343,7 +344,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
         self.startEditing()
 
         # DOMAIN = self.createDomainField()
-        BANDNO = QgsField(BandFieldNames.Number, type=QMetaType.Int)
+        BANDNO = QgsField(BandFieldNames.Number, type=QMETATYPE_INT)
         constraints = QgsFieldConstraints()
         # todo: constraint unique combination of (domain, band number, key)
         # constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
@@ -357,36 +358,36 @@ class GDALBandMetadataModel(QgsVectorLayer):
         BANDNO.setConstraints(constraints)
         BANDNO.setReadOnly(True)
 
-        bandName = QgsField(BandFieldNames.Name, type=QMetaType.QString, len=-1, )
+        bandName = QgsField(BandFieldNames.Name, type=QMETATYPE_QSTRING, len=-1, )
 
-        NODATA = QgsField(BandFieldNames.NoData, type=QMetaType.Double)
+        NODATA = QgsField(BandFieldNames.NoData, type=QMETATYPE_DOUBLE)
 
-        BBL = QgsField(BandFieldNames.BadBand, type=QMetaType.Int)
+        BBL = QgsField(BandFieldNames.BadBand, type=QMETATYPE_INT)
         BBL.setDefaultValueDefinition(QgsDefaultValue('1'))
         BBL.setEditorWidgetSetup(QgsEditorWidgetSetup())
 
-        WL = QgsField(BandFieldNames.Wavelength, type=QMetaType.Double)
+        WL = QgsField(BandFieldNames.Wavelength, type=QMETATYPE_DOUBLE)
 
-        WLU = QgsField(BandFieldNames.WavelengthUnit, type=QMetaType.QString)
+        WLU = QgsField(BandFieldNames.WavelengthUnit, type=QMETATYPE_QSTRING)
         # wluConstraints = QgsFieldConstraints()
         # wluConstraints.setConstraintExpression('"{BandPropertyKeys.WavelengthUnit}" in [\'nm\', \'m\']')
         # WLU.setConstraints(wluConstraints)
 
-        FWHM = QgsField(BandFieldNames.FWHM, type=QMetaType.Double)
+        FWHM = QgsField(BandFieldNames.FWHM, type=QMETATYPE_DOUBLE)
         FWHMConstraints = QgsFieldConstraints()
         FWHMConstraints.setConstraintExpression(f'"{BandFieldNames.FWHM}" is NULL or "{BandFieldNames.FWHM}" > 0')
         FWHM.setConstraints(FWHMConstraints)
 
-        RANGE = QgsField(BandFieldNames.Range, type=QMetaType.QString)
+        RANGE = QgsField(BandFieldNames.Range, type=QMETATYPE_QSTRING)
         RANGE.setReadOnly(True)
         # RANGEConstraints = QgsFieldConstraints()
         # RANGEConstraints.setConstraintExpression(f'"{BandFieldNames.BandRange}" > 0')
 
-        OFFSET = QgsField(BandFieldNames.Offset, type=QMetaType.Double)
-        SCALE = QgsField(BandFieldNames.Scale, type=QMetaType.Double)
+        OFFSET = QgsField(BandFieldNames.Offset, type=QMETATYPE_DOUBLE)
+        SCALE = QgsField(BandFieldNames.Scale, type=QMETATYPE_DOUBLE)
 
-        # ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QMetaType.Double)
-        # ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QMetaType.Double)
+        # ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QMETATYPE_DOUBLE)
+        # ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QMETATYPE_DOUBLE)
 
         # add fields
         for field in [BANDNO,

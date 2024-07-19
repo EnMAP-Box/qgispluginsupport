@@ -30,16 +30,16 @@ from typing import Generator, List, Union
 
 import numpy as np
 from osgeo import gdal
-
 from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, \
     QgsExpressionContext, QgsExpressionContextUtils, QgsFeature, QgsFeatureRequest, QgsField, QgsFields, QgsGeometry, \
     QgsMapLayerProxyModel, QgsPointXY, QgsProcessingFeedback, QgsProject, QgsProviderRegistry, QgsRasterDataProvider, \
     QgsRasterLayer, QgsTask, QgsTaskManager, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsMapLayerComboBox
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QMetaType, Qt, QUrl
+from qgis.PyQt.QtCore import Qt, QUrl
 from qgis.PyQt.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QProgressBar,
                                  QTextEdit)
+
 from .. import FIELD_NAME, FIELD_VALUES, speclibUiPath
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -47,7 +47,7 @@ from ..core.spectrallibraryio import IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS,
     SpectralLibraryIO
 from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict
 from ...models import Option, OptionListModel
-from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_LAYERFILTER, QGIS_WKBTYPE
+from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import gdalDataset, loadUi, noDataValues, parseBadBandList, parseFWHM, parseWavelength, \
@@ -331,10 +331,10 @@ RF_PX_Y = 'px_y'
 
 RASTER_FIELDS = QgsFields()
 RASTER_FIELDS.append(create_profile_field(RF_PROFILE))
-RASTER_FIELDS.append(QgsField(RF_NAME, QMetaType.QString))
-RASTER_FIELDS.append(QgsField(RF_SOURCE, QMetaType.QString))
-RASTER_FIELDS.append(QgsField(RF_PX_X, QMetaType.Int))
-RASTER_FIELDS.append(QgsField(RF_PX_Y, QMetaType.Int))
+RASTER_FIELDS.append(QgsField(RF_NAME, QMETATYPE_QSTRING))
+RASTER_FIELDS.append(QgsField(RF_SOURCE, QMETATYPE_QSTRING))
+RASTER_FIELDS.append(QgsField(RF_PX_X, QMETATYPE_INT))
+RASTER_FIELDS.append(QgsField(RF_PX_Y, QMETATYPE_INT))
 
 
 class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):

@@ -27,8 +27,10 @@
 import pathlib
 
 from qgis.core import QgsCoordinateReferenceSystem, QgsField, QgsFields, QgsSettings
-from qgis.PyQt.QtCore import NULL, QMetaType, QVariant
+from qgis.PyQt.QtCore import NULL, QVariant
 from qgis.PyQt.QtWidgets import QWidget
+
+from ..qgisenums import QMETATYPE_QSTRING
 
 EDITOR_WIDGET_REGISTRY_KEY = 'SpectralProfile'
 # EDITOR_WIDGET_REGISTRY_NAME = 'Spectral Profile'
@@ -52,7 +54,7 @@ def createStandardFields() -> QgsFields:
     from .core import create_profile_field
     fields = QgsFields()
     fields.append(create_profile_field('profiles'))
-    fields.append(QgsField('name', QMetaType.QString))
+    fields.append(QgsField('name', QMETATYPE_QSTRING))
     return fields
 
 

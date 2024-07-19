@@ -23,16 +23,17 @@ import shutil
 import unittest
 
 from osgeo import gdal, ogr
-
 from qgis.core import QgsFeature, QgsField, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas
-from qgis.PyQt.QtCore import QMetaType, QMimeData, QPoint, Qt, QUrl
+from qgis.PyQt.QtCore import QMimeData, QPoint, Qt, QUrl
 from qgis.PyQt.QtGui import QDropEvent
 from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QDialog, QPushButton, QToolBar, QToolButton, \
     QVBoxLayout, QWidget
+
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
+from qps.qgisenums import QMETATYPE_INT
 from qps.speclib.core import is_spectral_library, profile_field_list, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
@@ -333,7 +334,7 @@ class TestSpeclibWidgets(TestCaseBase):
         sl.startEditing()
 
         attr = QgsField(name='test',
-                        type=QMetaType.Int,
+                        type=QMETATYPE_INT,
                         typeName='Int')
 
         sl.addAttribute(attr)

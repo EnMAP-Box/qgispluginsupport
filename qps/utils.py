@@ -44,35 +44,30 @@ import weakref
 import zipfile
 from collections import defaultdict
 from math import floor
-from typing import Union, List, Optional, Any, Tuple, Iterator, Dict, Iterable
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
+from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.osr import SpatialReference
-from qgis.PyQt.QtCore import QMetaType
-
+from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsEditorWidgetSetup, \
+    QgsFeature, QgsFeatureRequest, QgsFeatureSource, QgsFeedback, QgsField, QgsFields, QgsGeometry, QgsMapLayer, \
+    QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsMessageOutput, QgsPointXY, QgsProcessingAlgorithm, \
+    QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsRaster, QgsRasterBlock, QgsRasterBlockFeedback, \
+    QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, QgsRasterLayer, QgsRasterRenderer, QgsRectangle, \
+    QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
-    QVariant, QByteArray, QUrl, Qt
-from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
-    QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
-from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
-from qgis.core import QgsFeatureSource, QgsFeatureRequest, QgsVector, QgsRasterIdentifyResult, QgsRaster, QgsWkbTypes
-from qgis.core import (QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel,
-                       QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore,
-                       QgsCoordinateReferenceSystem, QgsCoordinateTransform,
-                       QgsRectangle, QgsPointXY, QgsProject,
-                       QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis,
-                       QgsGeometry, QgsFields)
-from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
-    QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
-from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
-from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
-from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE
-from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
+    QVariant
+from qgis.PyQt.QtGui import QColor, QIcon
+from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
+    QMenu, QToolButton, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement, QDomNode
 
-from .unitmodel import UnitLookup, datetime64
+from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
+    QMETATYPE_QBYTEARRAY, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_UINT
+from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+from .unitmodel import datetime64, UnitLookup
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -556,21 +551,21 @@ def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsFiel
     :return: QgsField
     """
     if isinstance(exampleValue, str):
-        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
+        return QgsField(name, QMETATYPE_QSTRING, 'varchar', comment=comment)
     elif isinstance(exampleValue, bool):
-        return QgsField(name, QMetaType.Bool, 'int', len=1, comment=comment)
+        return QgsField(name, QMETATYPE_BOOL, 'int', len=1, comment=comment)
     elif isinstance(exampleValue, (int, np.int8, np.int16, np.int32, np.int64)):
-        return QgsField(name, QMetaType.Int, 'int', comment=comment)
+        return QgsField(name, QMETATYPE_INT, 'int', comment=comment)
     elif isinstance(exampleValue, (np.uint, np.uint8, np.uint16, np.uint32, np.uint64)):
-        return QgsField(name, QMetaType.UInt, 'uint', comment=comment)
+        return QgsField(name, QMETATYPE_UINT, 'uint', comment=comment)
     elif isinstance(exampleValue, (float, np.double, np.float16, np.float32, np.float64)):
-        return QgsField(name, QMetaType.Double, 'double', comment=comment)
+        return QgsField(name, QMETATYPE_DOUBLE, 'double', comment=comment)
     elif isinstance(exampleValue, np.ndarray):
-        return QgsField(name, QMetaType.QString, 'varchar', comment=comment)
+        return QgsField(name, QMETATYPE_QSTRING, 'varchar', comment=comment)
     elif isinstance(exampleValue, np.datetime64):
-        return QgsField(name, QMetaType.QDateTime, comment=comment)
+        return QgsField(name, QMETATYPE_QDATETIME, comment=comment)
     elif isinstance(exampleValue, (bytes, QByteArray)):
-        return QgsField(name, QMetaType.QByteArray, 'Binary', comment=comment)
+        return QgsField(name, QMETATYPE_QBYTEARRAY, 'Binary', comment=comment)
     elif isinstance(exampleValue, list):
         assert len(exampleValue) > 0, 'need at least one value in provided list'
         v = exampleValue[0]
@@ -654,11 +649,11 @@ def setQgsFieldValue(feature: QgsFeature, field, value):
 
     if value is None:
         value = QVariant.NULL
-    if field.type() == QMetaType.QString:
+    if field.type() == QMETATYPE_QSTRING:
         value = str(value)
-    elif field.type() in [QMetaType.Int, QMetaType.Bool]:
+    elif field.type() in [QMETATYPE_INT, QMETATYPE_BOOL]:
         value = int(value)
-    elif field.type() in [QMetaType.Double]:
+    elif field.type() in [QMETATYPE_DOUBLE]:
         value = float(value)
 
     feature.setAttribute(field.name(), value)

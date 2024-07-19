@@ -23,13 +23,15 @@ import unittest
 from qgis.core import QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField, \
     QgsVectorLayer
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
-from qgis.PyQt.QtCore import QMetaType, QSize
+from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QColor, QPen
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QLabel, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
+
 from qps.plotstyling.plotstyling import createSetPlotStyleAction, MarkerSymbol, MarkerSymbolComboBox, pen2tuple, \
     PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, plotStyleEditorWidgetFactory, \
     PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, tuple2pen, XMLTAG_PLOTSTYLENODE
+from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import start_app, TestCaseBase
 
 start_app()
@@ -41,10 +43,10 @@ class PlotStyleTests(TestCaseBase):
         vl = QgsVectorLayer("Point?crs=EPSG:4326", 'test', "memory")
         vl.startEditing()
 
-        vl.addAttribute(QgsField(name='fStyle', type=QMetaType.QString, typeName='varchar', len=500))
-        vl.addAttribute(QgsField(name='fString', type=QMetaType.QString, typeName='varchar', len=50))
-        vl.addAttribute(QgsField(name='fInt', type=QMetaType.Int, typeName='int'))
-        vl.addAttribute(QgsField(name='fDouble', type=QMetaType.Double))
+        vl.addAttribute(QgsField(name='fStyle', type=QMETATYPE_QSTRING, typeName='varchar', len=500))
+        vl.addAttribute(QgsField(name='fString', type=QMETATYPE_QSTRING, typeName='varchar', len=50))
+        vl.addAttribute(QgsField(name='fInt', type=QMETATYPE_INT, typeName='int'))
+        vl.addAttribute(QgsField(name='fDouble', type=QMETATYPE_DOUBLE))
         vl.addFeature(QgsFeature(vl.fields()))
         vl.commitChanges()
         return vl

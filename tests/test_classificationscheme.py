@@ -14,15 +14,17 @@ from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFea
     QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
     QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsSearchWidgetWrapper
-from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt, QMetaType
+from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QApplication, QCheckBox, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+
 from qps.classification.classificationscheme import ClassificationMapLayerComboBox, ClassificationScheme, \
     ClassificationSchemeComboBox, ClassificationSchemeComboBoxModel, ClassificationSchemeEditorConfigWidget, \
     classificationSchemeEditorWidgetFactory, ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
     ClassificationSchemeWidgetFactory, ClassInfo, DEFAULT_UNCLASSIFIEDCOLOR, EDITOR_WIDGET_REGISTRY_KEY, MIMEDATA_KEY, \
     MIMEDATA_KEY_QGIS_STYLE
+from qps.qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.testing import start_app, TestCaseBase, TestObjects
 from qps.utils import file_search
 
@@ -67,11 +69,11 @@ class TestsClassificationScheme(TestCaseBase):
         vl = QgsVectorLayer("Point", "temporary_points", "memory")
         vl.startEditing()
         # add fields
-        vl.addAttribute(QgsField("name", QMetaType.QString))
+        vl.addAttribute(QgsField("name", QMETATYPE_QSTRING))
         nameL1 = 'field1'
         nameL2 = 'field2'
-        vl.addAttribute(QgsField(nameL1, QMetaType.Int))
-        vl.addAttribute(QgsField(nameL2, QMetaType.QString))
+        vl.addAttribute(QgsField(nameL1, QMETATYPE_INT))
+        vl.addAttribute(QgsField(nameL2, QMETATYPE_QSTRING))
         f = QgsFeature(vl.fields())
         f.setAttribute('name', 'an example')
         f.setAttribute(nameL1, 2)

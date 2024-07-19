@@ -1,7 +1,9 @@
 from typing import Dict, List, Union
 
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsVectorLayer
-from qgis.PyQt.QtCore import QMetaType, QVariant
+from qgis.PyQt.QtCore import QVariant
+
+from ...qgisenums import QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
 
 
 def create_profile_field(*args, **kwds) -> QgsField:
@@ -21,9 +23,9 @@ def can_store_spectral_profiles(field: QgsField) -> bool:
     """
     if not (isinstance(field, QgsField) and field.length() in [0, -1]):
         return False
-    b = field.type() in [QMetaType.QByteArray,
-                         QMetaType.QString,
-                         QMetaType.QVariantMap  # JSON
+    b = field.type() in [QMETATYPE_QBYTEARRAY,
+                         QMETATYPE_QSTRING,
+                         QMETATYPE_QVARIANTMAP  # JSON
                          ]
 
     return b

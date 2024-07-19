@@ -34,14 +34,16 @@ import sys
 from typing import List, Union
 
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
-from qgis.PyQt.QtCore import QMetaType, QUrlQuery, QVariant
+from qgis.PyQt.QtCore import QUrlQuery, QVariant
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu, QProgressDialog
+
 from .envi import readCSVMetadata
 from .. import createStandardFields, FIELD_NAME
 from ..core import create_profile_field, is_spectral_library
 from ..core.spectrallibrary import FIELD_VALUES
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import encodeProfileValueDict
+from ...qgisenums import QMETATYPE_QSTRING
 from ...utils import createQgsField, findTypeFromString
 
 
@@ -100,7 +102,7 @@ class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
             return fields
 
         fields.append(create_profile_field(self.FIELDNAME_PROFILE))
-        fields.append(QgsField(self.FIELDNAME_NAME, QMetaType.QString))
+        fields.append(QgsField(self.FIELDNAME_NAME, QMETATYPE_QSTRING))
 
         lyrCSV = readCSVMetadata(self.source())
         if isinstance(lyrCSV, QgsVectorLayer):

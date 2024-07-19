@@ -4,19 +4,19 @@ import re
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
-
 from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureRenderer, \
     QgsFeatureRequest, QgsField, QgsMapLayerProxyModel, QgsMarkerSymbol, QgsProject, QgsProperty, QgsRasterLayer, \
     QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
     QgsVectorLayerCache
 from qgis.gui import QgsDualView, QgsFilterLineEdit
-from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMetaType, QMimeData, QModelIndex, \
+from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
     QPoint, QRect, QSize, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
     QPainter, QPalette, QPen, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
     QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QTableView, QTreeView, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, PlotUpdateBlocker, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileCandidateGroup, \
@@ -29,6 +29,7 @@ from ..core import is_spectral_library, profile_field_indices, profile_field_lis
 from ..core.spectralprofile import decodeProfileValueDict
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
+from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
 from ...utils import convertDateUnit, loadUi, printCaller, qgsField, SelectMapLayerDialog, SignalBlocker, \
     SignalObjectWrapper
@@ -1634,7 +1635,7 @@ class SpectralLibraryPlotWidget(QWidget):
             rx3 = re.compile('fid', re.I)
             for rx in [rx1, rx2, rx3]:
                 for field in item.speclib().fields():
-                    if field.type() in [QMetaType.QString, QMetaType.Int] and rx.search(field.name()):
+                    if field.type() in [QMETATYPE_QSTRING, QMETATYPE_INT] and rx.search(field.name()):
                         name_field = field
                         break
                 if name_field:

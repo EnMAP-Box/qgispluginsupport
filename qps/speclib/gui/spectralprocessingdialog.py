@@ -20,10 +20,11 @@ from qgis.gui import QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMes
     QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper, \
     QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext, \
     QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
-from qgis.PyQt.QtCore import pyqtSignal, QMetaType, QModelIndex, QObject, Qt, QTimer
+from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy, \
     QVBoxLayout, QWidget
+
 from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
 from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
@@ -32,6 +33,7 @@ from ..core.spectrallibraryrasterdataprovider import createRasterLayers, FieldTo
 from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from ...qgisenums import QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...utils import iconForFieldType, numpyToQgisDataType, qgsRasterLayer, rasterArray
 
@@ -926,7 +928,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 value = encodeProfileValueDict(pdict, target_field)
                             else:
                                 value = float(tmp[0, 0, i])
-                                if target_field.type() == QMetaType.QString:
+                                if target_field.type() == QMETATYPE_QSTRING:
                                     value = str(value)
                             assert speclib.changeAttributeValue(feature.id(), target_field_index, value)
                             # assert feature.setAttribute(target_field_index, value)
