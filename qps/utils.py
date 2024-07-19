@@ -654,11 +654,11 @@ def setQgsFieldValue(feature: QgsFeature, field, value):
 
     if value is None:
         value = QVariant.NULL
-    if field.type() == QVariant.String:
+    if field.type() == QMetaType.QString:
         value = str(value)
-    elif field.type() in [QVariant.Int, QVariant.Bool]:
+    elif field.type() in [QMetaType.Int, QMetaType.Bool]:
         value = int(value)
-    elif field.type() in [QVariant.Double]:
+    elif field.type() in [QMetaType.Double]:
         value = float(value)
 
     feature.setAttribute(field.name(), value)

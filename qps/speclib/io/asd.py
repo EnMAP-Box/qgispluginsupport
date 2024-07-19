@@ -30,20 +30,19 @@ import os
 import pathlib
 import re
 import struct
-
 import warnings
-from typing import Tuple, List, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsVectorLayer, QgsFields, QgsExpressionContext, QgsFeature, \
-    QgsField, QgsPointXY, QgsGeometry, QgsProcessingFeedback
+from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, \
+    QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFileWidget
+from qgis.PyQt.QtCore import QMetaType
 from .. import FIELD_NAME
 from ..core import create_profile_field
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
-from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
+from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
+from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict
 
 """
 
@@ -223,13 +222,13 @@ class TM_STRUCT(object):
 
 
 ASD_FIELDS = QgsFields()
-ASD_FIELDS.append(QgsField(FIELD_NAME, QVariant.String))
+ASD_FIELDS.append(QgsField(FIELD_NAME, QMetaType.QString))
 ASD_FIELDS.append(create_profile_field('Reference'))
 ASD_FIELDS.append(create_profile_field('Spectrum'))
-ASD_FIELDS.append(QgsField('co', QVariant.String))
-ASD_FIELDS.append(QgsField('instrument', QVariant.String))
-ASD_FIELDS.append(QgsField('instrument_num', QVariant.Int))
-ASD_FIELDS.append(QgsField('sample_count', QVariant.Int))
+ASD_FIELDS.append(QgsField('co', QMetaType.QString))
+ASD_FIELDS.append(QgsField('instrument', QMetaType.QString))
+ASD_FIELDS.append(QgsField('instrument_num', QMetaType.Int))
+ASD_FIELDS.append(QgsField('sample_count', QMetaType.Int))
 
 
 class ASDBinaryFile(object):

@@ -2,29 +2,23 @@
 import datetime
 import random
 import unittest
-from typing import Tuple, List, Iterator
+from typing import Iterator, List, Tuple
 
-from qgis.PyQt.QtCore import QSize, QVariant, Qt
-from qgis.PyQt.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QSplitter
-from qgis.core import QgsExpressionContext, QgsRaster, QgsPoint, QgsPointXY, QgsMapToPixel, Qgis, QgsField
-from qgis.core import QgsGeometry
-from qgis.core import QgsRasterDataProvider, QgsVectorLayer, QgsFeature, QgsWkbTypes, edit
-from qgis.core import QgsRasterLayer, QgsProject
-from qgis.gui import QgsMapCanvas, QgsDualView
-
+from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
+    QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsDualView, QgsMapCanvas
+from qgis.PyQt.QtCore import QMetaType, QSize, Qt
+from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
 from qps.maptools import CursorLocationMapTool
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting, isProfileValueDict
+from qps.speclib.core.spectralprofile import isProfileValueDict, SpectralProfileBlock, SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprofilesources import SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, \
-    SpectralProfileBridgeTreeView, SpectralProfileBridgeViewDelegate, \
-    SamplingBlockDescription, \
-    SpectralProfileBridge, MapCanvasLayerProfileSource, SpectralFeatureGeneratorNode, SpectralProfileGeneratorNode, \
-    SpectralProfileSourceModel, StandardLayerProfileSource, SpectralProfileSource, ProfileSamplingMode, \
-    StandardFieldGeneratorNode
-from qps.testing import TestCaseBase, start_app
-from qps.testing import TestObjects
-from qps.utils import SpatialPoint, parseWavelength, rasterArray, SpatialExtent
+from qps.speclib.gui.spectralprofilesources import MapCanvasLayerProfileSource, ProfileSamplingMode, \
+    SamplingBlockDescription, SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView, \
+    SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource, SpectralProfileSourceModel, \
+    SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource
+from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.utils import parseWavelength, rasterArray, SpatialExtent, SpatialPoint
 
 start_app()
 
@@ -594,12 +588,12 @@ class SpectralProcessingTests(TestCaseBase):
             for oldName, newName in RENAME.items():
                 idx = sl.fields().lookupField(oldName)
                 sl.renameAttribute(idx, newName)
-            sl.addAttribute(QgsField('px_x', QVariant.Int))
-            sl.addAttribute(QgsField('px_y', QVariant.Int))
-            sl.addAttribute(QgsField('geo_x', QVariant.Double))
-            sl.addAttribute(QgsField('geo_y', QVariant.Double))
-            sl.addAttribute(QgsField('text', QVariant.String))
-            sl.addAttribute(QgsField('color', QVariant.String))
+            sl.addAttribute(QgsField('px_x', QMetaType.Int))
+            sl.addAttribute(QgsField('px_y', QMetaType.Int))
+            sl.addAttribute(QgsField('geo_x', QMetaType.Double))
+            sl.addAttribute(QgsField('geo_y', QMetaType.Double))
+            sl.addAttribute(QgsField('text', QMetaType.QString))
+            sl.addAttribute(QgsField('color', QMetaType.QString))
 
         sl.commitChanges()
 
@@ -623,7 +617,7 @@ class SpectralProcessingTests(TestCaseBase):
 
         self.assertTrue(n1.hasErrors())
         self.assertTrue(len(errors) > 0)
-        field = QgsField('n1field', QVariant.String)
+        field = QgsField('n1field', QMetaType.QString)
         n1.setField(field)
         n1.setExpression("'foobar'")
         errors2 = list(n1.errors(recursive=True))

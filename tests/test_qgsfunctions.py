@@ -5,26 +5,20 @@ import unittest
 import numpy as np
 from osgeo import gdal_array
 
-from qgis.PyQt.QtCore import QByteArray, QVariant
-from qgis.core import Qgis
-from qgis.core import QgsCoordinateTransform
-from qgis.core import QgsExpressionFunction, QgsExpression, QgsExpressionContext, QgsProperty, QgsExpressionContextUtils
-from qgis.core import QgsField
-from qgis.core import QgsMapLayerStore
-from qgis.core import QgsProject, QgsVectorLayer, QgsFeature, QgsGeometry, QgsFields
-from qgis.core import QgsRasterLayer, QgsPointXY, edit
-from qgis.core import QgsWkbTypes
+from qgis.core import edit, Qgis, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
+    QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
+    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsFieldCalculator
+from qgis.PyQt.QtCore import QByteArray, QMetaType
 from qps.qgisenums import QGIS_WKBTYPE
-from qps.qgsfunctions import SpectralMath, HelpStringMaker, Format_Py, RasterProfile, RasterArray, SpectralData, \
-    SpectralEncoding, ExpressionFunctionUtils
+from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
+    SpectralData, SpectralEncoding, SpectralMath
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, ProfileEncoding
 from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
-from qps.testing import TestObjects, TestCaseBase, start_app
-from qps.utils import SpatialExtent
-from qps.utils import SpatialPoint
+from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.utils import SpatialExtent, SpatialPoint
 from qpstestdata import enmap, enmap_multipolygon, enmap_pixel
 
 start_app()
@@ -38,11 +32,11 @@ def createAggregateTestLayer():
             {'class': 'b', 'num': 3, 't_mean': 4.0, 't_min': 3, 't_max': 5},
             {'class': 'b', 'num': 5, 't_mean': 4.0, 't_min': 3, 't_max': 5},
             ]
-    fields = [QgsField('class', QVariant.String),
-              QgsField('num', QVariant.Int),
-              QgsField('t_mean', QVariant.Double),
-              QgsField('t_min', QVariant.Double),
-              QgsField('t_max', QVariant.Double)
+    fields = [QgsField('class', QMetaType.QString),
+              QgsField('num', QMetaType.Int),
+              QgsField('t_mean', QMetaType.Double),
+              QgsField('t_min', QMetaType.Double),
+              QgsField('t_max', QMetaType.Double)
               ]
     with edit(sl):
         for f in fields:

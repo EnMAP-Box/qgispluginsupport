@@ -21,8 +21,8 @@ path = pathlib.Path('~').expanduser() / 'test.gpkg'
 # assert not path.is_file()
 print(f'file exists: {path}')
 fields = QgsFields()
-fields.append(QgsField('name', QVariant.String))
-fields.append(QgsField('num', QVariant.Int))
+fields.append(QgsField('name', QMetaType.QString))
+fields.append(QgsField('num', QMetaType.Int))
 fields.append(QgsField('binary', QVariant.ByteArray))
 
 features = []

@@ -1,16 +1,14 @@
 import unittest
 
-from qgis.PyQt.QtCore import QVariant
-from qgis.PyQt.QtWidgets import QTableView, QComboBox, QWidget, QPushButton, QHBoxLayout
-from qgis.core import QgsField
-from qgis.gui import QgsGui, QgsEditorWidgetFactory
-
-from qgis.core import edit
+from qgis.core import edit, QgsField
+from qgis.gui import QgsEditorWidgetFactory, QgsGui
+from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtWidgets import QComboBox, QHBoxLayout, QPushButton, QTableView, QWidget
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.gui.spectralprofilefieldmodel import SpectralProfileFieldActivatorModel, \
-    SpectralProfileFieldActivatorDialog, SpectralProfileFieldListModel
+from qps.speclib.gui.spectralprofilefieldmodel import SpectralProfileFieldActivatorDialog, \
+    SpectralProfileFieldActivatorModel, SpectralProfileFieldListModel
 from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
@@ -24,9 +22,9 @@ class TestSpectralProfileFieldModel(TestCase):
         vl = TestObjects.createSpectralLibrary()
 
         with edit(vl):
-            vl.addAttribute(QgsField('nofield1', QVariant.Int))
-            vl.addAttribute(QgsField('nofield2', QVariant.Double))
-            vl.addAttribute(QgsField('nofield3', QVariant.String, len=255))
+            vl.addAttribute(QgsField('nofield1', QMetaType.Int))
+            vl.addAttribute(QgsField('nofield2', QMetaType.Double))
+            vl.addAttribute(QgsField('nofield3', QMetaType.QString, len=255))
             b1 = SpectralLibraryUtils.addSpectralProfileField(vl, 'profile1')
             b2 = SpectralLibraryUtils.addSpectralProfileField(vl, 'profile2')
 
@@ -73,12 +71,12 @@ class TestSpectralProfileFieldModel(TestCase):
         vl = TestObjects.createSpectralLibrary()
 
         with edit(vl):
-            vl.addAttribute(QgsField('nofield1', QVariant.Int))
-            vl.addAttribute(QgsField('nofield2', QVariant.Double))
-            vl.addAttribute(QgsField('nofield3', QVariant.String, len=255))
-            vl.addAttribute(QgsField('profile1', QVariant.String, len=0))
-            vl.addAttribute(QgsField('profile2', QVariant.String, len=-1))
-            vl.addAttribute(QgsField('profile3', QVariant.ByteArray))
+            vl.addAttribute(QgsField('nofield1', QMetaType.Int))
+            vl.addAttribute(QgsField('nofield2', QMetaType.Double))
+            vl.addAttribute(QgsField('nofield3', QMetaType.QString, len=255))
+            vl.addAttribute(QgsField('profile1', QMetaType.QString, len=0))
+            vl.addAttribute(QgsField('profile2', QMetaType.QString, len=-1))
+            vl.addAttribute(QgsField('profile3', QMetaType.QByteArray))
 
         model = SpectralProfileFieldActivatorModel()
         model.setLayer(vl)
@@ -94,12 +92,12 @@ class TestSpectralProfileFieldModel(TestCase):
         vl = TestObjects.createSpectralLibrary()
 
         with edit(vl):
-            vl.addAttribute(QgsField('nofield1', QVariant.Int))
-            vl.addAttribute(QgsField('nofield2', QVariant.Double))
-            vl.addAttribute(QgsField('nofield3', QVariant.String, len=255))
-            vl.addAttribute(QgsField('profile1', QVariant.String, len=0))
-            vl.addAttribute(QgsField('profile2', QVariant.String, len=-1))
-            vl.addAttribute(QgsField('profile3', QVariant.ByteArray))
+            vl.addAttribute(QgsField('nofield1', QMetaType.Int))
+            vl.addAttribute(QgsField('nofield2', QMetaType.Double))
+            vl.addAttribute(QgsField('nofield3', QMetaType.QString, len=255))
+            vl.addAttribute(QgsField('profile1', QMetaType.QString, len=0))
+            vl.addAttribute(QgsField('profile2', QMetaType.QString, len=-1))
+            vl.addAttribute(QgsField('profile3', QMetaType.QByteArray))
 
         d = SpectralProfileFieldActivatorDialog()
 

@@ -26,35 +26,32 @@
 """
 import pathlib
 import sys
-from typing import List, Union, Generator
+from typing import Generator, List, Union
 
 import numpy as np
 from osgeo import gdal
 
-from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QVariant, Qt, QUrl
-from qgis.PyQt.QtWidgets import (QComboBox, QLabel, QDialogButtonBox, QProgressBar,
-                                 QDialog, QTextEdit, QCheckBox, QHBoxLayout)
-from qgis.core import QgsCoordinateTransform
-from qgis.core import QgsFeatureRequest, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils, QgsProject
-from qgis.core import QgsFields, QgsField, Qgis, QgsFeature, QgsRasterDataProvider, \
-    QgsCoordinateReferenceSystem, QgsGeometry, QgsPointXY
-from qgis.core import QgsProviderRegistry
-from qgis.core import QgsTask, QgsVectorLayer, QgsRasterLayer, QgsWkbTypes, \
-    QgsTaskManager, QgsMapLayerProxyModel, QgsApplication, QgsProcessingFeedback
+from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, \
+    QgsExpressionContext, QgsExpressionContextUtils, QgsFeature, QgsFeatureRequest, QgsField, QgsFields, QgsGeometry, \
+    QgsMapLayerProxyModel, QgsPointXY, QgsProcessingFeedback, QgsProject, QgsProviderRegistry, QgsRasterDataProvider, \
+    QgsRasterLayer, QgsTask, QgsTaskManager, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsMapLayerComboBox
-from .. import speclibUiPath, FIELD_NAME, FIELD_VALUES
+from qgis.PyQt import sip
+from qgis.PyQt.QtCore import QMetaType, Qt, QUrl
+from qgis.PyQt.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QLabel, QProgressBar,
+                                 QTextEdit)
+from .. import FIELD_NAME, FIELD_VALUES, speclibUiPath
 from ..core import create_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget, \
-    IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS
-from ..core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict
+from ..core.spectrallibraryio import IMPORT_SETTINGS_KEY_REQUIRED_SOURCE_FIELDS, SpectralLibraryImportWidget, \
+    SpectralLibraryIO
+from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict
 from ...models import Option, OptionListModel
-from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_WKBTYPE, QGIS_LAYERFILTER
+from ...qgisenums import QGIS_GEOMETRYTYPE, QGIS_LAYERFILTER, QGIS_WKBTYPE
 from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import SelectMapLayersDialog, gdalDataset, parseWavelength, parseFWHM, parseBadBandList, loadUi, \
-    rasterArray, qgsRasterLayer, px2geocoordinatesV2, qgsVectorLayer, noDataValues
+from ...utils import gdalDataset, loadUi, noDataValues, parseBadBandList, parseFWHM, parseWavelength, \
+    px2geocoordinatesV2, qgsRasterLayer, qgsVectorLayer, rasterArray, SelectMapLayersDialog
 
 PIXEL_LIMIT = 100 * 100
 
@@ -334,10 +331,10 @@ RF_PX_Y = 'px_y'
 
 RASTER_FIELDS = QgsFields()
 RASTER_FIELDS.append(create_profile_field(RF_PROFILE))
-RASTER_FIELDS.append(QgsField(RF_NAME, QVariant.String))
-RASTER_FIELDS.append(QgsField(RF_SOURCE, QVariant.String))
-RASTER_FIELDS.append(QgsField(RF_PX_X, QVariant.Int))
-RASTER_FIELDS.append(QgsField(RF_PX_Y, QVariant.Int))
+RASTER_FIELDS.append(QgsField(RF_NAME, QMetaType.QString))
+RASTER_FIELDS.append(QgsField(RF_SOURCE, QMetaType.QString))
+RASTER_FIELDS.append(QgsField(RF_PX_X, QMetaType.Int))
+RASTER_FIELDS.append(QgsField(RF_PX_Y, QMetaType.Int))
 
 
 class RasterLayerSpectralLibraryImportWidget(SpectralLibraryImportWidget):

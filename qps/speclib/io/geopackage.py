@@ -1,15 +1,16 @@
 import os
 import pathlib
-from typing import Union, Any, List
+from typing import Any, List, Union
+
 import numpy as np
-from qgis.PyQt.QtCore import QVariant
 from osgeo.gdalconst import DMD_CREATIONFIELDDATASUBTYPES
 from osgeo.ogr import Driver, GetDriverByName
-from qgis.core import QgsField, QgsVectorLayer, QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
-    QgsCoordinateReferenceSystem, QgsVectorFileWriter, QgsCoordinateTransformContext
+
+from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, QgsFeature, \
+    QgsField, QgsFields, QgsProcessingFeedback, QgsVectorFileWriter, QgsVectorLayer
+from qgis.PyQt.QtCore import QMetaType, QVariant
 from ..core import is_profile_field
-from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
-    SpectralLibraryExportWidget
+from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
 
 
@@ -100,7 +101,7 @@ class GeoPackageFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
             name = field.name()
             idx = self.mFields.lookupField(name)
             if is_profile_field(field) and field.type() == QVariant.Map and not can_write_json:
-                convertedField = QgsField(name=name, type=QVariant.String, len=-1)
+                convertedField = QgsField(name=name, type=QMetaType.QString, len=-1)
                 self.mFieldDefinitions[name] = convertedField
                 self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
             else:

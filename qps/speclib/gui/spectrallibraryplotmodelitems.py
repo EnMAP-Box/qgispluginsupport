@@ -23,33 +23,28 @@
 ***************************************************************************
 """
 import sys
-from typing import List, Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import Qt, QModelIndex, pyqtSignal, QMimeData, QObject, QSize, QSignalBlocker
-from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel, QColor, QIcon, QPen, QPixmap
-from qgis.PyQt.QtWidgets import QWidget, QComboBox, QSizePolicy, QHBoxLayout, QCheckBox, QDoubleSpinBox, \
-    QSpinBox, QMenu
+from qgis.core import Qgis, QgsExpression, QgsExpressionContext, QgsExpressionContextGenerator, \
+    QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, QgsField, \
+    QgsHillshadeRenderer, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProperty, QgsPropertyDefinition, \
+    QgsRasterContourRenderer, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, QgsRenderContext, \
+    QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, QgsSingleBandPseudoColorRenderer, QgsTextFormat, \
+    QgsVectorLayer, QgsWkbTypes, QgsXmlUtils
+from qgis.gui import QgsColorButton, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsPropertyOverrideButton, QgsSpinBox
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QSignalBlocker, QSize, Qt
+from qgis.PyQt.QtGui import QColor, QIcon, QPen, QPixmap, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDoubleSpinBox, QHBoxLayout, QMenu, QSizePolicy, QSpinBox, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import (QgsWkbTypes, QgsField, QgsPropertyDefinition, QgsProperty,
-                       QgsExpressionContext, QgsRasterLayer, QgsReadWriteContext,
-                       QgsExpressionContextUtils, QgsExpressionContextGenerator, QgsRenderContext,
-                       QgsRasterRenderer, QgsMultiBandColorRenderer, QgsHillshadeRenderer,
-                       QgsSingleBandPseudoColorRenderer,
-                       QgsPalettedRasterRenderer, QgsRasterContourRenderer, QgsSingleBandColorDataRenderer,
-                       QgsSingleBandGrayRenderer, QgsFeatureRenderer,
-                       QgsVectorLayer, QgsExpression, QgsExpressionContextScope, QgsFeature,
-                       QgsXmlUtils, QgsTextFormat)
-from qgis.gui import QgsFieldExpressionWidget, QgsColorButton, QgsPropertyOverrideButton, \
-    QgsSpinBox, QgsDoubleSpinBox
-from .spectrallibraryplotitems import SpectralProfilePlotLegend, SpectralProfilePlotItem
+from .spectrallibraryplotitems import SpectralProfilePlotItem, SpectralProfilePlotLegend
 from ..core import is_profile_field
 from ...externals.htmlwidgets import HTMLComboBox
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton, PlotWidgetStyle
 from ...pyqtgraph.pyqtgraph import InfiniteLine, PlotDataItem
 from ...speclib.core import create_profile_field
-from ...unitmodel import UnitConverterFunctionModel, BAND_NUMBER, BAND_INDEX
+from ...unitmodel import BAND_INDEX, BAND_NUMBER, UnitConverterFunctionModel
 from ...utils import parseWavelength, SignalBlocker
 
 WARNING_ICON = QIcon(r':/images/themes/default/mIconWarning.svg')
@@ -1651,7 +1646,10 @@ class RasterRendererGroup(PropertyItemGroup):
             elif isinstance(renderer, QgsSingleBandPseudoColorRenderer):
                 bandR = renderer.band()
             elif isinstance(renderer, QgsSingleBandGrayRenderer):
-                bandR = renderer.grayBand()
+                if Qgis.versionInt() >= 33800:
+                    bandR = renderer.inputBand()
+                else:
+                    bandR = renderer.grayBand()
                 # rendererName = 'Single Band Gray'
         emptyPen = QPen()
 

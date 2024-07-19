@@ -22,28 +22,25 @@ import pathlib
 import shutil
 import unittest
 
-from osgeo import ogr, gdal
+from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import QMimeData, QUrl, QPoint, Qt
-from qgis.PyQt.QtCore import QVariant
+from qgis.core import QgsFeature, QgsField, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas
+from qgis.PyQt.QtCore import QMetaType, QMimeData, QPoint, Qt, QUrl
 from qgis.PyQt.QtGui import QDropEvent
-from qgis.PyQt.QtWidgets import QApplication, QToolBar, QVBoxLayout, QPushButton, \
-    QToolButton, QAction, QComboBox, QWidget, QDialog
-from qgis.core import QgsFeature
-from qgis.core import QgsProject, QgsRasterLayer, QgsVectorLayer, QgsField, QgsWkbTypes
-from qgis.gui import QgsMapCanvas, \
-    QgsDualView, QgsGui
+from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QDialog, QPushButton, QToolBar, QToolButton, \
+    QVBoxLayout, QWidget
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
-from qps.speclib.core import profile_field_list, is_spectral_library, profile_field_names
+from qps.speclib.core import is_spectral_library, profile_field_list, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
-from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget, SpectralLibraryPanel
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryPanel, SpectralLibraryWidget
+from qps.testing import start_app, TestCaseBase, TestObjects
 from qps.unitmodel import BAND_NUMBER, UnitLookup
 from qps.utils import setToolButtonDefaultActionMenu
 from qpstestdata import enmap, hymap, speclib_geojson
@@ -336,7 +333,7 @@ class TestSpeclibWidgets(TestCaseBase):
         sl.startEditing()
 
         attr = QgsField(name='test',
-                        type=QVariant.Int,
+                        type=QMetaType.Int,
                         typeName='Int')
 
         sl.addAttribute(attr)

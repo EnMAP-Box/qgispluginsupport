@@ -29,31 +29,24 @@ import math
 import pathlib
 import re
 from pathlib import Path
-from typing import List, Pattern, Tuple, Union, Dict, Any, Match
+from typing import Any, Dict, List, Match, Pattern, Tuple, Union
 
-from qgis.PyQt.QtCore import QMetaType
-
-from qgis.PyQt.QtWidgets import QHBoxLayout
 from osgeo import gdal, ogr
-from qgis.PyQt.QtCore import QRegExp, QTimer, Qt, NULL, QVariant, QAbstractTableModel, QModelIndex, \
-    QSortFilterProxyModel, QMimeData, QUrl
-from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QCheckBox, QLabel, QSizePolicy, QGridLayout
-from qgis.PyQt.QtWidgets import QLineEdit, QDialogButtonBox, QComboBox, QWidget, \
-    QDialog, QAction, QTableView, QGroupBox, QMenu, QApplication
-from qgis.core import QgsAttributeTableConfig, QgsRasterLayer, QgsVectorLayer, QgsMapLayer, \
-    QgsEditorWidgetSetup, \
-    QgsRasterDataProvider, Qgis, QgsField, QgsFieldConstraints, QgsDefaultValue, QgsFeature, edit
-from qgis.core import QgsFeatureRequest
-from qgis.gui import QgsGui, QgsFieldCalculator, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar, \
-    QgsDualView, \
-    QgsAttributeTableModel, QgsAttributeEditorContext
 
+from qgis.core import edit, Qgis, QgsAttributeTableConfig, QgsDefaultValue, QgsEditorWidgetSetup, QgsFeature, \
+    QgsFeatureRequest, QgsField, QgsFieldConstraints, QgsMapLayer, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer
+from qgis.gui import QgsAttributeEditorContext, QgsAttributeTableModel, QgsDualView, QgsFieldCalculator, QgsGui, \
+    QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMessageBar
+from qgis.PyQt.QtCore import NULL, QAbstractTableModel, QMetaType, QMimeData, QModelIndex, QRegExp, \
+    QSortFilterProxyModel, Qt, QTimer, QUrl
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QAction, QApplication, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QGridLayout, \
+    QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMenu, QSizePolicy, QTableView, QWidget
 from .core import QpsMapLayerConfigWidget
 from .. import debugLog
 from ..classification.classificationscheme import ClassificationScheme, ClassificationSchemeWidget
 from ..qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ..utils import loadUi, gdalDataset, ogrDataSource
+from ..utils import gdalDataset, loadUi, ogrDataSource
 
 HAS_PYSTAC = importlib.util.find_spec('pystac') is not None
 
@@ -136,12 +129,12 @@ class MetadataUtils(object):
                 ('common_name', BandFieldNames.Name),
                 ('center_wavelength', BandFieldNames.Wavelength),
                 ('full_width_half_max', BandFieldNames.FWHM),
-                                       ],
+            ],
                 'raster:bands': [
                     ('nodata', BandFieldNames.NoData),
                     ('scale', BandFieldNames.Scale),
                     ('offset', BandFieldNames.Offset),
-                                ],
+                ],
             }
 
             for asset_key, asset in stac_item.assets.items():
@@ -292,7 +285,7 @@ class GDALBandMetadataModel(QgsVectorLayer):
         return self.mMapLayer
 
     def createDomainField(self) -> QgsField:
-        DOMAIN = QgsField(BandFieldNames.Domain, type=QVariant.String)
+        DOMAIN = QgsField(BandFieldNames.Domain, type=QMetaType.QString)
         constraint = QgsFieldConstraints()
         DOMAIN.setReadOnly(True)
         DOMAIN.setDefaultValueDefinition(QgsDefaultValue(''))
@@ -392,8 +385,8 @@ class GDALBandMetadataModel(QgsVectorLayer):
         OFFSET = QgsField(BandFieldNames.Offset, type=QMetaType.Double)
         SCALE = QgsField(BandFieldNames.Scale, type=QMetaType.Double)
 
-        # ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QVariant.Double)
-        # ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QVariant.Double)
+        # ENVI_OFFSET = QgsField(BandFieldNames.ENVIDataOffset, type=QMetaType.Double)
+        # ENVI_GAIN = QgsField(BandFieldNames.ENVIDataGain, type=QMetaType.Double)
 
         # add fields
         for field in [BANDNO,

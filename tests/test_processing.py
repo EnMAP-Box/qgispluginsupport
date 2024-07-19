@@ -28,24 +28,23 @@ import qgis.testing
 import qgis.utils
 from processing import AlgorithmDialog
 from processing.ProcessingPlugin import ProcessingPlugin
-from qgis.PyQt.QtCore import QObject, Qt, QModelIndex, QVariant
+from qgis.core import edit, QgsApplication, QgsFeature, QgsField, QgsFields, QgsProcessingAlgorithm, \
+    QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
+    QgsVectorLayer
+from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
+from qgis.PyQt.QtCore import QMetaType, QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.core import QgsFields, QgsField
-from qgis.core import QgsApplication, QgsVectorLayer, QgsFeature, edit
-from qgis.core import QgsProcessingAlgRunnerTask, QgsTaskManager
-from qgis.core import QgsProject, QgsProcessingRegistry, QgsProcessingAlgorithm, QgsProcessingOutputRasterLayer
-from qgis.gui import QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.qgsfunctions import registerQgsExpressionFunctions
-from qps.speclib.core import profile_field_names, profile_fields, create_profile_field
+from qps.speclib.core import create_profile_field, profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryIO
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, ProfileEncoding, encodeProfileValueDict, \
-    isProfileValueDict, prepareProfileValueDict
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
+    prepareProfileValueDict, ProfileEncoding
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
-from qps.testing import TestCaseBase, ExampleAlgorithmProvider, start_app, TestObjects
+from qps.testing import ExampleAlgorithmProvider, start_app, TestCaseBase, TestObjects
 
 start_app()
 
@@ -350,7 +349,7 @@ class ProcessingToolsTest(TestCaseBase):
         fields = QgsFields()
         fields.append(create_profile_field('A'))
         fields.append(create_profile_field('B'))
-        fields.append(QgsField('notes', QVariant.String))
+        fields.append(QgsField('notes', QMetaType.QString))
 
         sl = TestObjects.createEmptyMemoryLayer(fields, name='MySpeclib')
 
