@@ -37,7 +37,7 @@ from typing import List, Union, Dict, Optional
 
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData
+from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData, QMetaType
 from qgis.PyQt.QtWidgets import QWidget
 from qgis.core import QgsApplication, QgsFeatureIterator, \
     QgsFeature, QgsVectorLayer, QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, \
@@ -256,11 +256,11 @@ class SpectralLibraryUtils:
         """
         encoding = ProfileEncoding.fromInput(encoding)
         if encoding == ProfileEncoding.Bytes:
-            field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
+            field = QgsField(name=name, type=QMetaType.QByteArray, comment=comment)
         elif encoding == ProfileEncoding.Text:
-            field = QgsField(name=name, type=QVariant.String, len=-1, comment=comment)
+            field = QgsField(name=name, type=QMetaType.QString, len=-1, comment=comment)
         elif encoding == ProfileEncoding.Json:
-            field = QgsField(name=name, type=QVariant.Map, typeName='JSON', comment=comment)
+            field = QgsField(name=name, type=QMetaType.QVariantMap, typeName='JSON', comment=comment)
 
         setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
         field.setEditorWidgetSetup(setup)
@@ -467,7 +467,7 @@ class SpectralLibraryUtils:
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
         with edit(lyr):
             lyr.beginEditCommand('Add fields')
-            assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QVariant.String))
+            assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QMetaType.QString))
 
             for fieldname in profile_fields:
                 if isinstance(fieldname, QgsField):

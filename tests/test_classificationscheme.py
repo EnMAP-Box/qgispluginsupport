@@ -10,23 +10,20 @@ import os
 import tempfile
 import unittest
 
-from qgis.PyQt.QtCore import NULL
-from qgis.PyQt.QtCore import QVariant, Qt, QMimeData, QSize, QModelIndex
+from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFeature, QgsFeatureRenderer, QgsField, \
+    QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
+    QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsSearchWidgetWrapper
+from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt, QMetaType
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QApplication
+from qgis.PyQt.QtWidgets import QApplication, QCheckBox, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, \
-    QgsFeature, QgsEditorWidgetSetup, \
-    QgsPalettedRasterRenderer, QgsCategorizedSymbolRenderer, \
-    QgsReadWriteContext, QgsFeatureRenderer, QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol, QgsRendererCategory, \
-    QgsField, QgsWkbTypes
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsMapLayerComboBox, QgsGui, QgsSearchWidgetWrapper
-from qps.classification.classificationscheme import ClassificationScheme, ClassInfo, EDITOR_WIDGET_REGISTRY_KEY, \
-    ClassificationMapLayerComboBox, DEFAULT_UNCLASSIFIEDCOLOR, MIMEDATA_KEY, ClassificationSchemeComboBox, \
-    ClassificationSchemeWidgetFactory, ClassificationSchemeEditorConfigWidget, \
-    ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
-    ClassificationSchemeComboBoxModel, MIMEDATA_KEY_QGIS_STYLE, classificationSchemeEditorWidgetFactory
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.classification.classificationscheme import ClassificationMapLayerComboBox, ClassificationScheme, \
+    ClassificationSchemeComboBox, ClassificationSchemeComboBoxModel, ClassificationSchemeEditorConfigWidget, \
+    classificationSchemeEditorWidgetFactory, ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
+    ClassificationSchemeWidgetFactory, ClassInfo, DEFAULT_UNCLASSIFIEDCOLOR, EDITOR_WIDGET_REGISTRY_KEY, MIMEDATA_KEY, \
+    MIMEDATA_KEY_QGIS_STYLE
+from qps.testing import start_app, TestCaseBase, TestObjects
 from qps.utils import file_search
 
 start_app()
@@ -70,11 +67,11 @@ class TestsClassificationScheme(TestCaseBase):
         vl = QgsVectorLayer("Point", "temporary_points", "memory")
         vl.startEditing()
         # add fields
-        vl.addAttribute(QgsField("name", QVariant.String))
+        vl.addAttribute(QgsField("name", QMetaType.QString))
         nameL1 = 'field1'
         nameL2 = 'field2'
-        vl.addAttribute(QgsField(nameL1, QVariant.Int))
-        vl.addAttribute(QgsField(nameL2, QVariant.String))
+        vl.addAttribute(QgsField(nameL1, QMetaType.Int))
+        vl.addAttribute(QgsField(nameL2, QMetaType.QString))
         f = QgsFeature(vl.fields())
         f.setAttribute('name', 'an example')
         f.setAttribute(nameL1, 2)

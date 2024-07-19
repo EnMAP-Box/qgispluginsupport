@@ -16,7 +16,7 @@ from typing import Match
 
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QMetaType
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget, QTableView, QPushButton, QHBoxLayout
 from qgis.core import QgsRasterLayer, QgsProject, QgsField
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidget, QgsMapLayerComboBox, QgsRasterTransparencyWidget, \
@@ -189,7 +189,7 @@ class LayerConfigWidgetsTests(TestCaseBase):
         v.setModel(m)
 
         self.assertTrue(lyr.startEditing())
-        f = QgsField('newField', QVariant.String, 'String')
+        f = QgsField('newField', QMetaType.QString, 'String')
         lyr.addAttribute(f)
         self.assertTrue(lyr.commitChanges())
         self.showGui(v)

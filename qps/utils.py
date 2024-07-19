@@ -49,7 +49,7 @@ from typing import Union, List, Optional, Any, Tuple, Iterator, Dict, Iterable
 import numpy as np
 from osgeo import gdal, ogr, osr, gdal_array
 from osgeo.osr import SpatialReference
-from PyQt5.QtCore import QMetaType
+from qgis.PyQt.QtCore import QMetaType
 
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
