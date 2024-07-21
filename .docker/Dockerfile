@@ -15,8 +15,8 @@ ENV PATH=/venv/qps/bin:$PATH
 RUN pip install flake8-qgis coverage-badge
 
 RUN ls -lisa /tmp
-# RUN sh /tmp/qgis_setup.sh
-
+RUN cat /tmp/qgis_setup.sh
+RUN sh /tmp/qgis_setup.sh
 
 # ENV LANG=C.UTF-8
 

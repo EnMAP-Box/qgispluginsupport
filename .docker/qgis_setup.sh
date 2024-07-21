@@ -29,7 +29,7 @@ mkdir -p $PLUGIN_MASTER_FOLDER
 mkdir -p $STARTUP_MASTER_FOLDER
 
 # Install the monkey patches to prevent modal stacktrace on python errors
-cp /usr/bin/qgis_startup.py ${STARTUP_MASTER_FOLDER}/startup.py
+# cp /usr/bin/qgis_startup.py ${STARTUP_MASTER_FOLDER}/startup.py
 
 # Disable tips
 printf "[qgis]\n" >> $CONF_MASTER_FILE
