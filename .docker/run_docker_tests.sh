@@ -19,7 +19,7 @@ cd /usr/src
 export QT_QPA_PLATFORM=offscreen
 export CI=True
 export PYTHONPATH="${PYTHONPATH}"\
-":$(pwd)"
+":$(pwd)"\
 ":/usr/share/qgis/python/plugins"\
 ":$(pwd)/tests"
 python3 runfirst.py
