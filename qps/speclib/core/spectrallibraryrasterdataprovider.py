@@ -12,7 +12,8 @@ from qgis.PyQt.QtGui import QColor, QIcon
 
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict, groupBySpectralProperties, SpectralSetting
-from ...qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
+from ...qgisenums import QGIS_RASTERINTERFACECAPABILITY, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
+    QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
     QMETATYPE_QSTRING, \
     QMETATYPE_QTIME, QMETATYPE_UINT, \
     QMETATYPE_ULONGLONG
@@ -65,7 +66,7 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
                 assert layer.isValid()
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(profiles, field=SpectralProfileValueConverter(field))
-                layer.setTitle(f'Field "{field.name()}" as raster')
+                # layer.setTitle(f'Field "{field.name()}" as raster')
                 layers.append(layer)
         else:
             converter = VectorLayerFieldRasterDataProvider.findFieldConverter(field)
@@ -75,7 +76,7 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
                 assert layer.isValid(), 'Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider'
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(features, field=converter)
-                layer.setTitle(f'Field "{field.name()}" as raster')
+                # layer.setTitle(f'Field "{field.name()}" as raster')
                 layers.append(layer)
 
     return layers
@@ -648,8 +649,13 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             stats.height = band_data.shape[-2]
             stats.width = band_data.shape[-1]
 
+            statsGathered = Qgis.RasterBandStatistic.Sum | \
+                            Qgis.RasterBandStatistic.Min | \
+                            Qgis.RasterBandStatistic.Max | \
+                            Qgis.RasterBandStatistic.Mean
+
             # set statsGathered! if not, the default renderer won't consider the value range
-            stats.statsGathered = True
+            stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)
             self.mStatsCache[statsKey] = stats
         return stats
 
@@ -785,10 +791,12 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         else:
             return 0
 
-    def capabilities(self):
-        caps = QgsRasterInterface.Size | QgsRasterInterface.IdentifyValue | QgsRasterInterface.Identify
-        # QgsRasterInterface.IdentifyHtml | QgsRasterInterface.IdentifyText
-        return QgsRasterDataProvider.ProviderCapabilities(caps)
+    def capabilities(self) -> Qgis.RasterInterfaceCapabilities:
+
+        # scap = super().capabilities()
+        caps = QGIS_RASTERINTERFACECAPABILITY.Size | QGIS_RASTERINTERFACECAPABILITY.IdentifyValue | QGIS_RASTERINTERFACECAPABILITY.Identify
+
+        return Qgis.RasterInterfaceCapabilities(caps)  # QgsRasterDataProvider.ProviderCapabilities(caps)
 
     def htmlMetadata(self) -> str:
         md = ' Dummy '
