@@ -147,7 +147,7 @@ See `tests/test_example.py`
 
 ```python
 import os, pathlib, unittest
-from qps.testing import TestCase, StartOptions, start_app
+from qps.testing import TestCase, start_app
 
 from qgis.PyQt.QtWidgets import QLabel
 from qgis.PyQt.QtGui import QIcon, QPixmap
@@ -174,7 +174,7 @@ class Example1(unittest.TestCase):
         # PrintProviders = prints the QGIS data providers
         # All = EditorWidgets | ProcessingFramework | PythonRunner | PrintProviders
 
-        app = start_app(options=StartOptions.Minimized, resources=[qgis_images_resources])
+        app = start_app(resources=[qgis_images_resources])
         self.assertIsInstance(app, QgsApplication)
         self.assertTrue(QFile(resource_path).exists())
 
@@ -190,7 +190,7 @@ class ExampleCase(TestCase):
         resources = []
         if qgis_images_resources.is_file():
             resources.append(qgis_images_resources)
-        super().setUpClass(cleanup=True, options=StartOptions.Minimized, resources=resources)
+        super().setUpClass(cleanup=True, resources=resources)
 
     @unittest.skipIf(not qgis_images_resources.is_file(),
                      'Resource file does not exist: {}'.format(qgis_images_resources))
@@ -223,6 +223,11 @@ Run `scripts/update_pyqtgraph` to update the QPS / EnMAP-Box internal version of
 [PyQtGraph](http://pyqtgraph.org).
 To take care that our version of PyQtGraph runs with QGIS, we use a fork
 that is hosted at https://github.com/EnMAP-Box/pyqtgraph
+
+# Docker images
+
+docker buildx build -t qpgs/qps:3.38 -f .docker/Dockerfile -
+
 
 # Testing
 
