@@ -1295,11 +1295,11 @@ class TestObjects(object):
         pathSrc = TEST_VECTOR_GEOJSON
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
 
-        dsSrc: gdal.Dataset = ogr.Open(pathSrc.as_posix())
+        dsSrc: ogr.DataSource = ogr.Open(pathSrc.as_posix())
         if not isinstance(dsSrc, gdal.Dataset):
             lyr = QgsVectorLayer(pathSrc.as_posix())
             assert lyr.isValid(), f'Unable to load QGS Layer: {pathSrc.as_posix()}'
-        assert isinstance(dsSrc, gdal.Dataset), f'Unable to load {pathSrc}'
+        assert isinstance(dsSrc, ogr.DataSource), f'Unable to load {pathSrc}'
         lyrSrc: ogr.Layer = dsSrc.GetLayerByIndex(0)
         assert isinstance(lyrSrc, ogr.Layer)
 
@@ -1310,7 +1310,7 @@ class TestObjects(object):
         assert isinstance(srs, osr.SpatialReference)
 
         drv = ogr.GetDriverByName('GPKG')
-        assert isinstance(drv, gdal.Driver)
+        assert isinstance(drv, ogr.Driver)
 
         # set temp path
         if path:
@@ -1329,8 +1329,8 @@ class TestObjects(object):
             else:
                 raise NotImplementedError()
 
-        dsDst: gdal.Dataset = drv.CreateDataSource(pathDst)
-        assert isinstance(dsDst, gdal.Dataset)
+        dsDst: ogr.DataSource = drv.CreateDataSource(pathDst)
+        assert isinstance(dsDst, ogr.DataSource)
         lyrDst = dsDst.CreateLayer(lname, srs=srs, geom_type=wkb)
         assert isinstance(lyrDst, ogr.Layer)
 
@@ -1377,7 +1377,7 @@ class TestObjects(object):
 
             if n >= n_features:
                 break
-        assert isinstance(dsDst, gdal.Dataset)
+        assert isinstance(dsDst, ogr.DataSource)
         dsDst.FlushCache()
         return dsDst
 

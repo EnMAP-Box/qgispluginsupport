@@ -12,7 +12,8 @@ from qgis.PyQt.QtGui import QColor, QIcon
 
 from ..core import is_profile_field, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict, groupBySpectralProperties, SpectralSetting
-from ...qgisenums import QGIS_RASTERINTERFACECAPABILITY, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
+from ...qgisenums import QGIS_RASTERBANDSTATISTIC, QGIS_RASTERINTERFACECAPABILITY, QMETATYPE_BOOL, QMETATYPE_DOUBLE, \
+    QMETATYPE_INT, \
     QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
     QMETATYPE_QSTRING, \
     QMETATYPE_QTIME, QMETATYPE_UINT, \
@@ -649,13 +650,16 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             stats.height = band_data.shape[-2]
             stats.width = band_data.shape[-1]
 
-            statsGathered = Qgis.RasterBandStatistic.Sum | \
-                            Qgis.RasterBandStatistic.Min | \
-                            Qgis.RasterBandStatistic.Max | \
-                            Qgis.RasterBandStatistic.Mean
+            statsGathered = QGIS_RASTERBANDSTATISTIC.Sum | \
+                            QGIS_RASTERBANDSTATISTIC.Min | \
+                            QGIS_RASTERBANDSTATISTIC.Max | \
+                            QGIS_RASTERBANDSTATISTIC.Mean
 
-            # set statsGathered! if not, the default renderer won't consider the value range
-            stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)
+            if Qgis.versionInt() >= 33600:
+                stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)
+            else:
+                stats.statsGathered = QgsRasterBandStats.Stats(statsGathered)
+
             self.mStatsCache[statsKey] = stats
         return stats
 
@@ -791,12 +795,14 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
         else:
             return 0
 
-    def capabilities(self) -> Qgis.RasterInterfaceCapabilities:
+    def capabilities(self):
 
         # scap = super().capabilities()
         caps = QGIS_RASTERINTERFACECAPABILITY.Size | QGIS_RASTERINTERFACECAPABILITY.IdentifyValue | QGIS_RASTERINTERFACECAPABILITY.Identify
-
-        return Qgis.RasterInterfaceCapabilities(caps)  # QgsRasterDataProvider.ProviderCapabilities(caps)
+        if Qgis.versionInt() >= 33800:
+            return Qgis.RasterInterfaceCapabilities(caps)  # QgsRasterDataProvider.ProviderCapabilities(caps)
+        else:
+            return QgsRasterDataProvider.ProviderCapabilities(caps)
 
     def htmlMetadata(self) -> str:
         md = ' Dummy '
