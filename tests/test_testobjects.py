@@ -8,14 +8,13 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 import numpy as np
-
-from qgis.PyQt.QtCore import QVariant
 from osgeo import gdal, ogr
-from qgis.core import Qgis, QgsFields, QgsField
-from qgis.core import QgsFeature, QgsGeometry, QgsWkbTypes
-from qgis.core import QgsVectorLayer, QgsCoordinateReferenceSystem
+from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsVectorLayer, \
+    QgsWkbTypes
+
+from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field
-from qps.testing import TestObjects, start_app, TestCaseBase
+from qps.testing import start_app, TestCaseBase, TestObjects
 
 start_app()
 
@@ -31,8 +30,8 @@ class TestCasesTestObject(TestCaseBase):
     def test_EmptyMemoryLayer(self):
 
         fields = QgsFields()
-        fields.append(QgsField('f1', QVariant.String))
-        fields.append(QgsField('f2', QVariant.Double))
+        fields.append(QgsField('f1', QMETATYPE_QSTRING))
+        fields.append(QgsField('f2', QMETATYPE_DOUBLE))
         fields.append(create_profile_field('profilesB', 'bytes'))
         fields.append(create_profile_field('profilesJ', 'json'))
         fields.append(create_profile_field('profilesS', 'text'))

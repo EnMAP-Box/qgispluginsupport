@@ -1,28 +1,22 @@
 ARG QGIS_TEST_VERSION=latest
 FROM  qgis/qgis:${QGIS_TEST_VERSION}
-MAINTAINER Benjamin Jakimow <benjamin.jakimow@geo.hu-berlin.de>
+LABEL maintainer="Benjamin Jakimow <benjamin.jakimow@geo.hu-berlin.de>"
+LABEL description="container to test qgispluginsupport"
+SHELL ["/bin/bash", "-c"]
+RUN apt install -y python3-flake8 python3-pytest-xdist python3-pytest-cov python3-venv pyqt5-dev-tools
 
-RUN apt-get update && \
-    apt-get -y install python3-pip python3-venv pyqt5-dev-tools python3-matplotlib wget unzip \
-    python3-h5py python3-pyqt5.qtopengl python3-netcdf4 \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update
 COPY ./requirements.txt /tmp/
 COPY ./.docker/qgis_setup.sh /tmp/
-RUN mkdir .virtualenvs
-RUN mkdir .virtualenvs/qps
-RUN python3 -m venv --upgrade-deps --system-site-packages .virtualenvs/qps
-RUN . .virtualenvs/qps/bin/activate
-RUN pip3 install -r /tmp/requirements.txt
-RUN pip3 install coverage-badge
-ENV PATH="/usr/local/bin:${PATH}"
-RUN sh /tmp/qgis_setup.sh
-# Avoid sqlcmd termination due to locale -- see https://github.com/Microsoft/mssql-docker/issues/163
-# RUN echo "nb_NO.UTF-8 UTF-8" > /etc/locale.gen
-# RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
-# RUN locale-gen
 
+
+RUN mkdir -p venv/qps
+RUN python3 -m venv --system-site-packages venv/qps
+ENV PATH=/venv/qps/bin:$PATH
+RUN pip install flake8-qgis coverage-badge
+
+RUN ls -lisa /tmp
+RUN cat /tmp/qgis_setup.sh
+RUN sh /tmp/qgis_setup.sh
 
 # ENV LANG=C.UTF-8
 

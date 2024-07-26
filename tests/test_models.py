@@ -2,21 +2,20 @@
 import fnmatch
 import os
 import unittest
-from typing import Union, List
+from typing import List, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import QModelIndex, QSortFilterProxyModel, Qt
-from qgis.PyQt.QtCore import QSettings
+from qgis.gui import QgsMapCanvas
+from qgis.PyQt.QtCore import QModelIndex, QSettings, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtTest import QAbstractItemModelTester
-from qgis.PyQt.QtWidgets import QMenu, QComboBox, QTreeView, QGridLayout, QLabel, QWidget, \
-    QPushButton, QVBoxLayout, QHBoxLayout
-from qgis.gui import QgsMapCanvas
-from qps.models import TreeModel, TreeView, TreeNode, OptionListModel, Option, PyObjectTreeNode, SettingsModel, \
-    SettingsTreeView, SettingsNode
+from qgis.PyQt.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton, QTreeView, QVBoxLayout, \
+    QWidget
+from qps.models import Option, OptionListModel, PyObjectTreeNode, SettingsModel, SettingsNode, SettingsTreeView, \
+    TreeModel, TreeNode, TreeView
 from qps.plotstyling.plotstyling import MarkerSymbol
-from qps.testing import TestCaseBase, start_app
+from qps.testing import start_app, TestCaseBase
 
 start_app()
 

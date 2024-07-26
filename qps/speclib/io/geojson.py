@@ -1,20 +1,16 @@
 import os
 import pathlib
-
 from typing import Any, List
 
 import numpy as np
+from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, \
+    QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty, \
+    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
 
-from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsVectorFileWriter, QgsField, QgsProject, QgsVectorLayer, \
-    QgsRemappingSinkDefinition, QgsExpressionContextScope, QgsCoordinateTransformContext, \
-    QgsRemappingProxyFeatureSink, QgsProperty, \
-    QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
-    QgsCoordinateReferenceSystem
 from ..core import is_profile_field
-from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
-    SpectralLibraryExportWidget
-from ..core.spectralprofile import encodeProfileValueDict, decodeProfileValueDict
+from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from ...qgisenums import QMETATYPE_QSTRING
 
 
 class GeoJsonSpectralLibraryExportWidget(SpectralLibraryExportWidget):
@@ -104,8 +100,8 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         for field in self.mFields:
             name = field.name()
             idx = self.mFields.lookupField(name)
-            if field.type() != QVariant.String and is_profile_field(field):
-                convertedField = QgsField(name=name, type=QVariant.String, typeName='string', len=-1)
+            if field.type() != QMETATYPE_QSTRING and is_profile_field(field):
+                convertedField = QgsField(name=name, type=QMETATYPE_QSTRING, typeName='string', len=-1)
                 self.mFieldDefinitions[name] = convertedField
                 self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
 

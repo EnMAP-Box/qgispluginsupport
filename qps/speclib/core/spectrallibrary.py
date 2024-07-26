@@ -33,31 +33,26 @@ import re
 import sys
 import warnings
 import weakref
-from typing import List, Union, Dict, Optional
+from typing import Dict, List, Optional, Union
 
 from osgeo import gdal, ogr
-
-from qgis.PyQt.QtCore import Qt, QVariant, QUrl, QMimeData
+from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
+    QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsExpression, \
+    QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureIterator, \
+    QgsFeatureRequest, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, QgsPointXY, QgsProcessingFeedback, \
+    QgsProject, QgsProperty, QgsRasterLayer, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, \
+    QgsWkbTypes
+from qgis.PyQt.QtCore import QMimeData, Qt, QUrl, QVariant
 from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import QgsApplication, QgsFeatureIterator, \
-    QgsFeature, QgsVectorLayer, QgsAttributeTableConfig, QgsField, QgsFields, QgsCoordinateReferenceSystem, \
-    QgsActionManager, QgsFeatureRequest, \
-    QgsEditorWidgetSetup, QgsAction, QgsProcessingFeedback, \
-    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
-    QgsExpressionContext, QgsCoordinateTransformContext, QgsProperty, QgsExpressionContextScope
-from qgis.core import (QgsWkbTypes, QgsExpressionContextUtils, QgsExpression, QgsRasterLayer,
-                       QgsPointXY, QgsGeometry, QgsMapLayerStore, QgsProject, Qgis, edit)
-from . import can_store_spectral_profiles, is_profile_field, profile_field_names
-from . import profile_field_list, create_profile_field, \
-    is_spectral_library
-from .spectralprofile import SpectralSetting, groupBySpectralProperties, prepareProfileValueDict, \
-    encodeProfileValueDict, ProfileEncoding, decodeProfileValueDict
-from .. import EDITOR_WIDGET_REGISTRY_KEY, SPECLIB_EPSG_CODE
-from .. import FIELD_VALUES, FIELD_NAME
+
+from . import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
+    profile_field_list, profile_field_names
+from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
+    prepareProfileValueDict, ProfileEncoding, SpectralSetting
+from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
-from ...qgisenums import QGIS_WKBTYPE
-from ...utils import findMapLayer, \
-    qgsField, copyEditorWidgetSetup, SpatialPoint
+from ...qgisenums import QGIS_WKBTYPE, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
+from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -256,11 +251,11 @@ class SpectralLibraryUtils:
         """
         encoding = ProfileEncoding.fromInput(encoding)
         if encoding == ProfileEncoding.Bytes:
-            field = QgsField(name=name, type=QVariant.ByteArray, comment=comment)
+            field = QgsField(name=name, type=QMETATYPE_QBYTEARRAY, comment=comment)
         elif encoding == ProfileEncoding.Text:
-            field = QgsField(name=name, type=QVariant.String, len=-1, comment=comment)
+            field = QgsField(name=name, type=QMETATYPE_QSTRING, len=-1, comment=comment)
         elif encoding == ProfileEncoding.Json:
-            field = QgsField(name=name, type=QVariant.Map, typeName='JSON', comment=comment)
+            field = QgsField(name=name, type=QMETATYPE_QVARIANTMAP, typeName='JSON', comment=comment)
 
         setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
         field.setEditorWidgetSetup(setup)
@@ -467,7 +462,7 @@ class SpectralLibraryUtils:
         lyr.setCustomProperty('skipMemoryLayerCheck', 1)
         with edit(lyr):
             lyr.beginEditCommand('Add fields')
-            assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QVariant.String))
+            assert lyr.addAttribute(QgsField(name=FIELD_NAME, type=QMETATYPE_QSTRING))
 
             for fieldname in profile_fields:
                 if isinstance(fieldname, QgsField):

@@ -43,8 +43,8 @@ class PyQgsOGRProvider(unittest.TestCase):
         self.assertTrue(layer.isValid())
         self.assertTrue(layer.providerType() == 'ogr')
 
-        field1 = QgsField(name='field1', type=QVariant.String)
-        field2 = QgsField(name='field2', type=QVariant.String)
+        field1 = QgsField(name='field1', type=QMETATYPE_QSTRING)
+        field2 = QgsField(name='field2', type=QMETATYPE_QSTRING)
         setup1 = QgsEditorWidgetSetup(editor_widget_type, {})
         setup2 = QgsEditorWidgetSetup(editor_widget_type, {})
 

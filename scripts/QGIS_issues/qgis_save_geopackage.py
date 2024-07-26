@@ -1,11 +1,10 @@
 import pathlib
-import os
-import random
 import pickle
+import random
 
-from qgis.PyQt.QtCore import QVariant, QByteArray
-from qgis.core import QgsProject, QgsFields, QgsField, QgsFeature, QgsWkbTypes, QgsCoordinateReferenceSystem
-from qgis.core import QgsVectorFileWriter, QgsProcessingFeedback
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, \
+    QgsVectorFileWriter, QgsWkbTypes
+from qgis.PyQt.QtCore import QByteArray, QVariant
 
 feedback = QgsProcessingFeedback()
 
@@ -21,8 +20,8 @@ path = pathlib.Path('~').expanduser() / 'test.gpkg'
 # assert not path.is_file()
 print(f'file exists: {path}')
 fields = QgsFields()
-fields.append(QgsField('name', QVariant.String))
-fields.append(QgsField('num', QVariant.Int))
+fields.append(QgsField('name', QMETATYPE_QSTRING))
+fields.append(QgsField('num', QMETATYPE_INT))
 fields.append(QgsField('binary', QVariant.ByteArray))
 
 features = []

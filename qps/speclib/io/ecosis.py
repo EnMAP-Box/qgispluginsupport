@@ -33,18 +33,18 @@ import re
 import sys
 from typing import List, Union
 
-from qgis.PyQt.QtCore import QUrlQuery
-from qgis.PyQt.QtCore import QVariant
-from qgis.PyQt.QtWidgets import QMenu, QFileDialog, QProgressDialog
-from qgis.core import QgsFeature, QgsFields, QgsField, QgsExpressionContext, QgsVectorLayer
-from qgis.core import QgsProcessingFeedback
+from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
+from qgis.PyQt.QtCore import QUrlQuery, QVariant
+from qgis.PyQt.QtWidgets import QFileDialog, QMenu, QProgressDialog
+
 from .envi import readCSVMetadata
 from .. import createStandardFields, FIELD_NAME
 from ..core import create_profile_field, is_spectral_library
 from ..core.spectrallibrary import FIELD_VALUES
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
+from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import encodeProfileValueDict
-from ...utils import findTypeFromString, createQgsField
+from ...qgisenums import QMETATYPE_QSTRING
+from ...utils import createQgsField, findTypeFromString
 
 
 class __DEPR__EcoSISCSVDialect(pycsv.Dialect):
@@ -102,7 +102,7 @@ class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
             return fields
 
         fields.append(create_profile_field(self.FIELDNAME_PROFILE))
-        fields.append(QgsField(self.FIELDNAME_NAME, QVariant.String))
+        fields.append(QgsField(self.FIELDNAME_NAME, QMETATYPE_QSTRING))
 
         lyrCSV = readCSVMetadata(self.source())
         if isinstance(lyrCSV, QgsVectorLayer):

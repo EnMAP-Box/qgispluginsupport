@@ -9,7 +9,7 @@ from qgis.PyQt.QtCore import QVariant
 uri = "point?crs=epsg:4326"
 lyr = QgsVectorLayer(uri, "Scratch point layer",  "memory")
 lyr.startEditing()
-lyr.addAttribute(QgsField('f1_text', QVariant.String))
+lyr.addAttribute(QgsField('f1_text', QMETATYPE_QSTRING))
 lyr.addAttribute(QgsField('f2_blob', QVariant.ByteArray))
 lyr.commitChanges(False)
 
@@ -31,7 +31,7 @@ iface.showAttributeTable(lyr)
 # activate debugger breakpoint in void QgsAttributeTableModel::loadAttributes()
 # and observe length of mFieldFormatters compared to mWidgetFactories
 lyr.startEditing()
-lyr.addAttribute(QgsField('f3_text', QVariant.String))
+lyr.addAttribute(QgsField('f3_text', QMETATYPE_QSTRING))
 
 lyr.removeAttribute(1)
 lyr.commitChanges(False)

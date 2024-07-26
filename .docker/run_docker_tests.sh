@@ -18,7 +18,10 @@ DEFAULT_PARAMS='-x -v'
 cd /usr/src
 export QT_QPA_PLATFORM=offscreen
 export CI=True
-export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+export PYTHONPATH="${PYTHONPATH}"\
+":$(pwd)"\
+":/usr/share/qgis/python/plugins"\
+":$(pwd)/tests"
 python3 runfirst.py
 pytest --no-cov-on-fail --cov-config=.coveragec "$@"
 coverage-badge -o coverage.svg
