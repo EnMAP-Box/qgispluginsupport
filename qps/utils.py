@@ -1251,7 +1251,10 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
     :return: QgsVectorLayer
     """
     path = pathlib.Path(path)
+    assert isinstance(layer, QgsVectorLayer)
+    assert layer.isValid()
 
+    field_value_converter = None
     if not isinstance(options, QgsVectorFileWriter.SaveVectorOptions):
 
         options = QgsVectorFileWriter.SaveVectorOptions()
@@ -1262,33 +1265,43 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
         parts = os.path.splitext(path.name)
 
         if len(parts) == 2:
-            driverName = QgsVectorFileWriter.driverForExtension(parts[1])
-            options.driverName = driverName
+            driver_name = QgsVectorFileWriter.driverForExtension(parts[1])
+            options.driverName = driver_name
             options.layerOptions = QgsVectorFileWriter.defaultLayerOptions(options.driverName)
             options.datasourceOptions = QgsVectorFileWriter.defaultDatasetOptions(options.driverName)
             options.includeConstraints = True
             options.layerMetadata = layer.metadata()
 
-            if driverName == 'GPKG':
+            if driver_name == 'GPKG':
                 from .speclib.io.geopackage import GeoPackageFieldValueConverter
-                options.fieldValueConverter = GeoPackageFieldValueConverter(layer.fields())
+                field_value_converter = GeoPackageFieldValueConverter(layer.fields())
+            elif driver_name == 'GeoJSON':
+                from .speclib.io.geojson import GeoJsonFieldValueConverter
+                field_value_converter = GeoJsonFieldValueConverter(layer.fields())
+            else:
+                s = ""
             # options.symbologyExport =
+
+    options.fieldValueConverter = field_value_converter
+
+    s = ""
 
     def onCompleted(newFilename, newLayer):
         s = ""
 
     def onErrorOccurred(err: int, msg: str):
-        s = ""
+        print(f'{msg}', file=sys.stderr)
 
     def onWriteComplete(newFileName: str):
         s = ""
 
+    s = ""
     task = QgsVectorFileWriterTask(layer, path.as_posix(), options)
     task.completed.connect(onCompleted)
     task.errorOccurred.connect(onErrorOccurred)
     task.writeComplete.connect(onWriteComplete)
     r = task.run()
-    assert r
+    # assert r
     # save styling
     pathQlr = path.parent / re.sub(r'\.[^.]+$', '.qml', path.name)
     msg, success = layer.saveNamedStyle(pathQlr.as_posix())

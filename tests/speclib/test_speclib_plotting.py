@@ -223,6 +223,7 @@ class TestSpeclibPlotting(TestCaseBase):
 
         self.showGui(w)
 
+    # @unittest.skip('test')
     def test_speclib_plotsettings_restore(self):
 
         fnames = ['profilesA', 'profilesB']
@@ -231,16 +232,16 @@ class TestSpeclibPlotting(TestCaseBase):
         path_sl = tmpDir / 'TestSpeclib.gpkg'
         speclib = TestObjects.createSpectralLibrary(n_bands=[25, 50], profile_field_names=fnames)
 
-        speclib = writeAsVectorFormat(speclib, path_sl)
-        self.assertIsInstance(speclib, QgsVectorLayer)
-        self.assertTrue(speclib.isValid())
+        speclib2 = writeAsVectorFormat(speclib, path_sl)
+        self.assertIsInstance(speclib2, QgsVectorLayer)
+        self.assertTrue(speclib2.isValid())
         self.assertTrue(path_sl.is_file())
 
-        self.assertListEqual(fnames, profile_field_names(speclib))
+        self.assertListEqual(fnames, profile_field_names(speclib2))
         p = QgsProject()
-        p.addMapLayer(speclib)
+        p.addMapLayer(speclib2)
 
-        slw = SpectralLibraryWidget(speclib=speclib)
+        slw = SpectralLibraryWidget(speclib=speclib2)
         spw: SpectralProfilePlotWidget = slw.spectralLibraryPlotWidget()
         m: SpectralProfilePlotModel = slw.plotControl()
 
