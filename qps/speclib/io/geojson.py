@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Union
 
 import numpy as np
 
@@ -150,19 +150,10 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def exportProfiles(cls,
-                       path: str,
+                       path: Union[str, Path],
                        profiles,
                        exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
-
-        """
-        :param fileName: file name to write to
-        :param fields: fields to write
-        :param geometryType: geometry type of output file
-        :param srs: spatial reference system of output file
-        :param transformContext: coordinate transform context
-        :param options: save options
-        """
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback(), **kwargs) -> List[str]:
 
         profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
         if len(profiles) == 0:

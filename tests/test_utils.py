@@ -23,30 +23,27 @@ import xml.etree.ElementTree as ET
 from typing import Dict
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
+from osgeo import gdal, gdal_array, ogr, osr
 
-from qgis.PyQt.QtCore import NULL, QObject
-from qgis.PyQt.QtCore import QByteArray, QUrl, QRect, QPoint, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl, QVariant
 from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QMenu, QGroupBox, QDockWidget, QMainWindow, QWidget, QDialog
+from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-from qgis.core import QgsMapToPixel, QgsGeometryParameters
-from qgis.core import QgsRasterIdentifyResult
-from qgis.core import QgsProcessingFeedback, QgsRectangle, QgsFeatureRequest, QgsFeature, \
-    QgsRasterDataProvider, QgsRaster, QgsGeometry
-from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
-    QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureRequest, QgsField, QgsGeometry, \
+    QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
+    QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
+    QgsVectorLayer
 from qps.speclib.core import is_spectral_library
-from qps.testing import TestObjects, TestCase, start_app
+from qps.testing import TestCase, TestObjects, start_app
 from qps.unitmodel import UnitLookup
-from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromString, nodeXmlString, \
-    SelectMapLayersDialog, defaultBands, relativePath, nextColor, createQgsField, px2geo, geo2px, \
-    SpatialPoint, layerGeoTransform, displayBandNames, qgsRasterLayer, gdalDataset, px2geocoordinates, \
-    rasterArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
-    fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
-    qgsFieldAttributes2List, gdalFileSize, loadUi, dn, SelectMapLayerDialog, parseFWHM, findParent, \
-    rasterizeFeatures, ExtentTileIterator, MapGeometryToPixel, aggregateArray, snapGeoCoordinates, writeAsVectorFormat
-from qpstestdata import enmap, enmap_pixel, enmap_multipolygon, enmap_multipoint, hymap, landcover
+from qps.utils import ExtentTileIterator, MapGeometryToPixel, SelectMapLayerDialog, SelectMapLayersDialog, \
+    SpatialExtent, SpatialPoint, aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn, \
+    fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset, gdalFileSize, \
+    geo2px, layerGeoTransform, loadUi, nextColor, nodeXmlString, optimize_block_size, osrSpatialReference, parseFWHM, \
+    parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, qgsFieldAttributes2List, qgsRasterLayer, \
+    qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, relativePath, snapGeoCoordinates, \
+    spatialPoint2px, value2str, writeAsVectorFormat
+from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
 start_app()
 
@@ -292,9 +289,20 @@ class TestUtils(TestCase):
 
         DIR = self.createTestOutputDirectory()
 
-        self.assertTrue(is_spectral_library(writeAsVectorFormat(lyr, DIR / 'example1.gpkg')))
-        self.assertTrue(is_spectral_library(writeAsVectorFormat(lyr, DIR / 'example2.geojson')))
-        self.assertIsInstance(writeAsVectorFormat(lyr, DIR / 'example3.shp'), QgsVectorLayer)
+        extensions = ['.gpkg',
+                      # '.csv',
+                      '.kml', '.geojson',
+                      ]
+        for i, extension in enumerate(extensions):
+            path = DIR / f'example_{i + 1}{extension}'
+            lyr2 = writeAsVectorFormat(lyr, path)
+            self.assertIsInstance(lyr2, QgsVectorLayer)
+            self.assertTrue(lyr2.isValid())
+            self.assertEqual(lyr.featureCount(), lyr2.featureCount())
+            self.assertTrue(is_spectral_library(lyr2), msg=f'Not a speclib: {lyr2.source()}')
+
+        # ESRI Shapefile does not support string fields with unlimited length
+        self.assertIsInstance(writeAsVectorFormat(lyr, DIR / 'exampleX.shp'), QgsVectorLayer)
 
     def test_fid2pixelIndices(self):
 
