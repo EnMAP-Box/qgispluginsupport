@@ -1,16 +1,14 @@
 import os
-import pathlib
 from pathlib import Path
-
 from typing import Any, List
 
 import numpy as np
+
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, \
     QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
-
 from ..core import is_profile_field
-from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryIO, SpectralLibraryImportWidget
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
 from ...qgisenums import QMETATYPE_QSTRING
 
@@ -103,9 +101,9 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
             name = field.name()
             idx = self.mFields.lookupField(name)
             if field.type() != QMETATYPE_QSTRING and is_profile_field(field):
-                convertedField = QgsField(name=name, type=QMETATYPE_QSTRING, typeName='string', len=-1)
-                self.mFieldDefinitions[name] = convertedField
-                self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
+                converted_field = QgsField(name=name, type=QMETATYPE_QSTRING, typeName='string', len=-1)
+                self.mFieldDefinitions[name] = converted_field
+                self.mFieldConverters[idx] = lambda v, f=converted_field: self.convertProfileField(v, f)
 
             else:
                 self.mFieldDefinitions[name] = QgsField(super().fieldDefinition(field))
