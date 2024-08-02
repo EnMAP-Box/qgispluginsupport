@@ -57,7 +57,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
@@ -65,7 +65,7 @@ from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayou
 from qgis.PyQt.QtXml import QDomDocument, QDomElement, QDomNode
 
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
-    QMETATYPE_QBYTEARRAY, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_UINT
+    QMETATYPE_QBYTEARRAY, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTLIST, QMETATYPE_UINT
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import datetime64, UnitLookup
 
@@ -572,7 +572,7 @@ def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsFiel
         prototype = createQgsField(name, v)
         subType = prototype.type()
         typeName = prototype.typeName()
-        return QgsField(name, QMetaType.QVariantList, typeName, comment=comment, subType=subType)
+        return QgsField(name, QMETATYPE_QVARIANTLIST, typeName, comment=comment, subType=subType)
     elif isinstance(exampleValue, type):
         return createQgsField(name, exampleValue(1), comment=comment)
     else:
