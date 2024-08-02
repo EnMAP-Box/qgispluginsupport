@@ -244,10 +244,10 @@ class TestSpeclibWidgets(TestCaseBase):
         l4 = QgsRasterLayer(enmap, 'EnMAP-2')
         QgsProject.instance().addMapLayers([l1, l2, l3, l4])
 
-        sl1 = TestObjects.createSpectralLibrary(5, wlu='Nanometers', n_bands=[177, 6])
+        sl1 = TestObjects.createSpectralLibrary(5, n_bands=[177, 6], wlu='Nanometers')
         sl1.setName(' My Speclib')
 
-        sl2 = TestObjects.createSpectralLibrary(3, wlu='Nanometers', n_bands=[177, 6])
+        sl2 = TestObjects.createSpectralLibrary(3, n_bands=[177, 6], wlu='Nanometers')
 
         slw = SpectralLibraryWidget(speclib=sl1)
 

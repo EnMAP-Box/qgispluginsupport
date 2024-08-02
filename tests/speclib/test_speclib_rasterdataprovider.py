@@ -100,7 +100,7 @@ class RasterDataProviderTests(TestCaseBase):
 
         n_total = 20
         n_empty = 2
-        vl = TestObjects.createSpectralLibrary(n_total, n_bands=[[13, 25, 5], [22, None, 42]], n_empty=n_empty)
+        vl = TestObjects.createSpectralLibrary(n_total, n_empty=n_empty, n_bands=[[13, 25, 5], [22, None, 42]])
         fields = profile_fields(vl)
         QgsProject.instance().addMapLayer(vl, addToLegend=False)
         layers = createRasterLayers(vl, fields.at(1))

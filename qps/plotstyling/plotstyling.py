@@ -570,7 +570,7 @@ class PlotStyle(QObject):
         style['linePen'] = pen2tuple(self.linePen)
         style['isVisible'] = self.mIsVisible
         style['backgroundColor'] = QgsSymbolLayerUtils.encodeColor(self.backgroundColor)
-        dump = json.dumps(style, sort_keys=True, indent=-1, separators=(',', ':'), )
+        dump = json.dumps(style, sort_keys=True, indent=-1, separators=(',', ':'))
         # log('END json()')
         return dump
 

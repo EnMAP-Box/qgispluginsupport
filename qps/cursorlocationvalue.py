@@ -289,7 +289,7 @@ LAYERTYPES = [
 
 class ComboBoxOptionModel(QAbstractListModel):
 
-    def __init__(self, options, parent=None, ):
+    def __init__(self, options, parent=None):
         super(ComboBoxOptionModel, self).__init__(parent)
         assert isinstance(options, list)
 

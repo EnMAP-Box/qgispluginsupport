@@ -2,19 +2,20 @@
 import os
 import unittest
 
+from osgeo import ogr
 
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsProject
-from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorFileWriter, QgsField, QgsVectorLayer
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsPoint, QgsProcessingFeedback, QgsProject, \
+    QgsVectorFileWriter, QgsVectorLayer
 from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import is_profile_field, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO, GeoJsonSpectralLibraryExportWidget, \
-    GeoJsonFieldValueConverter
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.speclib.io.geojson import GeoJsonFieldValueConverter, GeoJsonSpectralLibraryExportWidget, \
+    GeoJsonSpectralLibraryIO
+from qps.testing import TestCaseBase, TestObjects, start_app
 
 start_app()
 
@@ -32,6 +33,44 @@ class TestSpeclibIOGeoJSON(TestCaseBase):
     def registerIO(self):
         ios = [GeoJsonSpectralLibraryIO()]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
+
+    def test_GeoJSON2008(self):
+        crsUTM = QgsCoordinateReferenceSystem('EPSG:32632')
+        crs4325 = QgsCoordinateReferenceSystem('EPSG:4326')
+        sl1 = TestObjects.createSpectralLibrary(n_bands=4, crs=crsUTM)
+        sl2 = TestObjects.createSpectralLibrary(n_bands=4, crs=crs4325)
+        self.assertEqual(crsUTM, sl1.crs())
+        self.assertEqual(crs4325, sl2.crs())
+
+        p1: QgsPoint = sl1.getFeature(1).geometry().constGet()
+        p2: QgsPoint = sl2.getFeature(2).geometry().constGet()
+        self.assertTrue(10000 < p1.x() < 10000000)
+        self.assertTrue(10000 < p1.y() < 10000000)
+
+        self.assertTrue(-1800 < p2.x() < 180)
+        self.assertTrue(-90 < p2.y() < 90)
+
+        DIR = self.createTestOutputDirectory()
+        path1 = DIR / 'test_rfc7946.geojson'
+        path2 = DIR / 'test_GeoJSON2008.geojson'
+        io = GeoJsonSpectralLibraryIO()
+
+        drv: ogr.Driver = ogr.GetDriverByName('GeoJSON')
+        md = drv.GetMetadata_Dict()
+        filesRFCYes = io.exportProfiles(path1, sl1)
+        filesRFCNo = io.exportProfiles(path2, sl1, exportSettings={'rfc7946': False})
+
+        lyrYes = QgsVectorLayer(filesRFCYes[0])
+        lyrNo = QgsVectorLayer(filesRFCNo[0])
+        self.assertTrue(lyrYes.isValid())
+        self.assertTrue(lyrNo.isValid())
+        self.assertEqual(lyrYes.crs(), crs4325)
+        self.assertEqual(lyrNo.crs(), crsUTM)
+
+        path3 = DIR / 'test_GeoJson2008_b.geojson'
+        lyrNo2 = QgsVectorLayer(io.writeToSource(sl1, path3, rfc7946=False)[0])
+        self.assertTrue(lyrNo2.isValid())
+        self.assertEqual(lyrNo2.crs(), crsUTM)
 
     def test_GeoJsonFieldValueConverter(self):
         sl: QgsVectorLayer = TestObjects.createSpectralLibrary()

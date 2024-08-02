@@ -172,10 +172,10 @@ class PropertyItemBase(QStandardItem):
     def propertyRow(self) -> List[QStandardItem]:
         return [self]
 
-    def readXml(self, parentNode: QDomElement, context: QgsReadWriteContext, ):
+    def readXml(self, parentNode: QDomElement, context: QgsReadWriteContext):
         pass
 
-    def writeXml(self, parentNode: QDomElement, context: QgsReadWriteContext, ):
+    def writeXml(self, parentNode: QDomElement, context: QgsReadWriteContext):
         pass
 
     def model(self) -> QStandardItemModel:

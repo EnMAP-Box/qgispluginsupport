@@ -627,7 +627,7 @@ class TestCaseBase(_BASECLASS):
 
         for x in range(image1.width()):
             for y in range(image1.height()):
-                if image1.pixel(x, y, ) != image2.pixel(x, y):
+                if image1.pixel(x, y) != image2.pixel(x, y):
                     return False
         return True
 
@@ -883,7 +883,8 @@ class TestObjects(object):
                          fields: QgsFields = None,
                          n_bands: List[int] = None,
                          wlu: str = None,
-                         profile_fields: List[Union[str, QgsField]] = None):
+                         profile_fields: List[Union[str, QgsField]] = None,
+                         crs: QgsCoordinateReferenceSystem = None):
 
         from .speclib import createStandardFields
         from .speclib.core import create_profile_field, is_profile_field
@@ -921,7 +922,7 @@ class TestObjects(object):
         assert len(n_bands) == profile_fields.count(), \
             f'Number of bands list ({n_bands}) has different lengths that number of profile fields'
 
-        profileGenerator: SpectralProfileDataIterator = SpectralProfileDataIterator(n_bands)
+        profileGenerator: SpectralProfileDataIterator = SpectralProfileDataIterator(n_bands, target_crs=crs)
 
         for i in range(n):
             profile = QgsFeature(fields)
@@ -957,9 +958,11 @@ class TestObjects(object):
                               n_empty: int = 0,
                               n_bands: Union[int, List[int], np.ndarray] = [-1],
                               profile_field_names: List[str] = None,
-                              wlu: str = None) -> QgsVectorLayer:
+                              wlu: str = None,
+                              crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
         """
         Creates a Spectral Library
+        :param crs:
         :param profile_field_names:
         :param n_bands:
         :type n_bands:
@@ -993,7 +996,7 @@ class TestObjects(object):
         if not isinstance(profile_field_names, list):
             profile_field_names = [f'{FIELD_VALUES}{i}' for i in range(n_profile_columns)]
 
-        slib: QgsVectorLayer = SpectralLibraryUtils.createSpectralLibrary(profile_fields=profile_field_names)
+        slib: QgsVectorLayer = SpectralLibraryUtils.createSpectralLibrary(profile_fields=profile_field_names, crs=crs)
         with edit(slib):
 
             pfield_indices = profile_field_indices(slib)
@@ -1009,7 +1012,8 @@ class TestObjects(object):
                                                                  fields=slib.fields(),
                                                                  n_bands=bandsPerField,
                                                                  wlu=wlu,
-                                                                 profile_fields=pfield_indices))
+                                                                 profile_fields=pfield_indices,
+                                                                 crs=crs))
 
                     SpectralLibraryUtils.addProfiles(slib, profiles, addMissingFields=False)
 

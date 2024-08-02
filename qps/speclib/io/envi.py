@@ -530,7 +530,7 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
                 name = expr.evaluate(context)
                 profileNames.append(name)
 
-                d = decodeProfileValueDict(p.attribute(setting.fieldName()), )
+                d = decodeProfileValueDict(p.attribute(setting.fieldName()))
                 pData.append(np.asarray(d['y']))
 
             # stack profiles

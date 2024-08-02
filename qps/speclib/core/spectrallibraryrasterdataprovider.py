@@ -217,7 +217,7 @@ class FieldToRasterValueConverter(QObject):
     def supportsField(cls, field: QgsField) -> bool:
         return field.type() in FieldToRasterValueConverter.LUT_FIELD_TYPES.keys()
 
-    def __init__(self, field: QgsField, ):
+    def __init__(self, field: QgsField):
         super().__init__(None)
 
         assert isinstance(field, QgsField)

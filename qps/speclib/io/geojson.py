@@ -1,14 +1,14 @@
 import os
-import pathlib
-from typing import Any, List
+from pathlib import Path
+from typing import Any, List, Union
 
 import numpy as np
+
 from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, \
     QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
-
 from ..core import is_profile_field
-from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryIO, SpectralLibraryImportWidget
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
 from ...qgisenums import QMETATYPE_QSTRING
 
@@ -101,9 +101,9 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
             name = field.name()
             idx = self.mFields.lookupField(name)
             if field.type() != QMETATYPE_QSTRING and is_profile_field(field):
-                convertedField = QgsField(name=name, type=QMETATYPE_QSTRING, typeName='string', len=-1)
-                self.mFieldDefinitions[name] = convertedField
-                self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
+                converted_field = QgsField(name=name, type=QMETATYPE_QSTRING, typeName='string', len=-1)
+                self.mFieldDefinitions[name] = converted_field
+                self.mFieldConverters[idx] = lambda v, f=converted_field: self.convertProfileField(v, f)
 
             else:
                 self.mFieldDefinitions[name] = QgsField(super().fieldDefinition(field))
@@ -150,19 +150,10 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def exportProfiles(cls,
-                       path: str,
+                       path: Union[str, Path],
                        profiles,
                        exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
-
-        """
-        :param fileName: file name to write to
-        :param fields: fields to write
-        :param geometryType: geometry type of output file
-        :param srs: spatial reference system of output file
-        :param transformContext: coordinate transform context
-        :param options: save options
-        """
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback(), **kwargs) -> List[str]:
 
         profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
         if len(profiles) == 0:
@@ -172,26 +163,28 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         crsJson = QgsCoordinateReferenceSystem('EPSG:4326')
 
         newLayerName = exportSettings.get('layer_name', '')
+
+        path: Path = Path(path)
+
         if newLayerName == '':
             newLayerName = os.path.basename(newLayerName)
 
-        path = pathlib.Path(path).as_posix()
-        datasourceOptions = exportSettings.get('options', dict())
+        datasourceOptions = exportSettings.get('datasourceOptions', dict())
         assert isinstance(datasourceOptions, dict)
+        rfc7946: bool = exportSettings.get('rfc7946', True) is True
 
-        ogrDataSourceOptions = []  # 'ATTRIBUTES_SKIP=NO', 'DATE_AS_STRING=YES', 'ARRAY_AS_STRING=YES']
-        ogrLayerOptions = [  # 'NATIVE_DATA=True',
-            'SIGNIFICANT_FIGURES=15',
-            'RFC7946=YES',
-            f'DESCRIPTION={newLayerName}'
-        ]
+        datasourceOptions = exportSettings.get('datasourceOptions',
+                                               [])  # 'ATTRIBUTES_SKIP=NO', 'DATE_AS_STRING=YES', 'ARRAY_AS_STRING=YES']
+
+        layerOptions = exportSettings.get('layerOptions', [f'DESCRIPTION={newLayerName}'])
+        layerOptions.insert(0, f'RFC7946={"YES" if rfc7946 else "NO"}')
 
         options = QgsVectorFileWriter.SaveVectorOptions()
         options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
         options.feedback = feedback
-        options.datasourceOptions = ogrDataSourceOptions
-        options.layerOptions = ogrLayerOptions
-        options.fileEncoding = 'UTF-8'
+        options.datasourceOptions = datasourceOptions
+        options.layerOptions = layerOptions
+        options.fileEncoding = exportSettings.get('fileEncoding', 'UTF-8')
         options.skipAttributeCreation = False
         options.driverName = 'GeoJSON'
 
@@ -199,16 +192,17 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         options.fieldValueConverter = converter
         convertedFields = converter.convertedFields()
 
-        writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path,
+        writer_crs: QgsCoordinateReferenceSystem = crsJson if rfc7946 else crs
+        writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path.as_posix(),
                                                                  convertedFields,
                                                                  wkbType,
-                                                                 crsJson,
+                                                                 writer_crs,
                                                                  transformContext,
                                                                  options)
         # we might need to transform the coordinates to JSON EPSG:4326
         mappingDefinition = QgsRemappingSinkDefinition()
         mappingDefinition.setSourceCrs(crs)
-        mappingDefinition.setDestinationCrs(crsJson)
+        mappingDefinition.setDestinationCrs(writer_crs)
         mappingDefinition.setDestinationFields(fields)
         mappingDefinition.setDestinationWkbType(wkbType)
 
@@ -242,9 +236,9 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         del writer
 
         # set profile column styles etc.
-        cls.copyEditorWidgetSetup(path, fields)
+        cls.copyEditorWidgetSetup(path.as_posix(), fields)
 
-        return [path]
+        return [path.as_posix()]
 
     @classmethod
     def importProfiles(cls,
