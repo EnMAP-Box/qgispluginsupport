@@ -28,7 +28,7 @@ QMETATYPE_QDATE = QMetaType.QDate if Qgis.versionInt() >= 33800 else QVariant.Da
 QMETATYPE_QDATETIME = QMetaType.QDateTime if Qgis.versionInt() >= 33800 else QVariant.DateTime
 QMETATYPE_QVARIANTMAP = QMetaType.QVariantMap if Qgis.versionInt() >= 33800 else QVariant.Map
 QMETATYPE_QBYTEARRAY = QMetaType.QByteArray if Qgis.versionInt() >= 33800 else QVariant.ByteArray
-
+QMETATYPE_QVARIANTLIST = QMetaType.QVariantList if Qgis.versionInt() >= 33800 else QVariant.List
 
 QGIS_ACTIONTYPE = Qgis.ActionType if Qgis.versionInt() >= 32900 else QgsActionMenu.ActionType
 QGIS_AGGREGATE = Qgis.Aggregate if Qgis.versionInt() >= 33500 else QgsAggregateCalculator.Aggregate
