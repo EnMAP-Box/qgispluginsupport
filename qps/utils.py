@@ -1306,14 +1306,11 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
     style = QgsMapLayerStyle()
     style.readFromLayer(layer)
     style.writeToLayer(lyr2)
-    ftype1 = lyr2.fields()['profiles0'].editorWidgetSetup().type()
 
-    pathQlr = path.parent / re.sub(r'\.[^.]+$', '.qml', path.name)
+    path_qlr = path.parent / re.sub(r'\.[^.]+$', '.qml', path.name)
     # msg, success = layer.saveNamedStyle(pathQlr.as_posix())
-    msg, success = lyr2.saveNamedStyle(pathQlr.as_posix())
+    msg, success = lyr2.saveNamedStyle(path_qlr.as_posix())
     assert success, 'Failed to save style:' + msg
-
-    ftype2 = lyr2.fields()['profiles0'].editorWidgetSetup().type()
 
     return lyr2
 
