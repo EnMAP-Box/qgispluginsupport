@@ -1,23 +1,24 @@
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, \
+    QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope, \
+    QgsExpressionContextUtils, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeColumnRef, \
+    QgsExpressionNodeFunction, QgsFeature, QgsFeatureRequest, QgsFeatureSink, QgsFeedback, QgsField, QgsFields, \
+    QgsGeometry, QgsMapLayer, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException, \
+    QgsProcessingFeatureSource, QgsProcessingFeedback, QgsProcessingParameterAggregate, \
+    QgsProcessingParameterExpression, QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, \
+    QgsProcessingUtils, QgsVectorLayer, QgsWkbTypes
+from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType, QVariant
 
-from qgis.PyQt.QtCore import QVariant, QByteArray, NULL
-from qgis.core import QgsExpressionNodeColumnRef
-from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterFeatureSource, QgsProcessing, \
-    QgsProcessingParameterExpression, QgsProcessingParameterAggregate, QgsProcessingParameterFeatureSink, \
-    QgsProcessingFeedback, QgsProcessingContext, QgsProcessingException, QgsDistanceArea, QgsFields, \
-    QgsProcessingFeatureSource, QgsFeature, QgsFeatureSink, QgsMapLayer, QgsProcessingUtils, \
-    QgsWkbTypes, QgsExpressionContextUtils, QgsGeometry, QgsVectorLayer, QgsAggregateCalculator, \
-    QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsFeedback, \
-    QgsExpressionFunction, QgsExpressionContext, QgsExpression, QgsExpressionNodeFunction, QgsField, \
-    QgsFeatureRequest, QgsExpressionNode, QgsExpressionContextScope, QgsEditorWidgetSetup, \
-    edit
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field
-from ..core.spectralprofile import ProfileEncoding, decodeProfileValueDict, prepareProfileValueDict, \
-    encodeProfileValueDict
-from ...qgsfunctions import SPECLIB_FUNCTION_GROUP, HM, SpectralMath, StaticExpressionFunction
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
+    ProfileEncoding
+from ...qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
+    QMETATYPE_QSTRING, \
+    QMETATYPE_QTIME
+from ...qgsfunctions import HM, SPECLIB_FUNCTION_GROUP, SpectralMath, StaticExpressionFunction
 
 
 class Group(object):
@@ -147,15 +148,15 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
 
 
 class AggregateMemoryLayer(QgsVectorLayer):
-    memoryLayerFieldType = {QVariant.Int: 'integer',
+    memoryLayerFieldType = {QMETATYPE_INT: 'integer',
                             QVariant.LongLong: 'long',
-                            QVariant.Double: 'double',
-                            QVariant.String: 'string',
-                            QVariant.Date: 'date',
-                            QVariant.Time: 'time',
-                            QVariant.DateTime: 'datetime',
+                            QMETATYPE_DOUBLE: 'double',
+                            QMETATYPE_QSTRING: 'string',
+                            QMETATYPE_QDATE: 'date',
+                            QMETATYPE_QTIME: 'time',
+                            QMETATYPE_QDATETIME: 'datetime',
                             QVariant.ByteArray: 'binary',
-                            QVariant.Bool: 'boolean'}
+                            QMETATYPE_BOOL: 'boolean'}
     uri = 'memory:'
 
     def __init__(self,
@@ -185,7 +186,7 @@ class AggregateMemoryLayer(QgsVectorLayer):
         for field in fields:
             field: QgsField
             lengthPrecission = f'({field.length()},{field.precision()})'
-            if field.type() in [QVariant.List, QVariant.StringList]:
+            if field.type() in [QVariant.List, QMetaType.QStringList]:
                 ftype = field.subType()
                 ltype = '[]'
             else:

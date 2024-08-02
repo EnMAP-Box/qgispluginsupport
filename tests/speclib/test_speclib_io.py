@@ -22,21 +22,20 @@ import pathlib
 import re
 import unittest
 
-from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsProcessingFeedback, QgsFields, QgsExpressionContext, QgsFileUtils, QgsFeature, edit
-from qgis.core import QgsRemappingSinkDefinition, QgsProperty, QgsExpressionContextScope, QgsProject, QgsField
-from qgis.core import QgsVectorLayer
+from qgis.core import edit, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, \
+    QgsFileUtils, QgsProcessingFeedback, QgsProject, QgsProperty, QgsRemappingSinkDefinition, QgsVectorLayer
+
+from qps.qgisenums import QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryImportDialog, \
-    SpectralLibraryIO, SpectralLibraryImportWidget, SpectralLibraryExportWidget, initSpectralLibraryIOs
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportFeatureSink
-from qps.speclib.core.spectralprofile import prepareProfileValueDict, encodeProfileValueDict, \
-    decodeProfileValueDict
+from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryExportDialog, \
+    SpectralLibraryExportWidget, SpectralLibraryImportDialog, SpectralLibraryImportFeatureSink, \
+    SpectralLibraryImportWidget, SpectralLibraryIO
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict
 from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
 from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryImportWidget, GeoPackageSpectralLibraryIO
+from qps.testing import start_app, TestCaseBase, TestObjects
 from qps.utils import file_search
 
 start_app()
@@ -214,11 +213,11 @@ class TestIO(TestCaseBase):
     def test_SpectralLibraryImportFeatureSink(self):
 
         srcFields = QgsFields()
-        srcFields.append(QgsField('srcName', QVariant.String))
+        srcFields.append(QgsField('srcName', QMETATYPE_QSTRING))
         srcFields.append(create_profile_field('srcProfiles', encoding='bytes'))
 
         dstFields = QgsFields()
-        dstFields.append(QgsField('dstName', QVariant.String))
+        dstFields.append(QgsField('dstName', QMETATYPE_QSTRING))
         dstFields.append(create_profile_field('dstProfilesB', encoding='bytes'))
         dstFields.append(create_profile_field('dstProfilesS', encoding='text'))
         dstFields.append(create_profile_field('dstProfilesJ', encoding='json'))

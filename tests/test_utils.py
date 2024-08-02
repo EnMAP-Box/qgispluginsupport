@@ -36,6 +36,7 @@ from qgis.core import QgsProcessingFeedback, QgsRectangle, QgsFeatureRequest, Qg
     QgsRasterDataProvider, QgsRaster, QgsGeometry
 from qgis.core import QgsField, QgsRasterLayer, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsPointXY, \
     QgsProject, QgsMapLayerStore, QgsVector, QgsMapLayerProxyModel
+from qps.speclib.core import is_spectral_library
 from qps.testing import TestObjects, TestCase, start_app
 from qps.unitmodel import UnitLookup
 from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromString, nodeXmlString, \
@@ -44,7 +45,7 @@ from qps.utils import SpatialExtent, appendItemsToMenu, value2str, filenameFromS
     rasterArray, rasterBlockArray, spatialPoint2px, px2spatialPoint, osrSpatialReference, optimize_block_size, \
     fid2pixelindices, qgsRasterLayers, qgsField, file_search, parseWavelength, findMapLayerStores, \
     qgsFieldAttributes2List, gdalFileSize, loadUi, dn, SelectMapLayerDialog, parseFWHM, findParent, \
-    rasterizeFeatures, ExtentTileIterator, MapGeometryToPixel, aggregateArray, snapGeoCoordinates
+    rasterizeFeatures, ExtentTileIterator, MapGeometryToPixel, aggregateArray, snapGeoCoordinates, writeAsVectorFormat
 from qpstestdata import enmap, enmap_pixel, enmap_multipolygon, enmap_multipoint, hymap, landcover
 
 start_app()
@@ -285,11 +286,15 @@ class TestUtils(TestCase):
         ext3 = SpatialExtent(ext1)
         self.assertEqual(ext3.asWktPolygon(), ext1.asWktPolygon())
 
-    def createTestOutputDirectory(self, name: str = 'test-outputs') -> pathlib.Path:
+    def test_writeAsVectorFormat(self):
 
-        DIR = super().createTestOutputDirectory(name) / 'utils'
-        os.makedirs(DIR, exist_ok=True)
-        return DIR
+        lyr = TestObjects.createSpectralLibrary(10)
+
+        DIR = self.createTestOutputDirectory()
+
+        self.assertTrue(is_spectral_library(writeAsVectorFormat(lyr, DIR / 'example1.gpkg')))
+        self.assertTrue(is_spectral_library(writeAsVectorFormat(lyr, DIR / 'example2.geojson')))
+        self.assertIsInstance(writeAsVectorFormat(lyr, DIR / 'example3.shp'), QgsVectorLayer)
 
     def test_fid2pixelIndices(self):
 

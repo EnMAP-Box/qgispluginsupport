@@ -32,28 +32,25 @@ import pathlib
 import pickle
 import re
 import sys
-
 import warnings
-from typing import List, Any, Union
+from typing import Any, List, Union
 
 import numpy as np
-from qgis.PyQt.QtCore import QModelIndex, QMimeData, pyqtSignal, QVariant, QAbstractListModel, QItemSelectionModel, \
-    QByteArray, QAbstractTableModel, QSize, QObject
-from qgis.PyQt.QtGui import QColor, QIcon, QClipboard, QBrush, QPixmap
-from qgis.PyQt.QtWidgets import QVBoxLayout, QFileDialog, QPushButton, QDialogButtonBox, QToolButton, QAction, QWidget, \
-    QMessageBox, QTableView, QColorDialog, QApplication, QInputDialog, QDialog, QMenu, QHBoxLayout, QComboBox
-from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
 from osgeo import gdal
+from qgis.core import Qgis, QgsCategorizedSymbolRenderer, QgsField, QgsFillSymbol, QgsLineSymbol, QgsMapLayer, \
+    QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsProviderRegistry, QgsRasterLayer, QgsRasterRenderer, \
+    QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer
+from qgis.gui import QgsDialog, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
+    QgsMapLayerComboBox
+from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QAbstractTableModel, QByteArray, QItemSelectionModel, \
+    QMimeData, QModelIndex, QObject, QSize, Qt, QVariant
+from qgis.PyQt.QtGui import QBrush, QClipboard, QColor, QIcon, QPixmap
+from qgis.PyQt.QtWidgets import QAction, QApplication, QColorDialog, QComboBox, QDialog, QDialogButtonBox, QFileDialog, \
+    QHBoxLayout, QInputDialog, QMenu, QMessageBox, QPushButton, QTableView, QToolButton, QVBoxLayout, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomImplementation
 
-from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtCore import NULL
-from qgis.core import Qgis, QgsMapLayer, QgsVectorLayer, QgsRasterLayer, QgsReadWriteContext, \
-    QgsRasterRenderer, QgsCategorizedSymbolRenderer, QgsPalettedRasterRenderer, \
-    QgsField, QgsRendererCategory, QgsProject, QgsProviderRegistry, \
-    QgsMarkerSymbol, QgsLineSymbol, QgsFillSymbol
-from qgis.gui import QgsMapLayerComboBox, QgsEditorConfigWidget, QgsGui, QgsEditorWidgetFactory, \
-    QgsDialog, QgsEditorWidgetWrapper
-from ..utils import gdalDataset, nextColor, registeredMapLayers, loadUi
+from ..qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
+from ..utils import gdalDataset, loadUi, nextColor, registeredMapLayers
 
 DEFAULT_UNCLASSIFIEDCOLOR = QColor('black')
 DEFAULT_FIRST_COLOR = QColor('#a6cee3')
@@ -1919,9 +1916,9 @@ class ClassificationSchemeEditorWidgetWrapper(QgsEditorWidgetWrapper):
             if isinstance(classInfo, ClassInfo):
 
                 typeCode = self.field().type()
-                if typeCode == QVariant.String:
+                if typeCode == QMETATYPE_QSTRING:
                     value = classInfo.name()
-                elif typeCode in [QVariant.Int, QVariant.Double]:
+                elif typeCode in [QMETATYPE_INT, QMETATYPE_DOUBLE]:
                     value = classInfo.label()
                 else:
                     s = ""
