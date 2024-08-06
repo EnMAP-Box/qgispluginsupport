@@ -31,30 +31,21 @@ import pathlib
 import re
 import sys
 from json import JSONDecodeError
-from typing import Union, List, Set, Callable, Iterable, Any, Dict, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Set, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import QByteArray
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant, NULL
-from qgis.core import QgsPointXY
-from qgis.core import QgsCoordinateTransform, QgsCoordinateReferenceSystem
-from qgis.core import QgsExpression, QgsFeatureRequest, QgsExpressionFunction, \
-    QgsMessageLog, Qgis, QgsExpressionContext, QgsExpressionNode
-from qgis.core import QgsExpressionContextScope
-from qgis.core import QgsExpressionNodeFunction, QgsField
-from qgis.core import QgsFeature
-from qgis.core import QgsGeometry, QgsRasterLayer, QgsRasterDataProvider
-from qgis.core import QgsMapLayer
-from qgis.core import QgsMapToPixel
-from qgis.core import QgsProject
+from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
+from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
+    QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
+    QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
+    QgsRasterDataProvider, QgsRasterLayer
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
-from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
-    ProfileEncoding
-from .utils import MapGeometryToPixel, rasterArray, noDataValues, aggregateArray, _geometryIsSinglePoint
+from .speclib.core.spectralprofile import ProfileEncoding, decodeProfileValueDict, encodeProfileValueDict, \
+    prepareProfileValueDict
+from .utils import MapGeometryToPixel, _geometryIsSinglePoint, aggregateArray, noDataValues, rasterArray
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
@@ -444,6 +435,15 @@ class ExpressionFunctionUtils(object):
             wl = sp.wavelengths()
             wlu = sp.wavelengthUnits()
 
+            if bbl.count(1) == len(bbl):
+                bbl = None
+
+            if wl.count(None) == len(wl):
+                wl = None
+
+            if wlu.count(None) == len(wlu):
+                wlu = None
+
             dump = json.dumps(dict(bbl=bbl, wl=wl, wlu=wlu))
             context.setCachedValue(k, dump)
 
@@ -638,9 +638,9 @@ class RasterArray(QgsExpressionFunction):
         if 0 in [bbox.width(), bbox.height()]:
             if bbox.width() == 0:
                 bbox.setXMinimum(c.x() - 0.5 * resX)
-                bbox.setXMaximum(c.x() + 0.5 * resY)
+                bbox.setXMaximum(c.x() + 0.5 * resX)
             if bbox.height() == 0:
-                bbox.setYMinimum(c.y() - 0.5 * resX)
+                bbox.setYMinimum(c.y() - 0.5 * resY)
                 bbox.setYMaximum(c.y() + 0.5 * resY)
             bbox = e.intersect(bbox)
         else:
@@ -811,7 +811,9 @@ class RasterProfile(QgsExpressionFunction):
         try:
             spectral_properties = ExpressionFunctionUtils.cachedSpectralProperties(context, lyrR)
             wl = spectral_properties['wl']
-            wlu = spectral_properties['wlu'][0]
+            wlu = spectral_properties['wlu']
+            if isinstance(wlu, list):
+                wlu = wlu[0]
             bbl = spectral_properties['bbl']
 
             if not has_multiple_profiles:
