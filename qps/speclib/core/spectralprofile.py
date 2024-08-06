@@ -6,23 +6,19 @@ import pickle
 import sys
 from json import JSONDecodeError
 from math import nan
-from typing import Any, List, Union, Tuple, Dict, Optional, Iterable
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 from osgeo import gdal
-from qgis.core import QgsExpressionContext, QgsPropertyTransformer
 
-from qgis.PyQt.QtCore import QDateTime, Qt, NULL
-from qgis.PyQt.QtCore import QJsonDocument
-from qgis.PyQt.QtCore import QVariant, QByteArray
-from qgis.core import QgsFeature, QgsMapLayer, QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields, \
-    QgsRasterLayer, QgsVectorLayer, QgsGeometry, QgsProcessingFeedback
-from . import profile_field_indices, profile_fields, \
-    is_profile_field, create_profile_field
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, QVariant, Qt
+from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
+    QgsMapLayer, QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
+from . import create_profile_field, is_profile_field, profile_field_indices, profile_fields
 from .. import EMPTY_VALUES, defaultSpeclibCrs
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...unitmodel import BAND_INDEX, BAND_NUMBER
-from ...utils import saveTransform, qgsRasterLayer, qgsField
+from ...utils import qgsField, qgsRasterLayer, saveTransform
 
 # The values that describe a spectral profiles
 # y in 1st position ot show profile values in string representations first
@@ -93,11 +89,10 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
     if x:
         assert isinstance(x, list)
         assert len(x) == len(y), f'x has length {len(x)} instead of {len(y)}'
+
     bbl = d.get('bbl', None)
     if bbl:
         assert isinstance(bbl, list)
-        if len(bbl) != len(y):
-            s = ""
         assert len(bbl) == len(y), f'bbl has length {len(bbl)} instead of {len(y)}'
 
     return d

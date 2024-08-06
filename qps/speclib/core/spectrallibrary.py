@@ -36,23 +36,23 @@ import weakref
 from typing import Dict, List, Optional, Union
 
 from osgeo import gdal, ogr
-from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
+
+from qgis.PyQt.QtCore import QMimeData, QUrl, QVariant, Qt
+from qgis.PyQt.QtWidgets import QWidget
+from qgis.core import Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsExpression, \
     QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsProperty, QgsRasterLayer, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, \
-    QgsWkbTypes
-from qgis.PyQt.QtCore import QMimeData, Qt, QUrl, QVariant
-from qgis.PyQt.QtWidgets import QWidget
-
+    QgsWkbTypes, edit
 from . import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
     profile_field_list, profile_field_names
-from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
-    prepareProfileValueDict, ProfileEncoding, SpectralSetting
+from .spectralprofile import ProfileEncoding, SpectralSetting, decodeProfileValueDict, encodeProfileValueDict, \
+    groupBySpectralProperties, prepareProfileValueDict
 from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
 from ...qgisenums import QGIS_WKBTYPE, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
-from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint
+from ...utils import SpatialPoint, copyEditorWidgetSetup, findMapLayer, qgsField
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -344,7 +344,8 @@ class SpectralLibraryUtils:
         return source
 
     @staticmethod
-    def readProfileDict(layer: QgsRasterLayer, point: Union[SpatialPoint, QgsPointXY],
+    def readProfileDict(layer: QgsRasterLayer,
+                        point: Union[SpatialPoint, QgsPointXY],
                         store: Optional[QgsMapLayerStore] = None) -> Dict:
         """
         Reads a spectral profile dictionary from a QgsRasterLayer at position point
@@ -360,7 +361,8 @@ class SpectralLibraryUtils:
         context.setGeometry(QgsGeometry.fromPointXY(point))
 
         if Qgis.versionInt() >= 33000:
-            store = QgsMapLayerStore()
+            if store is None:
+                store = QgsMapLayerStore()
             context.setLoadedLayerStore(store)
         else:
             store = QgsProject.instance().layerStore()
@@ -368,6 +370,7 @@ class SpectralLibraryUtils:
         add_layer = store.mapLayer(layer.id()) != layer
         if add_layer:
             store.addMapLayer(layer)
+
         from ...qgsfunctions import RasterProfile
         exp = QgsExpression(f"{RasterProfile.NAME}('{layer.id()}', $geometry, encoding:='dict')")
         exp.prepare(context)
