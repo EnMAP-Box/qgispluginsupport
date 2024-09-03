@@ -8,32 +8,32 @@ import warnings
 from typing import Any, Dict, Iterable, Iterator, List, Set, Tuple, Union
 
 import numpy as np
-from numpy import NaN
+from numpy import nan
+
+from qgis.PyQt.QtCore import NULL, QAbstractListModel, QItemSelection, QModelIndex, QObject, QRect, QRectF, QSize, \
+    QSortFilterProxyModel, QVariant, Qt, pyqtSignal
+from qgis.PyQt.QtGui import QAbstractTextDocumentLayout, QColor, QFont, QIcon, QPainter, QTextDocument
+from qgis.PyQt.QtWidgets import QComboBox, QDoubleSpinBox, QListWidgetItem, QSpinBox, QStyle, QStyleOptionViewItem, \
+    QStyledItemDelegate, QTableView, QTreeView, QWidget
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsField, \
     QgsFieldConstraints, QgsFields, QgsGeometry, QgsLayerItem, QgsMapToPixel, QgsPointXY, QgsProperty, QgsRasterLayer, \
     QgsRectangle, QgsVector, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsColorButton, QgsDockWidget, QgsDoubleSpinBox, QgsFieldExpressionWidget, QgsFilterLineEdit, \
     QgsMapCanvas
-from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractListModel, QItemSelection, QModelIndex, QObject, \
-    QRect, QRectF, QSize, QSortFilterProxyModel, Qt, QVariant
-from qgis.PyQt.QtGui import QAbstractTextDocumentLayout, QColor, QFont, QIcon, QPainter, QTextDocument
-from qgis.PyQt.QtWidgets import QComboBox, QDoubleSpinBox, QListWidgetItem, QSpinBox, QStyle, QStyledItemDelegate, \
-    QStyleOptionViewItem, QTableView, QTreeView, QWidget
-
 from .spectrallibrarywidget import SpectralLibraryWidget
 from .. import speclibUiPath
 from ..core import profile_field_names
 from ..core.spectralprofile import encodeProfileValueDict, \
     prepareProfileValueDict
 from ...externals.htmlwidgets import HTMLComboBox
-from ...models import Option, OptionListModel, OptionTreeNode, setCurrentComboBoxValue, TreeModel, TreeNode, TreeView
+from ...models import Option, OptionListModel, OptionTreeNode, TreeModel, TreeNode, TreeView, setCurrentComboBoxValue
 from ...plotstyling.plotstyling import PlotStyle, PlotStyleButton
 from ...qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATETIME, QMETATYPE_QSTRING
 from ...qgsfunctions import RasterProfile
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import aggregateArray, HashableRect, iconForFieldType, loadUi, nextColor, rasterLayerMapToPixel, \
-    SpatialPoint
+from ...utils import HashableRect, SpatialPoint, aggregateArray, iconForFieldType, loadUi, nextColor, \
+    rasterLayerMapToPixel
 
 SCOPE_VAR_SAMPLE_CLICK = 'sample_click'
 SCOPE_VAR_SAMPLE_FEATURE = 'sample_feature'
@@ -1596,7 +1596,7 @@ class SpectralProfileScalingNode(TreeNode):
             for i in range(len(profiles)):
                 d, _ = profiles[i]
                 y = d['y']
-                d['y'] = [v * scale + offset if v not in [None, NaN] and math.isfinite(v)
+                d['y'] = [v * scale + offset if v not in [None, nan] and math.isfinite(v)
                           else v for v in y
                           ]
 
@@ -2098,7 +2098,7 @@ class SpectralProfileBridge(TreeModel):
                         if isinstance(node, StandardFieldGeneratorNode):
                             tt += node.expressionString().strip() + '<br>'
                         if has_errors:
-                            tt += '<span style="color:red">' + '<br>'.join(errors) + '</span>'
+                            tt += '<span style="color:red">' + '<br>'.join(node.errors(recursive=True)) + '</span>'
                         return tt
 
                     if role == Qt.FontRole:

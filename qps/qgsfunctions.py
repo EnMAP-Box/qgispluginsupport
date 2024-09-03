@@ -680,7 +680,7 @@ class RasterArray(QgsExpressionFunction):
                 bandNo = b + 1
                 for ndv in NODATA.get(bandNo, []):
                     band = pixels[b, :]
-                    pixels[b, :] = np.where(band == ndv, np.NAN, band)
+                    pixels[b, :] = np.where(band == ndv, np.nan, band)
                 # set scaling - is already applied by QGIS API
                 # if False:
                 #    pixels[b, :] = SCALING[bandNo][0] + SCALING[bandNo][1] * pixels[b, :]

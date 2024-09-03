@@ -27,10 +27,10 @@ from typing import List
 
 import numpy as np
 from osgeo import ogr
-from qgis.core import edit, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, \
-    QgsVectorLayer, QgsWkbTypes
-from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant
 
+from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, QgsVectorLayer, \
+    QgsWkbTypes, edit
 from qps import initAll
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
@@ -38,12 +38,13 @@ from qps.speclib.core import can_store_spectral_profiles, create_profile_field, 
     profile_field_list, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
-    nanToNone, prepareProfileValueDict, ProfileEncoding, SpectralProfileBlock, SpectralSetting, validateProfileValueDict
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.speclib.core.spectralprofile import ProfileEncoding, SpectralProfileBlock, SpectralSetting, \
+    decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, nanToNone, prepareProfileValueDict, \
+    validateProfileValueDict
+from qps.testing import TestCaseBase, TestObjects, start_app
 from qps.unitmodel import BAND_NUMBER
-from qps.utils import createQgsField, FeatureReferenceIterator, findTypeFromString, qgsFields2str, SpatialExtent, \
-    SpatialPoint, str2QgsFields, toType
+from qps.utils import FeatureReferenceIterator, SpatialExtent, SpatialPoint, createQgsField, findTypeFromString, \
+    qgsFields2str, str2QgsFields, toType
 from qpstestdata import enmap, envi_sli
 
 start_app()
@@ -145,7 +146,7 @@ class SpeclibCoreTests(TestCaseBase):
 
     def test_SerializationJSON(self):
         x = [1, 2, 3, 4, 5]
-        y = [2, 3, 4, np.NaN, 6]
+        y = [2, 3, 4, np.nan, 6]
         bbl = [1, 0, 1, 1, 0]
         xUnit = 'μm'
         yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
@@ -176,7 +177,7 @@ class SpeclibCoreTests(TestCaseBase):
     def test_Serialization(self):
 
         x = [1, 2, 3, 4, 5]
-        y = [2, 3, None, np.NaN, np.Infinity]
+        y = [2, 3, None, np.nan, np.inf]
         bbl = [1, 0, 1, 1, 0]
         xUnit = 'μm'
         yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
