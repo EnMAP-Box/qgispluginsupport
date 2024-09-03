@@ -646,8 +646,8 @@ class SpectralProfileBlock(object):
 
             pos_x_array = np.empty((1, ns), dtype=float)
             pos_y_array = np.empty((1, ns), dtype=float)
-            pos_x_array.fill(np.NaN)
-            pos_y_array.fill(np.NaN)
+            pos_x_array.fill(np.nan)
+            pos_y_array.fill(np.nan)
             del ref_profile
 
             for i, profile in enumerate(profiles):

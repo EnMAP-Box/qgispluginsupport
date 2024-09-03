@@ -2,20 +2,19 @@ import collections
 import datetime
 import sys
 import textwrap
-
 import warnings
-from typing import Tuple, List, Dict, Union
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
-from qgis.PyQt.QtCore import pyqtSignal, QPoint, Qt, QPointF
-from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QStandardItem
-from qgis.PyQt.QtWidgets import QMenu, QAction, QWidgetAction, QSlider, QApplication
-from qgis.core import QgsProject
 
+from qgis.PyQt.QtCore import QPoint, QPointF, Qt, pyqtSignal
+from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QStandardItem
+from qgis.PyQt.QtWidgets import QAction, QApplication, QMenu, QSlider, QWidgetAction
+from qgis.core import QgsProject
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...pyqtgraph import pyqtgraph as pg
-from ...utils import SignalObjectWrapper, HashablePointF
-from ...unitmodel import datetime64, UnitWrapper
+from ...unitmodel import UnitWrapper, datetime64
+from ...utils import HashablePointF, SignalObjectWrapper
 
 
 class SpectralXAxis(pg.AxisItem):
@@ -341,7 +340,7 @@ class SpectralProfilePlotDataItem(pg.PlotDataItem):
         if not showBadBands and 'bbl' in plot_data.keys():
             valid = np.array(plot_data['bbl'], dtype=float) > 0
             valid = valid & np.isfinite(valid)
-            y = np.where(valid, y, np.NAN)
+            y = np.where(valid, y, np.nan)
 
         connect = np.isfinite(x) & np.isfinite(y)
 
