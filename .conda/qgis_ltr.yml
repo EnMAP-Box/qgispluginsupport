@@ -1,11 +1,10 @@
 # run: conda env create --file conda_environment.yml
 # see also https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#creating-an-environment-from-an-environment-yml-file
-name: qgis_lr_osgeo
+name: qgis_ltr
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
-  - qgis=3.36
+  - qgis=3.34
   - pip
   - matplotlib
 
