@@ -20,6 +20,7 @@ dependencies:
       - flake8-qgis
       - pytest-env
       - pytest-xdist
+      - coverage-badge
 
 variables:
   QT_MAC_WANTS_LAYER: 1
