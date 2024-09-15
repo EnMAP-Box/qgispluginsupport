@@ -8,10 +8,10 @@ import numpy as np
 from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
 from qgis.PyQt.QtCore import QVariant
-from qps.speclib.core import create_profile_field
-from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
-from qps.speclib.core.spectralprofile import AbstractSpectralProfileFile, prepareProfileValueDict, ProfileEncoding
+from ..core import create_profile_field
+from ..core.spectrallibrary import SpectralLibraryUtils
+from ..core.spectrallibraryio import SpectralLibraryIO
+from ..core.spectralprofile import AbstractSpectralProfileFile, prepareProfileValueDict, ProfileEncoding
 
 # GPS Longitude  DDDmm.mmmmC
 # GPS Latitude  DDmm.mmmmC
