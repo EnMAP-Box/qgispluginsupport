@@ -6,16 +6,17 @@ import pickle
 import sys
 from json import JSONDecodeError
 from math import nan
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 from osgeo import gdal
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, QVariant, Qt
 from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
     QgsMapLayer, QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from . import create_profile_field, is_profile_field, profile_field_indices, profile_fields
-from .. import EMPTY_VALUES, defaultSpeclibCrs
+from .. import defaultSpeclibCrs, EMPTY_VALUES
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...unitmodel import BAND_INDEX, BAND_NUMBER
 from ...utils import qgsField, qgsRasterLayer, saveTransform
@@ -602,6 +603,20 @@ def groupBySpectralProperties(profiles: Union[QgsVectorLayer, List[QgsFeature]],
             results[key] = []
         results[key].append(p)
     return results
+
+
+class AbstractSpectralProfileFile(object):
+
+    def __init__(self, path: Union[str, Path]):
+        path = Path(path)
+        assert path.is_file()
+        self.mPath = path
+
+    def asMap(self) -> dict:
+        raise NotImplementedError()
+
+    def asFeature(self) -> QgsFeature:
+        raise NotImplementedError()
 
 
 class SpectralProfileBlock(object):

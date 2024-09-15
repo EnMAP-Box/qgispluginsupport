@@ -4,22 +4,22 @@ import unittest
 
 import numpy as np
 from osgeo import gdal_array
+
 from qgis.core import edit, Qgis, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
     QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsFieldCalculator
 from qgis.PyQt.QtCore import QByteArray
-
 from qps.qgisenums import QGIS_WKBTYPE, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
-    SpectralData, SpectralEncoding, SpectralMath
+    ReadSpectralProfile, SpectralData, SpectralEncoding, SpectralMath
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, ProfileEncoding
 from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
 from qps.testing import start_app, TestCaseBase, TestObjects
-from qps.utils import SpatialExtent, SpatialPoint
-from qpstestdata import enmap, enmap_multipolygon, enmap_pixel
+from qps.utils import file_search, SpatialExtent, SpatialPoint
+from qpstestdata import DIR_SED, enmap, enmap_multipolygon, enmap_pixel
 
 start_app()
 
@@ -119,6 +119,25 @@ class QgsFunctionTests(TestCaseBase):
         self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
         self.assertListEqual(v_array, v_profile['y'])
         QgsProject.instance().removeAllMapLayers()
+
+    def test_readSpectralProfileFiles(self):
+
+        context = QgsExpressionContext()
+        f = ReadSpectralProfile()
+        self.registerFunction(f)
+        from qpstestdata import DIR_SVC, DIR_ASD_BIN
+
+        asd_files = list(file_search(DIR_ASD_BIN, '*.asd'))
+        svc_files = list(file_search(DIR_SVC, '*.sig'))
+        sed_files = list(file_search(DIR_SED, '*.sed'))
+
+        for file in [asd_files[0], svc_files[0], sed_files[0]]:
+            exp = QgsExpression(f"{f.NAME}('{file}')")
+            self.assertTrue(exp.prepare(context), msg=exp.parserErrorString())
+            data = exp.evaluate(context)
+            self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
+            self.assertIsInstance(data, dict)
+        s = ""
 
     def test_SpectralEncoding(self):
 
@@ -590,6 +609,7 @@ class QgsFunctionTests(TestCaseBase):
             SpectralMath(),
             SpectralData(),
             SpectralEncoding(),
+            ReadSpectralProfile()
         ]
 
         functions.extend(createSpectralProfileFunctions())
@@ -603,6 +623,8 @@ class QgsFunctionTests(TestCaseBase):
 
         gui = QgsFieldCalculator(lyr, None)
         gui.exec_()
+
+        QgsProject.instance().removeAllMapLayers()
 
     def test_aggregation_functions(self):
 

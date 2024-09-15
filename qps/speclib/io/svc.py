@@ -1,4 +1,3 @@
-import json
 import os
 import re
 from pathlib import Path
@@ -12,7 +11,7 @@ from qgis.PyQt.QtCore import QVariant
 from qps.speclib.core import create_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
-from qps.speclib.core.spectralprofile import prepareProfileValueDict
+from qps.speclib.core.spectralprofile import AbstractSpectralProfileFile, prepareProfileValueDict, ProfileEncoding
 
 # GPS Longitude  DDDmm.mmmmC
 # GPS Latitude  DDmm.mmmmC
@@ -35,19 +34,17 @@ def match_to_coordinate(matchLat: Match, matchLon: Match) -> QgsPointXY:
     return QgsPointXY(x, y)
 
 
-class SVCSigFile(object):
+class SVCSigFile(AbstractSpectralProfileFile):
     SVC_FIELDS = QgsFields()
-    SVC_FIELDS.append(create_profile_field('reference'))
-    SVC_FIELDS.append(create_profile_field('target'))
-    SVC_FIELDS.append(create_profile_field('reflectance'))
-    SVC_FIELDS.append(QgsField('timeR', QVariant.String))
-    SVC_FIELDS.append(QgsField('timeT', QVariant.String))
-    SVC_FIELDS.append(QgsField('json_data', QVariant.String))
+    SVC_FIELDS.append(create_profile_field('reference', encoding=ProfileEncoding.Dict))
+    SVC_FIELDS.append(create_profile_field('target', encoding=ProfileEncoding.Dict))
+    SVC_FIELDS.append(create_profile_field('reflectance', encoding=ProfileEncoding.Dict))
+    SVC_FIELDS.append(QgsField('timeR', QVariant.DateTime))
+    SVC_FIELDS.append(QgsField('timeT', QVariant.DateTime))
+    SVC_FIELDS.append(QgsField('json_data', QVariant.Map))
 
     def __init__(self, path: Union[str, Path]):
-        path = Path(path)
-        assert path.is_file()
-        self.mPath = path
+        super().__init__(path)
 
         self.profileT = None
         self.profileR = None
@@ -102,10 +99,8 @@ class SVCSigFile(object):
                 elif len(coordinates) == 1:
                     self.coordT = coordinates[0]
 
-    def asFeature(self) -> QgsFeature:
-
-        f = QgsFeature(self.SVC_FIELDS)
-        attributes = {'json_data': json.dumps(self.data)}
+    def asMap(self) -> dict:
+        attributes = {'json_data': self.data}
 
         if self.profileR:
             attributes['reference'] = self.profileR
@@ -116,6 +111,12 @@ class SVCSigFile(object):
         if self.profileRefl:
             attributes['reflectance'] = self.profileR
 
+        return attributes
+
+    def asFeature(self) -> QgsFeature:
+
+        f = QgsFeature(self.SVC_FIELDS)
+        attributes = self.asMap()
         SpectralLibraryUtils.setAttributeMap(f, attributes)
 
         if self.coordT:

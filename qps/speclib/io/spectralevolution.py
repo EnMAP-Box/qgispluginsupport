@@ -34,11 +34,11 @@ from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, Qgs
     QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFileWidget
 from qgis.PyQt.QtCore import QDate, QTime
-
 from .. import FIELD_NAME
 from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
+from ..core.spectralprofile import AbstractSpectralProfileFile, encodeProfileValueDict, prepareProfileValueDict, \
+    ProfileEncoding
 from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QSTRING, QMETATYPE_QTIME
 
 
@@ -82,9 +82,9 @@ class SEDAttributes(object):
 
 SED_FIELDS = QgsFields()
 SED_FIELDS.append(QgsField(FIELD_NAME, QMETATYPE_QSTRING))
-SED_FIELDS.append(create_profile_field(SEDAttributes.Reference, encoding=ProfileEncoding.Text))
-SED_FIELDS.append(create_profile_field(SEDAttributes.Target, encoding=ProfileEncoding.Text))
-SED_FIELDS.append(create_profile_field(SEDAttributes.Reflectance, encoding=ProfileEncoding.Text))
+SED_FIELDS.append(create_profile_field(SEDAttributes.Reference, encoding=ProfileEncoding.Map))
+SED_FIELDS.append(create_profile_field(SEDAttributes.Target, encoding=ProfileEncoding.Map))
+SED_FIELDS.append(create_profile_field(SEDAttributes.Reflectance, encoding=ProfileEncoding.Map))
 SED_FIELDS.append(QgsField(SEDAttributes.Comment, QMETATYPE_QSTRING))
 SED_FIELDS.append(QgsField(SEDAttributes.Version, QMETATYPE_QSTRING))
 SED_FIELDS.append(QgsField(SEDAttributes.FileName, QMETATYPE_QSTRING))
@@ -150,13 +150,13 @@ rx_table_header = re.compile(r'^Wvl[^:]+')
 rx_sed_file = re.compile(r'\.sed$', re.I)
 
 
-class SEDFile(object):
+class SEDFile(AbstractSpectralProfileFile):
     """
     Wrapper class to access a single SED File.
     """
 
-    def __init__(self, path: str = None):
-        super(SEDFile, self).__init__()
+    def __init__(self, path):
+        super(SEDFile, self).__init__(path)
         self.mFeature = QgsFeature(SED_FIELDS)
 
         if path is not None:
@@ -287,6 +287,12 @@ class SEDFile(object):
 
             g = QgsGeometry.fromPointXY(QgsPointXY(c_lon, c_lat))
             self.mFeature.setGeometry(g)
+
+    def asMap(self) -> dict:
+        return self.mFeature.attributeMap()
+
+    def asFeature(self) -> QgsFeature:
+        return self.mFeature
 
 
 class SEDSpectralLibraryImportWidget(SpectralLibraryImportWidget):

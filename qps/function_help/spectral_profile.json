@@ -1,0 +1,26 @@
+{
+  "name": "spectral_profile",
+  "type": "function",
+  "description": "Reads spectral profile files and returns their profiles and other attributes",
+  "arguments": [
+    {
+      "arg":"file",
+      "description":"path to file with spectral profile data"
+    }, {
+      "arg":"type",
+      "description":"Description of profile file type. <br>Can be <code>asd</code> ASD binary file, <code>sig</code> SVC Spectra Vista Company text files, or <code>sed</code> for Spectral Evolution text files"
+    }
+  ],
+  "examples": [
+    {
+      "expression":"spectral_profile('ribb0001.asd')",
+      "returns":"Returns a map with all values read from 'ribb0001.asd'"
+    }, {
+      "expression":"spectral_profile('ribb0001.003', 'asd')",
+      "returns":"Reads the file 'ribb0001.003' using the reader for ASD files"
+    }, {
+      "expression": "spectral_profile('ribb0001.003')['reference']",
+      "returns":"Returns the spectral profile data of the reference profile"
+    }
+  ]
+}

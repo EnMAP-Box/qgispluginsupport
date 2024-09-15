@@ -23,6 +23,12 @@ envi_hdr = (_TESTDATA / 'envi' / 'envi.hdr').as_posix()
 envi_sli = (_TESTDATA / 'envi' / 'speclib.sli').as_posix()
 envi_sli_hdr = (_TESTDATA / 'envi' / 'speclib.hdr').as_posix()
 
+# SVC spectral profiles
+DIR_SVC = (_TESTDATA / 'svc')
+svc_sig = DIR_SVC / 'HR.020824.0000.sig'
+svc_sig_jpg = DIR_SVC / 'HR.020824.0000.sig.jpg'
+
+DIR_SED = (_TESTDATA / 'spectralevolution')
 ndvi_ts = (_TESTDATA / 'ndvi_ts.tif').as_posix()
 
 DIR_ECOSIS = _TESTDATA / 'ecosis'

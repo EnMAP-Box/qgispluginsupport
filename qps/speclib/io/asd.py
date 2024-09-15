@@ -34,14 +34,14 @@ import warnings
 from typing import List, Tuple, Union
 
 import numpy as np
+
 from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, \
     QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFileWidget
-
 from .. import FIELD_NAME
 from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict
+from ..core.spectralprofile import AbstractSpectralProfileFile, encodeProfileValueDict, prepareProfileValueDict
 from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 
 """
@@ -231,15 +231,15 @@ ASD_FIELDS.append(QgsField('instrument_num', QMETATYPE_INT))
 ASD_FIELDS.append(QgsField('sample_count', QMETATYPE_INT))
 
 
-class ASDBinaryFile(object):
+class ASDBinaryFile(AbstractSpectralProfileFile):
     """
     Wrapper class to access a ASD File Format binary file.
     See ASD File Format, version 8, revision B, ASD Inc.,
     a PANalytical company, 2555 55th Street, Suite 100 Boulder, CO 80301.
     """
 
-    def __init__(self, path: str = None):
-        super(ASDBinaryFile, self).__init__()
+    def __init__(self, path):
+        super(ASDBinaryFile, self).__init__(path)
         self.name: str = ''
         # initialize all variables in the ASD Binary file header
         self.co: str = None
@@ -311,6 +311,10 @@ class ASDBinaryFile(object):
 
     def yValuesReference(self) -> np.ndarray:
         return self.Reference
+
+    def asMap(self) -> dict:
+
+        return self.__dict__.copy()
 
     def asFeature(self, fields: QgsFields = None) -> QgsFeature:
         """
