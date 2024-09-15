@@ -279,8 +279,12 @@ class CursorLocationMapTool(QgsMapToolEmitPoint):
                 lineV = QgsLineString(
                     [QgsPoint(cen.x(), ext.upperLeftPt().y()), QgsPoint(cen.x(), ext.lowerRightPt().y())])
 
-                geom.addPart(lineH, QgsWkbTypes.LineGeometry)
-                geom.addPart(lineV, QgsWkbTypes.LineGeometry)
+                if Qgis.versionInt() >= 33800:
+                    geom.addPartV2(lineH, Qgis.WkbType.LineString)
+                    geom.addPartV2(lineV, Qgis.WkbType.LineString)
+                else:
+                    geom.addPart(lineH, QgsWkbTypes.LineGeometry)
+                    geom.addPart(lineV, QgsWkbTypes.LineGeometry)
                 self.rubberband.addGeometry(geom, None)
                 self.rubberband.show()
 

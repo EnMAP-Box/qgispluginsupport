@@ -1,24 +1,26 @@
 import math
 import re
-from typing import List, Optional, Union, Tuple, Any, Dict
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+from qgis.core import Qgis, QgsColorRampShader, QgsCoordinateReferenceSystem, QgsDataProvider, QgsFeature, \
+    QgsFeatureRequest, QgsField, QgsFields, QgsMapLayerModel, QgsMessageLog, QgsPointXY, QgsProject, \
+    QgsProviderMetadata, QgsProviderRegistry, QgsRaster, QgsRasterBandStats, QgsRasterBlock, QgsRasterBlockFeedback, \
+    QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, QgsRasterLayer, QgsRectangle, QgsVectorLayer
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QMetaType, QModelIndex, QObject, Qt, QUrl, QUrlQuery, QVariant
+from qgis.PyQt.QtGui import QColor, QIcon
 
-from qgis.PyQt.QtCore import NULL
-from qgis.PyQt.QtCore import QModelIndex, QUrl, QUrlQuery, QVariant, QObject, QDateTime, QByteArray
-from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.core import QgsRasterInterface, QgsCoordinateReferenceSystem, QgsMapLayerModel, QgsRasterLayer, \
-    QgsRasterBandStats, QgsProject, QgsPointXY, QgsRaster, QgsRasterIdentifyResult, \
-    QgsColorRampShader
-from qgis.core import QgsVectorLayer, QgsFields, QgsRectangle, QgsDataProvider, QgsRasterDataProvider, QgsField, \
-    QgsFeature, QgsFeatureRequest, QgsRasterBlockFeedback, QgsRasterBlock, Qgis, QgsProviderMetadata, \
-    QgsProviderRegistry, QgsMessageLog
-from ..core import profile_fields, is_profile_field
-from ..core.spectralprofile import SpectralSetting, groupBySpectralProperties, decodeProfileValueDict
+from ..core import is_profile_field, profile_fields
+from ..core.spectralprofile import decodeProfileValueDict, groupBySpectralProperties, SpectralSetting
+from ...qgisenums import QGIS_RASTERBANDSTATISTIC, QGIS_RASTERINTERFACECAPABILITY, QMETATYPE_BOOL, QMETATYPE_DOUBLE, \
+    QMETATYPE_INT, \
+    QMETATYPE_QDATE, QMETATYPE_QDATETIME, \
+    QMETATYPE_QSTRING, \
+    QMETATYPE_QTIME, QMETATYPE_UINT, \
+    QMETATYPE_ULONGLONG
 from ...unitmodel import BAND_INDEX
-from ...utils import QGIS2NUMPY_DATA_TYPES, qgsField, qgisToNumpyDataType, nextColor, numpyToQgisDataType, \
-    HashableRectangle
+from ...utils import HashableRectangle, nextColor, numpyToQgisDataType, QGIS2NUMPY_DATA_TYPES, qgisToNumpyDataType, \
+    qgsField
 
 _DEF_CRS = None
 
@@ -65,7 +67,7 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
                 assert layer.isValid()
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(profiles, field=SpectralProfileValueConverter(field))
-                layer.setTitle(f'Field "{field.name()}" as raster')
+                # layer.setTitle(f'Field "{field.name()}" as raster')
                 layers.append(layer)
         else:
             converter = VectorLayerFieldRasterDataProvider.findFieldConverter(field)
@@ -75,7 +77,7 @@ def createRasterLayers(features: Union[QgsVectorLayer, List[QgsFeature]],
                 assert layer.isValid(), 'Unable to create QgsRasterLayer based on VectorLayerFieldRasterDataProvider'
                 dp: VectorLayerFieldRasterDataProvider = layer.dataProvider()
                 dp.setActiveFeatures(features, field=converter)
-                layer.setTitle(f'Field "{field.name()}" as raster')
+                # layer.setTitle(f'Field "{field.name()}" as raster')
                 layers.append(layer)
 
     return layers
@@ -197,16 +199,16 @@ class FieldToRasterValueConverter(QObject):
     This class converts QgsFeature values of a field from / to array raster layer values
     """
     LUT_FIELD_TYPES = {
-        QVariant.Bool: Qgis.DataType.Byte,
-        QVariant.Int: Qgis.DataType.Int32,
-        QVariant.UInt: Qgis.DataType.UInt32,
-        QVariant.LongLong: Qgis.DataType.Int32,
-        QVariant.ULongLong: Qgis.DataType.UInt32,
-        QVariant.Double: Qgis.DataType.Float32,
-        QVariant.String: Qgis.DataType.Int32,
-        QVariant.DateTime: Qgis.DataType.Int32,
-        QVariant.Date: Qgis.DataType.Int32,
-        QVariant.Time: Qgis.DataType.Int32,
+        QMETATYPE_BOOL: Qgis.DataType.Byte,
+        QMETATYPE_INT: Qgis.DataType.Int32,
+        QMETATYPE_UINT: Qgis.DataType.UInt32,
+        QMetaType.LongLong: Qgis.DataType.Int32,
+        QMETATYPE_ULONGLONG: Qgis.DataType.UInt32,
+        QMETATYPE_DOUBLE: Qgis.DataType.Float32,
+        QMETATYPE_QSTRING: Qgis.DataType.Int32,
+        QMETATYPE_QDATETIME: Qgis.DataType.Int32,
+        QMETATYPE_QDATE: Qgis.DataType.Int32,
+        QMETATYPE_QTIME: Qgis.DataType.Int32,
     }
 
     NO_DATA_CANDIDATES = [-1, -9999]
@@ -251,7 +253,7 @@ class FieldToRasterValueConverter(QObject):
 
     def isClassification(self) -> bool:
 
-        return self.field().type() == QVariant.String
+        return self.field().type() == QMETATYPE_QSTRING
 
     def colorInterpretation(self, bandNo: int) -> int:
 
@@ -314,7 +316,7 @@ class FieldToRasterValueConverter(QObject):
         noData = None
         numericValues = None
 
-        if field.type() == QVariant.String:
+        if field.type() == QMETATYPE_QSTRING:
             # convert values class values
             noData = 0
             uniqueValues = set(fieldValues)
@@ -334,10 +336,10 @@ class FieldToRasterValueConverter(QObject):
 
             numericValues = [LUT[v] for v in fieldValues]
 
-        elif field.type() in [QVariant.Bool,
-                              QVariant.Int, QVariant.UInt,
+        elif field.type() in [QMETATYPE_BOOL,
+                              QMETATYPE_INT, QVariant.UInt,
                               QVariant.LongLong, QVariant.ULongLong,
-                              QVariant.Double]:
+                              QMETATYPE_DOUBLE]:
 
             for c in self.NO_DATA_CANDIDATES:
                 if c not in fieldValues:
@@ -355,7 +357,7 @@ class FieldToRasterValueConverter(QObject):
                     numericValues.append(noData)
                 else:
                     numericValues.append(v)
-        elif field.type() == QVariant.DateTime:
+        elif field.type() == QMETATYPE_QDATETIME:
             numericValues = []
             noData = -9999
             for v in fieldValues:
@@ -648,8 +650,16 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             stats.height = band_data.shape[-2]
             stats.width = band_data.shape[-1]
 
-            # set statsGathered! if not, the default renderer won't consider the value range
-            stats.statsGathered = True
+            statsGathered = QGIS_RASTERBANDSTATISTIC.Sum | \
+                            QGIS_RASTERBANDSTATISTIC.Min | \
+                            QGIS_RASTERBANDSTATISTIC.Max | \
+                            QGIS_RASTERBANDSTATISTIC.Mean
+
+            if Qgis.versionInt() >= 33600:
+                stats.statsGathered = Qgis.RasterBandStatistics(statsGathered)
+            else:
+                stats.statsGathered = QgsRasterBandStats.Stats(statsGathered)
+
             self.mStatsCache[statsKey] = stats
         return stats
 
@@ -786,9 +796,13 @@ class VectorLayerFieldRasterDataProvider(QgsRasterDataProvider):
             return 0
 
     def capabilities(self):
-        caps = QgsRasterInterface.Size | QgsRasterInterface.IdentifyValue | QgsRasterInterface.Identify
-        # QgsRasterInterface.IdentifyHtml | QgsRasterInterface.IdentifyText
-        return QgsRasterDataProvider.ProviderCapabilities(caps)
+
+        # scap = super().capabilities()
+        caps = QGIS_RASTERINTERFACECAPABILITY.Size | QGIS_RASTERINTERFACECAPABILITY.IdentifyValue | QGIS_RASTERINTERFACECAPABILITY.Identify
+        if Qgis.versionInt() >= 33800:
+            return Qgis.RasterInterfaceCapabilities(caps)  # QgsRasterDataProvider.ProviderCapabilities(caps)
+        else:
+            return QgsRasterDataProvider.ProviderCapabilities(caps)
 
     def htmlMetadata(self) -> str:
         md = ' Dummy '

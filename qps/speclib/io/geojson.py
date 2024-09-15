@@ -1,20 +1,16 @@
 import os
 from pathlib import Path
-
-from typing import Any, List
+from typing import Any, List, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsVectorFileWriter, QgsField, QgsProject, QgsVectorLayer, \
-    QgsRemappingSinkDefinition, QgsExpressionContextScope, QgsCoordinateTransformContext, \
-    QgsRemappingProxyFeatureSink, QgsProperty, \
-    QgsExpressionContext, QgsFields, QgsProcessingFeedback, QgsFeature, \
-    QgsCoordinateReferenceSystem
+from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsExpressionContext, \
+    QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty, \
+    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
 from ..core import is_profile_field
-from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO, \
-    SpectralLibraryExportWidget
-from ..core.spectralprofile import encodeProfileValueDict, decodeProfileValueDict
+from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryIO, SpectralLibraryImportWidget
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
+from ...qgisenums import QMETATYPE_QSTRING
 
 
 class GeoJsonSpectralLibraryExportWidget(SpectralLibraryExportWidget):
@@ -104,10 +100,10 @@ class GeoJsonFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         for field in self.mFields:
             name = field.name()
             idx = self.mFields.lookupField(name)
-            if field.type() != QVariant.String and is_profile_field(field):
-                convertedField = QgsField(name=name, type=QVariant.String, typeName='string', len=-1)
-                self.mFieldDefinitions[name] = convertedField
-                self.mFieldConverters[idx] = lambda v, f=convertedField: self.convertProfileField(v, f)
+            if field.type() != QMETATYPE_QSTRING and is_profile_field(field):
+                converted_field = QgsField(name=name, type=QMETATYPE_QSTRING, typeName='string', len=-1)
+                self.mFieldDefinitions[name] = converted_field
+                self.mFieldConverters[idx] = lambda v, f=converted_field: self.convertProfileField(v, f)
 
             else:
                 self.mFieldDefinitions[name] = QgsField(super().fieldDefinition(field))
@@ -154,19 +150,10 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def exportProfiles(cls,
-                       path: str,
+                       path: Union[str, Path],
                        profiles,
                        exportSettings: dict = dict(),
-                       feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[str]:
-
-        """
-        :param fileName: file name to write to
-        :param fields: fields to write
-        :param geometryType: geometry type of output file
-        :param srs: spatial reference system of output file
-        :param transformContext: coordinate transform context
-        :param options: save options
-        """
+                       feedback: QgsProcessingFeedback = QgsProcessingFeedback(), **kwargs) -> List[str]:
 
         profiles, fields, crs, wkbType = cls.extractWriterInfos(profiles, exportSettings)
         if len(profiles) == 0:
@@ -180,7 +167,7 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
         path: Path = Path(path)
 
         if newLayerName == '':
-            newLayerName = os.path.basename(os.path.splitext(path.name)[0])
+            newLayerName = os.path.basename(newLayerName)
 
         datasourceOptions = exportSettings.get('datasourceOptions', dict())
         assert isinstance(datasourceOptions, dict)

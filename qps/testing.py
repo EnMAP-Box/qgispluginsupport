@@ -36,35 +36,29 @@ import traceback
 import uuid
 import warnings
 from time import sleep
-from typing import Set, List, Union, Tuple
+from typing import List, Set, Tuple, Union
 from unittest import mock
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
-
 import qgis.utils
+from osgeo import gdal, gdal_array, ogr, osr
+from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
+    QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
+    QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
+    QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
+    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsPythonRunner, \
+    QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
+from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsGui, QgsLayerTreeMapCanvasBridge, \
+    QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, QgsMessageBar, QgsPluginManagerInterface
 from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QObject, QPoint, QSize, pyqtSignal, QMimeData, QPointF, Qt
-from qgis.PyQt.QtGui import QImage, QDropEvent, QIcon
-from qgis.PyQt.QtWidgets import QToolBar, QFrame, QHBoxLayout, QVBoxLayout, QMainWindow, \
-    QApplication, QWidget, QAction, QMenu, QDockWidget
-
-from qgis.core import Qgis, QgsLayerTreeLayer, QgsField, QgsGeometry, QgsMapLayer, \
-    QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, QgsFields, QgsApplication, \
-    QgsCoordinateReferenceSystem, QgsProject, \
-    QgsProcessingParameterNumber, QgsProcessingAlgorithm, QgsProcessingProvider, QgsPythonRunner, \
-    QgsFeatureStore, QgsProcessingParameterRasterDestination, QgsProcessingParameterRasterLayer, \
-    QgsLayerTree, QgsLayerTreeModel, QgsLayerTreeRegistryBridge, \
-    QgsProcessingModelAlgorithm, QgsProcessingRegistry, QgsProcessingContext, \
-    QgsProcessingFeedback, QgsTemporalController, edit, QgsVectorLayerUtils, QgsFeature, QgsCoordinateTransform
-from qgis.gui import QgsAbstractMapToolHandler, QgsMapTool
-from qgis.gui import QgsMapLayerConfigWidgetFactory
-from qgis.gui import QgsPluginManagerInterface, QgsLayerTreeMapCanvasBridge, QgsLayerTreeView, QgsMessageBar, \
-    QgsMapCanvas, QgsGui, QgisInterface, QgsBrowserGuiModel
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
+from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage
+from qgis.PyQt.QtWidgets import QAction, QApplication, QDockWidget, QFrame, QHBoxLayout, QMainWindow, QMenu, QToolBar, \
+    QVBoxLayout, QWidget
 
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
-from .utils import px2geo, SpatialPoint, findUpwardPath
+from .utils import findUpwardPath, px2geo, SpatialPoint
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
@@ -1305,12 +1299,12 @@ class TestObjects(object):
         pathSrc = TEST_VECTOR_GEOJSON
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
 
-        dsSrc = ogr.Open(pathSrc.as_posix())
-        if not isinstance(dsSrc, ogr.DataSource):
+        dsSrc: ogr.DataSource = ogr.Open(pathSrc.as_posix())
+        if not isinstance(dsSrc, gdal.Dataset):
             lyr = QgsVectorLayer(pathSrc.as_posix())
             assert lyr.isValid(), f'Unable to load QGS Layer: {pathSrc.as_posix()}'
         assert isinstance(dsSrc, ogr.DataSource), f'Unable to load {pathSrc}'
-        lyrSrc = dsSrc.GetLayerByIndex(0)
+        lyrSrc: ogr.Layer = dsSrc.GetLayerByIndex(0)
         assert isinstance(lyrSrc, ogr.Layer)
 
         ldef = lyrSrc.GetLayerDefn()
@@ -1339,7 +1333,7 @@ class TestObjects(object):
             else:
                 raise NotImplementedError()
 
-        dsDst = drv.CreateDataSource(pathDst)
+        dsDst: ogr.DataSource = drv.CreateDataSource(pathDst)
         assert isinstance(dsDst, ogr.DataSource)
         lyrDst = dsDst.CreateLayer(lname, srs=srs, geom_type=wkb)
         assert isinstance(lyrDst, ogr.Layer)
@@ -1363,13 +1357,13 @@ class TestObjects(object):
 
         n = 0
         for fSrc in itertools.cycle(TMP_FEATURES):
-            g = fSrc.geometry()
+            g: ogr.Geometry = fSrc.geometry()
             fDst = ogr.Feature(lyrDst.GetLayerDefn())
             assert isinstance(fDst, ogr.Feature)
 
             if isinstance(g, ogr.Geometry):
                 if wkb == ogr.wkbPolygon:
-                    pass
+                    g.FlattenTo2D()
                 elif wkb == ogr.wkbPoint:
                     g = g.Centroid()
                 elif wkb == ogr.wkbLineString:

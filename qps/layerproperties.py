@@ -20,29 +20,24 @@ import pathlib
 import re
 import sys
 import warnings
-from typing import List, Dict, Any, Union
+from typing import Any, Dict, List, Union
 
 from osgeo import gdal, osr
 
-from qgis.PyQt.QtCore import QMimeData, QTimer, pyqtSignal, QObject, QVariant, QModelIndex
+from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRenderer, QgsContrastEnhancement, \
+    QgsDataProvider, QgsDistanceArea, QgsEditFormConfig, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, \
+    QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, \
+    QgsFeatureRequest, QgsField, QgsFieldModel, QgsFieldProxyModel, QgsFields, QgsHillshadeRenderer, QgsLayerTreeGroup, \
+    QgsLayerTreeLayer, QgsMapLayer, QgsMapLayerStyle, QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, \
+    QgsRasterBandStats, QgsRasterDataProvider, QgsRasterLayer, QgsRasterRenderer, QgsReadWriteContext, QgsRectangle, \
+    QgsScopedProxyProgressTask, QgsSettings, QgsSingleBandColorDataRenderer, QgsSingleBandGrayRenderer, \
+    QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer, QgsWkbTypes
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer, QVariant
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
-from qgis.PyQt.QtWidgets import QWidget, QMessageBox, QDialog, QMenu, QMainWindow, QDialogButtonBox, QAction, QCheckBox, \
-    QButtonGroup, QToolButton, QApplication, QLabel, QSpinBox, QComboBox, \
-    QLineEdit, QGridLayout, QTableView, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
+from qgis.PyQt.QtWidgets import QAction, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
+    QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, QSpinBox, \
+    QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import QgsEditorWidgetSetup, QgsVectorLayer, QgsExpression, QgsDistanceArea, QgsProject, \
-    QgsFeatureRequest, \
-    QgsExpressionContext, QgsExpressionContextUtils, QgsField, QgsScopedProxyProgressTask, QgsExpressionContextScope, \
-    QgsRasterLayer, QgsSettings, QgsReadWriteContext, QgsRasterRenderer, \
-    QgsMapLayerStyle, QgsMapLayer, QgsDataProvider, \
-    QgsLayerTreeGroup, QgsLayerTreeLayer, QgsRasterBandStats, \
-    QgsContrastEnhancement, Qgis, QgsSingleBandGrayRenderer, \
-    QgsMultiBandColorRenderer, QgsVectorDataProvider, QgsAction, QgsEditFormConfig, QgsExpressionContextGenerator, \
-    QgsApplication, QgsFeatureRenderer, QgsWkbTypes, QgsFieldProxyModel, \
-    QgsFeature, QgsRectangle, QgsRasterDataProvider, QgsFields, QgsFieldModel, QgsSingleSymbolRenderer, \
-    QgsCategorizedSymbolRenderer, \
-    QgsHillshadeRenderer, QgsPalettedRasterRenderer, QgsSingleBandPseudoColorRenderer
-from qgis.core import QgsSingleBandColorDataRenderer
 from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 
@@ -384,10 +379,10 @@ class AddAttributeDialog(QDialog):
 
         fname = self.tbName.text()
         fcomment = self.tbComment.text()
-        ftype = QVariant(ntype.mType).type()
+        # ftype = QVariant(ntype.mType).type()
 
         return QgsField(name=fname,
-                        type=ftype,
+                        type=ntype.mType,
                         typeName=ntype.mTypeName,
                         len=self.sbLength.value(),
                         prec=self.sbPrecision.value(),
@@ -399,7 +394,8 @@ class AddAttributeDialog(QDialog):
         :return:
         """
         field = self.privateField()
-        if can_store_spectral_profiles(field) and self.cbSpectralProfile.isEnabled() and self.cbSpectralProfile.isChecked():
+        if can_store_spectral_profiles(
+                field) and self.cbSpectralProfile.isEnabled() and self.cbSpectralProfile.isChecked():
             # field.setComment('Spectral Profile Field')
             setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
             field.setEditorWidgetSetup(setup)
@@ -645,11 +641,11 @@ def defaultRasterRenderer(layer: QgsRasterLayer,
     assert isinstance(bandIndices, list)
 
     # get band stats
-    bandStats = [layer.dataProvider().bandStatistics(b + 1,
-                                                     stats=QGIS_RASTERBANDSTATISTIC.Min | QGIS_RASTERBANDSTATISTIC.Max,
-                                                     sampleSize=sampleSize) for b in bandIndices]
-    dp = layer.dataProvider()
+    dp: QgsRasterDataProvider = layer.dataProvider()
     assert isinstance(dp, QgsRasterDataProvider)
+
+    stats = QGIS_RASTERBANDSTATISTIC.Min | QGIS_RASTERBANDSTATISTIC.Max
+    bandStats = [dp.bandStatistics(b + 1, stats=stats, sampleSize=sampleSize) for b in bandIndices]
 
     # classification ? -> QgsPalettedRasterRenderer
     classes = ClassificationScheme.fromMapLayer(layer)
@@ -1225,7 +1221,8 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             if mLayer.editFormConfig().layout() == QgsEditFormConfig.UiFileLayout:
                 # not supported with custom UI
                 self.mActionToggleMultiEdit.setEnabled(False)
-                self.mActionToggleMultiEdit.setToolTip(self.tr("Multi-edit is not supported when using custom UI forms"))
+                self.mActionToggleMultiEdit.setToolTip(
+                    self.tr("Multi-edit is not supported when using custom UI forms"))
                 self.mActionSearchForm.setEnabled(False)
                 self.mActionSearchForm.setToolTip(self.tr("Search is not supported when using custom UI forms"))
 

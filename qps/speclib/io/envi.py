@@ -31,27 +31,24 @@ import pathlib
 import re
 import tempfile
 import time
-
 import uuid
-from typing import Tuple, Union, List
+from typing import List, Tuple, Union
 
 import numpy as np
 from osgeo import gdal, gdal_array
-
-from qgis.PyQt.QtCore import NULL
-from qgis.PyQt.QtCore import QVariant
+from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, \
+    QgsFeatureRequest, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
+from qgis.gui import QgsFieldComboBox, QgsFieldExpressionWidget
+from qgis.PyQt.QtCore import NULL, QVariant
 from qgis.PyQt.QtWidgets import QFormLayout
-from qgis.core import QgsExpression, QgsFeatureRequest, QgsFeatureIterator
-from qgis.core import QgsField, QgsFields, QgsFeature, QgsProcessingFeedback
-from qgis.core import QgsVectorLayer, QgsExpressionContext, QgsExpressionContextScope
-from qgis.gui import QgsFieldExpressionWidget, QgsFieldComboBox
-from .. import EMPTY_VALUES, FIELD_FID, FIELD_VALUES, FIELD_NAME
-from ..core import create_profile_field, profile_fields, profile_field_names
-from ..core.spectrallibrary import VSI_DIR, LUT_IDL2GDAL
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
-    SpectralLibraryImportWidget
-from ..core.spectralprofile import encodeProfileValueDict, groupBySpectralProperties, SpectralSetting, \
-    decodeProfileValueDict, prepareProfileValueDict
+
+from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES
+from ..core import create_profile_field, profile_field_names, profile_fields
+from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
+from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
+    prepareProfileValueDict, SpectralSetting
+from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import stringToType
 
 # lookup GDAL Data Type and its size in bytes
@@ -358,18 +355,18 @@ class EnviSpectralLibraryIO(SpectralLibraryIO):
         n_profiles = md.get('lines')
 
         fields.append(create_profile_field(FIELD_VALUES))
-        fields.append(QgsField(FIELD_NAME, QVariant.String))
+        fields.append(QgsField(FIELD_NAME, QMETATYPE_QSTRING))
         # add ENVI Header fields
         to_exclude = SINGLE_VALUE_TAGS
         for k, v in md.items():
             if isinstance(v, list) and k not in to_exclude and len(v) == n_profiles:
                 field = None
                 if isinstance(v[0], float):
-                    fields.append(QgsField(k, QVariant.Double))
+                    fields.append(QgsField(k, QMETATYPE_DOUBLE))
                 elif isinstance(v[0], int):
-                    fields.append(QgsField(k, QVariant.Int))
+                    fields.append(QgsField(k, QMETATYPE_INT))
                 else:
-                    fields.append(QgsField(k, QVariant.String))
+                    fields.append(QgsField(k, QMETATYPE_QSTRING))
 
         # add CSV fields
         lyrCSV = readCSVMetadata(source)

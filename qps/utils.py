@@ -34,7 +34,6 @@ import itertools
 import json
 import math
 import os
-import pathlib
 import re
 import shutil
 import sys
@@ -44,33 +43,30 @@ import weakref
 import zipfile
 from collections import defaultdict
 from math import floor
-from typing import Union, List, Optional, Any, Tuple, Iterator, Dict, Iterable
+from pathlib import Path
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
-from osgeo import gdal, ogr, osr, gdal_array
+from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.osr import SpatialReference
 
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QPoint, QRect, QObject, QPointF, QDirIterator, \
-    QVariant, QByteArray, QUrl, Qt
-from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtWidgets import QComboBox, QWidget, QHBoxLayout, QAction, QMenu, \
-    QToolButton, QDialogButtonBox, QLabel, QGridLayout, QMainWindow
-from qgis.PyQt.QtXml import QDomDocument, QDomNode, QDomElement
-from qgis.core import QgsFeatureSource, QgsFeatureRequest, QgsVector, QgsRasterIdentifyResult, QgsRaster, QgsWkbTypes
-from qgis.core import (QgsField, QgsVectorLayer, QgsRasterLayer, QgsMapToPixel,
-                       QgsRasterDataProvider, QgsMapLayer, QgsMapLayerStore,
-                       QgsCoordinateReferenceSystem, QgsCoordinateTransform,
-                       QgsRectangle, QgsPointXY, QgsProject,
-                       QgsMapLayerProxyModel, QgsRasterRenderer, QgsMessageOutput, QgsFeature, QgsTask, Qgis,
-                       QgsGeometry, QgsFields)
-from qgis.core import QgsRasterBlock, QgsVectorDataProvider, QgsEditorWidgetSetup, \
-    QgsProcessingContext, QgsProcessingFeedback, QgsApplication, QgsProcessingAlgorithm, QgsRasterInterface
-from qgis.core import QgsRasterBlockFeedback, QgsVectorFileWriter, QgsFeedback, QgsVectorFileWriterTask
-from qgis.gui import QgisInterface, QgsDialog, QgsMessageViewer, QgsMapLayerComboBox, QgsMapCanvas, QgsGui
-from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, QUrl, QVariant, Qt
+from qgis.PyQt.QtGui import QColor, QIcon
+from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
+    QMenu, QToolButton, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement, QDomNode
+from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsEditorWidgetSetup, \
+    QgsFeature, QgsFeatureRequest, QgsFeatureSource, QgsFeedback, QgsField, QgsFields, QgsGeometry, QgsMapLayer, \
+    QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapLayerStyle, QgsMapToPixel, QgsMessageOutput, QgsPointXY, \
+    QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsRaster, QgsRasterBlock, \
+    QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, QgsRasterLayer, \
+    QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
+    QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
+    QMETATYPE_QBYTEARRAY, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTLIST, QMETATYPE_UINT
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-
 from .unitmodel import UnitLookup, datetime64
 
 QGIS_RESOURCE_WARNINGS = set()
@@ -103,7 +99,6 @@ NUMPY2QGIS_DATA_TYPES = {np.uint8: Qgis.Byte,
                          np.float64: Qgis.Float64,
                          complex: Qgis.CFloat32,
                          np.complex64: Qgis.CFloat64,
-                         np.uint32: Qgis.ARGB32,
                          }
 
 QGIS_DATATYPE_NAMES = {
@@ -146,8 +141,6 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
             return True
     return False
 
-    s = ""
-
 
 def _geometryIsSinglePoint(g: QgsGeometry) -> bool:
     return g.wkbType() in [QGIS_WKBTYPE.Point, QGIS_WKBTYPE.PointM,
@@ -171,7 +164,7 @@ class SignalBlocker(object):
             obj.blockSignals(wasBlocked)
 
 
-def relativePath(absPath: pathlib.Path, parentDir: pathlib.Path) -> pathlib.Path:
+def relativePath(absPath: Path, parentDir: Path) -> Path:
     """
     Returns the path relative to a parent directory
     :param absPath: absolute path to be converted into a relative path
@@ -180,16 +173,16 @@ def relativePath(absPath: pathlib.Path, parentDir: pathlib.Path) -> pathlib.Path
     :return: relative path
     """
     if isinstance(absPath, str):
-        absPath = pathlib.Path(absPath)
+        absPath = Path(absPath)
     if isinstance(parentDir, str):
-        parentDir = pathlib.Path(parentDir)
+        parentDir = Path(parentDir)
 
-    assert isinstance(parentDir, pathlib.Path)
-    assert isinstance(absPath, pathlib.Path)
+    assert isinstance(parentDir, Path)
+    assert isinstance(absPath, Path)
     n = min(len(parentDir.parts), len(absPath.parts))
     i = 0
 
-    relPath = pathlib.Path()
+    relPath = Path()
     while i < n:
         if parentDir.parts[i] == absPath.parts[i]:
             i += 1
@@ -231,7 +224,7 @@ def mapLayerStores() -> List[Union[QgsMapLayerStore, QgsProject]]:
     return _MAP_LAYER_STORES[:] + [QgsProject.instance()]
 
 
-def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
+def findUpwardPath(basepath, name, is_directory: bool = True) -> Path:
     """
     Searches for a file or directory in an upward path of a base path.
     E.g. DIR_REPO = findUpwardPath(__file__, '.git').parent returns the repository directory
@@ -242,8 +235,8 @@ def findUpwardPath(basepath, name, is_directory: bool = True) -> pathlib.Path:
     :param is_directory:
     :return:
     """
-    tmp = pathlib.Path(basepath).resolve()
-    while tmp != pathlib.Path(tmp.anchor):
+    tmp = Path(basepath).resolve()
+    while tmp != Path(tmp.anchor):
         tmp2 = tmp / name
         if (is_directory and tmp2.is_dir()) or (not is_directory and tmp2.is_file()):
             return tmp2
@@ -441,7 +434,7 @@ def findMapLayerStores() -> List[Union[QgsProject, QgsMapLayerStore]]:
             yield obj
 
 
-def findMapLayer(layer) -> QgsMapLayer:
+def findMapLayer(layer) -> Optional[QgsMapLayer]:
     """
     Returns the first QgsMapLayer out of all layers stored in MAP_LAYER_STORES that matches layer
     :param layer: str layer id or layer name or QgsMapLayer
@@ -555,28 +548,28 @@ def createQgsField(name: str, exampleValue: Any, comment: str = None) -> QgsFiel
     :return: QgsField
     """
     if isinstance(exampleValue, str):
-        return QgsField(name, QVariant.String, 'varchar', comment=comment)
+        return QgsField(name, QMETATYPE_QSTRING, 'varchar', comment=comment)
     elif isinstance(exampleValue, bool):
-        return QgsField(name, QVariant.Bool, 'int', len=1, comment=comment)
+        return QgsField(name, QMETATYPE_BOOL, 'int', len=1, comment=comment)
     elif isinstance(exampleValue, (int, np.int8, np.int16, np.int32, np.int64)):
-        return QgsField(name, QVariant.Int, 'int', comment=comment)
+        return QgsField(name, QMETATYPE_INT, 'int', comment=comment)
     elif isinstance(exampleValue, (np.uint, np.uint8, np.uint16, np.uint32, np.uint64)):
-        return QgsField(name, QVariant.UInt, 'uint', comment=comment)
+        return QgsField(name, QMETATYPE_UINT, 'uint', comment=comment)
     elif isinstance(exampleValue, (float, np.double, np.float16, np.float32, np.float64)):
-        return QgsField(name, QVariant.Double, 'double', comment=comment)
+        return QgsField(name, QMETATYPE_DOUBLE, 'double', comment=comment)
     elif isinstance(exampleValue, np.ndarray):
-        return QgsField(name, QVariant.String, 'varchar', comment=comment)
+        return QgsField(name, QMETATYPE_QSTRING, 'varchar', comment=comment)
     elif isinstance(exampleValue, np.datetime64):
-        return QgsField(name, QVariant.String, 'varchar', comment=comment)
+        return QgsField(name, QMETATYPE_QDATETIME, comment=comment)
     elif isinstance(exampleValue, (bytes, QByteArray)):
-        return QgsField(name, QVariant.ByteArray, 'Binary', comment=comment)
+        return QgsField(name, QMETATYPE_QBYTEARRAY, 'Binary', comment=comment)
     elif isinstance(exampleValue, list):
         assert len(exampleValue) > 0, 'need at least one value in provided list'
         v = exampleValue[0]
         prototype = createQgsField(name, v)
         subType = prototype.type()
         typeName = prototype.typeName()
-        return QgsField(name, QVariant.List, typeName, comment=comment, subType=subType)
+        return QgsField(name, QMETATYPE_QVARIANTLIST, typeName, comment=comment, subType=subType)
     elif isinstance(exampleValue, type):
         return createQgsField(name, exampleValue(1), comment=comment)
     else:
@@ -653,11 +646,11 @@ def setQgsFieldValue(feature: QgsFeature, field, value):
 
     if value is None:
         value = QVariant.NULL
-    if field.type() == QVariant.String:
+    if field.type() == QMETATYPE_QSTRING:
         value = str(value)
-    elif field.type() in [QVariant.Int, QVariant.Bool]:
+    elif field.type() in [QMETATYPE_INT, QMETATYPE_BOOL]:
         value = int(value)
-    elif field.type() in [QVariant.Double]:
+    elif field.type() in [QMETATYPE_DOUBLE]:
         value = float(value)
 
     feature.setAttribute(field.name(), value)
@@ -679,19 +672,18 @@ def showMessage(message: str, title: str, level):
     v.showMessage(True)
 
 
-def gdalDataset(dataset: Union[str, pathlib.Path, QgsRasterLayer, QgsRasterDataProvider, gdal.Dataset, gdal.Band],
+def gdalDataset(dataset: Union[str, Path, QgsRasterLayer, QgsRasterDataProvider, gdal.Dataset, gdal.Band],
                 eAccess: int = gdal.GA_ReadOnly) -> gdal.Dataset:
     """
     Returns a gdal.Dataset object instance
-    :param dataset:
-    :param pathOrDataset: path | gdal.Dataset | QgsRasterLayer | QgsRasterDataProvider
+    :param dataset:  path | gdal.Dataset | QgsRasterLayer | QgsRasterDataProvider
     :return: gdal.Dataset
     """
     if isinstance(dataset, gdal.Dataset):
         return dataset
     if isinstance(dataset, gdal.Band):
         return dataset.GetDataset()
-    if isinstance(dataset, pathlib.Path):
+    if isinstance(dataset, Path):
         dataset = dataset.as_posix()
     if isinstance(dataset, QgsRasterLayer):
         return gdalDataset(dataset.source(), eAccess=eAccess)
@@ -710,7 +702,7 @@ def gdalDataset(dataset: Union[str, pathlib.Path, QgsRasterLayer, QgsRasterDataP
 def ogrDataSource(data_source, update: int = 0) -> ogr.DataSource:
     """
     Returns an OGR DataSource instance
-    :param data_source: ogr.DataSource | str | pathlib.Path | QgsVectorLayer
+    :param data_source: ogr.DataSource | str | Path | QgsVectorLayer
     :return: ogr.Datasource
     """
     if isinstance(data_source, ogr.DataSource):
@@ -745,7 +737,7 @@ def ogrDataSource(data_source, update: int = 0) -> ogr.DataSource:
             raise Exception(f'Unsupported vector data provider: {dpn}')
         return ogrDataSource(uri)
 
-    if isinstance(data_source, pathlib.Path):
+    if isinstance(data_source, Path):
         data_source = data_source.as_posix()
 
     if isinstance(data_source, str):
@@ -799,7 +791,7 @@ def fid2pixelindices(raster: gdal.Dataset,
                      vector: ogr.DataSource,
                      layer: Union[int, str] = 0,
                      all_touched: bool = True,
-                     raster_fids: Union[str, pathlib.Path] = None) -> Tuple[np.ndarray, int]:
+                     raster_fids: Union[str, Path] = None) -> Tuple[np.ndarray, int]:
     """
     Returns vector feature pixel positions.
 
@@ -884,7 +876,7 @@ def fid2pixelindices(raster: gdal.Dataset,
     if eType == gdal.GDT_Float64:
         fidArray = fidArray.astype(np.int64)
     if raster_fids is not None:
-        raster_fids = pathlib.Path(raster_fids)
+        raster_fids = Path(raster_fids)
         drvTIFF: gdal.Driver = gdal.GetDriverByName('GTiff')
         drvTIFF.CreateCopy(raster_fids.as_posix(), dsMEM)
 
@@ -900,14 +892,14 @@ def qgsVectorLayer(source) -> QgsVectorLayer:
     """
     if isinstance(source, QgsVectorLayer):
         return source
-    if isinstance(source, pathlib.Path):
+    if isinstance(source, Path):
         return QgsVectorLayer(source.as_posix())
     if isinstance(source, str):
         return QgsVectorLayer(source)
     if isinstance(source, ogr.DataSource):
         return QgsVectorLayer(source.GetDescription())
     if isinstance(source, QUrl):
-        return qgsVectorLayer(pathlib.Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
+        return qgsVectorLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
 
     raise Exception('Unable to transform {} into QgsVectorLayer'.format(source))
 
@@ -921,14 +913,14 @@ def qgsRasterLayer(source) -> QgsRasterLayer:
     """
     if isinstance(source, QgsRasterLayer):
         return source
-    if isinstance(source, pathlib.Path):
+    if isinstance(source, Path):
         return QgsRasterLayer(source.as_posix())
     if isinstance(source, str):
         return QgsRasterLayer(source)
     if isinstance(source, gdal.Dataset):
         return QgsRasterLayer(source.GetDescription())
     if isinstance(source, QUrl):
-        return qgsRasterLayer(pathlib.Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
+        return qgsRasterLayer(Path(source.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)).resolve())
 
     raise Exception('Unable to transform {} into QgsRasterLayer'.format(source))
 
@@ -1063,10 +1055,10 @@ def qgsMapLayer(value: Any) -> QgsMapLayer:
     return None
 
 
-UI_STORE: Dict[pathlib.Path, str] = dict()
+UI_STORE: Dict[Path, str] = dict()
 
 
-def loadUi(uifile: Union[str, pathlib.Path],
+def loadUi(uifile: Union[str, Path],
            baseinstance=None,
            resource_suffix: str = '_rc',
            remove_resource_references: bool = True,
@@ -1089,7 +1081,7 @@ def loadUi(uifile: Union[str, pathlib.Path],
     if baseinstance is not None:
         assert isinstance(baseinstance, QWidget)
 
-    uifile = pathlib.Path(uifile).resolve()
+    uifile = Path(uifile).resolve()
     global UI_STORE
     assert uifile.is_file(), '*.ui file does not exist: {}'.format(uifile)
     if no_caching or uifile not in UI_STORE.keys():
@@ -1098,7 +1090,7 @@ def loadUi(uifile: Union[str, pathlib.Path],
         with open(uifile, 'r', encoding='utf-8') as f:
             txt = f.read()
 
-        dirUi: pathlib.Path = uifile.parent
+        dirUi: Path = uifile.parent
 
         locations = []
 
@@ -1114,9 +1106,9 @@ def loadUi(uifile: Union[str, pathlib.Path],
             if REGEX_QGIS_IMAGES_QRC.search(path):
                 continue
             if not os.path.isabs(path):
-                p = (dirUi / pathlib.Path(path)).resolve()
+                p = (dirUi / Path(path)).resolve()
             else:
-                p = pathlib.Path(path)
+                p = Path(path)
 
             if not p.is_file():
                 missing.append(t)
@@ -1243,7 +1235,7 @@ def read_vsimem(fn):
 
 
 def writeAsVectorFormat(layer: QgsVectorLayer,
-                        path: Union[str, pathlib.Path],
+                        path: Union[str, Path],
                         options: QgsVectorFileWriter.SaveVectorOptions = None,
                         feedback: QgsFeedback = None) -> QgsVectorLayer:
     """
@@ -1254,8 +1246,11 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
     :param feedback: QgsFeedback
     :return: QgsVectorLayer
     """
-    path = pathlib.Path(path)
+    path = Path(path)
+    assert isinstance(layer, QgsVectorLayer)
+    assert layer.isValid()
 
+    field_value_converter = None
     if not isinstance(options, QgsVectorFileWriter.SaveVectorOptions):
 
         options = QgsVectorFileWriter.SaveVectorOptions()
@@ -1266,39 +1261,56 @@ def writeAsVectorFormat(layer: QgsVectorLayer,
         parts = os.path.splitext(path.name)
 
         if len(parts) == 2:
-            driverName = QgsVectorFileWriter.driverForExtension(parts[1])
-            options.driverName = driverName
+            driver_name = QgsVectorFileWriter.driverForExtension(parts[1])
+            options.driverName = driver_name
             options.layerOptions = QgsVectorFileWriter.defaultLayerOptions(options.driverName)
             options.datasourceOptions = QgsVectorFileWriter.defaultDatasetOptions(options.driverName)
             options.includeConstraints = True
             options.layerMetadata = layer.metadata()
 
-            if driverName == 'GPKG':
+            if driver_name in ['GPKG']:
                 from .speclib.io.geopackage import GeoPackageFieldValueConverter
-                options.fieldValueConverter = GeoPackageFieldValueConverter(layer.fields())
+                field_value_converter = GeoPackageFieldValueConverter(layer.fields())
+            elif driver_name in ['GeoJSON', 'LIBKML', 'KML', 'CSV']:
+                from .speclib.io.geojson import GeoJsonFieldValueConverter
+                field_value_converter = GeoJsonFieldValueConverter(layer.fields())
+            else:
+                s = ""
             # options.symbologyExport =
+
+    options.fieldValueConverter = field_value_converter
+
+    s = ""
 
     def onCompleted(newFilename, newLayer):
         s = ""
 
     def onErrorOccurred(err: int, msg: str):
-        s = ""
+        print(f'{msg}', file=sys.stderr)
 
     def onWriteComplete(newFileName: str):
         s = ""
 
+    s = ""
     task = QgsVectorFileWriterTask(layer, path.as_posix(), options)
     task.completed.connect(onCompleted)
     task.errorOccurred.connect(onErrorOccurred)
     task.writeComplete.connect(onWriteComplete)
     r = task.run()
-    assert r
+    # assert r
     # save styling
-    pathQlr = path.parent / re.sub(r'\.[^.]+$', '.qml', path.name)
-    msg, success = layer.saveNamedStyle(pathQlr.as_posix())
-    assert success, 'Failed to save style:' + msg
+
     lyr2 = QgsVectorLayer(path.as_posix(), layer.name())
     assert lyr2.isValid()
+
+    style = QgsMapLayerStyle()
+    style.readFromLayer(layer)
+    style.writeToLayer(lyr2)
+
+    path_qlr = path.parent / re.sub(r'\.[^.]+$', '.qml', path.name)
+    # msg, success = layer.saveNamedStyle(pathQlr.as_posix())
+    msg, success = lyr2.saveNamedStyle(path_qlr.as_posix())
+    assert success, 'Failed to save style:' + msg
 
     return lyr2
 

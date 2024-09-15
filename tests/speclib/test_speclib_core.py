@@ -21,31 +21,31 @@ import datetime
 import json
 import math
 import pickle
-import unittest
 import re
+import unittest
 from typing import List
 
 import numpy as np
 from osgeo import ogr
 
-from qgis.PyQt.QtCore import QByteArray, QVariant
-from qgis.PyQt.QtCore import QJsonDocument, NULL
-from qgis.core import QgsField, QgsVectorLayer, QgsRasterLayer, QgsFeature, \
-    QgsCoordinateReferenceSystem, QgsFields, edit, QgsWkbTypes
+from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, QgsVectorLayer, \
+    QgsWkbTypes, edit
 from qps import initAll
+from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
-from qps.speclib.core import is_spectral_library, profile_field_list, profile_fields, can_store_spectral_profiles, \
-    create_profile_field, is_profile_field
+from qps.speclib.core import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
+    profile_field_list, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralSetting, \
-    SpectralProfileBlock, encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding, \
-    validateProfileValueDict, isProfileValueDict, nanToNone
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.speclib.core.spectralprofile import ProfileEncoding, SpectralProfileBlock, SpectralSetting, \
+    decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, nanToNone, prepareProfileValueDict, \
+    validateProfileValueDict
+from qps.testing import TestCaseBase, TestObjects, start_app
 from qps.unitmodel import BAND_NUMBER
-from qps.utils import toType, findTypeFromString, SpatialPoint, SpatialExtent, FeatureReferenceIterator, \
-    createQgsField, qgsFields2str, str2QgsFields
-from qpstestdata import envi_sli, enmap
+from qps.utils import FeatureReferenceIterator, SpatialExtent, SpatialPoint, createQgsField, findTypeFromString, \
+    qgsFields2str, str2QgsFields, toType
+from qpstestdata import enmap, envi_sli
 
 start_app()
 initAll()
@@ -64,15 +64,15 @@ class SpeclibCoreTests(TestCaseBase):
         f1 = createQgsField('foo', 9999)
 
         self.assertEqual(f1.name(), 'foo')
-        self.assertEqual(f1.type(), QVariant.Int)
+        self.assertEqual(f1.type(), QMETATYPE_INT)
         self.assertEqual(f1.typeName(), 'int')
 
         f2 = createQgsField('bar', 9999.)
-        self.assertEqual(f2.type(), QVariant.Double)
+        self.assertEqual(f2.type(), QMETATYPE_DOUBLE)
         self.assertEqual(f2.typeName(), 'double')
 
         f3 = createQgsField('text', 'Hello World')
-        self.assertEqual(f3.type(), QVariant.String)
+        self.assertEqual(f3.type(), QMETATYPE_QSTRING)
         self.assertEqual(f3.typeName(), 'varchar')
 
         fields = QgsFields()
@@ -146,7 +146,7 @@ class SpeclibCoreTests(TestCaseBase):
 
     def test_SerializationJSON(self):
         x = [1, 2, 3, 4, 5]
-        y = [2, 3, 4, np.NaN, 6]
+        y = [2, 3, 4, np.nan, 6]
         bbl = [1, 0, 1, 1, 0]
         xUnit = 'μm'
         yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
@@ -177,7 +177,7 @@ class SpeclibCoreTests(TestCaseBase):
     def test_Serialization(self):
 
         x = [1, 2, 3, 4, 5]
-        y = [2, 3, None, np.NaN, np.Infinity]
+        y = [2, 3, None, np.nan, np.inf]
         bbl = [1, 0, 1, 1, 0]
         xUnit = 'μm'
         yUnit = 'reflectance ä$32{}'  # special characters to test UTF-8 compatibility
@@ -209,7 +209,7 @@ class SpeclibCoreTests(TestCaseBase):
         SpectralLibraryUtils.setProfileValues(feature, field=pField, x=x, y=y, bbl=bbl, xUnit=xUnit, yUnit=yUnit)
 
         vd1 = decodeProfileValueDict(feature.attribute(pField.name()))
-        dump = encodeProfileValueDict(vd1, QgsField('test', QVariant.ByteArray))
+        dump = encodeProfileValueDict(vd1, QgsField('test', QMETATYPE_QBYTEARRAY))
         self.assertIsInstance(dump, QByteArray)
 
         vd2 = decodeProfileValueDict(dump)
@@ -219,7 +219,7 @@ class SpeclibCoreTests(TestCaseBase):
         self.assertTrue(sl.commitChanges())
 
         # serialize to text formats
-        field = QgsField('text', QVariant.String)
+        field = QgsField('text', QMETATYPE_QSTRING)
         dump = encodeProfileValueDict(vd1, field)
         self.assertIsInstance(dump, str)
 
@@ -256,13 +256,13 @@ class SpeclibCoreTests(TestCaseBase):
         # test encoding
 
         for e in ['ByTeS', ProfileEncoding.Bytes,
-                  QgsField('dummy', type=QVariant.ByteArray)]:
+                  QgsField('dummy', type=QMETATYPE_QBYTEARRAY)]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, QByteArray)
 
         for e in [None, 'TeXt',
                   ProfileEncoding.Text,
-                  QgsField('dummy', type=QVariant.String),
+                  QgsField('dummy', type=QMETATYPE_QSTRING),
                   ]:
             dump = encodeProfileValueDict(d, e)
             self.assertIsInstance(dump, str)
@@ -546,7 +546,7 @@ class SpeclibCoreTests(TestCaseBase):
 
     # @unittest.skip('')
     def test_example_profile_fields(self):
-        fieldNP = QgsField('no profile', type=QVariant.ByteArray)
+        fieldNP = QgsField('no profile', type=QMETATYPE_QBYTEARRAY)
         self.assertFalse(is_profile_field(fieldNP))
 
         fieldP = create_profile_field('profiles')

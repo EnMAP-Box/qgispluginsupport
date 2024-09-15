@@ -2,18 +2,20 @@
 import os
 import unittest
 
+from osgeo import ogr
+
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsPoint, QgsProcessingFeedback, QgsProject, \
     QgsVectorFileWriter, QgsVectorLayer
-from qgis.PyQt.QtCore import QVariant
 from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import is_profile_field, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryIO
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geojson import GeoJsonFieldValueConverter, GeoJsonSpectralLibraryExportWidget, \
     GeoJsonSpectralLibraryIO
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCaseBase, TestObjects, start_app
 
 start_app()
 
@@ -52,8 +54,6 @@ class TestSpeclibIOGeoJSON(TestCaseBase):
         path1 = DIR / 'test_rfc7946.geojson'
         path2 = DIR / 'test_GeoJSON2008.geojson'
         io = GeoJsonSpectralLibraryIO()
-
-        from osgeo import ogr
 
         drv: ogr.Driver = ogr.GetDriverByName('GeoJSON')
         md = drv.GetMetadata_Dict()

@@ -1,45 +1,38 @@
 import datetime
 import math
 import re
-from typing import List, Tuple, Set, Iterator, Union, Iterable, Dict, Callable, Optional
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
+from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureRenderer, \
+    QgsFeatureRequest, QgsField, QgsMapLayerProxyModel, QgsMarkerSymbol, QgsProject, QgsProperty, QgsRasterLayer, \
+    QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
+    QgsVectorLayerCache
+from qgis.gui import QgsDualView, QgsFilterLineEdit
+from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
+    QPoint, QRect, QSize, QSortFilterProxyModel, Qt
+from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
+    QPainter, QPalette, QPen, QPixmap, QStandardItem, QStandardItemModel
+from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
+    QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QTableView, QTreeView, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 
-from qgis.PyQt.QtCore import pyqtSignal, Qt, QModelIndex, QPoint, QSortFilterProxyModel, QSize, \
-    QVariant, QAbstractItemModel, QItemSelectionModel, QRect, QMimeData
-from qgis.PyQt.QtGui import QColor, QDragEnterEvent, QDropEvent, QPainter, QIcon, QContextMenuEvent
-from qgis.PyQt.QtGui import QPen, QBrush, QPixmap, QPalette, QFontMetrics
-from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QDialog
-from qgis.PyQt.QtWidgets import QMessageBox, QAbstractItemView, QStyle
-from qgis.PyQt.QtWidgets import QWidget, QFrame, QAction, QApplication, \
-    QTableView, QComboBox, QMenu, QStyledItemDelegate, QHBoxLayout, QTreeView, QStyleOptionViewItem
-from qgis.PyQt.QtXml import QDomElement, QDomDocument
-from qgis.core import QgsField, QgsSingleSymbolRenderer, QgsMarkerSymbol, \
-    QgsVectorLayer, QgsSettings, QgsApplication, QgsExpressionContext, \
-    QgsFeatureRenderer, QgsRenderContext, QgsSymbol, QgsFeature, QgsFeatureRequest
-from qgis.core import QgsProject, QgsMapLayerProxyModel
-from qgis.core import QgsProperty, QgsExpressionContextScope
-from qgis.core import QgsRasterLayer
-from qgis.core import QgsReadWriteContext
-from qgis.core import QgsVectorLayerCache
-from qgis.gui import QgsDualView
-from qgis.gui import QgsFilterLineEdit
-from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, \
-    SpectralProfilePlotDataItem, SpectralProfilePlotWidget, PlotUpdateBlocker
-from .spectrallibraryplotmodelitems import PropertyItemGroup, PropertyItem, RasterRendererGroup, \
-    ProfileVisualizationGroup, PlotStyleItem, ProfileCandidateGroup, PropertyItemBase, ProfileCandidateItem, \
-    GeneralSettingsGroup, PropertyLabel
+from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, PlotUpdateBlocker, \
+    SpectralProfilePlotDataItem, SpectralProfilePlotWidget
+from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileCandidateGroup, \
+    ProfileCandidateItem, ProfileVisualizationGroup, PropertyItem, PropertyItemBase, PropertyItemGroup, PropertyLabel, \
+    RasterRendererGroup
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel, SpectralProfilePlotXAxisUnitWidgetAction
 from .spectralprofilefieldmodel import SpectralProfileFieldListModel
 from .. import speclibUiPath
-from ..core import profile_field_list, profile_field_indices, is_spectral_library, profile_fields
+from ..core import is_spectral_library, profile_field_indices, profile_field_list, profile_fields
 from ..core.spectralprofile import decodeProfileValueDict
 from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
-from ...unitmodel import BAND_INDEX, UnitConverterFunctionModel, datetime64, UnitWrapper, BAND_NUMBER
-from ...utils import loadUi, SignalObjectWrapper, convertDateUnit, qgsField, \
-    SelectMapLayerDialog, SignalBlocker, printCaller
+from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
+from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
+from ...utils import convertDateUnit, loadUi, printCaller, qgsField, SelectMapLayerDialog, SignalBlocker, \
+    SignalObjectWrapper
 
 MAX_PROFILES_DEFAULT: int = 516
 FIELD_NAME = str
@@ -234,7 +227,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
                     rawData['xUnit'] = BAND_INDEX
 
                 # convert None values to NaN so that numpy arrays will become numeric
-                rawData['y'] = [np.NaN if v is None or not math.isfinite(v) else v for v in rawData['y']]
+                rawData['y'] = [np.nan if v is None or not math.isfinite(v) else v for v in rawData['y']]
 
             self.mCACHE_PROFILE_DATA[id_attribute] = rawData
         return self.mCACHE_PROFILE_DATA[id_attribute]
@@ -1642,7 +1635,7 @@ class SpectralLibraryPlotWidget(QWidget):
             rx3 = re.compile('fid', re.I)
             for rx in [rx1, rx2, rx3]:
                 for field in item.speclib().fields():
-                    if field.type() in [QVariant.String, QVariant.Int] and rx.search(field.name()):
+                    if field.type() in [QMETATYPE_QSTRING, QMETATYPE_INT] and rx.search(field.name()):
                         name_field = field
                         break
                 if name_field:

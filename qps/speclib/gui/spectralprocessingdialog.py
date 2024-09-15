@@ -4,42 +4,38 @@ import os
 import pathlib
 from difflib import SequenceMatcher
 from json import JSONDecodeError
-from typing import Dict, List, Any, Union, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from processing import createContext
 from processing.gui.AlgorithmDialogBase import AlgorithmDialogBase
 from processing.gui.wrappers import WidgetWrapper, WidgetWrapperFactory
-from qgis.PyQt.QtCore import pyqtSignal, QObject, QModelIndex, Qt, QTimer, \
-    QVariant
+from qgis.core import Qgis, QgsApplication, QgsEditorWidgetSetup, QgsFeature, QgsField, QgsFields, QgsMapLayer, \
+    QgsMapLayerModel, QgsPalettedRasterRenderer, QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, \
+    QgsProcessingFeedback, QgsProcessingModelAlgorithm, QgsProcessingOutputDefinition, \
+    QgsProcessingOutputLayerDefinition, QgsProcessingOutputRasterLayer, QgsProcessingOutputVectorLayer, \
+    QgsProcessingParameterDefinition, QgsProcessingParameterMultipleLayers, QgsProcessingParameterRasterDestination, \
+    QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsProcessingUtils, QgsProject, QgsRasterBlockFeedback, \
+    QgsRasterDataProvider, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe, QgsVectorLayer
+from qgis.gui import QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsMessageBar, QgsPanelWidget, \
+    QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, QgsProcessingGui, QgsProcessingHiddenWidgetWrapper, \
+    QgsProcessingParametersGenerator, QgsProcessingParametersWidget, QgsProcessingParameterWidgetContext, \
+    QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
+from qgis.PyQt.QtCore import pyqtSignal, QModelIndex, QObject, Qt, QTimer
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QWidget, QGridLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QDialog, \
-    QPushButton, QSizePolicy, QVBoxLayout
-from qgis.core import QgsEditorWidgetSetup, QgsProcessing, QgsProcessingFeedback, QgsProcessingContext, QgsVectorLayer, \
-    QgsProcessingRegistry, QgsMapLayer, QgsPalettedRasterRenderer, \
-    QgsApplication, Qgis, QgsProcessingModelAlgorithm, QgsProcessingAlgorithm, QgsFeature, \
-    QgsProcessingParameterRasterLayer, QgsProcessingOutputRasterLayer, QgsProject, QgsProcessingParameterDefinition, \
-    QgsRasterLayer, \
-    QgsMapLayerModel, QgsProcessingParameterRasterDestination, QgsFields, QgsProcessingOutputLayerDefinition, \
-    QgsRasterFileWriter, QgsRasterBlockFeedback, QgsRasterPipe, QgsProcessingUtils, QgsField, \
-    QgsProcessingParameterMultipleLayers
-from qgis.core import QgsProcessingOutputVectorLayer, QgsProcessingOutputDefinition
-from qgis.core import QgsRasterDataProvider
-from qgis.gui import QgsMessageBar, QgsProcessingAlgorithmDialogBase, QgsPanelWidget, QgsProcessingParametersGenerator
-from qgis.gui import QgsProcessingContextGenerator, QgsProcessingParameterWidgetContext, \
-    QgsProcessingToolboxProxyModel, QgsProcessingRecentAlgorithmLog, QgsProcessingParametersWidget, \
-    QgsAbstractProcessingParameterWidgetWrapper, QgsGui, QgsProcessingGui, \
-    QgsProcessingHiddenWidgetWrapper
-from .. import speclibSettings, EDITOR_WIDGET_REGISTRY_KEY
-from ..core import is_profile_field, can_store_spectral_profiles
+from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QDialog, QGridLayout, QLabel, QLineEdit, QPushButton, QSizePolicy, \
+    QVBoxLayout, QWidget
+
+from .. import EDITOR_WIDGET_REGISTRY_KEY, speclibSettings
+from ..core import can_store_spectral_profiles, is_profile_field
 from ..core.spectrallibrary import SpectralLibraryUtils
-from ..core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
-    SpectralProfileValueConverter, FieldToRasterValueConverter
-from ..core.spectralprofile import prepareProfileValueDict, \
-    encodeProfileValueDict, ProfileEncoding
+from ..core.spectrallibraryrasterdataprovider import createRasterLayers, FieldToRasterValueConverter, \
+    SpectralProfileValueConverter, VectorLayerFieldRasterDataProvider
+from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
 from ..gui.spectralprofilefieldcombobox import SpectralProfileFieldComboBox
 from ...processing.processingalgorithmdialog import ProcessingAlgorithmDialog
+from ...qgisenums import QMETATYPE_QSTRING
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from ...utils import rasterArray, iconForFieldType, numpyToQgisDataType, qgsRasterLayer
+from ...utils import iconForFieldType, numpyToQgisDataType, qgsRasterLayer, rasterArray
 
 LUT_RASTERFILEWRITER_ERRORS: Dict[int, str] = {
     QgsRasterFileWriter.WriterError.SourceProviderError: 'SourceProviderError',
@@ -932,7 +928,7 @@ class SpectralProcessingDialog(QgsProcessingAlgorithmDialogBase):
                                 value = encodeProfileValueDict(pdict, target_field)
                             else:
                                 value = float(tmp[0, 0, i])
-                                if target_field.type() == QVariant.String:
+                                if target_field.type() == QMETATYPE_QSTRING:
                                     value = str(value)
                             assert speclib.changeAttributeValue(feature.id(), target_field_index, value)
                             # assert feature.setAttribute(target_field_index, value)
