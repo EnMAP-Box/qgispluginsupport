@@ -4,10 +4,9 @@ import re
 import unittest
 from typing import List
 
-from qps.speclib.core import is_spectral_feature
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
-    SpectralLibraryIO
-from qps.speclib.io.asd import ASDBinaryFile
+from qps.speclib.core import is_spectral_feature, profile_field_names
+from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, validateProfileValueDict
 from qps.speclib.io.svc import SVCSigFile, SVCSpectralLibraryIO
 from qps.testing import start_app, TestCaseBase, TestObjects
 from qps.utils import file_search
@@ -18,9 +17,7 @@ start_app()
 class TestSpeclibIO_SVC(TestCaseBase):
 
     def registerIO(self):
-
-        ios = [SVCSpectralLibraryIO()]
-        SpectralLibraryIO.registerSpectralLibraryIO(ios)
+        initSpectralLibraryIOs()
 
     def test_read_sigFile(self):
 
@@ -39,10 +36,15 @@ class TestSpeclibIO_SVC(TestCaseBase):
             for p in profiles:
                 self.assertTrue(is_spectral_feature(p))
 
+                for name in profile_field_names(p):
+                    data = decodeProfileValueDict(p.attribute(name))
+                    self.assertTrue(validateProfileValueDict(data))
+                    s = ""
+
     def svcFiles(self) -> List[str]:
         import qpstestdata
-        ASD_DIR = pathlib.Path(qpstestdata.__file__).parent / 'svc'
-        return list(file_search(ASD_DIR, re.compile(r'.*\.sig$'), recursive=True))
+        svc_dir = pathlib.Path(qpstestdata.__file__).parent / 'svc'
+        return list(file_search(svc_dir, re.compile(r'.*\.sig$'), recursive=True))
 
     @unittest.skipIf(TestCaseBase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):

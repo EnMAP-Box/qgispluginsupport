@@ -1,47 +1,127 @@
-from pathlib import Path
-from typing import List, Union
-import re
-
-from PyQt5.QtCore import QVariant
-from qgis._core import QgsField, QgsFields
-from qgis.core import QgsPointXY
-from qgis.core import QgsFeature, QgsProcessingFeedback
+import json
 import os
+import re
+from pathlib import Path
+from typing import List, Match, Optional, Union
+
+import numpy as np
+
+from qgis.core import QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
+from qgis.PyQt.QtCore import QVariant
 from qps.speclib.core import create_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
+from qps.speclib.core.spectralprofile import prepareProfileValueDict
 
-SVC_FIELDS = QgsFields()
-SVC_FIELDS.append(create_profile_field('Reference'))
-SVC_FIELDS.append(create_profile_field('Target'))
-SVC_FIELDS.append(QgsField('co', QVariant.String))
-SVC_FIELDS.append(QgsField('instrument', QVariant.String))
-SVC_FIELDS.append(QgsField('units', QVariant.String))
+# GPS Longitude  DDDmm.mmmmC
+# GPS Latitude  DDmm.mmmmC
+# GPS Time  HHmmSS.SSS
+
+rxGPSLongitude = re.compile(r'(?P<deg>\d{3})(?P<min>\d{2}.\d+)(?P<quad>[EW])')
+rxGPSLatitude = re.compile(r'(?P<deg>\d{2})(?P<min>\d{2}.\d+)(?P<quad>[NS])')
+
+
+def match_to_coordinate(matchLat: Match, matchLon: Match) -> QgsPointXY:
+    y = float(matchLat.group('deg')) + float(matchLat.group('min')) / 60
+    x = float(matchLon.group('deg')) + float(matchLon.group('min')) / 60
+
+    if matchLon.group('quad') == 'W':
+        y *= -1
+
+    if matchLat.group('quad') == 'S':
+        x *= -1
+
+    return QgsPointXY(x, y)
 
 
 class SVCSigFile(object):
+    SVC_FIELDS = QgsFields()
+    SVC_FIELDS.append(create_profile_field('reference'))
+    SVC_FIELDS.append(create_profile_field('target'))
+    SVC_FIELDS.append(create_profile_field('reflectance'))
+    SVC_FIELDS.append(QgsField('timeR', QVariant.String))
+    SVC_FIELDS.append(QgsField('timeT', QVariant.String))
+    SVC_FIELDS.append(QgsField('json_data', QVariant.String))
 
     def __init__(self, path: Union[str, Path]):
         path = Path(path)
         assert path.is_file()
         self.mPath = path
 
-        self.mRADTar = None
+        self.profileT = None
+        self.profileR = None
+        self.profileRefl = None
         self.mRADRef = None
         self.mREF = None
-
-        self.geo: QgsPointXY = None
-
+        self.data: dict = {}
+        self.coordT: Optional[QgsPointXY] = None
+        self.coordR: Optional[QgsPointXY] = None
         self.mRemoveOverlap: bool = True
 
         self._readSIGFile(path)
 
     def _readSIGFile(self, path):
-        pass
+        with open(path) as f:
+            lines = f.read()
+            lines = re.sub('/[*]{3}.*[*]{3}/', '', lines)
+
+            # find regular - one-line tags
+            for match in re.finditer(r'^(?P<tag>[^=]+)=(?P<val>.*)', lines, re.M):
+                tag = match.group('tag').strip()
+                val = match.group('val').strip()
+                self.data[tag] = val
+
+            # find data
+            match = re.search(r'^data=\n(?P<data>.*)', lines.strip(), re.M | re.DOTALL)
+            data = match.group('data').strip()
+            dataLines = data.split('\n')
+            nRows = len(dataLines)
+            data = data.split()
+            nCols = int(len(data) / nRows)
+            data = np.asarray([float(d) for d in data]).reshape((nRows, nCols))
+            wl = data[:, 0]
+
+            # get profiles
+            self.profileR = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 1])
+            if nCols > 2:
+                self.profileT = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 2])
+            if nCols > 3:
+                self.profileRefl = prepareProfileValueDict(x=wl, xUnit='nm', y=data[:, 3], yUnit='%')
+
+            rx_coord_parts = re.compile(r'(?P<deg>\d{2})(?P<min>(\d|\.)+)(?P<direction>[ENSW])')
+            # get coordinates
+            if 'longitude' in self.data:
+                longitudes = rxGPSLongitude.finditer(self.data['longitude'])
+                latitudes = rxGPSLatitude.finditer(self.data['latitude'])
+                coordinates = [match_to_coordinate(lat, lon) for lon, lat in zip(longitudes, latitudes)]
+
+                if len(coordinates) == 2:
+                    self.coordR = coordinates[0]
+                    self.coordT = coordinates[1]
+                elif len(coordinates) == 1:
+                    self.coordT = coordinates[0]
 
     def asFeature(self) -> QgsFeature:
-        f = QgsFeature(SVC_FIELDS)
+
+        f = QgsFeature(self.SVC_FIELDS)
+        attributes = {'json_data': json.dumps(self.data)}
+
+        if self.profileR:
+            attributes['reference'] = self.profileR
+
+        if self.profileT:
+            attributes['target'] = self.profileT
+
+        if self.profileRefl:
+            attributes['reflectance'] = self.profileR
+
+        SpectralLibraryUtils.setAttributeMap(f, attributes)
+
+        if self.coordT:
+            f.setGeometry(QgsGeometry.fromPointXY(self.coordT))
+        elif self.coordR:
+            f.setGeometry(QgsGeometry.fromPointXY(self.coordT))
 
         return f
 
