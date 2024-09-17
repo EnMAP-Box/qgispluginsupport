@@ -692,7 +692,7 @@ class SpectralProfileFileReader(object):
         f = QgsFeature(self.standardFields())
         attributes = self.asMap()
 
-        from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+        from .spectrallibrary import SpectralLibraryUtils
         SpectralLibraryUtils.setAttributeMap(f, attributes)
 
         if self.mTargetCoordinate:
