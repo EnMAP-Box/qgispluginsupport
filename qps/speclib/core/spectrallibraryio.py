@@ -2,24 +2,20 @@ import os
 import pathlib
 import sys
 import warnings
-from typing import Dict, Callable, Union, List, Tuple, Any, Optional
-from qgis.PyQt.QtCore import QObject
-from qgis.PyQt.QtCore import pyqtSignal, QRegExp, QUrl
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsExpressionContextGenerator, \
+    QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, QgsFeatureSink, QgsField, QgsFields, QgsFileUtils, \
+    QgsMapLayer, QgsProcessingFeedback, QgsProject, QgsProperty, QgsPropertyTransformer, QgsProviderUtils, \
+    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsFieldMappingWidget, QgsFileWidget
+from qgis.PyQt.QtCore import pyqtSignal, QObject, QRegExp, QUrl
 from qgis.PyQt.QtGui import QIcon, QRegExpValidator
-from qgis.PyQt.QtWidgets import QWidget, QDialog, QFormLayout, QProgressDialog, \
-    QComboBox, QStackedWidget, QDialogButtonBox, \
-    QLineEdit, QCheckBox, QToolButton, QAction
-from qgis.core import QgsProject, QgsFeatureSink, QgsMapLayer, QgsVectorLayer, QgsFeature, QgsFields, \
-    QgsExpressionContextGenerator, QgsProperty, QgsFileUtils, \
-    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, \
-    QgsCoordinateReferenceSystem, QgsExpressionContextScope, QgsProcessingFeedback, QgsField, \
-    QgsExpressionContext, QgsFeatureIterator, QgsWkbTypes
-from qgis.core import QgsPropertyTransformer
-from qgis.core import QgsProviderUtils
-from qgis.gui import QgsFileWidget, QgsFieldMappingWidget
-from . import profile_field_list, profile_field_names, is_profile_field
+from qgis.PyQt.QtWidgets import QAction, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, \
+    QProgressDialog, QStackedWidget, QToolButton, QWidget
+from . import is_profile_field, profile_field_list, profile_field_names
 from .spectralprofile import groupBySpectralProperties, SpectralProfilePropertyTransformer
-from .. import speclibUiPath, speclibSettings
+from .. import speclibSettings, speclibUiPath
 from ...layerproperties import CopyAttributesDialog
 from ...utils import loadUi
 
@@ -853,7 +849,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
                         isinstance(import_format, str) and w.formatName() == import_format:
                     i_fmt = i
                     break
-        assert i_fmt >= 0, f'import_format={import_format} (type {import_format})'
+        # assert i_fmt >= 0, f'Unknown import_format={import_format} (type {import_format})'
         if i_fmt != self.cbFormat.currentIndex():
             self.cbFormat.setCurrentIndex(i_fmt)
             return

@@ -2,11 +2,12 @@
 import pathlib
 import re
 import unittest
+from datetime import datetime
 from typing import List
 
 from qps.speclib.core import is_spectral_feature, profile_field_names
 from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, validateProfileValueDict
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, validateProfileValueDict
 from qps.speclib.io.svc import SVCSigFile, SVCSpectralLibraryIO
 from qps.testing import start_app, TestCaseBase, TestObjects
 from qps.utils import file_search
@@ -25,6 +26,11 @@ class TestSpeclibIO_SVC(TestCaseBase):
             print(f'read {file}')
             svc = SVCSigFile(file)
             self.assertIsInstance(svc, SVCSigFile)
+            self.assertTrue(isProfileValueDict(svc.reference()))
+            self.assertTrue(isProfileValueDict(svc.target()))
+            self.assertIsInstance(svc.targetTime(), datetime)
+            self.assertIsInstance(svc.referenceTime(), datetime)
+            self.assertIsInstance(svc.metadata(), dict)
             profile = svc.asFeature()
             self.assertTrue(is_spectral_feature(profile))
 

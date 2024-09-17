@@ -43,9 +43,8 @@ from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
-from .speclib.core.spectralprofile import AbstractSpectralProfileFile, decodeProfileValueDict, encodeProfileValueDict, \
-    prepareProfileValueDict, \
-    ProfileEncoding
+from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
+    ProfileEncoding, SpectralProfileFileReader
 from .speclib.io.asd import ASDBinaryFile
 from .speclib.io.spectralevolution import SEDFile
 from .speclib.io.svc import SVCSigFile
@@ -338,7 +337,7 @@ class ReadSpectralProfile(QgsExpressionFunction):
             elif filetype == 'sed':
                 file = SEDFile(path)
 
-            if not isinstance(file, AbstractSpectralProfileFile):
+            if not isinstance(file, SpectralProfileFileReader):
                 raise Exception(f'Unable to read file of type "{filetype}"')
 
             return file.asMap()

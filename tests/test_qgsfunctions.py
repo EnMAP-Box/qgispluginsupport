@@ -120,7 +120,7 @@ class QgsFunctionTests(TestCaseBase):
         self.assertListEqual(v_array, v_profile['y'])
         QgsProject.instance().removeAllMapLayers()
 
-    def test_readSpectralProfileFiles(self):
+    def test_SpectralProfile(self):
 
         context = QgsExpressionContext()
         f = ReadSpectralProfile()

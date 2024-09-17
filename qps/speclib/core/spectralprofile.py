@@ -17,6 +17,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFea
 from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from . import create_profile_field, is_profile_field, profile_field_indices, profile_fields
 from .. import defaultSpeclibCrs, EMPTY_VALUES
+from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
 from ...qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from ...unitmodel import BAND_INDEX, BAND_NUMBER
 from ...utils import qgsField, qgsRasterLayer, saveTransform
@@ -41,7 +42,6 @@ def prepareProfileValueDict(x: Union[np.ndarray, List[Any], Tuple] = None,
     :param yUnit:
     :param xUnit:
     :param x:
-    :param d:
     :return:
     """
 
@@ -279,7 +279,7 @@ def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: boo
     if dump in EMPTY_VALUES:
         return {}
 
-    d: dict = None
+    d: Optional[dict] = None
     jsonDoc = None
 
     if isinstance(dump, bytes):
@@ -343,7 +343,7 @@ class SpectralSetting(object):
     """
 
     @classmethod
-    def fromRasterLayer(cls, layer: QgsRasterLayer) -> 'SpectralSetting':
+    def fromRasterLayer(cls, layer: QgsRasterLayer) -> Optional['SpectralSetting']:
         layer = qgsRasterLayer(layer)
         if not (isinstance(layer, QgsRasterLayer) and layer.isValid()):
             return None
@@ -361,7 +361,7 @@ class SpectralSetting(object):
             return SpectralSetting(wl, xUnit=wlu, bbl=bbl)
 
     @classmethod
-    def fromDictionary(cls, d: dict, field_name: str = None) -> 'SpectralSetting':
+    def fromDictionary(cls, d: dict, field_name: str = None) -> Optional['SpectralSetting']:
         if not isinstance(d, dict) or 'y' not in d.keys():
             # no spectral values no spectral setting
             return None
@@ -381,7 +381,7 @@ class SpectralSetting(object):
                                )
 
     @classmethod
-    def fromValue(cls, value) -> 'SpectralSetting':
+    def fromValue(cls, value) -> Optional['SpectralSetting']:
         d: dict = decodeProfileValueDict(value)
         if len(d) > 0:
             return SpectralSetting.fromDictionary(d)
@@ -390,12 +390,12 @@ class SpectralSetting(object):
 
     def __init__(self,
                  x: Union[int, tuple, list, np.ndarray],
-                 xUnit: str = BAND_INDEX,
-                 yUnit: str = None,
-                 bbl: Union[tuple, list, np.ndarray] = None,
-                 field: QgsField = None,
-                 field_name: str = None,
-                 field_encoding: ProfileEncoding = None):
+                 xUnit: Optional[str] = BAND_INDEX,
+                 yUnit: Optional[str] = None,
+                 bbl: Optional[Union[tuple, list, np.ndarray]] = None,
+                 field: Optional[QgsField] = None,
+                 field_name: Optional[str] = None,
+                 field_encoding: Optional[ProfileEncoding] = None):
 
         assert isinstance(x, (tuple, list, np.ndarray, int)), f'{x}'
 
@@ -440,7 +440,7 @@ class SpectralSetting(object):
     def __str__(self):
         return f'SpectralSetting:({self.n_bands()} bands {self.xUnit()} {self.yUnit()})'.strip()
 
-    def x(self) -> List:
+    def x(self) -> Optional[List]:
         if self.mX:
             return list(self.mX)
         return None
@@ -605,18 +605,155 @@ def groupBySpectralProperties(profiles: Union[QgsVectorLayer, List[QgsFeature]],
     return results
 
 
-class AbstractSpectralProfileFile(object):
+class SpectralProfileFileReader(object):
+    """
+    Base class for file readers of spectral profile measurement files
+    """
+    KEY_Reference = 'reference'  # dictionary with reference profile data
+    KEY_Target = 'target'  # dictionary with target profile data
+    KEY_Reflectance = 'reflectance'  # dictionary with reflectance profile values (if defined)
+    KEY_ReferenceTime = 'timeR'  # time of reference profile acquisition
+    KEY_TargetTime = 'timeT'  # time of target profile acquisition
+    KEY_Metadata = 'metadata'  # dictionary with more / original / untransformed metadata (file type specific)
+    KEY_Name = 'name'  # file name (basename)
+    KEY_Path = 'path'  # file path (full path)
+
+    _STANDARD_FIELDS = None
 
     def __init__(self, path: Union[str, Path]):
         path = Path(path)
         assert path.is_file()
+
+        # member attributes each profile should be able to descrbied
+
         self.mPath = path
 
+        self.mReference: Optional[dict] = None
+        self.mReferenceTime: Optional[datetime.datetime] = None
+        self.mReferenceCoordinate: Optional[QgsPointXY] = None
+
+        self.mTarget: Optional[dict] = None
+        self.mTargetTime: Optional[datetime.datetime] = None
+        self.mTargetCoordinate: Optional[QgsPointXY] = None
+
+        self.mReflectance: Optional[dict] = None
+
+        # store for other values. can be saved in JSON
+        self.mMetadata: dict = dict()
+
+    @staticmethod
+    def standardFields() -> QgsFields:
+        """
+        Standard field provided in a QgsFeature returned with .asFeature()
+        :return:
+        """
+        if not isinstance(SpectralProfileFileReader._STANDARD_FIELDS, QgsFields):
+            fields = QgsFields()
+            fields.append(
+                create_profile_field(SpectralProfileFileReader.KEY_Reference, encoding=ProfileEncoding.Dict))
+            fields.append(
+                create_profile_field(SpectralProfileFileReader.KEY_Target, encoding=ProfileEncoding.Dict))
+            fields.append(
+                create_profile_field(SpectralProfileFileReader.KEY_Reflectance, encoding=ProfileEncoding.Dict))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_ReferenceTime, QMETATYPE_QDATETIME))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMETATYPE_QDATETIME))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMETATYPE_QSTRING))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMETATYPE_QSTRING))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMETATYPE_QVARIANTMAP))
+            SpectralProfileFileReader._STANDARD_FIELDS = fields
+        return SpectralProfileFileReader._STANDARD_FIELDS
+
+    def path(self) -> Path:
+        return self.mPath
+
+    def name(self) -> str:
+        return self.mPath.name
+
     def asMap(self) -> dict:
-        raise NotImplementedError()
+
+        attributes = dict()
+        if len(self.mMetadata) > 0:
+            attributes[self.KEY_Metadata] = self.metadata()
+
+        if self.mReference:
+            attributes[self.KEY_Reference] = self.reference()
+
+        if self.mTarget:
+            attributes[self.KEY_Target] = self.target()
+
+        if self.mReflectance:
+            attributes[self.KEY_Reflectance] = self.reflectance()
+
+        return attributes
 
     def asFeature(self) -> QgsFeature:
-        raise NotImplementedError()
+        """Returns the file content as QgsFeature"""
+
+        f = QgsFeature(self.standardFields())
+        attributes = self.asMap()
+
+        from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
+        SpectralLibraryUtils.setAttributeMap(f, attributes)
+
+        if self.mTargetCoordinate:
+            f.setGeometry(QgsGeometry.fromPointXY(self.mTargetCoordinate))
+        elif self.mReferenceCoordinate:
+            f.setGeometry(QgsGeometry.fromPointXY(self.mReferenceCoordinate))
+
+        return f
+
+    def reference(self) -> Optional[dict]:
+        """
+        Returns the (white) reference profile dictionary
+        :return:
+        """
+        return self.mReference.copy()
+
+    def target(self) -> Optional[dict]:
+        """
+        Returns the target profile dictionary
+        :return:
+        """
+        return self.mTarget.copy()
+
+    def reflectance(self) -> Optional[dict]:
+        """
+        Returns the reflectance profile, either as stored in the file or
+         calculated as target/reference
+        :return:
+        """
+        if self.mReflectance:
+            return self.mReflectance.copy()
+        elif (self.mTarget and self.mReference):
+            d = self.mTarget.copy()
+            d['y'] = [t / r for t, r in zip(self.mTarget['y'], self.mReference['y'])]
+            d['yUnit'] = '-'
+            return d
+        else:
+            return None
+
+    def referenceCoordinate(self) -> Optional[QgsPointXY]:
+        """
+        Coordinate of the reference measurement (EPSG:4326)
+        :return: QgsPointXY
+        """
+        return self.mReferenceCoordinate
+
+    def targetCoordinate(self) -> Optional[QgsPointXY]:
+        """
+        Coordinate of the target measurement (EPSG:4326)
+        :return: QgsPointXY
+        """
+        return self.mTargetCoordinate
+
+    def referenceTime(self) -> datetime.datetime:
+        return self.mReferenceTime
+
+    def targetTime(self) -> datetime.datetime:
+        return self.mTargetTime
+
+    def metadata(self) -> dict:
+        return self.mMetadata.copy()
 
 
 class SpectralProfileBlock(object):

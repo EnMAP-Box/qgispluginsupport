@@ -5,12 +5,12 @@ from typing import Any, List, Optional, Pattern, Union
 
 import numpy as np
 from osgeo import gdal
+
 from qgis.core import QgsDefaultValue, QgsFeature, QgsField, QgsFieldConstraints, QgsObjectCustomProperties, \
     QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsVectorLayerCache
 from qgis.gui import QgsAttributeTableFilterModel, QgsAttributeTableModel, QgsAttributeTableView, QgsMapCanvas
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-
 from .qgisenums import QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 
 rx_bands = re.compile(r'^band[_\s]*(?P<band>\d+)$', re.IGNORECASE)
@@ -194,7 +194,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
     def setBandValue(self, bandNo: Union[int, str], itemKey: str, value):
         self.setBandValues([bandNo], itemKey, [value])
 
-    def setBandValues(self, bands: List[int], itemKey, values):
+    def setBandValues(self, bands: Optional[List[int]], itemKey, values):
         """
         Sets the n values to the corresponding n bands
         if bands = 'all', it is expected values contains either a single value or n = bandCount() values.
@@ -211,7 +211,7 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
         for value, band in zip(values, bands):
             self.setValue(self.bandItemKey(band, itemKey), value)
 
-    def bandValues(self, bands: List[int], itemKey, default=None) -> List[Any]:
+    def bandValues(self, bands: Optional[List[int]], itemKey, default=None) -> List[Any]:
         """
         Returns the n values for n bands and itemKey.
         Returns the default value in case the itemKey is undefined for a band.
@@ -386,11 +386,11 @@ class QgsRasterLayerSpectralProperties(QgsObjectCustomProperties):
                 li = td2.firstChildElement('ul').firstChildElement('li').toElement()
 
                 if not (td1.isNull() or td2.isNull()):
-                    value = td2.text()
+                    # value = td2.text()
                     # print(value)
                     match_band = rx_bands.match(td1_text)
                     match_more = rx_more_information.match(td1_text)
-                    bandNo = None
+                    # bandNo = None
                     if match_band:
                         bandNo = int(match_band.group('band'))
                         while not li.isNull():
@@ -505,7 +505,7 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
 
     def values(self,
                field: Union[int, str, QgsField],
-               bands: List[int] = None) -> List[Any]:
+               bands: List[int] = None) -> Optional[List[Any]]:
         i = self.fieldIndex(field)
         if i < 0:
             print(f'Spectral Property Field {field} does not exists', file=sys.stderr)
@@ -559,7 +559,7 @@ class QgsRasterLayerSpectralPropertiesTable(QgsVectorLayer):
             self.addFeature(bandFeature)
         assert self.commitChanges()
         assert self.featureCount() == rasterLayer.bandCount()
-        s = ""
+        # s = ""
 
     def _writeToLayer(self, layer: QgsRasterLayer):
         pass

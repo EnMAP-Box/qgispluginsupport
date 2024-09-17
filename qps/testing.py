@@ -40,8 +40,9 @@ from typing import List, Set, Tuple, Union
 from unittest import mock
 
 import numpy as np
-import qgis.utils
 from osgeo import gdal, gdal_array, ogr, osr
+
+import qgis.utils
 from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
     QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
     QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
@@ -55,7 +56,6 @@ from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QS
 from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage
 from qgis.PyQt.QtWidgets import QAction, QApplication, QDockWidget, QFrame, QHBoxLayout, QMainWindow, QMenu, QToolBar, \
     QVBoxLayout, QWidget
-
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
 from .utils import findUpwardPath, px2geo, SpatialPoint
@@ -1319,8 +1319,10 @@ class TestObjects(object):
         # set temp path
         if path:
             pathDst = pathlib.Path(path).as_posix()
+            lname = os.path.basename(pathDst)
         else:
             prefix = TestObjects.tmpDirPrefix() + str(uuid.uuid4())
+
             if wkb == ogr.wkbPolygon:
                 lname = 'polygons'
                 pathDst = prefix + '.test.polygons.gpkg'
