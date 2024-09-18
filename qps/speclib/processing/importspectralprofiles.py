@@ -1,16 +1,15 @@
 import pathlib
 from os import scandir
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
-from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterMultipleLayers, QgsProcessing, \
-    QgsProcessingParameterFeatureSink, QgsProcessingContext, \
-    QgsProcessingFeedback, QgsFields, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsFeatureSink, QgsProcessingException, \
-    QgsProcessingUtils, QgsVectorLayer, QgsEditorWidgetSetup, QgsMapLayer, QgsRemappingSinkDefinition, QgsFeature, \
-    QgsProperty, QgsExpressionContextScope, QgsExpressionContext
-
+from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, \
+    QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsFields, QgsMapLayer, QgsProcessing, \
+    QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException, QgsProcessingFeedback, \
+    QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProperty, \
+    QgsRemappingSinkDefinition, QgsVectorLayer, QgsWkbTypes
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import profile_field_names
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportFeatureSink
+from ..core.spectrallibraryio import SpectralLibraryImportFeatureSink, SpectralLibraryIO
 
 
 class ImportSpectralProfiles(QgsProcessingAlgorithm):
@@ -36,8 +35,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
     def shortHelpString(self) -> str:
 
-        return """This algorithm imports spectral profiles from file formats like ENVI spectral libraries
-        or ASD binary files.
+        return """Imports spectral profiles from file formats like ENVI spectral libraries,
+        ASD (<code>.asd</code>), Spectral Evolution (<code>.sed</code>) or Spectral Vista Coorporation (SVC, <code>.sig</code>) Spectrometers.
         """
 
     def group(self) -> str:
@@ -132,6 +131,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                                             context, all_fields,
                                             wkbType,
                                             crs)
+
         sink: QgsFeatureSink
 
         for srcFieldNames, profiles in PROFILES.items():
@@ -143,7 +143,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                 if dstField in srcFieldNames:
                     propertyMap[dstField] = QgsProperty.fromField(dstField)
 
-            srcCrs = QgsCoordinateReferenceSystem('EPSG:4826')
+            srcCrs = QgsCoordinateReferenceSystem('EPSG:4326')
             sinkDefinition = QgsRemappingSinkDefinition()
             sinkDefinition.setDestinationFields(all_fields)
             sinkDefinition.setSourceCrs(srcCrs)

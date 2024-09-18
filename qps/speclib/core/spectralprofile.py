@@ -670,7 +670,11 @@ class SpectralProfileFileReader(object):
         return self.mPath.name
 
     def asMap(self) -> dict:
-
+        """
+        Returns a dictionary that contains the basic profile attributes
+        Values can be accessed using the SpectralProfileFieReader.KEY_* attribute names
+        :return: dict
+        """
         attributes = dict()
         if len(self.mMetadata) > 0:
             attributes[self.KEY_Metadata] = self.metadata()
@@ -684,6 +688,16 @@ class SpectralProfileFileReader(object):
         if self.mReflectance:
             attributes[self.KEY_Reflectance] = self.reflectance()
 
+        if self.mReferenceTime:
+            attributes[self.KEY_ReferenceTime] = self.referenceTime().isoformat()
+
+        if self.mTargetTime:
+            attributes[self.KEY_TargetTime] = self.targetTime().isoformat()
+
+        if self.mPath:
+            attributes[self.KEY_Name] = self.mPath.name
+            attributes[self.KEY_Path] = self.mPath.as_posix()
+            
         return attributes
 
     def asFeature(self) -> QgsFeature:
@@ -1134,7 +1148,7 @@ class SpectralProfileBlock(object):
 class SpectralProfilePropertyTransformer(QgsPropertyTransformer):
     """
     A QgsPropertyTransformer to transform encoded spectral profile dictionaries,
-    which by be returned by QgsProperty expressions, into the correct encoding as
+    e.g. as returned by QgsProperty expressions, into the correct encoding as
     required by a QgsField data type (str, json or bytes).
     """
 

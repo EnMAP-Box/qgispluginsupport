@@ -17,7 +17,6 @@
 ***************************************************************************
 """
 import os.path
-import pathlib
 import re
 # noinspection PyPep8Naming
 import unittest
@@ -34,7 +33,6 @@ from qgis.core import edit, QgsApplication, QgsFeature, QgsField, QgsFields, Qgs
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog
-
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.qgisenums import QMETATYPE_QSTRING
 from qps.qgsfunctions import registerQgsExpressionFunctions
@@ -47,6 +45,7 @@ from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import ExampleAlgorithmProvider, start_app, TestCaseBase, TestObjects
+from qps.utils import file_search
 
 start_app()
 
@@ -281,22 +280,15 @@ class ProcessingToolsTest(TestCaseBase):
         self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
-        from qpstestdata import envi_sli, DIR_ASD_BIN, DIR_ARTMO, DIR_ECOSIS
+        from qpstestdata import DIR_TESTDATA
 
-        input_files = [
-            envi_sli,
-            DIR_ASD_BIN,
-            DIR_ARTMO,
-            DIR_ECOSIS,
-        ]
+        input_files = list(file_search(DIR_TESTDATA, re.compile(r'.*\.(asd|sed|sig|csv|txt)$'), recursive=True))
 
-        for f in input_files:
-            p = pathlib.Path(f)
-            self.assertTrue(p.is_dir() or p.is_file())
-
+        DIR_TEST = self.createTestOutputDirectory()
+        path_test = DIR_TEST / 'example.gpkg'
         par = {
             ImportSpectralProfiles.P_INPUT: input_files,
-            ImportSpectralProfiles.P_OUTPUT: 'TEMPORARY_OUTPUT'
+            ImportSpectralProfiles.P_OUTPUT: path_test.as_posix()
         }
 
         context, feedback = self.createProcessingContextFeedback()
@@ -305,7 +297,7 @@ class ProcessingToolsTest(TestCaseBase):
         alg.initAlgorithm(conf)
 
         results, success = alg.run(par, context, feedback, conf)
-        self.assertTrue(success)
+        self.assertTrue(success, msg=feedback.textLog())
 
         lyr = results[ImportSpectralProfiles.P_OUTPUT]
         self.assertIsInstance(lyr, QgsVectorLayer)

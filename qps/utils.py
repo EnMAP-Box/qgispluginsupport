@@ -50,12 +50,6 @@ import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 from osgeo.osr import SpatialReference
 
-from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, QUrl, QVariant, Qt
-from qgis.PyQt.QtGui import QColor, QIcon
-from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
-    QMenu, QToolButton, QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomElement, QDomNode
 from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsEditorWidgetSetup, \
     QgsFeature, QgsFeatureRequest, QgsFeatureSource, QgsFeedback, QgsField, QgsFields, QgsGeometry, QgsMapLayer, \
     QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapLayerStyle, QgsMapToPixel, QgsMessageOutput, QgsPointXY, \
@@ -64,10 +58,16 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+from qgis.PyQt import uic
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, QVariant
+from qgis.PyQt.QtGui import QColor, QIcon
+from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
+    QMenu, QToolButton, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement, QDomNode
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTLIST, QMETATYPE_UINT
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from .unitmodel import UnitLookup, datetime64
+from .unitmodel import datetime64, UnitLookup
 
 QGIS_RESOURCE_WARNINGS = set()
 
