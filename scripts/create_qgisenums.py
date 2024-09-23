@@ -99,6 +99,8 @@ from qgis.core import Qgis
 manual_defined = """
 # QgsField - since QGIS 3.38, use the method with a QMetaType::Type argument instead
 QMETATYPE_QSTRING = QMetaType.QString if Qgis.versionInt() >= 33800 else QVariant.String
+QMETATYPE_QCHAR = QMetaType.QChar if Qgis.versionInt() >= 33800 else QVariant.Char
+QMETATYPE_QSTRINGLIST = QMetaType.QStringList if Qgis.versionInt() >= 33800 else QVariant.StringList
 QMETATYPE_BOOL = QMetaType.Bool if Qgis.versionInt() >= 33800 else QVariant.Bool
 QMETATYPE_INT = QMetaType.Int if Qgis.versionInt() >= 33800 else QVariant.Int
 QMETATYPE_DOUBLE = QMetaType.Double if Qgis.versionInt() >= 33800 else QVariant.Double
