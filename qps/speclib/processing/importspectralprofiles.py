@@ -1,15 +1,30 @@
-import pathlib
+import os.path
 from os import scandir
+from pathlib import Path
 from typing import Any, Dict, List
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, \
-    QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsFields, QgsMapLayer, QgsProcessing, \
-    QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException, QgsProcessingFeedback, \
-    QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProperty, \
-    QgsRemappingSinkDefinition, QgsVectorLayer, QgsWkbTypes
+from osgeo.ogr import OFSTNone
+
+from qgis.core import (QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext,
+                       QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsField, QgsFields, QgsMapLayer,
+                       QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException,
+                       QgsProcessingFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterFeatureSink,
+                       QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, QgsProperty,
+                       QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer, QgsWkbTypes)
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import profile_field_names
 from ..core.spectrallibraryio import SpectralLibraryImportFeatureSink, SpectralLibraryIO
+from ...qgisenums import QMETATYPE_QSTRING
+from ...utils import variant_type_to_ogr_field_type
+
+
+class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
+
+    def __init__(self, sink, project: QgsProject = None):
+        super().__init__(sink, project)
+
+    def useRemapping(self):
+        return True
 
 
 class ImportSpectralProfiles(QgsProcessingAlgorithm):
@@ -21,7 +36,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         super().__init__()
 
         self._results: Dict = dict()
-        self._input_files: List[pathlib.Path] = []
+        self._input_files: List[Path] = []
         self._profile_field_names: List[str] = []
 
     def name(self) -> str:
@@ -69,11 +84,11 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         input_files = []
         for f in input_sources:
-            p = pathlib.Path(f)
+            p = Path(f)
             if p.is_dir():
                 for e in scandir(p):
                     if e.is_file():
-                        input_files.append(pathlib.Path(e.path))
+                        input_files.append(Path(e.path))
             elif p.is_file():
                 input_files.append(p)
 
@@ -104,15 +119,17 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # collect profiles, ordered by field definition
         PROFILES: Dict[str, List[QgsFeature]] = dict()
 
-        # : todo: optimize loading by file-extension sorting
         for uri in self._input_files:
             profiles = SpectralLibraryIO.readProfilesFromUri(uri)
             if len(profiles) > 0:
                 fields: QgsFields = profiles[0].fields()
                 key = tuple(fields.names())
                 PROFILES[key] = PROFILES.get(key, []) + profiles
-                all_fields.extend(fields)
-                all_fields.extend(profiles[0].fields())
+                for f in fields:
+                    if f.name() not in all_fields.names():
+                        all_fields.append(QgsField(f))
+                # all_fields.extend(fields)
+                # all_fields.extend(profiles[0].fields())
 
         # get wktType
         if wkbType is None:
@@ -126,9 +143,48 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         if wkbType is None:
             wkbType = QgsWkbTypes.Type.NoGeometry
 
+        dst_fields = QgsFields()
+        # Describe output fields.
+        # If destination provide does not support field type
+        # try to get a suitable conversion, e.g. QMap / JSON -> str
+        #
+        value_output = parameters.get(self.P_OUTPUT)
+        if isinstance(value_output, str):
+            driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
+            from osgeo import ogr
+            from osgeo.gdalconst import DMD_CREATIONFIELDDATATYPES, DMD_CREATIONFIELDDATASUBTYPES
+            drv = ogr.GetDriverByName(driver)
+            if isinstance(drv, ogr.Driver):
+                ogrTypes = drv.GetMetadataItem(DMD_CREATIONFIELDDATATYPES).split()
+                ogrSubTypes = drv.GetMetadataItem(DMD_CREATIONFIELDDATASUBTYPES).split()
+                from osgeo import ogr
+                for f in all_fields:
+                    ftype = f.typeName()
+                    s = ""
+                    ogrType, ogrSubType = variant_type_to_ogr_field_type(f.type())
+
+                    if ogrSubType != OFSTNone:
+                        ogrTypeName = ogr.GetFieldSubTypeName(ogrSubType)
+                    else:
+                        ogrTypeName = ogr.GetFieldTypeName(ogrType)
+
+                    if ogrTypeName not in ogrTypes:
+                        dst_fields.append(QgsField(f.name(), type=QMETATYPE_QSTRING))
+                    else:
+                        dst_fields.append(QgsField(f))
+        else:
+            dst_fields = QgsFields(all_fields)
+
+        # outputPar = QgsProcessingOutputLayerDefinition(parameters.get(self.P_OUTPUT), context.project())
+        # remapping = QgsRemappingSinkDefinition()
+
+        assert len(all_fields) == len(dst_fields)
+
+        # outputPar.setRemappingDefinition(remapping)
+
         sink, destId = self.parameterAsSink(parameters,
                                             self.P_OUTPUT,
-                                            context, all_fields,
+                                            context, dst_fields,
                                             wkbType,
                                             crs)
 
@@ -139,13 +195,13 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             srcFields = profiles[0].fields()
 
             propertyMap = dict()
-            for dstField in all_fields.names():
+            for dstField in dst_fields.names():
                 if dstField in srcFieldNames:
                     propertyMap[dstField] = QgsProperty.fromField(dstField)
 
             srcCrs = QgsCoordinateReferenceSystem('EPSG:4326')
             sinkDefinition = QgsRemappingSinkDefinition()
-            sinkDefinition.setDestinationFields(all_fields)
+            sinkDefinition.setDestinationFields(dst_fields)
             sinkDefinition.setSourceCrs(srcCrs)
             sinkDefinition.setDestinationCrs(crs)
             sinkDefinition.setDestinationWkbType(wkbType)
@@ -153,7 +209,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
             # define a QgsExpressionContext that
             # is used by the SpectralLibraryImportFeatureSink to convert
-            # value from the IO context to the output sink context
+            # values from the IO context to the output sink context
             expContext = QgsExpressionContext()
             expContext.setFields(srcFields)
             expContext.setFeedback(feedback)

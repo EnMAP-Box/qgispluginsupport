@@ -48,24 +48,32 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
+from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OFTInteger, OFTInteger64, OFTReal, \
+    OFTString, \
+    OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
 
 from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsEditorWidgetSetup, \
     QgsFeature, QgsFeatureRequest, QgsFeatureSource, QgsFeedback, QgsField, QgsFields, QgsGeometry, QgsMapLayer, \
     QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapLayerStyle, QgsMapToPixel, QgsMessageOutput, QgsPointXY, \
-    QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsRaster, QgsRasterBlock, \
-    QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, QgsRasterLayer, \
-    QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
+    QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, QgsProject, QgsProviderRegistry, QgsRaster, \
+    QgsRasterBlock, QgsRasterBlockFeedback, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterInterface, \
+    QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QObject, QPoint, QPointF, QRect, Qt, QUrl, QVariant
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
+    QVariant
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
     QMenu, QToolButton, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement, QDomNode
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
-    QMETATYPE_QBYTEARRAY, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTLIST, QMETATYPE_UINT
+    QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
+    QMETATYPE_QSTRINGLIST, \
+    QMETATYPE_QTIME, \
+    QMETATYPE_QVARIANTLIST, \
+    QMETATYPE_UINT
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .unitmodel import datetime64, UnitLookup
 
@@ -145,6 +153,75 @@ def _geometryIsEmpty(g: QgsGeometry) -> bool:
 def _geometryIsSinglePoint(g: QgsGeometry) -> bool:
     return g.wkbType() in [QGIS_WKBTYPE.Point, QGIS_WKBTYPE.PointM,
                            QGIS_WKBTYPE.PointZM, QGIS_WKBTYPE.Point25D, QGIS_WKBTYPE.PointZ]
+
+
+_NATIVE_TYPE_LOOKUP: Dict[str, QgsVectorDataProvider.NativeTypes] = dict()
+
+
+def nativeTypes(dataProvider: Optional[QgsVectorDataProvider, str]) -> List[QgsVectorDataProvider.NativeTypes]:
+    """
+    Returns the native types supported by a vectordata provider
+    :param dataProvider:
+    :return:
+    """
+    if isinstance(dataProvider, QgsVectorDataProvider):
+        return dataProvider.nativeTypes()
+    elif isinstance(dataProvider, QgsVectorLayer):
+        return nativeTypes(dataProvider.dataProvider())
+    elif isinstance(dataProvider, str):
+        reg = QgsProviderRegistry.instance()
+        if '.' in dataProvider:
+            driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(dataProvider)[1])
+        else:
+            driver = dataProvider
+        if driver not in _NATIVE_TYPE_LOOKUP:
+            TestObjects.createVectorLayer()
+
+        return _NATIVE_TYPE_LOOKUP.get(driver, None)
+
+
+def variant_type_to_ogr_field_type(variant_type):
+    """
+    Reimplementation of QgsOgrUtils::variantTypeToOgrFieldType
+    :param variant_type:
+    :return:
+    """
+    ogr_sub_type = OFSTNone
+    if variant_type == QMETATYPE_BOOL:
+        ogr_type = OFTInteger
+        ogr_sub_type = OFSTBoolean
+
+    elif variant_type == QMETATYPE_INT:
+        ogr_type = OFTInteger
+
+    elif variant_type == QMetaType.LongLong:
+        ogr_type = OFTInteger64
+
+    elif variant_type == QMetaType.Double:
+        ogr_type = OFTReal
+
+    elif variant_type in [QMETATYPE_QCHAR, QMETATYPE_QSTRING]:
+        ogr_type = OFTString
+
+    elif variant_type == QMETATYPE_QSTRINGLIST:
+        ogr_type = OFTStringList
+
+    elif variant_type == QMETATYPE_QBYTEARRAY:
+        ogr_type = OFTBinary
+
+    elif variant_type == QMETATYPE_QDATE:
+        ogr_type = OFTDate
+
+    elif variant_type == QMETATYPE_QTIME:
+        ogr_type = OFTTime
+
+    elif variant_type == QMETATYPE_QDATETIME:
+        ogr_type = OFTDateTime
+
+    else:
+        ogr_type = OFTString
+
+    return ogr_type, ogr_sub_type
 
 
 class SignalBlocker(object):
