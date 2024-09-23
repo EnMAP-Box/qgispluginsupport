@@ -25,24 +25,24 @@ from typing import Dict
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl, QVariant
-from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
-from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureRequest, QgsField, QgsGeometry, \
     QgsGeometryParameters, QgsMapLayerProxyModel, QgsMapLayerStore, QgsMapToPixel, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
     QgsVectorLayer
+from qgis.PyQt.QtCore import NULL, QByteArray, QObject, QPoint, QRect, QUrl, QVariant
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QDialog, QDockWidget, QGroupBox, QMainWindow, QMenu, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qps.speclib.core import is_spectral_library
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import UnitLookup
-from qps.utils import ExtentTileIterator, MapGeometryToPixel, SelectMapLayerDialog, SelectMapLayersDialog, \
-    SpatialExtent, SpatialPoint, aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn, \
-    fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset, gdalFileSize, \
-    geo2px, layerGeoTransform, loadUi, nextColor, nodeXmlString, optimize_block_size, osrSpatialReference, parseFWHM, \
-    parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, qgsFieldAttributes2List, qgsRasterLayer, \
-    qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, relativePath, snapGeoCoordinates, \
-    spatialPoint2px, value2str, writeAsVectorFormat
+from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn, \
+    ExtentTileIterator, fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset, \
+    gdalFileSize, geo2px, layerGeoTransform, loadUi, MapGeometryToPixel, nativeTypes, nextColor, nodeXmlString, \
+    optimize_block_size, osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, \
+    qgsField, qgsFieldAttributes2List, qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, \
+    rasterizeFeatures, relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, \
+    SpatialPoint, spatialPoint2px, value2str, writeAsVectorFormat
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
 start_app()
@@ -138,6 +138,16 @@ class TestUtils(TestCase):
         a2 = qgsFieldAttributes2List(attributes)
         dump = pickle.dumps(a2, protocol=pickle.HIGHEST_PROTOCOL)
         self.assertIsInstance(dump, bytes)
+
+    def test_nativeTypes(self):
+
+        lyr = TestObjects.createSpectralLibrary()
+
+        for src in [lyr, lyr.dataProvider(), 'GPKG', '.geojson', '.gpkg', 'ESRI Shapefile', '.shp']:
+            ntypes = nativeTypes(src)
+            self.assertIsInstance(ntypes, list)
+            for t in ntypes:
+                self.assertIsInstance(t, QgsVectorDataProvider.NativeType)
 
     def test_findParents(self):
 

@@ -20,6 +20,7 @@ import os.path
 import re
 # noinspection PyPep8Naming
 import unittest
+from pathlib import Path
 from typing import List
 
 import processing
@@ -45,7 +46,6 @@ from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
 from qps.testing import ExampleAlgorithmProvider, start_app, TestCaseBase, TestObjects
-from qps.utils import file_search
 
 start_app()
 
@@ -268,7 +268,6 @@ class ProcessingToolsTest(TestCaseBase):
         del provider
         reg.removeProvider(pid)
         QgsProject.instance().removeAllMapLayers()
-        s = ""
 
     def test_spectralprofile_import(self):
 
@@ -280,12 +279,17 @@ class ProcessingToolsTest(TestCaseBase):
         self.assertTrue(provider.addAlgorithm(ImportSpectralProfiles()))
         reg.providerById(ExampleAlgorithmProvider.NAME.lower())
 
-        from qpstestdata import DIR_TESTDATA
+        from qpstestdata import asd_with_gps, spectral_evolution_sed, svc_sig, ecosis_csv
 
-        input_files = list(file_search(DIR_TESTDATA, re.compile(r'.*\.(asd|sed|sig|csv|txt)$'), recursive=True))
+        input_files = [asd_with_gps,
+                       spectral_evolution_sed,
+                       svc_sig,
+                       ecosis_csv]
+
+        input_files = [Path(p).as_posix() for p in input_files]
 
         DIR_TEST = self.createTestOutputDirectory()
-        path_test = DIR_TEST / 'example.gpkg'
+        path_test = DIR_TEST / 'example.geojson'
         par = {
             ImportSpectralProfiles.P_INPUT: input_files,
             ImportSpectralProfiles.P_OUTPUT: path_test.as_posix()
