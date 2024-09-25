@@ -1,15 +1,16 @@
 import unittest
-from osgeo import gdal
-from qgis.core import QgsRasterLayer, QgsRasterFileWriter, QgsRasterPipe, QgsProcessingContext, QgsRasterBlockFeedback
 
+from osgeo import gdal
+
+from qgis.core import QgsProcessingContext, QgsRasterBlockFeedback, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe
 from qps.speclib.core.spectralprofile import SpectralSetting
-from qps.testing import TestCaseBase, TestObjects, start_app
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import parseWavelength
 
 start_app()
 
 
-class TestCore(TestCaseBase):
+class TestCore(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:

@@ -14,21 +14,21 @@ import unittest
 from typing import Match
 
 from osgeo import gdal
+
+from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QTableView, QVBoxLayout, QWidget
 from qgis.core import QgsField, QgsProject, QgsRasterLayer
 from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox, QgsMapLayerConfigWidget, QgsMapLayerConfigWidgetFactory, \
     QgsRasterTransparencyWidget
-from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QTableView, QVBoxLayout, QWidget
-
 from qps.layerconfigwidgets.gdalmetadata import RX_OGR_URI
 from qps.layerconfigwidgets.rasterbands import RasterBandComboBox
 from qps.qgisenums import QMETATYPE_QSTRING
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 
 start_app()
 LAYER_WIDGET_REPS = 5
 
 
-class LayerConfigWidgetsTests(TestCaseBase):
+class LayerConfigWidgetsTests(TestCase):
 
     def canvasWithLayer(self, lyr) -> QgsMapCanvas:
         c = QgsMapCanvas()

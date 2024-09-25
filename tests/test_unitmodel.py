@@ -1,16 +1,18 @@
-import datetime
 import calendar
+import datetime
+
 import numpy as np
-from qgis.PyQt.QtCore import Qt, QDate, QDateTime
+
+from qgis.PyQt.QtCore import QDate, QDateTime, Qt
 from qgis.PyQt.QtWidgets import QComboBox
-from qps.testing import TestCaseBase, start_app
-from qps.unitmodel import UnitModel, XUnitModel, UnitLookup, UnitWrapper, UnitConverterFunctionModel, datetime64, \
+from qps.testing import TestCase, start_app
+from qps.unitmodel import UnitConverterFunctionModel, UnitLookup, UnitModel, UnitWrapper, XUnitModel, datetime64, \
     days_per_year
 
 start_app()
 
 
-class UnitModelTests(TestCaseBase):
+class UnitModelTests(TestCase):
 
     def test_baseunits(self):
 

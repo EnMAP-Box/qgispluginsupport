@@ -1,16 +1,15 @@
 import unittest
 
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import QPushButton, QGroupBox
-from qgis.PyQt.QtWidgets import QWidget, QGridLayout
+from qgis.PyQt.QtWidgets import QGridLayout, QGroupBox, QPushButton, QWidget
 from qgis.gui import QgsSpinBox
-from qps.simplewidgets import SliderSpinBox, DoubleSliderSpinBox, FlowLayout
-from qps.testing import TestCaseBase, start_app
+from qps.simplewidgets import DoubleSliderSpinBox, FlowLayout, SliderSpinBox
+from qps.testing import TestCase, start_app
 
 start_app()
 
 
-class SimpleWidgetTests(TestCaseBase):
+class SimpleWidgetTests(TestCase):
 
     def test_FlowLayout(self):
 

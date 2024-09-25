@@ -4,21 +4,20 @@ import unittest
 
 import numpy as np
 
-from qgis.core import QgsProcessingFeedback, QgsFeature, QgsFields
+from qgis.core import QgsFeature, QgsFields, QgsProcessingFeedback
 from qps.speclib import FIELD_NAME, FIELD_VALUES
 from qps.speclib.core import profile_field_list
-from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
+from qps.speclib.core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryIO, \
     SpectralLibraryImportWidget
-from qps.speclib.io.envi import EnviSpectralLibraryIO, findENVIHeader, EnviSpectralLibraryExportWidget, \
-    EnviSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app
-from qpstestdata import enmap
-from qpstestdata import envi_sli as speclibpath
+from qps.speclib.io.envi import EnviSpectralLibraryExportWidget, EnviSpectralLibraryIO, EnviSpectralLibraryImportWidget, \
+    findENVIHeader
+from qps.testing import TestCase, TestObjects, start_app
+from qpstestdata import enmap, envi_sli as speclibpath
 
 start_app()
 
 
-class TestSpeclibIO_ENVI(TestCaseBase):
+class TestSpeclibIO_ENVI(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_ENVI, cls).setUpClass(*args, **kwds)

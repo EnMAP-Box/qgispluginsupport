@@ -10,28 +10,27 @@ import os
 import tempfile
 import unittest
 
-from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFeature, QgsFeatureRenderer, QgsField, \
-    QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
-    QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsSearchWidgetWrapper
 from qgis.PyQt.QtCore import NULL, QMimeData, QModelIndex, QSize, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QApplication, QCheckBox, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-
-from qps.classification.classificationscheme import ClassificationMapLayerComboBox, ClassificationScheme, \
+from qgis.core import QgsCategorizedSymbolRenderer, QgsEditorWidgetSetup, QgsFeature, QgsFeatureRenderer, QgsField, \
+    QgsFillSymbol, QgsLineSymbol, QgsMarkerSymbol, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
+    QgsReadWriteContext, QgsRendererCategory, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsSearchWidgetWrapper
+from qps.classification.classificationscheme import ClassInfo, ClassificationMapLayerComboBox, ClassificationScheme, \
     ClassificationSchemeComboBox, ClassificationSchemeComboBoxModel, ClassificationSchemeEditorConfigWidget, \
-    classificationSchemeEditorWidgetFactory, ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, \
-    ClassificationSchemeWidgetFactory, ClassInfo, DEFAULT_UNCLASSIFIEDCOLOR, EDITOR_WIDGET_REGISTRY_KEY, MIMEDATA_KEY, \
-    MIMEDATA_KEY_QGIS_STYLE
+    ClassificationSchemeEditorWidgetWrapper, ClassificationSchemeWidget, ClassificationSchemeWidgetFactory, \
+    DEFAULT_UNCLASSIFIEDCOLOR, EDITOR_WIDGET_REGISTRY_KEY, MIMEDATA_KEY, MIMEDATA_KEY_QGIS_STYLE, \
+    classificationSchemeEditorWidgetFactory
 from qps.qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import file_search
 
 start_app()
 
 
-class TestsClassificationScheme(TestCaseBase):
+class TestsClassificationScheme(TestCase):
 
     def createClassSchemeA(self) -> ClassificationScheme:
 

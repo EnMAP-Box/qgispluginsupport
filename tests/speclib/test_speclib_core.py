@@ -41,7 +41,7 @@ from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
 from qps.speclib.core.spectralprofile import ProfileEncoding, SpectralProfileBlock, SpectralSetting, \
     decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, nanToNone, prepareProfileValueDict, \
     validateProfileValueDict
-from qps.testing import TestCaseBase, TestObjects, start_app
+from qps.testing import TestCase, TestObjects, start_app
 from qps.unitmodel import BAND_NUMBER
 from qps.utils import FeatureReferenceIterator, SpatialExtent, SpatialPoint, createQgsField, findTypeFromString, \
     qgsFields2str, str2QgsFields, toType
@@ -56,7 +56,7 @@ initAll()
 #
 # registerMapLayerConfigWidgetFactories()
 
-class SpeclibCoreTests(TestCaseBase):
+class SpeclibCoreTests(TestCase):
 
     # @unittest.skip('')
     def test_fields(self):

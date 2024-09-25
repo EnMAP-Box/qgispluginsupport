@@ -3,16 +3,15 @@ import shutil
 import unittest
 
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.core import QgsProviderSublayerDetails, QgsApplication
-
+from qgis.core import QgsApplication, QgsProviderSublayerDetails
 from qps.subdatasets import SubDatasetLoadingTask, SubDatasetSelectionDialog
-from qps.testing import TestCaseBase, TestObjects, start_app
+from qps.testing import TestCase, TestObjects, start_app
 
 start_app()
 
 
 @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
-class TestSubDataSets(TestCaseBase):
+class TestSubDataSets(TestCase):
     @unittest.skipIf(not TestObjects.repoDirGDAL(), 'Test requires GDAL repo testdata')
     def test_subdatasettask(self):
 
@@ -71,7 +70,7 @@ class TestSubDataSets(TestCaseBase):
         sublayers = d.selectedSublayerDetails()
         self.assertEqual(len(sublayers), 2)
 
-        if not TestCaseBase.runsInCI():
+        if not TestCase.runsInCI():
             if d.exec() == QDialog.Accepted:
                 sublayers = d.selectedSublayerDetails()
 

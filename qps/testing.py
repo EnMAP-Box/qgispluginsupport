@@ -43,22 +43,23 @@ import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 
 import qgis.utils
-from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
+from qgis.PyQt import sip
+from qgis.PyQt.QtCore import QMimeData, QObject, QPoint, QPointF, QSize, Qt, pyqtSignal
+from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage
+from qgis.PyQt.QtWidgets import QAction, QApplication, QDockWidget, QFrame, QHBoxLayout, QMainWindow, QMenu, QToolBar, \
+    QVBoxLayout, QWidget
+from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
     QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
     QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
     QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
     QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsPythonRunner, \
-    QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
+    QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes, edit
 from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsGui, QgsLayerTreeMapCanvasBridge, \
     QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, QgsMessageBar, QgsPluginManagerInterface
-from qgis.PyQt import sip
-from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
-from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage
-from qgis.PyQt.QtWidgets import QAction, QApplication, QDockWidget, QFrame, QHBoxLayout, QMainWindow, QMenu, QToolBar, \
-    QVBoxLayout, QWidget
+from qgis.testing import QgisTestCase
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
-from .utils import findUpwardPath, px2geo, SpatialPoint
+from .utils import SpatialPoint, findUpwardPath, px2geo
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
@@ -426,13 +427,7 @@ def _set_iface(ifaceMock: QgisInterface):
 # APP = None
 
 
-if Qgis.versionInt() >= 33400:
-    from qgis.testing import QgisTestCase as _BASECLASS
-else:
-    from qgis.testing import TestCase as _BASECLASS
-
-
-class TestCaseBase(_BASECLASS):
+class TestCase(QgisTestCase):
     gdal.UseExceptions()
 
     @staticmethod
@@ -639,7 +634,7 @@ class TestCaseBase(_BASECLASS):
         :return: pathlib.Path
         """
         DIR_REPO = findUpwardPath(__file__, '.git').parent
-        if isinstance(self, TestCaseBase):
+        if isinstance(self, TestCase):
             foldername = self.__class__.__name__
         else:
             foldername = self.__name__
@@ -651,29 +646,6 @@ class TestCaseBase(_BASECLASS):
         os.makedirs(p, exist_ok=True)
         return p
 
-    @classmethod
-    def _readVSIMemFiles(cls) -> Set[str]:
-
-        r = gdal.ReadDirRecursive('/vsimem/')
-        if r is None:
-            return set([])
-        return set(r)
-
-
-class TestCase(TestCaseBase):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-    @classmethod
-    def setUpClass(cls, *args, **kwargs) -> None:
-        resources = kwargs.pop('resources', [])
-
-        super().setUpClass(*args, **kwargs)
-        from . import QPS_RESOURCE_FILE
-        resources.append(QPS_RESOURCE_FILE)
-        start_app(cleanup=kwargs.get('cleanup'), resources=resources)
-
     def assertIconsEqual(self, icon1: QIcon, icon2: QIcon):
         self.assertIsInstance(icon1, QIcon)
         self.assertIsInstance(icon2, QIcon)
@@ -683,6 +655,14 @@ class TestCase(TestCaseBase):
         img1 = QImage(icon1.pixmap(size))
         img2 = QImage(icon2.pixmap(size))
         self.assertImagesEqual(img1, img2)
+
+    @classmethod
+    def _readVSIMemFiles(cls) -> Set[str]:
+
+        r = gdal.ReadDirRecursive('/vsimem/')
+        if r is None:
+            return set([])
+        return set(r)
 
 
 class ExampleAlgorithmProvider(QgsProcessingProvider):

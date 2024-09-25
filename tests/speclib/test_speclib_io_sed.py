@@ -4,16 +4,15 @@ import unittest
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsGeometry, QgsProcessingFeedback, \
     QgsVectorLayerExporter
 from qps.speclib.core import is_spectral_feature
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
-    SpectralLibraryIO
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
 from qps.speclib.io.spectralevolution import SEDFile, SEDSpectralLibraryIO
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import file_search
 
 start_app()
 
 
-class TestSpeclibIO_SED(TestCaseBase):
+class TestSpeclibIO_SED(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_SED, cls).setUpClass(*args, **kwds)
@@ -78,7 +77,7 @@ class TestSpeclibIO_SED(TestCaseBase):
         exporter.flushBuffer()
         s = ""
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Skipped QDialog test in CI')
+    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()

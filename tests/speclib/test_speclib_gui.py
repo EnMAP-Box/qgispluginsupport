@@ -23,13 +23,13 @@ import shutil
 import unittest
 
 from osgeo import gdal, ogr
-from qgis.core import QgsFeature, QgsField, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas
-from qgis.PyQt.QtCore import QMimeData, QPoint, Qt, QUrl
+
+from qgis.PyQt.QtCore import QMimeData, QPoint, QUrl, Qt
 from qgis.PyQt.QtGui import QDropEvent
 from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QDialog, QPushButton, QToolBar, QToolButton, \
     QVBoxLayout, QWidget
-
+from qgis.core import QgsFeature, QgsField, QgsProject, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas
 from qps import registerEditorWidgets
 from qps.layerproperties import AddAttributeDialog
 from qps.pyqtgraph import pyqtgraph as pg
@@ -41,7 +41,7 @@ from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryPanel, SpectralLibraryWidget
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 from qps.unitmodel import BAND_NUMBER, UnitLookup
 from qps.utils import setToolButtonDefaultActionMenu
 from qpstestdata import enmap, hymap, speclib_geojson
@@ -49,7 +49,7 @@ from qpstestdata import enmap, hymap, speclib_geojson
 start_app()
 
 
-class TestSpeclibWidgets(TestCaseBase):
+class TestSpeclibWidgets(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
@@ -135,7 +135,7 @@ class TestSpeclibWidgets(TestCaseBase):
 
         self.showGui(cb)
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Fuzz test (drag and drop)')
+    @unittest.skipIf(TestCase.runsInCI(), 'Fuzz test (drag and drop)')
     def test_dropping_speclibs(self):
 
         files = []
@@ -422,7 +422,7 @@ class TestSpeclibWidgets(TestCaseBase):
         # self.showGui(d)
         QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Opens blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'Opens blocking dialog')
     def test_AttributeDialog(self):
 
         SLIB = TestObjects.createSpectralLibrary()

@@ -15,12 +15,12 @@ from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geojson import GeoJsonFieldValueConverter, GeoJsonSpectralLibraryExportWidget, \
     GeoJsonSpectralLibraryIO
-from qps.testing import TestCaseBase, TestObjects, start_app
+from qps.testing import TestCase, TestObjects, start_app
 
 start_app()
 
 
-class TestSpeclibIOGeoJSON(TestCaseBase):
+class TestSpeclibIOGeoJSON(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIOGeoJSON, cls).setUpClass(*args, **kwds)
@@ -115,7 +115,7 @@ class TestSpeclibIOGeoJSON(TestCaseBase):
         self.showGui(w)
         QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_import_merge(self):
         IO = GeoJsonSpectralLibraryIO()
         registerQgsExpressionFunctions()

@@ -3,19 +3,17 @@ from os import scandir
 from pathlib import Path
 from typing import Any, Dict, List
 
-from osgeo.ogr import OFSTNone
-
 from qgis.core import (QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext,
                        QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsField, QgsFields, QgsMapLayer,
                        QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException,
                        QgsProcessingFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterFeatureSink,
                        QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, QgsProperty,
-                       QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer, QgsWkbTypes)
+                       QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer,
+                       QgsWkbTypes)
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import profile_field_names
-from ..core.spectrallibraryio import SpectralLibraryImportFeatureSink, SpectralLibraryIO
-from ...qgisenums import QMETATYPE_QSTRING
-from ...utils import variant_type_to_ogr_field_type
+from ..core.spectrallibraryio import SpectralLibraryIO
+from ...fieldvalueconverter import GenericFieldValueConverter, GenericPropertyTransformer
 
 
 class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
@@ -151,27 +149,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         value_output = parameters.get(self.P_OUTPUT)
         if isinstance(value_output, str):
             driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
-            from osgeo import ogr
-            from osgeo.gdalconst import DMD_CREATIONFIELDDATATYPES, DMD_CREATIONFIELDDATASUBTYPES
-            drv = ogr.GetDriverByName(driver)
-            if isinstance(drv, ogr.Driver):
-                ogrTypes = drv.GetMetadataItem(DMD_CREATIONFIELDDATATYPES).split()
-                ogrSubTypes = drv.GetMetadataItem(DMD_CREATIONFIELDDATASUBTYPES).split()
-                from osgeo import ogr
-                for f in all_fields:
-                    ftype = f.typeName()
-                    s = ""
-                    ogrType, ogrSubType = variant_type_to_ogr_field_type(f.type())
-
-                    if ogrSubType != OFSTNone:
-                        ogrTypeName = ogr.GetFieldSubTypeName(ogrSubType)
-                    else:
-                        ogrTypeName = ogr.GetFieldTypeName(ogrType)
-
-                    if ogrTypeName not in ogrTypes:
-                        dst_fields.append(QgsField(f.name(), type=QMETATYPE_QSTRING))
-                    else:
-                        dst_fields.append(QgsField(f))
+            dst_fields = GenericFieldValueConverter.compatibleTargetFields(all_fields, driver)
         else:
             dst_fields = QgsFields(all_fields)
 
@@ -194,18 +172,26 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
             srcFields = profiles[0].fields()
 
-            propertyMap = dict()
-            for dstField in dst_fields.names():
-                if dstField in srcFieldNames:
-                    propertyMap[dstField] = QgsProperty.fromField(dstField)
+            remappingFieldMap = dict()
+            transformers = []
+            for dstField in dst_fields:
+                assert isinstance(dstField, QgsField)
+                if dstField.name() in srcFieldNames:
+                    srcFieldName = dstField.name()
+                    transformer = GenericPropertyTransformer(dstField)
+                    transformers.append(transformer)
+                    property = QgsProperty.fromField(srcFieldName)
+                    property.setTransformer(transformer)
+                    remappingFieldMap[dstField.name()] = property
 
             srcCrs = QgsCoordinateReferenceSystem('EPSG:4326')
-            sinkDefinition = QgsRemappingSinkDefinition()
-            sinkDefinition.setDestinationFields(dst_fields)
-            sinkDefinition.setSourceCrs(srcCrs)
-            sinkDefinition.setDestinationCrs(crs)
-            sinkDefinition.setDestinationWkbType(wkbType)
-            sinkDefinition.setFieldMap(propertyMap)
+
+            remappingDefinition = QgsRemappingSinkDefinition()
+            remappingDefinition.setDestinationFields(dst_fields)
+            remappingDefinition.setSourceCrs(srcCrs)
+            remappingDefinition.setDestinationCrs(crs)
+            remappingDefinition.setDestinationWkbType(wkbType)
+            remappingDefinition.setFieldMap(remappingFieldMap)
 
             # define a QgsExpressionContext that
             # is used by the SpectralLibraryImportFeatureSink to convert
@@ -218,11 +204,17 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             scope.setFields(srcFields)
             expContext.appendScope(scope)
 
-            featureSink = SpectralLibraryImportFeatureSink(sinkDefinition, sink, dstFields=all_fields)
-            featureSink.setExpressionContext(expContext)
+            # featureSink = SpectralLibraryImportFeatureSink(sinkDefinition, sink, dst_fields)
+            remappingSink = QgsRemappingProxyFeatureSink(remappingDefinition, sink)
+            remappingSink.setExpressionContext(expContext)
 
-            if not featureSink.addFeatures(profiles):
-                raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
+            if False:
+                for p in profiles:
+                    if not remappingSink.addFeature(p):
+                        raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
+            else:
+                if not remappingSink.addFeatures(profiles):
+                    raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
 
         del sink
 

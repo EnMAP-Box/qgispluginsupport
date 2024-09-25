@@ -4,18 +4,19 @@ import sys
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsExpressionContextGenerator, \
-    QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, QgsFeatureSink, QgsField, QgsFields, QgsFileUtils, \
-    QgsMapLayer, QgsProcessingFeedback, QgsProject, QgsProperty, QgsPropertyTransformer, QgsProviderUtils, \
-    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsFieldMappingWidget, QgsFileWidget
-from qgis.PyQt.QtCore import pyqtSignal, QObject, QRegExp, QUrl
+from qgis.PyQt.QtCore import QObject, QRegExp, QUrl, pyqtSignal
 from qgis.PyQt.QtGui import QIcon, QRegExpValidator
 from qgis.PyQt.QtWidgets import QAction, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, \
     QProgressDialog, QStackedWidget, QToolButton, QWidget
-from . import is_profile_field, profile_field_list, profile_field_names
-from .spectralprofile import groupBySpectralProperties, SpectralProfilePropertyTransformer
+from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsExpressionContextGenerator, \
+    QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, QgsFeatureSink, QgsField, QgsFields, QgsFileUtils, \
+    QgsMapLayer, QgsProcessingFeedback, QgsProject, QgsProperty, QgsProviderUtils, \
+    QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsFieldMappingWidget, QgsFileWidget
+from . import profile_field_list, profile_field_names
+from .spectralprofile import groupBySpectralProperties
 from .. import speclibSettings, speclibUiPath
+from ...fieldvalueconverter import GenericPropertyTransformer
 from ...layerproperties import CopyAttributesDialog
 from ...utils import loadUi
 
@@ -560,10 +561,13 @@ class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
         for k, srcProp in fieldMap.items():
             srcProp: QgsProperty
             dstField: QgsField = dstFields.field(k)
-            if is_profile_field(dstField) and not isinstance(srcProp.transformer(), QgsPropertyTransformer):
-                transformer = SpectralProfilePropertyTransformer(dstField)
-                srcProp.setTransformer(transformer)
-                transformers.append(transformer)
+            transformer = GenericPropertyTransformer(dstField)
+            srcProp.setTransformer(transformer)
+            transformers.append(transformer)
+            # if is_profile_field(dstField) and not isinstance(srcProp.transformer(), QgsPropertyTransformer):
+            #    transformer = SpectralProfilePropertyTransformer(dstField)
+            #    srcProp.setTransformer(transformer)
+            #    transformers.append(transformer)
             fieldMap2[k] = srcProp
         sinkDefinition.setFieldMap(fieldMap2)
         super().__init__(sinkDefinition, speclib)
@@ -577,15 +581,12 @@ class SpectralLibraryImportFeatureSink(QgsRemappingProxyFeatureSink):
         super().setExpressionContext(context)
         self.mContext = context
 
-    def addFeature(self, feature, *args, **kwargs):
-
-        s = ""
-        return super().addFeature(feature, *args, **kwargs)
-
     def remapFeature(self, feature: QgsFeature) -> List[QgsFeature]:
         s = ""
-        features = super().remapFeature(feature)
-
+        try:
+            features = super().remapFeature(feature)
+        except Exception as ex:
+            s = ""
         return features
 
 
@@ -680,11 +681,12 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             context.setFeedback(feedback)
 
             scope = QgsExpressionContextScope()
-            scope.setFields(profiles[0].fields())
+            srcFields = profiles[0].fields()
+            scope.setFields(srcFields)
             context.appendScope(scope)
 
             # sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
-            sink = SpectralLibraryImportFeatureSink(sinkDefinition, speclib)
+            sink = SpectralLibraryImportFeatureSink(sinkDefinition, speclib, srcFields)
             sink.setExpressionContext(context)
             sink.setTransformContext(QgsProject.instance().transformContext())
 
@@ -1069,6 +1071,7 @@ def initSpectralLibraryIOs():
     from ..io.asd import ASDSpectralLibraryIO
     from ..io.rastersources import RasterLayerSpectralLibraryIO
     from ..io.spectralevolution import SEDSpectralLibraryIO
+    from ..io.svc import SVCSpectralLibraryIO
 
     speclibIOs = [
         GeoPackageSpectralLibraryIO(),
@@ -1077,6 +1080,7 @@ def initSpectralLibraryIOs():
         ASDSpectralLibraryIO(),
         SEDSpectralLibraryIO(),
         RasterLayerSpectralLibraryIO(),
+        SVCSpectralLibraryIO(),
     ]
 
     for speclibIO in speclibIOs:

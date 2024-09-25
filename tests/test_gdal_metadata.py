@@ -7,19 +7,17 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
-from osgeo import gdal, ogr, gdal_array
+from osgeo import gdal, gdal_array, ogr
 
 from qgis.PyQt.QtCore import QMimeData, QModelIndex, QUrl
-from qgis.PyQt.QtWidgets import QDialog
-from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QMenu, QAction
-from qgis.core import QgsFeature, edit
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
-from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
-    GDALMetadataModelConfigWidget, BandFieldNames, GDALMetadataItem, BandPropertyCalculator
+from qgis.PyQt.QtWidgets import QAction, QApplication, QDialog, QHBoxLayout, QMenu, QPushButton, QVBoxLayout, QWidget
+from qgis.core import QgsFeature, QgsMapLayer, QgsProject, QgsRasterLayer, QgsVectorLayer, edit
+from qgis.gui import QgsDualView, QgsMapCanvas, QgsMapLayerComboBox, QgsRasterBandComboBox
+from qps.layerconfigwidgets.gdalmetadata import BandFieldNames, BandPropertyCalculator, GDALBandMetadataModel, \
+    GDALMetadataItem, GDALMetadataItemDialog, GDALMetadataModel, GDALMetadataModelConfigWidget
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from qps.testing import TestObjects, TestCaseBase, start_app
-from qpstestdata import enmap, envi_bsq, enmap_polygon
+from qps.testing import TestCase, TestObjects, start_app
+from qpstestdata import enmap, enmap_polygon, envi_bsq
 
 start_app()
 
@@ -76,7 +74,7 @@ class ControlWidget(QWidget):
         self.setLayout(vl)
 
 
-class TestsGdalMetadata(TestCaseBase):
+class TestsGdalMetadata(TestCase):
 
     def test_GDALBandMetadataModel(self):
         from qpstestdata import enmap
@@ -336,7 +334,7 @@ class TestsGdalMetadata(TestCaseBase):
         ds.FlushCache()
         del ds
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'GUI dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'GUI dialog')
     def test_BandPropertyCalculator(self):
         from qps import registerExpressionFunctions
         registerExpressionFunctions()
@@ -483,7 +481,8 @@ class TestsGdalMetadata(TestCaseBase):
         md3.setUrls([QUrl.fromLocalFile(r'C:/NoneExisting')])
 
         md4: QMimeData = QMimeData()
-        md4.setUrls([QUrl.fromLocalFile(r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])
+        md4.setUrls([QUrl.fromLocalFile(
+            r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])
 
         for mimeData in [md1, md2, md3]:
             QApplication.clipboard().setMimeData(mimeData)

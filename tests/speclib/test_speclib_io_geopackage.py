@@ -3,18 +3,18 @@ import os
 import unittest
 
 from osgeo import ogr
-from qgis.core import QgsVectorLayer, QgsFeature, QgsProcessingFeedback
 
+from qgis.core import QgsFeature, QgsProcessingFeedback, QgsVectorLayer
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryExportWidget, \
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryExportWidget, GeoPackageSpectralLibraryIO, \
     GeoPackageSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.testing import TestCase, TestObjects, start_app
 
 start_app()
 
 
-class TestSpeclibIO_GPKG(TestCaseBase):
+class TestSpeclibIO_GPKG(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_GPKG, cls).setUpClass(*args, **kwds)

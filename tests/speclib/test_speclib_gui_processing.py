@@ -4,24 +4,19 @@ import datetime
 import unittest
 from typing import Tuple
 
-from qgis.PyQt.QtWidgets import QGridLayout
-from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import QgsProcessingOutputRasterLayer
-from qgis.core import QgsProcessingAlgorithm, QgsProcessingFeedback
-from qgis.core import QgsProject, QgsProcessingParameterRasterLayer, \
-    QgsProcessingContext, QgsProcessingRegistry, QgsApplication, edit
-from qgis.core import QgsVectorLayer
-from qgis.gui import QgsGui, QgsProcessingParameterWidgetContext, QgsProcessingGui, QgsProcessingContextGenerator, \
-    QgsProcessingAlgorithmDialogBase
-from qgis.gui import QgsMapCanvas, QgsDualView
-from qgis.gui import QgsProcessingGuiRegistry
+from qgis.PyQt.QtWidgets import QGridLayout, QWidget
+from qgis.core import QgsApplication, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
+    QgsProcessingOutputRasterLayer, QgsProcessingParameterRasterLayer, QgsProcessingRegistry, QgsProject, \
+    QgsVectorLayer, edit
+from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsProcessingAlgorithmDialogBase, QgsProcessingContextGenerator, \
+    QgsProcessingGui, QgsProcessingGuiRegistry, QgsProcessingParameterWidgetContext
 from qps import initAll
 from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectralprofile import SpectralSetting
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprocessingdialog import SpectralProcessingDialog, \
     SpectralProcessingRasterLayerWidgetWrapper
-from qps.testing import TestObjects, TestCaseBase, ExampleAlgorithmProvider, start_app
+from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, start_app
 
 start_app()
 
@@ -55,7 +50,6 @@ class AlgorithmLogging(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters: dict, context: QgsProcessingContext,
                          feedback: QgsProcessingFeedback):
-
         outputs = {}
         for funcName, msg in self._log.items():
             feedback.pushInfo(f'Test "{funcName}"<-"{msg}"')
@@ -66,7 +60,7 @@ class AlgorithmLogging(QgsProcessingAlgorithm):
         return outputs
 
 
-class SpectralProcessingTests(TestCaseBase):
+class SpectralProcessingTests(TestCase):
 
     def initProcessingRegistry(self) -> Tuple[QgsProcessingRegistry, QgsProcessingGuiRegistry]:
         procReg = QgsApplication.instance().processingRegistry()
@@ -161,7 +155,7 @@ class SpectralProcessingTests(TestCaseBase):
         procw.setAlgorithm(alg2)
         self.showGui(procw)
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_SpectralProcessingWidget2(self):
         self.initProcessingRegistry()
         from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider
@@ -251,7 +245,7 @@ class SpectralProcessingTests(TestCaseBase):
         w.setLayout(gridLayout)
         self.showGui(w)
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Sandbox only')
+    @unittest.skipIf(TestCase.runsInCI(), 'Sandbox only')
     def test_dialog(self):
         class D(QgsProcessingAlgorithmDialogBase):
             def __init__(self, *args, **kwds):

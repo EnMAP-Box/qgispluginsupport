@@ -9,7 +9,7 @@ import numpy as np
 from qgis.core import QgsFeature, QgsPointXY, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
 from ..core.spectrallibraryio import SpectralLibraryIO
-from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
+from ..core.spectralprofile import SpectralProfileFileReader, prepareProfileValueDict
 
 # GPS Longitude  DDDmm.mmmmC
 # GPS Latitude  DDmm.mmmmC
@@ -118,19 +118,12 @@ class SVCSpectralLibraryIO(SpectralLibraryIO):
             elif path.is_file():
                 sources.append(path.as_posix())
 
-        # expected_fields = importSettings.get()
-
-        rxCSV = re.compile(r'.*\.(csv|txt)$')
         feedback.setProgress(0)
         n_total = len(sources)
         profiles: List[QgsFeature] = []
         for i, file in enumerate(sources):
             file = Path(file)
-
-            if rxCSV.search(file.name):
-                pass
-                # profiles.extend(ASDSpectralLibraryIO.readCSVFile(file))
-            else:
+            if file.name.endswith('.sig'):
                 sig: SVCSigFile = SVCSigFile(file)
                 profiles.append(sig.asFeature())
             feedback.setProgress(int((i + 1) / n_total))

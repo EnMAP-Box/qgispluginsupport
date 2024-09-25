@@ -9,17 +9,17 @@ import unittest
 
 import numpy as np
 from osgeo import gdal, ogr
+
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsVectorLayer, \
     QgsWkbTypes
-
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 
 start_app()
 
 
-class TestCasesTestObject(TestCaseBase):
+class TestCasesTestObject(TestCase):
 
     def test_spectralProfiles(self):
 

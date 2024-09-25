@@ -4,22 +4,22 @@ import re
 import unittest
 from datetime import datetime
 
-from qgis.core import edit, QgsFeature, QgsField
 from qgis.PyQt.QtCore import QDateTime, QMetaType, Qt
+from qgis.core import QgsFeature, QgsField, edit
 from qps.speclib.core import is_spectral_feature, profile_field_names
-from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfileFileReader, validateProfileValueDict
+from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, initSpectralLibraryIOs
+from qps.speclib.core.spectralprofile import SpectralProfileFileReader, decodeProfileValueDict, validateProfileValueDict
 from qps.speclib.io.asd import ASDBinaryFile
 from qps.speclib.io.spectralevolution import SEDFile
 from qps.speclib.io.svc import SVCSigFile
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import file_search
 from qpstestdata import DIR_TESTDATA
 
 start_app()
 
 
-class TestSpeclibIO_SpectralProfileReaders(TestCaseBase):
+class TestSpeclibIO_SpectralProfileReaders(TestCase):
 
     def registerIO(self):
         initSpectralLibraryIOs()
@@ -60,7 +60,7 @@ class TestSpeclibIO_SpectralProfileReaders(TestCaseBase):
 
             self.assertTrue(is_spectral_feature(profile))
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Skipped QDialog test in CI')
+    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()

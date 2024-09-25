@@ -1,19 +1,18 @@
 import unittest
 from typing import List
 
-from qgis.PyQt.QtCore import QSize, Qt, NULL, QVariant
-from qgis.PyQt.QtWidgets import QWidget, QVBoxLayout, QCheckBox
+from qgis.PyQt.QtCore import NULL, QSize, QVariant, Qt
+from qgis.PyQt.QtWidgets import QCheckBox, QVBoxLayout, QWidget
 from qgis.core import QgsActionManager, QgsFeature
-from qgis.gui import QgsGui, QgsMapCanvas, QgsDualView, QgsSearchWidgetWrapper
-
-from qps.speclib import FIELD_VALUES, EDITOR_WIDGET_REGISTRY_KEY
+from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
+from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY, FIELD_VALUES
 from qps.speclib.core import profile_field_list
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, prepareProfileValueDict
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
-from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory, SpectralProfileEditorConfigWidget, \
-    SpectralProfileEditorWidgetWrapper, SpectralProfileEditorWidget, SpectralProfileTableModel, \
-    SpectralProfileJsonEditor, SpectralProfileTableEditor, spectralProfileEditorWidgetFactory
-from qps.testing import TestCaseBase, TestObjects, start_app
+from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorConfigWidget, SpectralProfileEditorWidget, \
+    SpectralProfileEditorWidgetFactory, SpectralProfileEditorWidgetWrapper, SpectralProfileJsonEditor, \
+    SpectralProfileTableEditor, SpectralProfileTableModel, spectralProfileEditorWidgetFactory
+from qps.testing import TestCase, TestObjects, start_app
 from qps.unitmodel import BAND_NUMBER
 
 start_app()
@@ -39,7 +38,7 @@ def valid_profile_dicts() -> List[dict]:
     return examples
 
 
-class TestSpeclibWidgets(TestCaseBase):
+class TestSpeclibWidgets(TestCase):
 
     def valid_profile_dicts(self):
         return valid_profile_dicts()

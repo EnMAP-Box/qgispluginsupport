@@ -5,20 +5,20 @@ import unittest
 import numpy as np
 from osgeo import gdal_array
 
-from qgis.core import edit, Qgis, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
-    QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
-    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsFieldCalculator
 from qgis.PyQt.QtCore import QByteArray
+from qgis.core import Qgis, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils, \
+    QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, QgsPointXY, QgsProject, \
+    QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, edit
+from qgis.gui import QgsFieldCalculator
 from qps.qgisenums import QGIS_WKBTYPE, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
     ReadSpectralProfile, SpectralData, SpectralEncoding, SpectralMath
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, ProfileEncoding
+from qps.speclib.core.spectralprofile import ProfileEncoding, decodeProfileValueDict, isProfileValueDict
 from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
-from qps.testing import start_app, TestCaseBase, TestObjects
-from qps.utils import file_search, SpatialExtent, SpatialPoint
+from qps.testing import TestCase, TestObjects, start_app
+from qps.utils import SpatialExtent, SpatialPoint, file_search
 from qpstestdata import DIR_SED, enmap, enmap_multipolygon, enmap_pixel
 
 start_app()
@@ -77,7 +77,7 @@ def createAggregateTestProfileLayer():
     return sl
 
 
-class QgsFunctionTests(TestCaseBase):
+class QgsFunctionTests(TestCase):
     """
     Tests for functions in the Field Calculator
     """
@@ -600,7 +600,7 @@ class QgsFunctionTests(TestCaseBase):
         self.assertIsInstance(html, str)
         self.assertTrue(QgsExpression.unregisterFunction(f.name()))
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_functiondialog(self):
         functions = [
             Format_Py(),

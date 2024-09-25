@@ -6,16 +6,16 @@ from datetime import datetime
 from typing import List
 
 from qps.speclib.core import is_spectral_feature, profile_field_names
-from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
+from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, initSpectralLibraryIOs
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, validateProfileValueDict
 from qps.speclib.io.svc import SVCSigFile, SVCSpectralLibraryIO
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import file_search
 
 start_app()
 
 
-class TestSpeclibIO_SVC(TestCaseBase):
+class TestSpeclibIO_SVC(TestCase):
 
     def registerIO(self):
         initSpectralLibraryIOs()
@@ -52,7 +52,7 @@ class TestSpeclibIO_SVC(TestCaseBase):
         svc_dir = pathlib.Path(qpstestdata.__file__).parent / 'svc'
         return list(file_search(svc_dir, re.compile(r'.*\.sig$'), recursive=True))
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Skipped QDialog test in CI')
+    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()

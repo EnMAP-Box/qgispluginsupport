@@ -4,16 +4,15 @@ import pathlib
 import re
 import unittest
 
-from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorLayer
-
+from qgis.core import QgsFeature, QgsProcessingFeedback, QgsVectorLayer
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.testing import TestCase, TestObjects, start_app
 
 start_app()
 
 
-class TestSpeclibIO_EcoSIS(TestCaseBase):
+class TestSpeclibIO_EcoSIS(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_EcoSIS, cls).setUpClass(*args, **kwds)

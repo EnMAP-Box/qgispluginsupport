@@ -27,15 +27,14 @@
 import os
 import pathlib
 import sys
-
 import warnings
 from typing import List
 
-from qgis.core import QgsApplication, Qgis
-from qgis.gui import QgsMapLayerConfigWidgetFactory, QgisInterface
+from qgis.core import Qgis, QgsApplication
+from qgis.gui import QgisInterface, QgsMapLayerConfigWidgetFactory
 
-MIN_QGIS_VERSION = '3.28'
-__version__ = '1.6'
+MIN_QGIS_VERSION = '3.34'
+__version__ = '1.7'
 
 DIR_QPS = pathlib.Path(__file__).parent
 DIR_UI_FILES = DIR_QPS / 'ui'

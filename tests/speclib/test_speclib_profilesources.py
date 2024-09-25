@@ -4,28 +4,27 @@ import random
 import unittest
 from typing import Iterator, List, Tuple
 
-from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
-    QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsDualView, QgsMapCanvas
 from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
-
+from qgis.core import Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
+    QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, edit
+from qgis.gui import QgsDualView, QgsMapCanvas
 from qps.maptools import CursorLocationMapTool
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import isProfileValueDict, SpectralProfileBlock, SpectralSetting
+from qps.speclib.core.spectralprofile import SpectralProfileBlock, SpectralSetting, isProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofilesources import MapCanvasLayerProfileSource, ProfileSamplingMode, \
     SamplingBlockDescription, SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView, \
     SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource, SpectralProfileSourceModel, \
     SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource
-from qps.testing import start_app, TestCaseBase, TestObjects
-from qps.utils import parseWavelength, rasterArray, SpatialExtent, SpatialPoint
+from qps.testing import TestCase, TestObjects, start_app
+from qps.utils import SpatialExtent, SpatialPoint, parseWavelength, rasterArray
 
 start_app()
 
 
-class SpectralProcessingTests(TestCaseBase):
+class SpectralProcessingTests(TestCase):
 
     def test_dualview(self):
 
