@@ -18,8 +18,6 @@ s = ""
 
 
 class GenericFieldValueConverterTests(TestCase):
-    def test_something(self):
-        self.assertEqual(True, False)  # add assertion here
 
     def test_GenericPropertyTransformer(self):
 
@@ -66,6 +64,9 @@ class GenericFieldValueConverterTests(TestCase):
         fields.append(QgsField('json', type=QMETATYPE_QVARIANTMAP, subType=QMETATYPE_QSTRING, typeName='JSON'))
         fields.append(QgsField('map', type=QMETATYPE_QVARIANTMAP, subType=0, typeName='map'))
         fields.append(QgsField('text', type=QMETATYPE_QSTRING))
+        fields.append(QgsField('datetime', type=QMETATYPE_QDATETIME))
+        fields.append(QgsField('date', type=QMETATYPE_QDATE))
+        fields.append(QgsField('time', type=QMETATYPE_QTIME))
 
         for driverName in ['memory', 'GeoJSON', 'GPKG', 'ESRI Shapefile', 'CSV', 'SQLite',
                            QgsVectorFileWriter.driverForExtension('.kml')

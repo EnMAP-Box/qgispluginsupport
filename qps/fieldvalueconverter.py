@@ -332,7 +332,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
         s = ""
 
-    def convertProfileField(self, value, field: QgsField) -> str:
+    def convertProfileField(self, value, field: QgsField) -> Any:
         d = decodeProfileValueDict(value, numpy_arrays=True)
         d['y'] = d['y'].astype(np.float32)
         text = encodeProfileValueDict(d, field)
