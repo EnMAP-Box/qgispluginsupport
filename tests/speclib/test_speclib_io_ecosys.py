@@ -1,25 +1,24 @@
 # noinspection PyPep8Naming
 import os
-import pathlib
-import re
-import unittest
 
-from qgis.core import QgsFeature, QgsProcessingFeedback, QgsVectorLayer
+from qgis.core import QgsFeature, QgsVectorLayer
+from qps.speclib.core import is_spectral_feature
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
 from qps.testing import TestCase, TestObjects, start_app
+from qps.utils import file_search
+from qpstestdata import DIR_ECOSIS
 
 start_app()
+
+s = ""
 
 
 class TestSpeclibIO_EcoSIS(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_EcoSIS, cls).setUpClass(*args, **kwds)
-
-    @classmethod
-    def tearDownClass(cls):
-        super(TestSpeclibIO_EcoSIS, cls).tearDownClass()
+        cls.registerIO(cls)
 
     def registerIO(self):
 
@@ -28,30 +27,22 @@ class TestSpeclibIO_EcoSIS(TestCase):
         ]
         SpectralLibraryIO.registerSpectralLibraryIO(ios)
 
-    @unittest.skip('Needs update to new API')
-    def test_EcoSIS(self):
-        feedback = QgsProcessingFeedback()
+    def test_read_EcoSIS(self):
 
-        from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
-        import qpstestdata
-        ecosysFiles = []
-        for f in os.scandir(pathlib.Path(qpstestdata.__file__).parent / 'ecosis'):
-            if re.search(r'\.(csv|xlsx)$', f.name):
-                ecosysFiles.append(pathlib.Path(f.path))
-
-        # 1. read
-        feedback = QgsProcessingFeedback()
+        ecosysFiles = file_search(DIR_ECOSIS, '*.csv', recursive=True)
+        context, feedback = self.createProcessingContextFeedback()
 
         for path in ecosysFiles:
             print('Read {}...'.format(path))
-
-            importSettings = dict()
-            continue
+            importSettings = {}
             profiles = EcoSISSpectralLibraryIO.importProfiles(path, importSettings=importSettings, feedback=feedback)
 
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)
+            for p in profiles:
+                self.assertTrue(is_spectral_feature(p))
 
+    def test_write_EcoSIS(self):
         # 2. write
         speclib = TestObjects.createSpectralLibrary(50)
 

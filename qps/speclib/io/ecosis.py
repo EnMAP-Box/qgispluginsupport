@@ -33,15 +33,14 @@ import re
 import sys
 from typing import List, Union
 
-from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
 from qgis.PyQt.QtCore import QUrlQuery, QVariant
 from qgis.PyQt.QtWidgets import QFileDialog, QMenu, QProgressDialog
-
+from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
 from .envi import readCSVMetadata
-from .. import createStandardFields, FIELD_NAME
+from .. import FIELD_NAME, createStandardFields
 from ..core import create_profile_field, is_spectral_library
 from ..core.spectrallibrary import FIELD_VALUES
-from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportWidget
 from ..core.spectralprofile import encodeProfileValueDict
 from ...qgisenums import QMETATYPE_QSTRING
 from ...utils import createQgsField, findTypeFromString
@@ -172,20 +171,27 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
         path = pathlib.Path(path)
 
         profiles: List[QgsFeature] = []
-
+        # see https://api.qgis.org/api/classQgsVectorLayer.html#details or
+        # https://qgis.org/pyqgis/master/core/QgsVectorLayer.html#delimited-text-file-data-provider-delimitedtext
+        # for detaisl of delimitedtext driver
         query = QUrlQuery()
         # query.addQueryItem('encoding', 'UTF-8')
         query.addQueryItem('detectTypes', 'yes')
-        query.addQueryItem('geomType', 'none')
+
         # query.addQueryItem('watchFile', 'no')
         # query.addQueryItem('type', 'csv')
         # query.addQueryItem('subsetIndex', 'no')
         # query.addQueryItem('useHeader', 'yes')
         query.addQueryItem('delimiter', ',')
-
+        query.addQueryItem('quote', '"')
+        query.addQueryItem('xField', 'longitude')
+        query.addQueryItem('yField', 'latitude')
+        query.addQueryItem('crs', 'EPSG:4326')
+        query.addQueryItem('geomType', 'point')
+        
         uri = path.as_uri() + '?' + query.toString()
         # uri = path.as_posix()
-        lyr = QgsVectorLayer(uri, os.path.basename(path), 'delimitedtext')
+        lyr = QgsVectorLayer(uri, path.name, 'ogr')
 
         # the EcoSIS CSV outputs are encoded as UTF-8 with BOM
         with open(path, 'r', encoding='utf-8-sig') as f:
