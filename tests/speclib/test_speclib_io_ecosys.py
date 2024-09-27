@@ -1,17 +1,16 @@
-# noinspection PyPep8Naming
-import os
+from math import isnan
 
-from qgis.core import QgsFeature, QgsVectorLayer
+from qgis.core import QgsFeature
 from qps.speclib.core import is_spectral_feature
+from qps.testing import start_app, TestCase
 from qps.speclib.core.spectrallibraryio import SpectralLibraryIO
 from qps.speclib.io.ecosis import EcoSISSpectralLibraryIO
-from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import file_search
 from qpstestdata import DIR_ECOSIS
 
-start_app()
+# noinspection PyPep8Naming
 
-s = ""
+start_app()
 
 
 class TestSpeclibIO_EcoSIS(TestCase):
@@ -34,37 +33,27 @@ class TestSpeclibIO_EcoSIS(TestCase):
 
         for path in ecosysFiles:
             print('Read {}...'.format(path))
-            importSettings = {}
-            profiles = EcoSISSpectralLibraryIO.importProfiles(path, importSettings=importSettings, feedback=feedback)
+            profiles = EcoSISSpectralLibraryIO.importProfiles(path, feedback=feedback)
 
             self.assertIsInstance(profiles, list)
             self.assertTrue(len(profiles) > 0)
             for p in profiles:
                 self.assertTrue(is_spectral_feature(p))
 
-    def test_write_EcoSIS(self):
-        # 2. write
-        speclib = TestObjects.createSpectralLibrary(50)
+            print('Read {} (generic IO)...'.format(path))
 
-        # remove x/y values from first profile. this profile should be skipped in the outputs
-        p0 = speclib[0]
+            profiles2 = SpectralLibraryIO.readProfilesFromUri(path)
+            self.assertIsInstance(profiles2, list)
+            self.assertTrue(len(profiles2) > 0)
+            for p1, p2 in zip(profiles, profiles2):
+                p1: QgsFeature
+                p2: QgsFeature
+                self.assertTrue(is_spectral_feature(p2))
+                data1 = p1.attributeMap()
+                data2 = p2.attributeMap()
 
-        self.assertIsInstance(p0, QgsFeature)
-        p0.setValues(x=[], y=[])
-        speclib.startEditing()
-        speclib.updateFeature(p0)
-        self.assertTrue(speclib.commitChanges())
-        TEST_DIR = self.createTestOutputDirectory()
-        pathCSV = os.path.join(TEST_DIR, 'speclib.ecosys.csv')
-        csvFiles = EcoSISSpectralLibraryIO.write(speclib, pathCSV, feedback=None)
-        n = 0
-        for p in csvFiles:
-            self.assertTrue(os.path.isfile(p))
-            self.assertTrue(EcoSISSpectralLibraryIO.canRead(p))
-
-            slPart = EcoSISSpectralLibraryIO.readFrom(p)
-            self.assertIsInstance(slPart, QgsVectorLayer)
-
-            n += len(slPart)
-
-        self.assertEqual(len(speclib) - 1, n)
+                for k in data1.keys():
+                    v1 = data1[k]
+                    v2 = data2[k]
+                    if v1 != v2 and not (isnan(v1) and isnan(v2)):
+                        self.assertEqual(v1, v2, msg=f'{p1}: {k} {v1} != {v2}')

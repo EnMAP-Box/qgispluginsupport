@@ -6,7 +6,7 @@ DIR_TESTDATA = _ROOT / 'qpstestdata'
 
 # from qps
 enmap = _QPS / 'enmap.tif'
-testvectordata = 'testvectordata.geojson'
+testvectordata = _QPS / 'testvectordata.geojson'
 landcover = testvectordata
 enmap_polygon = testvectordata
 enmap_pixel = _QPS / 'testvectorpixelcenter.geojson'
