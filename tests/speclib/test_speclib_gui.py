@@ -24,7 +24,7 @@ import unittest
 
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import QMimeData, QPoint, QUrl, Qt
+from qgis.PyQt.QtCore import QMimeData, QPoint, Qt, QUrl
 from qgis.PyQt.QtGui import QDropEvent
 from qgis.PyQt.QtWidgets import QAction, QApplication, QComboBox, QDialog, QPushButton, QToolBar, QToolButton, \
     QVBoxLayout, QWidget
@@ -41,7 +41,7 @@ from qps.speclib.gui.spectrallibraryplotitems import SpectralProfilePlotWidget
 from qps.speclib.gui.spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryPanel, SpectralLibraryWidget
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER, UnitLookup
 from qps.utils import setToolButtonDefaultActionMenu
 from qpstestdata import enmap, hymap, speclib_geojson
@@ -238,10 +238,10 @@ class TestSpeclibWidgets(TestCase):
 
         from qpstestdata import enmap, landcover, enmap_pixel
 
-        l1 = QgsRasterLayer(enmap, 'EnMAP')
-        l2 = QgsVectorLayer(landcover, 'LandCover')
-        l3 = QgsVectorLayer(enmap_pixel, 'Points of Interest')
-        l4 = QgsRasterLayer(enmap, 'EnMAP-2')
+        l1 = QgsRasterLayer(enmap.as_posix(), 'EnMAP')
+        l2 = QgsVectorLayer(landcover.as_posix(), 'LandCover')
+        l3 = QgsVectorLayer(enmap_pixel.as_posix(), 'Points of Interest')
+        l4 = QgsRasterLayer(enmap.as_posix(), 'EnMAP-2')
         QgsProject.instance().addMapLayers([l1, l2, l3, l4])
 
         sl1 = TestObjects.createSpectralLibrary(5, n_bands=[177, 6], wlu='Nanometers')
@@ -287,7 +287,7 @@ class TestSpeclibWidgets(TestCase):
 
         # speclib = self.createSpeclib()
 
-        lyr = QgsRasterLayer(hymap)
+        lyr = QgsRasterLayer(hymap.as_posix())
         h, w = lyr.height(), lyr.width()
         speclib = TestObjects.createSpectralLibrary()
         slw = SpectralLibraryWidget(speclib=speclib)
@@ -366,7 +366,7 @@ class TestSpeclibWidgets(TestCase):
 
     def test_SpectralProfileImportPointsDialog(self):
 
-        lyrRaster = QgsRasterLayer(enmap)
+        lyrRaster = QgsRasterLayer(enmap.as_posix())
         lyrRaster.setName('EnMAP')
         h, w = lyrRaster.height(), lyrRaster.width()
 
@@ -433,11 +433,11 @@ class TestSpeclibWidgets(TestCase):
 
         # test profile field detection
 
-        lyr = QgsVectorLayer(speclib_geojson)
+        lyr = QgsVectorLayer(speclib_geojson.as_posix())
         pfields = profile_field_list(lyr)
         self.assertEqual(1, len(pfields))
 
-        lyr = QgsVectorLayer(speclib_geojson, options=QgsVectorLayer.LayerOptions(loadDefaultStyle=False))
+        lyr = QgsVectorLayer(speclib_geojson.as_posix(), options=QgsVectorLayer.LayerOptions(loadDefaultStyle=False))
         pfields = profile_field_list(lyr)
         self.assertEqual(0, len(pfields))
 

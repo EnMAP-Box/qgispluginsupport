@@ -697,7 +697,7 @@ class SpectralProfileFileReader(object):
         if self.mPath:
             attributes[self.KEY_Name] = self.mPath.name
             attributes[self.KEY_Path] = self.mPath.as_posix()
-            
+
         return attributes
 
     def asFeature(self) -> QgsFeature:

@@ -34,15 +34,14 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsFeatureReques
     QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterIdentifyResult, QgsRasterLayer, QgsRectangle, QgsVector, \
     QgsVectorLayer
 from qps.speclib.core import is_spectral_library
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import UnitLookup
-from qps.utils import ExtentTileIterator, MapGeometryToPixel, SelectMapLayerDialog, SelectMapLayersDialog, \
-    SpatialExtent, SpatialPoint, aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn, \
-    fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset, gdalFileSize, \
-    geo2px, layerGeoTransform, loadUi, nextColor, nodeXmlString, optimize_block_size, \
-    osrSpatialReference, \
-    parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, qgsFieldAttributes2List, \
-    qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, relativePath, snapGeoCoordinates, \
+from qps.utils import aggregateArray, appendItemsToMenu, createQgsField, defaultBands, displayBandNames, dn, \
+    ExtentTileIterator, fid2pixelindices, file_search, filenameFromString, findMapLayerStores, findParent, gdalDataset, \
+    gdalFileSize, geo2px, layerGeoTransform, loadUi, MapGeometryToPixel, nextColor, nodeXmlString, optimize_block_size, \
+    osrSpatialReference, parseFWHM, parseWavelength, px2geo, px2geocoordinates, px2spatialPoint, qgsField, \
+    qgsFieldAttributes2List, qgsRasterLayer, qgsRasterLayers, rasterArray, rasterBlockArray, rasterizeFeatures, \
+    relativePath, SelectMapLayerDialog, SelectMapLayersDialog, snapGeoCoordinates, SpatialExtent, SpatialPoint, \
     spatialPoint2px, value2str, writeAsVectorFormat
 from qpstestdata import enmap, enmap_multipoint, enmap_multipolygon, enmap_pixel, hymap, landcover
 
@@ -308,9 +307,8 @@ class TestUtils(TestCase):
     def test_fid2pixelIndices(self):
 
         # create test datasets
-        from qpstestdata import enmap_pixel, enmap
-        rl = QgsRasterLayer(enmap)
-        vl = QgsVectorLayer(enmap_pixel)
+        rl = QgsRasterLayer(enmap.as_posix())
+        vl = QgsVectorLayer(enmap_pixel.as_posix())
 
         self.assertTrue(rl.isValid())
         self.assertTrue(vl.isValid())
@@ -322,7 +320,7 @@ class TestUtils(TestCase):
 
         pathDst = DIR_TEST / 'fid2{}.tif'.format(pathlib.Path(vl.source().split('|')[0]).name)
 
-        gdal_array.SaveArray(burned, pathDst.as_posix(), prototype=enmap)
+        gdal_array.SaveArray(burned, pathDst.as_posix(), prototype=enmap.as_posix())
         self.assertIsInstance(burned, np.ndarray)
         fidsA = set(vl.allFeatureIds())
         fidsB = set([fid for fid in np.unique(burned) if fid != no_data])
@@ -380,7 +378,7 @@ class TestUtils(TestCase):
             ext3 = union.boundingBox()
             self.assertEqual(ext, ext3)
 
-        lyr = QgsRasterLayer(enmap)
+        lyr = QgsRasterLayer(enmap.as_posix())
         ARRAY = rasterArray(lyr, bands=[1])
         self.assertEqual(ARRAY.shape, (1, lyr.height(), lyr.width()))
         ARRAY = ARRAY.reshape((np.prod(ARRAY.shape)))
@@ -436,10 +434,10 @@ class TestUtils(TestCase):
             s = ""
 
     def test_MapGeometryToPixel(self):
-        rl = QgsRasterLayer(enmap)
-        vlPoly = QgsVectorLayer(enmap_multipolygon)
-        vlPoint = QgsVectorLayer(enmap_pixel)
-        vlPointMulti = QgsVectorLayer(enmap_multipoint)
+        rl = QgsRasterLayer(enmap.as_posix())
+        vlPoly = QgsVectorLayer(enmap_multipolygon.as_posix())
+        vlPoint = QgsVectorLayer(enmap_pixel.as_posix())
+        vlPointMulti = QgsVectorLayer(enmap_multipoint.as_posix())
 
         self.assertTrue(rl.crs() != vlPoly.crs())
 
@@ -516,7 +514,7 @@ class TestUtils(TestCase):
 
     def test_snapGeoCoordinates(self):
 
-        rl = QgsRasterLayer(enmap)
+        rl = QgsRasterLayer(enmap.as_posix())
         ext = rl.extent()
         m2p = QgsMapToPixel(rl.rasterUnitsPerPixelX(),
                             ext.center().x(), ext.center().y(),
@@ -529,9 +527,9 @@ class TestUtils(TestCase):
 
     def test_rasterize_features(self):
 
-        rl = QgsRasterLayer(enmap)
+        rl = QgsRasterLayer(enmap.as_posix())
         dp: QgsRasterDataProvider = rl.dataProvider()
-        vlPoly = QgsVectorLayer(enmap_multipolygon)
+        vlPoly = QgsVectorLayer(enmap_multipolygon.as_posix())
         c = rl.extent().center()
         M2P = QgsMapToPixel(rl.rasterUnitsPerPixelX(),
                             c.x(), c.y(),
@@ -567,7 +565,7 @@ class TestUtils(TestCase):
         if True:
             feedback = QgsProcessingFeedback()
 
-            vl = QgsVectorLayer(landcover)
+            vl = QgsVectorLayer(landcover.as_posix())
             for (f, array, md) in rasterizeFeatures(vl, rl, feedback=feedback):
                 self.assertIsInstance(f, QgsFeature)
                 self.assertIsInstance(array, np.ndarray)
@@ -581,7 +579,7 @@ class TestUtils(TestCase):
         if True:
             feedback = QgsProcessingFeedback()
 
-            vlPoints = QgsVectorLayer(enmap_pixel)
+            vlPoints = QgsVectorLayer(enmap_pixel.as_posix())
             for (f, array, md) in rasterizeFeatures(vlPoints, rl, blockSize=4, feedback=feedback):
                 self.assertIsInstance(f, QgsFeature)
                 self.assertIsInstance(array, np.ndarray)
@@ -720,7 +718,7 @@ class TestUtils(TestCase):
 
     def test_rasterArray(self):
 
-        lyr = QgsRasterLayer(enmap)
+        lyr = QgsRasterLayer(enmap.as_posix())
         dp: QgsRasterDataProvider = lyr.dataProvider()
         ext = lyr.extent()
 
@@ -826,8 +824,8 @@ class TestUtils(TestCase):
                 bandG = ds.GetRasterBand(b + 1).ReadAsArray()
                 self.assertTrue(np.all(band == bandG))
 
-        lyr1 = QgsRasterLayer(enmap, 'EnMAP')
-        lyr2 = QgsRasterLayer(hymap, 'HyMAP')
+        lyr1 = QgsRasterLayer(enmap.as_posix(), 'EnMAP')
+        lyr2 = QgsRasterLayer(hymap.as_posix(), 'HyMAP')
 
         for lyr in [lyr1, lyr2]:
             ds: gdal.Dataset = gdal.Open(lyr.source())

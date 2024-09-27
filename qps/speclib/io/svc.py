@@ -9,7 +9,7 @@ import numpy as np
 from qgis.core import QgsFeature, QgsPointXY, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
 from ..core.spectrallibraryio import SpectralLibraryIO
-from ..core.spectralprofile import SpectralProfileFileReader, prepareProfileValueDict
+from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
 
 # GPS Longitude  DDDmm.mmmmC
 # GPS Latitude  DDmm.mmmmC
@@ -128,3 +128,8 @@ class SVCSpectralLibraryIO(SpectralLibraryIO):
                 profiles.append(sig.asFeature())
             feedback.setProgress(int((i + 1) / n_total))
         return profiles
+
+    @classmethod
+    def filter(self) -> str:
+
+        return "Spectra Vista Corporation (SVC) Signature File (*.sig);;Any file (*.*)"

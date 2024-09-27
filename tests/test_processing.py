@@ -30,22 +30,23 @@ from processing import AlgorithmDialog
 from processing.ProcessingPlugin import ProcessingPlugin
 from qgis.PyQt.QtCore import QModelIndex, QObject, Qt
 from qgis.PyQt.QtWidgets import QDialog
-from qgis.core import QgsApplication, QgsFeature, QgsField, QgsFields, QgsProcessingAlgRunnerTask, \
-    QgsProcessingAlgorithm, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
-    QgsVectorLayer, edit
+from qgis.core import edit, QgsApplication, QgsFeature, QgsField, QgsFields, QgsProcessingAlgorithm, \
+    QgsProcessingAlgRunnerTask, QgsProcessingOutputRasterLayer, QgsProcessingRegistry, QgsProject, QgsTaskManager, \
+    QgsVectorLayer
 from qgis.gui import QgsProcessingRecentAlgorithmLog, QgsProcessingToolboxProxyModel
 from qps.processing.processingalgorithmdialog import ProcessingAlgorithmDialog
 from qps.qgisenums import QMETATYPE_QSTRING
 from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import create_profile_field, profile_field_names, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, initSpectralLibraryIOs
-from qps.speclib.core.spectralprofile import ProfileEncoding, decodeProfileValueDict, encodeProfileValueDict, \
-    isProfileValueDict, prepareProfileValueDict
+from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryIO
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
+    prepareProfileValueDict, ProfileEncoding
 from qps.speclib.processing.aggregateprofiles import AggregateProfiles
 from qps.speclib.processing.exportspectralprofiles import ExportSpectralProfiles
 from qps.speclib.processing.importspectralprofiles import ImportSpectralProfiles
-from qps.testing import ExampleAlgorithmProvider, TestCase, TestObjects, get_iface, start_app
+from qps.testing import ExampleAlgorithmProvider, get_iface, start_app, TestCase, TestObjects
+from qpstestdata import asd_with_gps, ecosis_csv, spectral_evolution_sed
 
 start_app()
 
@@ -282,16 +283,18 @@ class ProcessingToolsTest(TestCase):
 
         from qpstestdata import svc_sig
 
-        input_files = [  # asd_with_gps,
-            # spectral_evolution_sed,
+        input_files = [
+            ecosis_csv,
+            asd_with_gps,
+            spectral_evolution_sed,
             svc_sig,
-            # ecosis_csv
+
         ]
         for f in input_files:
             self.assertTrue(Path(f).is_file)
 
             profiles = SpectralLibraryIO.readProfilesFromUri(f)
-            self.assertTrue(len(profiles) > 0)
+            self.assertTrue(len(profiles) > 0, f'Failed to import profiles from {f}')
 
         DIR_TEST = self.createTestOutputDirectory()
 
@@ -321,8 +324,11 @@ class ProcessingToolsTest(TestCase):
                 self.assertTrue(vl.isValid())
                 self.assertIsInstance(vl, QgsVectorLayer)
 
-                self.assertEqual(1, vl.featureCount(),
-                                 msg=f'Unable to save profiles from {input_file.name} to {path_test.name}')
+                if input_file in [ecosis_csv]:
+                    self.assertTrue(vl.featureCount() > 1)
+                else:
+                    self.assertEqual(1, vl.featureCount(),
+                                     msg=f'Unable to save profiles from {input_file.name} to {path_test.name}')
 
         # test multi-filetype import
         input_files = [Path(p).as_posix() for p in input_files]

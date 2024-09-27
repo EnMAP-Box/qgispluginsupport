@@ -6,19 +6,19 @@ import numpy as np
 from osgeo import gdal_array
 
 from qgis.PyQt.QtCore import QByteArray
-from qgis.core import Qgis, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, QgsExpressionContextUtils, \
-    QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, QgsPointXY, QgsProject, \
-    QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes, edit
+from qgis.core import edit, Qgis, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
+    QgsExpressionContextUtils, QgsExpressionFunction, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, \
+    QgsPointXY, QgsProject, QgsProperty, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsFieldCalculator
 from qps.qgisenums import QGIS_WKBTYPE, QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker, RasterArray, RasterProfile, \
     ReadSpectralProfile, SpectralData, SpectralEncoding, SpectralMath
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import ProfileEncoding, decodeProfileValueDict, isProfileValueDict
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, ProfileEncoding
 from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
-from qps.testing import TestCase, TestObjects, start_app
-from qps.utils import SpatialExtent, SpatialPoint, file_search
+from qps.testing import start_app, TestCase, TestObjects
+from qps.utils import file_search, SpatialExtent, SpatialPoint
 from qpstestdata import DIR_SED, enmap, enmap_multipolygon, enmap_pixel
 
 start_app()
@@ -210,9 +210,9 @@ class QgsFunctionTests(TestCase):
 
         self.assertIsInstance(html, str)
 
-        lyrR = QgsRasterLayer(enmap, 'EnMAP')
-        lyrSP = QgsVectorLayer(enmap_pixel, 'SinglePoint')
-        lyrMP = QgsVectorLayer(enmap_multipolygon, 'MultiPoly')
+        lyrR = QgsRasterLayer(enmap.as_posix(), 'EnMAP')
+        lyrSP = QgsVectorLayer(enmap_pixel.as_posix(), 'SinglePoint')
+        lyrMP = QgsVectorLayer(enmap_multipolygon.as_posix(), 'MultiPoly')
         QgsProject.instance().addMapLayers([lyrR, lyrMP])
 
         if True:
@@ -362,9 +362,9 @@ class QgsFunctionTests(TestCase):
 
         self.assertIsInstance(html, str)
 
-        lyrE = QgsRasterLayer(enmap)
+        lyrE = QgsRasterLayer(enmap.as_posix())
 
-        lyrV = QgsVectorLayer(enmap_multipolygon)
+        lyrV = QgsVectorLayer(enmap_multipolygon.as_posix())
         lyrV.setName('MyMultiPoly')
         store.addMapLayers([lyrV, lyrE])
         context = QgsExpressionContext()
@@ -415,8 +415,8 @@ class QgsFunctionTests(TestCase):
 
                 s = ""
 
-        vectorLayers = [QgsVectorLayer(enmap_multipolygon),
-                        QgsVectorLayer(enmap_pixel)]
+        vectorLayers = [QgsVectorLayer(enmap_multipolygon.as_posix()),
+                        QgsVectorLayer(enmap_pixel.as_posix())]
         for lyrV in vectorLayers:
             context = QgsExpressionContext()
             context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyrV))

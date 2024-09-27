@@ -42,24 +42,24 @@ from unittest import mock
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
 
-import qgis.utils
-from qgis.PyQt import sip
-from qgis.PyQt.QtCore import QMimeData, QObject, QPoint, QPointF, QSize, Qt, pyqtSignal
-from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage
-from qgis.PyQt.QtWidgets import QAction, QApplication, QDockWidget, QFrame, QHBoxLayout, QMainWindow, QMenu, QToolBar, \
-    QVBoxLayout, QWidget
-from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
+from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
     QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
     QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
     QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
-    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsPythonRunner, \
-    QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes, edit
+    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry, \
+    QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
+import qgis.utils
+from qgis.PyQt import sip
+from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
+from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage
+from qgis.PyQt.QtWidgets import QAction, QApplication, QDockWidget, QFrame, QHBoxLayout, QMainWindow, QMenu, QToolBar, \
+    QVBoxLayout, QWidget
 from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsGui, QgsLayerTreeMapCanvasBridge, \
     QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, QgsMessageBar, QgsPluginManagerInterface
 from qgis.testing import QgisTestCase
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
-from .utils import SpatialPoint, findUpwardPath, px2geo
+from .utils import findUpwardPath, px2geo, SpatialPoint
 
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
@@ -74,7 +74,7 @@ def start_app(cleanup: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
     app = qgis.testing.start_app(cleanup)
-
+    assert 'delimitedtext' in QgsProviderRegistry.instance().providerList()
     from qgis.core import QgsCoordinateReferenceSystem
     assert QgsCoordinateReferenceSystem('EPSG:4326').isValid()
 

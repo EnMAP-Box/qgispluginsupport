@@ -1,12 +1,11 @@
 import datetime
 import unittest
 
-from PyQt5.QtCore import QDate, QDateTime, QTime
 from osgeo.gdal import UseExceptions
 
-from qgis.core import QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer, edit
-from qps.fieldvalueconverter import GenericFieldValueConverter, GenericPropertyTransformer, NATIVE_TYPES, \
-    collect_native_types
+from qgis.PyQt.QtCore import QDate, QDateTime, QTime
+from qgis.core import edit, QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
+from qps.fieldvalueconverter import collect_native_types, GenericFieldValueConverter, GenericPropertyTransformer
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QTIME, \
     QMETATYPE_QVARIANTMAP
@@ -73,14 +72,12 @@ class GenericFieldValueConverterTests(TestCase):
                            ]:
             targetFields = GenericFieldValueConverter.compatibleTargetFields(fields, driverName)
             self.assertIsInstance(targetFields, QgsFields)
-            nativeTypes = NATIVE_TYPES[driverName]
+            nativeTypes = collect_native_types()[driverName]
 
             for f in targetFields:
                 found = False
                 for t in nativeTypes:
-                    if (f.type() == t.mType and
-                            f.subType() == t.mSubType and
-                            f.typeName() == t.mTypeName):
+                    if f.type() == t.mType and f.subType() == t.mSubType and f.typeName() == t.mTypeName:
                         found = True
                         break
                 self.assertTrue(found, msg=f'Field {f} not compatible with native types of driver "{driverName}"')

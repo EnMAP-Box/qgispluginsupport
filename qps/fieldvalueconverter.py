@@ -5,22 +5,17 @@ from typing import Any, Dict, List
 from uuid import uuid4
 
 import numpy as np
-from PyQt5.QtCore import QDate, QDateTime, QLocale, QTime, Qt
-from osgeo.ogr import DataSource, Driver, GetDriver, GetDriverByName, GetDriverCount, Layer
+from osgeo.ogr import DataSource, Driver, GetDriverByName, Layer
 from osgeo.osr import SpatialReference
 
+from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
 from qgis.core import QgsEditorWidgetSetup, QgsExpressionContext, QgsField, QgsFields, QgsProperty, \
     QgsPropertyTransformer, QgsRemappingSinkDefinition, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
-from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
+from .qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
     QMETATYPE_QVARIANTMAP
-from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
-from qps.speclib.core import is_profile_field
-from qps.speclib.core.spectralprofile import ProfileEncoding, decodeProfileValueDict, encodeProfileValueDict
-
-OGR_DRIVER_MD = dict()
-for i in range(GetDriverCount()):
-    drv: Driver = GetDriver(i)
-    OGR_DRIVER_MD[drv.GetName()] = drv.GetMetadata_Dict()
+from .speclib import EDITOR_WIDGET_REGISTRY_KEY
+from .speclib.core import is_profile_field
+from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, ProfileEncoding
 
 
 def create_vsimemfile(extension) -> DataSource:
@@ -47,31 +42,32 @@ def create_vsimemfile(extension) -> DataSource:
     return ds
 
 
+__NATIVE_TYPES: Dict[str, List[QgsVectorDataProvider.NativeType]] = dict()
+
+
 def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
-    NATIVE_TYPES = dict()
-    for extension in ['.csv', '.gpkg', '.geojson', '.shp', '.kml', '.sqlite']:
-        ds = create_vsimemfile(extension)
-        if not isinstance(ds, DataSource):
-            warnings.warn(f'Unable to collect native types for files of type: {extension}')
-            continue
+    if len(__NATIVE_TYPES) == 0:
 
-        drv: Driver = ds.GetDriver()
-        path = ds.GetDescription()
-        vl = QgsVectorLayer(path)
-        assert vl.isValid()
-        NATIVE_TYPES[drv.name] = vl.dataProvider().nativeTypes()
+        for extension in ['.csv', '.gpkg', '.geojson', '.shp', '.kml', '.sqlite']:
+            ds = create_vsimemfile(extension)
+            if not isinstance(ds, DataSource):
+                warnings.warn(f'Unable to collect native types for files of type: {extension}')
+                continue
 
-        del vl, ds
-        r = drv.DeleteDataSource(path)
+            drv: Driver = ds.GetDriver()
+            path = ds.GetDescription()
+            vl = QgsVectorLayer(path)
+            assert vl.isValid()
+            __NATIVE_TYPES[drv.name] = vl.dataProvider().nativeTypes()
 
-    # add in-memory vector types
-    vl = QgsVectorLayer("point?crs=epsg:4326&field=id:integer", "Scratch point layer", "memory")
-    NATIVE_TYPES['memory'] = vl.dataProvider().nativeTypes()
-    del vl
-    return NATIVE_TYPES
+            del vl, ds
+            r = drv.DeleteDataSource(path)
 
+        # add in-memory vector types
+        vl = QgsVectorLayer("point?crs=epsg:4326&field=id:integer", "Scratch point layer", "memory")
+        __NATIVE_TYPES['memory'] = vl.dataProvider().nativeTypes()
 
-NATIVE_TYPES = collect_native_types()
+    return __NATIVE_TYPES
 
 
 class GenericPropertyTransformer(QgsPropertyTransformer):
@@ -125,7 +121,7 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
                     return data
                 else:
                     s = ""
-            except:
+            except Exception as ex:
                 return None
         else:
             return None
@@ -210,8 +206,6 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
         self.mFieldConverters = dict()
 
-        funcNone: lambda v: None
-
         for i, (fSrc, fDst) in enumerate(zip(self.mSrcFields, self.mDstFields)):
 
             fSrc: QgsField
@@ -240,7 +234,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
     @staticmethod
     def compatibleTargetFields(srcFields: QgsFields, targetDriver: str) -> QgsFields:
-
+        NATIVE_TYPES = collect_native_types()
         if targetDriver not in NATIVE_TYPES:
             if (t2 := QgsVectorFileWriter.driverForExtension(targetDriver)) and t2 in NATIVE_TYPES:
                 targetDriver = t2

@@ -4,7 +4,7 @@ import sys
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from qgis.PyQt.QtCore import QObject, QRegExp, QUrl, pyqtSignal
+from qgis.PyQt.QtCore import pyqtSignal, QObject, QRegExp, QUrl
 from qgis.PyQt.QtGui import QIcon, QRegExpValidator
 from qgis.PyQt.QtWidgets import QAction, QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, \
     QProgressDialog, QStackedWidget, QToolButton, QWidget
@@ -296,6 +296,19 @@ class SpectralLibraryIO(QObject):
     def icon(self) -> QIcon:
         return QIcon()
 
+    def filter(self) -> str:
+        """
+        Returns a filter string like "Images (*.png *.xpm *.jpg);;Text files (*.txt);;XML files (*.xml)"
+        with file types that can be imported
+        :return: str
+        """
+
+        # move filter from *ImportWidgets to *IO class
+        if isinstance(w := self.createImportWidget(), SpectralLibraryImportWidget):
+            return w.filter()
+
+        raise NotImplementedError()
+
     def formatName(self) -> str:
         """
         Returns a human-readable name of the Spectral Library Format
@@ -320,7 +333,7 @@ class SpectralLibraryIO(QObject):
     @classmethod
     def importProfiles(cls,
                        path: str,
-                       importSettings: dict = dict(),
+                       importSettings=None,
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
         """
         Import the profiles based on the source specified by 'path' and further settings in 'importSettings'.
@@ -333,6 +346,8 @@ class SpectralLibraryIO(QObject):
         :param feedback: QgsProcessingFeedback, optional
         :return: list of QgsFeatures
         """
+        if importSettings is None:
+            importSettings = dict()
         raise NotImplementedError()
 
     @classmethod
@@ -356,7 +371,8 @@ class SpectralLibraryIO(QObject):
     @staticmethod
     def readProfilesFromUri(
             uri: Union[QUrl, str, pathlib.Path],
-            feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
+            importSettings: Optional[dict] = None,
+            feedback: Optional[QgsProcessingFeedback] = None) -> List[QgsFeature]:
 
         if isinstance(uri, QUrl):
             uri = uri.toString(QUrl.PreferLocalFile | QUrl.RemoveQuery)
@@ -367,31 +383,27 @@ class SpectralLibraryIO(QObject):
         if not isinstance(uri, str):
             return []
 
+        if importSettings is None:
+            importSettings = {}
+
+        if feedback is None:
+            feedback = QgsProcessingFeedback()
         # global SpectralLibraryIO
 
         ext = os.path.splitext(uri)[1]
 
-        matched_formats: List[SpectralLibraryImportWidget] = []
+        matched_IOs: List[SpectralLibraryIO] = []
         for IO in SpectralLibraryIO.spectralLibraryIOs():
-            fmt = IO.createImportWidget()
-            if isinstance(fmt, SpectralLibraryImportWidget):
-                for e in QgsFileUtils.extensionsFromFilter(fmt.filter()):
-                    if ext.endswith(e):
-                        matched_formats.append(fmt)
-                        break
+            filter = IO.filter()
+            for e in QgsFileUtils.extensionsFromFilter(filter):
+                if ext.endswith(e):
+                    matched_IOs.append(IO)
+                    break
 
-        for fmt in matched_formats:
-            fmt: SpectralLibraryImportWidget
-            IO: SpectralLibraryIO = fmt.spectralLibraryIO()
-            fmt.setSource(uri)
-            fields = QgsFields(fmt.sourceFields())
-            if fields.count() == 0:
-                continue
-            settings = dict(fields=QgsFields(fmt.sourceFields()))
-            settings = fmt.importSettings(settings)
-
-            importedProfiles = IO.importProfiles(uri, settings, feedback=feedback)
+        for IO in matched_IOs:
+            importedProfiles = IO.importProfiles(uri, importSettings, feedback=feedback)
             if len(importedProfiles) > 0:
+                feedback.pushInfo(f'Found {len(importedProfiles)} feature(s) in {uri}')
                 return importedProfiles
 
         return []
@@ -1072,6 +1084,7 @@ def initSpectralLibraryIOs():
     from ..io.rastersources import RasterLayerSpectralLibraryIO
     from ..io.spectralevolution import SEDSpectralLibraryIO
     from ..io.svc import SVCSpectralLibraryIO
+    from ..io.ecosis import EcoSISSpectralLibraryIO
 
     speclibIOs = [
         GeoPackageSpectralLibraryIO(),
@@ -1081,6 +1094,7 @@ def initSpectralLibraryIOs():
         SEDSpectralLibraryIO(),
         RasterLayerSpectralLibraryIO(),
         SVCSpectralLibraryIO(),
+        EcoSISSpectralLibraryIO(),
     ]
 
     for speclibIO in speclibIOs:

@@ -11,12 +11,12 @@ from osgeo import gdal, gdal_array, ogr
 
 from qgis.PyQt.QtCore import QMimeData, QModelIndex, QUrl
 from qgis.PyQt.QtWidgets import QAction, QApplication, QDialog, QHBoxLayout, QMenu, QPushButton, QVBoxLayout, QWidget
-from qgis.core import QgsFeature, QgsMapLayer, QgsProject, QgsRasterLayer, QgsVectorLayer, edit
+from qgis.core import edit, QgsFeature, QgsMapLayer, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas, QgsMapLayerComboBox, QgsRasterBandComboBox
 from qps.layerconfigwidgets.gdalmetadata import BandFieldNames, BandPropertyCalculator, GDALBandMetadataModel, \
     GDALMetadataItem, GDALMetadataItemDialog, GDALMetadataModel, GDALMetadataModelConfigWidget
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 from qpstestdata import enmap, enmap_polygon, envi_bsq
 
 start_app()
@@ -358,9 +358,9 @@ class TestsGdalMetadata(TestCase):
         envi_bsq2 = self.createImageCopy(envi_bsq)
 
         lyrR = QgsRasterLayer(envi_bsq2, 'ENVI')
-        lyrV = QgsVectorLayer(enmap_polygon, 'Vector')
+        lyrV = QgsVectorLayer(enmap_polygon.as_posix(), 'Vector')
 
-        layers = [QgsRasterLayer(enmap, 'EnMAP'),
+        layers = [QgsRasterLayer(enmap.as_posix(), 'EnMAP'),
                   lyrR,
                   lyrV,
                   TestObjects.createRasterLayer(),
@@ -374,7 +374,6 @@ class TestsGdalMetadata(TestCase):
         QgsProject.instance().removeAllMapLayers()
 
     def test_rasterFormats(self):
-        from qpstestdata import enmap
         properties = QgsRasterLayerSpectralProperties.fromRasterLayer(enmap)
         wl = properties.wavelengths()
         wlu = properties.wavelengthUnits()
@@ -475,7 +474,7 @@ class TestsGdalMetadata(TestCase):
         md1.setText(hdr)
 
         md2: QMimeData = QMimeData()
-        md2.setUrls([QUrl.fromLocalFile(envi_hdr)])
+        md2.setUrls([QUrl.fromLocalFile(envi_hdr.as_posix())])
 
         md3: QMimeData = QMimeData()
         md3.setUrls([QUrl.fromLocalFile(r'C:/NoneExisting')])

@@ -10,12 +10,12 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsPoi
 from qps.qgsfunctions import registerQgsExpressionFunctions
 from qps.speclib.core import is_profile_field, profile_field_names
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
+from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, SpectralLibraryIO
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.io.geojson import GeoJsonFieldValueConverter, GeoJsonSpectralLibraryExportWidget, \
     GeoJsonSpectralLibraryIO
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
 
@@ -107,7 +107,7 @@ class TestSpeclibIOGeoJSON(TestCase):
         for p in profiles:
             self.assertTrue(len(profile_field_names(p)) > 0)
 
-        lyr = QgsVectorLayer(speclib_geojson, 'GeoJSON')
+        lyr = QgsVectorLayer(speclib_geojson.as_posix(), 'GeoJSON')
         QgsProject.instance().addMapLayer(lyr)
         self.assertTrue(lyr.isValid())
 
