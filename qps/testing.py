@@ -60,7 +60,7 @@ from qgis.testing import QgisTestCase
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
 from .utils import findUpwardPath, px2geo, SpatialPoint
-
+from osgeo.gdal import UseExceptions
 TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
 
 _QGIS_MOCKUP = None
@@ -78,6 +78,7 @@ def start_app(cleanup: bool = True,
     from qgis.core import QgsCoordinateReferenceSystem
     assert QgsCoordinateReferenceSystem('EPSG:4326').isValid()
 
+    UseExceptions()
     providers = QgsApplication.processingRegistry().providers()
     global _PYTHON_RUNNER
     global _QGIS_MOCKUP

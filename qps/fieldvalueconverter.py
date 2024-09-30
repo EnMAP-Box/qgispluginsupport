@@ -1,45 +1,67 @@
 import datetime
 import json
 import warnings
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 import numpy as np
-from osgeo.ogr import DataSource, Driver, GetDriverByName, Layer
-from osgeo.osr import SpatialReference
-
 from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
+from qgis.core import QgsCoordinateReferenceSystem, Qgis, QgsProject, QgsFeature
 from qgis.core import QgsEditorWidgetSetup, QgsExpressionContext, QgsField, QgsFields, QgsProperty, \
     QgsPropertyTransformer, QgsRemappingSinkDefinition, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
+
 from .qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
-    QMETATYPE_QVARIANTMAP
+    QMETATYPE_QVARIANTMAP, QMETATYPE_INT
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 from .speclib.core import is_profile_field
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, ProfileEncoding
 
 
-def create_vsimemfile(extension) -> DataSource:
+def create_vsimemfile(extension, path: Optional[Union[str, Path]] = None) -> str:
     driver = QgsVectorFileWriter.driverForExtension(extension)
     assert driver != ''
-    path = f'/vsimem/example.{driver.replace(' ', '_')}.{uuid4()}{extension}'
+    savename = driver.replace(' ', '_')
+    if path:
+        path = Path(path).as_posix()
+    else:
+        path = f'/vsimem/example.{savename}.{uuid4()}{extension}'
 
-    try:
-        drv: Driver = GetDriverByName(driver)
+    crs = QgsCoordinateReferenceSystem("EPSG:4326")
 
-        ds: DataSource = drv.CreateDataSource(path)
-        srs: SpatialReference = SpatialReference()
-        srs.ImportFromEPSG(4326)
-        lyr: Layer = ds.CreateLayer('layer', srs=srs)
-        from osgeo import ogr
-        lyr.CreateField(ogr.FieldDefn('name', field_type=ogr.OFTString))
-        f = ogr.Feature(lyr.GetLayerDefn())
-        f.SetField('name', 'dummy')
-        lyr.CreateFeature(f)
-        ds.FlushCache()
-    except Exception as ex:
-        warnings.warn(f'Unable to get native types for {extension}:\n {ex}')
-        return None
-    return ds
+    # Define fields
+    fields = QgsFields()
+    fields.append(QgsField('name', QMETATYPE_QSTRING))
+    fields.append(QgsField('num', QMETATYPE_INT))
+
+    # Create a QgsVectorFileWriter to write the shapefile
+    f: QgsFeature = QgsFeature(fields)
+    f.setAttribute('name', 'dummy')
+    f.setAttribute('num', 1)
+
+    defDOptions = QgsVectorFileWriter.defaultDatasetOptions(driver)
+    defLOptions = QgsVectorFileWriter.defaultLayerOptions(driver)
+
+    options = QgsVectorFileWriter.SaveVectorOptions()
+    options.driverName = driver
+    options.layerOptions = defLOptions
+    options.datasourceOptions = defDOptions
+
+    wkbType = Qgis.WkbType.Point
+    writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path, fields, wkbType, crs,
+                                                             QgsProject.instance().transformContext(),
+                                                             options,
+                                                             )
+
+    assert isinstance(writer, QgsVectorFileWriter)
+    assert writer.addFeature(f)
+    assert writer.flushBuffer()
+    # Check if the writer was created successfully
+    if writer.hasError() != QgsVectorFileWriter.NoError:
+        print(f"Error when creating shapefile: {writer.errorMessage()}")
+
+    del writer
+    return path, driver
 
 
 __NATIVE_TYPES: Dict[str, List[QgsVectorDataProvider.NativeType]] = dict()
@@ -48,20 +70,16 @@ __NATIVE_TYPES: Dict[str, List[QgsVectorDataProvider.NativeType]] = dict()
 def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
     if len(__NATIVE_TYPES) == 0:
 
-        for extension in ['.csv', '.gpkg', '.geojson', '.shp', '.kml', '.sqlite']:
-            ds = create_vsimemfile(extension)
-            if not isinstance(ds, DataSource):
-                warnings.warn(f'Unable to collect native types for files of type: {extension}')
-                continue
+        for i, extension in enumerate(['.shp', '.csv', '.geojson', '.gpkg', '.kml', '.sqlite', ]):
+            tmpDir = Path(__file__).parent
+            tmpPath = tmpDir / f'example.{i + 1}{extension}'
 
-            drv: Driver = ds.GetDriver()
-            path = ds.GetDescription()
+            path, drvName = create_vsimemfile(extension, path=tmpPath)
             vl = QgsVectorLayer(path)
-            assert vl.isValid()
-            __NATIVE_TYPES[drv.name] = vl.dataProvider().nativeTypes()
+            assert vl.isValid(), f'Unable to create valid {path}'
+            __NATIVE_TYPES[drvName] = vl.dataProvider().nativeTypes()
 
-            del vl, ds
-            r = drv.DeleteDataSource(path)
+            del vl
 
         # add in-memory vector types
         vl = QgsVectorLayer("point?crs=epsg:4326&field=id:integer", "Scratch point layer", "memory")
@@ -152,6 +170,13 @@ class GenericPropertyTransformer(QgsPropertyTransformer):
         return None
 
     @staticmethod
+    def toJson(v) -> str:
+        if isinstance(v, str):
+            return v
+        else:
+            return str(v)
+
+    @staticmethod
     def toDate(v) -> QDate:
         if isinstance(v, QDate):
             return v
@@ -226,6 +251,11 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
                 func = lambda value: GenericPropertyTransformer.toDate(value)
             elif fDst.type() == QMETATYPE_QTIME:
                 func = lambda value: GenericPropertyTransformer.toTime(value)
+            elif fDst.type() == QMETATYPE_QVARIANTMAP:
+                if fDst.typeName() == 'JSON':
+                    func = lambda value: GenericPropertyTransformer.toJson(value)
+                else:
+                    func = lambda value: GenericPropertyTransformer.toMap(value)
             else:
                 # default: don't convert
                 func = lambda value: value
@@ -286,7 +316,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
                     elif supports_map:
                         dstF = QgsField(name=srcF.name(),
                                         type=supports_map.mType,
-                                        typeName=supports_json.mTypeName,
+                                        typeName=supports_map.mTypeName,
                                         subType=supports_map.mSubType,
                                         comment=srcF.comment())
 
@@ -330,6 +360,8 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         d = decodeProfileValueDict(value, numpy_arrays=True)
         d['y'] = d['y'].astype(np.float32)
         text = encodeProfileValueDict(d, field)
+        if field.typeName() == 'JSON':
+            return json.dumps(text)
         return text
 
     def clone(self) -> QgsVectorFileWriter.FieldValueConverter:

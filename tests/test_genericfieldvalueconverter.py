@@ -1,18 +1,17 @@
 import datetime
 import unittest
 
-from osgeo.gdal import UseExceptions
-
 from qgis.PyQt.QtCore import QDate, QDateTime, QTime
 from qgis.core import edit, QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
-from qps.fieldvalueconverter import collect_native_types, GenericFieldValueConverter, GenericPropertyTransformer
+
+from qps.fieldvalueconverter import collect_native_types, GenericFieldValueConverter, GenericPropertyTransformer, \
+    create_vsimemfile
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QTIME, \
     QMETATYPE_QVARIANTMAP
-from qps.testing import TestCase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 
-# start_app()
-UseExceptions()
+start_app()
 s = ""
 
 
@@ -41,11 +40,18 @@ class GenericFieldValueConverterTests(TestCase):
             result = GenericPropertyTransformer.toTime(v)
             self.assertIsInstance(result, QTime, msg=f'Unable to convert {v} to QTime')
 
+    def test_create_vsimemfile(self):
+
+        for ext in ['.csv', '.geojson', '.gpkg', '.shp', '.kml']:
+            path, drvName = create_vsimemfile(ext)
+            lyr = QgsVectorLayer(path)
+            assert lyr.isValid()
+
     def test_collect_native_types(self):
 
         ntypinfo = collect_native_types()
         self.assertIsInstance(ntypinfo, dict)
-        for p in ['CSV', 'GPKG', 'GeoJSON', 'ESRI Shapefile', 'memory']:
+        for p in ['GeoJSON', 'CSV', 'GPKG', 'ESRI Shapefile', 'memory']:
             self.assertTrue(p in ntypinfo)
             for info in ntypinfo[p]:
                 self.assertIsInstance(info, QgsVectorDataProvider.NativeType)
@@ -128,7 +134,8 @@ class GenericFieldValueConverterTests(TestCase):
             converter = GenericFieldValueConverter(lyr.fields(), dstFields)
             options.fieldValueConverter = converter
 
-            success, msg, lyrpath, lyrname = QgsVectorFileWriter.writeAsVectorFormatV3(lyr, path.as_posix(),
+            success, msg, lyrpath, lyrname = QgsVectorFileWriter.writeAsVectorFormatV3(lyr,
+                                                                                       path.as_posix(),
                                                                                        transformContext=QgsProject.instance().transformContext(),
                                                                                        options=options,
                                                                                        )

@@ -8,11 +8,11 @@ from typing import List
 
 import numpy as np
 from osgeo import gdal, gdal_array, ogr
-
 from qgis.PyQt.QtCore import QMimeData, QModelIndex, QUrl
 from qgis.PyQt.QtWidgets import QAction, QApplication, QDialog, QHBoxLayout, QMenu, QPushButton, QVBoxLayout, QWidget
 from qgis.core import edit, QgsFeature, QgsMapLayer, QgsProject, QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsDualView, QgsMapCanvas, QgsMapLayerComboBox, QgsRasterBandComboBox
+
 from qps.layerconfigwidgets.gdalmetadata import BandFieldNames, BandPropertyCalculator, GDALBandMetadataModel, \
     GDALMetadataItem, GDALMetadataItemDialog, GDALMetadataModel, GDALMetadataModelConfigWidget
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
@@ -320,7 +320,7 @@ class TestsGdalMetadata(TestCase):
     def test_GDAL_PAM(self):
         test_dir = self.createTestOutputDirectory(subdir='gdalmetadata_PAM')
         path = test_dir / 'example.tif'
-        ds: gdal.Dataset = gdal.Translate(path.as_posix(), enmap)
+        ds: gdal.Dataset = gdal.Translate(path.as_posix(), enmap.as_posix())
         del ds
 
         lyr = QgsRasterLayer(path.as_posix())
@@ -388,7 +388,7 @@ class TestsGdalMetadata(TestCase):
             path = (test_dir / f'{name}.vrt').as_posix()
             assert path not in files, 'already created'
             files.append(path)
-            ds = gdal.Translate(path, enmap)
+            ds = gdal.Translate(path, enmap.as_posix())
             # clear existing metadata
             ds.SetMetadataItem('wavelength', None)
             ds.SetMetadataItem('wavelength_units', None)
