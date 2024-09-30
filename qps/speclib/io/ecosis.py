@@ -138,7 +138,10 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
         dstFields, otherFields, profileField, wl, wlFields = cls.dataFields(lyr)
 
-        for f in lyr.getFeatures():
+        n = lyr.featureCount()
+        next_step = 5  # step size in percent
+        feedback.setProgressText(f'Load {n} profiles')
+        for i, f in enumerate(lyr.getFeatures()):
             f: QgsFeature
             f2 = QgsFeature(dstFields)
 
@@ -156,11 +159,15 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
                 f2.setAttribute(field.name(), f.attribute(field.name()))
             profiles.append(f2)
 
+            progress = 100 * i / n
+            if progress >= next_step:
+                next_step += 5
+                feedback.setProgress(progress)
         return profiles
 
     @classmethod
     def dataFields(cls, lyr):
-        rxIsNum = re.compile(r'^\d+$')
+        rxIsNum = re.compile(r'^\d+(\.\d+)?$')
         wlFields = QgsFields()
         otherFields = QgsFields()
         dstFields = QgsFields()

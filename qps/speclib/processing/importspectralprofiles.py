@@ -118,7 +118,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         PROFILES: Dict[str, List[QgsFeature]] = dict()
 
         for uri in self._input_files:
-            profiles = SpectralLibraryIO.readProfilesFromUri(uri)
+            profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=feedback)
             if len(profiles) > 0:
                 fields: QgsFields = profiles[0].fields()
                 key = tuple(fields.names())
