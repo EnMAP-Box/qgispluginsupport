@@ -51,14 +51,14 @@ jobs:
         with:
           # miniforge-variant: Mambaforge
           # miniforge-version: latest
-          mamba-version: "*"
+          # mamba-version: "*"
           channels: conda-forge,defaults
           channel-priority: true
           activate-environment: ${{matrix.mamba_env}}
           environment-file: .conda/${{matrix.mamba_env}}.yml
           clean-patched-environment-file: false
-          use-mamba: true
-          auto-activate-base: false
+          # use-mamba: false
+          # auto-activate-base: false
       - name: Mamba Environment Info
         run: |
           mamba info
