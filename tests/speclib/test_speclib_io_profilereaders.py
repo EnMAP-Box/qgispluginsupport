@@ -4,15 +4,18 @@ import re
 import unittest
 from datetime import datetime
 
-from qgis.PyQt.QtCore import QDateTime, QMetaType, Qt
-from qgis.core import QgsFeature, QgsField, edit
+from qgis.PyQt.QtCore import QDateTime, Qt
+from qgis.core import edit, QgsFeature, QgsField
+
+from qps.fieldvalueconverter import collect_native_types
+from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME
 from qps.speclib.core import is_spectral_feature, profile_field_names
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, initSpectralLibraryIOs
-from qps.speclib.core.spectralprofile import SpectralProfileFileReader, decodeProfileValueDict, validateProfileValueDict
+from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryImportDialog
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, SpectralProfileFileReader, validateProfileValueDict
 from qps.speclib.io.asd import ASDBinaryFile
 from qps.speclib.io.spectralevolution import SEDFile
 from qps.speclib.io.svc import SVCSigFile
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import file_search
 from qpstestdata import DIR_TESTDATA
 
@@ -74,10 +77,11 @@ class TestSpeclibIO_SpectralProfileReaders(TestCase):
         TEST_DIR = self.createTestOutputDirectory()
         path_gpkg = TEST_DIR / 'example.gpkg'
         vl = TestObjects.createVectorLayer(path=path_gpkg)
+
+        nt = collect_native_types()
         with edit(vl):
-            assert vl.addAttribute(QgsField('datetime', QMetaType.QDateTime))
-            assert vl.addAttribute(QgsField('date', QMetaType.QDate))
-            # assert vl.addAttribute(QgsField('time', QMetaType.QTime))
+            assert vl.addAttribute(QgsField('datetime', QMETATYPE_QDATETIME))
+            assert vl.addAttribute(QgsField('date', QMETATYPE_QDATE))
 
         f = QgsFeature(vl.fields())
         dt = datetime.now()
