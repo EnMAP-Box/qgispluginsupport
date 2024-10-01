@@ -59,10 +59,10 @@ jobs:
           clean-patched-environment-file: false
           # use-mamba: false
           # auto-activate-base: false
-      - name: Mamba Environment Info
+      - name: Conda Environment Info
         run: |
-          mamba info
-          mamba list
+          conda info
+          conda list
 
       - name: Python and QGIS versions
         run: |
