@@ -34,15 +34,12 @@ import warnings
 from typing import List, Tuple, Union
 
 import numpy as np
-from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, \
+
+from qgis.core import QgsExpressionContext, QgsFeature, QgsFields, QgsPointXY, \
     QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFileWidget
-
-from .. import FIELD_NAME
-from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict
-from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
+from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
 
 """
 
@@ -189,9 +186,16 @@ class UTC_TIME(object):
 class TM_STRUCT(object):
 
     def __init__(self, DATA):
-        self.tm_sec, self.tm_min, self.tm_hour, self.tm_mday, \
-            self.tm_mon, self.tm_year, self.tm_wday, \
-            self.tm_yday, self.tm_isdst = struct.Struct("= 9h").unpack(DATA)
+        (self.tm_sec,  # seconds [0, 61]
+         self.tm_min,  # minutes [0, 59]
+         self.tm_hour,  # hour [ 0, 23]
+         self.tm_mday,  # day of month [1, 31]
+         self.tm_mon,  # month of year [0, 11]
+         self.tm_year,  # years since 1900
+         self.tm_wday,  # day of week
+         self.tm_yday,  # day of year
+         self.tm_isdst  # daylights saving flag
+         ) = struct.Struct("= 9h").unpack(DATA)
 
     def date(self):
         return datetime.date(self.year(), self.month(), self.day())
@@ -221,25 +225,15 @@ class TM_STRUCT(object):
         return self.tm_year + 1900
 
 
-ASD_FIELDS = QgsFields()
-ASD_FIELDS.append(QgsField(FIELD_NAME, QMETATYPE_QSTRING))
-ASD_FIELDS.append(create_profile_field('Reference'))
-ASD_FIELDS.append(create_profile_field('Spectrum'))
-ASD_FIELDS.append(QgsField('co', QMETATYPE_QSTRING))
-ASD_FIELDS.append(QgsField('instrument', QMETATYPE_QSTRING))
-ASD_FIELDS.append(QgsField('instrument_num', QMETATYPE_INT))
-ASD_FIELDS.append(QgsField('sample_count', QMETATYPE_INT))
-
-
-class ASDBinaryFile(object):
+class ASDBinaryFile(SpectralProfileFileReader):
     """
     Wrapper class to access a ASD File Format binary file.
     See ASD File Format, version 8, revision B, ASD Inc.,
     a PANalytical company, 2555 55th Street, Suite 100 Boulder, CO 80301.
     """
 
-    def __init__(self, path: str = None):
-        super(ASDBinaryFile, self).__init__()
+    def __init__(self, path):
+        super(ASDBinaryFile, self).__init__(path)
         self.name: str = ''
         # initialize all variables in the ASD Binary file header
         self.co: str = None
@@ -312,41 +306,6 @@ class ASDBinaryFile(object):
     def yValuesReference(self) -> np.ndarray:
         return self.Reference
 
-    def asFeature(self, fields: QgsFields = None) -> QgsFeature:
-        """
-        Returns the input as QgsFeature with attributes defined in ASD_FIELDS
-        :return:
-        """
-
-        if not isinstance(fields, QgsFields):
-            fields = ASD_FIELDS
-
-        f = QgsFeature(fields)
-
-        GPS = self.gps_data
-
-        x, y = GPS.longitude, GPS.latitude
-        g = QgsGeometry.fromPointXY(QgsPointXY(x, y))
-        f.setGeometry(g)
-        f.setAttribute(FIELD_NAME, self.name)
-        f.setAttribute('co', self.co)
-        f.setAttribute('instrument', self.instrument.name)
-        f.setAttribute('instrument_num', self.instrument_num)
-        f.setAttribute('sample_count', self.sample_count)
-
-        x = self.xValues()
-        ySpectrum = self.yValuesSpectrum()
-        if ySpectrum is not None:
-            spectrum_dict = prepareProfileValueDict(x=x, y=self.yValuesSpectrum(), xUnit='nm')
-            f.setAttribute('Spectrum', encodeProfileValueDict(spectrum_dict, fields.field('Spectrum')))
-
-        yReference = self.yValuesReference()
-        if yReference is not None:
-            reference_dict = prepareProfileValueDict(x=x, y=self.yValuesReference(), xUnit='nm')
-            f.setAttribute('Reference', encodeProfileValueDict(reference_dict, fields.field('Reference')))
-
-        return f
-
     def readFromBinaryFile(self, path: Union[str, pathlib.Path]):
         """
         Reads data from a binary file
@@ -356,7 +315,6 @@ class ASDBinaryFile(object):
         path = pathlib.Path(path)
         with open(path, 'rb') as f:
             DATA = f.read()
-            self.name = path.name
 
             def sub(start, length):
                 return DATA[start:start + length]
@@ -374,9 +332,18 @@ class ASDBinaryFile(object):
                 return result, 2 + len_string
 
             self.co = DATA[0:3].decode('utf-8')
+            self.mMetadata['co'] = self.co
             self.comments = DATA[3:(3 + 157)].decode('utf-8')
+            self.mMetadata['comments'] = self.comments
 
             self.when = TM_STRUCT(DATA[160:(160 + 18)])
+
+            self.mTargetTime = datetime.datetime(year=1900 + self.when.tm_year,
+                                                 month=1 + self.when.tm_mon,
+                                                 day=self.when.tm_mday,
+                                                 hour=self.when.tm_hour,
+                                                 second=self.when.tm_sec)
+
             self.program_version = DATA[178]
             self.file_version = DATA[179]
             self.itime = DATA[180]
@@ -384,6 +351,9 @@ class ASDBinaryFile(object):
             self.dc_time = np.datetime64('1970-01-01') + np.timedelta64(struct.unpack('<l', DATA[182:182 + 4])[0], 's')
             self.data_type = SpectrumDataType(DATA[186])
             self.ref_time = np.datetime64('1970-01-01') + np.timedelta64(struct.unpack('<l', DATA[182:182 + 4])[0], 's')
+
+            self.mReferenceTime = self.ref_time.astype(datetime.datetime)
+
             self.ch1_wavel = struct.unpack('<f', sub(191, 4))[0]
             self.wavel_step = struct.unpack('<f', sub(195, 4))[0]
             self.data_format = SpectrumDataFormat(DATA[199])
@@ -396,6 +366,8 @@ class ASDBinaryFile(object):
 
             self.app_data = sub(206, 128)
             self.gps_data = GPS_DATA(sub(334, 56))
+
+            self.mTargetCoordinate = QgsPointXY(self.gps_data.longitude, self.gps_data.latitude)
 
             self.it = struct.unpack('<L', sub(390, 4))[0]
             self.fo = struct.unpack('<h', sub(394, 2))[0]
@@ -438,6 +410,9 @@ class ASDBinaryFile(object):
 
             self.Spectrum = np.array(struct.unpack(fmt, sub(484, size)))
 
+            self.mTarget = prepareProfileValueDict(x=self.xValues(), xUnit='nm',
+                                                   y=self.Spectrum)
+
             # reference file header = spectrum data size + 1
 
             #
@@ -450,12 +425,16 @@ class ASDBinaryFile(object):
                 #           self.SpectrumTime = np.datetime64('1970-01-01') + np.timedelta64(
                 #                struct.unpack('<l', DATA[o + 11:o + 11 + 8])[0], 's')
 
+                # np.datetime64('1970-01-01') + np.timedelta64(struct.unpack('<l', DATA[182:182 + 4])[0], 's')
                 reftime = struct.unpack('<8B', sub(o + 3, 8))
                 spectime = struct.unpack('<8B', sub(o + 11, 8))
                 self.SpectrumDescription, slen = n_string(o + 19)
 
                 # reference data
                 self.Reference = np.array(struct.unpack(fmt, sub(o + 19 + slen, size)))
+
+                self.mReference = prepareProfileValueDict(x=self.xValues(), xUnit='nm',
+                                                          y=self.Reference)
             s = ""
 
         return self
@@ -467,7 +446,6 @@ class ASDSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         super(ASDSpectralLibraryImportWidget, self).__init__(*args, **kwds)
 
         self.mSource: QgsVectorLayer = None
-        self.mFields: QgsFields = ASD_FIELDS
 
     def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
         return SpectralLibraryIO.spectralLibraryIOInstances(ASDSpectralLibraryIO)
@@ -484,7 +462,7 @@ class ASDSpectralLibraryImportWidget(SpectralLibraryImportWidget):
             self.sigSourceChanged.emit()
 
     def sourceFields(self) -> QgsFields:
-        return QgsFields(self.mFields)
+        return SpectralProfileFileReader.standardFields()
 
     def createExpressionContext(self) -> QgsExpressionContext:
         context = QgsExpressionContext()
@@ -545,10 +523,9 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
                         yValues = [DATA[wl][i] for wl in xValues]
                         xUnit = 'nm'
 
-                        profile = QgsFeature(ASD_FIELDS)
+                        profile = QgsFeature(SpectralProfileFileReader.standardFields())
                         spectrum_dict = prepareProfileValueDict(x=xValues, y=yValues, xUnit=xUnit)
-                        profile.setAttribute('Spectrum',
-                                             encodeProfileValueDict(spectrum_dict, ASD_FIELDS.field('Spectrum')))
+                        profile.setAttribute(SpectralProfileFileReader.KEY_Target, spectrum_dict)
 
                         profiles.append(profile)
 
@@ -585,5 +562,6 @@ class ASDSpectralLibraryIO(SpectralLibraryIO):
             else:
                 asd: ASDBinaryFile = ASDBinaryFile(file)
                 profiles.append(asd.asFeature())
-            feedback.setProgress(int((i + 1) / n_total))
+            progress = int((i + 1) / n_total)
+            feedback.setProgress(progress)
         return profiles

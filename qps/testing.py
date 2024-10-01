@@ -40,21 +40,23 @@ from typing import List, Set, Tuple, Union
 from unittest import mock
 
 import numpy as np
-import qgis.utils
 from osgeo import gdal, gdal_array, ogr, osr
 from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
     QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
     QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
     QgsProcessingModelAlgorithm, QgsProcessingParameterNumber, QgsProcessingParameterRasterDestination, \
-    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsPythonRunner, \
-    QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
-from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsGui, QgsLayerTreeMapCanvasBridge, \
-    QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, QgsMessageBar, QgsPluginManagerInterface
+    QgsProcessingParameterRasterLayer, QgsProcessingProvider, QgsProcessingRegistry, QgsProject, QgsProviderRegistry, \
+    QgsPythonRunner, QgsRasterLayer, QgsTemporalController, QgsVectorLayer, QgsVectorLayerUtils, QgsWkbTypes
+import qgis.utils
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QObject, QPoint, QPointF, QSize, Qt
 from qgis.PyQt.QtGui import QDropEvent, QIcon, QImage
 from qgis.PyQt.QtWidgets import QAction, QApplication, QDockWidget, QFrame, QHBoxLayout, QMainWindow, QMenu, QToolBar, \
     QVBoxLayout, QWidget
+from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsGui, QgsLayerTreeMapCanvasBridge, \
+    QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, QgsMessageBar, QgsPluginManagerInterface
+from qgis.testing import QgisTestCase
+from osgeo.gdal import UseExceptions
 
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
@@ -73,10 +75,15 @@ def start_app(cleanup: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
     app = qgis.testing.start_app(cleanup)
+    if 'delimitedtext' not in QgsProviderRegistry.instance().providerList():
+        warnings.warn('QgsProviderRegistry misses "delimitedtext" provider!\n'
+                      'Check your QGIS test environment'
+                      f'Available providers are: {QgsProviderRegistry.instance().providerList()}')
 
     from qgis.core import QgsCoordinateReferenceSystem
     assert QgsCoordinateReferenceSystem('EPSG:4326').isValid()
 
+    UseExceptions()
     providers = QgsApplication.processingRegistry().providers()
     global _PYTHON_RUNNER
     global _QGIS_MOCKUP
@@ -426,13 +433,7 @@ def _set_iface(ifaceMock: QgisInterface):
 # APP = None
 
 
-if Qgis.versionInt() >= 33400:
-    from qgis.testing import QgisTestCase as _BASECLASS
-else:
-    from qgis.testing import TestCase as _BASECLASS
-
-
-class TestCaseBase(_BASECLASS):
+class TestCase(QgisTestCase):
     gdal.UseExceptions()
 
     @staticmethod
@@ -639,7 +640,7 @@ class TestCaseBase(_BASECLASS):
         :return: pathlib.Path
         """
         DIR_REPO = findUpwardPath(__file__, '.git').parent
-        if isinstance(self, TestCaseBase):
+        if isinstance(self, TestCase):
             foldername = self.__class__.__name__
         else:
             foldername = self.__name__
@@ -651,29 +652,6 @@ class TestCaseBase(_BASECLASS):
         os.makedirs(p, exist_ok=True)
         return p
 
-    @classmethod
-    def _readVSIMemFiles(cls) -> Set[str]:
-
-        r = gdal.ReadDirRecursive('/vsimem/')
-        if r is None:
-            return set([])
-        return set(r)
-
-
-class TestCase(TestCaseBase):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-    @classmethod
-    def setUpClass(cls, *args, **kwargs) -> None:
-        resources = kwargs.pop('resources', [])
-
-        super().setUpClass(*args, **kwargs)
-        from . import QPS_RESOURCE_FILE
-        resources.append(QPS_RESOURCE_FILE)
-        start_app(cleanup=kwargs.get('cleanup'), resources=resources)
-
     def assertIconsEqual(self, icon1: QIcon, icon2: QIcon):
         self.assertIsInstance(icon1, QIcon)
         self.assertIsInstance(icon2, QIcon)
@@ -683,6 +661,14 @@ class TestCase(TestCaseBase):
         img1 = QImage(icon1.pixmap(size))
         img2 = QImage(icon2.pixmap(size))
         self.assertImagesEqual(img1, img2)
+
+    @classmethod
+    def _readVSIMemFiles(cls) -> Set[str]:
+
+        r = gdal.ReadDirRecursive('/vsimem/')
+        if r is None:
+            return set([])
+        return set(r)
 
 
 class ExampleAlgorithmProvider(QgsProcessingProvider):
@@ -1319,8 +1305,10 @@ class TestObjects(object):
         # set temp path
         if path:
             pathDst = pathlib.Path(path).as_posix()
+            lname = os.path.basename(pathDst)
         else:
             prefix = TestObjects.tmpDirPrefix() + str(uuid.uuid4())
+
             if wkb == ogr.wkbPolygon:
                 lname = 'polygons'
                 pathDst = prefix + '.test.polygons.gpkg'

@@ -35,17 +35,20 @@ from typing import Any, Callable, Dict, Iterable, List, Set, Tuple, Union
 
 import numpy as np
 
-from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
     QgsRasterDataProvider, QgsRasterLayer
+from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
-from .speclib.core.spectralprofile import ProfileEncoding, decodeProfileValueDict, encodeProfileValueDict, \
-    prepareProfileValueDict
-from .utils import MapGeometryToPixel, _geometryIsSinglePoint, aggregateArray, noDataValues, rasterArray
+from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
+    ProfileEncoding, SpectralProfileFileReader
+from .speclib.io.asd import ASDBinaryFile
+from .speclib.io.spectralevolution import SEDFile
+from .speclib.io.svc import SVCSigFile
+from .utils import _geometryIsSinglePoint, aggregateArray, MapGeometryToPixel, noDataValues, rasterArray
 
 SPECLIB_FUNCTION_GROUP = "Spectral Libraries"
 
@@ -270,6 +273,80 @@ class SpectralEncoding(QgsExpressionFunction):
 
     def handlesNull(self) -> bool:
         return True
+
+
+class ReadSpectralProfile(QgsExpressionFunction):
+    GROUP = SPECLIB_FUNCTION_GROUP
+    NAME = 'spectral_profile'
+
+    def __init__(self):
+        args = [
+            QgsExpressionFunction.Parameter('file', optional=False),
+            QgsExpressionFunction.Parameter('type', optional=True)
+        ]
+
+        helptext = HM.helpText(self.NAME, args)
+        super().__init__(self.NAME, args, self.GROUP, helptext)
+
+    def handlesNull(self) -> bool:
+        return True
+
+    def isStatic(self,
+                 node: QgsExpressionNodeFunction,
+                 parent: QgsExpression,
+                 context: QgsExpressionContext) -> bool:
+        return True
+
+    def referencedColumns(self, node) -> List[str]:
+        return [QgsFeatureRequest.ALL_ATTRIBUTES]
+
+    def usesGeometry(self, node) -> bool:
+        return False
+
+    def supportedFileTypes(self) -> List[str]:
+
+        return ['asd', 'sig', 'sed']
+
+    def findFileType(self, path):
+        ext = os.path.splitext(path)[1].lower()
+        if ext.startswith('.'):
+            return ext[1:]
+        else:
+            return ext
+
+    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
+        if not isinstance(context, QgsExpressionContext):
+            return None
+
+        try:
+            path = values[0]
+            filetype = values[1]
+            assert os.path.isfile(path), f'File does not exists: {path}'
+
+            if not filetype:
+                filetype = self.findFileType(path)
+
+            if filetype not in self.supportedFileTypes():
+                raise Exception(f'Please specify type of spectral file: {",".join(self.supportedFileTypes())}')
+
+            file = None
+            if filetype == 'asd':
+                file = ASDBinaryFile(path)
+            elif filetype == 'sig':
+                file = SVCSigFile(path)
+            elif filetype == 'sed':
+                file = SEDFile(path)
+
+            if not isinstance(file, SpectralProfileFileReader):
+                raise Exception(f'Unable to read file of type "{filetype}"')
+
+            return file.asMap()
+
+        except Exception as ex:
+            parent.setEvalErrorString(str(ex))
+            return None
+
+        s = ""
 
 
 class StaticExpressionFunction(QgsExpressionFunction):

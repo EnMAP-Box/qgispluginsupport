@@ -12,16 +12,16 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 
 import unittest
 
-from qgis.core import QgsCoordinateReferenceSystem, QgsRectangle, QgsProject
+from qgis.core import QgsCoordinateReferenceSystem, QgsProject, QgsRectangle
 from qgis.gui import QgsMapCanvas
-from qps.crosshair.crosshair import CrosshairStyle, CrosshairMapCanvasItem
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.crosshair.crosshair import CrosshairMapCanvasItem, CrosshairStyle
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import SpatialPoint
 
 start_app()
 
 
-class CrosshairTests(TestCaseBase):
+class CrosshairTests(TestCase):
 
     def test_Crosshair(self):
         # add site-packages to sys.data_source as done by enmapboxplugin.py

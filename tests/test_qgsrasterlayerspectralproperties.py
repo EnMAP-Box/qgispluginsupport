@@ -2,14 +2,15 @@ import unittest
 
 from qgis.core import QgsRasterLayer
 from qgis.gui import QgsGui
-from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralPropertiesTable, \
-    QgsRasterLayerSpectralPropertiesTableWidget, QgsRasterLayerSpectralProperties, stringToType
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties, QgsRasterLayerSpectralPropertiesTable, \
+    QgsRasterLayerSpectralPropertiesTableWidget, stringToType
+from qps.testing import start_app, TestCase, TestObjects
+from qpstestdata import envi_bsq
 
 start_app()
 
 
-class TestQgsRasterLayerProperties(TestCaseBase):
+class TestQgsRasterLayerProperties(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
@@ -26,9 +27,8 @@ class TestQgsRasterLayerProperties(TestCaseBase):
         self.assertEqual(stringToType('3foobar'), '3foobar')
 
     def test_QgsRasterLayerSpectralProperties(self):
-        from qpstestdata import envi_bsq
 
-        lyr = QgsRasterLayer(envi_bsq)
+        lyr = QgsRasterLayer(envi_bsq.as_posix())
         self.assertIsInstance(lyr, QgsRasterLayer)
         properties = QgsRasterLayerSpectralProperties.fromRasterLayer(lyr)
         self.assertIsInstance(properties, QgsRasterLayerSpectralProperties)

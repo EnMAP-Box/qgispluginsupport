@@ -14,16 +14,16 @@ import unittest
 
 from osgeo import gdal
 
-from qgis.PyQt.QtWidgets import QDialog, QWidget, QGridLayout
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsPalettedRasterRenderer, \
-    QgsMultiBandColorRenderer, QgsStyle, QgsSingleBandGrayRenderer, QgsProject
-from qgis.gui import QgsRasterLayerProperties, QgsOptionsDialogBase, QgsMapLayerConfigWidgetFactory
-from qgis.gui import QgsRendererPropertiesDialog, QgsMapCanvas
+from qgis.PyQt.QtWidgets import QDialog, QGridLayout, QWidget
+from qgis.core import QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
+    QgsSingleBandGrayRenderer, QgsStyle, QgsVectorLayer
+from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDialogBase, QgsRasterLayerProperties, \
+    QgsRendererPropertiesDialog
 from qps import MAPLAYER_CONFIGWIDGET_FACTORIES
 from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
-from qps.layerproperties import RemoveAttributeDialog, AttributeTableWidget, CopyAttributesDialog, AddAttributeDialog, \
-    showLayerPropertiesDialog, defaultRasterRenderer, equal_styles
-from qps.testing import TestObjects, TestCaseBase, TestCase, start_app
+from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, RemoveAttributeDialog, \
+    defaultRasterRenderer, equal_styles, showLayerPropertiesDialog
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import createQgsField
 
 LAYER_WIDGET_REPS = 5
@@ -78,7 +78,7 @@ class LayerPropertyTests(TestCase):
         del d
         QgsProject.instance().removeAllMapLayers()
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_layer_properties1(self):
 
         rl = TestObjects.createRasterLayer(nb=300)
@@ -201,7 +201,7 @@ class LayerPropertyTests(TestCase):
 
         self.showGui(d)
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'Blocking dialog')
     def test_CopyAttributesDialog(self):
 
         sl: QgsVectorLayer = TestObjects.createSpectralLibrary()

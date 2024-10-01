@@ -14,21 +14,20 @@ __copyright__ = 'Copyright 2019, Benjamin Jakimow'
 import gc
 import unittest
 
-from qgis.PyQt.QtCore import QPointF, Qt, QEvent, pyqtSlot
+from qgis.PyQt.QtCore import QEvent, QPointF, Qt, pyqtSlot
 from qgis.PyQt.QtGui import QMouseEvent
-from qgis.core import QgsProject, QgsCoordinateReferenceSystem, QgsRectangle, \
-    QgsVectorLayer, QgsWkbTypes
-from qgis.gui import QgsMapCanvas, QgsAdvancedDigitizingDockWidget, QgsMapTool, QgsMapToolZoom, \
-    QgsMapToolCapture, QgsMapMouseEvent
-from qps.maptools import SpatialExtentMapTool, QgsMapToolSelectionHandler, QgsMapToolAddFeature, MapToolCenter, \
-    QgsMapToolSelect, MapTools, PixelScaleExtentMapTool, FullExtentMapTool
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qgis.core import QgsCoordinateReferenceSystem, QgsProject, QgsRectangle, QgsVectorLayer, QgsWkbTypes
+from qgis.gui import QgsAdvancedDigitizingDockWidget, QgsMapCanvas, QgsMapMouseEvent, QgsMapTool, QgsMapToolCapture, \
+    QgsMapToolZoom
+from qps.maptools import FullExtentMapTool, MapToolCenter, MapTools, PixelScaleExtentMapTool, QgsMapToolAddFeature, \
+    QgsMapToolSelect, QgsMapToolSelectionHandler, SpatialExtentMapTool
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import SpatialExtent
 
 start_app()
 
 
-class TestMapTools(TestCaseBase):
+class TestMapTools(TestCase):
 
     def createCanvas(self) -> [QgsMapCanvas, QgsVectorLayer]:
         canvas = QgsMapCanvas()

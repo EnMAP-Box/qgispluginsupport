@@ -20,24 +20,23 @@
 import os
 import unittest
 
-from qgis.core import QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField, \
-    QgsVectorLayer
-from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QColor, QPen
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QLabel, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
-
-from qps.plotstyling.plotstyling import createSetPlotStyleAction, MarkerSymbol, MarkerSymbolComboBox, pen2tuple, \
-    PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, plotStyleEditorWidgetFactory, \
-    PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, tuple2pen, XMLTAG_PLOTSTYLENODE
+from qgis.core import QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField, \
+    QgsVectorLayer
+from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
+from qps.plotstyling.plotstyling import MarkerSymbol, MarkerSymbolComboBox, PlotStyle, PlotStyleButton, \
+    PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, PlotStyleEditorWidgetWrapper, PlotStyleWidget, \
+    PlotWidgetStyle, XMLTAG_PLOTSTYLENODE, createSetPlotStyleAction, pen2tuple, plotStyleEditorWidgetFactory, tuple2pen
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
-from qps.testing import start_app, TestCaseBase
+from qps.testing import TestCase, start_app
 
 start_app()
 
 
-class PlotStyleTests(TestCaseBase):
+class PlotStyleTests(TestCase):
 
     def create_vectordataset(self) -> QgsVectorLayer:
         vl = QgsVectorLayer("Point?crs=EPSG:4326", 'test', "memory")

@@ -32,16 +32,17 @@ import re
 import tempfile
 import time
 import uuid
+from pathlib import Path
 from typing import List, Tuple, Union
 
 import numpy as np
 from osgeo import gdal, gdal_array
+
 from qgis.core import QgsExpression, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFieldComboBox, QgsFieldExpressionWidget
 from qgis.PyQt.QtCore import NULL, QVariant
 from qgis.PyQt.QtWidgets import QFormLayout
-
 from .. import EMPTY_VALUES, FIELD_FID, FIELD_NAME, FIELD_VALUES
 from ..core import create_profile_field, profile_field_names, profile_fields
 from ..core.spectrallibrary import LUT_IDL2GDAL, VSI_DIR
@@ -106,7 +107,7 @@ def findENVIHeader(path: Union[str, pathlib.Path]) -> (str, str):
     :return: (str, str), e.g. ('pathESL.hdr', 'pathESL.sli')
     """
 
-    path = pathlib.Path(path)
+    path = Path(path)
 
     bn = os.path.splitext(path.name)[0]
 
@@ -664,7 +665,7 @@ def esl2vrt(pathESL, pathVrt=None) -> gdal.Dataset:
     return ds
 
 
-def readENVIHeader(pathESL, typeConversion: bool = False) -> dict:
+def readENVIHeader(pathESL: Union[str, Path], typeConversion: bool = False) -> dict:
     """
     Reads an ENVI Header File (*.hdr) and returns its values in a dictionary
     :param pathESL: path to ENVI Header
@@ -672,8 +673,8 @@ def readENVIHeader(pathESL, typeConversion: bool = False) -> dict:
     values into numeric data types (int / float)
     :return: dict
     """
-    assert isinstance(pathESL, str)
-    if not os.path.isfile(pathESL):
+    pathESL = Path(pathESL)
+    if not pathESL.is_file():
         return None
 
     pathHdr, pathBin = findENVIHeader(pathESL)

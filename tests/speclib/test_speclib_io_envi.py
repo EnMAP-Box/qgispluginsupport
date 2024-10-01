@@ -4,21 +4,20 @@ import unittest
 
 import numpy as np
 
-from qgis.core import QgsProcessingFeedback, QgsFeature, QgsFields
+from qgis.core import QgsFeature, QgsFields, QgsProcessingFeedback
 from qps.speclib import FIELD_NAME, FIELD_VALUES
 from qps.speclib.core import profile_field_list
-from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryExportWidget, \
-    SpectralLibraryImportWidget
-from qps.speclib.io.envi import EnviSpectralLibraryIO, findENVIHeader, EnviSpectralLibraryExportWidget, \
-    EnviSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app
-from qpstestdata import enmap
-from qpstestdata import envi_sli as speclibpath
+from qps.speclib.core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, \
+    SpectralLibraryIO
+from qps.speclib.io.envi import EnviSpectralLibraryExportWidget, EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO, \
+    findENVIHeader
+from qps.testing import start_app, TestCase, TestObjects
+from qpstestdata import enmap, envi_sli as speclibpath
 
 start_app()
 
 
-class TestSpeclibIO_ENVI(TestCaseBase):
+class TestSpeclibIO_ENVI(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_ENVI, cls).setUpClass(*args, **kwds)
@@ -39,20 +38,20 @@ class TestSpeclibIO_ENVI(TestCaseBase):
         import qpstestdata
 
         hdr, bin = findENVIHeader(qpstestdata.envi_sli)
-        self.assertEqual(hdr, qpstestdata.envi_sli_hdr)
-        self.assertEqual(bin, qpstestdata.envi_sli)
+        self.assertEqual(hdr, qpstestdata.envi_sli_hdr.as_posix())
+        self.assertEqual(bin, qpstestdata.envi_sli.as_posix())
 
         hdr, bin = findENVIHeader(qpstestdata.envi_sli_hdr)
-        self.assertEqual(hdr, qpstestdata.envi_sli_hdr)
-        self.assertEqual(bin, qpstestdata.envi_sli)
+        self.assertEqual(hdr, qpstestdata.envi_sli_hdr.as_posix())
+        self.assertEqual(bin, qpstestdata.envi_sli.as_posix())
 
         hdr, bin = findENVIHeader(qpstestdata.envi_bsq)
-        self.assertEqual(hdr, qpstestdata.envi_hdr)
-        self.assertEqual(bin, qpstestdata.envi_bsq)
+        self.assertEqual(hdr, qpstestdata.envi_hdr.as_posix())
+        self.assertEqual(bin, qpstestdata.envi_bsq.as_posix())
 
         hdr, bin = findENVIHeader(qpstestdata.envi_hdr)
-        self.assertEqual(hdr, qpstestdata.envi_hdr)
-        self.assertEqual(bin, qpstestdata.envi_bsq)
+        self.assertEqual(hdr, qpstestdata.envi_hdr.as_posix())
+        self.assertEqual(bin, qpstestdata.envi_bsq.as_posix())
 
         pathWrong = enmap
         hdr, bin = findENVIHeader(pathWrong)

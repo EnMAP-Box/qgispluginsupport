@@ -1,16 +1,28 @@
-import pathlib
+import os.path
 from os import scandir
-from typing import List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List
 
-from qgis.core import QgsProcessingAlgorithm, QgsProcessingParameterMultipleLayers, QgsProcessing, \
-    QgsProcessingParameterFeatureSink, QgsProcessingContext, \
-    QgsProcessingFeedback, QgsFields, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsFeatureSink, QgsProcessingException, \
-    QgsProcessingUtils, QgsVectorLayer, QgsEditorWidgetSetup, QgsMapLayer, QgsRemappingSinkDefinition, QgsFeature, \
-    QgsProperty, QgsExpressionContextScope, QgsExpressionContext
-
+from qgis.core import (QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext,
+                       QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsField, QgsFields, QgsMapLayer,
+                       QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException,
+                       QgsProcessingFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterFeatureSink,
+                       QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, QgsProperty,
+                       QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer,
+                       QgsWkbTypes)
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import profile_field_names
-from ..core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportFeatureSink
+from ..core.spectrallibraryio import SpectralLibraryIO
+from ...fieldvalueconverter import GenericFieldValueConverter, GenericPropertyTransformer
+
+
+class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
+
+    def __init__(self, sink, project: QgsProject = None):
+        super().__init__(sink, project)
+
+    def useRemapping(self):
+        return True
 
 
 class ImportSpectralProfiles(QgsProcessingAlgorithm):
@@ -22,7 +34,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         super().__init__()
 
         self._results: Dict = dict()
-        self._input_files: List[pathlib.Path] = []
+        self._input_files: List[Path] = []
         self._profile_field_names: List[str] = []
 
     def name(self) -> str:
@@ -36,8 +48,8 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
     def shortHelpString(self) -> str:
 
-        return """This algorithm imports spectral profiles from file formats like ENVI spectral libraries
-        or ASD binary files.
+        return """Imports spectral profiles from file formats like ENVI spectral libraries,
+        ASD (<code>.asd</code>), Spectral Evolution (<code>.sed</code>) or Spectral Vista Coorporation (SVC, <code>.sig</code>) Spectrometers.
         """
 
     def group(self) -> str:
@@ -70,11 +82,11 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         input_files = []
         for f in input_sources:
-            p = pathlib.Path(f)
+            p = Path(f)
             if p.is_dir():
                 for e in scandir(p):
                     if e.is_file():
-                        input_files.append(pathlib.Path(e.path))
+                        input_files.append(Path(e.path))
             elif p.is_file():
                 input_files.append(p)
 
@@ -105,15 +117,17 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # collect profiles, ordered by field definition
         PROFILES: Dict[str, List[QgsFeature]] = dict()
 
-        # : todo: optimize loading by file-extension sorting
         for uri in self._input_files:
-            profiles = SpectralLibraryIO.readProfilesFromUri(uri)
+            profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=feedback)
             if len(profiles) > 0:
                 fields: QgsFields = profiles[0].fields()
                 key = tuple(fields.names())
                 PROFILES[key] = PROFILES.get(key, []) + profiles
-                all_fields.extend(fields)
-                all_fields.extend(profiles[0].fields())
+                for f in fields:
+                    if f.name() not in all_fields.names():
+                        all_fields.append(QgsField(f))
+                # all_fields.extend(fields)
+                # all_fields.extend(profiles[0].fields())
 
         # get wktType
         if wkbType is None:
@@ -127,33 +141,61 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         if wkbType is None:
             wkbType = QgsWkbTypes.Type.NoGeometry
 
+        dst_fields = QgsFields()
+        # Describe output fields.
+        # If destination provide does not support field type
+        # try to get a suitable conversion, e.g. QMap / JSON -> str
+        #
+        value_output = parameters.get(self.P_OUTPUT)
+        if isinstance(value_output, str):
+            driver = QgsVectorFileWriter.driverForExtension(os.path.splitext(value_output)[1])
+            dst_fields = GenericFieldValueConverter.compatibleTargetFields(all_fields, driver)
+        else:
+            dst_fields = QgsFields(all_fields)
+
+        # outputPar = QgsProcessingOutputLayerDefinition(parameters.get(self.P_OUTPUT), context.project())
+        # remapping = QgsRemappingSinkDefinition()
+
+        assert len(all_fields) == len(dst_fields)
+
+        # outputPar.setRemappingDefinition(remapping)
+
         sink, destId = self.parameterAsSink(parameters,
                                             self.P_OUTPUT,
-                                            context, all_fields,
+                                            context, dst_fields,
                                             wkbType,
                                             crs)
+
         sink: QgsFeatureSink
 
         for srcFieldNames, profiles in PROFILES.items():
 
             srcFields = profiles[0].fields()
 
-            propertyMap = dict()
-            for dstField in all_fields.names():
-                if dstField in srcFieldNames:
-                    propertyMap[dstField] = QgsProperty.fromField(dstField)
+            remappingFieldMap = dict()
+            transformers = []
+            for dstField in dst_fields:
+                assert isinstance(dstField, QgsField)
+                if dstField.name() in srcFieldNames:
+                    srcFieldName = dstField.name()
+                    transformer = GenericPropertyTransformer(dstField)
+                    transformers.append(transformer)
+                    property = QgsProperty.fromField(srcFieldName)
+                    property.setTransformer(transformer)
+                    remappingFieldMap[dstField.name()] = property
 
-            srcCrs = QgsCoordinateReferenceSystem('EPSG:4826')
-            sinkDefinition = QgsRemappingSinkDefinition()
-            sinkDefinition.setDestinationFields(all_fields)
-            sinkDefinition.setSourceCrs(srcCrs)
-            sinkDefinition.setDestinationCrs(crs)
-            sinkDefinition.setDestinationWkbType(wkbType)
-            sinkDefinition.setFieldMap(propertyMap)
+            srcCrs = QgsCoordinateReferenceSystem('EPSG:4326')
+
+            remappingDefinition = QgsRemappingSinkDefinition()
+            remappingDefinition.setDestinationFields(dst_fields)
+            remappingDefinition.setSourceCrs(srcCrs)
+            remappingDefinition.setDestinationCrs(crs)
+            remappingDefinition.setDestinationWkbType(wkbType)
+            remappingDefinition.setFieldMap(remappingFieldMap)
 
             # define a QgsExpressionContext that
             # is used by the SpectralLibraryImportFeatureSink to convert
-            # value from the IO context to the output sink context
+            # values from the IO context to the output sink context
             expContext = QgsExpressionContext()
             expContext.setFields(srcFields)
             expContext.setFeedback(feedback)
@@ -162,11 +204,17 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             scope.setFields(srcFields)
             expContext.appendScope(scope)
 
-            featureSink = SpectralLibraryImportFeatureSink(sinkDefinition, sink, dstFields=all_fields)
-            featureSink.setExpressionContext(expContext)
+            # featureSink = SpectralLibraryImportFeatureSink(sinkDefinition, sink, dst_fields)
+            remappingSink = QgsRemappingProxyFeatureSink(remappingDefinition, sink)
+            remappingSink.setExpressionContext(expContext)
 
-            if not featureSink.addFeatures(profiles):
-                raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
+            if False:
+                for p in profiles:
+                    if not remappingSink.addFeature(p):
+                        raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
+            else:
+                if not remappingSink.addFeatures(profiles):
+                    raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
 
         del sink
 

@@ -4,7 +4,7 @@ import unittest
 from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QLabel
-from qps.testing import TestCase, start_app
+from qps.testing import start_app, TestCase
 
 # image resource location
 qgis_images_resources = pathlib.Path(__file__).parents[1] / 'qgisresources' / 'images_rc.py'
@@ -17,14 +17,6 @@ class ExampleCase(TestCase):
     This example shows how to run unit tests using a QgsApplication
     that has the QGIS resource icons loaded
     """
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        # this initializes the QgsApplication with resources from images loaded
-        resources = []
-        if qgis_images_resources.is_file():
-            resources.append(qgis_images_resources)
-        super().setUpClass(resources=resources)
 
     @unittest.skipIf(not qgis_images_resources.is_file(),
                      'Resource file does not exist: {}'.format(qgis_images_resources))

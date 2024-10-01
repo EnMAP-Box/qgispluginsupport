@@ -8,7 +8,7 @@ from qgis.core import QgsCoordinateReferenceSystem, QgsCoordinateTransformContex
     QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, QgsProperty, \
     QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer
 from ..core import is_profile_field
-from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryIO, SpectralLibraryImportWidget
+from ..core.spectrallibraryio import SpectralLibraryExportWidget, SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict
 from ...qgisenums import QMETATYPE_QSTRING
 
@@ -245,6 +245,6 @@ class GeoJsonSpectralLibraryIO(SpectralLibraryIO):
                        path: str,
                        importSettings: dict = dict(),
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
-        lyr = QgsVectorLayer(path)
+        lyr = QgsVectorLayer(Path(path).as_posix())
         lyr.loadDefaultStyle()
         return list(lyr.getFeatures())

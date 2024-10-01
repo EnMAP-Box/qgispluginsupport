@@ -6,16 +6,16 @@ from typing import List, Union
 
 import numpy as np
 
-from qgis.gui import QgsMapCanvas
 from qgis.PyQt.QtCore import QModelIndex, QSettings, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtTest import QAbstractItemModelTester
 from qgis.PyQt.QtWidgets import QComboBox, QGridLayout, QHBoxLayout, QLabel, QMenu, QPushButton, QTreeView, QVBoxLayout, \
     QWidget
+from qgis.gui import QgsMapCanvas
 from qps.models import Option, OptionListModel, PyObjectTreeNode, SettingsModel, SettingsNode, SettingsTreeView, \
     TreeModel, TreeNode, TreeView
 from qps.plotstyling.plotstyling import MarkerSymbol
-from qps.testing import start_app, TestCaseBase
+from qps.testing import TestCase, start_app
 
 start_app()
 
@@ -106,7 +106,7 @@ def expandNodes(view,
                 node = node.parent()
 
 
-class ModelTests(TestCaseBase):
+class ModelTests(TestCase):
 
     def createTestNodes(self, parentNode: TreeNode,
                         rows: int = 2,

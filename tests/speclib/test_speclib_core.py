@@ -29,8 +29,8 @@ import numpy as np
 from osgeo import ogr
 
 from qgis.PyQt.QtCore import NULL, QByteArray, QJsonDocument, QVariant
-from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, QgsVectorLayer, \
-    QgsWkbTypes, edit
+from qgis.core import edit, QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsRasterLayer, \
+    QgsVectorLayer, QgsWkbTypes
 from qps import initAll
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING
 from qps.speclib import EDITOR_WIDGET_REGISTRY_KEY
@@ -38,13 +38,12 @@ from qps.speclib.core import can_store_spectral_profiles, create_profile_field, 
     profile_field_list, profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
 from qps.speclib.core.spectrallibraryrasterdataprovider import featuresToArrays
-from qps.speclib.core.spectralprofile import ProfileEncoding, SpectralProfileBlock, SpectralSetting, \
-    decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, nanToNone, prepareProfileValueDict, \
-    validateProfileValueDict
-from qps.testing import TestCaseBase, TestObjects, start_app
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, isProfileValueDict, \
+    nanToNone, prepareProfileValueDict, ProfileEncoding, SpectralProfileBlock, SpectralSetting, validateProfileValueDict
+from qps.testing import start_app, TestCase, TestObjects
 from qps.unitmodel import BAND_NUMBER
-from qps.utils import FeatureReferenceIterator, SpatialExtent, SpatialPoint, createQgsField, findTypeFromString, \
-    qgsFields2str, str2QgsFields, toType
+from qps.utils import createQgsField, FeatureReferenceIterator, findTypeFromString, qgsFields2str, SpatialExtent, \
+    SpatialPoint, str2QgsFields, toType
 from qpstestdata import enmap, envi_sli
 
 start_app()
@@ -56,7 +55,7 @@ initAll()
 #
 # registerMapLayerConfigWidgetFactories()
 
-class SpeclibCoreTests(TestCaseBase):
+class SpeclibCoreTests(TestCase):
 
     # @unittest.skip('')
     def test_fields(self):
@@ -577,7 +576,7 @@ class SpeclibCoreTests(TestCaseBase):
         self.assertTrue(vl2, QgsVectorLayer)
         self.assertTrue(is_spectral_library(vl2))
 
-        rl = QgsRasterLayer(enmap)
+        rl = QgsRasterLayer(enmap.as_posix())
         rl = TestObjects.createRasterLayer()
         self.assertTrue(rl.crs().isValid())
         # QgsProject.instance().addMapLayer(rl)

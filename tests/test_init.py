@@ -10,16 +10,15 @@ import re
 import unittest
 
 from qgis.PyQt.QtGui import QIcon
-from qgis.gui import QgsGui, QgsEditorWidgetRegistry
-
+from qgis.gui import QgsEditorWidgetRegistry, QgsGui
 from qps import registerEditorWidgets
 from qps.classification.classificationscheme import ClassificationSchemeWidgetFactory
 from qps.plotstyling.plotstyling import PlotStyleEditorWidgetFactory
+from qps.resources import initQtResources
 from qps.speclib.gui.spectralprofileeditor import SpectralProfileEditorWidgetFactory
-
-from qps.utils import scanResources, file_search
+from qps.utils import file_search, scanResources
 from scripts.create_resourcefile import create_resource_files
-from qps.testing import TestCase, start_app
+from qps.testing import start_app, TestCase
 
 start_app()
 
@@ -29,6 +28,7 @@ class TestsCases_Init(TestCase):
     def test_init(self):
 
         create_resource_files()
+        initQtResources()
         paths = [p for p in scanResources() if p.startswith(':/qps/')]
         self.assertTrue(len(paths) > 0, msg='missing resources')
         for p in paths:

@@ -1,18 +1,18 @@
 import pathlib
 import unittest
 
-from qgis.core import QgsGeometry, QgsProcessingFeedback, QgsFeature, QgsVectorLayerExporter, \
-    QgsCoordinateReferenceSystem, Qgis
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
-    SpectralLibraryIO
-from qps.speclib.io.spectralevolution import SEDSpectralLibraryIO, SEDFile, SED_FIELDS
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsGeometry, QgsProcessingFeedback, \
+    QgsVectorLayerExporter
+from qps.speclib.core import is_spectral_feature
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
+from qps.speclib.io.spectralevolution import SEDFile, SEDSpectralLibraryIO
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import file_search
 
 start_app()
 
 
-class TestSpeclibIO_SED(TestCaseBase):
+class TestSpeclibIO_SED(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_SED, cls).setUpClass(*args, **kwds)
@@ -35,15 +35,11 @@ class TestSpeclibIO_SED(TestCaseBase):
 
         features = []
         for file in files:
-
             asd = SEDFile(file)
 
-            feature: QgsFeature = asd.feature()
+            feature: QgsFeature = asd.asFeature()
             self.assertIsInstance(feature, QgsFeature)
-            for field in SED_FIELDS.names():
-                value = feature.attribute(field)
-                if field not in ['Comment']:
-                    self.assertTrue(value is not None, msg=f'Missing value for field "{field}"')
+            is_spectral_feature(feature)
 
             g = feature.geometry()
             self.assertIsInstance(g, QgsGeometry)
@@ -81,7 +77,7 @@ class TestSpeclibIO_SED(TestCaseBase):
         exporter.flushBuffer()
         s = ""
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Skipped QDialog test in CI')
+    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()

@@ -7,19 +7,17 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
-from osgeo import gdal, ogr, gdal_array
-
+from osgeo import gdal, gdal_array, ogr
 from qgis.PyQt.QtCore import QMimeData, QModelIndex, QUrl
-from qgis.PyQt.QtWidgets import QDialog
-from qgis.PyQt.QtWidgets import QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QMenu, QAction
-from qgis.core import QgsFeature, edit
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsProject, QgsMapLayer
-from qgis.gui import QgsMapCanvas, QgsDualView, QgsRasterBandComboBox, QgsMapLayerComboBox
-from qps.layerconfigwidgets.gdalmetadata import GDALBandMetadataModel, GDALMetadataItemDialog, GDALMetadataModel, \
-    GDALMetadataModelConfigWidget, BandFieldNames, GDALMetadataItem, BandPropertyCalculator
+from qgis.PyQt.QtWidgets import QAction, QApplication, QDialog, QHBoxLayout, QMenu, QPushButton, QVBoxLayout, QWidget
+from qgis.core import edit, QgsFeature, QgsMapLayer, QgsProject, QgsRasterLayer, QgsVectorLayer
+from qgis.gui import QgsDualView, QgsMapCanvas, QgsMapLayerComboBox, QgsRasterBandComboBox
+
+from qps.layerconfigwidgets.gdalmetadata import BandFieldNames, BandPropertyCalculator, GDALBandMetadataModel, \
+    GDALMetadataItem, GDALMetadataItemDialog, GDALMetadataModel, GDALMetadataModelConfigWidget
 from qps.qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from qps.testing import TestObjects, TestCaseBase, start_app
-from qpstestdata import enmap, envi_bsq, enmap_polygon
+from qps.testing import start_app, TestCase, TestObjects
+from qpstestdata import enmap, enmap_polygon, envi_bsq
 
 start_app()
 
@@ -76,7 +74,7 @@ class ControlWidget(QWidget):
         self.setLayout(vl)
 
 
-class TestsGdalMetadata(TestCaseBase):
+class TestsGdalMetadata(TestCase):
 
     def test_GDALBandMetadataModel(self):
         from qpstestdata import enmap
@@ -322,7 +320,7 @@ class TestsGdalMetadata(TestCaseBase):
     def test_GDAL_PAM(self):
         test_dir = self.createTestOutputDirectory(subdir='gdalmetadata_PAM')
         path = test_dir / 'example.tif'
-        ds: gdal.Dataset = gdal.Translate(path.as_posix(), enmap)
+        ds: gdal.Dataset = gdal.Translate(path.as_posix(), enmap.as_posix())
         del ds
 
         lyr = QgsRasterLayer(path.as_posix())
@@ -336,7 +334,7 @@ class TestsGdalMetadata(TestCaseBase):
         ds.FlushCache()
         del ds
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'GUI dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'GUI dialog')
     def test_BandPropertyCalculator(self):
         from qps import registerExpressionFunctions
         registerExpressionFunctions()
@@ -360,9 +358,9 @@ class TestsGdalMetadata(TestCaseBase):
         envi_bsq2 = self.createImageCopy(envi_bsq)
 
         lyrR = QgsRasterLayer(envi_bsq2, 'ENVI')
-        lyrV = QgsVectorLayer(enmap_polygon, 'Vector')
+        lyrV = QgsVectorLayer(enmap_polygon.as_posix(), 'Vector')
 
-        layers = [QgsRasterLayer(enmap, 'EnMAP'),
+        layers = [QgsRasterLayer(enmap.as_posix(), 'EnMAP'),
                   lyrR,
                   lyrV,
                   TestObjects.createRasterLayer(),
@@ -376,7 +374,6 @@ class TestsGdalMetadata(TestCaseBase):
         QgsProject.instance().removeAllMapLayers()
 
     def test_rasterFormats(self):
-        from qpstestdata import enmap
         properties = QgsRasterLayerSpectralProperties.fromRasterLayer(enmap)
         wl = properties.wavelengths()
         wlu = properties.wavelengthUnits()
@@ -391,7 +388,7 @@ class TestsGdalMetadata(TestCaseBase):
             path = (test_dir / f'{name}.vrt').as_posix()
             assert path not in files, 'already created'
             files.append(path)
-            ds = gdal.Translate(path, enmap)
+            ds = gdal.Translate(path, enmap.as_posix())
             # clear existing metadata
             ds.SetMetadataItem('wavelength', None)
             ds.SetMetadataItem('wavelength_units', None)
@@ -477,13 +474,14 @@ class TestsGdalMetadata(TestCaseBase):
         md1.setText(hdr)
 
         md2: QMimeData = QMimeData()
-        md2.setUrls([QUrl.fromLocalFile(envi_hdr)])
+        md2.setUrls([QUrl.fromLocalFile(envi_hdr.as_posix())])
 
         md3: QMimeData = QMimeData()
         md3.setUrls([QUrl.fromLocalFile(r'C:/NoneExisting')])
 
         md4: QMimeData = QMimeData()
-        md4.setUrls([QUrl.fromLocalFile(r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])
+        md4.setUrls([QUrl.fromLocalFile(
+            r'Q:\EnMAP\Rohdaten\EnmapBoxExternalSensorProducts\planet\Valencia_psscene_analytic_8b_sr_udm2\PSScene\20240403_105501_25_24cd.json')])
 
         for mimeData in [md1, md2, md3]:
             QApplication.clipboard().setMimeData(mimeData)

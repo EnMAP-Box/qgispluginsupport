@@ -1,23 +1,21 @@
 # noinspection PyPep8Naming
 import pathlib
 import re
-
 import unittest
 from typing import List
 
-from qgis.core import QgsProcessingFeedback, QgsFeature, QgsVectorLayerExporter, QgsCoordinateReferenceSystem, Qgis
-from qgis.core import QgsVectorLayer
+from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsFeature, QgsProcessingFeedback, QgsVectorLayer, \
+    QgsVectorLayerExporter
 from qps.speclib.core import is_spectral_feature
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
-    SpectralLibraryIO
-from qps.speclib.io.asd import ASDSpectralLibraryIO, ASDSpectralLibraryImportWidget, ASDBinaryFile
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
+from qps.speclib.io.asd import ASDBinaryFile, ASDSpectralLibraryIO, ASDSpectralLibraryImportWidget
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import file_search
 
 start_app()
 
 
-class TestSpeclibIO_ASD(TestCaseBase):
+class TestSpeclibIO_ASD(TestCase):
 
     def registerIO(self):
 
@@ -116,7 +114,7 @@ class TestSpeclibIO_ASD(TestCaseBase):
 
         self.showGui(importWidget)
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Skipped QDialog test in CI')
+    @unittest.skipIf(TestCase.runsInCI(), 'Skipped QDialog test in CI')
     def test_dialog(self):
         self.registerIO()
         sl = TestObjects.createSpectralLibrary()

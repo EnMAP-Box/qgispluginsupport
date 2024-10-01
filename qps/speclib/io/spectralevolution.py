@@ -30,16 +30,12 @@ import pathlib
 import re
 from typing import List, Union
 
-from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsPointXY, \
+from qgis.core import QgsExpressionContext, QgsFeature, QgsFields, QgsPointXY, \
     QgsProcessingFeedback, QgsVectorLayer
 from qgis.gui import QgsFileWidget
-from qgis.PyQt.QtCore import QDate, QTime
-
-from .. import FIELD_NAME
-from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
-from ...qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QSTRING, QMETATYPE_QTIME
+from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
+from ...qgisenums import QMETATYPE_QSTRING
 
 
 class SEDAttributes(object):
@@ -80,51 +76,24 @@ class SEDAttributes(object):
     Channels = 'Channels'
 
 
-SED_FIELDS = QgsFields()
-SED_FIELDS.append(QgsField(FIELD_NAME, QMETATYPE_QSTRING))
-SED_FIELDS.append(create_profile_field(SEDAttributes.Reference, encoding=ProfileEncoding.Text))
-SED_FIELDS.append(create_profile_field(SEDAttributes.Target, encoding=ProfileEncoding.Text))
-SED_FIELDS.append(create_profile_field(SEDAttributes.Reflectance, encoding=ProfileEncoding.Text))
-SED_FIELDS.append(QgsField(SEDAttributes.Comment, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.Version, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.FileName, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.Instrument, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.Detectors, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.Measurement, QMETATYPE_QSTRING))
-
-SED_FIELDS.append(QgsField(SEDAttributes.Date_R, QMETATYPE_QDATE))
-SED_FIELDS.append(QgsField(SEDAttributes.Date_T, QMETATYPE_QDATE))
-SED_FIELDS.append(QgsField(SEDAttributes.Time_R, QMETATYPE_QTIME))
-SED_FIELDS.append(QgsField(SEDAttributes.Time_T, QMETATYPE_QTIME))
-
-SED_FIELDS.append(QgsField(SEDAttributes.Temperature_R, QMETATYPE_DOUBLE))
-SED_FIELDS.append(QgsField(SEDAttributes.Temperature_T, QMETATYPE_DOUBLE))
-
-SED_FIELDS.append(QgsField(SEDAttributes.BatteryVoltage_T, QMETATYPE_DOUBLE))
-SED_FIELDS.append(QgsField(SEDAttributes.BatteryVoltage_R, QMETATYPE_DOUBLE))
-
-SED_FIELDS.append(QgsField(SEDAttributes.Integration_R, QMETATYPE_INT))
-SED_FIELDS.append(QgsField(SEDAttributes.Integration_T, QMETATYPE_INT))
-
-SED_FIELDS.append(QgsField(SEDAttributes.Averages_R, QMETATYPE_INT))
-SED_FIELDS.append(QgsField(SEDAttributes.Averages_T, QMETATYPE_INT))
-
-SED_FIELDS.append(QgsField(SEDAttributes.DarkMode_R, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.DarkMode_T, QMETATYPE_QSTRING))
-
-SED_FIELDS.append(QgsField(SEDAttributes.ForeOptic_R, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.ForeOptic_T, QMETATYPE_QSTRING))
-
-SED_FIELDS.append(QgsField(SEDAttributes.RadiometricCalibration, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.Units, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.WavelengthRange, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.Latitude, QMETATYPE_DOUBLE))
-SED_FIELDS.append(QgsField(SEDAttributes.Longitude, QMETATYPE_DOUBLE))
-SED_FIELDS.append(QgsField(SEDAttributes.Altitude, QMETATYPE_DOUBLE))
-SED_FIELDS.append(QgsField(SEDAttributes.GPSTime, QMETATYPE_QTIME))
-SED_FIELDS.append(QgsField(SEDAttributes.Satellites, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.CalibratedReferenceCorrectionFile, QMETATYPE_QSTRING))
-SED_FIELDS.append(QgsField(SEDAttributes.Channels, QMETATYPE_INT))
+KEY2TYPE = {
+    'Comment': QMETATYPE_QSTRING,
+    'Version': SEDAttributes.Version,
+    'File Name': SEDAttributes.FileName,
+    'Instrument': SEDAttributes.Instrument,
+    'Detectors': SEDAttributes.Detectors,
+    'Measurement': SEDAttributes.Measurement,
+    'Radiometric Calibration': SEDAttributes.RadiometricCalibration,
+    'Units': SEDAttributes.Units,
+    'Wavelength Range': SEDAttributes.WavelengthRange,
+    'Latitude': SEDAttributes.Latitude,
+    'Longitude': SEDAttributes.Longitude,
+    'Altitude': SEDAttributes.Altitude,
+    'GPS Time': SEDAttributes.GPSTime,
+    'Satellites': SEDAttributes.Satellites,
+    'Calibrated Reference Correction File': SEDAttributes.CalibratedReferenceCorrectionFile,
+    'Channels': SEDAttributes.Channels,
+}
 
 KEY2FIELD = {
     'Comment': SEDAttributes.Comment,
@@ -150,14 +119,14 @@ rx_table_header = re.compile(r'^Wvl[^:]+')
 rx_sed_file = re.compile(r'\.sed$', re.I)
 
 
-class SEDFile(object):
+class SEDFile(SpectralProfileFileReader):
     """
     Wrapper class to access a single SED File.
     """
 
-    def __init__(self, path: str = None):
-        super(SEDFile, self).__init__()
-        self.mFeature = QgsFeature(SED_FIELDS)
+    def __init__(self, path):
+        super(SEDFile, self).__init__(path)
+        # self.mFeature = QgsFeature(SED_FIELDS)
 
         if path is not None:
             self.readFromSEDFile(path)
@@ -171,11 +140,6 @@ class SEDFile(object):
         :param path:
         :return:
         """
-        path = pathlib.Path(path)
-        self.mFeature = QgsFeature(SED_FIELDS)
-        self.mFeature.setAttribute(FIELD_NAME, path.name)
-
-        fields: QgsFields = self.mFeature.fields()
 
         with open(path, 'r') as f:
             LINES = list(f.readlines())
@@ -190,63 +154,7 @@ class SEDFile(object):
                     if value in ['', None]:
                         continue
 
-                    # split into values for multiple fields / special fields
-                    splitted = value.split(',')
-
-                    if key == 'Date':
-                        self.mFeature.setAttribute(SEDAttributes.Date_R,
-                                                   QDate.fromString(splitted[0], 'MM/dd/yyyy'))
-                        self.mFeature.setAttribute(SEDAttributes.Date_T,
-                                                   QDate.fromString(splitted[1], 'MM/dd/yyyy'))
-
-                    elif key == 'Time':
-                        self.mFeature.setAttribute(SEDAttributes.Time_R,
-                                                   QTime.fromString(splitted[0], 'hh:mm:ss'))
-                        self.mFeature.setAttribute(SEDAttributes.Time_T,
-                                                   QTime.fromString(splitted[1], 'hh:mm:ss'))
-
-                    elif key == 'Temperature (C)':
-                        self.mFeature.setAttribute(SEDAttributes.Temperature_R, float(splitted[0]))
-                        self.mFeature.setAttribute(SEDAttributes.Temperature_T, float(splitted[2]))
-
-                    elif key == 'Battery Voltage':
-                        self.mFeature.setAttribute(SEDAttributes.BatteryVoltage_R, float(splitted[0]))
-                        self.mFeature.setAttribute(SEDAttributes.BatteryVoltage_T, float(splitted[1]))
-
-                    elif key == 'Averages':
-                        self.mFeature.setAttribute(SEDAttributes.Averages_R, int(splitted[0]))
-                        self.mFeature.setAttribute(SEDAttributes.Averages_T, int(splitted[1]))
-
-                    elif key == 'Integration':
-                        self.mFeature.setAttribute(SEDAttributes.Integration_R, int(splitted[0]))
-                        self.mFeature.setAttribute(SEDAttributes.Integration_T, int(splitted[2]))
-
-                    elif key == 'Dark Mode':
-                        self.mFeature.setAttribute(SEDAttributes.DarkMode_R, splitted[0])
-                        self.mFeature.setAttribute(SEDAttributes.DarkMode_T, splitted[1])
-
-                    elif key == 'Foreoptic':
-                        self.mFeature.setAttribute(SEDAttributes.ForeOptic_R, splitted[0])
-                        self.mFeature.setAttribute(SEDAttributes.ForeOptic_T, splitted[1])
-
-                    elif key in KEY2FIELD.keys():
-                        fieldName = KEY2FIELD[key]
-
-                        field: QgsField = fields.field(fieldName)
-
-                        if field.type() == QMETATYPE_QSTRING:
-                            value = str(value)
-                        elif field.type() == QMETATYPE_INT:
-                            value = int(value)
-                        elif field.type() == QMETATYPE_DOUBLE:
-                            value = float(value)
-                        elif field.type() == QMETATYPE_QTIME:
-                            value = QTime.fromString(value, 'hh:mm:ss')
-                        else:
-                            s = ""
-                        self.mFeature.setAttribute(fieldName, value)
-                    else:
-                        s = ""
+                    self.mMetadata[key] = value
 
                 elif rx_table_header.match(line):
                     iFirstDataLine = i + 1
@@ -266,27 +174,24 @@ class SEDFile(object):
                     rad_t.append(splitted[2])
                     refl.append(splitted[3])
 
-            yUnit = self.mFeature.attribute(SEDAttributes.Units)
+            if 'Date' in self.mMetadata and 'Time' in self.mMetadata:
+                d1, d2 = self.mMetadata['Date'].split(',')
+                t1, t2 = self.mMetadata['Time'].split(',')
+                self.mReferenceTime = datetime.datetime.strptime(d1 + ' ' + t1, '%m/%d/%Y %H:%M:%S')
+                self.mTargetTime = datetime.datetime.strptime(d2 + ' ' + t2, '%m/%d/%Y %H:%M:%S')
+
+            if 'Latitude' in self.mMetadata and 'Longitude' in self.mMetadata:
+                self.mTargetCoordinate = QgsPointXY(float(self.mMetadata['Longitude']),
+                                                    float(self.mMetadata['Latitude']))
+
+            yUnit = self.mMetadata.get('Units', None)
             profile_r = prepareProfileValueDict(x=wvl, y=rad_r, xUnit='nm', yUnit=yUnit)
             profile_t = prepareProfileValueDict(x=wvl, y=rad_t, xUnit='nm', yUnit=yUnit)
-            profile_ref = prepareProfileValueDict(x=wvl, y=refl, xUnit='nm', yUnit='%')
+            profile_refl = prepareProfileValueDict(x=wvl, y=refl, xUnit='nm', yUnit='%')
 
-            dump_r = encodeProfileValueDict(profile_r,
-                                            encoding=fields.field(SEDAttributes.Reference))
-            dump_t = encodeProfileValueDict(profile_t,
-                                            encoding=fields.field(SEDAttributes.Target))
-            dump_ref = encodeProfileValueDict(profile_ref,
-                                              encoding=fields.field(SEDAttributes.Reflectance))
-
-            self.mFeature.setAttribute(SEDAttributes.Reference, dump_r)
-            self.mFeature.setAttribute(SEDAttributes.Target, dump_t)
-            self.mFeature.setAttribute(SEDAttributes.Reflectance, dump_ref)
-
-            c_lat = self.mFeature.attribute(SEDAttributes.Latitude)
-            c_lon = self.mFeature.attribute(SEDAttributes.Longitude)
-
-            g = QgsGeometry.fromPointXY(QgsPointXY(c_lon, c_lat))
-            self.mFeature.setGeometry(g)
+            self.mReference = profile_r
+            self.mTarget = profile_t
+            self.mReflectance = profile_refl
 
 
 class SEDSpectralLibraryImportWidget(SpectralLibraryImportWidget):
@@ -295,7 +200,6 @@ class SEDSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         super(SEDSpectralLibraryImportWidget, self).__init__(*args, **kwds)
 
         self.mSource: QgsVectorLayer = None
-        self.mFields: QgsFields = SED_FIELDS
 
     def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
         return SpectralLibraryIO.spectralLibraryIOInstances(SEDSpectralLibraryIO)
@@ -312,7 +216,7 @@ class SEDSpectralLibraryImportWidget(SpectralLibraryImportWidget):
             self.sigSourceChanged.emit()
 
     def sourceFields(self) -> QgsFields:
-        return QgsFields(self.mFields)
+        return QgsFields(SpectralProfileFileReader.standardFields())
 
     def createExpressionContext(self) -> QgsExpressionContext:
         context = QgsExpressionContext()
@@ -371,7 +275,7 @@ class SEDSpectralLibraryIO(SpectralLibraryIO):
             file = pathlib.Path(file)
 
             sed: SEDFile = SEDFile(file)
-            profiles.append(sed.feature())
+            profiles.append(sed.asFeature())
             if datetime.datetime.now() - t0 > dt:
                 feedback.setProgress((i + 1) / n_total)
                 t0 = datetime.datetime.now()

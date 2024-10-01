@@ -4,12 +4,11 @@ import random
 import unittest
 from typing import Iterator, List, Tuple
 
+from qgis.PyQt.QtCore import QSize, Qt
+from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
 from qgis.core import edit, Qgis, QgsExpressionContext, QgsFeature, QgsField, QgsGeometry, QgsMapToPixel, QgsPoint, \
     QgsPointXY, QgsProject, QgsRaster, QgsRasterDataProvider, QgsRasterLayer, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgsDualView, QgsMapCanvas
-from qgis.PyQt.QtCore import QSize, Qt
-from qgis.PyQt.QtWidgets import QHBoxLayout, QPushButton, QSplitter, QVBoxLayout, QWidget
-
 from qps.maptools import CursorLocationMapTool
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
@@ -19,13 +18,14 @@ from qps.speclib.gui.spectralprofilesources import MapCanvasLayerProfileSource, 
     SamplingBlockDescription, SpectralFeatureGeneratorNode, SpectralProfileBridge, SpectralProfileBridgeTreeView, \
     SpectralProfileBridgeViewDelegate, SpectralProfileGeneratorNode, SpectralProfileSource, SpectralProfileSourceModel, \
     SpectralProfileSourcePanel, SpectralProfileSourceProxyModel, StandardFieldGeneratorNode, StandardLayerProfileSource
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import parseWavelength, rasterArray, SpatialExtent, SpatialPoint
+from qpstestdata import enmap
 
 start_app()
 
 
-class SpectralProcessingTests(TestCaseBase):
+class SpectralProcessingTests(TestCase):
 
     def test_dualview(self):
 
@@ -52,7 +52,7 @@ class SpectralProcessingTests(TestCaseBase):
 
     def test_borderPixel(self):
         from qpstestdata import enmap
-        lyr: QgsRasterLayer = QgsRasterLayer(enmap)
+        lyr: QgsRasterLayer = QgsRasterLayer(enmap.as_posix())
         lyr.setName('EnMAP')
         ext = lyr.extent()
 
@@ -483,8 +483,8 @@ class SpectralProcessingTests(TestCaseBase):
         kernels = [('3x3'),
                    # ('4x4'),
                    ('5x5')]
-        from qpstestdata import enmap
-        lyr = QgsRasterLayer(enmap)
+
+        lyr = QgsRasterLayer(enmap.as_posix())
         center = SpatialPoint.fromMapLayerCenter(lyr)
 
         source = StandardLayerProfileSource(lyr)
@@ -579,9 +579,9 @@ class SpectralProcessingTests(TestCaseBase):
         n_bands = [177, 6]
 
         from qpstestdata import enmap, hymap
-        lyr1 = QgsRasterLayer(enmap, 'EnMAP')
-        lyr2 = QgsRasterLayer(hymap, 'HyMAP')
-        lyr2 = QgsRasterLayer(hymap, 'Sentinel-2')
+        lyr1 = QgsRasterLayer(enmap.as_posix(), 'EnMAP')
+        lyr2 = QgsRasterLayer(hymap.as_posix(), 'HyMAP')
+        lyr2 = QgsRasterLayer(hymap.as_posix(), 'Sentinel-2')
 
         sl = TestObjects.createSpectralLibrary(n_profiles_per_n_bands, n_bands=n_bands)
         sl.setName('Speclib 1')

@@ -26,18 +26,17 @@
 """
 
 import os
-import pathlib
 import re
 import sys
-from typing import Union, List, Generator, Any
+from pathlib import Path
+from typing import Any, Generator, List, Optional, Union
 
-from qgis.PyQt.QtCore import QFile, QModelIndex, QTextStream, QSortFilterProxyModel, QDirIterator, QAbstractTableModel, \
-    QRegExp, Qt
-from qgis.PyQt.QtGui import QPixmap, QContextMenuEvent, QIcon
-from qgis.PyQt.QtWidgets import QWidget, QGraphicsPixmapItem, QApplication, QTextBrowser, QGraphicsScene, QToolButton, \
-    QLabel, QMenu, QGraphicsView, QAction, QLineEdit, QTableView
-from qgis.PyQt.QtXml import QDomElement, QDomDocument
-
+from qgis.PyQt.QtCore import QAbstractTableModel, QDirIterator, QFile, QModelIndex, QRegExp, QSortFilterProxyModel, Qt, \
+    QTextStream
+from qgis.PyQt.QtGui import QContextMenuEvent, QIcon, QPixmap
+from qgis.PyQt.QtWidgets import QAction, QApplication, QGraphicsPixmapItem, QGraphicsScene, QGraphicsView, QLabel, \
+    QLineEdit, QMenu, QTableView, QTextBrowser, QToolButton, QWidget
+from qgis.PyQt.QtXml import QDomDocument, QDomElement
 from qgis.PyQt.QtSvg import QGraphicsSvgItem
 from .utils import file_search, findUpwardPath
 
@@ -55,8 +54,8 @@ def getDOMAttributes(elem):
     return values
 
 
-def compileResourceFiles(dirRoot: str,
-                         targetDir: str = None,
+def compileResourceFiles(dirRoot: Union[str, Path],
+                         targetDir: Optional[Union[str, Path]] = None,
                          suffix: str = '_rc.py',
                          skip_qgis_images: bool = True,
                          compressLevel=19,
@@ -74,8 +73,7 @@ def compileResourceFiles(dirRoot: str,
            Defaults to the *.qrc's directory
     """
     # find ui files
-    if not isinstance(dirRoot, pathlib.Path):
-        dirRoot = pathlib.Path(dirRoot)
+    dirRoot = Path(dirRoot)
     assert dirRoot.is_dir(), '"dirRoot" is not a directory: {}'.format(dirRoot)
     dirRoot = dirRoot.resolve()
 
@@ -86,14 +84,14 @@ def compileResourceFiles(dirRoot: str,
     doc = QDomDocument()
 
     for ui_file in ui_files:
-        ui_dir = pathlib.Path(ui_file).parent
+        ui_dir = Path(ui_file).parent
         doc.setContent(QFile(ui_file))
         includeNodes = doc.elementsByTagName('include')
         for i in range(includeNodes.count()):
             attr = getDOMAttributes(includeNodes.item(i).toElement())
             if 'location' in attr.keys():
                 location = attr['location']
-                qrc_path = (ui_dir / pathlib.Path(location)).resolve()
+                qrc_path = (ui_dir / Path(location)).resolve()
                 if not qrc_path.exists():
                     if REGEX_QGIS_IMAGES_QRC.match(qrc_path.as_posix()) and skip_qgis_images:
                         continue
@@ -112,7 +110,7 @@ def compileResourceFiles(dirRoot: str,
                     qrc_files.append(qrc_path)
 
     for file in file_search(dirRoot, '*.qrc', recursive=True):
-        file = pathlib.Path(file)
+        file = Path(file)
         if file not in qrc_files:
             qrc_files.append(file)
 
@@ -123,7 +121,7 @@ def compileResourceFiles(dirRoot: str,
     print('Compile {} *.qrc files:'.format(len(qrc_files)))
     targetDirOutputNames = []
     for qrcFile in qrc_files:
-        assert isinstance(qrcFile, pathlib.Path)
+        assert isinstance(qrcFile, Path)
         # in case of similar base names, use different output names
         # e.g. make
         #  src/images.qrc
@@ -160,21 +158,21 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     :return:
     """
     import PyQt5.pyrcc_main
-    if not isinstance(pathQrc, pathlib.Path):
-        pathQrc = pathlib.Path(pathQrc)
+    if not isinstance(pathQrc, Path):
+        pathQrc = Path(pathQrc)
 
-    assert isinstance(pathQrc, pathlib.Path)
+    assert isinstance(pathQrc, Path)
     assert pathQrc.name.endswith('.qrc')
     print('Compile {}...'.format(pathQrc))
     if targetDir is None:
         targetDir = pathQrc.parent
-    elif not isinstance(targetDir, pathlib.Path):
-        targetDir = pathlib.Path(targetDir)
+    elif not isinstance(targetDir, Path):
+        targetDir = Path(targetDir)
 
-    assert isinstance(targetDir, pathlib.Path)
+    assert isinstance(targetDir, Path)
     targetDir = targetDir.resolve()
 
-    cwd = pathlib.Path(pathQrc).parent
+    cwd = Path(pathQrc).parent
 
     pathPy = targetDir / (os.path.splitext(pathQrc.name)[0] + suffix)
 
@@ -206,7 +204,7 @@ def compileResourceFile(pathQrc, targetDir=None, suffix: str = '_rc.py', compres
     os.chdir(last_cwd)
 
 
-def compileQGISResourceFiles(qgis_repo: Union[str, pathlib.Path, None], target: str = None):
+def compileQGISResourceFiles(qgis_repo: Union[str, Path, None], target: str = None):
     """
     Searches for *.qrc files in the QGIS repository and compiles them to <target>
 
@@ -218,17 +216,17 @@ def compileQGISResourceFiles(qgis_repo: Union[str, pathlib.Path, None], target: 
     if qgis_repo is None:
         for k in ['QGIS_REPO', 'QGIS_REPOSITORY']:
             if k in os.environ.keys():
-                qgis_repo = pathlib.Path(os.environ[k])
+                qgis_repo = Path(os.environ[k])
                 break
     else:
-        qgis_repo = pathlib.Path(qgis_repo)
+        qgis_repo = Path(qgis_repo)
     if qgis_repo is None:
         print('QGIS_REPO location undefined', file=sys.stderr)
         return
 
-    if not isinstance(qgis_repo, pathlib.Path):
-        qgis_repo = pathlib.Path(qgis_repo)
-    assert isinstance(qgis_repo, pathlib.Path)
+    if not isinstance(qgis_repo, Path):
+        qgis_repo = Path(qgis_repo)
+    assert isinstance(qgis_repo, Path)
     assert qgis_repo.is_dir()
     assert (qgis_repo / 'images' / 'images.qrc').is_file(), '{} is not the QGIS repository root'.format(
         qgis_repo.as_posix())
@@ -237,8 +235,8 @@ def compileQGISResourceFiles(qgis_repo: Union[str, pathlib.Path, None], target: 
         DIR_REPO = findUpwardPath(__file__, '.git')
         target = DIR_REPO / 'qgisresources'
 
-    if not isinstance(target, pathlib.Path):
-        target = pathlib.Path(target)
+    if not isinstance(target, Path):
+        target = Path(target)
 
     os.makedirs(target, exist_ok=True)
     compileResourceFiles(qgis_repo / 'src', targetDir=target, skip_qgis_images=False)
@@ -257,13 +255,13 @@ def initQtResources(roots: list = []):
         roots = [roots]
 
     if len(roots) == 0:
-        p = pathlib.Path(__file__).parent
+        p = Path(__file__).parent
         roots.append(p.parent)
 
     rc_files = []
     for rootDir in roots:
         for r, dirs, files in os.walk(rootDir):
-            root = pathlib.Path(r)
+            root = Path(r)
             for f in files:
                 if f.endswith('_rc.py'):
                     path = root / f
@@ -275,12 +273,12 @@ def initQtResources(roots: list = []):
         initResourceFile(path)
 
 
-def initResourceFile(path: Union[str, pathlib.Path]):
+def initResourceFile(path: Union[str, Path]):
     """
     Loads a '*_rc.py' file into the QApplication's resource system
     """
-    if not isinstance(path, pathlib.Path):
-        path = pathlib.Path(path)
+    if not isinstance(path, Path):
+        path = Path(path)
     f = path.name
     name = f[:-3]
     add_path = path.parent.as_posix() not in sys.path
@@ -302,7 +300,7 @@ def initResourceFile(path: Union[str, pathlib.Path]):
         sys.path.remove(path.parent.as_posix())
 
 
-def findQGISResourceFiles() -> List[pathlib.Path]:
+def findQGISResourceFiles() -> List[Path]:
     """
     Tries to find a folder 'qgisresources'.
     See snippets/create_qgisresourcefilearchive.py to create the 'qgisresources' folder.
@@ -312,9 +310,9 @@ def findQGISResourceFiles() -> List[pathlib.Path]:
     if 'QPS_QGIS_RESOURCES' in os.environ.keys():
         root = os.environ.keys()
     else:
-        d = pathlib.Path(__file__)
+        d = Path(__file__)
 
-        while d != pathlib.Path('.'):
+        while d != Path('.'):
             if (d / 'qgisresources').is_dir():
                 root = (d / 'qgisresources')
                 break
@@ -323,10 +321,10 @@ def findQGISResourceFiles() -> List[pathlib.Path]:
             if len(d.parts) == 1:
                 break
 
-    if isinstance(root, pathlib.Path):
+    if isinstance(root, Path):
         for root, dirs, files in os.walk(root):
             for rc_file_name in [f for f in files if f.endswith('_rc.py')]:
-                path = pathlib.Path(root) / rc_file_name
+                path = Path(root) / rc_file_name
                 if path.is_file():
                     results.append(path)
     return results
@@ -441,7 +439,7 @@ class ResourceBrowser(QWidget):
         super().__init__(*args, **kwds)
 
         from .utils import loadUi
-        pathUi = pathlib.Path(__file__).parent / 'ui' / 'qpsresourcebrowser.ui'
+        pathUi = Path(__file__).parent / 'ui' / 'qpsresourcebrowser.ui'
         loadUi(pathUi, self)
         self.setWindowTitle('QPS Resource Browser')
         self.actionReload: QAction

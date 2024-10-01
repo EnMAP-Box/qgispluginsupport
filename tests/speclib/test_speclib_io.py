@@ -22,26 +22,25 @@ import pathlib
 import re
 import unittest
 
-from qgis.core import edit, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, \
-    QgsFileUtils, QgsProcessingFeedback, QgsProject, QgsProperty, QgsRemappingSinkDefinition, QgsVectorLayer
-
+from qgis.core import QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsField, QgsFields, QgsFileUtils, \
+    QgsProcessingFeedback, QgsProject, QgsProperty, QgsRemappingSinkDefinition, QgsVectorLayer, edit
 from qps.qgisenums import QMETATYPE_QSTRING
 from qps.speclib.core import create_profile_field
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectrallibraryio import initSpectralLibraryIOs, SpectralLibraryExportDialog, \
-    SpectralLibraryExportWidget, SpectralLibraryImportDialog, SpectralLibraryImportFeatureSink, \
-    SpectralLibraryImportWidget, SpectralLibraryIO
+from qps.speclib.core.spectrallibraryio import SpectralLibraryExportDialog, SpectralLibraryExportWidget, \
+    SpectralLibraryIO, SpectralLibraryImportDialog, SpectralLibraryImportFeatureSink, SpectralLibraryImportWidget, \
+    initSpectralLibraryIOs
 from qps.speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict
-from qps.speclib.io.envi import EnviSpectralLibraryImportWidget, EnviSpectralLibraryIO
+from qps.speclib.io.envi import EnviSpectralLibraryIO, EnviSpectralLibraryImportWidget
 from qps.speclib.io.geojson import GeoJsonSpectralLibraryIO
-from qps.speclib.io.geopackage import GeoPackageSpectralLibraryImportWidget, GeoPackageSpectralLibraryIO
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.speclib.io.geopackage import GeoPackageSpectralLibraryIO, GeoPackageSpectralLibraryImportWidget
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import file_search
 
 start_app()
 
 
-class TestIO(TestCaseBase):
+class TestIO(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestIO, cls).setUpClass(*args, **kwds)
@@ -319,7 +318,7 @@ class TestIO(TestCaseBase):
 
         self.showGui(dialog)
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Opens blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'Opens blocking dialog')
     def test_ImportDialog2(self):
         self.registerIO()
 

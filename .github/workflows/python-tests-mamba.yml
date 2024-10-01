@@ -47,22 +47,22 @@ jobs:
           cat .conda/${{matrix.mamba_env}}.yml
 
       - name: Setup Mambaforge
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           # miniforge-variant: Mambaforge
           # miniforge-version: latest
-          mamba-version: "*"
+          # mamba-version: "*"
           channels: conda-forge,defaults
           channel-priority: true
           activate-environment: ${{matrix.mamba_env}}
           environment-file: .conda/${{matrix.mamba_env}}.yml
           clean-patched-environment-file: false
-          use-mamba: true
-          auto-activate-base: false
-      - name: Mamba Environment Info
+          # use-mamba: false
+          # auto-activate-base: false
+      - name: Conda Environment Info
         run: |
-          mamba info
-          mamba list
+          conda info
+          conda list
 
       - name: Python and QGIS versions
         run: |

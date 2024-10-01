@@ -1,15 +1,16 @@
 import unittest
-from osgeo import gdal
-from qgis.core import QgsRasterLayer, QgsRasterFileWriter, QgsRasterPipe, QgsProcessingContext, QgsRasterBlockFeedback
 
+from osgeo import gdal
+
+from qgis.core import QgsProcessingContext, QgsRasterBlockFeedback, QgsRasterFileWriter, QgsRasterLayer, QgsRasterPipe
 from qps.speclib.core.spectralprofile import SpectralSetting
-from qps.testing import TestCaseBase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import parseWavelength
 
 start_app()
 
 
-class TestCore(TestCaseBase):
+class TestCore(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
@@ -20,7 +21,7 @@ class TestCore(TestCaseBase):
     def test_SpectralSetting(self):
         from qpstestdata import enmap
         lyr1: QgsRasterLayer = TestObjects.createRasterLayer(nb=10)
-        lyr2: QgsRasterLayer = QgsRasterLayer(enmap, 'EnMAP Tiff', 'gdal')
+        lyr2: QgsRasterLayer = QgsRasterLayer(enmap.as_posix(), 'EnMAP Tiff', 'gdal')
 
         test_dir = self.createTestOutputDirectory()
 

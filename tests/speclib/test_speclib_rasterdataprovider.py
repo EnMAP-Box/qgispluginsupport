@@ -1,20 +1,20 @@
 import unittest
 
 from qgis.PyQt.QtWidgets import QVBoxLayout, QWidget
-from qgis.core import QgsProject, Qgis, QgsRasterLayer, QgsCoordinateReferenceSystem, QgsRasterRange, QgsRasterPipe
-from qgis.gui import QgsMapLayerComboBox, QgsMapCanvas
+from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsProject, QgsRasterLayer, QgsRasterPipe, QgsRasterRange
+from qgis.gui import QgsMapCanvas, QgsMapLayerComboBox
 from qps import initResources
 from qps.speclib.core import profile_fields
-from qps.speclib.core.spectrallibraryrasterdataprovider import registerDataProvider, \
-    VectorLayerFieldRasterDataProvider, createRasterLayers
+from qps.speclib.core.spectrallibraryrasterdataprovider import VectorLayerFieldRasterDataProvider, createRasterLayers, \
+    registerDataProvider
 from qps.speclib.core.spectralprofile import SpectralSetting, decodeProfileValueDict
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import rasterArray
 
 start_app()
 
 
-class RasterDataProviderTests(TestCaseBase):
+class RasterDataProviderTests(TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:

@@ -24,68 +24,21 @@
     along with this software. If not, see <http://www.gnu.org/licenses/>.
 ***************************************************************************
 """
-
-import csv as pycsv
-import io
-import os
-import pathlib
+import csv
 import re
-import sys
+from pathlib import Path
 from typing import List, Union
 
-from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsVectorLayer
-from qgis.PyQt.QtCore import QUrlQuery, QVariant
-from qgis.PyQt.QtWidgets import QFileDialog, QMenu, QProgressDialog
-
+from qgis.core import QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, QgsProcessingFeedback, \
+    QgsProviderRegistry, QgsVectorLayer
+from qgis.PyQt.QtCore import QUrlQuery
 from .envi import readCSVMetadata
-from .. import createStandardFields, FIELD_NAME
-from ..core import create_profile_field, is_spectral_library
-from ..core.spectrallibrary import FIELD_VALUES
+from ..core import create_profile_field
 from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
-from ..core.spectralprofile import encodeProfileValueDict
-from ...qgisenums import QMETATYPE_QSTRING
-from ...utils import createQgsField, findTypeFromString
-
-
-class __DEPR__EcoSISCSVDialect(pycsv.Dialect):
-    delimiter = ','
-    quotechar = '"'
-    doublequote = True
-    skipinitialspace = False
-    lineterminator = '\n'
-    escapechar = '\\'
-    quoting = pycsv.QUOTE_NONE
-
-
-class EcoSISCSVDialect(pycsv.Dialect):
-
-    def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
-
-
-def findDialect(file) -> EcoSISCSVDialect:
-    if isinstance(file, str):
-        file = open(file, 'r', encoding='utf-8')
-
-    line = ''
-    while len(line) == 0:
-        line = file.readline()
-
-    delimiters = [',', ';', '\t']
-    counts = [len(line.split(delimiter)) for delimiter in delimiters]
-
-    dialect = EcoSISCSVDialect()
-    dialect.delimiter = delimiters[counts.index(max(counts))]
-    dialect.lineterminator = '\n\r' if line.endswith('\n\r') else line[-1]
-
-    file.seek(0)
-    s = ""
-    return dialect
+from ..core.spectralprofile import encodeProfileValueDict, prepareProfileValueDict, ProfileEncoding
 
 
 class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
-    FIELDNAME_PROFILE = 'profile'
-    FIELDNAME_NAME = 'name'
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
@@ -101,9 +54,8 @@ class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         if self.source() in ['', None]:
             return fields
 
-        fields.append(create_profile_field(self.FIELDNAME_PROFILE))
-        fields.append(QgsField(self.FIELDNAME_NAME, QMETATYPE_QSTRING))
-
+        fields.append(create_profile_field(EcoSISSpectralLibraryIO.FIELDNAME_PROFILE))
+        EcoSISSpectralLibraryIO.loadCSVLayer({}, self.source())
         lyrCSV = readCSVMetadata(self.source())
         if isinstance(lyrCSV, QgsVectorLayer):
             n = lyrCSV.fields().count()
@@ -132,10 +84,10 @@ class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
         return context
 
     def formatName(self) -> str:
-        return 'Envi Spectral Library'
+        return 'EcoSIS'
 
     def filter(self) -> str:
-        return "Envi Spectral Library (*.sli *.esl)"
+        return "EcoSIS text file (*.csv)"
 
     def setSpeclib(self, speclib: QgsVectorLayer):
 
@@ -151,13 +103,21 @@ class EcoSISSpectralLibraryImportWidget(SpectralLibraryImportWidget):
 
 
 class EcoSISSpectralLibraryIO(SpectralLibraryIO):
+    FIELDNAME_PROFILE = 'profile'
 
     def __init__(self, *args, **kwds):
         super(EcoSISSpectralLibraryIO, self).__init__(*args, **kwds)
 
+        assert 'delimitedtext' in QgsProviderRegistry.instance().providerList(), \
+            'QGIS runs without "delimitedtext" data drovider '
+
     @classmethod
     def formatName(cls) -> str:
-        return 'EcoSYS Spectral Library'
+        return 'EcoSIS dataset'
+
+    @classmethod
+    def filter(self) -> str:
+        return "EcoSIS dataset file (*.csv)"
 
     @classmethod
     def createImportWidget(cls) -> SpectralLibraryImportWidget:
@@ -165,289 +125,100 @@ class EcoSISSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def importProfiles(cls,
-                       path: Union[str, pathlib.Path],
-                       importSettings: dict = dict(),
+                       path: Union[str, Path],
+                       importSettings=None,
                        feedback: QgsProcessingFeedback = QgsProcessingFeedback()) -> List[QgsFeature]:
+        if importSettings is None:
+            importSettings = dict()
+        path = Path(path)
 
-        path = pathlib.Path(path)
+        lyr = cls.loadCSVLayer(importSettings, path)
 
         profiles: List[QgsFeature] = []
 
+        dstFields, otherFields, profileField, wl, wlFields = cls.dataFields(lyr)
+
+        n = lyr.featureCount()
+        next_step = 5  # step size in percent
+        feedback.setProgressText(f'Load {n} profiles')
+        for i, f in enumerate(lyr.getFeatures()):
+            f: QgsFeature
+            f2 = QgsFeature(dstFields)
+
+            y = [f.attribute(field.name()) for field in wlFields]
+            xUnit = None
+            d = prepareProfileValueDict(x=wl, y=y, xUnit=xUnit)
+            dump = encodeProfileValueDict(d, profileField)
+            f2.setAttribute(cls.FIELDNAME_PROFILE, dump)
+
+            if f.hasGeometry():
+                g = f.geometry()
+                f2.setGeometry(QgsGeometry(g))
+
+            for field in otherFields:
+                f2.setAttribute(field.name(), f.attribute(field.name()))
+            profiles.append(f2)
+
+            progress = 100 * i / n
+            if progress >= next_step:
+                next_step += 5
+                feedback.setProgress(progress)
+        return profiles
+
+    @classmethod
+    def dataFields(cls, lyr):
+        rxIsNum = re.compile(r'^\d+(\.\d+)?$')
+        wlFields = QgsFields()
+        otherFields = QgsFields()
+        dstFields = QgsFields()
+        profileField = create_profile_field(cls.FIELDNAME_PROFILE, encoding=ProfileEncoding.Json)
+        dstFields.append(profileField)
+
+        wl = []
+        for i, field in enumerate(lyr.fields()):
+            field: QgsField
+            if field.isNumeric() and rxIsNum.match(field.name()):
+                wl.append(float(field.name()))
+                wlFields.append(field)
+            else:
+                otherFields.append(field)
+                dstFields.append(field)
+        return dstFields, otherFields, profileField, wl, wlFields
+
+    @classmethod
+    def loadCSVLayer(cls, importSettings, path):
+        cLat = cLon = None
+        with open(path, newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            hdr_row = next(reader)
+
+            for c in hdr_row:
+                if re.match(r'^(lat|latitude)$', c, re.I):
+                    cLat = c
+                if re.match(r'^(lon|longitude)$', c, re.I):
+                    cLon = c
+        # see https://api.qgis.org/api/classQgsVectorLayer.html#details or
+        # https://qgis.org/pyqgis/master/core/QgsVectorLayer.html#delimited-text-file-data-provider-delimitedtext
+        # for detaisl of delimitedtext driver
         query = QUrlQuery()
         # query.addQueryItem('encoding', 'UTF-8')
         query.addQueryItem('detectTypes', 'yes')
-        query.addQueryItem('geomType', 'none')
         # query.addQueryItem('watchFile', 'no')
         # query.addQueryItem('type', 'csv')
         # query.addQueryItem('subsetIndex', 'no')
         # query.addQueryItem('useHeader', 'yes')
-        query.addQueryItem('delimiter', ',')
-
+        query.addQueryItem('delimiter', importSettings.get('delimiter', ','))
+        query.addQueryItem('quote', importSettings.get('quote', '"'))
+        if 'xField' in importSettings and 'yField' in importSettings:
+            query.addQueryItem('xField', importSettings['xField'])
+            query.addQueryItem('yField', importSettings['yField'])
+        elif cLat and cLon:
+            query.addQueryItem('xField', cLon)
+            query.addQueryItem('yField', cLat)
+        query.addQueryItem('crs', importSettings.get('crs', 'EPSG:4326'))
+        query.addQueryItem('geomType', importSettings.get('geomType', 'point'))
         uri = path.as_uri() + '?' + query.toString()
         # uri = path.as_posix()
-        lyr = QgsVectorLayer(uri, os.path.basename(path), 'delimitedtext')
-
-        # the EcoSIS CSV outputs are encoded as UTF-8 with BOM
-        with open(path, 'r', encoding='utf-8-sig') as f:
-
-            dialect = findDialect(f)
-
-            reader = pycsv.DictReader(f, dialect=dialect)
-            fieldnames = reader.fieldnames
-
-            if fieldnames[0].startswith('\ufeff'):
-                s = ""
-            fieldnames = [n for n in fieldnames if len(n) > 0]
-
-            xUnit = yUnit = None
-            xValueNames = []
-            for fieldName in reversed(fieldnames):
-                if re.search(r'^\d+(\.\d+)?$', fieldName):
-                    xValueNames.insert(0, fieldName)
-                else:
-                    break
-            s = ""
-            xValues = [float(n) for n in xValueNames]
-            if len(xValues) == 0:
-                s = ""
-            if xValues[0] > 200:
-                xUnit = 'nm'
-
-            fieldnames = [n for n in fieldnames if n not in xValueNames]
-
-            # speclib = SpectralLibrary()
-            # speclib.startEditing()
-            # speclib.addMissingFields(createStandardFields())
-
-            profiles = []
-            LUT_FIELD_TYPES = dict()
-
-            fields = QgsFields()
-            fields.append(create_profile_field('profiles'))
-
-            missing_field_definitions = fieldnames[:]
-
-            for i, row in enumerate(reader):
-
-                if len(fieldnames) > 0:
-                    for fieldName in missing_field_definitions[:]:
-                        fieldValue = row[fieldName]
-                        if fieldValue == 'NA':
-                            continue
-
-                        fieldType = findTypeFromString(fieldValue)
-                        LUT_FIELD_TYPES[fieldName] = fieldType
-
-                        fields.append(createQgsField(fieldName, fieldType(fieldValue)))
-                        missing_field_definitions.remove(fieldName)
-
-                feature = QgsFeature(fields=fields)
-
-                valueDict = {'y': [float(row[n]) for n in xValueNames],
-                             'x': xValues}
-
-                feature.setAttribute('profiles', encodeProfileValueDict(valueDict, fields.field('profiles')))
-
-                for fieldName, fieldType in LUT_FIELD_TYPES.items():
-                    fieldValue = fieldType(row[fieldName])
-                    feature.setAttribute(fieldName, fieldValue)
-
-                profiles.append(feature)
-        return profiles
-
-
-class _DEPR_EcoSISSpectralLibraryIO(SpectralLibraryIO):
-    """
-    I/O Interface for the EcoSIS spectral library format.
-    See https://ecosis.org for details.
-    """
-
-    @classmethod
-    def canRead(cls, path: str) -> bool:
-        """
-        Returns true if it can read the source defined by path
-        :param path: source uri
-        :return: True, if source is readable.
-        """
-        if not isinstance(path, str) and os.path.isfile(path):
-            return False
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if len(line) > 0:
-                        # most-right header name must be a number
-                        lastColumn = [c for c in re.split(r'[\t\n;,]', line) if c != ''][-1]
-                        return re.search(r'^\d+(\.\d+)?$', lastColumn) is not None
-        except Exception as ex:
-            print(ex, file=sys.stderr)
-
-        return False
-
-    @classmethod
-    def readFrom(cls,
-                 path,
-                 feedback: QgsProcessingFeedback = None):
-        """
-        Returns the SpectralLibrary read from "path"
-        :param path: source of SpectralLibrary
-        :return: SpectralLibrary
-        """
-
-        # the EcoSIS CSV outputs are encoded as UTF-8 with BOM
-        with open(path, 'r', encoding='utf-8-sig') as f:
-
-            bn = os.path.basename(path)
-
-            dialect = findDialect(f)
-
-            reader = pycsv.DictReader(f, dialect=dialect)
-            fieldnames = reader.fieldnames
-
-            if fieldnames[0].startswith('\ufeff'):
-                s = ""
-            fieldnames = [n for n in fieldnames if len(n) > 0]
-
-            xUnit = yUnit = None
-            xValueNames = []
-            for fieldName in reversed(fieldnames):
-                if re.search(r'^\d+(\.\d+)?$', fieldName):
-                    xValueNames.insert(0, fieldName)
-                else:
-                    break
-            s = ""
-            xValues = [float(n) for n in xValueNames]
-            if len(xValues) == 0:
-                s = ""
-            if xValues[0] > 200:
-                xUnit = 'nm'
-
-            fieldnames = [n for n in fieldnames if n not in xValueNames]
-
-            speclib = None
-            speclib.startEditing()
-            speclib.addMissingFields(createStandardFields())
-
-            profiles = []
-            LUT_FIELD_TYPES = dict()
-            missing_field_definitions = [n for n in fieldnames if n not in speclib.fields().names()]
-            for i, row in enumerate(reader):
-                if len(missing_field_definitions) > 0:
-                    for fieldName in missing_field_definitions[:]:
-                        fieldValue = row[fieldName]
-                        if fieldValue == 'NA':
-                            continue
-
-                        fieldType = findTypeFromString(fieldValue)
-                        LUT_FIELD_TYPES[fieldName] = fieldType
-
-                        qgsField = createQgsField(fieldName, fieldType(fieldValue))
-                        speclib.addAttribute(qgsField)
-                        assert speclib.commitChanges()
-                        speclib.startEditing()
-                        missing_field_definitions.remove(fieldName)
-
-                profile = QgsFeature(fields=speclib.fields())
-                yValues = [float(row[n]) for n in xValueNames]
-                profile.setValues(x=xValues, y=yValues, xUnit=xUnit, yUnit=yUnit)
-
-                for fieldName, fieldType in LUT_FIELD_TYPES.items():
-                    fieldValue = fieldType(row[fieldName])
-                    profile.setAttribute(fieldName, fieldValue)
-
-                if FIELD_NAME not in fieldnames:
-                    profile.setAttribute(FIELD_NAME, '{}:{}'.format(bn, i + 1))
-                else:
-                    profile.setAttribute(FIELD_NAME, row[FIELD_NAME])
-                profiles.append(profile)
-
-            speclib.addProfiles(profiles)
-
-            s = ""
-        s = ""
-        assert speclib.commitChanges()
-        return speclib
-
-    @classmethod
-    def write(cls, speclib, path: str, feedback: QProgressDialog = None, delimiter: str = ';'):
-        """
-        Writes the SpectralLibrary to path and returns a list of written files
-        that can be used to open the spectral library with readFrom
-        """
-        assert is_spectral_library(speclib)
-        basePath, ext = os.path.splitext(path)
-        s = ""
-
-        writtenFiles = []
-        fieldNames = [n for n in speclib.fields().names() if n not in [FIELD_VALUES]]
-        groups = speclib.groupBySpectralProperties()
-        for i, setting in enumerate(groups.keys()):
-            # in-memory text buffer
-            stream = io.StringIO()
-            xValues, xUnit, yUnit = setting.x(), setting.xUnit(), setting.yUnit()
-            profiles = groups[setting]
-            if i == 0:
-                path = basePath + ext
-            else:
-                path = basePath + '{}{}'.format(i + 1, ext)
-
-            headerNames = fieldNames + [str(v) for v in xValues]
-            W = pycsv.DictWriter(stream, fieldnames=headerNames, dialect=EcoSISCSVDialect())
-            W.writeheader()
-
-            for profile in profiles:
-                assert isinstance(profile, QgsFeature)
-
-                rowDict = dict()
-                for n in fieldNames:
-                    v = profile.attribute(n)
-                    if v in [None, QVariant(None), '']:
-                        v = 'NA'
-                    rowDict[n] = v
-
-                yValues = profile.yValues()
-                for i, xValue in enumerate(xValues):
-                    rowDict[str(xValue)] = yValues[i]
-                W.writerow(rowDict)
-
-            stream.write('\n')
-            lines = stream.getvalue().replace('\r', '')
-
-            with open(path, 'w', encoding='utf-8') as f:
-                f.write(lines)
-                writtenFiles.append(path)
-
-        return writtenFiles
-
-    @classmethod
-    def addImportActions(cls, spectralLibrary, menu: QMenu) -> list:
-
-        def read(speclib):
-
-            path, filter = QFileDialog.getOpenFileName(caption='EcoSIS CSV File',
-                                                       filter='All type (*.*);;Text files (*.txt);; CSV (*.csv)')
-            if os.path.isfile(path):
-
-                sl = EcoSISSpectralLibraryIO.readFrom(path)
-                if is_spectral_library(sl):
-                    speclib.startEditing()
-                    speclib.beginEditCommand('Add EcoSIS profiles from {}'.format(path))
-                    speclib.addSpeclib(sl, True)
-                    speclib.endEditCommand()
-                    speclib.commitChanges()
-
-        m = menu.addAction('EcoSIS')
-        m.setToolTip('Adds profiles from an EcoSIS csv text file.')
-        m.triggered.connect(lambda *args, sl=spectralLibrary: read(sl))
-
-    @classmethod
-    def addExportActions(cls, spectralLibrary, menu: QMenu) -> list:
-
-        def write(speclib):
-            path, filter = QFileDialog.getSaveFileName(caption='Write to EcoSIS CSV File',
-                                                       filter='EcoSIS CSV (*.csv);;Text files (*.txt)')
-            if isinstance(path, str) and len(path) > 0:
-                sl = EcoSISSpectralLibraryIO.write(spectralLibrary, path)
-
-        m = menu.addAction('EcoSIS CSV')
-        m.triggered.connect(lambda *args, sl=spectralLibrary: write(sl))
+        lyr = QgsVectorLayer(uri, path.name, 'delimitedtext')
+        assert lyr.isValid()
+        return lyr

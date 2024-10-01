@@ -16,18 +16,18 @@ import unittest
 
 from osgeo import gdal
 
-from qgis.PyQt.QtWidgets import QWidget, QHBoxLayout, QTreeView
-from qgis.core import QgsMapLayer, QgsPointXY, QgsRasterLayer, QgsVectorLayer, QgsFeature, QgsMapLayerStore, \
-    QgsProject, QgsCoordinateReferenceSystem
+from qgis.PyQt.QtWidgets import QHBoxLayout, QTreeView, QWidget
+from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsMapLayer, QgsMapLayerStore, QgsPointXY, QgsProject, \
+    QgsRasterLayer, QgsVectorLayer
 from qgis.gui import QgsMapCanvas
 from qps.cursorlocationvalue import CursorLocationInfoDock
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import SpatialPoint
 
 start_app()
 
 
-class CursorLocationTest(TestCaseBase):
+class CursorLocationTest(TestCase):
 
     def test_maptool(self):
 

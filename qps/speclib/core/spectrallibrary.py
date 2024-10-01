@@ -37,22 +37,23 @@ from typing import Dict, List, Optional, Union
 
 from osgeo import gdal, ogr
 
-from qgis.PyQt.QtCore import QMimeData, QUrl, QVariant, Qt
-from qgis.PyQt.QtWidgets import QWidget
-from qgis.core import Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
+from qgis.core import edit, Qgis, QgsAction, QgsActionManager, QgsApplication, QgsAttributeTableConfig, \
     QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, QgsEditorWidgetSetup, QgsExpression, \
     QgsExpressionContext, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureIterator, \
     QgsFeatureRequest, QgsField, QgsFields, QgsGeometry, QgsMapLayerStore, QgsPointXY, QgsProcessingFeedback, \
     QgsProject, QgsProperty, QgsRasterLayer, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorLayer, \
-    QgsWkbTypes, edit
+    QgsWkbTypes
+from qgis.PyQt.QtCore import QDateTime, QMimeData, Qt, QUrl, QVariant
+from qgis.PyQt.QtWidgets import QWidget
 from . import can_store_spectral_profiles, create_profile_field, is_profile_field, is_spectral_library, \
     profile_field_list, profile_field_names
-from .spectralprofile import ProfileEncoding, SpectralSetting, decodeProfileValueDict, encodeProfileValueDict, \
-    groupBySpectralProperties, prepareProfileValueDict
+from .spectralprofile import decodeProfileValueDict, encodeProfileValueDict, groupBySpectralProperties, \
+    prepareProfileValueDict, ProfileEncoding, SpectralSetting
 from .. import EDITOR_WIDGET_REGISTRY_KEY, FIELD_NAME, FIELD_VALUES, SPECLIB_EPSG_CODE
 from ...plotstyling.plotstyling import PlotStyle
-from ...qgisenums import QGIS_WKBTYPE, QMETATYPE_QBYTEARRAY, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
-from ...utils import SpatialPoint, copyEditorWidgetSetup, findMapLayer, qgsField
+from ...qgisenums import QGIS_WKBTYPE, QMETATYPE_QBYTEARRAY, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
+    QMETATYPE_QVARIANTMAP
+from ...utils import copyEditorWidgetSetup, findMapLayer, qgsField, SpatialPoint
 
 # get to now how we can import this module
 MODULE_IMPORT_PATH = None
@@ -404,11 +405,24 @@ class SpectralLibraryUtils:
         :param attributes: value dictionary.
         :return:
         """
-        pfields = profile_field_names(feature)
-        for k, v in attributes.items():
-            if k in pfields and isinstance(v, dict):
-                v = encodeProfileValueDict(v, feature.fields()[k])
-            feature.setAttribute(k, v)
+        for f in feature.fields():
+            f: QgsField
+            n = f.name()
+            if n in attributes:
+                v = attributes[n]
+                if is_profile_field(f) and isinstance(v, dict):
+                    v = encodeProfileValueDict(v, f)
+                elif f.type() == QMETATYPE_QDATETIME:
+                    if isinstance(v, datetime.datetime):
+                        v = QDateTime.fromString(v.isoformat(), Qt.ISODate)
+                    elif isinstance(v, datetime.date):
+                        v = QDateTime.fromString(v.isoformat(), Qt.ISODate)
+                elif f.type() == QMETATYPE_QDATE:
+                    if isinstance(v, datetime.datetime):
+                        v = QDateTime.fromString(v.isoformat(), Qt.ISODate)
+                    elif isinstance(v, datetime.date):
+                        v = QDateTime.fromString(v.isoformat(), Qt.ISODate)
+                feature.setAttribute(n, v)
 
     @staticmethod
     def readFromMimeData(mimeData: QMimeData) -> Optional[QgsVectorLayer]:

@@ -2,17 +2,17 @@ import unittest
 
 import numpy as np
 from osgeo import gdal
-from qgis.core import edit, QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
-    QgsExpressionContextScope, QgsFeature, QgsField, QgsGraduatedSymbolRenderer, QgsMarkerSymbol, \
-    QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsPropertyDefinition, \
-    QgsReadWriteContext, QgsRenderContext, QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, \
-    QgsSingleSymbolRenderer, QgsVectorLayer
-from qgis.gui import QgsDualView, QgsMapCanvas
+
 from qgis.PyQt.QtCore import QEvent, QModelIndex, QPointF, Qt
 from qgis.PyQt.QtGui import QColor, QMouseEvent
 from qgis.PyQt.QtWidgets import QHBoxLayout, QTreeView, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-
+from qgis.core import QgsCategorizedSymbolRenderer, QgsClassificationRange, QgsEditorWidgetSetup, \
+    QgsExpressionContextScope, QgsFeature, QgsField, QgsGraduatedSymbolRenderer, QgsMarkerSymbol, \
+    QgsMultiBandColorRenderer, QgsNullSymbolRenderer, QgsProject, QgsProperty, QgsPropertyDefinition, \
+    QgsReadWriteContext, QgsRenderContext, QgsRendererCategory, QgsRendererRange, QgsSingleBandGrayRenderer, \
+    QgsSingleSymbolRenderer, QgsVectorLayer, edit
+from qgis.gui import QgsDualView, QgsMapCanvas
 from qps import registerSpectralLibraryPlotFactories, unregisterSpectralLibraryPlotFactories
 from qps.pyqtgraph.pyqtgraph import InfiniteLine
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
@@ -25,14 +25,14 @@ from qps.speclib.gui.spectrallibraryplotmodelitems import PlotStyleItem, Profile
 from qps.speclib.gui.spectrallibraryplotwidget import SpectralLibraryPlotWidget, SpectralProfilePlotModel
 from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
 from qps.speclib.gui.spectralprofileeditor import spectralProfileEditorWidgetFactory
-from qps.testing import start_app, TestCaseBase, TestObjects
+from qps.testing import TestCase, TestObjects, start_app
 from qps.unitmodel import BAND_INDEX, BAND_NUMBER
 from qps.utils import nextColor, nodeXmlString, parseWavelength, writeAsVectorFormat
 
 start_app()
 
 
-class TestSpeclibPlotting(TestCaseBase):
+class TestSpeclibPlotting(TestCase):
 
     @staticmethod
     def gdal_error_handler(err_class, err_num, err_msg):

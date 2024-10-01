@@ -2,22 +2,19 @@
 import pathlib
 import unittest
 
-from qgis.core import QgsFeature
-from qgis.core import QgsProject
-from qgis.core import QgsWkbTypes
+from qgis.core import QgsFeature, QgsProject, QgsWkbTypes
 from qps import registerExpressionFunctions
 from qps.speclib.core import is_profile_field
-from qps.speclib.core.spectrallibraryio import SpectralLibraryImportDialog, \
-    SpectralLibraryIO
+from qps.speclib.core.spectrallibraryio import SpectralLibraryIO, SpectralLibraryImportDialog
 from qps.speclib.core.spectralprofile import decodeProfileValueDict
 from qps.speclib.io.rastersources import RasterLayerSpectralLibraryIO, RasterLayerSpectralLibraryImportWidget
-from qps.testing import TestObjects, TestCaseBase, start_app
+from qps.testing import TestCase, TestObjects, start_app
 from qps.utils import rasterArray
 
 start_app()
 
 
-class TestSpeclibIO_Raster(TestCaseBase):
+class TestSpeclibIO_Raster(TestCase):
     @classmethod
     def setUpClass(cls, *args, **kwds) -> None:
         super(TestSpeclibIO_Raster, cls).setUpClass(*args, **kwds)
@@ -73,7 +70,7 @@ class TestSpeclibIO_Raster(TestCaseBase):
     def test_write_raster(self):
         self.registerIO()
 
-    @unittest.skipIf(TestCaseBase.runsInCI(), 'Test skipped because it opens a blocking dialog')
+    @unittest.skipIf(TestCase.runsInCI(), 'Test skipped because it opens a blocking dialog')
     def test_dialog(self):
         self.registerIO()
         layers = [TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon),
