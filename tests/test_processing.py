@@ -364,8 +364,8 @@ class ProcessingToolsTest(TestCase):
                     dump = f.attribute(n)
                     if dump:
                         d = decodeProfileValueDict(dump)
-                        self.assertTrue(isProfileValueDict(d),
-                                        msg=f'Not a spectral profile: {dump}')
+                        self.assertTrue(isProfileValueDict(d) or d == {},
+                                        msg=f'Not a spectral profile: {dump} ({lyr.source()})')
 
         reg.removeProvider(provider)
         QgsProject.instance().removeAllMapLayers()

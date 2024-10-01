@@ -3,13 +3,12 @@ import unittest
 
 from qgis.PyQt.QtCore import QDate, QDateTime, QTime
 from qgis.core import edit, QgsField, QgsFields, QgsProject, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
-
-from qps.fieldvalueconverter import collect_native_types, GenericFieldValueConverter, GenericPropertyTransformer, \
-    create_vsimemfile
+from qps.fieldvalueconverter import collect_native_types, create_vsimemfile, GenericFieldValueConverter, \
+    GenericPropertyTransformer
 from qps.qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QTIME, \
     QMETATYPE_QVARIANTMAP
-from qps.testing import TestCase, TestObjects, start_app
+from qps.testing import start_app, TestCase, TestObjects
 
 start_app()
 s = ""
@@ -107,11 +106,12 @@ class GenericFieldValueConverterTests(TestCase):
             self.assertTrue(lyr.updateFeature(f1))
 
         DIR_TEST = self.createTestOutputDirectory()
-
-        for ext in ['.gpkg',
-                    '.shp',
-                    '.geojson',
-                    '.csv']:
+        extensions = ['.gpkg',
+                      '.shp',  # y
+                      '.geojson',
+                      '.csv']
+        # extensions = ['.gpkg']
+        for ext in extensions:
 
             path = DIR_TEST / f'example{ext}'
 
@@ -134,14 +134,16 @@ class GenericFieldValueConverterTests(TestCase):
             converter = GenericFieldValueConverter(lyr.fields(), dstFields)
             options.fieldValueConverter = converter
 
-            success, msg, lyrpath, lyrname = QgsVectorFileWriter.writeAsVectorFormatV3(lyr,
-                                                                                       path.as_posix(),
-                                                                                       transformContext=QgsProject.instance().transformContext(),
-                                                                                       options=options,
-                                                                                       )
-
-            self.assertEqual(success, QgsVectorFileWriter.WriterError.NoError, msg=f'{path.name}: {msg}')
-            s = ""
+            writer: QgsVectorFileWriter = QgsVectorFileWriter.create(path.as_posix(),
+                                                                     dstFields, lyr.wkbType(), lyr.crs(),
+                                                                     QgsProject.instance().transformContext(),
+                                                                     options,
+                                                                     )
+            assert not writer.hasError(), writer.errorMessage()
+            assert isinstance(writer, QgsVectorFileWriter)
+            for f in lyr.getFeatures():
+                assert writer.addFeature(f), f'{writer.errorMessage()}'
+            assert writer.flushBuffer()
 
 
 if __name__ == '__main__':

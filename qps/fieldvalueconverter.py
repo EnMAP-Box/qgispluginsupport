@@ -6,13 +6,13 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 import numpy as np
-from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
-from qgis.core import QgsCoordinateReferenceSystem, Qgis, QgsProject, QgsFeature
-from qgis.core import QgsEditorWidgetSetup, QgsExpressionContext, QgsField, QgsFields, QgsProperty, \
-    QgsPropertyTransformer, QgsRemappingSinkDefinition, QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
 
-from .qgisenums import QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
-    QMETATYPE_QVARIANTMAP, QMETATYPE_INT
+from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
+from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, \
+    QgsField, QgsFields, QgsProject, QgsProperty, QgsPropertyTransformer, QgsRemappingSinkDefinition, \
+    QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
+from .qgisenums import QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
+    QMETATYPE_QVARIANTMAP
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
 from .speclib.core import is_profile_field
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, ProfileEncoding
@@ -77,7 +77,8 @@ def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
             path, drvName = create_vsimemfile(extension, path=tmpPath)
             vl = QgsVectorLayer(path)
             assert vl.isValid(), f'Unable to create valid {path}'
-            __NATIVE_TYPES[drvName] = vl.dataProvider().nativeTypes()
+            dp: QgsVectorDataProvider = vl.dataProvider()
+            __NATIVE_TYPES[drvName] = dp.nativeTypes()
 
             del vl
 
@@ -232,35 +233,42 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         self.mFieldConverters = dict()
 
         for i, (fSrc, fDst) in enumerate(zip(self.mSrcFields, self.mDstFields)):
-
             fSrc: QgsField
             fDst: QgsField
 
             idxSrc = self.mSrcFields.lookupField(fSrc.name())
             idxDst = self.mDstFields.lookupField(fDst.name())
 
-            if is_profile_field(fSrc):
-                if fDst.type() in [QMETATYPE_QVARIANTMAP, QMETATYPE_QSTRING]:
-                    func = lambda value, f=fDst: self.convertProfileField(value, f)
-                s = ""
-            elif fDst.type() == QMETATYPE_QSTRING:
-                func = lambda value: GenericPropertyTransformer.toString(value)
-            elif fDst.type() == QMETATYPE_QDATETIME:
-                func = lambda value: GenericPropertyTransformer.toDateTime(value)
-            elif fDst.type() == QMETATYPE_QDATE:
-                func = lambda value: GenericPropertyTransformer.toDate(value)
-            elif fDst.type() == QMETATYPE_QTIME:
-                func = lambda value: GenericPropertyTransformer.toTime(value)
-            elif fDst.type() == QMETATYPE_QVARIANTMAP:
-                if fDst.typeName() == 'JSON':
-                    func = lambda value: GenericPropertyTransformer.toJson(value)
-                else:
-                    func = lambda value: GenericPropertyTransformer.toMap(value)
-            else:
-                # default: don't convert
-                func = lambda value: value
+            func = self.conversionFunction(fDst, fSrc)
 
             self.mFieldConverters[i] = func
+
+    def conversionFunction(self, fDst, fSrc):
+        if is_profile_field(fSrc):
+            if fDst.type() in [QMETATYPE_QVARIANTMAP, QMETATYPE_QSTRING]:
+                func = lambda value, f=fDst: self.convertProfileField(value, f)
+            s = ""
+        elif fDst.type() == QMETATYPE_QSTRING:
+            if fDst.typeName() == 'JSON':
+                func = lambda value: GenericPropertyTransformer.toJson(value)
+            else:
+                func = lambda value: GenericPropertyTransformer.toString(value)
+        elif fDst.type() == QMETATYPE_QDATETIME:
+            func = lambda value: GenericPropertyTransformer.toDateTime(value)
+        elif fDst.type() == QMETATYPE_QDATE:
+            func = lambda value: GenericPropertyTransformer.toDate(value)
+        elif fDst.type() == QMETATYPE_QTIME:
+            func = lambda value: GenericPropertyTransformer.toTime(value)
+        elif fDst.type() == QMETATYPE_QVARIANTMAP:
+            func = lambda value: GenericPropertyTransformer.toMap(value)
+            # if fDst.typeName() == 'JSON':
+            #    func = lambda value: GenericPropertyTransformer.toJson(value)
+            # else:
+            #    func = lambda value: GenericPropertyTransformer.toMap(value)
+        else:
+            # default: don't convert
+            func = lambda value: value
+        return func
 
     @staticmethod
     def compatibleTargetFields(srcFields: QgsFields, targetDriver: str) -> QgsFields:
@@ -272,6 +280,7 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         if targetDriver not in NATIVE_TYPES:
             warnings.warn(f'Unknown native types for driver: {targetDriver}')
             return QgsFields(srcFields)
+        md = QgsVectorFileWriter.MetaData()
 
         native_types = NATIVE_TYPES[targetDriver]
         tsn_list = [(nt.mType, nt.mSubType, nt.mTypeName) for nt in native_types]
@@ -299,6 +308,15 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
                 supports_map = n
 
         dstFields = QgsFields()
+
+        def fieldFromNativeType(nt: QgsVectorDataProvider.NativeType,
+                                name,
+                                comment: str = ''):
+
+            return QgsField(type=nt.mType, typeName=nt.mTypeName, subType=nt.mSubType,
+                            len=nt.mMaxLen, prec=nt.mMaxPrec,
+                            name=name, comment=comment)
+
         for srcF in srcFields:
             dstF = None
             tsn = (srcF.type(), srcF.subType(), srcF.typeName())
@@ -307,48 +325,23 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
 
                 if is_profile_field(srcF):
                     if supports_json:
-                        dstF = QgsField(name=srcF.name(),
-                                        type=supports_json.mType,
-                                        typeName=supports_json.mTypeName,
-                                        subType=supports_json.mSubType,
-                                        comment=srcF.comment())
+                        dstF = fieldFromNativeType(supports_json, srcF.name(), comment=srcF.comment())
 
                     elif supports_map:
-                        dstF = QgsField(name=srcF.name(),
-                                        type=supports_map.mType,
-                                        typeName=supports_map.mTypeName,
-                                        subType=supports_map.mSubType,
-                                        comment=srcF.comment())
-
+                        dstF = fieldFromNativeType(supports_map, srcF.name(), comment=srcF.comment())
                     else:
-                        dstF = QgsField(name=srcF.name(),
-                                        type=supports_string.mType,
-                                        typeName=supports_string.mTypeName,
-                                        subType=supports_string.mSubType,
-                                        comment=srcF.comment())
+                        dstF = fieldFromNativeType(supports_string, srcF.name(), comment=srcF.comment())
                     dstF.setEditorWidgetSetup(QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {}))
 
                 elif srcF.type() == QMETATYPE_QVARIANTMAP:
                     if supports_json:
-                        dstF = QgsField(name=srcF.name(),
-                                        type=supports_json.mType,
-                                        subType=supports_json.mSubType,
-                                        typeName=supports_json.mTypeName,
-                                        comment=srcF.comment())
+                        dstF = fieldFromNativeType(supports_json, srcF.name(), comment=srcF.comment())
                     elif supports_map:
-                        dstF = QgsField(name=srcF.name(),
-                                        type=supports_map.mType,
-                                        typeName=supports_map.mTypeName,
-                                        subType=supports_map.mSubType,
-                                        comment=srcF.comment())
+                        dstF = fieldFromNativeType(supports_map, srcF.name(), comment=srcF.comment())
 
                 # the last resort: convert to longest string data type
                 if dstF is None:
-                    dstF = QgsField(name=srcF.name(),
-                                    type=supports_string.mType,
-                                    subType=supports_string.mSubType,
-                                    typeName=supports_string.mTypeName,
-                                    comment=srcF.comment())
+                    dstF = fieldFromNativeType(supports_string, srcF.name(), comment=srcF.comment())
             else:
                 dstF = QgsField(srcF)
             dstFields.append(dstF)
@@ -360,8 +353,6 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
         d = decodeProfileValueDict(value, numpy_arrays=True)
         d['y'] = d['y'].astype(np.float32)
         text = encodeProfileValueDict(d, field)
-        if field.typeName() == 'JSON':
-            return json.dumps(text)
         return text
 
     def clone(self) -> QgsVectorFileWriter.FieldValueConverter:
