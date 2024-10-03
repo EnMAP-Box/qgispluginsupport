@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Match, Optional, Union
 
 import numpy as np
-from qgis.core import QgsFeature, QgsField, QgsFields, QgsPointXY, QgsProcessingFeedback
+from qgis.core import QgsEditorWidgetSetup, QgsFeature, QgsField, QgsFields, QgsPointXY, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
 
 from ..core.spectrallibraryio import SpectralLibraryIO
@@ -53,10 +53,21 @@ class SVCSigFile(SpectralProfileFileReader):
         pictureField = QgsField(self.KEY_Picture, type=QMETATYPE_QSTRING)
 
         # setup attachment widget
-
-        # setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
-        # field.setEditorWidgetSetup(setup)
-
+        config = {'DocumentViewer': 1,
+                  'DocumentViewerHeight': 0,
+                  'DocumentViewerWidth': 0,
+                  'FileWidget': True,
+                  'FileWidgetButton': True,
+                  'FileWidgetFilter': '',
+                  'PropertyCollection': {'name': None,
+                                         'properties': {},
+                                         'type': 'collection'},
+                  'RelativeStorage': 0,
+                  'StorageAuthConfigId': None,
+                  'StorageMode': 0,
+                  'StorageType': None}
+        setup = QgsEditorWidgetSetup('ExternalResource', config)
+        pictureField.setEditorWidgetSetup(setup)
         fields.append(pictureField)
         return fields
 

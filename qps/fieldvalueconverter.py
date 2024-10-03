@@ -6,11 +6,11 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 import numpy as np
-
 from qgis.PyQt.QtCore import QDate, QDateTime, QLocale, Qt, QTime
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, \
     QgsField, QgsFields, QgsProject, QgsProperty, QgsPropertyTransformer, QgsRemappingSinkDefinition, \
     QgsVectorDataProvider, QgsVectorFileWriter, QgsVectorLayer
+
 from .qgisenums import QMETATYPE_INT, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QTIME, \
     QMETATYPE_QVARIANTMAP
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
@@ -344,6 +344,11 @@ class GenericFieldValueConverter(QgsVectorFileWriter.FieldValueConverter):
                     dstF = fieldFromNativeType(supports_string, srcF.name(), comment=srcF.comment())
             else:
                 dstF = QgsField(srcF)
+
+            if srcF.type() == dstF.type() and not (srcEVS := srcF.editorWidgetSetup()).isNull():
+                dstEVS = QgsEditorWidgetSetup(srcEVS.type(), srcEVS.config())
+                dstF.setEditorWidgetSetup(dstEVS)
+
             dstFields.append(dstF)
         return dstFields
 
