@@ -2,14 +2,15 @@ import datetime
 import os
 import re
 from pathlib import Path
-from typing import List, Match, Union
+from typing import List, Match, Optional, Union
 
 import numpy as np
-
-from qgis.core import QgsFeature, QgsPointXY, QgsProcessingFeedback
+from qgis.core import QgsEditorWidgetSetup, QgsFeature, QgsField, QgsFields, QgsPointXY, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
+
 from ..core.spectrallibraryio import SpectralLibraryIO
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
+from ...qgisenums import QMETATYPE_QSTRING
 
 # GPS Longitude  DDDmm.mmmmC
 # GPS Latitude  DDmm.mmmmC
@@ -33,15 +34,52 @@ def match_to_coordinate(matchLat: Match, matchLon: Match) -> QgsPointXY:
 
 
 class SVCSigFile(SpectralProfileFileReader):
+    KEY_Picture = 'picture'
 
     def __init__(self, path: Union[str, Path]):
         super().__init__(path)
 
         self.mRemoveOverlap: bool = True
-
+        self.mPicture: Optional[Path] = None
         self._readSIGFile(path)
 
+    def picturePath(self) -> Path:
+        return self.mPicture
+
+    def standardFields(self) -> QgsFields:
+
+        fields = super().standardFields()
+
+        pictureField = QgsField(self.KEY_Picture, type=QMETATYPE_QSTRING)
+
+        # setup attachment widget
+        config = {'DocumentViewer': 1,
+                  'DocumentViewerHeight': 0,
+                  'DocumentViewerWidth': 0,
+                  'FileWidget': True,
+                  'FileWidgetButton': True,
+                  'FileWidgetFilter': '',
+                  'PropertyCollection': {'name': None,
+                                         'properties': {},
+                                         'type': 'collection'},
+                  'RelativeStorage': 0,
+                  'StorageAuthConfigId': None,
+                  'StorageMode': 0,
+                  'StorageType': None}
+        setup = QgsEditorWidgetSetup('ExternalResource', config)
+        pictureField.setEditorWidgetSetup(setup)
+        fields.append(pictureField)
+        return fields
+
+    def asMap(self) -> dict:
+
+        data = super().asMap()
+        if isinstance(self.mPicture, Path):
+            data[self.KEY_Picture] = self.mPicture.as_posix()
+        return data
+
     def _readSIGFile(self, path):
+        path: Path = Path(path)
         with open(path) as f:
             lines = f.read()
             lines = re.sub('/[*]{3}.*[*]{3}/', '', lines)
@@ -86,7 +124,12 @@ class SVCSigFile(SpectralProfileFileReader):
                 t1, t2 = self.mMetadata['time'].split(',')
                 self.mReferenceTime = datetime.datetime.strptime(t1.strip(), '%d/%m/%Y %H:%M:%S%p')
                 self.mTargetTime = datetime.datetime.strptime(t2.strip(), '%d/%m/%Y %H:%M:%S%p')
-                s = ""
+
+            for ext in ['.jpg', '.png']:
+                path_img = path.parent / (path.name + ext)
+                if path_img.is_file():
+                    self.mPicture = path_img
+                    break
 
 
 RX_SIG_FILE = re.compile(r'\.sig$')
