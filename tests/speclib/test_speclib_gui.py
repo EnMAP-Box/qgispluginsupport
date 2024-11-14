@@ -234,6 +234,11 @@ class TestSpeclibWidgets(TestCase):
         slw = SpectralLibraryWidget()
         self.showGui(slw)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'GUI test only')
+    def test_SpectralLibraryWidget_Simple(self):
+        slw = SpectralLibraryWidget(speclib=TestObjects.createSpectralLibrary())
+        self.showGui(slw)
+
     def test_SpectralLibraryWidget(self):
 
         from qpstestdata import enmap, landcover, enmap_pixel
