@@ -6,10 +6,11 @@ from typing import List, Match, Optional, Union
 
 import numpy as np
 
+from qgis.core import QgsEditorWidgetSetup, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsPointXY, \
+    QgsProcessingFeedback, QgsVectorLayer
 from qgis.PyQt.QtCore import QDateTime, Qt
-from qgis.core import QgsEditorWidgetSetup, QgsFeature, QgsField, QgsFields, QgsPointXY, QgsProcessingFeedback
 from qgis.gui import QgsFileWidget
-from ..core.spectrallibraryio import SpectralLibraryIO
+from ..core.spectrallibraryio import SpectralLibraryImportWidget, SpectralLibraryIO
 from ..core.spectralprofile import prepareProfileValueDict, SpectralProfileFileReader
 from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING
 
@@ -197,6 +198,36 @@ class SVCSigFile(SpectralProfileFileReader):
 RX_SIG_FILE = re.compile(r'\.sig$')
 
 
+class SVCSpectralLibraryImportWidget(SpectralLibraryImportWidget):
+
+    def __init__(self, *args, **kwds):
+        super(SVCSpectralLibraryImportWidget, self).__init__(*args, **kwds)
+
+        self.mSource: QgsVectorLayer = None
+
+    def spectralLibraryIO(cls) -> 'SpectralLibraryIO':
+        return SpectralLibraryIO.spectralLibraryIOInstances(SVCSpectralLibraryIO)
+
+    def supportsMultipleFiles(self) -> bool:
+        return True
+
+    def filter(self) -> str:
+        return "Spectra Vista Coorporation SVC) File (*.sig);;Any file (*.*)"
+
+    def setSource(self, source: str):
+        if self.mSource != source:
+            self.mSource = source
+            self.sigSourceChanged.emit()
+
+    def sourceFields(self) -> QgsFields:
+        return QgsFields(SpectralProfileFileReader.standardFields())
+
+    def createExpressionContext(self) -> QgsExpressionContext:
+        context = QgsExpressionContext()
+
+        return context
+
+
 class SVCSpectralLibraryIO(SpectralLibraryIO):
 
     def __init__(self, *args, **kwargs):
@@ -204,7 +235,11 @@ class SVCSpectralLibraryIO(SpectralLibraryIO):
 
     @classmethod
     def formatName(self) -> str:
-        return 'SVC'
+        return 'SVC Spectrometer'
+
+    @classmethod
+    def createImportWidget(cls) -> SpectralLibraryImportWidget:
+        return SVCSpectralLibraryImportWidget()
 
     @classmethod
     def importProfiles(cls,
@@ -237,4 +272,4 @@ class SVCSpectralLibraryIO(SpectralLibraryIO):
     @classmethod
     def filter(self) -> str:
 
-        return "Spectra Vista Corporation (SVC) Signature File (*.sig);;Any file (*.*)"
+        return "SVC Signature File (*.sig);;Any file (*.*)"
