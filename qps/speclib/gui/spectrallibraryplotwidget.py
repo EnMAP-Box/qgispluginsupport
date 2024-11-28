@@ -1310,12 +1310,13 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                                    Qt.Checked: QStyle.State_On,
                                    Qt.PartiallyChecked: QStyle.State_NoChange}[p]
                         o.state = o.state | QStyle.State_Enabled | QStyleOptionButton.Flat | QStyleOptionButton.AutoDefaultButton
-                        # print(f'style: {style} "{style.objectName()}"  o.state {o.state} o.rect {o.rect}')
 
-                        # style.drawPrimitive(QStyle.PE_IndicatorCheckBox, o, painter, self.mTreeView)
-                        style.drawPrimitive(QStyle.PE_IndicatorCheckBox, o, painter)
+                        check_option = QStyleOptionButton()
+                        check_option.state = o.state  # Checkbox is enabled
 
-                        # myStyle.drawPrimitive(QStyle.PE_IndicatorCheckBox, o, painter)
+                        # Set the geometry of the checkbox within the item
+                        check_option.rect = option.rect
+                        QApplication.style().drawControl(QStyle.CE_CheckBox, check_option, painter)
 
                     elif isinstance(p, QPixmap):
                         o.rect = QRect(x0, y0, h * 2, h)

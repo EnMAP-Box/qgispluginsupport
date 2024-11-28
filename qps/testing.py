@@ -41,6 +41,8 @@ from unittest import mock
 
 import numpy as np
 from osgeo import gdal, gdal_array, ogr, osr
+from osgeo.gdal import UseExceptions
+
 from qgis.core import edit, Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsFeature, \
     QgsFeatureStore, QgsField, QgsFields, QgsGeometry, QgsLayerTree, QgsLayerTreeLayer, QgsLayerTreeModel, \
     QgsLayerTreeRegistryBridge, QgsMapLayer, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingFeedback, \
@@ -56,8 +58,6 @@ from qgis.PyQt.QtWidgets import QAction, QApplication, QDockWidget, QFrame, QHBo
 from qgis.gui import QgisInterface, QgsAbstractMapToolHandler, QgsBrowserGuiModel, QgsGui, QgsLayerTreeMapCanvasBridge, \
     QgsLayerTreeView, QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsMapTool, QgsMessageBar, QgsPluginManagerInterface
 from qgis.testing import QgisTestCase
-from osgeo.gdal import UseExceptions
-
 from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
 from .utils import findUpwardPath, px2geo, SpatialPoint
@@ -75,6 +75,9 @@ def start_app(cleanup: bool = True,
               init_iface: bool = True,
               resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
     app = qgis.testing.start_app(cleanup)
+
+    app.setStyle('Fusion')
+
     if 'delimitedtext' not in QgsProviderRegistry.instance().providerList():
         warnings.warn('QgsProviderRegistry misses "delimitedtext" provider!\n'
                       'Check your QGIS test environment'
