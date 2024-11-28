@@ -54,8 +54,8 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
 from osgeo.osr import SpatialReference
 
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, QUrl, QVariant, \
-    Qt
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
+    QVariant
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
     QMenu, QToolButton, QWidget
@@ -75,7 +75,7 @@ from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE
     QMETATYPE_QVARIANTLIST, \
     QMETATYPE_UINT
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from .unitmodel import UnitLookup, datetime64
+from .unitmodel import datetime64, UnitLookup
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -1456,6 +1456,8 @@ def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, 
         setup = fSrc.editorWidgetSetup()
         if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(vectorLayer, idx):
             vectorLayer.setEditorWidgetSetup(idx, setup)
+        else:
+            s = ""
     vectorLayer.updatedFields.emit()
 
 

@@ -659,7 +659,8 @@ class SpectralProfileFileReader(object):
             fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMETATYPE_QDATETIME))
             fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMETATYPE_QSTRING))
             fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMETATYPE_QSTRING))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMETATYPE_QVARIANTMAP))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMETATYPE_QVARIANTMAP,
+                                   typeName='map', subType=QMETATYPE_QSTRING))
             SpectralProfileFileReader._STANDARD_FIELDS = fields
         return SpectralProfileFileReader._STANDARD_FIELDS
 
