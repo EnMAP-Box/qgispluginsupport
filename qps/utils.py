@@ -52,7 +52,6 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
-
 from qgis.PyQt import uic
 from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
     QVariant
@@ -68,6 +67,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QSTRINGLIST, \
@@ -276,7 +276,7 @@ def mapLayerStores() -> List[Union[QgsMapLayerStore, QgsProject]]:
     return _MAP_LAYER_STORES[:] + [QgsProject.instance()]
 
 
-def findUpwardPath(basepath, name, is_directory: bool = True) -> Path:
+def findUpwardPath(basepath, name, is_directory: bool = True) -> Optional[Path]:
     """
     Searches for a file or directory in an upward path of a base path.
     E.g. DIR_REPO = findUpwardPath(__file__, '.git').parent returns the repository directory
@@ -1188,14 +1188,14 @@ def loadUi(uifile: Union[str, Path],
             del toRemove
 
         # we need the absolute position of qps
-        # eg. within my/package/externals/qps
+        # e.g. within my/package/externals/qps
         # of as top-level qps
         try:
             from .. import qps
         except ImportError:
-            import qps
+            qps = __import__('qps')
         except ValueError:
-            import qps
+            qps = __import__('qps')
 
         elem = doc.elementsByTagName('customwidget')
         for child in [elem.item(i) for i in range(elem.count())]:
