@@ -2,9 +2,10 @@ import pathlib
 import site
 from typing import List
 
-from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtWidgets import QAction, QWidget
-from qgis._gui import QgisInterface
+from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtWidgets import QAction, QWidget
+from qgis.core import QgsProject, QgsWkbTypes
+from qgis.gui import QgisInterface
 
 
 # the init to be used in the test plugin
@@ -60,8 +61,21 @@ class QGISPluginsSupportPlugin(object):
         pass
 
     def run(self):
+        self.loadTestData()
         for w in self.mWidgets:
             w.show()
+
+    def loadTestData(self):
+
+        from qps.testing import TestObjects
+
+        rl = TestObjects.createRasterLayer(nb=25)
+        rl.setName('QPS Raster')
+        vl1 = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Point)
+        vl1.setName('QPS Point')
+        vl2 = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon)
+        vl2.setName('QPS Polygon')
+        QgsProject.instance().addMapLayers([vl1, vl2, rl])
 
     def unload(self):
         for w in self.mWidgets:

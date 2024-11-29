@@ -26,19 +26,17 @@ import os
 import pathlib
 import re
 import shutil
-import site
 import textwrap
 from pathlib import Path
 from typing import Iterator, Optional, Union
 
 import markdown
-
-from qps.make.deploy import QGISMetadataFileWriter, userProfileManager
-from qps.utils import zipdir
 from qgis.core import QgsUserProfile, QgsUserProfileManager
 
-site.addsitedir(pathlib.Path(__file__).parents[2])
 from qps import DIR_QPS
+# site.addsitedir(pathlib.Path(__file__).parents[2])
+from qps.make.deploy import QGISMetadataFileWriter, userProfileManager
+from qps.utils import zipdir
 
 DIR_TEST_PLUGIN = Path(__file__).parent
 DIR_REPO = DIR_QPS.parent
