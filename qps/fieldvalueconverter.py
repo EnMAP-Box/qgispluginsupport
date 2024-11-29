@@ -75,7 +75,7 @@ def collect_native_types() -> Dict[str, List[QgsVectorDataProvider.NativeType]]:
         for i, extension in enumerate(['.shp', '.csv', '.geojson', '.gpkg', '.kml', '.sqlite', ]):
             tmpDir = Path(__file__).parent
             # tmpPath = tmpDir / f'example.{i + 1}{extension}'
-            tmpPath = Path(r'\vsimem') / f'example.{sid}.{i + 1}{extension}'
+            tmpPath = Path(r'/vsimem') / f'example.{sid}.{i + 1}{extension}'
             path, drvName = create_vsimemfile(extension, path=tmpPath)
             vl = QgsVectorLayer(path)
             assert vl.isValid(), f'Unable to create valid {path}'
