@@ -1,27 +1,24 @@
 import json
+import numpy as np
 import re
 import warnings
 from copy import copy
-from typing import List, Tuple, Optional, Any
-
-import numpy as np
-from qgis.PyQt.QtCore import QAbstractTableModel, pyqtSignal, QModelIndex, Qt, QVariant, QJsonDocument, \
-    QSortFilterProxyModel, NULL
+from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractTableModel, QJsonDocument, QModelIndex, QSortFilterProxyModel, \
+    Qt, QVariant
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QHeaderView, QGroupBox, QWidget, QLabel, QHBoxLayout, QVBoxLayout, \
-    QToolButton, QSpacerItem, QSizePolicy, QTableView, \
-    QStackedWidget, \
-    QFrame, QComboBox, QLineEdit
-from qgis.core import QgsFieldFormatterRegistry
-from qgis.core import Qgis, QgsVectorLayer, QgsField, QgsFieldFormatter, QgsApplication, QgsFeature
-from qgis.gui import QgsEditorWidgetWrapper, QgsEditorConfigWidget, QgsGui, QgsEditorWidgetFactory, QgsCodeEditorJson, \
+from qgis.PyQt.QtWidgets import QComboBox, QFrame, QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QSizePolicy, \
+    QSpacerItem, QStackedWidget, QTableView, QToolButton, QVBoxLayout, QWidget
+from qgis.core import Qgis, QgsApplication, QgsFeature, QgsField, QgsFieldFormatter, QgsFieldFormatterRegistry, \
+    QgsVectorLayer
+from qgis.gui import QgsCodeEditorJson, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
     QgsMessageBar
+from typing import Any, List, Optional, Tuple
 
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import can_store_spectral_profiles
-from ..core.spectralprofile import encodeProfileValueDict, decodeProfileValueDict, \
-    prepareProfileValueDict, ProfileEncoding, validateProfileValueDict
+from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
+    ProfileEncoding, validateProfileValueDict
 from ...utils import SignalBlocker
 
 SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE = 'Profile'

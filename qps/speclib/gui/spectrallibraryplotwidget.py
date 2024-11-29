@@ -1,21 +1,21 @@
 import datetime
 import math
-import re
-from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
-
 import numpy as np
-from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureRenderer, \
-    QgsFeatureRequest, QgsField, QgsMapLayerProxyModel, QgsMarkerSymbol, QgsProject, QgsProperty, QgsRasterLayer, \
-    QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
-    QgsVectorLayerCache
-from qgis.gui import QgsDualView, QgsFilterLineEdit
+import re
 from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel, QMimeData, QModelIndex, \
     QPoint, QRect, QSize, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
     QPainter, QPalette, QPen, QPixmap, QStandardItem, QStandardItemModel
 from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
-    QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QTableView, QTreeView, QWidget
+    QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionButton, QStyleOptionViewItem, QTableView, QTreeView, \
+    QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
+from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureRenderer, \
+    QgsFeatureRequest, QgsField, QgsMapLayerProxyModel, QgsMarkerSymbol, QgsProject, QgsProperty, QgsRasterLayer, \
+    QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
+    QgsVectorLayerCache
+from qgis.gui import QgsDualView, QgsFilterLineEdit
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, PlotUpdateBlocker, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget
@@ -1249,7 +1249,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         total_h = self.mTreeView.rowHeight(index)
         total_w = self.mTreeView.columnWidth(index.column())
         style: QStyle = option.styleObject.style()
-        margin = 3  # px
+        # print(style)
+        margin = 2  # px
         if isinstance(item, PropertyItemBase):
             if item.hasPixmap():
                 super().paint(painter, option, index)
@@ -1267,6 +1268,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
 
                 h = option.rect.height()
                 plot_style: PlotStyle = item.mPStyle.plotStyle()
+
                 # add pixmap
                 pm = plot_style.createPixmap(size=QSize(h, h), hline=True, bc=bc)
                 to_paint.append(pm)
@@ -1274,8 +1276,10 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     to_paint.append(QIcon(r':/images/themes/default/mIconWarning.svg'))
                 to_paint.append(item.data(Qt.DisplayRole))
 
-                x0 = option.rect.x() + 1
+                x0 = option.rect.x()  # + 1
                 y0 = option.rect.y()
+                # print(to_paint)
+
                 for p in to_paint:
                     o: QStyleOptionViewItem = QStyleOptionViewItem(option)
                     self.initStyleOption(o, index)
@@ -1283,17 +1287,25 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     o.palette = QPalette(option.palette)
 
                     if isinstance(p, Qt.CheckState):
-                        # size = style.sizeFromContents(QStyle.PE_IndicatorCheckBox, o, QSize(), None)
+                        # size = style.sizeFromContents(QStyle.CE_CheckBox, o, QSize(), None)
+                        o = QStyleOptionButton()
+
                         o.rect = QRect(x0, y0, h, h)
+                        # print(o.rect)
                         o.state = {Qt.Unchecked: QStyle.State_Off,
                                    Qt.Checked: QStyle.State_On,
                                    Qt.PartiallyChecked: QStyle.State_NoChange}[p]
-                        o.state = o.state | QStyle.State_Enabled
+                        o.state = o.state | QStyle.State_Enabled | QStyleOptionButton.Flat | QStyleOptionButton.AutoDefaultButton
 
-                        style.drawPrimitive(QStyle.PE_IndicatorCheckBox, o, painter, self.mTreeView)
+                        check_option = QStyleOptionButton()
+                        check_option.state = o.state  # Checkbox is enabled
+
+                        # Set the geometry of the checkbox within the item
+                        check_option.rect = option.rect
+                        QApplication.style().drawControl(QStyle.CE_CheckBox, check_option, painter)
 
                     elif isinstance(p, QPixmap):
-                        o.rect = QRect(x0, y0, h, h)
+                        o.rect = QRect(x0, y0, h * 2, h)
                         painter.drawPixmap(o.rect, p)
 
                     elif isinstance(p, QIcon):
@@ -1303,10 +1315,14 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                         font_metrics = QFontMetrics(self.mTreeView.font())
                         w = font_metrics.horizontalAdvance(p)
                         o.rect = QRect(x0 + margin, y0, x0 + margin + w, h)
-                        palette = style.standardPalette()
-                        enabled = True
-                        textRole = QPalette.Foreground
-                        style.drawItemText(painter, o.rect, Qt.AlignLeft, palette, enabled, p, textRole=textRole)
+                        # palette =
+                        # palette = style.standardPalette()
+
+                        enabled = item.checkState() == Qt.Checked
+                        if not enabled:
+                            o.palette.setCurrentColorGroup(QPalette.Disabled)
+                        style.drawItemText(painter, o.rect, Qt.AlignLeft | Qt.AlignVCenter, o.palette, enabled, p,
+                                           textRole=QPalette.Foreground)
 
                     else:
                         raise NotImplementedError(f'Does not support painting of "{p}"')
