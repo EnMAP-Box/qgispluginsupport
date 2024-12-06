@@ -317,40 +317,41 @@ def file_search(rootdir,
     assert os.path.isdir(rootdir), "Path is not a directory:{}".format(rootdir)
     regType = type(re.compile('.*'))
 
-    for entry in os.scandir(rootdir):
-        if directories is False:
-            if entry.is_file():
-                if fullpath:
-                    name = entry.path
-                else:
-                    name = os.path.basename(entry.path)
-                if isinstance(pattern, regType):
-                    if pattern.search(name):
+    with os.scandir(rootdir) as entry_search:
+        for entry in entry_search:
+            if directories is False:
+                if entry.is_file():
+                    if fullpath:
+                        name = entry.path
+                    else:
+                        name = os.path.basename(entry.path)
+                    if isinstance(pattern, regType):
+                        if pattern.search(name):
+                            yield entry.path.replace('\\', '/')
+
+                    elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
+                            or fnmatch.fnmatch(name, pattern):
                         yield entry.path.replace('\\', '/')
+                elif entry.is_dir() and recursive is True:
+                    for r in file_search(entry.path, pattern, recursive=recursive, directories=directories):
+                        yield r
+            else:
+                if entry.is_dir():
+                    if recursive is True:
+                        for d in file_search(entry.path, pattern, recursive=recursive, directories=directories):
+                            yield d
 
-                elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
-                        or fnmatch.fnmatch(name, pattern):
-                    yield entry.path.replace('\\', '/')
-            elif entry.is_dir() and recursive is True:
-                for r in file_search(entry.path, pattern, recursive=recursive, directories=directories):
-                    yield r
-        else:
-            if entry.is_dir():
-                if recursive is True:
-                    for d in file_search(entry.path, pattern, recursive=recursive, directories=directories):
-                        yield d
+                    if fullpath:
+                        name = entry.path
+                    else:
+                        name = os.path.basename(entry.path)
+                    if isinstance(pattern, regType):
+                        if pattern.search(name):
+                            yield entry.path.replace('\\', '/')
 
-                if fullpath:
-                    name = entry.path
-                else:
-                    name = os.path.basename(entry.path)
-                if isinstance(pattern, regType):
-                    if pattern.search(name):
+                    elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
+                            or fnmatch.fnmatch(name, pattern):
                         yield entry.path.replace('\\', '/')
-
-                elif (ignoreCase and fnmatch.fnmatch(name, pattern.lower())) \
-                        or fnmatch.fnmatch(name, pattern):
-                    yield entry.path.replace('\\', '/')
 
 
 def registerMapLayerStore(store):
