@@ -20,18 +20,19 @@
 import os
 import unittest
 
-from qgis.PyQt.QtCore import QSize
+from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtGui import QColor, QPen
-from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QLabel, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsAction, QgsActionManager, QgsAttributeTableConfig, QgsEditorWidgetSetup, QgsFeature, QgsField, \
     QgsVectorLayer
 from qgis.gui import QgsDualView, QgsGui, QgsMapCanvas, QgsSearchWidgetWrapper
-from qps.plotstyling.plotstyling import MarkerSymbol, MarkerSymbolComboBox, PlotStyle, PlotStyleButton, \
-    PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, PlotStyleEditorWidgetWrapper, PlotStyleWidget, \
-    PlotWidgetStyle, XMLTAG_PLOTSTYLENODE, createSetPlotStyleAction, pen2tuple, plotStyleEditorWidgetFactory, tuple2pen
+from qps.plotstyling.plotstyling import createSetPlotStyleAction, MarkerSymbol, MarkerSymbolComboBox, pen2tuple, \
+    PlotStyle, PlotStyleButton, PlotStyleEditorConfigWidget, PlotStyleEditorWidgetFactory, plotStyleEditorWidgetFactory, \
+    PlotStyleEditorWidgetWrapper, PlotStyleWidget, PlotWidgetStyle, tuple2pen, XMLTAG_PLOTSTYLENODE
 from qps.qgisenums import QMETATYPE_DOUBLE, QMETATYPE_INT, QMETATYPE_QSTRING
-from qps.testing import TestCase, start_app
+from qps.testing import start_app, TestCase
+from qps.pyqtgraph.pyqtgraph.graphicsItems.ScatterPlotItem import Symbols as pgSymbols
 
 start_app()
 
@@ -41,7 +42,6 @@ class PlotStyleTests(TestCase):
     def create_vectordataset(self) -> QgsVectorLayer:
         vl = QgsVectorLayer("Point?crs=EPSG:4326", 'test', "memory")
         vl.startEditing()
-
         vl.addAttribute(QgsField(name='fStyle', type=QMETATYPE_QSTRING, typeName='varchar', len=500))
         vl.addAttribute(QgsField(name='fString', type=QMETATYPE_QSTRING, typeName='varchar', len=50))
         vl.addAttribute(QgsField(name='fInt', type=QMETATYPE_INT, typeName='int'))
@@ -169,8 +169,30 @@ class PlotStyleTests(TestCase):
         self.assertEqual(PlotWidgetStyle.plotWidgetStyle('foobar'), None)
 
     def test_PlotStyleWidget(self):
-        from qps.plotstyling.plotstyling import PlotStyleWidget
-        w = PlotStyleWidget()
+        psw = PlotStyleWidget()
+        F = psw.VisibilityFlags
+
+        grid = QGridLayout()
+        for col, f in enumerate([F.Type, F.Color, F.Size]):
+            cb = QCheckBox(f.name)
+            cb.setCheckState(Qt.Checked)
+            cb.clicked.connect(lambda b, flag=f: psw.setVisibilityFlag(flag, b))
+            grid.addWidget(cb, 0, col + 1)
+        for row, f in enumerate([F.Symbol, F.SymbolPen, F.Line, F.Visibility, F.Preview]):
+            cb = QCheckBox(f.name)
+            cb.setCheckState(Qt.Checked)
+            cb.clicked.connect(lambda b, flag=f: psw.setVisibilityFlag(flag, b))
+            grid.addWidget(cb, row + 1, 0)
+
+        l1 = QHBoxLayout()
+        l1.addLayout(grid)
+        lv = QVBoxLayout()
+        lv.addWidget(psw)
+        lv.addStretch()
+        l1.addLayout(lv)
+        w = QWidget()
+        w.setLayout(l1)
+
         self.showGui(w)
 
     def test_PlotStyleQgsAction(self):
@@ -303,6 +325,10 @@ class PlotStyleTests(TestCase):
         self.showGui(w)
 
     def test_marker_symbols(self):
+
+        for k in pgSymbols.keys():
+            s = MarkerSymbol.decode(k)
+            self.assertIsInstance(s, MarkerSymbol)
 
         symbols = []
         symbol_text = []
