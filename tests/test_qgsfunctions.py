@@ -15,7 +15,8 @@ from qps.qgsfunctions import ExpressionFunctionUtils, Format_Py, HelpStringMaker
     ReadSpectralProfile, SpectralData, SpectralEncoding, SpectralMath
 from qps.speclib.core import profile_fields
 from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, ProfileEncoding
+from qps.speclib.core.spectralprofile import decodeProfileValueDict, isProfileValueDict, ProfileEncoding, \
+    encodeProfileValueDict
 from qps.speclib.processing.aggregateprofiles import createSpectralProfileFunctions
 from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import file_search, SpatialExtent, SpatialPoint
@@ -686,6 +687,53 @@ class QgsFunctionTests(TestCase):
             for func in aggrFuncs:
                 profile = checkProfileAggr(context, f, func)
                 self.assertListEqual(profile, ALL_PROFILES[f'{classname}_{func}'])
+
+    def test_aggregation_differingArrays(self):
+
+        afuncs = createSpectralProfileFunctions()
+        for f in afuncs:
+            text = f.helpText()
+            self.assertTrue(f.name() in text)
+            self.registerFunction(f)
+
+        sl = SpectralLibraryUtils.createSpectralLibrary(['profile'])
+
+        expected = {
+            'A': [2.5, 4.0, 3.5],
+            'B': [1, 1, 1],
+            'C': [2.5, 3, 3.5, 5.5]
+
+        }
+
+        data = [
+            {'x': [1, 2, 3], 'y': [2, 2, 2], 'class': 'A'},  # A should average t 2.5, 4.0, 3.5
+            {'x': [1, 2, 3], 'y': [3, 4, 5], 'class': 'A'},
+            {'x': [1, 2, 3], 'y': [1, 1, 1], 'class': 'B'},  # B should average to 1 1 1
+            {'x': [4, 5, 6, 7], 'y': [2, 2, 2, 5], 'class': 'C'},  # C should average to 2.5, 3, 3.5, 5.5
+            {'x': [4, 5, 6, 7], 'y': [3, 4, 5, 6], 'class': 'C'},
+            {'x': [1, 2, 3, 4], 'y': [5, 4, 3, 4], 'class': 'D'},  # D should fail, because arrays have different values
+            {'x': [1, 2], 'y': [5, 4], 'class': 'D'},
+            #
+        ]
+        with edit(sl):
+            sl.addAttribute(QgsField('class', QMETATYPE_QSTRING))
+            for item in data:
+                f = QgsFeature(sl.fields())
+
+                data = {'x': item['x'], 'y': item['y']}
+                dump = encodeProfileValueDict(data, sl.fields()['profile'])
+                f.setAttribute('profile', dump)
+                f.setAttribute('class', item['class'])
+                assert sl.addFeature(f)
+
+            QgsProject.instance().addMapLayers([sl])
+            gui = QgsFieldCalculator(sl, None)
+            gui.exec_()
+
+        for f in sl.getFeatures():
+            f: QgsFeature
+            print(f.attributeMap())
+        s = ""
 
 
 if __name__ == '__main__':
