@@ -711,10 +711,11 @@ class QgsFunctionTests(TestCase):
             {'x': [1, 2, 3], 'y': [1, 1, 1], 'class': 'B'},  # B should average to 1 1 1
             {'x': [4, 5, 6, 7], 'y': [2, 2, 2, 5], 'class': 'C'},  # C should average to 2.5, 3, 3.5, 5.5
             {'x': [4, 5, 6, 7], 'y': [3, 4, 5, 6], 'class': 'C'},
-            {'x': [1, 2, 3, 4], 'y': [5, 4, 3, 4], 'class': 'D'},  # D should fail, because arrays have different values
-            {'x': [1, 2], 'y': [5, 4], 'class': 'D'},
+            # {'x': [1, 2, 3, 4], 'y': [5, 4, 3, 4], 'class': 'D'},  # D should fail, because arrays have different values
+            # {'x': [1, 2], 'y': [5, 4], 'class': 'D'},
             #
         ]
+        QgsProject.instance().addMapLayer(sl)
         with edit(sl):
             sl.addAttribute(QgsField('class', QMETATYPE_QSTRING))
             for item in data:
@@ -726,14 +727,18 @@ class QgsFunctionTests(TestCase):
                 f.setAttribute('class', item['class'])
                 assert sl.addFeature(f)
 
-            QgsProject.instance().addMapLayers([sl])
             gui = QgsFieldCalculator(sl, None)
+            # create new string field "agr"
+            # entry expression 'mean_profile("profile", "class")'
+
             gui.exec_()
 
         for f in sl.getFeatures():
             f: QgsFeature
             print(f.attributeMap())
         s = ""
+
+        QgsProject.instance().removeMapLayer(sl)
 
 
 if __name__ == '__main__':

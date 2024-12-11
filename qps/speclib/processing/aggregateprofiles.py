@@ -1,4 +1,3 @@
-import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -116,12 +115,8 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
         x = profileDictionaries[0].get('x', None)
         encoding = ProfileEncoding.fromInput(attrField)
 
-        try:
-            yValues = [d['y'] for d in profileDictionaries]
-            vstack = np.vstack(yValues)
-        except ValueError as ex:
-            print(f'{ex}', file=sys.stderr)
-            return QVariant()
+        yValues = [d['y'] for d in profileDictionaries]
+        vstack = np.vstack(yValues)
 
         if aggregate == QgsAggregateCalculator.Aggregate.Mean:
             y = np.mean(vstack, axis=0)
@@ -626,11 +621,6 @@ class SpectralAggregation(QgsExpressionFunction):
         return True
 
 
-def spfcnAggregate(values: list, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
-    # first node is layer id or name
-    node: QgsExpressionNode = values[0]
-
-
 def spfcnAggregateGeneric(
         aggregate: QgsAggregateCalculator.Aggregate,
         values: list,
@@ -641,7 +631,7 @@ def spfcnAggregateGeneric(
 ):
     if not isinstance(context, QgsExpressionContext):
         parent.setEvalErrorString('Cannot use aggregate function in this context')
-        return None
+        return QVariant()
 
     # find current layer:
     vl: QgsVectorLayer = context.variable('layer')
@@ -718,7 +708,6 @@ def spfcnAggregateGeneric(
     if context.hasCachedValue(cacheKey):
         return context.cachedValue(cacheKey)
 
-    result = None
     ok: bool = False
 
     subContext: QgsExpressionContext = QgsExpressionContext(context)
@@ -747,11 +736,17 @@ def spfcnAggregateGeneric(
             AGG.setFidsFilter(fids)
 
         AGG.setParameters(parameters)
-        result = AGG.calculate(aggregate, subExpression, context, context.feedback())
+        try:
+            result = AGG.calculate(aggregate, subExpression, context, context.feedback())
+        except Exception as ex:
+            parent.setEvalErrorString(f'Unable to aggregate:<br>{ex}')
+            return QVariant()
 
     if result != QVariant():
         context.setCachedValue(cacheKey, result)
-    return result
+    # print(f'# Result: {result}')
+    return QVariant(result)
+    # return encodeProfileValueDict(result, ProfileEncoding.Text)
 
 
 def spfcnAggregateMinimum(values: list, context: QgsExpressionContext, parent: QgsExpression,

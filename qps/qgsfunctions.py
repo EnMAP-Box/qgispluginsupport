@@ -35,11 +35,11 @@ from typing import Any, Callable, Dict, Iterable, List, Set, Tuple, Union
 
 import numpy as np
 
+from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
 from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextScope, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeFunction, QgsFeature, \
     QgsFeatureRequest, QgsField, QgsGeometry, QgsMapLayer, QgsMapToPixel, QgsMessageLog, QgsPointXY, QgsProject, \
     QgsRasterDataProvider, QgsRasterLayer
-from qgis.PyQt.QtCore import NULL, QByteArray, QCoreApplication, QVariant
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
 from .speclib.core.spectrallibrary import FIELD_VALUES
@@ -445,7 +445,9 @@ class StaticExpressionFunction(QgsExpressionFunction):
              parent: QgsExpression,
              node: QgsExpressionNodeFunction) -> Any:
         if self.mFnc:
-            return self.mFnc(values, context, parent, node)
+            r = self.mFnc(values, context, parent, node)
+            print(f'#R: {type(r)} :{r}')
+            return r
         else:
             return QVariant()
 
