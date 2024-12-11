@@ -1,5 +1,5 @@
-import pathlib
 import inspect
+import pathlib
 import re
 
 import qgis.core

@@ -729,13 +729,15 @@ class QgsFunctionTests(TestCase):
                 assert sl.addFeature(f)
 
             gui = QgsFieldCalculator(sl, None)
-            # create new string field "agr"
-            # entry expression 'mean_profile("profile", "class")'
+            # create new field: agr with type map
+            # entry expression: mean_profile("profile", "class")
 
             gui.exec_()
 
         for f in sl.getFeatures():
             f: QgsFeature
+            cName = f.attribute('class')
+
             print(f.attributeMap())
         s = ""
 
