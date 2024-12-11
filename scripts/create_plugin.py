@@ -31,18 +31,18 @@ from pathlib import Path
 from typing import Iterator, Optional, Union
 
 import markdown
-from qgis.core import QgsUserProfile, QgsUserProfileManager
 
+from qgis.core import QgsUserProfile, QgsUserProfileManager
 from qps import DIR_QPS
 # site.addsitedir(pathlib.Path(__file__).parents[2])
 from qps.make.deploy import QGISMetadataFileWriter, userProfileManager
 from qps.utils import zipdir
 
-DIR_TEST_PLUGIN = Path(__file__).parent
+DIR_TEST_PLUGIN = Path(__file__).parent / 'test_plugin'
 DIR_REPO = DIR_QPS.parent
 print('DIR_REPO={}'.format(DIR_REPO))
 
-########## Config Section
+# Config Section
 
 MD = QGISMetadataFileWriter()
 MD.mName = 'qgispluginsupport'
@@ -60,7 +60,7 @@ MD.mEmail = 'benjamin.jakimow@geo.hu-berlin.de'
 MD.mIsExperimental = True
 
 
-########## End of config section
+# End of config section
 
 
 def scantree(path, pattern=re.compile(r'.$')) -> Iterator[pathlib.Path]:
@@ -77,8 +77,8 @@ def scantree(path, pattern=re.compile(r'.$')) -> Iterator[pathlib.Path]:
             yield pathlib.Path(entry.path)
 
 
-def create_plugin(create_zip: bool = True,
-                  copy_to_profile: bool = False,
+def create_plugin(create_zip: bool = False,
+                  copy_to_profile: bool = True,
                   build_name: str = None) -> Optional[pathlib.Path]:
     assert (DIR_REPO / '.git').is_dir()
 
@@ -110,7 +110,7 @@ def create_plugin(create_zip: bool = True,
     # 1. (re)-compile all resource files
 
     # copy python and other resource files
-    pattern = re.compile(r'\.(py|svg|png|txt|ui|tif|qml|md|js|css|json)$')
+    pattern = re.compile(r'\.(py|svg|png|txt|ui|tif|qml|md|js|css|json|geojson)$')
     files = list(scantree(DIR_REPO / 'qps', pattern=pattern))
 
     for fileSrc in files:
@@ -121,6 +121,7 @@ def create_plugin(create_zip: bool = True,
 
     # copy __init__
     shutil.copy(DIR_TEST_PLUGIN / '__init__.py', PLUGIN_DIR / '__init__.py')
+    shutil.copytree(DIR_TEST_PLUGIN / 'startscripts', PLUGIN_DIR / 'startscripts')
     # update metadata version
 
     f = open(DIR_REPO / 'qps' / '__init__.py')
