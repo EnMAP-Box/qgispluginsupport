@@ -1,8 +1,9 @@
 import os
 import pathlib
 import shutil
-from time import sleep
-from qgis.core import QgsVectorLayer, QgsApplication
+
+from qgis.core import QgsVectorLayer
+
 DIR = pathlib.Path(__file__).parent
 path_original = DIR / 'test.geojson'
 path_tmp = DIR / 'tmpfile.geojson'

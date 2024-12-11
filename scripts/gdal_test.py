@@ -1,4 +1,4 @@
-from osgeo import gdal, osr, ogr
+from osgeo import osr, ogr
 
 ogr.UseExceptions()
 projection = osr.SpatialReference()

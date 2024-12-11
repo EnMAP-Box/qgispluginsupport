@@ -1,20 +1,26 @@
+from qgis.PyQt import sip
+from qgis.core import QgsApplication, QgsProcessingRegistry, \
+    QgsProcessingModelAlgorithm
 from qgis.core import QgsProcessingParameterType, \
     QgsProcessingParameterBoolean
 from qgis.gui import QgsProcessingParameterDefinitionDialog
+from qps.testing import TestCase
 
 REFS = []
 
 MY_TYPE_ID = 'my_type'
 
+
 class MyParameter(QgsProcessingParameterBoolean):
     """
     Definition of my parameter
     """
-    def __init__(self, name='MyParameter', description='My Parameter', optional:bool=False):
+
+    def __init__(self, name='MyParameter', description='My Parameter', optional: bool = False):
         super(MyParameter, self).__init__(name, description=description, optional=optional)
         self.mMyValue: str = 'my_value'
         s = ""
-        if False: # keep a python reference on the MyParameter instance
+        if False:  # keep a python reference on the MyParameter instance
             global REFS
             REFS.append([self,
                          sip.wrapinstance(sip.unwrapinstance(self), MyParameter)])
@@ -42,7 +48,7 @@ class MyParameter(QgsProcessingParameterBoolean):
         result['my_value'] = self.mMyValue
         return result
 
-    def fromVariantMap(self, map:dict):
+    def fromVariantMap(self, map: dict):
         super().fromVariantMap(map)
         self.mMyValue = map.get('my_value', '')
 
@@ -53,6 +59,7 @@ class MyParameterType(QgsProcessingParameterType):
     """
     Describes MyParameter in the Modeler's parameter list
     """
+
     def __init__(self):
         super().__init__()
 
@@ -81,12 +88,6 @@ class MyParameterType(QgsProcessingParameterType):
         return MY_TYPE_ID
 
 
-from qgis.core import QgsApplication, QgsProcessingRegistry, \
-    QgsProcessingModelAlgorithm
-
-from qps.testing import TestCase
-
-
 class SpectralMathTests(TestCase):
 
     def test_TestMyParameter(self):
@@ -106,7 +107,6 @@ class SpectralMathTests(TestCase):
         model.setGroup('MyModelGroup')
         md = ModelerDialog.create(model)
         self.assertIsInstance(md, ModelerDialog)
-
 
         self.showGui(md)
 
@@ -128,17 +128,15 @@ class SpectralMathTests(TestCase):
             self.assertIsInstance(variant_map, dict)
             self.assertEqual(variant_map.get('name', None), name)
             s = ""
-            #dlg.exec_()
-
+            # dlg.exec_()
 
         model: QgsProcessingModelAlgorithm = md
-        #md.model().addModelParameter()
-        #md.saveModel()
+        # md.model().addModelParameter()
+        # md.saveModel()
         self.showGui([md])
 
 
 if __name__ == '__main__':
-
     procReg = QgsApplication.instance().processingRegistry()
     assert isinstance(procReg, QgsProcessingRegistry)
     parameterType = MyParameterType()

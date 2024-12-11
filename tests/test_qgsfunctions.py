@@ -688,6 +688,7 @@ class QgsFunctionTests(TestCase):
                 profile = checkProfileAggr(context, f, func)
                 self.assertListEqual(profile, ALL_PROFILES[f'{classname}_{func}'])
 
+    @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_aggregation_differingArrays(self):
 
         afuncs = createSpectralProfileFunctions()

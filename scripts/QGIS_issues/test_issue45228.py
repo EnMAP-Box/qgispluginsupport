@@ -4,6 +4,7 @@ Example for Workaround for https://github.com/qgis/QGIS/issues/45228
 from qgis.core import QgsVectorLayer, QgsFeature
 from qgis.testing import TestCase
 
+
 class Tests(TestCase):
 
     def testCommitChangesReportsDeletedFeatureIDs(self):
@@ -31,4 +32,3 @@ class Tests(TestCase):
         temp_fids.extend(layer.allFeatureIds())
 
         layer.commitChanges()
-

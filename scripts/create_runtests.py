@@ -14,7 +14,7 @@ PREFACE_SH = \
 export QT_QPA_PLATFORM=offscreen
 export CI=True
 # export PYTHONPATH="${PYTHONPATH}$(pwd)"
-find . -name "*.pyc" -exec rm -f {} \;
+find . -name "*.pyc" -exec rm -f {} \\;
 """
 
 dirOut = 'test-reports/today'
