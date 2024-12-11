@@ -13,17 +13,17 @@ __author__ = 'benjamin.jakimow@geo.hu-berlin.de'
 import unittest
 
 from osgeo import gdal
-
 from qgis.PyQt.QtWidgets import QDialog, QGridLayout, QWidget
 from qgis.core import QgsMultiBandColorRenderer, QgsPalettedRasterRenderer, QgsProject, QgsRasterLayer, \
     QgsSingleBandGrayRenderer, QgsStyle, QgsVectorLayer
 from qgis.gui import QgsMapCanvas, QgsMapLayerConfigWidgetFactory, QgsOptionsDialogBase, QgsRasterLayerProperties, \
     QgsRendererPropertiesDialog
+
 from qps import MAPLAYER_CONFIGWIDGET_FACTORIES
 from qps.layerconfigwidgets.rasterbands import RasterBandConfigWidget
-from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, RemoveAttributeDialog, \
-    defaultRasterRenderer, equal_styles, showLayerPropertiesDialog
-from qps.testing import TestCase, TestObjects, start_app
+from qps.layerproperties import AddAttributeDialog, AttributeTableWidget, CopyAttributesDialog, defaultRasterRenderer, \
+    equal_styles, RemoveAttributeDialog, showLayerPropertiesDialog
+from qps.testing import start_app, TestCase, TestObjects
 from qps.utils import createQgsField
 
 LAYER_WIDGET_REPS = 5
@@ -219,9 +219,14 @@ class LayerPropertyTests(TestCase):
 
     def test_AttributeTableWidget(self):
         vl = TestObjects.createVectorLayer()
+        assert vl.isSpatial()
         w = AttributeTableWidget(vl)
         vl.startEditing()
 
+        def onAction(*args):
+            s = ""
+
+        w.mActionZoomMapToSelectedRows.triggered.connect(onAction)
         w.mUpdateExpressionText.setField("'dummy'")
 
         self.showGui(w)
