@@ -24,6 +24,9 @@ from typing import Any, Dict, List, Union
 
 from osgeo import gdal, osr
 
+from qgis.PyQt.QtWidgets import QAction, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
+    QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, \
+    QSpinBox, QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRenderer, QgsContrastEnhancement, \
     QgsDataProvider, QgsDistanceArea, QgsEditFormConfig, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, \
     QgsExpressionContextGenerator, QgsExpressionContextScope, QgsExpressionContextUtils, QgsFeature, QgsFeatureRenderer, \
@@ -34,9 +37,6 @@ from qgis.core import Qgis, QgsAction, QgsApplication, QgsCategorizedSymbolRende
     QgsSingleBandPseudoColorRenderer, QgsSingleSymbolRenderer, QgsVectorDataProvider, QgsVectorLayer, QgsWkbTypes
 from qgis.PyQt.QtCore import pyqtSignal, QMimeData, QModelIndex, QObject, QTimer, QVariant
 from qgis.PyQt.QtGui import QCloseEvent, QIcon
-from qgis.PyQt.QtWidgets import QAction, QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox, \
-    QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QSizePolicy, QSpacerItem, QSpinBox, \
-    QTableView, QToolButton, QVBoxLayout, QWidget
 from qgis.PyQt.QtXml import QDomDocument
 from .qgisenums import QGIS_RASTERBANDSTATISTIC
 from .speclib import EDITOR_WIDGET_REGISTRY_KEY
@@ -988,6 +988,20 @@ def showLayerPropertiesDialog(layer: QgsMapLayer,
     return None
 
 
+class AttributeTableMapCanvas(QgsMapCanvas):
+
+    def __init__(self, *args, **kwds):
+        super().__init__(*args, **kwds)
+        s = ""
+
+    def panToFeatureIds(self, layer, QgsVectorLayer=None, *args, **kwargs):
+        s = ""
+        s = ""
+
+    def zoomToFeatureIds(self, layer, QgsVectorLayer=None, *args, **kwargs):
+        s = ""
+
+
 class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     """
     Reimplements QgsAttributeTableDialog which unfortunately is not
@@ -996,7 +1010,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
     sigWindowIsClosing = pyqtSignal()
 
     def __init__(self, mLayer: QgsVectorLayer, *args,
-                 initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowVisible,
+                 initialMode: QgsAttributeTableFilterModel.FilterMode = QgsAttributeTableFilterModel.ShowAll,
                  **kwds):
         super().__init__(*args, **kwds)
         loadUi(pathlib.Path(DIR_UI_FILES) / 'attributetablewidget.ui', self)
@@ -1044,8 +1058,10 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
         self.mLayer: QgsVectorLayer = mLayer
         self.mLayer.nameChanged.connect(self.updateTitle)
 
-        self.mMapCanvas = QgsMapCanvas()
+        # self.mMapCanvas = QgsMapCanvas()
+        self.mMapCanvas = AttributeTableMapCanvas()
         self.mMapCanvas.setLayers([self.mLayer])
+
         # Initialize the window geometry
         # geom = settings.value("Windows/BetterAttributeTable/geometry")
         # self.restoreGeometry(geom)
@@ -1075,7 +1091,12 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
 
         # Initialize dual view
         # self.mMainView.init(mLayer, self.mMapCanvas, r, self.mEditorContext, False)
-        self.mMainView.init(mLayer, self.mMapCanvas)
+
+        self.mFeatureRequest = QgsFeatureRequest()
+        self.mContext = QgsAttributeEditorContext()
+        self.mContext.setMapCanvas(self.mMapCanvas)
+
+        self.mMainView.init(mLayer, self.mMapCanvas, self.mFeatureRequest, self.mContext)
 
         config = mLayer.attributeTableConfig()
         self.mMainView.setAttributeTableConfig(config)
@@ -1795,7 +1816,7 @@ class AttributeTableWidget(QMainWindow, QgsExpressionContextGenerator):
             self.mMainViewButtonGroup.button(m).setChecked(m == mode)
 
     def setFilterMode(self, mode: QgsAttributeTableFilterModel.FilterMode):
-
+        self.mMainView.setFilterMode(mode)
         return
         # todo: re-implement QgsFeatureFilterWidget
 

@@ -17,7 +17,7 @@ layer = QgsVectorLayer("point?crs=epsg:4326&field=name:string", "Scratch point l
 layer.featuresDeleted.connect(onFeaturesDeleted)
 
 layer.startEditing()
-layer.beginEditCommand(f'add 2 features')
+layer.beginEditCommand('add 2 features')
 layer.addFeature(QgsFeature(layer.fields()))
 layer.addFeature(QgsFeature(layer.fields()))
 layer.endEditCommand()

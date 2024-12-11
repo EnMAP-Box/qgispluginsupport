@@ -2,9 +2,10 @@ import pathlib
 import pickle
 import random
 
+from qgis.PyQt.QtCore import QByteArray, QVariant
 from qgis.core import QgsCoordinateReferenceSystem, QgsFeature, QgsField, QgsFields, QgsProcessingFeedback, QgsProject, \
     QgsVectorFileWriter, QgsWkbTypes
-from qgis.PyQt.QtCore import QByteArray, QVariant
+from qps.qgisenums import QMETATYPE_QSTRING, QMETATYPE_INT
 
 feedback = QgsProcessingFeedback()
 

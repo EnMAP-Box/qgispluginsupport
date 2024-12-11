@@ -1,19 +1,18 @@
 import os.path
-from os import scandir
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from qgis.core import (QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext,
-                       QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsField, QgsFields, QgsMapLayer,
-                       QgsProcessing, QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException,
-                       QgsProcessingFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterFeatureSink,
-                       QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, QgsProperty,
-                       QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer,
-                       QgsWkbTypes)
-from .. import EDITOR_WIDGET_REGISTRY_KEY
+from qgis.core import QgsCoordinateReferenceSystem, QgsEditorWidgetSetup, QgsExpressionContext, \
+    QgsExpressionContextScope, QgsFeature, QgsFeatureSink, QgsField, QgsFields, QgsMapLayer, QgsProcessing, \
+    QgsProcessingAlgorithm, QgsProcessingContext, QgsProcessingException, QgsProcessingFeedback, \
+    QgsProcessingMultiStepFeedback, QgsProcessingOutputLayerDefinition, QgsProcessingParameterBoolean, \
+    QgsProcessingParameterFeatureSink, QgsProcessingParameterMultipleLayers, QgsProcessingUtils, QgsProject, \
+    QgsProperty, QgsRemappingProxyFeatureSink, QgsRemappingSinkDefinition, QgsVectorFileWriter, QgsVectorLayer, \
+    QgsWkbTypes
 from ..core import profile_field_names
 from ..core.spectrallibraryio import SpectralLibraryIO
 from ...fieldvalueconverter import GenericFieldValueConverter, GenericPropertyTransformer
+from ...utils import file_search
 
 
 class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
@@ -28,7 +27,9 @@ class SpectralLibraryOutputDefinition(QgsProcessingOutputLayerDefinition):
 class ImportSpectralProfiles(QgsProcessingAlgorithm):
     NAME = 'importspectralprofiles'
     P_INPUT = 'INPUT'
+    P_RECURSIVE = 'RECURSIVE'
     P_OUTPUT = 'OUTPUT'
+    P_USE_RELPATH = 'RELPATH'
 
     def __init__(self):
         super().__init__()
@@ -36,6 +37,7 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         self._results: Dict = dict()
         self._input_files: List[Path] = []
         self._profile_field_names: List[str] = []
+        self._dstFields: Optional[QgsFields] = None
 
     def name(self) -> str:
         return self.NAME
@@ -70,6 +72,12 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             optional=False)
         )
 
+        self.addParameter(QgsProcessingParameterBoolean(self.P_RECURSIVE,
+                                                        description='Recursive search for profile files',
+                                                        optional=True,
+                                                        defaultValue=False),
+                          )
+
         self.addParameter(QgsProcessingParameterFeatureSink(self.P_OUTPUT, 'Spectral Library'))
 
     def prepareAlgorithm(self,
@@ -79,14 +87,14 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
 
         input_sources = self.parameterAsFileList(parameters, self.P_INPUT, context)
         errors = []
-
+        recursive: bool = self.parameterAsBool(parameters, self.P_RECURSIVE, context)
         input_files = []
         for f in input_sources:
             p = Path(f)
             if p.is_dir():
-                for e in scandir(p):
-                    if e.is_file():
-                        input_files.append(Path(e.path))
+                for f in file_search(p, '*.*', recursive=recursive):
+                    if os.path.isfile(f):
+                        input_files.append(Path(f))
             elif p.is_file():
                 input_files.append(p)
 
@@ -117,8 +125,10 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
         # collect profiles, ordered by field definition
         PROFILES: Dict[str, List[QgsFeature]] = dict()
 
+        multiFeedback = QgsProcessingMultiStepFeedback(len(self._input_files), feedback)
+
         for uri in self._input_files:
-            profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=feedback)
+            profiles = SpectralLibraryIO.readProfilesFromUri(uri, feedback=multiFeedback)
             if len(profiles) > 0:
                 fields: QgsFields = profiles[0].fields()
                 key = tuple(fields.names())
@@ -208,18 +218,14 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
             remappingSink = QgsRemappingProxyFeatureSink(remappingDefinition, sink)
             remappingSink.setExpressionContext(expContext)
 
-            if False:
-                for p in profiles:
-                    if not remappingSink.addFeature(p):
-                        raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
-            else:
-                if not remappingSink.addFeatures(profiles):
-                    raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
+            if not remappingSink.addFeatures(profiles):
+                raise QgsProcessingException(self.writeFeatureError(sink, parameters, ''))
 
         del sink
 
         self._profile_field_names = profile_field_names(all_fields)
         results[self.P_OUTPUT] = destId
+        self._dstFields = dst_fields
         self._results = results
         return results
 
@@ -232,11 +238,20 @@ class ImportSpectralProfiles(QgsProcessingAlgorithm):
                                                        allowLoadingNewLayers=True,
                                                        typeHint=QgsProcessingUtils.LayerHint.Vector)
             if isinstance(vl, QgsVectorLayer) and vl.isValid():
-                for fieldName in self._profile_field_names:
-                    idx = vl.fields().lookupField(fieldName)
+                for f in self._dstFields:
+                    idx = vl.fields().lookupField(f.name())
                     if idx > -1:
-                        setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+                        setupOld = f.editorWidgetSetup()
+                        setup = QgsEditorWidgetSetup(setupOld.type(), setupOld.config())
                         vl.setEditorWidgetSetup(idx, setup)
+                    else:
+                        s = ""
+                        # setup = QgsEditorWidgetSetup()
+                # for fieldName in self._profile_field_names:
+                #    idx = vl.fields().lookupField(fieldName)
+                #    if idx > -1:
+                #        setup = QgsEditorWidgetSetup(EDITOR_WIDGET_REGISTRY_KEY, {})
+                #        vl.setEditorWidgetSetup(idx, setup)
                 vl.saveDefaultStyle(QgsMapLayer.StyleCategory.AllStyleCategories)
             else:
                 feedback.pushWarning(f'Unable to reload {lyr_id} as vectorlayer and set profile fields')

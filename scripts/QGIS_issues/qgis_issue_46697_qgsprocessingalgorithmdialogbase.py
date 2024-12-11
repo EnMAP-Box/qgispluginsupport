@@ -1,11 +1,10 @@
+from processing.core.Processing import Processing
+from qgis.analysis import QgsNativeAlgorithms
 from qgis.core import QgsApplication, QgsProcessingRegistry
 from qgis.gui import QgsProcessingAlgorithmDialogBase
 from qgis.testing.mocked import start_app
 
 APP = start_app()
-
-from processing.core.Processing import Processing
-from qgis.analysis import QgsNativeAlgorithms
 
 QgsApplication.processingRegistry().addProvider(QgsNativeAlgorithms())
 Processing.initialize()

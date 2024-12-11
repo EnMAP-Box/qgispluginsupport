@@ -131,6 +131,7 @@ def unregisterSpectralLibraryPlotFactories():
     from .speclib.gui.spectrallibraryplotwidget import PropertyItemGroup, RasterRendererGroup, ProfileVisualizationGroup
     PropertyItemGroup.unregisterXmlFactory(RasterRendererGroup.__name__)
     PropertyItemGroup.unregisterXmlFactory(ProfileVisualizationGroup.__name__)
+    PropertyItemGroup.unregisterXmlFactory(PropertyItemGroup.__name__)
 
 
 def registerEditorWidgets():

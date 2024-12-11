@@ -1,6 +1,6 @@
 from qgis.PyQt.QtWidgets import QMenu
-from qgis.gui import QgsMapMouseEvent
 from qgis.gui import QgsMapCanvas, QgsMapToolPan
+from qgis.gui import QgsMapMouseEvent
 from qgis.testing import start_app
 
 app = start_app()

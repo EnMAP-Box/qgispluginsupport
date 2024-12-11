@@ -2,13 +2,8 @@
 Example that addresses https://github.com/qgis/QGIS/issues/
 
 """
-from qgis.PyQt.QtWidgets import QWidget, QGridLayout
 from qgis.core import QgsFeature
-from qgis.core import QgsProcessingParameterMultipleLayers, QgsProcessingContext, \
-    QgsVectorLayer, QgsProject, QgsProcessingParameterVectorLayer
-
-from qgis.gui import QgsProcessingGui, QgsGui, QgsProcessingParameterWidgetContext
-from qgis.testing.mocked import start_app
+from qgis.core import QgsVectorLayer
 
 uri = 'Point?crs=epsg:4326&field=name:string(20)'
 layer = QgsVectorLayer(uri, 'Layer', 'memory')

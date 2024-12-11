@@ -12,9 +12,9 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 import numpy as np
 from osgeo import gdal
 
+from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from qgis.core import QgsCoordinateReferenceSystem, QgsExpressionContext, QgsFeature, QgsField, QgsFields, QgsGeometry, \
     QgsMapLayer, QgsPointXY, QgsProcessingFeedback, QgsPropertyTransformer, QgsRasterLayer, QgsVectorLayer
-from qgis.PyQt.QtCore import NULL, QByteArray, QDateTime, QJsonDocument, Qt, QVariant
 from . import create_profile_field, is_profile_field, profile_field_indices, profile_fields
 from .. import defaultSpeclibCrs, EMPTY_VALUES
 from ...qgisenums import QMETATYPE_QDATETIME, QMETATYPE_QSTRING, QMETATYPE_QVARIANTMAP
@@ -263,7 +263,7 @@ def encodeProfileValueDict(d: dict,
         return jsonDoc.toBinaryData()
     else:
         # encoding = TEXT
-        return json.dumps(d2, allow_nan=False)
+        return json.dumps(d2, ensure_ascii=False, allow_nan=False)
 
 
 def decodeProfileValueDict(dump: Union[QByteArray, str, dict], numpy_arrays: bool = False) -> dict:
@@ -659,7 +659,8 @@ class SpectralProfileFileReader(object):
             fields.append(QgsField(SpectralProfileFileReader.KEY_TargetTime, QMETATYPE_QDATETIME))
             fields.append(QgsField(SpectralProfileFileReader.KEY_Name, QMETATYPE_QSTRING))
             fields.append(QgsField(SpectralProfileFileReader.KEY_Path, QMETATYPE_QSTRING))
-            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMETATYPE_QVARIANTMAP))
+            fields.append(QgsField(SpectralProfileFileReader.KEY_Metadata, QMETATYPE_QVARIANTMAP,
+                                   typeName='map', subType=QMETATYPE_QSTRING))
             SpectralProfileFileReader._STANDARD_FIELDS = fields
         return SpectralProfileFileReader._STANDARD_FIELDS
 
