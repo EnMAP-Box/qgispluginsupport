@@ -20,8 +20,6 @@
 import os
 import unittest
 
-from PyQt5.QtGui import QBrush
-from qgis._core import QgsSymbolLayerUtils
 from qgis.PyQt.QtWidgets import QCheckBox, QComboBox, QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtGui import QColor, QPen
@@ -153,15 +151,6 @@ class PlotStyleTests(TestCase):
 
         self.assertEqual(s4, s3)
         s1.json()
-
-    def test_encodePen(self):
-
-        utils = QgsSymbolLayerUtils
-
-        pen = QPen(QColor('red'))
-        brush = QBrush(QColor('blue'))
-
-        QgsSymbolLayerUtils.encodeBrushStyle(brush)
 
     def test_PlotWidgetStyle(self):
 
