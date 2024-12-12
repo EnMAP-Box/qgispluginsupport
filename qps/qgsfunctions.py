@@ -31,7 +31,7 @@ import pathlib
 import re
 import sys
 from json import JSONDecodeError
-from typing import Any, Callable, Dict, Iterable, List, Set, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Set, Tuple, Union, Optional
 
 import numpy as np
 
@@ -42,6 +42,7 @@ from qgis.core import Qgis, QgsCoordinateReferenceSystem, QgsCoordinateTransform
     QgsRasterDataProvider, QgsRasterLayer
 from .qgisenums import QGIS_WKBTYPE
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
+from .speclib.core import is_profile_field
 from .speclib.core.spectrallibrary import FIELD_VALUES
 from .speclib.core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
     ProfileEncoding, SpectralProfileFileReader
@@ -604,8 +605,8 @@ class ExpressionFunctionUtils(object):
     @staticmethod
     def extractSpectralProfile(p: QgsExpressionFunction.Parameter,
                                value,
-                               context: QgsExpressionFunction,
-                               raise_error: bool = True) -> dict:
+                               context: QgsExpressionContext,
+                               raise_error: bool = True) -> Optional[dict]:
 
         if not isinstance(value, dict):
             if isinstance(value, str):
@@ -930,21 +931,34 @@ class SpectralData(QgsExpressionFunction):
     def __init__(self):
 
         args = [
-            QgsExpressionFunction.Parameter('profile_field', optional=False)
+            QgsExpressionFunction.Parameter('profile_field', optional=True)
         ]
 
         helptext = HM.helpText(self.NAME, args)
         super().__init__(self.NAME, args, self.GROUP, helptext)
 
-    def func(self, values, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
+    def func(self, values: List, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
 
         try:
-            return ExpressionFunctionUtils.extractSpectralProfile(
-                self.parameters()[0], values[0], context)
+            if node.referencedColumns() == set([QgsFeatureRequest.ALL_ATTRIBUTES]):
+                # called without profile column name -> get 1st
+                value = None
+                for field in context.fields():
+                    if is_profile_field(field):
+                        feat = context.feature()
+                        value = feat.attribute(field.name())
+                        break
+                s = ""
+            else:
+                value = values[0]
+            if value is not None:
+                result = ExpressionFunctionUtils.extractSpectralProfile(self.parameters()[0], value, context)
+                return result
 
         except Exception as ex:
             parent.setEvalErrorString(str(ex))
-            return None
+
+        return None
 
     def usesGeometry(self, node) -> bool:
         return False
