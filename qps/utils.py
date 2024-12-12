@@ -52,10 +52,9 @@ from osgeo.ogr import OFSTBoolean, OFSTNone, OFTBinary, OFTDate, OFTDateTime, OF
     OFTString, \
     OFTStringList, OFTTime
 from osgeo.osr import SpatialReference
-
 from qgis.PyQt import uic
-from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, QUrl, QVariant, \
-    Qt
+from qgis.PyQt.QtCore import NULL, QByteArray, QDirIterator, QMetaType, QObject, QPoint, QPointF, QRect, Qt, QUrl, \
+    QVariant
 from qgis.PyQt.QtGui import QColor, QIcon
 from qgis.PyQt.QtWidgets import QAction, QComboBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow, \
     QMenu, QToolButton, QWidget
@@ -68,6 +67,7 @@ from qgis.core import Qgis, QgsApplication, QgsCoordinateReferenceSystem, QgsCoo
     QgsRasterLayer, QgsRasterRenderer, QgsRectangle, QgsTask, QgsVector, QgsVectorDataProvider, QgsVectorFileWriter, \
     QgsVectorFileWriterTask, QgsVectorLayer, QgsWkbTypes
 from qgis.gui import QgisInterface, QgsDialog, QgsGui, QgsMapCanvas, QgsMapLayerComboBox, QgsMessageViewer
+
 from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE_DOUBLE, QMETATYPE_INT, \
     QMETATYPE_QBYTEARRAY, QMETATYPE_QCHAR, QMETATYPE_QDATE, QMETATYPE_QDATETIME, QMETATYPE_QSTRING, \
     QMETATYPE_QSTRINGLIST, \
@@ -75,7 +75,7 @@ from .qgisenums import QGIS_LAYERFILTER, QGIS_WKBTYPE, QMETATYPE_BOOL, QMETATYPE
     QMETATYPE_QVARIANTLIST, \
     QMETATYPE_UINT
 from .qgsrasterlayerproperties import QgsRasterLayerSpectralProperties
-from .unitmodel import UnitLookup, datetime64
+from .unitmodel import datetime64, UnitLookup
 
 QGIS_RESOURCE_WARNINGS = set()
 
@@ -276,7 +276,7 @@ def mapLayerStores() -> List[Union[QgsMapLayerStore, QgsProject]]:
     return _MAP_LAYER_STORES[:] + [QgsProject.instance()]
 
 
-def findUpwardPath(basepath, name, is_directory: bool = True) -> Path:
+def findUpwardPath(basepath, name, is_directory: bool = True) -> Optional[Path]:
     """
     Searches for a file or directory in an upward path of a base path.
     E.g. DIR_REPO = findUpwardPath(__file__, '.git').parent returns the repository directory
@@ -1189,14 +1189,14 @@ def loadUi(uifile: Union[str, Path],
             del toRemove
 
         # we need the absolute position of qps
-        # eg. within my/package/externals/qps
+        # e.g. within my/package/externals/qps
         # of as top-level qps
         try:
             from .. import qps
         except ImportError:
-            import qps
+            qps = __import__('qps')
         except ValueError:
-            import qps
+            qps = __import__('qps')
 
         elem = doc.elementsByTagName('customwidget')
         for child in [elem.item(i) for i in range(elem.count())]:
@@ -1457,6 +1457,8 @@ def copyEditorWidgetSetup(vectorLayer: QgsVectorLayer, fields: Union[QgsFields, 
         setup = fSrc.editorWidgetSetup()
         if QgsGui.instance().editorWidgetRegistry().factory(setup.type()).supportsField(vectorLayer, idx):
             vectorLayer.setEditorWidgetSetup(idx, setup)
+        else:
+            s = ""
     vectorLayer.updatedFields.emit()
 
 
@@ -2462,7 +2464,7 @@ class SpatialPoint(QgsPointXY):
 
         px = m2p.transform(pt)
 
-        return QPoint(int(px.x()), int(px.y()))
+        return QPoint(math.floor(px.x()), math.floor(px.y()))
 
     def toPixelPosition(self, rasterDataSource, allowOutOfRaster=False) -> QPoint:
         """

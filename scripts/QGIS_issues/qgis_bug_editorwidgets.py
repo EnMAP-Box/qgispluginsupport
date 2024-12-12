@@ -27,7 +27,7 @@ class TestQgsRangeWidgetSetup(TestCase):
             uri = "point?crs=epsg:4326&field=number:integer"
             lyr = QgsVectorLayer(uri, 'scratch layer', 'memory')
             result, msg = QgsVectorLayerExporter.exportLayer(lyr, path_lyr.as_posix(), 'ogr',
-                                                     lyr.crs(), options={'overwrite': True})
+                                                             lyr.crs(), options={'overwrite': True})
             if not result == QgsVectorLayerExporter.NoError:
                 raise Exception(msg)
 
@@ -80,7 +80,9 @@ class TestQgsRangeWidgetSetup(TestCase):
         self.assertEqual(configA['Max'], 256)
         self.assertEqual(configA['Min'], 1)
 
-        wr: QgsEditorWidgetWrapper = QgsGui.editorWidgetRegistry().createConfigWidget('sdsd', lyr2, lyr2.fields().lookupField('number'), None)
+        wr: QgsEditorWidgetWrapper = QgsGui.editorWidgetRegistry().createConfigWidget('sdsd', lyr2,
+                                                                                      lyr2.fields().lookupField(
+                                                                                          'number'), None)
 
         # test loaded QgsEditorConfigWidget
         cw: QgsEditorConfigWidget = factory.configWidget(lyr2, lyr2.fields().lookupField('number'), None)
@@ -94,4 +96,3 @@ class TestQgsRangeWidgetSetup(TestCase):
             mbar = QgsMessageBar()
             d = QgsVectorLayerProperties(canvas, mbar, lyr2, None)
             d.exec_()
-

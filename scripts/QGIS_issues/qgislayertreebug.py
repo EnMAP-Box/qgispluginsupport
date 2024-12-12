@@ -1,9 +1,10 @@
 # code for QGIS console to reproduce error
+from qgis.core import QgsVectorLayer
+from qgis.utils import iface
 
 # create an invalid vector layer
 
 path = r'C:\Users\geo_beja\Repositories\QGIS_Plugins\qgispluginsupport\qpstestdata\hymap.tif'
-
 
 path = r'NoneExitings\path'
 lyr = QgsVectorLayer(path)
@@ -22,4 +23,3 @@ root
 root.removeLayer(lyr)
 
 #
-

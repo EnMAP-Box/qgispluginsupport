@@ -11,4 +11,3 @@ for feature in vl.getFeatures():
     print(feature.geometry().get().z())
 
 stop_app()
-

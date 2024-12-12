@@ -1,4 +1,5 @@
 from osgeo import gdal
+
 from qgis.core import QgsCoordinateReferenceSystem, QgsRasterLayer
 
 # create an 2x2x1 in-memory raster

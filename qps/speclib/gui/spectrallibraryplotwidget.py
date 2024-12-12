@@ -4,6 +4,10 @@ import re
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
+
+from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
+    QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionButton, QStyleOptionViewItem, QTableView, QTreeView, \
+    QWidget
 from qgis.core import QgsApplication, QgsExpressionContext, QgsExpressionContextScope, QgsFeature, QgsFeatureRenderer, \
     QgsFeatureRequest, QgsField, QgsMapLayerProxyModel, QgsMarkerSymbol, QgsProject, QgsProperty, QgsRasterLayer, \
     QgsReadWriteContext, QgsRenderContext, QgsSettings, QgsSingleSymbolRenderer, QgsSymbol, QgsVectorLayer, \
@@ -13,10 +17,7 @@ from qgis.PyQt.QtCore import pyqtSignal, QAbstractItemModel, QItemSelectionModel
     QPoint, QRect, QSize, QSortFilterProxyModel, Qt
 from qgis.PyQt.QtGui import QBrush, QColor, QContextMenuEvent, QDragEnterEvent, QDropEvent, QFontMetrics, QIcon, \
     QPainter, QPalette, QPen, QPixmap, QStandardItem, QStandardItemModel
-from qgis.PyQt.QtWidgets import QAbstractItemView, QAction, QApplication, QComboBox, QDialog, QFrame, QHBoxLayout, \
-    QMenu, QMessageBox, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QTableView, QTreeView, QWidget
 from qgis.PyQt.QtXml import QDomDocument, QDomElement
-
 from .spectrallibraryplotitems import FEATURE_ID, FIELD_INDEX, MODEL_NAME, PlotUpdateBlocker, \
     SpectralProfilePlotDataItem, SpectralProfilePlotWidget
 from .spectrallibraryplotmodelitems import GeneralSettingsGroup, PlotStyleItem, ProfileCandidateGroup, \
@@ -31,8 +32,7 @@ from ...models import SettingsModel
 from ...plotstyling.plotstyling import PlotStyle, PlotWidgetStyle
 from ...qgisenums import QMETATYPE_INT, QMETATYPE_QSTRING
 from ...unitmodel import BAND_INDEX, BAND_NUMBER, datetime64, UnitConverterFunctionModel, UnitWrapper
-from ...utils import convertDateUnit, loadUi, printCaller, qgsField, SelectMapLayerDialog, SignalBlocker, \
-    SignalObjectWrapper
+from ...utils import convertDateUnit, loadUi, printCaller, qgsField, SelectMapLayerDialog, SignalObjectWrapper
 
 MAX_PROFILES_DEFAULT: int = 516
 FIELD_NAME = str
@@ -128,8 +128,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
         # self.mCache3PlotData: Dict[PLOT_DATA_KEY, dict] = dict()
 
         self.mUnitConverterFunctionModel = UnitConverterFunctionModel.instance()
-        self.mDualView: QgsDualView = None
-        self.mSpeclib: QgsVectorLayer = None
+        self.mDualView: QgsDualView = Optional[None]
+        self.mSpeclib: QgsVectorLayer = Optional[None]
 
         self.mXUnitModel: SpectralProfilePlotXAxisUnitModel = SpectralProfilePlotXAxisUnitModel.instance()
         self.mXUnit: UnitWrapper = self.mXUnitModel.findUnitWrapper(BAND_NUMBER)
@@ -143,6 +143,15 @@ class SpectralProfilePlotModel(QStandardItemModel):
         self.insertPropertyGroup(1, self.mProfileCandidates)
 
         self.setMaxProfiles(MAX_PROFILES_DEFAULT)
+
+        self.itemChanged.connect(self.onItemChanged)
+
+    def onItemChanged(self, *args):
+
+        if not self.updatesBlocked():
+            # print('#ITEM CHANGED')
+            # self.updatePlot()
+            pass
 
     def blockUpdates(self, b: bool) -> bool:
         state = self.mBlockUpdates
@@ -433,10 +442,13 @@ class SpectralProfilePlotModel(QStandardItemModel):
 
             self.updatePlot()
 
-    def updatePlot(self, fids_to_update=[]):
+    def updatePlot(self, fids_to_update=[]):  #
+
+        if not isinstance(self.speclib(), QgsVectorLayer):
+            return
         if self.updatesBlocked() or self.speclib().isEditCommandActive():
             return
-
+        # print('## UPDATE PLOT')
         t0 = datetime.datetime.now()
         if not (isinstance(self.mPlotWidget, SpectralProfilePlotWidget) and isinstance(self.speclib(), QgsVectorLayer)):
             return
@@ -652,7 +664,8 @@ class SpectralProfilePlotModel(QStandardItemModel):
     def updateProfileLabel(self, n: int, limit_reached: bool):
         propertyItem = self.generalSettings().mP_MaxProfiles
 
-        with SignalBlocker(propertyItem.signals()) as blocker:
+        # with SignalBlocker(propertyItem.signals()) as blocker:
+        with SpectralProfilePlotModel.UpdateBlocker(self) as blocker:
             if limit_reached:
                 fg = QColor('red')
                 tt = 'Profile limit reached. Increase to show more profiles at the same time (decreases speed)'
@@ -839,6 +852,7 @@ class SpectralProfilePlotModel(QStandardItemModel):
             if isinstance(self.mSpeclib, QgsVectorLayer):
                 self.mVectorLayerCache = QgsVectorLayerCache(speclib, 1000)
                 self.connectSpeclibSignals(self.mSpeclib)
+                # self.updatePlot()
 
     def connectSpeclibSignals(self, speclib: QgsVectorLayer):
 
@@ -1249,7 +1263,8 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
         total_h = self.mTreeView.rowHeight(index)
         total_w = self.mTreeView.columnWidth(index.column())
         style: QStyle = option.styleObject.style()
-        margin = 3  # px
+        # print(style)
+        margin = 2  # px
         if isinstance(item, PropertyItemBase):
             if item.hasPixmap():
                 super().paint(painter, option, index)
@@ -1267,6 +1282,7 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
 
                 h = option.rect.height()
                 plot_style: PlotStyle = item.mPStyle.plotStyle()
+
                 # add pixmap
                 pm = plot_style.createPixmap(size=QSize(h, h), hline=True, bc=bc)
                 to_paint.append(pm)
@@ -1274,8 +1290,10 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     to_paint.append(QIcon(r':/images/themes/default/mIconWarning.svg'))
                 to_paint.append(item.data(Qt.DisplayRole))
 
-                x0 = option.rect.x() + 1
+                x0 = option.rect.x()  # + 1
                 y0 = option.rect.y()
+                # print(to_paint)
+
                 for p in to_paint:
                     o: QStyleOptionViewItem = QStyleOptionViewItem(option)
                     self.initStyleOption(o, index)
@@ -1283,17 +1301,25 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                     o.palette = QPalette(option.palette)
 
                     if isinstance(p, Qt.CheckState):
-                        # size = style.sizeFromContents(QStyle.PE_IndicatorCheckBox, o, QSize(), None)
+                        # size = style.sizeFromContents(QStyle.CE_CheckBox, o, QSize(), None)
+                        o = QStyleOptionButton()
+
                         o.rect = QRect(x0, y0, h, h)
+                        # print(o.rect)
                         o.state = {Qt.Unchecked: QStyle.State_Off,
                                    Qt.Checked: QStyle.State_On,
                                    Qt.PartiallyChecked: QStyle.State_NoChange}[p]
-                        o.state = o.state | QStyle.State_Enabled
+                        o.state = o.state | QStyle.State_Enabled | QStyleOptionButton.Flat | QStyleOptionButton.AutoDefaultButton
 
-                        style.drawPrimitive(QStyle.PE_IndicatorCheckBox, o, painter, self.mTreeView)
+                        check_option = QStyleOptionButton()
+                        check_option.state = o.state  # Checkbox is enabled
+
+                        # Set the geometry of the checkbox within the item
+                        check_option.rect = option.rect
+                        QApplication.style().drawControl(QStyle.CE_CheckBox, check_option, painter)
 
                     elif isinstance(p, QPixmap):
-                        o.rect = QRect(x0, y0, h, h)
+                        o.rect = QRect(x0, y0, h * 2, h)
                         painter.drawPixmap(o.rect, p)
 
                     elif isinstance(p, QIcon):
@@ -1303,10 +1329,14 @@ class SpectralProfilePlotViewDelegate(QStyledItemDelegate):
                         font_metrics = QFontMetrics(self.mTreeView.font())
                         w = font_metrics.horizontalAdvance(p)
                         o.rect = QRect(x0 + margin, y0, x0 + margin + w, h)
-                        palette = style.standardPalette()
-                        enabled = True
-                        textRole = QPalette.Foreground
-                        style.drawItemText(painter, o.rect, Qt.AlignLeft, palette, enabled, p, textRole=textRole)
+                        # palette =
+                        # palette = style.standardPalette()
+
+                        enabled = item.checkState() == Qt.Checked
+                        if not enabled:
+                            o.palette.setCurrentColorGroup(QPalette.Disabled)
+                        style.drawItemText(painter, o.rect, Qt.AlignLeft | Qt.AlignVCenter, o.palette, enabled, p,
+                                           textRole=QPalette.Foreground)
 
                     else:
                         raise NotImplementedError(f'Does not support painting of "{p}"')

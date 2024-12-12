@@ -1,7 +1,0 @@
-
-
-
-
-style = QgsStyle()
-
-s = ""

@@ -671,7 +671,11 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             feedback: QgsProcessingFeedback = QgsProcessingFeedback()
             progressDialog = QProgressDialog(parent=parent)
             progressDialog.setWindowTitle('Import profiles')
-            feedback.progressChanged.connect(progressDialog.setValue)
+
+            def setProgressDialogProgress(value):
+                progressDialog.setValue(int(value))
+
+            feedback.progressChanged.connect(setProgressDialogProgress)
             progressDialog.canceled.connect(feedback.cancel)
             progressDialog.show()
 
@@ -698,7 +702,7 @@ class SpectralLibraryImportDialog(QDialog, QgsExpressionContextGenerator):
             context.appendScope(scope)
 
             # sink = QgsRemappingProxyFeatureSink(sinkDefinition, speclib)
-            sink = SpectralLibraryImportFeatureSink(sinkDefinition, speclib, srcFields)
+            sink = SpectralLibraryImportFeatureSink(sinkDefinition, speclib)
             sink.setExpressionContext(context)
             sink.setTransformContext(QgsProject.instance().transformContext())
 

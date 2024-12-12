@@ -229,9 +229,16 @@ class TestSpeclibWidgets(TestCase):
         self.assertIsInstance(slw, SpectralLibraryWidget)
         self.showGui(slw)
 
+    @unittest.skipIf(TestCase.runsInCI(), 'GUI test only')
     def test_SpectralLibraryWidget_Empty(self):
 
         slw = SpectralLibraryWidget()
+        self.showGui(slw)
+
+    @unittest.skipIf(TestCase.runsInCI(), 'GUI test only')
+    def test_SpectralLibraryWidget_Simple(self):
+        # QApplication.setStyle("Fusion")
+        slw = SpectralLibraryWidget(speclib=TestObjects.createSpectralLibrary(n=10))
         self.showGui(slw)
 
     def test_SpectralLibraryWidget(self):

@@ -24,6 +24,7 @@ class TestCanvas(QgsMapCanvas):
     def zoomToFeatureIds(self, layer, ids):
         self.zoom_fids = self.zoom_fids.union(ids)
 
+
 canvas = TestCanvas()
 
 n_features = 10
