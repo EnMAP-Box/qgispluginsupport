@@ -219,7 +219,7 @@ class SpectralProfileTableModel(QAbstractTableModel):
             return flags
         return None
 
-    def headerData(self, col: int, orientation, role):
+    def headerData(self, col: int, orientation: Qt.Orientation, role: int):
 
         if orientation == Qt.Horizontal and role in [Qt.DisplayRole, Qt.ToolTipRole]:
             return self.mColumnNames.get(col, f'{col + 1}')
@@ -359,7 +359,7 @@ class SpectralProfileEditorWidget(QGroupBox):
     def __init__(self, *args, **kwds):
         super(SpectralProfileEditorWidget, self).__init__(*args, **kwds)
         self.setWindowIcon(QIcon(':/qps/ui/icons/profile.svg'))
-        self.mDefault: dict = False
+        self.mDefault: Optional[dict] = None
 
         self.messageBar = QgsMessageBar()
 
@@ -669,7 +669,6 @@ class SpectralProfileFieldFormatter(QgsFieldFormatter):
             # return f'{SPECTRAL_PROFILE_FIELD_REPRESENT_VALUE} ({layer.fields().at(fieldIndex).typeName()})'
         else:
             return 'NULL'
-        s = ""
 
 
 class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
@@ -757,11 +756,11 @@ class SpectralProfileEditorWidgetFactory(QgsEditorWidgetFactory):
         assert isinstance(field, QgsField)
         if can_store_spectral_profiles(field):
             if field.editorWidgetSetup().type() == self.name():
-                return 21  # specialized support
+                return 20  # specialized support
             else:
-                return 10  # basic support
+                return 5  # basic support
         else:
-            return 0  # non support
+            return 0  # no support
 
 
 _SPECTRAL_PROFILE_EDITOR_WIDGET_FACTORY = None
