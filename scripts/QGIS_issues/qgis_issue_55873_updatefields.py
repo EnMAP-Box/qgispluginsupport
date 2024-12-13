@@ -1,22 +1,23 @@
-from qgis.PyQt.QtCore import QVariant
-from qgis._core import QgsVectorLayer
 from qgis.core import QgsField, QgsEditorWidgetSetup, edit
-
+from qgis.core import QgsVectorLayer
 from qgis.gui import QgsGui
 from qgis.testing import start_app
+from qps.qgisenums import QMETATYPE_QSTRING
 
 start_app()
 
 if len(QgsGui.editorWidgetRegistry().factories()) == 0:
     QgsGui.editorWidgetRegistry().initEditors()
 
+
 # Example 1: change editor widget setup
 
 def onFieldsUpdated():
     print('-- updatedFields emitted!')
 
+
 uri = "point?crs=epsg:4326&field=color:string"
-layer = QgsVectorLayer(uri, "Scratch point layer",  "memory")
+layer = QgsVectorLayer(uri, "Scratch point layer", "memory")
 layer.updatedFields.connect(onFieldsUpdated)
 
 # Example 1: updatesFields is not emitted when changing the editorWidgetSetup

@@ -1,21 +1,17 @@
-import site
 import pathlib
+import site
+import unittest
 
-from qgis.PyQt.QtCore import QSize, QVariant
-from qgis.PyQt.QtGui import QResizeEvent
+from qgis.core import QgsProject, QgsVectorLayer, QgsVectorLayerExporter, \
+    QgsField, QgsEditorWidgetSetup, Qgis
+from qgis.gui import QgsGui
+from qgis.testing.mocked import get_iface
+from qps.qgisenums import QMETATYPE_QSTRING
 
 DIR_QGIS_REPO = pathlib.Path(r'F:\Repositories\QGIS')
 assert DIR_QGIS_REPO.is_dir()
 
 site.addsitedir(DIR_QGIS_REPO / 'tests' / 'src' / 'python')
-import unittest
-import os
-from utilities import unitTestDataPath
-from qgis.core import QgsRasterLayer, QgsSingleBandGrayRenderer, QgsProject, QgsVectorLayer, QgsVectorLayerExporter, \
-    QgsField, QgsEditorWidgetSetup, Qgis
-from qgis.gui import QgsMapCanvas, QgsRendererRasterPropertiesWidget, QgsGui
-
-from qgis.testing.mocked import get_iface
 
 
 class PyQgsOGRProvider(unittest.TestCase):
@@ -68,5 +64,4 @@ class PyQgsOGRProvider(unittest.TestCase):
         # editor widget should not change by commitChanges
         self.assertEqual(layer.editorWidgetSetup(i).type(),
                          editor_widget_type,
-                         msg='QgsVectorLayer::commitChanged() changed QgsEditorWidgetSetup' + \
-                             f'\nDriver: {layer.dataProvider().name()}')
+                         msg=f'QgsVectorLayer::commitChanged() changed QgsEditorWidgetSetup \nDriver: {layer.dataProvider().name()}')

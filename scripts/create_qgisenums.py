@@ -1,12 +1,14 @@
 # this script generates the qps/qgisenums.py which provided unified access to enumerations accross different QGIS API versions
 import pathlib
 import re
+import urllib.request
 from pathlib import Path
 from typing import List
 
 import qgis._3d
 import qgis.analysis
 import qgis.core
+from qgis.core import Qgis
 
 NAMESPACE_CLASSES = {
     'qgis.core': vars(qgis.core),
@@ -32,8 +34,6 @@ OLD_NAME_CORRECTION = {
 NEW_NAME_CORRECTION = {
     'DataProviderReadFlag': 'DataProviderFlag'
 }
-
-import urllib.request
 
 url = r'https://raw.githubusercontent.com/qgis/QGIS/master/src/core/qgis.h'
 
@@ -157,14 +157,12 @@ print(f'Write {path_qgisenums}...')
 with open(path_qgisenums, 'w', encoding='utf8') as f:
     f.write('\n'.join(lines))
 
-from qgis.core import Qgis
-
 print(f'Test import {path_qgisenums.name} in {Qgis.versionInt()}')
-import qps.qgisenums
+qps_enums = __import__('qps.qgisenums')
 
-all_names = dir(qps.qgisenums)
+all_names = dir(qps_enums)
 for n in all_names:
     if not n.startswith('_'):
-        print(f'{n} = {getattr(qps.qgisenums, n)}')
+        print(f'{n} = {getattr(qps_enums, n)}')
 
 print('Done!')

@@ -1,8 +1,8 @@
 <!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
-<qgis styleCategories="Symbology|Forms" version="3.38.0-Grenoble">
-  <renderer-v2 referencescale="-1" enableorderby="0" type="singleSymbol" symbollevels="0" forceraster="0">
+<qgis version="3.40.1-Bratislava" styleCategories="Symbology|Forms">
+  <renderer-v2 type="singleSymbol" forceraster="0" symbollevels="0" enableorderby="0" referencescale="-1">
     <symbols>
-      <symbol is_animated="0" frame_rate="10" alpha="1" force_rhr="0" type="marker" clip_to_extent="1" name="0">
+      <symbol type="marker" alpha="1" name="0" force_rhr="0" is_animated="0" frame_rate="10" clip_to_extent="1">
         <data_defined_properties>
           <Option type="Map">
             <Option type="QString" name="name" value=""/>
@@ -10,11 +10,11 @@
             <Option type="QString" name="type" value="collection"/>
           </Option>
         </data_defined_properties>
-        <layer locked="0" pass="0" enabled="1" id="{dd2ecfe4-7a27-44c2-82ac-45c7acdcca13}" class="SimpleMarker">
+        <layer enabled="1" pass="0" class="SimpleMarker" locked="0" id="{d7e22b8d-3d6c-4ad5-8a7d-a7509e09e1f1}">
           <Option type="Map">
             <Option type="QString" name="angle" value="0"/>
             <Option type="QString" name="cap_style" value="square"/>
-            <Option type="QString" name="color" value="141,90,153,255,rgb:0.55294117647058827,0.35294117647058826,0.59999999999999998,1"/>
+            <Option type="QString" name="color" value="255,158,23,255,rgb:1,0.61960784313725492,0.09019607843137255,1"/>
             <Option type="QString" name="horizontal_anchor_point" value="1"/>
             <Option type="QString" name="joinstyle" value="bevel"/>
             <Option type="QString" name="name" value="circle"/>

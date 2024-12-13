@@ -1,8 +1,9 @@
 # relates to https://github.com/qgis/QGIS/issues/46883
 
+import unittest
+
 from qgis.core import QgsApplication, Qgis
 from qgis.testing import start_app, stop_app
-import unittest
 
 print(Qgis.version(), Qgis.devVersion(), flush=True)
 

@@ -1,6 +1,8 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType, QVariant
 from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem, QgsCoordinateTransformContext, \
     QgsDistanceArea, QgsEditorWidgetSetup, QgsExpression, QgsExpressionContext, QgsExpressionContextScope, \
     QgsExpressionContextUtils, QgsExpressionFunction, QgsExpressionNode, QgsExpressionNodeColumnRef, \
@@ -9,8 +11,6 @@ from qgis.core import edit, QgsAggregateCalculator, QgsCoordinateReferenceSystem
     QgsProcessingFeatureSource, QgsProcessingFeedback, QgsProcessingParameterAggregate, \
     QgsProcessingParameterExpression, QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, \
     QgsProcessingUtils, QgsVectorLayer, QgsWkbTypes
-from qgis.PyQt.QtCore import NULL, QByteArray, QMetaType, QVariant
-
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import is_profile_field
 from ..core.spectralprofile import decodeProfileValueDict, encodeProfileValueDict, prepareProfileValueDict, \
@@ -38,14 +38,13 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
 
     def setFidsFilter(self, fids: Any) -> None:
         super(AggregateProfilesCalculator, self).setFidsFilter(fids)
-
         self.mFIDs = fids
 
     def calculate(self,
                   aggregate: QgsAggregateCalculator.Aggregate,
                   fieldOrExpression: str,
                   context: Optional[QgsExpressionContext] = ...,
-                  feedback: Optional[QgsFeedback] = ...) -> Tuple[Any, bool]:
+                  feedback: Optional[QgsFeedback] = ...) -> Optional[dict]:
 
         if not isinstance(self.layer(), QgsVectorLayer):
             return QVariant()
@@ -114,9 +113,9 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
             return QVariant()
         y = None
         x = profileDictionaries[0].get('x', None)
-        encoding = ProfileEncoding.fromInput(attrField)
 
-        vstack = np.vstack([d['y'] for d in profileDictionaries])
+        y_values = [d['y'] for d in profileDictionaries]
+        vstack = np.vstack(y_values)
 
         if aggregate == QgsAggregateCalculator.Aggregate.Mean:
             y = np.mean(vstack, axis=0)
@@ -138,13 +137,14 @@ class AggregateProfilesCalculator(QgsAggregateCalculator):
             y = np.quantile(vstack, 0.75, axis=0)
         elif aggregate == QgsAggregateCalculator.Aggregate.Range:
             y = np.max(vstack, axis=0) - np.min(vstack, axis=0)
+        else:
+            raise NotImplementedError(f'aggregate={aggregate}')
 
-        if y is not None:
-            d = prepareProfileValueDict(y=y, x=x, xUnit=xUnit, bbl=bbl)
-            dump = encodeProfileValueDict(d, encoding=encoding)
+        if isinstance(y, np.ndarray):
+            dump = prepareProfileValueDict(y=y.tolist(), x=x, xUnit=xUnit, bbl=bbl)
             return dump
 
-        return QVariant()
+        return None
 
 
 class AggregateMemoryLayer(QgsVectorLayer):
@@ -621,11 +621,6 @@ class SpectralAggregation(QgsExpressionFunction):
         return True
 
 
-def spfcnAggregate(values: list, context: QgsExpressionContext, parent: QgsExpression, node: QgsExpressionNodeFunction):
-    # first node is layer id or name
-    node: QgsExpressionNode = values[0]
-
-
 def spfcnAggregateGeneric(
         aggregate: QgsAggregateCalculator.Aggregate,
         values: list,
@@ -636,7 +631,7 @@ def spfcnAggregateGeneric(
 ):
     if not isinstance(context, QgsExpressionContext):
         parent.setEvalErrorString('Cannot use aggregate function in this context')
-        return None
+        return QVariant()
 
     # find current layer:
     vl: QgsVectorLayer = context.variable('layer')
@@ -644,31 +639,47 @@ def spfcnAggregateGeneric(
         parent.setEvalErrorString('Cannot use aggregate function in this context')
         return QVariant()
 
-    node: QgsExpressionNode = values[0]
-    subExpression: str = node.dump()
+    nodeProfile: QgsExpressionNode = values[0]
+    nodeGroupBy: QgsExpressionNode = values[1]
+    nodeFilter: QgsExpressionNode = values[2]
+    nodeFormat: QgsExpressionNode = values[3]
 
-    # optional, second node is group by
-    groupBy: str = None
-    if len(values) > 1:
-        node = values[1]
-        if isinstance(node, QgsExpressionNode):
-            dmp = node.dump()
-            if dmp not in ['', None, NULL, 'NULL']:
-                # todo: handle none-string cases
-                if isinstance(node, QgsExpressionNodeColumnRef):
-                    groupBy = QgsExpression.quotedColumnRef(dmp)
-                else:
-                    groupBy = dmp
+    subExpression: str = nodeProfile.dump()
+    if subExpression == 'NULL':
+        # no profile field defined. Take that from 1st
+        for field in context.fields():
+            if is_profile_field(field):
+                subExpression = field.name()
+                break
+        if subExpression == 'NULL':
+            parent.setEvalErrorString('Unable to find spectral profile field.')
+            return None
 
-    # optional, third node is filter
-    if len(values) > 2:
-        node = values[2]
-        # if isinstance(node, QgsExpressionNodeLiteral) and node.value() != '':
-        if isinstance(node, QgsExpressionNode):
-            dmp = node.dump()
-            if dmp not in ['', None, NULL, 'NULL']:
-                # todo: handle none-string cases
-                parameters.filter = QgsExpression.quotedValue(dmp)
+    groupBy: Optional[str] = None
+    dmp = nodeGroupBy.dump()
+    if dmp != 'NULL':
+        # todo: handle none-string cases
+        if isinstance(nodeGroupBy, QgsExpressionNodeColumnRef):
+            groupBy = QgsExpression.quotedColumnRef(dmp)
+        else:
+            groupBy = dmp
+
+    # the filter node
+    dmp = nodeFilter.dump()
+    if dmp != 'NULL':
+        # todo: handle none-string cases
+        parameters.filter = QgsExpression.quotedValue(dmp)
+
+    encoding = None
+    dmp = nodeFormat.dump()
+    if dmp not in ['NULL', NULL, None]:
+        try:
+            encoding = ProfileEncoding.fromInput(dmp)
+        except Exception as ex:
+            parent.setEvalErrorString(f'{ex}')
+
+    if encoding is None:
+        encoding = ProfileEncoding.Map
 
     orderBy: str = None
     if orderByPos >= 0 and len(values) > orderByPos:
@@ -713,7 +724,6 @@ def spfcnAggregateGeneric(
     if context.hasCachedValue(cacheKey):
         return context.cachedValue(cacheKey)
 
-    result = None
     ok: bool = False
 
     subContext: QgsExpressionContext = QgsExpressionContext(context)
@@ -742,11 +752,20 @@ def spfcnAggregateGeneric(
             AGG.setFidsFilter(fids)
 
         AGG.setParameters(parameters)
-        result = AGG.calculate(aggregate, subExpression, context, context.feedback())
+        try:
+            result = AGG.calculate(aggregate, subExpression, context, context.feedback())
+        except Exception as ex:
+            parent.setEvalErrorString(f'Unable to aggregate:<br>{ex}')
+            return QVariant()
 
-    if result != QVariant():
+    if isinstance(result, dict):
+        if encoding is not None:
+            result = encodeProfileValueDict(result, encoding)
         context.setCachedValue(cacheKey, result)
-    return result
+        return result
+    # print(f'# Result: {result}')
+    return QVariant()
+    # return
 
 
 def spfcnAggregateMinimum(values: list, context: QgsExpressionContext, parent: QgsExpression,
@@ -775,9 +794,11 @@ def spfcnAggregateMedian(values: list, context: QgsExpressionContext, parent: Qg
 
 def createSpectralProfileFunctions() -> List[QgsExpressionFunction]:
     aggParams = [
-        QgsExpressionFunction.Parameter('profiles', optional=False),
+        QgsExpressionFunction.Parameter('profiles', optional=True),
         QgsExpressionFunction.Parameter('group_by', optional=True),
         QgsExpressionFunction.Parameter('filter', optional=True),
+        QgsExpressionFunction.Parameter('encoding', optional=True),
+
     ]
 
     functions = [

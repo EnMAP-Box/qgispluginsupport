@@ -1,8 +1,11 @@
 import json
-import numpy as np
 import re
 import warnings
 from copy import copy
+from typing import Any, List, Optional, Tuple
+
+import numpy as np
+
 from qgis.PyQt.QtCore import NULL, pyqtSignal, QAbstractTableModel, QJsonDocument, QModelIndex, QSortFilterProxyModel, \
     Qt, QVariant
 from qgis.PyQt.QtGui import QIcon
@@ -12,8 +15,6 @@ from qgis.core import Qgis, QgsApplication, QgsFeature, QgsField, QgsFieldFormat
     QgsVectorLayer
 from qgis.gui import QgsCodeEditorJson, QgsEditorConfigWidget, QgsEditorWidgetFactory, QgsEditorWidgetWrapper, QgsGui, \
     QgsMessageBar
-from typing import Any, List, Optional, Tuple
-
 from .spectrallibraryplotunitmodels import SpectralProfilePlotXAxisUnitModel
 from .. import EDITOR_WIDGET_REGISTRY_KEY
 from ..core import can_store_spectral_profiles
@@ -50,6 +51,11 @@ class SpectralProfileTableModel(QAbstractTableModel):
         self.mCurrentProfile: dict = dict()
 
         self.mBooleanBBL: bool = True
+
+        self.mIsReadOnly: bool = False
+
+    def setReadOnly(self, read_only: bool):
+        self.mIsReadOnly = read_only is True
 
     def setBooleanBBL(self, b: bool):
         assert isinstance(b, bool)
@@ -207,12 +213,12 @@ class SpectralProfileTableModel(QAbstractTableModel):
         if index.isValid():
             c = index.column()
             flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-            if c in [1, 2, 3]:
+            if c in [1, 2, 3] and not self.mIsReadOnly:
                 flags = flags | Qt.ItemIsEditable
             return flags
         return None
 
-    def headerData(self, col: int, orientation, role):
+    def headerData(self, col: int, orientation: Qt.Orientation, role: int):
 
         if orientation == Qt.Horizontal and role in [Qt.DisplayRole, Qt.ToolTipRole]:
             return self.mColumnNames.get(col, f'{col + 1}')
@@ -290,6 +296,11 @@ class SpectralProfileTableEditor(QFrame):
         vbox.addLayout(hbox)
         vbox.addWidget(self.tableView)
         self.setLayout(vbox)
+
+    def setReadOnly(self, read_only: bool):
+        self.cbXUnit.setEnabled(not read_only)
+        self.tbYUnit.setReadOnly(read_only)
+        self.tableModel.setReadOnly(read_only)
 
     def clear(self):
         self.tableModel.clear()

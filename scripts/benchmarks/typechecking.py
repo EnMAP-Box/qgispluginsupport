@@ -1,7 +1,6 @@
-
 import datetime
+
 import typeguard
-import timeit
 
 repetitions = 100000
 

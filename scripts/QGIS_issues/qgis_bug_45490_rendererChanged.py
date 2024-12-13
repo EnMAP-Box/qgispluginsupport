@@ -1,19 +1,18 @@
 # relates to https://github.com/qgis/QGIS/issues/45490
 
-from qgis.PyQt.QtGui import QColor
+import pathlib
+import random
 
+from qgis.PyQt.QtGui import QColor
+from qgis.core import QgsApplication, QgsVectorLayer, QgsProject, QgsCategorizedSymbolRenderer, QgsRendererCategory, \
+    QgsFillSymbol
 from qgis.testing import start_app
 
 app = start_app()
 
-import pathlib
-import random
-from qgis.core import QgsApplication, QgsVectorLayer, QgsProject, QgsCategorizedSymbolRenderer,QgsRendererCategory, QgsFillSymbol
-
 path = pathlib.Path(QgsApplication.prefixPath()) / 'resources' / 'data' / 'world_map.gpkg|layername=countries'
 lyr = QgsVectorLayer(path.as_posix(), 'World')
 assert lyr.isValid()
-
 
 r = QgsCategorizedSymbolRenderer('NAME')
 for name in lyr.uniqueValues(lyr.fields().lookupField('NAME')):
@@ -28,4 +27,4 @@ for name in lyr.uniqueValues(lyr.fields().lookupField('NAME')):
 
 lyr.setRenderer(r)
 QgsProject.instance().addMapLayer(lyr, True)
-lyr.styleChanged.connect(lambda : print('Renderer Changed'))
+lyr.styleChanged.connect(lambda: print('Renderer Changed'))
