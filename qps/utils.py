@@ -2464,7 +2464,7 @@ class SpatialPoint(QgsPointXY):
 
         px = m2p.transform(pt)
 
-        return QPoint(int(px.x()), int(px.y()))
+        return QPoint(math.floor(px.x()), math.floor(px.y()))
 
     def toPixelPosition(self, rasterDataSource, allowOutOfRaster=False) -> QPoint:
         """
