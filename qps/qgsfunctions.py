@@ -31,7 +31,7 @@ import pathlib
 import re
 import sys
 from json import JSONDecodeError
-from typing import Any, Callable, Dict, Iterable, List, Set, Tuple, Union, Optional
+from typing import Any, Callable, Dict, List, Set, Tuple, Union, Optional
 
 import numpy as np
 
@@ -441,13 +441,13 @@ class StaticExpressionFunction(QgsExpressionFunction):
         return True
 
     def func(self,
-             values: Iterable[Any],
+             values: list,
              context: QgsExpressionContext,
              parent: QgsExpression,
              node: QgsExpressionNodeFunction) -> Any:
         if self.mFnc:
             r = self.mFnc(values, context, parent, node)
-            print(f'#R: {type(r)} :{r}')
+            # print(f'#R: {type(r)} :{r}')
             return r
         else:
             return QVariant()

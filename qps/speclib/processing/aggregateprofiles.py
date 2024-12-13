@@ -665,7 +665,7 @@ def spfcnAggregateGeneric(
             groupBy = dmp
 
     # the filter node
-    dmp = nodeFilter
+    dmp = nodeFilter.dump()
     if dmp != 'NULL':
         # todo: handle none-string cases
         parameters.filter = QgsExpression.quotedValue(dmp)

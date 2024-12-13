@@ -738,17 +738,20 @@ class QgsFunctionTests(TestCase):
                 # aggregate over all
                 expected = ALL_PROFILES[func]
                 funcString = f'{func}_profile()'
+                context = QgsExpressionContext(c)
                 profile = checkProfileAggr(context, feature, funcString)
                 self.assertListEqual(profile, expected)
 
                 # grouped aggregation, aggregate per class
                 expected = ALL_PROFILES[f'{classname}_{func}']
 
+                context = QgsExpressionContext(c)
                 funcString = f'{func}_profile(group_by:="class")'
                 profile = checkProfileAggr(context, feature, funcString)
                 self.assertListEqual(profile, expected)
 
                 funcString = f'{func}_profile("profile", group_by:="class")'
+                context = QgsExpressionContext(c)
                 profile = checkProfileAggr(context, feature, funcString)
                 self.assertListEqual(profile, expected)
 
