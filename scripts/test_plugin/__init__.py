@@ -1,14 +1,14 @@
+import os
 import pathlib
 import site
+from pathlib import Path
 from typing import List
 
+from console import show_console
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtWidgets import QAction, QWidget
-from qgis.core import QgsFeature
-from qgis.core import QgsField
-from qgis.core import QgsProject, QgsWkbTypes, edit
+from qgis.PyQt.QtWidgets import QMenu
 from qgis.gui import QgisInterface
-from qgis.gui import QgsFieldCalculator
 
 
 # the init to be used in the test plugin
@@ -44,18 +44,16 @@ class QGISPluginsSupportPlugin(object):
 
         # init main UI
         action = QAction(self.title, iface)
-        action.triggered.connect(self.run)
+        # action.triggered.connect(self.run)
         self.mToolbarActions.append(action)
+
+        m = QMenu('Start')
+        self.populateMenu(m)
+        action.setMenu(m)
 
         for action in self.mToolbarActions:
             iface.addToolBarIcon(action)
             iface.addPluginToRasterMenu(self.title, action)
-
-        from qps.testing import TestObjects
-        from qps.speclib.gui.spectrallibrarywidget import SpectralLibraryWidget
-        sl = TestObjects.createSpectralLibrary()
-        slw = SpectralLibraryWidget(speclib=sl)
-        self.mWidgets.append(slw)
 
     def initProcessing(self):
         """
@@ -63,71 +61,38 @@ class QGISPluginsSupportPlugin(object):
         """
         pass
 
-    def run(self):
-        self.loadStartScripts()
-        for w in self.mWidgets:
-            w.show()
+    # def run(self):
+    #    self.loadStartScripts()
 
-    def loadStartScripts(self):
+    def populateMenu(self, menu: QMenu):
+        assert isinstance(menu, QMenu)
 
-        # todo:
+        folder = Path(__file__).parent / 'startscripts'
+        assert folder.is_dir()
 
-        if False:
-            from qps.testing import TestObjects
+        py_files = []
+        for e in os.scandir(folder):
+            if e.is_file() and e.name.endswith('.py'):
+                py_files.append(Path(e.path))
+        py_files = sorted(py_files, key=lambda p: p.name)
+        for py_file in py_files:
+            a: QAction = menu.addAction(py_file.name)
+            a.setToolTip(f'Execute code in {py_file}')
+            a.triggered.connect(lambda *args, f=py_file: self.execute_py_file(f))
 
-            rl = TestObjects.createRasterLayer(nb=25)
-            rl.setName('QPS Raster')
-            vl1 = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Point)
-            vl1.setName('QPS Point')
-            vl2 = TestObjects.createVectorLayer(wkbType=QgsWkbTypes.Polygon)
-            vl2.setName('QPS Polygon')
-            QgsProject.instance().addMapLayers([vl1, vl2, rl])
+        return
 
-        if True:
-            from qps.qgisenums import QMETATYPE_QSTRING
-            from qps.speclib.core.spectralprofile import encodeProfileValueDict
+    def execute_py_file(self, path: Path):
 
-            from qps.speclib.core.spectrallibrary import SpectralLibraryUtils
-            sl = SpectralLibraryUtils.createSpectralLibrary(['profile'])
-            expected = {
-                'A': [2.5, 4.0, 3.5],
-                'B': [1, 1, 1],
-                'C': [2.5, 3, 3.5, 5.5]
+        console = show_console()
+        console.setUserVisible(True)
+        console.activate()
 
-            }
-
-            data = [
-                {'x': [1, 2, 3], 'y': [2, 2, 2], 'class': 'A'},  # A should average t 2.5, 4.0, 3.5
-                {'x': [1, 2, 3], 'y': [3, 4, 5], 'class': 'A'},
-                {'x': [1, 2, 3], 'y': [1, 1, 1], 'class': 'B'},  # B should average to 1 1 1
-                {'x': [4, 5, 6, 7], 'y': [2, 2, 2, 5], 'class': 'C'},  # C should average to 2.5, 3, 3.5, 5.5
-                {'x': [4, 5, 6, 7], 'y': [3, 4, 5, 6], 'class': 'C'},
-                # {'x': [1, 2, 3, 4], 'y': [5, 4, 3, 4], 'class': 'D'},  # D should fail, because arrays have different values
-                # {'x': [1, 2], 'y': [5, 4], 'class': 'D'},
-                #
-            ]
-            QgsProject.instance().addMapLayer(sl)
-            with edit(sl):
-                sl.addAttribute(QgsField('class', QMETATYPE_QSTRING))
-                for item in data:
-                    f = QgsFeature(sl.fields())
-
-                    data = {'x': item['x'], 'y': item['y']}
-                    dump = encodeProfileValueDict(data, sl.fields()['profile'])
-                    f.setAttribute('profile', dump)
-                    f.setAttribute('class', item['class'])
-                    assert sl.addFeature(f)
-
-                gui = QgsFieldCalculator(sl, None)
-                # create new string field "agr"
-                # entry expression 'mean_profile("profile", "class")'
-
-                gui.exec_()
-
-            for f in sl.getFeatures():
-                f: QgsFeature
-                print(f.attributeMap())
-            s = ""
+        path = Path(path)
+        print(f'Execute {path}')
+        with open(path) as f:
+            code = f.read()
+        exec(code)
 
     def unload(self):
         for w in self.mWidgets:

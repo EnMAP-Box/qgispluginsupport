@@ -3,6 +3,7 @@ import enum
 import json
 import math
 import pickle
+import re
 import sys
 from json import JSONDecodeError
 from math import nan
@@ -176,7 +177,7 @@ class ProfileEncoding(enum.Enum):
         elif isinstance(input, ProfileEncoding):
             return input
         elif isinstance(input, str):
-            input = input.lower()
+            input = re.sub('["\']', '', input.lower())
             for name, member in ProfileEncoding.__members__.items():
                 if name.lower() == input:
                     return member

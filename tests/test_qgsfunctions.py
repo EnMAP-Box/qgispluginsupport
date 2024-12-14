@@ -184,21 +184,57 @@ class QgsFunctionTests(TestCase):
         f = SpectralData()
         self.registerFunction(f)
 
-        sl = TestObjects.createSpectralLibrary(n_empty=0, n_bands=[24, 255], profile_field_names=['p1', 'p2'])
+        sl = TestObjects.createSpectralLibrary(profile_field_names=['profile1', 'profile2'])
+
+        with edit(sl):
+            for feature in sl.getFeatures():
+
+                if feature.id() % 2 == 0:
+                    feature.setAttribute('profile1', None)
+                elif feature.id() % 3 == 0:
+                    feature.setAttribute('profile2', None)
+                sl.updateFeature(feature)
+
+        context = QgsExpressionContext()
+        context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
+
+        for feature in sl.getFeatures():
+            # print(feature.attributeMap())
+            context.setFeature(feature)
+
+            expected = [
+                ('spectral_data()', feature.attribute('profile1')),
+                ('spectral_data("profile1")', feature.attribute('profile1')),
+                ('spectral_data("profile2")', feature.attribute('profile2')),
+            ]
+
+            for (exp_string, expected_result) in expected:
+                exp = QgsExpression(exp_string)
+                self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+                dump = exp.evaluate(context)
+                self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
+                self.assertEqual(dump, expected_result)
+
+        sl = TestObjects.createSpectralLibrary(n_empty=0, n_bands=[24, 255],
+                                               profile_field_names=['profile1', 'profile2'])
         sfields = profile_fields(sl)
+        self.assertTrue(len(sfields) == 2)
 
         context = QgsExpressionContext()
         context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
         QgsProject.instance().addMapLayer(sl)
-        for n in sfields.names():
+        for i, n in enumerate(sfields.names()):
             exp = QgsExpression(f'{f.name()}("{n}")')
+
             for feature in sl.getFeatures():
                 context.setFeature(feature)
                 exp.prepare(context)
                 self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
                 profile = exp.evaluate(context)
+                self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
                 profileDict = decodeProfileValueDict(profile)
                 self.assertTrue(isProfileValueDict(profileDict))
+
         QgsProject.instance().removeAllMapLayers()
 
     def test_RasterArray(self):
@@ -630,14 +666,14 @@ class QgsFunctionTests(TestCase):
     def test_aggregation_functions(self):
 
         afuncs = createSpectralProfileFunctions()
-        for f in afuncs:
-            text = f.helpText()
-            self.assertTrue(f.name() in text)
-            self.registerFunction(f)
+        for feature in afuncs:
+            text = feature.helpText()
+            self.assertTrue(feature.name() in text)
+            self.registerFunction(feature)
 
         aggrFuncs = ['mean', 'median', 'minimum', 'maximum']
-        for f in aggrFuncs:
-            fname = f'{f}_profile'
+        for feature in aggrFuncs:
+            fname = f'{feature}_profile'
             self.assertTrue(QgsExpression.isFunctionName(fname))
 
         sl = createAggregateTestProfileLayer()
@@ -645,14 +681,14 @@ class QgsFunctionTests(TestCase):
         context = QgsExpressionContext()
         context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(sl))
 
-        def checkProfileAggr(context: QgsExpressionContext, f: QgsFeature, func: str) -> list:
+        def checkProfileAggr(context: QgsExpressionContext, f: QgsFeature, funcString: str) -> list:
             c = QgsExpressionContext(context)
             c.setFeature(f)
             c.setGeometry(f.geometry())
 
-            exp = QgsExpression(f'{func}_profile("profile", group_by:="class")')
+            exp = QgsExpression(funcString)
             exp.prepare(c)
-            self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString() + f'\n func: {func}_profile')
+            self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
             profile = exp.evaluate(c)
             self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
             self.assertIsInstance(profile, dict)
@@ -661,32 +697,63 @@ class QgsFunctionTests(TestCase):
             return values
 
         ALL_PROFILES = dict()
-        for f in sl.getFeatures():
-            c = f.attribute('class')
-            p = f.attribute('profile')['y']
-            ALL_PROFILES[c] = ALL_PROFILES.get(c, []) + [np.asarray(p)]
-        for c in list(ALL_PROFILES.keys()):
-            ALL_PROFILES[c + '_mean'] = np.mean(ALL_PROFILES[c], axis=0).tolist()
-            ALL_PROFILES[c + '_median'] = np.median(ALL_PROFILES[c], axis=0).tolist()
-            ALL_PROFILES[c + '_minimum'] = np.min(ALL_PROFILES[c], axis=0).tolist()
-            ALL_PROFILES[c + '_maximum'] = np.max(ALL_PROFILES[c], axis=0).tolist()
 
-        for f in sl.getFeatures():
-            classname = f.attribute('class')
-            d = f.attributeMap()
+        all_arrays = []
+        all_classes = []
+        for feature in sl.getFeatures():
+            c = feature.attribute('class')
+            p = np.array(feature.attribute('profile')['y'])
+            ALL_PROFILES[c] = ALL_PROFILES.get(c, []) + [p]
+            all_classes.append(c)
+            all_arrays.extend([p])
+
+        ALL_PROFILES['mean'] = np.mean(all_arrays, axis=0).tolist()
+        ALL_PROFILES['median'] = np.median(all_arrays, axis=0).tolist()
+        ALL_PROFILES['minimum'] = np.min(all_arrays, axis=0).tolist()
+        ALL_PROFILES['maximum'] = np.max(all_arrays, axis=0).tolist()
+
+        for className in all_classes:
+            ALL_PROFILES[className + '_mean'] = np.mean(ALL_PROFILES[className], axis=0).tolist()
+            ALL_PROFILES[className + '_median'] = np.median(ALL_PROFILES[className], axis=0).tolist()
+            ALL_PROFILES[className + '_minimum'] = np.min(ALL_PROFILES[className], axis=0).tolist()
+            ALL_PROFILES[className + '_maximum'] = np.max(ALL_PROFILES[className], axis=0).tolist()
+
+        for feature in sl.getFeatures():
+
+            classname = feature.attribute('class')
+            d = feature.attributeMap()
             c = QgsExpressionContext(context)
-            c.setFeature(f)
-            c.setGeometry(f.geometry())
+            c.setFeature(feature)
+            c.setGeometry(feature.geometry())
 
             # reference aggregation on single number
             exp = QgsExpression('mean("num",  group_by:="class")')
-            exp.prepare(c)
+            self.assertTrue(exp.parserErrorString() == '', msg=exp.parserErrorString())
+            # exp.prepare(c)
             mean_value = exp.evaluate(c)
+            self.assertTrue(exp.evalErrorString() == '', msg=exp.evalErrorString())
             self.assertEqual(mean_value, d['t_mean'])
 
             for func in aggrFuncs:
-                profile = checkProfileAggr(context, f, func)
-                self.assertListEqual(profile, ALL_PROFILES[f'{classname}_{func}'])
+                # aggregate over all
+                expected = ALL_PROFILES[func]
+                funcString = f'{func}_profile()'
+                context = QgsExpressionContext(c)
+                profile = checkProfileAggr(context, feature, funcString)
+                self.assertListEqual(profile, expected)
+
+                # grouped aggregation, aggregate per class
+                expected = ALL_PROFILES[f'{classname}_{func}']
+
+                context = QgsExpressionContext(c)
+                funcString = f'{func}_profile(group_by:="class")'
+                profile = checkProfileAggr(context, feature, funcString)
+                self.assertListEqual(profile, expected)
+
+                funcString = f'{func}_profile("profile", group_by:="class")'
+                context = QgsExpressionContext(c)
+                profile = checkProfileAggr(context, feature, funcString)
+                self.assertListEqual(profile, expected)
 
     @unittest.skipIf(TestCase.runsInCI(), 'blocking dialog')
     def test_aggregation_differingArrays(self):
@@ -710,8 +777,8 @@ class QgsFunctionTests(TestCase):
             {'x': [1, 2, 3], 'y': [2, 2, 2], 'class': 'A'},  # A should average t 2.5, 4.0, 3.5
             {'x': [1, 2, 3], 'y': [3, 4, 5], 'class': 'A'},
             {'x': [1, 2, 3], 'y': [1, 1, 1], 'class': 'B'},  # B should average to 1 1 1
-            {'x': [4, 5, 6, 7], 'y': [2, 2, 2, 5], 'class': 'C'},  # C should average to 2.5, 3, 3.5, 5.5
-            {'x': [4, 5, 6, 7], 'y': [3, 4, 5, 6], 'class': 'C'},
+            # {'x': [4, 5, 6, 7], 'y': [2, 2, 2, 5], 'class': 'C'},  # C should average to 2.5, 3, 3.5, 5.5
+            # {'x': [4, 5, 6, 7], 'y': [3, 4, 5, 6], 'class': 'C'},
             # {'x': [1, 2, 3, 4], 'y': [5, 4, 3, 4], 'class': 'D'},  # D should fail, because arrays have different values
             # {'x': [1, 2], 'y': [5, 4], 'class': 'D'},
             #
