@@ -28,15 +28,15 @@ import gc
 import inspect
 import itertools
 import os
-import pathlib
 import random
 import shutil
 import sys
 import traceback
 import uuid
 import warnings
+from pathlib import Path
 from time import sleep
-from typing import List, Set, Tuple, Union
+from typing import List, Optional, Set, Tuple, Union
 from unittest import mock
 
 import numpy as np
@@ -62,7 +62,7 @@ from .qgisenums import QGIS_WKBTYPE
 from .resources import initResourceFile
 from .utils import findUpwardPath, px2geo, SpatialPoint
 
-TEST_VECTOR_GEOJSON = pathlib.Path(__file__).parent / 'testvectordata.4326.geojson'
+TEST_VECTOR_GEOJSON = Path(__file__).parent / 'testvectordata.4326.geojson'
 
 _QGIS_MOCKUP = None
 _PYTHON_RUNNER = None
@@ -73,7 +73,7 @@ def start_app(cleanup: bool = True,
               init_python_runner: bool = True,
               init_editor_widgets: bool = True,
               init_iface: bool = True,
-              resources: List[Union[str, pathlib.Path]] = []) -> QgsApplication:
+              resources: Optional[List[Union[str, Path]]] = None) -> QgsApplication:
     app = qgis.testing.start_app(cleanup)
 
     app.setStyle('Fusion')
@@ -107,8 +107,12 @@ def start_app(cleanup: bool = True,
     if init_editor_widgets and len(QgsGui.editorWidgetRegistry().factories()) == 0:
         QgsGui.editorWidgetRegistry().initEditors()
 
-    for path in resources:
-        initResourceFile(path)
+    if isinstance(resources, str):
+        resources = [resources]
+
+    if isinstance(resources, list):
+        for path in resources:
+            initResourceFile(path)
 
     crs1 = QgsCoordinateReferenceSystem('EPSG:4326')
     assert crs1.isValid(), 'Failed to initialize QGIS SRS database'
@@ -304,7 +308,7 @@ class QgisMockup(QgisInterface):
             mapLayer.endEditCommand()
 
     def browserModel(self) -> QgsBrowserGuiModel:
-        self.mBrowserGuiModel
+        return self.mBrowserGuiModel
 
     def copySelectionToClipboard(self, mapLayer: QgsMapLayer):
         if isinstance(mapLayer, QgsVectorLayer):
@@ -462,11 +466,11 @@ class TestCase(QgisTestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.check_empty_layerstore(cls.__class__)
+        cls.check_empty_layerstore(str(cls.__class__))
 
     @classmethod
     def tearDownClass(cls):
-        cls.check_empty_layerstore(cls.__class__)
+        cls.check_empty_layerstore(str(cls.__class__))
 
     @classmethod
     def showGui(cls, widgets: Union[QWidget, List[QWidget]] = None) -> bool:
@@ -549,7 +553,7 @@ class TestCase(QgisTestCase):
         :return:
         :rtype:
         """
-        path = pathlib.Path(path)
+        path = Path(path)
         assert path.is_file()
 
         ds: gdal.Dataset = gdal.Open(path.as_posix())
@@ -588,39 +592,52 @@ class TestCase(QgisTestCase):
         return newpath.as_posix()
 
     def createTestOutputDirectory(self,
-                                  name: str = 'test-outputs',
-                                  subdir: str = None) -> pathlib.Path:
+                                  root: Optional[str] = 'test-outputs',
+                                  subdir: Optional[Union[str, Path]] = None,
+                                  cleanup: bool = False) -> Path:
         """
-        Returns the path to a test output directory
+        Returns the path to a test output directory.
+        Defaults to: <repo>/<root>/<test module>/<test class>/<test method>
+
+        :param root: str, name of the folder for test output below the repository root. Defaults to <repo>/test-outputs.
+        :param subdir: str or Path with subdirectories to append.
+        :param cleanup: bool, set True to delete existing test ouptuts.
+        :return: Path
+        """
+        """
         :return:
         """
-        if name is None:
-            name = 'test-outputs'
-        repo = findUpwardPath(inspect.getfile(self.__class__), '.git').parent
 
-        if subdir is None:
-            subdir = f'{self.__module__}.{self.__class__.__name__}'
+        DIR_REPO = findUpwardPath(__file__, '.git').parent
 
-        testDir = repo / name / subdir
+        folders = []
+        if hasattr(self, '__class__'):
+            folders.append(self.__class__.__module__)
+            folders.append(self.__class__.__name__)
+        else:
+            folders.append(self.__name__)
 
-        os.makedirs(testDir, exist_ok=True)
+        if hasattr(self, '_testMethodName'):
+            folders.append(self._testMethodName)
 
-        return testDir
+        if subdir:
+            subdir = Path(subdir)
+            folders.append(subdir)
+
+        p = Path(DIR_REPO) / root / Path(*folders)
+
+        if cleanup and p.exists() and p.is_dir():
+            shutil.rmtree(p)
+        os.makedirs(p, exist_ok=True)
+        return p
 
     def createTestCaseDirectory(self,
                                 basename: str = None,
                                 testclass: bool = True,
                                 testmethod: bool = True
                                 ):
-
-        d = self.createTestOutputDirectory(name=basename)
-        if testclass:
-            d = d / self.__class__.__name__
-        if testmethod:
-            d = d / self._testMethodName
-
-        os.makedirs(d, exist_ok=True)
-        return d
+        warnings.warn(DeprecationWarning('Use .createTestOutputDirectory'))
+        return self.createTestOutputDirectory(basename)
 
     @classmethod
     def assertImagesEqual(cls, image1: QImage, image2: QImage):
@@ -635,25 +652,15 @@ class TestCase(QgisTestCase):
                     return False
         return True
 
-    def tempDir(self, subdir: str = None, cleanup: bool = False) -> pathlib.Path:
+    def tempDir(self, subdir: str = None, cleanup: bool = False) -> Path:
         """
         Returns the <enmapbox-repository/test-outputs/test name> directory
         :param subdir:
         :param cleanup:
-        :return: pathlib.Path
+        :return: Path
         """
-        DIR_REPO = findUpwardPath(__file__, '.git').parent
-        if isinstance(self, TestCase):
-            foldername = self.__class__.__name__
-        else:
-            foldername = self.__name__
-        p = pathlib.Path(DIR_REPO) / 'test-outputs' / foldername
-        if isinstance(subdir, str):
-            p = p / subdir
-        if cleanup and p.exists() and p.is_dir():
-            shutil.rmtree(p)
-        os.makedirs(p, exist_ok=True)
-        return p
+        warnings.warn(DeprecationWarning('Use createTestOutputDirectory() instead.'))
+        return self.createTestOutputDirectory(subdir, cleanup)
 
     def assertIconsEqual(self, icon1: QIcon, icon2: QIcon):
         self.assertIsInstance(icon1, QIcon)
@@ -713,7 +720,7 @@ class ExampleAlgorithmProvider(QgsProcessingProvider):
     def supportsNonFileBasedOutput(self) -> True:
         return True
 
-    def addAlgorithm(self, algorithm):
+    def addAlgorithm(self, algorithm: QgsProcessingAlgorithm, **kwargs) -> bool:
         result = super().addAlgorithm(algorithm)
         if result:
             # keep reference
@@ -747,19 +754,18 @@ class SpectralProfileDataIterator(object):
         for nb in n_bands_per_field:
             assert nb is None or 0 < nb
             # assert 0 < nb <= self.cnb, f'Max. number of bands can be {self.cnb}'
-        self.band_indices: List[np.ndarray] = []
+        self.band_indices: List[Optional[np.ndarray]] = []
         for nb in n_bands_per_field:
             if nb is None:
                 self.band_indices.append(None)
             else:
-                idx: np.ndarray = None
                 if nb <= self.cnb:
                     idx = np.linspace(0, self.cnb - 1, num=nb, dtype=np.int16)
                 else:
                     # get nb bands positions along wavelength
                     idx = np.linspace(self.wl[0], self.wl[-1], num=nb, dtype=float)
 
-            self.band_indices.append(idx)
+                self.band_indices.append(idx)
 
     def sourceCrs(self) -> QgsCoordinateReferenceSystem:
         return self.source_crs
@@ -810,7 +816,7 @@ class TestObjects(object):
     @staticmethod
     def coreData() -> Tuple[np.ndarray, np.ndarray, str, tuple, str]:
         if TestObjects._coreData is None:
-            source_raster = pathlib.Path(__file__).parent / 'enmap.tif'
+            source_raster = Path(__file__).parent / 'enmap.tif'
             assert source_raster.is_file()
 
             ds = gdal.Open(source_raster.as_posix())
@@ -1063,7 +1069,7 @@ class TestObjects(object):
         return lyr
 
     @staticmethod
-    def repoDirGDAL(local='gdal') -> pathlib.Path:
+    def repoDirGDAL(local='gdal') -> Optional[Path]:
         """
         Returns the path to a local GDAL repository.
         GDAL must be installed into the same path / upward path of this repository
@@ -1075,7 +1081,7 @@ class TestObjects(object):
             return None
 
     @staticmethod
-    def repoDirQGIS(local='QGIS') -> pathlib.Path:
+    def repoDirQGIS(local='QGIS') -> Optional[Path]:
         """
         Returns the path to a local QGIS repository.
         QGIS must be installed into the same path / upward path of this repository
@@ -1088,11 +1094,9 @@ class TestObjects(object):
 
     @staticmethod
     def tmpDirPrefix() -> str:
-        if True:
-            path_dir = pathlib.Path('/vsimem/tmp')
-        else:
-            path_dir = findUpwardPath(__file__, '.git').parent / 'test-outputs' / 'vsimem' / 'tmp'
-            os.makedirs(path_dir, exist_ok=True)
+        path_dir = Path('/vsimem/tmp')
+        # path_dir = findUpwardPath(__file__, '.git').parent / 'test-outputs' / 'vsimem' / 'tmp'
+        # os.makedirs(path_dir, exist_ok=True)
 
         return path_dir.as_posix() + '/'
 
@@ -1101,7 +1105,7 @@ class TestObjects(object):
                             crs=None, gt=None,
                             eType: int = gdal.GDT_Int16,
                             nc: int = 0,
-                            path: Union[str, pathlib.Path] = None,
+                            path: Union[str, Path] = None,
                             drv: Union[str, gdal.Driver] = None,
                             wlu: str = None,
                             pixel_size: float = None,
@@ -1129,7 +1133,7 @@ class TestObjects(object):
             drv = gdal.GetDriverByName('GTiff')
         assert isinstance(drv, gdal.Driver), 'Unable to load GDAL Driver'
 
-        if isinstance(path, pathlib.Path):
+        if isinstance(path, Path):
             path = path.as_posix()
         elif path is None:
             ext = drv.GetMetadataItem('DMD_EXTENSION')
@@ -1142,7 +1146,7 @@ class TestObjects(object):
                 path = f'{prefix}testImage.{uuid.uuid4()}{ext}'
         assert isinstance(path, str)
 
-        ds: gdal.Driver = drv.Create(path, ns, nl, bands=nb, eType=eType)
+        ds: gdal.Dataset = drv.Create(path, ns, nl, bands=nb, eType=eType)
         assert isinstance(ds, gdal.Dataset)
         for b in range(ds.RasterCount):
             band: gdal.Band = ds.GetRasterBand(b + 1)
@@ -1275,7 +1279,7 @@ class TestObjects(object):
     @staticmethod
     def createVectorDataSet(wkb=ogr.wkbPolygon,
                             n_features: int = None,
-                            path: Union[str, pathlib.Path] = None) -> ogr.DataSource:
+                            path: Union[str, Path] = None) -> ogr.DataSource:
         """
         Create an in-memory ogr.DataSource
         :return: ogr.DataSource
@@ -1288,7 +1292,7 @@ class TestObjects(object):
         # pkgPath = QgsApplication.instance().pkgDataPath()
         # assert os.path.isdir(pkgPath)
 
-        # pathSrc = pathlib.Path(__file__).parent / 'landcover_polygons.geojson'
+        # pathSrc = Path(__file__).parent / 'landcover_polygons.geojson'
         pathSrc = TEST_VECTOR_GEOJSON
         assert pathSrc.is_file(), 'Unable to find {}'.format(pathSrc)
 
@@ -1311,7 +1315,7 @@ class TestObjects(object):
 
         # set temp path
         if path:
-            pathDst = pathlib.Path(path).as_posix()
+            pathDst = Path(path).as_posix()
             lname = os.path.basename(pathDst)
         else:
             prefix = TestObjects.tmpDirPrefix() + str(uuid.uuid4())
@@ -1414,7 +1418,7 @@ class TestObjects(object):
     @staticmethod
     def createVectorLayer(wkbType: QgsWkbTypes = QgsWkbTypes.Polygon,
                           n_features: int = None,
-                          path: Union[str, pathlib.Path] = None,
+                          path: Union[str, Path] = None,
                           crs: QgsCoordinateReferenceSystem = None) -> QgsVectorLayer:
         """
         Create a QgsVectorLayer
